@@ -56,7 +56,7 @@ final readonly class SettingsScopeRow
             kind: SettingsRowKind::Choice,
             value: $this->scope->current()->value,
             restart: false,
-            options: array_map(static fn (ConfigScope $scope): string => $scope->value, ConfigScope::inPrecedenceOrder()),
+            options: \array_map(static fn (ConfigScope $scope): string => $scope->value, ConfigScope::inPrecedenceOrder()),
             optionLabels: [
                 ConfigScope::Global->value => $this->files->label(ConfigScope::Global),
                 ConfigScope::Project->value => $this->files->label(ConfigScope::Project),

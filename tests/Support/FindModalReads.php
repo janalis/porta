@@ -36,7 +36,7 @@ trait FindModalReads
         // frame so a mutation made this step is on the pane before reading.
         $this->frame($tui);
 
-        return AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('editor')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 40))));
+        return AnsiUtils::stripAnsiCodes(\implode("\n", $tui->getById('editor')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 40))));
     }
 
     /** The editor pane's raw (styled) rendered rows (after a frame — see modalText). */
@@ -54,7 +54,7 @@ trait FindModalReads
      */
     private function caretMarkerCount(array $rows): int
     {
-        return array_sum(array_map(static fn (string $l): int => substr_count($l, AnsiUtils::CURSOR_MARKER_PREFIX), $rows));
+        return \array_sum(\array_map(static fn (string $l): int => \substr_count($l, AnsiUtils::CURSOR_MARKER_PREFIX), $rows));
     }
 
     /**
@@ -65,7 +65,7 @@ trait FindModalReads
     private function caretMarkerRow(array $rows): ?int
     {
         foreach ($rows as $i => $line) {
-            if (str_contains($line, AnsiUtils::CURSOR_MARKER_PREFIX)) {
+            if (\str_contains($line, AnsiUtils::CURSOR_MARKER_PREFIX)) {
                 return $i;
             }
         }

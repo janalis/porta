@@ -203,7 +203,7 @@ final class PaneSegmenterTest extends TestCase
             \Porta\Widget\TerminalPanelWidget::class,
             'Porta\\GitPlugin\\Widget\\DiffViewWidget',
         ];
-        sort($expected);
+        \sort($expected);
 
         $this->assertSame($expected, self::declaredVerbatimPanes());
     }
@@ -224,15 +224,15 @@ final class PaneSegmenterTest extends TestCase
                 if (!$file instanceof \SplFileInfo || 'php' !== $file->getExtension()) {
                     continue;
                 }
-                $code = (string) file_get_contents($file->getPathname());
-                if (1 !== preg_match('/implements[^{]*\bLtrPane\b/', $code) || 1 !== preg_match('/^namespace\s+([^;]+);/m', $code, $namespace)) {
+                $code = (string) \file_get_contents($file->getPathname());
+                if (1 !== \preg_match('/implements[^{]*\bLtrPane\b/', $code) || 1 !== \preg_match('/^namespace\s+([^;]+);/m', $code, $namespace)) {
                     continue;
                 }
 
                 $found[] = $namespace[1].'\\'.$file->getBasename('.php');
             }
         }
-        sort($found);
+        \sort($found);
 
         return $found;
     }

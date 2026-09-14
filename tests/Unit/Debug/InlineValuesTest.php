@@ -76,7 +76,7 @@ final class InlineValuesTest extends TestCase
     private function serverAnswered(InlineValues $values): void
     {
         $values->stoppedAt('/p/a.php', 1, frameId: 1);
-        $this->client->requests[0]['respond'](array_map(static fn (array $l): array => [
+        $this->client->requests[0]['respond'](\array_map(static fn (array $l): array => [
             'range' => ['start' => ['line' => $l['line'], 'character' => 0], 'end' => ['line' => $l['line'], 'character' => $l['endCol']]],
             'variableName' => $l['name'],
         ], $this->lookups));
@@ -389,7 +389,7 @@ final class InlineValuesTest extends TestCase
         // and hands the join a name no frame ever had.
         $values = $this->withoutInlineValueSupport("<?php\n\$s = 'héllo'; \$count = 41;\n");
         $line = "\$s = 'héllo'; \$count = 41;";
-        $at = mb_strpos($line, needle: '$count');
+        $at = \mb_strpos($line, needle: '$count');
         $this->editor
             ->decorations()
             ->setSemanticTokens([

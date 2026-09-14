@@ -327,7 +327,7 @@ final class TreeDragRouter
         foreach ($drag->sources as $path) {
             // A folder has nothing to open; dropping one on the editor is a
             // miss, not an instruction.
-            if (is_dir($path)) {
+            if (\is_dir($path)) {
                 continue;
             }
 

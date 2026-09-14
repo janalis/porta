@@ -101,14 +101,14 @@ final class IdeFindUiTest extends TestCase
             [
                 200 => static function ($tui): void {
                     $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f → modal
-                    foreach (str_split('tok') as $ch) {
+                    foreach (\str_split('tok') as $ch) {
                         $tui->handleInput($ch);
                     }
                 },
                 700 => function ($tui): void {
                     // The grep is a subprocess: await the matches landing
                     // instead of a fixed gap.
-                    $this->await(fn (): bool => str_contains($this->modalText($tui), 'tok 0'), what: 'the matches to land');
+                    $this->await(fn (): bool => \str_contains($this->modalText($tui), 'tok 0'), what: 'the matches to land');
                     $before = $this->modalText($tui);
                     $this->assertStringContainsString('tok 0', $before, 'the first matches show initially');
                     $this->assertStringNotContainsString('tok 18', $before, 'later matches start below the fold');
@@ -132,7 +132,7 @@ final class IdeFindUiTest extends TestCase
             $files["src/File{$i}.php"] = "<?php\n// tok\n";
         }
         $project = new TempProject($files);
-        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 16))));
+        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(\implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 16))));
 
         $this->runIde(
             $project,
@@ -140,7 +140,7 @@ final class IdeFindUiTest extends TestCase
             [
                 200 => static function ($tui): void {
                     $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
-                    foreach (str_split('tok') as $ch) {
+                    foreach (\str_split('tok') as $ch) {
                         $tui->handleInput($ch);
                     }
                 },
@@ -148,7 +148,7 @@ final class IdeFindUiTest extends TestCase
                     $this->promote($tui); // Alt+Enter → results tool window
                     // The grep is a subprocess: await the matches landing
                     // instead of a fixed gap.
-                    $this->await(static fn (): bool => str_contains($panelText($tui), 'File0.php'), what: 'the matches to land');
+                    $this->await(static fn (): bool => \str_contains($panelText($tui), 'File0.php'), what: 'the matches to land');
                     $this->assertStringContainsString('File0.php', $panelText($tui), 'the first files show initially');
                 },
                 900 => function ($tui, $terminal, $ide) use ($panelText): void {
@@ -174,7 +174,7 @@ final class IdeFindUiTest extends TestCase
             'src/A.php' => "<?php\n// tok here\n",
             'other/B.php' => "<?php\n// tok here\n",
         ]);
-        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 16))));
+        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(\implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 16))));
 
         $this->runIde(
             $project,
@@ -182,14 +182,14 @@ final class IdeFindUiTest extends TestCase
             [
                 200 => static function ($tui): void {
                     $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
-                    foreach (str_split('tok') as $ch) {
+                    foreach (\str_split('tok') as $ch) {
                         $tui->handleInput($ch);
                     }
                 },
                 600 => function ($tui) use ($panelText): void {
                     // Await in the MODAL — the results pane holds nothing until
                     // promote() moves the rows onto it.
-                    $this->await(fn (): bool => str_contains($this->modalText($tui), 'other/B.php'), what: 'both search hits to land');
+                    $this->await(fn (): bool => \str_contains($this->modalText($tui), 'other/B.php'), what: 'both search hits to land');
                     $this->promote($tui); // modal → results pane (the filter field lives on the pane)
                     $panel = $panelText($tui);
                     $this->assertStringContainsString('src/A.php', $panel, 'both files match');
@@ -197,7 +197,7 @@ final class IdeFindUiTest extends TestCase
                     // Tab query → mask → filter, then narrow to the src/ tree.
                     $tui->handleInput("\t");
                     $tui->handleInput("\t");
-                    foreach (str_split('src') as $ch) {
+                    foreach (\str_split('src') as $ch) {
                         $tui->handleInput($ch);
                     }
                 },
@@ -218,7 +218,7 @@ final class IdeFindUiTest extends TestCase
     private function findBarRow(Tui $tui): string
     {
         return AnsiUtils::stripAnsiCodes(
-            implode('', $tui->getById('find-bar')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 1))),
+            \implode('', $tui->getById('find-bar')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 1))),
         );
     }
 
@@ -227,7 +227,7 @@ final class IdeFindUiTest extends TestCase
         // PhpStorm's rule: the selection if there is one, the identifier the
         // caret stands in otherwise. Porta only ever did the first half, so
         // Ctrl+F on a symbol meant retyping the symbol.
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\n\$total = 1;\necho \$total + \$total;\n"]);
 
         $this->runIde(
@@ -300,7 +300,7 @@ final class IdeFindUiTest extends TestCase
 
     public function testClickingTheFindBarsOptionTagTogglesIt(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\n// foo foobar foo\n"]);
 
         $this->runIde(
@@ -309,7 +309,7 @@ final class IdeFindUiTest extends TestCase
             [
                 200 => function ($tui, $terminal, $ide): void {
                     $tui->handleInput("\x06"); // ctrl+f
-                    foreach (str_split('foo') as $ch) {
+                    foreach (\str_split('foo') as $ch) {
                         $tui->handleInput($ch);
                     }
                     $this->awaitPainted($tui, $terminal, '[1/3]');
@@ -347,7 +347,7 @@ final class IdeFindUiTest extends TestCase
                     $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f -> open project search
                 },
                 400 => static function ($tui): void {
-                    foreach (str_split('n..dle') as $ch) {
+                    foreach (\str_split('n..dle') as $ch) {
                         $tui->handleInput($ch); // a regex; as a literal it matches nothing
                     }
                 },
@@ -381,7 +381,7 @@ final class IdeFindUiTest extends TestCase
             [
                 300 => static function ($tui): void {
                     $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
-                    foreach (str_split('foo') as $ch) {
+                    foreach (\str_split('foo') as $ch) {
                         $tui->handleInput($ch);
                     }
                 },
@@ -390,9 +390,9 @@ final class IdeFindUiTest extends TestCase
                     // MODAL before acting on it, instead of a fixed gap. (The
                     // query field itself already echoes "foo", so await the
                     // file path — only the results preview carries it.)
-                    $this->await(fn (): bool => str_contains($this->modalText($tui), 'B.php'), what: 'the search to land');
+                    $this->await(fn (): bool => \str_contains($this->modalText($tui), 'B.php'), what: 'the search to land');
                     $tui->handleInput("\t"); // modal: query → replace
-                    foreach (str_split('bar') as $ch) {
+                    foreach (\str_split('bar') as $ch) {
                         $tui->handleInput($ch);
                     }
                     $tui->handleInput("\x1ba"); // alt+a -> replace all
@@ -400,7 +400,7 @@ final class IdeFindUiTest extends TestCase
                 1000 => function ($tui) use ($project): void {
                     $doc = $tui->getById('editor')->getDocument();
                     $this->assertStringContainsString('$bar = 1;', $doc->getText(), 'open buffer replaced (undoable)');
-                    $this->assertStringContainsString('$bar = 2;', (string) file_get_contents($project->path('src/B.php')), 'on-disk file replaced');
+                    $this->assertStringContainsString('$bar = 2;', (string) \file_get_contents($project->path('src/B.php')), 'on-disk file replaced');
                 },
             ],
         );
@@ -419,14 +419,14 @@ final class IdeFindUiTest extends TestCase
             [
                 300 => static function ($tui): void {
                     $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
-                    foreach (str_split('foo') as $ch) {
+                    foreach (\str_split('foo') as $ch) {
                         $tui->handleInput($ch);
                     }
                 },
                 700 => static function ($tui): void {
                     $tui->tick();
                     $tui->handleInput("\t"); // modal: query → replace
-                    foreach (str_split('baz') as $ch) {
+                    foreach (\str_split('baz') as $ch) {
                         $tui->handleInput($ch);
                     }
                     $tui->handleInput("\x1ba"); // alt+a -> replace all
@@ -471,16 +471,16 @@ final class IdeFindUiTest extends TestCase
             [
                 200 => static function ($tui): void {
                     $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
-                    foreach (str_split('foo') as $ch) {
+                    foreach (\str_split('foo') as $ch) {
                         $tui->handleInput($ch);
                     }
                 },
                 600 => function ($tui) use ($panelText): void {
                     // The grep is a subprocess: await its rows before driving
                     // the preview, instead of assuming 400ms was enough.
-                    $this->await(static fn (): bool => str_contains($panelText($tui), 'A.php'), what: 'the project search to land');
+                    $this->await(static fn (): bool => \str_contains($panelText($tui), 'A.php'), what: 'the project search to land');
                     $tui->handleInput("\t"); // modal: query → replace
-                    foreach (str_split('bar') as $ch) {
+                    foreach (\str_split('bar') as $ch) {
                         $tui->handleInput($ch);
                     }
                     $panel = $panelText($tui);
@@ -505,7 +505,7 @@ final class IdeFindUiTest extends TestCase
 
     public function testMouseClicksAndHoversSearchPanels(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php // a\n", 'b.php' => "<?php // b\n", 'c.php' => "<?php // c\n"]);
 
         $this->runIde(

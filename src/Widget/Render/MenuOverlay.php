@@ -31,7 +31,7 @@ final class MenuOverlay
             // last-frame rect can outlive a relayout (tab bar moving to a
             // side, a pane resize) for one frame, and compositing it verbatim
             // would blow the line-width invariant the renderer enforces.
-            $width = min($span['width'], $columns - $span['col']);
+            $width = \min($span['width'], $columns - $span['col']);
             if ($width <= 0) {
                 continue;
             }

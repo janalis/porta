@@ -57,7 +57,7 @@ final class DiagnosticStyle
     {
         $worst = 4;
         foreach ($diags as $diag) {
-            $worst = min($worst, self::normalize($diag['severity'] ?? 1));
+            $worst = \min($worst, self::normalize($diag['severity'] ?? 1));
         }
 
         return $worst;
@@ -150,7 +150,7 @@ final class DiagnosticStyle
             $open[] = Sgr::STRIKETHROUGH;
         }
 
-        return implode('', $open);
+        return \implode('', $open);
     }
 
     /**
@@ -170,6 +170,6 @@ final class DiagnosticStyle
             $close[] = Sgr::NORMAL_INTENSITY;
         }
 
-        return implode('', $close);
+        return \implode('', $close);
     }
 }

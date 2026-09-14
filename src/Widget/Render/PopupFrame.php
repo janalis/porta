@@ -33,19 +33,19 @@ final class PopupFrame
     /** The top border: `╭──╮`, exactly $innerWidth + CHROME_COLS columns. */
     public static function top(int $innerWidth, Styles $styles): string
     {
-        return $styles->of(Role::TabAccent)->apply(Glyphs::MODAL_TOP_LEFT.str_repeat(Glyphs::FRAME_HORIZONTAL, max(0, $innerWidth)).Glyphs::MODAL_TOP_RIGHT);
+        return $styles->of(Role::TabAccent)->apply(Glyphs::MODAL_TOP_LEFT.\str_repeat(Glyphs::FRAME_HORIZONTAL, \max(0, $innerWidth)).Glyphs::MODAL_TOP_RIGHT);
     }
 
     /** The bottom border: `╰──╯`. */
     public static function bottom(int $innerWidth, Styles $styles): string
     {
-        return $styles->of(Role::TabAccent)->apply(Glyphs::MODAL_BOTTOM_LEFT.str_repeat(Glyphs::FRAME_HORIZONTAL, max(0, $innerWidth)).Glyphs::MODAL_BOTTOM_RIGHT);
+        return $styles->of(Role::TabAccent)->apply(Glyphs::MODAL_BOTTOM_LEFT.\str_repeat(Glyphs::FRAME_HORIZONTAL, \max(0, $innerWidth)).Glyphs::MODAL_BOTTOM_RIGHT);
     }
 
     /** A section separator: `├──┤` — the tee row {@see ModalFrame::wrapSections} draws between zones. */
     public static function tee(int $innerWidth, Styles $styles): string
     {
-        return $styles->of(Role::TabAccent)->apply(Glyphs::MODAL_TEE_LEFT.str_repeat(Glyphs::FRAME_HORIZONTAL, max(0, $innerWidth)).Glyphs::MODAL_TEE_RIGHT);
+        return $styles->of(Role::TabAccent)->apply(Glyphs::MODAL_TEE_LEFT.\str_repeat(Glyphs::FRAME_HORIZONTAL, \max(0, $innerWidth)).Glyphs::MODAL_TEE_RIGHT);
     }
 
     /**
@@ -56,7 +56,7 @@ final class PopupFrame
     {
         $edge = $styles->of(Role::TabAccent)->apply(Glyphs::FRAME_VERTICAL);
 
-        return $edge.AnsiText::truncate($row, max(0, $innerWidth), pad: true).$edge;
+        return $edge.AnsiText::truncate($row, \max(0, $innerWidth), pad: true).$edge;
     }
 
     /**

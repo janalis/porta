@@ -98,7 +98,7 @@ final class EditorScroll
 
     public function setContentWidth(int $width): void
     {
-        $this->contentWidth = max(0, $width);
+        $this->contentWidth = \max(0, $width);
     }
 
     public function setContentRows(int $rows): void
@@ -110,7 +110,7 @@ final class EditorScroll
     public function centerOnLine(int $line): void
     {
         $this->detached = false;
-        $this->vScroll = max(0, $line - intdiv($this->contentRows, num2: 2));
+        $this->vScroll = \max(0, $line - \intdiv($this->contentRows, num2: 2));
         $this->vScrollSegment = 0;
     }
 
@@ -128,7 +128,7 @@ final class EditorScroll
      */
     public function scrollBy(int $delta): void
     {
-        $max = max(0, $this->document->getLineCount() - 1);
+        $max = \max(0, $this->document->getLineCount() - 1);
         $this->vScroll = IntMath::clamp($this->vScroll + $delta, 0, $max);
         $this->vScrollSegment = 0;
         $this->detached = true;
@@ -179,7 +179,7 @@ final class EditorScroll
                 if ($top === $this->vScroll && 0 === $this->vScrollSegment) {
                     // Nowhere above to scroll to: the caret is deep inside a
                     // line taller than the pane, so scroll INTO that line.
-                    $this->vScrollSegment = max(0, $cursorRow - ($rows - $stickyCount - 1));
+                    $this->vScrollSegment = \max(0, $cursorRow - ($rows - $stickyCount - 1));
 
                     break;
                 }
@@ -257,7 +257,7 @@ final class EditorScroll
     {
         $width = $this->contentWidth;
 
-        return $width <= 0 ? 1 : max(1, (int) ceil(max(1, $this->document->lineDisplayWidth($line)) / $width));
+        return $width <= 0 ? 1 : \max(1, (int) \ceil(\max(1, $this->document->lineDisplayWidth($line)) / $width));
     }
 
     /** Which wrapped segment of its own line the caret sits in. */
@@ -265,7 +265,7 @@ final class EditorScroll
     {
         $width = $this->contentWidth;
 
-        return $width <= 0 ? 0 : intdiv($this->document->getCursorDisplayCol(), $width);
+        return $width <= 0 ? 0 : \intdiv($this->document->getCursorDisplayCol(), $width);
     }
 
     public function followCursor(int $cursorDisplayCol, int $contentWidth, CaretMotion $motion = CaretMotion::Moved): void
@@ -274,7 +274,7 @@ final class EditorScroll
             return;
         }
         if ($cursorDisplayCol < $this->hScroll) {
-            $this->hScroll = max(0, $cursorDisplayCol - 8);
+            $this->hScroll = \max(0, $cursorDisplayCol - 8);
 
             return;
         }
@@ -286,7 +286,7 @@ final class EditorScroll
     /** Scroll the view horizontally without touching the caret, clamped to [0, $max]. */
     public function scrollHBy(int $cols, int $max): void
     {
-        $this->hScroll = IntMath::clamp($this->hScroll + $cols, 0, max(0, $max));
+        $this->hScroll = IntMath::clamp($this->hScroll + $cols, 0, \max(0, $max));
         ($this->invalidate)();
     }
 }

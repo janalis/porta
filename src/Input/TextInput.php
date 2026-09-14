@@ -16,6 +16,6 @@ final class TextInput
      */
     public static function isPrintable(string $keys): bool
     {
-        return '' !== $keys && !str_contains($keys, "\x1b") && !preg_match('/[\x00-\x1F\x7F]/', $keys);
+        return '' !== $keys && !\str_contains($keys, "\x1b") && !\preg_match('/[\x00-\x1F\x7F]/', $keys);
     }
 }

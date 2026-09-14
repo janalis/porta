@@ -62,8 +62,8 @@ final class SearchScopeStore
 
             break;
         }
-        $this->scopes = array_values(array_filter($this->scopes, static fn (array $s): bool => $s['label'] !== $label));
-        array_unshift($this->scopes, [
+        $this->scopes = \array_values(\array_filter($this->scopes, static fn (array $s): bool => $s['label'] !== $label));
+        \array_unshift($this->scopes, [
             'label' => $label,
             'paths' => $paths,
             'pinned' => ScopePersistence::Pinned === $persistence || ($existing['pinned'] ?? false), // a pin sticks once set
@@ -134,10 +134,10 @@ final class SearchScopeStore
     /** Keep every pinned entry (first) plus the most-recent {@see MAX_RECENT} unpinned ones. */
     private function evictRecent(): void
     {
-        $pinned = array_values(array_filter($this->scopes, static fn (array $s): bool => $s['pinned']));
-        $recent = array_values(array_filter($this->scopes, static fn (array $s): bool => !$s['pinned']));
+        $pinned = \array_values(\array_filter($this->scopes, static fn (array $s): bool => $s['pinned']));
+        $recent = \array_values(\array_filter($this->scopes, static fn (array $s): bool => !$s['pinned']));
 
-        $this->scopes = array_merge($pinned, \array_slice($recent, offset: 0, length: self::MAX_RECENT));
+        $this->scopes = \array_merge($pinned, \array_slice($recent, offset: 0, length: self::MAX_RECENT));
     }
 
     /** @return list<array{label: string, paths: list<string>, pinned: bool}> */
@@ -155,7 +155,7 @@ final class SearchScopeStore
                 continue;
             }
 
-            $paths = array_values(array_filter($entry['paths'], static fn (mixed $p): bool => \is_string($p) && '' !== $p));
+            $paths = \array_values(\array_filter($entry['paths'], static fn (mixed $p): bool => \is_string($p) && '' !== $p));
             if ([] !== $paths) {
                 /** @var list<string> $paths */
                 $scopes[] = ['label' => $entry['label'], 'paths' => $paths, 'pinned' => true === ($entry['pinned'] ?? null)];

@@ -134,12 +134,12 @@ final class LoopIsolationExtension implements Extension
                 $kind = $callback instanceof TimerCallback
                     ? \sprintf('%s %.3fs', $callback->repeat ? 'repeat' : 'delay', $callback->interval)
                     : new \ReflectionClass($callback)->getShortName();
-                $seen[\sprintf('%s %s:%d', $kind, basename((string) $where->getFileName()), $where->getStartLine())] = true;
+                $seen[\sprintf('%s %s:%d', $kind, \basename((string) $where->getFileName()), $where->getStartLine())] = true;
             }
         } catch (\Throwable) {
             return '';
         }
 
-        return [] === $seen ? '' : ' ('.implode('; ', array_keys($seen)).')';
+        return [] === $seen ? '' : ' ('.\implode('; ', \array_keys($seen)).')';
     }
 }

@@ -27,7 +27,7 @@ final class StructuralSelectionTest extends TestCase
                 break;
             }
             [$start, $end] = $next;
-            $steps[] = substr($text, $start, $end - $start);
+            $steps[] = \substr($text, $start, $end - $start);
         }
 
         return $steps;

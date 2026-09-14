@@ -36,7 +36,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
 
     protected function setUp(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
     }
 
     /** An embedded fixture plugin whose menu item is usable only once its binary setting is set. */
@@ -70,9 +70,9 @@ final class IdeEmbeddedPluginsTest extends TestCase
     public function testEmbeddedPluginLoadsWithAMenuBetweenCodeAndRunAndIsNotRemovable(): void
     {
         $embedded = $this->embeddedFixture();
-        putenv('PORTA_EMBEDDED_PLUGINS='.$embedded->dir);
+        \putenv('PORTA_EMBEDDED_PLUGINS='.$embedded->dir);
         // Bundled plugins are off by default; opt the fixture in.
-        $project = new TempProject(['a.php' => "<?php\n", '.porta.json' => json_encode(['enabledPlugins' => ['bundled']])]);
+        $project = new TempProject(['a.php' => "<?php\n", '.porta.json' => \json_encode(['enabledPlugins' => ['bundled']])]);
 
         $this->runIde(
             $project,
@@ -80,7 +80,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
             [
                 100 => function ($tui, $terminal, $ide) use ($embedded): void {
                     $this->frame($tui);
-                    $titles = array_column($this->menus($tui), 'title');
+                    $titles = \array_column($this->menus($tui), 'title');
                     // No Git: this project is not a repository, and git's group
                     // is not built where none of its verbs is registered.
                     $this->assertSame(['File', 'Edit', 'Navigate', 'Code', 'Plugins', 'Run', 'View', 'Help'], $titles, 'the Plugins menu sits between Code and Run');
@@ -88,7 +88,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     $this->assertFalse($pluginsMenu->items[0]->enabled(), 'no binary configured → the entry is disabled');
 
                     $commands = Services::resolve($ide, CommandRegistry::class);
-                    $this->assertContains('Bundled Run', array_column($commands->paletteCommands(), 'label'), 'the embedded plugin activated');
+                    $this->assertContains('Bundled Run', \array_column($commands->paletteCommands(), 'label'), 'the embedded plugin activated');
 
                     // The manage screen lists it as built-in; actuating is inert.
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
@@ -113,13 +113,13 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     $tui->handleInput("\t"); // nav → form (Enabled row)
                     $tui->handleInput("\x1b[B"); // → Tool binary
                     $tui->handleInput("\r");
-                    foreach (str_split('/opt/tool') as $char) {
+                    foreach (\str_split('/opt/tool') as $char) {
                         $tui->handleInput($char);
                     }
                     $tui->handleInput("\r");
                     $this->frame($tui);
 
-                    $config = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
+                    $config = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true);
                     $this->assertSame('/opt/tool', $config['plugins']['bundled']['binary'] ?? null, 'the setting persisted');
 
                     // Outside the settings view (which gates every non-safe item),
@@ -144,19 +144,19 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     $tui->handleInput("\r"); // toggle off
                     $this->awaitPainted($tui, $terminal, 'Plugin "bundled" disabled');
                     $this->assertStringContainsString('Plugin "bundled" disabled', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
-                    $this->assertNotContains('Plugins', array_column($this->menus($tui), 'title'), 'the only plugin gone → no Plugins menu');
+                    $this->assertNotContains('Plugins', \array_column($this->menus($tui), 'title'), 'the only plugin gone → no Plugins menu');
                     $commands = Services::resolve($ide, CommandRegistry::class);
-                    $this->assertNotContains('Bundled Run', array_column($commands->paletteCommands(), 'label'));
-                    $config = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
+                    $this->assertNotContains('Bundled Run', \array_column($commands->paletteCommands(), 'label'));
+                    $config = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true);
                     $this->assertSame([], $config['enabledPlugins'] ?? null, 'a bundled plugin disables by leaving the list — kept explicit, or the absent-key default would flip back on');
 
                     // And re-enable it live from the same page.
                     $tui->handleInput("\r");
                     $this->awaitPainted($tui, $terminal, 'Plugin "bundled" enabled');
                     $this->assertStringContainsString('Plugin "bundled" enabled', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
-                    $this->assertContains('Plugins', array_column($this->menus($tui), 'title'));
-                    $this->assertContains('Bundled Run', array_column($commands->paletteCommands(), 'label'));
-                    $config = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
+                    $this->assertContains('Plugins', \array_column($this->menus($tui), 'title'));
+                    $this->assertContains('Bundled Run', \array_column($commands->paletteCommands(), 'label'));
+                    $config = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true);
                     $this->assertSame(['bundled'], $config['enabledPlugins'] ?? null, 're-enabling opts it back in');
                 },
             ],
@@ -190,11 +190,11 @@ final class IdeEmbeddedPluginsTest extends TestCase
             'shadowfail/plugin.php' => "<?php\nreturn 42;\n", // a broken fallback copy
             'sleeper/plugin.php' => "<?php\nreturn 42;\n", // broken, disabled at boot
         ]);
-        putenv('PORTA_EMBEDDED_PLUGINS='.$embedded->dir);
+        \putenv('PORTA_EMBEDDED_PLUGINS='.$embedded->dir);
         $project = new TempProject([
             '.porta/plugins/bundled/plugin.php' => $this->namedPlugin('bundled', 'Project Run'),
             '.porta/plugins/shadowfail/plugin.php' => $this->namedPlugin('shadowfail', 'Shadow OK'),
-            '.porta.json' => json_encode(['disabledPlugins' => ['sleeper']]),
+            '.porta.json' => \json_encode(['disabledPlugins' => ['sleeper']]),
             'a.php' => "<?php\n",
         ]);
 
@@ -204,7 +204,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
             [
                 100 => function ($tui, $terminal, $ide): void {
                     $commands = Services::resolve($ide, CommandRegistry::class);
-                    $labels = array_column($commands->paletteCommands(), 'label');
+                    $labels = \array_column($commands->paletteCommands(), 'label');
                     $this->assertContains('Project Run', $labels, 'the project copy shadows the embedded one');
                     $this->assertNotContains('Bundled Run', $labels);
 
@@ -218,7 +218,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     $tui->handleInput("\r");
                     $tui->handleInput("\r");
                     $this->frame($tui);
-                    $labels = array_column($commands->paletteCommands(), 'label');
+                    $labels = \array_column($commands->paletteCommands(), 'label');
                     $this->assertNotContains('Project Run', $labels, 'the override died');
                     $this->assertContains('Bundled Run', $labels, 'the shadowed embedded copy took over live');
 
@@ -228,7 +228,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     $this->frame($tui);
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('Plugin "shadowfail" failed to load', $screen);
-                    $this->assertNotContains('Shadow OK', array_column($commands->paletteCommands(), 'label'));
+                    $this->assertNotContains('Shadow OK', \array_column($commands->paletteCommands(), 'label'));
                 },
                 150 => function ($tui, $terminal): void {
                     // Enabling a disabled plugin whose file is broken flashes too.
@@ -252,9 +252,9 @@ final class IdeEmbeddedPluginsTest extends TestCase
     public function testADisabledPluginIsSkippedAtBootButStaysListedForReEnabling(): void
     {
         $embedded = $this->embeddedFixture();
-        putenv('PORTA_EMBEDDED_PLUGINS='.$embedded->dir);
+        \putenv('PORTA_EMBEDDED_PLUGINS='.$embedded->dir);
         $project = new TempProject([
-            '.porta.json' => json_encode(['disabledPlugins' => ['bundled']]),
+            '.porta.json' => \json_encode(['disabledPlugins' => ['bundled']]),
             'a.php' => "<?php\n",
         ]);
 
@@ -264,8 +264,8 @@ final class IdeEmbeddedPluginsTest extends TestCase
             [
                 100 => function ($tui, $terminal, $ide): void {
                     $commands = Services::resolve($ide, CommandRegistry::class);
-                    $this->assertNotContains('Bundled Run', array_column($commands->paletteCommands(), 'label'), 'skipped at boot');
-                    $this->assertNotContains('Plugins', array_column($this->menus($tui), 'title'));
+                    $this->assertNotContains('Bundled Run', \array_column($commands->paletteCommands(), 'label'), 'skipped at boot');
+                    $this->assertNotContains('Plugins', \array_column($this->menus($tui), 'title'));
 
                     // Its settings page is still reachable, showing the unchecked toggle.
                     $commands->run('ide_settings');
@@ -292,8 +292,8 @@ final class IdeEmbeddedPluginsTest extends TestCase
         // ALREADY-modified value and leak /nonexistent into the whole worker.
         $fixture = \dirname(__DIR__).'/Support/fixtures/thirdparty/acme-tools';
         $project = new TempProject(['a.php' => "<?php\n"]);
-        mkdir($project->path('.porta/plugins'), permissions: 0o777, recursive: true);
-        symlink($fixture, $project->path('.porta/plugins/acme-tools'));
+        \mkdir($project->path('.porta/plugins'), permissions: 0o777, recursive: true);
+        \symlink($fixture, $project->path('.porta/plugins/acme-tools'));
 
         $this->runIde(
             $project,
@@ -301,12 +301,12 @@ final class IdeEmbeddedPluginsTest extends TestCase
             [
                 100 => function ($tui, $terminal, $ide): void {
                     $commands = Services::resolve($ide, CommandRegistry::class);
-                    $this->assertContains('Acme: Greet', array_column($commands->paletteCommands(), 'label'), 'the plugin loaded');
+                    $this->assertContains('Acme: Greet', \array_column($commands->paletteCommands(), 'label'), 'the plugin loaded');
 
                     // Running it reaches into the plugin's OWN class, which only
                     // resolves through the manifest's autoload mapping.
                     $commands->run('acme-tools:greet');
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'hello from acme-tools'), what: "the plugin class's answer");
+                    $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'hello from acme-tools'), what: "the plugin class's answer");
                 },
             ],
         );
@@ -323,8 +323,8 @@ final class IdeEmbeddedPluginsTest extends TestCase
         // dependencies process-wide.
         $fixture = \dirname(__DIR__).'/Support/fixtures/thirdparty/acme-vendored';
         $project = new TempProject(['a.php' => "<?php\n"]);
-        mkdir($project->path('.porta/plugins'), permissions: 0o777, recursive: true);
-        symlink($fixture, $project->path('.porta/plugins/acme-vendored'));
+        \mkdir($project->path('.porta/plugins'), permissions: 0o777, recursive: true);
+        \symlink($fixture, $project->path('.porta/plugins/acme-vendored'));
 
         $this->runIde(
             $project,
@@ -332,10 +332,10 @@ final class IdeEmbeddedPluginsTest extends TestCase
             [
                 100 => function ($tui, $terminal, $ide): void {
                     $commands = Services::resolve($ide, CommandRegistry::class);
-                    $this->assertContains('Acme: Greet', array_column($commands->paletteCommands(), 'label'), 'the plugin loaded');
+                    $this->assertContains('Acme: Greet', \array_column($commands->paletteCommands(), 'label'), 'the plugin loaded');
                     $commands->run('acme-vendored:greet');
                     $this->await(
-                        static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'acme psr4-ok classmap-ok'),
+                        static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'acme psr4-ok classmap-ok'),
                         what: 'both halves of the vendored map',
                     );
                 },
@@ -359,7 +359,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
     {
         $bin = $project->path('fakebin');
         FakeComposer::write($bin, $exitCode);
-        symlink(\PHP_BINARY, $bin.'/php');
+        \symlink(\PHP_BINARY, $bin.'/php');
 
         return $bin;
     }
@@ -372,17 +372,17 @@ final class IdeEmbeddedPluginsTest extends TestCase
         if ([] !== $requires) {
             $manifest['extra'] = ['porta' => ['requires' => $requires]];
         }
-        file_put_contents($project->path('.porta/plugins/'.$name.'/composer.json'), data: (string) json_encode($manifest));
+        \file_put_contents($project->path('.porta/plugins/'.$name.'/composer.json'), data: (string) \json_encode($manifest));
     }
 
     /** A project plugin directory: an entry file, and a manifest when $requires is given. */
     private function projectPlugin(TempProject $project, string $name, array $requires = []): void
     {
         $dir = $project->path('.porta/plugins/'.$name);
-        mkdir($dir, permissions: 0o777, recursive: true);
-        file_put_contents($dir.'/plugin.php', data: $this->namedPlugin($name, ucfirst($name).' Run'));
+        \mkdir($dir, permissions: 0o777, recursive: true);
+        \file_put_contents($dir.'/plugin.php', data: $this->namedPlugin($name, \ucfirst($name).' Run'));
         if ([] !== $requires) {
-            file_put_contents($dir.'/composer.json', data: (string) json_encode(['extra' => ['porta' => ['requires' => $requires]]]));
+            \file_put_contents($dir.'/composer.json', data: (string) \json_encode(['extra' => ['porta' => ['requires' => $requires]]]));
         }
     }
 
@@ -398,12 +398,12 @@ final class IdeEmbeddedPluginsTest extends TestCase
             $project->path('a.php'),
             [
                 100 => function ($tui, $terminal, $ide): void {
-                    $labels = array_column(Services::resolve($ide, CommandRegistry::class)->paletteCommands(), 'label');
+                    $labels = \array_column(Services::resolve($ide, CommandRegistry::class)->paletteCommands(), 'label');
                     $this->assertContains('Zbase Run', $labels);
                     $this->assertContains('App Run', $labels);
                     $this->assertLessThan(
-                        array_search('App Run', $labels, strict: true),
-                        array_search('Zbase Run', $labels, strict: true),
+                        \array_search('App Run', $labels, strict: true),
+                        \array_search('Zbase Run', $labels, strict: true),
                         'the dependency registered first, so it loaded first',
                     );
 
@@ -413,7 +413,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     // boot wiring, and what has reached the terminal by now is a
                     // question about frame timing, not about the warning.
                     $this->assertNotContains('Orphan Run', $labels);
-                    $this->assertStringContainsString('needs "absent"', implode("\n", Toasts::all($ide)));
+                    $this->assertStringContainsString('needs "absent"', \implode("\n", Toasts::all($ide)));
                 },
             ],
         );
@@ -424,7 +424,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
     public function testEnablingBringsWhatItRequiresAndDisablingTakesItsDependents(): void
     {
         $project = new TempProject([
-            '.porta.json' => (string) json_encode(['disabledPlugins' => ['app', 'zbase']]),
+            '.porta.json' => (string) \json_encode(['disabledPlugins' => ['app', 'zbase']]),
             'a.php' => "<?php\n",
         ]);
         $this->projectPlugin($project, 'zbase');
@@ -437,11 +437,11 @@ final class IdeEmbeddedPluginsTest extends TestCase
                 100 => function ($tui, $terminal, $ide): void {
                     $lifecycle = Services::resolve($ide, PluginLifecycle::class);
                     $commands = Services::resolve($ide, CommandRegistry::class);
-                    $this->assertNotContains('App Run', array_column($commands->paletteCommands(), 'label'), 'both start off');
+                    $this->assertNotContains('App Run', \array_column($commands->paletteCommands(), 'label'), 'both start off');
 
                     // Enabling the dependent brings its requirement with it.
                     $lifecycle->enable('app');
-                    $labels = array_column($commands->paletteCommands(), 'label');
+                    $labels = \array_column($commands->paletteCommands(), 'label');
                     $this->assertContains('App Run', $labels);
                     $this->assertContains('Zbase Run', $labels, 'the requirement came along');
                     // The toast MODEL, not the painted row: no frame has run
@@ -452,13 +452,13 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     // turning the dependent off and on again is a no-op for it.
                     $lifecycle->disable('app');
                     $lifecycle->enable('app');
-                    $this->assertContains('App Run', array_column($commands->paletteCommands(), 'label'));
-                    $this->assertSame(['Plugin "app" enabled'], array_slice(Toasts::all($ide), offset: 0, length: 1), 'nothing to also-enable');
+                    $this->assertContains('App Run', \array_column($commands->paletteCommands(), 'label'));
+                    $this->assertSame(['Plugin "app" enabled'], \array_slice(Toasts::all($ide), offset: 0, length: 1), 'nothing to also-enable');
 
                     // Disabling the requirement takes the dependent with it: it
                     // cannot work without what it declared it needs.
                     $lifecycle->disable('zbase');
-                    $labels = array_column($commands->paletteCommands(), 'label');
+                    $labels = \array_column($commands->paletteCommands(), 'label');
                     $this->assertNotContains('Zbase Run', $labels);
                     $this->assertNotContains('App Run', $labels, 'the dependent went too');
                     $this->assertContains('Also disabled: app', Toasts::all($ide));
@@ -476,7 +476,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
         // persisting — install it later and it comes up on — but reporting
         // "enabled" for a load that never happened is a report of something
         // that did not occur.
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\n"]);
 
         $this->runIde(
@@ -502,8 +502,8 @@ final class IdeEmbeddedPluginsTest extends TestCase
         // the user to run composer by hand. Now Porta runs it.
         $project = new TempProject(['a.php' => "<?php\n"]);
         $this->needyPlugin($project, 'needy');
-        $project->write('.porta.json', (string) json_encode(['disabledPlugins' => ['needy']]));
-        putenv('PATH='.$this->fakeComposerPath($project));
+        $project->write('.porta.json', (string) \json_encode(['disabledPlugins' => ['needy']]));
+        \putenv('PATH='.$this->fakeComposerPath($project));
 
         $this->runIde(
             $project,
@@ -511,7 +511,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
             [
                 200 => function ($tui, $terminal, $ide) use ($project): void {
                     $commands = Services::resolve($ide, CommandRegistry::class);
-                    $labels = static fn (): array => array_column($commands->paletteCommands(), 'label');
+                    $labels = static fn (): array => \array_column($commands->paletteCommands(), 'label');
                     $this->assertNotContains('Needy Run', $labels(), 'disabled to start with');
 
                     Services::resolve($ide, PluginLifecycle::class)->enable('needy');
@@ -538,8 +538,8 @@ final class IdeEmbeddedPluginsTest extends TestCase
         $project = new TempProject(['a.php' => "<?php\n"]);
         $this->needyPlugin($project, 'zbase');
         $this->needyPlugin($project, 'app', ['zbase']);
-        $project->write('.porta.json', (string) json_encode(['disabledPlugins' => ['app', 'zbase']]));
-        putenv('PATH='.$this->fakeComposerPath($project));
+        $project->write('.porta.json', (string) \json_encode(['disabledPlugins' => ['app', 'zbase']]));
+        \putenv('PATH='.$this->fakeComposerPath($project));
 
         $this->runIde(
             $project,
@@ -547,15 +547,15 @@ final class IdeEmbeddedPluginsTest extends TestCase
             [
                 200 => function ($tui, $terminal, $ide): void {
                     $commands = Services::resolve($ide, CommandRegistry::class);
-                    $labels = static fn (): array => array_column($commands->paletteCommands(), 'label');
+                    $labels = static fn (): array => \array_column($commands->paletteCommands(), 'label');
 
                     Services::resolve($ide, PluginLifecycle::class)->enable('app');
                     $this->await(static fn (): bool => \in_array('App Run', $labels(), strict: true), what: 'both installs to land');
 
                     $order = $labels();
                     $this->assertLessThan(
-                        array_search('App Run', $order, strict: true),
-                        (int) array_search('Zbase Run', $order, strict: true),
+                        \array_search('App Run', $order, strict: true),
+                        (int) \array_search('Zbase Run', $order, strict: true),
                         'the requirement installed and loaded first',
                     );
                     $this->assertContains('Also enabled: zbase', Toasts::all($ide));
@@ -573,8 +573,8 @@ final class IdeEmbeddedPluginsTest extends TestCase
         // would be worse than a message — and the next boot picks it up.
         $project = new TempProject(['a.php' => "<?php\n"]);
         $this->needyPlugin($project, 'needy');
-        $project->write('.porta.json', (string) json_encode(['disabledPlugins' => ['needy']]));
-        putenv('PATH=/nonexistent');
+        $project->write('.porta.json', (string) \json_encode(['disabledPlugins' => ['needy']]));
+        \putenv('PATH=/nonexistent');
 
         $this->runIde(
             $project,
@@ -586,7 +586,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     $toasts = Toasts::all($ide);
                     $this->assertContains('Plugin "needy" enabled, but composer is not available to install its dependencies', $toasts);
                     $this->assertNotContains('Plugin "needy" is not installed', $toasts, 'it IS installed; only its packages are missing');
-                    $this->assertNotContains('Needy Run', array_column(Services::resolve($ide, CommandRegistry::class)->paletteCommands(), 'label'));
+                    $this->assertNotContains('Needy Run', \array_column(Services::resolve($ide, CommandRegistry::class)->paletteCommands(), 'label'));
                     $this->assertSame([], \Porta\Config\IdeConfig::load($project->dir)->disabledPlugins, 'the choice stands');
                 },
             ],
@@ -601,8 +601,8 @@ final class IdeEmbeddedPluginsTest extends TestCase
         // packages are not. The choice stands, and the next boot retries.
         $project = new TempProject(['a.php' => "<?php\n"]);
         $this->needyPlugin($project, 'needy');
-        $project->write('.porta.json', (string) json_encode(['disabledPlugins' => ['needy']]));
-        putenv('PATH='.$this->fakeComposerPath($project, exitCode: 3));
+        $project->write('.porta.json', (string) \json_encode(['disabledPlugins' => ['needy']]));
+        \putenv('PATH='.$this->fakeComposerPath($project, exitCode: 3));
 
         $this->runIde(
             $project,
@@ -615,7 +615,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     $this->assertNotContains('Plugin "needy" is not installed', Toasts::all($ide));
                     $this->assertNotContains(
                         'Needy Run',
-                        array_column(Services::resolve($ide, CommandRegistry::class)->paletteCommands(), 'label'),
+                        \array_column(Services::resolve($ide, CommandRegistry::class)->paletteCommands(), 'label'),
                         'not loaded: it would fatal on the first missing symbol',
                     );
                     $this->assertSame([], \Porta\Config\IdeConfig::load($project->dir)->disabledPlugins, 'the choice stands');
@@ -633,8 +633,8 @@ final class IdeEmbeddedPluginsTest extends TestCase
         // has already flashed, so there is nothing left to say.
         $project = new TempProject(['a.php' => "<?php\n"]);
         $this->needyPlugin($project, 'needy');
-        $project->write('.porta.json', (string) json_encode(['disabledPlugins' => ['needy']]));
-        putenv('PATH='.$this->fakeComposerPath($project));
+        $project->write('.porta.json', (string) \json_encode(['disabledPlugins' => ['needy']]));
+        \putenv('PATH='.$this->fakeComposerPath($project));
 
         $this->runIde(
             $project,
@@ -654,10 +654,10 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     $this->assertContains('Plugin "needy" disabled', $flashed);
                     $this->assertNotContains('Plugin "needy" enabled', $flashed);
 
-                    $this->await(static fn (): bool => is_dir($project->path('.porta/plugins/needy/vendor')), what: 'the install to finish anyway');
+                    $this->await(static fn (): bool => \is_dir($project->path('.porta/plugins/needy/vendor')), what: 'the install to finish anyway');
                     $this->pump(0.1); // let the exit callback land, proving it does nothing
 
-                    $this->assertNotContains('Needy Run', array_column(Services::resolve($ide, CommandRegistry::class)->paletteCommands(), 'label'), 'the late install did not resurrect it');
+                    $this->assertNotContains('Needy Run', \array_column(Services::resolve($ide, CommandRegistry::class)->paletteCommands(), 'label'), 'the late install did not resurrect it');
                     $this->assertNotContains('Plugin "needy" enabled', Toasts::all($ide), 'and the late install flashed nothing');
                 },
             ],
@@ -673,8 +673,8 @@ final class IdeEmbeddedPluginsTest extends TestCase
         $project = new TempProject(['a.php' => "<?php\n"]);
         $this->needyPlugin($project, 'busy');
         $this->needyPlugin($project, 'needy');
-        $project->write('.porta.json', (string) json_encode(['disabledPlugins' => ['busy', 'needy']]));
-        putenv('PATH='.$this->fakeComposerPath($project));
+        $project->write('.porta.json', (string) \json_encode(['disabledPlugins' => ['busy', 'needy']]));
+        \putenv('PATH='.$this->fakeComposerPath($project));
 
         $this->runIde(
             $project,
@@ -688,11 +688,11 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     $lifecycle->enable('needy');
 
                     $this->assertContains('Cannot install "needy" dependencies now — another install is already running', Toasts::all($ide));
-                    $this->assertNotContains('Needy Run', array_column(Services::resolve($ide, CommandRegistry::class)->paletteCommands(), 'label'));
+                    $this->assertNotContains('Needy Run', \array_column(Services::resolve($ide, CommandRegistry::class)->paletteCommands(), 'label'));
 
                     // Let the install that held the slot finish, so the test
                     // does not stop the loop on an armed process watcher.
-                    $this->await(static fn (): bool => is_dir($project->path('.porta/plugins/busy/vendor')), what: "the other plugin's install");
+                    $this->await(static fn (): bool => \is_dir($project->path('.porta/plugins/busy/vendor')), what: "the other plugin's install");
                 },
             ],
         );
@@ -707,8 +707,8 @@ final class IdeEmbeddedPluginsTest extends TestCase
         // trade, and it only applies to trees Porta made.
         $project = new TempProject(['a.php' => "<?php\n"]);
         $this->needyPlugin($project, 'needy');
-        $project->write('.porta.json', (string) json_encode(['disabledPlugins' => ['needy']]));
-        putenv('PATH='.$this->fakeComposerPath($project));
+        $project->write('.porta.json', (string) \json_encode(['disabledPlugins' => ['needy']]));
+        \putenv('PATH='.$this->fakeComposerPath($project));
 
         $this->runIde(
             $project,
@@ -722,7 +722,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     // The marker, not the directory: composer creates vendor/
                     // while it runs and the marker lands with its exit code, so
                     // awaiting the directory would race the claim.
-                    $this->await(static fn (): bool => is_file($vendor.'/.porta-installed'), what: 'the install to be marked ours');
+                    $this->await(static fn (): bool => \is_file($vendor.'/.porta-installed'), what: 'the install to be marked ours');
 
                     $lifecycle->disable('needy');
                     $this->assertDirectoryDoesNotExist($vendor, 'and taken back');
@@ -741,9 +741,9 @@ final class IdeEmbeddedPluginsTest extends TestCase
         $project = new TempProject(['a.php' => "<?php\n"]);
         $this->projectPlugin($project, 'shipped');
         $vendor = $project->path('.porta/plugins/shipped/vendor');
-        mkdir($vendor.'/vend', permissions: 0o777, recursive: true);
-        file_put_contents($vendor.'/vend/Thing.php', data: "<?php\n");
-        putenv('PATH=/nonexistent');
+        \mkdir($vendor.'/vend', permissions: 0o777, recursive: true);
+        \file_put_contents($vendor.'/vend/Thing.php', data: "<?php\n");
+        \putenv('PATH=/nonexistent');
 
         $this->runIde(
             $project,
@@ -768,8 +768,8 @@ final class IdeEmbeddedPluginsTest extends TestCase
         $project = new TempProject(['a.php' => "<?php\n"]);
         $this->needyPlugin($project, 'needy');
         $this->needyPlugin($project, 'busy');
-        $project->write('.porta.json', (string) json_encode(['disabledPlugins' => ['needy', 'busy']]));
-        putenv('PATH='.$this->fakeComposerPath($project));
+        $project->write('.porta.json', (string) \json_encode(['disabledPlugins' => ['needy', 'busy']]));
+        \putenv('PATH='.$this->fakeComposerPath($project));
 
         $this->runIde(
             $project,
@@ -780,7 +780,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     $vendor = $project->path('.porta/plugins/needy/vendor');
 
                     $lifecycle->enable('needy');
-                    $this->await(static fn (): bool => is_file($vendor.'/.porta-installed'), what: "needy's install");
+                    $this->await(static fn (): bool => \is_file($vendor.'/.porta-installed'), what: "needy's install");
 
                     $lifecycle->enable('busy'); // takes the slot
                     $lifecycle->disable('needy'); // …so this cannot delete
@@ -788,7 +788,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     $this->assertContains('Cannot remove "needy" dependencies now — an install is running', Toasts::all($ide));
                     $this->assertDirectoryExists($vendor, 'left intact rather than half-deleted');
 
-                    $this->await(static fn (): bool => is_dir($project->path('.porta/plugins/busy/vendor')), what: 'the other install');
+                    $this->await(static fn (): bool => \is_dir($project->path('.porta/plugins/busy/vendor')), what: 'the other install');
                 },
             ],
         );
@@ -801,7 +801,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
         // A name from a config file that no directory answers to: nothing to
         // deactivate, nothing to delete, and the choice still records.
         $project = new TempProject(['a.php' => "<?php\n"]);
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
 
         $this->runIde(
             $project,
@@ -829,7 +829,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
         $project = new TempProject(['a.php' => "<?php\n"]);
         $this->needyPlugin($project, 'zbase');
         $this->projectPlugin($project, 'app', ['zbase']); // owes nothing itself: held out only because zbase is
-        putenv('PATH='.$this->fakeComposerPath($project));
+        \putenv('PATH='.$this->fakeComposerPath($project));
 
         $this->runIde(
             $project,
@@ -837,7 +837,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
             [
                 200 => function ($tui, $terminal, $ide): void {
                     $commands = Services::resolve($ide, CommandRegistry::class);
-                    $labels = static fn (): array => array_column($commands->paletteCommands(), 'label');
+                    $labels = static fn (): array => \array_column($commands->paletteCommands(), 'label');
 
                     $this->await(static fn (): bool => \in_array('Zbase Run', $labels(), strict: true), what: 'the boot drain');
                     $this->assertContains('App Run', $labels(), 'and its dependent came with it');
@@ -855,7 +855,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
         $project = new TempProject(['a.php' => "<?php\n"]);
         $this->needyPlugin($project, 'zbase');
         $this->projectPlugin($project, 'app', ['zbase']);
-        putenv('PATH='.$this->fakeComposerPath($project, exitCode: 4));
+        \putenv('PATH='.$this->fakeComposerPath($project, exitCode: 4));
 
         $this->runIde(
             $project,
@@ -864,7 +864,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                 300 => function ($tui, $terminal, $ide): void {
                     $this->await(static fn (): bool => \in_array('Plugin "zbase" enabled, but composer install failed (exit code 4)', Toasts::all($ide), strict: true), what: 'the failure report');
 
-                    $labels = array_column(Services::resolve($ide, CommandRegistry::class)->paletteCommands(), 'label');
+                    $labels = \array_column(Services::resolve($ide, CommandRegistry::class)->paletteCommands(), 'label');
                     $this->assertNotContains('Zbase Run', $labels);
                     $this->assertNotContains('App Run', $labels, 'its dependent stayed out too');
                 },
@@ -883,7 +883,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
         $project = new TempProject(['a.php' => "<?php\n"]);
         $this->needyPlugin($project, 'zbase');
         $this->needyPlugin($project, 'app', ['zbase']);
-        putenv('PATH='.$this->fakeComposerPath($project));
+        \putenv('PATH='.$this->fakeComposerPath($project));
 
         $this->runIde(
             $project,
@@ -891,14 +891,14 @@ final class IdeEmbeddedPluginsTest extends TestCase
             [
                 200 => function ($tui, $terminal, $ide): void {
                     $commands = Services::resolve($ide, CommandRegistry::class);
-                    $labels = static fn (): array => array_column($commands->paletteCommands(), 'label');
+                    $labels = static fn (): array => \array_column($commands->paletteCommands(), 'label');
 
                     $this->await(static fn (): bool => \in_array('App Run', $labels(), strict: true), what: 'both installs');
 
                     $order = $labels();
                     $this->assertLessThan(
-                        array_search('App Run', $order, strict: true),
-                        (int) array_search('Zbase Run', $order, strict: true),
+                        \array_search('App Run', $order, strict: true),
+                        (int) \array_search('Zbase Run', $order, strict: true),
                         'the requirement installed and loaded first',
                     );
                 },
@@ -916,7 +916,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
         $project = new TempProject(['a.php' => "<?php\n"]);
         $this->projectPlugin($project, 'zbase'); // plain: loads at boot
         $this->needyPlugin($project, 'app', ['zbase']);
-        putenv('PATH='.$this->fakeComposerPath($project));
+        \putenv('PATH='.$this->fakeComposerPath($project));
 
         $this->runIde(
             $project,
@@ -924,7 +924,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
             [
                 200 => function ($tui, $terminal, $ide): void {
                     $commands = Services::resolve($ide, CommandRegistry::class);
-                    $labels = static fn (): array => array_column($commands->paletteCommands(), 'label');
+                    $labels = static fn (): array => \array_column($commands->paletteCommands(), 'label');
 
                     $this->assertContains('Zbase Run', $labels(), 'the requirement never needed an install');
                     $this->await(static fn (): bool => \in_array('App Run', $labels(), strict: true), what: "the dependent's install");

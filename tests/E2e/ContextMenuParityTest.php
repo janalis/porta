@@ -38,7 +38,7 @@ final class ContextMenuParityTest extends TestCase
      */
     public function testTheSamePaneOffersTheSameMenuFromEitherChain(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\n\$a = 1;\n"]);
 
         $this->runIde(
@@ -87,7 +87,7 @@ final class ContextMenuParityTest extends TestCase
      */
     public function testBothChainsSaySoWhenAPaneHasNoMenu(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\n"]);
 
         $this->runIde(
@@ -149,8 +149,8 @@ final class ContextMenuParityTest extends TestCase
         $menu = Services::resolve($ide, ContextMenu::class);
         // The menu floats via the overlay and occupies no layout row, so its
         // rows come from segments() rather than render().
-        $labels = array_map(
-            static fn (array $row): string => trim(AnsiUtils::stripAnsiCodes($row['segment'])),
+        $labels = \array_map(
+            static fn (array $row): string => \trim(AnsiUtils::stripAnsiCodes($row['segment'])),
             $menu->segments($menu->panelWidth()),
         );
         $tui->handleInput("\x1b");

@@ -101,13 +101,13 @@ final class CoverageCheckCommand extends Command
     ): int {
         // A non-numeric threshold reads as 0.0 — the same tolerance the old
         // positional-argv script had, rather than a new failure mode.
-        $threshold = is_numeric($thresholdArgument) ? (float) $thresholdArgument : 0.0;
+        $threshold = \is_numeric($thresholdArgument) ? (float) $thresholdArgument : 0.0;
         $errors = self::errorOutput($output);
 
         $reports = self::reports($cloverPath);
         if ([] === $reports) {
             $errors->writeln(
-                is_dir($cloverPath)
+                \is_dir($cloverPath)
                     ? "coverage-check: {$cloverPath} holds no *.xml report — run `composer coverage` first."
                     : "coverage-check: {$cloverPath} not found — run `composer coverage` first.",
             );
@@ -123,10 +123,10 @@ final class CoverageCheckCommand extends Command
         foreach ($reports as $report) {
             // Parse errors belong to us, not to PHP's global error log — and the
             // previous setting is restored so a caller's choice survives.
-            $previous = libxml_use_internal_errors(true);
-            $xml = simplexml_load_string((string) file_get_contents($report));
-            libxml_clear_errors();
-            libxml_use_internal_errors($previous);
+            $previous = \libxml_use_internal_errors(true);
+            $xml = \simplexml_load_string((string) \file_get_contents($report));
+            \libxml_clear_errors();
+            \libxml_use_internal_errors($previous);
             if (false === $xml) {
                 $errors->writeln("coverage-check: {$report} is not valid Clover XML.");
 
@@ -152,7 +152,7 @@ final class CoverageCheckCommand extends Command
 
         $rows = self::rows($contributions);
         $io = new SymfonyStyle($input, $output);
-        $io->table(['File', 'Coverage'], array_map(static fn (array $row): array => [
+        $io->table(['File', 'Coverage'], \array_map(static fn (array $row): array => [
             $row['name'],
             \sprintf('%.2f%% (%d/%d)', (100 * $row['covered']) / $row['statements'], $row['covered'], $row['statements']),
         ], $rows));
@@ -165,8 +165,8 @@ final class CoverageCheckCommand extends Command
         // third-party lines in an unscoped total dilute the gate.
         $totals = null === $sole ? null : self::element($sole, '/coverage/project/metrics');
         $ownTotals = null === $only && null !== $sole;
-        $totalStatements = $ownTotals ? self::number($totals, 'statements') : array_sum(array_column($rows, 'statements'));
-        $totalCovered = $ownTotals ? self::number($totals, 'coveredstatements') : array_sum(array_column($rows, 'covered'));
+        $totalStatements = $ownTotals ? self::number($totals, 'statements') : \array_sum(\array_column($rows, 'statements'));
+        $totalCovered = $ownTotals ? self::number($totals, 'coveredstatements') : \array_sum(\array_column($rows, 'covered'));
         $percentage = $totalStatements > 0 ? (100 * $totalCovered) / $totalStatements : 0.0;
 
         $output->writeln('');
@@ -191,7 +191,7 @@ final class CoverageCheckCommand extends Command
         // stale allowlist is not a gate. (An entry merely PRESENT in this
         // run's report stays legitimate — a machine without the wrapped
         // binary still needs it.)
-        $stale = null === $require ? [] : array_values(array_filter($this->mayBeAbsent, static fn (string $path): bool => !is_file($path)));
+        $stale = null === $require ? [] : \array_values(\array_filter($this->mayBeAbsent, static fn (string $path): bool => !\is_file($path)));
         if ([] !== $stale) {
             $errors->writeln('');
             $errors->writeln('coverage-check: FAILED — MAY_BE_ABSENT excuses files that no longer exist; remove the entries:');
@@ -240,11 +240,11 @@ final class CoverageCheckCommand extends Command
      */
     private function absentFrom(array $graded, string $directory): array
     {
-        if (!is_dir($directory)) {
+        if (!\is_dir($directory)) {
             return [];
         }
 
-        $root = getcwd();
+        $root = \getcwd();
         $absent = [];
         // Segment-anchored, so a class merely *named* Vendor/Tests stays a
         // coverage subject; dot files stay visible like the raw walker's did
@@ -260,17 +260,17 @@ final class CoverageCheckCommand extends Command
             ->notPath('~(^|/)tests/~');
         foreach ($tree as $entry) {
             $path = $entry->getPathname();
-            $relative = false === $root ? $path : str_replace($root.'/', replace: '', subject: $path);
+            $relative = false === $root ? $path : \str_replace($root.'/', replace: '', subject: $path);
             // Suffix-matched, not equality: the gate runs from the project root
             // where the path is already relative, but nothing should depend on
             // the caller's working directory to decide what is excused.
-            $excused = array_filter($this->mayBeAbsent, static fn (string $tail): bool => str_ends_with($relative, $tail));
-            if (\array_key_exists((string) realpath($path), $graded) || [] !== $excused) {
+            $excused = \array_filter($this->mayBeAbsent, static fn (string $tail): bool => \str_ends_with($relative, $tail));
+            if (\array_key_exists((string) \realpath($path), $graded) || [] !== $excused) {
                 continue;
             }
             $absent[] = $relative;
         }
-        sort($absent);
+        \sort($absent);
 
         return $absent;
     }
@@ -300,7 +300,7 @@ final class CoverageCheckCommand extends Command
                 'statements' => $first['statements'],
             ];
         }
-        usort($rows, static fn (array $a, array $b): int => $a['name'] <=> $b['name']);
+        \usort($rows, static fn (array $a, array $b): int => $a['name'] <=> $b['name']);
 
         return $rows;
     }
@@ -330,7 +330,7 @@ final class CoverageCheckCommand extends Command
             $mentioned[$path] = true;
             $metrics = self::element($file, 'metrics');
             $statements = self::number($metrics, 'statements');
-            if (0 === $statements || str_contains($path, needle: '/vendor/') || null !== $only && !str_contains($path, needle: $only)) {
+            if (0 === $statements || \str_contains($path, needle: '/vendor/') || null !== $only && !\str_contains($path, needle: $only)) {
                 continue;
             }
             $contributions[$path][] = [
@@ -351,12 +351,12 @@ final class CoverageCheckCommand extends Command
      */
     private static function reports(string $path): array
     {
-        if (is_file($path)) {
+        if (\is_file($path)) {
             return [$path];
         }
-        $found = is_dir($path) ? glob(rtrim($path, characters: '/').'/*.xml') : false;
+        $found = \is_dir($path) ? \glob(\rtrim($path, characters: '/').'/*.xml') : false;
 
-        return \is_array($found) ? array_values($found) : [];
+        return \is_array($found) ? \array_values($found) : [];
     }
 
     /**
@@ -430,9 +430,9 @@ final class CoverageCheckCommand extends Command
             // lines than the file has.
             $signature = null;
             foreach ($records as $record) {
-                $mine = array_keys($record['lines']);
-                sort($mine);
-                $theirs = implode(',', $mine);
+                $mine = \array_keys($record['lines']);
+                \sort($mine);
+                $theirs = \implode(',', $mine);
                 if (\count($mine) !== $record['statements'] || null !== $signature && $signature !== $theirs) {
                     $lossy[] = $path;
                     break;
@@ -440,7 +440,7 @@ final class CoverageCheckCommand extends Command
                 $signature = $theirs;
             }
         }
-        sort($lossy);
+        \sort($lossy);
 
         return $lossy;
     }
@@ -453,9 +453,9 @@ final class CoverageCheckCommand extends Command
      */
     private static function displayName(string $path): string
     {
-        $at = strpos($path, needle: '/plugins/');
+        $at = \strpos($path, needle: '/plugins/');
 
-        return false === $at ? basename(\dirname($path)).'/'.basename($path) : substr($path, $at + 9);
+        return false === $at ? \basename(\dirname($path)).'/'.\basename($path) : \substr($path, $at + 9);
     }
 
     /** The first node matching $path, or null when the document has none. */

@@ -39,7 +39,7 @@ final class SessionRestorer
 
         $opened = false;
         foreach ($data['buffers'] as $buffer) {
-            if (!is_file($buffer['path'])) {
+            if (!\is_file($buffer['path'])) {
                 continue;
             }
             $this->bufferService->openFile($buffer['path']);
@@ -53,7 +53,7 @@ final class SessionRestorer
 
         $activePath = $data['active'];
         if ($opened && null !== $activePath) {
-            $resolved = realpath($activePath);
+            $resolved = \realpath($activePath);
             $key = $resolved ? $resolved : $activePath;
             if ($this->buffers->has($key)) {
                 /** @var Buffer $active */

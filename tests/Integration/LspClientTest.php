@@ -45,7 +45,7 @@ final class LspClientTest extends TestCase
 
         $params = Probe::invoke($client, 'initializeParams');
 
-        $this->assertSame(getmypid(), $params['processId']);
+        $this->assertSame(\getmypid(), $params['processId']);
         $this->assertSame('file:///tmp/proj', $params['rootUri']);
         $this->assertSame([['uri' => 'file:///tmp/proj', 'name' => 'proj']], $params['workspaceFolders']);
         $this->assertSame(['name' => 'porta', 'version' => '0.1.0'], $params['clientInfo']);
@@ -55,12 +55,12 @@ final class LspClientTest extends TestCase
         // source did not, so the reason for `tagSupport` lived only in the
         // test that echoed it. The reasons live beside the values now.
         $this->assertFileExists(self::CAPABILITIES_GOLDEN, 'run once with UPDATE_LSP_CAPABILITIES_GOLDEN=1 to seed');
-        if (getenv('UPDATE_LSP_CAPABILITIES_GOLDEN')) {
-            file_put_contents(self::CAPABILITIES_GOLDEN, json_encode($params['capabilities'], \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE));
+        if (\getenv('UPDATE_LSP_CAPABILITIES_GOLDEN')) {
+            \file_put_contents(self::CAPABILITIES_GOLDEN, \json_encode($params['capabilities'], \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE));
             $this->markTestSkipped('Golden regenerated.');
         }
         $this->assertSame(
-            json_decode((string) file_get_contents(self::CAPABILITIES_GOLDEN), associative: true),
+            \json_decode((string) \file_get_contents(self::CAPABILITIES_GOLDEN), associative: true),
             $params['capabilities'],
         );
         $this->assertArrayNotHasKey('initializationOptions', $params, 'no options configured, none sent');
@@ -94,7 +94,7 @@ final class LspClientTest extends TestCase
         $transport = Probe::get($client, 'transport');
         $stderr = Probe::get($transport, 'stderr');
         if (\is_resource($stderr)) {
-            fclose($stderr);
+            \fclose($stderr);
         }
 
         $client->stop();
@@ -261,7 +261,7 @@ final class LspClientTest extends TestCase
 
         $process = Probe::get(Probe::get($client, 'transport'), 'process');
         \assert(\is_resource($process), description: 'the transport holds a live process while the client is up');
-        proc_terminate($process, signal: 9);
+        \proc_terminate($process, signal: 9);
 
         $this->await(static function () use (&$outcomes): bool {
             return 2 === \count($outcomes);
@@ -440,10 +440,10 @@ final class LspClientTest extends TestCase
         $client = $this->client('deaf-lsp-server.php');
         $client->start(static function (): void {});
 
-        $start = microtime(true);
-        $client->notify('porta/blob', ['data' => str_repeat('a', times: 262_144)]);
-        $client->notify('porta/blob', ['data' => str_repeat('b', times: 262_144)]);
-        $this->assertLessThan(0.5, microtime(true) - $start, 'sends return immediately, bytes queue instead of blocking');
+        $start = \microtime(true);
+        $client->notify('porta/blob', ['data' => \str_repeat('a', times: 262_144)]);
+        $client->notify('porta/blob', ['data' => \str_repeat('b', times: 262_144)]);
+        $this->assertLessThan(0.5, \microtime(true) - $start, 'sends return immediately, bytes queue instead of blocking');
 
         // The loop stays live: this timer would never fire on the blocking code.
         $ticked = false;
@@ -469,9 +469,9 @@ final class LspClientTest extends TestCase
         $client->start(static function (): void {});
         $this->assertTrue($client->isRunning(), 'the child is up before stop() is exercised');
 
-        $before = microtime(true);
+        $before = \microtime(true);
         $client->stop();
-        $this->assertLessThan(0.5, microtime(true) - $before, 'stop() returns immediately, the reap happens in the background');
+        $this->assertLessThan(0.5, \microtime(true) - $before, 'stop() returns immediately, the reap happens in the background');
         $this->assertFalse($client->isRunning());
     }
 
@@ -495,17 +495,17 @@ final class LspClientTest extends TestCase
         $transport = Probe::get($client, 'transport');
         $process = Probe::get($transport, 'process');
         \assert(\is_resource($process), description: 'the transport holds the spawned process');
-        $pid = proc_get_status($process)['pid'];
+        $pid = \proc_get_status($process)['pid'];
 
         $client->stop();
 
-        $this->await(static fn (): bool => false === posix_kill($pid, signal: 0), timeout: 3.0, what: 'the child to exit via the polite shutdown, not linger ignoring SIGTERM');
-        $this->assertFalse(posix_kill($pid, signal: 0), 'the child process no longer exists');
+        $this->await(static fn (): bool => false === \posix_kill($pid, signal: 0), timeout: 3.0, what: 'the child to exit via the polite shutdown, not linger ignoring SIGTERM');
+        $this->assertFalse(\posix_kill($pid, signal: 0), 'the child process no longer exists');
     }
 
     public function testRequestAndNotifyEnvelopesCarryTheJsonRpcVersionAndId(): void
     {
-        $log = tempnam(sys_get_temp_dir(), prefix: 'lsplog');
+        $log = \tempnam(\sys_get_temp_dir(), prefix: 'lsplog');
         $this->assertNotFalse($log);
         try {
             $client = new LspClient([\PHP_BINARY, __DIR__.'/../Support/logging-lsp-server.php', $log], \dirname(__DIR__, levels: 2));
@@ -522,26 +522,26 @@ final class LspClientTest extends TestCase
             // write — await its arrival in the log too, or this races (and is
             // markedly more likely to lose under coverage/PCOV instrumentation).
             $this->await(
-                static fn (): bool => 2 === substr_count((string) file_get_contents($log), needle: "\n"),
+                static fn (): bool => 2 === \substr_count((string) \file_get_contents($log), needle: "\n"),
                 timeout: 15.0,
                 what: 'both the initialize request and the initialized notify to be logged',
             );
 
-            $lines = array_values(array_filter(explode("\n", (string) file_get_contents($log))));
-            $messages = array_map(static fn (string $l): mixed => json_decode($l, associative: true), $lines);
+            $lines = \array_values(\array_filter(\explode("\n", (string) \file_get_contents($log))));
+            $messages = \array_map(static fn (string $l): mixed => \json_decode($l, associative: true), $lines);
 
-            $this->assertSame(['jsonrpc', 'id', 'method', 'params'], array_keys($messages[0] ?? []), 'the initialize request()');
+            $this->assertSame(['jsonrpc', 'id', 'method', 'params'], \array_keys($messages[0] ?? []), 'the initialize request()');
             $this->assertSame('2.0', $messages[0]['jsonrpc'] ?? null);
             $this->assertSame(1, $messages[0]['id'] ?? null, 'the first id ever allocated');
             $this->assertSame(['jsonrpc' => '2.0', 'method' => 'initialized', 'params' => []], $messages[1] ?? null, 'the initialized notify()');
         } finally {
-            is_file($log) && unlink($log);
+            \is_file($log) && \unlink($log);
         }
     }
 
     public function testStopSendsShutdownThenExitWithTheCorrectEnvelopes(): void
     {
-        $log = tempnam(sys_get_temp_dir(), prefix: 'lsplog');
+        $log = \tempnam(\sys_get_temp_dir(), prefix: 'lsplog');
         $this->assertNotFalse($log);
         try {
             $client = new LspClient([\PHP_BINARY, __DIR__.'/../Support/logging-lsp-server.php', $log], \dirname(__DIR__, levels: 2));
@@ -559,11 +559,11 @@ final class LspClientTest extends TestCase
             // delivery can land it AFTER the clear, corrupting the "shutdown
             // is sent first" assertion below with a stray `initialized` line.
             $this->await(
-                static fn (): bool => 2 === substr_count((string) file_get_contents($log), needle: "\n"),
+                static fn (): bool => 2 === \substr_count((string) \file_get_contents($log), needle: "\n"),
                 timeout: 30.0,
                 what: 'the initialize handshake to fully land before clearing the log',
             );
-            file_put_contents($log, data: ''); // drop the initialize entry — only the stop() sequence matters here
+            \file_put_contents($log, data: ''); // drop the initialize entry — only the stop() sequence matters here
 
             $client->stop();
             // A generous timeout: under the full paratest+PCOV coverage run
@@ -571,15 +571,15 @@ final class LspClientTest extends TestCase
             // this child's scheduling and this log file's write/read round
             // trip have both been observed to take well over 10s — 20s still
             // was not always enough.
-            $this->await(static fn (): bool => 2 === substr_count((string) file_get_contents($log), needle: "\n"), timeout: 90.0, what: 'the shutdown and exit notifications to both arrive');
+            $this->await(static fn (): bool => 2 === \substr_count((string) \file_get_contents($log), needle: "\n"), timeout: 90.0, what: 'the shutdown and exit notifications to both arrive');
 
-            $lines = array_values(array_filter(explode("\n", (string) file_get_contents($log))));
-            $messages = array_map(static fn (string $l): mixed => json_decode($l, associative: true), $lines);
+            $lines = \array_values(\array_filter(\explode("\n", (string) \file_get_contents($log))));
+            $messages = \array_map(static fn (string $l): mixed => \json_decode($l, associative: true), $lines);
 
             $this->assertSame(['jsonrpc' => '2.0', 'id' => 2, 'method' => 'shutdown', 'params' => null], $messages[0] ?? null, 'shutdown is sent first, with its own id');
             $this->assertSame(['jsonrpc' => '2.0', 'method' => 'exit', 'params' => null], $messages[1] ?? null, 'exit follows, as a notification (no id)');
         } finally {
-            is_file($log) && unlink($log);
+            \is_file($log) && \unlink($log);
         }
     }
 
@@ -603,9 +603,9 @@ final class LspClientTest extends TestCase
 
         $expected = [];
         foreach (['x', 'y', 'z'] as $fill) {
-            $message = ['jsonrpc' => '2.0', 'method' => 'porta/blob', 'params' => ['data' => str_repeat($fill, times: 131_072)]];
+            $message = ['jsonrpc' => '2.0', 'method' => 'porta/blob', 'params' => ['data' => \str_repeat($fill, times: 131_072)]];
             $frame = \Porta\Support\JsonRpcFramer::encode($message);
-            $expected[] = md5(substr($frame, strpos($frame, needle: "\r\n\r\n") + 4));
+            $expected[] = \md5(\substr($frame, \strpos($frame, needle: "\r\n\r\n") + 4));
             $client->notify('porta/blob', $message['params']);
         }
 
@@ -629,10 +629,10 @@ final class LspClientTest extends TestCase
         $this->clients[] = $client;
         $client->start(static function (): void {});
 
-        $client->notify('porta/blob', ['data' => str_repeat('a', times: 65_536)]);
-        $client->notify('porta/blob', ['data' => str_repeat('b', times: 65_536)]);
+        $client->notify('porta/blob', ['data' => \str_repeat('a', times: 65_536)]);
+        $client->notify('porta/blob', ['data' => \str_repeat('b', times: 65_536)]);
 
-        $overflowed = static fn (array $log): bool => [] !== array_filter($log, static fn (string $l): bool => str_contains($l, 'overflow'));
+        $overflowed = static fn (array $log): bool => [] !== \array_filter($log, static fn (string $l): bool => \str_contains($l, 'overflow'));
         $this->await(static function () use (&$log, &$overflowed): bool {
             return $overflowed($log);
         }, 2.0);

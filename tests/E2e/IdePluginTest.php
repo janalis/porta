@@ -32,13 +32,13 @@ final class IdePluginTest extends TestCase
 
     protected function setUp(): void
     {
-        $portaHome = getenv('PORTA_HOME');
+        $portaHome = \getenv('PORTA_HOME');
         $this->portaHome = $portaHome ? $portaHome : null;
     }
 
     protected function tearDown(): void
     {
-        putenv(null !== $this->portaHome ? 'PORTA_HOME='.$this->portaHome : 'PORTA_HOME');
+        \putenv(null !== $this->portaHome ? 'PORTA_HOME='.$this->portaHome : 'PORTA_HOME');
     }
 
     /** The demo fixture: a keyed insert command, a thrower, a menu item and a save hook. */
@@ -75,7 +75,7 @@ final class IdePluginTest extends TestCase
 
     public function testPluginCommandKeyMenuSaveHookAndContainment(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject([
             '.porta/plugins/demo/plugin.php' => $this->demoPlugin(),
             'a.php' => "<?php\n",
@@ -86,7 +86,7 @@ final class IdePluginTest extends TestCase
             $project->path('a.php'),
             [
                 100 => function ($tui, $terminal): void {
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Plugins'));
+                    $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Plugins'));
                     $this->frame($tui);
                     $this->assertStringContainsString('Plugins', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the Plugins menu title is in the bar');
                     $tui->handleInput("\x1b\x19"); // ctrl+alt+y (legacy: ESC + ctrl+y) → demo:hello
@@ -98,7 +98,7 @@ final class IdePluginTest extends TestCase
                 340 => function ($tui, $terminal, $ide) use ($project): void {
                     $tui->handleInput("\x13"); // ctrl+s → save → the plugin hook fires
                     $this->frame($tui);
-                    $this->assertSame('yes', (string) file_get_contents($project->path('a.php.hooked')), 'the onFileSaved hook ran');
+                    $this->assertSame('yes', (string) \file_get_contents($project->path('a.php.hooked')), 'the onFileSaved hook ran');
                     $tui->handleInput("\x1b\x15"); // ctrl+alt+u → demo:boom (throws)
                     $this->awaitPainted($tui, $terminal, 'Plugin "demo" failed: kaboom');
                     $this->assertStringContainsString('Plugin "demo" failed: kaboom', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the throw became a flash');
@@ -116,10 +116,10 @@ final class IdePluginTest extends TestCase
 
     public function testPaletteListsPluginCommandsAndUserRebindsDispatch(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject([
             '.porta/plugins/demo/plugin.php' => $this->demoPlugin(),
-            '.porta.json' => (string) json_encode(['keymap' => ['demo:hello' => ['f8']]]),
+            '.porta.json' => (string) \json_encode(['keymap' => ['demo:hello' => ['f8']]]),
             'a.php' => "<?php\n",
         ]);
 
@@ -130,7 +130,7 @@ final class IdePluginTest extends TestCase
                 100 => function ($tui, $terminal): void {
                     $tui->handleInput("\x1b[97;6u"); // ctrl+shift+a → command palette
                     $this->frame($tui);
-                    foreach (str_split('Say') as $char) {
+                    foreach (\str_split('Say') as $char) {
                         $tui->handleInput($char);
                     }
                     $this->awaitPainted($tui, $terminal, 'Say Hello');
@@ -152,9 +152,9 @@ final class IdePluginTest extends TestCase
 
     public function testGlobalPluginsLoadAndProjectWinsOnCollision(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $global = new TempProject([
-            '.porta/plugins/demo/plugin.php' => str_replace(["'demo'", "'hello ran in '"], ["'globaldemo'", "'GLOBAL ran in '"], $this->demoPlugin()),
+            '.porta/plugins/demo/plugin.php' => \str_replace(["'demo'", "'hello ran in '"], ["'globaldemo'", "'GLOBAL ran in '"], $this->demoPlugin()),
             '.porta/plugins/wave/plugin.php' => <<<'PHP'
                 <?php
                 use Porta\Plugin\Api\PluginApi;
@@ -175,7 +175,7 @@ final class IdePluginTest extends TestCase
                 };
                 PHP,
         ]);
-        putenv('PORTA_HOME='.$global->dir);
+        \putenv('PORTA_HOME='.$global->dir);
         $project = new TempProject([
             '.porta/plugins/demo/plugin.php' => $this->demoPlugin(),
             'a.php' => "<?php\n",
@@ -203,7 +203,7 @@ final class IdePluginTest extends TestCase
 
     public function testABrokenPluginWarnsAtBootAndTheIdeStaysFunctional(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject([
             '.porta/plugins/broken/plugin.php' => '<?php not valid php {{{',
             'a.php' => "<?php\n",
@@ -214,7 +214,7 @@ final class IdePluginTest extends TestCase
             $project->path('a.php'),
             [
                 100 => function ($tui, $terminal): void {
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Plugin "broken" failed to load'));
+                    $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Plugin "broken" failed to load'));
                     $this->frame($tui);
                     $this->assertStringContainsString('Plugin "broken" failed to load', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $tui->handleInput('X');
@@ -235,7 +235,7 @@ final class IdePluginTest extends TestCase
         // fileOpened arrives, rather than racing the initial open. The log is
         // written from onShutdown, which also proves that hook runs at all —
         // and that it can still reach the filesystem while core tears down.
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject([
             'a.php' => "<?php\n",
             '.porta/plugins/lifecycle/plugin.php' => <<<'PHP'
@@ -275,7 +275,7 @@ final class IdePluginTest extends TestCase
 
         $this->assertSame(
             'activate,ready,opened:a.php,shutdown',
-            (string) file_get_contents($project->path('lifecycle.log')),
+            (string) \file_get_contents($project->path('lifecycle.log')),
             'ready lands after activate and before the first open; shutdown is last',
         );
     }
@@ -285,7 +285,7 @@ final class IdePluginTest extends TestCase
         // The seam a file-scoped plugin verb wants: the Plugins menu is a
         // global list, and "do this to the file I am looking at" belongs where
         // the user is pointing.
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject([
             'a.php' => "<?php\n",
             '.porta/plugins/ctx/plugin.php' => <<<'PHP'
@@ -324,7 +324,7 @@ final class IdePluginTest extends TestCase
                     // The menu floats via the overlay and occupies no layout
                     // row, so its rows come from segments(), not render().
                     $widget = Services::resolve($ide, ContextMenu::class);
-                    $menu = implode("\n", array_map(
+                    $menu = \implode("\n", \array_map(
                         static fn (array $row): string => AnsiUtils::stripAnsiCodes($row['segment']),
                         $widget->segments($widget->panelWidth()),
                     ));
@@ -344,7 +344,7 @@ final class IdePluginTest extends TestCase
         // other.php in the tree while editing a.php has to answer about
         // other.php, so contextFile() — not activeFile() — is what the handler
         // reads, and it falls back to the active file everywhere else.
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject([
             'a.php' => "<?php\n",
             'other.php' => "<?php\n",
@@ -384,7 +384,7 @@ final class IdePluginTest extends TestCase
                     $treeRect = $renderer->getWidgetRect($tree);
                     $row = null;
                     foreach ($tree->render(new RenderContext($treeRect->columns, $treeRect->rows)) as $i => $line) {
-                        if (!str_contains(AnsiUtils::stripAnsiCodes($line), 'other.php')) {
+                        if (!\str_contains(AnsiUtils::stripAnsiCodes($line), 'other.php')) {
                             continue;
                         }
                         $row = $i;

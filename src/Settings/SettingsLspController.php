@@ -93,7 +93,7 @@ final class SettingsLspController
             return false;
         }
 
-        $command = trim($command);
+        $command = \trim($command);
         $persisted = $this->writer->persistLspServer($this->scope->current(), $language, $command);
         if ('' === $command) {
             unset($this->overrides[$language]);

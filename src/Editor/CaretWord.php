@@ -26,12 +26,12 @@ final class CaretWord
         $col = $document->getCursorCol();
         $matches = [];
 
-        $left = 1 === preg_match('/[\w$]+$/u', substr($line, offset: 0, length: $col), $matches) ? $matches[0] : '';
+        $left = 1 === \preg_match('/[\w$]+$/u', \substr($line, offset: 0, length: $col), $matches) ? $matches[0] : '';
         // The sigil joins on the right only when nothing precedes it — that is
         // the caret standing just before `$name`, which is inside the variable.
         // Allowing it unconditionally would read `$a$b` as one identifier.
         $pattern = '' === $left ? '/^\$?\w+/u' : '/^\w+/u';
-        $right = 1 === preg_match($pattern, substr($line, $col), $matches) ? $matches[0] : '';
+        $right = 1 === \preg_match($pattern, \substr($line, $col), $matches) ? $matches[0] : '';
 
         return $left.$right;
     }

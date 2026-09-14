@@ -33,7 +33,7 @@ final readonly class ServerMessageReporter
      */
     public function report(array $params): void
     {
-        $message = \is_string($params['message'] ?? null) ? trim($params['message']) : '';
+        $message = \is_string($params['message'] ?? null) ? \trim($params['message']) : '';
         // A server that sends an empty body has told the user nothing; a blank
         // toast is worse than silence.
         if ('' === $message) {

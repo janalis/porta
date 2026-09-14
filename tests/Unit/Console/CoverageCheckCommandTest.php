@@ -72,8 +72,8 @@ final class CoverageCheckCommandTest extends TestCase
         $this->assertStringContainsString('Widget/Zebra.php', $display);
         $this->assertStringNotContainsString('Empty.php', $display, 'a file with no statements is not a coverage subject');
         $this->assertLessThan(
-            strpos($display, needle: 'Widget/Zebra.php'),
-            (int) strpos($display, needle: 'Editor/Alpha.php'),
+            \strpos($display, needle: 'Widget/Zebra.php'),
+            (int) \strpos($display, needle: 'Editor/Alpha.php'),
             'rows sort by display name',
         );
         $this->assertStringContainsString(
@@ -210,7 +210,7 @@ final class CoverageCheckCommandTest extends TestCase
     public function testMalformedXmlIsInvalidInputAndLeavesLibxmlAsItFoundIt(): void
     {
         $project = new TempProject(['broken.xml' => '<coverage><project></coverage>']);
-        $before = libxml_use_internal_errors(false);
+        $before = \libxml_use_internal_errors(false);
 
         $tester = $this->tester();
         // Not captured separately: the stderr-less path also has to work.
@@ -218,7 +218,7 @@ final class CoverageCheckCommandTest extends TestCase
 
         $this->assertSame(Command::INVALID, $status);
         $this->assertStringContainsString('is not valid Clover XML', $tester->getDisplay());
-        $this->assertFalse(libxml_use_internal_errors($before), 'the previous libxml setting was restored');
+        $this->assertFalse(\libxml_use_internal_errors($before), 'the previous libxml setting was restored');
     }
 
     public function testTheErrorBufferIsClearedEvenWhenTheCallerAlreadyHadInternalErrorsOn(): void
@@ -229,15 +229,15 @@ final class CoverageCheckCommandTest extends TestCase
         // (so the restore is a no-op transition), only the explicit
         // libxml_clear_errors() call prevents this command's parse errors
         // from leaking into whatever libxml call runs next in the process.
-        $before = libxml_use_internal_errors(true);
+        $before = \libxml_use_internal_errors(true);
         try {
             $project = new TempProject(['broken.xml' => '<coverage><project></coverage>']);
             $this->tester()->execute(['clover' => $project->path('broken.xml')]);
 
-            $this->assertSame([], libxml_get_errors(), 'the internal error buffer was cleared');
+            $this->assertSame([], \libxml_get_errors(), 'the internal error buffer was cleared');
         } finally {
-            libxml_use_internal_errors($before);
-            libxml_clear_errors();
+            \libxml_use_internal_errors($before);
+            \libxml_clear_errors();
         }
     }
 
@@ -295,7 +295,7 @@ final class CoverageCheckCommandTest extends TestCase
             'plugins/demo/src/.Hidden.php' => "<?php\n",
         ]);
         $project->write('clover.xml', $this->clover(
-            [(string) realpath($project->path('plugins/demo/src/Graded.php')) => [5, 5]],
+            [(string) \realpath($project->path('plugins/demo/src/Graded.php')) => [5, 5]],
             totalCovered: 5,
             totalStatements: 5,
         ));
@@ -317,7 +317,7 @@ final class CoverageCheckCommandTest extends TestCase
         );
         // The graded file still appears in the table above; what matters is
         // which files the failure itself names.
-        $named = substr($display, offset: (int) strpos($display, needle: 'absent from the report'));
+        $named = \substr($display, offset: (int) \strpos($display, needle: 'absent from the report'));
         $this->assertStringContainsString('Ghost.php', $named, 'the ungraded file is named');
         $this->assertStringContainsString('.Hidden.php', $named, 'a dot-named file is a coverage subject too');
         $this->assertStringNotContainsString('Graded.php', $named, 'and the graded one is not');
@@ -345,8 +345,8 @@ final class CoverageCheckCommandTest extends TestCase
         // forces Finder to return absolute pathnames, so the cwd-prefix
         // stripping actually has something to strip.
         $tester = new CommandTester(new CoverageCheckCommand(mayBeAbsent: []));
-        $originalCwd = (string) getcwd();
-        chdir($project->dir);
+        $originalCwd = (string) \getcwd();
+        \chdir($project->dir);
         try {
             // realpath, not $project->path(): on macOS /tmp is itself a
             // symlink to /private/tmp, and getcwd() after chdir() reports
@@ -356,15 +356,15 @@ final class CoverageCheckCommandTest extends TestCase
             $status = $tester->execute([
                 'clover' => 'clover.xml',
                 'threshold' => '0',
-                '--require' => (string) realpath($project->path('plugins')),
+                '--require' => (string) \realpath($project->path('plugins')),
             ]);
         } finally {
-            chdir($originalCwd);
+            \chdir($originalCwd);
         }
         $display = $tester->getDisplay();
 
         $this->assertSame(Command::FAILURE, $status, $display);
-        $named = substr($display, offset: (int) strpos($display, needle: 'absent from the report'));
+        $named = \substr($display, offset: (int) \strpos($display, needle: 'absent from the report'));
         $this->assertStringContainsString(
             '  plugins/demo/src/Ghost.php',
             $named,
@@ -416,7 +416,7 @@ final class CoverageCheckCommandTest extends TestCase
             'plugins/demo/tests/DemoTest.php' => "<?php\n",
         ]);
         $project->write('clover.xml', $this->clover(
-            [(string) realpath($project->path('plugins/demo/src/Graded.php')) => [5, 5]],
+            [(string) \realpath($project->path('plugins/demo/src/Graded.php')) => [5, 5]],
             totalCovered: 5,
             totalStatements: 5,
         ));
@@ -468,7 +468,7 @@ final class CoverageCheckCommandTest extends TestCase
         // binary still needs the excuse.)
         $project = new TempProject(['plugins/demo/src/Graded.php' => "<?php\n"]);
         $project->write('clover.xml', $this->clover(
-            [(string) realpath($project->path('plugins/demo/src/Graded.php')) => [5, 5]],
+            [(string) \realpath($project->path('plugins/demo/src/Graded.php')) => [5, 5]],
             totalCovered: 5,
             totalStatements: 5,
         ));
@@ -622,8 +622,8 @@ final class CoverageCheckCommandTest extends TestCase
             'plugins/demo/src/Graded.php' => "<?php\n",
             'plugins/demo/src/Other.php' => "<?php\n",
         ]);
-        $graded = (string) realpath($project->path('plugins/demo/src/Graded.php'));
-        $other = (string) realpath($project->path('plugins/demo/src/Other.php'));
+        $graded = (string) \realpath($project->path('plugins/demo/src/Graded.php'));
+        $other = (string) \realpath($project->path('plugins/demo/src/Other.php'));
         $project->write('shards/a.xml', $this->clover([$graded => [5, 5]], totalCovered: 5, totalStatements: 5));
         $project->write('shards/b.xml', $this->clover([$other => [2, 2]], totalCovered: 2, totalStatements: 2));
 

@@ -43,7 +43,7 @@ final class TemplateCatalogTest extends TestCase
         $this->assertNotSame([], $templates);
 
         foreach ($templates as $abbreviation => $body) {
-            $parsed = SnippetParser::parse(str_replace(TemplateCatalog::EXPRESSION, replace: '$x', subject: $body));
+            $parsed = SnippetParser::parse(\str_replace(TemplateCatalog::EXPRESSION, replace: '$x', subject: $body));
             $this->assertNotSame('', $parsed['text'], "{$abbreviation} expands to nothing");
             $this->assertNotSame([], $parsed['stops'], "{$abbreviation} has no tab stop, so the caret is left nowhere useful");
         }
@@ -54,7 +54,7 @@ final class TemplateCatalogTest extends TestCase
     public function testEveryPostfixTemplateSubstitutesTheExpression(string $language): void
     {
         foreach (TemplateCatalog::forLanguage($language) as $abbreviation => $body) {
-            if (!str_starts_with($abbreviation, '.')) {
+            if (!\str_starts_with($abbreviation, '.')) {
                 continue;
             }
             $this->assertStringContainsString(TemplateCatalog::EXPRESSION, $body, "{$abbreviation} is postfix but drops its expression");
@@ -66,7 +66,7 @@ final class TemplateCatalogTest extends TestCase
     public function testNoPlainTemplateCarriesTheExpressionToken(string $language): void
     {
         foreach (TemplateCatalog::forLanguage($language) as $abbreviation => $body) {
-            if (str_starts_with($abbreviation, '.')) {
+            if (\str_starts_with($abbreviation, '.')) {
                 continue;
             }
             $this->assertStringNotContainsString(TemplateCatalog::EXPRESSION, $body, "{$abbreviation} has no expression to substitute");
@@ -83,12 +83,12 @@ final class TemplateCatalogTest extends TestCase
     {
         $templates = TemplateCatalog::forLanguage($language);
         foreach ($templates as $abbreviation => $body) {
-            $line = str_starts_with($abbreviation, '.') ? '$x'.$abbreviation : $abbreviation;
+            $line = \str_starts_with($abbreviation, '.') ? '$x'.$abbreviation : $abbreviation;
             $found = TemplateExpander::at($line, \strlen($line), $templates);
 
             $this->assertNotNull($found, "{$abbreviation} cannot be typed at all");
             $this->assertSame(
-                str_replace(TemplateCatalog::EXPRESSION, replace: '$x', subject: $body),
+                \str_replace(TemplateCatalog::EXPRESSION, replace: '$x', subject: $body),
                 $found['snippet'],
                 "typing {$abbreviation} expands some other template",
             );

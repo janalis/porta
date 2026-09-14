@@ -255,7 +255,7 @@ final class CodeEditorMultiCaretTest extends TestCase
 
         $rendered = $editor->render(new RenderContext(40, 6));
         // The secondary caret renders as a reverse-video cell.
-        $this->assertStringContainsString("\x1b[7m", implode('', $rendered));
+        $this->assertStringContainsString("\x1b[7m", \implode('', $rendered));
         foreach ($rendered as $line) {
             $this->assertSame(40, AnsiUtils::visibleWidth($line));
         }
@@ -369,8 +369,8 @@ final class CodeEditorMultiCaretTest extends TestCase
         $rendered = $editor->render(new RenderContext(30, 5));
 
         // Both carets sit past their line's text; each must still render a cell.
-        $this->assertSame(1, substr_count($rendered[0], needle: "\x1b[7m"), 'end-of-line caret on line 0 is visible');
-        $this->assertSame(1, substr_count($rendered[1], needle: "\x1b[7m"), 'end-of-line caret on line 1 is visible');
+        $this->assertSame(1, \substr_count($rendered[0], needle: "\x1b[7m"), 'end-of-line caret on line 0 is visible');
+        $this->assertSame(1, \substr_count($rendered[1], needle: "\x1b[7m"), 'end-of-line caret on line 1 is visible');
         foreach ($rendered as $line) {
             $this->assertSame(30, AnsiUtils::visibleWidth($line));
         }
@@ -383,10 +383,10 @@ final class CodeEditorMultiCaretTest extends TestCase
         $editor->handleInput("\x1b[1;7B"); // 2 carets: line 0 (extra) + line 1 (primary)
 
         $rendered = $editor->render(new RenderContext(40, 6));
-        $joined = implode('', $rendered);
+        $joined = \implode('', $rendered);
 
         // Every caret (primary + extra) is the same reverse-video cell; no bar.
-        $this->assertSame(2, substr_count($joined, needle: "\x1b[7m"), 'both carets render as reverse-video cells');
+        $this->assertSame(2, \substr_count($joined, needle: "\x1b[7m"), 'both carets render as reverse-video cells');
         $this->assertStringNotContainsString("\x1b_pi:c", $joined, 'the hardware-cursor bar is suppressed in multi-caret mode');
     }
 
@@ -659,7 +659,7 @@ final class CodeEditorMultiCaretTest extends TestCase
     {
         // Without the ':' separator in the dedupe key, (line=1, col=23) and
         // (line=12, col=3) both stringify to "123" and would wrongly collide.
-        $editor = $this->editor(str_repeat(string: str_repeat(string: 'x', times: 30)."\n", times: 25));
+        $editor = $this->editor(\str_repeat(string: \str_repeat(string: 'x', times: 30)."\n", times: 25));
         EditorState::multiCaret($editor)->setExtras([Caret::point(1, 23), Caret::point(12, 3)]);
         $editor->getDocument()->setCursor(20, 0);
 
@@ -700,7 +700,7 @@ final class CodeEditorMultiCaretTest extends TestCase
     {
         // Same "123" collision as the dedupeCarets test above, but exercised
         // through extendAll()/rebuildFromRecords() (shift+movement) instead.
-        $editor = $this->editor(str_repeat(string: str_repeat(string: 'x', times: 30)."\n", times: 25));
+        $editor = $this->editor(\str_repeat(string: \str_repeat(string: 'x', times: 30)."\n", times: 25));
         EditorState::multiCaret($editor)->setExtras([Caret::point(1, 22), Caret::point(12, 2)]);
         $editor->getDocument()->setCursor(20, 0);
 
@@ -711,7 +711,7 @@ final class CodeEditorMultiCaretTest extends TestCase
 
     public function testRebuildFromRecordsKeepsTwoDistinctColumnsOnTheSameLineApart(): void
     {
-        $editor = $this->editor(str_repeat(string: str_repeat(string: 'x', times: 30)."\n", times: 5));
+        $editor = $this->editor(\str_repeat(string: \str_repeat(string: 'x', times: 30)."\n", times: 5));
         EditorState::multiCaret($editor)->setExtras([Caret::point(1, 5)]);
         $editor->getDocument()->setCursor(1, 0); // same line, different column
 

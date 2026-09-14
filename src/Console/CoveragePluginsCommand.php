@@ -104,7 +104,7 @@ final class CoveragePluginsCommand extends Command
     ): int {
         $io = new SymfonyStyle($input, $output);
         $errors = self::errorOutput($output);
-        $concurrency = max(1, $processes ?? self::DEFAULT_CONCURRENCY);
+        $concurrency = \max(1, $processes ?? self::DEFAULT_CONCURRENCY);
 
         $shards = $this->shards();
         if ([] === $shards) {
@@ -132,16 +132,16 @@ final class CoveragePluginsCommand extends Command
         // one. The cost is a phpunit boot each (~0.7s), which the fan-out
         // absorbs; what it buys is a floor that is a single file.
 
-        $testDirs = glob($this->rootDir.'/plugins/*/tests', flags: \GLOB_ONLYDIR);
+        $testDirs = \glob($this->rootDir.'/plugins/*/tests', flags: \GLOB_ONLYDIR);
         foreach (\is_array($testDirs) ? $testDirs : [] as $testDir) {
-            $plugin = basename(\dirname($testDir));
+            $plugin = \basename(\dirname($testDir));
             // The files directly in tests/ are their own shard: they are a
             // plugin's E2e as often as not, and they belong to no subdirectory.
             foreach (self::testFiles($testDir) as $file) {
-                $shards[$plugin.'-'.self::slug(substr($file, offset: \strlen($testDir) + 1))] = [$file];
+                $shards[$plugin.'-'.self::slug(\substr($file, offset: \strlen($testDir) + 1))] = [$file];
             }
         }
-        ksort($shards);
+        \ksort($shards);
 
         return $shards;
     }
@@ -155,7 +155,7 @@ final class CoveragePluginsCommand extends Command
      */
     private static function slug(string $relativePath): string
     {
-        return strtolower(str_replace(['/', 'test.php'], ['-', ''], strtolower($relativePath)));
+        return \strtolower(\str_replace(['/', 'test.php'], ['-', ''], \strtolower($relativePath)));
     }
 
     /**
@@ -171,8 +171,8 @@ final class CoveragePluginsCommand extends Command
             ->files()
             ->in($directory)
             ->name('*Test.php');
-        $files = array_map(static fn (\SplFileInfo $file): string => $file->getPathname(), iterator_to_array($finder, preserve_keys: false));
-        sort($files);
+        $files = \array_map(static fn (\SplFileInfo $file): string => $file->getPathname(), \iterator_to_array($finder, preserve_keys: false));
+        \sort($files);
 
         return $files;
     }
@@ -185,15 +185,15 @@ final class CoveragePluginsCommand extends Command
     private function pool(SymfonyStyle $io, OutputInterface $errors, array $shards, int $concurrency, int $timeout, string $outputDir): int
     {
         // @mago-expect lint:no-error-control-operator -- an unusable output path is reported below; the warning would arrive first and turn a clear message into a PHP notice.
-        if (!is_dir($outputDir) && !@mkdir($outputDir, permissions: 0o777, recursive: true) && !is_dir($outputDir)) {
+        if (!\is_dir($outputDir) && !@\mkdir($outputDir, permissions: 0o777, recursive: true) && !\is_dir($outputDir)) {
             $errors->writeln('coverage:plugins: could not create '.$outputDir.'.');
 
             return Command::INVALID;
         }
         // A report left by an earlier run would be merged into this one, and a
         // shard that has since been renamed or removed would keep voting.
-        foreach (\is_array($stale = glob($outputDir.'/*.xml')) ? $stale : [] as $report) {
-            unlink($report);
+        foreach (\is_array($stale = \glob($outputDir.'/*.xml')) ? $stale : [] as $report) {
+            \unlink($report);
         }
 
         $queue = $shards;
@@ -201,10 +201,10 @@ final class CoveragePluginsCommand extends Command
         $running = [];
         /** @var array<string, array{seconds: float, exit: int}> $results */
         $results = [];
-        $wall = hrtime(as_number: true);
+        $wall = \hrtime(as_number: true);
         while ([] !== $queue || [] !== $running) {
             while (\count($running) < $concurrency && [] !== $queue) {
-                $name = array_key_first($queue);
+                $name = \array_key_first($queue);
                 $paths = $queue[$name];
                 unset($queue[$name]);
                 $process = ($this->spawn)($paths, $outputDir.'/'.$name.'.xml');
@@ -213,20 +213,20 @@ final class CoveragePluginsCommand extends Command
                 // has no business knowing what a reasonable one is.
                 $process->setTimeout((float) $timeout);
                 $process->start();
-                $running[$name] = ['process' => $process, 'started' => hrtime(as_number: true)];
+                $running[$name] = ['process' => $process, 'started' => \hrtime(as_number: true)];
             }
-            usleep(50_000);
+            \usleep(50_000);
             foreach ($running as $name => $shard) {
                 $exit = self::settled($shard['process']);
                 if (null === $exit) {
                     continue;
                 }
-                $results[$name] = ['seconds' => (hrtime(as_number: true) - $shard['started']) / 1_000_000_000, 'exit' => $exit];
+                $results[$name] = ['seconds' => (\hrtime(as_number: true) - $shard['started']) / 1_000_000_000, 'exit' => $exit];
                 unset($running[$name]);
             }
         }
 
-        return $this->report($io, $errors, $results, (hrtime(as_number: true) - $wall) / 1_000_000_000);
+        return $this->report($io, $errors, $results, (\hrtime(as_number: true) - $wall) / 1_000_000_000);
     }
 
     /**
@@ -259,15 +259,15 @@ final class CoveragePluginsCommand extends Command
      */
     private function report(SymfonyStyle $io, OutputInterface $errors, array $results, float $wall): int
     {
-        uasort($results, static fn (array $a, array $b): int => $b['seconds'] <=> $a['seconds']);
-        $io->table(['Shard', 'Seconds', 'Exit'], array_map(
+        \uasort($results, static fn (array $a, array $b): int => $b['seconds'] <=> $a['seconds']);
+        $io->table(['Shard', 'Seconds', 'Exit'], \array_map(
             static fn (string $name, array $result): array => [$name, \sprintf('%.1f', $result['seconds']), 0 === $result['exit'] ? 'ok' : (string) $result['exit']],
-            array_keys($results),
-            array_values($results),
+            \array_keys($results),
+            \array_values($results),
         ));
 
-        $names = array_keys($results);
-        $sorted = array_values($results);
+        $names = \array_keys($results);
+        $sorted = \array_values($results);
         $io->writeln(\sprintf(
             '  %d shards in %.1fs; the slowest was %s at %.1fs — that is the floor.',
             \count($results),
@@ -276,7 +276,7 @@ final class CoveragePluginsCommand extends Command
             $sorted[0]['seconds'] ?? 0.0,
         ));
 
-        $failed = array_filter($results, static fn (array $result): bool => 0 !== $result['exit']);
+        $failed = \array_filter($results, static fn (array $result): bool => 0 !== $result['exit']);
         if ([] === $failed) {
             $io->writeln('');
             $io->writeln('coverage:plugins: OK');

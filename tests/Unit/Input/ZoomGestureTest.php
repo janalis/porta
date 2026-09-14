@@ -35,7 +35,7 @@ final class ZoomGestureTest extends TestCase
         $out = $gesture->glideFactor(-1);
         $this->assertNotNull($out);
         $this->assertLessThan(1.0, $out, 'zooming out shrinks');
-        $this->assertSame(1.0, round($in * $out, precision: 9), 'and the two are exact inverses, so a jiggle returns');
+        $this->assertSame(1.0, \round($in * $out, precision: 9), 'and the two are exact inverses, so a jiggle returns');
     }
 
     public function testANotchAfterThePauseStandsAloneAgain(): void

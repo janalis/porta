@@ -99,7 +99,7 @@ final class AbstractAnalyzerPluginTest extends TestCase
 
             protected function diagnostics(array $report): array
             {
-                return array_map(
+                return \array_map(
                     static fn (array $row): array => [
                         'line' => (int) $row['line'],
                         'message' => (string) $row['message'],
@@ -145,7 +145,7 @@ final class AbstractAnalyzerPluginTest extends TestCase
             new StatusBarWidget(),
             new CodeEditorWidget(),
             new FakePluginLifecycle(),
-            new FileTreeWidget(sys_get_temp_dir()),
+            new FileTreeWidget(\sys_get_temp_dir()),
         ));
 
         return new PluginApi('demo', $this->manager, $this->project->dir, $settings);
@@ -155,7 +155,7 @@ final class AbstractAnalyzerPluginTest extends TestCase
     private function withShim(string $report, int $code): PluginApi
     {
         $this->project = new TempProject(['vendor/bin/demo' => \sprintf(self::SHIM, $report, $code)]);
-        chmod($this->project->path('vendor/bin/demo'), permissions: 0o755);
+        \chmod($this->project->path('vendor/bin/demo'), permissions: 0o755);
         $api = $this->api();
         $plugin = $this->analyzer();
         $plugin->activate($api);
@@ -185,7 +185,7 @@ final class AbstractAnalyzerPluginTest extends TestCase
         $plugin->activate($api);
         $this->manager->commit($api);
 
-        $settings = array_column($api->bufferedSettings(), 'key');
+        $settings = \array_column($api->bufferedSettings(), 'key');
         $this->assertSame(['binary', 'autoLint'], $settings);
 
         $commands = $api->bufferedCommands();
@@ -195,7 +195,7 @@ final class AbstractAnalyzerPluginTest extends TestCase
         $this->assertSame('demo:toggle-on-save', $commands[1]['id']);
         $this->assertSame('Demo: Toggle Analyse on Save', $commands[1]['label']);
 
-        $this->assertSame(['demo:analyse', 'demo:toggle-on-save'], array_column($api->bufferedMenuItems(), 'id'));
+        $this->assertSame(['demo:analyse', 'demo:toggle-on-save'], \array_column($api->bufferedMenuItems(), 'id'));
         $this->assertNotNull($api->bufferedMenuItems()[0]['when'], 'the analyse entry dims without a binary');
         $this->assertFalse($api->bufferedMenuItems()[0]['when']());
         $this->assertNull($api->bufferedMenuItems()[1]['when'], 'the toggle is always available');
@@ -259,7 +259,7 @@ final class AbstractAnalyzerPluginTest extends TestCase
         $this->await(fn (): bool => [] !== $this->sink->published, what: 'the analysis to land');
         $published = $this->sink->published[0];
         $this->assertStringEndsWith('/a.php', $published['uri']);
-        $this->assertSame([3, 9], array_keys($published['byLine']));
+        $this->assertSame([3, 9], \array_keys($published['byLine']));
         $this->assertSame('boom', $published['byLine'][3][0]['message']);
         $this->assertStringContainsString('demo: 2 issues in a.php', $this->flashText($this->status));
     }
@@ -281,7 +281,7 @@ final class AbstractAnalyzerPluginTest extends TestCase
         $this->buffers->open($this->project->path('a.php'), "<?php\n");
         $this->handler($api, 'analyse')();
 
-        $this->await(fn (): bool => str_contains($this->flashText($this->status), 'code 7'), what: 'the failure report');
+        $this->await(fn (): bool => \str_contains($this->flashText($this->status), 'code 7'), what: 'the failure report');
         $this->assertSame([], $this->sink->published, 'a failed run publishes nothing');
     }
 
@@ -291,7 +291,7 @@ final class AbstractAnalyzerPluginTest extends TestCase
         $this->buffers->open($this->project->path('a.php'), "<?php\n");
         $this->handler($api, 'analyse')();
 
-        $this->await(fn (): bool => str_contains($this->flashText($this->status), 'code 0'), what: 'the failure report');
+        $this->await(fn (): bool => \str_contains($this->flashText($this->status), 'code 0'), what: 'the failure report');
         $this->assertSame([], $this->sink->published);
         $this->assertStringContainsString('demo: exited with code 0', $this->flashText($this->status));
     }
@@ -329,16 +329,16 @@ final class AbstractAnalyzerPluginTest extends TestCase
         $api = $this->withShim('{"rows":[]}', code: 0);
         $this->buffers->open($this->project->path('a.php'), "<?php\n");
         $analyse = $this->handler($api, 'analyse');
-        $working = (string) file_get_contents($this->project->path('vendor/bin/demo'));
+        $working = (string) \file_get_contents($this->project->path('vendor/bin/demo'));
         // Executable, resolvable, unspawnable — what a fork-starved machine, a
         // deleted binary or a bad interpreter all look like to proc_open.
-        file_put_contents($this->project->path('vendor/bin/demo'), data: "#!/nonexistent/interpreter\n");
-        chmod($this->project->path('vendor/bin/demo'), permissions: 0o755);
+        \file_put_contents($this->project->path('vendor/bin/demo'), data: "#!/nonexistent/interpreter\n");
+        \chmod($this->project->path('vendor/bin/demo'), permissions: 0o755);
 
         $analyse();
         $this->pump(0.05);
-        file_put_contents($this->project->path('vendor/bin/demo'), data: $working);
-        chmod($this->project->path('vendor/bin/demo'), permissions: 0o755);
+        \file_put_contents($this->project->path('vendor/bin/demo'), data: $working);
+        \chmod($this->project->path('vendor/bin/demo'), permissions: 0o755);
         $analyse();
 
         $this->await(fn (): bool => [] !== $this->sink->published, what: 'the run after the failed spawn');

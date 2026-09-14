@@ -39,7 +39,7 @@ final class Argv
                 $current .= $char;
                 continue;
             }
-            if (1 === preg_match('/\s/', $char)) {
+            if (1 === \preg_match('/\s/', $char)) {
                 if ($inToken) {
                     $parts[] = $current;
                     $current = '';

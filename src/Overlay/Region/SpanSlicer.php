@@ -29,8 +29,8 @@ final class SpanSlicer
     public static function localSpans(array $segments, WidgetRect $rect, int $top, int $anchor, int $panelWidth): array
     {
         // Horizontal overlap of the panel [anchor, anchor+panelWidth) with the rect.
-        $start = max($anchor, $rect->col);
-        $end = min($anchor + $panelWidth, $rect->col + $rect->columns);
+        $start = \max($anchor, $rect->col);
+        $end = \min($anchor + $panelWidth, $rect->col + $rect->columns);
         if ($start >= $end) {
             return []; // the panel does not touch this widget
         }
@@ -53,10 +53,10 @@ final class SpanSlicer
                 // duplicates (visible as the row truncating at a pane seam).
                 if (
                     $clipOffset > 0
-                    && false !== ($markerAt = strpos($segment, AnsiUtils::CURSOR_MARKER_PREFIX))
-                    && AnsiUtils::visibleWidth(substr($segment, offset: 0, length: $markerAt)) < $clipOffset
+                    && false !== ($markerAt = \strpos($segment, AnsiUtils::CURSOR_MARKER_PREFIX))
+                    && AnsiUtils::visibleWidth(\substr($segment, offset: 0, length: $markerAt)) < $clipOffset
                 ) {
-                    $slice = (string) preg_replace('/\x1b_pi:c;[^\x07]*\x07/', replacement: '', subject: $slice);
+                    $slice = (string) \preg_replace('/\x1b_pi:c;[^\x07]*\x07/', replacement: '', subject: $slice);
                 }
                 $spans[] = [
                     'row' => $localRow,

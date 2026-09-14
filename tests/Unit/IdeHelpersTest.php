@@ -75,19 +75,19 @@ final class IdeHelpersTest extends TestCase
         // ...and a synthetic (Renderer) falls back to the container branch —
         // the empirical proof that PRIVATE synthetics stay get()-able once
         // Ide's constructor has set() them.
-        self::assertInstanceOf(Renderer::class, Services::resolve($this->ide, Renderer::class));
-        self::assertSame(Services::resolve($this->ide, Renderer::class), Services::resolve($this->ide, Renderer::class), 'the same shared instance every time');
+        $this->assertInstanceOf(Renderer::class, Services::resolve($this->ide, Renderer::class));
+        $this->assertSame(Services::resolve($this->ide, Renderer::class), Services::resolve($this->ide, Renderer::class), 'the same shared instance every time');
     }
 
     public function testANonBlockingTerminalGetsThePendingBytesProbe(): void
     {
-        $stream = fopen('php://memory', mode: 'w+');
+        $stream = \fopen('php://memory', mode: 'w+');
         \assert(false !== $stream, description: 'php://memory always opens');
         $terminal = new \Porta\Ui\NonBlockingTerminal(new VirtualTerminal(columns: 80, rows: 24), $stream);
         $ide = new Ide($this->project->dir, null, $terminal);
         try {
             $perf = Services::resolve($ide, \Porta\Support\PerfCollector::class);
-            self::assertNotNull(Probe::get($perf, 'pendingBytes'), 'the real-terminal boot wired the backlog probe');
+            $this->assertNotNull(Probe::get($perf, 'pendingBytes'), 'the real-terminal boot wired the backlog probe');
         } finally {
             Services::resolve($ide, ViewRegistry::class)->closeAll();
             Services::resolve($ide, Notifier::class)->dismissAll();
@@ -104,12 +104,12 @@ final class IdeHelpersTest extends TestCase
         // frames are positioned relatively and nothing ever repositions
         // absolutely, every row below stayed one off for the whole session.
         // Ide must hook that moment so the screen is repainted from scratch.
-        $stream = fopen('php://memory', mode: 'w+');
+        $stream = \fopen('php://memory', mode: 'w+');
         \assert(false !== $stream, description: 'php://memory always opens');
         $terminal = new \Porta\Ui\NonBlockingTerminal(new VirtualTerminal(columns: 80, rows: 24), $stream);
         $ide = new Ide($this->project->dir, null, $terminal);
         try {
-            self::assertNotNull(Probe::get($terminal, 'onKittyActivated'), 'the boot wired the kitty resync');
+            $this->assertNotNull(Probe::get($terminal, 'onKittyActivated'), 'the boot wired the kitty resync');
         } finally {
             Services::resolve($ide, ViewRegistry::class)->closeAll();
             Services::resolve($ide, Notifier::class)->dismissAll();
@@ -134,28 +134,28 @@ final class IdeHelpersTest extends TestCase
         /** @var \Porta\Editor\BufferManager $manager */
         $manager = Services::resolve($this->ide, BufferManager::class);
         $buffer = $manager->active();
-        self::assertNotNull($buffer);
+        $this->assertNotNull($buffer);
 
         $buffer->document->replaceAll("<?php\n// mine\n");
-        self::assertTrue($buffer->isDirty());
+        $this->assertTrue($buffer->isDirty());
         $buffer->diskChangedUnderEdit = true; // what the reconciler records
 
-        self::assertFalse($buffers->saveBuffer($buffer), 'the first save refuses');
-        self::assertStringContainsString('theirs', (string) file_get_contents($path), 'their work is still on disk');
+        $this->assertFalse($buffers->saveBuffer($buffer), 'the first save refuses');
+        $this->assertStringContainsString('theirs', (string) \file_get_contents($path), 'their work is still on disk');
         // The refusal has to SAY so, and name the file: a save that silently
         // does nothing is its own kind of data loss.
-        self::assertStringContainsString('Ctrl+S again to overwrite', Toasts::last($this->ide));
-        self::assertStringContainsString('over.php', Toasts::last($this->ide));
+        $this->assertStringContainsString('Ctrl+S again to overwrite', Toasts::last($this->ide));
+        $this->assertStringContainsString('over.php', Toasts::last($this->ide));
 
         // The confirming press is a WINDOW, not a latch. A press that arrives
         // long after the warning has scrolled by warns again rather than
         // overwriting on the strength of something the user has forgotten.
         Probe::set($buffers, 'lastOverwritePress', [$path => 0.0]);
-        self::assertFalse($buffers->saveBuffer($buffer), 'a stale confirmation is not a confirmation');
+        $this->assertFalse($buffers->saveBuffer($buffer), 'a stale confirmation is not a confirmation');
 
-        self::assertTrue($buffers->saveBuffer($buffer), 'a confirming second save goes through');
-        self::assertStringContainsString('mine', (string) file_get_contents($path));
-        self::assertFalse($buffer->diskChangedUnderEdit, 'and the warning is spent');
+        $this->assertTrue($buffers->saveBuffer($buffer), 'a confirming second save goes through');
+        $this->assertStringContainsString('mine', (string) \file_get_contents($path));
+        $this->assertFalse($buffer->diskChangedUnderEdit, 'and the warning is spent');
     }
 
     public function testReloadingAFileSpendsTheOverwriteWarning(): void
@@ -171,7 +171,7 @@ final class IdeHelpersTest extends TestCase
         /** @var \Porta\Editor\BufferManager $manager */
         $manager = Services::resolve($this->ide, BufferManager::class);
         $buffer = $manager->active();
-        self::assertNotNull($buffer);
+        $this->assertNotNull($buffer);
         $buffer->diskChangedUnderEdit = true; // as if an edit had been warned about
 
         // A different LENGTH: the stamp is mtime:size, and two writes in the
@@ -179,8 +179,8 @@ final class IdeHelpersTest extends TestCase
         $this->project->write('reload.php', "<?php\n// version two, longer\n");
         $buffers->pollFilesystem();
 
-        self::assertFalse($buffer->diskChangedUnderEdit, 'the reload spent the warning');
-        self::assertTrue($buffers->saveBuffer($buffer), 'and the next save is ordinary');
+        $this->assertFalse($buffer->diskChangedUnderEdit, 'the reload spent the warning');
+        $this->assertTrue($buffers->saveBuffer($buffer), 'and the next save is ordinary');
     }
 
     public function testAnUndisturbedFileSavesOnTheFirstPress(): void
@@ -193,11 +193,11 @@ final class IdeHelpersTest extends TestCase
         /** @var \Porta\Editor\BufferManager $manager */
         $manager = Services::resolve($this->ide, BufferManager::class);
         $buffer = $manager->active();
-        self::assertNotNull($buffer);
+        $this->assertNotNull($buffer);
         $buffer->document->replaceAll("<?php\n// edited\n");
 
-        self::assertTrue($buffers->saveBuffer($buffer), 'no warning, no second press');
-        self::assertStringContainsString('edited', (string) file_get_contents($path));
+        $this->assertTrue($buffers->saveBuffer($buffer), 'no warning, no second press');
+        $this->assertStringContainsString('edited', (string) \file_get_contents($path));
     }
 
     public function testTheLastFrameIsLeftBehindForDiagnosis(): void
@@ -213,8 +213,8 @@ final class IdeHelpersTest extends TestCase
             $tui->processRender();
             Probe::invoke($ide, 'writeLastFrame');
             $path = $this->project->dir.'/.porta/frame.txt';
-            self::assertFileExists($path);
-            self::assertStringNotContainsString("\x1b", (string) file_get_contents($path), 'readable, not escape soup');
+            $this->assertFileExists($path);
+            $this->assertStringNotContainsString("\x1b", (string) \file_get_contents($path), 'readable, not escape soup');
         } finally {
             Services::resolve($ide, ViewRegistry::class)->closeAll();
             Services::resolve($ide, Notifier::class)->dismissAll();
@@ -228,7 +228,7 @@ final class IdeHelpersTest extends TestCase
         $ide = new Ide($this->project->dir, null, new VirtualTerminal(columns: 40, rows: 6));
         try {
             Probe::invoke($ide, 'writeLastFrame');
-            self::assertFileDoesNotExist($this->project->dir.'/.porta/frame.txt');
+            $this->assertFileDoesNotExist($this->project->dir.'/.porta/frame.txt');
         } finally {
             Services::resolve($ide, ViewRegistry::class)->closeAll();
             Services::resolve($ide, Notifier::class)->dismissAll();
@@ -240,20 +240,20 @@ final class IdeHelpersTest extends TestCase
         // The support hatch: a screenshot says what the terminal drew, this
         // says what Porta composed. Five rounds were argued from photographs.
         $path = $this->project->dir.'/frame.txt';
-        putenv('PORTA_FRAME_DUMP='.$path);
+        \putenv('PORTA_FRAME_DUMP='.$path);
         try {
             $ide = new Ide($this->project->dir, null, new VirtualTerminal(columns: 40, rows: 6));
             $tui = Services::resolve($ide, Tui::class);
             $tui->requestRender();
             $tui->processRender();
-            self::assertFileExists($path);
-            $dumped = (string) file_get_contents($path);
-            self::assertNotSame('', $dumped, 'the composed frame reached the file');
+            $this->assertFileExists($path);
+            $dumped = (string) \file_get_contents($path);
+            $this->assertNotSame('', $dumped, 'the composed frame reached the file');
             // Readable text, not a second copy of the escape soup: the whole
             // point is to be diffable against a screenshot by eye.
-            self::assertStringNotContainsString("\x1b", $dumped, 'the dump is stripped of ANSI');
+            $this->assertStringNotContainsString("\x1b", $dumped, 'the dump is stripped of ANSI');
         } finally {
-            putenv('PORTA_FRAME_DUMP');
+            \putenv('PORTA_FRAME_DUMP');
             Services::resolve($ide, ViewRegistry::class)->closeAll();
             Services::resolve($ide, Notifier::class)->dismissAll();
         }
@@ -261,12 +261,12 @@ final class IdeHelpersTest extends TestCase
 
     public function testTerminalBidiIsWiredFromTheEnvironment(): void
     {
-        putenv('PORTA_TERMINAL_BIDI=1');
+        \putenv('PORTA_TERMINAL_BIDI=1');
         try {
             $ide = new Ide($this->project->dir, null, new VirtualTerminal(columns: 40, rows: 6));
-            self::assertTrue(Probe::get(Services::resolve($ide, Tui::class), 'terminalBidi'), 'the boot read the hatch');
+            $this->assertTrue(Probe::get(Services::resolve($ide, Tui::class), 'terminalBidi'), 'the boot read the hatch');
         } finally {
-            putenv('PORTA_TERMINAL_BIDI');
+            \putenv('PORTA_TERMINAL_BIDI');
             Services::resolve($ide, ViewRegistry::class)->closeAll();
             Services::resolve($ide, Notifier::class)->dismissAll();
         }
@@ -278,15 +278,15 @@ final class IdeHelpersTest extends TestCase
         $perf = Services::resolve($this->ide, \Porta\Support\PerfCollector::class);
 
         // The sink handed to BidiTui is the shared collector instance...
-        self::assertSame($perf, Probe::get($tui, 'perf'), 'setPerfSink received the collector');
-        self::assertNotNull(Probe::get($tui, 'clock'), 'Ide wired the frame pacing clock');
-        self::assertNotNull(Probe::get($tui, 'scheduler'), 'Ide wired the frame pacing scheduler');
+        $this->assertSame($perf, Probe::get($tui, 'perf'), 'setPerfSink received the collector');
+        $this->assertNotNull(Probe::get($tui, 'clock'), 'Ide wired the frame pacing clock');
+        $this->assertNotNull(Probe::get($tui, 'scheduler'), 'Ide wired the frame pacing scheduler');
 
         // ...and the high-priority listener counts a wheel event even though
         // the input dispatcher stops propagation on the mouse path.
         $tui->handleInput("\x1b[<65;2;2M");
-        self::assertSame(1, Probe::get($perf, 'wheels'), 'the wheel notch was counted before the dispatcher swallowed it');
-        self::assertSame(1, Probe::get($perf, 'inputs'));
+        $this->assertSame(1, Probe::get($perf, 'wheels'), 'the wheel notch was counted before the dispatcher swallowed it');
+        $this->assertSame(1, Probe::get($perf, 'inputs'));
     }
 
     private function workspaceEditor(): WorkspaceEditor
@@ -459,12 +459,12 @@ final class IdeHelpersTest extends TestCase
         // must NOT be cached, or the file's creation would never be seen.
         $this->assertSame($missing, $paths->relative($missing));
 
-        file_put_contents($missing, data: '');
+        \file_put_contents($missing, data: '');
         $this->assertSame('late.php', $paths->relative($missing), 'once the file exists, the same call resolves relative');
         $this->assertSame('late.php', $paths->relative($missing), 'and the memoized answer matches');
 
         // At the cap the memo flushes wholesale instead of growing unbounded.
-        $full = array_fill_keys(array_map(static fn (int $i): string => "/stale/{$i}", range(start: 1, end: 1024)), value: 'stale');
+        $full = \array_fill_keys(\array_map(static fn (int $i): string => "/stale/{$i}", \range(start: 1, end: 1024)), value: 'stale');
         Probe::set($paths, 'relativeMemo', $full);
         $this->assertSame('late.php', $paths->relative($missing), 'a full memo still answers correctly');
         $this->assertCount(1, (array) Probe::get($paths, 'relativeMemo'), 'the flush kept only the fresh entry');
@@ -494,7 +494,7 @@ final class IdeHelpersTest extends TestCase
     public function testApplyWorkspaceEditOnDiskAndInvalidTargets(): void
     {
         $onDisk = $this->project->write('src/Disk.php', "<?php\nclass Disk {}\n");
-        $uri = 'file://'.implode('/', array_map(rawurlencode(...), explode('/', $onDisk)));
+        $uri = 'file://'.\implode('/', \array_map(rawurlencode(...), \explode('/', $onDisk)));
 
         $count = $this->workspaceEditor()->applyWorkspaceEdit([
             'changes' => [
@@ -506,13 +506,13 @@ final class IdeHelpersTest extends TestCase
 
         $this->assertSame(1, $count->touched);
         $this->assertSame(['/does/not/exist.php'], $count->skipped, 'a named file that could not be written is reported, not dropped from the count');
-        $this->assertStringContainsString('class Renamed', (string) file_get_contents($onDisk));
+        $this->assertStringContainsString('class Renamed', (string) \file_get_contents($onDisk));
     }
 
     public function testApplyWorkspaceEditDocumentChangesFormat(): void
     {
         $onDisk = $this->project->write('src/DC.php', "abc\n");
-        $uri = 'file://'.implode('/', array_map(rawurlencode(...), explode('/', $onDisk)));
+        $uri = 'file://'.\implode('/', \array_map(rawurlencode(...), \explode('/', $onDisk)));
 
         $count = $this->workspaceEditor()->applyWorkspaceEdit([
             'documentChanges' => [
@@ -527,13 +527,13 @@ final class IdeHelpersTest extends TestCase
         ]);
 
         $this->assertSame(1, $count->touched);
-        $this->assertStringContainsString('xyz', (string) file_get_contents($onDisk));
+        $this->assertStringContainsString('xyz', (string) \file_get_contents($onDisk));
     }
 
     public function testApplyWorkspaceEditWithEmptyEditListIsSkipped(): void
     {
         $onDisk = $this->project->write('src/Empty.php', "abc\n");
-        $uri = 'file://'.implode('/', array_map(rawurlencode(...), explode('/', $onDisk)));
+        $uri = 'file://'.\implode('/', \array_map(rawurlencode(...), \explode('/', $onDisk)));
 
         $this->assertSame(0, $this->workspaceEditor()->applyWorkspaceEdit(['changes' => [$uri => []]])->touched);
     }
@@ -682,7 +682,7 @@ final class IdeHelpersTest extends TestCase
     {
         $registry = Services::resolve($this->ide, CommandRegistry::class);
         \assert($registry instanceof \Porta\Config\CommandRegistry, description: 'the IDE exposes a CommandRegistry');
-        $labels = array_column($registry->paletteCommands(), 'label');
+        $labels = \array_column($registry->paletteCommands(), 'label');
 
         // The tagged providers register in #[AsTaggedItem] priority order:
         // registration order IS the palette display order — file commands
@@ -691,8 +691,8 @@ final class IdeHelpersTest extends TestCase
         // and the View group's last entry is the tail. The git half of the
         // contract needs a repo fixture and is asserted in IdeGitFlowsTest.
         $this->assertSame('Debug Current File', $labels[0], 'the debug group has always led the palette');
-        $this->assertSame('Documentation', $labels[array_key_last($labels)], 'view is the last group that registers here');
-        $this->assertLessThan(array_search('Show Problems', $labels, strict: true), array_search('Save All', $labels, strict: true), 'file group precedes the search group');
+        $this->assertSame('Documentation', $labels[\array_key_last($labels)], 'view is the last group that registers here');
+        $this->assertLessThan(\array_search('Show Problems', $labels, strict: true), \array_search('Save All', $labels, strict: true), 'file group precedes the search group');
         $this->assertNotContains('Git: Stage Current File', $labels, 'and git registers nothing outside a repository');
     }
 
@@ -828,7 +828,7 @@ final class IdeHelpersTest extends TestCase
     /** Inject a live client into the Ide's session pool so feature code runs for real. */
     private function injectLspClient(\Porta\Lsp\LspClient $client): void
     {
-        $session = new \Porta\Lsp\LspSession(sys_get_temp_dir());
+        $session = new \Porta\Lsp\LspSession(\sys_get_temp_dir());
         Probe::set($session, 'client', $client);
 
         $pool = Services::resolve($this->ide, LspSessionPool::class);
@@ -854,14 +854,14 @@ final class IdeHelpersTest extends TestCase
         $panel = Services::resolve($this->ide, Tui::class)->getById('results');
         $this->assertTrue($panel->isOpen());
         $rendered = \Symfony\Component\Tui\Ansi\AnsiUtils::stripAnsiCodes(
-            implode("\n", $panel->render(new \Symfony\Component\Tui\Render\RenderContext(120, 14))),
+            \implode("\n", $panel->render(new \Symfony\Component\Tui\Render\RenderContext(120, 14))),
         );
         $this->assertSame('Problems', $panel->getTitle(), 'the dock tab carries the tool title');
         $this->assertStringContainsString('✗ top error', $rendered);
         $this->assertStringContainsString('▲ warn here', $rendered);
         // A.php sorts before B.php; within A.php line 0 before line 2
-        $this->assertLessThan(strpos($rendered, needle: 'error here'), strpos($rendered, needle: 'top error'));
-        $this->assertLessThan(strpos($rendered, needle: 'warn here'), strpos($rendered, needle: 'top error'));
+        $this->assertLessThan(\strpos($rendered, needle: 'error here'), \strpos($rendered, needle: 'top error'));
+        $this->assertLessThan(\strpos($rendered, needle: 'warn here'), \strpos($rendered, needle: 'top error'));
     }
 
     public function testGoToTestWithNoFileOpenFlashesNoTestFound(): void
@@ -904,7 +904,7 @@ final class IdeHelpersTest extends TestCase
         $panel = Services::resolve($this->ide, Tui::class)->getById('results');
         $this->assertTrue($panel->isOpen());
         $this->assertSame('Choose target', $panel->getTitle());
-        $rendered = \Symfony\Component\Tui\Ansi\AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new \Symfony\Component\Tui\Render\RenderContext(120, 14))));
+        $rendered = \Symfony\Component\Tui\Ansi\AnsiUtils::stripAnsiCodes(\implode("\n", $panel->render(new \Symfony\Component\Tui\Render\RenderContext(120, 14))));
         $this->assertStringContainsString('tests/E2e/BarTest.php', $rendered);
         $this->assertStringContainsString('tests/Unit/BarTest.php', $rendered);
     }
@@ -968,13 +968,13 @@ final class IdeHelpersTest extends TestCase
         // Open a "noformat" buffer and make it the active editor document.
         $buffers = Services::resolve($this->ide, BufferManager::class);
         $path = $this->project->write('src/noformat.php', "<?php\n\$b=2;\n");
-        $buffer = $buffers->open($path, (string) file_get_contents($path));
+        $buffer = $buffers->open($path, (string) \file_get_contents($path));
         Services::resolve($this->ide, BufferService::class)->showBuffer($buffer);
 
         $this->refactor()->requestReformat();
         // The message is a toast now, so await the toast stack itself — polling
         // the status bar (where it no longer lands) made this timing-fragile.
-        $this->await(fn () => str_contains(implode("\n", \Porta\Tests\Support\Toasts::all($this->ide)), 'Formatting not supported'), 2.0);
+        $this->await(fn () => \str_contains(\implode("\n", \Porta\Tests\Support\Toasts::all($this->ide)), 'Formatting not supported'), 2.0);
 
         $this->assertStringContainsString('Formatting not supported by mock-lsp-server', \Porta\Tests\Support\Toasts::last($this->ide));
         $client->stop();
@@ -983,7 +983,7 @@ final class IdeHelpersTest extends TestCase
     public function testApplyCodeActionEditOnly(): void
     {
         $onDisk = $this->project->write('src/CA.php', "line0\nline1\n");
-        $uri = 'file://'.implode('/', array_map(rawurlencode(...), explode('/', $onDisk)));
+        $uri = 'file://'.\implode('/', \array_map(rawurlencode(...), \explode('/', $onDisk)));
 
         $this->callRefactor('applyCodeAction', [
             'title' => 'Rewrite',
@@ -997,7 +997,7 @@ final class IdeHelpersTest extends TestCase
             ],
         ]);
 
-        $this->assertStringContainsString('CHANGED', (string) file_get_contents($onDisk));
+        $this->assertStringContainsString('CHANGED', (string) \file_get_contents($onDisk));
     }
 
     public function testPushCurrentLocationWithoutAnOpenFileRecordsNothing(): void
@@ -1009,7 +1009,7 @@ final class IdeHelpersTest extends TestCase
 
     public function testOpenHelpShowsARenderedTabAndSharesThePathWithSourceBuffers(): void
     {
-        $readme = (string) realpath($this->project->write('docs/README.md', "# Guides\n\n[Editor](editor.md)\n"));
+        $readme = (string) \realpath($this->project->write('docs/README.md', "# Guides\n\n[Editor](editor.md)\n"));
         $this->project->write('docs/editor.md', "# Editor guide\n");
 
         /** @var \Porta\Editor\BufferService $buffers */
@@ -1022,7 +1022,7 @@ final class IdeHelpersTest extends TestCase
         $buffers->openHelp($readme);
         $active = $manager->active();
         $this->assertNotNull($active);
-        $this->assertTrue($active->paneId === 'help');
+        $this->assertTrue('help' === $active->paneId);
         $this->assertSame($readme, $viewer->path(), 'the viewer shows the page');
         $this->assertFalse($active->isDirty(), 'the backing document stays empty');
         $this->assertFalse($buffers->saveBuffer($active), 'help tabs never save');
@@ -1034,15 +1034,15 @@ final class IdeHelpersTest extends TestCase
         // A page that is not text is REFUSED by the pane's loader rather than
         // rendered as mojibake — the same refusal every pane makes about a file
         // its claim already accepted.
-        $binary = (string) realpath($this->project->write('docs/binary.md', "\xff\xfe\x00# not text"));
+        $binary = (string) \realpath($this->project->write('docs/binary.md', "\xff\xfe\x00# not text"));
         $buffers->openHelp($binary);
         $this->assertSame($readme, $manager->active()?->path, 'the corrupt page opened no tab');
         $this->assertStringContainsString('Not a UTF-8 text file', \Porta\Tests\Support\Toasts::last($this->ide));
 
         // A page changed on disk reloads through the filesystem poller.
-        file_put_contents($readme, data: "# Guides v2\n");
-        clearstatcache();
-        touch($readme, time() + 2);
+        \file_put_contents($readme, data: "# Guides v2\n");
+        \clearstatcache();
+        \touch($readme, \time() + 2);
         $buffers->pollFilesystem();
         $this->assertSame("# Guides v2\n", $manager->active()?->panePayload, 'the poller refreshed the page');
 
@@ -1050,14 +1050,14 @@ final class IdeHelpersTest extends TestCase
         $buffers->closeActiveBuffer();
         $buffers->openFile($readme, focus: OpenFocus::Editor);
         $buffers->openHelp($readme);
-        $this->assertFalse($manager->active()?->paneId === 'help', 'the editable source tab wins');
+        $this->assertFalse('help' === $manager->active()?->paneId, 'the editable source tab wins');
     }
 
     public function testHelpNavigationStaysInOneTabAndSurvivesTabSwitches(): void
     {
-        $readme = (string) realpath($this->project->write('docs/README.md', "# Guides\n\n[Editor](editor.md)\n"));
-        $editor = (string) realpath($this->project->write('docs/editor.md', "# Editor guide\n"));
-        $code = (string) realpath($this->project->write('a.php', "<?php\n"));
+        $readme = (string) \realpath($this->project->write('docs/README.md', "# Guides\n\n[Editor](editor.md)\n"));
+        $editor = (string) \realpath($this->project->write('docs/editor.md', "# Editor guide\n"));
+        $code = (string) \realpath($this->project->write('a.php', "<?php\n"));
 
         /** @var \Porta\Editor\BufferService $buffers */
         $buffers = Services::resolve($this->ide, BufferService::class);
@@ -1084,9 +1084,9 @@ final class IdeHelpersTest extends TestCase
         $this->assertSame($editor, $viewer->path(), 're-activating the help tab keeps the navigated page');
 
         // The poller only re-shows the root page when the viewer is on it.
-        file_put_contents($readme, data: "# Guides v2\n");
-        clearstatcache();
-        touch($readme, time() + 2);
+        \file_put_contents($readme, data: "# Guides v2\n");
+        \clearstatcache();
+        \touch($readme, \time() + 2);
         $buffers->pollFilesystem();
         $this->assertSame("# Guides v2\n", $manager->active()?->panePayload);
         $this->assertSame($editor, $viewer->path(), 'a background root reload does not yank the navigated page');
@@ -1100,7 +1100,7 @@ final class IdeHelpersTest extends TestCase
         $buffers->showHelpPage($editor);
         $buffers->closeTabsExcept($code);
         $this->assertNull($viewer->path(), 'closing the help tab via close-others clears the viewer');
-        $this->assertSame([$code], array_map(static fn ($b): string => $b->path, $manager->all()));
+        $this->assertSame([$code], \array_map(static fn ($b): string => $b->path, $manager->all()));
     }
 
     public function testViewerHandlerHooksDelegateToTheBufferStack(): void
@@ -1151,14 +1151,14 @@ final class IdeHelpersTest extends TestCase
         $old = $this->project->write('Before.php', "<?php\n");
         $new = $this->project->path('After.php');
         $service->openFile($old);
-        $this->assertTrue($buffers->has((string) realpath($old)));
+        $this->assertTrue($buffers->has((string) \realpath($old)));
 
-        rename($old, $new);
+        \rename($old, $new);
         $service->onBufferRepointRequested(new BufferRepointRequested($old, $new));
 
-        $paths = array_map(static fn ($buffer) => $buffer->path, $buffers->all());
-        $this->assertNotContains((string) realpath(\dirname($old)).'/Before.php', $paths, 'the stale buffer is gone');
-        $this->assertContains((string) realpath($new), $paths, 'and the new path is open in its place');
+        $paths = \array_map(static fn ($buffer) => $buffer->path, $buffers->all());
+        $this->assertNotContains((string) \realpath(\dirname($old)).'/Before.php', $paths, 'the stale buffer is gone');
+        $this->assertContains((string) \realpath($new), $paths, 'and the new path is open in its place');
     }
 
     /**
@@ -1176,15 +1176,15 @@ final class IdeHelpersTest extends TestCase
         $outside = $this->project->write('Outside.php', "<?php\n");
         $service->openFile($this->project->path('old/Deep.php'));
         $service->openFile($outside);
-        $old = (string) realpath($this->project->path('old'));
+        $old = (string) \realpath($this->project->path('old'));
 
-        rename($old, $new = $this->project->path('new'));
+        \rename($old, $new = $this->project->path('new'));
         $service->onBufferRepointRequested(new BufferRepointRequested($old, $new));
 
-        $paths = array_map(static fn ($buffer) => $buffer->path, $buffers->all());
-        $this->assertContains((string) realpath($this->project->path('new/Deep.php')), $paths, 'the buffer followed its folder');
+        $paths = \array_map(static fn ($buffer) => $buffer->path, $buffers->all());
+        $this->assertContains((string) \realpath($this->project->path('new/Deep.php')), $paths, 'the buffer followed its folder');
         $this->assertNotContains($old.'/Deep.php', $paths, 'and nothing is left on the path that is gone');
-        $this->assertContains((string) realpath($outside), $paths, 'a buffer outside the folder was left alone');
+        $this->assertContains((string) \realpath($outside), $paths, 'a buffer outside the folder was left alone');
     }
 
     /**
@@ -1207,12 +1207,12 @@ final class IdeHelpersTest extends TestCase
         $old = $this->project->write('Before.php', "<?php\n");
         $new = $this->project->path('After.php');
         $service->openFile($old);
-        $buffers->get((string) realpath($old))?->document->insert('// edited');
+        $buffers->get((string) \realpath($old))?->document->insert('// edited');
 
-        rename($old, $new);
+        \rename($old, $new);
         $service->onBufferRepointRequested(new BufferRepointRequested($old, $new));
 
-        $moved = $buffers->get((string) realpath($new));
+        $moved = $buffers->get((string) \realpath($new));
         $this->assertNotNull($moved);
         $this->assertStringContainsString('// edited', $moved->document->getText(), 'the edits followed the file');
         $this->assertTrue($moved->document->isDirty(), 'and are still unsaved, which is where the user left them');

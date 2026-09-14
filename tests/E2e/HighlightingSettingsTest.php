@@ -35,20 +35,20 @@ final class HighlightingSettingsTest extends TestCase
 
     protected function setUp(): void
     {
-        $home = getenv('PORTA_HOME');
-        $embedded = getenv('PORTA_EMBEDDED_PLUGINS');
+        $home = \getenv('PORTA_HOME');
+        $embedded = \getenv('PORTA_EMBEDDED_PLUGINS');
         $this->savedHome = false === $home ? null : $home;
         $this->savedEmbedded = false === $embedded ? null : $embedded;
 
-        putenv('PORTA_LSP');
-        putenv('PORTA_HOME=/nonexistent'); // no global fixture
-        putenv('PORTA_EMBEDDED_PLUGINS='.\dirname(__DIR__, levels: 2).'/plugins');
+        \putenv('PORTA_LSP');
+        \putenv('PORTA_HOME=/nonexistent'); // no global fixture
+        \putenv('PORTA_EMBEDDED_PLUGINS='.\dirname(__DIR__, levels: 2).'/plugins');
     }
 
     protected function tearDown(): void
     {
-        putenv('PORTA_HOME='.($this->savedHome ?? ''));
-        putenv('PORTA_EMBEDDED_PLUGINS='.($this->savedEmbedded ?? ''));
+        \putenv('PORTA_HOME='.($this->savedHome ?? ''));
+        \putenv('PORTA_EMBEDDED_PLUGINS='.($this->savedEmbedded ?? ''));
     }
 
     public function testAFreshProjectIsUncolouredAndOffersToEnableTheEngine(): void
@@ -95,7 +95,7 @@ final class HighlightingSettingsTest extends TestCase
                 $tui->handleInput("\r"); // actuate the button
                 $this->frame($tui); // a bare tick inside the 60fps cap window is not a frame
 
-                $config = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
+                $config = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true);
                 $this->assertSame(
                     [...IdeConfig::DEFAULT_ENABLED_PLUGINS, RecommendedPlugins::HIGHLIGHTER],
                     \is_array($config) ? $config['enabledPlugins'] ?? null : null,

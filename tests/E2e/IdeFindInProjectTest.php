@@ -43,7 +43,7 @@ final class IdeFindInProjectTest extends TestCase
             [
                 100 => static function ($tui): void {
                     $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
-                    foreach (str_split('tok') as $ch) {
+                    foreach (\str_split('tok') as $ch) {
                         $tui->handleInput($ch);
                     }
                 },
@@ -52,7 +52,7 @@ final class IdeFindInProjectTest extends TestCase
                     // stale result set isn't cleared until the new one lands —
                     // so await the COMBINED presence/absence the new scope
                     // uniquely produces, not just a fixed gap after the keypress.
-                    $this->await(static fn (): bool => str_contains($panelText($tui), 'other/B.php'), what: 'the whole-project search to land');
+                    $this->await(static fn (): bool => \str_contains($panelText($tui), 'other/B.php'), what: 'the whole-project search to land');
                     $panel = $panelText($tui);
                     $this->assertStringContainsString('src/A.php', $panel, 'whole project finds all three');
                     $this->assertStringContainsString('src/C.php', $panel);
@@ -60,7 +60,7 @@ final class IdeFindInProjectTest extends TestCase
                     $tui->handleInput("\x1bs"); // alt+s → Directory (src/)
                 },
                 300 => function ($tui) use ($panelText): void {
-                    $this->await(static fn (): bool => str_contains($panelText($tui), 'src/C.php') && !str_contains($panelText($tui), 'other/B.php'), what: 'the directory-scoped search to land');
+                    $this->await(static fn (): bool => \str_contains($panelText($tui), 'src/C.php') && !\str_contains($panelText($tui), 'other/B.php'), what: 'the directory-scoped search to land');
                     $panel = $panelText($tui);
                     $this->assertStringContainsString('Scope: Directory', $panel);
                     $this->assertStringContainsString('src/A.php', $panel);
@@ -69,7 +69,7 @@ final class IdeFindInProjectTest extends TestCase
                     $tui->handleInput("\x1bs"); // alt+s → Current File (src/A.php)
                 },
                 400 => function ($tui) use ($panelText): void {
-                    $this->await(static fn (): bool => str_contains($panelText($tui), 'src/A.php') && !str_contains($panelText($tui), 'src/C.php'), what: 'the current-file-scoped search to land');
+                    $this->await(static fn (): bool => \str_contains($panelText($tui), 'src/A.php') && !\str_contains($panelText($tui), 'src/C.php'), what: 'the current-file-scoped search to land');
                     $panel = $panelText($tui);
                     $this->assertStringContainsString('Scope: Current File', $panel);
                     $this->assertStringContainsString('src/A.php', $panel);
@@ -83,7 +83,7 @@ final class IdeFindInProjectTest extends TestCase
                     // still a new observable, and it is the one thing the
                     // keypress has to produce — so await that.
                     $this->await(
-                        static fn (): bool => str_contains($panelText($tui), 'Scope: Open Files'),
+                        static fn (): bool => \str_contains($panelText($tui), 'Scope: Open Files'),
                         what: 'the open-files scope to take effect',
                     );
                     $panel = $panelText($tui);
@@ -92,7 +92,7 @@ final class IdeFindInProjectTest extends TestCase
                     $tui->handleInput("\x1bs"); // alt+s → Module (no composer.json → whole project)
                 },
                 600 => function ($tui) use ($panelText): void {
-                    $this->await(static fn (): bool => str_contains($panelText($tui), 'other/B.php'), what: 'the module-scoped (whole-project fallback) search to land');
+                    $this->await(static fn (): bool => \str_contains($panelText($tui), 'other/B.php'), what: 'the module-scoped (whole-project fallback) search to land');
                     $panel = $panelText($tui);
                     $this->assertStringContainsString('Scope: Module', $panel);
                     $this->assertStringContainsString('other/B.php', $panel, 'no package root → module falls back to the whole project');
@@ -102,7 +102,7 @@ final class IdeFindInProjectTest extends TestCase
                     // Same again: Module (fallback) and Whole Project list the
                     // same files, and the label is what changes.
                     $this->await(
-                        static fn (): bool => str_contains($panelText($tui), 'Scope: Whole Project'),
+                        static fn (): bool => \str_contains($panelText($tui), 'Scope: Whole Project'),
                         what: 'the whole-project scope to wrap back round',
                     );
                     $panel = $panelText($tui);
@@ -149,14 +149,14 @@ final class IdeFindInProjectTest extends TestCase
                 400 => static function ($tui): void {
                     $tui->tick();
                     $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
-                    foreach (str_split('mark') as $ch) {
+                    foreach (\str_split('mark') as $ch) {
                         $tui->handleInput($ch);
                     }
                 },
                 700 => function ($tui) use ($panelText): void {
                     // The grep is a subprocess: await its rows instead of
                     // asserting a fixed number of ms after the query was typed.
-                    $this->await(static fn (): bool => str_contains($panelText($tui), 'other/Outside.php'), what: 'the whole-project search to land');
+                    $this->await(static fn (): bool => \str_contains($panelText($tui), 'other/Outside.php'), what: 'the whole-project search to land');
                     $this->assertStringContainsString('other/Outside.php', $panelText($tui), 'whole project finds both first');
                     for ($i = 0; $i < 5; ++$i) {
                         $tui->handleInput("\x1bs"); // cycle past the 5 built-ins to the saved lib scope
@@ -164,7 +164,7 @@ final class IdeFindInProjectTest extends TestCase
                 },
                 1000 => function ($tui) use ($panelText): void {
                     // Cycling the scope re-runs the search, so await the new rows.
-                    $this->await(static fn (): bool => str_contains($panelText($tui), 'lib/Inside.php'), what: 'the folder-scoped search to land');
+                    $this->await(static fn (): bool => \str_contains($panelText($tui), 'lib/Inside.php'), what: 'the folder-scoped search to land');
                     $panel = $panelText($tui);
                     $this->assertStringContainsString('Scope: lib', $panel, 'the saved scope is selectable in the Alt+S cycle');
                     $this->assertStringContainsString('lib/Inside.php', $panel);
@@ -191,7 +191,7 @@ final class IdeFindInProjectTest extends TestCase
             [
                 200 => static function ($tui): void {
                     $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
-                    foreach (str_split('tok') as $ch) {
+                    foreach (\str_split('tok') as $ch) {
                         $tui->handleInput($ch);
                     }
                 },
@@ -208,7 +208,7 @@ final class IdeFindInProjectTest extends TestCase
                     // the last (Module) ever completes — await ITS combined
                     // presence/absence, not a fixed gap, so a stale or still-
                     // empty result set can't satisfy the assertions below.
-                    $this->await(static fn (): bool => str_contains($panelText($tui), 'pkg/src/A.php') && !str_contains($panelText($tui), 'other/B.php'), what: 'the module-scoped search to land');
+                    $this->await(static fn (): bool => \str_contains($panelText($tui), 'pkg/src/A.php') && !\str_contains($panelText($tui), 'other/B.php'), what: 'the module-scoped search to land');
                     $panel = $panelText($tui);
                     $this->assertStringContainsString('Scope: Module', $panel);
                     $this->assertStringContainsString('pkg/src/A.php', $panel, 'the module scope keeps the package');
@@ -231,7 +231,7 @@ final class IdeFindInProjectTest extends TestCase
             [
                 200 => static function ($tui): void {
                     $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
-                    foreach (str_split('tok') as $ch) {
+                    foreach (\str_split('tok') as $ch) {
                         $tui->handleInput($ch);
                     }
                 },
@@ -263,7 +263,7 @@ final class IdeFindInProjectTest extends TestCase
             [
                 200 => static function ($tui): void {
                     $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
-                    foreach (str_split('needle') as $ch) {
+                    foreach (\str_split('needle') as $ch) {
                         $tui->handleInput($ch);
                     }
                 },
@@ -277,7 +277,7 @@ final class IdeFindInProjectTest extends TestCase
                 1000 => function ($tui) use ($panelText): void {
                     // The token-scope re-search is a subprocess: await the code
                     // match actually dropping out instead of a fixed gap.
-                    $this->await(static fn (): bool => !str_contains($panelText($tui), '$needle = 1;'), what: 'the comments/strings scope to land');
+                    $this->await(static fn (): bool => !\str_contains($panelText($tui), '$needle = 1;'), what: 'the comments/strings scope to land');
                     $panel = $panelText($tui);
                     $this->assertStringContainsString('// needle here', $panel, 'the comment match is kept');
                     $this->assertStringNotContainsString('$needle = 1;', $panel, 'the code match is filtered out');
@@ -291,7 +291,7 @@ final class IdeFindInProjectTest extends TestCase
     public function testFindInProjectContextLinesFromOpenBuffer(): void
     {
         $project = new TempProject(['src/A.php' => "<?php\n\$x = 1;\n// tok here\n\$y = 2;\n"]);
-        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 20))));
+        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(\implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 20))));
 
         $this->runIde(
             $project,
@@ -299,7 +299,7 @@ final class IdeFindInProjectTest extends TestCase
             [
                 200 => static function ($tui): void {
                     $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
-                    foreach (str_split('tok') as $ch) {
+                    foreach (\str_split('tok') as $ch) {
                         $tui->handleInput($ch);
                     }
                 },
@@ -307,7 +307,7 @@ final class IdeFindInProjectTest extends TestCase
                     $this->promote($tui); // modal → results pane (context lines live on the pane)
                     // The grep is a subprocess: await the match landing before
                     // expanding context on it.
-                    $this->await(static fn (): bool => str_contains($panelText($tui), 'tok here'), what: 'the match to land');
+                    $this->await(static fn (): bool => \str_contains($panelText($tui), 'tok here'), what: 'the match to land');
                     $tui->handleInput("\x1bm"); // alt+m → expand context on the first match
                 },
                 800 => function ($tui) use ($panelText): void {
@@ -325,7 +325,7 @@ final class IdeFindInProjectTest extends TestCase
     public function testFindInProjectContextLinesFromDisk(): void
     {
         $project = new TempProject(['src/A.php' => "<?php\n// alpha\n// tok here\n// beta\n"]);
-        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 20))));
+        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(\implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 20))));
 
         $this->runIde(
             $project,
@@ -333,7 +333,7 @@ final class IdeFindInProjectTest extends TestCase
             [
                 200 => static function ($tui): void {
                     $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
-                    foreach (str_split('tok') as $ch) {
+                    foreach (\str_split('tok') as $ch) {
                         $tui->handleInput($ch);
                     }
                 },
@@ -341,7 +341,7 @@ final class IdeFindInProjectTest extends TestCase
                     $this->promote($tui); // modal → results pane (context lines live on the pane)
                     // The grep is a subprocess: await the match landing before
                     // expanding context on it.
-                    $this->await(static fn (): bool => str_contains($panelText($tui), 'tok here'), what: 'the match to land');
+                    $this->await(static fn (): bool => \str_contains($panelText($tui), 'tok here'), what: 'the match to land');
                     $tui->handleInput("\x1bm"); // alt+m → expand context
                 },
                 800 => function ($tui) use ($panelText): void {
@@ -370,7 +370,7 @@ final class IdeFindInProjectTest extends TestCase
             [
                 200 => static function ($tui): void {
                     $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
-                    foreach (str_split('foo()') as $ch) {
+                    foreach (\str_split('foo()') as $ch) {
                         $tui->handleInput($ch);
                     }
                     $tui->handleInput("\x1b[13;2u"); // shift+enter → newline in the query
@@ -384,7 +384,7 @@ final class IdeFindInProjectTest extends TestCase
                     $this->assertStringContainsString('foo() ⏎…', $panel, 'the match preview shows its first line + continuation');
                     // Replace the multiline match across the whole file (open buffer + disk).
                     $tui->handleInput("\t"); // query → replace
-                    foreach (str_split('renamed') as $ch) {
+                    foreach (\str_split('renamed') as $ch) {
                         $tui->handleInput($ch);
                     }
                     $tui->handleInput("\x1ba"); // alt+a → replace all
@@ -395,7 +395,7 @@ final class IdeFindInProjectTest extends TestCase
                     $this->assertStringContainsString('function renamed', $text, 'the open buffer is replaced across the line break');
                     $this->assertStringNotContainsString('foo()', $text);
                     $this->assertStringContainsString('return 1;', $text, 'the rest of the file is intact');
-                    $this->assertStringContainsString('function renamed', (string) file_get_contents($project->path('src/B.php')), 'the on-disk file is replaced too');
+                    $this->assertStringContainsString('function renamed', (string) \file_get_contents($project->path('src/B.php')), 'the on-disk file is replaced too');
                 },
             ],
         );
@@ -413,11 +413,11 @@ final class IdeFindInProjectTest extends TestCase
             [
                 200 => static function ($tui): void {
                     $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
-                    foreach (str_split('zzz') as $ch) {
+                    foreach (\str_split('zzz') as $ch) {
                         $tui->handleInput($ch);
                     }
                     $tui->handleInput("\x1b[13;2u"); // shift+enter
-                    foreach (str_split('qqq') as $ch) {
+                    foreach (\str_split('qqq') as $ch) {
                         $tui->handleInput($ch);
                     }
                 },
@@ -450,7 +450,7 @@ final class IdeFindInProjectTest extends TestCase
             [
                 200 => static function ($tui): void {
                     $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f → modal
-                    foreach (str_split('token') as $ch) {
+                    foreach (\str_split('token') as $ch) {
                         $tui->handleInput($ch);
                     }
                 },
@@ -459,7 +459,7 @@ final class IdeFindInProjectTest extends TestCase
                     // In the modal: Tab query → replace → Mask, then restrict to PHP.
                     $tui->handleInput("\t");
                     $tui->handleInput("\t");
-                    foreach (str_split('*.php') as $ch) {
+                    foreach (\str_split('*.php') as $ch) {
                         $tui->handleInput($ch);
                     }
                 },
@@ -488,7 +488,7 @@ final class IdeFindInProjectTest extends TestCase
             [
                 200 => static function ($tui): void {
                     $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f → modal
-                    foreach (str_split('foo') as $ch) {
+                    foreach (\str_split('foo') as $ch) {
                         $tui->handleInput($ch);
                     }
                 },
@@ -497,7 +497,7 @@ final class IdeFindInProjectTest extends TestCase
                     // Replace directly in the modal (no promote): the preview flips to old → new.
                     $this->assertStringContainsString('$foo = 1;', $this->modalText($tui), 'the modal previews the matches');
                     $tui->handleInput("\t"); // query → replace
-                    foreach (str_split('bar') as $ch) {
+                    foreach (\str_split('bar') as $ch) {
                         $tui->handleInput($ch);
                     }
                     $this->assertStringContainsString('→', $this->modalText($tui), 'the modal shows the replacement preview');
@@ -507,7 +507,7 @@ final class IdeFindInProjectTest extends TestCase
                     $tui->tick();
                     $this->assertFalse($tui->getById('editor')->isFindModalOpen(), 'the modal closes after replacing');
                     $this->assertStringContainsString('$bar = 1;', $tui->getById('editor')->getDocument()->getText(), 'open buffer replaced');
-                    $this->assertStringContainsString('$bar = 2;', (string) file_get_contents($project->path('src/B.php')), 'on-disk file replaced');
+                    $this->assertStringContainsString('$bar = 2;', (string) \file_get_contents($project->path('src/B.php')), 'on-disk file replaced');
                 },
             ],
         );
@@ -526,7 +526,7 @@ final class IdeFindInProjectTest extends TestCase
             [
                 200 => static function ($tui): void {
                     $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
-                    foreach (str_split('tok') as $ch) {
+                    foreach (\str_split('tok') as $ch) {
                         $tui->handleInput($ch);
                     }
                 },
@@ -535,9 +535,9 @@ final class IdeFindInProjectTest extends TestCase
                     // The grep is a subprocess: await both matches landing
                     // before exporting them.
                     $this->await(static function () use ($tui): bool {
-                        $panel = AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 20))));
+                        $panel = AnsiUtils::stripAnsiCodes(\implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 20))));
 
-                        return str_contains($panel, 'src/A.php') && str_contains($panel, 'src/B.php');
+                        return \str_contains($panel, 'src/A.php') && \str_contains($panel, 'src/B.php');
                     }, what: 'both matches to land');
                     $tui->handleInput("\x1bx"); // alt+x → export
                 },
@@ -545,7 +545,7 @@ final class IdeFindInProjectTest extends TestCase
                     $tui->tick();
                     $exportPath = $project->path('.porta/search-results.txt');
                     $this->assertFileExists($exportPath);
-                    $content = (string) file_get_contents($exportPath);
+                    $content = (string) \file_get_contents($exportPath);
                     $this->assertStringContainsString('src/A.php', $content);
                     $this->assertStringContainsString('src/B.php', $content, 'every matched file is listed');
                     $this->assertStringContainsString('2: // tok here', $content, 'line numbers are 1-based');
@@ -586,7 +586,7 @@ final class IdeFindInProjectTest extends TestCase
             'src/A.php' => "<?php\n// tok here\n",
             'other/B.php' => "<?php\n// tok here\n",
         ]);
-        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 16))));
+        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(\implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 16))));
 
         $this->runIde(
             $project,
@@ -594,7 +594,7 @@ final class IdeFindInProjectTest extends TestCase
             [
                 200 => static function ($tui): void {
                     $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
-                    foreach (str_split('tok') as $ch) {
+                    foreach (\str_split('tok') as $ch) {
                         $tui->handleInput($ch);
                     }
                 },
@@ -602,7 +602,7 @@ final class IdeFindInProjectTest extends TestCase
                     $tui->tick();
                     $tui->handleInput("\t"); // query → replace
                     $tui->handleInput("\t"); // replace → mask
-                    foreach (str_split('*.php') as $ch) {
+                    foreach (\str_split('*.php') as $ch) {
                         $tui->handleInput($ch);
                     }
                     $tui->handleInput("\x1bs"); // alt+s → Directory scope
@@ -629,7 +629,7 @@ final class IdeFindInProjectTest extends TestCase
     public function testFindInProjectF5RerunsPicksUpDiskChanges(): void
     {
         $project = new TempProject(['src/A.php' => "<?php\n// tok here\n"]);
-        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 16))));
+        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(\implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 16))));
 
         $this->runIde(
             $project,
@@ -637,7 +637,7 @@ final class IdeFindInProjectTest extends TestCase
             [
                 200 => static function ($tui): void {
                     $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
-                    foreach (str_split('tok') as $ch) {
+                    foreach (\str_split('tok') as $ch) {
                         $tui->handleInput($ch);
                     }
                 },
@@ -670,7 +670,7 @@ final class IdeFindInProjectTest extends TestCase
             [
                 200 => static function ($tui): void {
                     $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
-                    foreach (str_split('oldname') as $ch) {
+                    foreach (\str_split('oldname') as $ch) {
                         $tui->handleInput($ch);
                     }
                 },
@@ -679,10 +679,10 @@ final class IdeFindInProjectTest extends TestCase
                     // MODAL before acting on it, instead of a fixed gap. (The
                     // query field itself already echoes "oldname", so await
                     // the file path — only the results preview carries it.)
-                    $this->await(fn (): bool => str_contains($this->modalText($tui), 'src/A.php'), what: 'the search to land');
+                    $this->await(fn (): bool => \str_contains($this->modalText($tui), 'src/A.php'), what: 'the search to land');
                     $tui->handleInput("\x1bv"); // alt+v → preserve case (modal option)
                     $tui->handleInput("\t"); // query → replace
-                    foreach (str_split('newname') as $ch) {
+                    foreach (\str_split('newname') as $ch) {
                         $tui->handleInput($ch);
                     }
                     $tui->handleInput("\x1ba"); // alt+a → replace all
@@ -690,7 +690,7 @@ final class IdeFindInProjectTest extends TestCase
                 900 => function ($tui) use ($project): void {
                     $this->assertStringContainsString(
                         'newname Newname NEWNAME',
-                        (string) file_get_contents($project->path('src/A.php')),
+                        (string) \file_get_contents($project->path('src/A.php')),
                         'each occurrence keeps its original casing',
                     );
                 },
@@ -710,7 +710,7 @@ final class IdeFindInProjectTest extends TestCase
             [
                 200 => static function ($tui): void {
                     $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
-                    foreach (str_split('tok') as $ch) {
+                    foreach (\str_split('tok') as $ch) {
                         $tui->handleInput($ch);
                     }
                 },
@@ -802,9 +802,9 @@ final class IdeFindInProjectTest extends TestCase
                 $treeRect = $renderer->getWidgetRect($tui->getById('tree'));
                 $this->assertNotNull($treeRect);
                 $treeRows = $tui->getById('tree')->render(new \Symfony\Component\Tui\Render\RenderContext($treeRect->columns, $treeRect->rows));
-                $treeText = AnsiUtils::stripAnsiCodes(implode("\n", $treeRows));
+                $treeText = AnsiUtils::stripAnsiCodes(\implode("\n", $treeRows));
                 $this->assertStringContainsString('Find in Files', $treeText, "the modal's title bar paints over the tree pane");
-                $this->assertStringContainsString("\x1b[2m", implode('', $treeRows), 'the tree renders dimmed beneath the modal');
+                $this->assertStringContainsString("\x1b[2m", \implode('', $treeRows), 'the tree renders dimmed beneath the modal');
 
                 // A bare hover-move (mouse mode 1003) over the × routes to the
                 // floating modal in screen coordinates and brightens it.

@@ -65,7 +65,7 @@ trait RendersExactWidth
             'the widget rendered nothing even at its widest, so this sweep would prove nothing',
         );
 
-        foreach (range(start: 1, end: $upTo) as $columns) {
+        foreach (\range(start: 1, end: $upTo) as $columns) {
             foreach ($widget->render(new RenderContext($columns, $paneRows)) as $i => $row) {
                 self::assertLessThanOrEqual(
                     $columns,

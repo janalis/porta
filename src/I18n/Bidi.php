@@ -141,7 +141,7 @@ final class Bidi
         $matches = [];
         // Tokens: an SGR sequence, the zero-width APC cursor marker
         // (\x1b_…\x07), or a single grapheme cluster.
-        if (!preg_match_all('/\x1b\[[0-9;]*m|\x1b_[^\x07]*\x07|\X/u', $line, $matches)) {
+        if (!\preg_match_all('/\x1b\[[0-9;]*m|\x1b_[^\x07]*\x07|\X/u', $line, $matches)) {
             return $line;
         }
 
@@ -149,7 +149,7 @@ final class Bidi
         $cells = [];
         $active = '';
         foreach ($matches[0] as $seq) {
-            if (str_starts_with($seq, "\x1b[")) { // SGR: updates the active style
+            if (\str_starts_with($seq, "\x1b[")) { // SGR: updates the active style
                 $active = Sgr::RESET === $seq || "\x1b[m" === $seq ? '' : $active.$seq;
                 continue;
             }
@@ -162,7 +162,7 @@ final class Bidi
             return $line; // pure escape sequence(s); nothing to reorder
         }
 
-        $classes = array_map(static fn (array $c): string => self::classify($c['g']), $cells);
+        $classes = \array_map(static fn (array $c): string => self::classify($c['g']), $cells);
         if (BaseDirection::Ltr === $direction && !\in_array('R', $classes, strict: true)) {
             return $line; // LTR base with no RTL runs: already in visual order
         }
@@ -182,25 +182,25 @@ final class Bidi
     public static function visualToLogicalColumn(string $line, int $visualCol, BaseDirection $direction): int
     {
         $matches = [];
-        if ($visualCol < 0 || !preg_match_all('/\x1b\[[0-9;]*m|\x1b_[^\x07]*\x07|\X/u', $line, $matches)) {
-            return max(0, $visualCol);
+        if ($visualCol < 0 || !\preg_match_all('/\x1b\[[0-9;]*m|\x1b_[^\x07]*\x07|\X/u', $line, $matches)) {
+            return \max(0, $visualCol);
         }
 
         /** @var list<array{g: string, w: int}> $glyphs */
         $glyphs = [];
         foreach ($matches[0] as $token) {
-            if (str_starts_with($token, "\x1b[")) {
+            if (\str_starts_with($token, "\x1b[")) {
                 continue; // SGR carries no column
             }
             // The APC cursor marker prints nothing; only real graphemes take width.
-            $width = str_starts_with($token, "\x1b") ? 0 : mb_strwidth($token, encoding: 'UTF-8');
+            $width = \str_starts_with($token, "\x1b") ? 0 : \mb_strwidth($token, encoding: 'UTF-8');
             $glyphs[] = ['g' => $token, 'w' => $width];
         }
         if ([] === $glyphs) {
             return $visualCol;
         }
 
-        $classes = array_map(static fn (array $c): string => self::classify($c['g']), $glyphs);
+        $classes = \array_map(static fn (array $c): string => self::classify($c['g']), $glyphs);
         if (BaseDirection::Ltr === $direction && !\in_array('R', $classes, strict: true)) {
             return $visualCol;
         }
@@ -234,12 +234,12 @@ final class Bidi
     private static function classify(string $grapheme): string
     {
         // The zero-width cursor marker (and any stray control sequence) is neutral.
-        if (str_starts_with($grapheme, "\x1b")) {
+        if (\str_starts_with($grapheme, "\x1b")) {
             return 'N';
         }
         // A grapheme cluster may carry combining marks; classify by its base
         // codepoint (always present — \X matches at least one).
-        $cp = mb_ord(mb_substr($grapheme, start: 0, length: 1, encoding: 'UTF-8'), encoding: 'UTF-8');
+        $cp = \mb_ord(\mb_substr($grapheme, start: 0, length: 1, encoding: 'UTF-8'), encoding: 'UTF-8');
         // Hebrew, Arabic and their presentation forms → right-to-left.
         if ($cp >= 0x0590 && $cp <= 0x05FF || $cp >= 0x0600 && $cp <= 0x06FF || $cp >= 0x0700 && $cp <= 0x08FF || $cp >= 0xFB1D && $cp <= 0xFDFF || $cp >= 0xFE70 && $cp <= 0xFEFF) {
             return 'R';
@@ -446,8 +446,8 @@ final class Bidi
      */
     private static function visualOrder(array $levels): array
     {
-        $order = range(0, \count($levels) - 1);
-        $max = max($levels);
+        $order = \range(0, \count($levels) - 1);
+        $max = \max($levels);
         // Descend to the lowest odd level (1) even when no cell sits exactly
         // there, so an LTR run under an RTL base is reversed back to readable
         // order after the whole-line reversal positions it.
@@ -463,8 +463,8 @@ final class Bidi
                 while ($i < $n && $levels[$order[$i]] >= $level) {
                     ++$i;
                 }
-                $slice = array_reverse(\array_slice($order, $start, $i - $start));
-                array_splice($order, $start, $i - $start, $slice);
+                $slice = \array_reverse(\array_slice($order, $start, $i - $start));
+                \array_splice($order, $start, $i - $start, $slice);
             }
         }
 
@@ -490,13 +490,13 @@ final class Bidi
                 $emitted = $sgr;
             }
             $glyph = $cells[$index]['g'];
-            if (1 === ($levels[$index] % 2) && array_key_exists($glyph, self::MIRROR)) {
+            if (1 === ($levels[$index] % 2) && \array_key_exists($glyph, self::MIRROR)) {
                 $glyph = self::MIRROR[$glyph];
             }
             // The mark has done its work in levels(); shipping it to the
             // terminal is what makes a row render narrower than it measures.
             // A space costs the same column every measurer already counted.
-            $out .= array_key_exists($glyph, self::SPENT) ? ' ' : $glyph;
+            $out .= \array_key_exists($glyph, self::SPENT) ? ' ' : $glyph;
         }
         if ('' !== $emitted) {
             $out .= Sgr::RESET;

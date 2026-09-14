@@ -47,7 +47,7 @@ final class PluginStatusSegments implements StatusSegment
             $plain[] = $segment;
         }
         if ([] !== $plain) {
-            array_unshift($cells, new StatusCell(implode(' · ', $plain)));
+            \array_unshift($cells, new StatusCell(\implode(' · ', $plain)));
         }
 
         return $cells;

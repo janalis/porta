@@ -195,7 +195,7 @@ final readonly class WorkspaceEditor
             return 'a file to create has no usable path';
         }
         if ($this->present($path, $exists) && true !== ($options['overwrite'] ?? null) && true !== ($options['ignoreIfExists'] ?? null)) {
-            return \sprintf('%s already exists', basename($path));
+            return \sprintf('%s already exists', \basename($path));
         }
         $exists[$path] = true;
 
@@ -215,10 +215,10 @@ final readonly class WorkspaceEditor
             return 'a file to rename has no usable path';
         }
         if (!$this->present($from, $exists)) {
-            return \sprintf('%s is not there to rename', basename($from));
+            return \sprintf('%s is not there to rename', \basename($from));
         }
         if ($this->present($to, $exists) && true !== ($options['overwrite'] ?? null) && true !== ($options['ignoreIfExists'] ?? null)) {
-            return \sprintf('%s already exists', basename($to));
+            return \sprintf('%s already exists', \basename($to));
         }
         $exists[$from] = false;
         $exists[$to] = true;
@@ -238,7 +238,7 @@ final readonly class WorkspaceEditor
             return 'a file to delete has no usable path';
         }
         if (!$this->present($path, $exists) && true !== ($options['ignoreIfNotExists'] ?? null)) {
-            return \sprintf('%s is not there to delete', basename($path));
+            return \sprintf('%s is not there to delete', \basename($path));
         }
         $exists[$path] = false;
 
@@ -248,7 +248,7 @@ final readonly class WorkspaceEditor
     /** @param array<string, bool> $exists */
     private function present(string $path, array $exists): bool
     {
-        return $exists[$path] ?? file_exists($path);
+        return $exists[$path] ?? \file_exists($path);
     }
 
     private function pathOf(mixed $uri): ?string
@@ -277,7 +277,7 @@ final readonly class WorkspaceEditor
         if ('create' === $kind) {
             $path = $this->pathOf($change['uri'] ?? null);
             \assert(null !== $path, description: 'a create with no usable path is refused before applying');
-            if (!file_exists($path)) {
+            if (!\file_exists($path)) {
                 $this->fs->dumpFile($path, '');
             }
 
@@ -292,12 +292,12 @@ final readonly class WorkspaceEditor
             // APPLIED, which this codebase treats as the worse outcome. What it
             // may not do is happen in silence.
             if (true === $this->bufferAt($path)?->isDirty()) {
-                $this->notifier?->error($this->translator->trans('Deleted %file% — unsaved changes in it are gone', ['%file%' => basename($path)]));
+                $this->notifier?->error($this->translator->trans('Deleted %file% — unsaved changes in it are gone', ['%file%' => \basename($path)]));
             }
             $this->closeBufferAt($path);
             // Canonical, and resolved BEFORE the removal — afterwards there is
             // nothing left for realpath() to resolve. FileDeleted's contract.
-            $key = ($resolved = realpath($path)) ? $resolved : $path;
+            $key = ($resolved = \realpath($path)) ? $resolved : $path;
             $this->fs->remove($path);
             $this->events->dispatch(new FileDeleted($key));
 
@@ -310,10 +310,10 @@ final readonly class WorkspaceEditor
         // Canonical both sides, per FileRenamed's contract. $from is already
         // gone, so its DIRECTORY is what resolves — the same trick
         // BufferService::onBufferRepointRequested needs, for the same reason.
-        $directory = realpath(\dirname($from));
+        $directory = \realpath(\dirname($from));
         $this->events->dispatch(new FileRenamed(
-            false === $directory ? $from : $directory.\DIRECTORY_SEPARATOR.basename($from),
-            ($resolvedTo = realpath($to)) ? $resolvedTo : $to,
+            false === $directory ? $from : $directory.\DIRECTORY_SEPARATOR.\basename($from),
+            ($resolvedTo = \realpath($to)) ? $resolvedTo : $to,
         ));
         // Dispatched rather than done here: re-opening needs BufferService,
         // which reaches this class back through FormatOnSave. A command event
@@ -323,7 +323,7 @@ final readonly class WorkspaceEditor
 
     private function bufferAt(string $path): ?\Porta\Editor\Buffer
     {
-        return $this->buffers->get($path) ?? $this->buffers->get(($resolved = realpath($path)) ? $resolved : $path);
+        return $this->buffers->get($path) ?? $this->buffers->get(($resolved = \realpath($path)) ? $resolved : $path);
     }
 
     private function closeBufferAt(string $path): void
@@ -412,7 +412,7 @@ final readonly class WorkspaceEditor
         }
 
         // Bottom-up so earlier positions stay valid
-        usort(
+        \usort(
             $edits,
             static fn (array $a, array $b): int => (
                 [$b['range']['start']['line'] ?? 0, $b['range']['start']['character'] ?? 0] <=> [$a['range']['start']['line'] ?? 0, $a['range']['start']['character'] ?? 0]

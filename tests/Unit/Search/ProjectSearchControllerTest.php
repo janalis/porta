@@ -73,27 +73,27 @@ final class ProjectSearchControllerTest extends TestCase
     {
         $placed = $this->editor->findModal()->layout([0, 0, 40, 100], \Porta\Ui\CaretVisibility::Shown);
 
-        return null === $placed ? '' : AnsiUtils::stripAnsiCodes(implode("\n", $placed['rows']));
+        return null === $placed ? '' : AnsiUtils::stripAnsiCodes(\implode("\n", $placed['rows']));
     }
 
     private function panelText(): string
     {
-        return AnsiUtils::stripAnsiCodes(implode("\n", $this->panel->render(new \Symfony\Component\Tui\Render\RenderContext(100, 14))));
+        return AnsiUtils::stripAnsiCodes(\implode("\n", $this->panel->render(new \Symfony\Component\Tui\Render\RenderContext(100, 14))));
     }
 
     private function awaitModalShows(string $needle, float $timeout = 3.0): void
     {
-        $this->await(fn (): bool => str_contains($this->modal(), $needle), $timeout, "the modal to show '{$needle}'");
+        $this->await(fn (): bool => \str_contains($this->modal(), $needle), $timeout, "the modal to show '{$needle}'");
     }
 
     private function awaitPanelShows(string $needle, float $timeout = 3.0): void
     {
-        $this->await(fn (): bool => str_contains($this->panelText(), $needle), $timeout, "the results panel to show '{$needle}'");
+        $this->await(fn (): bool => \str_contains($this->panelText(), $needle), $timeout, "the results panel to show '{$needle}'");
     }
 
     private function flashed(): string
     {
-        return AnsiUtils::stripAnsiCodes(implode('', $this->statusBar->render(new \Symfony\Component\Tui\Render\RenderContext(100, 1))));
+        return AnsiUtils::stripAnsiCodes(\implode('', $this->statusBar->render(new \Symfony\Component\Tui\Render\RenderContext(100, 1))));
     }
 
     public function testOpenShowsTheFindModal(): void
@@ -238,13 +238,13 @@ final class ProjectSearchControllerTest extends TestCase
      */
     public function testASearchTheEngineCannotFinishFlashesInstead(): void
     {
-        $project = new TempProject(['src/A.php' => str_repeat('a', times: 30)."!\nz\n"]);
+        $project = new TempProject(['src/A.php' => \str_repeat('a', times: 30)."!\nz\n"]);
         $controller = $this->controller($project->dir);
         $controller->open();
         $controller->toggleOption('regex');
 
         $controller->search("(a+)+\nz");
-        $this->await(fn (): bool => str_contains($this->flashed(), 'too complex'), 3.0, 'the too-complex flash');
+        $this->await(fn (): bool => \str_contains($this->flashed(), 'too complex'), 3.0, 'the too-complex flash');
 
         $this->assertStringContainsString('too complex', $this->flashed());
     }
@@ -308,7 +308,7 @@ final class ProjectSearchControllerTest extends TestCase
         $this->awaitModalShows('.js');
 
         $controller->setMask('*.php');
-        $this->await(fn (): bool => !str_contains($this->modal(), '.js'), what: 'the mask-filtered re-run to land');
+        $this->await(fn (): bool => !\str_contains($this->modal(), '.js'), what: 'the mask-filtered re-run to land');
         $this->assertStringContainsString('A.php', $this->modal());
         $this->assertSame('*.php', new \Porta\History\SearchPrefsStore($project->dir)->lastMask(), 'the mask is persisted for next time');
     }
@@ -329,7 +329,7 @@ final class ProjectSearchControllerTest extends TestCase
         $this->buffers->open($project->path('src/A.php'), "<?php\n// needle in src\n");
         $controller->setScopeIndex(3);
 
-        $this->await(fn (): bool => !str_contains($this->modal(), 'needle in other'), what: 'the scope-narrowed re-run to land');
+        $this->await(fn (): bool => !\str_contains($this->modal(), 'needle in other'), what: 'the scope-narrowed re-run to land');
         $this->assertStringContainsString('needle in src', $this->modal());
     }
 
@@ -342,7 +342,7 @@ final class ProjectSearchControllerTest extends TestCase
         $this->awaitModalShows('NEEDLE');
 
         $controller->toggleOption('case');
-        $this->await(fn (): bool => str_contains($this->modal(), '0 results'), what: 'the case-sensitive re-run to drop the mismatched-case hit');
+        $this->await(fn (): bool => \str_contains($this->modal(), '0 results'), what: 'the case-sensitive re-run to drop the mismatched-case hit');
         $this->assertStringNotContainsString('NEEDLE', $this->modal());
         // The panel checkbox reflects the new option, independent of the re-run.
         $this->assertTrue($this->searchOptions($controller)->caseSensitive);
@@ -366,7 +366,7 @@ final class ProjectSearchControllerTest extends TestCase
 
         $this->assertStringContainsString('$found = 1;', $buffer->document->getText(), 'the kept match is replaced');
         $this->assertStringContainsString('$needle = 2;', $buffer->document->getText(), 'the excluded match is left untouched');
-        $this->assertStringContainsString('$needle = 1;', (string) file_get_contents($project->path('src/A.php')), 'an open buffer is edited in memory, not written straight to disk');
+        $this->assertStringContainsString('$needle = 1;', (string) \file_get_contents($project->path('src/A.php')), 'an open buffer is edited in memory, not written straight to disk');
     }
 
     /**
@@ -390,7 +390,7 @@ final class ProjectSearchControllerTest extends TestCase
 
         $controller->replaceAll('bar');
 
-        $this->assertSame("<?php\n\$foo = 'bar';\n", (string) file_get_contents($project->path('src/A.php')), 'the string changed, the variable did not');
+        $this->assertSame("<?php\n\$foo = 'bar';\n", (string) \file_get_contents($project->path('src/A.php')), 'the string changed, the variable did not');
     }
 
     /** And the mirror image, so a fix that simply replaced nothing cannot pass. */
@@ -406,7 +406,7 @@ final class ProjectSearchControllerTest extends TestCase
 
         $controller->replaceAll('bar');
 
-        $this->assertSame("<?php\n\$bar = 'foo';\n", (string) file_get_contents($project->path('src/A.php')), 'the variable changed, the string did not');
+        $this->assertSame("<?php\n\$bar = 'foo';\n", (string) \file_get_contents($project->path('src/A.php')), 'the variable changed, the string did not');
     }
 
     /**
@@ -431,7 +431,7 @@ final class ProjectSearchControllerTest extends TestCase
 
         $this->assertSame(
             "<?php\n\$foo = 'barbaz' . 'barbaz';\n",
-            (string) file_get_contents($project->path('src/A.php')),
+            (string) \file_get_contents($project->path('src/A.php')),
             'both strings replaced, the variable untouched',
         );
     }
@@ -458,12 +458,12 @@ final class ProjectSearchControllerTest extends TestCase
 
         $controller->replaceAll('');
 
-        $this->assertSame("<?php\n\$needle = 1;\n", (string) file_get_contents($project->path('src/A.php')), 'nothing was deleted');
+        $this->assertSame("<?php\n\$needle = 1;\n", (string) \file_get_contents($project->path('src/A.php')), 'nothing was deleted');
         $this->assertStringContainsString('Alt+A again to DELETE', $this->flashed());
 
         $controller->replaceAll('');
 
-        $this->assertSame("<?php\n\$ = 1;\n", (string) file_get_contents($project->path('src/A.php')), 'the confirmed ask deletes');
+        $this->assertSame("<?php\n\$ = 1;\n", (string) \file_get_contents($project->path('src/A.php')), 'the confirmed ask deletes');
 
         // And the arm is SPENT. Without clearing it, one confirmation would
         // stand for the rest of the session and every later empty replace-all
@@ -475,7 +475,7 @@ final class ProjectSearchControllerTest extends TestCase
 
         $controller->replaceAll('');
 
-        $this->assertSame("<?php\n\$needle = 2;\n", (string) file_get_contents($project->path('src/A.php')), 'the next one asks again');
+        $this->assertSame("<?php\n\$needle = 2;\n", (string) \file_get_contents($project->path('src/A.php')), 'the next one asks again');
     }
 
     /**
@@ -490,7 +490,7 @@ final class ProjectSearchControllerTest extends TestCase
         $controller = $this->controller($project->dir);
         $controller->open();
         $controller->search('nomatch');
-        $this->await(fn (): bool => str_contains($this->modal(), '0 results'), what: 'the empty search to complete');
+        $this->await(fn (): bool => \str_contains($this->modal(), '0 results'), what: 'the empty search to complete');
 
         $controller->replaceAll('');
 
@@ -509,7 +509,7 @@ final class ProjectSearchControllerTest extends TestCase
 
         $controller->replaceAll('found');
 
-        $this->assertStringContainsString('$found = 1;', (string) file_get_contents($project->path('src/A.php')));
+        $this->assertStringContainsString('$found = 1;', (string) \file_get_contents($project->path('src/A.php')));
     }
 
     public function testReplaceAllWritesAClosedFileToDisk(): void
@@ -522,7 +522,7 @@ final class ProjectSearchControllerTest extends TestCase
 
         $controller->replaceAll('found');
 
-        $this->assertStringContainsString('$found = 1;', (string) file_get_contents($project->path('src/A.php')));
+        $this->assertStringContainsString('$found = 1;', (string) \file_get_contents($project->path('src/A.php')));
     }
 
     public function testReplaceAllFlashesNothingToReplaceWhenTheResultSetIsEmpty(): void
@@ -531,7 +531,7 @@ final class ProjectSearchControllerTest extends TestCase
         $controller = $this->controller($project->dir);
         $controller->open();
         $controller->search('nomatch');
-        $this->await(fn (): bool => str_contains($this->modal(), '0 results'), what: 'the empty search to complete');
+        $this->await(fn (): bool => \str_contains($this->modal(), '0 results'), what: 'the empty search to complete');
 
         $controller->replaceAll('anything');
 
@@ -548,7 +548,7 @@ final class ProjectSearchControllerTest extends TestCase
 
         $controller->replaceAll("bar()\n{");
 
-        $this->assertStringContainsString('bar()', (string) file_get_contents($project->path('src/A.php')));
+        $this->assertStringContainsString('bar()', (string) \file_get_contents($project->path('src/A.php')));
     }
 
     /**
@@ -590,12 +590,12 @@ final class ProjectSearchControllerTest extends TestCase
         $this->awaitModalShows('needle in B');
 
         $exported = $controller->exportResults();
-        $content = (string) file_get_contents($exported);
+        $content = (string) \file_get_contents($exported);
 
         // grep does not guarantee cross-file result order, so match either
         // ordering — the point under test is the blank-line separator itself.
         $this->assertTrue(
-            str_contains($content, "src/A.php\n  2: // needle in A\n\nsrc/B.php\n  2: // needle in B") || str_contains($content, "src/B.php\n  2: // needle in B\n\nsrc/A.php\n  2: // needle in A"),
+            \str_contains($content, "src/A.php\n  2: // needle in A\n\nsrc/B.php\n  2: // needle in B") || \str_contains($content, "src/B.php\n  2: // needle in B\n\nsrc/A.php\n  2: // needle in A"),
             'a blank line separates each file group: '.$content,
         );
         $this->assertStringContainsString('(2 results)', $content);
@@ -671,7 +671,7 @@ final class ProjectSearchControllerTest extends TestCase
         $controller->adopt($tab);
 
         $exported = $controller->exportResults();
-        $content = (string) file_get_contents($exported);
+        $content = (string) \file_get_contents($exported);
         $this->assertStringContainsString('Search: needle', $content, 'the adopted query drives export');
         $this->assertStringContainsString('needle here', $content, 'the adopted rows drive export');
     }

@@ -105,9 +105,9 @@ final class PluginInstaller
 
         // An explicit URL always clones — is_dir() alone would misroute
         // file:// URLs into the path branch via PHP's stream wrapper.
-        $isUrl = 1 === preg_match('#^(?:[a-z][a-z0-9+.-]*://|git@)#i', $source);
-        $isDir = !$isUrl && is_dir($source);
-        $isPackageName = !$isUrl && !$isDir && 1 === preg_match(self::PACKAGE_NAME_PATTERN, $source);
+        $isUrl = 1 === \preg_match('#^(?:[a-z][a-z0-9+.-]*://|git@)#i', $source);
+        $isDir = !$isUrl && \is_dir($source);
+        $isPackageName = !$isUrl && !$isDir && 1 === \preg_match(self::PACKAGE_NAME_PATTERN, $source);
 
         if ($isDir) {
             $this->requireByPath($source, $base, $root, $onDone);
@@ -164,7 +164,7 @@ final class PluginInstaller
      */
     private function requireByPath(string $source, string $base, string $root, \Closure $onDone): void
     {
-        if (!is_file($source.'/plugin.php')) {
+        if (!\is_file($source.'/plugin.php')) {
             $this->fail($onDone, $this->translator->trans('No plugin.php found in %source%', ['%source%' => $source]));
 
             return;
@@ -190,7 +190,7 @@ final class PluginInstaller
 
             return;
         }
-        if (!$this->project->addPathRepository($root, $packageName, (string) realpath($source))) {
+        if (!$this->project->addPathRepository($root, $packageName, (string) \realpath($source))) {
             $this->failScaffoldWrite($onDone, $root);
 
             return;
@@ -257,7 +257,7 @@ final class PluginInstaller
             }
             $landed = $this->project->packageDir($root, $packageName);
             [, $type] = $this->packageManifest($landed);
-            if (!is_file($landed.'/plugin.php') || 'porta-plugin' !== $type) {
+            if (!\is_file($landed.'/plugin.php') || 'porta-plugin' !== $type) {
                 $this->startComposer($composerDir, ['remove', $packageName, '--no-interaction'], static function (int $exitCode): void {});
                 $this->fail($onDone, $this->translator->trans('"%source%" is not a Porta plugin package', ['%source%' => $packageName]));
 
@@ -287,11 +287,11 @@ final class PluginInstaller
 
             return;
         }
-        $scratch = sys_get_temp_dir().'/porta-plugin-peek-'.bin2hex(random_bytes(8));
+        $scratch = \sys_get_temp_dir().'/porta-plugin-peek-'.\bin2hex(\random_bytes(8));
         $this->running = new AsyncProcess(
             [$this->gitBinary, 'clone', '--depth', '1', '--', $source, $scratch],
             $this->rootDir,
-            env: ['GIT_TERMINAL_PROMPT' => '0'] + getenv(),
+            env: ['GIT_TERMINAL_PROMPT' => '0'] + \getenv(),
             timeout: AsyncProcess::EXTERNAL_TOOL_TIMEOUT,
         );
         $started = $this->running->start(function (int $code) use ($scratch, $base, $root, $source, $onDone): void {
@@ -302,7 +302,7 @@ final class PluginInstaller
 
                 return;
             }
-            if (!is_file($scratch.'/plugin.php')) {
+            if (!\is_file($scratch.'/plugin.php')) {
                 $this->fs->remove($scratch);
                 $this->fail($onDone, $this->translator->trans('The repository contains no plugin.php'));
 
@@ -394,7 +394,7 @@ final class PluginInstaller
         $this->running = new AsyncProcess([(string) $this->gitBinary, 'rev-parse', '--abbrev-ref', 'HEAD'], $scratch);
         $started = $this->running->start(function (int $code, string $stdout) use ($onBranch): void {
             $this->running = null;
-            $branch = trim($stdout);
+            $branch = \trim($stdout);
             $onBranch(0 === $code && '' !== $branch && 'HEAD' !== $branch ? $branch : null);
         });
         if (!$started) {
@@ -497,7 +497,7 @@ final class PluginInstaller
             // made. An unwritable directory just means we never claim it —
             // the plugin works either way, and the next disable leaves the
             // tree standing rather than deleting what it cannot prove is ours.
-            if (0 === $code && is_dir($pluginDir.'/vendor')) {
+            if (0 === $code && \is_dir($pluginDir.'/vendor')) {
                 $this->fs->dumpFile($pluginDir.'/'.self::MARKER, "Porta installed this directory; disabling the plugin removes it.\n");
             }
             $onExit($code);
@@ -530,7 +530,7 @@ final class PluginInstaller
      */
     public function removeDependencies(string $pluginDir): DependencyRemoval
     {
-        if (!is_file($pluginDir.'/'.self::MARKER)) {
+        if (!\is_file($pluginDir.'/'.self::MARKER)) {
             return DependencyRemoval::NotOurs;
         }
         if (null !== $this->running) {
@@ -572,7 +572,7 @@ final class PluginInstaller
             return;
         }
         $dest = $root.'/.porta/plugins/'.$name;
-        if (!is_link($dest)) {
+        if (!\is_link($dest)) {
             $this->finishRemoval($dest, $name, $onDone);
 
             return;
@@ -632,7 +632,7 @@ final class PluginInstaller
     {
         $embeddedReal = null;
         if (null !== $this->embeddedDir) {
-            $resolvedEmbedded = realpath($this->embeddedDir);
+            $resolvedEmbedded = \realpath($this->embeddedDir);
             $embeddedReal = $resolvedEmbedded ? $resolvedEmbedded : null;
         }
 
@@ -642,11 +642,11 @@ final class PluginInstaller
             if (null === $pluginsDir) {
                 continue;
             }
-            $isEmbedded = null !== $embeddedReal && realpath($pluginsDir) === $embeddedReal;
-            $scopeFiles = glob($pluginsDir.'/*/plugin.php');
+            $isEmbedded = null !== $embeddedReal && \realpath($pluginsDir) === $embeddedReal;
+            $scopeFiles = \glob($pluginsDir.'/*/plugin.php');
             foreach (\is_array($scopeFiles) ? $scopeFiles : [] as $file) {
                 $dir = \dirname($file);
-                $name = basename($dir);
+                $name = \basename($dir);
                 $plugins[] = ['name' => $name, 'scope' => $isEmbedded ? 'embedded' : $scope, 'dir' => $dir];
                 if ($isEmbedded) {
                     $embeddedSeen[$name] = true;
@@ -654,11 +654,11 @@ final class PluginInstaller
             }
         }
         if (null !== $this->embeddedDir) {
-            $embeddedFiles = glob($this->embeddedDir.'/*/plugin.php');
+            $embeddedFiles = \glob($this->embeddedDir.'/*/plugin.php');
             foreach (\is_array($embeddedFiles) ? $embeddedFiles : [] as $file) {
                 $dir = \dirname($file);
-                $name = basename($dir);
-                if (!array_key_exists($name, $embeddedSeen)) {
+                $name = \basename($dir);
+                if (!\array_key_exists($name, $embeddedSeen)) {
                     $plugins[] = ['name' => $name, 'scope' => 'embedded', 'dir' => $dir];
                 }
             }
@@ -691,9 +691,9 @@ final class PluginInstaller
     /** The plugin directory NAME half of a composer `vendor/project` package name. */
     private function nameFromPackage(string $packageName): string
     {
-        $slash = strpos($packageName, needle: '/');
+        $slash = \strpos($packageName, needle: '/');
 
-        return false === $slash ? $packageName : substr($packageName, $slash + 1);
+        return false === $slash ? $packageName : \substr($packageName, $slash + 1);
     }
 
     /**
@@ -706,7 +706,7 @@ final class PluginInstaller
     private function validatedName(string $packageName, \Closure $onDone): ?string
     {
         $name = $this->nameFromPackage($packageName);
-        if (1 !== preg_match(PluginLoader::NAME_PATTERN, $name)) {
+        if (1 !== \preg_match(PluginLoader::NAME_PATTERN, $name)) {
             $this->fail($onDone, $this->translator->trans('"%name%" is not a valid plugin name', ['%name%' => $name]));
 
             return null;
@@ -724,7 +724,7 @@ final class PluginInstaller
     private function destFor(string $base, string $name, \Closure $onDone): ?string
     {
         $dest = $base.'/'.$name;
-        if (is_dir($dest)) {
+        if (\is_dir($dest)) {
             $this->fail($onDone, $this->translator->trans('Plugin "%name%" is already installed', ['%name%' => $name]));
 
             return null;

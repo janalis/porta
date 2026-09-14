@@ -42,9 +42,9 @@ final class MarkdownRendererTest extends TestCase
         $this->assertSame('Title', $plain[0]);
         $this->assertStringContainsString("\x1b[1m", $doc->lines[0], 'headings are bold');
         $this->assertSame('═════', $plain[1], 'an H1 carries a double rule as wide as its title');
-        $this->assertSame('───────', $plain[array_search('Section', $plain, strict: true) + 1], 'an H2 carries a single rule');
+        $this->assertSame('───────', $plain[\array_search('Section', $plain, strict: true) + 1], 'an H2 carries a single rule');
         $this->assertContains('Sub', $plain);
-        $this->assertSame('Sub', $plain[array_key_last($plain)], 'H3+ has no trailing rule');
+        $this->assertSame('Sub', $plain[\array_key_last($plain)], 'H3+ has no trailing rule');
         $this->assertNotContains('# Title', $plain);
     }
 
@@ -53,10 +53,10 @@ final class MarkdownRendererTest extends TestCase
         $doc = $this->render("intro\n\n\n\n## Head\n\n\ntext\nmore\n\ntail");
         $plain = $this->rows($doc->lines);
 
-        $this->assertSame(['intro', '', '', 'Head', '────', '', 'text more', '', 'tail'], array_map(rtrim(...), $plain));
+        $this->assertSame(['intro', '', '', 'Head', '────', '', 'text more', '', 'tail'], \array_map(rtrim(...), $plain));
 
         $doc = $this->render("# Top\ntight");
-        $this->assertSame(['Top', '═══', '', 'tight'], array_map(rtrim(...), $this->rows($doc->lines)), 'no blanks above at the document top, one below even without a source blank');
+        $this->assertSame(['Top', '═══', '', 'tight'], \array_map(rtrim(...), $this->rows($doc->lines)), 'no blanks above at the document top, one below even without a source blank');
     }
 
     public function testAnH1TitleOpensWithBoldThenTheEmphasisRoleColor(): void
@@ -83,28 +83,28 @@ final class MarkdownRendererTest extends TestCase
     public function testAnH1RuleLineIsExactlyTheBrightColorThenGlyphsThenReset(): void
     {
         $doc = $this->render('# Tee');
-        $expected = $this->styles->of(Role::Bright)->getAnsiRestore().str_repeat(Glyphs::MD_HEADING_RULE, times: 3).Sgr::RESET;
+        $expected = $this->styles->of(Role::Bright)->getAnsiRestore().\str_repeat(Glyphs::MD_HEADING_RULE, times: 3).Sgr::RESET;
         $this->assertSame($expected, $doc->lines[1]);
     }
 
     public function testAnH2RuleLineIsExactlyTheMutedColorThenGlyphsThenReset(): void
     {
         $doc = $this->render('## Tee');
-        $expected = $this->styles->of(Role::Muted)->getAnsiRestore().str_repeat(Glyphs::MD_RULE, times: 3).Sgr::RESET;
+        $expected = $this->styles->of(Role::Muted)->getAnsiRestore().\str_repeat(Glyphs::MD_RULE, times: 3).Sgr::RESET;
         $this->assertSame($expected, $doc->lines[1]);
     }
 
     public function testAnH3HasNoRuleLineAtAll(): void
     {
         $doc = $this->render("### T\nafter");
-        $plain = array_map(rtrim(...), $this->rows($doc->lines));
+        $plain = \array_map(rtrim(...), $this->rows($doc->lines));
         $this->assertSame(['T', '', 'after'], $plain);
     }
 
     public function testASingleCharacterHeadingTitleGetsARuleExactlyOneGlyphWide(): void
     {
         $doc = $this->render('# T');
-        $this->assertSame(Glyphs::MD_HEADING_RULE, rtrim($this->rows($doc->lines)[1]));
+        $this->assertSame(Glyphs::MD_HEADING_RULE, \rtrim($this->rows($doc->lines)[1]));
     }
 
     public function testAHeadingThatRendersToZeroVisibleWidthStillGetsAOneGlyphRuleFloor(): void
@@ -112,7 +112,7 @@ final class MarkdownRendererTest extends TestCase
         // A pure in-page anchor link (empty label, no followable target)
         // renders to an empty title — the rule width must still floor at 1.
         $doc = $this->render('# [](#x)', 20);
-        $this->assertSame(Glyphs::MD_HEADING_RULE, rtrim($this->rows($doc->lines)[1]));
+        $this->assertSame(Glyphs::MD_HEADING_RULE, \rtrim($this->rows($doc->lines)[1]));
     }
 
     public function testAHeadingLineEndsWithAResetCode(): void
@@ -129,7 +129,7 @@ final class MarkdownRendererTest extends TestCase
         $span = $doc->spansOfGroup(0)[0];
         $this->assertSame(0, $span->line);
         $text = $this->rows($doc->lines)[0];
-        $this->assertSame('guide', mb_substr($text, $span->col, $span->endCol - $span->col), 'the span brackets exactly the link text at its true column');
+        $this->assertSame('guide', \mb_substr($text, $span->col, $span->endCol - $span->col), 'the span brackets exactly the link text at its true column');
     }
 
     public function testInlineStylesAndParagraphJoining(): void
@@ -147,16 +147,16 @@ final class MarkdownRendererTest extends TestCase
     {
         $doc = $this->render('- alpha beta gamma delta epsilon zeta', 20);
         $plain = $this->rows($doc->lines);
-        $this->assertSame('• alpha beta gamma', rtrim($plain[0]));
-        $this->assertSame('  delta epsilon zeta', rtrim($plain[1]), 'continuations hang under the marker');
+        $this->assertSame('• alpha beta gamma', \rtrim($plain[0]));
+        $this->assertSame('  delta epsilon zeta', \rtrim($plain[1]), 'continuations hang under the marker');
 
         $doc = $this->render('averyveryverylongunbrokenword', 20);
         $plain = $this->rows($doc->lines);
-        $this->assertSame('averyveryverylongu', rtrim($plain[0]), 'over-wide words hard-break');
-        $this->assertSame('nbrokenword', rtrim($plain[1]));
+        $this->assertSame('averyveryverylongu', \rtrim($plain[0]), 'over-wide words hard-break');
+        $this->assertSame('nbrokenword', \rtrim($plain[1]));
 
         $doc = $this->render('tiny', 5);
-        $this->assertSame('tiny', rtrim($this->rows($doc->lines)[0]), 'width clamps to a sane minimum');
+        $this->assertSame('tiny', \rtrim($this->rows($doc->lines)[0]), 'width clamps to a sane minimum');
     }
 
     public function testOrderedListsBlockquotesAndRules(): void
@@ -164,21 +164,21 @@ final class MarkdownRendererTest extends TestCase
         $doc = $this->render("1. first\n2. second\n\n> quoted words\n\n---");
         $plain = $this->rows($doc->lines);
 
-        $this->assertSame('1. first', rtrim($plain[0]));
-        $this->assertSame('2. second', rtrim($plain[1]));
-        $this->assertContains('│ quoted words', array_map(rtrim(...), $plain));
-        $this->assertContains(str_repeat('─', times: 80), $plain, 'horizontal rule spans the width');
+        $this->assertSame('1. first', \rtrim($plain[0]));
+        $this->assertSame('2. second', \rtrim($plain[1]));
+        $this->assertContains('│ quoted words', \array_map(rtrim(...), $plain));
+        $this->assertContains(\str_repeat('─', times: 80), $plain, 'horizontal rule spans the width');
     }
 
     public function testFencedCodeBlocksBandTruncateAndNeverWrap(): void
     {
-        $doc = $this->render("```php\n\$x = 1;\n".str_repeat('x', times: 200)."\n```", 30);
+        $doc = $this->render("```php\n\$x = 1;\n".\str_repeat('x', times: 200)."\n```", 30);
         $plain = $this->rows($doc->lines);
 
-        $this->assertSame('  $x = 1;', rtrim($plain[0]));
-        $this->assertSame(30, mb_strwidth($plain[0]), 'code lines pad to the full width (bg band)');
-        $this->assertStringEndsWith('…', rtrim($plain[1]), 'over-wide code truncates');
-        $this->assertCount(2, array_filter($plain, static fn (string $l): bool => '' !== $l), 'no fence markers rendered');
+        $this->assertSame('  $x = 1;', \rtrim($plain[0]));
+        $this->assertSame(30, \mb_strwidth($plain[0]), 'code lines pad to the full width (bg band)');
+        $this->assertStringEndsWith('…', \rtrim($plain[1]), 'over-wide code truncates');
+        $this->assertCount(2, \array_filter($plain, static fn (string $l): bool => '' !== $l), 'no fence markers rendered');
     }
 
     public function testAnUnclosedFenceStopsAtTheEndOfTheSourceWithoutReadingPastIt(): void
@@ -187,21 +187,21 @@ final class MarkdownRendererTest extends TestCase
         // $count, not attempt one more (undefined) source line.
         $doc = $this->render("```\ncode", 20);
         $plain = $this->rows($doc->lines);
-        $this->assertSame('  code', rtrim($plain[0]));
+        $this->assertSame('  code', \rtrim($plain[0]));
     }
 
     public function testAFenceLineTrailingWhitespaceIsStrippedBeforeTheTruncatePad(): void
     {
         $doc = $this->render("```\ncode   \n```", 20);
-        $this->assertSame('  code', rtrim($this->rows($doc->lines)[0]));
+        $this->assertSame('  code', \rtrim($this->rows($doc->lines)[0]));
     }
 
     public function testExcessFenceLineTrailingWhitespaceDoesNotTriggerATruncationEllipsis(): void
     {
         // Enough trailing whitespace to overflow the width if left unstripped
         // before truncate() runs — must stay clean, not end in "…".
-        $doc = $this->render("```\ncode".str_repeat(' ', times: 20)."\n```", 20);
-        $this->assertSame('  code', rtrim($this->rows($doc->lines)[0]));
+        $doc = $this->render("```\ncode".\str_repeat(' ', times: 20)."\n```", 20);
+        $this->assertSame('  code', \rtrim($this->rows($doc->lines)[0]));
     }
 
     public function testAFenceLineIsExactlyToolbarBackgroundThenPaddedTextThenReset(): void
@@ -217,14 +217,14 @@ final class MarkdownRendererTest extends TestCase
         // A dash run buried after other content must not be mistaken for a
         // separator row — the leading anchor is load-bearing.
         $doc = $this->render("| a--- |\n| --- |\n| x |");
-        $plain = array_map(rtrim(...), $this->rows($doc->lines));
+        $plain = \array_map(rtrim(...), $this->rows($doc->lines));
         $this->assertSame(' a---', $plain[0], 'the first row rendered as an ordinary header cell, not a swallowed separator');
     }
 
     public function testASeparatorCellRequiresDashesAtTheVeryEndOfTheCell(): void
     {
         $doc = $this->render("| ---a |\n| --- |\n| x |");
-        $plain = array_map(rtrim(...), $this->rows($doc->lines));
+        $plain = \array_map(rtrim(...), $this->rows($doc->lines));
         $this->assertSame(' ---a', $plain[0]);
     }
 
@@ -241,10 +241,10 @@ final class MarkdownRendererTest extends TestCase
         $this->assertGreaterThan(1, \count($spans), 'a wrapped link splits into one span per line');
         foreach ($spans as $span) {
             $text = AnsiUtils::stripAnsiCodes(AnsiUtils::sliceByColumn($doc->lines[$span->line], $span->col, $span->endCol - $span->col));
-            $this->assertStringContainsString(trim($text), 'the full editor guide', 'every fragment covers link text only');
+            $this->assertStringContainsString(\trim($text), 'the full editor guide', 'every fragment covers link text only');
         }
 
-        $this->assertStringContainsString('anchor', implode("\n", $this->rows($doc->lines)), 'the anchor text still renders');
+        $this->assertStringContainsString('anchor', \implode("\n", $this->rows($doc->lines)), 'the anchor text still renders');
     }
 
     public function testAngleBracketTargetsAreUnwrapped(): void
@@ -259,7 +259,7 @@ final class MarkdownRendererTest extends TestCase
         $markdown = "# T\n\n**b** *i* `c` [l](x.md)\n\n| A |\n| --- |\n| v |\n\n```\ncode\n```";
         $doc = new MarkdownRenderer(new Styles(MonochromeTheme::definition()))->render($markdown, 40);
 
-        $this->assertStringNotContainsString("\x1b", implode("\n", $doc->lines), 'no ANSI without color support');
+        $this->assertStringNotContainsString("\x1b", \implode("\n", $doc->lines), 'no ANSI without color support');
         $this->assertSame(1, $doc->groupCount(), 'links still tracked for Tab-cycling');
     }
 
@@ -293,8 +293,8 @@ final class MarkdownRendererTest extends TestCase
     {
         $doc = $this->render("  ```\ncode\n  ```");
         $plain = $this->rows($doc->lines);
-        $this->assertSame('  code', rtrim($plain[0]));
-        $this->assertCount(1, array_filter($plain, static fn (string $l): bool => '' !== trim($l)), 'no fence markers rendered, indented or not');
+        $this->assertSame('  code', \rtrim($plain[0]));
+        $this->assertCount(1, \array_filter($plain, static fn (string $l): bool => '' !== \trim($l)), 'no fence markers rendered, indented or not');
     }
 
     public function testAFenceFlushesAPendingParagraphFirst(): void
@@ -307,8 +307,8 @@ final class MarkdownRendererTest extends TestCase
     public function testNothingLeaksAfterAClosedFence(): void
     {
         $doc = $this->render("```\ncode\n```\ntail");
-        $joined = implode("\n", $this->rows($doc->lines));
-        $this->assertSame(1, substr_count($joined, needle: 'code'), 'the fence-open line never re-enters the block dispatcher as stray paragraph text');
+        $joined = \implode("\n", $this->rows($doc->lines));
+        $this->assertSame(1, \substr_count($joined, needle: 'code'), 'the fence-open line never re-enters the block dispatcher as stray paragraph text');
         $this->assertStringContainsString('tail', $joined);
     }
 
@@ -337,7 +337,7 @@ final class MarkdownRendererTest extends TestCase
     public function testAHorizontalRuleLineHasTheMutedColorBeforeTheGlyphsAndAResetAfter(): void
     {
         $doc = $this->render('---', 20);
-        $expected = $this->styles->of(Role::Muted)->getAnsiRestore().str_repeat(Glyphs::MD_RULE, times: 20).Sgr::RESET;
+        $expected = $this->styles->of(Role::Muted)->getAnsiRestore().\str_repeat(Glyphs::MD_RULE, times: 20).Sgr::RESET;
         $this->assertSame($expected, $doc->lines[0]);
     }
 
@@ -375,7 +375,7 @@ final class MarkdownRendererTest extends TestCase
         $doc = $this->render("---\ntail", 20);
         $this->assertSame(
             ['tail'],
-            array_values(array_filter($this->rows($doc->lines), static fn (string $l): bool => !str_contains($l, '─'))),
+            \array_values(\array_filter($this->rows($doc->lines), static fn (string $l): bool => !\str_contains($l, '─'))),
             'the rule line never re-enters the dispatcher as stray paragraph text',
         );
     }
@@ -390,7 +390,7 @@ final class MarkdownRendererTest extends TestCase
     public function testABlockquoteWrapsWithTheCorrectHangingIndentAndStripsExactlyItsMarker(): void
     {
         $doc = $this->render('> one two three four five', 20);
-        $plain = array_map(rtrim(...), $this->rows($doc->lines));
+        $plain = \array_map(rtrim(...), $this->rows($doc->lines));
         $this->assertSame('│ one two three four', $plain[0]);
         $this->assertSame('│ five', $plain[1], 'the "> " marker (2 chars) is stripped and the continuation repeats the bar prefix');
     }
@@ -402,16 +402,16 @@ final class MarkdownRendererTest extends TestCase
         // extra word squeeze onto a continuation line and overflow into a
         // truncated line instead of wrapping cleanly to a third line.
         $doc = $this->render('> alpha beta gamma delta echo1234 fg h', 20);
-        $plain = array_map(rtrim(...), $this->rows($doc->lines));
+        $plain = \array_map(rtrim(...), $this->rows($doc->lines));
         $this->assertCount(3, $plain);
         $this->assertSame('│ h', $plain[2]);
     }
 
     public function testABlockquoteOverWideWordHardBreaksAtExactlyWidthMinusTheHangFloor(): void
     {
-        $doc = $this->render('> '.str_repeat('a', times: 19), 20);
-        $plain = array_map(rtrim(...), $this->rows($doc->lines));
-        $this->assertSame('│ '.str_repeat('a', times: 18), $plain[0]);
+        $doc = $this->render('> '.\str_repeat('a', times: 19), 20);
+        $plain = \array_map(rtrim(...), $this->rows($doc->lines));
+        $this->assertSame('│ '.\str_repeat('a', times: 18), $plain[0]);
         $this->assertSame('│ a', $plain[1]);
     }
 
@@ -441,7 +441,7 @@ final class MarkdownRendererTest extends TestCase
     public function testAnIndentedBulletHangsAtIndentPlusTwo(): void
     {
         $doc = $this->render('  - one two three four five', 20);
-        $plain = array_map(rtrim(...), $this->rows($doc->lines));
+        $plain = \array_map(rtrim(...), $this->rows($doc->lines));
         $this->assertSame('  • one two three', $plain[0]);
         $this->assertSame('    four five', $plain[1], 'continuations hang at indent (2) + 2 = 4, under the bullet text');
     }
@@ -449,7 +449,7 @@ final class MarkdownRendererTest extends TestCase
     public function testABulletContinuationLinesUseTheHangValueNotTheVisiblePrefixWidth(): void
     {
         $doc = $this->render('  - alpha beta gamma delta echo1234 fg h', 20);
-        $plain = array_map(rtrim(...), $this->rows($doc->lines));
+        $plain = \array_map(rtrim(...), $this->rows($doc->lines));
         $this->assertCount(3, $plain);
         $this->assertSame('    fg h', $plain[2]);
     }
@@ -473,7 +473,7 @@ final class MarkdownRendererTest extends TestCase
     public function testAnOrderedListItemHangsExactlyUnderItsOwnMarkerWidth(): void
     {
         $doc = $this->render('10. one two three four five', 20);
-        $plain = array_map(rtrim(...), $this->rows($doc->lines));
+        $plain = \array_map(rtrim(...), $this->rows($doc->lines));
         $this->assertSame('10. one two three', $plain[0]);
         $this->assertSame('    four five', $plain[1], 'the hang is strlen(indent=0) + strlen("10.") + 1 = 4, not a fixed width');
     }
@@ -487,7 +487,7 @@ final class MarkdownRendererTest extends TestCase
     public function testAnIndentedOrderedListPutsTheIndentBeforeTheMarkerNotAfter(): void
     {
         $doc = $this->render('  10. x');
-        $this->assertSame('  10. x', rtrim($this->rows($doc->lines)[0]));
+        $this->assertSame('  10. x', \rtrim($this->rows($doc->lines)[0]));
     }
 
     public function testALeadingWhitespaceOnAPlainParagraphLineIsStripped(): void
@@ -500,18 +500,18 @@ final class MarkdownRendererTest extends TestCase
     {
         // hang=0 for a bare paragraph: an off-by-one here shifts the packing
         // budget on every wrapped continuation line.
-        $doc = $this->render(str_repeat('a', times: 19).' b c', 20);
-        $plain = array_map(rtrim(...), $this->rows($doc->lines));
+        $doc = $this->render(\str_repeat('a', times: 19).' b c', 20);
+        $plain = \array_map(rtrim(...), $this->rows($doc->lines));
         $this->assertCount(2, $plain);
         $this->assertSame('b c', $plain[1]);
     }
 
     public function testAPlainParagraphSecondLinePacksExactlyToTheFullWidthBudget(): void
     {
-        $doc = $this->render(str_repeat('a', times: 18).' '.str_repeat('b', times: 18).' c', 20);
-        $plain = array_map(rtrim(...), $this->rows($doc->lines));
+        $doc = $this->render(\str_repeat('a', times: 18).' '.\str_repeat('b', times: 18).' c', 20);
+        $plain = \array_map(rtrim(...), $this->rows($doc->lines));
         $this->assertCount(2, $plain, 'the trailing "c" still fits on line 2 with a 0-width continuation budget');
-        $this->assertSame(str_repeat('b', times: 18).' c', $plain[1]);
+        $this->assertSame(\str_repeat('b', times: 18).' c', $plain[1]);
     }
 
     public function testAPlainParagraphDoesNotOverpackAContinuationLineBeyondTheWidth(): void
@@ -519,10 +519,10 @@ final class MarkdownRendererTest extends TestCase
         // A negative hang would let the packing budget drift below zero,
         // squeezing one extra word onto a continuation line and truncating
         // it, instead of correctly wrapping that word to its own line.
-        $doc = $this->render(str_repeat('a', times: 18).' '.str_repeat('b', times: 18).' xy', 20);
-        $plain = array_map(rtrim(...), $this->rows($doc->lines));
+        $doc = $this->render(\str_repeat('a', times: 18).' '.\str_repeat('b', times: 18).' xy', 20);
+        $plain = \array_map(rtrim(...), $this->rows($doc->lines));
         $this->assertCount(3, $plain);
-        $this->assertSame(str_repeat('b', times: 18), $plain[1]);
+        $this->assertSame(\str_repeat('b', times: 18), $plain[1]);
         $this->assertSame('xy', $plain[2]);
     }
 
@@ -544,15 +544,15 @@ final class MarkdownRendererTest extends TestCase
 
     public function testAnOverWideWordExactlyAtTheRoomBoundaryIsNotHardBroken(): void
     {
-        $doc = $this->render(str_repeat('a', times: 18), 20);
+        $doc = $this->render(\str_repeat('a', times: 18), 20);
         $plain = $this->rows($doc->lines);
         $this->assertCount(1, $plain, 'an 18-char word exactly fills the 18-col room, no hard break needed');
     }
 
     public function testTheFirstWordPlacedOnALineDoesNotChargeAnInterWordSpaceToTheColumnBudget(): void
     {
-        $doc = $this->render(str_repeat('a', times: 18).' bb c', 20);
-        $plain = array_map(rtrim(...), $this->rows($doc->lines));
+        $doc = $this->render(\str_repeat('a', times: 18).' bb c', 20);
+        $plain = \array_map(rtrim(...), $this->rows($doc->lines));
         $this->assertCount(2, $plain);
         $this->assertSame('bb c', $plain[1]);
     }
@@ -563,7 +563,7 @@ final class MarkdownRendererTest extends TestCase
         // yields zero words — the line must still emit (just the bar), not
         // vanish entirely, because the prefix itself is non-empty.
         $doc = $this->render('> [](#a)');
-        $this->assertSame('│', rtrim($this->rows($doc->lines)[0]));
+        $this->assertSame('│', \rtrim($this->rows($doc->lines)[0]));
     }
 
     public function testAdjacentWordsOfTheSameLinkGroupMergeIntoOneStyledRun(): void
@@ -571,14 +571,14 @@ final class MarkdownRendererTest extends TestCase
         $doc = $this->render('[go here](t.md) now', 80);
         $this->assertSame(1, $doc->groupCount());
         $span = $doc->spansOfGroup(0)[0];
-        $this->assertSame('go here', mb_substr($this->rows($doc->lines)[0], $span->col, $span->endCol - $span->col));
+        $this->assertSame('go here', \mb_substr($this->rows($doc->lines)[0], $span->col, $span->endCol - $span->col));
     }
 
     public function testALinkSpansEndColumnExcludesATrailingJoiningSpace(): void
     {
         $doc = $this->render('[go here](t.md) now', 80);
         $span = $doc->spansOfGroup(0)[0];
-        $lineAfterSpan = mb_substr($this->rows($doc->lines)[0], $span->endCol, length: 1);
+        $lineAfterSpan = \mb_substr($this->rows($doc->lines)[0], $span->endCol, length: 1);
         $this->assertSame(' ', $lineAfterSpan, 'the space right after the span is not part of it');
         $this->assertSame(7, $span->endCol - $span->col, 'the span itself is exactly "go here" (7), not "go here " (8)');
     }

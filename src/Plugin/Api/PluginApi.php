@@ -173,10 +173,10 @@ final class PluginApi
      */
     public function registerCommand(string $id, string $label, \Closure $handler, array $keys = []): void
     {
-        if (1 !== preg_match(self::ID_PATTERN, $id)) {
+        if (1 !== \preg_match(self::ID_PATTERN, $id)) {
             throw new PluginException(\sprintf('Invalid command id "%s" (expected /^[a-z0-9][a-z0-9_-]*$/i)', $id));
         }
-        if (array_key_exists($id, $this->ids)) {
+        if (\array_key_exists($id, $this->ids)) {
             throw new PluginException(\sprintf('Duplicate command id "%s"', $id));
         }
         $this->ids[$id] = true;
@@ -185,7 +185,7 @@ final class PluginApi
             'id' => $this->pluginName.':'.$id,
             'label' => $label,
             'handler' => $handler,
-            'keys' => array_values($keys),
+            'keys' => \array_values($keys),
         ];
     }
 
@@ -213,7 +213,7 @@ final class PluginApi
         if (!ActionCatalog::isAdoptable($id)) {
             throw new PluginException(\sprintf('Command "%s" is not adoptable — core still implements it (or there is no such action)', $id));
         }
-        if (array_key_exists($id, $this->ids)) {
+        if (\array_key_exists($id, $this->ids)) {
             throw new PluginException(\sprintf('Duplicate command id "%s"', $id));
         }
         $this->ids[$id] = true;
@@ -245,13 +245,13 @@ final class PluginApi
      */
     public function addMenuItem(string $commandId, ?\Closure $enabledWhen = null, MenuSurface $surface = MenuSurface::Plugins): void
     {
-        if (!array_key_exists($commandId, $this->ids)) {
+        if (!\array_key_exists($commandId, $this->ids)) {
             throw new PluginException(\sprintf('Unknown command id "%s" for a menu item — register it first', $commandId));
         }
         // An ADOPTED id is registered bare (it is core's), so its menu spec must
         // be bare too — prefixing it would name a command nothing answers to.
         $this->menuItems[] = [
-            'id' => array_key_exists($commandId, $this->adopted) ? $commandId : $this->pluginName.':'.$commandId,
+            'id' => \array_key_exists($commandId, $this->adopted) ? $commandId : $this->pluginName.':'.$commandId,
             'when' => $enabledWhen,
             'surface' => $surface,
         ];
@@ -281,10 +281,10 @@ final class PluginApi
         ?int $max = null,
         ?int $step = null,
     ): void {
-        if (1 !== preg_match(self::ID_PATTERN, $key)) {
+        if (1 !== \preg_match(self::ID_PATTERN, $key)) {
             throw new PluginException(\sprintf('Invalid setting key "%s" (expected /^[a-z0-9][a-z0-9_-]*$/i)', $key));
         }
-        if (array_key_exists($key, $this->settingDescriptors)) {
+        if (\array_key_exists($key, $this->settingDescriptors)) {
             throw new PluginException(\sprintf('Duplicate setting key "%s"', $key));
         }
         if (!\in_array($kind, self::SETTING_KINDS, strict: true)) {
@@ -337,7 +337,7 @@ final class PluginApi
      */
     public function registerLanguageServer(string $languageId, string $name, \Closure $resolveCommand, ?\Closure $initializationOptions = null): void
     {
-        if (1 !== preg_match(self::ID_PATTERN, $languageId)) {
+        if (1 !== \preg_match(self::ID_PATTERN, $languageId)) {
             throw new PluginException(\sprintf('Invalid language id "%s" (expected /^[a-z0-9][a-z0-9_-]*$/i)', $languageId));
         }
         $this->languageServers->add([
@@ -393,13 +393,13 @@ final class PluginApi
         ?string $id = null,
     ): void {
         $id ??= $this->pluginName;
-        if (1 !== preg_match(self::ID_PATTERN, $id)) {
+        if (1 !== \preg_match(self::ID_PATTERN, $id)) {
             throw new PluginException(\sprintf('Invalid highlighter id "%s" (expected /^[a-z0-9][a-z0-9_-]*$/i)', $id));
         }
         if (\is_array($languages) && [] === $languages) {
             throw new PluginException('A highlighter must claim at least one language (or "*")');
         }
-        $resolve = $languages instanceof \Closure ? $languages : static fn (): array => array_values($languages);
+        $resolve = $languages instanceof \Closure ? $languages : static fn (): array => \array_values($languages);
         $this->highlighters->add([
             'plugin' => $this->pluginName,
             'id' => $id,
@@ -428,7 +428,7 @@ final class PluginApi
      */
     public function registerViewer(string $id, array|\Closure $claims): void
     {
-        if (1 !== preg_match(self::ID_PATTERN, $id)) {
+        if (1 !== \preg_match(self::ID_PATTERN, $id)) {
             throw new PluginException(\sprintf('Invalid viewer id "%s" (expected /^[a-z0-9][a-z0-9_-]*$/i)', $id));
         }
         if (\is_array($claims) && [] === $claims) {
@@ -436,8 +436,8 @@ final class PluginApi
         }
         if (\is_array($claims)) {
             /** @var list<string> $list */
-            $list = array_values($claims);
-            $extensions = array_map(static fn (string $extension): string => strtolower($extension), $list);
+            $list = \array_values($claims);
+            $extensions = \array_map(static fn (string $extension): string => \strtolower($extension), $list);
             $claims = static fn (string $path): bool => ProjectPaths::hasExtension($path, $extensions);
         }
         $this->viewers->add([
@@ -466,7 +466,7 @@ final class PluginApi
      */
     public function registerView(string $id, \Closure $factory): void
     {
-        if (1 !== preg_match(self::ID_PATTERN, $id)) {
+        if (1 !== \preg_match(self::ID_PATTERN, $id)) {
             throw new PluginException(\sprintf('Invalid view id "%s" (expected /^[a-z0-9][a-z0-9_-]*$/i)', $id));
         }
         $this->views->add([
@@ -501,7 +501,7 @@ final class PluginApi
      */
     public function registerPane(string $id, \Closure $pane, \Closure $load): void
     {
-        if (1 !== preg_match(self::ID_PATTERN, $id)) {
+        if (1 !== \preg_match(self::ID_PATTERN, $id)) {
             throw new PluginException(\sprintf('Invalid pane id "%s" (expected /^[a-z0-9][a-z0-9_-]*$/i)', $id));
         }
         $this->panes->add([
@@ -531,13 +531,13 @@ final class PluginApi
      */
     public function registerListTool(string $id, string $title, ?\Closure $rerun = null, ?\Closure $activate = null): void
     {
-        if (1 !== preg_match(self::ID_PATTERN, $id)) {
+        if (1 !== \preg_match(self::ID_PATTERN, $id)) {
             throw new PluginException(\sprintf('Invalid list tool id "%s" (expected /^[a-z0-9][a-z0-9_-]*$/i)', $id));
         }
-        if (array_key_exists($id, $this->listToolIds)) {
+        if (\array_key_exists($id, $this->listToolIds)) {
             throw new PluginException(\sprintf('Duplicate list tool id "%s"', $id));
         }
-        if ('' === trim($title)) {
+        if ('' === \trim($title)) {
             throw new PluginException(\sprintf('List tool "%s" needs a title — it is the strip label', $id));
         }
         $this->listToolIds[$id] = true;
@@ -566,7 +566,7 @@ final class PluginApi
      */
     public function registerDebugAdapter(string $languageId, \Closure $resolveCommand): void
     {
-        if (1 !== preg_match(self::ID_PATTERN, $languageId)) {
+        if (1 !== \preg_match(self::ID_PATTERN, $languageId)) {
             throw new PluginException(\sprintf('Invalid language id "%s" (expected /^[a-z0-9][a-z0-9_-]*$/i)', $languageId));
         }
         $this->debugAdapters->add(['plugin' => $this->pluginName, 'languageId' => $languageId, 'resolve' => $resolveCommand]);
@@ -663,10 +663,10 @@ final class PluginApi
     public function registerActions(array $actions): void
     {
         foreach ($actions as $id => $label) {
-            if (1 !== preg_match(self::ID_PATTERN, $id)) {
+            if (1 !== \preg_match(self::ID_PATTERN, $id)) {
                 throw new PluginException(\sprintf('Invalid action id "%s" (expected /^[a-z0-9][a-z0-9_-]*$/i)', $id));
             }
-            if (array_key_exists($id, ActionCatalog::ACTIONS)) {
+            if (\array_key_exists($id, ActionCatalog::ACTIONS)) {
                 throw new PluginException(\sprintf('Action "%s" is a core action — pick an id core does not use', $id));
             }
             $this->actions->add(['plugin' => $this->pluginName, 'id' => $id, 'label' => $label]);
@@ -697,7 +697,7 @@ final class PluginApi
         }
         $this->tokenSpans->add([
             'plugin' => $this->pluginName,
-            'languages' => $languages instanceof \Closure ? $languages : static fn (): array => array_values($languages),
+            'languages' => $languages instanceof \Closure ? $languages : static fn (): array => \array_values($languages),
             'classify' => $classify,
         ]);
     }
@@ -719,7 +719,7 @@ final class PluginApi
      */
     public function registerInstaller(string $tool, \Closure $isAvailable, array $via): void
     {
-        if ('' === trim($tool)) {
+        if ('' === \trim($tool)) {
             throw new PluginException('An installer needs a non-empty tool name');
         }
         if ([] === $via) {
@@ -729,7 +729,7 @@ final class PluginApi
             if (!\in_array($manager, ['composer', 'brew', 'cargo'], strict: true)) {
                 throw new PluginException(\sprintf('Unknown install manager "%s" (expected composer, brew or cargo)', $manager));
             }
-            if ('' === trim($package)) {
+            if ('' === \trim($package)) {
                 throw new PluginException('An installer candidate needs a non-empty package name');
             }
         }
@@ -922,7 +922,7 @@ final class PluginApi
      */
     public function on(string $eventClass, \Closure $listener): void
     {
-        if (!is_a($eventClass, PluginObservable::class, allow_string: true)) {
+        if (!\is_a($eventClass, PluginObservable::class, allow_string: true)) {
             throw new PluginException(\sprintf('"%s" is not a plugin-observable event — see the event list in docs/plugins.md', $eventClass));
         }
         $this->listen($eventClass, $listener);
@@ -983,7 +983,7 @@ final class PluginApi
     /** This plugin's namespaced tool id, or a refusal naming the missing registration. */
     private function listToolId(string $id): string
     {
-        if (!array_key_exists($id, $this->listToolIds)) {
+        if (!\array_key_exists($id, $this->listToolIds)) {
             throw new PluginException(\sprintf('Unknown list tool "%s" — registerListTool() it first', $id));
         }
 
@@ -1062,7 +1062,7 @@ final class PluginApi
      */
     public function changeSetting(string $key, bool|int|string $value): void
     {
-        if (!array_key_exists($key, $this->settingDescriptors)) {
+        if (!\array_key_exists($key, $this->settingDescriptors)) {
             throw new PluginException(\sprintf('Unknown setting "%s" — registerSetting() it first', $key));
         }
         $runtime = $this->manager->runtime(); // activate()-phase gate
@@ -1236,7 +1236,7 @@ final class PluginApi
         $runtime = $this->manager->runtime();
         $byLine = [];
         foreach ($diagnostics as $diagnostic) {
-            $column = max(0, $diagnostic['column'] ?? 0);
+            $column = \max(0, $diagnostic['column'] ?? 0);
             $row = [
                 'severity' => $diagnostic['severity'] ?? 1,
                 'message' => $diagnostic['message'],
@@ -1251,7 +1251,7 @@ final class PluginApi
             if ('' !== $code) {
                 $row['code'] = $code;
             }
-            $byLine[max(0, $diagnostic['line'])][] = $row;
+            $byLine[\max(0, $diagnostic['line'])][] = $row;
         }
         $runtime->diagnostics->applyDiagnostics(Uri::fromPath($path), $byLine);
         $runtime->tui->requestRender();
@@ -1351,7 +1351,7 @@ final class PluginApi
                 continue;
             }
 
-            $known[max(0, $line)] = $parsed;
+            $known[\max(0, $line)] = $parsed;
         }
         $runtime->changeMarks->applyChangeMarks($path, $known);
     }
@@ -1454,7 +1454,7 @@ final class PluginApi
     /** @return list<array{key: string, label: string, kind: string, default: bool|int|string, options: list<string>|null, hint: string|null, min: int|null, max: int|null, step: int|null}> */
     public function bufferedSettings(): array
     {
-        return array_values($this->settingDescriptors);
+        return \array_values($this->settingDescriptors);
     }
 
     /** @return list<array{plugin: string, languageId: string, name: string, resolve: \Closure(): (list<string>|null), initOptions: (\Closure(): array<string, mixed>)|null}> */

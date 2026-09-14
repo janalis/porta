@@ -35,10 +35,10 @@ final readonly class SettingsRowLayout
     {
         $longest = 0;
         foreach ($rows as $row) {
-            $longest = max($longest, mb_strwidth($row->label));
+            $longest = \max($longest, \mb_strwidth($row->label));
         }
 
         // @mago-expect lint:literal-named-argument -- intdiv's parameter is called `num2`; `intdiv($width, num2: 2)` names the divisor after nothing anyone thinks in
-        return new self(min($longest, max(self::MIN_LABEL, intdiv($width, 2))));
+        return new self(\min($longest, \max(self::MIN_LABEL, \intdiv($width, 2))));
     }
 }

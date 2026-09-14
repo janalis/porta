@@ -35,7 +35,7 @@ final readonly class RecentLocationRows
             $line = $entry['line'];
             $previous = $rows[\count($rows) - 1] ?? null;
             $readers[$path] ??= $this->text->forPath($path);
-            $row = ['path' => $this->paths->relative($path), 'line' => $line, 'text' => trim($readers[$path]($line))];
+            $row = ['path' => $this->paths->relative($path), 'line' => $line, 'text' => \trim($readers[$path]($line))];
             if (null !== $previous && $previous['path'] === $row['path'] && $previous['line'] === $row['line']) {
                 continue; // the same place twice running is one place
             }

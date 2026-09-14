@@ -28,8 +28,8 @@ final class SettingsProvenanceTest extends TestCase
      */
     private function provenance(?array $global, ?array $project): SettingsProvenance
     {
-        $this->home = new TempProject(null === $global ? [] : ['.porta/config.json' => json_encode($global, \JSON_THROW_ON_ERROR)]);
-        $this->project = new TempProject(null === $project ? [] : ['.porta.json' => json_encode($project, \JSON_THROW_ON_ERROR)]);
+        $this->home = new TempProject(null === $global ? [] : ['.porta/config.json' => \json_encode($global, \JSON_THROW_ON_ERROR)]);
+        $this->project = new TempProject(null === $project ? [] : ['.porta.json' => \json_encode($project, \JSON_THROW_ON_ERROR)]);
 
         return new SettingsProvenance(new ConfigFiles($this->project->dir, $this->home->dir));
     }
@@ -131,9 +131,9 @@ final class SettingsProvenanceTest extends TestCase
         $provenance = $this->provenance(null, null);
         $this->assertNull($provenance->originOf(['settings', 'theme']));
 
-        file_put_contents(
+        \file_put_contents(
             $this->project->path('.porta.json'),
-            json_encode(['settings' => ['theme' => 'light']], \JSON_THROW_ON_ERROR),
+            \json_encode(['settings' => ['theme' => 'light']], \JSON_THROW_ON_ERROR),
         );
         $this->assertNull($provenance->originOf(['settings', 'theme']), 'still the memoised read');
 

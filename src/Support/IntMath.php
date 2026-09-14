@@ -13,6 +13,6 @@ final class IntMath
     /** Constrain $value to the inclusive range [$lo, $hi]. */
     public static function clamp(int $value, int $lo, int $hi): int
     {
-        return max($lo, min($hi, $value));
+        return \max($lo, \min($hi, $value));
     }
 }

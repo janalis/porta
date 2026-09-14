@@ -20,7 +20,7 @@ final class LspLogTest extends TestCase
         $log->append("first line\n\n  second line  \n");
         $log->append('partial');
 
-        $this->assertSame(['first line', 'second line', 'partial'], array_column($log->entries(), 'text'));
+        $this->assertSame(['first line', 'second line', 'partial'], \array_column($log->entries(), 'text'));
         $this->assertSame('10:00:00', $log->entries()[0]['time']->format('H:i:s'));
     }
 
@@ -40,9 +40,9 @@ final class LspLogTest extends TestCase
     public function testTruncatesOverlongLines(): void
     {
         $log = new LspLog(new MockClock(), new EventDispatcher());
-        $log->append(str_repeat('x', times: 600));
+        $log->append(\str_repeat('x', times: 600));
 
-        $this->assertSame(500, mb_strlen($log->entries()[0]['text']));
+        $this->assertSame(500, \mb_strlen($log->entries()[0]['text']));
     }
 
     public function testAnnouncesGrowthButNotBlankChunks(): void

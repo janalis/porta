@@ -61,13 +61,13 @@ final class CorePanes
      */
     private function loadPreview(string $path): TextPreview
     {
-        $bytes = (int) filesize($path);
-        $prefix = (string) file_get_contents($path, length: Files::MAX_TEXT_BYTES);
+        $bytes = (int) \filesize($path);
+        $prefix = (string) \file_get_contents($path, length: Files::MAX_TEXT_BYTES);
         $truncated = \strlen($prefix) < $bytes;
-        if ($truncated && false !== ($lastBreak = strrpos($prefix, needle: "\n"))) {
-            $prefix = substr($prefix, offset: 0, length: $lastBreak);
+        if ($truncated && false !== ($lastBreak = \strrpos($prefix, needle: "\n"))) {
+            $prefix = \substr($prefix, offset: 0, length: $lastBreak);
         }
-        if ('' !== $prefix && !mb_check_encoding($prefix, encoding: 'UTF-8')) {
+        if ('' !== $prefix && !\mb_check_encoding($prefix, encoding: 'UTF-8')) {
             throw new \RuntimeException($this->translator->trans('Not a UTF-8 text file'));
         }
 
@@ -78,7 +78,7 @@ final class CorePanes
     private function loadHelp(string $path): string
     {
         $content = Files::read($path);
-        if ('' !== $content && !mb_check_encoding($content, encoding: 'UTF-8')) {
+        if ('' !== $content && !\mb_check_encoding($content, encoding: 'UTF-8')) {
             throw new \RuntimeException($this->translator->trans('Not a UTF-8 text file'));
         }
 

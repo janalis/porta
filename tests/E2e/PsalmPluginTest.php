@@ -27,13 +27,13 @@ final class PsalmPluginTest extends TestCase
 
     protected function setUp(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
     }
 
     /** A project with the real plugin file and (optionally) a stub psalm. */
     private function project(?string $stubBody = null): TempProject
     {
-        $plugin = (string) file_get_contents(__DIR__.'/../../plugins/psalm/plugin.php');
+        $plugin = (string) \file_get_contents(__DIR__.'/../../plugins/psalm/plugin.php');
         $project = new TempProject([
             '.porta/plugins/psalm/plugin.php' => $plugin,
             'a.php' => "<?php\n\$x = 1;\n\$y = 2;\n",
@@ -50,11 +50,11 @@ final class PsalmPluginTest extends TestCase
     private function installStub(TempProject $project, string $body): void
     {
         // PATH is /nonexistent, so the shebang must point at the php binary directly.
-        if (!is_dir($project->path('vendor/bin'))) {
-            mkdir($project->path('vendor/bin'), permissions: 0o777, recursive: true);
+        if (!\is_dir($project->path('vendor/bin'))) {
+            \mkdir($project->path('vendor/bin'), permissions: 0o777, recursive: true);
         }
-        file_put_contents($project->path('vendor/bin/psalm'), '#!'.\PHP_BINARY.' -n'."\n<?php\n".$body);
-        chmod($project->path('vendor/bin/psalm'), permissions: 0o755);
+        \file_put_contents($project->path('vendor/bin/psalm'), '#!'.\PHP_BINARY.' -n'."\n<?php\n".$body);
+        \chmod($project->path('vendor/bin/psalm'), permissions: 0o755);
     }
 
     /** A stub reporting one error on 1-based line 2 of the analysed file, exit 2. */
@@ -108,9 +108,9 @@ final class PsalmPluginTest extends TestCase
                     $tui->handleInput("\x1b\x10");
                 },
                 450 => function ($tui, $terminal): void {
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'psalm: no issues in a.php'), what: 'psalm to report the clean run');
+                    $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'psalm: no issues in a.php'), what: 'psalm to report the clean run');
                     $this->assertStringContainsString('psalm: no issues in a.php', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
-                    $editorScreen = implode("\n", $tui->getById('editor')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 20)));
+                    $editorScreen = \implode("\n", $tui->getById('editor')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 20)));
                     $this->assertStringNotContainsString('Boom detected', AnsiUtils::stripAnsiCodes($editorScreen), 'the clean run cleared the diagnostic');
                 },
             ],
@@ -137,7 +137,7 @@ final class PsalmPluginTest extends TestCase
                     $rows = Services::resolve($ide, \Porta\Plugin\Runtime\PluginHost::class)
                         ->settings()
                         ->rows('psalm');
-                    $byKey = array_column($rows, null, 'key');
+                    $byKey = \array_column($rows, null, 'key');
                     $this->assertArrayHasKey('pluginSetting:autoLint', $byKey, 'the on-save option is a settings row');
                     $this->assertSame('Analyse on save', $byKey['pluginSetting:autoLint']->label);
                     $this->assertSame(SettingsRowKind::Bool, $byKey['pluginSetting:autoLint']->kind);
@@ -145,7 +145,7 @@ final class PsalmPluginTest extends TestCase
                     $tui->handleInput("\x13"); // ctrl+s → save → analyse
                 },
                 300 => function ($tui, $terminal): void {
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'psalm: 1 issue in a.php'), what: 'psalm to report the issue');
+                    $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'psalm: 1 issue in a.php'), what: 'psalm to report the issue');
                     $this->assertStringContainsString('psalm: 1 issue in a.php', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'saving analysed the file');
                 },
             ],
@@ -159,7 +159,7 @@ final class PsalmPluginTest extends TestCase
         // A .porta.json seeded with autoLint=true behaves as if the toggle had
         // been flipped in an earlier session: the first save analyses, no toggle needed.
         $project = $this->project($this->errorStub());
-        $project->write('.porta.json', (string) json_encode(['plugins' => ['psalm' => ['autoLint' => true]]]));
+        $project->write('.porta.json', (string) \json_encode(['plugins' => ['psalm' => ['autoLint' => true]]]));
 
         $this->runIde(
             $project,
@@ -169,7 +169,7 @@ final class PsalmPluginTest extends TestCase
                     $tui->handleInput("\x13"); // ctrl+s → save → analyse (no toggle this session)
                 },
                 300 => function ($tui, $terminal): void {
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'psalm: 1 issue in a.php'), what: 'psalm to report the issue');
+                    $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'psalm: 1 issue in a.php'), what: 'psalm to report the issue');
                     $this->assertStringContainsString('psalm: 1 issue in a.php', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the persisted setting survived the restart');
                 },
             ],
@@ -190,7 +190,7 @@ final class PsalmPluginTest extends TestCase
                     // Await the painted flash: a tick() is not a frame (the
                     // adaptive ticker), so asserting straight after one races
                     // the render under load.
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'psalm not found (vendor/bin or PATH)'), what: 'the missing-binary flash');
+                    $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'psalm not found (vendor/bin or PATH)'), what: 'the missing-binary flash');
                 },
             ],
         );
@@ -202,7 +202,7 @@ final class PsalmPluginTest extends TestCase
             [
                 100 => function ($tui, $terminal): void {
                     $tui->handleInput("\x1b\x10");
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'psalm: open a PHP file first'), what: 'the wrong-file flash');
+                    $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'psalm: open a PHP file first'), what: 'the wrong-file flash');
                 },
             ],
         );
@@ -217,7 +217,7 @@ final class PsalmPluginTest extends TestCase
                     $tui->handleInput("\x1b\x10");
                 },
                 300 => function ($tui, $terminal): void {
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'psalm: exited with code 1'), what: 'the internal-failure flash');
+                    $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'psalm: exited with code 1'), what: 'the internal-failure flash');
                 },
             ],
         );

@@ -36,7 +36,7 @@ final class StructureFollowsCaretTest extends TestCase
     private function follower(): StructureFollowsCaret
     {
         $this->editor = new CodeEditorWidget();
-        $this->editor->showDocument('/p/a.php', new Document(str_repeat("// line\n", times: 14)));
+        $this->editor->showDocument('/p/a.php', new Document(\str_repeat("// line\n", times: 14)));
         $this->results = new ResultsPanelWidget();
         $this->dock = TestBottomDock::create(TestTui::create(100, 24), new TerminalPanelWidget(), $this->results, new DebugPanelWidget());
 

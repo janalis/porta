@@ -12,7 +12,7 @@ final class DotJsonParserTest extends TestCase
 {
     private static function fixture(string $name): string
     {
-        $json = file_get_contents(\dirname(__DIR__, levels: 4).'/tests/Support/fixtures/graph/'.$name);
+        $json = \file_get_contents(\dirname(__DIR__, levels: 4).'/tests/Support/fixtures/graph/'.$name);
         \assert(false !== $json, description: 'fixture files are committed beside the suite');
 
         return $json;
@@ -49,7 +49,7 @@ final class DotJsonParserTest extends TestCase
         $this->assertEqualsWithDelta(18.0, $ab->arrowTip[1], 0.01);
         $this->assertGreaterThanOrEqual(4, \count($ab->points), 'the cubic was flattened into samples');
         $this->assertEqualsWithDelta(54.435, $ab->points[0][0], 0.01, 'polyline starts at the spline start point');
-        $this->assertLessThanOrEqual(min(array_column($ab->points, 0)), $ab->minX, 'bbox contains every polyline point');
+        $this->assertLessThanOrEqual(\min(\array_column($ab->points, 0)), $ab->minX, 'bbox contains every polyline point');
         $this->assertGreaterThanOrEqual($ab->arrowTip[0], $ab->maxX, 'bbox contains the arrow tip beyond the last spline point');
 
         $bc = $layout->edges[1];

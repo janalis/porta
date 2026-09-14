@@ -36,10 +36,10 @@ final class FlakeScanCommandTest extends TestCase
             static function (string $log, ?int $processes, ?string $testsuite, int $timeout) use (&$run, $failuresPerRun, $exit): int {
                 $cases = '';
                 foreach ($failuresPerRun[$run] ?? [] as $test) {
-                    [$class, $method] = explode('::', $test);
+                    [$class, $method] = \explode('::', $test);
                     $cases .= \sprintf('<testcase class="%s" name="%s"><failure>boom</failure></testcase>', $class, $method);
                 }
-                file_put_contents($log, '<?xml version="1.0"?><testsuites><testsuite>'.$cases.'</testsuite></testsuites>');
+                \file_put_contents($log, '<?xml version="1.0"?><testsuites><testsuite>'.$cases.'</testsuite></testsuites>');
                 ++$run;
 
                 return [] === ($failuresPerRun[$run - 1] ?? []) ? $exit : 1;
@@ -61,17 +61,17 @@ final class FlakeScanCommandTest extends TestCase
             static function (string $log, ?int $processes, ?string $testsuite, int $timeout) use (&$run, $bodiesPerRun, $element): int {
                 $cases = '';
                 foreach ($bodiesPerRun[$run] ?? [] as $test => $body) {
-                    [$class, $method] = explode('::', $test);
+                    [$class, $method] = \explode('::', $test);
                     $cases .= \sprintf(
                         '<testcase class="%s" name="%s"><%s>%s</%s></testcase>',
                         $class,
                         $method,
                         $element,
-                        htmlspecialchars($body, \ENT_XML1),
+                        \htmlspecialchars($body, \ENT_XML1),
                         $element,
                     );
                 }
-                file_put_contents($log, '<?xml version="1.0"?><testsuites><testsuite>'.$cases.'</testsuite></testsuites>');
+                \file_put_contents($log, '<?xml version="1.0"?><testsuites><testsuite>'.$cases.'</testsuite></testsuites>');
                 ++$run;
 
                 return [] === ($bodiesPerRun[$run - 1] ?? []) ? 0 : 1;
@@ -118,7 +118,7 @@ final class FlakeScanCommandTest extends TestCase
             "Porta\Tests\E2e\ChromaPluginTest::testChromaColors\n"
             ."Revolt\EventLoop\UncaughtThrowable: Uncaught RuntimeException: boom thrown in event loop error handler Porta\Tests\Support\LoopErrors::{closure}\n"
             ."\n/app/vendor/revolt/src/EventLoop/UncaughtThrowable.php:22";
-        $case = new \SimpleXMLElement('<testcase><failure>'.htmlspecialchars($body, \ENT_XML1).'</failure></testcase>');
+        $case = new \SimpleXMLElement('<testcase><failure>'.\htmlspecialchars($body, \ENT_XML1).'</failure></testcase>');
 
         $reason = Probe::invokeStatic(FlakeScanCommand::class, 'reason', $case);
 
@@ -131,7 +131,7 @@ final class FlakeScanCommandTest extends TestCase
     public function testPhpunitsHeaderLineIsSkippedWithOrWithoutADataSetSuffix(): void
     {
         foreach (['A\Test::testOne', 'A\Test::testOne with data set "three rows"'] as $header) {
-            $case = new \SimpleXMLElement('<testcase><failure>'.htmlspecialchars($header."\nthe message", \ENT_XML1).'</failure></testcase>');
+            $case = new \SimpleXMLElement('<testcase><failure>'.\htmlspecialchars($header."\nthe message", \ENT_XML1).'</failure></testcase>');
 
             $this->assertSame('the message', Probe::invokeStatic(FlakeScanCommand::class, 'reason', $case), $header.' was skipped');
         }
@@ -150,8 +150,8 @@ final class FlakeScanCommandTest extends TestCase
     /** The first display line holding $needle, or '' — the table's own padding included. */
     private function lineContaining(string $display, string $needle): string
     {
-        foreach (explode("\n", $display) as $line) {
-            if (str_contains($line, $needle)) {
+        foreach (\explode("\n", $display) as $line) {
+            if (\str_contains($line, $needle)) {
                 return $line;
             }
         }
@@ -326,7 +326,7 @@ final class FlakeScanCommandTest extends TestCase
     {
         $tester = new CommandTester(new FlakeScanCommand(
             static function (string $log, ?int $processes, ?string $testsuite, int $timeout): int {
-                file_put_contents($log, data: 'not xml at all');
+                \file_put_contents($log, data: 'not xml at all');
 
                 return 1;
             },
@@ -370,13 +370,13 @@ final class FlakeScanCommandTest extends TestCase
     {
         $project = new TempProject([]);
         $log = $project->path('scratch-leaks.log');
-        $previous = getenv(LeakLog::PATH_ENV);
-        putenv(LeakLog::PATH_ENV.'='.$log);
+        $previous = \getenv(LeakLog::PATH_ENV);
+        \putenv(LeakLog::PATH_ENV.'='.$log);
 
         try {
             $tester = new CommandTester(new FlakeScanCommand(
                 static function (string $junit, ?int $processes, ?string $testsuite, int $timeout) use ($log): int {
-                    file_put_contents($junit, data: '<?xml version="1.0"?><testsuites/>');
+                    \file_put_contents($junit, data: '<?xml version="1.0"?><testsuites/>');
                     // What a leaking test would have appended during the run.
                     LeakLog::append("[loop-leak] A\\Test::testOne: 1 identifier(s) leaked\n");
                     LeakLog::append("[env-leak] A\\Test::testOne: PATH\n");
@@ -390,7 +390,7 @@ final class FlakeScanCommandTest extends TestCase
             $this->assertStringContainsString('leak reports across all runs: 2', $tester->getDisplay());
             $this->assertStringContainsString($log, $tester->getDisplay(), 'and says where to read them');
         } finally {
-            putenv(\is_string($previous) ? LeakLog::PATH_ENV.'='.$previous : LeakLog::PATH_ENV);
+            \putenv(\is_string($previous) ? LeakLog::PATH_ENV.'='.$previous : LeakLog::PATH_ENV);
         }
     }
 
@@ -402,13 +402,13 @@ final class FlakeScanCommandTest extends TestCase
     public function testALogThatWasNeverWrittenReadsAsZeroLeaks(): void
     {
         $project = new TempProject([]);
-        $previous = getenv(LeakLog::PATH_ENV);
-        putenv(LeakLog::PATH_ENV.'='.$project->path('never-written.log'));
+        $previous = \getenv(LeakLog::PATH_ENV);
+        \putenv(LeakLog::PATH_ENV.'='.$project->path('never-written.log'));
 
         try {
             $tester = new CommandTester(new FlakeScanCommand(
                 static function (string $junit, ?int $processes, ?string $testsuite, int $timeout): int {
-                    file_put_contents($junit, data: '<?xml version="1.0"?><testsuites/>');
+                    \file_put_contents($junit, data: '<?xml version="1.0"?><testsuites/>');
 
                     return 0;
                 },
@@ -419,7 +419,7 @@ final class FlakeScanCommandTest extends TestCase
             $this->assertStringContainsString('leak reports across all runs: 0', $tester->getDisplay());
             $this->assertStringContainsString('clean', $tester->getDisplay());
         } finally {
-            putenv(\is_string($previous) ? LeakLog::PATH_ENV.'='.$previous : LeakLog::PATH_ENV);
+            \putenv(\is_string($previous) ? LeakLog::PATH_ENV.'='.$previous : LeakLog::PATH_ENV);
         }
     }
 
@@ -463,7 +463,7 @@ final class FlakeScanCommandTest extends TestCase
         $tester = new CommandTester(new FlakeScanCommand(
             static function (string $junit, ?int $processes, ?string $testsuite, int $timeout) use (&$received): int {
                 $received = $timeout;
-                file_put_contents($junit, data: '<?xml version="1.0"?><testsuites/>');
+                \file_put_contents($junit, data: '<?xml version="1.0"?><testsuites/>');
 
                 return 0;
             },

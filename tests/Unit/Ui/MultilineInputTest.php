@@ -26,7 +26,7 @@ final class MultilineInputTest extends TestCase
         $input = new MultilineInput($style);
         $input->handleKey('a');
 
-        $out = implode('', $input->render(20, 3, cursor: CaretVisibility::Shown));
+        $out = \implode('', $input->render(20, 3, cursor: CaretVisibility::Shown));
         $this->assertStringContainsString(AnsiUtils::cursorMarker(CursorShape::Underline), $out, 'the marker carries the holder shape');
     }
 
@@ -126,7 +126,7 @@ final class MultilineInputTest extends TestCase
 
     private function markers(string ...$lines): int
     {
-        return array_sum(array_map(static fn (string $l): int => substr_count($l, AnsiUtils::cursorMarker(CursorShape::Bar)), $lines));
+        return \array_sum(\array_map(static fn (string $l): int => \substr_count($l, AnsiUtils::cursorMarker(CursorShape::Bar)), $lines));
     }
 
     public function testRenderScrollsToKeepTheCaretLineVisible(): void
@@ -137,7 +137,7 @@ final class MultilineInputTest extends TestCase
         $window = $input->render(10, 3, cursor: CaretVisibility::Shown);
 
         $this->assertCount(3, $window, 'only the 3-row window is returned');
-        $this->assertSame(['l3', 'l4', 'l5'], array_map(AnsiUtils::stripAnsiCodes(...), $window), 'scrolled so the caret line shows');
+        $this->assertSame(['l3', 'l4', 'l5'], \array_map(AnsiUtils::stripAnsiCodes(...), $window), 'scrolled so the caret line shows');
         $this->assertSame(1, $this->markers(...$window), 'the caret marker is inside the window');
         $this->assertNotSame('l5', $window[2], 'the marker is on the caret (last) line');
     }
@@ -150,7 +150,7 @@ final class MultilineInputTest extends TestCase
 
         $window = $input->render(10, 3, cursor: CaretVisibility::Shown);
 
-        $this->assertSame(['l1', 'l2', 'l3'], array_map(AnsiUtils::stripAnsiCodes(...), $window), 'window anchored at the top');
+        $this->assertSame(['l1', 'l2', 'l3'], \array_map(AnsiUtils::stripAnsiCodes(...), $window), 'window anchored at the top');
         $this->assertSame(1, $this->markers(...$window), 'the caret marker is still shown');
         $this->assertNotSame('l1', $window[0], 'the marker is on the caret (first) line');
     }
@@ -172,7 +172,7 @@ final class MultilineInputTest extends TestCase
 
         $this->assertTrue($input->handleKey("\x7f"));
         $this->assertSame('slow ', $input->value(), 'the whole em-dash is removed');
-        $this->assertTrue(mb_check_encoding($input->value(), encoding: 'UTF-8'), 'never leaves a partial sequence');
+        $this->assertTrue(\mb_check_encoding($input->value(), encoding: 'UTF-8'), 'never leaves a partial sequence');
     }
 
     public function testArrowsMoveByWholeCharacterAcrossMultibyte(): void
@@ -185,12 +185,12 @@ final class MultilineInputTest extends TestCase
         // Inserting here must land between 'a' and the em-dash, not mid-sequence.
         $input->handleKey('X');
         $this->assertSame("aX\u{2014}b", $input->value());
-        $this->assertTrue(mb_check_encoding($input->value(), encoding: 'UTF-8'), 'never leaves a partial sequence');
+        $this->assertTrue(\mb_check_encoding($input->value(), encoding: 'UTF-8'), 'never leaves a partial sequence');
 
         $input->handleKey("\x1b[C"); // right over the em-dash in one step
         $input->handleKey('Y');
         $this->assertSame("aX\u{2014}Yb", $input->value());
-        $this->assertTrue(mb_check_encoding($input->value(), encoding: 'UTF-8'), 'never leaves a partial sequence');
+        $this->assertTrue(\mb_check_encoding($input->value(), encoding: 'UTF-8'), 'never leaves a partial sequence');
     }
 
     public function testUpDownNeverLandMidCharacter(): void
@@ -200,14 +200,14 @@ final class MultilineInputTest extends TestCase
 
         $input->handleKey("\x1b[A"); // up onto the multibyte line at byte col 2 (mid em-dash)
         $input->handleKey('Z'); // insert must not split the em-dash
-        $this->assertTrue(mb_check_encoding($input->value(), encoding: 'UTF-8'), 'never leaves a partial sequence');
+        $this->assertTrue(\mb_check_encoding($input->value(), encoding: 'UTF-8'), 'never leaves a partial sequence');
         $this->assertStringContainsString("\u{2014}", $input->value(), 'the em-dash survived intact');
     }
 
     public function testRenderHorizontallyWindowsALongCaretLine(): void
     {
         $input = new MultilineInput();
-        $this->type($input, str_repeat('x', times: 60)); // one 60-column line, caret at the end
+        $this->type($input, \str_repeat('x', times: 60)); // one 60-column line, caret at the end
 
         $window = $input->render(10, 3, cursor: CaretVisibility::Shown);
 

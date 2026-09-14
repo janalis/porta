@@ -36,9 +36,9 @@ final class IdeConfigScopeMergeTest extends TestCase
      */
     private function load(array $global, array $project): IdeConfig
     {
-        $this->home = new TempProject(['.porta/config.json' => json_encode($global, \JSON_THROW_ON_ERROR)]);
-        $this->project = new TempProject(['.porta.json' => json_encode($project, \JSON_THROW_ON_ERROR)]);
-        putenv('PORTA_HOME='.$this->home->dir);
+        $this->home = new TempProject(['.porta/config.json' => \json_encode($global, \JSON_THROW_ON_ERROR)]);
+        $this->project = new TempProject(['.porta.json' => \json_encode($project, \JSON_THROW_ON_ERROR)]);
+        \putenv('PORTA_HOME='.$this->home->dir);
 
         return IdeConfig::load($this->project->dir);
     }
@@ -211,12 +211,12 @@ final class IdeConfigScopeMergeTest extends TestCase
      */
     public function testDisablingABundledPluginKeepsTheRestOfTheGlobalChoice(): void
     {
-        $this->home = new TempProject(['.porta/config.json' => json_encode(
+        $this->home = new TempProject(['.porta/config.json' => \json_encode(
             ['enabledPlugins' => ['git', 'todo']],
             \JSON_THROW_ON_ERROR,
         )]);
         $this->project = new TempProject([]);
-        putenv('PORTA_HOME='.$this->home->dir);
+        \putenv('PORTA_HOME='.$this->home->dir);
         $files = new ConfigFiles($this->project->dir, $this->home->dir);
 
         new PortaJsonWriter($files)->persistBundledDisabled(ConfigScope::Project, 'git');
@@ -231,12 +231,12 @@ final class IdeConfigScopeMergeTest extends TestCase
     /** And enabling one adds to that same effective list. */
     public function testEnablingABundledPluginAddsToTheGlobalChoice(): void
     {
-        $this->home = new TempProject(['.porta/config.json' => json_encode(
+        $this->home = new TempProject(['.porta/config.json' => \json_encode(
             ['enabledPlugins' => ['git']],
             \JSON_THROW_ON_ERROR,
         )]);
         $this->project = new TempProject([]);
-        putenv('PORTA_HOME='.$this->home->dir);
+        \putenv('PORTA_HOME='.$this->home->dir);
         $files = new ConfigFiles($this->project->dir, $this->home->dir);
 
         new PortaJsonWriter($files)->persistBundledEnabled(ConfigScope::Project, 'todo');
@@ -253,13 +253,13 @@ final class IdeConfigScopeMergeTest extends TestCase
     {
         $this->home = new TempProject([]);
         $this->project = new TempProject([]);
-        putenv('PORTA_HOME='.$this->home->dir);
+        \putenv('PORTA_HOME='.$this->home->dir);
         $files = new ConfigFiles($this->project->dir, $this->home->dir);
 
         new PortaJsonWriter($files)->persistBundledDisabled(ConfigScope::Global, 'git');
 
         $this->assertSame(
-            array_values(array_diff(IdeConfig::DEFAULT_ENABLED_PLUGINS, ['git'])),
+            \array_values(\array_diff(IdeConfig::DEFAULT_ENABLED_PLUGINS, ['git'])),
             IdeConfig::load($this->project->dir)->enabledPlugins,
         );
     }
@@ -274,12 +274,12 @@ final class IdeConfigScopeMergeTest extends TestCase
      */
     public function testEnablingAGloballyDisabledPluginWritesNoProjectFile(): void
     {
-        $this->home = new TempProject(['.porta/config.json' => json_encode(
+        $this->home = new TempProject(['.porta/config.json' => \json_encode(
             ['disabledPlugins' => ['noisy']],
             \JSON_THROW_ON_ERROR,
         )]);
         $this->project = new TempProject([]);
-        putenv('PORTA_HOME='.$this->home->dir);
+        \putenv('PORTA_HOME='.$this->home->dir);
         $files = new ConfigFiles($this->project->dir, $this->home->dir);
 
         $this->assertTrue(
@@ -300,7 +300,7 @@ final class IdeConfigScopeMergeTest extends TestCase
     {
         $this->home = new TempProject([]);
         $this->project = new TempProject([]);
-        putenv('PORTA_HOME='.$this->home->dir);
+        \putenv('PORTA_HOME='.$this->home->dir);
         $files = new ConfigFiles($this->project->dir, $this->home->dir);
 
         new PortaJsonWriter($files)->resetSetting(ConfigScope::Project, 'theme');
@@ -312,11 +312,11 @@ final class IdeConfigScopeMergeTest extends TestCase
     public function testAnExistingFileIsStillWrittenWhenItsLastKeyIsCleared(): void
     {
         $this->home = new TempProject([]);
-        $this->project = new TempProject(['.porta.json' => json_encode(
+        $this->project = new TempProject(['.porta.json' => \json_encode(
             ['settings' => ['theme' => 'light']],
             \JSON_THROW_ON_ERROR,
         )]);
-        putenv('PORTA_HOME='.$this->home->dir);
+        \putenv('PORTA_HOME='.$this->home->dir);
         $files = new ConfigFiles($this->project->dir, $this->home->dir);
 
         new PortaJsonWriter($files)->resetSetting(ConfigScope::Project, 'theme');
@@ -346,8 +346,8 @@ final class IdeConfigScopeMergeTest extends TestCase
     public function testAProjectWithNoGlobalFileLoadsExactlyAsBefore(): void
     {
         $this->home = new TempProject([]);
-        $this->project = new TempProject(['.porta.json' => json_encode(['settings' => ['cursorShape' => 'block']], \JSON_THROW_ON_ERROR)]);
-        putenv('PORTA_HOME='.$this->home->dir);
+        $this->project = new TempProject(['.porta.json' => \json_encode(['settings' => ['cursorShape' => 'block']], \JSON_THROW_ON_ERROR)]);
+        \putenv('PORTA_HOME='.$this->home->dir);
 
         $config = IdeConfig::load($this->project->dir);
 
@@ -359,9 +359,9 @@ final class IdeConfigScopeMergeTest extends TestCase
     /** And a global file with no project one is the state a new user is in. */
     public function testAGlobalFileAloneIsEnough(): void
     {
-        $this->home = new TempProject(['.porta/config.json' => json_encode(['settings' => ['theme' => 'light']], \JSON_THROW_ON_ERROR)]);
+        $this->home = new TempProject(['.porta/config.json' => \json_encode(['settings' => ['theme' => 'light']], \JSON_THROW_ON_ERROR)]);
         $this->project = new TempProject([]);
-        putenv('PORTA_HOME='.$this->home->dir);
+        \putenv('PORTA_HOME='.$this->home->dir);
 
         $this->assertSame('light', IdeConfig::load($this->project->dir)->settings['theme']);
     }
@@ -370,8 +370,8 @@ final class IdeConfigScopeMergeTest extends TestCase
     public function testABrokenGlobalFileWarnsAndTheProjectStillLoads(): void
     {
         $this->home = new TempProject(['.porta/config.json' => '{not json']);
-        $this->project = new TempProject(['.porta.json' => json_encode(['settings' => ['cursorShape' => 'block']], \JSON_THROW_ON_ERROR)]);
-        putenv('PORTA_HOME='.$this->home->dir);
+        $this->project = new TempProject(['.porta.json' => \json_encode(['settings' => ['cursorShape' => 'block']], \JSON_THROW_ON_ERROR)]);
+        \putenv('PORTA_HOME='.$this->home->dir);
 
         $config = IdeConfig::load($this->project->dir);
 

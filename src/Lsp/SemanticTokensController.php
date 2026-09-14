@@ -161,7 +161,7 @@ final readonly class SemanticTokensController
         }
 
         /** @var list<string> $strings */
-        $strings = array_values(array_filter($value, \is_string(...)));
+        $strings = \array_values(\array_filter($value, \is_string(...)));
 
         return \count($strings) === \count($value) ? $strings : [];
     }
@@ -183,7 +183,7 @@ final readonly class SemanticTokensController
         }
 
         /** @var list<int> $ints */
-        $ints = array_values(array_filter($value, \is_int(...)));
+        $ints = \array_values(\array_filter($value, \is_int(...)));
 
         return \count($ints) === \count($value) ? $ints : [];
     }

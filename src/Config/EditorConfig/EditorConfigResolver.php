@@ -18,7 +18,7 @@ final class EditorConfigResolver
 {
     public function resolve(string $absoluteFilePath): ResolvedEditorConfig
     {
-        $real = realpath($absoluteFilePath);
+        $real = \realpath($absoluteFilePath);
         $file = false !== $real ? $real : $absoluteFilePath;
 
         // Collect (dir, parsed) walking up, nearest first, until a root file.
@@ -47,7 +47,7 @@ final class EditorConfigResolver
 
         // Merge farthest→nearest so nearer files win; later sections win too.
         $props = [];
-        foreach (array_reverse($collected) as $entry) {
+        foreach (\array_reverse($collected) as $entry) {
             $relative = self::relativePath($entry['dir'], $file);
             foreach ($entry['parsed']['sections'] as $section) {
                 if (!EditorConfigGlob::matches($section['glob'], $relative)) {
@@ -61,7 +61,7 @@ final class EditorConfigResolver
         }
 
         // `unset` explicitly clears an inherited property (spec).
-        $props = array_filter($props, static fn (string $value): bool => 'unset' !== strtolower($value));
+        $props = \array_filter($props, static fn (string $value): bool => 'unset' !== \strtolower($value));
 
         return ResolvedEditorConfig::fromProps($props);
     }
@@ -70,6 +70,6 @@ final class EditorConfigResolver
     {
         $prefix = '/' === $dir ? '/' : $dir.'/';
 
-        return str_starts_with($file, $prefix) ? substr($file, \strlen($prefix)) : $file;
+        return \str_starts_with($file, $prefix) ? \substr($file, \strlen($prefix)) : $file;
     }
 }

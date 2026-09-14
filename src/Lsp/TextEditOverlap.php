@@ -59,7 +59,7 @@ final class TextEditOverlap
         // Sorted by START, top-down — the opposite of the order they are
         // applied in, because "does this one reach into the next" is a question
         // about the ORIGINAL document and reads forwards.
-        usort($ranges, static fn (array $a, array $b): int => $a['start'] <=> $b['start']);
+        \usort($ranges, static fn (array $a, array $b): int => $a['start'] <=> $b['start']);
 
         foreach ($ranges as $index => $range) {
             $next = $ranges[$index + 1] ?? null;

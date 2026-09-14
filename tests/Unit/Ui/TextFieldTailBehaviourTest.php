@@ -77,7 +77,7 @@ final class TextFieldTailBehaviourTest extends TestCase
 
     public function testAnOverflowingValueScrollsSoTheTailCaretStaysOnScreen(): void
     {
-        $field = new TextField(str_repeat('x', times: 40));
+        $field = new TextField(\str_repeat('x', times: 40));
 
         $rendered = $field->render(CaretVisibility::Shown, width: 10);
 

@@ -178,7 +178,7 @@ final class DocumentReplacerTest extends TestCase
         $this->assertNotNull($client);
         $this->assertSame(
             ['textDocument/didOpen', 'textDocument/didChange'],
-            array_column($client->notifications, 'method'),
+            \array_column($client->notifications, 'method'),
         );
     }
 }

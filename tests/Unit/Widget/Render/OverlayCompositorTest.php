@@ -12,7 +12,7 @@ final class OverlayCompositorTest extends TestCase
 {
     public function testCompositesPopupAndKeepsTheLineExactlyTheTerminalWidth(): void
     {
-        $line = str_repeat(' ', times: 20);
+        $line = \str_repeat(' ', times: 20);
         $popup = "\x1b[7m[popup]\x1b[0m"; // 7 visible columns
 
         $out = OverlayCompositor::into($line, 5, 7, 20, $popup);
@@ -27,7 +27,7 @@ final class OverlayCompositorTest extends TestCase
         // an overlay spills across a widget boundary): the background must not
         // bleed across the tail. Regression: a menu spilling into a blank editor
         // pane painted its box background across the whole pane.
-        $line = str_repeat(' ', times: 40); // blank pane (no styling of its own)
+        $line = \str_repeat(' ', times: 40); // blank pane (no styling of its own)
         $clippedPopup = "\x1b[48;5;236mBOX"; // opens a background, never resets
 
         $out = OverlayCompositor::into($line, 4, 3, 40, $clippedPopup);
@@ -48,12 +48,12 @@ final class OverlayCompositorTest extends TestCase
         $marker = AnsiUtils::cursorMarker();
         // The line's own marker sits exactly at the tail's start column, so
         // slicing at that boundary re-emits a duplicate at the tail's front.
-        $line = str_repeat('.', times: 8).$marker.str_repeat('.', times: 12);
+        $line = \str_repeat('.', times: 8).$marker.\str_repeat('.', times: 12);
         $popup = $marker.'XXX'; // the popup carries a marker of its own; the head does not
 
         $out = OverlayCompositor::into($line, 5, 3, 20, $popup);
 
-        $this->assertSame(1, substr_count($out, AnsiUtils::CURSOR_MARKER_PREFIX), 'only the popup\'s marker survives — the tail\'s duplicate is stripped');
+        $this->assertSame(1, \substr_count($out, AnsiUtils::CURSOR_MARKER_PREFIX), 'only the popup\'s marker survives — the tail\'s duplicate is stripped');
     }
 
     /**
@@ -66,11 +66,11 @@ final class OverlayCompositorTest extends TestCase
         $marker = AnsiUtils::cursorMarker();
         // Well past the tail's start column — not a boundary re-emission, just
         // literally where the marker sits in the original line.
-        $line = str_repeat('.', times: 10).$marker.str_repeat('.', times: 10);
+        $line = \str_repeat('.', times: 10).$marker.\str_repeat('.', times: 10);
 
         $out = OverlayCompositor::into($line, 2, 3, 20, 'XXX');
 
-        $this->assertSame(1, substr_count($out, AnsiUtils::CURSOR_MARKER_PREFIX), 'the tail\'s own marker is not a duplicate — it must not be stripped');
+        $this->assertSame(1, \substr_count($out, AnsiUtils::CURSOR_MARKER_PREFIX), 'the tail\'s own marker is not a duplicate — it must not be stripped');
     }
 
     /** The background colour in effect at visible column $col (net of every SGR code up to it). */
@@ -78,14 +78,14 @@ final class OverlayCompositorTest extends TestCase
     {
         $slice = AnsiUtils::sliceByColumn($line, $col, 1, true); // carries all prior SGR as pending
         $bg = 'default';
-        if (preg_match_all('/\x1b\[([0-9;]*)m/', $slice, $codes)) {
+        if (\preg_match_all('/\x1b\[([0-9;]*)m/', $slice, $codes)) {
             foreach ($codes[1] as $params) {
                 if ('' === $params || '0' === $params || '49' === $params) {
                     $bg = 'default';
 
                     continue;
                 }
-                if (preg_match('/48;5;(\d+)/', $params, $m)) {
+                if (\preg_match('/48;5;(\d+)/', $params, $m)) {
                     $bg = '48;5;'.$m[1];
                 }
             }

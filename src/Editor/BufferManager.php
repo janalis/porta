@@ -109,7 +109,7 @@ final class BufferManager
         if (null === $id) {
             return null; // no file behind it yet: a new file is its own buffer
         }
-        foreach (array_keys($this->buffers) as $open) {
+        foreach (\array_keys($this->buffers) as $open) {
             if ($id === self::fileId($open)) {
                 return $open;
             }
@@ -129,7 +129,7 @@ final class BufferManager
      */
     private static function fileId(string $path): ?string
     {
-        $stat = is_file($path) ? stat($path) : false;
+        $stat = \is_file($path) ? \stat($path) : false;
 
         return \is_array($stat) ? $stat['dev'].':'.$stat['ino'] : null;
     }
@@ -165,11 +165,11 @@ final class BufferManager
      */
     public function cycle(int $offset): ?Buffer
     {
-        $paths = array_keys($this->buffers);
+        $paths = \array_keys($this->buffers);
         if (\count($paths) < 2 || null === $this->activePath) {
             return null;
         }
-        $index = array_search($this->activePath, $paths, strict: true);
+        $index = \array_search($this->activePath, $paths, strict: true);
         $next = $paths[((((int) $index + $offset) % \count($paths)) + \count($paths)) % \count($paths)];
 
         return $this->setActive($next);
@@ -212,7 +212,7 @@ final class BufferManager
      */
     public function reorder(int $from, int $to): void
     {
-        $paths = array_keys($this->buffers);
+        $paths = \array_keys($this->buffers);
         $to = IndexMove::target($from, $to, \count($paths));
         if (null === $to) {
             return;
@@ -235,8 +235,8 @@ final class BufferManager
         if (null === $this->activePath) {
             return false;
         }
-        $paths = array_keys($this->buffers);
-        $from = (int) array_search($this->activePath, $paths, strict: true);
+        $paths = \array_keys($this->buffers);
+        $from = (int) \array_search($this->activePath, $paths, strict: true);
         $to = $from + $offset;
         if ($to < 0 || $to >= \count($paths)) {
             return false;
@@ -249,20 +249,20 @@ final class BufferManager
     /** @return list<Buffer> in open order */
     public function all(): array
     {
-        return array_values($this->buffers);
+        return \array_values($this->buffers);
     }
 
     /** @return list<Buffer> most recently focused first */
     public function recent(): array
     {
-        $buffers = array_values($this->buffers);
-        usort($buffers, static fn (Buffer $a, Buffer $b) => $b->lastFocused <=> $a->lastFocused);
+        $buffers = \array_values($this->buffers);
+        \usort($buffers, static fn (Buffer $a, Buffer $b) => $b->lastFocused <=> $a->lastFocused);
 
         return $buffers;
     }
 
     public function dirtyCount(): int
     {
-        return \count(array_filter($this->buffers, static fn (Buffer $b) => $b->document->isDirty()));
+        return \count(\array_filter($this->buffers, static fn (Buffer $b) => $b->document->isDirty()));
     }
 }

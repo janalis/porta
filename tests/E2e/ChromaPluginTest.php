@@ -28,7 +28,7 @@ final class ChromaPluginTest extends TestCase
 
     protected function setUp(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
     }
 
     /**
@@ -50,7 +50,7 @@ final class ChromaPluginTest extends TestCase
 
     private function project(string $stubBody, string $source = "fn main()\n"): TempProject
     {
-        $plugin = (string) file_get_contents(__DIR__.'/../../plugins/chroma/plugin.php');
+        $plugin = (string) \file_get_contents(__DIR__.'/../../plugins/chroma/plugin.php');
         $project = new TempProject([
             '.porta/plugins/chroma/plugin.php' => $plugin,
             // Claim rust and drop the debounce so the test does not wait on it.
@@ -58,11 +58,11 @@ final class ChromaPluginTest extends TestCase
             'a.rs' => $source,
         ]);
 
-        if (!is_dir($project->path('vendor/bin'))) {
-            mkdir($project->path('vendor/bin'), permissions: 0o777, recursive: true);
+        if (!\is_dir($project->path('vendor/bin'))) {
+            \mkdir($project->path('vendor/bin'), permissions: 0o777, recursive: true);
         }
-        file_put_contents($project->path('vendor/bin/chroma'), '#!'.\PHP_BINARY.' -n'."\n<?php\n".$stubBody);
-        chmod($project->path('vendor/bin/chroma'), permissions: 0o755);
+        \file_put_contents($project->path('vendor/bin/chroma'), '#!'.\PHP_BINARY.' -n'."\n<?php\n".$stubBody);
+        \chmod($project->path('vendor/bin/chroma'), permissions: 0o755);
 
         return $project;
     }
@@ -83,7 +83,7 @@ final class ChromaPluginTest extends TestCase
                 // its paint never landed.
                 try {
                     $this->await(
-                        static fn (): bool => str_contains($terminal->getOutput(), "\x1b[38;5;176m"),
+                        static fn (): bool => \str_contains($terminal->getOutput(), "\x1b[38;5;176m"),
                         what: 'chroma keyword coloring to land',
                     );
                 } catch (\RuntimeException $timeout) {
@@ -91,7 +91,7 @@ final class ChromaPluginTest extends TestCase
                         $timeout->getMessage()
                         .' — the stub '
                         .(
-                            is_file($project->path('stub.ran'))
+                            \is_file($project->path('stub.ran'))
                                 ? 'DID run, so the answer or the repaint was lost'
                                 : 'never ran, so the dispatch or the spawn was lost'
                         ),
@@ -173,7 +173,7 @@ final class ChromaPluginTest extends TestCase
     /** With no binary anywhere the backend declines and the built-in serves the file. */
     public function testWithoutTheBinaryTheBackendDeclines(): void
     {
-        $plugin = (string) file_get_contents(__DIR__.'/../../plugins/chroma/plugin.php');
+        $plugin = (string) \file_get_contents(__DIR__.'/../../plugins/chroma/plugin.php');
         $project = new TempProject([
             '.porta/plugins/chroma/plugin.php' => $plugin,
             '.porta.json' => '{"plugins":{"chroma":{"languages":"php"}}}',

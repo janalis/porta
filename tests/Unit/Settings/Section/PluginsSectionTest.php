@@ -127,8 +127,8 @@ final class PluginsSectionTest extends TestCase
 
         $pages = $section->pages();
 
-        $this->assertSame(['plugins', 'plugin:git', 'plugin:todo'], array_column($pages, 'id'));
-        $this->assertSame(['Plugins', 'git', 'todo'], array_column($pages, 'label'), 'plugin names are identifiers, not translated');
+        $this->assertSame(['plugins', 'plugin:git', 'plugin:todo'], \array_column($pages, 'id'));
+        $this->assertSame(['Plugins', 'git', 'todo'], \array_column($pages, 'label'), 'plugin names are identifiers, not translated');
         foreach ($pages as $page) {
             $this->assertTrue($section->handles($page->id), $page->id.' is listed but the section does not claim it');
         }

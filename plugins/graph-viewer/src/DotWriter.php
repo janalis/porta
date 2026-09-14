@@ -35,11 +35,11 @@ final class DotWriter
         }
         $lines[] = '}';
 
-        return implode("\n", $lines)."\n";
+        return \implode("\n", $lines)."\n";
     }
 
     private static function quote(string $value): string
     {
-        return '"'.str_replace(['\\', '"'], ['\\\\', '\\"'], $value).'"';
+        return '"'.\str_replace(['\\', '"'], ['\\\\', '\\"'], $value).'"';
     }
 }

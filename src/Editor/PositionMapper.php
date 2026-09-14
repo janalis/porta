@@ -38,7 +38,7 @@ final class PositionMapper
     /** Display column (terminal cells) of a byte offset on the given line. */
     public function displayColAt(int $line, int $byteCol): int
     {
-        return TextMetrics::displayWidth(substr($this->document->getLine($line), offset: 0, length: $byteCol), $this->document->tabWidth());
+        return TextMetrics::displayWidth(\substr($this->document->getLine($line), offset: 0, length: $byteCol), $this->document->tabWidth());
     }
 
     /** Full display width (terminal cells) of a line. */
@@ -76,7 +76,7 @@ final class PositionMapper
      */
     public function positionAt(int $offset): array
     {
-        $offset = max(0, $offset);
+        $offset = \max(0, $offset);
         $line = 0;
         $count = $this->document->getLineCount();
         while ($line < ($count - 1)) {
@@ -88,7 +88,7 @@ final class PositionMapper
             ++$line;
         }
 
-        return ['line' => $line, 'col' => min($offset, \strlen($this->document->getLine($line)))];
+        return ['line' => $line, 'col' => \min($offset, \strlen($this->document->getLine($line)))];
     }
 
     /**
@@ -115,7 +115,7 @@ final class PositionMapper
         /** @var list<string>|null $expanded only existing indexes are overwritten, so the list shape holds */
         $expanded = null;
         foreach ($lines as $i => $line) {
-            if (!str_contains($line, "\t")) {
+            if (!\str_contains($line, "\t")) {
                 continue;
             }
 

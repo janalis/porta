@@ -39,7 +39,7 @@ final class DebugPanelWidgetTest extends TestCase
     /** @return list<string> */
     private function screen(DebugPanelWidget $panel): array
     {
-        return array_map(AnsiUtils::stripAnsiCodes(...), $panel->render(new RenderContext(80, 14)));
+        return \array_map(AnsiUtils::stripAnsiCodes(...), $panel->render(new RenderContext(80, 14)));
     }
 
     public function testClosedRendersNothingAndStatesLabelTheStatusText(): void
@@ -75,14 +75,14 @@ final class DebugPanelWidgetTest extends TestCase
             ['name' => 'Registers', 'variablesReference' => 0],
         ]);
 
-        $screen = implode("\n", $this->screen($panel));
+        $screen = \implode("\n", $this->screen($panel));
         $this->assertStringContainsString('Locals', $screen);
         $this->assertStringContainsString('Registers', $screen);
     }
 
     public function testFramesScopesAndVariablesFlattenIntoRows(): void
     {
-        $screen = implode("\n", $this->screen($this->panel()));
+        $screen = \implode("\n", $this->screen($this->panel()));
 
         $this->assertStringContainsString('Frames', $screen);
         $this->assertStringContainsString('#0 {main}  src/a.php:5', $screen, 'frame lines are 1-based for display');
@@ -144,15 +144,15 @@ final class DebugPanelWidgetTest extends TestCase
         }
         $panel->handleInput("\r");
         $this->assertSame([1001], $expanded, 'children fetched lazily on first expand');
-        $this->assertStringContainsString("0 = 'a'", implode("\n", $this->screen($panel)), 'delivered children render nested');
+        $this->assertStringContainsString("0 = 'a'", \implode("\n", $this->screen($panel)), 'delivered children render nested');
 
         $panel->handleInput("\r"); // collapse again — cached, no second fetch
         $this->assertSame([1001], $expanded);
-        $this->assertStringNotContainsString("0 = 'a'", implode("\n", $this->screen($panel)));
+        $this->assertStringNotContainsString("0 = 'a'", \implode("\n", $this->screen($panel)));
 
         $panel->handleInput("\r"); // re-expand uses the cache
         $this->assertSame([1001], $expanded);
-        $this->assertStringContainsString("0 = 'a'", implode("\n", $this->screen($panel)));
+        $this->assertStringContainsString("0 = 'a'", \implode("\n", $this->screen($panel)));
     }
 
     public function testHoverTintsTheRowWithoutMovingTheSelection(): void
@@ -185,7 +185,7 @@ final class DebugPanelWidgetTest extends TestCase
         $panel->setFrames([['id' => 9, 'name' => 'other', 'path' => 'src/c.php', 'line' => 1]]);
         $lines = $panel->render(new RenderContext(80, 14));
 
-        $this->assertStringNotContainsString("\x1b[48;5;236m", implode("\n", $lines), 'no row stays tinted after the rows are rebuilt');
+        $this->assertStringNotContainsString("\x1b[48;5;236m", \implode("\n", $lines), 'no row stays tinted after the rows are rebuilt');
     }
 
     public function testMouseClickHoverScrollAndEscape(): void
@@ -229,7 +229,7 @@ final class DebugPanelWidgetTest extends TestCase
     {
         $panel = $this->panel();
         $panel->setSessionState(DebugState::Running, null);
-        $screen = implode("\n", $this->screen($panel));
+        $screen = \implode("\n", $this->screen($panel));
         $this->assertStringNotContainsString('Frames', $screen, 'resuming clears the stale stack');
 
         $panel->setVisibleRows(4);
@@ -241,21 +241,21 @@ final class DebugPanelWidgetTest extends TestCase
         $panel = $this->panel();
         $panel->setWatches(['$x', '$boom']);
 
-        $screen = implode("\n", $this->screen($panel));
+        $screen = \implode("\n", $this->screen($panel));
         $this->assertStringContainsString('Watches', $screen);
         $this->assertStringContainsString('$x = …', $screen, 'unevaluated watches render pending');
 
         $panel->setWatchResult(0, '42', 0);
         $panel->setWatchResult(1, '', 0, 'cannot evaluate');
         $panel->setWatchResult(5, 'ghost', 0); // stale index after a removal: ignored
-        $screen = implode("\n", $this->screen($panel));
+        $screen = \implode("\n", $this->screen($panel));
         $this->assertStringContainsString('$x = 42', $screen);
         $this->assertStringContainsString('$boom = cannot evaluate', $screen);
         $this->assertStringNotContainsString('ghost', $screen);
 
         // Leaving pause resets values to pending but keeps the expressions.
         $panel->setSessionState(DebugState::Running, null);
-        $screen = implode("\n", $this->screen($panel));
+        $screen = \implode("\n", $this->screen($panel));
         $this->assertStringContainsString('$x = …', $screen);
         $this->assertStringNotContainsString('42', $screen);
     }
@@ -312,7 +312,7 @@ final class DebugPanelWidgetTest extends TestCase
 
         $panel->setSessionState(DebugState::Paused, 'src/a.php:5'); // re-enter to re-render watches
         $panel->setWatches(['$arr']); // same expr, reset ref should be 0 not stale
-        $screen = implode("\n", $this->screen($panel));
+        $screen = \implode("\n", $this->screen($panel));
         $this->assertStringNotContainsString('▸ $arr', $screen, 'a reset watch does not carry over the old expandable ref');
     }
 
@@ -328,7 +328,7 @@ final class DebugPanelWidgetTest extends TestCase
             ['name' => 'Locals', 'variablesReference' => 1000],
         ]);
 
-        $screen = implode("\n", $this->screen($panel));
+        $screen = \implode("\n", $this->screen($panel));
         $this->assertStringContainsString('▾ Locals', $screen, 'the real scope after a zero-ref one is still auto-expanded');
     }
 
@@ -337,7 +337,7 @@ final class DebugPanelWidgetTest extends TestCase
         $panel = $this->panel();
         $panel->setWatches(['$pending']);
 
-        $screen = implode("\n", $this->screen($panel));
+        $screen = \implode("\n", $this->screen($panel));
         $this->assertStringNotContainsString('▸ $pending', $screen, 'a watch with no ref yet renders blank, not a collapsed arrow');
         $this->assertStringNotContainsString('▾ $pending', $screen);
     }
@@ -436,7 +436,7 @@ final class DebugPanelWidgetTest extends TestCase
 
         $lines = $panel->render(new RenderContext(80, 14));
 
-        $this->assertSame(80, mb_strlen(AnsiUtils::stripAnsiCodes($lines[0])), 'a short row still fills the column width');
+        $this->assertSame(80, \mb_strlen(AnsiUtils::stripAnsiCodes($lines[0])), 'a short row still fills the column width');
     }
 
     public function testNestingDepthWidensTheIndentAtEachLevel(): void
@@ -464,7 +464,7 @@ final class DebugPanelWidgetTest extends TestCase
         $panel->handleInput("\x1b[B");
         $panel->handleInput("\r");
 
-        $lines = array_map(static fn (string $l): string => rtrim(AnsiUtils::stripAnsiCodes($l)), $panel->render(new RenderContext(60, 20)));
+        $lines = \array_map(static fn (string $l): string => \rtrim(AnsiUtils::stripAnsiCodes($l)), $panel->render(new RenderContext(60, 20)));
 
         $this->assertSame('   ▾ Locals', $lines[1], 'depth 1');
         $this->assertSame('     ▾ $arr = array(1)', $lines[2], 'depth 2');
@@ -489,7 +489,7 @@ final class DebugPanelWidgetTest extends TestCase
         $panel->handleInput("\x1b[B");
         $panel->handleInput("\r"); // expand $w
 
-        $lines = array_map(static fn (string $l): string => rtrim(AnsiUtils::stripAnsiCodes($l)), $panel->render(new RenderContext(60, 20)));
+        $lines = \array_map(static fn (string $l): string => \rtrim(AnsiUtils::stripAnsiCodes($l)), $panel->render(new RenderContext(60, 20)));
 
         $this->assertSame('   ▾ $w = v', $lines[1]);
         $this->assertSame('       w0 = v', $lines[2], 'the watch child sits one level deeper than the watch itself');
@@ -543,7 +543,7 @@ final class DebugPanelWidgetTest extends TestCase
         }
         $panel->handleInput("\r"); // expand the watch through its ref
         $this->assertSame([2000], $expanded);
-        $this->assertStringContainsString("0 = 'a'", implode("\n", $this->screen($panel)));
+        $this->assertStringContainsString("0 = 'a'", \implode("\n", $this->screen($panel)));
 
         $panel->handleInput("\x1b[3~"); // Delete on the watch row
         $this->assertSame([0], $removed);

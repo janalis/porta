@@ -375,7 +375,7 @@ final class SettingsViewControllerTest extends TestCase
     /** @return list<string> */
     private function ids(ContainerWidget $container): array
     {
-        return array_map(static fn (AbstractWidget $w): string => $w->getId(), $container->all());
+        return \array_map(static fn (AbstractWidget $w): string => $w->getId(), $container->all());
     }
 
     public function testOpenSwapsMainAndShowsGeneralFocused(): void
@@ -413,12 +413,12 @@ final class SettingsViewControllerTest extends TestCase
         $this->selectSettingsSection($this->nav, 'highlighting');
         $this->assertSame('highlighting', $this->nav->selectedId());
 
-        $screen = implode("\n", $this->form->render(new \Symfony\Component\Tui\Render\RenderContext(80, 12)));
+        $screen = \implode("\n", $this->form->render(new \Symfony\Component\Tui\Render\RenderContext(80, 12)));
         $this->assertStringContainsString('Default highlighter', $screen);
 
         $this->form->handleInput("\x1b[B"); // past the "Save changes to" lead row
         $this->form->handleInput("\r"); // cycle the default choice off "auto"
-        $config = json_decode((string) file_get_contents($this->project->path('.porta.json')), associative: true);
+        $config = \json_decode((string) \file_get_contents($this->project->path('.porta.json')), associative: true);
 
         $this->assertArrayHasKey('highlight', \is_array($config) ? $config : []);
     }
@@ -432,7 +432,7 @@ final class SettingsViewControllerTest extends TestCase
         $this->assertSame(['settings-keys'], $this->ids($this->content));
         $this->assertSame($this->keymapList, $controller->focusTarget());
 
-        $screen = implode("\n", $this->keymapList->render(new \Symfony\Component\Tui\Render\RenderContext(80, 20)));
+        $screen = \implode("\n", $this->keymapList->render(new \Symfony\Component\Tui\Render\RenderContext(80, 20)));
         $this->assertStringContainsString('actions', $screen, 'the keybindings list is populated');
     }
 
@@ -448,7 +448,7 @@ final class SettingsViewControllerTest extends TestCase
         // Tall enough for the whole page: the assertion below names its LAST
         // row, so a viewport that merely fits today's count would start failing
         // the next time the page gains one.
-        $screen = implode("\n", $this->form->render(new \Symfony\Component\Tui\Render\RenderContext(80, 24)));
+        $screen = \implode("\n", $this->form->render(new \Symfony\Component\Tui\Render\RenderContext(80, 24)));
         $this->assertStringContainsString('Theme', $screen);
         $this->assertStringContainsString('Line numbers', $screen);
         $this->assertStringContainsString('Sticky scroll', $screen);
@@ -475,7 +475,7 @@ final class SettingsViewControllerTest extends TestCase
         $this->assertSame('lang:php', $this->nav->selectedId());
         $this->assertSame(['settings-form'], $this->ids($this->content));
 
-        $screen = implode("\n", $this->form->render(new \Symfony\Component\Tui\Render\RenderContext(80, 8)));
+        $screen = \implode("\n", $this->form->render(new \Symfony\Component\Tui\Render\RenderContext(80, 8)));
         $this->assertStringContainsString('Indent style', $screen);
         $this->assertStringContainsString('Indent size', $screen);
         $this->assertStringContainsString('LSP server', $screen, 'the language section also shows its LSP server row');
@@ -501,7 +501,7 @@ final class SettingsViewControllerTest extends TestCase
         $this->form->handleInput("\x1b[B");
         $this->form->handleInput("\x1b[B");
         $this->form->handleInput("\r"); // start editing
-        foreach (str_split('phpactor') as $char) {
+        foreach (\str_split('phpactor') as $char) {
             $this->form->handleInput($char);
         }
         $this->form->handleInput("\r"); // commit
@@ -521,7 +521,7 @@ final class SettingsViewControllerTest extends TestCase
             $this->form->handleInput("\x1b[B");
         }
         $this->form->handleInput("\r"); // start editing
-        foreach (str_split('node dbg.js') as $char) {
+        foreach (\str_split('node dbg.js') as $char) {
             $this->form->handleInput($char);
         }
         $this->form->handleInput("\r"); // commit
@@ -548,7 +548,7 @@ final class SettingsViewControllerTest extends TestCase
         $this->form->handleInput("\r"); // toggle the first own row off its default
         $this->assertFalse(IdeConfig::load($this->project->dir)->settings['inlineDiagnostics'], 'set first');
         $this->form->handleInput('r');
-        $written = json_decode((string) file_get_contents($this->project->path('.porta.json')), associative: true);
+        $written = \json_decode((string) \file_get_contents($this->project->path('.porta.json')), associative: true);
         $this->assertArrayNotHasKey('inlineDiagnostics', $written['settings'] ?? [], 'reset removed the key rather than writing the default');
 
         // A language page: the indent rows spell their default `auto`.
@@ -622,13 +622,13 @@ final class SettingsViewControllerTest extends TestCase
         $this->selectSettingRow($this->form, 'Launch config');
 
         $this->form->handleInput("\r"); // open the inline editor
-        foreach (str_split('{not json') as $char) {
+        foreach (\str_split('{not json') as $char) {
             $this->form->handleInput($char);
         }
         $this->form->handleInput("\r"); // commit → the controller refuses
 
         $this->assertNotNull(Probe::get($this->form, 'editing'), 'still editing, so the value can be corrected');
-        $screen = AnsiUtils::stripAnsiCodes(implode('', $this->form->render(new \Symfony\Component\Tui\Render\RenderContext(80, 10))));
+        $screen = AnsiUtils::stripAnsiCodes(\implode('', $this->form->render(new \Symfony\Component\Tui\Render\RenderContext(80, 10))));
         $this->assertStringContainsString('{not json', $screen, 'and the typing survived the refusal');
     }
 
@@ -645,7 +645,7 @@ final class SettingsViewControllerTest extends TestCase
     public function testTheNavAndThePageCatalogueListTheSameIds(): void
     {
         $controller = $this->controller();
-        $pages = array_column(Probe::object($controller, 'pages')->all(), 'id');
+        $pages = \array_column(Probe::object($controller, 'pages')->all(), 'id');
 
         $navIds = [];
         for ($i = 0; $i < 64; ++$i) {
@@ -660,10 +660,10 @@ final class SettingsViewControllerTest extends TestCase
         // view swaps in a different widget for it, and it has no SettingsRows
         // to catalogue. Named here rather than silently filtered, so adding a
         // second such entry has to come past this assertion.
-        $navIds = array_values(array_filter($navIds, static fn (string $id): bool => 'keybindings' !== $id));
+        $navIds = \array_values(\array_filter($navIds, static fn (string $id): bool => 'keybindings' !== $id));
 
-        sort($navIds);
-        sort($pages);
+        \sort($navIds);
+        \sort($pages);
         $this->assertSame($navIds, $pages, 'the nav and the page catalogue disagree about which pages exist');
     }
 
@@ -704,7 +704,7 @@ final class SettingsViewControllerTest extends TestCase
         $this->keymapList->handleInput("\x1b[3~"); // Delete
 
         $this->assertArrayNotHasKey('cursor_up', IdeConfig::load($this->project->dir)->keymap);
-        $rows = array_column(Probe::get($this->keymapList, 'rows'), null, 'action');
+        $rows = \array_column(Probe::get($this->keymapList, 'rows'), null, 'action');
         $this->assertFalse($rows['cursor_up']->overridden, 'and the list was rebuilt, not left showing the override');
     }
 
@@ -750,15 +750,15 @@ final class SettingsViewControllerTest extends TestCase
     public function testPluginsSectionShowsItsRowsAndRoutesChanges(): void
     {
         $controller = $this->controller();
-        mkdir($this->project->dir.'/.porta/plugins/demo', permissions: 0o777, recursive: true);
-        file_put_contents($this->project->dir.'/.porta/plugins/demo/plugin.php', data: "<?php\n");
+        \mkdir($this->project->dir.'/.porta/plugins/demo', permissions: 0o777, recursive: true);
+        \file_put_contents($this->project->dir.'/.porta/plugins/demo/plugin.php', data: "<?php\n");
         $controller->open();
 
         $this->selectSettingsSection($this->nav, 'plugins');
         $this->assertSame('plugins', $this->nav->selectedId());
         $this->assertSame(['settings-form'], $this->ids($this->content));
 
-        $screen = implode("\n", $this->form->render(new \Symfony\Component\Tui\Render\RenderContext(80, 8)));
+        $screen = \implode("\n", $this->form->render(new \Symfony\Component\Tui\Render\RenderContext(80, 8)));
         $this->assertStringContainsString('Save changes to', $screen);
         $this->assertStringContainsString('Install plugin', $screen);
         $this->assertMatchesRegularExpression('/demo \(project\)\s+\[Remove\]/', $screen);
@@ -770,7 +770,7 @@ final class SettingsViewControllerTest extends TestCase
         $this->form->handleInput("\r");
         $this->form->handleInput("\r");
         $this->assertDirectoryDoesNotExist($this->project->dir.'/.porta/plugins/demo');
-        $screen = implode("\n", $this->form->render(new \Symfony\Component\Tui\Render\RenderContext(80, 8)));
+        $screen = \implode("\n", $this->form->render(new \Symfony\Component\Tui\Render\RenderContext(80, 8)));
         $this->assertStringNotContainsString('demo (project)', $screen);
     }
 
@@ -785,10 +785,10 @@ final class SettingsViewControllerTest extends TestCase
         $this->assertSame(['settings-form'], $this->ids($this->content));
 
         $this->selectSettingsSection($this->nav, 'plugins');
-        mkdir($this->project->dir.'/.porta/plugins/late', permissions: 0o777, recursive: true);
-        file_put_contents($this->project->dir.'/.porta/plugins/late/plugin.php', data: "<?php\n");
+        \mkdir($this->project->dir.'/.porta/plugins/late', permissions: 0o777, recursive: true);
+        \file_put_contents($this->project->dir.'/.porta/plugins/late/plugin.php', data: "<?php\n");
         $controller->refresh(); // re-reads the rows: the late plugin appears
-        $screen = implode("\n", $this->form->render(new \Symfony\Component\Tui\Render\RenderContext(80, 8)));
+        $screen = \implode("\n", $this->form->render(new \Symfony\Component\Tui\Render\RenderContext(80, 8)));
         $this->assertMatchesRegularExpression('/late \(project\)\s+\[Remove\]/', $screen);
     }
 
@@ -805,14 +805,14 @@ final class SettingsViewControllerTest extends TestCase
         $this->nav->setPluginEntries(['demo']);
         $this->selectSettingsSection($this->nav, 'plugin:demo');
         $this->assertSame('plugin:demo', $this->nav->selectedId());
-        $screen = implode("\n", $this->form->render(new \Symfony\Component\Tui\Render\RenderContext(80, 8)));
+        $screen = \implode("\n", $this->form->render(new \Symfony\Component\Tui\Render\RenderContext(80, 8)));
         $this->assertStringContainsString('Enabled', $screen);
         $this->assertStringContainsString('Binary path', $screen);
 
         // Editing the text row routes into PluginSettings.
         $this->form->handleInput("\x1b[B"); // → the binary row
         $this->form->handleInput("\r");
-        foreach (str_split('/opt/x') as $char) {
+        foreach (\str_split('/opt/x') as $char) {
             $this->form->handleInput($char);
         }
         $this->form->handleInput("\r");
@@ -822,7 +822,7 @@ final class SettingsViewControllerTest extends TestCase
         $this->lifecycle->names = [];
         $controller->refresh();
         $this->assertSame('plugins', $this->nav->selectedId());
-        $screen = implode("\n", $this->form->render(new \Symfony\Component\Tui\Render\RenderContext(80, 8)));
+        $screen = \implode("\n", $this->form->render(new \Symfony\Component\Tui\Render\RenderContext(80, 8)));
         $this->assertStringContainsString('Install plugin', $screen);
     }
 
@@ -1015,14 +1015,14 @@ final class SettingsViewControllerTest extends TestCase
         $controller = $this->controller();
         $controller->open();
         $this->selectSettingsSection($this->nav, 'plugins');
-        mkdir($this->project->dir.'/.porta/plugins/late', permissions: 0o777, recursive: true);
-        file_put_contents($this->project->dir.'/.porta/plugins/late/plugin.php', data: "<?php\n");
+        \mkdir($this->project->dir.'/.porta/plugins/late', permissions: 0o777, recursive: true);
+        \file_put_contents($this->project->dir.'/.porta/plugins/late/plugin.php', data: "<?php\n");
         Probe::set($this->tui, 'renderRequested', false);
 
         $controller->refresh();
 
         $this->assertTrue(Probe::get($this->tui, 'renderRequested'), 'refresh() on the plugins section must request a render');
-        $screen = implode("\n", $this->form->render(new \Symfony\Component\Tui\Render\RenderContext(80, 8)));
+        $screen = \implode("\n", $this->form->render(new \Symfony\Component\Tui\Render\RenderContext(80, 8)));
         $this->assertMatchesRegularExpression('/late \(project\)\s+\[Remove\]/', $screen);
     }
 
@@ -1047,7 +1047,7 @@ final class SettingsViewControllerTest extends TestCase
         // priority level, so a rebind is the only thing that could ever fill
         // it in.
         $rows = Probe::get($this->keymapList, 'rows');
-        $targetIndex = array_search('move_tab_left', array_column($rows, 'action'), strict: true);
+        $targetIndex = \array_search('move_tab_left', \array_column($rows, 'action'), strict: true);
         \assert(false !== $targetIndex, description: 'move_tab_left is a registered action');
         for ($i = 0; $i < $targetIndex; ++$i) {
             $this->keymapList->handleInput("\x1b[B");
@@ -1097,7 +1097,7 @@ final class SettingsViewControllerTest extends TestCase
     private static function formatOnSave(): FormatOnSave
     {
         $editor = new CodeEditorWidget();
-        $pool = new LspSessionPool(sys_get_temp_dir(), new FixedActiveFile(), new Translator('en'));
+        $pool = new LspSessionPool(\sys_get_temp_dir(), new FixedActiveFile(), new Translator('en'));
 
         return new FormatOnSave(
             $pool,

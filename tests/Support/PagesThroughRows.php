@@ -38,7 +38,7 @@ trait PagesThroughRows
         for ($press = 0; $press <= \count($labels); ++$press) {
             $text = $screen();
             foreach ($labels as $label) {
-                if (!str_contains($text, $label)) {
+                if (!\str_contains($text, $label)) {
                     continue;
                 }
                 $seen[$label] = true;
@@ -51,7 +51,7 @@ trait PagesThroughRows
 
         self::assertSame(
             [],
-            array_values(array_diff($labels, array_keys($seen))),
+            \array_values(\array_diff($labels, \array_keys($seen))),
             'paging to the bottom scrolled past rows that were never drawn',
         );
     }

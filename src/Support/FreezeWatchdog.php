@@ -59,7 +59,7 @@ final class FreezeWatchdog
         ?\Closure $monotonic = null,
     ) {
         $this->log = DiagnosticLog::forRoot($rootDir, 'freeze', $clock);
-        $this->monotonic = $monotonic ?? static fn (): float => hrtime(as_number: true) / 1_000_000_000;
+        $this->monotonic = $monotonic ?? static fn (): float => \hrtime(as_number: true) / 1_000_000_000;
     }
 
     public function start(): void
@@ -67,9 +67,9 @@ final class FreezeWatchdog
         $this->lastBeat = null;
         $this->timer = EventLoop::repeat($this->interval, $this->heartbeat(...));
         if ($this->signalsAvailable) {
-            pcntl_async_signals(true);
-            pcntl_signal(\SIGALRM, $this->handleAlarm(...));
-            pcntl_alarm($this->alarmSeconds);
+            \pcntl_async_signals(true);
+            \pcntl_signal(\SIGALRM, $this->handleAlarm(...));
+            \pcntl_alarm($this->alarmSeconds);
         }
     }
 
@@ -80,8 +80,8 @@ final class FreezeWatchdog
             $this->timer = null;
         }
         if ($this->signalsAvailable) {
-            pcntl_alarm(0);
-            pcntl_signal(\SIGALRM, \SIG_DFL);
+            \pcntl_alarm(0);
+            \pcntl_signal(\SIGALRM, \SIG_DFL);
         }
     }
 
@@ -97,7 +97,7 @@ final class FreezeWatchdog
         }
         $this->lastBeat = $beat;
         if ($this->signalsAvailable) {
-            pcntl_alarm($this->alarmSeconds); // re-arm: a live loop never lets it fire
+            \pcntl_alarm($this->alarmSeconds); // re-arm: a live loop never lets it fire
         }
     }
 
@@ -109,7 +109,7 @@ final class FreezeWatchdog
         $trace = new \Exception()->getTraceAsString();
         $this->log->append(\sprintf("loop blocked \u{2265} %ds, backtrace:\n%s", $this->alarmSeconds, $trace));
         if ($this->signalsAvailable) {
-            pcntl_alarm($this->alarmSeconds);
+            \pcntl_alarm($this->alarmSeconds);
         }
     }
 

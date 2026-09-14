@@ -18,7 +18,7 @@ final class PaneServicesTest extends TestCase
 {
     public function testItHandsAPaneExactlyFourThings(): void
     {
-        $members = array_map(
+        $members = \array_map(
             static fn (\ReflectionParameter $param): string => $param->getName().': '.(string) $param->getType(),
             new \ReflectionClass(PaneServices::class)->getConstructor()?->getParameters() ?? [],
         );

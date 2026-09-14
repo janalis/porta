@@ -46,15 +46,15 @@ final readonly class BookmarkStore
 
         $marks = [];
         $entries = $data['bookmarks'];
-        foreach (array_keys($entries) as $path) {
-            if (!\is_string($path) || !\is_array($entries[$path]) || !is_file($path)) {
+        foreach (\array_keys($entries) as $path) {
+            if (!\is_string($path) || !\is_array($entries[$path]) || !\is_file($path)) {
                 continue; // the file vanished since the last session
             }
             $clean = [];
             // Not array_values(): the walk below is keyed, so an object-shaped
             // entry (`{"1": 7}`) reads the same as a list without re-indexing.
             $lines = $entries[$path];
-            foreach (array_keys($lines) as $index) {
+            foreach (\array_keys($lines) as $index) {
                 if (!\is_int($lines[$index]) || $lines[$index] < 0) {
                     continue; // not a line number we could ever jump to
                 }

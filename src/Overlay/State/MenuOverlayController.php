@@ -72,7 +72,7 @@ final class MenuOverlayController implements FloatingRegions
     #[\Override]
     public function regions(): array
     {
-        return array_values(array_filter([$this->menuShadowRegion, $this->contextShadowRegion]));
+        return \array_values(\array_filter([$this->menuShadowRegion, $this->contextShadowRegion]));
     }
 
     /** Remember the right-click point the context menu anchors at. */
@@ -109,10 +109,10 @@ final class MenuOverlayController implements FloatingRegions
         // menu-bar-local), clamped to the menu row's own span. The frame adds
         // a border cell each side; the top border sits directly under the
         // title, reading as the title opening the box.
-        $width = min($this->menuBar->panelWidth() + PopupFrame::CHROME_COLS, $menuRect->columns);
-        $anchor = max(
+        $width = \min($this->menuBar->panelWidth() + PopupFrame::CHROME_COLS, $menuRect->columns);
+        $anchor = \max(
             $menuRect->col,
-            min($menuRect->col + $this->menuBar->titleStart($this->menuBar->openIndex()), $menuRect->col + $menuRect->columns - $width),
+            \min($menuRect->col + $this->menuBar->titleStart($this->menuBar->openIndex()), $menuRect->col + $menuRect->columns - $width),
         );
         $top = $menuRect->row + $menuRect->rows;
         $rows = PopupFrame::wrapMenu($this->menuBar->dropdownSegments($width - PopupFrame::CHROME_COLS), $width - PopupFrame::CHROME_COLS, $this->styles);
@@ -145,11 +145,11 @@ final class MenuOverlayController implements FloatingRegions
         // only ever opens from a right-click / Ctrl+F10, i.e. after at least
         // one frame, so the current panes always have rects.
         [, , $screenBottom, $screenRight] = PaneBounds::union($this->panes->current(), $this->renderer) ?? [0, 0, 0, 0];
-        $width = min($this->contextMenu->panelWidth() + PopupFrame::CHROME_COLS, $screenRight);
+        $width = \min($this->contextMenu->panelWidth() + PopupFrame::CHROME_COLS, $screenRight);
         $col = IntMath::clamp($this->contextAnchorCol, 0, $screenRight - $width);
         $rows = PopupFrame::wrapMenu($this->contextMenu->segments($width - PopupFrame::CHROME_COLS), $width - PopupFrame::CHROME_COLS, $this->styles);
         $top = ($this->contextAnchorRow + \count($rows)) > $screenBottom
-            ? max(0, $this->contextAnchorRow - \count($rows))
+            ? \max(0, $this->contextAnchorRow - \count($rows))
             : $this->contextAnchorRow;
 
         $this->contextMenuDropdown = new DropdownRegion($top, $col, $width, \count($rows), framed: true);
@@ -174,9 +174,9 @@ final class MenuOverlayController implements FloatingRegions
         // the RIGHT would land the shadow on the left AND push the box a column
         // off the title it hangs from. Widen to the left instead and the mirror
         // puts both back where they belong.
-        $left = $this->translator->isRtl() ? max(0, $col - 1) : $col;
+        $left = $this->translator->isRtl() ? \max(0, $col - 1) : $col;
 
-        return new DropdownRegion($top, $left, max(1, min($width + 1, $right - $left)), max(1, min($rows + 1, $bottom - $top)));
+        return new DropdownRegion($top, $left, \max(1, \min($width + 1, $right - $left)), \max(1, \min($rows + 1, $bottom - $top)));
     }
 
     /** @param list<AbstractWidget&MenuOverlayHost> $panes */

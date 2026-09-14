@@ -340,6 +340,6 @@ final class ActionCatalog
     /** Palette label for an action id; unknown actions fall back to a title-cased slug. */
     public static function label(string $action): string
     {
-        return self::ACTIONS[$action]['label'] ?? ucwords(str_replace('_', replace: ' ', subject: $action));
+        return self::ACTIONS[$action]['label'] ?? \ucwords(\str_replace('_', replace: ' ', subject: $action));
     }
 }

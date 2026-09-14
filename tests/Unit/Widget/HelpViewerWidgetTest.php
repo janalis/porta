@@ -22,7 +22,7 @@ final class HelpViewerWidgetTest extends TestCase
         $this->docs = new TempProject([
             'README.md' =>
                 "# Guides\n\nSee [Editor](editor.md) and [Porta](https://porta.dev) and [demo](demo.php) and [gone](missing.md).\n\n"
-                    .implode("\n\n", array_map(static fn (int $i): string => "Paragraph {$i}.", range(1, end: 30)))
+                    .\implode("\n\n", \array_map(static fn (int $i): string => "Paragraph {$i}.", \range(1, end: 30)))
                     ."\n\n[Bottom](editor.md)\n",
             'editor.md' => "# Editor guide\n\nBack home: [Home](README.md)\n",
             'demo.php' => "<?php\n",
@@ -31,11 +31,11 @@ final class HelpViewerWidgetTest extends TestCase
         $viewer->setFocused(true);
         $this->handler = new RecordingHelpViewerHandler();
         $this->handler->onOpenHelp = static function (string $path) use ($viewer): void {
-            $viewer->refreshPage($path, (string) file_get_contents($path)); // mirror the IDE's synchronous re-show
+            $viewer->refreshPage($path, (string) \file_get_contents($path)); // mirror the IDE's synchronous re-show
         };
         $viewer->setHandler($this->handler);
         $viewer->setDocsRoot($this->docs->dir);
-        $viewer->refreshPage($this->docs->path('README.md'), (string) file_get_contents($this->docs->path('README.md')));
+        $viewer->refreshPage($this->docs->path('README.md'), (string) \file_get_contents($this->docs->path('README.md')));
 
         return $viewer;
     }
@@ -43,7 +43,7 @@ final class HelpViewerWidgetTest extends TestCase
     /** @return list<string> */
     private function screen(HelpViewerWidget $viewer, int $cols = 60, int $rows = 10): array
     {
-        return array_map(AnsiUtils::stripAnsiCodes(...), $viewer->render(new RenderContext($cols, $rows)));
+        return \array_map(AnsiUtils::stripAnsiCodes(...), $viewer->render(new RenderContext($cols, $rows)));
     }
 
     public function testTheHelpPaneContributesNoStatusSegmentAndDiesWithItsTab(): void
@@ -71,16 +71,16 @@ final class HelpViewerWidgetTest extends TestCase
 
         $this->assertStringContainsString('‹ ›', $screen[0], 'the navigation header leads');
         $this->assertStringContainsString('README', $screen[0], 'with the current page as its crumb');
-        $this->assertSame('Guides', rtrim($screen[1]), 'the heading renders without markdown syntax');
-        $this->assertSame('══════', rtrim($screen[2]), 'an H1 gets a title-width rule');
-        $this->assertStringNotContainsString('](', implode("\n", $screen));
+        $this->assertSame('Guides', \rtrim($screen[1]), 'the heading renders without markdown syntax');
+        $this->assertSame('══════', \rtrim($screen[2]), 'an H1 gets a title-width rule');
+        $this->assertStringNotContainsString('](', \implode("\n", $screen));
 
         $viewer->scrollBy(6);
-        $this->assertStringNotContainsString('Guides', implode("\n", $this->screen($viewer)));
+        $this->assertStringNotContainsString('Guides', \implode("\n", $this->screen($viewer)));
         $viewer->scrollBy(-\PHP_INT_MAX);
-        $this->assertSame('Guides', rtrim($this->screen($viewer)[1]));
+        $this->assertSame('Guides', \rtrim($this->screen($viewer)[1]));
         $viewer->scrollBy(\PHP_INT_MAX);
-        $this->assertStringContainsString('Paragraph 30.', implode("\n", $this->screen($viewer)), 'end clamps to the last page');
+        $this->assertStringContainsString('Paragraph 30.', \implode("\n", $this->screen($viewer)), 'end clamps to the last page');
     }
 
     public function testALinkThatEscapesTheDocsRootIsRefused(): void
@@ -97,7 +97,7 @@ final class HelpViewerWidgetTest extends TestCase
         $handler = new RecordingHelpViewerHandler();
         $viewer->setHandler($handler);
         $viewer->setDocsRoot($docs->path('pages'));
-        $viewer->refreshPage($docs->path('pages/README.md'), (string) file_get_contents($docs->path('pages/README.md')));
+        $viewer->refreshPage($docs->path('pages/README.md'), (string) \file_get_contents($docs->path('pages/README.md')));
         $this->screen($viewer); // establish width so the links exist
 
         $viewer->handleInput("\t"); // escape (../ chain out of the root)
@@ -132,7 +132,7 @@ final class HelpViewerWidgetTest extends TestCase
         $viewer->handleInput("\x1b[1;2Z"); // unbound noise is ignored
         $viewer->scrollBy(\PHP_INT_MAX);
         $viewer->handleInput("\t");
-        $screen = implode("\n", $this->screen($viewer));
+        $screen = \implode("\n", $this->screen($viewer));
         $this->assertStringContainsString('Home', $screen, 'cycling scrolled the focused link into view');
     }
 
@@ -157,11 +157,11 @@ final class HelpViewerWidgetTest extends TestCase
         for ($i = 0; $i < 5; ++$i) {
             $viewer->handleInput("\t");
         }
-        $this->assertStringContainsString('Bottom', implode("\n", $this->screen($viewer)), 'the focused bottom link scrolled into view');
+        $this->assertStringContainsString('Bottom', \implode("\n", $this->screen($viewer)), 'the focused bottom link scrolled into view');
 
         // …and cycling onward wraps to the top links → scrolls back up.
         $viewer->handleInput("\t");
-        $this->assertStringContainsString('See Editor', implode("\n", $this->screen($viewer)), 'wrapping scrolled the first link back into view');
+        $this->assertStringContainsString('See Editor', \implode("\n", $this->screen($viewer)), 'wrapping scrolled the first link back into view');
     }
 
     public function testForwardArrowRoundTripAndFreshFollowsClearIt(): void
@@ -200,10 +200,10 @@ final class HelpViewerWidgetTest extends TestCase
         // current page scrolls back to the top instead of navigating.
         $this->assertStringNotContainsString('›  README ›', $this->screen($viewer)[0]);
         $viewer->scrollBy(6);
-        $this->assertStringNotContainsString('Guides', implode("\n", $this->screen($viewer)));
+        $this->assertStringNotContainsString('Guides', \implode("\n", $this->screen($viewer)));
         $this->assertTrue($viewer->clickAt(0, 6), 'the current-page crumb is a scroll-to-top target');
         $this->assertSame([], $this->handler->events, 'without navigating anywhere');
-        $this->assertStringContainsString('Guides', implode("\n", $this->screen($viewer)), 'the page scrolled back to the top');
+        $this->assertStringContainsString('Guides', \implode("\n", $this->screen($viewer)), 'the page scrolled back to the top');
 
         // A page under the root shows root › page; only the root is clickable.
         $viewer->handleInput("\t");
@@ -211,7 +211,7 @@ final class HelpViewerWidgetTest extends TestCase
         $this->assertStringContainsString('README › editor', $this->screen($viewer)[0]);
         $this->assertTrue($viewer->clickAt(0, 6), 'the root crumb starts right after the arrows');
         $this->assertSame(['help:editor.md', 'help:README.md'], $this->handler->events, 'the crumb click navigated home');
-        $this->assertSame(realpath($this->docs->path('README.md')), $viewer->path());
+        $this->assertSame(\realpath($this->docs->path('README.md')), $viewer->path());
 
         // A crumb click is a fresh navigation: back re-enters the page, forward is cleared.
         $this->screen($viewer);
@@ -305,7 +305,7 @@ final class HelpViewerWidgetTest extends TestCase
         $handler = new RecordingHelpViewerHandler();
         $viewer->setHandler($handler);
         $viewer->setDocsRoot($docs->dir);
-        $viewer->refreshPage($docs->path('README.md'), (string) file_get_contents($docs->path('README.md')));
+        $viewer->refreshPage($docs->path('README.md'), (string) \file_get_contents($docs->path('README.md')));
         $this->screen($viewer);
 
         $viewer->handleInput("\t");
@@ -324,7 +324,7 @@ final class HelpViewerWidgetTest extends TestCase
         $handler = new RecordingHelpViewerHandler();
         $viewer->setHandler($handler);
         $viewer->setDocsRoot($docs->dir);
-        $viewer->refreshPage($docs->path('README.md'), (string) file_get_contents($docs->path('README.md')));
+        $viewer->refreshPage($docs->path('README.md'), (string) \file_get_contents($docs->path('README.md')));
         $this->screen($viewer);
 
         $viewer->handleInput("\t");
@@ -344,7 +344,7 @@ final class HelpViewerWidgetTest extends TestCase
         $handler = new RecordingHelpViewerHandler();
         $viewer->setHandler($handler);
         $viewer->setDocsRoot($docs->dir);
-        $viewer->refreshPage($docs->path('README.md'), (string) file_get_contents($docs->path('README.md')));
+        $viewer->refreshPage($docs->path('README.md'), (string) \file_get_contents($docs->path('README.md')));
         $this->screen($viewer);
 
         $viewer->handleInput("\t");
@@ -376,11 +376,11 @@ final class HelpViewerWidgetTest extends TestCase
 
         $viewer->handleInput("\t"); // focus "Editor"
         $viewer->handleInput("\r"); // follow → editor.md
-        $this->assertStringContainsString('Editor guide', implode("\n", $this->screen($viewer)));
+        $this->assertStringContainsString('Editor guide', \implode("\n", $this->screen($viewer)));
 
         $viewer->handleInput("\x7f"); // Backspace → back to the README
         $this->assertSame(['help:editor.md', 'help:README.md'], $this->handler->events);
-        $this->assertStringContainsString('Guides', implode("\n", $this->screen($viewer)));
+        $this->assertStringContainsString('Guides', \implode("\n", $this->screen($viewer)));
 
         $viewer->handleInput("\x7f"); // history exhausted
         $this->assertContains('back-empty', $this->handler->events);
@@ -406,8 +406,8 @@ final class HelpViewerWidgetTest extends TestCase
         $viewer->scrollBy(\PHP_INT_MAX);
 
         $narrow = $this->screen($viewer, 40, 10);
-        $this->assertLessThanOrEqual(40, max(array_map(mb_strwidth(...), $narrow)), 'narrower width re-wraps');
-        $this->assertStringContainsString('Paragraph 30.', implode("\n", $narrow).implode("\n", $this->screen($viewer, 40, 10)), 'scroll stays clamped in range');
+        $this->assertLessThanOrEqual(40, \max(\array_map(mb_strwidth(...), $narrow)), 'narrower width re-wraps');
+        $this->assertStringContainsString('Paragraph 30.', \implode("\n", $narrow).\implode("\n", $this->screen($viewer, 40, 10)), 'scroll stays clamped in range');
     }
 
     public function testTabManagementKeysFireCallbacksAndClearResets(): void
@@ -421,7 +421,7 @@ final class HelpViewerWidgetTest extends TestCase
         $viewer->handleInput("\x1b\x13"); // ctrl+alt+s
         $this->assertSame(['cycle:1', 'cycle:-1', 'close', 'goto', 'save-all'], $this->handler->events);
 
-        $this->assertSame(realpath($this->docs->path('README.md')), $viewer->path());
+        $this->assertSame(\realpath($this->docs->path('README.md')), $viewer->path());
         $viewer->clear();
         $this->assertNull($viewer->path());
         $viewer->handleInput("\x7f");
@@ -457,7 +457,7 @@ final class HelpViewerWidgetTest extends TestCase
 
         // The version moves when the page changes (a re-search trigger).
         $before = $viewer->findVersion();
-        $viewer->refreshPage($this->docs->path('editor.md'), (string) file_get_contents($this->docs->path('editor.md')));
+        $viewer->refreshPage($this->docs->path('editor.md'), (string) \file_get_contents($this->docs->path('editor.md')));
         $this->assertGreaterThan($before, $viewer->findVersion());
     }
 
@@ -466,12 +466,12 @@ final class HelpViewerWidgetTest extends TestCase
         $viewer = $this->viewer();
         $this->screen($viewer, cols: 60, rows: 10);
 
-        $target = array_search('Paragraph 30.', $viewer->findLines(), strict: true);
+        $target = \array_search('Paragraph 30.', $viewer->findLines(), strict: true);
         $this->assertIsInt($target);
 
         $viewer->revealMatch($target, startByte: 0, endByte: 3);
         $this->assertGreaterThan(0, $viewer->findCaretLine(), 'scrolled down to bring the match on screen');
-        $this->assertStringContainsString('Paragraph 30.', implode("\n", $this->screen($viewer)), 'the match line is now visible');
+        $this->assertStringContainsString('Paragraph 30.', \implode("\n", $this->screen($viewer)), 'the match line is now visible');
 
         // Revealing an earlier match scrolls back up.
         $viewer->revealMatch(0, startByte: 0, endByte: 1);
@@ -490,7 +490,7 @@ final class HelpViewerWidgetTest extends TestCase
         $lineNo = null;
         $col = 0;
         foreach ($viewer->findLines() as $i => $line) {
-            $at = strpos($line, needle: 'Paragraph 1.');
+            $at = \strpos($line, needle: 'Paragraph 1.');
             if (false !== $at) {
                 $lineNo = $i;
                 $col = $at;
@@ -520,11 +520,11 @@ final class HelpViewerWidgetTest extends TestCase
         $viewer->scrollBy(3);
         $before = $viewer->getRenderRevision();
 
-        $viewer->refreshPage($this->docs->path('editor.md'), (string) file_get_contents($this->docs->path('editor.md')));
+        $viewer->refreshPage($this->docs->path('editor.md'), (string) \file_get_contents($this->docs->path('editor.md')));
 
         $this->assertGreaterThan($before, $viewer->getRenderRevision(), 'refreshPage invalidates');
         // scrollTop = -1 would shift every body row down by one blank line.
-        $this->assertStringContainsString('Editor guide', rtrim($this->screen($viewer)[1]), 'the heading is the very first body row');
+        $this->assertStringContainsString('Editor guide', \rtrim($this->screen($viewer)[1]), 'the heading is the very first body row');
     }
 
     public function testClearBumpsFindVersionForwardNotBackward(): void
@@ -545,8 +545,8 @@ final class HelpViewerWidgetTest extends TestCase
         $viewer->scrollBy(3);
         $viewer->clear();
 
-        $viewer->refreshPage($this->docs->path('README.md'), (string) file_get_contents($this->docs->path('README.md')));
-        $this->assertStringContainsString('Guides', rtrim($this->screen($viewer)[1]), 'scrollTop is exactly 0 after clear(), not -1');
+        $viewer->refreshPage($this->docs->path('README.md'), (string) \file_get_contents($this->docs->path('README.md')));
+        $this->assertStringContainsString('Guides', \rtrim($this->screen($viewer)[1]), 'scrollTop is exactly 0 after clear(), not -1');
     }
 
     public function testRefreshThemeInvalidates(): void
@@ -666,7 +666,7 @@ final class HelpViewerWidgetTest extends TestCase
         $viewer->refreshTheme(); // drop any memo before checking styles are consulted fresh
         $screen = $this->screen($viewer); // stripAnsiCodes — content-only check
 
-        $this->assertStringContainsString('Guides', rtrim($screen[1]));
+        $this->assertStringContainsString('Guides', \rtrim($screen[1]));
         // The plain, stripped screen must be identical regardless of the
         // bold/unbold ternary direction — this just proves the header still
         // renders sane content; the ANSI-level bold assertion lives below.
@@ -706,8 +706,8 @@ final class HelpViewerWidgetTest extends TestCase
         $this->assertStringContainsString('README', $screen[0]);
 
         $header = $viewer->render(new RenderContext(60, 10))[0];
-        $boldAt = strpos($header, Sgr::BOLD);
-        $labelAt = strpos($header, needle: 'README');
+        $boldAt = \strpos($header, Sgr::BOLD);
+        $labelAt = \strpos($header, needle: 'README');
         $this->assertNotFalse($boldAt);
         $this->assertNotFalse($labelAt);
         $this->assertLessThan($labelAt, $boldAt, 'bold opens before the label, not after');
@@ -823,7 +823,7 @@ final class HelpViewerWidgetTest extends TestCase
     {
         $viewer = $this->viewer();
         $viewer->render(new RenderContext(60, 40));
-        $lineNo = array_search('Paragraph 1.', $viewer->findLines(), strict: true);
+        $lineNo = \array_search('Paragraph 1.', $viewer->findLines(), strict: true);
         $this->assertIsInt($lineNo);
 
         $viewer->showSearchMatches([$lineNo => [['start' => 0, 'end' => 9, 'current' => true]]]);
@@ -841,7 +841,7 @@ final class HelpViewerWidgetTest extends TestCase
     {
         $viewer = $this->viewer();
         $viewer->render(new RenderContext(60, 40));
-        $lineNo = array_search('Paragraph 1.', $viewer->findLines(), strict: true);
+        $lineNo = \array_search('Paragraph 1.', $viewer->findLines(), strict: true);
         $this->assertIsInt($lineNo);
 
         $viewer->showSearchMatches([$lineNo => [['start' => 0, 'end' => 9, 'current' => true]]]);
@@ -865,14 +865,14 @@ final class HelpViewerWidgetTest extends TestCase
         $viewer->refreshPage('/docs/x.md', "café society and more filler text to search\n");
         $viewer->render(new RenderContext(60, 10));
 
-        $lineNo = array_search('café society and more filler text to search', $viewer->findLines(), strict: true);
+        $lineNo = \array_search('café society and more filler text to search', $viewer->findLines(), strict: true);
         $this->assertIsInt($lineNo);
         // Highlight the word "society" (columns 5..11 of the plain text).
         $viewer->showSearchMatches([$lineNo => [['start' => 5, 'end' => 12, 'current' => true]]]);
 
         $row = self::HELP_HEADER_ROWS + $lineNo;
         $plain = AnsiUtils::stripAnsiCodes($viewer->render(new RenderContext(60, 10))[$row]);
-        $this->assertStringStartsWith('café society', rtrim($plain), 'the multibyte prefix is untouched by the highlight splice');
+        $this->assertStringStartsWith('café society', \rtrim($plain), 'the multibyte prefix is untouched by the highlight splice');
     }
 
     public function testClampScrollNeverGoesBelowZeroOnAShortPage(): void
@@ -885,7 +885,7 @@ final class HelpViewerWidgetTest extends TestCase
 
         $viewer->scrollBy(\PHP_INT_MAX); // a page shorter than the viewport: max scroll must clamp to 0
         $screen = $this->screen($viewer, 60, 20);
-        $this->assertStringContainsString('Just one short page', implode("\n", $screen));
+        $this->assertStringContainsString('Just one short page', \implode("\n", $screen));
     }
 
     public function testBodyRowsIsAtLeastOneEvenWithATinyLastRows(): void

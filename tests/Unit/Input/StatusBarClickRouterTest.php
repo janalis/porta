@@ -83,7 +83,7 @@ final class StatusBarClickRouterTest extends TestCase
     private function clickOn(string $needle): MouseEvent
     {
         $row = $this->statusBar->render(new RenderContext(40, 1))[0];
-        $col = mb_strpos(AnsiUtils::stripAnsiCodes($row), $needle);
+        $col = \mb_strpos(AnsiUtils::stripAnsiCodes($row), $needle);
         self::assertNotFalse($col);
 
         return self::pressAt($col, 0);
@@ -93,8 +93,8 @@ final class StatusBarClickRouterTest extends TestCase
     {
         $router = $this->router();
 
-        self::assertTrue($router->route($this->clickOn('AB')));
-        self::assertSame(['ide_problems'], $this->ran);
+        $this->assertTrue($router->route($this->clickOn('AB')));
+        $this->assertSame(['ide_problems'], $this->ran);
     }
 
     public function testAClickOnTheCaretCellGoesToTheEditorNotTheRegistry(): void
@@ -104,11 +104,11 @@ final class StatusBarClickRouterTest extends TestCase
         // way that cell does anything.
         $router = $this->router();
 
-        self::assertTrue($router->route($this->clickOn('CD')));
-        self::assertSame([], $this->ran, 'the registry must not have claimed an editor verb');
+        $this->assertTrue($router->route($this->clickOn('CD')));
+        $this->assertSame([], $this->ran, 'the registry must not have claimed an editor verb');
         // The EFFECT, not just the absence of the other branch: dropping the
         // runAction call leaves both of those assertions true.
-        self::assertTrue(EditorState::promptOpen($this->editor), 'the Go to line prompt opened');
+        $this->assertTrue(EditorState::promptOpen($this->editor), 'the Go to line prompt opened');
     }
 
     public function testACommandTheRegistryClaimsIsNotALSORunByTheEditor(): void
@@ -126,9 +126,9 @@ final class StatusBarClickRouterTest extends TestCase
             label: 'Go to Line',
         );
 
-        self::assertTrue($router->route($this->clickOn('CD')));
-        self::assertSame(['goto_line'], $this->ran);
-        self::assertFalse(EditorState::promptOpen($this->editor), 'the registry claimed it; the editor must not run it too');
+        $this->assertTrue($router->route($this->clickOn('CD')));
+        $this->assertSame(['goto_line'], $this->ran);
+        $this->assertFalse(EditorState::promptOpen($this->editor), 'the registry claimed it; the editor must not run it too');
     }
 
     public function testAClickOutsideEveryCellIsNotConsumed(): void
@@ -136,14 +136,14 @@ final class StatusBarClickRouterTest extends TestCase
         // It must fall through, or the panes below never see their clicks.
         $router = $this->router();
 
-        self::assertFalse($router->route(self::pressAt(2, 0)));
+        $this->assertFalse($router->route(self::pressAt(2, 0)));
     }
 
     public function testAClickOutsideTheStatusRowIsNotConsumed(): void
     {
         $router = $this->router();
 
-        self::assertFalse($router->route(self::pressAt(0, 5)));
+        $this->assertFalse($router->route(self::pressAt(0, 5)));
     }
 
     public function testAClickOnANEARBYRowAtACELLSCOLUMNIsStillNotConsumed(): void
@@ -155,7 +155,7 @@ final class StatusBarClickRouterTest extends TestCase
         $router = $this->router();
         $cellColumn = $this->clickOn('AB')->col;
 
-        self::assertFalse($router->route(self::pressAt($cellColumn, 7)));
-        self::assertSame([], $this->ran, 'nothing may run from a click off the status row');
+        $this->assertFalse($router->route(self::pressAt($cellColumn, 7)));
+        $this->assertSame([], $this->ran, 'nothing may run from a click off the status row');
     }
 }

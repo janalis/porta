@@ -61,8 +61,8 @@ final class SpanSlicerTest extends TestCase
         // Panel rows land on screen rows 4..7; only 5 and 6 are inside.
         $spans = SpanSlicer::localSpans(['A', 'B', 'C', 'D'], $rect, top: 4, anchor: 0, panelWidth: 1);
 
-        $this->assertSame(['B', 'C'], array_column($spans, 'segment'));
-        $this->assertSame([0, 1], array_column($spans, 'row'));
+        $this->assertSame(['B', 'C'], \array_column($spans, 'segment'));
+        $this->assertSame([0, 1], \array_column($spans, 'row'));
     }
 
     public function testAPanelSpillingPastTheWidgetIsClipped(): void

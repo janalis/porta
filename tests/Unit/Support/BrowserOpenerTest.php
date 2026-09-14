@@ -15,13 +15,13 @@ final class BrowserOpenerTest extends TestCase
     /** A temp dir holding executable shims named $names, put first on PATH. */
     private function shimPath(string ...$names): string
     {
-        $dir = sys_get_temp_dir().'/porta-opener-'.bin2hex(random_bytes(4));
-        mkdir($dir);
+        $dir = \sys_get_temp_dir().'/porta-opener-'.\bin2hex(\random_bytes(4));
+        \mkdir($dir);
         foreach ($names as $name) {
-            file_put_contents($dir.'/'.$name, data: "#!/bin/sh\n");
-            chmod($dir.'/'.$name, permissions: 0o755);
+            \file_put_contents($dir.'/'.$name, data: "#!/bin/sh\n");
+            \chmod($dir.'/'.$name, permissions: 0o755);
         }
-        putenv('PATH='.$dir);
+        \putenv('PATH='.$dir);
 
         return $dir;
     }
@@ -46,7 +46,7 @@ final class BrowserOpenerTest extends TestCase
 
     public function testMissingOpenerYieldsNull(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $this->assertNull(BrowserOpener::command('https://x.test', 'Darwin'));
         $this->assertNull(BrowserOpener::command('https://x.test', 'Linux'));
     }
@@ -62,6 +62,6 @@ final class BrowserOpenerTest extends TestCase
             return;
         }
 
-        $this->assertSame('https://x.test', $command[array_key_last($command)]);
+        $this->assertSame('https://x.test', $command[\array_key_last($command)]);
     }
 }

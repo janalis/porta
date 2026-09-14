@@ -82,7 +82,7 @@ final class PluginHighlighterTest extends TestCase
     /** A backend that only claims other languages leaves php to the built-in. */
     public function testPluginBackendIsSkippedForLanguagesItDoesNotClaim(): void
     {
-        $plugin = str_replace("['php']", replace: "['rust']", subject: self::PLUGIN);
+        $plugin = \str_replace("['php']", replace: "['rust']", subject: self::PLUGIN);
         $project = new TempProject([
             '.porta/plugins/shouty/plugin.php' => $plugin,
             'a.php' => "<?php\n\$x = 1;\n",
@@ -104,7 +104,7 @@ final class PluginHighlighterTest extends TestCase
         $this->runIde($project, $project->path('a.php'), [
             60 => function ($tui, $terminal) use (&$captured): void {
                 $this->await(
-                    static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), '$x = 1;'),
+                    static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), '$x = 1;'),
                     what: 'the buffer to paint',
                 );
                 $captured = $terminal->getOutput();

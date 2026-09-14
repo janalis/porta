@@ -184,7 +184,7 @@ final class EditorCompletion
             return false; // let normal handling perform the deletion
         }
 
-        if (($this->isInsertable)($keys) && preg_match('/^[\w$]+$/u', $keys)) {
+        if (($this->isInsertable)($keys) && \preg_match('/^[\w$]+$/u', $keys)) {
             return false; // identifier chars: insert normally, popup refilters on render
         }
 
@@ -254,7 +254,7 @@ final class EditorCompletion
         if ([] === $items) {
             return null;
         }
-        $this->selected = min($this->selected, \count($items) - 1);
+        $this->selected = \min($this->selected, \count($items) - 1);
         // The list refilters as you type, so a resting pointer's row can move
         // out from under it — drop a tint that no longer names a row.
         $hovered = null !== $this->hovered && $this->hovered < \count($items) ? $this->hovered : null;
@@ -351,9 +351,9 @@ final class EditorCompletion
     private function askForVisibleDetails(): void
     {
         $filtered = $this->filtered();
-        $window = \array_slice($filtered, max(0, $this->selected - PopupMetrics::COMPLETION_ROWS + 1), PopupMetrics::COMPLETION_ROWS);
+        $window = \array_slice($filtered, \max(0, $this->selected - PopupMetrics::COMPLETION_ROWS + 1), PopupMetrics::COMPLETION_ROWS);
         foreach ($window as $item) {
-            $id = spl_object_id($item);
+            $id = \spl_object_id($item);
             // A row with BOTH already needs nothing; one with only a type still
             // wants its docblock, which is the half servers defer most.
             if ('' !== $item->detail && '' !== $item->documentation || null !== ($this->detailAsked[$id] ?? null) || [] === $item->raw) {
@@ -375,7 +375,7 @@ final class EditorCompletion
      */
     private function applyResolved(CompletionItem $item, string $detail, string $documentation): void
     {
-        $index = array_search($item, $this->items, strict: true);
+        $index = \array_search($item, $this->items, strict: true);
         if (!\is_int($index)) {
             return;
         }
@@ -384,7 +384,7 @@ final class EditorCompletion
         $resolved = '' === $detail ? $item : $item->withDetail($detail);
         $resolved = '' === $documentation ? $resolved : $resolved->withDocumentation($documentation);
         $this->items[$index] = $resolved;
-        $this->detailAsked[spl_object_id($resolved)] = $item->label;
+        $this->detailAsked[\spl_object_id($resolved)] = $item->label;
         ($this->invalidate)();
     }
 
@@ -396,19 +396,19 @@ final class EditorCompletion
             return $this->items;
         }
 
-        $needle = ltrim($word, characters: '$');
+        $needle = \ltrim($word, characters: '$');
 
         // Fuzzy/camel-hump match, ranked best-first; the server's original
         // ordering (sortText) breaks ties.
         $scored = [];
         foreach ($this->items as $index => $item) {
-            $score = FuzzyMatcher::score(ltrim($item->label, characters: '$'), $needle);
+            $score = FuzzyMatcher::score(\ltrim($item->label, characters: '$'), $needle);
             if (null !== $score) {
                 $scored[] = ['score' => $score, 'index' => $index, 'item' => $item];
             }
         }
-        usort($scored, static fn (array $a, array $b) => ($cmp = $b['score'] <=> $a['score']) ? $cmp : $a['index'] <=> $b['index']);
+        \usort($scored, static fn (array $a, array $b) => ($cmp = $b['score'] <=> $a['score']) ? $cmp : $a['index'] <=> $b['index']);
 
-        return array_map(static fn (array $e) => $e['item'], $scored);
+        return \array_map(static fn (array $e) => $e['item'], $scored);
     }
 }

@@ -92,7 +92,7 @@ final class ResultsViewTest extends TestCase
         // Only src/ (dir header) + src/A.php (file header) + its match survive;
         // the filtered-out B.php never reaches a row.
         $this->assertCount(3, $rows);
-        $filePaths = array_values(array_filter(array_map(static fn ($r) => $r->filePath, $rows)));
+        $filePaths = \array_values(\array_filter(\array_map(static fn ($r) => $r->filePath, $rows)));
         $this->assertContains('src/A.php', $filePaths);
         $this->assertNotContains('src/B.php', $filePaths);
     }
@@ -128,7 +128,7 @@ final class ResultsViewTest extends TestCase
         ];
         $rows = ResultsView::build($results, [], grouped: ResultLayout::Grouped, filter: 'keep', grouping: ResultGrouping::Nested);
 
-        $filePaths = array_values(array_filter(array_map(static fn ($r) => $r->filePath, $rows)));
+        $filePaths = \array_values(\array_filter(\array_map(static fn ($r) => $r->filePath, $rows)));
         $this->assertContains('src/B.php', $filePaths, 'the later matching result must still be reached');
     }
 
@@ -156,7 +156,7 @@ final class ResultsViewTest extends TestCase
         $rows = ResultsView::build($results, ['src/A.php' => true], grouped: ResultLayout::Grouped, grouping: ResultGrouping::Nested);
 
         // dir header · A.php header (collapsed, no match row) · B.php header · its match
-        $filePaths = array_values(array_filter(array_map(static fn ($r) => $r->filePath, $rows)));
+        $filePaths = \array_values(\array_filter(\array_map(static fn ($r) => $r->filePath, $rows)));
         $this->assertContains('src/B.php', $filePaths, 'a collapsed sibling file must not stop the scan of later files');
         $this->assertSame(1, $rows[\count($rows) - 1]->matchIndex, 'B.php\'s match row was appended');
     }

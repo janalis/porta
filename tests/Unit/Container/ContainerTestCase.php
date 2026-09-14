@@ -25,15 +25,15 @@ abstract class ContainerTestCase extends TestCase
     protected function setUp(): void
     {
         foreach (['PORTA_CACHE_DIR', 'PORTA_CONTAINER_CACHE'] as $key) {
-            $this->savedEnv[$key] = getenv($key);
+            $this->savedEnv[$key] = \getenv($key);
         }
-        putenv('PORTA_CONTAINER_CACHE=off'); // force the introspectable builder path, no dump
+        \putenv('PORTA_CONTAINER_CACHE=off'); // force the introspectable builder path, no dump
     }
 
     protected function tearDown(): void
     {
         foreach ($this->savedEnv as $key => $value) {
-            putenv(false === $value ? $key : $key.'='.$value);
+            \putenv(false === $value ? $key : $key.'='.$value);
         }
     }
 

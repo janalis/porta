@@ -73,7 +73,7 @@ final readonly class PortaJsonWriter
     {
         return $this->edit($scope, static function (array &$config) use ($action, $keys): void {
             $keymap = self::section($config, 'keymap');
-            $keymap[$action] = array_values($keys);
+            $keymap[$action] = \array_values($keys);
             $config['keymap'] = $keymap;
         });
     }
@@ -310,7 +310,7 @@ final readonly class PortaJsonWriter
         return $this->edit($scope, static function (array &$config) use ($languageId, $command): void {
             $map = self::lspMap($config['lsp'] ?? null);
 
-            $command = trim($command);
+            $command = \trim($command);
             if ('' === $command) {
                 unset($map[$languageId]);
             }
@@ -341,7 +341,7 @@ final readonly class PortaJsonWriter
     {
         return $this->edit($scope, static function (array &$config) use ($key, $plugin, $member, $default): void {
             $current = \array_key_exists($key, $config) ? IdeConfig::stringList($config[$key]) : $default;
-            $without = array_values(array_diff($current, [$plugin]));
+            $without = \array_values(\array_diff($current, [$plugin]));
             $list = $member ? [...$without, $plugin] : $without;
             if ([] === $list && [] === $default) {
                 unset($config[$key]);
@@ -361,7 +361,7 @@ final readonly class PortaJsonWriter
      */
     private static function lspMap(mixed $lsp): array
     {
-        if (\is_array($lsp) && [] !== $lsp && array_is_list($lsp)) {
+        if (\is_array($lsp) && [] !== $lsp && \array_is_list($lsp)) {
             return ['*' => IdeConfig::commandString($lsp)];
         }
         if (\is_string($lsp) && '' !== $lsp) {
@@ -372,7 +372,7 @@ final readonly class PortaJsonWriter
         }
 
         $map = [];
-        foreach (array_keys($lsp) as $language) {
+        foreach (\array_keys($lsp) as $language) {
             $map[(string) $language] = IdeConfig::commandString($lsp[$language]);
         }
 
@@ -394,9 +394,9 @@ final readonly class PortaJsonWriter
      */
     private function setAside(string $file): void
     {
-        set_error_handler(static fn (): bool => true);
-        rename($file, $file.'.invalid');
-        restore_error_handler();
+        \set_error_handler(static fn (): bool => true);
+        \rename($file, $file.'.invalid');
+        \restore_error_handler();
     }
 
     /**
@@ -445,7 +445,7 @@ final readonly class PortaJsonWriter
         // an empty array — and writing `[]` litters the repository with a file
         // the user never asked for and would then commit. Nothing to persist
         // is not a failure, so this reports success.
-        if ([] === $config && !is_file($file)) {
+        if ([] === $config && !\is_file($file)) {
             return true;
         }
 

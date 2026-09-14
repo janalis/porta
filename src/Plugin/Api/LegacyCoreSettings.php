@@ -85,7 +85,7 @@ final readonly class LegacyCoreSettings
         $plugins = $this->file['plugins'] ?? null;
         /** @var mixed $mine */
         $mine = \is_array($plugins) ? $plugins[$this->plugin] ?? null : null;
-        if (\is_array($mine) && array_key_exists($key, $mine)) {
+        if (\is_array($mine) && \array_key_exists($key, $mine)) {
             return null; // already answered under the new key; nothing to adopt
         }
         /** @var mixed $settings */

@@ -27,7 +27,7 @@ final class ColumnModeSegmentTest extends TestCase
 
     public function testItSaysNothingWhileTheModeIsOff(): void
     {
-        self::assertSame([], new ColumnModeSegment($this->editor(), new Translator('en'))->statusCells());
+        $this->assertSame([], new ColumnModeSegment($this->editor(), new Translator('en'))->statusCells());
     }
 
     public function testItSaysCOLUMNWhileTheModeIsOn(): void
@@ -38,8 +38,8 @@ final class ColumnModeSegmentTest extends TestCase
 
         $cells = new ColumnModeSegment($editor, new Translator('en'))->statusCells();
 
-        self::assertCount(1, $cells);
-        self::assertSame('COLUMN', $cells[0]->text);
-        self::assertSame(StatusTone::Accent, $cells[0]->tone, 'it is a mode, not a whisper');
+        $this->assertCount(1, $cells);
+        $this->assertSame('COLUMN', $cells[0]->text);
+        $this->assertSame(StatusTone::Accent, $cells[0]->tone, 'it is a mode, not a whisper');
     }
 }

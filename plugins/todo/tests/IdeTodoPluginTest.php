@@ -36,7 +36,7 @@ final class IdeTodoPluginTest extends TestCase
 
     public function testAltEightScansAndEnterJumpsToTheMarker(): void
     {
-        putenv('PATH='.PORTA_TEST_PRISTINE_PATH); // real grep for the async scan
+        \putenv('PATH='.\PORTA_TEST_PRISTINE_PATH); // real grep for the async scan
         $project = self::project([
             'src/A.php' => "<?php\n// TODO extract this\n",
             'src/B.php' => "<?php\n// FIXME races\n",
@@ -48,7 +48,7 @@ final class IdeTodoPluginTest extends TestCase
             [
                 200 => function ($tui, $terminal): void {
                     $tui->handleInput("\x1b8"); // alt+8 — core's key, the plugin's handler
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'FIXME races'));
+                    $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'FIXME races'));
                     $this->frame($tui);
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('TODO extract this', $screen, 'the scan found both markers');
@@ -65,7 +65,7 @@ final class IdeTodoPluginTest extends TestCase
                     $project->write('src/C.php', "<?php\n// TODO added later\n");
                     $tui->setFocus($tui->getById('results'));
                     $tui->handleInput("\x1b[15~");
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), '3 results'));
+                    $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), '3 results'));
                     $this->assertStringContainsString('TODO added later', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the rerun saw the new file');
                 },
             ],
@@ -79,7 +79,7 @@ final class IdeTodoPluginTest extends TestCase
         // The whole reason adoption exists. A user who rebound `ide_todo`
         // before the feature moved must not discover that their key is now an
         // "unknown keymap action" — the id is core's, only the code moved.
-        putenv('PATH='.PORTA_TEST_PRISTINE_PATH);
+        \putenv('PATH='.\PORTA_TEST_PRISTINE_PATH);
         $project = self::project(
             ['a.php' => "<?php\n// TODO rebound\n"],
             '{"enabledPlugins":["todo"],"keymap":{"ide_todo":"f9"}}',
@@ -91,7 +91,7 @@ final class IdeTodoPluginTest extends TestCase
             [
                 200 => function ($tui, $terminal): void {
                     $tui->handleInput("\x1b[20~"); // F9
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'TODO rebound'));
+                    $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'TODO rebound'));
                 },
             ],
         );
@@ -103,7 +103,7 @@ final class IdeTodoPluginTest extends TestCase
     {
         // The state a third party's IDE is in before their plugin loads: the
         // key does nothing, the tool has no tab, and nothing else is disturbed.
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = self::project(['a.php' => "<?php\n// TODO gone\n"], '{"enabledPlugins":[]}');
 
         $this->runIde(
@@ -137,7 +137,7 @@ final class IdeTodoPluginTest extends TestCase
                         $view = $candidate;
                     }
                     $this->assertNotNull($view, 'the View menu is there to inspect');
-                    $labels = array_map(static fn (object $item): string => $item->label, $view->items);
+                    $labels = \array_map(static fn (object $item): string => $item->label, $view->items);
                     $this->assertContains('Show Problems', $labels, 'and it really is the View menu');
                     $this->assertNotContains('Show TODOs', $labels, 'no dead menu entry for a verb nothing answers');
                 },

@@ -59,7 +59,7 @@ final class ListOverlayFilterTest extends TestCase
 
     private function type(OverlayHost $host, string $text): void
     {
-        foreach (mb_str_split($text) as $char) {
+        foreach (\mb_str_split($text) as $char) {
             $host->handleInput($char, $this->keys());
         }
     }
@@ -77,7 +77,7 @@ final class ListOverlayFilterTest extends TestCase
      */
     private function rawCanvas(OverlayHost $host): array
     {
-        $lines = array_fill(start_index: 0, count: 24, value: str_repeat(' ', times: 100));
+        $lines = \array_fill(start_index: 0, count: 24, value: \str_repeat(' ', times: 100));
         foreach ($host->layout([0, 0, 24, 100]) as $box) {
             foreach ($box['rows'] as $i => $rowText) {
                 $lines[$box['top'] + $i] = OverlayCompositor::into($lines[$box['top'] + $i], $box['col'], $box['width'], 100, $rowText);
@@ -90,14 +90,14 @@ final class ListOverlayFilterTest extends TestCase
     /** @return list<string> */
     private function canvas(OverlayHost $host): array
     {
-        $lines = array_fill(start_index: 0, count: 24, value: str_repeat(' ', times: 100));
+        $lines = \array_fill(start_index: 0, count: 24, value: \str_repeat(' ', times: 100));
         foreach ($host->layout([0, 0, 24, 100]) as $box) {
             foreach ($box['rows'] as $i => $rowText) {
                 $lines[$box['top'] + $i] = OverlayCompositor::into($lines[$box['top'] + $i], $box['col'], $box['width'], 100, $rowText);
             }
         }
 
-        return array_map(AnsiUtils::stripAnsiCodes(...), $lines);
+        return \array_map(AnsiUtils::stripAnsiCodes(...), $lines);
     }
 
     public function testTypingNarrowsTheListAndEnterPicksFromWhatIsLeft(): void
@@ -126,7 +126,7 @@ final class ListOverlayFilterTest extends TestCase
 
         $this->type($host, 'method');
 
-        $plain = implode("\n", $this->canvas($host));
+        $plain = \implode("\n", $this->canvas($host));
         $this->assertStringContainsString('handle', $plain);
         $this->assertStringContainsString('hydrate', $plain);
         $this->assertStringNotContainsString('$logger', $plain, 'a property is not a method');
@@ -166,7 +166,7 @@ final class ListOverlayFilterTest extends TestCase
         $this->type($host, 'zz');
         $host->handleInput("\x1b", $this->keys());
         $this->assertNotNull(Probe::get($host, 'overlay'), 'still open, filter cleared');
-        $this->assertStringContainsString('$logger', implode("\n", $this->canvas($host)), 'the whole list is back');
+        $this->assertStringContainsString('$logger', \implode("\n", $this->canvas($host)), 'the whole list is back');
 
         $host->handleInput("\x1b", $this->keys());
         $this->assertNull(Probe::get($host, 'overlay'), 'the second Esc closes it');
@@ -178,11 +178,11 @@ final class ListOverlayFilterTest extends TestCase
         $host->openList('L', self::symbols(), static fn () => null);
 
         $this->type($host, 'hyd');
-        $this->assertStringNotContainsString('handle', implode("\n", $this->canvas($host)));
+        $this->assertStringNotContainsString('handle', \implode("\n", $this->canvas($host)));
 
         $host->handleInput("\x7f", $this->keys());
         $host->handleInput("\x7f", $this->keys());
-        $this->assertStringContainsString('handle', implode("\n", $this->canvas($host)), 'back to `h`');
+        $this->assertStringContainsString('handle', \implode("\n", $this->canvas($host)), 'back to `h`');
     }
 
     /**
@@ -201,7 +201,7 @@ final class ListOverlayFilterTest extends TestCase
         });
 
         $this->type($host, 'zzz');
-        $this->assertStringContainsString('no matches', implode("\n", $this->canvas($host)));
+        $this->assertStringContainsString('no matches', \implode("\n", $this->canvas($host)));
 
         $host->handleInput("\x1b[B", $this->keys());
         $host->handleInput("\x1b[A", $this->keys());
@@ -231,7 +231,7 @@ final class ListOverlayFilterTest extends TestCase
         $rows = $this->canvas($host);
         $filterRow = null;
         foreach ($rows as $row) {
-            if (!str_contains($row, '≡')) {
+            if (!\str_contains($row, '≡')) {
                 continue;
             }
             $filterRow = $row;
@@ -248,7 +248,7 @@ final class ListOverlayFilterTest extends TestCase
         // perfect.
         $this->assertMatchesRegularExpression(
             '/≡ hyd {2,}\x1b\[49m/u',
-            implode("\n", $this->rawCanvas($host)),
+            \implode("\n", $this->rawCanvas($host)),
             'the filter row is highlighted across the box, not just under its text',
         );
     }
@@ -267,7 +267,7 @@ final class ListOverlayFilterTest extends TestCase
         $rows = $this->canvas($host);
         $emptyRow = null;
         foreach ($rows as $row) {
-            if (!str_contains($row, 'no matches')) {
+            if (!\str_contains($row, 'no matches')) {
                 continue;
             }
             $emptyRow = $row;
@@ -276,7 +276,7 @@ final class ListOverlayFilterTest extends TestCase
         $this->assertMatchesRegularExpression('/^ *│  no matches +│ *$/u', $emptyRow);
         $this->assertMatchesRegularExpression(
             '/no matches {2,}\x1b\[49m/u',
-            implode("\n", $this->rawCanvas($host)),
+            \implode("\n", $this->rawCanvas($host)),
             'and so is the empty-state row',
         );
     }
@@ -300,13 +300,13 @@ final class ListOverlayFilterTest extends TestCase
         $host = $this->host();
         $host->openList('L', $items, static fn () => null);
         $this->type($host, 'éla'); // lowercase needle, uppercase label
-        $this->assertStringContainsString('Élan', implode('
+        $this->assertStringContainsString('Élan', \implode('
 ', $this->canvas($host)), 'the label folded');
 
         $host = $this->host();
         $host->openList('L', $items, static fn () => null);
         $this->type($host, 'ÉLA'); // uppercase needle
-        $this->assertStringContainsString('Élan', implode('
+        $this->assertStringContainsString('Élan', \implode('
 ', $this->canvas($host)), 'the needle folded');
 
         $host = $this->host();
@@ -315,7 +315,7 @@ final class ListOverlayFilterTest extends TestCase
         // `strtolower('Größe')` already lowercases the ASCII `G` and leaves the
         // rest, which is indistinguishable from the multibyte fold.
         $this->type($host, 'öffent');
-        $plain = implode('
+        $plain = \implode('
 ', $this->canvas($host));
         $this->assertStringContainsString('Élan', $plain, 'the hint folded');
         $this->assertStringNotContainsString('plain', $plain);
@@ -364,10 +364,10 @@ final class ListOverlayFilterTest extends TestCase
         $this->type($host, 'zx'); // `z` already matches nothing; `x` must still land
 
         $host->handleInput("\x7f", $this->keys()); // one backspace leaves `z`
-        $this->assertStringContainsString('no matches', implode("\n", $this->canvas($host)), 'still filtered by `z`');
+        $this->assertStringContainsString('no matches', \implode("\n", $this->canvas($host)), 'still filtered by `z`');
 
         $host->handleInput("\x7f", $this->keys());
-        $this->assertStringContainsString('$logger', implode("\n", $this->canvas($host)), 'and now the filter is empty');
+        $this->assertStringContainsString('$logger', \implode("\n", $this->canvas($host)), 'and now the filter is empty');
     }
 
     /**
@@ -439,8 +439,8 @@ final class ListOverlayFilterTest extends TestCase
         $host = $this->host();
         $host->openList('L', self::symbols(), static fn () => null);
 
-        $rows = array_values(array_filter($this->canvas($host), static fn (string $l): bool => '' !== trim($l)));
+        $rows = \array_values(\array_filter($this->canvas($host), static fn (string $l): bool => '' !== \trim($l)));
         $this->assertStringContainsString('L', $rows[0], 'the title bar');
-        $this->assertStringNotContainsString('≡', implode("\n", $rows), 'no filter row until something is typed');
+        $this->assertStringNotContainsString('≡', \implode("\n", $rows), 'no filter row until something is typed');
     }
 }

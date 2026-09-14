@@ -48,13 +48,13 @@ final class PluginLoaderTest extends TestCase
     /** A warning rendered the way an 'en' Translator would (untranslated: identity substitution), for readable substring assertions. */
     private static function render(ConfigWarning $warning): string
     {
-        return strtr($warning->key, $warning->params);
+        return \strtr($warning->key, $warning->params);
     }
 
     /** @param list<ConfigWarning> $warnings */
     private static function renderAll(array $warnings, string $glue = "\n"): string
     {
-        return implode($glue, array_map(self::render(...), $warnings));
+        return \implode($glue, \array_map(self::render(...), $warnings));
     }
 
     public function testLoadsAValidPluginAndMissingDirsAreSilent(): void
@@ -294,13 +294,13 @@ final class PluginLoaderTest extends TestCase
         // phpunit.xml.dist pins the env for every test; assert both arms.
         $this->assertSame('/nonexistent', PluginLoader::embeddedDir());
 
-        $pinned = (string) getenv('PORTA_EMBEDDED_PLUGINS');
-        putenv('PORTA_EMBEDDED_PLUGINS=');
+        $pinned = (string) \getenv('PORTA_EMBEDDED_PLUGINS');
+        \putenv('PORTA_EMBEDDED_PLUGINS=');
         try {
             $this->assertStringEndsWith('/plugins', PluginLoader::embeddedDir(), 'empty env → the package dir');
             $this->assertFileExists(PluginLoader::embeddedDir().'/psalm/plugin.php', 'and it holds the bundled plugins');
         } finally {
-            putenv('PORTA_EMBEDDED_PLUGINS='.$pinned);
+            \putenv('PORTA_EMBEDDED_PLUGINS='.$pinned);
         }
     }
 

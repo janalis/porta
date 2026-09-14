@@ -24,7 +24,7 @@ final class DocsUrlOpenerTest extends TestCase
 
     public function testWithoutAnOpenerOnPathTheUrlItselfIsFlashed(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject();
         $status = new StatusBarWidget();
         $opener = new DocsUrlOpener(new Notifier($status, new Tui(terminal: new VirtualTerminal(columns: 80, rows: 10))), new Translator('en'), $project->dir);
@@ -38,11 +38,11 @@ final class DocsUrlOpenerTest extends TestCase
     {
         $project = new TempProject();
         $bin = $project->path('bin');
-        mkdir($bin);
+        \mkdir($bin);
         $opener = 'Darwin' === \PHP_OS_FAMILY ? 'open' : 'xdg-open';
-        file_put_contents($bin.'/'.$opener, data: "#!/bin/sh\nexit 0\n");
-        chmod($bin.'/'.$opener, permissions: 0o755);
-        putenv('PATH='.$bin);
+        \file_put_contents($bin.'/'.$opener, data: "#!/bin/sh\nexit 0\n");
+        \chmod($bin.'/'.$opener, permissions: 0o755);
+        \putenv('PATH='.$bin);
 
         $status = new StatusBarWidget();
         $docs = new DocsUrlOpener(new Notifier($status, new Tui(terminal: new VirtualTerminal(columns: 80, rows: 10))), new Translator('en'), $project->dir);

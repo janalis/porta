@@ -24,9 +24,9 @@ final class AsyncHighlightTest extends TestCase
     private function asyncProvider(): ClosureHighlightProvider
     {
         return new ClosureHighlightProvider(
-            static fn (string $content): string => implode("\n", array_map(
+            static fn (string $content): string => \implode("\n", \array_map(
                 static fn (string $line): string => self::PAINT.$line."\x1b[39m",
-                explode("\n", $content),
+                \explode("\n", $content),
             )),
             async: true,
         );
@@ -52,8 +52,8 @@ final class AsyncHighlightTest extends TestCase
         $provider->deliverPending();
 
         $resolved = $highlighter->highlight(['<?php', 'echo 1;'], 1);
-        $this->assertStringContainsString(self::PAINT, implode('', $resolved));
-        $this->assertSame(['<?php', 'echo 1;'], array_map(AnsiUtils::stripAnsiCodes(...), $resolved));
+        $this->assertStringContainsString(self::PAINT, \implode('', $resolved));
+        $this->assertSame(['<?php', 'echo 1;'], \array_map(AnsiUtils::stripAnsiCodes(...), $resolved));
     }
 
     /** A late answer must ask for the frame that will show it. */
@@ -99,7 +99,7 @@ final class AsyncHighlightTest extends TestCase
 
         $provisional = $highlighter->highlight(['<?php', 'echo 2;'], 2);
 
-        $this->assertStringContainsString(self::PAINT, implode('', $provisional), 'kept the old colors');
+        $this->assertStringContainsString(self::PAINT, \implode('', $provisional), 'kept the old colors');
     }
 
     /** A different line count cannot reuse the old paint, so it falls back to plain. */
@@ -131,7 +131,7 @@ final class AsyncHighlightTest extends TestCase
 
         $provider->deliverPending(); // both answers arrive; only v2's is wanted
 
-        $this->assertSame(['two'], array_map(AnsiUtils::stripAnsiCodes(...), $highlighter->highlight(['two'], 2)));
+        $this->assertSame(['two'], \array_map(AnsiUtils::stripAnsiCodes(...), $highlighter->highlight(['two'], 2)));
     }
 
     public function testUnsolicitedDeliveryIsIgnored(): void
@@ -177,7 +177,7 @@ final class AsyncHighlightTest extends TestCase
         $highlighter->fail('/x/a.php', 99, new \RuntimeException('stale'));
         $provider->deliverPending();
 
-        $this->assertStringContainsString(self::PAINT, implode('', $highlighter->highlight(['a'], 1)));
+        $this->assertStringContainsString(self::PAINT, \implode('', $highlighter->highlight(['a'], 1)));
     }
 
     /**
@@ -321,7 +321,7 @@ final class AsyncHighlightTest extends TestCase
         $highlighter->highlight(['a'], 2);
         $provider->deliverPending();
 
-        $this->assertStringContainsString(self::PAINT, implode('', $highlighter->highlight(['a'], 2)));
+        $this->assertStringContainsString(self::PAINT, \implode('', $highlighter->highlight(['a'], 2)));
     }
 
     /** A synchronous backend never arms a deadline — it has already answered. */
@@ -451,7 +451,7 @@ final class AsyncHighlightTest extends TestCase
         $highlighter->setFile('/x/a.php');
 
         $highlighter->highlight(['a'], 1);
-        $firstTimer = (string) array_key_first($scheduler->scheduled);
+        $firstTimer = (string) \array_key_first($scheduler->scheduled);
         $highlighter->highlight(['b'], 2);
 
         $this->assertCount(1, $scheduler->scheduled, 'only one deadline pending at a time');

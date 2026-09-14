@@ -136,6 +136,6 @@ enum Role
      */
     public function selector(): string
     {
-        return '.role-'.strtolower((string) preg_replace('/(?<!^)[A-Z]/', replacement: '-$0', subject: $this->name));
+        return '.role-'.\strtolower((string) \preg_replace('/(?<!^)[A-Z]/', replacement: '-$0', subject: $this->name));
     }
 }

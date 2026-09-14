@@ -79,7 +79,7 @@ final class LspRefusalTest extends TestCase
                 $silent[] = $name.'::'.$method;
             }
         }
-        sort($silent);
+        \sort($silent);
 
         $this->assertSame(
             [],
@@ -92,7 +92,7 @@ final class LspRefusalTest extends TestCase
     public function testTheSilentAllowlistNamesLiveCallSites(): void
     {
         foreach (self::SILENT_BY_DESIGN as $file => $methods) {
-            $source = (string) file_get_contents(__DIR__.'/../../../src/Lsp/'.$file);
+            $source = (string) \file_get_contents(__DIR__.'/../../../src/Lsp/'.$file);
             $found = $this->bareReadyMethods($source);
             foreach ($methods as $method) {
                 $this->assertContains($method, $found, "{$file}::{$method} no longer calls a bare ready()");
@@ -110,13 +110,13 @@ final class LspRefusalTest extends TestCase
     private function bareReadyMethods(string $source): array
     {
         $matches = [];
-        preg_match_all('/function\s+(\w+)\s*\(/', $source, $matches, \PREG_OFFSET_CAPTURE);
+        \preg_match_all('/function\s+(\w+)\s*\(/', $source, $matches, \PREG_OFFSET_CAPTURE);
         $out = [];
         $names = $matches[1];
         foreach ($names as $i => [$name, $offset]) {
             $end = $names[$i + 1][1] ?? \strlen($source);
-            $body = substr($source, $offset, $end - $offset);
-            if (str_contains($body, '$this->ready(')) {
+            $body = \substr($source, $offset, $end - $offset);
+            if (\str_contains($body, '$this->ready(')) {
                 $out[] = $name;
             }
         }

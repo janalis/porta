@@ -43,8 +43,8 @@ final class GlobalConfigBootTest extends TestCase
 
     public function testAGlobalConfigAloneSteersTheRunningIde(): void
     {
-        putenv('PATH=/nonexistent');
-        $this->home = new TempProject(['.porta/config.json' => json_encode(
+        \putenv('PATH=/nonexistent');
+        $this->home = new TempProject(['.porta/config.json' => \json_encode(
             [
                 'settings' => ['language' => 'fr', 'lineNumbers' => 'relative'],
             ],
@@ -52,7 +52,7 @@ final class GlobalConfigBootTest extends TestCase
         )]);
         // No .porta.json at all: everything here comes from the user's file.
         $this->project = new TempProject(['A.php' => "<?php\n\$x = 1;\n"]);
-        putenv('PORTA_HOME='.$this->home->dir);
+        \putenv('PORTA_HOME='.$this->home->dir);
 
         $this->runIde(
             $this->project,
@@ -92,8 +92,8 @@ final class GlobalConfigBootTest extends TestCase
      */
     public function testTheProjectFileStillOverridesTheUsersOnBoot(): void
     {
-        putenv('PATH=/nonexistent');
-        $this->home = new TempProject(['.porta/config.json' => json_encode(
+        \putenv('PATH=/nonexistent');
+        $this->home = new TempProject(['.porta/config.json' => \json_encode(
             [
                 'settings' => ['language' => 'fr', 'lineNumbers' => 'relative'],
             ],
@@ -101,9 +101,9 @@ final class GlobalConfigBootTest extends TestCase
         )]);
         $this->project = new TempProject([
             'A.php' => "<?php\n\$x = 1;\n",
-            '.porta.json' => json_encode(['settings' => ['lineNumbers' => 'absolute']], \JSON_THROW_ON_ERROR),
+            '.porta.json' => \json_encode(['settings' => ['lineNumbers' => 'absolute']], \JSON_THROW_ON_ERROR),
         ]);
-        putenv('PORTA_HOME='.$this->home->dir);
+        \putenv('PORTA_HOME='.$this->home->dir);
 
         $this->runIde(
             $this->project,
@@ -130,15 +130,15 @@ final class GlobalConfigBootTest extends TestCase
     /** The merge the running IDE used is the merge a fresh load produces. */
     public function testTheLoaderAgreesWithWhatTheIdeBootedWith(): void
     {
-        putenv('PATH=/nonexistent');
-        $this->home = new TempProject(['.porta/config.json' => json_encode(
+        \putenv('PATH=/nonexistent');
+        $this->home = new TempProject(['.porta/config.json' => \json_encode(
             [
                 'settings' => ['language' => 'fr', 'lineNumbers' => 'relative'],
             ],
             \JSON_THROW_ON_ERROR,
         )]);
         $this->project = new TempProject(['A.php' => "<?php\n\$x = 1;\n"]);
-        putenv('PORTA_HOME='.$this->home->dir);
+        \putenv('PORTA_HOME='.$this->home->dir);
 
         $config = IdeConfig::load($this->project->dir);
 

@@ -622,14 +622,14 @@ final class MouseRouter
                 return true;
             }
             if (null !== ($closeIndex = $this->panes->tabBar()->closeIndexAt($rel['row'], $rel['col']))) {
-                if (array_key_exists($closeIndex, $buffers)) {
+                if (\array_key_exists($closeIndex, $buffers)) {
                     $this->bufferService->closeTab($buffers[$closeIndex]->path);
                 }
 
                 return true;
             }
             $index = $this->panes->tabBar()->tabIndexAt($rel['row'], $rel['col']);
-            if (null !== $index && array_key_exists($index, $buffers)) {
+            if (null !== $index && \array_key_exists($index, $buffers)) {
                 $this->buffers->setActive($buffers[$index]->path);
                 $this->bufferService->showBuffer($buffers[$index]);
                 $this->bufferService->focusEditorArea(); // an image tab focuses the viewer

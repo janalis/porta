@@ -102,7 +102,7 @@ final class ViewCommandsTest extends TestCase
             $buffers->open($c, "<?php\n");
             $buffers->setActive($b); // land in the middle, not an edge
 
-            $order = static fn (): array => array_map(static fn ($buf) => $buf->path, $buffers->all());
+            $order = static fn (): array => \array_map(static fn ($buf) => $buf->path, $buffers->all());
             $this->assertSame([$a, $b, $c], $order());
 
             $commands->run('move_tab_left');
@@ -142,21 +142,21 @@ final class ViewCommandsTest extends TestCase
             $this->assertTrue($commands->isEnabled('dock_next_panel'));
             $tabsBefore = $dock->aliveTabs();
             $this->assertCount(2, $tabsBefore, 'two terminal sessions must produce two alive tabs');
-            $activeBefore = array_values(array_filter($tabsBefore, static fn (array $t): bool => $t['active']))[0]['key'];
+            $activeBefore = \array_values(\array_filter($tabsBefore, static fn (array $t): bool => $t['active']))[0]['key'];
 
             $commands->run('dock_next_panel');
             $tabsAfterNext = $dock->aliveTabs();
-            $activeAfterNext = array_values(array_filter($tabsAfterNext, static fn (array $t): bool => $t['active']))[0]['key'];
+            $activeAfterNext = \array_values(\array_filter($tabsAfterNext, static fn (array $t): bool => $t['active']))[0]['key'];
             $this->assertNotSame($activeBefore, $activeAfterNext, 'dock_next_panel must move to the OTHER tab (direction 1, not 0)');
 
             $commands->run('dock_next_panel'); // with only 2 tabs, a second forward step must return to the start
             $tabsAfterNext2 = $dock->aliveTabs();
-            $activeAfterNext2 = array_values(array_filter($tabsAfterNext2, static fn (array $t): bool => $t['active']))[0]['key'];
+            $activeAfterNext2 = \array_values(\array_filter($tabsAfterNext2, static fn (array $t): bool => $t['active']))[0]['key'];
             $this->assertSame($activeBefore, $activeAfterNext2, 'two forward steps of 1 over 2 tabs must return to the start (direction 2 would already be back here after ONE step)');
 
             $commands->run('dock_prev_panel');
             $tabsAfterPrev = $dock->aliveTabs();
-            $activeAfterPrev = array_values(array_filter($tabsAfterPrev, static fn (array $t): bool => $t['active']))[0]['key'];
+            $activeAfterPrev = \array_values(\array_filter($tabsAfterPrev, static fn (array $t): bool => $t['active']))[0]['key'];
             $this->assertNotSame($activeBefore, $activeAfterPrev, 'dock_prev_panel must move to the OTHER tab (direction -1, not -0)');
         } finally {
             $sessions = Probe::get($dock, 'sessions');

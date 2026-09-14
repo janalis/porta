@@ -69,7 +69,7 @@ final class BootTraceTest extends TestCase
 
     public function testTheDefaultClocksProduceAPlausibleLine(): void
     {
-        $trace = new BootTrace(processStartSeconds: microtime(true));
+        $trace = new BootTrace(processStartSeconds: \microtime(true));
 
         $trace->mark('container');
 

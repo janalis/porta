@@ -299,12 +299,12 @@ final class SettingsViewController implements ContributedView
         if (!$this->open) {
             return;
         }
-        if (str_starts_with($this->section, 'plugin:') && !$this->plugins->hasPlugin(substr($this->section, offset: 7))) {
+        if (\str_starts_with($this->section, 'plugin:') && !$this->plugins->hasPlugin(\substr($this->section, offset: 7))) {
             $this->selectSection('plugins');
 
             return;
         }
-        if ('plugins' === $this->section || str_starts_with($this->section, 'plugin:')) {
+        if ('plugins' === $this->section || \str_starts_with($this->section, 'plugin:')) {
             $this->form->setRows($this->rowsForSection(), $this->nav->activeLabel());
             $this->host->invalidate();
         }

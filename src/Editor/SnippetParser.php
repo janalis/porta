@@ -44,7 +44,7 @@ final class SnippetParser
                 if ('{' === $snippet[$i + 1]) {
                     $close = self::matchingBrace($snippet, $i + 1);
                     if (-1 !== $close) {
-                        $inner = substr($snippet, $i + 2, $close - $i - 2);
+                        $inner = \substr($snippet, $i + 2, $close - $i - 2);
                         [$index, $default] = self::parsePlaceholder($inner);
                         if (null !== $index) {
                             // Recurse so nested placeholders (${1:${2:x}}) flatten
@@ -63,12 +63,12 @@ final class SnippetParser
                     }
                 }
                 // $N
-                if (ctype_digit($snippet[$i + 1])) {
+                if (\ctype_digit($snippet[$i + 1])) {
                     $j = $i + 1;
-                    while ($j < $len && ctype_digit($snippet[$j])) {
+                    while ($j < $len && \ctype_digit($snippet[$j])) {
                         ++$j;
                     }
-                    $index = (int) substr($snippet, $i + 1, $j - $i - 1);
+                    $index = (int) \substr($snippet, $i + 1, $j - $i - 1);
                     $start = \strlen($text);
                     self::recordStop($stops, $index, $start, $start);
                     $i = $j;
@@ -87,7 +87,7 @@ final class SnippetParser
     /** @param array<int, SnippetTabStop> $stops */
     private static function recordStop(array &$stops, int $index, int $start, int $end): void
     {
-        if (!array_key_exists($index, $stops)) {
+        if (!\array_key_exists($index, $stops)) {
             $stops[$index] = new SnippetTabStop($index, $start, $end);
         }
     }
@@ -99,8 +99,8 @@ final class SnippetParser
      */
     private static function orderStops(array $stops): array
     {
-        $ordered = array_values($stops);
-        usort($ordered, static function (SnippetTabStop $a, SnippetTabStop $b): int {
+        $ordered = \array_values($stops);
+        \usort($ordered, static function (SnippetTabStop $a, SnippetTabStop $b): int {
             // $0 (final caret) always sorts last.
             $ka = 0 === $a->index ? \PHP_INT_MAX : $a->index;
             $kb = 0 === $b->index ? \PHP_INT_MAX : $b->index;
@@ -120,15 +120,15 @@ final class SnippetParser
     private static function parsePlaceholder(string $inner): array
     {
         $m = [];
-        if (preg_match('/^(\d+):(.*)$/s', $inner, $m)) {
+        if (\preg_match('/^(\d+):(.*)$/s', $inner, $m)) {
             return [(int) $m[1], $m[2]];
         }
-        if (preg_match('/^(\d+)\|([^|]*)\|$/s', $inner, $m)) {
-            $choices = explode(',', $m[2]);
+        if (\preg_match('/^(\d+)\|([^|]*)\|$/s', $inner, $m)) {
+            $choices = \explode(',', $m[2]);
 
             return [(int) $m[1], $choices[0]];
         }
-        if (preg_match('/^\d+$/', $inner)) {
+        if (\preg_match('/^\d+$/', $inner)) {
             return [(int) $inner, ''];
         }
 

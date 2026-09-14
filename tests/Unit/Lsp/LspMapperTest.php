@@ -221,7 +221,7 @@ final class LspMapperTest extends TestCase
             0,
             $items,
         );
-        $this->assertSame(['kept'], array_column($items, 'label'));
+        $this->assertSame(['kept'], \array_column($items, 'label'));
     }
 
     public function testFlattenSymbolsValueDefaultsLineAndCharacterIndependently(): void

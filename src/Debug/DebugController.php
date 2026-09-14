@@ -190,9 +190,9 @@ final class DebugController implements DebugSessionObserver, StatusSegment
                     $this->breakpoints->setDetails(
                         $path,
                         $line,
-                        '' === trim($condition) ? null : trim($condition),
-                        '' === trim($hitCondition) ? null : trim($hitCondition),
-                        '' === trim($logMessage) ? null : trim($logMessage),
+                        '' === \trim($condition) ? null : \trim($condition),
+                        '' === \trim($hitCondition) ? null : \trim($hitCondition),
+                        '' === \trim($logMessage) ? null : \trim($logMessage),
                     );
                     $this->syncBreakpoints($path);
                 });
@@ -252,12 +252,12 @@ final class DebugController implements DebugSessionObserver, StatusSegment
         $this->currentFrameId = null;
         $session = $this->sessions->find('debug') ?? $this->sessions->create('debug', '');
         $session->buffer->clear();
-        $session->setTitle($this->translator->trans('Debug: %label%', ['%label%' => basename($path)]));
+        $session->setTitle($this->translator->trans('Debug: %label%', ['%label%' => \basename($path)]));
         // The debuggee's output session is created and made active but NOT
         // shown — the dock shows the debug panel; the output sits one
         // terminal-toggle away (ctrl+`).
         $this->sessions->makeActive($session);
-        $this->panelTitle = basename($path);
+        $this->panelTitle = \basename($path);
         $this->panel->open($this->panelTitle);
         $this->panel->setWatches($this->watches->all());
 
@@ -395,7 +395,7 @@ final class DebugController implements DebugSessionObserver, StatusSegment
             return;
         }
         $enabled = $this->exceptionFilters->enabledFor($filters);
-        $items = array_map(static fn (array $filter): array => [
+        $items = \array_map(static fn (array $filter): array => [
             'label' => (\in_array($filter['filter'], $enabled, strict: true) ? '[x] ' : '[ ] ').$filter['label'],
             'hint' => $filter['filter'],
             'value' => $filter['filter'],
@@ -418,8 +418,8 @@ final class DebugController implements DebugSessionObserver, StatusSegment
         }
         $this->revealPanel();
         $session->stackTrace(function (array $frames) use ($session): void {
-            $this->frames = array_column($frames, null, 'id');
-            $display = array_map(fn (array $frame): array => [...$frame, 'path' => $this->paths->relative($frame['path'])], $frames);
+            $this->frames = \array_column($frames, null, 'id');
+            $display = \array_map(fn (array $frame): array => [...$frame, 'path' => $this->paths->relative($frame['path'])], $frames);
             $top = $frames[0] ?? null;
             if (null === $top || '' === $top['path']) {
                 $this->panel->setSessionState(DebugState::Paused, null);
@@ -526,7 +526,7 @@ final class DebugController implements DebugSessionObserver, StatusSegment
     {
         $this->tui->setFocus($this->editor); // drivable from a focused dock panel too
         $this->editor->openPrompt($this->translator->trans('Watch expression'), '', function (string $expression): void {
-            $expression = trim($expression);
+            $expression = \trim($expression);
             if ('' === $expression) {
                 return;
             }
@@ -551,7 +551,7 @@ final class DebugController implements DebugSessionObserver, StatusSegment
         }
         $this->tui->setFocus($this->editor); // drivable from a focused dock panel too
         $this->editor->openPrompt($this->translator->trans('Evaluate expression'), '', function (string $expression): void {
-            $expression = trim($expression);
+            $expression = \trim($expression);
             if ('' === $expression || null === $this->session) {
                 return;
             }
@@ -592,7 +592,7 @@ final class DebugController implements DebugSessionObserver, StatusSegment
     public function onOutput(string $category, string $text): void
     {
         $session = $this->sessions->find('debug');
-        $session?->buffer->feed(str_replace("\n", replace: "\r\n", subject: $text));
+        $session?->buffer->feed(\str_replace("\n", replace: "\r\n", subject: $text));
         if (null !== $session && $session === $this->sessions->active()) {
             $this->terminalPanel->refresh();
         }

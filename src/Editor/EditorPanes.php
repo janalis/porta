@@ -92,7 +92,7 @@ final class EditorPanes
     /** @return list<EditorPaneWidget> every registered pane, for the sweeps that range over all of them */
     public function all(): array
     {
-        return array_values($this->panes);
+        return \array_values($this->panes);
     }
 
     /**

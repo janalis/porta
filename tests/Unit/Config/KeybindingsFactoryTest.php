@@ -45,7 +45,7 @@ final class KeybindingsFactoryTest extends TestCase
         // declares an action, and the user's keymap can rebind it — without
         // core's catalog naming it, which it cannot.
         $project = new TempProject([
-            '.porta.json' => json_encode(['keymap' => ['demo_zoom' => 'f6']]),
+            '.porta.json' => \json_encode(['keymap' => ['demo_zoom' => 'f6']]),
             '.porta/plugins/paned/plugin.php' => self::PLUGIN,
         ]);
         [$factory, $host] = $this->factory($project);
@@ -58,7 +58,7 @@ final class KeybindingsFactoryTest extends TestCase
 
     public function testAnIdNothingDeclaresIsDroppedAndReportedOnce(): void
     {
-        $project = new TempProject(['.porta.json' => json_encode(['keymap' => ['nobody_declares_this' => 'f7', 'save' => 'f8']])]);
+        $project = new TempProject(['.porta.json' => \json_encode(['keymap' => ['nobody_declares_this' => 'f7', 'save' => 'f8']])]);
         [$factory, $host] = $this->factory($project);
 
         $keys = $factory->create();
@@ -79,7 +79,7 @@ final class KeybindingsFactoryTest extends TestCase
         // "plugin:command" ids dispatch by id and carry no descriptor, so there
         // is nothing to check them against — they simply bind if their plugin
         // loads, which may be after this runs.
-        $project = new TempProject(['.porta.json' => json_encode(['keymap' => ['demo:hello' => 'f9']])]);
+        $project = new TempProject(['.porta.json' => \json_encode(['keymap' => ['demo:hello' => 'f9']])]);
         [$factory, $host] = $this->factory($project);
 
         $this->assertSame(['f9'], $factory->create()->getBindings('demo:hello'));
@@ -102,7 +102,7 @@ final class KeybindingsFactoryTest extends TestCase
 
     public function testMultipleDeclaredActionsAreAllKept(): void
     {
-        $project = new TempProject(['.porta.json' => json_encode(['keymap' => ['save' => 'f2', 'find' => 'f3']])]);
+        $project = new TempProject(['.porta.json' => \json_encode(['keymap' => ['save' => 'f2', 'find' => 'f3']])]);
         [$factory] = $this->factory($project);
 
         $keys = $factory->create();

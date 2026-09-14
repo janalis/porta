@@ -356,7 +356,7 @@ final class EditorActions
         $doc = $this->document;
         $line = $doc->getCursorLine();
         $column = $doc->getCursorDisplayCol();
-        $lastStart = intdiv(max(0, $doc->lineDisplayWidth($line) - 1), $width) * $width;
+        $lastStart = \intdiv(\max(0, $doc->lineDisplayWidth($line) - 1), $width) * $width;
         if ($lastStart > 0) {
             $doc->setCursor($line, $doc->byteColForDisplayCol($line, $lastStart + ($column % $width)));
         }
@@ -380,7 +380,7 @@ final class EditorActions
 
                 return true;
             }
-            if ($kb->matches($keys, substr_replace($action, replace: 'select', offset: 0, length: 6))) {
+            if ($kb->matches($keys, \substr_replace($action, replace: 'select', offset: 0, length: 6))) {
                 $doc->beginSelect();
                 $this->moveVertically($action, $method);
                 $this->host->invalidate();
@@ -630,7 +630,7 @@ final class EditorActions
 
         $items = [];
         foreach ($entries as $index => $text) {
-            $items[] = ['label' => str_replace(search: "\n", replace: '⏎', subject: $text), 'hint' => '', 'value' => (string) $index];
+            $items[] = ['label' => \str_replace(search: "\n", replace: '⏎', subject: $text), 'hint' => '', 'value' => (string) $index];
         }
 
         $this->host->openListOverlay($this->translator->trans('Paste from History'), $items, function (string $index) use ($entries): void {
@@ -749,12 +749,12 @@ final class EditorActions
     {
         $this->host->openPrompt('Go to line', '', function (string $value): void {
             // Accept "line" or "line:column" (both 1-based); jump 0-based, column 0 by default.
-            $parts = explode(':', trim($value));
+            $parts = \explode(':', \trim($value));
             $count = \count($parts);
-            if ($count > 2 || !ctype_digit($parts[0]) || 2 === $count && !ctype_digit($parts[1])) {
+            if ($count > 2 || !\ctype_digit($parts[0]) || 2 === $count && !\ctype_digit($parts[1])) {
                 return;
             }
-            $column = 2 === $count ? max(0, (int) $parts[1] - 1) : 0;
+            $column = 2 === $count ? \max(0, (int) $parts[1] - 1) : 0;
             $this->host->jumpTo((int) $parts[0] - 1, $column);
         });
     }
@@ -762,15 +762,15 @@ final class EditorActions
     private function promptRename(): void
     {
         $doc = $this->document;
-        $this->host->requestRename($doc->getCursorLine(), $doc->getCursorColUtf16(), ltrim($doc->getWordBeforeCursor(), characters: '$'));
+        $this->host->requestRename($doc->getCursorLine(), $doc->getCursorColUtf16(), \ltrim($doc->getWordBeforeCursor(), characters: '$'));
     }
 
     private function maybeAutoTrigger(string $typed): void
     {
         $line = $this->document->getLine($this->document->getCursorLine());
-        $prefix = substr($line, offset: 0, length: $this->document->getCursorCol());
+        $prefix = \substr($line, offset: 0, length: $this->document->getCursorCol());
 
-        if (str_ends_with($prefix, '->') || str_ends_with($prefix, '::')) {
+        if (\str_ends_with($prefix, '->') || \str_ends_with($prefix, '::')) {
             $this->completion->requestCompletion();
         }
 

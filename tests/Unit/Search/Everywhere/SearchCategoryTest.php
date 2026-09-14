@@ -13,11 +13,11 @@ final class SearchCategoryTest extends TestCase
     {
         $this->assertSame(
             ['Files', 'Classes', 'Symbols', 'Actions', 'Text', 'Settings'],
-            array_map(static fn (SearchCategory $c): string => $c->title(), SearchCategory::cases()),
+            \array_map(static fn (SearchCategory $c): string => $c->title(), SearchCategory::cases()),
         );
         $this->assertSame(
             [0, 1, 2, 3, 4, 5],
-            array_map(static fn (SearchCategory $c): int => $c->order(), SearchCategory::cases()),
+            \array_map(static fn (SearchCategory $c): int => $c->order(), SearchCategory::cases()),
         );
         foreach (SearchCategory::cases() as $category) {
             $this->assertSame(5, $category->cap());

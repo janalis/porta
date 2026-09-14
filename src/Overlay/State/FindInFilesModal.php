@@ -398,7 +398,7 @@ final class FindInFilesModal
      */
     private function cycleScope(): void
     {
-        $this->scopeIndex = ($this->scopeIndex + 1) % max(1, \count($this->scopeLabels));
+        $this->scopeIndex = ($this->scopeIndex + 1) % \max(1, \count($this->scopeLabels));
         if (null !== $this->callbacks->onScopeCycle) {
             ($this->callbacks->onScopeCycle)($this->scopeIndex);
         }
@@ -483,7 +483,7 @@ final class FindInFilesModal
     public function scrollPreview(int $delta): void
     {
         $dir = $delta <=> 0;
-        for ($i = 0, $n = abs($delta); $i < $n; ++$i) {
+        for ($i = 0, $n = \abs($delta); $i < $n; ++$i) {
             $this->step($dir);
         }
     }
@@ -538,12 +538,12 @@ final class FindInFilesModal
         $columns = $boundRight - $boundLeft;
         $rows = $boundBottom - $boundTop;
 
-        $maxPreview = max(1, min(\count($this->displayRows), $rows - 13, $this->userRows ?? 10));
+        $maxPreview = \max(1, \min(\count($this->displayRows), $rows - 13, $this->userRows ?? 10));
         $windowStart = $this->windowStart($maxPreview);
         $visible = \array_slice($this->displayRows, $windowStart, $maxPreview);
 
         $width = $this->boxWidth($columns, $visible);
-        $col = $boundLeft + max(0, intdiv($columns - $width - ModalFrame::CHROME_COLS, num2: 2));
+        $col = $boundLeft + \max(0, \intdiv($columns - $width - ModalFrame::CHROME_COLS, num2: 2));
 
         $fields = $this->headerRows($width, $focused);
         // Box rows: title bar(0), pad(1), find(2), replace(3), options(4),
@@ -584,10 +584,10 @@ final class FindInFilesModal
         // drag freezes an absolute position; either clamps into the bounds —
         // rows outside the pane union would simply not paint.
         $boxWidth = $width + ModalFrame::CHROME_COLS;
-        $startRow = $boundTop + max(0, intdiv($rows - \count($popup), num2: 3));
+        $startRow = $boundTop + \max(0, \intdiv($rows - \count($popup), num2: 3));
         if (null !== $this->userRow && null !== $this->userCol) {
-            $startRow = IntMath::clamp($this->userRow, $boundTop, max($boundTop, $boundBottom - \count($popup)));
-            $col = IntMath::clamp($this->userCol, $boundLeft, max($boundLeft, $boundRight - $boxWidth));
+            $startRow = IntMath::clamp($this->userRow, $boundTop, \max($boundTop, $boundBottom - \count($popup)));
+            $col = IntMath::clamp($this->userCol, $boundLeft, \max($boundLeft, $boundRight - $boxWidth));
             $this->userRow = $startRow;
             $this->userCol = $col;
         }
@@ -620,9 +620,9 @@ final class FindInFilesModal
         }
         // Scrolling up onto a group's first match also reveals its file-header row.
         $top = $this->selected - (null !== ($this->displayRows[$this->selected - 1] ?? null)?->filePath ? 1 : 0);
-        $start = min($this->windowStart, $count - $maxPreview, $top);
+        $start = \min($this->windowStart, $count - $maxPreview, $top);
 
-        return $this->windowStart = max($start, $this->selected - $maxPreview + 1, 0);
+        return $this->windowStart = \max($start, $this->selected - $maxPreview + 1, 0);
     }
 
     /**
@@ -631,21 +631,21 @@ final class FindInFilesModal
     private function boxWidth(int $columns, array $visible): int
     {
         $status = $this->statusText();
-        $width = max(mb_strwidth($this->title) + mb_strwidth($status) + 10, mb_strwidth($this->query->value()) + 9, PopupMetrics::FIND_MIN_WIDTH); // + 10: the frame's title-bar chrome
-        $width = max($width, $this->optionsRowWidth(), $this->footerRowWidth());
+        $width = \max(\mb_strwidth($this->title) + \mb_strwidth($status) + 10, \mb_strwidth($this->query->value()) + 9, PopupMetrics::FIND_MIN_WIDTH); // + 10: the frame's title-bar chrome
+        $width = \max($width, $this->optionsRowWidth(), $this->footerRowWidth());
         foreach ($visible as $row) {
             $text = null !== $row->filePath ? $row->filePath : $this->results[$row->matchIndex]['text'] ?? '';
-            $width = max($width, mb_strwidth($text) + 8);
+            $width = \max($width, \mb_strwidth($text) + 8);
         }
 
         // Inner width; the frame adds a rail and a padding column each side.
         // A corner-drag override replaces the content-driven width (and its
         // 80-column comfort cap — user intent wins), still floored/clamped.
         if (null !== $this->userWidth) {
-            return max(PopupMetrics::FIND_MIN_WIDTH, min($this->userWidth, $columns - PopupMetrics::CENTERED_MARGIN));
+            return \max(PopupMetrics::FIND_MIN_WIDTH, \min($this->userWidth, $columns - PopupMetrics::CENTERED_MARGIN));
         }
 
-        return min($width, $columns - PopupMetrics::CENTERED_MARGIN, 80);
+        return \min($width, $columns - PopupMetrics::CENTERED_MARGIN, 80);
     }
 
     /**
@@ -696,7 +696,7 @@ final class FindInFilesModal
     private function keptCount(): int
     {
         $kept = 0;
-        foreach (array_keys($this->results) as $matchIndex) {
+        foreach (\array_keys($this->results) as $matchIndex) {
             if ($this->excluded[$matchIndex] ?? false) {
                 continue;
             }
@@ -742,10 +742,10 @@ final class FindInFilesModal
     {
         $tags = 0;
         foreach ($this->optionTags() as $glyph) {
-            $tags += mb_strwidth($glyph) + 2;
+            $tags += \mb_strwidth($glyph) + 2;
         }
 
-        return 1 + $tags + 2 + mb_strwidth($this->scopeCaption()) + mb_strwidth($this->scopeLabel()) + mb_strwidth(self::SCOPE_KEY);
+        return 1 + $tags + 2 + \mb_strwidth($this->scopeCaption()) + \mb_strwidth($this->scopeLabel()) + \mb_strwidth(self::SCOPE_KEY);
     }
 
     /** The scope field's caption, translated — longer than English's in several locales. */
@@ -767,7 +767,7 @@ final class FindInFilesModal
         $col = 1; // leading space
         $tags = '';
         foreach ($this->optionTags() as $name => $glyph) {
-            $w = mb_strwidth($glyph) + 2;
+            $w = \mb_strwidth($glyph) + 2;
             $this->optionZones->add($name, $col, $col + $w);
             $col += $w;
             $on = 'tokens' === $name ? 'any' !== $this->options['tokens'] : true === $this->options[$name];
@@ -785,14 +785,14 @@ final class FindInFilesModal
         // holds in the languages where the caption is longer than English's.
         $label = AnsiText::truncate(
             $this->scopeLabel(),
-            max(1, $width - ($col + 2) - mb_strwidth($caption) - mb_strwidth(self::SCOPE_KEY)),
+            \max(1, $width - ($col + 2) - \mb_strwidth($caption) - \mb_strwidth(self::SCOPE_KEY)),
         );
         $labelPart = 'scope' === $this->hovered
             ? $this->styles->merge(Role::RowHighlightBg, Role::Bright)->apply($label)
             : $this->styles->of(Role::TabAccent)->apply($label);
         $scope = '  '.$this->styles->of(Role::Dim)->apply($caption).$labelPart.$this->styles->of(Role::Dim)->apply(self::SCOPE_KEY);
         // The scope zone starts past the two-space gap; clamp so a truncated box can't hit past the edge.
-        $this->optionZones->add('scope', $col + 2, min($col + 2 + mb_strwidth($caption.$label.self::SCOPE_KEY), $width));
+        $this->optionZones->add('scope', $col + 2, \min($col + 2 + \mb_strwidth($caption.$label.self::SCOPE_KEY), $width));
 
         return $this->styles->of(Role::Toolbar)->apply(AnsiText::truncate(' '.$tags.$scope, $width, pad: true));
     }
@@ -830,9 +830,9 @@ final class FindInFilesModal
      */
     private function footerRowWidth(): int
     {
-        $width = 1 + mb_strwidth($this->translator->trans('⏎ open'));
-        foreach (array_keys($this->footerActions()) as $label) {
-            $width += mb_strwidth(' · ') + mb_strwidth($label);
+        $width = 1 + \mb_strwidth($this->translator->trans('⏎ open'));
+        foreach (\array_keys($this->footerActions()) as $label) {
+            $width += \mb_strwidth(' · ') + \mb_strwidth($label);
         }
 
         return $width;
@@ -846,16 +846,16 @@ final class FindInFilesModal
         $dim = $this->styles->of(Role::Dim)->getAnsiRestore();
         $sep = ' · ';
         $line = ' '.$this->translator->trans('⏎ open').$sep;
-        $col = mb_strwidth($line);
+        $col = \mb_strwidth($line);
         foreach ($this->footerActions() as $label => $name) {
-            $this->footerZones->add($name, $col, $col + mb_strwidth($label));
+            $this->footerZones->add($name, $col, $col + \mb_strwidth($label));
             $line .= $name === $this->hovered
                 ? $this->styles->merge(Role::RowHighlightBg, Role::Bright)->apply($label).$dim
                 : $label;
-            $col += mb_strwidth($label);
+            $col += \mb_strwidth($label);
             if ('footer_scope' !== $name) {
                 $line .= $sep;
-                $col += mb_strwidth($sep);
+                $col += \mb_strwidth($sep);
             }
         }
 
@@ -971,7 +971,7 @@ final class FindInFilesModal
         }
         if ($this->resizing) {
             $this->userWidth = $relCol - $box->col + 1 - ModalFrame::CHROME_COLS;
-            $this->userRows = max(3, $relRow - $box->startRow + 1 - 11);
+            $this->userRows = \max(3, $relRow - $box->startRow + 1 - 11);
             if ($release) {
                 $this->resizing = false;
             }

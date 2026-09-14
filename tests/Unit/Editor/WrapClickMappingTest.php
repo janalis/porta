@@ -31,7 +31,7 @@ final class WrapClickMappingTest extends TestCase
     private function mouse(): EditorMouse
     {
         // A 60-column first line — three segments at WIDTH — then short ones.
-        $this->document = new Document(str_repeat('x', times: 60)."\nsecond\nthird\nfourth\n");
+        $this->document = new Document(\str_repeat('x', times: 60)."\nsecond\nthird\nfourth\n");
         $noop = static function (): void {};
 
         return new EditorMouse(

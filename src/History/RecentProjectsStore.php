@@ -75,8 +75,8 @@ final class RecentProjectsStore
             return; // already at the front: reopening the same project is not a visit
         }
 
-        $roots = array_values(array_filter($roots, static fn (string $r): bool => $r !== $root));
-        array_unshift($roots, $root);
+        $roots = \array_values(\array_filter($roots, static fn (string $r): bool => $r !== $root));
+        \array_unshift($roots, $root);
         // Best-effort persistence; a recent-projects list is non-critical.
         JsonFile::write($this->fs, $file, ['roots' => \array_slice($roots, offset: 0, length: self::MAX)]);
     }

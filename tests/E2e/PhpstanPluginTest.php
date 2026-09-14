@@ -26,13 +26,13 @@ final class PhpstanPluginTest extends TestCase
 
     protected function setUp(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
     }
 
     /** A project with the real plugin file and (optionally) a stub phpstan. */
     private function project(?string $stubBody = null): TempProject
     {
-        $plugin = (string) file_get_contents(__DIR__.'/../../plugins/phpstan/plugin.php');
+        $plugin = (string) \file_get_contents(__DIR__.'/../../plugins/phpstan/plugin.php');
         $project = new TempProject([
             '.porta/plugins/phpstan/plugin.php' => $plugin,
             'a.php' => "<?php\n\$x = 1;\n\$y = 2;\n",
@@ -49,11 +49,11 @@ final class PhpstanPluginTest extends TestCase
     private function installStub(TempProject $project, string $body): void
     {
         // PATH is /nonexistent, so the shebang must point at the php binary directly.
-        if (!is_dir($project->path('vendor/bin'))) {
-            mkdir($project->path('vendor/bin'), permissions: 0o777, recursive: true);
+        if (!\is_dir($project->path('vendor/bin'))) {
+            \mkdir($project->path('vendor/bin'), permissions: 0o777, recursive: true);
         }
-        file_put_contents($project->path('vendor/bin/phpstan'), '#!'.\PHP_BINARY.' -n'."\n<?php\n".$body);
-        chmod($project->path('vendor/bin/phpstan'), permissions: 0o755);
+        \file_put_contents($project->path('vendor/bin/phpstan'), '#!'.\PHP_BINARY.' -n'."\n<?php\n".$body);
+        \chmod($project->path('vendor/bin/phpstan'), permissions: 0o755);
     }
 
     /** A stub reporting one error on 1-based line 2 of the analysed file, exit 1. */
@@ -81,24 +81,24 @@ final class PhpstanPluginTest extends TestCase
                 },
                 300 => function ($tui, $terminal) use ($project): void {
                     $screen = static fn (): string => AnsiUtils::stripAnsiCodes($terminal->getOutput());
-                    $this->await(static fn (): bool => str_contains($screen(), 'phpstan: 1 error in a.php'), what: 'the analyse toast');
+                    $this->await(static fn (): bool => \str_contains($screen(), 'phpstan: 1 error in a.php'), what: 'the analyse toast');
                     // The toast and the inline diagnostic land on different
                     // invalidation paths — await the diagnostic itself.
                     $editor = $tui->getById('editor');
-                    $rendered = static fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $editor->render(new \Symfony\Component\Tui\Render\RenderContext(120, 20))));
-                    $this->await(static fn (): bool => str_contains($rendered(), 'Boom detected'), what: 'the diagnostic to render inline in the editor');
+                    $rendered = static fn (): string => AnsiUtils::stripAnsiCodes(\implode("\n", $editor->render(new \Symfony\Component\Tui\Render\RenderContext(120, 20))));
+                    $this->await(static fn (): bool => \str_contains($rendered(), 'Boom detected'), what: 'the diagnostic to render inline in the editor');
 
                     // The Problems panel aggregates it like any LSP diagnostic.
                     $tui->handleInput("\x1b6"); // alt+6
-                    $this->await(static fn (): bool => str_contains($screen(), '✗ Boom detected'), what: 'the Problems row');
+                    $this->await(static fn (): bool => \str_contains($screen(), '✗ Boom detected'), what: 'the Problems row');
                     $tui->handleInput("\x1b"); // close the panel
 
                     // Swap in a clean stub and re-analyse: diagnostics clear.
                     $this->installStub($project, "echo json_encode(['files' => [], 'errors' => []]); exit(0);");
                     $tui->handleInput("\x1b\x01");
-                    $this->await(static fn (): bool => str_contains($screen(), 'phpstan: no errors in a.php'), what: 'the clean-run toast');
+                    $this->await(static fn (): bool => \str_contains($screen(), 'phpstan: no errors in a.php'), what: 'the clean-run toast');
                     // A negative on a FRESH render: await the clearing itself.
-                    $this->await(static fn (): bool => !str_contains($rendered(), 'Boom detected'), what: 'the clean run to clear the inline diagnostic');
+                    $this->await(static fn (): bool => !\str_contains($rendered(), 'Boom detected'), what: 'the clean run to clear the inline diagnostic');
                 },
             ],
         );
@@ -122,7 +122,7 @@ final class PhpstanPluginTest extends TestCase
                     $tui->handleInput("\x13"); // ctrl+s → save → analyse
                 },
                 300 => function ($tui, $terminal): void {
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'phpstan: 1 error in a.php'), what: 'phpstan to report the error');
+                    $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'phpstan: 1 error in a.php'), what: 'phpstan to report the error');
                     $this->assertStringContainsString('phpstan: 1 error in a.php', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'saving analysed the file');
                 },
             ],
@@ -140,7 +140,7 @@ final class PhpstanPluginTest extends TestCase
             [
                 100 => function ($tui, $terminal): void {
                     $tui->handleInput("\x1b\x01");
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'phpstan not found (vendor/bin or PATH)'), what: 'the missing-binary flash');
+                    $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'phpstan not found (vendor/bin or PATH)'), what: 'the missing-binary flash');
                 },
             ],
         );
@@ -152,7 +152,7 @@ final class PhpstanPluginTest extends TestCase
             [
                 100 => function ($tui, $terminal): void {
                     $tui->handleInput("\x1b\x01");
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'phpstan: open a PHP file first'), what: 'the non-PHP guard flash');
+                    $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'phpstan: open a PHP file first'), what: 'the non-PHP guard flash');
                 },
             ],
         );
@@ -167,7 +167,7 @@ final class PhpstanPluginTest extends TestCase
                     $tui->handleInput("\x1b\x01");
                 },
                 300 => function ($tui, $terminal): void {
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'phpstan: exited with code 255'), what: 'phpstan to report its non-zero exit');
+                    $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'phpstan: exited with code 255'), what: 'phpstan to report its non-zero exit');
                     $this->assertStringContainsString('phpstan: exited with code 255', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],

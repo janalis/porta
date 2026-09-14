@@ -142,7 +142,7 @@ final class NativeDocs
     /** The official docs URL for a native (language, word) pair, or null. */
     public static function urlFor(?string $language, string $word): ?string
     {
-        if (null === $language || '' === $word || str_starts_with($word, '$')) {
+        if (null === $language || '' === $word || \str_starts_with($word, '$')) {
             return null;
         }
 
@@ -165,10 +165,10 @@ final class NativeDocs
     private static function phpUrl(string $word): ?string
     {
         if (\function_exists($word) && new \ReflectionFunction($word)->isInternal()) {
-            return 'https://www.php.net/manual/en/function.'.str_replace('_', replace: '-', subject: strtolower($word)).'.php';
+            return 'https://www.php.net/manual/en/function.'.\str_replace('_', replace: '-', subject: \strtolower($word)).'.php';
         }
         if (\class_exists($word, false) && new \ReflectionClass($word)->isInternal()) {
-            return 'https://www.php.net/manual/en/class.'.strtolower($word).'.php';
+            return 'https://www.php.net/manual/en/class.'.\strtolower($word).'.php';
         }
 
         return null;

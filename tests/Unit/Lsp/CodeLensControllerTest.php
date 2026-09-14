@@ -63,7 +63,7 @@ final class CodeLensControllerTest extends TestCase
     /** @param list<array<string, mixed>> $lenses */
     private function answer(array $lenses): void
     {
-        end($this->client->requests)['respond']($lenses);
+        \end($this->client->requests)['respond']($lenses);
     }
 
     private static function lens(int $line, string $title): array
@@ -91,8 +91,8 @@ final class CodeLensControllerTest extends TestCase
         $this->answer([self::lens(1, '3 usages'), self::lens(2, '1 usage'), self::lens(1, '2 implementations')]);
 
         $store = $this->editor->decorations();
-        $this->assertSame(['3 usages', '2 implementations'], array_column($store->codeLensesAt(1), 'title'), 'server order is kept within a line');
-        $this->assertSame(['1 usage'], array_column($store->codeLensesAt(2), 'title'));
+        $this->assertSame(['3 usages', '2 implementations'], \array_column($store->codeLensesAt(1), 'title'), 'server order is kept within a line');
+        $this->assertSame(['1 usage'], \array_column($store->codeLensesAt(2), 'title'));
         $this->assertSame([], $store->codeLensesAt(0), 'a line with no lens has none');
     }
 
@@ -114,7 +114,7 @@ final class CodeLensControllerTest extends TestCase
             self::lens(1, 'the real one'),
         ]);
 
-        $this->assertSame(['the real one'], array_column($this->editor->decorations()->codeLensesAt(1), 'title'));
+        $this->assertSame(['the real one'], \array_column($this->editor->decorations()->codeLensesAt(1), 'title'));
     }
 
     /**
@@ -142,9 +142,9 @@ final class CodeLensControllerTest extends TestCase
         $this->answer([self::lens(1, 'first')]);
 
         $controller->requestCodeLenses();
-        end($this->client->requests)['respond'](null);
+        \end($this->client->requests)['respond'](null);
 
-        $this->assertSame(['first'], array_column($this->editor->decorations()->codeLensesAt(1), 'title'));
+        $this->assertSame(['first'], \array_column($this->editor->decorations()->codeLensesAt(1), 'title'));
     }
 
     /**
@@ -213,7 +213,7 @@ final class CodeLensControllerTest extends TestCase
 
         $controller->runCodeLens(1, 0);
 
-        $request = end($this->client->requests);
+        $request = \end($this->client->requests);
         $this->assertSame('workspace/executeCommand', $request['method']);
         $this->assertSame('lens.run', $request['params']['command']);
         $this->assertSame([1], $request['params']['arguments'], 'the arguments the server sent with it');
@@ -231,7 +231,7 @@ final class CodeLensControllerTest extends TestCase
         $this->answer([self::lens(1, '3 usages')]);
 
         $controller->runCodeLens(1, 0);
-        end($this->client->requests)['respond'](null, error: ['code' => -32_603, 'message' => 'no handler']);
+        \end($this->client->requests)['respond'](null, error: ['code' => -32_603, 'message' => 'no handler']);
 
         $flashed = $this->flashed();
         $this->assertStringContainsString('3 usages', $flashed);
@@ -268,6 +268,6 @@ final class CodeLensControllerTest extends TestCase
 
     private function flashed(): string
     {
-        return AnsiUtils::stripAnsiCodes(implode('', $this->status->render(new RenderContext(120, 1))));
+        return AnsiUtils::stripAnsiCodes(\implode('', $this->status->render(new RenderContext(120, 1))));
     }
 }

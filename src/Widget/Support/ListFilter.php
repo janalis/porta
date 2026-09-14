@@ -34,14 +34,14 @@ final class ListFilter
      */
     public static function matching(array $items, string $needle): array
     {
-        $needle = mb_strtolower($needle);
+        $needle = \mb_strtolower($needle);
         if ('' === $needle) {
             return $items;
         }
 
-        return array_values(array_filter(
+        return \array_values(\array_filter(
             $items,
-            static fn (array $item): bool => str_contains(mb_strtolower($item['label']), $needle) || str_contains(mb_strtolower($item['hint']), $needle),
+            static fn (array $item): bool => \str_contains(\mb_strtolower($item['label']), $needle) || \str_contains(\mb_strtolower($item['hint']), $needle),
         ));
     }
 }

@@ -38,8 +38,8 @@ final class AnsiTextTest extends TestCase
      */
     public function testElideMiddleNeverExceedsTheAskedWidthAcrossWideGraphemes(): void
     {
-        $wide = str_repeat('漢', times: 12).'end.php';
-        foreach (range(start: 2, end: 30) as $width) {
+        $wide = \str_repeat('漢', times: 12).'end.php';
+        foreach (\range(start: 2, end: 30) as $width) {
             $got = AnsiUtils::visibleWidth(AnsiText::elideMiddle($wide, $width));
             $this->assertLessThanOrEqual($width, $got, "width {$width}");
             // And graded from BELOW as well, which the first version was not:
@@ -56,7 +56,7 @@ final class AnsiTextTest extends TestCase
     public function testElideMiddleSpendsTheWholeBudgetOnAsciiText(): void
     {
         $path = 'src/Some/Deep/Namespace/ExampleClass.php';
-        foreach (range(start: 2, end: 39) as $width) {
+        foreach (\range(start: 2, end: 39) as $width) {
             $this->assertSame($width, AnsiUtils::visibleWidth(AnsiText::elideMiddle($path, $width)), "width {$width}");
         }
     }
@@ -130,7 +130,7 @@ final class AnsiTextTest extends TestCase
     {
         $m = AnsiUtils::cursorMarker(CursorShape::Bar);
         $out = AnsiText::caretWindow('あいうえお', 10, 3, $m); // 5 wide chars = 10 columns, caret at end
-        $this->assertSame(1, substr_count($out, $m), 'exactly one marker');
+        $this->assertSame(1, \substr_count($out, $m), 'exactly one marker');
         $this->assertLessThanOrEqual(3, AnsiUtils::visibleWidth($out));
     }
 
@@ -146,11 +146,11 @@ final class AnsiTextTest extends TestCase
     {
         $m = AnsiUtils::cursorMarker(CursorShape::Bar);
         // "Find: " + long query + marker at the caret, then trailing chrome.
-        $line = 'Find: '.str_repeat('q', times: 40).$m.'  [0/0]';
+        $line = 'Find: '.\str_repeat('q', times: 40).$m.'  [0/0]';
 
         $out = AnsiText::scrollLineToCaret($line, 20);
 
-        $this->assertSame(1, substr_count($out, $m), 'the caret survives');
+        $this->assertSame(1, \substr_count($out, $m), 'the caret survives');
         $this->assertSame(20, AnsiUtils::visibleWidth($out), 'clipped and padded to width');
         // The window scrolled past the label to keep the caret visible.
         $this->assertStringNotContainsString('Find:', AnsiUtils::stripAnsiCodes($out));
@@ -162,7 +162,7 @@ final class AnsiTextTest extends TestCase
         $block = AnsiUtils::cursorMarker(CursorShape::Block);
         $out = AnsiText::scrollLineToCaret('ab'.$block.'cd', 10);
 
-        $this->assertSame(1, substr_count($out, $block), 'a block marker survives untouched');
+        $this->assertSame(1, \substr_count($out, $block), 'a block marker survives untouched');
         $this->assertSame(10, AnsiUtils::visibleWidth($out));
     }
 

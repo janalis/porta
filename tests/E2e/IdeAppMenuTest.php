@@ -33,7 +33,7 @@ final class IdeAppMenuTest extends TestCase
 
     public function testAppMenuDropdownCoversBreadcrumb(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $code = "<?php\n\nnamespace App;\n\nclass Service\n{\n    public function handle(): void\n    {\n        \$x = 1;\n    }\n}\n";
         $project = new TempProject(['Service.php' => $code]);
 
@@ -54,7 +54,7 @@ final class IdeAppMenuTest extends TestCase
                     // rather than hard-coded — the menu set is not fixed (Git's
                     // group is absent outside a repository, as here).
                     $bar = AnsiUtils::stripAnsiCodes($tui->getById('menu')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 1))[0]);
-                    $view = mb_strpos($bar, needle: 'View');
+                    $view = \mb_strpos($bar, needle: 'View');
                     self::assertIsInt($view, 'the View menu is on the bar');
                     $tui->handleInput(\sprintf("\x1b[<0;%d;1M", $view + 2));
                 },
@@ -86,7 +86,7 @@ final class IdeAppMenuTest extends TestCase
 
     public function testAppMenuGreysFileActionsWhenNoFileOpen(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\necho 1;\n"]);
 
         $this->runIde(
@@ -123,7 +123,7 @@ final class IdeAppMenuTest extends TestCase
 
     public function testApplicationMenuOpenRunAndDismiss(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "<?php\necho 1;\n"]);
 
         $this->runIde(
@@ -165,7 +165,7 @@ final class IdeAppMenuTest extends TestCase
 
     public function testApplicationMenuMouse(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "<?php\necho 1;\n"]);
 
         $this->runIde(
@@ -227,7 +227,7 @@ final class IdeAppMenuTest extends TestCase
 
     public function testApplicationMenuHover(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "<?php\necho 1;\n"]);
 
         $this->runIde(
@@ -292,7 +292,7 @@ final class IdeAppMenuTest extends TestCase
      */
     public function testOpeningMenuDoesNotShiftContentDown(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject([
             'A.php' => "<?php\necho 1;\n",
             'zmarker.php' => "<?php\n",
@@ -325,9 +325,9 @@ final class IdeAppMenuTest extends TestCase
                     // ...and the dropdown really is drawn, floating over the pane.
                     $menu = $tui->getById('menu');
                     $segment = $menu->dropdownSegments($menu->panelWidth())[0]['segment'];
-                    $label = explode(' ', trim(AnsiUtils::stripAnsiCodes($segment)))[0];
+                    $label = \explode(' ', \trim(AnsiUtils::stripAnsiCodes($segment)))[0];
                     $this->assertNotSame('', $label);
-                    $this->assertStringContainsString($label, implode("\n", $after), 'dropdown composited over the editor pane');
+                    $this->assertStringContainsString($label, \implode("\n", $after), 'dropdown composited over the editor pane');
                 },
             ],
         );
@@ -337,7 +337,7 @@ final class IdeAppMenuTest extends TestCase
 
     public function testOpeningMenuBeforeFirstRenderIsSafe(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\n"]);
         $terminal = new VirtualTerminal(columns: 80, rows: 20);
         new OnboardingState($project->dir)->markWelcomeSeen();
@@ -354,7 +354,7 @@ final class IdeAppMenuTest extends TestCase
 
     public function testCommandPaletteRunsActionByName(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "<?php\necho 1;\n"]);
 
         $terminal = $this->runIde(
@@ -364,7 +364,7 @@ final class IdeAppMenuTest extends TestCase
                 300 => function ($tui): void {
                     $tui->handleInput("\x1b[97;6u"); // ctrl+shift+a
                     $this->assertTrue($tui->getById('editor')->isSearchOverlayOpen(), 'the command palette opens the centered picker');
-                    foreach (str_split('save all') as $ch) {
+                    foreach (\str_split('save all') as $ch) {
                         $tui->handleInput($ch);
                     }
                 },
@@ -380,7 +380,7 @@ final class IdeAppMenuTest extends TestCase
                 },
                 600 => function ($tui, $terminal) use ($project): void {
                     $this->awaitPainted($tui, $terminal, 'Saved');
-                    $this->assertStringContainsString('X', (string) file_get_contents($project->path('A.php')));
+                    $this->assertStringContainsString('X', (string) \file_get_contents($project->path('A.php')));
                 },
             ],
         );
@@ -393,7 +393,7 @@ final class IdeAppMenuTest extends TestCase
         // Where a shortcut is learned: beside the action you just searched for.
         // ShortcutFormatter's own docblock has named "the menu bar and the
         // command palette" since before the palette printed one.
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "<?php\necho 1;\n"]);
 
         $this->runIde(
@@ -402,7 +402,7 @@ final class IdeAppMenuTest extends TestCase
             [
                 300 => static function ($tui): void {
                     $tui->handleInput("\x1b[97;6u"); // ctrl+shift+a
-                    foreach (str_split('save file') as $ch) {
+                    foreach (\str_split('save file') as $ch) {
                         $tui->handleInput($ch);
                     }
                 },
@@ -420,7 +420,7 @@ final class IdeAppMenuTest extends TestCase
 
     public function testCommandPaletteTogglesSettingAndPersists(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject([
             'A.php' => "<?php\n\$x = 1;\n",
         ]);
@@ -431,7 +431,7 @@ final class IdeAppMenuTest extends TestCase
             [
                 300 => static function ($tui): void {
                     $tui->handleInput("\x1b[97;6u"); // ctrl+shift+a
-                    foreach (str_split('cycle line') as $ch) {
+                    foreach (\str_split('cycle line') as $ch) {
                         $tui->handleInput($ch);
                     }
                 },
@@ -444,7 +444,7 @@ final class IdeAppMenuTest extends TestCase
                     $this->awaitPainted($tui, $terminal, 'Line numbers relative');
                     $this->assertSame(LineNumberMode::Relative, EditorState::display($tui->getById('editor'))->lineNumbers());
                     // Persisted into .porta.json.
-                    $config = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
+                    $config = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true);
                     $this->assertSame('relative', $config['settings']['lineNumbers']);
                 },
             ],

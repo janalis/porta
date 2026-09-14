@@ -60,13 +60,13 @@ final class SettingsSearchIndex
     public function search(string $query, int $limit): array
     {
         $entries = $this->entries();
-        if ('' === trim($query)) {
-            return array_map(static fn (array $row): SettingsSearchEntry => $row['entry'], \array_slice($entries, offset: 0, length: $limit));
+        if ('' === \trim($query)) {
+            return \array_map(static fn (array $row): SettingsSearchEntry => $row['entry'], \array_slice($entries, offset: 0, length: $limit));
         }
 
         /** @var list<array{0: int, 1: SettingsSearchEntry}> $scored */
         $scored = [];
-        $lower = strtolower(trim($query));
+        $lower = \strtolower(\trim($query));
         foreach ($entries as $row) {
             $score = FuzzyMatcher::scoreLowered($row['lower'], $lower, $row['boundary']);
             if (null !== $score) {
@@ -75,13 +75,13 @@ final class SettingsSearchIndex
         }
         // Score first, then the shorter label — a tie between "Theme" and
         // "Theme overrides" should put the plain one on top.
-        usort($scored, static function (array $a, array $b): int {
+        \usort($scored, static function (array $a, array $b): int {
             $byScore = $b[0] <=> $a[0];
 
             return 0 !== $byScore ? $byScore : \strlen($a[1]->label) <=> \strlen($b[1]->label);
         });
 
-        return array_map(static fn (array $row): SettingsSearchEntry => $row[1], \array_slice($scored, offset: 0, length: $limit));
+        return \array_map(static fn (array $row): SettingsSearchEntry => $row[1], \array_slice($scored, offset: 0, length: $limit));
     }
 
     /**
@@ -128,7 +128,7 @@ final class SettingsSearchIndex
                 $haystack = $page->label.' '.$row->label;
                 $entries[] = [
                     'entry' => new SettingsSearchEntry($page->id, $row->key, $row->label, $page->label),
-                    'lower' => strtolower($haystack),
+                    'lower' => \strtolower($haystack),
                     'boundary' => \strlen($page->label) + 1,
                 ];
             }

@@ -62,7 +62,7 @@ final class Translator
         $this->translator->addLoader('xlf', new LenientXliffLoader());
         foreach (self::LOCALES as $l) {
             $file = $dir.'/messages.'.$l.'.xlf';
-            if (is_file($file)) {
+            if (\is_file($file)) {
                 $this->translator->addResource('xlf', $file, $l);
             }
         }

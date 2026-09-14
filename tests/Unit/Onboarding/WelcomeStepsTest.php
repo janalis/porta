@@ -64,13 +64,13 @@ final class WelcomeStepsTest extends TestCase
     /** Make the project a Symfony application, adding the symfony-lsp card. */
     private function withSymfony(): void
     {
-        $this->project->write('composer.json', (string) json_encode(['require' => ['symfony/framework-bundle' => '^7.0']]));
+        $this->project->write('composer.json', (string) \json_encode(['require' => ['symfony/framework-bundle' => '^7.0']]));
     }
 
     /** Ship an executable mago in the project, flipping both tool steps' target. */
     private function withMago(): void
     {
-        chmod($this->project->write('vendor/bin/mago', "#!/bin/sh\nexit 0\n"), permissions: 0o755);
+        \chmod($this->project->write('vendor/bin/mago', "#!/bin/sh\nexit 0\n"), permissions: 0o755);
     }
 
     /** A source with one real backend, i.e. highlighting is configured. */
@@ -103,7 +103,7 @@ final class WelcomeStepsTest extends TestCase
 
     public function testOffersTheSetupStepsInOrder(): void
     {
-        $titles = array_map(static fn ($step): string => $step->title, $this->steps()->all());
+        $titles = \array_map(static fn ($step): string => $step->title, $this->steps()->all());
 
         $this->assertSame(['Syntax highlighting', 'PHP language server', 'Code style fixer', 'Static analysis', 'Read the guide'], $titles);
     }
@@ -113,7 +113,7 @@ final class WelcomeStepsTest extends TestCase
         $this->withSymfony();
 
         $steps = $this->steps()->all();
-        $titles = array_map(static fn ($step): string => $step->title, $steps);
+        $titles = \array_map(static fn ($step): string => $step->title, $steps);
 
         $this->assertSame(['Syntax highlighting', 'PHP language server', 'Symfony language tools', 'Code style fixer', 'Static analysis', 'Read the guide'], $titles);
         $this->assertSame('Enable symfony-lsp', $steps[2]->actionLabel);
@@ -272,7 +272,7 @@ final class WelcomeStepsTest extends TestCase
     public function testTheStepTitlesAreTheSameWithMago(): void
     {
         $this->withMago();
-        $titles = array_map(static fn ($step): string => $step->title, $this->steps()->all());
+        $titles = \array_map(static fn ($step): string => $step->title, $this->steps()->all());
 
         $this->assertSame(['Syntax highlighting', 'PHP language server', 'Code style fixer', 'Static analysis', 'Read the guide'], $titles);
     }

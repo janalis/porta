@@ -61,7 +61,7 @@ final class PaneReorder
             $line =
                 AnsiUtils::sliceByColumn($line, startCol: 0, length: $region['start'], strict: true)
                 .Sgr::RESET
-                .str_repeat(' ', $region['width'])
+                .\str_repeat(' ', $region['width'])
                 .AnsiUtils::sliceByColumn($line, $end, $width - $end, strict: true)
                 .Sgr::RESET;
         }
@@ -119,7 +119,7 @@ final class PaneReorder
         // reorder, which has already run, and a terminal renders them as
         // nothing while Porta still counts them as a column each — so left in
         // place they cost the row a visible column apiece.
-        $line = strtr($line, [Bidi::LTR_MARK => ' ', Bidi::RTL_MARK => ' ', "\u{061C}" => ' ']);
+        $line = \strtr($line, [Bidi::LTR_MARK => ' ', Bidi::RTL_MARK => ' ', "\u{061C}" => ' ']);
         $column = self::freezePoint($line);
 
         return null === $column ? $line : self::replaceColumn($line, $column, with: Bidi::LTR_OVERRIDE);
@@ -147,7 +147,7 @@ final class PaneReorder
         }
 
         $column = 0;
-        $glyphs = preg_split('//u', AnsiUtils::stripAnsiCodes($line), flags: \PREG_SPLIT_NO_EMPTY);
+        $glyphs = \preg_split('//u', AnsiUtils::stripAnsiCodes($line), flags: \PREG_SPLIT_NO_EMPTY);
         \assert(false !== $glyphs, description: 'a composed row always splits into glyphs');
         foreach ($glyphs as $glyph) {
             if (' ' === $glyph) {
@@ -156,7 +156,7 @@ final class PaneReorder
             if (self::isRightToLeft($glyph)) {
                 return null; // the text got here first
             }
-            $column += max(1, AnsiUtils::visibleWidth($glyph));
+            $column += \max(1, AnsiUtils::visibleWidth($glyph));
         }
 
         return null;
@@ -164,7 +164,7 @@ final class PaneReorder
 
     private static function isRightToLeft(string $glyph): bool
     {
-        $cp = mb_ord($glyph, encoding: 'UTF-8');
+        $cp = \mb_ord($glyph, encoding: 'UTF-8');
 
         return false !== $cp && ($cp >= 0x0590 && $cp <= 0x05FF || $cp >= 0x0600 && $cp <= 0x08FF || $cp >= 0xFB1D && $cp <= 0xFDFF || $cp >= 0xFE70 && $cp <= 0xFEFF);
     }
@@ -210,11 +210,11 @@ final class PaneReorder
         // Clamp to what the row actually holds: a surface hanging off the end
         // has fewer cells than it claims, and stamping its claimed width would
         // make the row SHORTER than its pane -- caught by the clamping case.
-        $keep = max(0, min($region['width'], $width - $region['start']));
+        $keep = \max(0, \min($region['width'], $width - $region['start']));
         if (0 === $keep) {
             return $row;
         }
-        $start = max(0, $width - $region['start'] - $keep);
+        $start = \max(0, $width - $region['start'] - $keep);
         $end = $start + $keep;
         $before = AnsiUtils::sliceByColumn($row, startCol: 0, length: $start, strict: true);
         $after = AnsiUtils::sliceByColumn($row, $end, $width - $end, strict: true);
@@ -266,15 +266,15 @@ final class PaneReorder
      */
     private static function withoutABorrowedCaret(string $line, string $slice, int $start): string
     {
-        $markerAt = strpos($line, AnsiUtils::CURSOR_MARKER_PREFIX);
+        $markerAt = \strpos($line, AnsiUtils::CURSOR_MARKER_PREFIX);
         // No caret on this row, or it sits at or after this run's first column,
         // which makes it this run's own. The second test covers the first run
         // for free — nothing can sit before column zero.
-        if (false === $markerAt || AnsiUtils::visibleWidth(substr($line, offset: 0, length: $markerAt)) >= $start) {
+        if (false === $markerAt || AnsiUtils::visibleWidth(\substr($line, offset: 0, length: $markerAt)) >= $start) {
             return $slice;
         }
 
-        return (string) preg_replace('/\x1b_pi:c;[^\x07]*\x07/', replacement: '', subject: $slice);
+        return (string) \preg_replace('/\x1b_pi:c;[^\x07]*\x07/', replacement: '', subject: $slice);
     }
 
     /**
@@ -293,12 +293,12 @@ final class PaneReorder
         // the pane underneath it and hit nothing — the box moved with the
         // frame and the mouse did not follow it.
         $width = AnsiUtils::visibleWidth($line);
-        foreach (array_reverse($regions) as $region) {
-            $keep = max(0, min($region['width'], $width - $region['start']));
+        foreach (\array_reverse($regions) as $region) {
+            $keep = \max(0, \min($region['width'], $width - $region['start']));
             if (0 === $keep) {
                 continue;
             }
-            $start = max(0, $width - $region['start'] - $keep);
+            $start = \max(0, $width - $region['start'] - $keep);
             if ($visualCol < $start || $visualCol >= ($start + $keep)) {
                 continue;
             }

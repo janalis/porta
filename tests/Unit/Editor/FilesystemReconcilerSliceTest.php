@@ -44,14 +44,14 @@ final class FilesystemReconcilerSliceTest extends TestCase
 
     public function testAnExternalEditIsPickedUpByTheSlicedPoll(): void
     {
-        $a = (string) realpath($this->project->write('a.php', "<?php // a\n"));
-        $b = (string) realpath($this->project->write('b.php', "<?php // b\n"));
+        $a = (string) \realpath($this->project->write('a.php', "<?php // a\n"));
+        $b = (string) \realpath($this->project->write('b.php', "<?php // b\n"));
         $buffers = $this->buffers();
         $buffers->openFile($a, focus: OpenFocus::Editor);
         $buffers->openFile($b, focus: OpenFocus::Editor);
 
-        file_put_contents($b, data: "<?php // b v2\n");
-        touch($b, time() + 2);
+        \file_put_contents($b, data: "<?php // b v2\n");
+        \touch($b, \time() + 2);
         $buffers->pollFilesystemSlice();
 
         $manager = Services::resolve($this->ide, BufferManager::class);
@@ -64,7 +64,7 @@ final class FilesystemReconcilerSliceTest extends TestCase
         // The pacer's own arithmetic is {@see PollBackoffTest}'s; this is the
         // wiring — that a stood-down tick reaches no filesystem at all, and that
         // the detection it costs comes back on its own.
-        $a = (string) realpath($this->project->write('a.php', "<?php // a\n"));
+        $a = (string) \realpath($this->project->write('a.php', "<?php // a\n"));
         $buffers = $this->buffers();
         $buffers->openFile($a, focus: OpenFocus::Editor);
         $manager = Services::resolve($this->ide, BufferManager::class);
@@ -73,8 +73,8 @@ final class FilesystemReconcilerSliceTest extends TestCase
         $backoff = Probe::object(Probe::object($buffers, 'reconciler'), 'backoff');
         Probe::set($backoff, 'skips', 2); // as a slow slice would have left it
 
-        file_put_contents($a, data: "<?php // a v2 is longer\n");
-        touch($a, time() + 2);
+        \file_put_contents($a, data: "<?php // a v2 is longer\n");
+        \touch($a, \time() + 2);
         $buffers->pollFilesystemSlice();
         $this->assertSame("<?php // a\n", $manager->get($a)?->document->getText(), 'the first stood-down tick polled nothing');
         $buffers->pollFilesystemSlice();
@@ -93,8 +93,8 @@ final class FilesystemReconcilerSliceTest extends TestCase
         // performs. A plugin listener this slow is not hypothetical; it is the
         // shape of every freeze.log backtrace, with a stat in place of the
         // listener.
-        $a = (string) realpath($this->project->write('a.php', "<?php // a\n"));
-        $b = (string) realpath($this->project->write('b.php', "<?php // b\n"));
+        $a = (string) \realpath($this->project->write('a.php', "<?php // a\n"));
+        $b = (string) \realpath($this->project->write('b.php', "<?php // b\n"));
         $buffers = $this->buffers();
         $buffers->openFile($a, focus: OpenFocus::Editor);
         $buffers->openFile($b, focus: OpenFocus::Editor);
@@ -105,16 +105,16 @@ final class FilesystemReconcilerSliceTest extends TestCase
             // Twenty percent over the budget: enough that no machine reads this
             // slice as a quick one.
             static function (): void {
-                usleep((int) (1.2 * PollBackoff::BUDGET_MICROS));
+                \usleep((int) (1.2 * PollBackoff::BUDGET_MICROS));
             },
         );
 
-        file_put_contents($a, data: "<?php // a v2 is longer\n");
-        touch($a, time() + 2);
+        \file_put_contents($a, data: "<?php // a v2 is longer\n");
+        \touch($a, \time() + 2);
         $buffers->pollFilesystemSlice(); // reloads a.php, and overruns doing it
 
-        file_put_contents($b, data: "<?php // b v2 is longer\n");
-        touch($b, time() + 2);
+        \file_put_contents($b, data: "<?php // b v2 is longer\n");
+        \touch($b, \time() + 2);
         $buffers->pollFilesystemSlice();
 
         $this->assertSame("<?php // b\n", $manager->get($b)?->document->getText(), 'the tick after the slow slice polled nothing');
@@ -127,8 +127,8 @@ final class FilesystemReconcilerSliceTest extends TestCase
         $buffers = $this->buffers();
         $paths = [];
         foreach (['a', 'b', 'c', 'd', 'e'] as $name) {
-            $paths[] = (string) realpath($this->project->write($name.'.php', "<?php\n"));
-            $buffers->openFile((string) end($paths), focus: OpenFocus::Editor);
+            $paths[] = (string) \realpath($this->project->write($name.'.php', "<?php\n"));
+            $buffers->openFile((string) \end($paths), focus: OpenFocus::Editor);
         }
 
         $buffers->pollFilesystemSlice();
@@ -142,13 +142,13 @@ final class FilesystemReconcilerSliceTest extends TestCase
         $buffers = $this->buffers();
         $paths = [];
         foreach (['a', 'b', 'c', 'd', 'e'] as $name) {
-            $paths[$name] = (string) realpath($this->project->write($name.'.php', "<?php\n"));
+            $paths[$name] = (string) \realpath($this->project->write($name.'.php', "<?php\n"));
             $buffers->openFile($paths[$name], focus: OpenFocus::Editor);
         }
         $buffers->pollFilesystemSlice(); // e.php (opened last) is the one left pending
 
         $buffers->closeActiveBuffer(CloseMode::Force); // e.php was focused last
-        unlink($paths['e']);
+        \unlink($paths['e']);
         $buffers->pollFilesystemSlice();
 
         $this->assertStringNotContainsString('deleted', Toasts::last($this->ide), 'a closed buffer is skipped, not flashed as deleted');
@@ -159,7 +159,7 @@ final class FilesystemReconcilerSliceTest extends TestCase
         $deep = $this->project->write('d1/d2/d3/d4/d5/d6/d7/d8/d9/leaf.php', "<?php\n");
         $tree = Services::resolve($this->ide, FileTreeWidget::class);
         \assert($tree instanceof FileTreeWidget, description: 'the locator serves the file tree');
-        $tree->revealPath((string) realpath($deep)); // ten scanned dirs: root + d1..d9
+        $tree->revealPath((string) \realpath($deep)); // ten scanned dirs: root + d1..d9
 
         $this->buffers()->pollFilesystemSlice();
 
@@ -177,7 +177,7 @@ final class FilesystemReconcilerSliceTest extends TestCase
         $this->buffers()->pollFilesystemSlice();
 
         $this->assertTrue((bool) Probe::get($tui, 'renderRequested'), 'the tree refresh asked for a repaint');
-        $this->assertStringContainsString('new-entry.php', implode("\n", array_map(
+        $this->assertStringContainsString('new-entry.php', \implode("\n", \array_map(
             \Symfony\Component\Tui\Ansi\AnsiUtils::stripAnsiCodes(...),
             $tree->render(new \Symfony\Component\Tui\Render\RenderContext(30, 20)),
         )));

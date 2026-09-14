@@ -36,7 +36,7 @@ final class ModalFrameTest extends TestCase
         $bar = $this->plainBar('Welcome', 24);
 
         $this->assertSame('╭ Welcome ─────── Esc ×╮', $bar, 'the full bar layout');
-        $this->assertSame(24, mb_strwidth($bar));
+        $this->assertSame(24, \mb_strwidth($bar));
     }
 
     /** The × sits at width − 2 in every layout — the geometry ModalBox::closeHit mirrors. */
@@ -49,8 +49,8 @@ final class ModalFrameTest extends TestCase
         ] as [$title, $width]) {
             $bar = $this->plainBar($title, $width);
 
-            $this->assertSame(Glyphs::CLOSE, mb_substr($bar, $width - 2, length: 1), "width {$width}");
-            $this->assertSame(Glyphs::MODAL_TOP_RIGHT, mb_substr($bar, $width - 1, length: 1));
+            $this->assertSame(Glyphs::CLOSE, \mb_substr($bar, $width - 2, length: 1), "width {$width}");
+            $this->assertSame(Glyphs::MODAL_TOP_RIGHT, \mb_substr($bar, $width - 1, length: 1));
         }
     }
 
@@ -72,9 +72,9 @@ final class ModalFrameTest extends TestCase
 
         // Same box width either way, but the empty-hint bar has one more fill
         // column where the "Esc" hint and its separator would have sat.
-        $this->assertSame(18, mb_strwidth($withEmptyHint));
+        $this->assertSame(18, \mb_strwidth($withEmptyHint));
         $this->assertStringNotContainsString('Esc', $withEmptyHint);
-        $this->assertSame(mb_substr_count($withEmptyHint, needle: '─'), mb_substr_count($withDefaultHint, needle: '─') + 4, 'the reclaimed hint+separator+chrome columns become fill');
+        $this->assertSame(\mb_substr_count($withEmptyHint, needle: '─'), \mb_substr_count($withDefaultHint, needle: '─') + 4, 'the reclaimed hint+separator+chrome columns become fill');
     }
 
     /** A narrow box drops the hint before it crushes the title. */
@@ -84,7 +84,7 @@ final class ModalFrameTest extends TestCase
 
         $this->assertStringNotContainsString('Esc', $bar);
         $this->assertStringContainsString('Setup', $bar);
-        $this->assertSame(14, mb_strwidth($bar));
+        $this->assertSame(14, \mb_strwidth($bar));
     }
 
     /** A degenerate width still returns exactly that many columns. */
@@ -116,18 +116,18 @@ final class ModalFrameTest extends TestCase
 
     public function testWrapPadsRailsTheContentAndClosesTheBox(): void
     {
-        $rows = array_map(AnsiUtils::stripAnsiCodes(...), ModalFrame::wrap(['hello', 'a line that is far too wide for ten'], 10, Styles::dark()));
+        $rows = \array_map(AnsiUtils::stripAnsiCodes(...), ModalFrame::wrap(['hello', 'a line that is far too wide for ten'], 10, Styles::dark()));
 
         $this->assertSame('│            │', $rows[0], 'a padding row under the title bar');
         $this->assertSame('│ hello      │', $rows[1], 'content padded to the inner width, one column off each rail');
-        $this->assertSame(14, mb_strwidth($rows[2]), 'wide content clips to the inner width');
+        $this->assertSame(14, \mb_strwidth($rows[2]), 'wide content clips to the inner width');
         $this->assertSame('│            │', $rows[3], 'a padding row above the border');
         $this->assertSame('╰────────────╯', $rows[4], 'the bottom border closes the box');
     }
 
     public function testEveryWrappedRowIsExactlyTheBoxWidth(): void
     {
-        foreach (ModalFrame::wrap(['a', str_repeat('x', times: 50)], 20, Styles::dark()) as $i => $row) {
+        foreach (ModalFrame::wrap(['a', \str_repeat('x', times: 50)], 20, Styles::dark()) as $i => $row) {
             $this->assertSame(20 + ModalFrame::CHROME_COLS, AnsiUtils::visibleWidth($row), "row {$i}");
         }
     }
@@ -135,7 +135,7 @@ final class ModalFrameTest extends TestCase
     /** Sections joined by tee rows — the zones read as zones of one box. */
     public function testWrapSectionsJoinsSectionsWithTeeRows(): void
     {
-        $rows = array_map(AnsiUtils::stripAnsiCodes(...), ModalFrame::wrapSections([['top'], ['mid'], ['end']], 6, Styles::dark()));
+        $rows = \array_map(AnsiUtils::stripAnsiCodes(...), ModalFrame::wrapSections([['top'], ['mid'], ['end']], 6, Styles::dark()));
 
         $this->assertSame(
             ['│        │', '│ top    │', '├────────┤', '│ mid    │', '├────────┤', '│ end    │', '│        │', '╰────────╯'],
@@ -146,19 +146,19 @@ final class ModalFrameTest extends TestCase
     /** A negative inner width still closes the tee row and bottom border, not a str_repeat() crash. */
     public function testDegenerateInnerWidthKeepsTheeAndBottomBorderClosed(): void
     {
-        $rows = array_map(AnsiUtils::stripAnsiCodes(...), ModalFrame::wrapSections([['a'], ['b']], -3, Styles::dark()));
+        $rows = \array_map(AnsiUtils::stripAnsiCodes(...), ModalFrame::wrapSections([['a'], ['b']], -3, Styles::dark()));
 
         $this->assertSame('├┤', $rows[2], 'the tee row still closes at a negative inner width');
-        $this->assertSame('╰╯', $rows[array_key_last($rows)], 'the bottom border still closes at a negative inner width');
+        $this->assertSame('╰╯', $rows[\array_key_last($rows)], 'the bottom border still closes at a negative inner width');
     }
 
     /** innerWidth + CHROME_COLS-worth-of-fill == 0: no horizontal filler on either the tee row or the bottom border. */
     public function testZeroFillerWidthAddsNoFillerToTeeOrBottomBorder(): void
     {
-        $rows = array_map(AnsiUtils::stripAnsiCodes(...), ModalFrame::wrapSections([['a'], ['b']], -2, Styles::dark()));
+        $rows = \array_map(AnsiUtils::stripAnsiCodes(...), ModalFrame::wrapSections([['a'], ['b']], -2, Styles::dark()));
 
         $this->assertSame('├┤', $rows[2]);
-        $this->assertSame('╰╯', $rows[array_key_last($rows)]);
+        $this->assertSame('╰╯', $rows[\array_key_last($rows)]);
     }
 
     /** The chrome constants match what wrap() actually emits — consumers derive from them. */
@@ -168,6 +168,6 @@ final class ModalFrameTest extends TestCase
 
         $this->assertSame(1 + ModalFrame::CHROME_ROWS, 1 + \count($body), 'title bar + body = content + chrome rows');
         $this->assertSame(8 + ModalFrame::CHROME_COLS, AnsiUtils::visibleWidth($body[0]));
-        $this->assertSame('x', trim(AnsiUtils::stripAnsiCodes($body[ModalFrame::CHROME_ROWS_TOP - 1]), characters: ' │'), 'content starts CHROME_ROWS_TOP below the box top');
+        $this->assertSame('x', \trim(AnsiUtils::stripAnsiCodes($body[ModalFrame::CHROME_ROWS_TOP - 1]), characters: ' │'), 'content starts CHROME_ROWS_TOP below the box top');
     }
 }

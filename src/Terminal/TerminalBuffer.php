@@ -50,7 +50,7 @@ final class TerminalBuffer
     public function __construct(
         private readonly int $maxLines = 5000,
     ) {
-        $this->trimSlack = max(1, intdiv($maxLines, num2: 16));
+        $this->trimSlack = \max(1, \intdiv($maxLines, num2: 16));
     }
 
     public function lineCount(): int
@@ -94,7 +94,7 @@ final class TerminalBuffer
                 $seq = AnsiUtils::extractAnsiCode($data, $i);
                 if (null === $seq) {
                     // Possibly an escape split across chunks; stash and wait.
-                    $this->pending = substr($data, $i);
+                    $this->pending = \substr($data, $i);
 
                     return;
                 }
@@ -107,8 +107,8 @@ final class TerminalBuffer
                 match ($ch) {
                     "\n" => $this->newline(),
                     "\r" => $this->col = 0,
-                    "\x08" => $this->col = max(0, $this->col - 1),
-                    "\t" => $this->writeText(str_repeat(' ', max(0, 8 - ($this->col % 8)))),
+                    "\x08" => $this->col = \max(0, $this->col - 1),
+                    "\t" => $this->writeText(\str_repeat(' ', \max(0, 8 - ($this->col % 8)))),
                     default => null, // bell and other C0 controls: ignore
                 };
                 ++$i;
@@ -120,7 +120,7 @@ final class TerminalBuffer
             while ($end < $len && "\x1b" !== $data[$end] && \ord($data[$end]) >= 0x20) {
                 ++$end;
             }
-            $this->writeText(substr($data, $i, $end - $i));
+            $this->writeText(\substr($data, $i, $end - $i));
             $i = $end;
         }
     }
@@ -130,13 +130,13 @@ final class TerminalBuffer
         // SGR (colour) — defer and prepend to the next text so it styles what
         // follows even across a carriage-return overwrite. A full reset
         // collapses the accumulated state to keep it bounded.
-        if (str_ends_with($code, 'm') && str_starts_with($code, "\x1b[")) {
+        if (\str_ends_with($code, 'm') && \str_starts_with($code, "\x1b[")) {
             $this->pendingSgr = Sgr::RESET === $code || "\x1b[m" === $code ? $code : $this->pendingSgr.$code;
 
             return;
         }
         // Erase in line: ESC[K / ESC[0K truncates from the cursor to EOL.
-        if (preg_match('/^\x1b\[[0-2]?K$/', $code)) {
+        if (\preg_match('/^\x1b\[[0-2]?K$/', $code)) {
             $this->eraseToLineEnd();
 
             return;
@@ -183,7 +183,7 @@ final class TerminalBuffer
             $head = AnsiUtils::sliceByColumn($cur, 0, $this->col);
             $tail = AnsiUtils::sliceByColumn($cur, $this->col + $width, $this->curWidth);
             $this->lines[\count($this->lines) - 1] = $head.$text.$tail;
-            $this->curWidth = max($this->curWidth, $this->col + $width);
+            $this->curWidth = \max($this->curWidth, $this->col + $width);
         }
         $this->col += $width;
     }
@@ -192,7 +192,7 @@ final class TerminalBuffer
     {
         $cur = $this->lines[\count($this->lines) - 1];
         $this->lines[\count($this->lines) - 1] = AnsiUtils::sliceByColumn($cur, 0, $this->col);
-        $this->curWidth = min($this->curWidth, $this->col);
+        $this->curWidth = \min($this->curWidth, $this->col);
     }
 
     private function newline(): void

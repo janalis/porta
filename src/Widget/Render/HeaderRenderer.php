@@ -32,7 +32,7 @@ final class HeaderRenderer
         if ('' === $suffix) {
             return $style->apply(AnsiText::scrollLineToCaret($text, $width));
         }
-        $room = max(0, $width - mb_strwidth($suffix) - 1);
+        $room = \max(0, $width - \mb_strwidth($suffix) - 1);
         if (0 === $room) {
             // The pane cannot seat the suffix and its gap, so the SUFFIX is
             // what has to shrink — there is no text left to take it out of.

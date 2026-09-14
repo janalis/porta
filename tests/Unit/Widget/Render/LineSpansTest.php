@@ -35,7 +35,7 @@ final class LineSpansTest extends TestCase
             $styles,
         );
 
-        $opens = array_column($result['spans'], 2);
+        $opens = \array_column($result['spans'], 2);
         $this->assertSame($styles->of(Role::SelectionBg)->getAnsiRestore(), $opens[0], 'selection first');
         $this->assertSame($styles->of(Role::SearchCurrentBg)->getAnsiRestore()."\x1b[1m", $opens[1], 'current search match next, bold for a non-color cue');
         $this->assertSame($styles->of(Role::OccurrenceBg)->getAnsiRestore(), $opens[2]);
@@ -80,7 +80,7 @@ final class LineSpansTest extends TestCase
                 [],
                 $styles,
             );
-            $caretSelectionSpans = array_values(array_filter($viaCaret['spans'], static fn (array $s) => "\x1b[7m" !== $s[2]));
+            $caretSelectionSpans = \array_values(\array_filter($viaCaret['spans'], static fn (array $s) => "\x1b[7m" !== $s[2]));
             $this->assertSame($viaSelection['spans'], $caretSelectionSpans, "line {$line}: one range → one span shape");
         }
     }
@@ -114,7 +114,7 @@ final class LineSpansTest extends TestCase
             new Styles(DarkTheme::definition()),
         );
 
-        $bracketSpan = array_values(array_filter($result['spans'], static fn (array $s) => LineDecorator::BRACKET_SGR === $s[2]))[0];
+        $bracketSpan = \array_values(\array_filter($result['spans'], static fn (array $s) => LineDecorator::BRACKET_SGR === $s[2]))[0];
         $this->assertSame(3, $bracketSpan[0]);
         $this->assertSame(4, $bracketSpan[1], 'a bracket cell is exactly one column wide');
     }

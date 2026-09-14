@@ -58,7 +58,7 @@ final class TestPane extends NavigablePaneWidget
 
     public function statusRight(): string
     {
-        return null === $this->shownPath ? '' : 'test pane  '.basename($this->shownPath);
+        return null === $this->shownPath ? '' : 'test pane  '.\basename($this->shownPath);
     }
 
     public function forget(string $path): void
@@ -102,11 +102,11 @@ final class TestPane extends NavigablePaneWidget
 
     public function render(RenderContext $context): array
     {
-        $columns = max(0, $context->getColumns());
-        $body = null === $this->shownPath ? 'empty' : 'showing '.basename($this->shownPath);
-        $lines = [substr(str_pad($body, $columns), offset: 0, length: $columns)];
+        $columns = \max(0, $context->getColumns());
+        $body = null === $this->shownPath ? 'empty' : 'showing '.\basename($this->shownPath);
+        $lines = [\substr(\str_pad($body, $columns), offset: 0, length: $columns)];
         for ($row = 1; $row < $context->getRows(); ++$row) {
-            $lines[] = str_repeat(' ', $columns);
+            $lines[] = \str_repeat(' ', $columns);
         }
 
         return $this->withMenuOverlay($lines, $context->getColumns());

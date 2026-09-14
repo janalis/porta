@@ -30,7 +30,7 @@ final class MultilineInput
 
     public function value(): string
     {
-        return implode("\n", $this->lines);
+        return \implode("\n", $this->lines);
     }
 
     public function isEmpty(): bool
@@ -40,7 +40,7 @@ final class MultilineInput
 
     public function setValue(string $text): void
     {
-        $this->lines = explode("\n", $text);
+        $this->lines = \explode("\n", $text);
         $this->line = \count($this->lines) - 1;
         $this->col = \strlen($this->lines[$this->line]);
     }
@@ -85,8 +85,8 @@ final class MultilineInput
     private function splitLineAtCaret(): bool
     {
         $current = $this->lines[$this->line];
-        $this->lines[$this->line] = substr($current, offset: 0, length: $this->col);
-        array_splice($this->lines, $this->line + 1, length: 0, replacement: [substr($current, $this->col)]);
+        $this->lines[$this->line] = \substr($current, offset: 0, length: $this->col);
+        \array_splice($this->lines, $this->line + 1, length: 0, replacement: [\substr($current, $this->col)]);
         ++$this->line;
         $this->col = 0;
 
@@ -99,14 +99,14 @@ final class MultilineInput
         if ($this->col > 0) {
             $line = $this->lines[$this->line];
             $prev = TextMetrics::prevCharBoundary($line, $this->col);
-            $this->lines[$this->line] = substr($line, offset: 0, length: $prev).substr($line, $this->col);
+            $this->lines[$this->line] = \substr($line, offset: 0, length: $prev).\substr($line, $this->col);
             $this->col = $prev;
 
             return true;
         }
         if ($this->line > 0) {
             $tail = $this->lines[$this->line];
-            array_splice($this->lines, $this->line, length: 1);
+            \array_splice($this->lines, $this->line, length: 1);
             --$this->line;
             $this->col = \strlen($this->lines[$this->line]);
             $this->lines[$this->line] .= $tail;
@@ -118,7 +118,7 @@ final class MultilineInput
     private function insertPrintable(string $keys): bool
     {
         $line = $this->lines[$this->line];
-        $this->lines[$this->line] = substr($line, offset: 0, length: $this->col).$keys.substr($line, $this->col);
+        $this->lines[$this->line] = \substr($line, offset: 0, length: $this->col).$keys.\substr($line, $this->col);
         $this->col += \strlen($keys);
 
         return true;
@@ -192,11 +192,11 @@ final class MultilineInput
         $shown = CaretVisibility::Shown === $cursor;
         $top = $this->line < $rows ? 0 : $this->line - $rows + 1;
         $out = [];
-        for ($i = $top; $i < min($top + $rows, \count($this->lines)); ++$i) {
+        for ($i = $top; $i < \min($top + $rows, \count($this->lines)); ++$i) {
             $line = $this->lines[$i];
             if ($shown && $i === $this->line) {
                 // Horizontally window the caret line so the marker stays visible.
-                $caretCol = AnsiUtils::visibleWidth(substr($line, offset: 0, length: $this->col));
+                $caretCol = AnsiUtils::visibleWidth(\substr($line, offset: 0, length: $this->col));
                 $out[] = AnsiText::caretWindow($line, $caretCol, $width, $this->style->marker());
 
                 continue;

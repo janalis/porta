@@ -34,7 +34,7 @@ final class KeybindingsFactory
         $this->plugins->ensureLoaded();
         $keymap ??= $this->config->keymap;
 
-        return new Keybindings(array_merge(ActionCatalog::ideDefaults(), $this->plugins->manager()->defaultKeys(), $this->known($keymap)), $parser);
+        return new Keybindings(\array_merge(ActionCatalog::ideDefaults(), $this->plugins->manager()->defaultKeys(), $this->known($keymap)), $parser);
     }
 
     /**
@@ -54,8 +54,8 @@ final class KeybindingsFactory
     {
         $kept = [];
         foreach ($keymap as $action => $keys) {
-            if (!str_contains($action, ':') && !$this->actions->has($action)) {
-                if (!array_key_exists($action, $this->reported)) {
+            if (!\str_contains($action, ':') && !$this->actions->has($action)) {
+                if (!\array_key_exists($action, $this->reported)) {
                     $this->reported[$action] = true;
                     $this->plugins->manager()->addWarning(new ConfigWarning('Unknown keymap action "%action%" in .porta.json', ['%action%' => $action]));
                 }

@@ -93,7 +93,7 @@ final class DiagnosticLog
     public function append(string $entry): void
     {
         $line = $this->clock->now()->format('Y-m-d H:i:s').' '.$entry."\n";
-        set_error_handler(static fn (): bool => true);
+        \set_error_handler(static fn (): bool => true);
         try {
             if (!$this->directoryReady()) {
                 return; // unwritable location: stay silent by contract
@@ -104,12 +104,12 @@ final class DiagnosticLog
             // two, and one branch instead of two. The cast is load-bearing:
             // `false` into a typed `?int` is a TypeError, and this method is
             // contractually unable to throw.
-            $this->bytes ??= (int) filesize($this->path);
+            $this->bytes ??= (int) \filesize($this->path);
             $held = $this->bytes;
             $trimming = $held > $this->maxBytes;
             $written = $trimming
-                ? file_put_contents($this->path, $this->recentTail().$line)
-                : file_put_contents($this->path, $line, \FILE_APPEND);
+                ? \file_put_contents($this->path, $this->recentTail().$line)
+                : \file_put_contents($this->path, $line, \FILE_APPEND);
             if (false === $written) {
                 // The one thing a failed write can mean that a retry would fix:
                 // the directory has gone since it was last checked. Cheaper to
@@ -126,7 +126,7 @@ final class DiagnosticLog
             // stat either.
             $this->bytes = $trimming ? $written : $held + $written;
         } finally {
-            restore_error_handler();
+            \restore_error_handler();
         }
     }
 
@@ -140,11 +140,11 @@ final class DiagnosticLog
             return true;
         }
         $dir = \dirname($this->path);
-        if (!is_dir($dir) && is_dir(\dirname($dir))) {
-            mkdir($dir, permissions: 0o755, recursive: true);
+        if (!\is_dir($dir) && \is_dir(\dirname($dir))) {
+            \mkdir($dir, permissions: 0o755, recursive: true);
         }
 
-        return $this->dirReady = is_dir($dir);
+        return $this->dirReady = \is_dir($dir);
     }
 
     /**
@@ -165,12 +165,12 @@ final class DiagnosticLog
      */
     private function recentTail(): string
     {
-        $tail = substr((string) file_get_contents($this->path), -intdiv($this->maxBytes, num2: 2));
+        $tail = \substr((string) \file_get_contents($this->path), -\intdiv($this->maxBytes, num2: 2));
         $matches = [];
-        if (1 !== preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} /m', $tail, $matches, \PREG_OFFSET_CAPTURE)) {
+        if (1 !== \preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} /m', $tail, $matches, \PREG_OFFSET_CAPTURE)) {
             return '';
         }
 
-        return substr($tail, (int) $matches[0][1]);
+        return \substr($tail, (int) $matches[0][1]);
     }
 }

@@ -54,7 +54,7 @@ final class EnvIsolationExtension implements Extension
 
     public function bootstrap(Configuration $configuration, Facade $facade, ParameterCollection $parameters): void
     {
-        $env = getenv();
+        $env = \getenv();
         self::$pristineEnv = $env;
         /** @var array<string, string> $superglobal */
         $superglobal = $_ENV;
@@ -83,7 +83,7 @@ final class EnvIsolationExtension implements Extension
     /** Report what drifted, then hand the next test the worker's boot environment. Idempotent. */
     public static function restore(string $testId): void
     {
-        $current = getenv();
+        $current = \getenv();
         $leaked = self::drift($current, self::$pristineEnv);
 
         foreach (self::$pristineEnv as $name => $value) {
@@ -91,20 +91,20 @@ final class EnvIsolationExtension implements Extension
                 continue;
             }
 
-            putenv($name.'='.$value);
+            \putenv($name.'='.$value);
         }
-        foreach (array_keys($current) as $name) {
-            if (array_key_exists($name, self::$pristineEnv)) {
+        foreach (\array_keys($current) as $name) {
+            if (\array_key_exists($name, self::$pristineEnv)) {
                 continue;
             }
 
-            putenv($name);
+            \putenv($name);
         }
 
         $_ENV = self::$pristineSuperglobal;
 
         if ([] !== $leaked) {
-            LeakLog::append(\sprintf("[env-leak] %s: %s\n", $testId, implode(', ', $leaked)));
+            LeakLog::append(\sprintf("[env-leak] %s: %s\n", $testId, \implode(', ', $leaked)));
         }
     }
 
@@ -126,14 +126,14 @@ final class EnvIsolationExtension implements Extension
 
             $names[] = $name;
         }
-        foreach (array_keys($pristine) as $name) {
-            if (array_key_exists($name, $current)) {
+        foreach (\array_keys($pristine) as $name) {
+            if (\array_key_exists($name, $current)) {
                 continue;
             }
 
             $names[] = $name;
         }
-        sort($names);
+        \sort($names);
 
         return $names;
     }

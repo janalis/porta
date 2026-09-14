@@ -60,8 +60,8 @@ final class CommandRegistry
      */
     public function remove(array $ids): void
     {
-        $drop = array_fill_keys($ids, value: true);
-        $this->commands = array_values(array_filter($this->commands, static fn (array $c): bool => ($drop[$c['id']] ?? null) === null));
+        $drop = \array_fill_keys($ids, value: true);
+        $this->commands = \array_values(\array_filter($this->commands, static fn (array $c): bool => ($drop[$c['id']] ?? null) === null));
         foreach ($ids as $id) {
             unset($this->byId[$id]);
         }
@@ -84,16 +84,16 @@ final class CommandRegistry
     /** @return list<string> ids that carry a keybinding, for the input dispatcher */
     public function keyBoundIds(): array
     {
-        return array_values(array_map(
+        return \array_values(\array_map(
             static fn (array $c) => $c['id'],
-            array_filter($this->commands, static fn (array $c) => $c['keyBound']),
+            \array_filter($this->commands, static fn (array $c) => $c['keyBound']),
         ));
     }
 
     /** Whether anything answers to $id — false for a command whose plugin is disabled or gone. */
     public function has(string $id): bool
     {
-        return array_key_exists($id, $this->byId);
+        return \array_key_exists($id, $this->byId);
     }
 
     /** The registered label for $id (including custom labels), or null when unknown. */

@@ -16,7 +16,7 @@ final class FileIndexTest extends TestCase
         $index = new FileIndex($project->dir);
 
         $entries = $index->entries();
-        $this->assertSame(['a.php', 'b.php', 'sub/C.php'], array_column($entries, 'path'), 'sorted by path');
+        $this->assertSame(['a.php', 'b.php', 'sub/C.php'], \array_column($entries, 'path'), 'sorted by path');
 
         $sub = $entries[2];
         $this->assertSame('sub/c.php', $sub['lower']);
@@ -27,29 +27,29 @@ final class FileIndexTest extends TestCase
     {
         $project = new TempProject(['a.php' => '', '.git/config' => 'x', 'node_modules/lib.js' => 'x', '.idea/x.iml' => 'y', 'vendor/pkg/Lib.php' => 'z']);
 
-        $paths = array_column(new FileIndex($project->dir)->entries(), 'path');
+        $paths = \array_column(new FileIndex($project->dir)->entries(), 'path');
 
         $this->assertContains('a.php', $paths);
         $this->assertNotContains('.git/config', $paths);
-        $this->assertStringNotContainsString('node_modules', implode('|', $paths));
-        $this->assertStringNotContainsString('.idea', implode('|', $paths));
-        $this->assertStringNotContainsString('vendor', implode('|', $paths), 'vendor/ can eat the whole file budget by itself');
+        $this->assertStringNotContainsString('node_modules', \implode('|', $paths));
+        $this->assertStringNotContainsString('.idea', \implode('|', $paths));
+        $this->assertStringNotContainsString('vendor', \implode('|', $paths), 'vendor/ can eat the whole file budget by itself');
     }
 
     public function testTheVendorSettingReScopesTheIndexInPlace(): void
     {
         $project = new TempProject(['a.php' => '', 'vendor/pkg/Lib.php' => 'z']);
         $index = new FileIndex($project->dir);
-        $this->assertSame(['a.php'], array_column($index->entries(), 'path'));
+        $this->assertSame(['a.php'], \array_column($index->entries(), 'path'));
 
         $index->setIncludeVendor(true);
-        $this->assertContains('vendor/pkg/Lib.php', array_column($index->entries(), 'path'), 'enabling the setting re-walks with vendor/ in scope');
+        $this->assertContains('vendor/pkg/Lib.php', \array_column($index->entries(), 'path'), 'enabling the setting re-walks with vendor/ in scope');
 
         $index->setIncludeVendor(true); // unchanged: must not drop the cache
-        $this->assertContains('vendor/pkg/Lib.php', array_column($index->entries(), 'path'));
+        $this->assertContains('vendor/pkg/Lib.php', \array_column($index->entries(), 'path'));
 
         $index->setIncludeVendor(false);
-        $this->assertSame(['a.php'], array_column($index->entries(), 'path'), 'disabling narrows back');
+        $this->assertSame(['a.php'], \array_column($index->entries(), 'path'), 'disabling narrows back');
     }
 
     public function testSearchEmptyQueryReturnsTheFirstFilesUpToTheLimit(): void
@@ -96,12 +96,12 @@ final class FileIndexTest extends TestCase
     {
         $project = new TempProject(['a.php' => '']);
         $index = new FileIndex($project->dir);
-        $this->assertSame(['a.php'], array_column($index->entries(), 'path'));
+        $this->assertSame(['a.php'], \array_column($index->entries(), 'path'));
 
-        file_put_contents($project->path('b.php'), data: '');
-        $this->assertNotContains('b.php', array_column($index->entries(), 'path'), 'cached until refreshed');
+        \file_put_contents($project->path('b.php'), data: '');
+        $this->assertNotContains('b.php', \array_column($index->entries(), 'path'), 'cached until refreshed');
 
         $index->refresh();
-        $this->assertContains('b.php', array_column($index->entries(), 'path'));
+        $this->assertContains('b.php', \array_column($index->entries(), 'path'));
     }
 }

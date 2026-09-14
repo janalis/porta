@@ -64,6 +64,6 @@ final readonly class SearchScopePathListener
     {
         $relative = $this->paths->relative($path);
 
-        return str_starts_with($relative, '/') ? null : $relative;
+        return \str_starts_with($relative, '/') ? null : $relative;
     }
 }

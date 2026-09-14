@@ -63,7 +63,7 @@ final class BookmarkActionsTest extends TestCase
 
     private function panel(): string
     {
-        return AnsiUtils::stripAnsiCodes(implode("\n", $this->results->render(new RenderContext(100, 12))));
+        return AnsiUtils::stripAnsiCodes(\implode("\n", $this->results->render(new RenderContext(100, 12))));
     }
 
     public function testToggleMarksTheCaretLineAndPaintsTheGutter(): void
@@ -82,7 +82,7 @@ final class BookmarkActionsTest extends TestCase
 
         $actions->toggle();
         $this->assertSame([], $this->bookmarks->linesFor('/p/src/A.php'), 'the same key takes it off again');
-        $this->assertStringNotContainsString(Glyphs::BOOKMARK, implode("\n", $this->editor->render(new RenderContext(60, 8))), 'and unpaints it');
+        $this->assertStringNotContainsString(Glyphs::BOOKMARK, \implode("\n", $this->editor->render(new RenderContext(60, 8))), 'and unpaints it');
     }
 
     public function testToggleRefreshesAStandingBookmarksTabButNeverOpensOne(): void
@@ -176,6 +176,6 @@ final class BookmarkActionsTest extends TestCase
 
         $actions->show();
 
-        $this->assertSame('', trim($this->flashText($this->status)), 'a list that has rows needs no instructions');
+        $this->assertSame('', \trim($this->flashText($this->status)), 'a list that has rows needs no instructions');
     }
 }

@@ -15,7 +15,7 @@ final class EditorPanesTest extends TestCase
     {
         $panes = new EditorPanes();
         $pane = new TestPane('demo');
-        $panes->register($pane, static fn (string $path): string => 'payload of '.basename($path));
+        $panes->register($pane, static fn (string $path): string => 'payload of '.\basename($path));
 
         $this->assertSame($pane, $panes->paneFor('demo'));
         $loader = $panes->loaderFor('demo');

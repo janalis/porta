@@ -125,8 +125,8 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
         // realpath() the DIRECTORY, not the file: by the time this runs the
         // rename has already happened, so the old path no longer resolves —
         // and buffers were keyed by the canonical path when they opened.
-        $directory = realpath(\dirname($event->from));
-        $from = false === $directory ? $event->from : $directory.\DIRECTORY_SEPARATOR.basename($event->from);
+        $directory = \realpath(\dirname($event->from));
+        $from = false === $directory ? $event->from : $directory.\DIRECTORY_SEPARATOR.\basename($event->from);
         // Collected before anything is closed: closing re-enters this class,
         // and a walk over a list being mutated underneath it is its own bug.
         $moved = [];
@@ -156,7 +156,7 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
             $this->buffers->close($path);
             $this->openFile($target);
             if (null !== $carried) {
-                $reopened = $this->buffers->get($target) ?? $this->buffers->get(($real = realpath($target)) ? $real : $target);
+                $reopened = $this->buffers->get($target) ?? $this->buffers->get(($real = \realpath($target)) ? $real : $target);
                 $reopened?->document->replaceAll($carried);
             }
         }
@@ -165,7 +165,7 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
     #[\Override]
     public function openFile(string $path, OpenFocus $focus = OpenFocus::Keep, OpenAs $as = OpenAs::Viewer): void
     {
-        $path = ($resolved = realpath($path)) ? $resolved : $path;
+        $path = ($resolved = \realpath($path)) ? $resolved : $path;
 
         // "Open as Text" on a tab that is already a viewer: drop it first, so
         // the path key is free for a text buffer. A viewer tab holds an empty
@@ -185,7 +185,7 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
             return;
         }
 
-        if (!is_file($path) || !is_readable($path)) {
+        if (!\is_file($path) || !\is_readable($path)) {
             $this->notifier->flash($this->translator->trans('Cannot read %file%', ['%file%' => $this->paths->relative($path)]));
 
             return;
@@ -200,7 +200,7 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
 
             return;
         }
-        if ((int) filesize($path) > Files::MAX_TEXT_BYTES) {
+        if ((int) \filesize($path) > Files::MAX_TEXT_BYTES) {
             // Not a refusal any more. This used to flash "File too large" and
             // stop, so a grown composer.lock, a log or a bundled asset was
             // simply unopenable and you left the IDE to look at it. It opens
@@ -212,8 +212,8 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
             return;
         }
 
-        $content = (string) file_get_contents($path);
-        if ('' !== $content && !mb_check_encoding($content, encoding: 'UTF-8')) {
+        $content = (string) \file_get_contents($path);
+        if ('' !== $content && !\mb_check_encoding($content, encoding: 'UTF-8')) {
             $this->notifier->flash($this->translator->trans('Not a UTF-8 text file'));
 
             return;
@@ -301,7 +301,7 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
         // The artifact's directory is a plugin setting, so the FILE NAME is all
         // core can key the title on (and a hand-written architecture.dot is
         // titled the same, which is the honest reading of the name).
-        if (self::ARCHITECTURE_FILENAME === basename($path)) {
+        if (self::ARCHITECTURE_FILENAME === \basename($path)) {
             $buffer->title = 'Project Architecture';
         }
         $buffer->stampFromDisk();
@@ -321,7 +321,7 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
      */
     public function openHelp(string $path): void
     {
-        $path = ($resolved = realpath($path)) ? $resolved : $path;
+        $path = ($resolved = \realpath($path)) ? $resolved : $path;
 
         if ($this->buffers->has($path)) {
             /** @var Buffer $active */
@@ -333,7 +333,7 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
             return;
         }
 
-        if (!is_file($path) || !is_readable($path)) {
+        if (!\is_file($path) || !\is_readable($path)) {
             $this->notifier->flash($this->translator->trans('Cannot read %file%', ['%file%' => $this->paths->relative($path)]));
 
             return;
@@ -351,13 +351,13 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
      */
     public function showHelpPage(string $path): void
     {
-        $path = ($resolved = realpath($path)) ? $resolved : $path;
-        if (!is_file($path) || !is_readable($path)) {
+        $path = ($resolved = \realpath($path)) ? $resolved : $path;
+        if (!\is_file($path) || !\is_readable($path)) {
             $this->notifier->flash($this->translator->trans('Cannot read %file%', ['%file%' => $this->paths->relative($path)]));
 
             return;
         }
-        $this->helpViewer->refreshPage($path, (string) file_get_contents($path));
+        $this->helpViewer->refreshPage($path, (string) \file_get_contents($path));
         $this->tui->requestRender();
     }
 
@@ -508,13 +508,13 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
      */
     public function closeTabsToTheSide(string $path, TabSide $side): void
     {
-        $paths = array_map(static fn (Buffer $buffer): string => $buffer->path, $this->buffers->all());
-        $at = array_search($path, $paths, strict: true);
+        $paths = \array_map(static fn (Buffer $buffer): string => $buffer->path, $this->buffers->all());
+        $at = \array_search($path, $paths, strict: true);
         if (false === $at) {
             return;
         }
 
-        $doomed = array_flip(
+        $doomed = \array_flip(
             TabSide::Right === $side
                 ? \array_slice($paths, $at + 1)
                 : \array_slice($paths, offset: 0, length: $at),
@@ -585,7 +585,7 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
             return;
         }
         if (CloseMode::Guarded === $mode && $active->isDirty()) {
-            $name = basename($active->path);
+            $name = \basename($active->path);
             $this->editor->openListOverlay(
                 $this->translator->trans('Unsaved changes in %name%', ['%name%' => $name]),
                 [

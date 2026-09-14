@@ -36,12 +36,12 @@ final class RecentFilesStoreTest extends TestCase
         $store->record('/b.php');
 
         $file = $project->dir.'/.porta/recent-files.json';
-        touch($file, mtime: 1_000_000_000); // backdated: mtime resolves to the second
-        clearstatcache();
+        \touch($file, mtime: 1_000_000_000); // backdated: mtime resolves to the second
+        \clearstatcache();
         $store->record('/b.php');
 
         $this->assertSame(['/b.php', '/a.php'], $store->all());
-        $this->assertSame(1_000_000_000, filemtime($file), 'no rewrite for a re-show');
+        $this->assertSame(1_000_000_000, \filemtime($file), 'no rewrite for a re-show');
     }
 
     public function testEmptyPathsAreIgnored(): void
@@ -78,8 +78,8 @@ final class RecentFilesStoreTest extends TestCase
 
         $store->rename('/a.php', '/renamed.php');
 
-        self::assertSame(['/b.php', '/renamed.php'], $store->all(), 'in place, not moved to the front');
-        self::assertSame(['/b.php', '/renamed.php'], new RecentFilesStore($project->dir)->all(), 'and written down');
+        $this->assertSame(['/b.php', '/renamed.php'], $store->all(), 'in place, not moved to the front');
+        $this->assertSame(['/b.php', '/renamed.php'], new RecentFilesStore($project->dir)->all(), 'and written down');
     }
 
     public function testRenamingONTOAPathAlreadyListedLeavesOneEntry(): void
@@ -93,7 +93,7 @@ final class RecentFilesStoreTest extends TestCase
 
         $store->rename('/old.php', '/target.php');
 
-        self::assertSame(['/target.php'], $store->all());
+        $this->assertSame(['/target.php'], $store->all());
     }
 
     public function testRenamingAFileTheListNeverSawChangesNothing(): void
@@ -105,15 +105,15 @@ final class RecentFilesStoreTest extends TestCase
         // Backdated rather than compared against "now": two writes inside one
         // second share an mtime, so a same-second rewrite would slip past.
         $file = $project->dir.'/.porta/recent-files.json';
-        $backdated = time() - 3600;
-        touch($file, $backdated);
-        clearstatcache();
+        $backdated = \time() - 3600;
+        \touch($file, $backdated);
+        \clearstatcache();
 
         $store->rename('/elsewhere.php', '/other.php');
 
-        self::assertSame(['/a.php'], $store->all());
-        clearstatcache();
-        self::assertSame($backdated, filemtime($file), 'and nothing was rewritten');
+        $this->assertSame(['/a.php'], $store->all());
+        \clearstatcache();
+        $this->assertSame($backdated, \filemtime($file), 'and nothing was rewritten');
     }
 
     public function testItSurvivesTheProcess(): void
@@ -150,8 +150,8 @@ final class RecentFilesStoreTest extends TestCase
         // A file hand-edited, or written by a future version with a deeper cap:
         // the cap is the store's promise, not the writer's.
         $project = new TempProject();
-        $paths = array_map(static fn (int $i): string => "/f{$i}.php", range(start: 0, end: 49));
-        $project->write('.porta/recent-files.json', json_encode(['paths' => $paths], flags: \JSON_THROW_ON_ERROR));
+        $paths = \array_map(static fn (int $i): string => "/f{$i}.php", \range(start: 0, end: 49));
+        $project->write('.porta/recent-files.json', \json_encode(['paths' => $paths], flags: \JSON_THROW_ON_ERROR));
 
         $this->assertCount(32, new RecentFilesStore($project->dir)->all());
     }
@@ -196,13 +196,13 @@ final class RecentFilesStoreTest extends TestCase
         // a rewrite in the same second as the setup is invisible to a plain
         // before/after comparison.
         $file = $project->dir.'/.porta/recent-files.json';
-        touch($file, mtime: 1_000_000_000);
-        clearstatcache();
+        \touch($file, mtime: 1_000_000_000);
+        \clearstatcache();
 
         $store->forget('/p/b.php');
 
         $this->assertSame(['/p/a.php'], $store->all());
-        $this->assertSame(1_000_000_000, filemtime($file), 'no write for a delete that changed nothing');
+        $this->assertSame(1_000_000_000, \filemtime($file), 'no write for a delete that changed nothing');
     }
 
     public function testRenamingADirectoryMovesTheEntriesInsideIt(): void
@@ -224,12 +224,12 @@ final class RecentFilesStoreTest extends TestCase
         $store = new RecentFilesStore($project->dir);
         $store->record('/p/a.php');
         $file = $project->dir.'/.porta/recent-files.json';
-        touch($file, mtime: 1_000_000_000); // backdated: mtime resolves to the second
-        clearstatcache();
+        \touch($file, mtime: 1_000_000_000); // backdated: mtime resolves to the second
+        \clearstatcache();
 
         $store->rename('/p/elsewhere.php', '/p/moved.php');
 
         $this->assertSame(['/p/a.php'], $store->all());
-        $this->assertSame(1_000_000_000, filemtime($file), 'no write for a rename that changed nothing');
+        $this->assertSame(1_000_000_000, \filemtime($file), 'no write for a rename that changed nothing');
     }
 }

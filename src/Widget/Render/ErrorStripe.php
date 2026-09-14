@@ -35,16 +35,16 @@ final class ErrorStripe
      */
     public static function cells(StripeMarks $marks, int $rows, int $lineCount, int $vScroll, int $lastVisible, Styles $styles): array
     {
-        $width = max(0, $rows);
+        $width = \max(0, $rows);
 
         // Worst severity landing on each stripe row (0 = none).
-        $severity = array_fill(0, $width, value: 0);
+        $severity = \array_fill(0, $width, value: 0);
         foreach ($marks->severityByLine as $line => $worst) {
             $r = self::rowOf($line, $rows, $lineCount);
-            $severity[$r] = 0 === $severity[$r] ? $worst : min($severity[$r], $worst);
+            $severity[$r] = 0 === $severity[$r] ? $worst : \min($severity[$r], $worst);
         }
 
-        $breakpoints = array_fill(0, $width, value: false);
+        $breakpoints = \array_fill(0, $width, value: false);
         foreach ($marks->breakpointLines as $line) {
             $breakpoints[self::rowOf($line, $rows, $lineCount)] = true;
         }
@@ -52,8 +52,8 @@ final class ErrorStripe
         // Several changed lines can share a row and they need not agree on the
         // kind; the topmost one in the slice wins, so the mark does not depend
         // on the order the producer happened to push its marks in.
-        $changes = array_fill(0, $width, value: null);
-        $changeLine = array_fill(0, $width, value: \PHP_INT_MAX);
+        $changes = \array_fill(0, $width, value: null);
+        $changeLine = \array_fill(0, $width, value: \PHP_INT_MAX);
         foreach ($marks->vcsByLine as $line => $kind) {
             $r = self::rowOf($line, $rows, $lineCount);
             if ($line < $changeLine[$r]) {
@@ -62,7 +62,7 @@ final class ErrorStripe
             }
         }
 
-        $hits = array_fill(0, $width, value: false);
+        $hits = \array_fill(0, $width, value: false);
         foreach ($marks->searchLines as $line) {
             $hits[self::rowOf($line, $rows, $lineCount)] = true;
         }
@@ -103,6 +103,6 @@ final class ErrorStripe
     /** The stripe row a document line lands on, proportionally over the whole file. */
     private static function rowOf(int $line, int $rows, int $lineCount): int
     {
-        return $lineCount <= 1 ? 0 : IntMath::clamp(intdiv($line * $rows, $lineCount), 0, $rows - 1);
+        return $lineCount <= 1 ? 0 : IntMath::clamp(\intdiv($line * $rows, $lineCount), 0, $rows - 1);
     }
 }

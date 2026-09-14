@@ -60,7 +60,7 @@ final class LanguageCatalog
     /** @return list<string> the configurable language ids, in display order */
     public static function ids(): array
     {
-        return array_keys(self::LANGUAGES);
+        return \array_keys(self::LANGUAGES);
     }
 
     public static function isKnown(string $id): bool

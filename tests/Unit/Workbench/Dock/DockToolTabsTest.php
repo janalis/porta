@@ -27,7 +27,7 @@ final class DockToolTabsTest extends TestCase
         $bar = $tabs->openOrReuse(ResultsPanelMode::Search, 'bar', ResultsPanelFields::searchResults());
         $this->assertSame(2, \count(Probe::get($tabs, 'tabs')), 'a different title appends');
         $this->assertSame($bar, $tabs->active(), 'the newest tab is active');
-        $this->assertSame([1, 2], array_map(static fn (DockToolTab $tab): int => $tab->id, $tabs->all()), 'ids are monotonic');
+        $this->assertSame([1, 2], \array_map(static fn (DockToolTab $tab): int => $tab->id, $tabs->all()), 'ids are monotonic');
 
         $again = $tabs->openOrReuse(ResultsPanelMode::Search, 'foo', ResultsPanelFields::resultsOnly());
         $this->assertSame($foo, $again, 'the same (mode, title) reuses its tab');
@@ -123,7 +123,7 @@ final class DockToolTabsTest extends TestCase
         $b = $tabs->openOrReuse(ResultsPanelMode::Search, 'b', ResultsPanelFields::searchResults());
         $tabs->openOrReuse(ResultsPanelMode::Search, 'c', ResultsPanelFields::searchResults());
         $d = $tabs->openOrReuse(ResultsPanelMode::Search, 'd', ResultsPanelFields::searchResults()); // active
-        $order = static fn (): array => array_map(static fn (DockToolTab $tab): string => $tab->title, $tabs->all());
+        $order = static fn (): array => \array_map(static fn (DockToolTab $tab): string => $tab->title, $tabs->all());
 
         $tabs->move(9, 0);
         $this->assertSame(['a', 'b', 'c', 'd'], $order(), 'an out-of-range source is a no-op');

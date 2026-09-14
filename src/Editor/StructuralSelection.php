@@ -146,10 +146,10 @@ final class StructuralSelection
      */
     private static function trimmed(string $text, int $start, int $end): array
     {
-        while ($start < $end && '' === trim($text[$start], characters: " \t\n\r")) {
+        while ($start < $end && '' === \trim($text[$start], characters: " \t\n\r")) {
             ++$start;
         }
-        while ($end > $start && '' === trim($text[$end - 1], characters: " \t\n\r")) {
+        while ($end > $start && '' === \trim($text[$end - 1], characters: " \t\n\r")) {
             --$end;
         }
 
@@ -258,7 +258,7 @@ final class StructuralSelection
                 continue;
             }
 
-            if (array_key_exists($ch, self::OPENERS)) {
+            if (\array_key_exists($ch, self::OPENERS)) {
                 $stack[] = [$ch, $i];
 
                 continue;
@@ -266,7 +266,7 @@ final class StructuralSelection
             if (\in_array($ch, self::OPENERS, strict: true) && [] !== $stack) {
                 [$openCh, $openPos] = $stack[\count($stack) - 1];
                 if (self::OPENERS[$openCh] === $ch) {
-                    array_pop($stack);
+                    \array_pop($stack);
                     $pairs[] = [$openPos, $i];
                 }
             }
@@ -277,6 +277,6 @@ final class StructuralSelection
 
     private static function isWordChar(string $byte): bool
     {
-        return 1 === preg_match('/[A-Za-z0-9_$]/', $byte);
+        return 1 === \preg_match('/[A-Za-z0-9_$]/', $byte);
     }
 }

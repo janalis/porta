@@ -59,7 +59,7 @@ final class MenuOverlayPanesFactory
         }
         $widgets = [...$region->sidebar()->all(), $region->separator(), ...$region->content()->all()];
 
-        return array_values(array_filter($widgets, static fn (AbstractWidget $widget): bool => $widget instanceof MenuOverlayHost));
+        return \array_values(\array_filter($widgets, static fn (AbstractWidget $widget): bool => $widget instanceof MenuOverlayHost));
     }
 
     public function create(): MenuOverlayPanes

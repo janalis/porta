@@ -84,7 +84,7 @@ final class ServerProgress
 
         // NOT end(): that moves the array's internal pointer, which mutates
         // the property every time the status bar is painted.
-        $current = $this->work[array_key_last($this->work)];
+        $current = $this->work[\array_key_last($this->work)];
         $label = $current['title'];
         if ('' !== $current['message']) {
             $label .= ': '.$current['message'];

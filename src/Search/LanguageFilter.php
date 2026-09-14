@@ -49,7 +49,7 @@ final class LanguageFilter
                 continue;
             }
             $spans = $this->classifier->commentStringSpans($content, $language);
-            $lines = explode("\n", $content);
+            $lines = \explode("\n", $content);
             $lineStarts = $this->lineStartOffsets($lines);
             foreach ($indices as $index) {
                 $line = $results[$index]['line'];
@@ -96,7 +96,7 @@ final class LanguageFilter
         }
 
         $spans = $this->classifier->commentStringSpans($content, $language);
-        $lines = explode("\n", $content);
+        $lines = \explode("\n", $content);
         $lineStarts = $this->lineStartOffsets($lines);
         $approved = [];
         foreach ($lines as $index => $line) {

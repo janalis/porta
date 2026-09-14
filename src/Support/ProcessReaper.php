@@ -22,9 +22,9 @@ final class ProcessReaper
      */
     public static function closeWhenDead($process, ?\Closure $onReaped = null): void
     {
-        $status = proc_get_status($process);
+        $status = \proc_get_status($process);
         if (!$status['running']) {
-            proc_close($process); // the status read above already reaped it — instant
+            \proc_close($process); // the status read above already reaped it — instant
             if (null !== $onReaped) {
                 $onReaped($status['exitcode']);
             }
@@ -32,12 +32,12 @@ final class ProcessReaper
             return;
         }
         $timer = EventLoop::repeat(0.05, static function (string $timerId) use ($process, $onReaped): void {
-            $status = proc_get_status($process);
+            $status = \proc_get_status($process);
             if ($status['running']) {
                 return;
             }
             EventLoop::cancel($timerId);
-            proc_close($process);
+            \proc_close($process);
             if (null !== $onReaped) {
                 $onReaped($status['exitcode']);
             }

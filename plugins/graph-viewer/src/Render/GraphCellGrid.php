@@ -35,7 +35,7 @@ final class GraphCellGrid
         ZoomPanModel $view,
         private readonly ?Styles $styles,
     ) {
-        $this->cells = array_fill(0, max(1, $rows), array_fill(0, max(1, $cols), [' ', '']));
+        $this->cells = \array_fill(0, \max(1, $rows), \array_fill(0, \max(1, $cols), [' ', '']));
         $this->scale = $view->effectiveScale($cols, 2 * $rows);
         $this->rect = $view->visibleRect($cols, 2 * $rows);
         $this->painters = [];
@@ -43,12 +43,12 @@ final class GraphCellGrid
 
     public function colOf(float $x): int
     {
-        return $this->rect['padCols'] + (int) round(($x - $this->rect['srcX']) * $this->scale);
+        return $this->rect['padCols'] + (int) \round(($x - $this->rect['srcX']) * $this->scale);
     }
 
     public function rowOf(float $y): int
     {
-        return intdiv($this->rect['padHalfRows'] + (int) round(($y - $this->rect['srcY']) * $this->scale), num2: 2);
+        return \intdiv($this->rect['padHalfRows'] + (int) \round(($y - $this->rect['srcY']) * $this->scale), num2: 2);
     }
 
     /** Whether a world-rect intersects the visible world window (conservative). */
@@ -83,13 +83,13 @@ final class GraphCellGrid
     /** Write a text run left-to-right, clipped to the grid (and to $maxCol when given). */
     public function text(int $col, int $row, string $text, string $key, ?int $maxCol): void
     {
-        $length = mb_strlen($text);
+        $length = \mb_strlen($text);
         for ($i = 0; $i < $length; ++$i) {
             $target = $col + $i;
             if (null !== $maxCol && $target > $maxCol) {
                 return;
             }
-            $this->put($target, $row, mb_substr($text, $i, length: 1), $key);
+            $this->put($target, $row, \mb_substr($text, $i, length: 1), $key);
         }
     }
 
@@ -109,10 +109,10 @@ final class GraphCellGrid
         $y1 = $this->rowOf($to[1]);
         $dx = $x1 - $x0;
         $dy = $y1 - $y0;
-        $steps = max(abs($dx), abs($dy));
+        $steps = \max(\abs($dx), \abs($dy));
         $glyph = match (true) {
-            abs($dx) >= (2 * abs($dy)) => '─',
-            abs($dy) >= (2 * abs($dx)) => '│',
+            \abs($dx) >= (2 * \abs($dy)) => '─',
+            \abs($dy) >= (2 * \abs($dx)) => '│',
             $dx > 0 === $dy > 0 => '╲',
             default => '╱',
         };
@@ -125,8 +125,8 @@ final class GraphCellGrid
             if (0 !== ($i % $dashPeriod)) {
                 continue;
             }
-            $col = $x0 + (int) round(($dx * $i) / $steps);
-            $row = $y0 + (int) round(($dy * $i) / $steps);
+            $col = $x0 + (int) \round(($dx * $i) / $steps);
+            $row = $y0 + (int) \round(($dy * $i) / $steps);
             $this->putIfEmpty($col, $row, $glyph, $key);
         }
     }
@@ -161,9 +161,9 @@ final class GraphCellGrid
     public function colorKey(?string $hex, Role $fallback): string
     {
         if (null !== $hex && null !== $this->styles && $this->styles->hasColor()) {
-            $r = (int) hexdec(substr($hex, offset: 1, length: 2));
-            $g = (int) hexdec(substr($hex, offset: 3, length: 2));
-            $b = (int) hexdec(substr($hex, offset: 5, length: 2));
+            $r = (int) \hexdec(\substr($hex, offset: 1, length: 2));
+            $g = (int) \hexdec(\substr($hex, offset: 3, length: 2));
+            $b = (int) \hexdec(\substr($hex, offset: 5, length: 2));
             $prefix = "\x1b[38;2;{$r};{$g};{$b}m";
             $this->painters[$prefix] ??= static fn (string $text): string => $prefix.$text.Sgr::RESET;
 
@@ -194,7 +194,7 @@ final class GraphCellGrid
 
     private function paint(string $key, string $text): string
     {
-        if ('' === $key || '' === trim($text) && !str_starts_with($key, 'role:SelectedRow')) {
+        if ('' === $key || '' === \trim($text) && !\str_starts_with($key, 'role:SelectedRow')) {
             return $text; // plain cells and blank runs need no escapes (except a selected node's inverse interior)
         }
         $painter = $this->painters[$key] ?? null;

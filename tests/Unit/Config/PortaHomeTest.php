@@ -14,14 +14,14 @@ final class PortaHomeTest extends TestCase
 
     public function testBaseResolvesPortaHomeThenHome(): void
     {
-        putenv('PORTA_HOME=/tmp/porta-test-home');
+        \putenv('PORTA_HOME=/tmp/porta-test-home');
         $this->assertSame('/tmp/porta-test-home', PortaHome::base());
 
-        putenv('PORTA_HOME');
-        $home = getenv('HOME');
+        \putenv('PORTA_HOME');
+        $home = \getenv('HOME');
         $this->assertSame(\is_string($home) && '' !== $home ? $home : null, PortaHome::base(), 'falls back to HOME');
 
-        putenv('PORTA_HOME='); // empty string → treated as unset, falls through to HOME
+        \putenv('PORTA_HOME='); // empty string → treated as unset, falls through to HOME
         $this->assertSame(\is_string($home) && '' !== $home ? $home : null, PortaHome::base());
     }
 }

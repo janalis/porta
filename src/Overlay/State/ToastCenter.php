@@ -45,7 +45,7 @@ final class ToastCenter
         });
         $this->toasts[] = $toast;
         while (\count($this->toasts) > self::MAX_TOASTS) {
-            $evicted = array_shift($this->toasts);
+            $evicted = \array_shift($this->toasts);
             if (null !== $evicted) {
                 $this->scheduler->cancel($evicted->timerId);
             }
@@ -56,7 +56,7 @@ final class ToastCenter
     /** @return list<Toast> newest first — the render order, top card first */
     public function toasts(): array
     {
-        return array_reverse($this->toasts);
+        return \array_reverse($this->toasts);
     }
 
     public function isEmpty(): bool
@@ -150,7 +150,7 @@ final class ToastCenter
                 continue;
             }
             $this->scheduler->cancel($toast->timerId);
-            array_splice($this->toasts, $i, length: 1);
+            \array_splice($this->toasts, $i, length: 1);
 
             return;
         }

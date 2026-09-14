@@ -59,7 +59,7 @@ final class PollBackoffTest extends TestCase
         $backoff = new PollBackoff($this->clock);
 
         for ($tick = 0; $tick < 5; ++$tick) {
-            self::assertTrue($this->slice($backoff, 0.001), 'tick '.$tick.' polled');
+            $this->assertTrue($this->slice($backoff, 0.001), 'tick '.$tick.' polled');
         }
     }
 
@@ -69,7 +69,7 @@ final class PollBackoffTest extends TestCase
 
         $this->slice($backoff, PollBackoff::BUDGET_MICROS / 1_000_000);
 
-        self::assertTrue($this->slice($backoff, 0.001), 'the budget is what is allowed, not what is too much');
+        $this->assertTrue($this->slice($backoff, 0.001), 'the budget is what is allowed, not what is too much');
     }
 
     public function testAnOverrunStandsThePollDownForOneTick(): void
@@ -78,8 +78,8 @@ final class PollBackoffTest extends TestCase
 
         $this->slice($backoff, 0.2);
 
-        self::assertFalse($this->slice($backoff, 0.001), 'the tick after an overrun is skipped');
-        self::assertTrue($this->slice($backoff, 0.001), 'and the one after that polls again');
+        $this->assertFalse($this->slice($backoff, 0.001), 'the tick after an overrun is skipped');
+        $this->assertTrue($this->slice($backoff, 0.001), 'and the one after that polls again');
     }
 
     public function testEachFurtherOverrunDoublesTheGap(): void
@@ -94,7 +94,7 @@ final class PollBackoffTest extends TestCase
             $gaps[] = $this->ticksSkippedBefore($backoff, 0.2);
         }
 
-        self::assertSame([1, 2, 4, 8, 16], $gaps);
+        $this->assertSame([1, 2, 4, 8, 16], $gaps);
     }
 
     public function testTheGapIsCappedSoThePollNeverStopsAltogether(): void
@@ -109,7 +109,7 @@ final class PollBackoffTest extends TestCase
 
         $skipped = $this->ticksSkippedBefore($backoff, 0.001);
 
-        self::assertSame(PollBackoff::MAX_SKIPS, $skipped, 'a sick disk is still checked every 30s');
+        $this->assertSame(PollBackoff::MAX_SKIPS, $skipped, 'a sick disk is still checked every 30s');
     }
 
     public function testAQuickSliceForgetsTheGapAltogether(): void
@@ -118,13 +118,13 @@ final class PollBackoffTest extends TestCase
         // Two overruns in a row: the gap is at two ticks and the next would be
         // four if nothing reset it.
         $this->slice($backoff, 0.2);
-        self::assertSame(1, $this->ticksSkippedBefore($backoff, 0.2), 'the second overrun');
-        self::assertSame(2, $this->ticksSkippedBefore($backoff, 0.001), 'then a QUICK slice');
+        $this->assertSame(1, $this->ticksSkippedBefore($backoff, 0.2), 'the second overrun');
+        $this->assertSame(2, $this->ticksSkippedBefore($backoff, 0.001), 'then a QUICK slice');
 
         $this->slice($backoff, 0.2); // slow again, from a clean slate
 
-        self::assertFalse($this->slice($backoff, 0.001));
-        self::assertTrue($this->slice($backoff, 0.001), 'the ladder started over from one tick');
+        $this->assertFalse($this->slice($backoff, 0.001));
+        $this->assertTrue($this->slice($backoff, 0.001), 'the ladder started over from one tick');
     }
 
     public function testAFinishWithNoSliceBehindItReadsNothing(): void
@@ -140,7 +140,7 @@ final class PollBackoffTest extends TestCase
 
         $backoff->finished();
 
-        self::assertTrue($backoff->mayRun(), 'a stray finish measures nothing');
+        $this->assertTrue($backoff->mayRun(), 'a stray finish measures nothing');
     }
 
     public function testAStrayFinishDoesNotCancelAnArmedGap(): void
@@ -150,7 +150,7 @@ final class PollBackoffTest extends TestCase
 
         $backoff->finished(); // nothing was running
 
-        self::assertFalse($backoff->mayRun(), 'the armed skip survives it');
-        self::assertTrue($backoff->mayRun(), 'and is spent exactly once');
+        $this->assertFalse($backoff->mayRun(), 'the armed skip survives it');
+        $this->assertTrue($backoff->mayRun(), 'and is spent exactly once');
     }
 }

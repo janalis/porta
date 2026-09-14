@@ -40,7 +40,7 @@ final class BufferIdentityTest extends TestCase
         $stored = $this->project->path('Ide.php');
         $lowered = $this->project->dir.'/ide.php';
 
-        if (!is_file($lowered) || fileinode($stored) !== fileinode($lowered)) {
+        if (!\is_file($lowered) || \fileinode($stored) !== \fileinode($lowered)) {
             $this->markTestSkipped('this filesystem is case-sensitive, so the two names are two files');
         }
 

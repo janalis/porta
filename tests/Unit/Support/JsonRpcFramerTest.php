@@ -20,8 +20,8 @@ final class JsonRpcFramerTest extends TestCase
     public function testEncodeMeasuresBytesNotCharacters(): void
     {
         $frame = JsonRpcFramer::encode(['msg' => 'héllo⏎']);
-        $this->assertSame(1, preg_match('/Content-Length: (\d+)/', $frame, $m));
-        [$header, $body] = explode("\r\n\r\n", $frame, limit: 2);
+        $this->assertSame(1, \preg_match('/Content-Length: (\d+)/', $frame, $m));
+        [$header, $body] = \explode("\r\n\r\n", $frame, limit: 2);
         $this->assertSame((int) $m[1], \strlen($body), 'length is the UTF-8 byte count');
     }
 
@@ -61,7 +61,7 @@ final class JsonRpcFramerTest extends TestCase
         $frame = JsonRpcFramer::encode(['id' => 7]);
 
         $messages = [];
-        foreach (str_split($frame, length: 3) as $chunk) {
+        foreach (\str_split($frame, length: 3) as $chunk) {
             $messages = [...$messages, ...$framer->feed($chunk)];
         }
 
@@ -100,9 +100,9 @@ final class JsonRpcFramerTest extends TestCase
             $overflows[] = $reason;
         }, maxFrame: 64);
 
-        $this->assertSame([], $framer->feed(str_repeat('x', times: 64)), 'exactly at the cap: retained, not yet an overflow');
+        $this->assertSame([], $framer->feed(\str_repeat('x', times: 64)), 'exactly at the cap: retained, not yet an overflow');
         $this->assertSame([], $overflows, 'no report at the boundary');
-        $this->assertSame([], $framer->feed(str_repeat('x', times: 36)), 'past the cap now');
+        $this->assertSame([], $framer->feed(\str_repeat('x', times: 36)), 'past the cap now');
         $this->assertCount(1, $overflows, 'the overflow was reported');
         $this->assertStringContainsString('no frame header', $overflows[0]);
         // The flood was discarded, so a well-formed frame decodes right after.
@@ -120,7 +120,7 @@ final class JsonRpcFramerTest extends TestCase
         }, maxFrame: 64);
 
         $this->assertCount(1, $framer->feed(JsonRpcFramer::encode(['ok' => 1])), 'a frame larger than half the cap is consumed');
-        $this->assertSame([], $framer->feed(str_repeat('x', times: 60)), 'a headerless tail inside the cap on its own');
+        $this->assertSame([], $framer->feed(\str_repeat('x', times: 60)), 'a headerless tail inside the cap on its own');
         $this->assertSame([], $overflows, 'consumed bytes were compacted away, not measured against the cap');
     }
 
@@ -143,8 +143,8 @@ final class JsonRpcFramerTest extends TestCase
         $framer = new JsonRpcFramer(static function (string $reason): void {
             throw new \RuntimeException('no overflow expected: '.$reason);
         }, maxFrame: 64);
-        $json = '{"a":"'.str_repeat('b', times: 56).'"}'; // exactly 64 bytes — at the cap, not past it
+        $json = '{"a":"'.\str_repeat('b', times: 56).'"}'; // exactly 64 bytes — at the cap, not past it
 
-        $this->assertSame([['a' => str_repeat('b', times: 56)]], $framer->feed('Content-Length: 64'."\r\n\r\n".$json));
+        $this->assertSame([['a' => \str_repeat('b', times: 56)]], $framer->feed('Content-Length: 64'."\r\n\r\n".$json));
     }
 }

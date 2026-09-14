@@ -14,7 +14,7 @@ final class NamespaceGraphScannerTest extends TestCase
     private function project(): TempProject
     {
         return new TempProject([
-            'composer.json' => (string) json_encode(['autoload' => ['psr-4' => ['App\\' => 'src/']]]),
+            'composer.json' => (string) \json_encode(['autoload' => ['psr-4' => ['App\\' => 'src/']]]),
             'src/Editor/Document.php' => "<?php\nnamespace App\\Editor;\nuse App\\Support\\Text;\nuse App\\Editor\\Cursor;\nfinal class Document {}\n",
             'src/Editor/Cursor.php' => "<?php\nnamespace App\\Editor;\nfinal class Cursor {}\n",
             'src/Support/Text.php' => "<?php\nnamespace App\\Support;\nuse Psr\\Log\\LoggerInterface;\nfinal class Text {}\n",
@@ -50,9 +50,9 @@ final class NamespaceGraphScannerTest extends TestCase
     public function testAnUnreadableFileIsSkipped(): void
     {
         $project = $this->project();
-        chmod($project->dir.'/src/Support/Text.php', permissions: 0o000);
+        \chmod($project->dir.'/src/Support/Text.php', permissions: 0o000);
         $dot = new NamespaceGraphScanner($project->dir)->scan();
-        chmod($project->dir.'/src/Support/Text.php', permissions: 0o644);
+        \chmod($project->dir.'/src/Support/Text.php', permissions: 0o644);
 
         $this->assertStringNotContainsString('"App\\\\Support" [label="Support"];', $dot, 'the unreadable file registered no node (its inbound edge, derived from a readable importer, remains)');
         $this->assertStringContainsString('"App\\\\Editor" [label="Editor"];', $dot, 'the rest of the scan proceeded');

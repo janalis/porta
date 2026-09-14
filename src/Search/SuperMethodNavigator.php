@@ -126,7 +126,7 @@ final class SuperMethodNavigator
         $target = $name.'.php';
         $paths = [];
         foreach ($this->files->entries() as $entry) {
-            if (basename($entry['path']) !== $target) {
+            if (\basename($entry['path']) !== $target) {
                 continue;
             }
             $paths[] = $entry['path'];
@@ -139,7 +139,7 @@ final class SuperMethodNavigator
     private function read(string $relative): ?string
     {
         $absolute = $this->paths->absolute($relative);
-        $source = is_file($absolute) ? file_get_contents($absolute) : false;
+        $source = \is_file($absolute) ? \file_get_contents($absolute) : false;
 
         return false === $source ? null : $source;
     }
@@ -197,11 +197,11 @@ final class SuperMethodNavigator
     private static function tokens(string $source): array
     {
         static $cache = ['' => []];
-        $key = hash('xxh128', $source);
+        $key = \hash('xxh128', $source);
         if (!\array_key_exists($key, $cache)) {
-            set_error_handler(static fn (): bool => true);
-            $cache = [$key => token_get_all($source)]; // one file at a time: this walks a hierarchy, not a project
-            restore_error_handler();
+            \set_error_handler(static fn (): bool => true);
+            $cache = [$key => \token_get_all($source)]; // one file at a time: this walks a hierarchy, not a project
+            \restore_error_handler();
         }
 
         /** @var list<array{0: int, 1: string, 2: int}|string> */
@@ -258,14 +258,14 @@ final class SuperMethodNavigator
                 continue;
             }
             if ($collecting && \in_array($id, [\T_STRING, \T_NAME_QUALIFIED, \T_NAME_FULLY_QUALIFIED], strict: true)) {
-                $segments = explode('\\', $text);
-                $parents[] = end($segments);
+                $segments = \explode('\\', $text);
+                $parents[] = \end($segments);
             }
             if ($collecting && \T_FUNCTION === $id) {
                 $collecting = false; // a closure's `use (...)`, not a trait
             }
         }
 
-        return array_values(array_unique($parents));
+        return \array_values(\array_unique($parents));
     }
 }

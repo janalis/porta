@@ -21,7 +21,7 @@ final class ErrorStripeTest extends TestCase
     /** @return list<string> */
     private function stripe(StripeMarks $marks, int $rows, int $lineCount, int $vScroll = 0, ?int $lastVisible = null, ?Styles $styles = null): array
     {
-        return ErrorStripe::cells($marks, $rows, $lineCount, $vScroll, $lastVisible ?? (min($rows, $lineCount) - 1), $styles ?? Styles::dark());
+        return ErrorStripe::cells($marks, $rows, $lineCount, $vScroll, $lastVisible ?? (\min($rows, $lineCount) - 1), $styles ?? Styles::dark());
     }
 
     /**
@@ -157,7 +157,7 @@ final class ErrorStripeTest extends TestCase
         }
         $glyphs[] = AnsiUtils::stripAnsiCodes($this->stripe(new StripeMarks([0 => 2], [], [], []), rows: 10, lineCount: 100, styles: $mono)[0]);
 
-        $this->assertSame($glyphs, array_unique($glyphs), 'two marks collapsed onto the same glyph: one of them is invisible in monochrome');
+        $this->assertSame($glyphs, \array_unique($glyphs), 'two marks collapsed onto the same glyph: one of them is invisible in monochrome');
     }
 
     /**

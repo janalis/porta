@@ -119,7 +119,7 @@ final readonly class CodeLensController implements EditorCodeLensHandler
             if ('' === $title || $line < 0) {
                 continue;
             }
-            $arguments = \is_array($command['arguments'] ?? null) ? array_values($command['arguments']) : [];
+            $arguments = \is_array($command['arguments'] ?? null) ? \array_values($command['arguments']) : [];
             // A lens with no command is still worth showing — "3 usages" reads
             // the same whether or not it can be clicked — so an empty verb is
             // kept and refused at click time rather than dropping the row.

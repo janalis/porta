@@ -37,7 +37,7 @@ final class SettingsLspControllerTest extends TestCase
 
     protected function setUp(): void
     {
-        putenv('PATH=/nonexistent'); // deterministic auto-detect
+        \putenv('PATH=/nonexistent'); // deterministic auto-detect
     }
 
     /**
@@ -136,8 +136,8 @@ final class SettingsLspControllerTest extends TestCase
     private function toolsOnPath(string $binary): TempProject
     {
         $tools = new TempProject([], 'porta-bin-');
-        chmod($tools->write($binary, "#!/bin/sh\n"), permissions: 0o755);
-        putenv('PATH='.$tools->dir);
+        \chmod($tools->write($binary, "#!/bin/sh\n"), permissions: 0o755);
+        \putenv('PATH='.$tools->dir);
 
         return $tools;
     }
@@ -158,12 +158,12 @@ final class SettingsLspControllerTest extends TestCase
 
     public function testClearingAServerRevertsToAutoDetect(): void
     {
-        $project = new TempProject(['.porta.json' => json_encode(['lsp' => ['php' => 'phpactor language-server']])]);
+        $project = new TempProject(['.porta.json' => \json_encode(['lsp' => ['php' => 'phpactor language-server']])]);
         $controller = $this->controller($project->dir, $status = new StatusBarWidget(), ['php' => 'phpactor language-server']);
 
         $controller->changeLspServer('php', '   ');
 
-        $this->assertArrayNotHasKey('lsp', json_decode((string) file_get_contents($project->path('.porta.json')), associative: true), 'empty map pruned');
+        $this->assertArrayNotHasKey('lsp', \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true), 'empty map pruned');
         $this->assertSame('', $controller->rows('php')[0]->value);
         $this->assertStringContainsString('PHP LSP: auto-detect', $this->flashText($status));
     }
@@ -177,13 +177,13 @@ final class SettingsLspControllerTest extends TestCase
 
         $this->assertStringContainsString('set via --lsp', $this->flashText($status));
         $this->assertSame(0, $this->reopened, 'nothing reopened');
-        $this->assertFalse(is_file($project->path('.porta.json')), 'nothing persisted');
+        $this->assertFalse(\is_file($project->path('.porta.json')), 'nothing persisted');
     }
 
     public function testAFailedPersistIsFlagged(): void
     {
         $project = new TempProject();
-        mkdir($project->path('.porta.json'));
+        \mkdir($project->path('.porta.json'));
         $controller = $this->controller($project->dir, $status = new StatusBarWidget());
 
         $controller->changeLspServer('php', 'phpactor');

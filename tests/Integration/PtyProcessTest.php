@@ -31,7 +31,7 @@ final class PtyProcessTest extends TestCase
     {
         $buffer = new TerminalBuffer();
         $exit = null;
-        $p = new PtyProcess(['/bin/sh', '-c', 'printf "line1\nline2\n"; exit 3'], getcwd());
+        $p = new PtyProcess(['/bin/sh', '-c', 'printf "line1\nline2\n"; exit 3'], \getcwd());
         $this->procs[] = $p;
         $p->onOutput($buffer->feed(...))->onExit(static function (int $c) use (&$exit): void {
             $exit = $c;
@@ -44,7 +44,7 @@ final class PtyProcessTest extends TestCase
             return null !== $exit;
         });
         $this->assertSame(3, $exit);
-        $lines = array_map(AnsiUtils::stripAnsiCodes(...), $buffer->lines);
+        $lines = \array_map(AnsiUtils::stripAnsiCodes(...), $buffer->lines);
         $this->assertContains('line1', $lines);
         $this->assertContains('line2', $lines);
         $this->assertFalse($p->isRunning());
@@ -54,23 +54,23 @@ final class PtyProcessTest extends TestCase
     {
         // `cat` echoes stdin back through the PTY.
         $buffer = new TerminalBuffer();
-        $p = new PtyProcess(['/bin/cat'], getcwd());
+        $p = new PtyProcess(['/bin/cat'], \getcwd());
         $this->procs[] = $p;
         $p->onOutput($buffer->feed(...));
         $this->assertTrue($p->start());
 
         $p->write("ping\n");
         $this->await(static function () use (&$buffer): bool {
-            return str_contains(implode("\n", $buffer->lines), 'ping');
+            return \str_contains(\implode("\n", $buffer->lines), 'ping');
         });
 
-        $this->assertStringContainsString('ping', implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $buffer->lines)));
+        $this->assertStringContainsString('ping', \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $buffer->lines)));
         $p->stop();
     }
 
     public function testStopIsIdempotentAndSafeBeforeStart(): void
     {
-        $p = new PtyProcess(['/bin/sh', '-c', 'sleep 5'], getcwd());
+        $p = new PtyProcess(['/bin/sh', '-c', 'sleep 5'], \getcwd());
         $this->procs[] = $p;
         $p->start();
         $this->assertTrue($p->isRunning());
@@ -79,7 +79,7 @@ final class PtyProcessTest extends TestCase
         $p->stop(); // second stop is a no-op
         $this->assertFalse($p->isRunning());
 
-        $fresh = new PtyProcess(['/bin/sh', '-c', 'true'], getcwd());
+        $fresh = new PtyProcess(['/bin/sh', '-c', 'true'], \getcwd());
         $fresh->stop(); // stop before start
         $this->assertFalse($fresh->isRunning());
     }
@@ -87,15 +87,15 @@ final class PtyProcessTest extends TestCase
     public function testDefaultColumnsAndRowsReachTheChildEnvironmentExactly(): void
     {
         $buffer = new TerminalBuffer();
-        $p = new PtyProcess(['/bin/sh', '-c', 'printf "%s:%s" "$COLUMNS" "$LINES"'], getcwd());
+        $p = new PtyProcess(['/bin/sh', '-c', 'printf "%s:%s" "$COLUMNS" "$LINES"'], \getcwd());
         $this->procs[] = $p;
         $p->onOutput($buffer->feed(...));
         $this->assertTrue($p->start());
 
         $this->await(static function () use (&$buffer): bool {
-            return str_contains(implode('', $buffer->lines), ':');
+            return \str_contains(\implode('', $buffer->lines), ':');
         });
-        $this->assertSame('80:24', AnsiUtils::stripAnsiCodes(implode('', $buffer->lines)));
+        $this->assertSame('80:24', AnsiUtils::stripAnsiCodes(\implode('', $buffer->lines)));
     }
 
     public function testCustomEnvAndParentEnvAndOverridesAllReachTheChild(): void
@@ -103,11 +103,11 @@ final class PtyProcessTest extends TestCase
         // array_merge(getenv(), $this->env, [COLUMNS/LINES/TERM]): each of the
         // three sources must survive — a base var inherited from this process,
         // a caller-supplied extra var, and the computed overrides.
-        putenv('PORTA_TEST_PARENT_VAR=from_parent');
+        \putenv('PORTA_TEST_PARENT_VAR=from_parent');
         $buffer = new TerminalBuffer();
         $p = new PtyProcess(
             ['/bin/sh', '-c', 'printf "%s|%s|%s" "$PORTA_TEST_PARENT_VAR" "$PORTA_TEST_EXTRA" "$COLUMNS"'],
-            getcwd(),
+            \getcwd(),
             env: ['PORTA_TEST_EXTRA' => 'from_ctor'],
         );
         $this->procs[] = $p;
@@ -115,16 +115,16 @@ final class PtyProcessTest extends TestCase
         $this->assertTrue($p->start());
 
         $this->await(static function () use (&$buffer): bool {
-            return str_contains(implode('', $buffer->lines), '|');
+            return \str_contains(\implode('', $buffer->lines), '|');
         });
-        putenv('PORTA_TEST_PARENT_VAR');
-        $this->assertSame('from_parent|from_ctor|80', AnsiUtils::stripAnsiCodes(implode('', $buffer->lines)));
+        \putenv('PORTA_TEST_PARENT_VAR');
+        $this->assertSame('from_parent|from_ctor|80', AnsiUtils::stripAnsiCodes(\implode('', $buffer->lines)));
     }
 
     public function testStderrIsMergedIntoTheSamePtyOutputStream(): void
     {
         $buffer = new TerminalBuffer();
-        $p = new PtyProcess(['/bin/sh', '-c', 'echo out-line; echo err-line >&2'], getcwd());
+        $p = new PtyProcess(['/bin/sh', '-c', 'echo out-line; echo err-line >&2'], \getcwd());
         $this->procs[] = $p;
         $exit = null;
         $p->onOutput($buffer->feed(...))->onExit(static function (int $c) use (&$exit): void {
@@ -135,7 +135,7 @@ final class PtyProcessTest extends TestCase
         $this->await(static function () use (&$exit): bool {
             return null !== $exit;
         });
-        $plain = implode('|', array_map(AnsiUtils::stripAnsiCodes(...), $buffer->lines));
+        $plain = \implode('|', \array_map(AnsiUtils::stripAnsiCodes(...), $buffer->lines));
         $this->assertStringContainsString('out-line', $plain);
         $this->assertStringContainsString('err-line', $plain, 'stderr must reach the same merged stream as stdout');
     }
@@ -143,7 +143,7 @@ final class PtyProcessTest extends TestCase
     public function testStopCancelsTheWatcherSoNoFurtherOutputEverArrives(): void
     {
         $buffer = new TerminalBuffer();
-        $p = new PtyProcess(['/bin/sh', '-c', 'while true; do echo tick; sleep 0.02; done'], getcwd());
+        $p = new PtyProcess(['/bin/sh', '-c', 'while true; do echo tick; sleep 0.02; done'], \getcwd());
         $this->procs[] = $p;
         $p->onOutput($buffer->feed(...));
         $this->assertTrue($p->start());
@@ -158,8 +158,8 @@ final class PtyProcessTest extends TestCase
 
         $countAfterStop = $buffer->lineCount();
         // Give any leaked watcher a chance to fire before asserting silence.
-        $deadline = microtime(as_float: true) + 0.15;
-        while (microtime(as_float: true) < $deadline) {
+        $deadline = \microtime(as_float: true) + 0.15;
+        while (\microtime(as_float: true) < $deadline) {
             EventLoop::run();
         }
         $this->assertSame($countAfterStop, $buffer->lineCount(), 'no output may arrive after stop()');
@@ -167,14 +167,14 @@ final class PtyProcessTest extends TestCase
 
     public function testStopActuallyKillsTheOsProcessNotJustTheLocalFlags(): void
     {
-        $p = new PtyProcess(['/bin/sh', '-c', 'sleep 30'], getcwd());
+        $p = new PtyProcess(['/bin/sh', '-c', 'sleep 30'], \getcwd());
         $this->procs[] = $p;
         $this->assertTrue($p->start());
-        $status = proc_get_status(Probe::get($p, 'process'));
+        $status = \proc_get_status(Probe::get($p, 'process'));
         $pid = $status['pid'];
 
         $p->stop();
 
-        $this->assertFalse(posix_kill($pid, signal: 0), 'the child OS process must actually be terminated, not merely marked stopped locally');
+        $this->assertFalse(\posix_kill($pid, signal: 0), 'the child OS process must actually be terminated, not merely marked stopped locally');
     }
 }

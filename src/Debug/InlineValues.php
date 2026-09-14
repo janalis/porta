@@ -56,7 +56,7 @@ final class InlineValues
     public function stoppedAt(string $path, int $line, int $frameId): void
     {
         $this->clear();
-        $from = max(0, $line - self::MARGIN_LINES);
+        $from = \max(0, $line - self::MARGIN_LINES);
         $to = $line + self::MARGIN_LINES;
         $asked = $this->request->forRange($path, $from, $to, $frameId, $line, function (array $lookups): void {
             $this->lookups = $lookups;
@@ -95,12 +95,12 @@ final class InlineValues
         $decorations = $this->editor->decorations();
 
         $lookups = [];
-        foreach (range($fromLine, $toLine) as $line) {
+        foreach (\range($fromLine, $toLine) as $line) {
             foreach ($decorations->semanticTokensAt($line) as $token) {
                 if ('variable' !== $token['type'] && 'parameter' !== $token['type']) {
                     continue;
                 }
-                $name = mb_substr($document->getLine($line), $token['col'], $token['endCol'] - $token['col']);
+                $name = \mb_substr($document->getLine($line), $token['col'], $token['endCol'] - $token['col']);
                 if ('' === $name) {
                     continue;
                 }
@@ -150,8 +150,8 @@ final class InlineValues
         foreach ($byLine as $line => $entries) {
             // Left to right, so a line assigning two variables reads in the
             // order the code does.
-            usort($entries, static fn (array $a, array $b): int => $a['col'] <=> $b['col']);
-            $rendered[$line] = implode(', ', array_column($entries, 'text'));
+            \usort($entries, static fn (array $a, array $b): int => $a['col'] <=> $b['col']);
+            $rendered[$line] = \implode(', ', \array_column($entries, 'text'));
         }
         $this->decorations->setDebugValues($rendered);
         $this->tui->requestRender();

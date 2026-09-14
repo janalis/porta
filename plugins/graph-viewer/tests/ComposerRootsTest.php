@@ -13,7 +13,7 @@ final class ComposerRootsTest extends TestCase
     public function testReadsPsr4RootsFromBothAutoloadSections(): void
     {
         $project = new TempProject([
-            'composer.json' => (string) json_encode([
+            'composer.json' => (string) \json_encode([
                 'autoload' => ['psr-4' => ['App\\' => 'src/']],
                 'autoload-dev' => ['psr-4' => ['App\\Tests\\' => 'tests/']],
             ]),
@@ -27,7 +27,7 @@ final class ComposerRootsTest extends TestCase
     public function testMissingDirsAndOddShapesAreSkipped(): void
     {
         $project = new TempProject([
-            'composer.json' => (string) json_encode([
+            'composer.json' => (string) \json_encode([
                 'autoload' => ['psr-4' => ['App\\' => 'nonexistent/', 'Lib\\' => ['also-missing/', 'lib/'], 'Bad\\' => 42]],
             ]),
             'lib/.keep' => '',
@@ -39,7 +39,7 @@ final class ComposerRootsTest extends TestCase
     public function testNonArrayPsr4AndNumericPrefixesAreSkipped(): void
     {
         $project = new TempProject([
-            'composer.json' => (string) json_encode([
+            'composer.json' => (string) \json_encode([
                 'autoload' => ['psr-4' => 'not-an-array'],
                 'autoload-dev' => ['psr-4' => ['0' => 'src/', 'App\\' => 'src/']],
             ]),

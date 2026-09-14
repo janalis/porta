@@ -25,7 +25,7 @@ final class WrapLayoutTest extends TestCase
     #[DataProvider('widths')]
     public function testRowsForCountsTheSegmentsALineNeeds(int $width, int $length, int $rows): void
     {
-        $layout = new WrapLayout(new Document(str_repeat('x', times: $length)."\n"));
+        $layout = new WrapLayout(new Document(\str_repeat('x', times: $length)."\n"));
 
         $this->assertSame($rows, $layout->rowsFor(0, $width));
     }
@@ -33,7 +33,7 @@ final class WrapLayoutTest extends TestCase
     /** A pane squeezed to nothing has no width to wrap into; every line is one row. */
     public function testANonPositiveWidthWrapsNothing(): void
     {
-        $layout = new WrapLayout(new Document(str_repeat('x', times: 50)."\n"));
+        $layout = new WrapLayout(new Document(\str_repeat('x', times: 50)."\n"));
 
         $this->assertSame(1, $layout->rowsFor(0, 0));
         $this->assertSame(1, $layout->rowsFor(0, -5));
@@ -66,14 +66,14 @@ final class WrapLayoutTest extends TestCase
     /** The memo is keyed on width AND document version, so neither can serve a stale count. */
     public function testTheMemoFollowsBothTheWidthAndTheDocument(): void
     {
-        $document = new Document(str_repeat('x', times: 15)."\n");
+        $document = new Document(\str_repeat('x', times: 15)."\n");
         $layout = new WrapLayout($document);
 
         $this->assertSame(2, $layout->rowsFor(0, 10));
         $this->assertSame(1, $layout->rowsFor(0, 20), 'a wider pane re-measures rather than reusing the count');
 
         $document->setCursor(0, 15);
-        $document->insert(str_repeat('y', times: 30));
+        $document->insert(\str_repeat('y', times: 30));
         $this->assertSame(3, $layout->rowsFor(0, 20), 'and an edit re-measures at the same width');
     }
 }

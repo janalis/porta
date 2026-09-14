@@ -56,7 +56,7 @@ final class TodoScanTest extends TestCase
     {
         // No grep on PATH → the engine's synchronous PHP fallback, so the scan
         // completes inside run() without pumping the event loop.
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
     }
 
     private function api(TempProject $project, string $tags = ''): PluginApi
@@ -91,7 +91,7 @@ final class TodoScanTest extends TestCase
             new StatusBarWidget(),
             new CodeEditorWidget(),
             new FakePluginLifecycle(),
-            new FileTreeWidget(sys_get_temp_dir()),
+            new FileTreeWidget(\sys_get_temp_dir()),
         ));
 
         $api = new PluginApi('todo', $manager, $project->dir, $settings);
@@ -104,7 +104,7 @@ final class TodoScanTest extends TestCase
 
     private function panel(): string
     {
-        return AnsiUtils::stripAnsiCodes(implode("\n", $this->results->render(new RenderContext(120, 12))));
+        return AnsiUtils::stripAnsiCodes(\implode("\n", $this->results->render(new RenderContext(120, 12))));
     }
 
     public function testTheScanFillsTheTabWithEveryMarkerCaseSensitively(): void

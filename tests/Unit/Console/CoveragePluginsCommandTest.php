@@ -43,7 +43,7 @@ final class CoveragePluginsCommandTest extends TestCase
     private function spawning(array &$seen, int $exit = 0, string $script = ''): \Closure
     {
         return static function (array $paths, string $cloverPath) use (&$seen, $exit, $script): Process {
-            $seen[basename($cloverPath)] = $paths;
+            $seen[\basename($cloverPath)] = $paths;
 
             return new Process([\PHP_BINARY, '-r', ('' === $script ? '' : $script).' exit('.$exit.');']);
         };
@@ -64,7 +64,7 @@ final class CoveragePluginsCommandTest extends TestCase
         $display = $tester->getDisplay();
 
         $this->assertSame(Command::SUCCESS, $status, $display);
-        $this->assertSame(['alpha-foo.xml', 'alpha-sub-bar.xml', 'beta-baz.xml'], array_keys($seen), 'one shard per test file, named from its path inside tests/');
+        $this->assertSame(['alpha-foo.xml', 'alpha-sub-bar.xml', 'beta-baz.xml'], \array_keys($seen), 'one shard per test file, named from its path inside tests/');
         $this->assertSame([$project->path('plugins/alpha/tests/FooTest.php')], $seen['alpha-foo.xml'], 'a shard is one file, so the pass is only as slow as its slowest FILE');
         $this->assertSame([$project->path('plugins/alpha/tests/Sub/BarTest.php')], $seen['alpha-sub-bar.xml']);
         $this->assertArrayNotHasKey('beta-doubles.xml', $seen, 'a file that is not a *Test.php is not a shard');
@@ -77,7 +77,7 @@ final class CoveragePluginsCommandTest extends TestCase
         $project = $this->project();
         $seen = [];
         $spawn = static function (array $paths, string $cloverPath) use (&$seen): Process {
-            $seen[basename($cloverPath)] = $paths;
+            $seen[\basename($cloverPath)] = $paths;
 
             return new Process([\PHP_BINARY, '-r', 'file_put_contents($argv[1], "<coverage/>"); exit(0);', $cloverPath]);
         };
@@ -85,10 +85,10 @@ final class CoveragePluginsCommandTest extends TestCase
         $tester = $this->tester($project, $spawn);
         $tester->execute(['--output-dir' => $project->path('out')]);
 
-        $written = glob($project->path('out').'/*.xml');
+        $written = \glob($project->path('out').'/*.xml');
         $this->assertSame(
             ['alpha-foo.xml', 'alpha-sub-bar.xml', 'beta-baz.xml'],
-            array_map(basename(...), \is_array($written) ? $written : []),
+            \array_map(basename(...), \is_array($written) ? $written : []),
             'one report per shard, in one directory — which is what coverage:check grades as a union',
         );
     }
@@ -148,11 +148,11 @@ final class CoveragePluginsCommandTest extends TestCase
         ]);
 
         $this->tester($project, $spawn)->execute(['--output-dir' => $project->path('out'), '--processes' => 1]);
-        $this->assertSame('+-+-+-', file_get_contents($log), 'at one process the shards must not overlap');
+        $this->assertSame('+-+-+-', \file_get_contents($log), 'at one process the shards must not overlap');
 
-        unlink($log);
+        \unlink($log);
         $this->tester($project, $spawn)->execute(['--output-dir' => $project->path('out'), '--processes' => 3]);
-        $this->assertStringContainsString('++', (string) file_get_contents($log), 'at three processes they must');
+        $this->assertStringContainsString('++', (string) \file_get_contents($log), 'at three processes they must');
     }
 
     public function testATreeWithNoPluginTestsIsInvalidInput(): void
@@ -207,10 +207,10 @@ final class CoveragePluginsCommandTest extends TestCase
         // stays on because a shard neither merges nor grades src.
         $command = new CoveragePluginsCommand();
         $spawn = new \ReflectionProperty($command, 'spawn')->getValue($command);
-        self::assertInstanceOf(\Closure::class, $spawn);
+        $this->assertInstanceOf(\Closure::class, $spawn);
         $clover = 'coverage/plugins/git.xml';
         $process = $spawn(['plugins/git/tests'], $clover);
-        self::assertInstanceOf(Process::class, $process);
+        $this->assertInstanceOf(Process::class, $process);
 
         $line = $process->getCommandLine();
         $this->assertStringContainsString('pcov.enabled=1', $line);
@@ -234,6 +234,6 @@ final class CoveragePluginsCommandTest extends TestCase
 
         $this->tester($project, $this->spawning($seen))->execute(['--output-dir' => $project->path('out')]);
 
-        $this->assertSame(['alpha-view-foo.xml', 'alpha-widget-foo.xml'], array_keys($seen));
+        $this->assertSame(['alpha-view-foo.xml', 'alpha-widget-foo.xml'], \array_keys($seen));
     }
 }

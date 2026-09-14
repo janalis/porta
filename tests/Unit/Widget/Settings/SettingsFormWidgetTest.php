@@ -36,7 +36,7 @@ final class SettingsFormWidgetTest extends TestCase
      */
     private function body(array $rendered): array
     {
-        return array_values(array_slice($rendered, offset: 1, length: -1));
+        return \array_values(\array_slice($rendered, offset: 1, length: -1));
     }
 
     use RendersWidget;
@@ -458,13 +458,13 @@ final class SettingsFormWidgetTest extends TestCase
         $widget->onChange(static fn (string $key, bool|int|string $value): bool => false); // always refuses
 
         $widget->handleInput("\r"); // open
-        foreach (str_split('{bad') as $char) {
+        foreach (\str_split('{bad') as $char) {
             $widget->handleInput($char);
         }
         $widget->handleInput("\r"); // commit → refused
 
         $this->assertNotNull(Probe::get($widget, 'editing'), 'still editing');
-        $this->assertStringContainsString('{bad', AnsiUtils::stripAnsiCodes(implode('', $widget->render(new RenderContext(60, 5)))), 'and the typing survived');
+        $this->assertStringContainsString('{bad', AnsiUtils::stripAnsiCodes(\implode('', $widget->render(new RenderContext(60, 5)))), 'and the typing survived');
     }
 
     public function testAnAcceptedValueClosesTheEditor(): void
@@ -932,7 +932,7 @@ final class SettingsFormWidgetTest extends TestCase
             new SettingsRow(key: 'c', label: 'Defaultless', kind: SettingsRowKind::Action, value: 'Go', restart: false),
         ]);
 
-        $rendered = array_map(AnsiUtils::stripAnsiCodes(...), $this->body($widget->render(new RenderContext(60, 6))));
+        $rendered = \array_map(AnsiUtils::stripAnsiCodes(...), $this->body($widget->render(new RenderContext(60, 6))));
 
         $this->assertStringStartsWith('  Stock', $rendered[0], 'a row at its default is not marked');
         $this->assertStringStartsWith('● Changed', $rendered[1], 'a row that differs is');
@@ -942,7 +942,7 @@ final class SettingsFormWidgetTest extends TestCase
     public function testAnOverflowingEditedRowScrollsToTheCaretInsteadOfTruncating(): void
     {
         $widget = $this->textWidget($changes);
-        $widget->setRows([new SettingsRow(key: 'k', label: 'A very long label that will not fit', kind: SettingsRowKind::Text, value: str_repeat('x', times: 100), restart: false)]);
+        $widget->setRows([new SettingsRow(key: 'k', label: 'A very long label that will not fit', kind: SettingsRowKind::Text, value: \str_repeat('x', times: 100), restart: false)]);
         $widget->handleInput("\r"); // edit: the caret sits at the end of 100 x's
 
         $screen = AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(20, 4))[1]);
@@ -967,7 +967,7 @@ final class SettingsFormWidgetTest extends TestCase
     {
         $screen = AnsiUtils::stripAnsiCodes($this->widget()->render(new RenderContext(60, 8))[1]);
 
-        $this->assertSame(60, mb_strlen($screen));
+        $this->assertSame(60, \mb_strlen($screen));
     }
 
     public function testEditingCursorVisibilityFollowsFocus(): void
@@ -1011,7 +1011,7 @@ final class SettingsFormWidgetTest extends TestCase
             new SettingsRow(key: 'e', label: 'Action', kind: SettingsRowKind::Action, value: 'Go', restart: false, hint: 'action hint'),
         ]);
 
-        $screen = AnsiUtils::stripAnsiCodes(implode("\n", $widget->render(new RenderContext(80, 8))));
+        $screen = AnsiUtils::stripAnsiCodes(\implode("\n", $widget->render(new RenderContext(80, 8))));
 
         foreach (['bool hint', 'choice hint', 'int hint', 'text hint', 'action hint'] as $hint) {
             $this->assertStringContainsString($hint, $screen, $hint.' must reach the screen');
@@ -1023,7 +1023,7 @@ final class SettingsFormWidgetTest extends TestCase
         $widget = $this->widget($changes);
         $widget->setRows([new SettingsRow(key: 'maxBytes', label: 'Max bytes', kind: SettingsRowKind::Int, value: 4_194_304, restart: false, min: 0, max: 8_388_608, step: 1_048_576)]);
 
-        $screen = AnsiUtils::stripAnsiCodes(implode("\n", $widget->render(new RenderContext(80, 5))));
+        $screen = AnsiUtils::stripAnsiCodes(\implode("\n", $widget->render(new RenderContext(80, 5))));
         $this->assertStringContainsString('0-8388608', $screen, 'the range is visible without hammering the key');
 
         $widget->handleInput("\x1b[C"); // one step right
@@ -1055,7 +1055,7 @@ final class SettingsFormWidgetTest extends TestCase
         $this->assertFalse($widget->clearHover(), 'already clear');
         $widget->hoverRow(1);
         $this->assertTrue($widget->clearHover());
-        $this->assertStringNotContainsString("\x1b[48;5;236m", implode('', $widget->render(new RenderContext(60, 10))));
+        $this->assertStringNotContainsString("\x1b[48;5;236m", \implode('', $widget->render(new RenderContext(60, 10))));
     }
 
     /**
@@ -1090,9 +1090,9 @@ final class SettingsFormWidgetTest extends TestCase
             $widget->setRows([new SettingsRow('sticky', $label, SettingsRowKind::Bool, true, false)], 'T');
 
             $line = AnsiUtils::stripAnsiCodes($this->body($widget->render(new RenderContext(58, 4)))[0]);
-            $control = mb_strpos($line, needle: '[x]', encoding: 'UTF-8');
+            $control = \mb_strpos($line, needle: '[x]', encoding: 'UTF-8');
             $this->assertNotFalse($control, 'the row drew its checkbox');
-            $widths[$locale] = AnsiUtils::visibleWidth(mb_substr($line, start: 0, length: $control, encoding: 'UTF-8'));
+            $widths[$locale] = AnsiUtils::visibleWidth(\mb_substr($line, start: 0, length: $control, encoding: 'UTF-8'));
         }
 
         $this->assertSame($widths['en'], $widths['he'], 'the control begins at the same column in both directions');
@@ -1130,10 +1130,10 @@ final class SettingsFormWidgetTest extends TestCase
                 break;
             }
             $mirrored = AnsiUtils::stripAnsiCodes(Bidi::reorder($line, BaseDirection::Rtl));
-            $columns[$labels[$i]] = mb_strpos($mirrored, needle: '[x]', encoding: 'UTF-8');
+            $columns[$labels[$i]] = \mb_strpos($mirrored, needle: '[x]', encoding: 'UTF-8');
         }
 
-        $this->assertCount(1, array_unique($columns), 'every checkbox is in the same column: '.json_encode($columns));
+        $this->assertCount(1, \array_unique($columns), 'every checkbox is in the same column: '.\json_encode($columns));
     }
 
     /** And the label itself is not torn around the control. */
@@ -1151,8 +1151,8 @@ final class SettingsFormWidgetTest extends TestCase
         // EVERY part of the label — including its Latin tail — must come after
         // the control. Before the fix the tail crossed over and the row read
         // `LSP  [x]  תרש`, the control wedged into the middle of its own label.
-        $control = mb_strpos($mirrored, needle: '[x]', encoding: 'UTF-8');
-        $tail = mb_strpos($mirrored, needle: 'LSP', encoding: 'UTF-8');
+        $control = \mb_strpos($mirrored, needle: '[x]', encoding: 'UTF-8');
+        $tail = \mb_strpos($mirrored, needle: 'LSP', encoding: 'UTF-8');
         $this->assertNotFalse($control);
         $this->assertNotFalse($tail);
         $this->assertLessThan($tail, $control, 'the whole label sits to the right of the control');

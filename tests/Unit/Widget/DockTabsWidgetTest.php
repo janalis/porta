@@ -50,7 +50,7 @@ final class DockTabsWidgetTest extends TestCase
         $plain = AnsiUtils::stripAnsiCodes($lines[0]);
         $this->assertStringContainsString('Terminal ×', $plain);
         $this->assertStringContainsString('Problems ×', $plain);
-        $this->assertSame(2, substr_count($plain, needle: '×'), 'one close glyph per tab');
+        $this->assertSame(2, \substr_count($plain, needle: '×'), 'one close glyph per tab');
         $this->assertStringContainsString("\x1b[1m", $lines[0], 'the active tab renders bold');
     }
 
@@ -122,7 +122,7 @@ final class DockTabsWidgetTest extends TestCase
         $this->assertSame(60, AnsiUtils::visibleWidth($line));
         $this->assertStringContainsString('3 results', $plain, "the active tool's status shows");
         $this->assertStringNotContainsString('never shown', $plain, 'inactive statuses stay hidden');
-        $this->assertSame('3 results', trim(substr($plain, offset: 40)), 'right-aligned near the strip edge');
+        $this->assertSame('3 results', \trim(\substr($plain, offset: 40)), 'right-aligned near the strip edge');
     }
 
     public function testTabsPastTheWidthAreDropped(): void
@@ -170,17 +170,17 @@ final class DockTabsWidgetTest extends TestCase
             ['tab' => DockTab::Debug, 'label' => 'Debug', 'active' => false, 'key' => '', 'status' => ''],
         ], $events);
         $plain = AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(100, 1))[0]);
-        $problems = (int) mb_strpos($plain, needle: 'Problems');
+        $problems = (int) \mb_strpos($plain, needle: 'Problems');
 
-        $this->assertSame(['tab' => DockTab::Terminal, 'index' => 0], $bar->familyIndexAt((int) mb_strpos($plain, needle: 'sh 1')));
-        $this->assertSame(['tab' => DockTab::Terminal, 'index' => 1], $bar->familyIndexAt((int) mb_strpos($plain, needle: 'sh 2')), 'session indexes count only Terminal entries');
+        $this->assertSame(['tab' => DockTab::Terminal, 'index' => 0], $bar->familyIndexAt((int) \mb_strpos($plain, needle: 'sh 1')));
+        $this->assertSame(['tab' => DockTab::Terminal, 'index' => 1], $bar->familyIndexAt((int) \mb_strpos($plain, needle: 'sh 2')), 'session indexes count only Terminal entries');
         $this->assertSame(['tab' => DockTab::Results, 'index' => 0], $bar->familyIndexAt($problems), 'tool indexes count only Results entries');
-        $this->assertSame(['tab' => DockTab::Results, 'index' => 1], $bar->familyIndexAt((int) mb_strpos($plain, needle: 'TODO')));
-        $this->assertSame(['tab' => DockTab::Debug, 'index' => 0], $bar->familyIndexAt((int) mb_strpos($plain, needle: 'Debug')));
+        $this->assertSame(['tab' => DockTab::Results, 'index' => 1], $bar->familyIndexAt((int) \mb_strpos($plain, needle: 'TODO')));
+        $this->assertSame(['tab' => DockTab::Debug, 'index' => 0], $bar->familyIndexAt((int) \mb_strpos($plain, needle: 'Debug')));
         $this->assertNull($bar->familyIndexAt(99), 'the empty tail is no tab');
 
         $this->assertSame(['tab' => DockTab::Results, 'index' => 0], $bar->dragSourceAt($problems), 'a body press arms a drag');
-        $this->assertNull($bar->dragSourceAt((int) mb_strpos($plain, needle: '×', offset: $problems)), 'a close press must not arm one');
+        $this->assertNull($bar->dragSourceAt((int) \mb_strpos($plain, needle: '×', offset: $problems)), 'a close press must not arm one');
 
         $moves = [];
         $events->addListener(DockTabMoveRequested::class, static function (DockTabMoveRequested $event) use (&$moves): void {
@@ -197,9 +197,9 @@ final class DockTabsWidgetTest extends TestCase
             ['tab' => DockTab::Results, 'label' => 'Problems', 'active' => false, 'key' => '1', 'status' => ''],
         ]);
         $plain = AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(80, 1))[0]);
-        $problems = (int) mb_strpos($plain, needle: 'Problems');
+        $problems = (int) \mb_strpos($plain, needle: 'Problems');
 
-        $this->assertSame(['tab' => DockTab::Terminal, 'key' => 'shell:1'], $bar->tabAt((int) mb_strpos($plain, needle: 'sh 1')));
+        $this->assertSame(['tab' => DockTab::Terminal, 'key' => 'shell:1'], $bar->tabAt((int) \mb_strpos($plain, needle: 'sh 1')));
         $this->assertSame(['tab' => DockTab::Results, 'key' => '1'], $bar->tabAt($problems));
         $this->assertNull($bar->tabAt(79), 'the empty tail has no identity');
 

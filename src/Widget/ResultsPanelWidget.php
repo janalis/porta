@@ -287,7 +287,7 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
         }
         $count = \count($this->displayRows);
         if ($count > 0) {
-            $this->list->select(min(max($fallbackIndex, 0), $count - 1));
+            $this->list->select(\min(\max($fallbackIndex, 0), $count - 1));
         }
     }
 
@@ -330,7 +330,7 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
             $keys[$this->grouping->keyFor($result['path'])] = true;
         }
         $allCollapsed = true;
-        foreach (array_keys($keys) as $key) {
+        foreach (\array_keys($keys) as $key) {
             if ($this->collapsed[$key] ?? false) {
                 continue;
             }
@@ -341,7 +341,7 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
         }
         $this->collapsed = [];
         if (!$allCollapsed) {
-            foreach (array_keys($keys) as $key) {
+            foreach (\array_keys($keys) as $key) {
                 $this->collapsed[$key] = true;
             }
         }
@@ -480,7 +480,7 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
         }
         if (!$expanded) {
             $this->contextExpanded[$matchIndex] = true;
-            if (!array_key_exists($matchIndex, $this->contextCache) && null !== $this->contextProvider) {
+            if (!\array_key_exists($matchIndex, $this->contextCache) && null !== $this->contextProvider) {
                 $result = $this->results[$matchIndex];
                 $this->contextCache[$matchIndex] = ($this->contextProvider)($result['path'], $result['line']);
             }
@@ -620,7 +620,7 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
         $path = (string) $row->filePath;
         [$display, $indent] = match (true) {
             $row->isDirectory => [$path.'/', ''],
-            ResultGrouping::Nested === $this->grouping => [basename($path), '  '],
+            ResultGrouping::Nested === $this->grouping => [\basename($path), '  '],
             default => [$path, ''],
         };
         $arrow = $row->collapsed ? Glyphs::COLLAPSED : Glyphs::EXPANDED;
@@ -640,7 +640,7 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
     {
         $line = (string) ($result['line'] + 1);
 
-        return ResultGrouping::Directory === $this->grouping ? basename($result['path']).':'.$line : $line;
+        return ResultGrouping::Directory === $this->grouping ? \basename($result['path']).':'.$line : $line;
     }
 
     /**
@@ -654,7 +654,7 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
         if ($this->grouped) {
             $indent = $this->matchIndent();
             $label = $this->groupedLabel($result);
-            $prefixWidth = mb_strwidth($indent) + mb_strwidth($label) + 2; // indent + label + `  `
+            $prefixWidth = \mb_strwidth($indent) + \mb_strwidth($label) + 2; // indent + label + `  `
             $text = $indent.$this->styles->of(Role::TabAccent)->apply($label).'  '.$this->body($result, $prefixWidth, $columns);
 
             return $this->highlightMatch($text, $prefixWidth, $result, $bg, $columns);
@@ -664,7 +664,7 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
             return $this->highlightMatch(' '.$this->body($result, 1, $columns), 1, $result, $bg, $columns);
         }
         $location = $result['path'].':'.($result['line'] + 1);
-        $prefixWidth = 1 + mb_strwidth($location) + 2; // ` ` + `path:line` + `  `
+        $prefixWidth = 1 + \mb_strwidth($location) + 2; // ` ` + `path:line` + `  `
         $text = ' '.$this->styles->of(Role::TabAccent)->apply($location).'  '.$this->body($result, $prefixWidth, $columns);
 
         return $this->highlightMatch($text, $prefixWidth, $result, $bg, $columns);
@@ -692,7 +692,7 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
             return $result['text'];
         }
         // Two columns for the gap the rule already sat behind.
-        $room = $columns - $prefixWidth - mb_strwidth($tail) - 2;
+        $room = $columns - $prefixWidth - \mb_strwidth($tail) - 2;
         // Too narrow to hold both: the sentence wins, and the ordinary
         // whole-row cut takes the tail as it always did. A rule name alone,
         // with no message beside it, names nothing you could act on.

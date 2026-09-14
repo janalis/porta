@@ -38,7 +38,7 @@ final class DropdownRegion
     {
         [, , $boundBottom, $boundRight] = $bounds;
 
-        return new self($top, $col, min($width + 1, $boundRight - $col), min($rows + 1, $boundBottom - $top), ltr: $ltr);
+        return new self($top, $col, \min($width + 1, $boundRight - $col), \min($rows + 1, $boundBottom - $top), ltr: $ltr);
     }
 
     /** Whether the screen cell sits inside the box (borders included). */

@@ -134,7 +134,7 @@ final class LspClient implements LspClientInterface
             $this->initializeParams(),
             function (mixed $result, ?array $error) use ($onReady): void {
                 if (null !== $error) {
-                    $this->log('initialize failed: '.(string) json_encode($error));
+                    $this->log('initialize failed: '.(string) \json_encode($error));
                     $onReady(Outcome::Failed);
 
                     return;
@@ -161,12 +161,12 @@ final class LspClient implements LspClientInterface
      */
     private function initializeParams(): array
     {
-        $rootUri = 'file://'.str_replace(\DIRECTORY_SEPARATOR, replace: '/', subject: $this->rootDir);
+        $rootUri = 'file://'.\str_replace(\DIRECTORY_SEPARATOR, replace: '/', subject: $this->rootDir);
 
         $params = [
-            'processId' => getmypid(),
+            'processId' => \getmypid(),
             'rootUri' => $rootUri,
-            'workspaceFolders' => [['uri' => $rootUri, 'name' => basename($this->rootDir)]],
+            'workspaceFolders' => [['uri' => $rootUri, 'name' => \basename($this->rootDir)]],
             'clientInfo' => ['name' => 'porta', 'version' => '0.1.0'],
             'capabilities' => $this->clientCapabilities(),
         ];
@@ -365,7 +365,7 @@ final class LspClient implements LspClientInterface
         // (an id-bearing message without a method already returned above).
         if (($message['id'] ?? null) !== null) {
             $result = match ($message['method']) {
-                'workspace/configuration' => array_fill(0, \count($message['params']['items'] ?? [null]), value: null),
+                'workspace/configuration' => \array_fill(0, \count($message['params']['items'] ?? [null]), value: null),
                 'window/workDoneProgress/create', 'client/registerCapability', 'client/unregisterCapability' => null,
                 'workspace/applyEdit' => [
                     'applied' => null !== $this->applyEditHandler && ($this->applyEditHandler)($message['params']['edit'] ?? []),

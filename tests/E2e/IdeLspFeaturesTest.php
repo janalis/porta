@@ -43,7 +43,7 @@ final class IdeLspFeaturesTest extends TestCase
 
     public function testNoLanguageServerMode(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['src/A.php' => "<?php\n"]);
 
         $terminal = $this->runIde(
@@ -71,7 +71,7 @@ final class IdeLspFeaturesTest extends TestCase
 
     public function testRenameWithoutServerFlashes(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['src/A.php' => "<?php\n\$word\n"]);
 
         $terminal = $this->runIde(
@@ -91,7 +91,7 @@ final class IdeLspFeaturesTest extends TestCase
 
     public function testGoToTestRoundTripsBetweenClassAndTest(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject([
             'src/Foo.php' => "<?php\n",
             'tests/Unit/FooTest.php' => "<?php\n",
@@ -107,13 +107,13 @@ final class IdeLspFeaturesTest extends TestCase
 
                     $tui->handleInput("\x1b[116;6u"); // ctrl+shift+t → the single test
                     $this->await(
-                        static fn (): bool => str_ends_with($path(), 'tests/Unit/FooTest.php'),
+                        static fn (): bool => \str_ends_with($path(), 'tests/Unit/FooTest.php'),
                         what: 'the test file to open',
                     );
 
                     $tui->handleInput("\x1b[116;6u"); // ctrl+shift+t again → back to the subject
                     $this->await(
-                        static fn (): bool => str_ends_with($path(), 'src/Foo.php'),
+                        static fn (): bool => \str_ends_with($path(), 'src/Foo.php'),
                         what: 'the subject file to reopen',
                     );
                 },
@@ -127,7 +127,7 @@ final class IdeLspFeaturesTest extends TestCase
 
     public function testGoToTestFlashesWhenNothingIsFound(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['src/Alone.php' => "<?php\n", 'tests/OrphanTest.php' => "<?php\n"]);
 
         // From a class with no test.
@@ -165,7 +165,7 @@ final class IdeLspFeaturesTest extends TestCase
 
     public function testGoToTestOffersChooserForMultipleCandidates(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject([
             'src/Multi.php' => "<?php\n",
             'tests/Unit/MultiTest.php' => "<?php\n",
@@ -189,7 +189,7 @@ final class IdeLspFeaturesTest extends TestCase
                 300 => function ($tui): void {
                     $editor = $tui->getById('editor');
                     $this->await(
-                        static fn (): bool => str_ends_with((string) $editor->getFilePath(), 'MultiTest.php'),
+                        static fn (): bool => \str_ends_with((string) $editor->getFilePath(), 'MultiTest.php'),
                         what: 'the chosen candidate to open',
                     );
                 },
@@ -201,7 +201,7 @@ final class IdeLspFeaturesTest extends TestCase
 
     public function testWarningDiagnosticsShowInStatusBar(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\n\$x = 1;\n"]);
 
         $terminal = $this->runIde(
@@ -229,7 +229,7 @@ final class IdeLspFeaturesTest extends TestCase
     public function testUnspawnableServerReportsFailed(): void
     {
         $project = new TempProject([
-            '.porta.json' => json_encode(['lsp' => '/nonexistent-binary-xyz --stdio']),
+            '.porta.json' => \json_encode(['lsp' => '/nonexistent-binary-xyz --stdio']),
             'a.php' => "<?php\n",
         ]);
 
@@ -265,7 +265,7 @@ final class IdeLspFeaturesTest extends TestCase
 
     public function testCompletionWithNullResultIsIgnored(): void
     {
-        $tall = "<?php\n".str_repeat("// filler\n", times: 110);
+        $tall = "<?php\n".\str_repeat("// filler\n", times: 110);
         $project = new TempProject([
             '.porta.json' => $this->mockLspConfig(),
             'src/Tall.php' => $tall,
@@ -336,7 +336,7 @@ final class IdeLspFeaturesTest extends TestCase
                     // safe, since any import it would have added has landed
                     // by then too.
                     $this->await(
-                        static fn (): bool => str_contains($editor->getDocument()->getText(), 'trim('),
+                        static fn (): bool => \str_contains($editor->getDocument()->getText(), 'trim('),
                         what: 'the accepted completion to reach the document',
                     );
 
@@ -351,7 +351,7 @@ final class IdeLspFeaturesTest extends TestCase
         // A server advertising incremental sync (change kind 2) must receive a
         // ranged content change carrying only the typed text, not the whole file.
         $project = new TempProject([
-            '.porta.json' => json_encode([
+            '.porta.json' => \json_encode([
                 'lsp' => \PHP_BINARY.' '.__DIR__.'/../Support/incremental-lsp-server.php',
             ]),
             'src/Inc.php' => "<?php\n\nfoo\n",
@@ -456,7 +456,7 @@ final class IdeLspFeaturesTest extends TestCase
         $project = new TempProject([
             '.porta.json' => $this->mockLspConfig(),
             'src/Target.php' => "<?php\n\n// line 2\nclass Target\n{\n}\n",
-            'src/Demo.php' => "<?php\n\nclass Demo\n{\n    public function greet(): string\n    {\n        return 'x';\n    }\n}\n".str_repeat("//\n", times: 100),
+            'src/Demo.php' => "<?php\n\nclass Demo\n{\n    public function greet(): string\n    {\n        return 'x';\n    }\n}\n".\str_repeat("//\n", times: 100),
         ]);
 
         $terminal = $this->runIde(
@@ -482,7 +482,7 @@ final class IdeLspFeaturesTest extends TestCase
                 400 => function ($tui): void {
                     // The type-definition jump is an LSP round trip: await it
                     // landing instead of a fixed gap.
-                    $this->await(static fn (): bool => str_ends_with((string) $tui->getById('editor')->getFilePath(), 'Target.php'), what: 'the type-definition jump to land');
+                    $this->await(static fn (): bool => \str_ends_with((string) $tui->getById('editor')->getFilePath(), 'Target.php'), what: 'the type-definition jump to land');
                     $this->assertStringEndsWith('Target.php', (string) $tui->getById('editor')->getFilePath(), 'single type definition jumped');
                     // No implementation at a high line -> flash.
                     $tui->getById('editor')->getDocument()->setCursor(0, 0);
@@ -495,7 +495,7 @@ final class IdeLspFeaturesTest extends TestCase
     {
         $project = new TempProject([
             '.porta.json' => $this->mockLspConfig(),
-            'src/Big.php' => "<?php\n".str_repeat("noop();\n", times: 120),
+            'src/Big.php' => "<?php\n".\str_repeat("noop();\n", times: 120),
         ]);
 
         $terminal = $this->runIde(
@@ -560,7 +560,7 @@ final class IdeLspFeaturesTest extends TestCase
                     // "outside the range", not "not there yet".
                     $doc = $tui->getById('editor')->getDocument();
                     $this->await(
-                        static fn (): bool => str_contains($doc->getLine(1), 'FORMATTED'),
+                        static fn (): bool => \str_contains($doc->getLine(1), 'FORMATTED'),
                         what: 'the range formatting to reach the buffer',
                     );
                     $this->assertSame('keep();', $doc->getLine(2), 'code outside the selection untouched');
@@ -573,7 +573,7 @@ final class IdeLspFeaturesTest extends TestCase
     {
         $project = new TempProject([
             '.porta.json' => $this->mockLspConfig(),
-            'src/Big.php' => "<?php\n".str_repeat("noop();\n", times: 120),
+            'src/Big.php' => "<?php\n".\str_repeat("noop();\n", times: 120),
         ]);
 
         $terminal = $this->runIde(
@@ -635,7 +635,7 @@ final class IdeLspFeaturesTest extends TestCase
                             $tui->tick();
                             $rows = $crumbs->render(new \Symfony\Component\Tui\Render\RenderContext(120, 1));
 
-                            return str_contains(AnsiUtils::stripAnsiCodes($rows[0] ?? ''), 'Demo');
+                            return \str_contains(AnsiUtils::stripAnsiCodes($rows[0] ?? ''), 'Demo');
                         },
                         what: "the server's symbols to reach the trail",
                     );
@@ -649,7 +649,7 @@ final class IdeLspFeaturesTest extends TestCase
                     $editor = $tui->getById('editor');
                     $editor->display()->setMethodSeparators(true);
                     $rows = $editor->render(new \Symfony\Component\Tui\Render\RenderContext(80, 12));
-                    $ruled = array_keys(array_filter($rows, static fn (string $row): bool => str_contains($row, Sgr::UNDERLINE)));
+                    $ruled = \array_keys(\array_filter($rows, static fn (string $row): bool => \str_contains($row, Sgr::UNDERLINE)));
 
                     $this->assertSame([6], $ruled, "one rule, on the member's last line");
                 },
@@ -697,7 +697,7 @@ final class IdeLspFeaturesTest extends TestCase
 
     public function testQuickFixesEditCommandAndEmptyPaths(): void
     {
-        $tall = "<?php\n\nclass QuickFixMe {}\n".str_repeat("// filler\n", times: 110);
+        $tall = "<?php\n\nclass QuickFixMe {}\n".\str_repeat("// filler\n", times: 110);
         $project = new TempProject([
             '.porta.json' => $this->mockLspConfig(),
             'src/Q.php' => $tall,
@@ -920,7 +920,7 @@ final class IdeLspFeaturesTest extends TestCase
                     // binding for it. Ctrl+Alt+O was a second binding here and is
                     // Optimize Imports now, which is what PhpStorm means by it.
                     $tui->handleInput("\x1b[110;8u");
-                    foreach (str_split('greet') as $ch) {
+                    foreach (\str_split('greet') as $ch) {
                         $tui->handleInput($ch);
                     }
                 },
@@ -940,7 +940,7 @@ final class IdeLspFeaturesTest extends TestCase
                 300 => function ($tui): void {
                     $editor = $tui->getById('editor');
                     $this->await(
-                        static fn (): bool => str_ends_with((string) $editor->getFilePath(), 'Target.php'),
+                        static fn (): bool => \str_ends_with((string) $editor->getFilePath(), 'Target.php'),
                         what: 'the symbol pick to open its file',
                     );
                     $this->assertSame(3, $editor->getDocument()->getCursorLine());
@@ -983,7 +983,7 @@ final class IdeLspFeaturesTest extends TestCase
                     $this->await(static function () use ($terminal): bool {
                         $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
 
-                        return str_contains($screen, 'Mock diagnostic') && str_contains($screen, 'A.php') && str_contains($screen, 'B.php');
+                        return \str_contains($screen, 'Mock diagnostic') && \str_contains($screen, 'A.php') && \str_contains($screen, 'B.php');
                     }, what: "both buffers' diagnostics to land");
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('Problems', $screen);
@@ -997,7 +997,7 @@ final class IdeLspFeaturesTest extends TestCase
                     // First row sorts to A.php; jumping opens it in the editor
                     $editor = $tui->getById('editor');
                     $this->await(
-                        static fn (): bool => str_ends_with((string) $editor->getFilePath(), 'A.php'),
+                        static fn (): bool => \str_ends_with((string) $editor->getFilePath(), 'A.php'),
                         what: 'the problems-row jump to open its file',
                     );
                     $this->assertSame('editor', $tui->getFocus()?->getId());
@@ -1078,7 +1078,7 @@ final class IdeLspFeaturesTest extends TestCase
                 300 => function ($tui): void {
                     $editor = $tui->getById('editor');
                     $this->await(
-                        static fn (): bool => str_ends_with((string) $editor->getFilePath(), 'Target.php'),
+                        static fn (): bool => \str_ends_with((string) $editor->getFilePath(), 'Target.php'),
                         what: 'Enter to jump into the file',
                     );
                 },
@@ -1090,7 +1090,7 @@ final class IdeLspFeaturesTest extends TestCase
 
     public function testPeekWithNoDefinition(): void
     {
-        $tall = "<?php\n".str_repeat("// filler\n", times: 110);
+        $tall = "<?php\n".\str_repeat("// filler\n", times: 110);
         $project = new TempProject([
             '.porta.json' => $this->mockLspConfig(),
             'src/T.php' => $tall,
@@ -1148,7 +1148,7 @@ final class IdeLspFeaturesTest extends TestCase
         // The jump is an LSP round trip: poll for it landing instead of a
         // fixed delay, which races the mock server under pcov + machine load.
         $poll = EventLoop::repeat(0.02, static function (string $watcherId) use ($tui, &$safety): void {
-            if (str_ends_with((string) $tui->getById('editor')->getFilePath(), 'Target.php')) {
+            if (\str_ends_with((string) $tui->getById('editor')->getFilePath(), 'Target.php')) {
                 EventLoop::cancel($watcherId);
                 EventLoop::cancel($safety);
                 $tui->stop();
@@ -1167,7 +1167,7 @@ final class IdeLspFeaturesTest extends TestCase
     public function testCrashedServerReportsFailedStatus(): void
     {
         $project = new TempProject([
-            '.porta.json' => json_encode(['lsp' => \PHP_BINARY.' '.__DIR__.'/../Support/crashing-lsp-server.php']),
+            '.porta.json' => \json_encode(['lsp' => \PHP_BINARY.' '.__DIR__.'/../Support/crashing-lsp-server.php']),
             'a.php' => "<?php\n",
         ]);
 
@@ -1181,7 +1181,7 @@ final class IdeLspFeaturesTest extends TestCase
     public function testServerInitiatedApplyEditIsHandled(): void
     {
         $project = new TempProject([
-            '.porta.json' => json_encode(['lsp' => \PHP_BINARY.' '.__DIR__.'/../Support/demanding-lsp-server.php']),
+            '.porta.json' => \json_encode(['lsp' => \PHP_BINARY.' '.__DIR__.'/../Support/demanding-lsp-server.php']),
             'a.php' => "<?php\n",
         ]);
 
@@ -1197,7 +1197,7 @@ final class IdeLspFeaturesTest extends TestCase
 
     public function testLspNegativePathsWithMockServer(): void
     {
-        $tall = "<?php\n".str_repeat("// filler\n", times: 110);
+        $tall = "<?php\n".\str_repeat("// filler\n", times: 110);
         $project = new TempProject([
             '.porta.json' => $this->mockLspConfig(),
             'src/Tall.php' => $tall,
@@ -1217,24 +1217,24 @@ final class IdeLspFeaturesTest extends TestCase
                     $editor = $tui->getById('editor');
                     $editor->getDocument()->setCursor(91, 0); // mock convention: >= 90 -> nothing found
                     $tui->handleInput("\x1b[24~"); // definition -> none
-                    $this->await(static fn (): bool => str_contains($screen(), 'No definition found'), what: 'the no-definition flash');
+                    $this->await(static fn (): bool => \str_contains($screen(), 'No definition found'), what: 'the no-definition flash');
                     $tui->handleInput("\x1b[1;2P"); // hover -> none
-                    $this->await(static fn (): bool => str_contains($screen(), 'No documentation found'), what: 'the no-hover flash');
+                    $this->await(static fn (): bool => \str_contains($screen(), 'No documentation found'), what: 'the no-hover flash');
                     $tui->handleInput("\x1b[18;3~"); // usages -> none
-                    $this->await(static fn (): bool => str_contains($screen(), 'No usages found'), what: 'the no-usages flash');
+                    $this->await(static fn (): bool => \str_contains($screen(), 'No usages found'), what: 'the no-usages flash');
                     $editor->getDocument()->setCursor(96, 0); // >= 95 -> definition outside filesystem
                     $tui->handleInput("\x1b[24~");
-                    $this->await(static fn (): bool => str_contains($screen(), 'Target outside the filesystem'), what: 'the outside-filesystem flash');
+                    $this->await(static fn (): bool => \str_contains($screen(), 'Target outside the filesystem'), what: 'the outside-filesystem flash');
                     // Rename that the server rejects: prepareRename succeeds at a
                     // low line, then the rename call itself errors on "ERR".
                     $editor->getDocument()->setCursor(1, 0);
                     $tui->handleInput("\x1b[17;2~"); // shift+f6 -> prepareRename
                     $this->await(static fn (): bool => EditorState::promptOpen($editor), what: 'the rename prompt');
-                    foreach (str_split('ERR') as $ch) {
+                    foreach (\str_split('ERR') as $ch) {
                         $tui->handleInput($ch);
                     }
                     $tui->handleInput("\r");
-                    $this->await(static fn (): bool => str_contains($screen(), 'Rename failed: cannot rename this'), what: 'the rename-rejected flash');
+                    $this->await(static fn (): bool => \str_contains($screen(), 'Rename failed: cannot rename this'), what: 'the rename-rejected flash');
                 },
             ],
         );
@@ -1268,15 +1268,15 @@ final class IdeLspFeaturesTest extends TestCase
                 900 => function ($tui, $terminal, $ide) use ($captureFile): void {
                     // The shim opener is an async subprocess: under load its
                     // second write can land after the loop would stop.
-                    $this->await(static fn (): bool => is_file($captureFile) && 2 === substr_count((string) file_get_contents($captureFile), needle: "\n"));
-                    $this->assertStringContainsString('Opened https://www.php.net', implode("\n", \Porta\Tests\Support\Toasts::all($ide)));
+                    $this->await(static fn (): bool => \is_file($captureFile) && 2 === \substr_count((string) \file_get_contents($captureFile), needle: "\n"));
+                    $this->assertStringContainsString('Opened https://www.php.net', \implode("\n", \Porta\Tests\Support\Toasts::all($ide)));
                 },
             ],
         );
 
-        $urls = (string) file_get_contents($captureFile);
+        $urls = (string) \file_get_contents($captureFile);
         $this->assertStringContainsString('https://www.php.net/manual/en/function.strlen.php', $urls);
-        $this->assertSame(2, substr_count($urls, needle: "\n"), 'both F12 and ctrl+click opened the docs');
+        $this->assertSame(2, \substr_count($urls, needle: "\n"), 'both F12 and ctrl+click opened the docs');
     }
 
     public function testGotoDeclarationOnJsBuiltinOpensMdn(): void
@@ -1298,20 +1298,20 @@ final class IdeLspFeaturesTest extends TestCase
                     $tui->getById('editor')->getDocument()->setCursor(0, 6); // 'parse': not curated, no LSP
                     $tui->handleInput("\x1b[24~");
                     // The opener shim is an independent OS process — await its write.
-                    $this->await(static fn (): bool => str_contains((string) (is_file($captureFile) ? file_get_contents($captureFile) : false), 'mozilla.org'));
-                    $this->assertStringContainsString('Opened https://developer.mozilla.org', implode("\n", \Porta\Tests\Support\Toasts::all($ide)));
+                    $this->await(static fn (): bool => \str_contains((string) (\is_file($captureFile) ? \file_get_contents($captureFile) : false), 'mozilla.org'));
+                    $this->assertStringContainsString('Opened https://developer.mozilla.org', \implode("\n", \Porta\Tests\Support\Toasts::all($ide)));
                 },
             ],
         );
 
-        $urls = (string) file_get_contents($captureFile);
+        $urls = (string) \file_get_contents($captureFile);
         $this->assertStringContainsString('https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON', $urls);
         $this->assertStringNotContainsString('parse', $urls, 'a non-curated word opens nothing');
     }
 
     public function testNativeDocsWithoutAnOpenerFlashesTheUrl(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['src/A.php' => "<?php\narray_map('trim', []);\n"]);
 
         $terminal = $this->runIde(
@@ -1338,7 +1338,7 @@ final class IdeLspFeaturesTest extends TestCase
         // share a session) from one language-map config; markdown has neither.
         $mock = \PHP_BINARY.' '.__DIR__.'/../Support/mock-lsp-server.php';
         $project = new TempProject([
-            '.porta.json' => json_encode(['lsp' => ['php' => $mock, 'javascript' => $mock.' js-flavor']]),
+            '.porta.json' => \json_encode(['lsp' => ['php' => $mock, 'javascript' => $mock.' js-flavor']]),
             'src/A.php' => "<?php\ngreet();\n",
             'src/app.js' => "doWork(x);\n",
             'src/Target.php' => "<?php\n\n\nclass Target {}\n",
@@ -1367,7 +1367,7 @@ final class IdeLspFeaturesTest extends TestCase
                     // Await the actual jump rather than asserting at a fixed delay:
                     // the mock LSP server is a separate process and lags under a
                     // loaded/pcov run, so the definition may not have landed yet.
-                    $this->await(static fn (): bool => str_ends_with((string) $tui->getById('editor')->getFilePath(), 'Target.php'), timeout: 8.0, what: 'the php-routed definition jump');
+                    $this->await(static fn (): bool => \str_ends_with((string) $tui->getById('editor')->getFilePath(), 'Target.php'), timeout: 8.0, what: 'the php-routed definition jump');
                     Services::resolve($ide, BufferService::class)->openFile($project->path('src/app.js'), OpenFocus::Keep);
                 },
                 1100 => static function ($tui): void {
@@ -1375,7 +1375,7 @@ final class IdeLspFeaturesTest extends TestCase
                     $tui->handleInput("\x1b[24~"); // js server resolves Target.php too
                 },
                 1400 => function ($tui, $terminal, $ide) use ($project): void {
-                    $this->await(static fn (): bool => str_ends_with((string) $tui->getById('editor')->getFilePath(), 'Target.php'), timeout: 8.0, what: 'the js-routed definition jump');
+                    $this->await(static fn (): bool => \str_ends_with((string) $tui->getById('editor')->getFilePath(), 'Target.php'), timeout: 8.0, what: 'the js-routed definition jump');
                     Services::resolve($ide, BufferService::class)->openFile($project->path('notes.md'), OpenFocus::Keep);
                     // The status bar readings after the run need this paint.
                     $this->awaitPainted($tui, $terminal, 'LSP:no server');
@@ -1413,7 +1413,7 @@ final class IdeLspFeaturesTest extends TestCase
                     // The jump lands on the definition RESPONSE.
                     $editor = $tui->getById('editor');
                     $this->await(
-                        static fn (): bool => str_ends_with((string) $editor->getFilePath(), 'Target.php'),
+                        static fn (): bool => \str_ends_with((string) $editor->getFilePath(), 'Target.php'),
                         what: 'ctrl+click to jump to the declaration',
                     );
                     $this->assertSame(3, $editor->getDocument()->getCursorLine());
@@ -1429,7 +1429,7 @@ final class IdeLspFeaturesTest extends TestCase
 
     public function testGotoDeclarationOnDeclarationShowsUsages(): void
     {
-        $tall = "<?php\n".str_repeat("// filler\n", times: 110);
+        $tall = "<?php\n".\str_repeat("// filler\n", times: 110);
         $project = new TempProject([
             '.porta.json' => $this->mockLspConfig(),
             'src/Tall.php' => $tall,
@@ -1476,7 +1476,7 @@ final class IdeLspFeaturesTest extends TestCase
 
     public function testNavigateBackWithEmptyStackAndOsc52Copy(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php echo 'hi';\n"]);
 
         $terminal = $this->runIde(
@@ -1554,10 +1554,10 @@ final class IdeLspFeaturesTest extends TestCase
 
     public function testFormatOnSaveSavesThroughTheFormatPath(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject([
             'a.php' => "<?php\n\$a = 1;\n",
-            '.porta.json' => json_encode(['settings' => ['formatOnSave' => true]]),
+            '.porta.json' => \json_encode(['settings' => ['formatOnSave' => true]]),
         ]);
 
         $this->runIde(
@@ -1571,7 +1571,7 @@ final class IdeLspFeaturesTest extends TestCase
                     $tui->handleInput("\x13"); // ctrl+s
                     $this->awaitPainted($tui, $terminal, 'Saved a.php');
                     $this->assertStringContainsString('Saved a.php', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
-                    $this->assertStringContainsString('x', (string) file_get_contents($project->path('a.php')));
+                    $this->assertStringContainsString('x', (string) \file_get_contents($project->path('a.php')));
                 },
             ],
         );
@@ -1579,7 +1579,7 @@ final class IdeLspFeaturesTest extends TestCase
 
     public function testLspLogCommandShowsCapturedServerOutputInTheDock(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\n\$a = 1;\n"]);
 
         $this->runIde(
@@ -1598,11 +1598,11 @@ final class IdeLspFeaturesTest extends TestCase
                     Services::resolve($ide, \Porta\Lsp\LspLog::class)->append("[php-ls] fatal: cannot index\n");
                     Services::resolve($ide, \Porta\Lsp\LspLog::class)->append("[php-ls] retrying\n");
                     $tui->tick();
-                    $panelText = AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 12))));
+                    $panelText = AnsiUtils::stripAnsiCodes(\implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 12))));
                     $this->assertStringContainsString('[php-ls] fatal: cannot index', $panelText, 'the captured server line appeared live');
                     $this->assertLessThan(
-                        strpos($panelText, needle: 'fatal: cannot index'),
-                        strpos($panelText, needle: 'retrying'),
+                        \strpos($panelText, needle: 'fatal: cannot index'),
+                        \strpos($panelText, needle: 'retrying'),
                         'newest first',
                     );
                     // Enter on a log row is inert — nothing to jump to.
@@ -1622,7 +1622,7 @@ final class IdeLspFeaturesTest extends TestCase
 
     public function testCallHierarchyFoldAllAndMatchingBracket(): void
     {
-        $body = "<?php\n\nfunction greet(string \$n): string {\n    return 'hi '.\$n;\n}\n\nfunction caller(): string {\n    return greet('x');\n}\n".str_repeat("// filler\n", times: 85);
+        $body = "<?php\n\nfunction greet(string \$n): string {\n    return 'hi '.\$n;\n}\n\nfunction caller(): string {\n    return greet('x');\n}\n".\str_repeat("// filler\n", times: 85);
         $project = new TempProject([
             '.porta.json' => $this->mockLspConfig(),
             'src/H.php' => $body,
@@ -1630,7 +1630,7 @@ final class IdeLspFeaturesTest extends TestCase
 
         $palette = static function ($tui, string $label): void {
             $tui->handleInput("\x1b[97;6u");
-            foreach (str_split($label) as $ch) {
+            foreach (\str_split($label) as $ch) {
                 $tui->handleInput($ch);
             }
             $tui->handleInput("\r");
@@ -1654,13 +1654,13 @@ final class IdeLspFeaturesTest extends TestCase
                     // No symbol at the caret → flash, no panel.
                     $tui->getById('editor')->getDocument()->setCursor(70, 0);
                     $tui->handleInput("\x1b[104;6u"); // ctrl+shift+h → call hierarchy
-                    $this->await(static fn () => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'No callers found'));
+                    $this->await(static fn () => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'No callers found'));
 
                     // A symbol nobody calls → the incoming list is empty.
                     $terminal->clearOutput();
                     $tui->getById('editor')->getDocument()->setCursor(88, 0);
                     $tui->handleInput("\x1b[104;6u");
-                    $this->await(static fn () => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'No callers found'));
+                    $this->await(static fn () => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'No callers found'));
 
                     // The happy path: callers of greet land in the results panel.
                     $tui->getById('editor')->getDocument()->setCursor(2, 10); // on "greet"
@@ -1678,17 +1678,17 @@ final class IdeLspFeaturesTest extends TestCase
                 },
                 300 => function ($tui, $terminal) use ($palette): void {
                     // Fold All: the LSP foldingRange says 2-4 → the body line hides.
-                    $editorScreen = static fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('editor')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 20))));
+                    $editorScreen = static fn (): string => AnsiUtils::stripAnsiCodes(\implode("\n", $tui->getById('editor')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 20))));
                     $this->assertStringContainsString("return 'hi '", $editorScreen());
                     $palette($tui, label: 'Fold All');
-                    $this->await(static fn (): bool => !str_contains($editorScreen(), "return 'hi '"));
+                    $this->await(static fn (): bool => !\str_contains($editorScreen(), "return 'hi '"));
 
                     $palette($tui, label: 'Unfold All');
                     // Unfold is local where Fold All needed the server's
                     // foldingRange, so this resolves at once today — awaited
                     // anyway, because the asymmetry is not worth relying on.
                     $this->await(
-                        static fn (): bool => str_contains($editorScreen(), "return 'hi '"),
+                        static fn (): bool => \str_contains($editorScreen(), "return 'hi '"),
                         what: 'unfold to restore the body line',
                     );
                 },
@@ -1696,7 +1696,7 @@ final class IdeLspFeaturesTest extends TestCase
                     // Matching bracket: from the opening brace of greet() to its closer.
                     $tui->setFocus($tui->getById('editor'));
                     $doc = $tui->getById('editor')->getDocument();
-                    $doc->setCursor(2, (int) strpos($doc->getLine(2), needle: '{'));
+                    $doc->setCursor(2, (int) \strpos($doc->getLine(2), needle: '{'));
                     $tui->handleInput("\x1b[109;6u"); // ctrl+shift+m
                     $this->assertSame(4, $doc->getCursorLine(), 'jumped to the closing brace line');
                     $tui->handleInput("\x1b[109;6u"); // and back again
@@ -1729,7 +1729,7 @@ final class IdeLspFeaturesTest extends TestCase
 
     private function mockLspConfig(): string
     {
-        return json_encode(['lsp' => \PHP_BINARY.' '.__DIR__.'/../Support/mock-lsp-server.php']);
+        return \json_encode(['lsp' => \PHP_BINARY.' '.__DIR__.'/../Support/mock-lsp-server.php']);
     }
 
     /**
@@ -1740,10 +1740,10 @@ final class IdeLspFeaturesTest extends TestCase
     private function shimBrowserOpener(TempProject $project, string $captureFile): void
     {
         foreach (['open', 'xdg-open'] as $name) {
-            $shim = $project->write('shim-bin/'.$name, "#!/bin/sh\nprintf '%s\\n' \"\$@\" >> ".escapeshellarg($captureFile)."\n");
-            chmod($shim, permissions: 0o755);
+            $shim = $project->write('shim-bin/'.$name, "#!/bin/sh\nprintf '%s\\n' \"\$@\" >> ".\escapeshellarg($captureFile)."\n");
+            \chmod($shim, permissions: 0o755);
         }
-        putenv('PATH='.$project->path('shim-bin'));
+        \putenv('PATH='.$project->path('shim-bin'));
     }
 
     /**
@@ -1767,7 +1767,7 @@ final class IdeLspFeaturesTest extends TestCase
                     $this->awaitLspReady($tui, $terminal);
                     $tui->getById('editor')->getDocument()->setCursor(2, 0);
                     $tui->handleInput("\x1b\x0f"); // ctrl+alt+o
-                    $this->await(static fn (): bool => str_contains($tui->getById('editor')->getDocument()->getText(), 'Organized'));
+                    $this->await(static fn (): bool => \str_contains($tui->getById('editor')->getDocument()->getText(), 'Organized'));
                     $text = $tui->getById('editor')->getDocument()->getText();
                 },
             ],
@@ -1798,7 +1798,7 @@ final class IdeLspFeaturesTest extends TestCase
             'a.php' => "<?php\n",
             'src/keep.php' => "<?php\n",
         ]);
-        $old = (string) realpath($project->path('a.php'));
+        $old = (string) \realpath($project->path('a.php'));
 
         $this->runIde(
             $project,
@@ -1839,7 +1839,7 @@ final class IdeLspFeaturesTest extends TestCase
     {
         $uris = [];
         foreach ($log->entries() as $entry) {
-            if (1 !== preg_match('/didClose (\S+)$/', $entry['text'], $matches)) {
+            if (1 !== \preg_match('/didClose (\S+)$/', $entry['text'], $matches)) {
                 continue;
             }
             $uris[] = $matches[1];

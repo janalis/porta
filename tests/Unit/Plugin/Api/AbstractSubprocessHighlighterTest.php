@@ -107,7 +107,7 @@ final class AbstractSubprocessHighlighterTest extends TestCase
     private function backend(string $body, string $binaryName = 'demo', int $debounceMs = 0): \Closure
     {
         $this->project = new TempProject(['vendor/bin/demo' => '#!'.\PHP_BINARY." -n\n<?php\n".$body]);
-        chmod($this->project->path('vendor/bin/demo'), permissions: 0o755);
+        \chmod($this->project->path('vendor/bin/demo'), permissions: 0o755);
 
         $settings = new PluginSettings($this->project->dir, [], null, self::projectScope($this->project->dir));
         $this->manager = new PluginManager(new EventDispatcher(), $settings);
@@ -132,7 +132,7 @@ final class AbstractSubprocessHighlighterTest extends TestCase
             new StatusBarWidget(),
             new CodeEditorWidget(),
             new FakePluginLifecycle(),
-            new FileTreeWidget(sys_get_temp_dir()),
+            new FileTreeWidget(\sys_get_temp_dir()),
         ));
 
         $api = new PluginApi('demo', $this->manager, $this->project->dir, $settings);
@@ -177,7 +177,7 @@ final class AbstractSubprocessHighlighterTest extends TestCase
         $this->backend('echo "[]";');
 
         $rows = $this->api->bufferedSettings();
-        $this->assertSame(['binary', 'languages', 'debounce', 'maxBytes'], array_column($rows, 'key'));
+        $this->assertSame(['binary', 'languages', 'debounce', 'maxBytes'], \array_column($rows, 'key'));
         $this->assertSame('rust,go', $rows[1]['default']);
         $this->assertSame(0, $rows[2]['default']);
         $this->assertSame(262_144, $rows[3]['default']);
@@ -285,14 +285,14 @@ final class AbstractSubprocessHighlighterTest extends TestCase
         $peak = 0;
         $this->await(function () use (&$peak): bool {
             $running = Probe::get($this->plugin, 'running');
-            $peak = max($peak, \is_int($running) ? $running : 0);
+            $peak = \max($peak, \is_int($running) ? $running : 0);
 
             return 3 === \count($this->delivered);
         }, what: 'all three to land');
 
         $this->assertSame(2, $peak, 'never more than two processes at once');
         $delivered = $this->delivered;
-        sort($delivered);
+        \sort($delivered);
         $this->assertSame(['one', 'three', 'two'], $delivered, 'and the third ran when a slot came free');
     }
 
@@ -350,8 +350,8 @@ final class AbstractSubprocessHighlighterTest extends TestCase
         // Executable, resolvable, and unspawnable: posix_spawn cannot exec an
         // interpreter that is not there, which is what proc_open reports false
         // for. The same answer a fork-starved machine gives.
-        file_put_contents($this->project->path('vendor/bin/demo'), data: "#!/nonexistent/interpreter\n");
-        chmod($this->project->path('vendor/bin/demo'), permissions: 0o755);
+        \file_put_contents($this->project->path('vendor/bin/demo'), data: "#!/nonexistent/interpreter\n");
+        \chmod($this->project->path('vendor/bin/demo'), permissions: 0o755);
 
         $highlight('one');
         $this->pump(0.1);
@@ -366,16 +366,16 @@ final class AbstractSubprocessHighlighterTest extends TestCase
         // ceiling and stop the backend for good, so this asserts the recovery
         // rather than the counter.
         $highlight = $this->backend('echo json_encode([["type" => "Text", "value" => (string) stream_get_contents(STDIN)]]);');
-        $working = (string) file_get_contents($this->project->path('vendor/bin/demo'));
-        file_put_contents($this->project->path('vendor/bin/demo'), data: "#!/nonexistent/interpreter\n");
-        chmod($this->project->path('vendor/bin/demo'), permissions: 0o755);
+        $working = (string) \file_get_contents($this->project->path('vendor/bin/demo'));
+        \file_put_contents($this->project->path('vendor/bin/demo'), data: "#!/nonexistent/interpreter\n");
+        \chmod($this->project->path('vendor/bin/demo'), permissions: 0o755);
 
         $highlight('one');
         $this->pump(0.1);
         $highlight('two');
         $this->pump(0.1);
-        file_put_contents($this->project->path('vendor/bin/demo'), data: $working);
-        chmod($this->project->path('vendor/bin/demo'), permissions: 0o755);
+        \file_put_contents($this->project->path('vendor/bin/demo'), data: $working);
+        \chmod($this->project->path('vendor/bin/demo'), permissions: 0o755);
         $highlight('three');
 
         $this->awaitDelivery(1);

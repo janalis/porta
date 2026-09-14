@@ -22,12 +22,12 @@ final class CodeHighlighterTest extends TestCase
         $highlighter->setFile('test.php');
         $this->assertSame('php', $highlighter->getLanguage());
 
-        $lines = $highlighter->highlight(explode("\n", string: "<?php\n/* multi\nline comment */\nreturn 'str';"), 1);
+        $lines = $highlighter->highlight(\explode("\n", string: "<?php\n/* multi\nline comment */\nreturn 'str';"), 1);
 
         $this->assertCount(4, $lines);
-        $this->assertStringContainsString("\x1b[", implode('', $lines));
+        $this->assertStringContainsString("\x1b[", \implode('', $lines));
 
-        $plain = array_map(AnsiUtils::stripAnsiCodes(...), $lines);
+        $plain = \array_map(AnsiUtils::stripAnsiCodes(...), $lines);
         $this->assertSame('/* multi', $plain[1]);
         $this->assertSame("return 'str';", $plain[3]);
     }
@@ -36,9 +36,9 @@ final class CodeHighlighterTest extends TestCase
     {
         $highlighter = new CodeHighlighter(syntaxTheme: new PlainTerminalTheme());
         $highlighter->setFile('test.php');
-        $lines = $highlighter->highlight(explode("\n", string: "<?php\nreturn 'str';"), 1);
+        $lines = $highlighter->highlight(\explode("\n", string: "<?php\nreturn 'str';"), 1);
 
-        $joined = implode('', $lines);
+        $joined = \implode('', $lines);
         $this->assertStringNotContainsString("\x1b[38;5;", $joined, 'no syntax color in monochrome');
         $this->assertSame("return 'str';", AnsiUtils::stripAnsiCodes($lines[1]));
     }
@@ -47,11 +47,11 @@ final class CodeHighlighterTest extends TestCase
     {
         $highlighter = new CodeHighlighter();
         $highlighter->setFile('test.php');
-        $lines = $highlighter->highlight(explode("\n", string: "<?php\n/* multi\nline comment */\nreturn 'str';"), 1);
+        $lines = $highlighter->highlight(\explode("\n", string: "<?php\n/* multi\nline comment */\nreturn 'str';"), 1);
 
         $commentGray = "\x1b[38;5;243m";
         $this->assertTrue(
-            str_contains($lines[1], $commentGray) || str_contains($lines[2], $commentGray),
+            \str_contains($lines[1], $commentGray) || \str_contains($lines[2], $commentGray),
             'comment color re-opened on continuation lines',
         );
     }
@@ -66,7 +66,7 @@ final class CodeHighlighterTest extends TestCase
     {
         $highlighter = new CodeHighlighter();
         $highlighter->setFile('test.php');
-        $lines = $highlighter->highlight(explode("\n", string: "<?php\n/* multi\nline comment */\nreturn 1;"), 1);
+        $lines = $highlighter->highlight(\explode("\n", string: "<?php\n/* multi\nline comment */\nreturn 1;"), 1);
 
         $commentGray = "\x1b[38;5;243m";
         // Line 1 opens the comment (nothing carried in) but leaves it open at
@@ -81,7 +81,7 @@ final class CodeHighlighterTest extends TestCase
     {
         $highlighter = new CodeHighlighter();
         $highlighter->setFile('test.php');
-        $lines = $highlighter->highlight(explode("\n", string: "<?php\n/**\n * @param string \$name the user name\n */\nfunction f(\$name) {}"), 1);
+        $lines = $highlighter->highlight(\explode("\n", string: "<?php\n/**\n * @param string \$name the user name\n */\nfunction f(\$name) {}"), 1);
 
         $commentGray = "\x1b[38;5;243m";
         $typeYellow = "\x1b[38;5;222m"; // the sub-tokenizer's TYPE color
@@ -160,7 +160,7 @@ final class CodeHighlighterTest extends TestCase
         $highlighter = new CodeHighlighter();
         $highlighter->setFile('big.php');
 
-        $lines = [str_repeat('x', 600 * 1024)];
+        $lines = [\str_repeat('x', 600 * 1024)];
         $this->assertSame($lines, $highlighter->highlight($lines, 1));
     }
 
@@ -175,7 +175,7 @@ final class CodeHighlighterTest extends TestCase
         $highlighter = new CodeHighlighter($provider);
         $highlighter->setFile('a.php');
 
-        $content = str_repeat('x', 512 * 1024); // exactly the cap
+        $content = \str_repeat('x', 512 * 1024); // exactly the cap
         $result = $highlighter->highlight([$content], 1);
 
         $this->assertStringContainsString($marker, $result[0], 'content at exactly the cap is still highlighted, not falls back to plain');

@@ -384,7 +384,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         if ([] === $options) {
             return (string) $row->value;
         }
-        $index = array_search($row->value, $options, strict: true);
+        $index = \array_search($row->value, $options, strict: true);
         $index = false === $index ? 0 : $index;
         $count = \count($options);
 
@@ -419,7 +419,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
             return []; // no pane, no lines — never more than the allotted rows
         }
         // The window the rows get: the pane less the header and the footer.
-        $this->lastRows = max(1, $rows - $this->headerRowCount() - 1);
+        $this->lastRows = \max(1, $rows - $this->headerRowCount() - 1);
         $scroll = $this->list->follow($this->lastRows);
 
         $layout = SettingsRowLayout::measure($this->rows, $width);

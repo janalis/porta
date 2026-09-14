@@ -41,12 +41,12 @@ final class WelcomeWidgetTest extends TestCase
     public function testPagingDownShowsEveryStepCard(): void
     {
         $labels = ['alpha', 'bravo', 'charlie', 'delta', 'echo'];
-        $widget = $this->widget(...array_map($this->step(...), $labels));
+        $widget = $this->widget(...\array_map($this->step(...), $labels));
 
         // Every height from "one card fits" upward: the page size only stops
         // mattering once the whole list is on screen at once.
         foreach ([4, 5, 6, 7, 9, 12, 20] as $rows) {
-            $widget = $this->widget(...array_map($this->step(...), $labels));
+            $widget = $this->widget(...\array_map($this->step(...), $labels));
             self::assertPagingShowsEveryRow(
                 fn (): string => $this->plain($widget->render(new RenderContext(60, $rows))),
                 static fn () => $widget->handleInput("\x1b[6~"),
@@ -71,7 +71,7 @@ final class WelcomeWidgetTest extends TestCase
         // 11 rows is the boundary case on purpose: the hero leaves 8, and two
         // three-row cards fit in 8 while three do not.
         foreach ([6 => 2, 9 => 3, 11 => 2, 12 => 3, 15 => 4] as $rows => $expected) {
-            $widget = $this->widget(...array_map($this->step(...), $labels));
+            $widget = $this->widget(...\array_map($this->step(...), $labels));
             $widget->render(new RenderContext(60, $rows));
 
             $widget->handleInput("\x1b[6~");
@@ -91,7 +91,7 @@ final class WelcomeWidgetTest extends TestCase
     public function testTheSecondPageIsMeasuredFromTheNewScroll(): void
     {
         $labels = ['alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot', 'golf'];
-        $widget = $this->widget(...array_map($this->step(...), $labels));
+        $widget = $this->widget(...\array_map($this->step(...), $labels));
         $widget->render(new RenderContext(60, 9)); // no hero: three cards fit
 
         $widget->handleInput("\x1b[6~");
@@ -105,8 +105,8 @@ final class WelcomeWidgetTest extends TestCase
     private function selectedStep(WelcomeWidget $widget): string
     {
         foreach ($this->rows($widget->render(new RenderContext(60, 40))) as $row) {
-            if (str_contains($row, Glyphs::CARD_ACCENT)) {
-                return trim(str_replace(Glyphs::CARD_ACCENT, replace: '', subject: $row));
+            if (\str_contains($row, Glyphs::CARD_ACCENT)) {
+                return \trim(\str_replace(Glyphs::CARD_ACCENT, replace: '', subject: $row));
             }
         }
 
@@ -116,7 +116,7 @@ final class WelcomeWidgetTest extends TestCase
     private function widget(WelcomeStep ...$steps): WelcomeWidget
     {
         $widget = new WelcomeWidget(new Translator('en'));
-        $widget->setSteps(array_values($steps));
+        $widget->setSteps(\array_values($steps));
 
         return $widget;
     }
@@ -173,7 +173,7 @@ final class WelcomeWidgetTest extends TestCase
         $lines = $this->rendered($this->widget($this->step('First')));
 
         // 'Welcome to Porta' is 16 columns; (60 - 16) / 2 = 22.
-        $this->assertSame(22, strpos($lines[1], needle: 'Welcome to Porta'));
+        $this->assertSame(22, \strpos($lines[1], needle: 'Welcome to Porta'));
     }
 
     /** Below HERO_MIN_ROWS the greeting cedes its rows to the steps. */
@@ -181,7 +181,7 @@ final class WelcomeWidgetTest extends TestCase
     {
         $lines = $this->rendered($this->widget($this->step('First')), rows: 8);
 
-        $this->assertStringNotContainsString('Welcome to Porta', implode("\n", $lines));
+        $this->assertStringNotContainsString('Welcome to Porta', \implode("\n", $lines));
         $this->assertStringContainsString('First', $lines[0], 'the first card moves up to row 0');
     }
 
@@ -211,7 +211,7 @@ final class WelcomeWidgetTest extends TestCase
 
         $this->assertStringContainsString('Welcome', $widget->title());
         $this->assertStringNotContainsString('done', $widget->title());
-        $this->assertStringNotContainsString('All set', implode("\n", $lines), 'nothing was completed, so no banner');
+        $this->assertStringNotContainsString('All set', \implode("\n", $lines), 'nothing was completed, so no banner');
     }
 
     /** A pending step offers its action; a done one does not. */
@@ -245,8 +245,8 @@ final class WelcomeWidgetTest extends TestCase
         $lines = $this->rendered($this->widget($this->step('First'), $this->step('Second', detail: 'more prose')));
 
         // Margin (2) plus '[ ]  ' (5): both texts start at column 7.
-        $this->assertSame(7, strpos($lines[self::FIRST_STEP_ROW + 3], needle: 'Second'));
-        $this->assertSame(7, strpos($lines[self::FIRST_STEP_ROW + 4], needle: 'more prose'));
+        $this->assertSame(7, \strpos($lines[self::FIRST_STEP_ROW + 3], needle: 'Second'));
+        $this->assertSame(7, \strpos($lines[self::FIRST_STEP_ROW + 4], needle: 'more prose'));
     }
 
     /** The bar marks every row of the selected card — and only that card. */
@@ -254,8 +254,8 @@ final class WelcomeWidgetTest extends TestCase
     {
         $lines = $this->rendered($this->widget($this->step('First'), $this->step('Second')));
 
-        $this->assertSame(0, strpos($lines[self::FIRST_STEP_ROW], needle: Glyphs::CARD_ACCENT), 'the title row starts with the bar');
-        $this->assertSame(0, strpos($lines[self::FIRST_STEP_ROW + 1], needle: Glyphs::CARD_ACCENT), 'so does the detail row');
+        $this->assertSame(0, \strpos($lines[self::FIRST_STEP_ROW], needle: Glyphs::CARD_ACCENT), 'the title row starts with the bar');
+        $this->assertSame(0, \strpos($lines[self::FIRST_STEP_ROW + 1], needle: Glyphs::CARD_ACCENT), 'so does the detail row');
         $this->assertStringNotContainsString(Glyphs::CARD_ACCENT, $lines[self::FIRST_STEP_ROW + 2], 'the spacer stays clean');
         $this->assertStringNotContainsString(Glyphs::CARD_ACCENT, $lines[self::FIRST_STEP_ROW + 3], 'the unselected card has no bar');
     }
@@ -266,8 +266,8 @@ final class WelcomeWidgetTest extends TestCase
         $lines = $this->rendered($this->widget($this->step('First'), $this->step('Second')));
 
         // Same visible columns as an unselected card: marker at 2, title at 7.
-        $this->assertSame(2, AnsiUtils::visibleWidth(substr($lines[self::FIRST_STEP_ROW], offset: 0, length: (int) strpos($lines[self::FIRST_STEP_ROW], needle: '['))));
-        $this->assertSame(2, strpos($lines[self::FIRST_STEP_ROW + 3], needle: '['), 'the unselected card for comparison');
+        $this->assertSame(2, AnsiUtils::visibleWidth(\substr($lines[self::FIRST_STEP_ROW], offset: 0, length: (int) \strpos($lines[self::FIRST_STEP_ROW], needle: '['))));
+        $this->assertSame(2, \strpos($lines[self::FIRST_STEP_ROW + 3], needle: '['), 'the unselected card for comparison');
     }
 
     public function testMovingTheSelectionMovesTheBar(): void
@@ -277,7 +277,7 @@ final class WelcomeWidgetTest extends TestCase
         $lines = $this->rendered($widget);
 
         $this->assertStringNotContainsString(Glyphs::CARD_ACCENT, $lines[self::FIRST_STEP_ROW]);
-        $this->assertSame(0, strpos($lines[self::FIRST_STEP_ROW + 3], needle: Glyphs::CARD_ACCENT), 'the bar followed the selection');
+        $this->assertSame(0, \strpos($lines[self::FIRST_STEP_ROW + 3], needle: Glyphs::CARD_ACCENT), 'the bar followed the selection');
     }
 
     /** The selected card's rows keep the exact pane width, wrapped details included. */
@@ -346,8 +346,8 @@ final class WelcomeWidgetTest extends TestCase
         $detail = 'this explanation is deliberately long enough that it cannot fit on a single detail row of a forty column pane';
         $lines = $this->rendered($this->widget($this->step('First', detail: $detail)), rows: 20, columns: 40);
 
-        $text = implode("\n", array_map(trim(...), $lines));
-        foreach (explode(' ', $detail) as $word) {
+        $text = \implode("\n", \array_map(trim(...), $lines));
+        foreach (\explode(' ', $detail) as $word) {
             $this->assertStringContainsString($word, $text, 'no word of the detail is lost');
         }
         $this->assertStringContainsString('this explanation', $lines[self::FIRST_STEP_ROW + 1]);
@@ -583,7 +583,7 @@ final class WelcomeWidgetTest extends TestCase
         }
         $lines = $this->rendered($widget, rows: 8);
 
-        $this->assertStringContainsString('Step 11', implode("\n", $lines), 'the selection scrolled into view');
+        $this->assertStringContainsString('Step 11', \implode("\n", $lines), 'the selection scrolled into view');
         $this->assertCount(8, $lines);
     }
 
@@ -661,7 +661,7 @@ final class WelcomeWidgetTest extends TestCase
         $widget->resetView();
         $lines = $this->rendered($widget, rows: 8);
 
-        $this->assertStringContainsString('Step 0', implode("\n", $lines), 'the window is back at the top');
+        $this->assertStringContainsString('Step 0', \implode("\n", $lines), 'the window is back at the top');
     }
 
     /**
@@ -755,7 +755,7 @@ final class WelcomeWidgetTest extends TestCase
         // is a multi-byte glyph that would shift a byte-based strpos.
         $lines = $this->rendered($this->widget($this->step('First'), $this->step('Second')), columns: 90);
 
-        $this->assertSame(9, strpos($lines[self::FIRST_STEP_ROW + 3], needle: '['), 'the card margin is 9, not the H_MARGIN floor');
+        $this->assertSame(9, \strpos($lines[self::FIRST_STEP_ROW + 3], needle: '['), 'the card margin is 9, not the H_MARGIN floor');
     }
 
     public function testAnExtremelyNarrowPaneStillProducesAtLeastOneContentColumn(): void
@@ -785,7 +785,7 @@ final class WelcomeWidgetTest extends TestCase
 
         $lines = $this->rendered($widget, rows: 8);
 
-        $this->assertStringContainsString('Step 11', implode("\n", $lines), 'the last step scrolled into view');
+        $this->assertStringContainsString('Step 11', \implode("\n", $lines), 'the last step scrolled into view');
     }
 
     public function testANarrowPaneWholeLineFallbackConcatenatesPrefixTitleAndSuffixInOrder(): void
@@ -808,7 +808,7 @@ final class WelcomeWidgetTest extends TestCase
         $widget->handleInput("\x1b[A"); // Key::UP
 
         $lines = $this->rendered($widget);
-        $this->assertSame(0, strpos($lines[self::FIRST_STEP_ROW + 3], needle: Glyphs::CARD_ACCENT), 'selection moved back to step 1, not stuck at 2');
+        $this->assertSame(0, \strpos($lines[self::FIRST_STEP_ROW + 3], needle: Glyphs::CARD_ACCENT), 'selection moved back to step 1, not stuck at 2');
     }
 
     public function testAnInstalledInputHookSwallowsInput(): void

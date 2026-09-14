@@ -86,7 +86,7 @@ final class SnippetSession
 
         $printable = $isInsertable($keys);
         $isBackspace = $kb->matches($keys, 'delete_char_backward');
-        if (($printable || $isBackspace) && !str_contains($keys, "\n")) {
+        if (($printable || $isBackspace) && !\str_contains($keys, "\n")) {
             $line = $this->document->getCursorLine();
             /** @var array{stops: list<array{line: int, start: int, end: int}>, index: int} $session */
             $session = $this->session;
@@ -141,7 +141,7 @@ final class SnippetSession
             return;
         }
 
-        $index = max(0, $index);
+        $index = \max(0, $index);
         $session['index'] = $index;
         $this->session = $session;
         $this->selectStop($stops[$index]);
@@ -192,7 +192,7 @@ final class SnippetSession
         $result = [];
         foreach ($stops as $stop) {
             $result[] = [
-                'line' => $startLine + substr_count(substr($text, offset: 0, length: $stop->start), needle: "\n"),
+                'line' => $startLine + \substr_count(\substr($text, offset: 0, length: $stop->start), needle: "\n"),
                 'start' => $this->offsetToColumn($startCol, $text, $stop->start),
                 'end' => $this->offsetToColumn($startCol, $text, $stop->end),
             ];
@@ -204,7 +204,7 @@ final class SnippetSession
     /** Byte column of a text offset once inserted at $startCol on its line. */
     private function offsetToColumn(int $startCol, string $text, int $offset): int
     {
-        $lastNewline = strrpos(substr($text, offset: 0, length: $offset), needle: "\n");
+        $lastNewline = \strrpos(\substr($text, offset: 0, length: $offset), needle: "\n");
 
         return false === $lastNewline ? $startCol + $offset : $offset - $lastNewline - 1;
     }

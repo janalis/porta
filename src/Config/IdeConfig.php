@@ -193,7 +193,7 @@ final class IdeConfig
      */
     private static function readLayer(?string $file, string $label, array &$warnings): ?array
     {
-        if (null === $file || !is_file($file)) {
+        if (null === $file || !\is_file($file)) {
             return null;
         }
 
@@ -293,7 +293,7 @@ final class IdeConfig
             $languages,
             $lsp,
             $plugins,
-            array_values(array_unique($disabled)),
+            \array_values(\array_unique($disabled)),
             $enabled ?? self::DEFAULT_ENABLED_PLUGINS,
             $highlight ?? self::NO_HIGHLIGHT,
             $warnings,
@@ -353,7 +353,7 @@ final class IdeConfig
                 $warnings[] = new ConfigWarning('Keymap action "%action%" in %file% must map to a key or list of keys', ['%action%' => $action, '%file%' => $label]);
                 continue;
             }
-            $keymap[$action] = array_values(array_map('strval', $keys));
+            $keymap[$action] = \array_values(\array_map('strval', $keys));
         }
 
         return $keymap;
@@ -394,7 +394,7 @@ final class IdeConfig
                 $warnings[] = new ConfigWarning('Setting "%key%" in %file% must be one of %choices%, got "%value%"', [
                     '%key%' => $key,
                     '%file%' => $label,
-                    '%choices%' => implode('|', $allowed),
+                    '%choices%' => \implode('|', $allowed),
                     '%value%' => (string) $coerced,
                 ]);
                 continue;
@@ -463,7 +463,7 @@ final class IdeConfig
         }
 
         $languages = [];
-        foreach (array_keys($raw) as $language) {
+        foreach (\array_keys($raw) as $language) {
             $id = self::highlighterId($raw[$language]);
             if (null === $id) {
                 $warnings[] = new ConfigWarning('Highlighter for "%language%" in %file% must be a non-empty string', ['%language%' => (string) $language, '%file%' => $label]);
@@ -517,12 +517,12 @@ final class IdeConfig
      */
     private static function parseLspServers(mixed $lsp): array
     {
-        if (!\is_array($lsp) || [] === $lsp || array_is_list($lsp)) {
+        if (!\is_array($lsp) || [] === $lsp || \array_is_list($lsp)) {
             return [];
         }
 
         $servers = [];
-        foreach (array_keys($lsp) as $language) {
+        foreach (\array_keys($lsp) as $language) {
             $servers[(string) $language] = self::commandString($lsp[$language]);
         }
 
@@ -536,14 +536,14 @@ final class IdeConfig
      */
     public static function stringList(mixed $value): array
     {
-        return \is_array($value) ? array_values(array_map(strval(...), array_filter($value, is_scalar(...)))) : [];
+        return \is_array($value) ? \array_values(\array_map(strval(...), \array_filter($value, is_scalar(...)))) : [];
     }
 
     /** A raw `lsp` value (string or argv list) as a single command string. */
     public static function commandString(mixed $command): string
     {
         if (\is_array($command)) {
-            return implode(' ', array_map(strval(...), $command));
+            return \implode(' ', \array_map(strval(...), $command));
         }
 
         return \is_string($command) ? $command : '';
@@ -565,7 +565,7 @@ final class IdeConfig
             return [];
         }
         $map = [];
-        foreach (array_keys($templates) as $abbreviation) {
+        foreach (\array_keys($templates) as $abbreviation) {
             if ('' === (string) $abbreviation || !\is_string($templates[$abbreviation])) {
                 continue;
             }
@@ -588,7 +588,7 @@ final class IdeConfig
     private static function parseLanguages(array $config, string $label, array &$warnings): array
     {
         $languages = [];
-        foreach (array_keys($config) as $lang) {
+        foreach (\array_keys($config) as $lang) {
             $lang = (string) $lang;
             if (!LanguageCatalog::isKnown($lang)) {
                 $warnings[] = new ConfigWarning('Unknown language "%lang%" in %file%', ['%lang%' => $lang, '%file%' => $label]);
@@ -664,7 +664,7 @@ final class IdeConfig
         }
         /** @var mixed $launch */
         $launch = $debug['launch'] ?? null;
-        if (\is_array($launch) && !array_is_list($launch)) {
+        if (\is_array($launch) && !\array_is_list($launch)) {
             /** @var array<string, mixed> $launch */
             $entry['launch'] = $launch;
         }
@@ -686,6 +686,6 @@ final class IdeConfig
             return $value;
         }
 
-        return \is_string($value) && 1 === preg_match('/^\d+$/', $value) ? max(1, (int) $value) : null;
+        return \is_string($value) && 1 === \preg_match('/^\d+$/', $value) ? \max(1, (int) $value) : null;
     }
 }

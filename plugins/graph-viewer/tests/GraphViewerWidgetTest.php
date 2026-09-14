@@ -52,12 +52,12 @@ final class GraphViewerWidgetTest extends TestCase
 
     private static function layout(string $fixture = 'small.json'): GraphLayout
     {
-        return DotJsonParser::parse((string) file_get_contents(\dirname(__DIR__, levels: 3).'/tests/Support/fixtures/graph/'.$fixture));
+        return DotJsonParser::parse((string) \file_get_contents(\dirname(__DIR__, levels: 3).'/tests/Support/fixtures/graph/'.$fixture));
     }
 
     private static function plain(array $lines): string
     {
-        return implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $lines));
+        return \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $lines));
     }
 
     public function testItBindsExactlyTheActionsThePluginDeclares(): void
@@ -73,18 +73,18 @@ final class GraphViewerWidgetTest extends TestCase
         $plugin = require \dirname(__DIR__).'/plugin.php';
         $plugin->activate($api);
 
-        $declared = array_column($api->bufferedActions(), 'id');
+        $declared = \array_column($api->bufferedActions(), 'id');
         /** @var array<string, list<string>> $bound */
         $bound = Probe::invokeStatic(GraphViewerWidget::class, 'getDefaultKeybindings');
         // Scoped to the ids CORE does not declare — a pane also binds core
         // actions (goto_file, next_buffer…), which are the catalog's rows. What
         // must match is the remainder: the actions that exist only because this
         // plugin does.
-        $ours = array_keys(array_diff_key($bound, ActionCatalog::ACTIONS));
+        $ours = \array_keys(\array_diff_key($bound, ActionCatalog::ACTIONS));
 
         $this->assertNotSame([], $declared);
-        sort($declared);
-        sort($ours);
+        \sort($declared);
+        \sort($ours);
         $this->assertSame($ours, $declared, 'every declared action is bound, and every key core does not declare is declared here');
     }
 
@@ -128,7 +128,7 @@ final class GraphViewerWidgetTest extends TestCase
         $this->assertStringContainsString(' App ', $screen, 'the cluster label sits on its frame');
         $this->assertStringContainsString('API', $screen);
         $this->assertStringContainsString('Database', $screen);
-        $this->assertStringContainsString("\x1b[38;2;", implode('', $lines), 'DOT-attributed colors emit truecolor SGR');
+        $this->assertStringContainsString("\x1b[38;2;", \implode('', $lines), 'DOT-attributed colors emit truecolor SGR');
     }
 
     public function testHashUnchangedShowNeverRerunsTheEngine(): void
@@ -230,12 +230,12 @@ final class GraphViewerWidgetTest extends TestCase
 
         $choices = $widget->nodeChoices();
 
-        $this->assertSame(['A', 'B', 'C'], array_column($choices, 'label'), 'every node, in the n/p order');
+        $this->assertSame(['A', 'B', 'C'], \array_column($choices, 'label'), 'every node, in the n/p order');
         // The fixture is the chain A -> B -> C, so the ends disagree about
         // which way their single edge points — swapping in for out swaps A's
         // hint with C's.
-        $this->assertSame(['0 in · 1 out', '1 in · 1 out', '1 in · 0 out'], array_column($choices, 'hint'));
-        $this->assertSame([], array_filter($choices, static fn (array $row): bool => '' === $row['value']), 'every row carries a node id');
+        $this->assertSame(['0 in · 1 out', '1 in · 1 out', '1 in · 0 out'], \array_column($choices, 'hint'));
+        $this->assertSame([], \array_filter($choices, static fn (array $row): bool => '' === $row['value']), 'every row carries a node id');
     }
 
     public function testWithNoLayoutThereIsNothingToPickAndNoPickerIsAsked(): void
@@ -369,7 +369,7 @@ final class GraphViewerWidgetTest extends TestCase
     {
         $widget = $this->widget();
         $this->assertSame([], $widget->render(new RenderContext(10, 0)), 'zero rows renders nothing');
-        $this->assertSame(array_fill(0, count: 3, value: str_repeat(' ', times: 10)), $widget->render(new RenderContext(10, 3)), 'no tab, blank pane');
+        $this->assertSame(\array_fill(0, count: 3, value: \str_repeat(' ', times: 10)), $widget->render(new RenderContext(10, 3)), 'no tab, blank pane');
         $this->assertSame('', $widget->statusInfo());
 
         $widget->handleInput('='); // view-less input is a no-op
@@ -444,7 +444,7 @@ final class GraphViewerWidgetTest extends TestCase
         $widget->show('/p/g.dot', 'digraph G { A -> B; }');
         $this->settle();
 
-        $raw = implode("\n", $widget->render(new RenderContext(80, 24)));
+        $raw = \implode("\n", $widget->render(new RenderContext(80, 24)));
         $this->assertStringContainsString('▀', $raw, 'the picture paints as half-blocks');
         $this->assertStringContainsString('38;2;200;40;40', $raw, "and it is dot's pixels, not ours");
         $this->assertStringNotContainsString('┌', self::plain($widget->render(new RenderContext(80, 24))), 'the cell rendering stepped aside');
@@ -497,7 +497,7 @@ final class GraphViewerWidgetTest extends TestCase
         $widget = $this->widget();
         $widget->show('/p/a.dot', 'digraph A { A -> B; }');
         $this->settle();
-        $this->assertStringContainsString('▀', implode("\n", $widget->render(new RenderContext(80, 24))));
+        $this->assertStringContainsString('▀', \implode("\n", $widget->render(new RenderContext(80, 24))));
 
         $this->engine->nextPng = null; // the new tab's picture has not arrived
         $widget->show('/p/b.dot', 'digraph B { X -> Y; }');
@@ -521,7 +521,7 @@ final class GraphViewerWidgetTest extends TestCase
         $widget->show('/p/b.dot', 'digraph B { X -> Y; }'); // the tab moves on
         $deliverA(PngFixture::bytes(260, 36)); // dot answers for the tab that left
 
-        $this->assertStringNotContainsString('▀', implode("\n", $widget->render(new RenderContext(80, 24))), 'a stale picture never reaches the pane');
+        $this->assertStringNotContainsString('▀', \implode("\n", $widget->render(new RenderContext(80, 24))), 'a stale picture never reaches the pane');
     }
 
     public function testAZoomStepAsksForASharperBitmap(): void
@@ -544,7 +544,7 @@ final class GraphViewerWidgetTest extends TestCase
         $this->settle();
         $this->assertSame([72, 144], $this->engine->renderDpis, 'the picture is re-rendered at twice the resolution');
 
-        $raw = implode("\n", $widget->render(new RenderContext(80, 24)));
+        $raw = \implode("\n", $widget->render(new RenderContext(80, 24)));
         $this->assertStringContainsString('▀', $raw, 'and the sharper bitmap is what paints');
     }
 
@@ -561,7 +561,7 @@ final class GraphViewerWidgetTest extends TestCase
         $this->assertSame([72], $this->engine->renderDpis, '1:1 wants the same resolution as fit did — nothing to re-render');
 
         // A Ctrl+scroll burst: several fractional steps, one resolution.
-        foreach (range(1, end: 3) as $ignored) {
+        foreach (\range(1, end: 3) as $ignored) {
             $widget->magnifyAt(1.08, 40, 12);
         }
         $this->assertSame('126%', $widget->zoomLabel(), 'the zoom itself is continuous');
@@ -618,12 +618,12 @@ final class GraphViewerWidgetTest extends TestCase
         $widget = $this->widget();
         $widget->show('/p/g.dot', 'digraph G { A -> B; }');
         $this->settle();
-        $bare = implode("\n", $widget->render(new RenderContext(80, 24)));
+        $bare = \implode("\n", $widget->render(new RenderContext(80, 24)));
         $this->assertStringNotContainsString(Glyphs::FRAME_VERTICAL, $bare, 'nothing framed while nothing is selected');
 
         $widget->handleInput('n'); // select A
         $lines = $widget->render(new RenderContext(80, 24));
-        $framed = implode("\n", $lines);
+        $framed = \implode("\n", $lines);
 
         $this->assertStringContainsString(Glyphs::FRAME_HORIZONTAL, $framed, 'the selected node is framed');
         $this->assertStringContainsString('▀', $framed, 'over the picture, which is still there');
@@ -632,7 +632,7 @@ final class GraphViewerWidgetTest extends TestCase
         }
 
         $widget->selectAt(0, 0); // deselect on empty space
-        $this->assertStringNotContainsString(Glyphs::FRAME_VERTICAL, implode("\n", $widget->render(new RenderContext(80, 24))));
+        $this->assertStringNotContainsString(Glyphs::FRAME_VERTICAL, \implode("\n", $widget->render(new RenderContext(80, 24))));
     }
 
     public function testAFramedNodeScrolledOutOfThePaneDrawsNothing(): void
@@ -649,7 +649,7 @@ final class GraphViewerWidgetTest extends TestCase
         $widget->scrollBy(400, 0); // pan far past it
         $lines = $widget->render(new RenderContext(80, 24));
 
-        $this->assertStringNotContainsString(Glyphs::FRAME_VERTICAL, implode("\n", $lines), 'an off-pane selection frames nothing');
+        $this->assertStringNotContainsString(Glyphs::FRAME_VERTICAL, \implode("\n", $lines), 'an off-pane selection frames nothing');
         foreach ($lines as $line) {
             $this->assertSame(80, AnsiUtils::visibleWidth($line));
         }
@@ -662,7 +662,7 @@ final class GraphViewerWidgetTest extends TestCase
         $widget = $this->widget();
         $widget->show('/p/g.dot', 'digraph G { A -> B; }');
         $this->settle();
-        $this->assertStringContainsString('▀', implode("\n", $widget->render(new RenderContext(80, 24))));
+        $this->assertStringContainsString('▀', \implode("\n", $widget->render(new RenderContext(80, 24))));
 
         $widget->handleInput('v');
         $screen = self::plain($widget->render(new RenderContext(80, 24)));
@@ -670,7 +670,7 @@ final class GraphViewerWidgetTest extends TestCase
         $this->assertStringContainsString('calls', $screen, 'with labels as real text');
 
         $widget->handleInput('v');
-        $this->assertStringContainsString('▀', implode("\n", $widget->render(new RenderContext(80, 24))), 'and back to the picture');
+        $this->assertStringContainsString('▀', \implode("\n", $widget->render(new RenderContext(80, 24))), 'and back to the picture');
     }
 
     public function testThePersistedCellsDefaultNeverAsksDotForAPicture(): void
@@ -688,7 +688,7 @@ final class GraphViewerWidgetTest extends TestCase
         $widget->handleInput('v');
         $this->settle();
         $this->assertSame([72], $this->engine->renderDpis);
-        $this->assertStringContainsString('▀', implode("\n", $widget->render(new RenderContext(80, 24))));
+        $this->assertStringContainsString('▀', \implode("\n", $widget->render(new RenderContext(80, 24))));
     }
 
     public function testTheRenderModeSettingAppliesToAStandingPane(): void
@@ -700,7 +700,7 @@ final class GraphViewerWidgetTest extends TestCase
         $widget = $this->widget();
         $widget->show('/p/g.dot', 'digraph G { A -> B; }');
         $this->settle();
-        $this->assertStringContainsString('▀', implode("\n", $widget->render(new RenderContext(80, 24))), 'the picture, as configured');
+        $this->assertStringContainsString('▀', \implode("\n", $widget->render(new RenderContext(80, 24))), 'the picture, as configured');
 
         $widget->setRenderMode('cells');
         $this->settle();
@@ -734,7 +734,7 @@ final class GraphViewerWidgetTest extends TestCase
         $widget->show('/p/g.dot', 'digraph G { A -> B; }');
         $this->settle();
 
-        $this->assertStringContainsString('▀', implode("\n", $widget->render(new RenderContext(80, 24))));
+        $this->assertStringContainsString('▀', \implode("\n", $widget->render(new RenderContext(80, 24))));
     }
 
     public function testRefreshThemeInvalidatesTheRenderCache(): void
@@ -757,7 +757,7 @@ final class GraphViewerWidgetTest extends TestCase
 
         $this->assertSame(0, $this->engine->layoutCalls, 'nothing to lay out — dot is not involved');
         $this->assertSame([96], $this->plantUml->renderDpis, "asked at PlantUML's own 1:1, not graphviz's 72");
-        $raw = implode("\n", $widget->render(new RenderContext(80, 24)));
+        $raw = \implode("\n", $widget->render(new RenderContext(80, 24)));
         $this->assertStringContainsString('▀', $raw, 'the picture paints');
         $this->assertSame('', $widget->statusInfo(), 'there are no nodes to count');
         $this->assertStringContainsString('Fit', $widget->zoomLabel(), 'and the probe established its extent');
@@ -770,14 +770,14 @@ final class GraphViewerWidgetTest extends TestCase
         $widget->show('/p/seq.puml', '@startuml');
         $this->settle();
         $widget->render(new RenderContext(80, 24));
-        $before = implode("\n", $widget->render(new RenderContext(80, 24)));
+        $before = \implode("\n", $widget->render(new RenderContext(80, 24)));
 
         $widget->handleInput('n'); // select next node
         $widget->handleInput('p');
         $widget->selectAt(4, 4); // click-select
         $widget->handleInput('v'); // the cell rendering
 
-        $this->assertSame($before, implode("\n", $widget->render(new RenderContext(80, 24))), 'none of the geometry keys do anything');
+        $this->assertSame($before, \implode("\n", $widget->render(new RenderContext(80, 24))), 'none of the geometry keys do anything');
         $this->assertSame('', $widget->statusInfo());
     }
 

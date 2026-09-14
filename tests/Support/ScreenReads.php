@@ -33,11 +33,11 @@ trait ScreenReads
         $tui->requestRender(force: true); // reset the writer -> next frame is full
         $tui->processRender();
         $raw = $terminal->consumeOutput();
-        $body = preg_replace('/^.*\x1b\[H/s', replacement: '', subject: $raw); // strip up to cursor-home
+        $body = \preg_replace('/^.*\x1b\[H/s', replacement: '', subject: $raw); // strip up to cursor-home
 
-        return array_map(
+        return \array_map(
             AnsiUtils::stripAnsiCodes(...),
-            explode("\r\n", (string) $body),
+            \explode("\r\n", (string) $body),
         );
     }
 
@@ -49,7 +49,7 @@ trait ScreenReads
     private function rowOf(array $grid, string $needle): ?int
     {
         foreach ($grid as $i => $row) {
-            if (str_contains($row, $needle)) {
+            if (\str_contains($row, $needle)) {
                 return $i;
             }
         }
@@ -72,15 +72,15 @@ trait ScreenReads
     private function card(array $grid, string $title): string
     {
         $top = $this->rowOf($grid, $title);
-        if (null === $top || !str_contains($grid[$top], Glyphs::MODAL_TOP_LEFT)) {
+        if (null === $top || !\str_contains($grid[$top], Glyphs::MODAL_TOP_LEFT)) {
             self::fail(\sprintf('no card titled "%s" is on screen', $title));
         }
 
         $card = [];
         for ($row = $top; $row < \count($grid); ++$row) {
             $card[] = $grid[$row];
-            if (str_contains($grid[$row], Glyphs::MODAL_BOTTOM_LEFT)) {
-                return implode("\n", $card);
+            if (\str_contains($grid[$row], Glyphs::MODAL_BOTTOM_LEFT)) {
+                return \implode("\n", $card);
             }
         }
 

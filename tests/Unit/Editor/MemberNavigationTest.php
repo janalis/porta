@@ -63,13 +63,13 @@ final class MemberNavigationTest extends TestCase
         $this->editor->getDocument()->setCursor(0, 0);
 
         $navigation->next();
-        self::assertSame(4, $this->caretLine());
+        $this->assertSame(4, $this->caretLine());
 
         $navigation->next();
-        self::assertSame(6, $this->caretLine());
+        $this->assertSame(6, $this->caretLine());
 
         $navigation->next();
-        self::assertSame(10, $this->caretLine());
+        $this->assertSame(10, $this->caretLine());
     }
 
     public function testPreviousWalksBackTheSameWay(): void
@@ -78,10 +78,10 @@ final class MemberNavigationTest extends TestCase
         $this->editor->getDocument()->setCursor(12, 0);
 
         $navigation->previous();
-        self::assertSame(10, $this->caretLine());
+        $this->assertSame(10, $this->caretLine());
 
         $navigation->previous();
-        self::assertSame(6, $this->caretLine());
+        $this->assertSame(6, $this->caretLine());
     }
 
     public function testTheDeclarationNameIsWhatTheFlashSays(): void
@@ -92,10 +92,10 @@ final class MemberNavigationTest extends TestCase
 
         $navigation->next();
 
-        self::assertSame('Svc', $this->lastToast());
+        $this->assertSame('Svc', $this->lastToast());
         // Landing mid-line would put the caret wherever the previous column
         // happened to be, on a line whose text is unrelated to it.
-        self::assertSame(0, $this->editor->getDocument()->getCursorCol());
+        $this->assertSame(0, $this->editor->getDocument()->getCursorCol());
     }
 
     public function testPastTheLastDeclarationItWrapsAndSaysSo(): void
@@ -106,8 +106,8 @@ final class MemberNavigationTest extends TestCase
 
         $navigation->next();
 
-        self::assertSame(4, $this->caretLine());
-        self::assertSame('Wrapped to Svc', $this->lastToast());
+        $this->assertSame(4, $this->caretLine());
+        $this->assertSame('Wrapped to Svc', $this->lastToast());
     }
 
     public function testBeforeTheFirstDeclarationPreviousWrapsToTheLast(): void
@@ -117,8 +117,8 @@ final class MemberNavigationTest extends TestCase
 
         $navigation->previous();
 
-        self::assertSame(10, $this->caretLine());
-        self::assertSame('Wrapped to two', $this->lastToast());
+        $this->assertSame(10, $this->caretLine());
+        $this->assertSame('Wrapped to two', $this->lastToast());
     }
 
     public function testTheNAMESPACEIsNotADeclarationWorthStoppingOn(): void
@@ -130,7 +130,7 @@ final class MemberNavigationTest extends TestCase
 
         $navigation->next();
 
-        self::assertNotSame(2, $this->caretLine());
+        $this->assertNotSame(2, $this->caretLine());
     }
 
     public function testAFileWithNoDeclarationsSaysSoRatherThanMovingTheCaret(): void
@@ -140,8 +140,8 @@ final class MemberNavigationTest extends TestCase
 
         $navigation->next();
 
-        self::assertSame(2, $this->caretLine());
-        self::assertSame('No declarations in this file', $this->lastToast());
+        $this->assertSame(2, $this->caretLine());
+        $this->assertSame('No declarations in this file', $this->lastToast());
     }
 
     public function testANonPhpBufferHasNothingToStepThrough(): void
@@ -152,8 +152,8 @@ final class MemberNavigationTest extends TestCase
 
         $navigation->next();
 
-        self::assertSame(1, $this->caretLine());
-        self::assertSame('No declarations in this file', $this->lastToast());
+        $this->assertSame(1, $this->caretLine());
+        $this->assertSame('No declarations in this file', $this->lastToast());
     }
 
     public function testAFreeFunctionCountsAsADeclaration(): void
@@ -163,7 +163,7 @@ final class MemberNavigationTest extends TestCase
 
         $navigation->next();
 
-        self::assertSame(2, $this->caretLine());
-        self::assertSame('helper', $this->lastToast());
+        $this->assertSame(2, $this->caretLine());
+        $this->assertSame('helper', $this->lastToast());
     }
 }

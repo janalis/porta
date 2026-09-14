@@ -23,7 +23,7 @@ final class WorkspaceResolverTest extends TestCase
 
         $ws = $this->resolver->resolve($project->dir, '/nowhere');
 
-        $this->assertSame(realpath($project->dir), $ws->rootDir);
+        $this->assertSame(\realpath($project->dir), $ws->rootDir);
         $this->assertNull($ws->initialFile);
         $this->assertNull($ws->line);
     }
@@ -34,8 +34,8 @@ final class WorkspaceResolverTest extends TestCase
 
         $ws = $this->resolver->resolve($project->path('src/Foo.php'), '/nowhere');
 
-        $this->assertSame(realpath($project->dir), $ws->rootDir, 'root is the enclosing composer project');
-        $this->assertSame(realpath($project->path('src/Foo.php')), $ws->initialFile);
+        $this->assertSame(\realpath($project->dir), $ws->rootDir, 'root is the enclosing composer project');
+        $this->assertSame(\realpath($project->path('src/Foo.php')), $ws->initialFile);
     }
 
     public function testFileTargetWithoutComposerRootUsesItsOwnDirectory(): void
@@ -44,8 +44,8 @@ final class WorkspaceResolverTest extends TestCase
 
         $ws = $this->resolver->resolve($project->path('src/Foo.php'), '/nowhere');
 
-        $this->assertSame(realpath($project->path('src')), $ws->rootDir);
-        $this->assertSame(realpath($project->path('src/Foo.php')), $ws->initialFile);
+        $this->assertSame(\realpath($project->path('src')), $ws->rootDir);
+        $this->assertSame(\realpath($project->path('src/Foo.php')), $ws->initialFile);
     }
 
     public function testRelativeTargetResolvedAgainstCwd(): void
@@ -54,7 +54,7 @@ final class WorkspaceResolverTest extends TestCase
 
         $ws = $this->resolver->resolve('a.php', $project->dir);
 
-        $this->assertSame(realpath($project->path('a.php')), $ws->initialFile);
+        $this->assertSame(\realpath($project->path('a.php')), $ws->initialFile);
     }
 
     public function testFileLineShorthand(): void
@@ -63,7 +63,7 @@ final class WorkspaceResolverTest extends TestCase
 
         $ws = $this->resolver->resolve($project->path('a.php').':42', '/nowhere');
 
-        $this->assertSame(realpath($project->path('a.php')), $ws->initialFile);
+        $this->assertSame(\realpath($project->path('a.php')), $ws->initialFile);
         $this->assertSame(42, $ws->line);
     }
 

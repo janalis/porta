@@ -109,9 +109,9 @@ final class Buffer
      */
     public function diskStampNow(): ?string
     {
-        clearstatcache(clear_realpath_cache: true, filename: $this->path);
+        \clearstatcache(clear_realpath_cache: true, filename: $this->path);
 
-        return is_file($this->path) ? (int) filemtime($this->path).':'.(int) filesize($this->path) : null;
+        return \is_file($this->path) ? (int) \filemtime($this->path).':'.(int) \filesize($this->path) : null;
     }
 
     /** Record the current on-disk fingerprint (after open and after save). */

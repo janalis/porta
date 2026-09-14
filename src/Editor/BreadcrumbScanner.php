@@ -34,10 +34,10 @@ final class BreadcrumbScanner
         // Editing buffers are often mid-edit (unbalanced braces, partial
         // syntax): swallow the tokenizer's warnings, keeping the tokens it
         // still returns.
-        set_error_handler(static fn (): bool => true);
+        \set_error_handler(static fn (): bool => true);
         /** @var list<array{0: int, 1: string, 2: int}|string> $tokens */
-        $tokens = token_get_all($source);
-        restore_error_handler();
+        $tokens = \token_get_all($source);
+        \restore_error_handler();
 
         /** @var list<array{label: string, startLine: int, endLine: int, kind: string}> $scopes */
         $scopes = [];
@@ -57,7 +57,7 @@ final class BreadcrumbScanner
         foreach ($tokens as $token) {
             if (\is_array($token)) {
                 [$id, $text, $tokLine] = $token;
-                $maxLine = max($maxLine, $tokLine + substr_count($text, needle: "\n"));
+                $maxLine = \max($maxLine, $tokLine + \substr_count($text, needle: "\n"));
 
                 if (\T_WHITESPACE === $id || \T_COMMENT === $id || \T_DOC_COMMENT === $id) {
                     continue; // insignificant: leave $prev/$declKind untouched
@@ -113,7 +113,7 @@ final class BreadcrumbScanner
             }
             // @mago-expect lint:no-insecure-comparison -- $token is a lexer token, not sensitive data
             if ('}' === $token) {
-                $top = array_pop($stack);
+                $top = \array_pop($stack);
                 if (\is_array($top)) {
                     $scopes[] = ['label' => $top['label'], 'startLine' => $top['startLine'], 'endLine' => $maxLine, 'kind' => $top['kind']];
                 }
@@ -131,7 +131,7 @@ final class BreadcrumbScanner
 
         // Scopes left open by mid-edit unclosed braces close at end-of-file.
         while ([] !== $stack) {
-            $top = array_pop($stack);
+            $top = \array_pop($stack);
             if (\is_array($top)) {
                 $scopes[] = ['label' => $top['label'], 'startLine' => $top['startLine'], 'endLine' => $maxLine, 'kind' => $top['kind']];
             }
@@ -146,9 +146,9 @@ final class BreadcrumbScanner
             ];
         }
 
-        usort($scopes, static fn (array $a, array $b): int => ($cmp = $a['startLine'] <=> $b['startLine']) ? $cmp : $b['endLine'] <=> $a['endLine']);
+        \usort($scopes, static fn (array $a, array $b): int => ($cmp = $a['startLine'] <=> $b['startLine']) ? $cmp : $b['endLine'] <=> $a['endLine']);
 
-        return array_values($scopes);
+        return \array_values($scopes);
     }
 
     /**
@@ -195,6 +195,6 @@ final class BreadcrumbScanner
             }
         }
 
-        return \array_slice($headers, offset: 0, length: max(0, $max));
+        return \array_slice($headers, offset: 0, length: \max(0, $max));
     }
 }

@@ -40,21 +40,21 @@ final class PluginApiDocTest extends TestCase
     private static function plumbing(): array
     {
         $internal = ['pluginName'];
-        foreach (get_class_methods(PluginApi::class) as $method) {
-            if (!str_starts_with($method, 'buffered')) {
+        foreach (\get_class_methods(PluginApi::class) as $method) {
+            if (!\str_starts_with($method, 'buffered')) {
                 continue;
             }
 
             $internal[] = $method;
         }
-        sort($internal);
+        \sort($internal);
 
         return $internal;
     }
 
     public function testEveryPublicApiMethodIsDocumented(): void
     {
-        $doc = (string) file_get_contents(__DIR__.'/../../../docs/plugins.md');
+        $doc = (string) \file_get_contents(__DIR__.'/../../../docs/plugins.md');
         $plumbing = self::plumbing();
 
         $missing = [];
@@ -63,13 +63,13 @@ final class PluginApiDocTest extends TestCase
             if ($method->isConstructor() || \in_array($name, $plumbing, strict: true)) {
                 continue;
             }
-            if (str_contains($doc, $name.'(')) {
+            if (\str_contains($doc, $name.'(')) {
                 continue;
             }
 
             $missing[] = $name;
         }
-        sort($missing);
+        \sort($missing);
 
         $this->assertSame([], $missing, 'these are public API and docs/plugins.md never names them');
     }

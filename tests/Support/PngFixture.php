@@ -20,12 +20,12 @@ final class PngFixture
      */
     public static function bytes(int $width, int $height, array $rgb = [200, 40, 40]): string
     {
-        $gd = imagecreatetruecolor($width, height: $height);
+        $gd = \imagecreatetruecolor($width, height: $height);
         [$r, $g, $b] = $rgb;
-        imagefilledrectangle($gd, x1: 0, y1: 0, x2: $width - 1, y2: $height - 1, color: (int) imagecolorallocate($gd, red: $r, green: $g, blue: $b));
-        ob_start();
-        imagepng($gd);
+        \imagefilledrectangle($gd, x1: 0, y1: 0, x2: $width - 1, y2: $height - 1, color: (int) \imagecolorallocate($gd, red: $r, green: $g, blue: $b));
+        \ob_start();
+        \imagepng($gd);
 
-        return (string) ob_get_clean();
+        return (string) \ob_get_clean();
     }
 }

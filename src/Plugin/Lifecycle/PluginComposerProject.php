@@ -38,7 +38,7 @@ final class PluginComposerProject
     {
         $dir = $scopeBase.'/.porta';
         $path = $this->composerJsonPath($scopeBase);
-        if (!is_file($path)) {
+        if (!\is_file($path)) {
             $written = JsonFile::write(
                 $this->fs,
                 $path,

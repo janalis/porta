@@ -31,7 +31,7 @@ final class PopupFrameTest extends TestCase
     public function testRailEnforcesTheInnerWidth(): void
     {
         $short = AnsiUtils::stripAnsiCodes(PopupFrame::rail('ab', 6, Styles::dark()));
-        $long = PopupFrame::rail(str_repeat('x', times: 40), 6, Styles::dark());
+        $long = PopupFrame::rail(\str_repeat('x', times: 40), 6, Styles::dark());
 
         $this->assertSame('│ab    │', $short, 'short content pads to the inner width');
         $this->assertSame(6 + PopupFrame::CHROME_COLS, AnsiUtils::visibleWidth($long), 'wide content clips to the inner width');
@@ -43,7 +43,7 @@ final class PopupFrameTest extends TestCase
             [
                 ['segment' => 'Open', 'separator' => false],
                 ['segment' => '', 'separator' => true],
-                ['segment' => str_repeat('w', times: 50), 'separator' => false],
+                ['segment' => \str_repeat('w', times: 50), 'separator' => false],
             ],
             12,
             Styles::dark(),
@@ -57,7 +57,7 @@ final class PopupFrameTest extends TestCase
     /** Framed row 1 + i maps to item i — a separator keeps its slot as a tee row. */
     public function testWrapMenuKeepsOneRowPerItemWithSeparatorsAsTees(): void
     {
-        $rows = array_map(AnsiUtils::stripAnsiCodes(...), PopupFrame::wrapMenu(
+        $rows = \array_map(AnsiUtils::stripAnsiCodes(...), PopupFrame::wrapMenu(
             [
                 ['segment' => 'Cut ', 'separator' => false],
                 ['segment' => '', 'separator' => true],

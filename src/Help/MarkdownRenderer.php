@@ -50,19 +50,19 @@ final class MarkdownRenderer
 
     public function render(string $markdown, int $width): RenderedDoc
     {
-        $width = max(self::MIN_WIDTH, $width);
+        $width = \max(self::MIN_WIDTH, $width);
         $this->nextGroup = 0;
         $this->lines = [];
         $this->links = [];
         $this->swallowBlanks = false;
 
-        $source = explode("\n", $markdown);
+        $source = \explode("\n", $markdown);
         $paragraph = [];
         for ($i = 0, $count = \count($source); $i < $count; ++$i) {
-            $line = rtrim($source[$i]);
+            $line = \rtrim($source[$i]);
             $m = [];
 
-            if ('' === trim($line)) {
+            if ('' === \trim($line)) {
                 $this->flushParagraph($paragraph, $width);
                 if (!$this->swallowBlanks) {
                     $this->lines[] = '';
@@ -70,57 +70,57 @@ final class MarkdownRenderer
                 continue;
             }
             $this->swallowBlanks = false;
-            if (str_starts_with(trim($line), '```')) {
+            if (\str_starts_with(\trim($line), '```')) {
                 $this->flushParagraph($paragraph, $width);
                 $i = $this->fence($source, $i + 1, $width);
                 continue;
             }
-            if (str_starts_with(ltrim($line), '|')) {
+            if (\str_starts_with(\ltrim($line), '|')) {
                 $this->flushParagraph($paragraph, $width);
                 $rows = [];
-                for (; $i < $count && str_starts_with(ltrim(rtrim($source[$i])), '|'); ++$i) {
-                    $rows[] = trim($source[$i]);
+                for (; $i < $count && \str_starts_with(\ltrim(\rtrim($source[$i])), '|'); ++$i) {
+                    $rows[] = \trim($source[$i]);
                 }
                 --$i;
                 $this->table($rows, $width);
                 continue;
             }
-            if (1 === preg_match('/^(#{1,6}) (.+)$/', $line, $m)) {
+            if (1 === \preg_match('/^(#{1,6}) (.+)$/', $line, $m)) {
                 $this->flushParagraph($paragraph, $width);
                 $this->heading(\strlen($m[1]), $m[2], $width);
                 continue;
             }
-            if (1 === preg_match('/^\s*(-{3,}|\*{3,}|_{3,})\s*$/', $line)) {
+            if (1 === \preg_match('/^\s*(-{3,}|\*{3,}|_{3,})\s*$/', $line)) {
                 $this->flushParagraph($paragraph, $width);
-                $this->lines[] = $this->styles->of(Role::Muted)->getAnsiRestore().str_repeat(Glyphs::MD_RULE, $width).$this->resetAll();
+                $this->lines[] = $this->styles->of(Role::Muted)->getAnsiRestore().\str_repeat(Glyphs::MD_RULE, $width).$this->resetAll();
                 continue;
             }
-            if (str_starts_with($line, '> ')) {
+            if (\str_starts_with($line, '> ')) {
                 $this->flushParagraph($paragraph, $width);
                 $prefix = $this->styles->of(Role::Muted)->getAnsiRestore().Glyphs::MD_QUOTE_BAR.' '.$this->fgReset();
-                $this->wrapSegments($this->inline(substr($line, offset: 2)), $width, $prefix, 2, $prefix);
+                $this->wrapSegments($this->inline(\substr($line, offset: 2)), $width, $prefix, 2, $prefix);
                 continue;
             }
-            if (1 === preg_match('/^(\s*)- (.+)$/', $line, $m)) {
+            if (1 === \preg_match('/^(\s*)- (.+)$/', $line, $m)) {
                 $this->flushParagraph($paragraph, $width);
                 $indent = \strlen($m[1]);
                 $prefix = $m[1].$this->styles->of(Role::Muted)->getAnsiRestore().Glyphs::MD_BULLET.' '.$this->fgReset();
-                $this->wrapSegments($this->inline($m[2]), $width, $prefix, $indent + 2, str_repeat(' ', $indent + 2));
+                $this->wrapSegments($this->inline($m[2]), $width, $prefix, $indent + 2, \str_repeat(' ', $indent + 2));
                 continue;
             }
-            if (1 === preg_match('/^(\s*)(\d+\.) (.+)$/', $line, $m)) {
+            if (1 === \preg_match('/^(\s*)(\d+\.) (.+)$/', $line, $m)) {
                 $this->flushParagraph($paragraph, $width);
                 $hang = \strlen($m[1]) + \strlen($m[2]) + 1;
-                $this->wrapSegments($this->inline($m[3]), $width, $m[1].$m[2].' ', $hang, str_repeat(' ', $hang));
+                $this->wrapSegments($this->inline($m[3]), $width, $m[1].$m[2].' ', $hang, \str_repeat(' ', $hang));
                 continue;
             }
-            $paragraph[] = trim($line);
+            $paragraph[] = \trim($line);
         }
         $this->flushParagraph($paragraph, $width);
 
         // Collapse a trailing run of blank lines to none.
-        while ([] !== $this->lines && '' === end($this->lines)) {
-            array_pop($this->lines);
+        while ([] !== $this->lines && '' === \end($this->lines)) {
+            \array_pop($this->lines);
         }
 
         return new RenderedDoc($this->lines, $this->links);
@@ -137,7 +137,7 @@ final class MarkdownRenderer
         if ([] === $paragraph) {
             return;
         }
-        $this->wrapSegments($this->inline(implode(' ', $paragraph)), $width, '', 0, '');
+        $this->wrapSegments($this->inline(\implode(' ', $paragraph)), $width, '', 0, '');
         $paragraph = [];
     }
 
@@ -151,8 +151,8 @@ final class MarkdownRenderer
         $bg = $this->styles->of(Role::Toolbar)->getAnsiRestore();
         $count = \count($source);
         $i = $from;
-        for (; $i < $count && !str_starts_with(trim($source[$i]), '```'); ++$i) {
-            $text = AnsiText::truncate('  '.rtrim($source[$i]), $width);
+        for (; $i < $count && !\str_starts_with(\trim($source[$i]), '```'); ++$i) {
+            $text = AnsiText::truncate('  '.\rtrim($source[$i]), $width);
             $this->lines[] = $bg.AnsiText::padRight($text, $width).$this->resetAll();
         }
 
@@ -169,8 +169,8 @@ final class MarkdownRenderer
         // Typography: two blank rows above (none at the document top), one
         // below — whatever blank lines the author used (the block loop
         // swallows the source blanks that follow).
-        while ([] !== $this->lines && '' === end($this->lines)) {
-            array_pop($this->lines);
+        while ([] !== $this->lines && '' === \end($this->lines)) {
+            \array_pop($this->lines);
         }
         if ([] !== $this->lines) {
             $this->lines[] = '';
@@ -186,10 +186,10 @@ final class MarkdownRenderer
         $this->lines[] = AnsiText::truncate($line, $width);
         $this->recordSpans($assembled['spans'], \count($this->lines) - 1, $width);
         if ($level <= 2) {
-            $ruleWidth = min($width, max(1, $assembled['width']));
+            $ruleWidth = \min($width, \max(1, $assembled['width']));
             $rule = 1 === $level
-                ? $this->styles->of(Role::Bright)->getAnsiRestore().str_repeat(Glyphs::MD_HEADING_RULE, max(0, $ruleWidth))
-                : $this->styles->of(Role::Muted)->getAnsiRestore().str_repeat(Glyphs::MD_RULE, max(0, $ruleWidth));
+                ? $this->styles->of(Role::Bright)->getAnsiRestore().\str_repeat(Glyphs::MD_HEADING_RULE, \max(0, $ruleWidth))
+                : $this->styles->of(Role::Muted)->getAnsiRestore().\str_repeat(Glyphs::MD_RULE, \max(0, $ruleWidth));
             $this->lines[] = $rule.$this->resetAll();
         }
         $this->lines[] = '';
@@ -219,7 +219,7 @@ final class MarkdownRenderer
         $widths = [];
         foreach ($cells as $rowCells) {
             foreach ($rowCells as $column => $cell) {
-                $widths[$column] = max($widths[$column] ?? 0, $cell['width']);
+                $widths[$column] = \max($widths[$column] ?? 0, $cell['width']);
             }
         }
         // No empty-set guard: a table of nothing but separator rows yields no
@@ -227,7 +227,7 @@ final class MarkdownRenderer
         // never wider than the pane — so the loop that would call max() on an
         // empty array cannot run. The coverage gate is what said so.
         while (self::rowWidth($widths) > $width) {
-            $widest = array_keys($widths, max($widths), strict: true)[0];
+            $widest = \array_keys($widths, \max($widths), strict: true)[0];
             if ($widths[$widest] <= self::MIN_COLUMN) {
                 break;
             }
@@ -287,25 +287,25 @@ final class MarkdownRenderer
         $separator = [];
         foreach ($rows as $index => $row) {
             /** @var list<string> $parts */
-            $parts = array_map(trim(...), explode('|', trim($row, characters: '|')));
-            if ([] !== $parts && 1 === preg_match('/^:?-{3,}:?$/', $parts[0])) {
+            $parts = \array_map(trim(...), \explode('|', \trim($row, characters: '|')));
+            if ([] !== $parts && 1 === \preg_match('/^:?-{3,}:?$/', $parts[0])) {
                 $separator[$index] = true;
                 continue;
             }
-            $sources[$index] = array_map($this->inline(...), $parts);
-            $cells[$index] = array_map(fn (array $segments): array => $this->assemble($segments, 0), $sources[$index]);
+            $sources[$index] = \array_map($this->inline(...), $parts);
+            $cells[$index] = \array_map(fn (array $segments): array => $this->assemble($segments, 0), $sources[$index]);
         }
 
         $widths = self::columnWidths($cells, $width);
 
         $headerSeen = false;
         foreach ($rows as $index => $row) {
-            if (array_key_exists($index, $separator)) {
+            if (\array_key_exists($index, $separator)) {
                 $rule = ' ';
                 foreach ($widths as $columnWidth) {
-                    $rule .= str_repeat(Glyphs::MD_RULE, max(0, $columnWidth)).'  ';
+                    $rule .= \str_repeat(Glyphs::MD_RULE, \max(0, $columnWidth)).'  ';
                 }
-                $this->lines[] = $this->styles->of(Role::Muted)->getAnsiRestore().AnsiText::truncate(rtrim($rule), $width).$this->resetAll();
+                $this->lines[] = $this->styles->of(Role::Muted)->getAnsiRestore().AnsiText::truncate(\rtrim($rule), $width).$this->resetAll();
                 continue;
             }
 
@@ -319,10 +319,10 @@ final class MarkdownRenderer
             $height = 1;
             foreach ($sources[$index] as $column => $segments) {
                 $wrapped[$column] = $this->wrapCell($segments, $widths[$column] ?? 1);
-                $height = max($height, \count($wrapped[$column]));
+                $height = \max($height, \count($wrapped[$column]));
             }
 
-            foreach (range(start: 0, end: $height - 1) as $physical) {
+            foreach (\range(start: 0, end: $height - 1) as $physical) {
                 $text = ' ';
                 $col = 1;
                 $spans = [];
@@ -331,10 +331,10 @@ final class MarkdownRenderer
                     foreach ($fragment['spans'] as $span) {
                         $spans[] = ['col' => $span['col'] + $col, 'endCol' => $span['endCol'] + $col, 'target' => $span['target'], 'group' => $span['group']];
                     }
-                    $text .= $fragment['text'].str_repeat(' ', max(0, ($widths[$column] ?? 0) - $fragment['width']) + 2);
+                    $text .= $fragment['text'].\str_repeat(' ', \max(0, ($widths[$column] ?? 0) - $fragment['width']) + 2);
                     $col += ($widths[$column] ?? 0) + 2;
                 }
-                $line = $isHeader ? $this->bold().rtrim($text).$this->resetAll() : rtrim($text);
+                $line = $isHeader ? $this->bold().\rtrim($text).$this->resetAll() : \rtrim($text);
                 $this->lines[] = AnsiText::truncate($line, $width);
                 $this->recordSpans($spans, \count($this->lines) - 1, $width);
             }
@@ -352,7 +352,7 @@ final class MarkdownRenderer
     private function inline(string $text): array
     {
         $segments = [];
-        $parts = preg_split('/\[([^\]]*)\]\(([^)]+)\)/', $text, -1, \PREG_SPLIT_DELIM_CAPTURE);
+        $parts = \preg_split('/\[([^\]]*)\]\(([^)]+)\)/', $text, -1, \PREG_SPLIT_DELIM_CAPTURE);
         $parts = false === $parts ? [$text] : $parts;
         for ($i = 0, $count = \count($parts); $i < $count; ++$i) {
             if (1 === ($i % 3)) {
@@ -367,12 +367,12 @@ final class MarkdownRenderer
                 $segments[] = new MarkdownSegment($label, MarkdownSpanKind::Link, $target, $this->nextGroup++);
                 continue;
             }
-            $chunks = preg_split('/(`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*)/', $parts[$i], -1, \PREG_SPLIT_DELIM_CAPTURE | \PREG_SPLIT_NO_EMPTY);
+            $chunks = \preg_split('/(`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*)/', $parts[$i], -1, \PREG_SPLIT_DELIM_CAPTURE | \PREG_SPLIT_NO_EMPTY);
             foreach (\is_array($chunks) ? $chunks : [] as $chunk) {
                 $segments[] = match (true) {
-                    str_starts_with($chunk, '`') => new MarkdownSegment(trim($chunk, characters: '`'), MarkdownSpanKind::Code),
-                    str_starts_with($chunk, '**') => new MarkdownSegment(trim($chunk, characters: '*'), MarkdownSpanKind::Bold),
-                    str_starts_with($chunk, '*') => new MarkdownSegment(trim($chunk, characters: '*'), MarkdownSpanKind::Italic),
+                    \str_starts_with($chunk, '`') => new MarkdownSegment(\trim($chunk, characters: '`'), MarkdownSpanKind::Code),
+                    \str_starts_with($chunk, '**') => new MarkdownSegment(\trim($chunk, characters: '*'), MarkdownSpanKind::Bold),
+                    \str_starts_with($chunk, '*') => new MarkdownSegment(\trim($chunk, characters: '*'), MarkdownSpanKind::Italic),
                     default => new MarkdownSegment($chunk),
                 };
             }
@@ -384,9 +384,9 @@ final class MarkdownRenderer
     /** The followable file/url part of a link target, or null for in-page anchors. */
     private function normalizeTarget(string $target): ?string
     {
-        $target = trim($target);
-        $target = str_starts_with($target, '<') ? trim($target, characters: '<>') : explode(' ', $target, limit: 2)[0];
-        $file = explode('#', $target, limit: 2)[0];
+        $target = \trim($target);
+        $target = \str_starts_with($target, '<') ? \trim($target, characters: '<>') : \explode(' ', $target, limit: 2)[0];
+        $file = \explode('#', $target, limit: 2)[0];
 
         return '' === $file ? null : $file;
     }
@@ -399,7 +399,7 @@ final class MarkdownRenderer
      */
     private function wrapSegments(array $segments, int $width, string $firstPrefix, int $hang, string $contPrefix): void
     {
-        $words = self::toWords($segments, $width - max($hang, 2));
+        $words = self::toWords($segments, $width - \max($hang, 2));
 
         $prefix = $firstPrefix;
         $prefixWidth = AnsiUtils::visibleWidth($firstPrefix);
@@ -418,10 +418,10 @@ final class MarkdownRenderer
      */
     private static function toWords(array $segments, int $room): array
     {
-        $room = max(1, $room);
+        $room = \max(1, $room);
         $words = [];
         foreach ($segments as $segment) {
-            $splitWords = preg_split('/ +/', $segment->text, -1, \PREG_SPLIT_NO_EMPTY);
+            $splitWords = \preg_split('/ +/', $segment->text, -1, \PREG_SPLIT_NO_EMPTY);
             foreach (\is_array($splitWords) ? $splitWords : [] as $word) {
                 $wordWidth = AnsiUtils::visibleWidth($word);
                 while ($wordWidth > $room) {
@@ -524,7 +524,7 @@ final class MarkdownRenderer
             $segmentWidth = AnsiUtils::visibleWidth($segment->text);
             if (MarkdownSpanKind::Link === $segment->kind && null !== $segment->target) {
                 // Trailing joining spaces stay outside the recorded span.
-                $spans[] = ['col' => $col, 'endCol' => $col + AnsiUtils::visibleWidth(rtrim($segment->text)), 'target' => $segment->target, 'group' => $segment->group];
+                $spans[] = ['col' => $col, 'endCol' => $col + AnsiUtils::visibleWidth(\rtrim($segment->text)), 'target' => $segment->target, 'group' => $segment->group];
             }
             $text .= $this->open($segment->kind).$segment->text.$this->close($segment->kind);
             $col += $segmentWidth;

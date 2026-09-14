@@ -69,7 +69,7 @@ final class HelpViewerWidget extends EditorPaneWidget implements FindTarget
 
     public function setDocsRoot(string $dir): void
     {
-        $resolved = realpath($dir);
+        $resolved = \realpath($dir);
         $this->docsRoot = $resolved ? $resolved : $dir;
     }
 
@@ -111,7 +111,7 @@ final class HelpViewerWidget extends EditorPaneWidget implements FindTarget
     /** Re-render a page whose file changed, replacing what is on screen. */
     public function refreshPage(string $path, string $markdown): void
     {
-        $resolved = realpath($path);
+        $resolved = \realpath($path);
         $this->path = $resolved ? $resolved : $path;
         $this->markdown = $markdown;
         $this->doc = null;
@@ -208,7 +208,7 @@ final class HelpViewerWidget extends EditorPaneWidget implements FindTarget
                     'back' => $this->back(),
                     'forward' => $this->forward(),
                     'top' => $this->scrollBy(-\PHP_INT_MAX),
-                    default => $this->follow(substr($action, offset: 4)),
+                    default => $this->follow(\substr($action, offset: 4)),
                 };
 
                 return true;
@@ -252,7 +252,7 @@ final class HelpViewerWidget extends EditorPaneWidget implements FindTarget
             $this->doc = $doc;
             $this->renderedWidth = $cols;
             $this->scrollTop = $this->clampScroll($this->scrollTop);
-            $this->currentLink = min($this->currentLink, $doc->groupCount() - 1);
+            $this->currentLink = \min($this->currentLink, $doc->groupCount() - 1);
             ++$this->findVersion; // re-wrapped: match offsets are stale
         }
 
@@ -286,8 +286,8 @@ final class HelpViewerWidget extends EditorPaneWidget implements FindTarget
         $this->headerZones->clear();
         $crumbs = $this->hierarchyCrumbs();
         $total = \count($crumbs);
-        while (\count($crumbs) > 1 && (7 + array_sum(array_map(static fn (array $c): int => AnsiUtils::visibleWidth($c['label']) + 3, $crumbs))) > $cols) {
-            array_shift($crumbs); // keep the tail: the current page must stay visible
+        while (\count($crumbs) > 1 && (7 + \array_sum(\array_map(static fn (array $c): int => AnsiUtils::visibleWidth($c['label']) + 3, $crumbs))) > $cols) {
+            \array_shift($crumbs); // keep the tail: the current page must stay visible
         }
 
         $hasColor = $this->styles->hasColor();
@@ -343,7 +343,7 @@ final class HelpViewerWidget extends EditorPaneWidget implements FindTarget
     /** A page's crumb label: the host's naming (e.g. the docs root as "Documentation"), else the file name. */
     private function crumbLabel(string $path): string
     {
-        return $this->docs()?->labelFor($path) ?? basename($path, suffix: '.md');
+        return $this->docs()?->labelFor($path) ?? \basename($path, suffix: '.md');
     }
 
     /**
@@ -362,17 +362,17 @@ final class HelpViewerWidget extends EditorPaneWidget implements FindTarget
         $rootReadme = null !== $root ? $root.'/README.md' : null;
         $crumbs = [];
         if (null !== $root && null !== $rootReadme && $rootReadme !== $path) {
-            $crumbs[] = ['action' => is_file($rootReadme) ? 'nav:'.$rootReadme : '', 'label' => $this->crumbLabel($rootReadme)];
-            if (str_starts_with($path, $root.'/')) {
-                $dirs = array_filter(explode('/', trim(substr(\dirname($path), \strlen($root)), characters: '/')), static fn (string $d): bool => '' !== $d);
-                if ('README.md' === basename($path) && [] !== $dirs) {
-                    $label = array_pop($dirs);
+            $crumbs[] = ['action' => \is_file($rootReadme) ? 'nav:'.$rootReadme : '', 'label' => $this->crumbLabel($rootReadme)];
+            if (\str_starts_with($path, $root.'/')) {
+                $dirs = \array_filter(\explode('/', \trim(\substr(\dirname($path), \strlen($root)), characters: '/')), static fn (string $d): bool => '' !== $d);
+                if ('README.md' === \basename($path) && [] !== $dirs) {
+                    $label = \array_pop($dirs);
                 }
                 $prefix = $root;
                 foreach ($dirs as $dir) {
                     $prefix .= '/'.$dir;
                     $index = $prefix.'/README.md';
-                    $crumbs[] = ['action' => is_file($index) ? 'nav:'.$index : '', 'label' => $dir];
+                    $crumbs[] = ['action' => \is_file($index) ? 'nav:'.$index : '', 'label' => $dir];
                 }
             }
         }
@@ -466,22 +466,22 @@ final class HelpViewerWidget extends EditorPaneWidget implements FindTarget
     /** Route a link target: browser URL, another doc page, or a plain file. */
     private function follow(string $target): void
     {
-        if (1 === preg_match('#^https?://#i', $target)) {
+        if (1 === \preg_match('#^https?://#i', $target)) {
             $this->docs()?->openUrl($target);
 
             return;
         }
-        $resolved = realpath(str_starts_with($target, '/') ? $target : \dirname((string) $this->path).'/'.$target);
+        $resolved = \realpath(\str_starts_with($target, '/') ? $target : \dirname((string) $this->path).'/'.$target);
         // Containment mirrors hierarchyCrumbs(): every page — plugin pages
         // sync under the docs root too — must resolve inside it, so a link
         // that escapes (an absolute path, a ../ chain) is not a doc target.
         $root = $this->docsRoot;
-        if (false === $resolved || !is_file($resolved) || null === $root || !str_starts_with($resolved, $root.'/')) {
+        if (false === $resolved || !\is_file($resolved) || null === $root || !\str_starts_with($resolved, $root.'/')) {
             $this->docs()?->missingTarget($target);
 
             return;
         }
-        if (str_ends_with($resolved, '.md')) {
+        if (\str_ends_with($resolved, '.md')) {
             $this->history[] = ['path' => (string) $this->path, 'scrollTop' => $this->scrollTop, 'currentLink' => $this->currentLink];
             $this->forward = []; // a fresh navigation invalidates the forward trail
             $this->docs()?->openHelp($resolved);
@@ -494,7 +494,7 @@ final class HelpViewerWidget extends EditorPaneWidget implements FindTarget
     /** Backspace / the ‹ arrow: back one page, restoring scroll and focus. */
     private function back(): void
     {
-        $previous = array_pop($this->history);
+        $previous = \array_pop($this->history);
         if (null === $previous) {
             $this->docs()?->backEmpty();
 
@@ -507,7 +507,7 @@ final class HelpViewerWidget extends EditorPaneWidget implements FindTarget
     /** The › arrow: re-enter the page most recently backed out of. */
     private function forward(): void
     {
-        $next = array_pop($this->forward);
+        $next = \array_pop($this->forward);
         if (null === $next) {
             return;
         }
@@ -532,7 +532,7 @@ final class HelpViewerWidget extends EditorPaneWidget implements FindTarget
             return $line;
         }
         // Spans are non-overlapping; paint right-to-left so columns stay valid.
-        $spans = array_reverse(array_values(array_filter(
+        $spans = \array_reverse(\array_values(\array_filter(
             $this->doc->spansOfGroup($this->currentLink),
             static fn (LinkSpan $span): bool => $span->line === $lineNo,
         )));
@@ -543,11 +543,11 @@ final class HelpViewerWidget extends EditorPaneWidget implements FindTarget
             // bleed the link style over the rest of the line.
             $start = $this->byteAtColumn($line, $span->col);
             $end = $this->byteAtColumn($line, $span->endCol);
-            $mid = AnsiUtils::stripAnsiCodes(substr($line, $start, $end - $start));
+            $mid = AnsiUtils::stripAnsiCodes(\substr($line, $start, $end - $start));
             // Dim the focused link when the pane is blurred, like the list panes'
             // .list::selected(:focus) — the bright shade means "this pane has focus".
             $linkRole = $this->isFocused() ? Role::SelectedRow : Role::SelectedRowUnfocused;
-            $line = substr($line, offset: 0, length: $start).Sgr::RESET.$this->styles->of($linkRole)->getAnsiRestore().$mid.Sgr::RESET.substr($line, $end);
+            $line = \substr($line, offset: 0, length: $start).Sgr::RESET.$this->styles->of($linkRole)->getAnsiRestore().$mid.Sgr::RESET.\substr($line, $end);
         }
 
         return $line;
@@ -558,7 +558,7 @@ final class HelpViewerWidget extends EditorPaneWidget implements FindTarget
     #[\Override]
     public function findLines(): array
     {
-        return array_map(AnsiUtils::stripAnsiCodes(...), $this->doc->lines ?? []);
+        return \array_map(AnsiUtils::stripAnsiCodes(...), $this->doc->lines ?? []);
     }
 
     #[\Override]
@@ -619,12 +619,12 @@ final class HelpViewerWidget extends EditorPaneWidget implements FindTarget
         }
         $stripped = AnsiUtils::stripAnsiCodes($line);
         // Paint right-to-left so earlier byte offsets stay valid.
-        foreach (array_reverse($matches) as $match) {
-            $start = $this->byteAtColumn($line, AnsiUtils::visibleWidth(substr($stripped, offset: 0, length: $match['start'])));
-            $end = $this->byteAtColumn($line, AnsiUtils::visibleWidth(substr($stripped, offset: 0, length: $match['end'])));
-            $mid = AnsiUtils::stripAnsiCodes(substr($line, $start, $end - $start));
+        foreach (\array_reverse($matches) as $match) {
+            $start = $this->byteAtColumn($line, AnsiUtils::visibleWidth(\substr($stripped, offset: 0, length: $match['start'])));
+            $end = $this->byteAtColumn($line, AnsiUtils::visibleWidth(\substr($stripped, offset: 0, length: $match['end'])));
+            $mid = AnsiUtils::stripAnsiCodes(\substr($line, $start, $end - $start));
             $style = $match['current'] ? $this->styles->of(Role::SearchCurrentBg)->withBold() : $this->styles->of(Role::SearchBg);
-            $line = substr($line, offset: 0, length: $start).Sgr::RESET.$style->getAnsiRestore().$mid.Sgr::RESET.substr($line, $end);
+            $line = \substr($line, offset: 0, length: $start).Sgr::RESET.$style->getAnsiRestore().$mid.Sgr::RESET.\substr($line, $end);
         }
 
         return $line;
@@ -644,9 +644,9 @@ final class HelpViewerWidget extends EditorPaneWidget implements FindTarget
             if ($current >= $col) {
                 break;
             }
-            $next = strpos($line, needle: "\x1b", offset: $offset + 1);
-            $segment = substr($line, $offset, (false === $next ? $len : $next) - $offset);
-            $split = grapheme_str_split($segment);
+            $next = \strpos($line, needle: "\x1b", offset: $offset + 1);
+            $segment = \substr($line, $offset, (false === $next ? $len : $next) - $offset);
+            $split = \grapheme_str_split($segment);
             /** @var list<string> $graphemes */
             $graphemes = $split ? $split : [];
             foreach ($graphemes as $grapheme) {
@@ -663,7 +663,7 @@ final class HelpViewerWidget extends EditorPaneWidget implements FindTarget
 
     private function clampScroll(int $scrollTop): int
     {
-        $max = max(0, \count($this->doc->lines ?? []) - $this->bodyRows());
+        $max = \max(0, \count($this->doc->lines ?? []) - $this->bodyRows());
 
         return IntMath::clamp($scrollTop, 0, $max);
     }
@@ -671,6 +671,6 @@ final class HelpViewerWidget extends EditorPaneWidget implements FindTarget
     /** The rows available to page content, below the navigation header. */
     private function bodyRows(): int
     {
-        return max(1, $this->lastRows - self::HEADER_ROWS);
+        return \max(1, $this->lastRows - self::HEADER_ROWS);
     }
 }

@@ -36,32 +36,32 @@ final class LargeFilePreviewTest extends TestCase
         $line = "a line of log text\n";
         // One line PAST the cap: the branch is `>`, and a fixture sitting exactly
         // on the boundary would pass whichever way the comparison went.
-        file_put_contents($path, str_repeat($line, times: 1 + intdiv(Files::MAX_TEXT_BYTES, \strlen($line))));
-        $size = (int) filesize($path);
-        self::assertGreaterThan(Files::MAX_TEXT_BYTES, $size);
+        \file_put_contents($path, \str_repeat($line, times: 1 + \intdiv(Files::MAX_TEXT_BYTES, \strlen($line))));
+        $size = (int) \filesize($path);
+        $this->assertGreaterThan(Files::MAX_TEXT_BYTES, $size);
 
         Services::resolve($ide, BufferService::class)->openFile($path);
 
         $buffer = Services::resolve($ide, BufferManager::class)->active();
-        self::assertNotNull($buffer);
+        $this->assertNotNull($buffer);
         // realpath: the IDE canonicalises on open, and macOS resolves the temp
         // directory's /var symlink to /private/var.
-        self::assertSame(realpath($path), $buffer->path, 'the file opened');
-        self::assertSame([], Toasts::all($ide), 'and nothing was refused');
+        $this->assertSame(\realpath($path), $buffer->path, 'the file opened');
+        $this->assertSame([], Toasts::all($ide), 'and nothing was refused');
 
         // The read-only guarantee is the buffer's SHAPE, not a flag somebody has
         // to remember to check: a pane buffer carries a permanently-empty
         // document that is never dirty.
-        self::assertSame(TextPreviewWidget::PANE_ID, $buffer->paneId, 'it opened in the preview pane, not the editor');
-        self::assertSame('', $buffer->document->getText());
-        self::assertFalse($buffer->document->isDirty());
+        $this->assertSame(TextPreviewWidget::PANE_ID, $buffer->paneId, 'it opened in the preview pane, not the editor');
+        $this->assertSame('', $buffer->document->getText());
+        $this->assertFalse($buffer->document->isDirty());
 
         $preview = $buffer->panePayload;
-        self::assertInstanceOf(TextPreview::class, $preview);
-        self::assertTrue($preview->truncated);
-        self::assertSame($size, $preview->bytes, "the size reported is the FILE's, not the prefix's");
-        self::assertLessThanOrEqual(Files::MAX_TEXT_BYTES, \strlen($preview->text), 'never more than one cap is read');
-        self::assertStringEndsWith('a line of log text', $preview->text, 'cut at a line break, not mid-line');
+        $this->assertInstanceOf(TextPreview::class, $preview);
+        $this->assertTrue($preview->truncated);
+        $this->assertSame($size, $preview->bytes, "the size reported is the FILE's, not the prefix's");
+        $this->assertLessThanOrEqual(Files::MAX_TEXT_BYTES, \strlen($preview->text), 'never more than one cap is read');
+        $this->assertStringEndsWith('a line of log text', $preview->text, 'cut at a line break, not mid-line');
     }
 
     /**
@@ -78,13 +78,13 @@ final class LargeFilePreviewTest extends TestCase
         $path = $this->project->path('huge.bin');
         // Invalid UTF-8 in the FIRST bytes, so the prefix carries it whatever
         // the cut does; padded past the cap to reach the preview branch at all.
-        file_put_contents($path, "\xff\xfe\x00".str_repeat("binary\n", times: 1 + intdiv(Files::MAX_TEXT_BYTES, num2: 7)));
-        self::assertGreaterThan(Files::MAX_TEXT_BYTES, (int) filesize($path));
+        \file_put_contents($path, "\xff\xfe\x00".\str_repeat("binary\n", times: 1 + \intdiv(Files::MAX_TEXT_BYTES, num2: 7)));
+        $this->assertGreaterThan(Files::MAX_TEXT_BYTES, (int) \filesize($path));
 
         Services::resolve($ide, BufferService::class)->openFile($path);
 
-        self::assertNull(Services::resolve($ide, BufferManager::class)->active(), 'no tab opened');
-        self::assertStringContainsString('Not a UTF-8 text file', Toasts::last($ide));
+        $this->assertNull(Services::resolve($ide, BufferManager::class)->active(), 'no tab opened');
+        $this->assertStringContainsString('Not a UTF-8 text file', Toasts::last($ide));
     }
 
     /**
@@ -99,15 +99,15 @@ final class LargeFilePreviewTest extends TestCase
     {
         $ide = $this->bootIde(['composer.json' => '{}']);
         $path = $this->project->path('bundle.min.js');
-        file_put_contents($path, str_repeat('x', times: Files::MAX_TEXT_BYTES + 512));
+        \file_put_contents($path, \str_repeat('x', times: Files::MAX_TEXT_BYTES + 512));
 
         Services::resolve($ide, BufferService::class)->openFile($path);
 
         $buffer = Services::resolve($ide, BufferManager::class)->active();
-        self::assertNotNull($buffer);
+        $this->assertNotNull($buffer);
         $preview = $buffer->panePayload;
-        self::assertInstanceOf(TextPreview::class, $preview);
-        self::assertSame(Files::MAX_TEXT_BYTES, \strlen($preview->text), 'the whole prefix, uncut');
-        self::assertTrue($preview->truncated);
+        $this->assertInstanceOf(TextPreview::class, $preview);
+        $this->assertSame(Files::MAX_TEXT_BYTES, \strlen($preview->text), 'the whole prefix, uncut');
+        $this->assertTrue($preview->truncated);
     }
 }

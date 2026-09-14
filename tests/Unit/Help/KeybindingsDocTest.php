@@ -38,7 +38,7 @@ final class KeybindingsDocTest extends TestCase
 {
     public function testEveryKeyTheCatalogBindsAppearsInTheDoc(): void
     {
-        $doc = self::expandPairs(self::normalise((string) file_get_contents(__DIR__.'/../../../docs/keybindings.md')));
+        $doc = self::expandPairs(self::normalise((string) \file_get_contents(__DIR__.'/../../../docs/keybindings.md')));
 
         $missing = [];
         foreach (ActionCatalog::ACTIONS as $id => $spec) {
@@ -50,12 +50,12 @@ final class KeybindingsDocTest extends TestCase
             }
         }
 
-        $this->assertSame([], $missing, "docs/keybindings.md does not mention:\n  ".implode("\n  ", $missing));
+        $this->assertSame([], $missing, "docs/keybindings.md does not mention:\n  ".\implode("\n  ", $missing));
     }
 
     public function testEveryEDITORVerbOnAMenuAppearsInTheDocToo(): void
     {
-        $doc = self::expandPairs(self::normalise((string) file_get_contents(__DIR__.'/../../../docs/keybindings.md')));
+        $doc = self::expandPairs(self::normalise((string) \file_get_contents(__DIR__.'/../../../docs/keybindings.md')));
 
         $missing = [];
         foreach (self::editorKeysOnAMenu() as $id => $keys) {
@@ -67,7 +67,7 @@ final class KeybindingsDocTest extends TestCase
             }
         }
 
-        $this->assertSame([], $missing, "a menu advertises these and docs/keybindings.md does not mention them:\n  ".implode("\n  ", $missing));
+        $this->assertSame([], $missing, "a menu advertises these and docs/keybindings.md does not mention them:\n  ".\implode("\n  ", $missing));
     }
 
     /**
@@ -95,7 +95,7 @@ final class KeybindingsDocTest extends TestCase
      */
     public function testEveryKeyAnySurfaceBindsForItselfAppearsInTheDoc(): void
     {
-        $doc = self::expandPairs(self::normalise((string) file_get_contents(__DIR__.'/../../../docs/keybindings.md')));
+        $doc = self::expandPairs(self::normalise((string) \file_get_contents(__DIR__.'/../../../docs/keybindings.md')));
 
         $missing = [];
         foreach (self::surfaceKeymaps() as $class => $keys) {
@@ -109,7 +109,7 @@ final class KeybindingsDocTest extends TestCase
             }
         }
 
-        $this->assertSame([], $missing, "a surface binds these for itself and docs/keybindings.md does not mention them:\n  ".implode("\n  ", $missing));
+        $this->assertSame([], $missing, "a surface binds these for itself and docs/keybindings.md does not mention them:\n  ".\implode("\n  ", $missing));
     }
 
     /**
@@ -141,7 +141,7 @@ final class KeybindingsDocTest extends TestCase
         foreach (self::sourceRoots($root) as $prefix => $directory) {
             /** @var \SplFileInfo $file */
             foreach (new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($directory)) as $file) {
-                if ('php' !== $file->getExtension() || !str_contains((string) file_get_contents($file->getPathname()), 'function getDefaultKeybindings')) {
+                if ('php' !== $file->getExtension() || !\str_contains((string) \file_get_contents($file->getPathname()), 'function getDefaultKeybindings')) {
                     continue;
                 }
                 // The EDITOR is not one of these surfaces. Its map is
@@ -150,13 +150,13 @@ final class KeybindingsDocTest extends TestCase
                 // see this class's docblock — and it has its own gate above,
                 // narrowed to the verbs a menu advertises. Sweeping it in here
                 // would silently re-open a decision that was made and argued.
-                if (str_ends_with($file->getPathname(), '/Widget/CodeEditorWidget.php')) {
+                if (\str_ends_with($file->getPathname(), '/Widget/CodeEditorWidget.php')) {
                     continue;
                 }
                 // FQCN is determined by path — a rule this repository states and
                 // the arch gate enforces, so the walk can name the class.
-                $relative = substr($file->getPathname(), \strlen($directory.'/'), length: -4);
-                $class = $prefix.str_replace(search: '/', replace: '\\', subject: $relative);
+                $relative = \substr($file->getPathname(), \strlen($directory.'/'), length: -4);
+                $class = $prefix.\str_replace(search: '/', replace: '\\', subject: $relative);
                 $method = new \ReflectionMethod($class, 'getDefaultKeybindings');
                 /** @var array<string, list<string>> $keys */
                 $keys = $method->invoke(null);
@@ -188,14 +188,14 @@ final class KeybindingsDocTest extends TestCase
     private static function sourceRoots(string $root): array
     {
         $roots = ['Porta\\' => $root.'/src'];
-        $manifests = glob($root.'/plugins/*/plugin.php');
+        $manifests = \glob($root.'/plugins/*/plugin.php');
         foreach (false === $manifests ? [] : $manifests as $pluginFile) {
             foreach (PluginManifest::beside($pluginFile)->autoloadDirs() as $prefix => $directories) {
                 foreach ($directories as $directory) {
-                    if (!is_dir($directory)) {
+                    if (!\is_dir($directory)) {
                         continue;
                     }
-                    $roots[$prefix] = rtrim($directory, characters: '/');
+                    $roots[$prefix] = \rtrim($directory, characters: '/');
                 }
             }
         }
@@ -244,7 +244,7 @@ final class KeybindingsDocTest extends TestCase
             }
         }
 
-        $this->assertSame([], $missing, "a modal binds these and docs/keybindings.md does not mention them:\n  ".implode("\n  ", $missing));
+        $this->assertSame([], $missing, "a modal binds these and docs/keybindings.md does not mention them:\n  ".\implode("\n  ", $missing));
     }
 
     /**
@@ -292,7 +292,7 @@ final class KeybindingsDocTest extends TestCase
             $stray[] = $key;
         }
 
-        $this->assertSame([], $stray, "docs/keybindings.md documents these under `### Inside Find in Files`, and neither find surface binds them:\n  ".implode("\n  ", $stray));
+        $this->assertSame([], $stray, "docs/keybindings.md documents these under `### Inside Find in Files`, and neither find surface binds them:\n  ".\implode("\n  ", $stray));
     }
 
     /**
@@ -305,17 +305,17 @@ final class KeybindingsDocTest extends TestCase
     private static function findInFilesTableKeys(): array
     {
         $section = self::section('Search');
-        $at = mb_strpos($section, needle: '### Inside Find in Files');
+        $at = \mb_strpos($section, needle: '### Inside Find in Files');
         self::assertIsInt($at, 'the Search section carries the Find-in-Files subsection');
-        $table = mb_substr($section, $at);
+        $table = \mb_substr($section, $at);
 
         $keys = [];
-        foreach (explode("\n", $table) as $line) {
-            if (!str_starts_with($line, '| `')) {
+        foreach (\explode("\n", $table) as $line) {
+            if (!\str_starts_with($line, '| `')) {
                 continue;
             }
-            $column = explode('|', $line)[1] ?? '';
-            preg_match_all('~`([^`]+)`~', $column, $matches);
+            $column = \explode('|', $line)[1] ?? '';
+            \preg_match_all('~`([^`]+)`~', $column, $matches);
             foreach ($matches[1] as $chord) {
                 $keys[] = self::normalise($chord);
             }
@@ -331,11 +331,11 @@ final class KeybindingsDocTest extends TestCase
      */
     private static function section(string $heading): string
     {
-        $doc = (string) file_get_contents(__DIR__.'/../../../docs/keybindings.md');
-        $parts = preg_split('/^## /m', $doc);
+        $doc = (string) \file_get_contents(__DIR__.'/../../../docs/keybindings.md');
+        $parts = \preg_split('/^## /m', $doc);
         self::assertIsArray($parts, 'the doc splits into sections');
         foreach ($parts as $part) {
-            if (str_starts_with($part, $heading."\n")) {
+            if (\str_starts_with($part, $heading."\n")) {
                 return $part;
             }
         }
@@ -363,7 +363,7 @@ final class KeybindingsDocTest extends TestCase
         foreach (['find in files' => self::findModalKeys(), 'find bar' => self::findBarKeys()] as $surface => $map) {
             foreach ($map as $id => $keys) {
                 foreach ($keys as $key) {
-                    if (\in_array(mb_strtolower($key), $universal, strict: true)) {
+                    if (\in_array(\mb_strtolower($key), $universal, strict: true)) {
                         continue;
                     }
                     $surfaces[$surface][$id] = $key;
@@ -425,7 +425,7 @@ final class KeybindingsDocTest extends TestCase
     {
         /** @var array<string, list<string>> $defaults */
         $defaults = EditorKeymap::defaults();
-        $specs = (string) json_encode(new \ReflectionClass(MenuModel::class)->getConstant('DEFS'));
+        $specs = (string) \json_encode(new \ReflectionClass(MenuModel::class)->getConstant('DEFS'));
 
         $onAMenu = [];
         foreach ($defaults as $id => $keys) {
@@ -433,7 +433,7 @@ final class KeybindingsDocTest extends TestCase
             if (null !== (ActionCatalog::ACTIONS[$id]['keys'] ?? null)) {
                 continue;
             }
-            if (str_contains($specs, '"e:'.$id.'"') || str_contains($specs, '"i:'.$id.'"')) {
+            if (\str_contains($specs, '"e:'.$id.'"') || \str_contains($specs, '"i:'.$id.'"')) {
                 $onAMenu[$id] = $keys;
             }
         }
@@ -453,7 +453,7 @@ final class KeybindingsDocTest extends TestCase
      */
     private static function mentions(string $normalisedDoc, string $key): bool
     {
-        return 1 === preg_match('~(?<![a-z0-9+])'.preg_quote(self::normalise($key), delimiter: '~').'(?![a-z0-9])~', $normalisedDoc);
+        return 1 === \preg_match('~(?<![a-z0-9+])'.\preg_quote(self::normalise($key), delimiter: '~').'(?![a-z0-9])~', $normalisedDoc);
     }
 
     /**
@@ -466,7 +466,7 @@ final class KeybindingsDocTest extends TestCase
      */
     private static function expandPairs(string $normalised): string
     {
-        return self::expandArrows((string) preg_replace_callback(
+        return self::expandArrows((string) \preg_replace_callback(
             '~((?:[a-z]+\+)+)([a-z0-9]+)/([a-z0-9]+)~',
             static fn (array $m): string => $m[0].' '.$m[1].$m[3],
             $normalised,
@@ -484,7 +484,7 @@ final class KeybindingsDocTest extends TestCase
      */
     private static function expandArrows(string $normalised): string
     {
-        return (string) preg_replace_callback(
+        return (string) \preg_replace_callback(
             '~((?:[a-z]+\+)+)arrows~',
             static fn (array $m): string => $m[0].' '.$m[1].'arrowl '.$m[1].'arrowr '.$m[1].'up '.$m[1].'down',
             $normalised,
@@ -498,13 +498,13 @@ final class KeybindingsDocTest extends TestCase
      */
     private static function normalise(string $text): string
     {
-        return str_replace(
+        return \str_replace(
             // The vertical arrows map to the WORDS rather than to a marker of
             // their own: 'pgup' contains 'up', so rewriting the word would
             // corrupt the page keys handled just before it.
             ['\\`', 'page_down', 'page_up', 'left', 'right', 'pagedown', 'pageup', '←', '→', '↑', '↓'],
             ['`', 'pgdn', 'pgup', 'arrowl', 'arrowr', 'pgdn', 'pgup', 'arrowl', 'arrowr', 'up', 'down'],
-            strtolower($text),
+            \strtolower($text),
         );
     }
 }

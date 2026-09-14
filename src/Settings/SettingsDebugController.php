@@ -48,7 +48,7 @@ final class SettingsDebugController
                 key: 'debugLaunch',
                 label: $this->translator->trans('Launch config (JSON)'),
                 kind: SettingsRowKind::Text,
-                value: [] === $launch ? '' : (string) json_encode($launch, \JSON_UNESCAPED_SLASHES),
+                value: [] === $launch ? '' : (string) \json_encode($launch, \JSON_UNESCAPED_SLASHES),
                 restart: false,
                 default: '',
                 hint: $this->translator->trans('JSON merged into the DAP launch request'),
@@ -62,12 +62,12 @@ final class SettingsDebugController
     public function change(string $language, string $key, string $value): bool
     {
         if ('debugAdapter' === $key) {
-            $this->changeAdapter($language, trim($value));
+            $this->changeAdapter($language, \trim($value));
 
             return true;
         }
 
-        return $this->changeLaunch($language, trim($value));
+        return $this->changeLaunch($language, \trim($value));
     }
 
     private function changeAdapter(string $language, string $command): void
@@ -85,8 +85,8 @@ final class SettingsDebugController
         $launch = [];
         if ('' !== $json) {
             /** @var array<array-key, mixed>|scalar|null $decoded */
-            $decoded = json_decode($json, associative: true);
-            if (!\is_array($decoded) || array_is_list($decoded)) {
+            $decoded = \json_decode($json, associative: true);
+            if (!\is_array($decoded) || \array_is_list($decoded)) {
                 // FALSE, so the form keeps the editor open with what was
                 // typed: the row used to snap back to the persisted value and
                 // the user's text was gone with no way to correct it.

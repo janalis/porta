@@ -211,7 +211,7 @@ final class NarrowPaneRenderTest extends TestCase
         // that has no natural ceiling.
         $preview = new TextPreviewWidget(new Translator('en'));
         $preview->show('/tmp/a-long-file-name-that-crowds-the-banner.log', new TextPreview(
-            str_repeat('x', times: 400)."\nshort\n",
+            \str_repeat('x', times: 400)."\nshort\n",
             bytes: 9_000_000,
             truncated: true,
         ));
@@ -232,7 +232,7 @@ final class NarrowPaneRenderTest extends TestCase
         // a line count wide enough to push the number field past its floor of
         // three. Those are the two inputs the gutter's width is built from.
         $editor = new CodeEditorWidget();
-        $editor->openFile('/narrow.php', "<?php\n".str_repeat("// a line\n", times: 120));
+        $editor->openFile('/narrow.php', "<?php\n".\str_repeat("// a line\n", times: 120));
         $editor->setFocused(true);
         $editor->display()->setVcsGutter(true);
 
@@ -248,7 +248,7 @@ final class NarrowPaneRenderTest extends TestCase
         // is ON by default, so this path was at least as reachable as the one
         // the crash log recorded.
         $editor = new CodeEditorWidget();
-        $editor->openFile('/sticky.php', "<?php\n\nclass A\n{\n    public function one(): void\n    {\n".str_repeat("        \$x = 1;\n", times: 30)."    }\n}\n");
+        $editor->openFile('/sticky.php', "<?php\n\nclass A\n{\n    public function one(): void\n    {\n".\str_repeat("        \$x = 1;\n", times: 30)."    }\n}\n");
         $editor->setFocused(true);
         $editor->getDocument()->setCursor(25, 4); // deep inside one(), headers scrolled off
 
@@ -309,12 +309,12 @@ final class NarrowPaneRenderTest extends TestCase
         foreach (self::paneWidgets() as [$widget]) {
             $swept[$widget::class] = true;
         }
-        $swept += array_map(static fn (string $why): bool => true, self::OUTSIDE_THE_PROVIDER);
+        $swept += \array_map(static fn (string $why): bool => true, self::OUTSIDE_THE_PROVIDER);
 
         $missing = [];
-        foreach (glob(\dirname(__DIR__, levels: 3).'/src/Widget/*.php') as $file) {
-            $class = 'Porta\\Widget\\'.basename($file, suffix: '.php');
-            if (!class_exists($class) || !is_a($class, AbstractWidget::class, allow_string: true)) {
+        foreach (\glob(\dirname(__DIR__, levels: 3).'/src/Widget/*.php') as $file) {
+            $class = 'Porta\\Widget\\'.\basename($file, suffix: '.php');
+            if (!\class_exists($class) || !\is_a($class, AbstractWidget::class, allow_string: true)) {
                 continue;
             }
             if ([] === new \ReflectionClass($class)->getAttributes(AsIdeService::class) || \array_key_exists($class, $swept)) {
@@ -323,7 +323,7 @@ final class NarrowPaneRenderTest extends TestCase
 
             $missing[] = $class;
         }
-        sort($missing);
+        \sort($missing);
 
         $this->assertSame(
             [],

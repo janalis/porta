@@ -69,7 +69,7 @@ final class SearchPrefsStoreTest extends TestCase
 
     public function testToleratesAnUnwritableLocation(): void
     {
-        $file = (string) tempnam(sys_get_temp_dir(), prefix: 'porta-prefs-');
+        $file = (string) \tempnam(\sys_get_temp_dir(), prefix: 'porta-prefs-');
 
         try {
             $store = new SearchPrefsStore($file);
@@ -78,7 +78,7 @@ final class SearchPrefsStoreTest extends TestCase
             $this->assertSame('*.php', $store->lastMask());
             $this->assertSame(['*.php'], Probe::get($store, 'recentMasks'));
         } finally {
-            is_file($file) && unlink($file);
+            \is_file($file) && \unlink($file);
         }
     }
 
@@ -96,8 +96,8 @@ final class SearchPrefsStoreTest extends TestCase
         // the FIRST 20 (offset 0), not the last one (an `offset: -1` bug
         // would collapse this to a single entry).
         $project = new TempProject([]);
-        $raw = array_map(static fn (int $i): string => "*.x{$i}", range(start: 0, end: 24));
-        $project->write('.porta/search-prefs.json', (string) json_encode(['recentMasks' => $raw]));
+        $raw = \array_map(static fn (int $i): string => "*.x{$i}", \range(start: 0, end: 24));
+        $project->write('.porta/search-prefs.json', (string) \json_encode(['recentMasks' => $raw]));
 
         $loaded = Probe::get(new SearchPrefsStore($project->dir), 'recentMasks');
         $this->assertCount(20, $loaded);
@@ -120,7 +120,7 @@ final class SearchPrefsStoreTest extends TestCase
         $mixed = new TempProject([]);
         $mixed->write(
             '.porta/search-prefs.json',
-            (string) json_encode([
+            (string) \json_encode([
                 'scope' => 'bogus',
                 'mask' => 42,
                 'recentMasks' => ['*.php', 7, '', null],
@@ -140,6 +140,6 @@ final class SearchPrefsStoreTest extends TestCase
         $store->setMask("*.\xB1");
 
         $this->assertSame("*.\xB1", $store->lastMask(), 'the live pref keeps the mask');
-        $this->assertFalse(is_file($project->path('.porta/search-prefs.json')), 'the file write degraded silently');
+        $this->assertFalse(\is_file($project->path('.porta/search-prefs.json')), 'the file write degraded silently');
     }
 }

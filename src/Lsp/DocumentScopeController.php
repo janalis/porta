@@ -36,7 +36,7 @@ final readonly class DocumentScopeController
     public function requestScopes(): void
     {
         $path = $this->editor->getFilePath();
-        if (null === $path || str_ends_with($path, '.php')) {
+        if (null === $path || \str_ends_with($path, '.php')) {
             return;
         }
 

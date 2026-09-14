@@ -41,15 +41,15 @@ final class EventListenerWiringTest extends TestCase
     protected function setUp(): void
     {
         foreach (['PORTA_CACHE_DIR', 'PORTA_CONTAINER_CACHE'] as $key) {
-            $this->savedEnv[$key] = getenv($key);
+            $this->savedEnv[$key] = \getenv($key);
         }
-        putenv('PORTA_CONTAINER_CACHE=off'); // exercise the compiled builder deterministically
+        \putenv('PORTA_CONTAINER_CACHE=off'); // exercise the compiled builder deterministically
     }
 
     protected function tearDown(): void
     {
         foreach ($this->savedEnv as $key => $value) {
-            putenv(false === $value ? $key : $key.'='.$value);
+            \putenv(false === $value ? $key : $key.'='.$value);
         }
     }
 
@@ -167,9 +167,9 @@ final class EventListenerWiringTest extends TestCase
     private function observableEvents(): array
     {
         $events = [];
-        foreach (glob(\dirname(__DIR__, levels: 3).'/src/Event/*.php') as $file) {
-            $class = 'Porta\\Event\\'.basename($file, suffix: '.php');
-            if (is_a($class, PluginObservable::class, allow_string: true) && class_exists($class)) {
+        foreach (\glob(\dirname(__DIR__, levels: 3).'/src/Event/*.php') as $file) {
+            $class = 'Porta\\Event\\'.\basename($file, suffix: '.php');
+            if (\is_a($class, PluginObservable::class, allow_string: true) && \class_exists($class)) {
                 $events[] = $class;
             }
         }
@@ -183,8 +183,8 @@ final class EventListenerWiringTest extends TestCase
 
         foreach ([ThemeChanged::class, LocaleChanged::class] as $event) {
             $listeners = $dispatcher->getListeners($event);
-            $first = reset($listeners);
-            $last = end($listeners);
+            $first = \reset($listeners);
+            $last = \end($listeners);
             \assert(\is_array($first) && \is_array($last), description: 'listener entries are [service, method] pairs');
             $this->assertInstanceOf(MenuLayoutRefreshListener::class, $first[0], $event.': the menu/layout refresh runs first');
 
@@ -205,7 +205,7 @@ final class EventListenerWiringTest extends TestCase
     /** @param array<int, mixed> $listeners */
     private function indexOf(array $listeners, string $class): int
     {
-        foreach (array_values($listeners) as $index => $entry) {
+        foreach (\array_values($listeners) as $index => $entry) {
             if (\is_array($entry) && $entry[0] instanceof $class) {
                 return $index;
             }
@@ -226,7 +226,7 @@ final class EventListenerWiringTest extends TestCase
         foreach ([\Porta\Event\CursorShapeChanged::class, \Porta\Event\TabBarPositionChanged::class] as $event) {
             $listeners = $dispatcher->getListeners($event);
             $this->assertNotEmpty($listeners, $event.' has compiled listeners');
-            $last = end($listeners);
+            $last = \end($listeners);
             \assert(\is_array($last), description: 'listener entries are [service, method] pairs');
             $this->assertInstanceOf(ChromeRefreshListener::class, $last[0], $event.': the chrome sweep runs last');
         }
@@ -283,10 +283,10 @@ final class EventListenerWiringTest extends TestCase
 
         $dispatcher = $this->dispatcher();
         $unheard = [];
-        foreach (glob(\dirname(__DIR__, levels: 3).'/src/Event/*.php') as $file) {
-            $name = basename($file, suffix: '.php');
+        foreach (\glob(\dirname(__DIR__, levels: 3).'/src/Event/*.php') as $file) {
+            $name = \basename($file, suffix: '.php');
             $class = 'Porta\\Event\\'.$name;
-            if (!class_exists($class) || \in_array($name, $observedOnlyAtRuntime, strict: true)) {
+            if (!\class_exists($class) || \in_array($name, $observedOnlyAtRuntime, strict: true)) {
                 continue;
             }
             if ([] === $dispatcher->getListeners($class)) {
@@ -311,9 +311,9 @@ final class EventListenerWiringTest extends TestCase
         // one-directional.
         $dispatcher = $this->dispatcher();
 
-        foreach (glob(\dirname(__DIR__, levels: 3).'/src/Event/*Requested.php') as $file) {
-            $class = 'Porta\\Event\\'.basename($file, suffix: '.php');
-            if (!class_exists($class)) {
+        foreach (\glob(\dirname(__DIR__, levels: 3).'/src/Event/*Requested.php') as $file) {
+            $class = 'Porta\\Event\\'.\basename($file, suffix: '.php');
+            if (!\class_exists($class)) {
                 continue;
             }
             $this->assertCount(

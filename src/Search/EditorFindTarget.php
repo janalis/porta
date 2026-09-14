@@ -22,7 +22,7 @@ final class EditorFindTarget implements FindTarget
     #[\Override]
     public function findLines(): array
     {
-        return array_values($this->document->getLines());
+        return \array_values($this->document->getLines());
     }
 
     #[\Override]

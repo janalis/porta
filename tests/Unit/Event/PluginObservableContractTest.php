@@ -37,13 +37,13 @@ final class PluginObservableContractTest extends TestCase
     private static function marked(): array
     {
         $marked = [];
-        foreach (glob(\dirname(__DIR__, levels: 3).'/src/Event/*.php') as $file) {
-            $class = 'Porta\\Event\\'.basename($file, suffix: '.php');
-            if (class_exists($class) && is_a($class, PluginObservable::class, allow_string: true)) {
+        foreach (\glob(\dirname(__DIR__, levels: 3).'/src/Event/*.php') as $file) {
+            $class = 'Porta\\Event\\'.\basename($file, suffix: '.php');
+            if (\class_exists($class) && \is_a($class, PluginObservable::class, allow_string: true)) {
                 $marked[] = $class;
             }
         }
-        sort($marked);
+        \sort($marked);
 
         return $marked;
     }
@@ -51,7 +51,7 @@ final class PluginObservableContractTest extends TestCase
     public function testTheObservableSetIsExactlyWhatIsPinnedHere(): void
     {
         $this->assertSame(
-            array_map(static fn (string $name): string => 'Porta\\Event\\'.$name, self::OBSERVABLE),
+            \array_map(static fn (string $name): string => 'Porta\\Event\\'.$name, self::OBSERVABLE),
             self::marked(),
             'marking an event observable freezes it as third-party API — say so here too',
         );
@@ -67,7 +67,7 @@ final class PluginObservableContractTest extends TestCase
             foreach ($reflection->getConstructor()?->getParameters() ?? [] as $parameter) {
                 $type = $parameter->getType();
                 $name = $type instanceof \ReflectionNamedType ? $type->getName() : (string) $type;
-                $ok = \in_array($name, ['string', 'int', 'float', 'bool'], strict: true) || enum_exists($name) && null !== new \ReflectionEnum($name)->getBackingType();
+                $ok = \in_array($name, ['string', 'int', 'float', 'bool'], strict: true) || \enum_exists($name) && null !== new \ReflectionEnum($name)->getBackingType();
                 $this->assertTrue($ok, \sprintf('%s::$%s is a %s — an observable event carries scalars and backed enums, never core objects', $class, $parameter->getName(), $name));
             }
         }
@@ -78,11 +78,11 @@ final class PluginObservableContractTest extends TestCase
         // The rule that would have caught the onThemeChanged gap: a hook that
         // shipped, was used by a bundled plugin, and appeared nowhere in the
         // plugin docs.
-        $docs = (string) file_get_contents(\dirname(__DIR__, levels: 3).'/docs/plugins.md');
+        $docs = (string) \file_get_contents(\dirname(__DIR__, levels: 3).'/docs/plugins.md');
 
         foreach (self::marked() as $class) {
             $this->assertStringContainsString(
-                '`'.basename(str_replace('\\', replace: '/', subject: $class)).'`',
+                '`'.\basename(\str_replace('\\', replace: '/', subject: $class)).'`',
                 $docs,
                 $class.' is public API and must appear in docs/plugins.md',
             );

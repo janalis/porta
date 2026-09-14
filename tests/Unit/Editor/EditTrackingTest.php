@@ -24,7 +24,7 @@ final class EditTrackingTest extends TestCase
         $document->setCursor(1, 3);
         $document->insert('!');
 
-        self::assertSame(['path' => '/a.php', 'line' => 1], $history->walkBack());
+        $this->assertSame(['path' => '/a.php', 'line' => 1], $history->walkBack());
     }
 
     public function testMOVINGTheCaretIsNotAnEdit(): void
@@ -38,7 +38,7 @@ final class EditTrackingTest extends TestCase
         $document->setCursor(2, 0);
         $document->setCursor(0, 0);
 
-        self::assertNull($history->walkBack());
+        $this->assertNull($history->walkBack());
     }
 
     public function testEveryFILESEditsAreKeptApart(): void
@@ -51,8 +51,8 @@ final class EditTrackingTest extends TestCase
         $a->insert('x');
         $b->insert('y');
 
-        self::assertSame(['path' => '/b.php', 'line' => 0], $history->walkBack());
-        self::assertSame(['path' => '/a.php', 'line' => 0], $history->walkBack());
+        $this->assertSame(['path' => '/b.php', 'line' => 0], $history->walkBack());
+        $this->assertSame(['path' => '/a.php', 'line' => 0], $history->walkBack());
     }
 
     public function testAVIEWERTabRecordsNothing(): void
@@ -64,7 +64,7 @@ final class EditTrackingTest extends TestCase
 
         $buffers->openPane('/logo.png', 'image', payload: null)->document->insert('x');
 
-        self::assertNull($history->walkBack());
+        $this->assertNull($history->walkBack());
     }
 
     public function testWithNoHistoryWiredTheDocumentStillWorks(): void
@@ -76,6 +76,6 @@ final class EditTrackingTest extends TestCase
 
         $document->insert('x');
 
-        self::assertSame('xone', $document->getLine(0));
+        $this->assertSame('xone', $document->getLine(0));
     }
 }

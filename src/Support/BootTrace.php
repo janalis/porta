@@ -37,11 +37,11 @@ final class BootTrace
      */
     public function __construct(?float $processStartSeconds = null, ?\Closure $nanos = null, ?\Closure $wallSeconds = null)
     {
-        $this->nanos = $nanos ?? static fn (): float => (float) hrtime(true);
+        $this->nanos = $nanos ?? static fn (): float => (float) \hrtime(true);
         $this->startNs = ($this->nanos)();
         if (null !== $processStartSeconds) {
-            $wall = $wallSeconds ?? static fn (): float => microtime(true);
-            $this->marks[] = ['prelude', 1000.0 * max(0.0, $wall() - $processStartSeconds)];
+            $wall = $wallSeconds ?? static fn (): float => \microtime(true);
+            $this->marks[] = ['prelude', 1000.0 * \max(0.0, $wall() - $processStartSeconds)];
         }
     }
 
@@ -56,7 +56,7 @@ final class BootTrace
     public function line(): string
     {
         return 'boot '
-        .implode(' ', array_map(
+        .\implode(' ', \array_map(
             static fn (array $mark): string => \sprintf('%s=%.0fms', $mark[0], $mark[1]),
             $this->marks,
         ));

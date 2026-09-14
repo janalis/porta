@@ -173,13 +173,13 @@ final class FormatOnSaveTest extends TestCase
         ]]);
 
         $this->assertGreaterThan($notificationsBefore, \count($this->client->notifications), 'the pool was told about the full change');
-        $this->assertSame('textDocument/didChange', end($this->client->notifications)['method']);
+        $this->assertSame('textDocument/didChange', \end($this->client->notifications)['method']);
         $this->assertTrue((bool) Probe::get($this->tui, 'renderRequested'), 'a render was requested');
         // COUNTED, not rendered. The editor composes its rows from the document
         // either way, so a screen assertion passes whether or not the memoised
         // lines were dropped — this one did, for as long as it existed.
         $this->assertSame(1, $this->invalidations, 'the editor was invalidated exactly once');
-        $screen = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->render(new RenderContext(80, 8))));
+        $screen = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->render(new RenderContext(80, 8))));
         $this->assertStringContainsString('<?php $a = 1;', $screen, 'and it shows the new text');
     }
 
@@ -192,7 +192,7 @@ final class FormatOnSaveTest extends TestCase
         $this->scheduler->fire(); // the 2 s guard
 
         $this->assertSame(1, $this->saves, 'the save proceeded unformatted');
-        $flash = \Symfony\Component\Tui\Ansi\AnsiUtils::stripAnsiCodes(implode(' ', $this->status->render(new \Symfony\Component\Tui\Render\RenderContext(100, 1))));
+        $flash = \Symfony\Component\Tui\Ansi\AnsiUtils::stripAnsiCodes(\implode(' ', $this->status->render(new \Symfony\Component\Tui\Render\RenderContext(100, 1))));
         $this->assertStringContainsString('Formatting timed out — saved unformatted', $flash, 'the skipped format is visible');
 
         $this->respond([[

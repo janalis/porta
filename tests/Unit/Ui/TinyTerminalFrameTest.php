@@ -45,16 +45,16 @@ final class TinyTerminalFrameTest extends TestCase
         $this->rows = $rows;
         $ide = $this->bootIde(['composer.json' => '{}', 'a.php' => "<?php\n\nfinal class A {}\n"]);
         $tui = Probe::object($ide, 'bidiTui');
-        self::assertInstanceOf(BidiTui::class, $tui);
+        $this->assertInstanceOf(BidiTui::class, $tui);
 
         $tui->requestRender(true);
         Probe::invoke($tui, 'processRender');
 
         // What Porta composed, kept for .porta/frame.txt — one entry per row.
         $frame = Probe::get($ide, 'lastFrame');
-        self::assertIsArray($frame);
-        self::assertLessThanOrEqual($rows, \count($frame), 'the composed frame fits the screen');
-        self::assertNotSame([], $frame, 'and something was composed at all');
+        $this->assertIsArray($frame);
+        $this->assertLessThanOrEqual($rows, \count($frame), 'the composed frame fits the screen');
+        $this->assertNotSame([], $frame, 'and something was composed at all');
     }
 
     #[DataProvider('geometries')]
@@ -66,12 +66,12 @@ final class TinyTerminalFrameTest extends TestCase
         $this->rows = $rows;
         $ide = $this->bootIde(['composer.json' => '{}', 'a.php' => "<?php\n\nfinal class A {}\n"]);
         $tui = Probe::object($ide, 'bidiTui');
-        self::assertInstanceOf(BidiTui::class, $tui);
+        $this->assertInstanceOf(BidiTui::class, $tui);
 
         $tui->requestRender(true);
         Probe::invoke($tui, 'processRender');
 
-        $written = 1 + preg_match_all('/\r\n|\x1b\[\d*B/', $this->terminal->getOutput());
-        self::assertLessThanOrEqual($rows, $written, 'one row past the last is enough to scroll the alternate screen for good');
+        $written = 1 + \preg_match_all('/\r\n|\x1b\[\d*B/', $this->terminal->getOutput());
+        $this->assertLessThanOrEqual($rows, $written, 'one row past the last is enough to scroll the alternate screen for good');
     }
 }

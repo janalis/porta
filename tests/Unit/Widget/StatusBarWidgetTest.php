@@ -71,7 +71,7 @@ final class StatusBarWidgetTest extends TestCase
     public function testLongLeftContentTruncates(): void
     {
         $status = new StatusBarWidget();
-        $status->setProvider(static fn () => ['left' => str_repeat('x', times: 200), 'right' => 'RIGHT']);
+        $status->setProvider(static fn () => ['left' => \str_repeat('x', times: 200), 'right' => 'RIGHT']);
         $status->beforeRender();
 
         $line = $status->render(new RenderContext(50, 1))[0];
@@ -122,7 +122,7 @@ final class StatusBarWidgetTest extends TestCase
         $this->assertNotNull($status->menuAt(1), 'the on-screen span accounts for it');
         $this->assertNotNull($status->menuAt(6), 'the last column of the cell');
         $this->assertNull($status->menuAt(7), 'and the column past it');
-        $this->assertSame(['Switch'], array_map(static fn (MenuItem $i): string => $i->label, $status->menuAt(1)()), 'the cell carries its OWN menu');
+        $this->assertSame(['Switch'], \array_map(static fn (MenuItem $i): string => $i->label, $status->menuAt(1)()), 'the cell carries its OWN menu');
     }
 
     public function testStatusCellMenuIsNullWithoutABranch(): void
@@ -143,7 +143,7 @@ final class StatusBarWidgetTest extends TestCase
         // A flash LONGER than the cell, deliberately: a short one is excluded
         // by the truncation filter anyway, so this would pass with the flash
         // guard deleted and prove nothing about it.
-        $status->flash(str_repeat('Saved ', times: 4), 1.0);
+        $status->flash(\str_repeat('Saved ', times: 4), 1.0);
         $status->render(new RenderContext(60, 1));
 
         $this->assertNull($status->menuAt(1), 'a flash replaces the prefix, so there is no hit region');
@@ -241,9 +241,9 @@ final class StatusBarWidgetTest extends TestCase
         // right side gains an extra character.
         $clock = new MockClock('2020-01-01T00:00:00+00:00');
         $status = new StatusBarWidget($clock);
-        $status->setProvider(static fn () => ['left' => 'x', 'right' => str_repeat('R', times: 30)]);
+        $status->setProvider(static fn () => ['left' => 'x', 'right' => \str_repeat('R', times: 30)]);
         $status->beforeRender();
-        $status->flash(str_repeat('F', times: 25), 5.0);
+        $status->flash(\str_repeat('F', times: 25), 5.0);
 
         $plain = AnsiUtils::stripAnsiCodes($status->render(new RenderContext(20, 1))[0]);
         $this->assertStringEndsWith('  ', $plain, 'the right side is fully squeezed out (rightMax = 0), leaving two trailing spaces');
@@ -253,28 +253,28 @@ final class StatusBarWidgetTest extends TestCase
     {
         $clock = new MockClock('2020-01-01T00:00:00+00:00');
         $status = new StatusBarWidget($clock);
-        $status->setProvider(static fn () => ['left' => 'x', 'right' => str_repeat('R', times: 30)]);
+        $status->setProvider(static fn () => ['left' => 'x', 'right' => \str_repeat('R', times: 30)]);
         $status->beforeRender();
         $status->flash('SAVED', 5.0); // visibleWidth 5, well under the columns-3 cap
 
         $plain = AnsiUtils::stripAnsiCodes($status->render(new RenderContext(20, 1))[0]);
         // rightMax = max(0, 20 - 5 - 3) = 12 → 11 'R's + the ellipsis.
-        $this->assertStringContainsString(str_repeat('R', times: 11).'…', $plain);
-        $this->assertStringNotContainsString(str_repeat('R', times: 12), $plain, 'one column more than rightMax must not fit');
+        $this->assertStringContainsString(\str_repeat('R', times: 11).'…', $plain);
+        $this->assertStringNotContainsString(\str_repeat('R', times: 12), $plain, 'one column more than rightMax must not fit');
     }
 
     public function testLeftMaxLeavesExactlyThreeColumnsForThePadAndRightMargin(): void
     {
         $status = new StatusBarWidget();
-        $status->setProvider(static fn () => ['left' => str_repeat('L', times: 30), 'right' => 'RR']);
+        $status->setProvider(static fn () => ['left' => \str_repeat('L', times: 30), 'right' => 'RR']);
         $status->beforeRender();
 
         // leftMax = max(0, 20 - 2 - 3) = 15, spent from both ends now: 7 + the
         // ellipsis + 7. The arithmetic is what this pins; the shape it is spent
         // in belongs to the elision test below.
         $plain = AnsiUtils::stripAnsiCodes($status->render(new RenderContext(20, 1))[0]);
-        $this->assertStringContainsString(str_repeat('L', times: 7).'…'.str_repeat('L', times: 7), $plain);
-        $this->assertStringNotContainsString(str_repeat('L', times: 8).'…', $plain);
+        $this->assertStringContainsString(\str_repeat('L', times: 7).'…'.\str_repeat('L', times: 7), $plain);
+        $this->assertStringNotContainsString(\str_repeat('L', times: 8).'…', $plain);
     }
 
     /**
@@ -312,7 +312,7 @@ final class StatusBarWidgetTest extends TestCase
     public function testASqueezedPathKeepsItsFileNameNotJustItsPrefix(): void
     {
         $status = new StatusBarWidget();
-        $status->setProvider(static fn (): array => ['left' => 'src/Some/Deep/Namespace/ExampleClass.php', 'right' => str_repeat('R', times: 60)]);
+        $status->setProvider(static fn (): array => ['left' => 'src/Some/Deep/Namespace/ExampleClass.php', 'right' => \str_repeat('R', times: 60)]);
         $status->beforeRender();
 
         $plain = AnsiUtils::stripAnsiCodes($status->render(new RenderContext(90, 1))[0]);
@@ -329,13 +329,13 @@ final class StatusBarWidgetTest extends TestCase
     public function testTheLeftFloorNeverTakesMoreThanHalfTheRow(): void
     {
         $status = new StatusBarWidget();
-        $status->setProvider(static fn (): array => ['left' => str_repeat('L', times: 40), 'right' => str_repeat('R', times: 40)]);
+        $status->setProvider(static fn (): array => ['left' => \str_repeat('L', times: 40), 'right' => \str_repeat('R', times: 40)]);
         $status->beforeRender();
 
         $plain = AnsiUtils::stripAnsiCodes($status->render(new RenderContext(30, 1))[0]);
 
         $this->assertSame(30, AnsiUtils::visibleWidth($plain));
-        $this->assertGreaterThanOrEqual(10, substr_count($plain, needle: 'R'), 'the right keeps its half');
+        $this->assertGreaterThanOrEqual(10, \substr_count($plain, needle: 'R'), 'the right keeps its half');
     }
 
     /**
@@ -348,7 +348,7 @@ final class StatusBarWidgetTest extends TestCase
     {
         $status = new StatusBarWidget();
         $span = new StatusMenuSpan(0, 6, static fn (): array => [new MenuItem('Switch', '', static fn () => null)]);
-        $status->setProvider(static fn (): array => ['left' => "\u{e0a0} main  src/Some/Deep/Namespace/ExampleClass.php", 'right' => str_repeat('R', times: 40), 'menus' => [$span]]);
+        $status->setProvider(static fn (): array => ['left' => "\u{e0a0} main  src/Some/Deep/Namespace/ExampleClass.php", 'right' => \str_repeat('R', times: 40), 'menus' => [$span]]);
         $status->beforeRender();
         $status->render(new RenderContext(60, 1));
 
@@ -371,12 +371,12 @@ final class StatusBarWidgetTest extends TestCase
     public function testGapFillsExactlyToTheRemainingWidth(): void
     {
         $status = new StatusBarWidget();
-        $status->setProvider(static fn () => ['left' => str_repeat('L', times: 5), 'right' => str_repeat('R', times: 5)]);
+        $status->setProvider(static fn () => ['left' => \str_repeat('L', times: 5), 'right' => \str_repeat('R', times: 5)]);
         $status->beforeRender();
 
         $plain = AnsiUtils::stripAnsiCodes($status->render(new RenderContext(20, 1))[0]);
         // 1 (pad) + 5 (left) + gap + 5 (right) + 1 (pad) = 20 → gap = 8.
-        $this->assertSame(' '.str_repeat('L', times: 5).str_repeat(' ', times: 8).str_repeat('R', times: 5).' ', $plain);
+        $this->assertSame(' '.\str_repeat('L', times: 5).\str_repeat(' ', times: 8).\str_repeat('R', times: 5).' ', $plain);
     }
 
     public function testTheRowIsAssembledAsPadLeftGapRightPadInThatExactOrder(): void
@@ -431,7 +431,7 @@ final class StatusBarWidgetTest extends TestCase
     {
         $status = new StatusBarWidget();
         // A wide right side + narrow terminal truncates the branch off the left.
-        $status->setProvider(self::provider(menus: true, right: str_repeat('R', times: 40)));
+        $status->setProvider(self::provider(menus: true, right: \str_repeat('R', times: 40)));
         $status->beforeRender();
         $status->render(new RenderContext(20, 1));
 

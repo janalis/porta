@@ -136,7 +136,7 @@ final class UndoHistory
      */
     public function undo(array $current): ?array
     {
-        if (!($state = array_pop($this->undoStack))) {
+        if (!($state = \array_pop($this->undoStack))) {
             return null;
         }
         $this->undoLines -= \count($state['lines']);
@@ -154,7 +154,7 @@ final class UndoHistory
      */
     public function redo(array $current): ?array
     {
-        if (!($state = array_pop($this->redoStack))) {
+        if (!($state = \array_pop($this->redoStack))) {
             return null;
         }
         $this->undoStack[] = $current;
@@ -173,7 +173,7 @@ final class UndoHistory
         // The step cap AND the line budget, oldest-first — but never the last
         // snapshot: one giant undo step must stay undoable regardless.
         while (\count($this->undoStack) > 1 && (\count($this->undoStack) > self::MAX_UNDO || $this->undoLines > $this->maxRetainedLines)) {
-            $dropped = array_shift($this->undoStack);
+            $dropped = \array_shift($this->undoStack);
             $this->undoLines -= \count($dropped['lines']);
         }
     }

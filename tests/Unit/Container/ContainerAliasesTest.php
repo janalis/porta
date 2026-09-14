@@ -67,9 +67,9 @@ final class ContainerAliasesTest extends ContainerTestCase
         // when X does not exist, so nothing caught it.
         $this->assertFalse($builder->hasAlias(ContributedView::class), 'multi-impl interfaces stay unaliased');
         $this->assertTrue(
-            2 <= \count(array_filter(
+            2 <= \count(\array_filter(
                 $builder->getDefinitions(),
-                static fn (Definition $definition): bool => is_a((string) $definition->getClass(), ContributedView::class, allow_string: true),
+                static fn (Definition $definition): bool => \is_a((string) $definition->getClass(), ContributedView::class, allow_string: true),
             )),
             'and there really is more than one implementation, or the assertion above proves nothing',
         );
@@ -87,7 +87,7 @@ final class ContainerAliasesTest extends ContainerTestCase
         $container = $this->buildContainer();
 
         foreach ([FindModalPresenter::class, PickerModalPresenter::class, ToastPresenter::class, WelcomeModalController::class] as $presenter) {
-            $references = array_filter(
+            $references = \array_filter(
                 $container->getDefinition($presenter)->getArguments(),
                 static fn (mixed $argument): bool => $argument instanceof Reference && BidiTui::class === (string) $argument,
             );

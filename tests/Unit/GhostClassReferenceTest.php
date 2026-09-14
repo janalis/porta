@@ -39,22 +39,22 @@ final class GhostClassReferenceTest extends TestCase
     {
         $ghosts = [];
         foreach ($this->sources() as $path) {
-            $source = (string) file_get_contents($path);
+            $source = (string) \file_get_contents($path);
             $code = self::stripCommentsAndStrings($source);
-            preg_match('/^namespace ([A-Za-z0-9\\\\]+);/m', $code, $namespace);
+            \preg_match('/^namespace ([A-Za-z0-9\\\\]+);/m', $code, $namespace);
             $aliases = self::aliases($code);
             $hits = [];
-            preg_match_all('/(?<![\$>:\w\\\\])(\\\\?[A-Z][A-Za-z0-9_\\\\]*)::class/', $code, $hits, \PREG_SET_ORDER);
+            \preg_match_all('/(?<![\$>:\w\\\\])(\\\\?[A-Z][A-Za-z0-9_\\\\]*)::class/', $code, $hits, \PREG_SET_ORDER);
             foreach ($hits as [, $name]) {
                 $fqcn = self::resolve($name, $aliases, $namespace[1] ?? '');
                 if (self::exists($fqcn)) {
                     continue;
                 }
-                $ghosts[] = str_replace(\dirname(__DIR__, levels: 2).'/', replace: '', subject: $path).': '.$fqcn;
+                $ghosts[] = \str_replace(\dirname(__DIR__, levels: 2).'/', replace: '', subject: $path).': '.$fqcn;
             }
         }
 
-        $this->assertSame([], array_values(array_unique($ghosts)), '`::class` naming something that does not exist — a reference PHP will never check');
+        $this->assertSame([], \array_values(\array_unique($ghosts)), '`::class` naming something that does not exist — a reference PHP will never check');
     }
 
     public function testTheScanWouldNoticeOne(): void
@@ -80,7 +80,7 @@ final class GhostClassReferenceTest extends TestCase
                 $path = $entry->getPathname();
                 // Vendored code is not ours, and the fixtures are deliberately
                 // malformed — both would report on someone else's decisions.
-                if (!$entry->isFile() || 'php' !== $entry->getExtension() || str_contains($path, '/vendor/') || str_contains($path, '/fixtures/')) {
+                if (!$entry->isFile() || 'php' !== $entry->getExtension() || \str_contains($path, '/vendor/') || \str_contains($path, '/fixtures/')) {
                     continue;
                 }
                 $paths[] = $path;
@@ -95,10 +95,10 @@ final class GhostClassReferenceTest extends TestCase
     {
         $aliases = [];
         $uses = [];
-        preg_match_all('/^use ([A-Za-z0-9\\\\]+)(?: as ([A-Za-z0-9]+))?;/m', $code, $uses, \PREG_SET_ORDER);
+        \preg_match_all('/^use ([A-Za-z0-9\\\\]+)(?: as ([A-Za-z0-9]+))?;/m', $code, $uses, \PREG_SET_ORDER);
         foreach ($uses as $use) {
-            $parts = explode('\\', $use[1]);
-            $aliases[$use[2] ?? end($parts)] = $use[1];
+            $parts = \explode('\\', $use[1]);
+            $aliases[$use[2] ?? \end($parts)] = $use[1];
         }
 
         return $aliases;
@@ -107,12 +107,12 @@ final class GhostClassReferenceTest extends TestCase
     /** @param array<string, string> $aliases */
     private static function resolve(string $name, array $aliases, string $namespace): string
     {
-        if (str_starts_with($name, '\\')) {
-            return ltrim($name, characters: '\\');
+        if (\str_starts_with($name, '\\')) {
+            return \ltrim($name, characters: '\\');
         }
-        $head = explode('\\', $name)[0];
-        if (array_key_exists($head, $aliases)) {
-            return $aliases[$head].substr($name, offset: \strlen($head));
+        $head = \explode('\\', $name)[0];
+        if (\array_key_exists($head, $aliases)) {
+            return $aliases[$head].\substr($name, offset: \strlen($head));
         }
 
         return '' === $namespace ? $name : $namespace.'\\'.$name;
@@ -122,7 +122,7 @@ final class GhostClassReferenceTest extends TestCase
     {
         // `self`/`static`/`parent` never reach here — the pattern requires an
         // upper-case first letter, and PHP's magic ones are lower-case.
-        return class_exists($fqcn) || interface_exists($fqcn) || enum_exists($fqcn) || trait_exists($fqcn);
+        return \class_exists($fqcn) || \interface_exists($fqcn) || \enum_exists($fqcn) || \trait_exists($fqcn);
     }
 
     /** Only CODE names a class; a comment or a string literal holds text that looks like one. */
@@ -130,7 +130,7 @@ final class GhostClassReferenceTest extends TestCase
     {
         $skip = [\T_COMMENT, \T_DOC_COMMENT, \T_CONSTANT_ENCAPSED_STRING, \T_ENCAPSED_AND_WHITESPACE, \T_INLINE_HTML];
         $out = '';
-        foreach (token_get_all($source) as $token) {
+        foreach (\token_get_all($source) as $token) {
             if (!\is_array($token)) {
                 $out .= $token;
 

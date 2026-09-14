@@ -152,6 +152,6 @@ final class PaneLayout implements EditorAreaPanes
      */
     private function order(array $ltr): array
     {
-        return $this->translator->isRtl() ? array_reverse($ltr) : $ltr;
+        return $this->translator->isRtl() ? \array_reverse($ltr) : $ltr;
     }
 }

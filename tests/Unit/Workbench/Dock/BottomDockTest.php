@@ -197,11 +197,11 @@ final class BottomDockTest extends TestCase
 
         $tabs = $dock->aliveTabs();
         $this->assertTrue($dock->stripVisible());
-        $this->assertSame([DockTab::Terminal, DockTab::Results, DockTab::Results], array_column($tabs, 'tab'));
-        $this->assertSame(['sh 1', 'Problems', 'Notifications'], array_column($tabs, 'label'), 'sessions and tool instances each keep their own strip tab');
-        $this->assertSame([false, false, true], array_column($tabs, 'active'), 'the newest tool owns the slot');
-        $this->assertSame(['shell:1', '1', '2'], array_column($tabs, 'key'), 'session tabs carry their session id, tool tabs their instance key');
-        $this->assertSame(['', '', '1 result'], array_column($tabs, 'status'), 'only the displayed tool carries a status');
+        $this->assertSame([DockTab::Terminal, DockTab::Results, DockTab::Results], \array_column($tabs, 'tab'));
+        $this->assertSame(['sh 1', 'Problems', 'Notifications'], \array_column($tabs, 'label'), 'sessions and tool instances each keep their own strip tab');
+        $this->assertSame([false, false, true], \array_column($tabs, 'active'), 'the newest tool owns the slot');
+        $this->assertSame(['shell:1', '1', '2'], \array_column($tabs, 'key'), 'session tabs carry their session id, tool tabs their instance key');
+        $this->assertSame(['', '', '1 result'], \array_column($tabs, 'status'), 'only the displayed tool carries a status');
 
         $dock->hide();
         $this->assertSame([], $dock->aliveTabs(), 'hiding the dock hides the strip too');
@@ -216,14 +216,14 @@ final class BottomDockTest extends TestCase
         $dock->showList(ResultsPanelMode::Notifications, 'Notifications', []);
 
         $this->strip->moveTab(DockTab::Results, 0, 1); // the wired widget callback lands in DockToolTabs::move
-        $this->assertSame(['Notifications', 'Problems'], array_map(static fn ($tab) => $tab->title, $this->tools->all()));
+        $this->assertSame(['Notifications', 'Problems'], \array_map(static fn ($tab) => $tab->title, $this->tools->all()));
         $this->assertSame('Notifications', $this->tools->active()?->title, 'the active pointer follows its tab');
 
         $this->strip->moveTab(DockTab::Terminal, 0, 1); // and the Terminal family lands in TerminalSessions::move
-        $this->assertSame(['shell:2', 'shell:1'], array_map(static fn ($session) => $session->id, $this->sessions->all()));
+        $this->assertSame(['shell:2', 'shell:1'], \array_map(static fn ($session) => $session->id, $this->sessions->all()));
 
         $this->strip->moveTab(DockTab::Debug, 0, 1); // a single fixed tab: nothing to reorder
-        $this->assertSame(['Notifications', 'Problems'], array_map(static fn ($tab) => $tab->title, $this->tools->all()));
+        $this->assertSame(['Notifications', 'Problems'], \array_map(static fn ($tab) => $tab->title, $this->tools->all()));
     }
 
     public function testReinvokingAToolReusesItsTabAndRefreshes(): void
@@ -575,10 +575,10 @@ final class BottomDockTest extends TestCase
 
         $tabs = $dock->aliveTabs();
 
-        $this->assertSame([false, true], array_column($tabs, 'active'), 'only the truly-active session is flagged, not every session while the terminal is shown');
-        $this->assertSame(['sh 1', 'sh 2 ○'], array_column($tabs, 'label'), 'a stopped session (process attached, not running) gets the glyph with its leading space; a never-attached one does not');
+        $this->assertSame([false, true], \array_column($tabs, 'active'), 'only the truly-active session is flagged, not every session while the terminal is shown');
+        $this->assertSame(['sh 1', 'sh 2 ○'], \array_column($tabs, 'label'), 'a stopped session (process attached, not running) gets the glyph with its leading space; a never-attached one does not');
         $this->assertNotSame('', $this->terminal->statusText(), 'sanity: the status really is non-empty here');
-        $this->assertSame(['', $this->terminal->statusText()], array_column($tabs, 'status'), "only the active row carries the panel's status");
+        $this->assertSame(['', $this->terminal->statusText()], \array_column($tabs, 'status'), "only the active row carries the panel's status");
     }
 
     public function testMultipleContributedPanelsAllParticipateInScanningAndVisibility(): void
@@ -612,7 +612,7 @@ final class BottomDockTest extends TestCase
 
         // aliveTabs() must skip the closed FIRST entry without stopping the
         // scan, so the open SECOND one still reaches the strip.
-        $this->assertSame(['open-one'], array_column($dock->aliveTabs(), 'key'));
+        $this->assertSame(['open-one'], \array_column($dock->aliveTabs(), 'key'));
     }
 
     public function testRevealAndCloseTabOnTerminalToleratesNoEventDispatcher(): void

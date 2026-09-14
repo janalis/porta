@@ -51,10 +51,10 @@ final class TranslatorTest extends TestCase
 
         $first = new Translator('fr', $catalogs->dir, $cache->dir);
         $this->assertSame('Enregistrer le fichier', $first->trans('Save File'));
-        $this->assertNotSame([], glob($cache->dir.'/catalogue.fr.*.php'), 'the first trans() dumped the parsed catalog');
+        $this->assertNotSame([], \glob($cache->dir.'/catalogue.fr.*.php'), 'the first trans() dumped the parsed catalog');
 
         $catalogs->write('messages.fr.xlf', $this->xliff('fr', $this->unit('Save File', 'Sauvegarder')));
-        touch($catalogs->path('messages.fr.xlf'), time() + 2); // a same-second edit needs a distinct mtime
+        \touch($catalogs->path('messages.fr.xlf'), \time() + 2); // a same-second edit needs a distinct mtime
         $second = new Translator('fr', $catalogs->dir, $cache->dir);
         $this->assertSame('Sauvegarder', $second->trans('Save File'), 'the edited catalog is re-parsed, not served stale');
     }
@@ -86,7 +86,7 @@ final class TranslatorTest extends TestCase
         // (a SIBLING of InvalidResourceException) unless the loader covers it.
         $project = new TempProject(['messages.fr.xlf' => $this->xliff('fr', $this->unit('Save File', 'Enregistrer'))]);
         $translator = new Translator('fr', $project->dir);
-        unlink($project->path('messages.fr.xlf'));
+        \unlink($project->path('messages.fr.xlf'));
 
         $this->assertSame('Save File', $translator->trans('Save File'), 'the id (English) serves as the answer');
     }
@@ -99,7 +99,7 @@ final class TranslatorTest extends TestCase
         // the one scenario where LenientXliffLoader's own catch is load-bearing.
         $project = new TempProject(['messages.en.xlf' => $this->xliff('en', $this->unit('Save File', 'Save File'))]);
         $translator = new Translator('en', $project->dir);
-        unlink($project->path('messages.en.xlf'));
+        \unlink($project->path('messages.en.xlf'));
 
         $this->assertSame('Save File', $translator->trans('Save File'), 'the id serves as the answer, no throw');
     }

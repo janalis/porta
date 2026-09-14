@@ -30,7 +30,7 @@ final class IdeDocsTest extends TestCase
 
     protected function setUp(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
     }
 
     /** A docs fixture with a heading, emphasis, a table, and one link per kind. */
@@ -102,7 +102,7 @@ final class IdeDocsTest extends TestCase
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $rect->col + 1, $rect->row + 4));
                     $tui->handleInput("\r"); // the focused link is still [Editor] (restored by the earlier back)
                     $this->frame($tui);
-                    $paths = array_map(static fn ($b): string => $b->path, Services::resolve($ide, BufferManager::class)->all());
+                    $paths = \array_map(static fn ($b): string => $b->path, Services::resolve($ide, BufferManager::class)->all());
                     $this->assertCount(2, $paths, 'navigation reuses the single help tab (a.php + Documentation)');
                     $this->assertStringEndsWith('editor.md', (string) $tui->getById('help-viewer')->path(), 'the page swapped in place');
 
@@ -140,10 +140,10 @@ final class IdeDocsTest extends TestCase
         $project = new TempProject(['a.php' => "<?php\n"]);
         $captureFile = $project->path('opened-urls.txt');
         foreach (['open', 'xdg-open'] as $name) {
-            $shim = $project->write('shim-bin/'.$name, "#!/bin/sh\nprintf '%s\\n' \"\$@\" >> ".escapeshellarg($captureFile)."\n");
-            chmod($shim, permissions: 0o755);
+            $shim = $project->write('shim-bin/'.$name, "#!/bin/sh\nprintf '%s\\n' \"\$@\" >> ".\escapeshellarg($captureFile)."\n");
+            \chmod($shim, permissions: 0o755);
         }
-        putenv('PATH='.$project->path('shim-bin'));
+        \putenv('PATH='.$project->path('shim-bin'));
 
         $this->runIde(
             $project,
@@ -214,10 +214,10 @@ final class IdeDocsTest extends TestCase
                     // shim is SPAWNED, so everything after it is a subprocess
                     // waiting to be scheduled, and 3s was a race a loaded
                     // machine lost.
-                    $written = static fn (): string => is_file($captureFile) ? (string) file_get_contents($captureFile) : '';
-                    $deadline = microtime(true) + 10.0;
-                    while (!str_contains($written(), 'https://example.com/x') && microtime(true) < $deadline) {
-                        usleep(20_000);
+                    $written = static fn (): string => \is_file($captureFile) ? (string) \file_get_contents($captureFile) : '';
+                    $deadline = \microtime(true) + 10.0;
+                    while (!\str_contains($written(), 'https://example.com/x') && \microtime(true) < $deadline) {
+                        \usleep(20_000);
                     }
                     $this->assertStringContainsString('https://example.com/x', $written(), 'the opener shim wrote the URL it was handed');
 
@@ -229,10 +229,10 @@ final class IdeDocsTest extends TestCase
             docsDir: $docs->dir,
         );
 
-        $session = json_decode((string) file_get_contents($project->path('.porta/session.json')), associative: true);
-        $paths = array_column($session['buffers'] ?? [], 'path');
-        $this->assertNotContains(realpath($docs->path('README.md')), $paths, 'help tabs never restore (they would reopen as source)');
-        $this->assertNotEmpty(array_filter($paths, static fn (string $p): bool => str_ends_with($p, 'a.php')), 'the code tab persists');
+        $session = \json_decode((string) \file_get_contents($project->path('.porta/session.json')), associative: true);
+        $paths = \array_column($session['buffers'] ?? [], 'path');
+        $this->assertNotContains(\realpath($docs->path('README.md')), $paths, 'help tabs never restore (they would reopen as source)');
+        $this->assertNotEmpty(\array_filter($paths, static fn (string $p): bool => \str_ends_with($p, 'a.php')), 'the code tab persists');
 
         $this->addToAssertionCount(1);
     }
@@ -344,7 +344,7 @@ final class IdeDocsTest extends TestCase
                     $this->frame($tui);
                     $this->assertSame('find-bar', $tui->getFocus()?->getId(), 'Ctrl+F opens the find bar over the docs');
 
-                    foreach (str_split('manual') as $ch) {
+                    foreach (\str_split('manual') as $ch) {
                         $tui->handleInput($ch);
                     }
                     $this->frame($tui);

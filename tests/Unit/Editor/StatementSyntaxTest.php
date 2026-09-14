@@ -32,14 +32,14 @@ final class StatementSyntaxTest extends TestCase
             $undecided[] = $grammar;
         }
 
-        $this->assertSame([], $undecided, 'StatementSyntax has no entry for: '.implode(', ', $undecided));
+        $this->assertSame([], $undecided, 'StatementSyntax has no entry for: '.\implode(', ', $undecided));
     }
 
     public function testTheTableNamesNoGrammarThatCannotBeOpened(): void
     {
-        $unreachable = array_values(array_diff(array_keys(self::rawTable()), LanguageMap::grammars()));
+        $unreachable = \array_values(\array_diff(\array_keys(self::rawTable()), LanguageMap::grammars()));
 
-        $this->assertSame([], $unreachable, 'StatementSyntax names grammars LanguageMap cannot produce: '.implode(', ', $unreachable));
+        $this->assertSame([], $unreachable, 'StatementSyntax names grammars LanguageMap cannot produce: '.\implode(', ', $unreachable));
     }
 
     /**
@@ -59,7 +59,7 @@ final class StatementSyntaxTest extends TestCase
             $stranded[] = $grammar;
         }
 
-        $this->assertSame([], $stranded, 'block keywords with no block: '.implode(', ', $stranded));
+        $this->assertSame([], $stranded, 'block keywords with no block: '.\implode(', ', $stranded));
     }
 
     /**

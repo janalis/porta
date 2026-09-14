@@ -98,7 +98,7 @@ final class FlakeScanCommand extends Command
         // Leak reports accumulate in one file across every worker, and no
         // worker can know whether it is the first — so the delta over a run is
         // the only readable measure. See LeakLog.
-        $configuredLeakLog = getenv('PORTA_LEAK_LOG');
+        $configuredLeakLog = \getenv('PORTA_LEAK_LOG');
         $leakLog = \is_string($configuredLeakLog) && '' !== $configuredLeakLog
             ? $configuredLeakLog
             : \dirname(__DIR__, levels: 2).'/.phpunit.cache/leaks.log';
@@ -113,16 +113,16 @@ final class FlakeScanCommand extends Command
         $red = 0;
 
         for ($run = 1; $run <= $runs; ++$run) {
-            $log = (string) tempnam(sys_get_temp_dir(), prefix: 'porta-flake-').'.xml';
-            $leaksBefore = is_file($leakLog) ? (int) filesize($leakLog) : 0;
-            $started = hrtime(as_number: true);
+            $log = (string) \tempnam(\sys_get_temp_dir(), prefix: 'porta-flake-').'.xml';
+            $leaksBefore = \is_file($leakLog) ? (int) \filesize($leakLog) : 0;
+            $started = \hrtime(as_number: true);
             $exit = ($this->runner)($log, $processes, $testsuite, $timeout);
-            $durations[] = (hrtime(as_number: true) - $started) / 1_000_000_000;
+            $durations[] = (\hrtime(as_number: true) - $started) / 1_000_000_000;
 
             $failed = $this->failedTests($log);
             $leaks += $this->leaksSince($leakLog, $leaksBefore);
-            if (is_file($log)) {
-                unlink($log);
+            if (\is_file($log)) {
+                \unlink($log);
             }
             if ([] !== $failed || 0 !== $exit) {
                 ++$red;
@@ -144,7 +144,7 @@ final class FlakeScanCommand extends Command
                     [] === $failed && 0 === $exit => '<info>green</info>',
                     default => \sprintf('<comment>%d failed</comment>', \count($failed)),
                 },
-                end($durations),
+                \end($durations),
                 match (true) {
                     self::WEDGED === $exit => ' <comment>(killed at the budget — see the wedge section of testing.md)</comment>',
                     [] === $failed && 0 !== $exit => ' <comment>(non-zero exit with no failing test — a crash or wedge)</comment>',
@@ -183,10 +183,10 @@ final class FlakeScanCommand extends Command
 
         // Output is discarded: the JUnit log is the record, and a suite's worth
         // of progress dots per run would bury the summary this command is for.
-        $command = implode(' ', array_map(escapeshellarg(...), $argv)).' >/dev/null 2>&1';
+        $command = \implode(' ', \array_map(escapeshellarg(...), $argv)).' >/dev/null 2>&1';
         $descriptors = [['pipe', 'r'], ['pipe', 'w'], ['pipe', 'w']];
         $pipes = [];
-        $process = proc_open($command, $descriptors, $pipes);
+        $process = \proc_open($command, $descriptors, $pipes);
 
         // A failed proc_open and an overrun share the wedged exit below rather
         // than getting a return each: they mean the same thing to a scan (this
@@ -194,7 +194,7 @@ final class FlakeScanCommand extends Command
         // reach short of exhausting the process table.
         if (\is_resource($process)) {
             foreach ($pipes as $pipe) {
-                fclose($pipe);
+                \fclose($pipe);
             }
             $exit = $this->awaitExit($process, $timeout);
             if (null !== $exit) {
@@ -202,8 +202,8 @@ final class FlakeScanCommand extends Command
             }
             // Kill the tree: paratest's workers do not die with it, and orphans
             // would poison every later run in the scan.
-            proc_terminate($process, signal: 9);
-            proc_close($process);
+            \proc_terminate($process, signal: 9);
+            \proc_close($process);
         }
 
         return self::WEDGED;
@@ -219,15 +219,15 @@ final class FlakeScanCommand extends Command
         // Monotonic, like every other budget in this tree: a suspended laptop
         // advances the wall clock while the child was not running at all, and
         // the run would come back "wedged" for having been asleep.
-        $deadline = hrtime(as_number: true) + ($timeout * 1_000_000_000);
-        while (hrtime(as_number: true) < $deadline) {
-            $status = proc_get_status($process);
+        $deadline = \hrtime(as_number: true) + ($timeout * 1_000_000_000);
+        while (\hrtime(as_number: true) < $deadline) {
+            $status = \proc_get_status($process);
             if (!$status['running']) {
-                proc_close($process);
+                \proc_close($process);
 
                 return (int) $status['exitcode'];
             }
-            usleep(microseconds: 200_000);
+            \usleep(microseconds: 200_000);
         }
 
         return null;
@@ -243,15 +243,15 @@ final class FlakeScanCommand extends Command
      */
     private function leaksSince(string $path, int $offset): int
     {
-        if (!is_file($path)) {
+        if (!\is_file($path)) {
             return 0;
         }
         // Read from the offset in one call rather than fopen/fseek: the same
         // read without a failure branch no test can reach, since the file's
         // existence is already established above.
-        $added = (string) file_get_contents($path, offset: $offset);
+        $added = (string) \file_get_contents($path, offset: $offset);
 
-        return substr_count($added, needle: "\n");
+        return \substr_count($added, needle: "\n");
     }
 
     /**
@@ -269,17 +269,17 @@ final class FlakeScanCommand extends Command
      */
     private function failedTests(string $log): array
     {
-        if (!is_file($log)) {
+        if (!\is_file($log)) {
             return [];
         }
         // Internal errors, not `@`: a malformed log is an expected input here
         // (a crashed run writes a truncated one), and it must degrade to
         // "named nobody" rather than emit a warning that PHPUnit turns into a
         // risky-test failure.
-        $previous = libxml_use_internal_errors(use_errors: true);
-        $xml = simplexml_load_file($log);
-        libxml_clear_errors();
-        libxml_use_internal_errors($previous);
+        $previous = \libxml_use_internal_errors(use_errors: true);
+        $xml = \simplexml_load_file($log);
+        \libxml_clear_errors();
+        \libxml_use_internal_errors($previous);
         if (false === $xml) {
             return [];
         }
@@ -352,10 +352,10 @@ final class FlakeScanCommand extends Command
         // dynamic properties, which the analyzer can only call ambiguous, and
         // one expression reads both element names PHPUnit uses anyway.
         $nodes = $case->xpath('failure|error');
-        $body = trim((string) (\is_array($nodes) ? $nodes[0] ?? '' : ''));
-        foreach (explode("\n", $body) as $line) {
-            $line = trim($line);
-            if ('' !== $line && 1 !== preg_match(self::TEST_ID_LINE, $line)) {
+        $body = \trim((string) (\is_array($nodes) ? $nodes[0] ?? '' : ''));
+        foreach (\explode("\n", $body) as $line) {
+            $line = \trim($line);
+            if ('' !== $line && 1 !== \preg_match(self::TEST_ID_LINE, $line)) {
                 return $line;
             }
         }
@@ -378,7 +378,7 @@ final class FlakeScanCommand extends Command
             $io->success(\sprintf('%d/%d runs green.', $runs, $runs));
         }
         if ([] !== $failures) {
-            arsort($failures);
+            \arsort($failures);
             $rows = [];
             foreach ($failures as $test => $count) {
                 $rows[] = [
@@ -392,13 +392,13 @@ final class FlakeScanCommand extends Command
             $io->table(['failed', 'shape', 'test and the first reason it gave'], $rows);
         }
 
-        sort($durations);
+        \sort($durations);
         $io->writeln(\sprintf(
             '  <info>%d/%d</info> runs green   wall time min <info>%.0fs</info> / median <info>%.0fs</info> / max <info>%.0fs</info>',
             $runs - $red,
             $runs,
             $durations[0],
-            $durations[intdiv(\count($durations), num2: 2)],
+            $durations[\intdiv(\count($durations), num2: 2)],
             $durations[\count($durations) - 1],
         ));
         $io->writeln(\sprintf(

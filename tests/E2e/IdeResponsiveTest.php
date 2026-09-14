@@ -24,7 +24,7 @@ final class IdeResponsiveTest extends TestCase
     /** @return list<string> */
     private function mainIds(Tui $tui): array
     {
-        return array_map(static fn (AbstractWidget $w): string => $w->getId(), $tui->getById('main')->all());
+        return \array_map(static fn (AbstractWidget $w): string => $w->getId(), $tui->getById('main')->all());
     }
 
     public function testSidebarAutoCollapsesInNarrowTerminalsAndRestores(): void

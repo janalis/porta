@@ -42,13 +42,13 @@ final class FileTreeMultiSelectTest extends TestCase
         $opened = [];
         $events = new EventDispatcher();
         $events->addListener(TreeFileActivated::class, static function (TreeFileActivated $event) use (&$opened): void {
-            $opened[] = basename($event->path);
+            $opened[] = \basename($event->path);
         });
         $tree = $this->tree($events);
 
         $tree->clickRow(1);
 
-        $this->assertSame(['a.php'], array_map(basename(...), $tree->selectedPaths()));
+        $this->assertSame(['a.php'], \array_map(basename(...), $tree->selectedPaths()));
         $this->assertSame(['a.php'], $opened, 'a plain click still opens the file');
     }
 
@@ -57,14 +57,14 @@ final class FileTreeMultiSelectTest extends TestCase
         $opened = [];
         $events = new EventDispatcher();
         $events->addListener(TreeFileActivated::class, static function (TreeFileActivated $event) use (&$opened): void {
-            $opened[] = basename($event->path);
+            $opened[] = \basename($event->path);
         });
         $tree = $this->tree($events);
 
         $tree->clickRow(1);
         $tree->clickRow(3, ClickIntent::Add);
 
-        $this->assertSame(['a.php', 'c.php'], array_map(basename(...), $tree->selectedPaths()));
+        $this->assertSame(['a.php', 'c.php'], \array_map(basename(...), $tree->selectedPaths()));
         $this->assertSame(['a.php'], $opened, 'the modified click selects, it does not open — the editor is what you compare against');
     }
 
@@ -76,7 +76,7 @@ final class FileTreeMultiSelectTest extends TestCase
         $tree->clickRow(2, ClickIntent::Add);
         $tree->clickRow(2, ClickIntent::Add);
 
-        $this->assertSame(['a.php'], array_map(basename(...), $tree->selectedPaths()));
+        $this->assertSame(['a.php'], \array_map(basename(...), $tree->selectedPaths()));
     }
 
     public function testShiftClickTakesTheWholeRangeFromTheLastOne(): void
@@ -86,7 +86,7 @@ final class FileTreeMultiSelectTest extends TestCase
         $tree->clickRow(1);
         $tree->clickRow(3, ClickIntent::Range);
 
-        $this->assertSame(['a.php', 'b.php', 'c.php'], array_map(basename(...), $tree->selectedPaths()));
+        $this->assertSame(['a.php', 'b.php', 'c.php'], \array_map(basename(...), $tree->selectedPaths()));
     }
 
     public function testAShiftClickBackUpShrinksTheRangeRatherThanGrowingIt(): void
@@ -97,7 +97,7 @@ final class FileTreeMultiSelectTest extends TestCase
         $tree->clickRow(3, ClickIntent::Range);
         $tree->clickRow(2, ClickIntent::Range);
 
-        $this->assertSame(['a.php', 'b.php'], array_map(basename(...), $tree->selectedPaths()), 'the range is replaced, not accumulated');
+        $this->assertSame(['a.php', 'b.php'], \array_map(basename(...), $tree->selectedPaths()), 'the range is replaced, not accumulated');
     }
 
     public function testSelectedPathsComeBackInTreeOrderHoweverTheyWerePicked(): void
@@ -109,7 +109,7 @@ final class FileTreeMultiSelectTest extends TestCase
         $tree->clickRow(3);
         $tree->clickRow(1, ClickIntent::Add);
 
-        $this->assertSame(['a.php', 'c.php'], array_map(basename(...), $tree->selectedPaths()));
+        $this->assertSame(['a.php', 'c.php'], \array_map(basename(...), $tree->selectedPaths()));
     }
 
     public function testShiftArrowsExtendTheSelectionAndAPlainArrowDropsBackToOne(): void
@@ -118,13 +118,13 @@ final class FileTreeMultiSelectTest extends TestCase
         $tree->setFocused(true);
 
         $tree->handleInput("\x1b[1;2B"); // shift+down
-        $this->assertSame(['a.php', 'b.php'], array_map(basename(...), $tree->selectedPaths()), 'the cursor started on a.php');
+        $this->assertSame(['a.php', 'b.php'], \array_map(basename(...), $tree->selectedPaths()), 'the cursor started on a.php');
 
         $tree->handleInput("\x1b[1;2B");
-        $this->assertSame(['a.php', 'b.php', 'c.php'], array_map(basename(...), $tree->selectedPaths()));
+        $this->assertSame(['a.php', 'b.php', 'c.php'], \array_map(basename(...), $tree->selectedPaths()));
 
         $tree->handleInput("\x1b[A"); // a plain up-arrow
-        $this->assertSame(['b.php'], array_map(basename(...), $tree->selectedPaths()), 'walking the tree with no modifier is not a way to build a pair by accident');
+        $this->assertSame(['b.php'], \array_map(basename(...), $tree->selectedPaths()), 'walking the tree with no modifier is not a way to build a pair by accident');
     }
 
     public function testAFileThatLeavesTheTreeLeavesTheSelection(): void
@@ -133,10 +133,10 @@ final class FileTreeMultiSelectTest extends TestCase
         $tree->clickRow(1);
         $tree->clickRow(2, ClickIntent::Add);
 
-        unlink($this->project->path('b.php'));
+        \unlink($this->project->path('b.php'));
         $tree->refresh();
 
-        $this->assertSame(['a.php'], array_map(basename(...), $tree->selectedPaths()), 'a deleted file cannot stay half of a pair');
+        $this->assertSame(['a.php'], \array_map(basename(...), $tree->selectedPaths()), 'a deleted file cannot stay half of a pair');
     }
 
     public function testASelectedRowThatIsNotTheCursorIsVisiblyMarked(): void
@@ -168,16 +168,16 @@ final class FileTreeMultiSelectTest extends TestCase
         $tree->clickRow(2, ClickIntent::Add);
 
         $tree->nodeAt(2); // inside
-        $this->assertSame(['a.php', 'b.php'], array_map(basename(...), $tree->selectedPaths()));
+        $this->assertSame(['a.php', 'b.php'], \array_map(basename(...), $tree->selectedPaths()));
 
         $tree->nodeAt(3); // outside
-        $this->assertSame(['c.php'], array_map(basename(...), $tree->selectedPaths()));
+        $this->assertSame(['c.php'], \array_map(basename(...), $tree->selectedPaths()));
     }
 
     /** The leading escape sequence of a rendered row, which is its style. */
     private static function style(string $line): string
     {
-        preg_match('/^(?:\x1b\[[0-9;]*m)*/', $line, $matches);
+        \preg_match('/^(?:\x1b\[[0-9;]*m)*/', $line, $matches);
 
         return $matches[0] ?? '';
     }

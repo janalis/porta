@@ -84,9 +84,9 @@ final class FilesystemReconciler
             return;
         }
         if ([] === $this->pendingPaths) {
-            $this->pendingPaths = array_map(static fn (Buffer $buffer): string => $buffer->path, $this->buffers->all());
+            $this->pendingPaths = \array_map(static fn (Buffer $buffer): string => $buffer->path, $this->buffers->all());
         }
-        foreach (array_splice($this->pendingPaths, offset: 0, length: self::BUFFER_SLICE) as $path) {
+        foreach (\array_splice($this->pendingPaths, offset: 0, length: self::BUFFER_SLICE) as $path) {
             $buffer = $this->buffers->get($path);
             if (null !== $buffer) {
                 $this->pollBuffer($buffer);
@@ -178,11 +178,11 @@ final class FilesystemReconciler
     /** Read a small UTF-8 text file, or null if missing, unreadable, too large or binary. */
     private function readTextFile(string $path): ?string
     {
-        if (!is_file($path) || !is_readable($path) || (int) filesize($path) > Files::MAX_TEXT_BYTES) {
+        if (!\is_file($path) || !\is_readable($path) || (int) \filesize($path) > Files::MAX_TEXT_BYTES) {
             return null;
         }
-        $content = (string) file_get_contents($path);
+        $content = (string) \file_get_contents($path);
 
-        return '' === $content || mb_check_encoding($content, encoding: 'UTF-8') ? $content : null;
+        return '' === $content || \mb_check_encoding($content, encoding: 'UTF-8') ? $content : null;
     }
 }

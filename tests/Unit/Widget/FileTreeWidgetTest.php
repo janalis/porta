@@ -59,8 +59,8 @@ final class FileTreeWidgetTest extends TestCase
     {
         $project = new TempProject(['clean.php' => "<?php\n", 'broken.php' => "<?php\n", 'edited.php' => "<?php\n"]);
         $buffers = new BufferManager();
-        $buffers->open((string) realpath($project->dir.'/broken.php'), "<?php\n")->diagnostics = [0 => [['severity' => 1, 'message' => 'boom', 'col' => 0]]];
-        $buffers->open((string) realpath($project->dir.'/edited.php'), "<?php\n")->document->insert('x');
+        $buffers->open((string) \realpath($project->dir.'/broken.php'), "<?php\n")->diagnostics = [0 => [['severity' => 1, 'message' => 'boom', 'col' => 0]]];
+        $buffers->open((string) \realpath($project->dir.'/edited.php'), "<?php\n")->document->insert('x');
         $tree = new FileTreeWidget($project->dir, fileDecorations: new FileDecorations($buffers, new FileStatuses()));
 
         $tree->beforeRender();
@@ -76,7 +76,7 @@ final class FileTreeWidgetTest extends TestCase
     {
         $project = new TempProject(['a.php' => "<?php\n"]);
         $buffers = new BufferManager();
-        $buffer = $buffers->open((string) realpath($project->dir.'/a.php'), "<?php\n");
+        $buffer = $buffers->open((string) \realpath($project->dir.'/a.php'), "<?php\n");
         $buffer->diagnostics = [0 => [['severity' => 2, 'message' => 'hmm', 'col' => 0]]];
         $buffer->document->insert('x');
         $tree = new FileTreeWidget($project->dir, fileDecorations: new FileDecorations($buffers, new FileStatuses()));
@@ -92,7 +92,7 @@ final class FileTreeWidgetTest extends TestCase
     {
         $project = new TempProject(['a-really-quite-long-file-name.php' => "<?php\n"]);
         $buffers = new BufferManager();
-        $buffers->open((string) realpath($project->dir.'/a-really-quite-long-file-name.php'), "<?php\n")->document->insert('x');
+        $buffers->open((string) \realpath($project->dir.'/a-really-quite-long-file-name.php'), "<?php\n")->document->insert('x');
         $tree = new FileTreeWidget($project->dir, fileDecorations: new FileDecorations($buffers, new FileStatuses()));
 
         $tree->beforeRender();
@@ -113,7 +113,7 @@ final class FileTreeWidgetTest extends TestCase
     {
         $project = new TempProject(['a.php' => "<?php\n"]);
         $buffers = new BufferManager();
-        $buffer = $buffers->open((string) realpath($project->dir.'/a.php'), "<?php\n");
+        $buffer = $buffers->open((string) \realpath($project->dir.'/a.php'), "<?php\n");
         $tree = new FileTreeWidget($project->dir, fileDecorations: new FileDecorations($buffers, new FileStatuses()));
 
         $tree->beforeRender();
@@ -142,12 +142,12 @@ final class FileTreeWidgetTest extends TestCase
     {
         $project = new TempProject(['a.php' => "<?php\n"]);
         $link = $project->dir.'-link';
-        symlink($project->dir, $link);
+        \symlink($project->dir, $link);
 
         try {
             $buffers = new BufferManager();
             // What BufferService does: realpath() before keying.
-            $buffers->open((string) realpath($link.'/a.php'), "<?php\n")->document->insert('x');
+            $buffers->open((string) \realpath($link.'/a.php'), "<?php\n")->document->insert('x');
             $tree = new FileTreeWidget($link, fileDecorations: new FileDecorations($buffers, new FileStatuses()));
 
             $tree->beforeRender();
@@ -155,7 +155,7 @@ final class FileTreeWidgetTest extends TestCase
 
             $this->assertMatchesRegularExpression('/a\.php\s+'.Glyphs::DIRTY.'$/m', $rows);
         } finally {
-            unlink($link);
+            \unlink($link);
         }
     }
 
@@ -168,8 +168,8 @@ final class FileTreeWidgetTest extends TestCase
         $project = new TempProject(['added.php' => "<?php\n", 'edited.php' => "<?php\n", 'clean.php' => "<?php\n"]);
         $statuses = new FileStatuses();
         $statuses->applyFileStatuses([
-            (string) realpath($project->dir.'/added.php') => ChangeMarkKind::Added,
-            (string) realpath($project->dir.'/edited.php') => ChangeMarkKind::Modified,
+            (string) \realpath($project->dir.'/added.php') => ChangeMarkKind::Added,
+            (string) \realpath($project->dir.'/edited.php') => ChangeMarkKind::Modified,
         ]);
         $tree = new FileTreeWidget($project->dir, fileDecorations: new FileDecorations(new BufferManager(), $statuses));
 
@@ -191,7 +191,7 @@ final class FileTreeWidgetTest extends TestCase
     {
         $project = new TempProject(['a.php' => "<?php\n"]);
         $link = $project->dir.'-link';
-        symlink($project->dir, $link);
+        \symlink($project->dir, $link);
 
         try {
             $statuses = new FileStatuses();
@@ -204,7 +204,7 @@ final class FileTreeWidgetTest extends TestCase
 
             $this->assertMatchesRegularExpression('/a\.php\s+'.Glyphs::VCS_MODIFIED.'$/m', $rows);
         } finally {
-            unlink($link);
+            \unlink($link);
         }
     }
 
@@ -212,7 +212,7 @@ final class FileTreeWidgetTest extends TestCase
     public function testTheThreeMarksShareARowInAFixedOrder(): void
     {
         $project = new TempProject(['a.php' => "<?php\n"]);
-        $path = (string) realpath($project->dir.'/a.php');
+        $path = (string) \realpath($project->dir.'/a.php');
         $statuses = new FileStatuses();
         $statuses->applyFileStatuses([$path => ChangeMarkKind::Modified]);
         $buffers = new BufferManager();
@@ -237,7 +237,7 @@ final class FileTreeWidgetTest extends TestCase
         // A buffer keyed on the directory's own path: the widget must reject it
         // by asking whether the NODE is a directory, not by trusting the lookup
         // to miss.
-        $buffers->open((string) realpath($project->dir.'/sub'), "<?php\n")->document->insert('x');
+        $buffers->open((string) \realpath($project->dir.'/sub'), "<?php\n")->document->insert('x');
         $tree = new FileTreeWidget($project->dir, fileDecorations: new FileDecorations($buffers, new FileStatuses()));
 
         $tree->beforeRender();
@@ -259,7 +259,7 @@ final class FileTreeWidgetTest extends TestCase
 
         $this->assertStringContainsString('sub/', $plain);
         $this->assertStringContainsString('a.php', $plain);
-        $this->assertLessThan(strpos($plain, needle: 'a.php'), strpos($plain, needle: 'sub/'), 'directories sort first');
+        $this->assertLessThan(\strpos($plain, needle: 'a.php'), \strpos($plain, needle: 'sub/'), 'directories sort first');
     }
 
     public function testSelectedNodeAndRowMirrorTheListSelection(): void
@@ -440,10 +440,10 @@ final class FileTreeWidgetTest extends TestCase
         $this->assertFalse($tree->refreshIfChanged(), 'nothing changed yet');
 
         // Past the grace window, so the mtime shortcut is the path under test.
-        sleep(3);
-        $proc = proc_open(['/bin/sh', '-c', 'printf "" > '.escapeshellarg($project->dir.'/c.php')], [], $pipes);
+        \sleep(3);
+        $proc = \proc_open(['/bin/sh', '-c', 'printf "" > '.\escapeshellarg($project->dir.'/c.php')], [], $pipes);
         \assert(\is_resource($proc), description: 'the external writer started');
-        proc_close($proc);
+        \proc_close($proc);
 
         $this->assertTrue($tree->refreshIfChanged(), 'an entry added by another process is never seen');
     }
@@ -563,8 +563,8 @@ final class FileTreeWidgetTest extends TestCase
         // its entry list) would be the one detected and the gone-dir
         // signature path would never run.
         $this->assertFalse($tree->refreshDirsSlice(1), 'the root is unchanged; the cursor advances to sub/');
-        unlink($project->path('sub/b.php'));
-        rmdir($project->path('sub'));
+        \unlink($project->path('sub/b.php'));
+        \rmdir($project->path('sub'));
         $this->assertTrue($tree->refreshDirsSlice(1), 'the vanished directory reads as changed');
         $this->assertStringNotContainsString('sub', $this->plain($tree->render($context)));
     }
@@ -616,19 +616,19 @@ final class FileTreeWidgetTest extends TestCase
     public function testPollSkipsTheScandirWhenTheDirMtimeIsOldAndUnchanged(): void
     {
         $project = new TempProject(['a.php' => '']);
-        $past = time() - 60;
-        touch($project->dir, $past);
+        $past = \time() - 60;
+        \touch($project->dir, $past);
         $tree = new FileTreeWidget($project->dir); // rebuild records sig + the old mtime
 
         // A change the mtime does not betray: add an entry, then restore the
         // old dir mtime. Outside the grace window the poll trusts the mtime
         // and skips the scandir, so the change goes (deliberately) unseen.
         $project->write('b.php', '');
-        touch($project->dir, $past);
+        \touch($project->dir, $past);
         $this->assertFalse($tree->refreshIfChanged(), 'unchanged old mtime short-circuits the scandir');
 
         // As soon as the mtime moves, the signature is compared again.
-        touch($project->dir);
+        \touch($project->dir);
         $this->assertTrue($tree->refreshIfChanged(), 'a moved mtime re-verifies the entry list');
     }
 
@@ -637,9 +637,9 @@ final class FileTreeWidgetTest extends TestCase
         $project = new TempProject(['a.php' => '']);
         $tree = new FileTreeWidget($project->dir); // dir mtime is "now": inside the grace window
 
-        $mtime = (int) filemtime($project->dir);
+        $mtime = (int) \filemtime($project->dir);
         $project->write('b.php', '');
-        touch($project->dir, $mtime); // same-second change: mtime identical
+        \touch($project->dir, $mtime); // same-second change: mtime identical
         $this->assertTrue($tree->refreshIfChanged(), 'fresh dirs are scandir-compared even with an identical mtime');
     }
 
@@ -648,13 +648,13 @@ final class FileTreeWidgetTest extends TestCase
         $project = new TempProject(['a.php' => '']);
         $clock = new MockClock();
         $boundary = $clock->now()->getTimestamp() - 2; // exactly POLL_GRACE_SECONDS old
-        touch($project->dir, $boundary);
+        \touch($project->dir, $boundary);
         $tree = new FileTreeWidget($project->dir, $clock);
 
         // A same-mtime change AT the boundary: strictly-older-than is what
         // trusts an mtime, so the boundary itself still gets the scandir.
         $project->write('b.php', '');
-        touch($project->dir, $boundary);
+        \touch($project->dir, $boundary);
         $this->assertTrue($tree->refreshIfChanged(), 'the boundary mtime is not yet trusted');
     }
 
@@ -755,8 +755,8 @@ final class FileTreeWidgetTest extends TestCase
         $tree->setFocused(true);
 
         $tree->handleInput("\x1b[B"); // no entries: early return, no crash
-        $this->assertSame([], array_filter(
-            array_map(static fn ($l) => trim(\Symfony\Component\Tui\Ansi\AnsiUtils::stripAnsiCodes($l)), array_slice($tree->render(new RenderContext(20, 4)), offset: 1)),
+        $this->assertSame([], \array_filter(
+            \array_map(static fn ($l) => \trim(\Symfony\Component\Tui\Ansi\AnsiUtils::stripAnsiCodes($l)), \array_slice($tree->render(new RenderContext(20, 4)), offset: 1)),
         ));
     }
 
@@ -811,7 +811,7 @@ final class FileTreeWidgetTest extends TestCase
         $tree->setFocused(true);
         $context = new RenderContext(30, 8);
 
-        foreach (range(1, end: 20) as $_) {
+        foreach (\range(1, end: 20) as $_) {
             $tree->handleInput("\x1b[B");
         }
         $lines = $tree->render($context);

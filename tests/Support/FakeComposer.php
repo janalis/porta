@@ -43,12 +43,12 @@ final class FakeComposer
      */
     public static function write(string $binDir, int $exitCode = 0, array $packages = []): string
     {
-        if (!is_dir($binDir)) {
-            mkdir($binDir, permissions: 0o777, recursive: true);
+        if (!\is_dir($binDir)) {
+            \mkdir($binDir, permissions: 0o777, recursive: true);
         }
         $path = $binDir.'/composer';
-        file_put_contents($binDir.'/composer-recipe.json', json_encode($packages, \JSON_THROW_ON_ERROR));
-        file_put_contents($path, '#!'.\PHP_BINARY.' -n'."\n<?php\n".<<<'PHP'
+        \file_put_contents($binDir.'/composer-recipe.json', \json_encode($packages, \JSON_THROW_ON_ERROR));
+        \file_put_contents($path, '#!'.\PHP_BINARY.' -n'."\n<?php\n".<<<'PHP'
             $cmd = $argv[1] ?? '';
             $recipe = json_decode((string) file_get_contents(__DIR__.'/composer-recipe.json'), associative: true) ?: [];
 
@@ -116,7 +116,7 @@ final class FakeComposer
 
             exit(1);
             PHP."\n");
-        chmod($path, permissions: 0o755);
+        \chmod($path, permissions: 0o755);
 
         return $path;
     }

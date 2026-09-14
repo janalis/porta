@@ -98,7 +98,7 @@ final class PerfCollector
         // is `mixed`. Narrowed rather than cast: is_numeric() is a branch the
         // analyzer can follow, where `(float) $mixed` is not.
         $this->loadAvg = $loadAvg ?? static function (): float {
-            $load = sys_getloadavg();
+            $load = \sys_getloadavg();
 
             return \is_array($load) && \is_numeric($load[0] ?? null) ? (float) $load[0] : 0.0;
         };
@@ -146,7 +146,7 @@ final class PerfCollector
     {
         ++$this->inputs;
         $data = $event->getData();
-        if (str_starts_with($data, "\x1b[<64;") || str_starts_with($data, "\x1b[<65;")) {
+        if (\str_starts_with($data, "\x1b[<64;") || \str_starts_with($data, "\x1b[<65;")) {
             ++$this->wheels;
         }
     }
@@ -257,10 +257,10 @@ final class PerfCollector
             $this->coalesced,
             self::ms($this->passGaps, 0.50),
             self::ms($this->passGaps, 0.95),
-            [] === $this->passGaps ? self::NO_SAMPLES : \sprintf('%.1f', 1000 * max($this->passGaps)),
+            [] === $this->passGaps ? self::NO_SAMPLES : \sprintf('%.1f', 1000 * \max($this->passGaps)),
             self::ms($this->paintDurations, 0.50),
             self::ms($this->paintDurations, 0.95),
-            (int) (1000 * array_sum($this->paintDurations)),
+            (int) (1000 * \array_sum($this->paintDurations)),
             self::ms($this->renderDurations, 0.50),
             self::ms($this->renderDurations, 0.95),
             self::ms($this->bidiDurations, 0.50),
@@ -320,11 +320,11 @@ final class PerfCollector
      */
     private static function percentile(array $samples, float $q): float
     {
-        sort($samples);
+        \sort($samples);
 
         // Nearest-rank: the smallest sample with at least q of the set at or
         // below it (1-based rank ceil(q*N), as a 0-based index).
-        return $samples[max(0, (int) ceil($q * \count($samples)) - 1)];
+        return $samples[\max(0, (int) \ceil($q * \count($samples)) - 1)];
     }
 
     private function reset(): void

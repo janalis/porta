@@ -49,7 +49,7 @@ final class SettingsFormBehaviourTest extends TestCase
         // 187 actions, and finding one used to mean scrolling past every caret
         // movement in the editor — the E2e that rebinds `save_all` walks up to
         // 200 rows to reach it.
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "<?php\n"]);
 
         $this->runIde(
@@ -65,12 +65,12 @@ final class SettingsFormBehaviourTest extends TestCase
                     $list = $tui->getById('settings-keys');
                     $tui->setFocus($list);
                     $list->handleInput('/');
-                    foreach (str_split('duplicate') as $character) {
+                    foreach (\str_split('duplicate') as $character) {
                         $list->handleInput($character);
                     }
                     $this->frame($tui);
 
-                    $screen = implode("\n", $this->screenGrid($tui, $terminal));
+                    $screen = \implode("\n", $this->screenGrid($tui, $terminal));
                     $this->assertStringContainsString('Filter: duplicate', $screen);
                     $this->assertStringContainsString('Duplicate Line', $screen, 'the action it was typed for');
                     $this->assertStringNotContainsString('Move Caret Up', $screen, 'and not the 186 it was not');
@@ -84,7 +84,7 @@ final class SettingsFormBehaviourTest extends TestCase
 
     public function testAPageTallerThanThePaneScrollsToItsLastRow(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "<?php\n\$x = 1;\n"]);
 
         $this->runIde(
@@ -132,7 +132,7 @@ final class SettingsFormBehaviourTest extends TestCase
      */
     public function testAStrayClickSelectsWithoutChangingAnything(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "<?php\n\$x = 1;\n"]);
 
         $this->runIde(
@@ -181,7 +181,7 @@ final class SettingsFormBehaviourTest extends TestCase
      */
     public function testARefusedLaunchConfigKeepsWhatYouTyped(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "<?php\n\$x = 1;\n"]);
 
         $this->runIde(
@@ -200,7 +200,7 @@ final class SettingsFormBehaviourTest extends TestCase
                     $this->selectSettingRow($form, 'Launch config');
 
                     $tui->handleInput("\r"); // open the inline editor
-                    foreach (str_split('{not json') as $char) {
+                    foreach (\str_split('{not json') as $char) {
                         $tui->handleInput($char);
                     }
                     $tui->handleInput("\r"); // commit → the section refuses
@@ -223,7 +223,7 @@ final class SettingsFormBehaviourTest extends TestCase
      */
     public function testTheModifiedMarkerAppearsOnlyOnWhatYouChanged(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "<?php\n\$x = 1;\n"]);
 
         $this->runIde(

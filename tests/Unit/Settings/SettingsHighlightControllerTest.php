@@ -126,7 +126,7 @@ final class SettingsHighlightControllerTest extends TestCase
         $controller->change(SettingsHighlightController::ENABLE_KEY, '');
 
         $this->assertSame([[RecommendedPlugins::HIGHLIGHTER, true]], $this->lifecycle->toggled);
-        $this->assertFalse(is_file($this->project->path('.porta.json')), 'enabling the engine must not also persist a bogus highlighter entry');
+        $this->assertFalse(\is_file($this->project->path('.porta.json')), 'enabling the engine must not also persist a bogus highlighter entry');
     }
 
     /** No lifecycle wired (a settings page built before the plugin system boots) must not crash on the offer. */
@@ -184,7 +184,7 @@ final class SettingsHighlightControllerTest extends TestCase
             $this->provider('chroma', ['rust', 'go']),
         ])->rows();
 
-        $keys = array_column($rows, 'key');
+        $keys = \array_column($rows, 'key');
 
         $this->assertSame([SettingsHighlightController::DEFAULT_KEY, 'lang:go', 'lang:rust'], $keys);
         $this->assertSame(['', 'tempest', 'chroma', 'plain'], $rows[1]->options, 'plugin load order, then the fallback');
@@ -249,7 +249,7 @@ final class SettingsHighlightControllerTest extends TestCase
     {
         $rows = $this->controller([], '{"highlight":{"languages":{"rust":"chroma"}}}')->rows();
 
-        $keys = array_column($rows, 'key');
+        $keys = \array_column($rows, 'key');
         $this->assertContains('lang:rust', $keys);
         $this->assertSame('chroma', $rows[1]->value);
     }
@@ -330,13 +330,13 @@ final class SettingsHighlightControllerTest extends TestCase
 
         $controller->change('lang:rust', '');
 
-        $this->assertNotContains('lang:rust', array_column($controller->rows(), 'key'));
+        $this->assertNotContains('lang:rust', \array_column($controller->rows(), 'key'));
     }
 
     /** @return array<string, mixed> */
     private function written(): array
     {
         /** @var array<string, mixed> */
-        return json_decode((string) file_get_contents($this->project->path('.porta.json')), associative: true);
+        return \json_decode((string) \file_get_contents($this->project->path('.porta.json')), associative: true);
     }
 }

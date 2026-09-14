@@ -18,7 +18,7 @@ final class LegacyCoreSettingsTest extends TestCase
     /** @param array<string, mixed> $porta */
     private function legacy(array $porta): LegacyCoreSettings
     {
-        $project = new TempProject(['.porta.json' => json_encode($porta, JSON_THROW_ON_ERROR)]);
+        $project = new TempProject(['.porta.json' => \json_encode($porta, \JSON_THROW_ON_ERROR)]);
         $legacy = new LegacyCoreSettings($project->dir, 'demo', ['toggle' => 'coreToggle', 'path' => 'corePath']);
         // The decode happens in the constructor, so the TempProject may go.
         unset($project);
@@ -46,7 +46,7 @@ final class LegacyCoreSettingsTest extends TestCase
         // bool, int and string are each a legitimate pre-move value (git's map
         // carries all three), and adoption walks the WHOLE map — dropping to
         // the first entry would strand every later key silently.
-        $project = new TempProject(['.porta.json' => (string) json_encode(['settings' => ['coreToggle' => true, 'corePath' => '/opt/tool', 'coreSize' => 9]])]);
+        $project = new TempProject(['.porta.json' => (string) \json_encode(['settings' => ['coreToggle' => true, 'corePath' => '/opt/tool', 'coreSize' => 9]])]);
         $legacy = new LegacyCoreSettings($project->dir, 'demo', ['toggle' => 'coreToggle', 'path' => 'corePath', 'size' => 'coreSize']);
 
         $this->assertSame(['toggle' => true, 'path' => '/opt/tool', 'size' => 9], $legacy->adoptions());

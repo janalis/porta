@@ -20,7 +20,7 @@ final class DocumentWriter
     {
         $lines = $document->getLines();
         if (true === $config->trimTrailingWhitespace) {
-            $lines = array_map(static fn (string $line): string => rtrim($line, characters: " \t"), $lines);
+            $lines = \array_map(static fn (string $line): string => \rtrim($line, characters: " \t"), $lines);
         }
 
         // An .editorconfig that names an ending wins; without one the FILE's own
@@ -33,14 +33,14 @@ final class DocumentWriter
             'lf' => "\n",
             default => $document->eol(),
         };
-        $text = implode($eol, $lines);
+        $text = \implode($eol, $lines);
 
-        if (true === $config->insertFinalNewline && !str_ends_with($text, $eol)) {
+        if (true === $config->insertFinalNewline && !\str_ends_with($text, $eol)) {
             $text .= $eol;
         }
         if (false === $config->insertFinalNewline) {
-            while ('' !== $text && str_ends_with($text, $eol)) {
-                $text = substr($text, offset: 0, length: -\strlen($eol));
+            while ('' !== $text && \str_ends_with($text, $eol)) {
+                $text = \substr($text, offset: 0, length: -\strlen($eol));
             }
         }
 

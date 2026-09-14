@@ -26,7 +26,7 @@ final class Files
      */
     public static function read(string $path): string
     {
-        return is_file($path) ? (string) file_get_contents($path) : '';
+        return \is_file($path) ? (string) \file_get_contents($path) : '';
     }
 
     /**
@@ -36,6 +36,6 @@ final class Files
      */
     public static function readWritable(string $path): ?string
     {
-        return is_file($path) && is_writable($path) ? (string) file_get_contents($path) : null;
+        return \is_file($path) && \is_writable($path) ? (string) \file_get_contents($path) : null;
     }
 }

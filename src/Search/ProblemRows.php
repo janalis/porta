@@ -64,7 +64,7 @@ final readonly class ProblemRows
         }
 
         // Sort by file then line for a stable, scannable list.
-        usort($results, static fn (array $a, array $b) => [$a['path'], $a['line']] <=> [$b['path'], $b['line']]);
+        \usort($results, static fn (array $a, array $b) => [$a['path'], $a['line']] <=> [$b['path'], $b['line']]);
 
         return $results;
     }

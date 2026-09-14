@@ -68,7 +68,7 @@ final class HeaderRendererTest extends TestCase
      */
     public function testFillsExactlyTheWidthEvenBelowTheEllipsisWidth(): void
     {
-        foreach (range(0, end: 12) as $width) {
+        foreach (\range(0, end: 12) as $width) {
             foreach ([' a title', '日本語のタイトル', '', 'x'] as $title) {
                 $line = HeaderRenderer::render($title, $width, new Style(background: 237));
 

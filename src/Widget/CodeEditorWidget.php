@@ -566,10 +566,10 @@ final class CodeEditorWidget extends AbstractWidget implements
         // Everything else takes the language server's own symbols, which reach
         // the same shape, so the breadcrumb trail AND the sticky band work in
         // every language rather than only in PHP.
-        if (!str_ends_with($this->filePath, '.php')) {
+        if (!\str_ends_with($this->filePath, '.php')) {
             return $this->documentScopes->forPath($this->filePath);
         }
-        $docId = spl_object_id($this->document);
+        $docId = \spl_object_id($this->document);
         $key = $docId.':'.$this->document->getVersion();
         if ($key === $this->scopeKey) {
             return $this->scopeCache;
@@ -581,7 +581,7 @@ final class CodeEditorWidget extends AbstractWidget implements
         // stale until the typing pauses, so a keystroke costs no whole-file
         // tokenizer pass. (No scheduler = bare test construction: stay
         // synchronous, the rigs need determinism, the container always has one.)
-        if (null === $this->scheduler || !str_starts_with($this->scopeKey, $docId.':')) {
+        if (null === $this->scheduler || !\str_starts_with($this->scopeKey, $docId.':')) {
             $this->scopeCache = BreadcrumbScanner::scan($this->document->getText());
             $this->scopeKey = $key;
 
@@ -602,7 +602,7 @@ final class CodeEditorWidget extends AbstractWidget implements
                     // Re-key from the live document — it may have moved on (or
                     // been swapped) since the edit that armed this timer.
                     $this->scopeCache = BreadcrumbScanner::scan($this->document->getText());
-                    $this->scopeKey = spl_object_id($this->document).':'.$this->document->getVersion();
+                    $this->scopeKey = \spl_object_id($this->document).':'.$this->document->getVersion();
                     $this->invalidate(); // the settled trail needs a frame to show
                 }),
                 $key,
@@ -636,8 +636,8 @@ final class CodeEditorWidget extends AbstractWidget implements
      */
     public function caretScreenCell(): array
     {
-        $row = max(0, $this->foldModel->screenRowFor($this->scroll->vScroll(), $this->document->getCursorLine())) + \count($this->stickyLines);
-        $col = max($this->lastGutterWidth, $this->lastGutterWidth + $this->document->getCursorDisplayCol() - $this->scroll->hScroll());
+        $row = \max(0, $this->foldModel->screenRowFor($this->scroll->vScroll(), $this->document->getCursorLine())) + \count($this->stickyLines);
+        $col = \max($this->lastGutterWidth, $this->lastGutterWidth + $this->document->getCursorDisplayCol() - $this->scroll->hScroll());
 
         return ['row' => $row, 'col' => $col];
     }
@@ -650,7 +650,7 @@ final class CodeEditorWidget extends AbstractWidget implements
             return $this->stickyLines[$relRow];
         }
 
-        return $this->foldModel->docLineAtRow($this->scroll->vScroll(), max(0, $relRow - $stickyCount));
+        return $this->foldModel->docLineAtRow($this->scroll->vScroll(), \max(0, $relRow - $stickyCount));
     }
 
     /** Begin a mouse selection: place the caret at the press and drop the anchor there. */
@@ -743,9 +743,9 @@ final class CodeEditorWidget extends AbstractWidget implements
         $doc = $this->document;
         $vScroll = $this->scroll->vScroll();
         $widest = 0;
-        $last = min($doc->getLineCount() - 1, $vScroll + $this->scroll->contentRows() - 1);
+        $last = \min($doc->getLineCount() - 1, $vScroll + $this->scroll->contentRows() - 1);
         for ($line = $vScroll; $line <= $last; ++$line) {
-            $widest = max($widest, $doc->lineDisplayWidth($line));
+            $widest = \max($widest, $doc->lineDisplayWidth($line));
         }
         $this->scroll->scrollHBy($cols, $widest - 10);
     }
@@ -1091,7 +1091,7 @@ final class CodeEditorWidget extends AbstractWidget implements
 
     private function hasControlBytes(string $data): bool
     {
-        return 1 === preg_match('/[\x00-\x08\x0B-\x1F\x7F]/', $data) || str_contains($data, "\x1b");
+        return 1 === \preg_match('/[\x00-\x08\x0B-\x1F\x7F]/', $data) || \str_contains($data, "\x1b");
     }
 
     /** True when $data is a printable character safe to insert (not a control key). */
@@ -1150,14 +1150,14 @@ final class CodeEditorWidget extends AbstractWidget implements
     private function composePopups(array $result, EditorPopupGeometry $geo): array
     {
         // Both overlays anchor to the caret's on-screen row (past the sticky headers).
-        $cursorScreenRow = max(0, $this->foldModel->screenRowFor($geo->vScroll, $geo->cursorLine)) + $geo->stickyCount;
+        $cursorScreenRow = \max(0, $this->foldModel->screenRowFor($geo->vScroll, $geo->cursorLine)) + $geo->stickyCount;
         if (null !== $this->signatureHint) {
             EditorRenderer::signatureHint($result, $geo->columns, $geo->gutterWidth, $cursorScreenRow, $this->signatureHint->label, $this->styles, $this->signatureHint->activeRange);
         }
 
         $this->completion->setBox(null);
         if (null !== ($popup = $this->completion->popupState())) {
-            $anchorCol = $geo->gutterWidth + ($geo->cursorDisplayCol - $geo->hScroll) - mb_strwidth($this->document->getWordBeforeCursor());
+            $anchorCol = $geo->gutterWidth + ($geo->cursorDisplayCol - $geo->hScroll) - \mb_strwidth($this->document->getWordBeforeCursor());
             $this->completion->setBox(EditorRenderer::completionPopup(
                 $result,
                 $geo->columns,
@@ -1181,10 +1181,10 @@ final class CodeEditorWidget extends AbstractWidget implements
         // Timed as a whole (early returns included): the perf beat's edMs is
         // this widget's share of renderMs, the split that says whether a slow
         // frame is the editor row pipeline or the rest of the tree.
-        $startNs = hrtime(true);
+        $startNs = \hrtime(true);
         try {
             $columns = $context->getColumns();
-            $rows = max(1, $context->getRows() > 0 ? $context->getRows() : min(30, $this->document->getLineCount()));
+            $rows = \max(1, $context->getRows() > 0 ? $context->getRows() : \min(30, $this->document->getLineCount()));
 
             // No file open: show a centered hint instead of a blank editable
             // buffer, still compositing the floating overlays' spans so the
@@ -1223,7 +1223,7 @@ final class CodeEditorWidget extends AbstractWidget implements
 
             // The pinned headers for the settled scroll position.
             $sticky = $this->stickyHeadersAt($vScroll, $rows);
-            $this->stickyLines = array_map(static fn (array $h): int => $h['line'], $sticky);
+            $this->stickyLines = \array_map(static fn (array $h): int => $h['line'], $sticky);
             $contentRows = $rows - \count($sticky);
             $this->scroll->setContentRows($contentRows);
 
@@ -1304,7 +1304,7 @@ final class CodeEditorWidget extends AbstractWidget implements
             // above everything else.
             return $this->withMenuOverlay($result, $columns);
         } finally {
-            $this->perf?->editorMark((hrtime(true) - $startNs) / 1_000_000_000.0);
+            $this->perf?->editorMark((\hrtime(true) - $startNs) / 1_000_000_000.0);
         }
     }
 
@@ -1323,7 +1323,7 @@ final class CodeEditorWidget extends AbstractWidget implements
 
     private function computeGeometry(int $columns, int $lineCount): EditorGeometry
     {
-        $numberWidth = LineNumberMode::Off === $this->display->lineNumbers() ? 0 : max(3, \strlen((string) $lineCount));
+        $numberWidth = LineNumberMode::Off === $this->display->lineNumbers() ? 0 : \max(3, \strlen((string) $lineCount));
         // git strip + number + marker + fold + a trailing space, which is what
         // `EditorRowAssembler::gutterCell()` actually emits.
         $natural = ($this->display->vcsGutter() ? 1 : 0) + $numberWidth + 3;
@@ -1337,7 +1337,7 @@ final class CodeEditorWidget extends AbstractWidget implements
         // goes and the text keeps the pane — which is what the pane is for.
         $fits = $columns >= ($natural + self::STRIPE_WIDTH + 1);
         $gutterWidth = $fits ? $natural : 0;
-        $contentWidth = max(0, $columns - $gutterWidth - self::STRIPE_WIDTH);
+        $contentWidth = \max(0, $columns - $gutterWidth - self::STRIPE_WIDTH);
 
         return new EditorGeometry($fits ? $numberWidth : 0, $gutterWidth, $contentWidth, $gutterWidth + $contentWidth);
     }
@@ -1416,10 +1416,10 @@ final class CodeEditorWidget extends AbstractWidget implements
             : $this->translator->trans('No file open · press %key% to open a file', ['%key%' => $binding]);
         $text = AnsiText::truncate($hint, $columns);
         $textWidth = AnsiUtils::visibleWidth($text);
-        $left = max(0, intdiv($columns - $textWidth, num2: 2));
-        $hintRow = AnsiText::padRight(str_repeat(' ', $left).$this->styles->of(Role::CompletionHint)->apply($text), $columns);
+        $left = \max(0, \intdiv($columns - $textWidth, num2: 2));
+        $hintRow = AnsiText::padRight(\str_repeat(' ', $left).$this->styles->of(Role::CompletionHint)->apply($text), $columns);
 
-        $middle = intdiv($rows, num2: 2);
+        $middle = \intdiv($rows, num2: 2);
         $lines = [];
         for ($i = 0; $i < $rows; ++$i) {
             $lines[] = $i === $middle ? $hintRow : AnsiText::blank($columns);

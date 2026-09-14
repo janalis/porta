@@ -30,7 +30,7 @@ final class NamespaceGraphScanner
         foreach ($roots as $prefix => $dir) {
             foreach ($this->phpFiles($dir) as $file) {
                 // @mago-expect lint:no-error-control-operator -- an unreadable file (permissions, races with deletion) warns; the false return is handled.
-                $source = @file_get_contents($file);
+                $source = @\file_get_contents($file);
                 if (false === $source) {
                     continue;
                 }
@@ -50,14 +50,14 @@ final class NamespaceGraphScanner
             }
         }
 
-        ksort($nodesByCluster);
+        \ksort($nodesByCluster);
         foreach ($nodesByCluster as &$nodes) {
-            ksort($nodes);
+            \ksort($nodes);
         }
         unset($nodes);
-        ksort($edgeSet);
+        \ksort($edgeSet);
 
-        return DotWriter::write($nodesByCluster, array_values($edgeSet));
+        return DotWriter::write($nodesByCluster, \array_values($edgeSet));
     }
 
     /**
@@ -75,12 +75,12 @@ final class NamespaceGraphScanner
         if (null === $name || '' === $name) {
             return null;
         }
-        foreach (array_keys($roots) as $prefix) {
-            if ($name !== $prefix && !str_starts_with($name, $prefix.'\\')) {
+        foreach (\array_keys($roots) as $prefix) {
+            if ($name !== $prefix && !\str_starts_with($name, $prefix.'\\')) {
                 continue;
             }
-            $rest = $name === $prefix ? '' : substr($name, \strlen($prefix) + 1);
-            $segment = '' !== $rest ? explode('\\', $rest)[0] : '';
+            $rest = $name === $prefix ? '' : \substr($name, \strlen($prefix) + 1);
+            $segment = '' !== $rest ? \explode('\\', $rest)[0] : '';
 
             return (
                 '' !== $segment
@@ -102,11 +102,11 @@ final class NamespaceGraphScanner
             ->files()
             ->in($dir)
             ->name('*.php')
-            ->notPath('~(^|/)(?:'.implode('|', self::SKIP_DIRS).')/~');
+            ->notPath('~(^|/)(?:'.\implode('|', self::SKIP_DIRS).')/~');
         foreach ($finder as $file) {
             $files[] = $file->getPathname();
         }
-        sort($files);
+        \sort($files);
 
         return $files;
     }

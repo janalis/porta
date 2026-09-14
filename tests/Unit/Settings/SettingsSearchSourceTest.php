@@ -77,8 +77,8 @@ final class SettingsSearchSourceTest extends TestCase
     {
         $hits = $this->collect($this->source(), 'indent style');
 
-        $this->assertSame(['Indent style', 'Indent style'], array_map(static fn (SearchHit $h): string => $h->label, $hits));
-        $this->assertSame(['PHP', 'CSS'], array_map(static fn (SearchHit $h): string => $h->detail, $hits));
+        $this->assertSame(['Indent style', 'Indent style'], \array_map(static fn (SearchHit $h): string => $h->label, $hits));
+        $this->assertSame(['PHP', 'CSS'], \array_map(static fn (SearchHit $h): string => $h->detail, $hits));
     }
 
     /**

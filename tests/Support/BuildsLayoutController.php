@@ -86,12 +86,12 @@ trait BuildsLayoutController
     private function layoutFile(): array
     {
         $file = $this->project->dir.'/.porta/layout.json';
-        if (!is_file($file)) {
+        if (!\is_file($file)) {
             return [];
         }
 
         /** @var array<string, int|bool> */
-        return json_decode((string) file_get_contents($file), associative: true);
+        return \json_decode((string) \file_get_contents($file), associative: true);
     }
 
     /**

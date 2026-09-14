@@ -38,7 +38,7 @@ final class PlantUmlCommandTest extends TestCase
 
     public function testAnEmptySettingFallsBackToDiscovery(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $this->assertNull(PlantUmlCommand::tool(''), 'nothing on PATH, nothing configured');
         $this->assertNull(PlantUmlCommand::tool(null));
         $this->assertNull(PlantUmlCommand::tool('   '), 'a blank setting is not a path');

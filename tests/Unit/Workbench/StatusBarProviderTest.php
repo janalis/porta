@@ -50,7 +50,7 @@ final class StatusBarProviderTest extends TestCase
         $this->panes = new EditorPanes();
         $this->translator = new Translator('en');
 
-        $sources = array_map(
+        $sources = \array_map(
             static fn (array $cells): StatusSegment => new class($cells) implements StatusSegment {
                 /** @param list<StatusCell> $cells */
                 public function __construct(
@@ -301,7 +301,7 @@ final class StatusBarProviderTest extends TestCase
         $plain = AnsiUtils::stripAnsiCodes($segments['right']);
         $byAction = [];
         foreach ($segments['rightClicks'] as $span) {
-            $byAction[$span->action] = trim(mb_substr($plain, $span->from, $span->to - $span->from));
+            $byAction[$span->action] = \trim(\mb_substr($plain, $span->from, $span->to - $span->from));
         }
 
         $this->assertSame(Glyphs::SEVERITY_ERROR.' 1', $byAction['ide_problems']);
@@ -322,7 +322,7 @@ final class StatusBarProviderTest extends TestCase
         $this->editor->openFile($this->project->path('t.php'), "<?php\n\n");
 
         $segments = $provider->segments();
-        $actions = array_map(static fn (StatusClickSpan $span): string => $span->action, $segments['rightClicks']);
+        $actions = \array_map(static fn (StatusClickSpan $span): string => $span->action, $segments['rightClicks']);
 
         $this->assertSame(['goto_line', 'ide_lsp_log'], $actions);
     }

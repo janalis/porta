@@ -18,13 +18,13 @@ final class EditorConfigGlob
 {
     public static function matches(string $glob, string $relativePath): bool
     {
-        return 1 === preg_match(self::compile($glob), $relativePath);
+        return 1 === \preg_match(self::compile($glob), $relativePath);
     }
 
     public static function compile(string $glob): string
     {
-        if (str_contains($glob, '/')) {
-            $body = '/' === $glob[0] ? substr($glob, offset: 1) : $glob;
+        if (\str_contains($glob, '/')) {
+            $body = '/' === $glob[0] ? \substr($glob, offset: 1) : $glob;
 
             return '#^'.self::compileSegment($body).'$#D';
         }
@@ -40,7 +40,7 @@ final class EditorConfigGlob
         for ($i = 0; $i < $len; ++$i) {
             $c = $s[$i];
             if ('\\' === $c && ($i + 1) < $len) {
-                $out .= preg_quote($s[$i + 1], delimiter: '#');
+                $out .= \preg_quote($s[$i + 1], delimiter: '#');
                 ++$i;
                 continue;
             }
@@ -70,7 +70,7 @@ final class EditorConfigGlob
                 $out .= self::compileBrace($s, $i);
                 continue;
             }
-            $out .= preg_quote($c, delimiter: '#');
+            $out .= \preg_quote($c, delimiter: '#');
         }
 
         return $out;
@@ -96,10 +96,10 @@ final class EditorConfigGlob
             ++$j;
         }
         if ($j >= $len) {
-            return preg_quote('[', delimiter: '#'); // unterminated: treat `[` as a literal
+            return \preg_quote('[', delimiter: '#'); // unterminated: treat `[` as a literal
         }
 
-        $inner = substr($s, $start, $j - $start);
+        $inner = \substr($s, $start, $j - $start);
         $i = $j; // consume through the closing `]`
 
         return '['.($negate ? '^' : '').$inner.']';
@@ -110,24 +110,24 @@ final class EditorConfigGlob
     {
         $close = self::matchingBrace($s, $i);
         if (-1 === $close) {
-            return preg_quote('{', delimiter: '#'); // unmatched: treat `{` as a literal
+            return \preg_quote('{', delimiter: '#'); // unmatched: treat `{` as a literal
         }
 
-        $content = substr($s, $i + 1, $close - $i - 1);
+        $content = \substr($s, $i + 1, $close - $i - 1);
         $i = $close; // consume through the closing `}`
         $parts = self::splitTopLevel($content);
 
         if (1 === \count($parts)) {
             $m = [];
-            if (1 === preg_match('/^(-?\d+)\.\.(-?\d+)$/', $content, $m)) {
+            if (1 === \preg_match('/^(-?\d+)\.\.(-?\d+)$/', $content, $m)) {
                 return self::numericRange((int) $m[1], (int) $m[2]);
             }
 
             // A single choice with no comma is a literal `{...}`.
-            return preg_quote('{', delimiter: '#').self::compileSegment($content).preg_quote('}', delimiter: '#');
+            return \preg_quote('{', delimiter: '#').self::compileSegment($content).\preg_quote('}', delimiter: '#');
         }
 
-        return '(?:'.implode('|', array_map(self::compileSegment(...), $parts)).')';
+        return '(?:'.\implode('|', \array_map(self::compileSegment(...), $parts)).')';
     }
 
     private static function numericRange(int $from, int $to): string
@@ -144,7 +144,7 @@ final class EditorConfigGlob
             }
         }
 
-        return '(?:'.implode('|', array_map(static fn (int $n): string => preg_quote((string) $n, delimiter: '#'), $nums)).')';
+        return '(?:'.\implode('|', \array_map(static fn (int $n): string => \preg_quote((string) $n, delimiter: '#'), $nums)).')';
     }
 
     /** Index of the `}` matching the `{` at $open (respecting nesting and classes), or -1. */
@@ -209,7 +209,7 @@ final class EditorConfigGlob
                 continue;
             }
             if ('}' === $c || ']' === $c) {
-                $depth = max(0, $depth - 1);
+                $depth = \max(0, $depth - 1);
                 $buf .= $c;
                 continue;
             }

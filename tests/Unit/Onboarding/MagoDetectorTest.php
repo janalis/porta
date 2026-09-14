@@ -24,7 +24,7 @@ final class MagoDetectorTest extends TestCase
     public function testAnExecutableVendorBinMagoCountsAsInstalled(): void
     {
         $binary = $this->project->write('vendor/bin/mago', "#!/bin/sh\nexit 0\n");
-        chmod($binary, permissions: 0o755);
+        \chmod($binary, permissions: 0o755);
 
         $this->assertTrue(new MagoDetector($this->project->path())->installed());
     }
@@ -38,7 +38,7 @@ final class MagoDetectorTest extends TestCase
     public function testANonExecutableFileDoesNotCount(): void
     {
         $binary = $this->project->write('vendor/bin/mago', 'not a binary');
-        chmod($binary, permissions: 0o644);
+        \chmod($binary, permissions: 0o644);
 
         $this->assertFalse(new MagoDetector($this->project->path())->installed());
     }

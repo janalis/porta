@@ -39,7 +39,7 @@ final class IdeTabsBuffersTest extends TestCase
 
     public function testDoubleClickingATabRevealsTheFileInTheTree(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\n", 'src/deep/Target.php' => "<?php\n"]);
 
         $this->runIde(
@@ -81,7 +81,7 @@ final class IdeTabsBuffersTest extends TestCase
 
     public function testBufferCloseFlows(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php // a\n", 'b.php' => "<?php // b\n"]);
 
         $terminal = $this->runIde(
@@ -114,7 +114,7 @@ final class IdeTabsBuffersTest extends TestCase
                 },
                 850 => function ($tui) use ($project): void {
                     $this->assertStringEndsWith('a.php', (string) $tui->getById('editor')->getFilePath());
-                    $this->assertStringNotContainsString('E', (string) file_get_contents($project->path('b.php')), 'discarded edit not written');
+                    $this->assertStringNotContainsString('E', (string) \file_get_contents($project->path('b.php')), 'discarded edit not written');
                     $tui->handleInput("\x1bw"); // close the last one: tree gets focus
                     $tui->handleInput("\x14"); // ctrl+t back to the (empty) editor
                     $tui->handleInput("\x1bw"); // close with no active buffer: no-op
@@ -131,7 +131,7 @@ final class IdeTabsBuffersTest extends TestCase
         // The binding reaching the action is its own fact: a command can be
         // registered, adopted, menu-listed and covered, and still never answer
         // the key — which is exactly how the last feature nearly shipped.
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject([
             'src/Base.php' => "<?php\nnamespace App;\nabstract class Base\n{\n    public function handle(): void\n    {\n    }\n}\n",
             'src/Child.php' => "<?php\nnamespace App;\nfinal class Child extends Base\n{\n    public function handle(): void\n    {\n    }\n}\n",
@@ -167,7 +167,7 @@ final class IdeTabsBuffersTest extends TestCase
         // One file, one session: the switcher has nothing to offer, and it used
         // to swallow the keystroke whole. On the first file of a session that
         // reads as a broken binding rather than as an empty list.
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php // a\n"]);
 
         $this->runIde(
@@ -198,7 +198,7 @@ final class IdeTabsBuffersTest extends TestCase
         // file from `recent()`, and it is usually the one you want back. Driven
         // through the running IDE because the store, the recorder and the
         // switcher are three pieces and only the join is the feature.
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php // a\n", 'b.php' => "<?php // b\n"]);
 
         $this->runIde(
@@ -242,10 +242,10 @@ final class IdeTabsBuffersTest extends TestCase
         // Through the running IDE: the action, its binding, the language
         // picker and the file all have to meet, and a command nothing dispatches
         // passes every other gate green.
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php // a\n"]);
         $home = new TempProject([], prefix: 'porta-test-home-');
-        putenv('PORTA_HOME='.$home->dir);
+        \putenv('PORTA_HOME='.$home->dir);
 
         $this->runIde(
             $project,
@@ -275,7 +275,7 @@ final class IdeTabsBuffersTest extends TestCase
 
     public function testBufferSwitchReusesHighlightCache(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php // a\n", 'b.php' => "<?php // b\n"]);
 
         $this->runIde(
@@ -303,7 +303,7 @@ final class IdeTabsBuffersTest extends TestCase
 
     public function testTabBarPositionSwitchesLiveAndPersists(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\n"]);
 
         $changePosition = static function ($ide, string $position): void {
@@ -361,10 +361,10 @@ final class IdeTabsBuffersTest extends TestCase
 
     public function testAnUnknownTabBarPositionValueFallsBackToTop(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject([
             'a.php' => "<?php\n",
-            '.porta.json' => json_encode(['settings' => ['tabBarPosition' => 'sideways']]),
+            '.porta.json' => \json_encode(['settings' => ['tabBarPosition' => 'sideways']]),
         ]);
 
         $this->runIde(
@@ -387,12 +387,12 @@ final class IdeTabsBuffersTest extends TestCase
 
     public function testVerticalTabListMouseInteractions(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject([
             'A.php' => "<?php\n",
             'B.php' => "<?php\n",
             'C.php' => "<?php\n",
-            '.porta.json' => json_encode(['settings' => ['tabBarPosition' => 'left']]),
+            '.porta.json' => \json_encode(['settings' => ['tabBarPosition' => 'left']]),
         ]);
 
         $tabsRect = static fn ($tui, $ide) => Services::resolve($ide, Renderer::class)
@@ -458,10 +458,10 @@ final class IdeTabsBuffersTest extends TestCase
 
     public function testKeyboardTabMenuAnchorsOnTheBottomStripsOwnRow(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject([
             'a.php' => "<?php\n",
-            '.porta.json' => json_encode(['settings' => ['tabBarPosition' => 'bottom']]),
+            '.porta.json' => \json_encode(['settings' => ['tabBarPosition' => 'bottom']]),
         ]);
 
         $this->runIde(
@@ -489,7 +489,7 @@ final class IdeTabsBuffersTest extends TestCase
 
     public function testTabCloseOthersAndCloseAllKeepUnsavedTabs(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "<?php\n", 'B.php' => "<?php\n", 'C.php' => "<?php\n"]);
 
         $terminal = $this->runIde(
@@ -544,7 +544,7 @@ final class IdeTabsBuffersTest extends TestCase
 
     public function testTabCloseAllClosesEveryCleanTab(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "<?php\n", 'B.php' => "<?php\n"]);
 
         $this->runIde(
@@ -577,7 +577,7 @@ final class IdeTabsBuffersTest extends TestCase
 
     public function testTabCloseIconClosesThatTab(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "<?php\n", 'B.php' => "<?php\n"]);
 
         $this->runIde(
@@ -606,7 +606,7 @@ final class IdeTabsBuffersTest extends TestCase
 
     public function testTabDragReorderRepaintsTheStripImmediately(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "<?php\n", 'B.php' => "<?php\n"]);
 
         $this->runIde(
@@ -671,7 +671,7 @@ final class IdeTabsBuffersTest extends TestCase
 
     public function testTabDragReorders(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "<?php\n", 'B.php' => "<?php\n", 'C.php' => "<?php\n"]);
 
         $this->runIde(
@@ -698,7 +698,7 @@ final class IdeTabsBuffersTest extends TestCase
 
     public function testKeyboardMovesActiveTab(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "<?php\n", 'B.php' => "<?php\n", 'C.php' => "<?php\n"]);
 
         $this->runIde(
@@ -734,6 +734,6 @@ final class IdeTabsBuffersTest extends TestCase
         $tabBar = $tui->getById('tabs');
         $provider = Probe::get($tabBar, 'provider');
 
-        return array_column($provider(), 'name');
+        return \array_column($provider(), 'name');
     }
 }

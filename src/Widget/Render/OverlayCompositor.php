@@ -34,8 +34,8 @@ final class OverlayCompositor
         // already carries, and two hardware-cursor markers on one row are
         // ambiguous. A marker genuinely inside the tail region is never
         // re-emitted, so stripping the tail's copies is exact.
-        if (str_contains($head.$popup, AnsiUtils::CURSOR_MARKER_PREFIX) && str_contains($tail, AnsiUtils::CURSOR_MARKER_PREFIX)) {
-            $tail = (string) preg_replace('/\x1b_pi:c;[^\x07]*\x07/', replacement: '', subject: $tail);
+        if (\str_contains($head.$popup, AnsiUtils::CURSOR_MARKER_PREFIX) && \str_contains($tail, AnsiUtils::CURSOR_MARKER_PREFIX)) {
+            $tail = (string) \preg_replace('/\x1b_pi:c;[^\x07]*\x07/', replacement: '', subject: $tail);
         }
 
         // Reset after the popup as well as after the head: when the popup is a

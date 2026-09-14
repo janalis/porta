@@ -65,7 +65,7 @@ final class CodeEditorOverlaysTest extends TestCase
         $this->assertTrue(EditorState::pickerOpen($editor));
 
         $placed = $editor->layoutPickers([0, 0, 20, 80]);
-        $this->assertStringContainsString('Recent Files', implode("\n", $placed[0]['rows']), 'the floating box carries the title');
+        $this->assertStringContainsString('Recent Files', \implode("\n", $placed[0]['rows']), 'the floating box carries the title');
         $this->assertExactWidth($editor->render(new RenderContext(80, 20)), 80);
 
         $editor->handleInput("\x1b[B"); // down
@@ -109,8 +109,8 @@ final class CodeEditorOverlaysTest extends TestCase
         $editor->setSearchRows($this->searchRows());
 
         $placed = $editor->layoutPickers([0, 0, 20, 80]);
-        $this->assertStringContainsString('Search Everywhere', implode("\n", $placed[0]['rows']), 'the floating box carries the title');
-        $this->assertStringContainsString('Files', implode("\n", $placed[0]['rows']), 'the category header row renders its label');
+        $this->assertStringContainsString('Search Everywhere', \implode("\n", $placed[0]['rows']), 'the floating box carries the title');
+        $this->assertStringContainsString('Files', \implode("\n", $placed[0]['rows']), 'the category header row renders its label');
         $this->assertExactWidth($editor->render(new RenderContext(80, 20)), 80);
 
         $editor->handleSearchOverlayInput("\x1b[B"); // down → beta.php
@@ -286,7 +286,7 @@ final class CodeEditorOverlaysTest extends TestCase
 
         // Hover item 1; item 0 stays selected.
         $editor->handlePickerHover(7, 35);
-        $body = implode("\n", $editor->layoutPickers([0, 0, 20, 80])[0]['rows']);
+        $body = \implode("\n", $editor->layoutPickers([0, 0, 20, 80])[0]['rows']);
         $this->assertStringContainsString("\x1b[48;5;31m", $body, 'the selected item keeps its background');
         $this->assertStringContainsString("\x1b[48;5;236m", $body, 'the hovered item takes the hover tint');
     }
@@ -316,7 +316,7 @@ final class CodeEditorOverlaysTest extends TestCase
         ]);
 
         $rows = $editor->render(new RenderContext(120, 20));
-        $body = implode("\n", $rows);
+        $body = \implode("\n", $rows);
 
         $this->assertStringContainsString('string', $body, "the property's type is shown");
         $this->assertStringContainsString('(Request $r): Response', $body, "and the method's signature");
@@ -342,7 +342,7 @@ final class CodeEditorOverlaysTest extends TestCase
         ]);
 
         $rows = $editor->render(new RenderContext(60, 20));
-        $body = implode("\n", $rows);
+        $body = \implode("\n", $rows);
 
         $this->assertStringContainsString('withAVeryLongDescr', $body, 'the name survives, truncated at worst');
         // The exact cell, not just "shorter": the width is one subtraction, and
@@ -370,7 +370,7 @@ final class CodeEditorOverlaysTest extends TestCase
         ]);
 
         $rows = $editor->render(new RenderContext(60, 20));
-        $body = implode("\n", $rows);
+        $body = \implode("\n", $rows);
 
         // The whole cell, because "no type" has near-misses that all look
         // plausible: a one-column type showing a bare ellipsis, or a type cell
@@ -405,7 +405,7 @@ final class CodeEditorOverlaysTest extends TestCase
         $editor = $this->documentedEditor("Greets somebody by name.\n\npublic function greet(string \$who): string");
 
         $rows = $editor->render(new RenderContext(120, 14));
-        $screen = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $rows));
+        $screen = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $rows));
 
         $this->assertStringContainsString('Greets somebody by name.', $screen);
         $this->assertStringContainsString('public function greet(string $who): string', $screen);
@@ -419,7 +419,7 @@ final class CodeEditorOverlaysTest extends TestCase
         // sentence and a half beside a two-item popup.
         $editor = $this->documentedEditor("one\ntwo\nthree\nfour\nfive\nsix");
 
-        $screen = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $editor->render(new RenderContext(120, 14))));
+        $screen = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $editor->render(new RenderContext(120, 14))));
 
         $this->assertStringContainsString('six', $screen, 'the sixth line is there beside a two-row list');
     }
@@ -434,12 +434,12 @@ final class CodeEditorOverlaysTest extends TestCase
 
         $editor->movePopupSelection(1); // → `name`, which has no documentation
         $rows = $editor->render(new RenderContext(120, 14));
-        $screen = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $rows));
+        $screen = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $rows));
 
         $this->assertStringNotContainsString('Greets somebody by name.', $screen);
         // The panel is GONE, not blank: an empty frame beside the list is a
         // box that says nothing and takes forty-six columns to say it.
-        $this->assertSame(1, substr_count(AnsiUtils::stripAnsiCodes($rows[3]), needle: '╭'), 'one box on screen, not two');
+        $this->assertSame(1, \substr_count(AnsiUtils::stripAnsiCodes($rows[3]), needle: '╭'), 'one box on screen, not two');
     }
 
     public function testTheDOCBLOCKGoesLEFTWhenThereIsNoRoomOnTheRight(): void
@@ -448,7 +448,7 @@ final class CodeEditorOverlaysTest extends TestCase
         // the right edge, so the panel cannot go where it normally goes. A
         // fixture with the caret at column 5 proves nothing here — it has room
         // on the right and never takes the other branch.
-        $editor = $this->editor("<?php\n\$a = 1;\n".str_repeat('x', times: 55)." echo\n");
+        $editor = $this->editor("<?php\n\$a = 1;\n".\str_repeat('x', times: 55)." echo\n");
         $editor->getDocument()->setCursor(2, 60);
         $editor->showCompletions([new CompletionItem(label: 'greet', insertText: 'greet', kind: 'fn', detail: '', documentation: 'Greets somebody.')]);
 
@@ -456,7 +456,7 @@ final class CodeEditorOverlaysTest extends TestCase
         $row = AnsiUtils::stripAnsiCodes($rows[4]);
 
         $this->assertStringContainsString('Greets somebody.', $row, 'the panel moved to the other side rather than vanishing');
-        $this->assertLessThan(mb_strpos($row, needle: 'greet '), mb_strpos($row, needle: 'Greets somebody.'), 'and it is to the LEFT of the list');
+        $this->assertLessThan(\mb_strpos($row, needle: 'greet '), \mb_strpos($row, needle: 'Greets somebody.'), 'and it is to the LEFT of the list');
         // The panel's own drop shadow falls to its right: flush against the
         // popup it paints over the popup's left border.
         $this->assertStringContainsString('│ │ greet', $row, 'both boxes keep all four walls');
@@ -473,7 +473,7 @@ final class CodeEditorOverlaysTest extends TestCase
 
         $rows = $editor->render(new RenderContext(40, 14));
 
-        $this->assertStringNotContainsString('Greets somebody.', implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $rows)));
+        $this->assertStringNotContainsString('Greets somebody.', \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $rows)));
         $this->assertExactWidth($rows, 40);
     }
 
@@ -487,7 +487,7 @@ final class CodeEditorOverlaysTest extends TestCase
 
         // A pane with the caret near the bottom: the popup opens above it.
         $rows = $editor->render(new RenderContext(120, 5));
-        $plain = array_map(AnsiUtils::stripAnsiCodes(...), $rows);
+        $plain = \array_map(AnsiUtils::stripAnsiCodes(...), $rows);
 
         // The caret is on row 3 here. The room above is what caps the panel, so
         // the docblock is CUT rather than the panel sliding down over the line
@@ -513,7 +513,7 @@ final class CodeEditorOverlaysTest extends TestCase
         $this->assertExactWidth($fits, 71);
 
         $oneShort = $editor->render(new RenderContext(70, 10));
-        $this->assertStringNotContainsString('Greets somebody.', implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $oneShort)), 'one column short and there is no room on either side');
+        $this->assertStringNotContainsString('Greets somebody.', \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $oneShort)), 'one column short and there is no room on either side');
         $this->assertExactWidth($oneShort, 70);
     }
 
@@ -526,12 +526,12 @@ final class CodeEditorOverlaysTest extends TestCase
         $editor->getDocument()->setCursor(2, 5);
         $editor->showCompletions([new CompletionItem(label: 'greet', insertText: 'greet', kind: 'fn', detail: '', documentation: "one\ntwo\nthree\nfour\nfive")]);
 
-        $plain = array_map(AnsiUtils::stripAnsiCodes(...), $editor->render(new RenderContext(120, 5)));
+        $plain = \array_map(AnsiUtils::stripAnsiCodes(...), $editor->render(new RenderContext(120, 5)));
 
         // The popup opens upward over rows 0..2, so the panel gets one content
         // row between its own two borders.
         $this->assertStringContainsString('one', $plain[1]);
-        $this->assertStringNotContainsString('two', implode("\n", $plain), 'the second line had nowhere to go');
+        $this->assertStringNotContainsString('two', \implode("\n", $plain), 'the second line had nowhere to go');
     }
 
     public function testTheLEFTSideHasItsOwnBoundaryAndOneColumnDecidesIt(): void
@@ -548,8 +548,8 @@ final class CodeEditorOverlaysTest extends TestCase
         $fits = $this->docPopupAt(caret: 41);
         $short = $this->docPopupAt(caret: 40);
 
-        $this->assertSame(1, mb_strpos($fits, needle: 'DOC'), 'the panel starts at column 0, its text one in');
-        $this->assertLessThan(mb_strpos($fits, needle: '│ greet'), mb_strpos($fits, needle: 'DOC'), 'left of the list');
+        $this->assertSame(1, \mb_strpos($fits, needle: 'DOC'), 'the panel starts at column 0, its text one in');
+        $this->assertLessThan(\mb_strpos($fits, needle: '│ greet'), \mb_strpos($fits, needle: 'DOC'), 'left of the list');
         $this->assertStringNotContainsString('DOC', $short, 'one column short: no side to put it on');
 
         // And the column BELOW the boundary, which the odd grid steps over:
@@ -571,7 +571,7 @@ final class CodeEditorOverlaysTest extends TestCase
      */
     private function docPopupAt(int $caret, string $grid = ' '): string
     {
-        $editor = $this->editor("<?php\n\$a = 1;\n".$grid.str_repeat('y ', times: 40)."\n");
+        $editor = $this->editor("<?php\n\$a = 1;\n".$grid.\str_repeat('y ', times: 40)."\n");
         $editor->getDocument()->setCursor(2, $caret);
         $editor->showCompletions([new CompletionItem(label: 'greet', insertText: 'greet', kind: 'fn', detail: '', documentation: 'DOC')]);
         $rows = $editor->render(new RenderContext(100, 10));
@@ -590,7 +590,7 @@ final class CodeEditorOverlaysTest extends TestCase
         $editor->showCompletions([new CompletionItem(label: 'greet', insertText: 'greet', kind: 'fn', detail: '', documentation: "L1\nL2\nL3\nL4\nL5\nL6")]);
 
         $rows = $editor->render(new RenderContext(120, 9));
-        $screen = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $rows));
+        $screen = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $rows));
 
         $this->assertStringContainsString('L4', $screen);
         $this->assertStringNotContainsString('L5', $screen);
@@ -678,7 +678,7 @@ final class CodeEditorOverlaysTest extends TestCase
             $submitted = $v;
         });
         $placed = $editor->layoutPickers([0, 0, 20, 80]);
-        $this->assertStringContainsString('Go to line', AnsiUtils::stripAnsiCodes(implode("\n", $placed[0]['rows'])), 'the floating prompt renders');
+        $this->assertStringContainsString('Go to line', AnsiUtils::stripAnsiCodes(\implode("\n", $placed[0]['rows'])), 'the floating prompt renders');
         $this->assertExactWidth($editor->render(new RenderContext(80, 20)), 80);
 
         $editor->handleInput('4');

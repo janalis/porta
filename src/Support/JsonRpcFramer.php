@@ -44,7 +44,7 @@ final class JsonRpcFramer
     /** Encode one message as a wire frame. */
     public static function encode(array $message): string
     {
-        $json = json_encode($message, \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES | \JSON_INVALID_UTF8_SUBSTITUTE);
+        $json = \json_encode($message, \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES | \JSON_INVALID_UTF8_SUBSTITUTE);
 
         return 'Content-Length: '.\strlen($json)."\r\n\r\n".$json;
     }
@@ -60,7 +60,7 @@ final class JsonRpcFramer
 
         $messages = [];
         while (true) {
-            $headerEnd = strpos($this->buffer, needle: "\r\n\r\n", offset: $this->offset);
+            $headerEnd = \strpos($this->buffer, needle: "\r\n\r\n", offset: $this->offset);
             if (false === $headerEnd) {
                 $this->compact();
                 if (\strlen($this->buffer) > $this->maxFrame) {
@@ -73,9 +73,9 @@ final class JsonRpcFramer
                 return $messages;
             }
 
-            $headers = substr($this->buffer, $this->offset, $headerEnd - $this->offset);
+            $headers = \substr($this->buffer, $this->offset, $headerEnd - $this->offset);
             $m = [];
-            if (!preg_match('/Content-Length:\s*(\d+)/i', $headers, $m)) {
+            if (!\preg_match('/Content-Length:\s*(\d+)/i', $headers, $m)) {
                 // Corrupt frame; drop the header block and resync.
                 $this->offset = $headerEnd + 4;
                 continue;
@@ -96,11 +96,11 @@ final class JsonRpcFramer
                 return $messages; // wait for more data
             }
 
-            $body = substr($this->buffer, $bodyStart, $length);
+            $body = \substr($this->buffer, $bodyStart, $length);
             $this->offset = $bodyStart + $length;
 
             /** @var array<array-key, mixed>|scalar|null $message */
-            $message = json_decode($body, associative: true);
+            $message = \json_decode($body, associative: true);
             if (\is_array($message)) {
                 $messages[] = $message;
             }
@@ -111,7 +111,7 @@ final class JsonRpcFramer
     private function compact(): void
     {
         if ($this->offset > 0) {
-            $this->buffer = substr($this->buffer, $this->offset);
+            $this->buffer = \substr($this->buffer, $this->offset);
             $this->offset = 0;
         }
     }

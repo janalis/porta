@@ -26,7 +26,7 @@ final class RecordingDebugObserver implements DebugSessionObserver
 
     public function onOutput(string $category, string $text): void
     {
-        ($this->recorder)("output:{$category}:".trim($text));
+        ($this->recorder)("output:{$category}:".\trim($text));
     }
 
     public function onTerminated(): void

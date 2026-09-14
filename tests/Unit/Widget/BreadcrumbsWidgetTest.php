@@ -122,7 +122,7 @@ final class BreadcrumbsWidgetTest extends TestCase
         // The presenters re-deliver on every frame hook; only a CHANGE may
         // invalidate, or any visible overlay self-sustains a repaint loop.
         $bar = new BreadcrumbsWidget();
-        $span = static fn (): array => [['row' => 0, 'col' => 2, 'width' => 3, 'segment' => implode('', ['a', 'b', 'c'])]];
+        $span = static fn (): array => [['row' => 0, 'col' => 2, 'width' => 3, 'segment' => \implode('', ['a', 'b', 'c'])]];
         $bar->setMenuOverlay($span());
         $bar->setModalOverlay($span());
         $bar->setToastOverlay($span());

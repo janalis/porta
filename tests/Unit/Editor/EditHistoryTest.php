@@ -16,12 +16,12 @@ final class EditHistoryTest extends TestCase
     public function testARUNOfKeystrokesOnOneLineIsOnePlace(): void
     {
         $history = new EditHistory();
-        foreach (range(start: 0, end: 7) as $ignored) {
+        foreach (\range(start: 0, end: 7) as $ignored) {
             $history->record('/a.php', line: 12);
         }
 
-        self::assertSame(['path' => '/a.php', 'line' => 12], $history->walkBack());
-        self::assertNull($history->walkBack(), 'and there is nothing behind it');
+        $this->assertSame(['path' => '/a.php', 'line' => 12], $history->walkBack());
+        $this->assertNull($history->walkBack(), 'and there is nothing behind it');
     }
 
     public function testPressingAgainWalksFurtherBack(): void
@@ -31,10 +31,10 @@ final class EditHistoryTest extends TestCase
         $history->record('/a.php', line: 5);
         $history->record('/b.php', line: 2);
 
-        self::assertSame(['path' => '/b.php', 'line' => 2], $history->walkBack());
-        self::assertSame(['path' => '/a.php', 'line' => 5], $history->walkBack());
-        self::assertSame(['path' => '/a.php', 'line' => 1], $history->walkBack());
-        self::assertNull($history->walkBack(), 'the list is finite and says so');
+        $this->assertSame(['path' => '/b.php', 'line' => 2], $history->walkBack());
+        $this->assertSame(['path' => '/a.php', 'line' => 5], $history->walkBack());
+        $this->assertSame(['path' => '/a.php', 'line' => 1], $history->walkBack());
+        $this->assertNull($history->walkBack(), 'the list is finite and says so');
     }
 
     public function testAnEditRESTARTSTheWalk(): void
@@ -49,8 +49,8 @@ final class EditHistoryTest extends TestCase
 
         $history->record('/c.php', line: 9);
 
-        self::assertSame(['path' => '/c.php', 'line' => 9], $history->walkBack());
-        self::assertSame(['path' => '/a.php', 'line' => 5], $history->walkBack());
+        $this->assertSame(['path' => '/c.php', 'line' => 9], $history->walkBack());
+        $this->assertSame(['path' => '/a.php', 'line' => 5], $history->walkBack());
     }
 
     public function testTheSameLineREVISITEDIsANewPlace(): void
@@ -62,9 +62,9 @@ final class EditHistoryTest extends TestCase
         $history->record('/a.php', line: 40);
         $history->record('/a.php', line: 3);
 
-        self::assertSame(['path' => '/a.php', 'line' => 3], $history->walkBack());
-        self::assertSame(['path' => '/a.php', 'line' => 40], $history->walkBack());
-        self::assertSame(['path' => '/a.php', 'line' => 3], $history->walkBack());
+        $this->assertSame(['path' => '/a.php', 'line' => 3], $history->walkBack());
+        $this->assertSame(['path' => '/a.php', 'line' => 40], $history->walkBack());
+        $this->assertSame(['path' => '/a.php', 'line' => 3], $history->walkBack());
     }
 
     public function testTheSameLineInAnotherFILEIsANewPlace(): void
@@ -73,8 +73,8 @@ final class EditHistoryTest extends TestCase
         $history->record('/a.php', line: 7);
         $history->record('/b.php', line: 7);
 
-        self::assertSame(['path' => '/b.php', 'line' => 7], $history->walkBack());
-        self::assertSame(['path' => '/a.php', 'line' => 7], $history->walkBack());
+        $this->assertSame(['path' => '/b.php', 'line' => 7], $history->walkBack());
+        $this->assertSame(['path' => '/a.php', 'line' => 7], $history->walkBack());
     }
 
     public function testItKeepsTenPlacesAndDropsTheOldest(): void
@@ -82,7 +82,7 @@ final class EditHistoryTest extends TestCase
         // Typing produces entries far faster than navigating does; a walk back
         // through more than a handful has stopped being a shortcut.
         $history = new EditHistory();
-        foreach (range(start: 1, end: 14) as $line) {
+        foreach (\range(start: 1, end: 14) as $line) {
             $history->record('/a.php', $line);
         }
 
@@ -91,7 +91,7 @@ final class EditHistoryTest extends TestCase
             $walked[] = $site['line'];
         }
 
-        self::assertSame([14, 13, 12, 11, 10, 9, 8, 7, 6, 5], $walked);
+        $this->assertSame([14, 13, 12, 11, 10, 9, 8, 7, 6, 5], $walked);
     }
 
     public function testARenamedFileIsFOLLOWED(): void
@@ -102,8 +102,8 @@ final class EditHistoryTest extends TestCase
 
         $history->rename('/a.php', '/renamed.php');
 
-        self::assertSame(['path' => '/b.php', 'line' => 9], $history->walkBack());
-        self::assertSame(['path' => '/renamed.php', 'line' => 4], $history->walkBack());
+        $this->assertSame(['path' => '/b.php', 'line' => 9], $history->walkBack());
+        $this->assertSame(['path' => '/renamed.php', 'line' => 4], $history->walkBack());
     }
 
     public function testARenameThatMakesTwoNeighboursTheSamePlaceCollapsesThem(): void
@@ -117,9 +117,9 @@ final class EditHistoryTest extends TestCase
 
         $history->rename('/b.php', '/a.php');
 
-        self::assertSame(['path' => '/c.php', 'line' => 1], $history->walkBack());
-        self::assertSame(['path' => '/a.php', 'line' => 5], $history->walkBack());
-        self::assertNull($history->walkBack(), 'the pair became one entry');
+        $this->assertSame(['path' => '/c.php', 'line' => 1], $history->walkBack());
+        $this->assertSame(['path' => '/a.php', 'line' => 5], $history->walkBack());
+        $this->assertNull($history->walkBack(), 'the pair became one entry');
     }
 
     public function testARenameOfTheSameLineInADIFFERENTFileKeepsBothEntries(): void
@@ -132,14 +132,14 @@ final class EditHistoryTest extends TestCase
 
         $history->rename('/x.php', '/a.php');
 
-        self::assertSame(['path' => '/a.php', 'line' => 5], $history->walkBack());
-        self::assertSame(['path' => '/b.php', 'line' => 9], $history->walkBack());
-        self::assertSame(['path' => '/a.php', 'line' => 5], $history->walkBack());
+        $this->assertSame(['path' => '/a.php', 'line' => 5], $history->walkBack());
+        $this->assertSame(['path' => '/b.php', 'line' => 9], $history->walkBack());
+        $this->assertSame(['path' => '/a.php', 'line' => 5], $history->walkBack());
     }
 
     public function testWithNoEditsAtAllThereIsNowhereToGo(): void
     {
-        self::assertNull(new EditHistory()->walkBack());
+        $this->assertNull(new EditHistory()->walkBack());
     }
 
     public function testForgetDropsEverySiteInADeletedFile(): void

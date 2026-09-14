@@ -20,12 +20,12 @@ final class ModalShadowTest extends TestCase
     /** @return list<string> a 10×20 pane of dots */
     private function pane(): array
     {
-        return array_fill(start_index: 0, count: 10, value: str_repeat('.', times: 20));
+        return \array_fill(start_index: 0, count: 10, value: \str_repeat('.', times: 20));
     }
 
     public function testBlitCastsTheOffsetBands(): void
     {
-        $lines = array_map(AnsiUtils::stripAnsiCodes(...), ModalShadow::blit($this->pane(), 2, 4, 6, 3, 20, Styles::dark()));
+        $lines = \array_map(AnsiUtils::stripAnsiCodes(...), ModalShadow::blit($this->pane(), 2, 4, 6, 3, 20, Styles::dark()));
 
         // Right band: col 10 (= 4 + 6) on rows 3 and 4 only.
         $this->assertSame('.', $lines[2][10], 'no shadow beside the title bar');
@@ -33,7 +33,7 @@ final class ModalShadowTest extends TestCase
         $this->assertSame(' ', $lines[4][10]);
         // Bottom band: row 5 (= 2 + 3), cols 5..10 — one column in, its last
         // cell under the right band's column (the classic +1/+1 corner).
-        $this->assertSame('.'.str_repeat(' ', times: 6).str_repeat('.', times: 9), substr($lines[5], offset: 4), 'the bottom band sits one column in');
+        $this->assertSame('.'.\str_repeat(' ', times: 6).\str_repeat('.', times: 9), \substr($lines[5], offset: 4), 'the bottom band sits one column in');
         // Every composited row keeps the pane width.
         foreach ($lines as $i => $line) {
             $this->assertSame(20, AnsiUtils::visibleWidth(ModalShadow::blit($this->pane(), 2, 4, 6, 3, 20, Styles::dark())[$i]), "row {$i}");
@@ -43,9 +43,9 @@ final class ModalShadowTest extends TestCase
     public function testBlitClipsAtThePaneEdges(): void
     {
         // Box flush against the right and bottom edges: nothing to cast.
-        $lines = array_map(AnsiUtils::stripAnsiCodes(...), ModalShadow::blit($this->pane(), 7, 14, 6, 3, 20, Styles::dark()));
+        $lines = \array_map(AnsiUtils::stripAnsiCodes(...), ModalShadow::blit($this->pane(), 7, 14, 6, 3, 20, Styles::dark()));
 
-        $this->assertSame(array_fill(start_index: 0, count: 10, value: str_repeat('.', times: 20)), $lines, 'no band painted outside the pane');
+        $this->assertSame(\array_fill(start_index: 0, count: 10, value: \str_repeat('.', times: 20)), $lines, 'no band painted outside the pane');
     }
 
     /**
@@ -57,11 +57,11 @@ final class ModalShadowTest extends TestCase
     {
         $marker = AnsiUtils::cursorMarker();
         $pane = $this->pane();
-        $pane[3] = 'ab'.$marker.str_repeat('.', times: 18); // a caret on a right-band row
+        $pane[3] = 'ab'.$marker.\str_repeat('.', times: 18); // a caret on a right-band row
 
         $lines = ModalShadow::blit($pane, 2, 4, 6, 3, 20, Styles::dark());
 
-        $this->assertSame(1, substr_count($lines[3], AnsiUtils::CURSOR_MARKER_PREFIX), 'exactly the original caret survives');
+        $this->assertSame(1, \substr_count($lines[3], AnsiUtils::CURSOR_MARKER_PREFIX), 'exactly the original caret survives');
         $this->assertSame(20, AnsiUtils::visibleWidth($lines[3]));
     }
 
@@ -97,9 +97,9 @@ final class ModalShadowTest extends TestCase
     {
         // col=15, width=6, columns=20: remaining columns past col+1 is 4, well
         // under the box's own 6 — the band must stop at 4, not 6.
-        $lines = array_map(AnsiUtils::stripAnsiCodes(...), ModalShadow::blit($this->pane(), 2, 15, 6, 3, 20, Styles::dark()));
+        $lines = \array_map(AnsiUtils::stripAnsiCodes(...), ModalShadow::blit($this->pane(), 2, 15, 6, 3, 20, Styles::dark()));
 
-        $this->assertSame(str_repeat('.', times: 16).str_repeat(' ', times: 4), $lines[5], 'the band stops 4 columns in, not 6');
+        $this->assertSame(\str_repeat('.', times: 16).\str_repeat(' ', times: 4), $lines[5], 'the band stops 4 columns in, not 6');
     }
 
     /** A box flush against the right edge leaves no room at all: no band, no composited row at all. */

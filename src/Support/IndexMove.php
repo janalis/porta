@@ -38,8 +38,8 @@ final class IndexMove
     public static function apply(array $list, int $from, int $to): array
     {
         $moved = $list[$from];
-        array_splice($list, $from, length: 1);
-        array_splice($list, $to, length: 0, replacement: [$moved]);
+        \array_splice($list, $from, length: 1);
+        \array_splice($list, $to, length: 0, replacement: [$moved]);
 
         return $list;
     }

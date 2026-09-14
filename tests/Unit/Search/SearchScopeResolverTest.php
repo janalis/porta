@@ -44,7 +44,7 @@ final class SearchScopeResolverTest extends TestCase
     public function testOpenFilesScopeDropsBuffersOutsideTheProject(): void
     {
         $project = new TempProject(['a.php' => '']);
-        $outside = tempnam(sys_get_temp_dir(), prefix: 'outside');
+        $outside = \tempnam(\sys_get_temp_dir(), prefix: 'outside');
         $this->assertNotFalse($outside);
         try {
             $buffers = new BufferManager();
@@ -54,7 +54,7 @@ final class SearchScopeResolverTest extends TestCase
 
             $this->assertSame(['a.php'], $resolver->resolve(ScopeKind::OpenFiles), 'a buffer outside the project tree is excluded');
         } finally {
-            is_file($outside) && unlink($outside);
+            \is_file($outside) && \unlink($outside);
         }
     }
 
@@ -87,14 +87,14 @@ final class SearchScopeResolverTest extends TestCase
     public function testCurrentFileScopeOutsideTheProjectFallsBackToTheWholeProject(): void
     {
         $project = new TempProject([]);
-        $outside = tempnam(sys_get_temp_dir(), prefix: 'outside');
+        $outside = \tempnam(\sys_get_temp_dir(), prefix: 'outside');
         $this->assertNotFalse($outside);
         try {
             $resolver = new SearchScopeResolver(new BufferManager(), new FixedActiveFile($outside), new ProjectPaths($project->dir));
 
             $this->assertSame(['.'], $resolver->resolve(ScopeKind::CurrentFile));
         } finally {
-            is_file($outside) && unlink($outside);
+            \is_file($outside) && \unlink($outside);
         }
     }
 

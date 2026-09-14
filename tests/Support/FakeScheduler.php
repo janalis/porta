@@ -38,7 +38,7 @@ final class FakeScheduler implements Scheduler
     /** Fire one pending timer (the oldest by default) as the event loop would. */
     public function fire(?string $id = null): void
     {
-        $id ??= (string) array_key_first($this->scheduled);
+        $id ??= (string) \array_key_first($this->scheduled);
         $callback = $this->scheduled[$id];
         unset($this->scheduled[$id]);
         $callback();

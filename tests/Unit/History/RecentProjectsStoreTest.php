@@ -26,7 +26,7 @@ final class RecentProjectsStoreTest extends TestCase
         // trait afterwards: `phpunit.xml.dist` points PORTA_HOME at a COMMITTED
         // fixture, so a global write here would land in the repository.
         $this->home = new TempProject([]);
-        putenv('PORTA_HOME='.$this->home->dir);
+        \putenv('PORTA_HOME='.$this->home->dir);
 
         return new RecentProjectsStore();
     }
@@ -48,12 +48,12 @@ final class RecentProjectsStoreTest extends TestCase
         $store = $this->store();
         $store->record('/projects/alpha');
         $file = $this->home->dir.'/.porta/recent-projects.json';
-        $before = filemtime($file);
+        $before = \filemtime($file);
 
         $store->record('/projects/alpha');
 
-        clearstatcache();
-        $this->assertSame($before, filemtime($file), 'the file was not rewritten');
+        \clearstatcache();
+        $this->assertSame($before, \filemtime($file), 'the file was not rewritten');
         $this->assertSame(['/projects/alpha'], $store->all());
     }
 
@@ -96,9 +96,9 @@ final class RecentProjectsStoreTest extends TestCase
         // worker's methods in sequence, so unsetting it would follow every later
         // test in this worker. PreservesPortaHome covers its sibling; nothing
         // covers HOME because until now no test had reason to touch it.
-        $home = getenv('HOME');
-        putenv('PORTA_HOME');
-        putenv('HOME');
+        $home = \getenv('HOME');
+        \putenv('PORTA_HOME');
+        \putenv('HOME');
 
         try {
             $store = new RecentProjectsStore();
@@ -106,7 +106,7 @@ final class RecentProjectsStoreTest extends TestCase
 
             $this->assertSame([], $store->all());
         } finally {
-            putenv(false === $home ? 'HOME' : 'HOME='.$home);
+            \putenv(false === $home ? 'HOME' : 'HOME='.$home);
         }
     }
 
@@ -115,8 +115,8 @@ final class RecentProjectsStoreTest extends TestCase
     {
         $store = $this->store();
         $dir = $this->home->dir.'/.porta';
-        mkdir($dir, permissions: 0o755, recursive: true);
-        file_put_contents($dir.'/recent-projects.json', data: '{"roots": [42, null, "", {"nested": true}, "/projects/real"]}');
+        \mkdir($dir, permissions: 0o755, recursive: true);
+        \file_put_contents($dir.'/recent-projects.json', data: '{"roots": [42, null, "", {"nested": true}, "/projects/real"]}');
 
         $this->assertSame(['/projects/real'], $store->all(), 'only the usable entries survive');
     }

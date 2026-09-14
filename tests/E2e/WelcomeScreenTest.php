@@ -34,21 +34,21 @@ final class WelcomeScreenTest extends TestCase
 
     protected function setUp(): void
     {
-        $home = getenv('PORTA_HOME');
-        $embedded = getenv('PORTA_EMBEDDED_PLUGINS');
+        $home = \getenv('PORTA_HOME');
+        $embedded = \getenv('PORTA_EMBEDDED_PLUGINS');
         $this->savedHome = false === $home ? null : $home;
         $this->savedEmbedded = false === $embedded ? null : $embedded;
 
-        putenv('PORTA_LSP');
-        putenv('PORTA_HOME=/nonexistent');
-        putenv('PORTA_EMBEDDED_PLUGINS='.\dirname(__DIR__, levels: 2).'/plugins');
+        \putenv('PORTA_LSP');
+        \putenv('PORTA_HOME=/nonexistent');
+        \putenv('PORTA_EMBEDDED_PLUGINS='.\dirname(__DIR__, levels: 2).'/plugins');
         $this->allowFirstRunWelcome();
     }
 
     protected function tearDown(): void
     {
-        putenv('PORTA_HOME='.($this->savedHome ?? ''));
-        putenv('PORTA_EMBEDDED_PLUGINS='.($this->savedEmbedded ?? ''));
+        \putenv('PORTA_HOME='.($this->savedHome ?? ''));
+        \putenv('PORTA_EMBEDDED_PLUGINS='.($this->savedEmbedded ?? ''));
     }
 
     /**
@@ -88,7 +88,7 @@ final class WelcomeScreenTest extends TestCase
                 // The modal lays out from the PREVIOUS frame's pane rects, so
                 // it needs two frames: force one, then await the hero.
                 $this->frame($tui);
-                $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Welcome to Porta'), what: 'the Welcome modal to paint');
+                $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Welcome to Porta'), what: 'the Welcome modal to paint');
             },
         ]);
 
@@ -110,11 +110,11 @@ final class WelcomeScreenTest extends TestCase
         $this->runIde($project, $project->path('a.php'), [
             120 => function ($tui, $terminal) use ($project): void {
                 $this->frame($tui); // the modal lays out from the first frame's rects
-                $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Welcome to Porta'), what: 'the Welcome modal to paint');
+                $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Welcome to Porta'), what: 'the Welcome modal to paint');
                 $tui->handleInput("\r"); // the selected step: enable highlighting
-                $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Plugin "tempest" enabled'), what: 'the enable flash');
+                $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Plugin "tempest" enabled'), what: 'the enable flash');
 
-                $config = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
+                $config = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true);
                 $this->assertSame(
                     [...IdeConfig::DEFAULT_ENABLED_PLUGINS, 'tempest'],
                     \is_array($config) ? $config['enabledPlugins'] ?? null : null,
@@ -129,21 +129,21 @@ final class WelcomeScreenTest extends TestCase
     {
         $project = new TempProject([
             'a.php' => "<?php\nreturn 1;\n",
-            'composer.json' => (string) json_encode(['require' => ['symfony/framework-bundle' => '^7.0']]),
+            'composer.json' => (string) \json_encode(['require' => ['symfony/framework-bundle' => '^7.0']]),
         ]);
 
         $this->runIde($project, $project->path('a.php'), [
             120 => function ($tui, $terminal) use ($project): void {
                 $this->frame($tui); // the modal lays out from the first frame's rects
-                $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Symfony language tools'), what: 'the Symfony card to paint');
+                $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Symfony language tools'), what: 'the Symfony card to paint');
                 $this->assertStringContainsString('0 of 5 done', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the extra checkable card joins the count');
 
                 $tui->handleInput("\x1b[B"); // highlighting → PHP server
                 $tui->handleInput("\x1b[B"); // PHP server → Symfony tools
                 $tui->handleInput("\r");
-                $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Plugin "symfony-lsp" enabled'), what: 'the enable flash');
+                $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Plugin "symfony-lsp" enabled'), what: 'the enable flash');
 
-                $config = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
+                $config = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true);
                 $this->assertSame(
                     [...IdeConfig::DEFAULT_ENABLED_PLUGINS, 'symfony-lsp'],
                     \is_array($config) ? $config['enabledPlugins'] ?? null : null,
@@ -169,9 +169,9 @@ final class WelcomeScreenTest extends TestCase
         $terminal = $this->runIde($project, $project->path('a.php'), [
             120 => function ($tui, $terminal): void {
                 $this->frame($tui); // the modal needs its second frame before Esc means anything
-                $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Welcome to Porta'), what: 'the Welcome modal to paint');
+                $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Welcome to Porta'), what: 'the Welcome modal to paint');
                 $tui->handleInput("\x1b");
-                $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'return 1;'), what: 'the editor to reveal');
+                $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'return 1;'), what: 'the editor to reveal');
             },
         ]);
 
@@ -235,7 +235,7 @@ final class WelcomeScreenTest extends TestCase
                 $tui->handleInput("\r");
                 $tui->tick();
 
-                $config = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
+                $config = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true);
                 $this->assertSame(
                     [...IdeConfig::DEFAULT_ENABLED_PLUGINS, 'phpantom'],
                     \is_array($config) ? $config['enabledPlugins'] ?? null : null,
@@ -266,7 +266,7 @@ final class WelcomeScreenTest extends TestCase
                 $tui->handleInput("\r");
                 $tui->tick();
 
-                $config = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
+                $config = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true);
                 $this->assertSame(
                     [...IdeConfig::DEFAULT_ENABLED_PLUGINS, 'tempest', 'phpantom'],
                     \is_array($config) ? $config['enabledPlugins'] ?? null : null,
@@ -293,7 +293,7 @@ final class WelcomeScreenTest extends TestCase
                 $tui->handleInput("\r");
                 $tui->tick();
 
-                $config = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
+                $config = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true);
                 $this->assertSame(
                     [...IdeConfig::DEFAULT_ENABLED_PLUGINS, 'php-cs-fixer'],
                     \is_array($config) ? $config['enabledPlugins'] ?? null : null,
@@ -316,7 +316,7 @@ final class WelcomeScreenTest extends TestCase
     public function testTheToolStepsTargetMagoWhenTheProjectShipsIt(): void
     {
         $project = new TempProject(['a.php' => "<?php\nreturn 1;\n"]);
-        chmod($project->write('vendor/bin/mago', "#!/bin/sh\nexit 0\n"), permissions: 0o755);
+        \chmod($project->write('vendor/bin/mago', "#!/bin/sh\nexit 0\n"), permissions: 0o755);
 
         $this->runIde($project, $project->path('a.php'), [
             120 => function ($tui, $terminal) use ($project): void {
@@ -325,7 +325,7 @@ final class WelcomeScreenTest extends TestCase
                 $tui->handleInput("\r");
                 $tui->tick();
 
-                $config = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
+                $config = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true);
                 $this->assertSame(
                     [...IdeConfig::DEFAULT_ENABLED_PLUGINS, 'mago'],
                     \is_array($config) ? $config['enabledPlugins'] ?? null : null,

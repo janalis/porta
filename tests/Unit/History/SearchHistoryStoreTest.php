@@ -21,9 +21,9 @@ final class SearchHistoryStoreTest extends TestCase
     public function testAFileLongerThanTheCapIsTrimmedOnLoad(): void
     {
         $project = new TempProject();
-        $queries = array_map(static fn (int $n): string => 'query '.$n, range(1, end: 40));
-        mkdir($project->dir.'/.porta', permissions: 0o755, recursive: true);
-        file_put_contents($project->dir.'/.porta/search-history.json', json_encode(['queries' => $queries]));
+        $queries = \array_map(static fn (int $n): string => 'query '.$n, \range(1, end: 40));
+        \mkdir($project->dir.'/.porta', permissions: 0o755, recursive: true);
+        \file_put_contents($project->dir.'/.porta/search-history.json', \json_encode(['queries' => $queries]));
 
         $all = new SearchHistoryStore($project->dir)->all();
 
@@ -78,14 +78,14 @@ final class SearchHistoryStoreTest extends TestCase
     public function testAddToleratesAnUnwritableLocation(): void
     {
         // A regular file as the "root" → `<file>/.porta/...` cannot be written.
-        $file = (string) tempnam(sys_get_temp_dir(), prefix: 'porta-hist-');
+        $file = (string) \tempnam(\sys_get_temp_dir(), prefix: 'porta-hist-');
 
         try {
             $store = new SearchHistoryStore($file);
             $store->add('x'); // dumpFile throws → caught, in-memory list still updated
             $this->assertSame(['x'], $store->all());
         } finally {
-            is_file($file) && unlink($file);
+            \is_file($file) && \unlink($file);
         }
     }
 
@@ -102,7 +102,7 @@ final class SearchHistoryStoreTest extends TestCase
 
         // Non-string entries are filtered out.
         $mixed = new TempProject([]);
-        $mixed->write('.porta/search-history.json', (string) json_encode(['queries' => ['ok', 123, '', null]]));
+        $mixed->write('.porta/search-history.json', (string) \json_encode(['queries' => ['ok', 123, '', null]]));
         $this->assertSame(['ok'], new SearchHistoryStore($mixed->dir)->all());
     }
 
@@ -112,7 +112,7 @@ final class SearchHistoryStoreTest extends TestCase
         // scanning (instead of skipping just that one entry) would drop the
         // valid entry that follows it.
         $project = new TempProject([]);
-        $project->write('.porta/search-history.json', (string) json_encode(['queries' => [123, 'ok']]));
+        $project->write('.porta/search-history.json', (string) \json_encode(['queries' => [123, 'ok']]));
 
         $this->assertSame(['ok'], new SearchHistoryStore($project->dir)->all());
     }
@@ -122,7 +122,7 @@ final class SearchHistoryStoreTest extends TestCase
         // `null === $data` is false here (the file parses), so this only
         // exercises the second half of the guard — a non-array `queries`.
         $project = new TempProject([]);
-        $project->write('.porta/search-history.json', (string) json_encode(['queries' => 'not-an-array']));
+        $project->write('.porta/search-history.json', (string) \json_encode(['queries' => 'not-an-array']));
 
         $this->assertSame([], new SearchHistoryStore($project->dir)->all());
     }
@@ -138,6 +138,6 @@ final class SearchHistoryStoreTest extends TestCase
         $store->add("needle\xB1");
 
         $this->assertSame(["needle\xB1"], $store->all(), 'the live list keeps the query');
-        $this->assertFalse(is_file($project->path('.porta/search-history.json')), 'the file write degraded silently');
+        $this->assertFalse(\is_file($project->path('.porta/search-history.json')), 'the file write degraded silently');
     }
 }

@@ -46,7 +46,7 @@ final class SettingsScopeTest extends TestCase
      */
     public function testAProjectThatAlreadyHasSettingsKeepsWritingToItself(): void
     {
-        $json = json_encode(['settings' => ['theme' => 'light']], \JSON_THROW_ON_ERROR);
+        $json = \json_encode(['settings' => ['theme' => 'light']], \JSON_THROW_ON_ERROR);
 
         $this->assertSame(ConfigScope::Project, $this->scope($json)->current());
     }
@@ -58,7 +58,7 @@ final class SettingsScopeTest extends TestCase
      */
     public function testAnEmptySettingsBlockIsNotAConfiguredProject(): void
     {
-        $json = json_encode(['settings' => new \stdClass()], \JSON_THROW_ON_ERROR);
+        $json = \json_encode(['settings' => new \stdClass()], \JSON_THROW_ON_ERROR);
 
         $this->assertSame(ConfigScope::Global, $this->scope($json)->current());
     }
@@ -66,7 +66,7 @@ final class SettingsScopeTest extends TestCase
     /** A project file that configures something ELSE is not a settings project. */
     public function testAProjectFileWithoutASettingsBlockStillDefaultsToGlobal(): void
     {
-        $json = json_encode(['keymap' => ['save' => ['ctrl+s']]], \JSON_THROW_ON_ERROR);
+        $json = \json_encode(['keymap' => ['save' => ['ctrl+s']]], \JSON_THROW_ON_ERROR);
 
         $this->assertSame(ConfigScope::Global, $this->scope($json)->current());
     }

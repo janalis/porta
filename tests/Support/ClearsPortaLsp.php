@@ -22,6 +22,6 @@ trait ClearsPortaLsp
     #[Before]
     protected function clearPortaLsp(): void
     {
-        putenv('PORTA_LSP');
+        \putenv('PORTA_LSP');
     }
 }

@@ -23,8 +23,8 @@ final class PaneBounds
      */
     public static function union(array $panes, Renderer $renderer): ?array
     {
-        $top = PHP_INT_MAX;
-        $left = PHP_INT_MAX;
+        $top = \PHP_INT_MAX;
+        $left = \PHP_INT_MAX;
         $bottom = 0;
         $right = 0;
         foreach ($panes as $pane) {
@@ -32,10 +32,10 @@ final class PaneBounds
             if (null === $rect) {
                 continue;
             }
-            $top = min($top, $rect->row);
-            $left = min($left, $rect->col);
-            $bottom = max($bottom, $rect->row + $rect->rows);
-            $right = max($right, $rect->col + $rect->columns);
+            $top = \min($top, $rect->row);
+            $left = \min($left, $rect->col);
+            $bottom = \max($bottom, $rect->row + $rect->rows);
+            $right = \max($right, $rect->col + $rect->columns);
         }
 
         return $bottom > $top && $right > $left ? [$top, $left, $bottom, $right] : null;

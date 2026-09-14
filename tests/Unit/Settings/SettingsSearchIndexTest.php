@@ -21,7 +21,7 @@ final class SettingsSearchIndexTest extends TestCase
     {
         $hits = $this->index()->search('sticky', 10);
 
-        $this->assertSame(['stickyScroll'], array_column($hits, 'key'));
+        $this->assertSame(['stickyScroll'], \array_column($hits, 'key'));
         $this->assertSame('Interface', $hits[0]->page, 'a hit says which page it lives on');
         $this->assertSame('interface', $hits[0]->section, 'and carries the nav id that gets you there');
     }
@@ -103,7 +103,7 @@ final class SettingsSearchIndexTest extends TestCase
 
         $index->onSettingsRowsStale(new SettingsRowsStale());
 
-        $this->assertSame(['lateArrival'], array_column($index->search('late', 10), 'key'));
+        $this->assertSame(['lateArrival'], \array_column($index->search('late', 10), 'key'));
     }
 
     /**
@@ -122,7 +122,7 @@ final class SettingsSearchIndexTest extends TestCase
 
         $translator->setLocale('fr');
 
-        $this->assertSame(['lateArrival'], array_column($index->search('late', 10), 'key'));
+        $this->assertSame(['lateArrival'], \array_column($index->search('late', 10), 'key'));
     }
 
     private function index(): SettingsSearchIndex

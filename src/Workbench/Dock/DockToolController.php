@@ -105,8 +105,8 @@ final class DockToolController
                 continue;
             }
             $clean[] = [
-                'path' => str_starts_with($row['path'], '/') ? $this->paths->relative($row['path']) : $row['path'],
-                'line' => max(0, $row['line']),
+                'path' => \str_starts_with($row['path'], '/') ? $this->paths->relative($row['path']) : $row['path'],
+                'line' => \max(0, $row['line']),
                 'text' => $row['text'],
                 // Match spans, in DISPLAY columns: what makes the matched
                 // keyword bold. Optional, and dropped whole if it is malformed —
@@ -132,7 +132,7 @@ final class DockToolController
             if (!\is_array($range) || !\is_int($range['start'] ?? null) || !\is_int($range['length'] ?? null)) {
                 return [];
             }
-            $clean[] = ['start' => max(0, $range['start']), 'length' => max(0, $range['length'])];
+            $clean[] = ['start' => \max(0, $range['start']), 'length' => \max(0, $range['length'])];
         }
 
         return $clean;

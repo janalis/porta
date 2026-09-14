@@ -57,8 +57,8 @@ final class RecentFilesStore
             return; // already at the front: a re-show is not a visit
         }
 
-        $this->paths = array_values(array_filter($this->paths, static fn (string $p): bool => $p !== $path));
-        array_unshift($this->paths, $path);
+        $this->paths = \array_values(\array_filter($this->paths, static fn (string $p): bool => $p !== $path));
+        \array_unshift($this->paths, $path);
         $this->paths = \array_slice($this->paths, offset: 0, length: self::MAX);
         $this->save();
     }
@@ -101,7 +101,7 @@ final class RecentFilesStore
      */
     public function forget(string $path): void
     {
-        $kept = array_values(array_filter(
+        $kept = \array_values(\array_filter(
             $this->paths,
             static fn (string $p): bool => !ProjectPaths::isUnder($p, $path),
         ));

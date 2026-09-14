@@ -45,7 +45,7 @@ enum Theme: string
      */
     public static function ids(): array
     {
-        return array_map(static fn (self $theme): string => $theme->value, self::cases());
+        return \array_map(static fn (self $theme): string => $theme->value, self::cases());
     }
 
     /** The chrome palette (menus, panes, gutters, status bar). */

@@ -62,7 +62,7 @@ final class ContextMenuTest extends TestCase
         foreach ($segments as $segment) {
             $this->assertSame($width, AnsiUtils::visibleWidth($segment['segment']), 'each row is exactly panelWidth wide');
         }
-        $plain = AnsiUtils::stripAnsiCodes(implode("\n", array_column($segments, 'segment')));
+        $plain = AnsiUtils::stripAnsiCodes(\implode("\n", \array_column($segments, 'segment')));
         $this->assertStringContainsString('Cut', $plain);
         $this->assertStringContainsString('Ctrl+X', $plain);
         $this->assertStringContainsString('Copy', $plain);

@@ -191,7 +191,7 @@ final class DockToolControllerTest extends TestCase
         $this->assertNotNull($tab);
         $this->assertSame(
             [
-                ['path' => basename(__FILE__), 'line' => 0, 'text' => 'absolute path, negative line', 'ranges' => []],
+                ['path' => \basename(__FILE__), 'line' => 0, 'text' => 'absolute path, negative line', 'ranges' => []],
                 ['path' => 'ok.php', 'line' => 2, 'text' => 'ranges kept', 'ranges' => [['start' => 1, 'length' => 3]]],
                 ['path' => 'ok.php', 'line' => 2, 'text' => 'half a range', 'ranges' => []],
             ],

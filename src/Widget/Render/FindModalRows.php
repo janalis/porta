@@ -63,7 +63,7 @@ final class FindModalRows
     {
         $bg = $styles->of(ModalRowStyle::role($selected))->getAnsiRestore();
         $label = (string) ($result['line'] + 1);
-        $prefixWidth = 4 + mb_strwidth($label) + 2;
+        $prefixWidth = 4 + \mb_strwidth($label) + 2;
         $text = '    '.$styles->of(Role::TabAccent)->apply($label).'  '.$result['text'];
 
         $searchStyle = $styles->of(Role::SearchBg);
@@ -96,7 +96,7 @@ final class FindModalRows
         $label = (string) ($result['line'] + 1);
         $old = $result['text'];
         $checkbox = '  '.($excluded ? Glyphs::CHECKBOX_OFF : Glyphs::CHECKBOX_ON).' ';
-        $prefixWidth = mb_strwidth($checkbox) + mb_strwidth($label) + 2;
+        $prefixWidth = \mb_strwidth($checkbox) + \mb_strwidth($label) + 2;
         $head = $checkbox.$styles->of(Role::TabAccent)->apply($label).'  ';
 
         $text = $excluded

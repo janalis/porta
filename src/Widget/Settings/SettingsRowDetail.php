@@ -53,7 +53,7 @@ final class SettingsRowDetail
             $clauses[] = $origin;
         }
 
-        return implode(' · ', $clauses);
+        return \implode(' · ', $clauses);
     }
 
     /**
@@ -98,14 +98,14 @@ final class SettingsRowDetail
         }
         // What it can BECOME: the current value already sits in the control,
         // and repeating it there costs the room the rest of the list needs.
-        $others = array_values(array_filter($row->options, static fn (string $option): bool => $option !== (string) $row->value));
+        $others = \array_values(\array_filter($row->options, static fn (string $option): bool => $option !== (string) $row->value));
         // A long list would push the hint off a narrow row for no gain: the
         // stepper still walks them all.
         if ([] === $others || \count($others) > self::MAX_OPTIONS) {
             return '';
         }
 
-        return implode('/', array_map(static fn (string $option): string => self::optionLabel($row, $option), $others));
+        return \implode('/', \array_map(static fn (string $option): string => self::optionLabel($row, $option), $others));
     }
 
     /**

@@ -34,8 +34,8 @@ final class AsEagerMembershipTest extends ContainerTestCase
         foreach ($container->findTaggedServiceIds('porta.eager') as $id => $tags) {
             $priorities[$id] = (int) $tags[0]['priority'];
         }
-        arsort($priorities);
-        $actual = array_keys($priorities);
+        \arsort($priorities);
+        $actual = \array_keys($priorities);
 
         // The prioritised head, where the ORDER is the contract.
         $ordered = [
@@ -63,13 +63,13 @@ final class AsEagerMembershipTest extends ContainerTestCase
             \Porta\Editor\StructureFollowsCaret::class, // ditto: moves the Structure tab's selection
         ];
 
-        self::assertSame($ordered, \array_slice($actual, offset: 0, length: \count($ordered)), 'the contractual construction order');
+        $this->assertSame($ordered, \array_slice($actual, offset: 0, length: \count($ordered)), 'the contractual construction order');
 
         $tail = \array_slice($actual, offset: \count($ordered));
-        sort($tail);
+        \sort($tail);
         $expected = $unordered;
-        sort($expected);
-        self::assertSame($expected, $tail, 'every self-registering service must carry #[AsEager] or it is never built');
+        \sort($expected);
+        $this->assertSame($expected, $tail, 'every self-registering service must carry #[AsEager] or it is never built');
     }
 
     /**
@@ -87,7 +87,7 @@ final class AsEagerMembershipTest extends ContainerTestCase
     public function testEveryServiceThatHooksTheFrameIsBuiltAtBoot(): void
     {
         $container = $this->buildContainer();
-        $eager = array_keys($container->findTaggedServiceIds('porta.eager'));
+        $eager = \array_keys($container->findTaggedServiceIds('porta.eager'));
 
         $missing = [];
         foreach ($this->frameHookConsumers() as $class) {
@@ -97,7 +97,7 @@ final class AsEagerMembershipTest extends ContainerTestCase
             $missing[] = $class;
         }
 
-        self::assertSame([], $missing, 'a frame-hook consumer with no #[AsEager] is never constructed, so its hook never installs');
+        $this->assertSame([], $missing, 'a frame-hook consumer with no #[AsEager] is never constructed, so its hook never installs');
     }
 
     /**
@@ -113,15 +113,15 @@ final class AsEagerMembershipTest extends ContainerTestCase
             if (!$file instanceof \SplFileInfo || 'php' !== $file->getExtension()) {
                 continue;
             }
-            $code = (string) file_get_contents($file->getPathname());
-            if (1 !== preg_match('/FrameHooks\s+\$/', $code) || 1 !== preg_match('/^namespace\s+([^;]+);/m', $code, $ns)) {
+            $code = (string) \file_get_contents($file->getPathname());
+            if (1 !== \preg_match('/FrameHooks\s+\$/', $code) || 1 !== \preg_match('/^namespace\s+([^;]+);/m', $code, $ns)) {
                 continue;
             }
             /** @var class-string $class */
             $class = $ns[1].'\\'.$file->getBasename('.php');
             $found[] = $class;
         }
-        sort($found);
+        \sort($found);
 
         return $found;
     }

@@ -37,11 +37,11 @@ final readonly class LineTextReader
         // Both spellings, because buffers are keyed by the path they were
         // opened with and a caller may hold the other side of a symlink — the
         // project root itself is one on macOS temp dirs.
-        $document = ($this->buffers->get($path) ?? $this->buffers->get(($resolved = realpath($path)) ? $resolved : $path))?->document;
+        $document = ($this->buffers->get($path) ?? $this->buffers->get(($resolved = \realpath($path)) ? $resolved : $path))?->document;
         if (null !== $document) {
             return $document->getLine(...);
         }
-        $lines = is_file($path) ? file($path, \FILE_IGNORE_NEW_LINES) : false;
+        $lines = \is_file($path) ? \file($path, \FILE_IGNORE_NEW_LINES) : false;
         $fileLines = \is_array($lines) ? $lines : [];
 
         return static fn (int $line): string => $fileLines[$line] ?? '';

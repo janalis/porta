@@ -65,7 +65,7 @@ final readonly class DebugStateStore
                 continue;
             }
             /** @var list<array<string, mixed>|scalar|null> $entries */
-            $entries = array_values($rawEntries);
+            $entries = \array_values($rawEntries);
             foreach ($entries as $entry) {
                 if (!\is_array($entry) || !\is_int($entry['line'] ?? null)) {
                     continue;
@@ -92,7 +92,7 @@ final readonly class DebugStateStore
 
         $filters = null;
         if (\is_array($data['exceptionFilters'] ?? null)) {
-            $filters = array_values(array_filter($data['exceptionFilters'], static fn (mixed $id): bool => \is_string($id)));
+            $filters = \array_values(\array_filter($data['exceptionFilters'], static fn (mixed $id): bool => \is_string($id)));
         }
 
         return ['breakpoints' => $breakpoints, 'watches' => $watches, 'exceptionFilters' => $filters];

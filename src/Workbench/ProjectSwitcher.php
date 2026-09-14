@@ -54,11 +54,11 @@ final readonly class ProjectSwitcher
             // that has been moved or deleted is an entry that answers a
             // keystroke with an error — the recent-files list drops those for
             // the same reason.
-            if ($root === $this->rootDir || !is_dir($root)) {
+            if ($root === $this->rootDir || !\is_dir($root)) {
                 continue;
             }
 
-            $items[] = ['label' => basename($root), 'hint' => self::tilde($root), 'value' => $root];
+            $items[] = ['label' => \basename($root), 'hint' => self::tilde($root), 'value' => $root];
         }
         if ([] === $items) {
             $this->prompt();
@@ -81,7 +81,7 @@ final readonly class ProjectSwitcher
     private function prompt(): void
     {
         $this->editor->openPrompt($this->translator->trans('Open project (path)'), '', function (string $path): void {
-            $path = trim($path);
+            $path = \trim($path);
             if ('' !== $path) {
                 $this->requestOpen($path);
             }
@@ -96,8 +96,8 @@ final readonly class ProjectSwitcher
     private function requestOpen(string $path): void
     {
         $expanded = self::expand($path);
-        $root = ($real = realpath($expanded)) ? $real : $expanded;
-        if (!is_dir($root)) {
+        $root = ($real = \realpath($expanded)) ? $real : $expanded;
+        if (!\is_dir($root)) {
             $this->notifier->flash($this->translator->trans('Not a directory: %path%', ['%path%' => $path]));
 
             return;
@@ -107,7 +107,7 @@ final readonly class ProjectSwitcher
         // this service was handed is canonical — and on macOS a temp path is
         // `/var/...` while its realpath is `/private/var/...`, so a raw
         // comparison would call the project you are in a different one.
-        if ($root === (($mine = realpath($this->rootDir)) ? $mine : $this->rootDir)) {
+        if ($root === (($mine = \realpath($this->rootDir)) ? $mine : $this->rootDir)) {
             $this->notifier->flash($this->translator->trans('Already open'));
 
             return;
@@ -132,7 +132,7 @@ final readonly class ProjectSwitcher
             return $path;
         }
 
-        return $home.substr($path, offset: 1);
+        return $home.\substr($path, offset: 1);
     }
 
     /** The inverse, for display: a home-relative path is shorter and reads as a place. */
@@ -140,6 +140,6 @@ final readonly class ProjectSwitcher
     {
         $home = \Porta\Config\PortaHome::base();
 
-        return null !== $home && str_starts_with($path, $home.'/') ? '~'.substr($path, \strlen($home)) : $path;
+        return null !== $home && \str_starts_with($path, $home.'/') ? '~'.\substr($path, \strlen($home)) : $path;
     }
 }

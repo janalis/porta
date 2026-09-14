@@ -74,7 +74,7 @@ final class ColumnModeTest extends TestCase
     {
         $text = $this->multiCaret->selectedBlockText();
 
-        return '' === $text ? [] : explode("\n", $text);
+        return '' === $text ? [] : \explode("\n", $text);
     }
 
     private function press(EditorActions $actions, string ...$keys): void
@@ -88,13 +88,13 @@ final class ColumnModeTest extends TestCase
     {
         $actions = $this->actions("abcd\nefgh\n");
 
-        self::assertFalse($actions->columnMode());
+        $this->assertFalse($actions->columnMode());
 
         $this->press($actions, 'c');
-        self::assertTrue($actions->columnMode());
+        $this->assertTrue($actions->columnMode());
 
         $this->press($actions, 'c');
-        self::assertFalse($actions->columnMode());
+        $this->assertFalse($actions->columnMode());
     }
 
     public function testDownAndRightBuildARectangleOneCaretPerRow(): void
@@ -105,7 +105,7 @@ final class ColumnModeTest extends TestCase
         $this->press($actions, 'c', 'd', 'd', 'r');
 
         // Rows 0..2, columns 1..2 — one character per row.
-        self::assertSame(['b', 'f', 'j'], $this->selections());
+        $this->assertSame(['b', 'f', 'j'], $this->selections());
     }
 
     public function testTheRectangleIsVISUALAcrossALineContainingATab(): void
@@ -119,8 +119,8 @@ final class ColumnModeTest extends TestCase
         $this->press($actions, 'c', 'd', 'r');
 
         $selections = $this->selections();
-        self::assertSame('e', $selections[0], 'the first row takes the character at display column 4');
-        self::assertCount(2, $selections, 'and the tab line contributes its own cell, not a byte-shifted one');
+        $this->assertSame('e', $selections[0], 'the first row takes the character at display column 4');
+        $this->assertCount(2, $selections, 'and the tab line contributes its own cell, not a byte-shifted one');
     }
 
     public function testAShortLineDoesNotNarrowTheRectangleForGood(): void
@@ -134,8 +134,8 @@ final class ColumnModeTest extends TestCase
         $this->press($actions, 'c', 'r', 'd', 'd');
 
         $selections = $this->selections();
-        self::assertSame('e', $selections[0]);
-        self::assertSame('e', $selections[array_key_last($selections)], 'the last row is as wide as the first');
+        $this->assertSame('e', $selections[0]);
+        $this->assertSame('e', $selections[\array_key_last($selections)], 'the last row is as wide as the first');
     }
 
     public function testPlainSelectionIsUntouchedWhileTheModeIsOff(): void
@@ -147,7 +147,7 @@ final class ColumnModeTest extends TestCase
 
         $this->press($actions, 'd');
 
-        self::assertFalse($this->multiCaret->hasMultiple(), 'a linear selection makes no extra carets');
+        $this->assertFalse($this->multiCaret->hasMultiple(), 'a linear selection makes no extra carets');
     }
 
     public function testAKeyTheModeDoesNotOwnFallsThroughToTheRestOfTheCascade(): void
@@ -160,7 +160,7 @@ final class ColumnModeTest extends TestCase
 
         $actions->handleKey('z', new Keybindings(['toggle_column_mode' => ['c'], 'undo' => ['z']]));
 
-        self::assertTrue($actions->columnMode(), 'an unrelated key leaves the mode alone');
+        $this->assertTrue($actions->columnMode(), 'an unrelated key leaves the mode alone');
     }
 
     public function testEnteringTheModeAsksForARepaint(): void
@@ -172,7 +172,7 @@ final class ColumnModeTest extends TestCase
 
         $this->press($actions, 'c');
 
-        self::assertContains('invalidate', $this->hostCalls);
+        $this->assertContains('invalidate', $this->hostCalls);
     }
 
     public function testEachRectangleMoveAsksForARepaint(): void
@@ -184,7 +184,7 @@ final class ColumnModeTest extends TestCase
 
         $this->press($actions, 'd');
 
-        self::assertContains('invalidate', $this->hostCalls);
+        $this->assertContains('invalidate', $this->hostCalls);
     }
 
     public function testEscapeLeavesTheModeAsWellAsTheSelection(): void
@@ -192,14 +192,14 @@ final class ColumnModeTest extends TestCase
         $actions = $this->actions("abcd\nefgh\n");
         $this->doc->setCursor(0, 1);
         $this->press($actions, 'c', 'd');
-        self::assertTrue($actions->columnMode());
+        $this->assertTrue($actions->columnMode());
 
         $this->press($actions, 'x');
 
-        self::assertFalse($actions->columnMode(), 'the key that gets you out of everything else gets you out of this');
+        $this->assertFalse($actions->columnMode(), 'the key that gets you out of everything else gets you out of this');
         // Escape must reach the ordinary cancel too, or the rectangle's carets
         // survive a mode nobody is in any more.
-        self::assertFalse($this->multiCaret->hasMultiple(), 'and the carets go with it');
+        $this->assertFalse($this->multiCaret->hasMultiple(), 'and the carets go with it');
     }
 
     public function testTogglingOffLeavesTheCaretsAloneRatherThanCollapsingThem(): void
@@ -209,10 +209,10 @@ final class ColumnModeTest extends TestCase
         $actions = $this->actions("abcd\nefgh\n");
         $this->doc->setCursor(0, 1);
         $this->press($actions, 'c', 'd', 'r');
-        self::assertTrue($this->multiCaret->hasMultiple());
+        $this->assertTrue($this->multiCaret->hasMultiple());
 
         $this->press($actions, 'c');
 
-        self::assertTrue($this->multiCaret->hasMultiple());
+        $this->assertTrue($this->multiCaret->hasMultiple());
     }
 }

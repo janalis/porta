@@ -69,7 +69,7 @@ final class EditorFileActions implements EditorFileActionHandler
         $this->findBar->open(
             new EditorFindTarget($document, $this->editor->decorations()),
             $mode,
-            str_contains($initial, "\n") ? '' : $initial,
+            \str_contains($initial, "\n") ? '' : $initial,
         );
         $this->tui->setFocus($this->findBar);
         $this->tui->requestRender();

@@ -36,7 +36,7 @@ final class NotificationLog
         $text = ToastSeverity::Info === $severity ? $message : $severity->glyph().' '.$message;
         $this->entries[] = ['time' => $this->clock->now(), 'text' => $text];
         if (\count($this->entries) > self::MAX_ENTRIES) {
-            array_shift($this->entries);
+            \array_shift($this->entries);
         }
         $this->dispatcher->dispatch(new NotificationLogged());
     }

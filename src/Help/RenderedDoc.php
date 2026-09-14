@@ -25,7 +25,7 @@ final readonly class RenderedDoc
     {
         $max = -1;
         foreach ($this->links as $span) {
-            $max = max($max, $span->group);
+            $max = \max($max, $span->group);
         }
 
         return $max + 1;
@@ -34,7 +34,7 @@ final readonly class RenderedDoc
     /** @return list<LinkSpan> every rendered fragment of one link */
     public function spansOfGroup(int $group): array
     {
-        return array_values(array_filter($this->links, static fn (LinkSpan $span): bool => $span->group === $group));
+        return \array_values(\array_filter($this->links, static fn (LinkSpan $span): bool => $span->group === $group));
     }
 
     /** The link target of a group, or null for an unknown group. */

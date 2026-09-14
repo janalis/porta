@@ -22,7 +22,7 @@ final class CatalogCompletenessTest extends TestCase
     /** @return list<string> the <source> texts of a catalog, in document order */
     private function sources(string $locale): array
     {
-        $xml = simplexml_load_file(self::DIR.'/messages.'.$locale.'.xlf');
+        $xml = \simplexml_load_file(self::DIR.'/messages.'.$locale.'.xlf');
         self::assertNotFalse($xml, "messages.{$locale}.xlf is not valid XML");
         $xml->registerXPathNamespace('x', 'urn:oasis:names:tc:xliff:document:1.2');
 
@@ -64,31 +64,31 @@ final class CatalogCompletenessTest extends TestCase
     {
         $loader = new LenientXliffLoader();
         $english = \count($loader->load(self::DIR.'/messages.en.xlf', 'en')->all('messages'));
-        self::assertGreaterThan(500, $english, 'the English catalog loaded, and is the size a catalog should be');
+        $this->assertGreaterThan(500, $english, 'the English catalog loaded, and is the size a catalog should be');
 
         foreach (['fr', 'de', 'es', 'it', 'ja', 'he'] as $locale) {
             $loaded = \count($loader->load(self::DIR.'/messages.'.$locale.'.xlf', $locale)->all('messages'));
-            self::assertSame($english, $loaded, \sprintf('messages.%s.xlf loads %d of %d units — a schema error degrades it to English in silence', $locale, $loaded, $english));
+            $this->assertSame($english, $loaded, \sprintf('messages.%s.xlf loads %d of %d units — a schema error degrades it to English in silence', $locale, $loaded, $english));
         }
     }
 
     public function testEveryEnglishSourceExistsInAllSixTargetCatalogs(): void
     {
         $english = $this->sources('en');
-        self::assertNotEmpty($english, 'the English catalog carries the canonical source list');
+        $this->assertNotEmpty($english, 'the English catalog carries the canonical source list');
 
         foreach (['fr', 'de', 'es', 'it', 'ja', 'he'] as $locale) {
             $have = $this->sources($locale);
-            $missing = array_values(array_diff($english, $have));
-            self::assertSame([], $missing, "messages.{$locale}.xlf is missing sources: ".implode(' | ', $missing));
+            $missing = \array_values(\array_diff($english, $have));
+            $this->assertSame([], $missing, "messages.{$locale}.xlf is missing sources: ".\implode(' | ', $missing));
         }
     }
 
     public function testEveryUnitHasANonEmptyTargetInEveryCatalog(): void
     {
         foreach (Translator::LOCALES as $locale) {
-            $xml = simplexml_load_file(self::DIR.'/messages.'.$locale.'.xlf');
-            self::assertNotFalse($xml);
+            $xml = \simplexml_load_file(self::DIR.'/messages.'.$locale.'.xlf');
+            $this->assertNotFalse($xml);
             $xml->registerXPathNamespace('x', 'urn:oasis:names:tc:xliff:document:1.2');
 
             $units = $xml->xpath('//x:trans-unit');
@@ -96,8 +96,8 @@ final class CatalogCompletenessTest extends TestCase
                 $unit->registerXPathNamespace('x', 'urn:oasis:names:tc:xliff:document:1.2');
                 $target = $unit->xpath('x:target');
                 $target = $target ? $target : [];
-                self::assertNotSame([], $target, "a trans-unit in messages.{$locale}.xlf has no <target>");
-                self::assertNotSame('', (string) $target[0], "a trans-unit in messages.{$locale}.xlf has an empty <target>");
+                $this->assertNotSame([], $target, "a trans-unit in messages.{$locale}.xlf has no <target>");
+                $this->assertNotSame('', (string) $target[0], "a trans-unit in messages.{$locale}.xlf has an empty <target>");
             }
         }
     }
@@ -105,12 +105,12 @@ final class CatalogCompletenessTest extends TestCase
     public function testTargetLanguageAttributeMatchesTheFile(): void
     {
         foreach (Translator::LOCALES as $locale) {
-            $xml = simplexml_load_file(self::DIR.'/messages.'.$locale.'.xlf');
-            self::assertNotFalse($xml);
+            $xml = \simplexml_load_file(self::DIR.'/messages.'.$locale.'.xlf');
+            $this->assertNotFalse($xml);
             $files = $xml->xpath('//*[local-name()="file"]');
             $file = ($files ? $files : [])[0] ?? null;
-            self::assertNotNull($file);
-            self::assertSame($locale, (string) $file['target-language']);
+            $this->assertNotNull($file);
+            $this->assertSame($locale, (string) $file['target-language']);
         }
     }
 }

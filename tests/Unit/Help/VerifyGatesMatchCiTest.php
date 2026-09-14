@@ -44,32 +44,32 @@ final class VerifyGatesMatchCiTest extends TestCase
         $root = \dirname(__DIR__, levels: 3);
 
         /** @var array{scripts: array<string, list<string>|string>} $composer */
-        $composer = json_decode((string) file_get_contents($root.'/composer.json'), associative: true);
+        $composer = \json_decode((string) \file_get_contents($root.'/composer.json'), associative: true);
         $scripts = $composer['scripts'];
 
-        preg_match_all('/^\s*(?:- )?run: composer ([a-z:]+)/m', (string) file_get_contents($root.'/.github/workflows/ci.yml'), $matches);
-        $ci = array_values(array_unique(array_diff($matches[1], self::NOT_IN_VERIFY)));
+        \preg_match_all('/^\s*(?:- )?run: composer ([a-z:]+)/m', (string) \file_get_contents($root.'/.github/workflows/ci.yml'), $matches);
+        $ci = \array_values(\array_unique(\array_diff($matches[1], self::NOT_IN_VERIFY)));
 
         $reachedByVerify = self::reach($scripts, 'verify');
         $reachedByCi = [];
         foreach ($ci as $script) {
             $reachedByCi = [...$reachedByCi, ...self::reach($scripts, $script)];
         }
-        $reachedByCi = array_values(array_unique($reachedByCi));
+        $reachedByCi = \array_values(\array_unique($reachedByCi));
 
-        $ciOnly = array_values(array_diff($reachedByCi, $reachedByVerify));
-        sort($ciOnly);
+        $ciOnly = \array_values(\array_diff($reachedByCi, $reachedByVerify));
+        \sort($ciOnly);
         $this->assertSame([], $ciOnly, 'CI runs a gate `composer verify` never reaches — add it to the chain, or list it in NOT_IN_VERIFY and say why');
 
         // What `verify` reaches and CI does not may only be a CHAIN: a script
         // whose every step is a reference to another script runs no gate of its
         // own, and CI naming its parts instead is how the coverage passes get
         // their own runners. Anything else is a gate CI would never run.
-        $verifyOnly = array_values(array_filter(
-            array_diff($reachedByVerify, $reachedByCi),
+        $verifyOnly = \array_values(\array_filter(
+            \array_diff($reachedByVerify, $reachedByCi),
             static fn (string $name): bool => !self::isChain($scripts, $name),
         ));
-        sort($verifyOnly);
+        \sort($verifyOnly);
         $this->assertSame([], $verifyOnly, '`composer verify` runs a gate CI does not — wire it into a CI job, or it only blocks the person who remembered');
     }
 
@@ -85,8 +85,8 @@ final class VerifyGatesMatchCiTest extends TestCase
         $steps = $scripts[$name] ?? [];
         $out = [$name];
         foreach (\is_array($steps) ? $steps : [$steps] as $step) {
-            $referenced = substr($step, offset: 1);
-            if (!str_starts_with($step, '@') || !\array_key_exists($referenced, $scripts)) {
+            $referenced = \substr($step, offset: 1);
+            if (!\str_starts_with($step, '@') || !\array_key_exists($referenced, $scripts)) {
                 continue; // a shell command, or `@php`/`@putenv` — not another gate
             }
             $out = [...$out, ...self::reach($scripts, $referenced)];
@@ -107,6 +107,6 @@ final class VerifyGatesMatchCiTest extends TestCase
             return false;
         }
 
-        return [] === array_filter($steps, static fn (string $step): bool => !\array_key_exists(substr($step, offset: 1), $scripts));
+        return [] === \array_filter($steps, static fn (string $step): bool => !\array_key_exists(\substr($step, offset: 1), $scripts));
     }
 }

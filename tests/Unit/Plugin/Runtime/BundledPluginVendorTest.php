@@ -25,7 +25,7 @@ final class BundledPluginVendorTest extends TestCase
     public function testEveryVendorDirectoryUnderMagosSourcePathsIsExcluded(): void
     {
         $root = \dirname(__DIR__, levels: 4);
-        $config = (string) file_get_contents($root.'/mago.toml');
+        $config = (string) \file_get_contents($root.'/mago.toml');
 
         // The bundled plugins (none vendor today — this half is a tripwire) and
         // the third-party fixture, which does.
@@ -36,7 +36,7 @@ final class BundledPluginVendorTest extends TestCase
         $this->assertNotSame([], $vendors, 'nothing to check means the test proves nothing');
 
         foreach ($vendors as $vendor) {
-            $relative = substr($vendor, \strlen($root) + 1);
+            $relative = \substr($vendor, \strlen($root) + 1);
             $this->assertStringContainsString('"'.$relative.'"', $config, \sprintf('%s must be named in mago.toml\'s [source] excludes', $relative));
         }
     }
@@ -44,7 +44,7 @@ final class BundledPluginVendorTest extends TestCase
     /** @return list<string> */
     private static function directories(string $pattern): array
     {
-        $found = glob($pattern, flags: \GLOB_ONLYDIR);
+        $found = \glob($pattern, flags: \GLOB_ONLYDIR);
 
         return \is_array($found) ? $found : [];
     }

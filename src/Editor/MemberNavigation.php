@@ -59,7 +59,7 @@ final readonly class MemberNavigation
         if (MemberStep::Previous === $step) {
             // One direction of travel, read backwards: everything below works
             // on "the next member past the caret".
-            $members = array_reverse($members);
+            $members = \array_reverse($members);
         }
         $caret = $this->editor->getDocument()->getCursorLine();
         $target = null;

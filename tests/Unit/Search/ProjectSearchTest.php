@@ -64,8 +64,8 @@ final class ProjectSearchTest extends TestCase
         $project = $this->fixtures();
         $results = $this->awaitSearch(new ProjectSearch($project->dir), 'needle');
 
-        $paths = array_column($results, 'path');
-        sort($paths);
+        $paths = \array_column($results, 'path');
+        \sort($paths);
         $this->assertSame(['src/A.php', 'src/B.php'], $paths);
         $this->assertSame(1, $results[0]['line'], '0-based line index');
     }
@@ -80,11 +80,11 @@ final class ProjectSearchTest extends TestCase
             'README.md' => "needle at the root\n",
         ]);
         if (SearchBackend::PhpFallback === $backend) {
-            putenv('PATH=/nonexistent');
+            \putenv('PATH=/nonexistent');
         }
 
-        $paths = array_column($this->awaitSearch(new ProjectSearch($project->dir), 'needle', scope: 'src'), 'path');
-        sort($paths);
+        $paths = \array_column($this->awaitSearch(new ProjectSearch($project->dir), 'needle', scope: 'src'), 'path');
+        \sort($paths);
 
         return $paths;
     }
@@ -121,7 +121,7 @@ final class ProjectSearchTest extends TestCase
         // A catastrophic-backtracking regex that is valid against '' but exceeds
         // the PCRE backtrack limit on the file's long run: preg_match_all returns
         // false for that file, which the whole-file scan skips (no results).
-        $project = new TempProject(['src/A.php' => str_repeat('a', times: 30)."!\nz\n"]);
+        $project = new TempProject(['src/A.php' => \str_repeat('a', times: 30)."!\nz\n"]);
         $search = new ProjectSearch($project->dir);
         $results = $this->awaitSearch($search, "(a+)+\nz", options: new SearchOptions(regex: true));
 
@@ -146,7 +146,7 @@ final class ProjectSearchTest extends TestCase
     {
         // The a-run followed by `z` is what drives the pattern into the
         // expensive scan; `needle` is there for the ordinary search after it.
-        $project = new TempProject(['src/A.php' => str_repeat('a', times: 30)."!\nz\nneedle\n"]);
+        $project = new TempProject(['src/A.php' => \str_repeat('a', times: 30)."!\nz\nneedle\n"]);
         $search = new ProjectSearch($project->dir);
 
         $this->awaitSearch($search, "(a+)+\nz", options: new SearchOptions(regex: true));
@@ -179,11 +179,11 @@ final class ProjectSearchTest extends TestCase
         ]);
         // Overlapping scopes (the file and its directory) must still match A.php once.
         $results = $this->awaitSearch(new ProjectSearch($project->dir), "foo\nbar", scope: ['src/A.php', 'src']);
-        $paths = array_column($results, 'path');
+        $paths = \array_column($results, 'path');
         $this->assertSame(['src/A.php'], $paths, 'deduplicated across overlapping scopes; the binary file is skipped');
 
         // The result cap applies to the whole-file scan too.
-        $many = new TempProject(['big.txt' => str_repeat("A\nB\n", ProjectSearch::MAX_RESULTS + 5)]);
+        $many = new TempProject(['big.txt' => \str_repeat("A\nB\n", ProjectSearch::MAX_RESULTS + 5)]);
         $capped = $this->awaitSearch(new ProjectSearch($many->dir), "A\nB");
         $this->assertCount(ProjectSearch::MAX_RESULTS, $capped);
     }
@@ -197,15 +197,15 @@ final class ProjectSearchTest extends TestCase
 
     public function testScopeListOfExplicitFilesAndDirsDeduplicates(): void
     {
-        putenv('PATH=/nonexistent'); // force the PHP walk so scopeFiles is exercised
+        \putenv('PATH=/nonexistent'); // force the PHP walk so scopeFiles is exercised
         $project = new TempProject([
             'src/A.php' => "<?php\n// needle in A\n",
             'src/B.php' => "<?php\n// needle in B\n",
             'other/C.php' => "<?php\n// needle in C\n",
         ]);
         // 'src/A.php' (a file) overlaps 'src' (a dir); A.php is matched once, C.php stays out of scope.
-        $paths = array_column($this->awaitSearch(new ProjectSearch($project->dir), 'needle', scope: ['src/A.php', 'src']), 'path');
-        sort($paths);
+        $paths = \array_column($this->awaitSearch(new ProjectSearch($project->dir), 'needle', scope: ['src/A.php', 'src']), 'path');
+        \sort($paths);
         $this->assertSame(['src/A.php', 'src/B.php'], $paths);
     }
 
@@ -214,13 +214,13 @@ final class ProjectSearchTest extends TestCase
         $project = $this->fixtures();
         // Also exercise the binary-file and oversized-file skips
         $project->write('src/bin.dat', "nee\0dle");
-        $project->write('src/huge.txt', str_repeat('needle filler ', times: 80_000)); // > 1 MB, skipped
-        putenv('PATH=/nonexistent');
+        $project->write('src/huge.txt', \str_repeat('needle filler ', times: 80_000)); // > 1 MB, skipped
+        \putenv('PATH=/nonexistent');
 
         $results = $this->awaitSearch(new ProjectSearch($project->dir), 'needle');
 
-        $paths = array_column($results, 'path');
-        sort($paths);
+        $paths = \array_column($results, 'path');
+        \sort($paths);
         $this->assertSame(['src/A.php', 'src/B.php'], $paths);
     }
 
@@ -229,7 +229,7 @@ final class ProjectSearchTest extends TestCase
     {
         $project = new TempProject(['a.txt' => $content."\n"]);
         if (SearchBackend::PhpFallback === $backend) {
-            putenv('PATH=/nonexistent');
+            \putenv('PATH=/nonexistent');
         }
         $results = $this->awaitSearch(new ProjectSearch($project->dir), $query, options: $options);
         $this->assertCount(1, $results);
@@ -262,10 +262,10 @@ final class ProjectSearchTest extends TestCase
             'src/C.twig' => "{# needle #}\n",
         ]);
         if (SearchBackend::PhpFallback === $backend) {
-            putenv('PATH=/nonexistent');
+            \putenv('PATH=/nonexistent');
         }
-        $paths = array_column($this->awaitSearch(new ProjectSearch($project->dir), 'needle', mask: $mask), 'path');
-        sort($paths);
+        $paths = \array_column($this->awaitSearch(new ProjectSearch($project->dir), 'needle', mask: $mask), 'path');
+        \sort($paths);
 
         return $paths;
     }
@@ -295,10 +295,10 @@ final class ProjectSearchTest extends TestCase
             'src/B.js' => "// needle\n",
         ]);
         if (SearchBackend::PhpFallback === $backend) {
-            putenv('PATH=/nonexistent');
+            \putenv('PATH=/nonexistent');
         }
 
-        return array_column($this->awaitSearch(new ProjectSearch($project->dir), 'needle', scope: $scope, mask: $mask), 'path');
+        return \array_column($this->awaitSearch(new ProjectSearch($project->dir), 'needle', scope: $scope, mask: $mask), 'path');
     }
 
     /**
@@ -337,10 +337,10 @@ final class ProjectSearchTest extends TestCase
         // Regex.
         $this->assertNotSame([], $this->awaitSearch($search, 'ne+dle', options: new SearchOptions(regex: true)));
         // Case-sensitive: NEEDLES does not match lowercase "needle".
-        $lines = array_column($this->awaitSearch($search, 'needle', options: new SearchOptions(caseSensitive: true)), 'line');
+        $lines = \array_column($this->awaitSearch($search, 'needle', options: new SearchOptions(caseSensitive: true)), 'line');
         $this->assertNotContains(2, $lines, 'case-sensitive skips $NEEDLES');
         // Whole-word: "needle" must not match inside "needless".
-        $wordLines = array_column($this->awaitSearch($search, 'needle', options: new SearchOptions(wholeWord: true)), 'line');
+        $wordLines = \array_column($this->awaitSearch($search, 'needle', options: new SearchOptions(wholeWord: true)), 'line');
         $this->assertNotContains(3, $wordLines, 'whole-word skips needless()');
         $this->assertContains(1, $wordLines);
     }
@@ -350,12 +350,12 @@ final class ProjectSearchTest extends TestCase
         $project = new TempProject([
             'src/A.php' => "<?php\n\$needle = 1;\n\$NEEDLES = 2;\nneedless();\n",
         ]);
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $search = new ProjectSearch($project->dir);
 
         $this->assertNotSame([], $this->awaitSearch($search, 'ne+dle', options: new SearchOptions(regex: true)));
-        $this->assertNotContains(2, array_column($this->awaitSearch($search, 'needle', options: new SearchOptions(caseSensitive: true)), 'line'));
-        $wordLines = array_column($this->awaitSearch($search, 'needle', options: new SearchOptions(wholeWord: true)), 'line');
+        $this->assertNotContains(2, \array_column($this->awaitSearch($search, 'needle', options: new SearchOptions(caseSensitive: true)), 'line'));
+        $wordLines = \array_column($this->awaitSearch($search, 'needle', options: new SearchOptions(wholeWord: true)), 'line');
         $this->assertNotContains(3, $wordLines);
         $this->assertContains(1, $wordLines);
     }
@@ -410,7 +410,7 @@ final class ProjectSearchTest extends TestCase
     public function testResultCapWithGrep(): void
     {
         $project = new TempProject([
-            'big.txt' => str_repeat("needle\n", ProjectSearch::MAX_RESULTS + 200),
+            'big.txt' => \str_repeat("needle\n", ProjectSearch::MAX_RESULTS + 200),
         ]);
 
         $results = $this->awaitSearch(new ProjectSearch($project->dir), 'needle', timeout: 5.0);
@@ -420,9 +420,9 @@ final class ProjectSearchTest extends TestCase
 
     public function testResultCapWithPhpFallback(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject([
-            'big.txt' => str_repeat("needle\n", ProjectSearch::MAX_RESULTS + 200),
+            'big.txt' => \str_repeat("needle\n", ProjectSearch::MAX_RESULTS + 200),
         ]);
 
         $results = $this->awaitSearch(new ProjectSearch($project->dir), 'needle', timeout: 5.0);
@@ -434,8 +434,8 @@ final class ProjectSearchTest extends TestCase
     {
         $tools = new TempProject([], 'porta-badgrep-');
         $badGrep = $tools->write('grep', "\x00\x01 not an executable format");
-        chmod($badGrep, permissions: 0o755);
-        putenv('PATH='.$tools->dir);
+        \chmod($badGrep, permissions: 0o755);
+        \putenv('PATH='.$tools->dir);
 
         $project = $this->fixtures();
         $results = $this->awaitSearch(new ProjectSearch($project->dir), 'needle');

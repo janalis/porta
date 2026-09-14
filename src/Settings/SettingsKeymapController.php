@@ -70,7 +70,7 @@ final class SettingsKeymapController
         $overrides = IdeConfig::load($this->files->rootDir())->keymap;
         $rows = [];
         foreach ($this->actions->labels() as $action => $label) {
-            $rows[] = new KeybindingRow($action, $this->translator->trans($label), $this->effectiveBinding($action), array_key_exists($action, $overrides));
+            $rows[] = new KeybindingRow($action, $this->translator->trans($label), $this->effectiveBinding($action), \array_key_exists($action, $overrides));
         }
 
         return $rows;
@@ -125,7 +125,7 @@ final class SettingsKeymapController
         // there, rewriting it is an ordinary rebind, and Del ({@see
         // resetBinding()}) is the way to take one back.
         // @mago-expect lint:no-insecure-comparison -- `$token` is a key chord ("f12", "ctrl+d"), not a secret; the rule matches the NAME, and there is nothing here to time an attack against.
-        if (!array_key_exists($action, self::fileKeymap($this->files->path($scope))) && $token === $this->effectiveBinding($action)) {
+        if (!\array_key_exists($action, self::fileKeymap($this->files->path($scope))) && $token === $this->effectiveBinding($action)) {
             $this->notifier->flash($this->translator->trans('%action% already uses %key%', [
                 '%action%' => $this->translator->trans($this->actions->label($action)),
                 '%key%' => ShortcutFormatter::format($token),
@@ -186,7 +186,7 @@ final class SettingsKeymapController
     public function resetBinding(string $action): void
     {
         $scope = $this->scope->current();
-        if (!array_key_exists($action, self::fileKeymap($this->files->path($scope)))) {
+        if (!\array_key_exists($action, self::fileKeymap($this->files->path($scope)))) {
             // Nothing to undo HERE. Said plainly rather than reported as a
             // failed write, and named by file, because the other scope may
             // well be the one holding it.
@@ -235,7 +235,7 @@ final class SettingsKeymapController
     private static function fileKeymap(?string $path): array
     {
         /** @var mixed $config */
-        $config = null === $path || !is_file($path) ? null : json_decode((string) file_get_contents($path), associative: true);
+        $config = null === $path || !\is_file($path) ? null : \json_decode((string) \file_get_contents($path), associative: true);
         /** @var mixed $keymap */
         $keymap = \is_array($config) ? $config['keymap'] ?? null : null;
 

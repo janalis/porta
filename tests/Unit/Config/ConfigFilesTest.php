@@ -44,7 +44,7 @@ final class ConfigFilesTest extends TestCase
 
     public function testForResolvesHomeFromTheEnvironment(): void
     {
-        putenv('PORTA_HOME=/tmp/porta-home-fixture');
+        \putenv('PORTA_HOME=/tmp/porta-home-fixture');
 
         $this->assertSame(
             '/tmp/porta-home-fixture/.porta/config.json',

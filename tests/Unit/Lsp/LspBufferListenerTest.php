@@ -60,7 +60,7 @@ final class LspBufferListenerTest extends TestCase
 
         $this->assertSame(
             ['method' => 'textDocument/didSave', 'params' => ['textDocument' => ['uri' => 'file:///p/a.php']]],
-            end($this->client->notifications),
+            \end($this->client->notifications),
         );
     }
 
@@ -86,7 +86,7 @@ final class LspBufferListenerTest extends TestCase
 
         $listener->onBufferSwitched(new BufferSwitched($text));
 
-        $this->assertSame(['textDocument/inlayHint'], array_column($this->client->requests, 'method'), 'a plain text buffer requests inlay hints');
+        $this->assertSame(['textDocument/inlayHint'], \array_column($this->client->requests, 'method'), 'a plain text buffer requests inlay hints');
     }
 
     public function testViewerSwitchSkipsInlayHints(): void
@@ -96,7 +96,7 @@ final class LspBufferListenerTest extends TestCase
         $this->activeFile->set('/p/a.php');
         $pool->notifyDidOpen('/p/a.php', "<?php\n", 'php', 1);
 
-        $gd = imagecreatetruecolor(2, height: 2);
+        $gd = \imagecreatetruecolor(2, height: 2);
         \assert(false !== $gd, description: 'the truecolor image was created');
         $buffers = new BufferManager();
         $image = $buffers->openPane('/p/i.png', 'image', new ImageData($gd, 2, 2, 5));

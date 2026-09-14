@@ -40,7 +40,7 @@ final class RefactorControllerTest extends TestCase
 
     private function flashed(): string
     {
-        return AnsiUtils::stripAnsiCodes(implode('', $this->statusBar->render(new RenderContext(100, 1))));
+        return AnsiUtils::stripAnsiCodes(\implode('', $this->statusBar->render(new RenderContext(100, 1))));
     }
 
     /** Clears the flag first: a caller checks whether ITS action requested a render, not a stale one. */
@@ -152,7 +152,7 @@ final class RefactorControllerTest extends TestCase
 
         $controller->requestCodeActions(1, 2);
 
-        $this->assertSame(['textDocument/codeAction'], array_column($this->client->requests, 'method'));
+        $this->assertSame(['textDocument/codeAction'], \array_column($this->client->requests, 'method'));
     }
 
     /**
@@ -170,7 +170,7 @@ final class RefactorControllerTest extends TestCase
 
         $controller->requestCodeActions(1, 0);
 
-        $params = end($this->client->requests)['params'];
+        $params = \end($this->client->requests)['params'];
         $this->assertSame(['line' => 1, 'character' => 0], $params['range']['start']);
         $this->assertSame(['line' => 1, 'character' => 7], $params['range']['end'], 'the whole selection, not the caret');
     }
@@ -183,7 +183,7 @@ final class RefactorControllerTest extends TestCase
 
         $controller->requestCodeActions(1, 0);
 
-        $params = end($this->client->requests)['params'];
+        $params = \end($this->client->requests)['params'];
         $this->assertSame(['line' => 1, 'character' => 2], $params['range']['start']);
         $this->assertSame(['line' => 1, 'character' => 5], $params['range']['end']);
     }
@@ -195,7 +195,7 @@ final class RefactorControllerTest extends TestCase
 
         $controller->requestCodeActions(1, 3);
 
-        $params = end($this->client->requests)['params'];
+        $params = \end($this->client->requests)['params'];
         $this->assertSame(['line' => 1, 'character' => 3], $params['range']['start']);
         $this->assertSame(['line' => 1, 'character' => 3], $params['range']['end']);
     }
@@ -212,7 +212,7 @@ final class RefactorControllerTest extends TestCase
 
         $controller->requestCodeActions(1, 0);
 
-        $params = end($this->client->requests)['params'];
+        $params = \end($this->client->requests)['params'];
         $this->assertSame(['uri' => 'file:///tmp/proj/a.php'], $params['textDocument']);
     }
 
@@ -229,7 +229,7 @@ final class RefactorControllerTest extends TestCase
         [$controller] = $this->ready();
         $controller->requestCodeActions(1, 0);
 
-        end($this->client->requests)['respond']($result, error: $error);
+        \end($this->client->requests)['respond']($result, error: $error);
 
         $this->assertStringContainsString('No quick fixes here', $this->flashed());
     }
@@ -259,7 +259,7 @@ final class RefactorControllerTest extends TestCase
 
         $controller->{$method}(1, 0);
 
-        $context = end($this->client->requests)['params']['context'];
+        $context = \end($this->client->requests)['params']['context'];
         $this->assertSame($only, $context['only'] ?? null);
         $this->assertSame(1, $context['triggerKind'], 'invoked by the user, not polled');
     }
@@ -276,7 +276,7 @@ final class RefactorControllerTest extends TestCase
 
         $controller->requestCodeActions(1, 0);
 
-        $diagnostic = end($this->client->requests)['params']['context']['diagnostics'][0];
+        $diagnostic = \end($this->client->requests)['params']['context']['diagnostics'][0];
         $this->assertSame('PHP0420', $diagnostic['code']);
         $this->assertSame(['fix' => 'import'], $diagnostic['data']);
         // The context is meant to hand back the diagnostic the server
@@ -292,7 +292,7 @@ final class RefactorControllerTest extends TestCase
     {
         [$controller] = $this->ready();
         $controller->requestCodeActions(0, 0);
-        $request = end($this->client->requests);
+        $request = \end($this->client->requests);
         $request['respond']($actions, error: null);
 
         for ($i = 0; $i < $index; ++$i) {
@@ -305,13 +305,13 @@ final class RefactorControllerTest extends TestCase
     {
         [$controller] = $this->ready();
         $controller->requestCodeActions(0, 0);
-        $request = end($this->client->requests);
+        $request = \end($this->client->requests);
         $request['respond']([], error: null);
         $this->assertStringContainsString('No quick fixes here', $this->flashed());
 
         [$controller] = $this->ready();
         $controller->requestCodeActions(0, 0);
-        $request = end($this->client->requests);
+        $request = \end($this->client->requests);
         $request['respond'](result: null, error: ['code' => -1, 'message' => 'nope']);
         $this->assertStringContainsString('No quick fixes here', $this->flashed());
     }
@@ -320,13 +320,13 @@ final class RefactorControllerTest extends TestCase
     {
         [$controller] = $this->ready();
         $controller->requestCodeActions(0, 0);
-        $request = end($this->client->requests);
+        $request = \end($this->client->requests);
         // A malformed entry (not an array) and a titleless action must both be
         // dropped, leaving only the real one — proving the filter runs, not
         // just that "no results" degrades gracefully.
         $request['respond'](['not-an-array', ['title' => ''], ['title' => 'Add import']], error: null);
 
-        $screen = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->layoutPickers([0, 0, 20, 100])[0]['rows']));
+        $screen = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->layoutPickers([0, 0, 20, 100])[0]['rows']));
         $this->assertStringContainsString('Add import', $screen);
 
         // Picking the only surviving row (index 0, since the malformed and
@@ -363,7 +363,7 @@ final class RefactorControllerTest extends TestCase
 
         $this->assertSame(
             ['command' => 'porta.fix', 'arguments' => []],
-            end($this->client->requests)['params'],
+            \end($this->client->requests)['params'],
         );
     }
 
@@ -375,7 +375,7 @@ final class RefactorControllerTest extends TestCase
 
         $this->assertSame(
             ['command' => 'porta.fix', 'arguments' => ['a', 'b']],
-            end($this->client->requests)['params'],
+            \end($this->client->requests)['params'],
         );
     }
 
@@ -387,7 +387,7 @@ final class RefactorControllerTest extends TestCase
 
         $this->assertSame(
             ['command' => 'porta.fix', 'arguments' => ['a', 'b']],
-            end($this->client->requests)['params'],
+            \end($this->client->requests)['params'],
         );
     }
 
@@ -395,7 +395,7 @@ final class RefactorControllerTest extends TestCase
     {
         [$controller] = $this->ready();
         $controller->requestCodeActions(0, 0);
-        $request = end($this->client->requests);
+        $request = \end($this->client->requests);
         $request['respond']([['title' => 'Do nothing']], error: null);
 
         $requested = $this->requestedRenderSince(function (): void {
@@ -403,7 +403,7 @@ final class RefactorControllerTest extends TestCase
         });
 
         $this->assertStringContainsString('Quick fix has nothing to apply', $this->flashed());
-        $this->assertSame(['textDocument/codeAction'], array_column($this->client->requests, 'method'), 'nothing was sent beyond the codeAction request itself');
+        $this->assertSame(['textDocument/codeAction'], \array_column($this->client->requests, 'method'), 'nothing was sent beyond the codeAction request itself');
         $this->assertTrue($requested, 'applyCodeAction always requests a render, even when nothing was applied');
     }
 
@@ -414,7 +414,7 @@ final class RefactorControllerTest extends TestCase
         ]);
 
         $this->assertStringContainsString('Quick fix has nothing to apply', $this->flashed());
-        $this->assertSame(['textDocument/codeAction'], array_column($this->client->requests, 'method'));
+        $this->assertSame(['textDocument/codeAction'], \array_column($this->client->requests, 'method'));
     }
 
     public function testAnEmptyStringCommandIsStillTreatedAsPresent(): void
@@ -427,7 +427,7 @@ final class RefactorControllerTest extends TestCase
             ['title' => 'Weird but valid', 'command' => ['command' => '']],
         ]);
 
-        $this->assertSame(['command' => '', 'arguments' => []], end($this->client->requests)['params']);
+        $this->assertSame(['command' => '', 'arguments' => []], \end($this->client->requests)['params']);
     }
 
     public function testCommandTitleFallsBackThroughActionThenCommandThenLiteral(): void
@@ -436,7 +436,7 @@ final class RefactorControllerTest extends TestCase
         $this->pickAction([
             ['title' => 'Action Title', 'command' => ['command' => 'x', 'title' => 'Command Title']],
         ]);
-        $request = end($this->client->requests);
+        $request = \end($this->client->requests);
         $request['respond'](result: null, error: null);
         $this->assertStringContainsString('Ran "Action Title"', $this->flashed());
 
@@ -447,7 +447,7 @@ final class RefactorControllerTest extends TestCase
         $this->pickAction([
             ['title' => 'Row Label', 'command' => ['command' => 'y']], // no command.title: falls to literal 'command'
         ]);
-        $request = end($this->client->requests);
+        $request = \end($this->client->requests);
         $request['respond'](result: null, error: null);
         $this->assertStringContainsString('Ran "Row Label"', $this->flashed());
     }
@@ -457,14 +457,14 @@ final class RefactorControllerTest extends TestCase
         $this->pickAction([
             ['title' => 'Run fixer', 'command' => 'porta.fix'],
         ]);
-        $request = end($this->client->requests);
+        $request = \end($this->client->requests);
         $request['respond'](result: null, error: null);
         $this->assertStringContainsString('Ran "Run fixer"', $this->flashed());
 
         $this->pickAction([
             ['title' => 'Run fixer', 'command' => 'porta.fix'],
         ]);
-        $request = end($this->client->requests);
+        $request = \end($this->client->requests);
         $request['respond'](result: null, error: ['message' => 'boom']);
         $this->assertStringContainsString('"Run fixer" failed: boom', $this->flashed());
     }
@@ -474,7 +474,7 @@ final class RefactorControllerTest extends TestCase
         $this->pickAction([
             ['title' => 'Run fixer', 'command' => 'porta.fix'],
         ]);
-        $request = end($this->client->requests);
+        $request = \end($this->client->requests);
         $request['respond'](result: null, error: []);
         $this->assertStringContainsString('"Run fixer" failed: unknown error', $this->flashed());
     }
@@ -498,7 +498,7 @@ final class RefactorControllerTest extends TestCase
 
         $controller->requestReformat();
 
-        $request = end($this->client->requests);
+        $request = \end($this->client->requests);
         $this->assertSame('textDocument/formatting', $request['method']);
         $this->assertSame(
             ['textDocument' => ['uri' => 'file:///tmp/proj/a.php'], 'options' => $request['params']['options']],
@@ -514,7 +514,7 @@ final class RefactorControllerTest extends TestCase
         $doc->applyEditorConfig(ResolvedEditorConfig::fromProps(['indent_style' => 'space', 'indent_size' => '3', 'tab_width' => '9']));
 
         $controller->requestReformat();
-        $request = end($this->client->requests);
+        $request = \end($this->client->requests);
         $this->assertSame(3, $request['params']['options']['tabSize'], 'space-indented: uses indentSize');
         $this->assertTrue($request['params']['options']['insertSpaces']);
 
@@ -523,7 +523,7 @@ final class RefactorControllerTest extends TestCase
         $doc->applyEditorConfig(ResolvedEditorConfig::fromProps(['indent_style' => 'tab', 'indent_size' => '3', 'tab_width' => '9']));
 
         $controller->requestReformat();
-        $request = end($this->client->requests);
+        $request = \end($this->client->requests);
         $this->assertSame(9, $request['params']['options']['tabSize'], 'tab-indented: uses tabWidth');
         $this->assertFalse($request['params']['options']['insertSpaces']);
     }
@@ -536,7 +536,7 @@ final class RefactorControllerTest extends TestCase
 
         $controller->requestReformat();
 
-        $request = end($this->client->requests);
+        $request = \end($this->client->requests);
         $this->assertSame('textDocument/rangeFormatting', $request['method']);
         $this->assertSame(
             [
@@ -556,7 +556,7 @@ final class RefactorControllerTest extends TestCase
         [$controller] = $this->ready();
 
         $controller->requestReformat();
-        $request = end($this->client->requests);
+        $request = \end($this->client->requests);
         $request['respond']([], error: null);
 
         $this->assertStringContainsString('Formatting not supported by php-ls', $this->flashed());
@@ -567,7 +567,7 @@ final class RefactorControllerTest extends TestCase
         [$controller] = $this->ready();
 
         $controller->requestReformat();
-        $request = end($this->client->requests);
+        $request = \end($this->client->requests);
         $request['respond'](result: null, error: ['message' => 'boom']);
 
         $this->assertStringContainsString('Formatting not supported by php-ls', $this->flashed());
@@ -581,7 +581,7 @@ final class RefactorControllerTest extends TestCase
         [$controller] = $this->ready();
 
         $controller->requestReformat();
-        $request = end($this->client->requests);
+        $request = \end($this->client->requests);
         $request['respond'](
             [['range' => ['start' => ['line' => 1, 'character' => 0], 'end' => ['line' => 1, 'character' => 2]], 'newText' => 'y']],
             ['message' => 'boom'],
@@ -596,7 +596,7 @@ final class RefactorControllerTest extends TestCase
         [$controller] = $this->ready();
 
         $controller->requestReformat();
-        $request = end($this->client->requests);
+        $request = \end($this->client->requests);
         $notificationsBefore = \count($this->client->notifications);
         $request['respond']([
             ['range' => ['start' => ['line' => 1, 'character' => 0], 'end' => ['line' => 1, 'character' => 2]], 'newText' => 'y'],
@@ -605,7 +605,7 @@ final class RefactorControllerTest extends TestCase
         $this->assertSame("<?php\ny = 1;\n", $this->buffers->get('/tmp/proj/a.php')->document->getText());
         $this->assertStringContainsString('Reformatted a.php', $this->flashed());
         $this->assertGreaterThan($notificationsBefore, \count($this->client->notifications), 'the reformat notifies a fresh full sync');
-        $this->assertSame('textDocument/didChange', end($this->client->notifications)['method']);
+        $this->assertSame('textDocument/didChange', \end($this->client->notifications)['method']);
     }
 
     /**
@@ -648,7 +648,7 @@ final class RefactorControllerTest extends TestCase
         $before = $this->buffers->get('/tmp/proj/a.php')->document->getText();
 
         $controller->requestReformat();
-        $request = end($this->client->requests);
+        $request = \end($this->client->requests);
         $request['respond']([
             ['range' => ['start' => ['line' => 1, 'character' => 0], 'end' => ['line' => 1, 'character' => 5]], 'newText' => 'X'],
             ['range' => ['start' => ['line' => 1, 'character' => 2], 'end' => ['line' => 1, 'character' => 6]], 'newText' => 'Y'],
@@ -665,7 +665,7 @@ final class RefactorControllerTest extends TestCase
         // A second buffer becomes active; the first (being reformatted) is not,
         // by the time the response lands.
         $controller->requestReformat();
-        $request = end($this->client->requests);
+        $request = \end($this->client->requests);
         $second = $this->buffers->open('/tmp/proj/b.php', "<?php\n");
         $this->editor->showDocument('/tmp/proj/b.php', $second->document);
         $pool->notifyDidOpen('/tmp/proj/b.php', $second->document->getText(), 'php', 1);
@@ -688,12 +688,12 @@ final class RefactorControllerTest extends TestCase
     {
         [$controller] = $this->ready(['codeActionProvider' => ['resolveProvider' => true]]);
         $controller->requestCodeActions(0, 0);
-        end($this->client->requests)['respond']([
+        \end($this->client->requests)['respond']([
             ['title' => 'Extract variable', 'kind' => 'refactor.extract', 'data' => ['handle' => 'x']],
         ], error: null);
         $this->editor->handleInput("\r");
 
-        $resolve = end($this->client->requests);
+        $resolve = \end($this->client->requests);
         $this->assertSame('codeAction/resolve', $resolve['method']);
         $this->assertSame(['handle' => 'x'], $resolve['params']['data'], 'the action goes back verbatim');
 
@@ -717,9 +717,9 @@ final class RefactorControllerTest extends TestCase
     {
         [$controller] = $this->ready(['codeActionProvider' => ['resolveProvider' => true]]);
         $controller->requestCodeActions(0, 0);
-        end($this->client->requests)['respond']([['title' => 'Extract variable', 'data' => ['handle' => 'x']]], error: null);
+        \end($this->client->requests)['respond']([['title' => 'Extract variable', 'data' => ['handle' => 'x']]], error: null);
         $this->editor->handleInput("\r");
-        end($this->client->requests)['respond'](null, error: ['message' => 'nope']);
+        \end($this->client->requests)['respond'](null, error: ['message' => 'nope']);
 
         $this->assertStringContainsString('nothing to apply', $this->flashed());
     }
@@ -741,7 +741,7 @@ final class RefactorControllerTest extends TestCase
                 ]],
             ],
         ];
-        end($this->client->requests)['respond']([
+        \end($this->client->requests)['respond']([
             ['title' => 'Second', 'edit' => $edit('SECOND')],
             ['title' => 'First', 'isPreferred' => true, 'edit' => $edit('FIRST')],
         ], error: null);
@@ -756,7 +756,7 @@ final class RefactorControllerTest extends TestCase
     {
         [$controller] = $this->ready();
         $controller->requestRefactorings(0, 0);
-        end($this->client->requests)['respond']([
+        \end($this->client->requests)['respond']([
             ['title' => 'Extract method', 'kind' => 'refactor.extract', 'edit' => $this->editOf('EXTRACTED')],
         ], error: null);
         $this->assertStringNotContainsString('EXTRACTED', $this->text(), 'nothing happens until you choose');
@@ -776,7 +776,7 @@ final class RefactorControllerTest extends TestCase
         [$controller] = $this->ready();
         $controller->requestInline(0, 0);
 
-        end($this->client->requests)['respond']([
+        \end($this->client->requests)['respond']([
             ['title' => 'Inline variable', 'kind' => 'refactor.inline', 'edit' => $this->editOf('INLINED')],
         ], error: null);
 
@@ -787,7 +787,7 @@ final class RefactorControllerTest extends TestCase
     {
         [$controller] = $this->ready();
         $controller->requestInline(0, 0);
-        end($this->client->requests)['respond']([
+        \end($this->client->requests)['respond']([
             ['title' => 'Inline variable', 'kind' => 'refactor.inline', 'edit' => $this->editOf('FIRST')],
             ['title' => 'Inline method', 'kind' => 'refactor.inline', 'edit' => $this->editOf('SECOND')],
         ], error: null);
@@ -804,7 +804,7 @@ final class RefactorControllerTest extends TestCase
         [$controller] = $this->ready();
         $controller->requestCodeActions(0, 0);
 
-        end($this->client->requests)['respond']([['kind' => 'quickfix'], ['title' => '']], error: null);
+        \end($this->client->requests)['respond']([['kind' => 'quickfix'], ['title' => '']], error: null);
 
         $this->assertStringContainsString('No quick fixes here', $this->flashed());
     }
@@ -815,7 +815,7 @@ final class RefactorControllerTest extends TestCase
         $project = new TempProject(['taken.php' => "x\n"]);
         [$controller] = $this->ready();
         $controller->requestCodeActions(0, 0);
-        end($this->client->requests)['respond']([[
+        \end($this->client->requests)['respond']([[
             'title' => 'Extract to class',
             'edit' => ['documentChanges' => [['kind' => 'create', 'uri' => Uri::fromPath($project->path('taken.php'))]]],
         ]], error: null);
@@ -830,7 +830,7 @@ final class RefactorControllerTest extends TestCase
     {
         [$controller] = $this->ready();
         $controller->requestCodeActions(0, 0);
-        end($this->client->requests)['respond']([[
+        \end($this->client->requests)['respond']([[
             'title' => 'Rename everywhere',
             'edit' => [
                 'changes' => [
@@ -870,7 +870,7 @@ final class RefactorControllerTest extends TestCase
 
         $controller->requestOrganizeImports(1, 0);
 
-        $params = end($this->client->requests)['params'];
+        $params = \end($this->client->requests)['params'];
         $this->assertSame(['source.organizeImports'], $params['context']['only']);
     }
 
@@ -884,7 +884,7 @@ final class RefactorControllerTest extends TestCase
         [$controller] = $this->ready();
         $controller->requestOrganizeImports(1, 0);
 
-        end($this->client->requests)['respond']([
+        \end($this->client->requests)['respond']([
             ['title' => 'Organize imports', 'kind' => 'source.organizeImports', 'edit' => $this->editOf('ORGANIZED')],
         ], error: null);
 
@@ -897,7 +897,7 @@ final class RefactorControllerTest extends TestCase
         [$controller] = $this->ready();
         $controller->requestOrganizeImports(1, 0);
 
-        end($this->client->requests)['respond']([
+        \end($this->client->requests)['respond']([
             ['title' => 'Organize imports', 'kind' => 'source.organizeImports', 'edit' => $this->editOf('FIRST')],
             ['title' => 'Organize and sort', 'kind' => 'source.organizeImports', 'edit' => $this->editOf('SECOND')],
         ], error: null);
@@ -916,7 +916,7 @@ final class RefactorControllerTest extends TestCase
         [$controller] = $this->ready();
         $controller->requestOrganizeImports(1, 0);
 
-        end($this->client->requests)['respond']([], error: null);
+        \end($this->client->requests)['respond']([], error: null);
 
         $flashed = $this->flashed();
         $this->assertStringContainsString('Nothing to organize', $flashed);

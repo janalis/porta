@@ -38,8 +38,8 @@ final class ProjectPaths
     public function __construct(
         private readonly string $rootDir,
     ) {
-        $realRoot = realpath($rootDir);
-        $this->realRoot = rtrim($realRoot ? $realRoot : $rootDir, characters: '/');
+        $realRoot = \realpath($rootDir);
+        $this->realRoot = \rtrim($realRoot ? $realRoot : $rootDir, characters: '/');
     }
 
     /** The project root this instance is bound to, for the callers that hand it on raw. */
@@ -54,9 +54,9 @@ final class ProjectPaths
         if (\array_key_exists($path, $this->relativeMemo)) {
             return $this->relativeMemo[$path];
         }
-        $realPath = realpath($path);
+        $realPath = \realpath($path);
         $real = $realPath ? $realPath : $path;
-        $relative = str_starts_with($real, $this->realRoot.'/') ? substr($real, \strlen($this->realRoot) + 1) : $real;
+        $relative = \str_starts_with($real, $this->realRoot.'/') ? \substr($real, \strlen($this->realRoot) + 1) : $real;
         if (false !== $realPath) {
             if (\count($this->relativeMemo) >= self::RELATIVE_MEMO_CAP) {
                 $this->relativeMemo = [];
@@ -76,7 +76,7 @@ final class ProjectPaths
      */
     public function absolute(string $relative): string
     {
-        return str_starts_with($relative, '/') ? $relative : $this->rootDir.'/'.$relative;
+        return \str_starts_with($relative, '/') ? $relative : $this->rootDir.'/'.$relative;
     }
 
     /** LSP languageId for a file, by extension. See {@see LanguageMap}. */

@@ -33,7 +33,7 @@ final class PerfCollectorTest extends TestCase
 
     private function log(PerfCollector $perf): string
     {
-        return (string) file_get_contents($perf->logFile());
+        return (string) \file_get_contents($perf->logFile());
     }
 
     public function testABeatLogsPassGapPercentiles(): void
@@ -122,7 +122,7 @@ final class PerfCollectorTest extends TestCase
         $perf->passMark();
         $perf->beat();
 
-        $lines = array_values(array_filter(explode("\n", $this->log($perf))));
+        $lines = \array_values(\array_filter(\explode("\n", $this->log($perf))));
         $this->assertCount(2, $lines);
         $this->assertStringContainsString('passes=1', $lines[1]);
         // `-`, not `0.0`: one pass has no PREDECESSOR, so there is no gap to
@@ -292,7 +292,7 @@ final class PerfCollectorTest extends TestCase
         // The next window starts clean.
         $perf->passMark();
         $perf->beat();
-        $lines = array_values(array_filter(explode("\n", $this->log($perf))));
+        $lines = \array_values(\array_filter(\explode("\n", $this->log($perf))));
         $this->assertStringContainsString('edMs p50=- p95=-', $lines[1]);
         $this->assertStringContainsString('hlFull=0 hlSplice=0', $lines[1]);
     }
@@ -311,7 +311,7 @@ final class PerfCollectorTest extends TestCase
 
         $log = $this->log($perf);
         $this->assertStringContainsString('2026-08-26 10:00:00 boot firstPaint=30ms', $log);
-        $this->assertSame(1, substr_count($log, needle: 'boot '), 'the second paint must not re-stamp the line');
+        $this->assertSame(1, \substr_count($log, needle: 'boot '), 'the second paint must not re-stamp the line');
     }
 
     public function testTheBootLinePrecedesASlowPaintLineOfTheSameFrame(): void
@@ -321,8 +321,8 @@ final class PerfCollectorTest extends TestCase
         $perf->paintMark(0.2);
 
         $log = $this->log($perf);
-        $bootAt = strpos($log, needle: 'boot ');
-        $slowAt = strpos($log, needle: 'slow-paint');
+        $bootAt = \strpos($log, needle: 'boot ');
+        $slowAt = \strpos($log, needle: 'slow-paint');
         $this->assertNotFalse($bootAt);
         $this->assertNotFalse($slowAt);
         $this->assertLessThan($slowAt, $bootAt, 'the boot line is the opening evidence');

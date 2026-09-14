@@ -75,26 +75,26 @@ final class ShortcutFormatter
             return '+';
         }
 
-        $parts = array_map(self::formatToken(...), explode('+', $binding));
+        $parts = \array_map(self::formatToken(...), \explode('+', $binding));
 
-        return implode('+', $parts);
+        return \implode('+', $parts);
     }
 
     private static function formatToken(#[\SensitiveParameter] string $token): string
     {
-        if (array_key_exists($token, self::MODIFIERS)) {
+        if (\array_key_exists($token, self::MODIFIERS)) {
             return self::MODIFIERS[$token];
         }
-        if (array_key_exists($token, self::KEYS)) {
+        if (\array_key_exists($token, self::KEYS)) {
             return self::KEYS[$token];
         }
         // Function keys: f1..f12 → F1..F12.
-        if (1 === preg_match('/^f([1-9]|1[0-2])$/', $token)) {
-            return strtoupper($token);
+        if (1 === \preg_match('/^f([1-9]|1[0-2])$/', $token)) {
+            return \strtoupper($token);
         }
         // Single letters → uppercase; symbols and anything else kept verbatim.
-        if (1 === preg_match('/^[a-z]$/', $token)) {
-            return strtoupper($token);
+        if (1 === \preg_match('/^[a-z]$/', $token)) {
+            return \strtoupper($token);
         }
 
         return $token;

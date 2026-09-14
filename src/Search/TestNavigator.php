@@ -18,9 +18,9 @@ final class TestNavigator
     /** Whether the file names a test: its basename (minus extension) ends with `Test`. */
     public function isTest(string $path): bool
     {
-        $name = pathinfo($path, \PATHINFO_FILENAME);
+        $name = \pathinfo($path, \PATHINFO_FILENAME);
 
-        return 'Test' !== $name && str_ends_with($name, 'Test');
+        return 'Test' !== $name && \str_ends_with($name, 'Test');
     }
 
     /**
@@ -31,14 +31,14 @@ final class TestNavigator
      */
     public function locate(string $absolutePath): array
     {
-        $name = pathinfo($absolutePath, \PATHINFO_FILENAME);
-        $extension = pathinfo($absolutePath, \PATHINFO_EXTENSION);
-        $target = ($this->isTest($absolutePath) ? substr($name, offset: 0, length: -4) : $name.'Test').('' === $extension ? '' : '.'.$extension);
+        $name = \pathinfo($absolutePath, \PATHINFO_FILENAME);
+        $extension = \pathinfo($absolutePath, \PATHINFO_EXTENSION);
+        $target = ($this->isTest($absolutePath) ? \substr($name, offset: 0, length: -4) : $name.'Test').('' === $extension ? '' : '.'.$extension);
 
         $this->files->refresh();
         $candidates = [];
         foreach ($this->files->entries() as $entry) {
-            if (!(basename($entry['path']) === $target && !str_starts_with($entry['path'], 'vendor/'))) {
+            if (!(\basename($entry['path']) === $target && !\str_starts_with($entry['path'], 'vendor/'))) {
                 continue;
             }
 

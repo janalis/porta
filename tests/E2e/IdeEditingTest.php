@@ -43,7 +43,7 @@ final class IdeEditingTest extends TestCase
      */
     public function testClickingTheFoldColumnCollapsesTheRegionRatherThanSettingABreakpoint(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "<?php\nfunction a()\n{\n    return 1;\n}\n"]);
 
         $this->runIde(
@@ -54,7 +54,7 @@ final class IdeEditingTest extends TestCase
                     $tui->tick();
                     $editor = $tui->getById('editor');
                     $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($editor);
-                    $screen = static fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $editor->render(new \Symfony\Component\Tui\Render\RenderContext(120, 20))));
+                    $screen = static fn (): string => AnsiUtils::stripAnsiCodes(\implode("\n", $editor->render(new \Symfony\Component\Tui\Render\RenderContext(120, 20))));
 
                     $this->assertStringContainsString(Glyphs::EXPANDED, $screen(), 'the brace line starts an open region');
 
@@ -76,8 +76,8 @@ final class IdeEditingTest extends TestCase
 
     public function testStickyScrollPinsHeaderAndClickJumps(): void
     {
-        putenv('PATH=/nonexistent');
-        $code = "<?php\n\nnamespace App;\n\nclass Service\n{\n    public function handle(): void\n    {\n".str_repeat("        \$x = 1;\n", times: 30)."    }\n}\n";
+        \putenv('PATH=/nonexistent');
+        $code = "<?php\n\nnamespace App;\n\nclass Service\n{\n    public function handle(): void\n    {\n".\str_repeat("        \$x = 1;\n", times: 30)."    }\n}\n";
         $project = new TempProject(['Service.php' => $code]);
 
         $this->runIde(
@@ -111,7 +111,7 @@ final class IdeEditingTest extends TestCase
 
     public function testBreadcrumbsShowScopePathAndJumpOnClick(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $code = "<?php\n\nnamespace App;\n\nclass Service\n{\n    public function handle(): void\n    {\n        \$x = 1;\n    }\n}\n";
         $project = new TempProject(['Service.php' => $code]);
 
@@ -151,7 +151,7 @@ final class IdeEditingTest extends TestCase
 
     public function testAVisibleToastDoesNotSelfSustainFrames(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\n"]);
 
         $this->runIde(
@@ -182,7 +182,7 @@ final class IdeEditingTest extends TestCase
 
     public function testBreadcrumbTrailSettlesAfterTypingPauses(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $code = "<?php\n\nnamespace App;\n\nclass Service\n{\n    public function handle(): void\n    {\n        \$x = 1;\n    }\n}\n";
         $project = new TempProject(['Service.php' => $code]);
 
@@ -205,7 +205,7 @@ final class IdeEditingTest extends TestCase
                         static function () use ($tui): bool {
                             $rows = $tui->getById('breadcrumbs')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 1));
 
-                            return [] !== $rows && str_contains(AnsiUtils::stripAnsiCodes($rows[0]), 'handleX');
+                            return [] !== $rows && \str_contains(AnsiUtils::stripAnsiCodes($rows[0]), 'handleX');
                         },
                         what: 'the breadcrumb trail to settle after the edit',
                     );
@@ -221,7 +221,7 @@ final class IdeEditingTest extends TestCase
         // They were palette-only commands with inline labels, which is why this
         // asserts the chords rather than the handlers: an action nothing can
         // press is the failure mode a new binding invites.
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "<?php\n\nclass A\n{\n    public function one(): void\n    {\n        \$x = 1;\n    }\n}\n"]);
 
         // The terminal's output ACCUMULATES, so every read here clears it
@@ -272,7 +272,7 @@ final class IdeEditingTest extends TestCase
      */
     public function testTheClipboardHistoryPickerDRAWSEveryCopyWithItsShape(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\n\$alpha = 1;\n\$beta = 2;\n\$gamma = 3;\n"]);
 
         $this->runIde(
@@ -314,7 +314,7 @@ final class IdeEditingTest extends TestCase
         // can match its descriptor and still never fire — and the OSC 52 the
         // terminal receives, because every other test of these two reads the
         // flash, which a copy that never happened would still produce.
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $code = "<?php\n\nnamespace App\\Http;\n\nclass Svc\n{\n    public function run(): void\n    {\n        \$x = 1;\n    }\n}\n";
         $project = new TempProject(['src/Svc.php' => $code]);
 
@@ -327,13 +327,13 @@ final class IdeEditingTest extends TestCase
                     $terminal->clearOutput();
                     $tui->handleInput("\x1b[99;8u"); // ctrl+alt+shift+c
 
-                    $this->awaitPaintedRaw($tui, $terminal, "\x1b]52;c;".base64_encode('App\\Http\\Svc::run'));
+                    $this->awaitPaintedRaw($tui, $terminal, "\x1b]52;c;".\base64_encode('App\\Http\\Svc::run'));
                 },
                 400 => function ($tui, $terminal): void {
                     $terminal->clearOutput();
                     $tui->handleInput("\x1b[99;6u"); // ctrl+shift+c
 
-                    $this->awaitPaintedRaw($tui, $terminal, "\x1b]52;c;".base64_encode('src/Svc.php'));
+                    $this->awaitPaintedRaw($tui, $terminal, "\x1b]52;c;".\base64_encode('src/Svc.php'));
                 },
             ],
         );
@@ -346,9 +346,9 @@ final class IdeEditingTest extends TestCase
         // Through the running IDE, because the point is the wiring: a
         // Document's mutation has to reach a service that knows which FILE it
         // was in, and the chord has to reach that service back.
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject([
-            'A.php' => "<?php\n".str_repeat("// a\n", times: 40),
+            'A.php' => "<?php\n".\str_repeat("// a\n", times: 40),
             'B.php' => "<?php\n// b\n",
         ]);
 
@@ -394,7 +394,7 @@ final class IdeEditingTest extends TestCase
                 },
                 750 => function ($tui, $terminal, $ide) use ($project): void {
                     Services::resolve($ide, BufferService::class)->closeActiveBuffer(CloseMode::Force);
-                    unlink($project->path('B.php'));
+                    \unlink($project->path('B.php'));
                     $tui->requestRender();
                     $tui->tick();
 
@@ -414,7 +414,7 @@ final class IdeEditingTest extends TestCase
 
     public function testMultiCursorThroughRunningIde(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "one\ntwo\nthree\n"]);
 
         $this->runIde(
@@ -440,7 +440,7 @@ final class IdeEditingTest extends TestCase
 
     public function testMultiCaretSurvivesStrayInputAndShiftSelects(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "aaaa\nbbbb\ncccc\n"]);
 
         $this->runIde(
@@ -471,7 +471,7 @@ final class IdeEditingTest extends TestCase
 
     public function testExpandSelectionThenSurroundThroughFullIde(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['src/A.php' => "<?php\n\$x = foo(bar);\n"]);
 
         $terminal = $this->runIde(
@@ -500,7 +500,7 @@ final class IdeEditingTest extends TestCase
 
     public function testNotificationLogShowsExpiredFlashesInTheDock(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\n\$a = 1;\n"]);
 
         $this->runIde(
@@ -524,10 +524,10 @@ final class IdeEditingTest extends TestCase
                     Services::resolve($ide, Notifier::class)
                         ->flash('a later event', 0.1);
                     $tui->tick();
-                    $panelText = AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 12))));
+                    $panelText = AnsiUtils::stripAnsiCodes(\implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 12))));
                     $this->assertLessThan(
-                        strpos($panelText, needle: 'the answer is 42'),
-                        strpos($panelText, needle: 'a later event'),
+                        \strpos($panelText, needle: 'the answer is 42'),
+                        \strpos($panelText, needle: 'a later event'),
                         'the new flash appended live, newest first',
                     );
                     $tui->setFocus($tui->getById('results'));
@@ -557,7 +557,7 @@ final class IdeEditingTest extends TestCase
      */
     public function testTheClipboardHistoryPickerShowsEveryCopyOnItsOwnRow(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\n\$alpha = 1;\n\$beta = 2;\n"]);
 
         $this->runIde(
@@ -584,16 +584,16 @@ final class IdeEditingTest extends TestCase
                 },
                 600 => function ($tui, $terminal): void {
                     $this->assertTrue(EditorState::pickerOpen($tui->getById('editor')), 'the history opened');
-                    $rows = explode("\n", $this->card($this->screenGrid($tui, $terminal), 'Paste from History'));
-                    $offering = array_values(array_filter($rows, static fn (string $row): bool => str_contains($row, '$beta = 2;')));
+                    $rows = \explode("\n", $this->card($this->screenGrid($tui, $terminal), 'Paste from History'));
+                    $offering = \array_values(\array_filter($rows, static fn (string $row): bool => \str_contains($row, '$beta = 2;')));
 
                     // Both copies END in the same text, so a card-wide
                     // assertion is satisfied by either one alone — the rows
                     // have to be told apart, which is the whole point of the
                     // surface.
-                    $this->assertNotEmpty(array_filter($offering, static fn (string $row): bool => !str_contains($row, '⏎')), 'the single-line copy is a row of its own');
+                    $this->assertNotEmpty(\array_filter($offering, static fn (string $row): bool => !\str_contains($row, '⏎')), 'the single-line copy is a row of its own');
                     $this->assertNotEmpty(
-                        array_filter($offering, static fn (string $row): bool => str_contains($row, '$alpha = 1;⏎$beta = 2;')),
+                        \array_filter($offering, static fn (string $row): bool => \str_contains($row, '$alpha = 1;⏎$beta = 2;')),
                         'the multi-line copy is ONE row with its newline shown',
                     );
 
@@ -611,7 +611,7 @@ final class IdeEditingTest extends TestCase
                     // empty string — measured, it does.
                     $this->assertStringNotContainsString(
                         'Paste from History',
-                        implode("\n", $this->screenGrid($tui, $terminal)),
+                        \implode("\n", $this->screenGrid($tui, $terminal)),
                         'the picker closes behind the pick',
                     );
                 },

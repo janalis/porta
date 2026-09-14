@@ -35,20 +35,20 @@ trait IsolatesPluginDiscovery
     #[Before]
     protected function isolatePluginDiscovery(): void
     {
-        $home = getenv('PORTA_HOME');
+        $home = \getenv('PORTA_HOME');
         $this->savedDiscoveryHome = false === $home ? null : $home;
-        putenv('PORTA_HOME=/nonexistent');
-        $this->savedDiscoveryEmbedded = (string) getenv('PORTA_EMBEDDED_PLUGINS');
+        \putenv('PORTA_HOME=/nonexistent');
+        $this->savedDiscoveryEmbedded = (string) \getenv('PORTA_EMBEDDED_PLUGINS');
     }
 
     #[After]
     protected function restorePluginDiscovery(): void
     {
-        putenv('PORTA_EMBEDDED_PLUGINS='.$this->savedDiscoveryEmbedded);
+        \putenv('PORTA_EMBEDDED_PLUGINS='.$this->savedDiscoveryEmbedded);
         if (null === $this->savedDiscoveryHome) {
             return;
         }
-        putenv('PORTA_HOME='.$this->savedDiscoveryHome);
+        \putenv('PORTA_HOME='.$this->savedDiscoveryHome);
         $this->savedDiscoveryHome = null;
     }
 }

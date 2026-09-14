@@ -105,7 +105,7 @@ final class TextPreviewWidget extends EditorPaneWidget
         $this->preview = $payload instanceof TextPreview ? $payload : null;
         // Split once, here, rather than per render: the cap is two megabytes
         // and a frame is drawn on every keystroke.
-        $this->lines = null === $this->preview ? [] : explode("\n", $this->preview->text);
+        $this->lines = null === $this->preview ? [] : \explode("\n", $this->preview->text);
         $this->scrollTop = 0;
         $this->invalidate();
     }
@@ -194,7 +194,7 @@ final class TextPreviewWidget extends EditorPaneWidget
         if ($cols < 1 || $rows < 1) {
             return [];
         }
-        $this->bodyRows = max(1, $rows - self::HEADER_ROWS);
+        $this->bodyRows = \max(1, $rows - self::HEADER_ROWS);
         // A resize can leave the view past the end — clamped here, where the
         // height is known, the same place the help viewer re-clamps on a
         // re-wrap.
@@ -225,7 +225,7 @@ final class TextPreviewWidget extends EditorPaneWidget
                     ? 'Read-only: %file% is %total%, showing the first %shown%'
                     : 'Read-only: %file% is %total%, too large to edit',
                 [
-                    '%file%' => basename((string) $this->path),
+                    '%file%' => \basename((string) $this->path),
                     '%total%' => $total,
                     '%shown%' => $shown,
                 ],
@@ -237,7 +237,7 @@ final class TextPreviewWidget extends EditorPaneWidget
     /** The furthest the view may scroll: the last body-full of lines. */
     private function clampScroll(int $top): int
     {
-        return IntMath::clamp($top, 0, max(0, \count($this->lines) - $this->bodyRows));
+        return IntMath::clamp($top, 0, \max(0, \count($this->lines) - $this->bodyRows));
     }
 
     /**

@@ -92,7 +92,7 @@ trait MenuOverlayHostTrait
     protected function withMenuOverlay(array $lines, int $width): array
     {
         if ($this->modalBackdrop) {
-            $lines = array_map(AnsiText::dim(...), $lines);
+            $lines = \array_map(AnsiText::dim(...), $lines);
         }
         $lines = MenuOverlay::apply(MenuOverlay::apply($lines, $this->modalOverlay, $width), $this->toastOverlay, $width);
 

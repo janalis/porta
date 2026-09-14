@@ -32,7 +32,7 @@ final class TabStripRendererTest extends TestCase
         $this->assertStringContainsString("\x1b[1m", $strip['line'], 'active tab bold');
         $this->assertStringContainsString("\x1b[48;5;235m", $strip['line'], 'plain inactive tab on Toolbar');
 
-        $this->assertSame([0, 1, 2], array_column($strip['hitMap'], 'index'));
+        $this->assertSame([0, 1, 2], \array_column($strip['hitMap'], 'index'));
         $first = $strip['hitMap'][0];
         $this->assertSame(0, $first['start']);
         $this->assertSame(5, $first['closeStart'], 'the × sits after " one "');
@@ -91,11 +91,11 @@ final class TabStripRendererTest extends TestCase
         $this->assertStringContainsString(Glyphs::SCROLL_NEXT, $plain, 'a › marks the hidden trailing tabs');
         $this->assertSame(30, AnsiUtils::visibleWidth($strip['line']), 'the overflowing strip fills the pane');
 
-        $steps = array_column($strip['indicatorZones'], 'step');
+        $steps = \array_column($strip['indicatorZones'], 'step');
         $this->assertContains(-1, $steps, 'the ‹ pages left');
         $this->assertContains(1, $steps, 'the › pages right');
         // the ‹ sits at col 0, the › at the last column
-        $cols = array_column($strip['indicatorZones'], 'col');
+        $cols = \array_column($strip['indicatorZones'], 'col');
         $this->assertContains(0, $cols);
         $this->assertContains(29, $cols);
     }

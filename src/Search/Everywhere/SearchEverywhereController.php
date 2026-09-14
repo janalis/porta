@@ -198,13 +198,13 @@ final class SearchEverywhereController
 
     private function seedRecentFiles(): void
     {
-        $paths = array_map(static fn (Buffer $b): string => $b->path, $this->buffers->recent());
+        $paths = \array_map(static fn (Buffer $b): string => $b->path, $this->buffers->recent());
         // Then the ones that are recent but no longer open — the same list the
         // Ctrl+E switcher shows, so the two trays cannot disagree about what
         // "recent" means. Gone from disk means gone from the tray.
-        $openPaths = array_fill_keys($paths, value: true);
+        $openPaths = \array_fill_keys($paths, value: true);
         foreach ($this->recentFiles->all() as $path) {
-            if (($openPaths[$path] ?? null) !== null || !is_file($path)) {
+            if (($openPaths[$path] ?? null) !== null || !\is_file($path)) {
                 continue;
             }
 
@@ -217,7 +217,7 @@ final class SearchEverywhereController
             $dir = \dirname($relative);
             $hits[] = new SearchHit(
                 SearchCategory::Files,
-                basename($relative),
+                \basename($relative),
                 '.' === $dir ? '' : $dir,
                 function () use ($absolute): void {
                     $this->files->openFile($absolute, OpenFocus::Editor);

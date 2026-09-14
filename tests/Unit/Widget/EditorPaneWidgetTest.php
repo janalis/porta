@@ -51,7 +51,7 @@ final class EditorPaneWidgetTest extends TestCase
             {
                 ++$this->painted;
 
-                return [str_repeat(' ', $context->getColumns())];
+                return [\str_repeat(' ', $context->getColumns())];
             }
         };
     }

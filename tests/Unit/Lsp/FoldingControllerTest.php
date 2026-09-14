@@ -192,7 +192,7 @@ final class FoldingControllerTest extends TestCase
         $this->pool->notifyDidOpen('/tmp/proj/a.php', $doc->getText(), 'php', 1);
 
         $controller->foldAll();
-        $firstTimer = (string) array_key_last($this->scheduler->scheduled);
+        $firstTimer = (string) \array_key_last($this->scheduler->scheduled);
         $controller->foldAll(); // a newer round supersedes the first
         $this->scheduler->fire($firstTimer);
         $this->assertNull($this->foldEndAt(1), 'the stale timeout folded nothing');

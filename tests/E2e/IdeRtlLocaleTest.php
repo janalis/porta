@@ -37,7 +37,7 @@ final class IdeRtlLocaleTest extends TestCase
         // Every other test here BOOTS mirrored, so the listener that reacts to
         // a live switch — one menu rebuild, one applyDirection — was reached by
         // nothing: emptying it left the whole suite green.
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\n"]);
 
         $this->runIde(
@@ -45,9 +45,9 @@ final class IdeRtlLocaleTest extends TestCase
             $project->path('a.php'),
             [
                 200 => function ($tui): void {
-                    $ids = array_map(static fn ($w) => $w->getId(), $tui->getById('main')->all());
+                    $ids = \array_map(static fn ($w) => $w->getId(), $tui->getById('main')->all());
                     $this->assertSame(['tree', 'separator', 'editor-pane'], $ids, 'LTR at boot');
-                    $this->assertStringContainsString('File', AnsiUtils::stripAnsiCodes(implode('', $tui->getById('menu')->render(new RenderContext(120, 1)))));
+                    $this->assertStringContainsString('File', AnsiUtils::stripAnsiCodes(\implode('', $tui->getById('menu')->render(new RenderContext(120, 1)))));
                 },
                 400 => static function ($tui, $terminal, $ide): void {
                     // The session scope defaults to Global for a project with
@@ -60,10 +60,10 @@ final class IdeRtlLocaleTest extends TestCase
                     $tui->tick();
                 },
                 600 => function ($tui): void {
-                    $ids = array_map(static fn ($w) => $w->getId(), $tui->getById('main')->all());
+                    $ids = \array_map(static fn ($w) => $w->getId(), $tui->getById('main')->all());
                     $this->assertSame(['editor-pane', 'separator', 'tree'], $ids, 'applyDirection mirrored the panes');
 
-                    $menu = AnsiUtils::stripAnsiCodes(implode('', $tui->getById('menu')->render(new RenderContext(120, 1))));
+                    $menu = AnsiUtils::stripAnsiCodes(\implode('', $tui->getById('menu')->render(new RenderContext(120, 1))));
                     $this->assertStringContainsString('קובץ', $menu, 'the menu rebuilt in the new locale');
                     $this->assertStringNotContainsString('File', $menu, 'and dropped the English labels');
                 },
@@ -75,9 +75,9 @@ final class IdeRtlLocaleTest extends TestCase
 
     public function testRtlLocaleMirrorsTheMainLayoutSidebarToTheRight(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject([
-            '.porta.json' => json_encode(['settings' => ['language' => 'he']]),
+            '.porta.json' => \json_encode(['settings' => ['language' => 'he']]),
             'a.php' => "<?php\n",
         ]);
 
@@ -86,7 +86,7 @@ final class IdeRtlLocaleTest extends TestCase
             $project->path('a.php'),
             [
                 200 => function ($tui): void {
-                    $ids = array_map(static fn ($w) => $w->getId(), $tui->getById('main')->all());
+                    $ids = \array_map(static fn ($w) => $w->getId(), $tui->getById('main')->all());
                     $this->assertSame(['editor-pane', 'separator', 'tree'], $ids, 'RTL puts the file tree on the right');
                 },
             ],
@@ -95,9 +95,9 @@ final class IdeRtlLocaleTest extends TestCase
 
     public function testRtlSidebarResizesFromItsMirroredSeparator(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject([
-            '.porta.json' => json_encode(['settings' => ['language' => 'he']]),
+            '.porta.json' => \json_encode(['settings' => ['language' => 'he']]),
             'a.php' => "<?php\n",
         ]);
 
@@ -127,7 +127,7 @@ final class IdeRtlLocaleTest extends TestCase
 
     public function testLtrLocaleKeepsTheSidebarOnTheLeft(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\n"]);
 
         $this->runIde(
@@ -135,7 +135,7 @@ final class IdeRtlLocaleTest extends TestCase
             $project->path('a.php'),
             [
                 200 => function ($tui): void {
-                    $ids = array_map(static fn ($w) => $w->getId(), $tui->getById('main')->all());
+                    $ids = \array_map(static fn ($w) => $w->getId(), $tui->getById('main')->all());
                     $this->assertSame(['tree', 'separator', 'editor-pane'], $ids, 'LTR keeps the file tree on the left');
                 },
             ],
@@ -144,9 +144,9 @@ final class IdeRtlLocaleTest extends TestCase
 
     public function testRtlEditorCodeIsNotTornOrMirrored(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject([
-            '.porta.json' => json_encode(['settings' => ['language' => 'he']]),
+            '.porta.json' => \json_encode(['settings' => ['language' => 'he']]),
             'demo.php' => "<?php\necho \$name;\n",
         ]);
 
@@ -176,9 +176,9 @@ final class IdeRtlLocaleTest extends TestCase
         //
         // Swept across the app's surfaces by hand at 226x67; this pins the
         // invariant for the two that render the most Hebrew.
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject([
-            '.porta.json' => json_encode(['settings' => ['language' => 'he']]),
+            '.porta.json' => \json_encode(['settings' => ['language' => 'he']]),
             'demo.php' => "<?php\necho \$name;\n",
         ]);
 
@@ -191,13 +191,13 @@ final class IdeRtlLocaleTest extends TestCase
             $terminal = $tui->getTerminal();
             $columns = $terminal->getColumns();
             $rows = $terminal->getRows();
-            $lines = array_values($renderer->render($root, $columns, $rows));
+            $lines = \array_values($renderer->render($root, $columns, $rows));
             $runs = $segmenter->segment($root, $columns, $rows);
             $regions = $segmenter->segmentRegions($columns, $rows);
             foreach ($lines as $row => $line) {
                 $frozen = $reorder->freezeRow($reorder->reorderRow($line, $runs[$row], $regions[$row]));
                 $this->assertSame($columns, AnsiUtils::visibleWidth($frozen), "row {$row} kept its width");
-                if (1 === preg_match('/[\x{0590}-\x{05FF}]/u', AnsiUtils::stripAnsiCodes($frozen))) {
+                if (1 === \preg_match('/[\x{0590}-\x{05FF}]/u', AnsiUtils::stripAnsiCodes($frozen))) {
                     $this->assertStringContainsString(
                         \Porta\I18n\Bidi::LTR_OVERRIDE,
                         $frozen,
@@ -235,9 +235,9 @@ final class IdeRtlLocaleTest extends TestCase
         // The garble that broke RTL was over-wide rows bleeding across panes.
         // Assert the per-pane reorder keeps every row exactly the terminal width,
         // in the editor view and the (also-reported) settings view.
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject([
-            '.porta.json' => json_encode(['settings' => ['language' => 'he']]),
+            '.porta.json' => \json_encode(['settings' => ['language' => 'he']]),
             'demo.php' => "<?php\necho \$name;\n",
         ]);
 
@@ -249,7 +249,7 @@ final class IdeRtlLocaleTest extends TestCase
             $reorder = Services::resolve($ide, \Porta\I18n\PaneReorder::class);
             $terminal = $tui->getTerminal();
             $columns = $terminal->getColumns();
-            $lines = array_values($renderer->render($root, $columns, $terminal->getRows()));
+            $lines = \array_values($renderer->render($root, $columns, $terminal->getRows()));
             $runs = $segmenter->segment($root, $columns, $terminal->getRows());
             foreach ($lines as $row => $line) {
                 $this->assertSame($columns, AnsiUtils::visibleWidth($reorder->reorderRow($line, $runs[$row])), "row {$row} kept its width");
@@ -290,9 +290,9 @@ final class IdeRtlLocaleTest extends TestCase
      */
     public function testRtlSegmentsARowBelowTheMenuBar(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject([
-            '.porta.json' => json_encode(['settings' => ['language' => 'he']]),
+            '.porta.json' => \json_encode(['settings' => ['language' => 'he']]),
             'demo.php' => "<?php\necho \$name;\n",
         ]);
 
@@ -311,8 +311,8 @@ final class IdeRtlLocaleTest extends TestCase
                     // the other. Row 0 is the menu bar and row 1 the tab strip.
                     $body = $runs[3] ?? [];
                     $this->assertGreaterThan(1, \count($body), 'the row is split into panes, not one verbatim block');
-                    $kinds = array_unique(array_column($body, 'ltr'));
-                    sort($kinds);
+                    $kinds = \array_unique(\array_column($body, 'ltr'));
+                    \sort($kinds);
                     $this->assertSame([false, true], $kinds, 'a verbatim code run AND a mirrored chrome run');
                 },
             ],
@@ -339,9 +339,9 @@ final class IdeRtlLocaleTest extends TestCase
      */
     public function testRtlMenusAreToldTheirDirectionAtBoot(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject([
-            '.porta.json' => json_encode(['settings' => ['language' => 'he']]),
+            '.porta.json' => \json_encode(['settings' => ['language' => 'he']]),
             'demo.php' => "<?php\n",
         ]);
 
@@ -367,9 +367,9 @@ final class IdeRtlLocaleTest extends TestCase
 
     public function testRtlSettingsValuesKeepTheirBrackets(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject([
-            '.porta.json' => json_encode(['settings' => ['language' => 'he', 'theme' => 'dark']]),
+            '.porta.json' => \json_encode(['settings' => ['language' => 'he', 'theme' => 'dark']]),
             'demo.php' => "<?php\n",
         ]);
 
@@ -393,7 +393,7 @@ final class IdeRtlLocaleTest extends TestCase
 
                     $columns = $terminal->getColumns();
                     $rows = $terminal->getRows();
-                    $lines = array_values($renderer->render($root, $columns, $rows));
+                    $lines = \array_values($renderer->render($root, $columns, $rows));
                     $runs = $segmenter->segment($root, $columns, $rows);
                     $screen = '';
                     foreach ($lines as $row => $line) {
@@ -417,9 +417,9 @@ final class IdeRtlLocaleTest extends TestCase
         // in LTR, the tests above mirror without resizing); the 100% line gate
         // cannot see that the COMBINATION was never run, because every line is
         // executed, just never together.
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject([
-            '.porta.json' => json_encode(['settings' => ['language' => 'he']]),
+            '.porta.json' => \json_encode(['settings' => ['language' => 'he']]),
             'demo.php' => "<?php\necho \$name;\n",
         ]);
 
@@ -434,7 +434,7 @@ final class IdeRtlLocaleTest extends TestCase
                     $this->frame($tui);
                 },
                 500 => function ($tui, $terminal, $ide): void {
-                    $ids = array_map(static fn ($w) => $w->getId(), $tui->getById('main')->all());
+                    $ids = \array_map(static fn ($w) => $w->getId(), $tui->getById('main')->all());
                     $this->assertSame(['editor-pane', 'separator', 'tree'], $ids, 'still mirrored after the resize');
 
                     // Two assertions, because the first alone does not bite:
@@ -450,9 +450,9 @@ final class IdeRtlLocaleTest extends TestCase
                     $segmenter = Services::resolve($ide, \Porta\Ui\PaneSegmenter::class);
                     $reorder = Services::resolve($ide, \Porta\I18n\PaneReorder::class);
                     $this->assertSame(120, $terminal->getColumns());
-                    $lines = array_values($renderer->render($root, 120, $terminal->getRows()));
+                    $lines = \array_values($renderer->render($root, 120, $terminal->getRows()));
                     $runs = $segmenter->segment($root, 120, $terminal->getRows());
-                    $last = $runs[0][array_key_last($runs[0])];
+                    $last = $runs[0][\array_key_last($runs[0])];
                     $this->assertSame(120, $last['start'] + $last['width'], 'the pane segmentation spans the new width');
                     foreach ($lines as $row => $line) {
                         $this->assertSame(120, AnsiUtils::visibleWidth($reorder->reorderRow($line, $runs[$row])), "row {$row} kept the new width");
@@ -473,9 +473,9 @@ final class IdeRtlLocaleTest extends TestCase
         // here are Latin filenames, so every bidi run is left-to-right and
         // logicalColumn() is the identity. {@see
         // testRtlClickOnAMenuTitleOpensThatMenu()} is the one that bites.
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject([
-            '.porta.json' => json_encode(['settings' => ['language' => 'he']]),
+            '.porta.json' => \json_encode(['settings' => ['language' => 'he']]),
             'A.php' => "<?php\n",
             'B.php' => "<?php\n",
         ]);
@@ -517,9 +517,9 @@ final class IdeRtlLocaleTest extends TestCase
      */
     public function testRtlDragInTheTreeDropsOnTheFolderUnderThePointer(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject([
-            '.porta.json' => json_encode(['settings' => ['language' => 'he']]),
+            '.porta.json' => \json_encode(['settings' => ['language' => 'he']]),
             'src/keep.php' => "<?php\n",
             'move.php' => "<?php\n",
         ]);
@@ -539,12 +539,12 @@ final class IdeRtlLocaleTest extends TestCase
                     // first, so this fixture is 1 = src/, 2 = .porta.json,
                     // 3 = move.php. The menu bar sits above the tree, so a
                     // widget row N is SGR row N + 2.
-                    $rows = array_map(
+                    $rows = \array_map(
                         AnsiUtils::stripAnsiCodes(...),
                         $tui->getById('tree')->render(new RenderContext(30, 12)),
                     );
-                    $this->assertSame('▸ src/', trim($rows[1] ?? ''), 'src/ is widget row 1');
-                    $this->assertSame('move.php', trim($rows[3] ?? ''), 'move.php is widget row 3');
+                    $this->assertSame('▸ src/', \trim($rows[1] ?? ''), 'src/ is widget row 1');
+                    $this->assertSame('move.php', \trim($rows[3] ?? ''), 'move.php is widget row 3');
                     $col = $rect->col + 6;
                     $tui->handleInput("\x1b[<0;{$col};5M"); // press move.php (widget row 3)
                     $tui->handleInput("\x1b[<32;{$col};3M"); // drag onto src/  (widget row 1)
@@ -574,9 +574,9 @@ final class IdeRtlLocaleTest extends TestCase
      */
     public function testRtlClickOnAMenuTitleOpensThatMenu(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject([
-            '.porta.json' => json_encode(['settings' => ['language' => 'he']]),
+            '.porta.json' => \json_encode(['settings' => ['language' => 'he']]),
             'A.php' => "<?php\n",
         ]);
 
@@ -594,7 +594,7 @@ final class IdeRtlLocaleTest extends TestCase
                     // states the RELATIONSHIP rather than a magic number.
                     $logical = $bar->titleStart(0) + 1;
                     $visual = null;
-                    foreach (range(0, end: 199) as $candidate) {
+                    foreach (\range(0, end: 199) as $candidate) {
                         if ($logical !== $tui->logicalColumn(0, $candidate)) {
                             continue;
                         }

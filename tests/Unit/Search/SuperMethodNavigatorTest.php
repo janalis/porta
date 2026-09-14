@@ -150,8 +150,8 @@ final class SuperMethodNavigatorTest extends TestCase
         $source = "<?php\nnamespace App;\nfinal class Impl extends Mid\n{\n    public function deep(): void\n    {\n    }\n}\n";
         $this->assertNotNull($navigator->locate($source, caretLine: 4), 'found while the files are there');
 
-        unlink($this->project->path('src/Mid.php'));
-        unlink($this->project->path('src/Top.php'));
+        \unlink($this->project->path('src/Mid.php'));
+        \unlink($this->project->path('src/Top.php'));
 
         $this->assertNull($navigator->locate($source, caretLine: 4));
     }
@@ -212,7 +212,7 @@ final class SuperMethodNavigatorTest extends TestCase
         // reaches it, from the first it gives up rather than paying for a
         // hierarchy nobody reads by hand.
         $navigator = $this->navigator();
-        foreach (range(start: 1, end: 10) as $level) {
+        foreach (\range(start: 1, end: 10) as $level) {
             $extends = 10 === $level ? '' : ' extends Deep'.($level + 1);
             $tail = 10 === $level ? "    public function far(): void\n    {\n    }\n" : '';
             $this->project->write("src/Deep{$level}.php", "<?php\nnamespace App;\nabstract class Deep{$level}{$extends}\n{\n{$tail}}\n");

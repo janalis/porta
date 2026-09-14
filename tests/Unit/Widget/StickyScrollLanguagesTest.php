@@ -28,7 +28,7 @@ final class StickyScrollLanguagesTest extends TestCase
     private function editor(DocumentScopes $scopes, string $path): CodeEditorWidget
     {
         $editor = new CodeEditorWidget(documentScopes: $scopes);
-        $editor->showDocument($path, new Document(self::TS.str_repeat("    let x = 1;\n", times: 20)."  }\n}\n"));
+        $editor->showDocument($path, new Document(self::TS.\str_repeat("    let x = 1;\n", times: 20)."  }\n}\n"));
         $editor->getDocument()->setCursor(18, 4); // deep inside handle(), headers scrolled off
 
         return $editor;
@@ -51,7 +51,7 @@ final class StickyScrollLanguagesTest extends TestCase
 
         $top = AnsiUtils::stripAnsiCodes($editor->render(new RenderContext(60, 12))[0]);
 
-        self::assertStringContainsString('Service', $top, 'the enclosing class is pinned');
+        $this->assertStringContainsString('Service', $top, 'the enclosing class is pinned');
     }
 
     public function testMethodSeparatorsAlsoReadTheSERVERSScopes(): void
@@ -66,10 +66,10 @@ final class StickyScrollLanguagesTest extends TestCase
         $editor->getDocument()->setCursor(0, 0); // back to the top, nothing scrolled off
 
         $rows = $editor->render(new RenderContext(60, 26));
-        $ruled = array_keys(array_filter($rows, static fn (string $row): bool => str_contains($row, Sgr::UNDERLINE)));
+        $ruled = \array_keys(\array_filter($rows, static fn (string $row): bool => \str_contains($row, Sgr::UNDERLINE)));
 
-        self::assertCount(1, $ruled, 'one member, one rule');
-        self::assertStringContainsString(
+        $this->assertCount(1, $ruled, 'one member, one rule');
+        $this->assertStringContainsString(
             '}',
             AnsiUtils::stripAnsiCodes($rows[$ruled[0]]),
             "and it closes off handle() on the server's endLine",
@@ -84,7 +84,7 @@ final class StickyScrollLanguagesTest extends TestCase
 
         $top = AnsiUtils::stripAnsiCodes($editor->render(new RenderContext(60, 12))[0]);
 
-        self::assertStringNotContainsString('Service', $top);
+        $this->assertStringNotContainsString('Service', $top);
     }
 
     public function testScopesStoredForANOTHERFileAreNotPinnedOverThisOne(): void
@@ -96,6 +96,6 @@ final class StickyScrollLanguagesTest extends TestCase
 
         $top = AnsiUtils::stripAnsiCodes($editor->render(new RenderContext(60, 12))[0]);
 
-        self::assertStringNotContainsString('Service', $top);
+        $this->assertStringNotContainsString('Service', $top);
     }
 }

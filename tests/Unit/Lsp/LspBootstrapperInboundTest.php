@@ -109,8 +109,8 @@ final class LspBootstrapperInboundTest extends TestCase
         $this->client->notificationHandlers['window/showMessage'](['type' => 2, 'message' => 'composer autoload missing']);
 
         $toasts = $this->toasts->toasts();
-        self::assertCount(1, $toasts);
-        self::assertSame('[php-ls] composer autoload missing', $toasts[0]->message);
+        $this->assertCount(1, $toasts);
+        $this->assertSame('[php-ls] composer autoload missing', $toasts[0]->message);
     }
 
     public function testAnEmptyServerMessageIsNotTurnedIntoAToastOfTheServerName(): void
@@ -121,7 +121,7 @@ final class LspBootstrapperInboundTest extends TestCase
 
         $this->client->notificationHandlers['window/showMessage'](['type' => 1, 'message' => '  ']);
 
-        self::assertSame([], $this->toasts->toasts());
+        $this->assertSame([], $this->toasts->toasts());
     }
 
     public function testProgressFromTheServerReachesTheProgressStore(): void
@@ -131,6 +131,6 @@ final class LspBootstrapperInboundTest extends TestCase
         $this->client->notificationHandlers['$/progress'](['token' => self::TASK, 'value' => ['kind' => 'begin', 'title' => 'Indexing']]);
         $this->client->notificationHandlers['$/progress'](['token' => self::TASK, 'value' => ['kind' => 'report', 'percentage' => 40]]);
 
-        self::assertSame('Indexing 40%', $this->progress->label());
+        $this->assertSame('Indexing 40%', $this->progress->label());
     }
 }

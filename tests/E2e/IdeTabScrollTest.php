@@ -80,7 +80,7 @@ final class IdeTabScrollTest extends TestCase
         $project = new TempProject(
             self::files(self::FILES)
             + [
-                '.porta.json' => (string) json_encode(['settings' => ['language' => 'he']]),
+                '.porta.json' => (string) \json_encode(['settings' => ['language' => 'he']]),
             ],
         );
 
@@ -119,7 +119,7 @@ final class IdeTabScrollTest extends TestCase
         $project = new TempProject(
             self::files(self::TALL_FILES)
             + [
-                '.porta.json' => (string) json_encode(['settings' => ['tabBarPosition' => 'left']]),
+                '.porta.json' => (string) \json_encode(['settings' => ['tabBarPosition' => 'left']]),
             ],
         );
 

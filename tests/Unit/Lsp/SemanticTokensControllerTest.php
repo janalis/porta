@@ -77,7 +77,7 @@ final class SemanticTokensControllerTest extends TestCase
 
         $controller->requestSemanticTokens();
 
-        self::assertCount($before, $this->client->requests);
+        $this->assertCount($before, $this->client->requests);
     }
 
     public function testAServerOfferingOnlyRangesIsNeverAskedForAFullPass(): void
@@ -94,7 +94,7 @@ final class SemanticTokensControllerTest extends TestCase
 
         $controller->requestSemanticTokens();
 
-        self::assertCount($before, $this->client->requests);
+        $this->assertCount($before, $this->client->requests);
     }
 
     public function testAServerAdvertisingAnEmptyLegendIsNeverAsked(): void
@@ -107,7 +107,7 @@ final class SemanticTokensControllerTest extends TestCase
 
         $controller->requestSemanticTokens();
 
-        self::assertCount($before, $this->client->requests);
+        $this->assertCount($before, $this->client->requests);
     }
 
     public function testALegendThatIsNotEvenAListIsTreatedAsAbsent(): void
@@ -120,7 +120,7 @@ final class SemanticTokensControllerTest extends TestCase
 
         $controller->requestSemanticTokens();
 
-        self::assertCount($before, $this->client->requests);
+        $this->assertCount($before, $this->client->requests);
     }
 
     public function testAnAnswerWhoseDataIsNotAListPaintsNothing(): void
@@ -129,9 +129,9 @@ final class SemanticTokensControllerTest extends TestCase
         $this->readyOn($controller);
         $controller->requestSemanticTokens();
 
-        end($this->client->requests)['respond'](['data' => 'not a list']);
+        \end($this->client->requests)['respond'](['data' => 'not a list']);
 
-        self::assertSame([], $this->editor->decorations()->semanticTokensAt(1));
+        $this->assertSame([], $this->editor->decorations()->semanticTokensAt(1));
     }
 
     public function testWithNoFileOpenNothingIsAsked(): void
@@ -145,7 +145,7 @@ final class SemanticTokensControllerTest extends TestCase
 
         $controller->requestSemanticTokens();
 
-        self::assertCount($before, $this->client->requests);
+        $this->assertCount($before, $this->client->requests);
     }
 
     public function testAServerThatDoesNotMentionFullAtAllIsNeverAsked(): void
@@ -163,7 +163,7 @@ final class SemanticTokensControllerTest extends TestCase
 
         $controller->requestSemanticTokens();
 
-        self::assertCount($before, $this->client->requests);
+        $this->assertCount($before, $this->client->requests);
     }
 
     public function testAnAnswerAsksForAFrame(): void
@@ -175,9 +175,9 @@ final class SemanticTokensControllerTest extends TestCase
         $controller->requestSemanticTokens();
         Probe::set($this->tui, 'renderRequested', false);
 
-        end($this->client->requests)['respond'](['data' => [1, 4, 5, 1, 0]]);
+        \end($this->client->requests)['respond'](['data' => [1, 4, 5, 1, 0]]);
 
-        self::assertTrue((bool) Probe::get($this->tui, 'renderRequested'));
+        $this->assertTrue((bool) Probe::get($this->tui, 'renderRequested'));
     }
 
     public function testALegendWithAStrayNonStringIsRefusedWholeRatherThanShifted(): void
@@ -196,7 +196,7 @@ final class SemanticTokensControllerTest extends TestCase
 
         $controller->requestSemanticTokens();
 
-        self::assertCount($before, $this->client->requests);
+        $this->assertCount($before, $this->client->requests);
     }
 
     public function testAnAnswerIsDecodedAgainstTheServersOwnLegendAndStored(): void
@@ -205,10 +205,10 @@ final class SemanticTokensControllerTest extends TestCase
         $this->readyOn($controller);
 
         $controller->requestSemanticTokens();
-        end($this->client->requests)['respond'](['data' => [1, 4, 5, 1, 2]]);
+        \end($this->client->requests)['respond'](['data' => [1, 4, 5, 1, 2]]);
 
         // Type index 1 is 'property' in THIS legend, and bit 1 is 'deprecated'.
-        self::assertSame(
+        $this->assertSame(
             [['col' => 4, 'endCol' => 9, 'type' => 'property', 'modifiers' => ['deprecated']]],
             $this->editor->decorations()->semanticTokensAt(1),
         );
@@ -220,10 +220,10 @@ final class SemanticTokensControllerTest extends TestCase
         $this->readyOn($controller);
 
         $controller->requestSemanticTokens();
-        $request = end($this->client->requests);
+        $request = \end($this->client->requests);
 
-        self::assertSame('textDocument/semanticTokens/full', $request['method']);
-        self::assertSame('file:///p/a.php', $request['params']['textDocument']['uri']);
+        $this->assertSame('textDocument/semanticTokens/full', $request['method']);
+        $this->assertSame('file:///p/a.php', $request['params']['textDocument']['uri']);
     }
 
     public function testAnAnswerArrivingAfterABufferSwitchIsDropped(): void
@@ -235,9 +235,9 @@ final class SemanticTokensControllerTest extends TestCase
         $controller->requestSemanticTokens();
 
         $this->editor->showDocument('/p/other.php', new Document("<?php\n"));
-        end($this->client->requests)['respond'](['data' => [1, 4, 5, 1, 0]]);
+        \end($this->client->requests)['respond'](['data' => [1, 4, 5, 1, 0]]);
 
-        self::assertSame([], $this->editor->decorations()->semanticTokensAt(1));
+        $this->assertSame([], $this->editor->decorations()->semanticTokensAt(1));
     }
 
     public function testAMalformedStreamIsRefusedWholeRatherThanShifted(): void
@@ -246,9 +246,9 @@ final class SemanticTokensControllerTest extends TestCase
         $this->readyOn($controller);
         $controller->requestSemanticTokens();
 
-        end($this->client->requests)['respond'](['data' => [1, 4, 'five', 1, 0]]);
+        \end($this->client->requests)['respond'](['data' => [1, 4, 'five', 1, 0]]);
 
-        self::assertSame([], $this->editor->decorations()->semanticTokensAt(1));
+        $this->assertSame([], $this->editor->decorations()->semanticTokensAt(1));
     }
 
     public function testANonArrayAnswerIsIgnored(): void
@@ -257,9 +257,9 @@ final class SemanticTokensControllerTest extends TestCase
         $this->readyOn($controller);
         $controller->requestSemanticTokens();
 
-        end($this->client->requests)['respond'](null);
+        \end($this->client->requests)['respond'](null);
 
-        self::assertSame([], $this->editor->decorations()->semanticTokensAt(1));
+        $this->assertSame([], $this->editor->decorations()->semanticTokensAt(1));
     }
 
     public function testAServerBecomingReadyRefreshesTheLaunchFile(): void
@@ -275,7 +275,7 @@ final class SemanticTokensControllerTest extends TestCase
 
         $refresher->onLspStatusChanged(new LspStatusChanged());
 
-        self::assertCount($before + 1, $this->client->requests);
+        $this->assertCount($before + 1, $this->client->requests);
     }
 
     public function testTheRefresherAsksOnBufferChangeAndOnSave(): void
@@ -290,6 +290,6 @@ final class SemanticTokensControllerTest extends TestCase
         $refresher->onActiveBufferChanged(new ActiveBufferChanged('/p/a.php'));
         $refresher->onBufferSaved(new BufferSaved(new Buffer('/p/a.php', new Document("<?php\n"))));
 
-        self::assertCount($before + 2, $this->client->requests);
+        $this->assertCount($before + 2, $this->client->requests);
     }
 }

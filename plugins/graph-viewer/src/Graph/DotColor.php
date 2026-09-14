@@ -46,17 +46,17 @@ final class DotColor
 
     public static function normalize(?string $value): ?string
     {
-        if (null === $value || '' === trim($value)) {
+        if (null === $value || '' === \trim($value)) {
             return null;
         }
         // A color list ("c1;0.5:c2") means gradient — take the first entry, weight stripped.
-        $first = explode(';', explode(':', trim($value))[0])[0];
-        $color = strtolower(trim($first));
-        if (str_starts_with($color, '#')) {
-            return self::hex(substr($color, offset: 1));
+        $first = \explode(';', \explode(':', \trim($value))[0])[0];
+        $color = \strtolower(\trim($first));
+        if (\str_starts_with($color, '#')) {
+            return self::hex(\substr($color, offset: 1));
         }
         $hsv = [];
-        if (1 === preg_match('/^([0-9]*+\.?[0-9]+)[,\s]+([0-9]*+\.?[0-9]+)[,\s]+([0-9]*+\.?[0-9]+)$/', $color, $hsv) && is_numeric($hsv[1]) && is_numeric($hsv[2]) && is_numeric($hsv[3])) {
+        if (1 === \preg_match('/^([0-9]*+\.?[0-9]+)[,\s]+([0-9]*+\.?[0-9]+)[,\s]+([0-9]*+\.?[0-9]+)$/', $color, $hsv) && \is_numeric($hsv[1]) && \is_numeric($hsv[2]) && \is_numeric($hsv[3])) {
             return self::fromHsv((float) $hsv[1], (float) $hsv[2], (float) $hsv[3]);
         }
 
@@ -65,14 +65,14 @@ final class DotColor
 
     private static function hex(string $digits): ?string
     {
-        if (1 !== preg_match('/^[0-9a-f]+$/', $digits)) {
+        if (1 !== \preg_match('/^[0-9a-f]+$/', $digits)) {
             return null;
         }
 
         return match (\strlen($digits)) {
             3 => \sprintf('#%1$s%1$s%2$s%2$s%3$s%3$s', $digits[0], $digits[1], $digits[2]),
             6 => '#'.$digits,
-            8 => '#'.substr($digits, offset: 0, length: 6), // alpha stripped
+            8 => '#'.\substr($digits, offset: 0, length: 6), // alpha stripped
             default => null,
         };
     }
@@ -80,8 +80,8 @@ final class DotColor
     /** Graphviz HSV triples are 0..1 floats. */
     private static function fromHsv(float $h, float $s, float $v): string
     {
-        $i = (int) floor($h * 6.0) % 6;
-        $f = ($h * 6.0) - floor($h * 6.0);
+        $i = (int) \floor($h * 6.0) % 6;
+        $f = ($h * 6.0) - \floor($h * 6.0);
         $p = $v * (1.0 - $s);
         $q = $v * (1.0 - ($f * $s));
         $t = $v * (1.0 - ((1.0 - $f) * $s));
@@ -94,6 +94,6 @@ final class DotColor
             default => [$v, $p, $q],
         };
 
-        return \sprintf('#%02x%02x%02x', (int) round($r * 255), (int) round($g * 255), (int) round($b * 255));
+        return \sprintf('#%02x%02x%02x', (int) \round($r * 255), (int) \round($g * 255), (int) \round($b * 255));
     }
 }

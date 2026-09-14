@@ -128,7 +128,7 @@ final class LanguageMap
     /** The Tempest highlighting grammar for a path, or null when unknown. */
     public static function highlightForPath(string $path): ?string
     {
-        $name = strtolower(basename($path));
+        $name = \strtolower(\basename($path));
         $mapped = self::FILENAMES[$name] ?? self::EXTENSIONS[ProjectPaths::extension($path)][0] ?? null;
         if (null !== $mapped) {
             return $mapped;
@@ -136,7 +136,7 @@ final class LanguageMap
 
         // The `.env*` basename fallback runs AFTER the lookups, same as the
         // LSP column: `.env.local.php` is real PHP, not a dotenv file.
-        return str_starts_with($name, '.env') ? 'dotenv' : null;
+        return \str_starts_with($name, '.env') ? 'dotenv' : null;
     }
 
     /** The LSP languageId for a path; `plaintext` when no server speaks it. */
@@ -151,7 +151,7 @@ final class LanguageMap
         // reach the dotenv server. It runs AFTER the extension lookup: a
         // `composer dump-env` product like `.env.local.php` is real PHP and
         // must keep routing to the PHP server, not be announced as dotenv.
-        if (str_starts_with(strtolower(basename($path)), '.env')) {
+        if (\str_starts_with(\strtolower(\basename($path)), '.env')) {
             return 'dotenv';
         }
 
@@ -176,8 +176,8 @@ final class LanguageMap
         foreach (self::FILENAMES as $grammar) {
             $grammars[$grammar] = true;
         }
-        $names = array_keys($grammars);
-        sort($names);
+        $names = \array_keys($grammars);
+        \sort($names);
 
         return $names;
     }

@@ -30,7 +30,7 @@ final class IdeLayoutFocusTest extends TestCase
 
     public function testMouseDragResizesSidebarAndPersists(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\n"]);
 
         $this->runIde(
@@ -48,7 +48,7 @@ final class IdeLayoutFocusTest extends TestCase
                 },
                 320 => function ($tui) use ($project): void {
                     $this->assertSame(44, $tui->getById('tree')->width(), 'sidebar resized by the drag');
-                    $layout = json_decode((string) file_get_contents($project->path('.porta/layout.json')), associative: true);
+                    $layout = \json_decode((string) \file_get_contents($project->path('.porta/layout.json')), associative: true);
                     $this->assertSame(28, $layout['sidebarWidthPercent'], 'saved as a percentage (round(44/160))');
                 },
             ],
@@ -59,7 +59,7 @@ final class IdeLayoutFocusTest extends TestCase
 
     public function testMouseDragResizesBottomPanelAndPersists(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\n"]);
 
         $this->runIde(
@@ -86,7 +86,7 @@ final class IdeLayoutFocusTest extends TestCase
                 },
                 320 => function ($tui) use ($project): void {
                     $this->assertSame(16, Probe::get($tui->getById('terminal'), 'visibleRows'), 'panel grew by the drag (clamped at rows-8)');
-                    $layout = json_decode((string) file_get_contents($project->path('.porta/layout.json')), associative: true);
+                    $layout = \json_decode((string) \file_get_contents($project->path('.porta/layout.json')), associative: true);
                     $this->assertSame(67, $layout['bottomPanelHeightPercent'], 'saved as a percentage (round(16/24))');
                 },
             ],
@@ -97,7 +97,7 @@ final class IdeLayoutFocusTest extends TestCase
 
     public function testMouseDragResizesResultsPaneAndPersists(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\n"]);
         $expected = 0;
 
@@ -125,8 +125,8 @@ final class IdeLayoutFocusTest extends TestCase
                 320 => function ($tui) use ($project, &$expected): void {
                     $this->assertSame($expected, Probe::get($tui->getById('results'), 'visibleRows'), 'the results pane grew by the drag');
                     $this->assertSame($expected, Probe::get($tui->getById('terminal'), 'visibleRows'), 'shared bottom-panel height stays in sync');
-                    $layout = json_decode((string) file_get_contents($project->path('.porta/layout.json')), associative: true);
-                    $this->assertSame((int) round(($expected * 100) / 24), $layout['bottomPanelHeightPercent'], 'saved as a percentage of the 24 rows');
+                    $layout = \json_decode((string) \file_get_contents($project->path('.porta/layout.json')), associative: true);
+                    $this->assertSame((int) \round(($expected * 100) / 24), $layout['bottomPanelHeightPercent'], 'saved as a percentage of the 24 rows');
                 },
             ],
         );
@@ -136,7 +136,7 @@ final class IdeLayoutFocusTest extends TestCase
 
     public function testMouseDragResizesAnEmptyResultsPane(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\n"]);
         $expected = 0;
 
@@ -170,14 +170,14 @@ final class IdeLayoutFocusTest extends TestCase
 
     public function testSavedLayoutIsAppliedOnStartup(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\n"]);
-        if (!is_dir($project->path('.porta'))) {
-            mkdir($project->path('.porta'), permissions: 0o777, recursive: true);
+        if (!\is_dir($project->path('.porta'))) {
+            \mkdir($project->path('.porta'), permissions: 0o777, recursive: true);
         }
-        file_put_contents(
+        \file_put_contents(
             $project->path('.porta/layout.json'),
-            json_encode(['sidebarWidthPercent' => 25, 'bottomPanelHeightPercent' => 40]),
+            \json_encode(['sidebarWidthPercent' => 25, 'bottomPanelHeightPercent' => 40]),
         );
 
         $this->runIde(
@@ -196,7 +196,7 @@ final class IdeLayoutFocusTest extends TestCase
 
     public function testGapClickWithoutDragDoesNotResizeOrPersist(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\n"]);
 
         $this->runIde(
@@ -217,7 +217,7 @@ final class IdeLayoutFocusTest extends TestCase
 
     public function testThePaneDividerThickensUnderThePointer(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\n"]);
 
         $this->runIde(
@@ -255,7 +255,7 @@ final class IdeLayoutFocusTest extends TestCase
 
     public function testF6CyclesFocusAcrossPanesAndDelegatesToViews(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\n\$a = 1;\n"]);
 
         $this->runIde(
@@ -297,7 +297,7 @@ final class IdeLayoutFocusTest extends TestCase
         // that needs the panel's own row count: it has to reproduce a height
         // exactly, which is why this could not be built while the controller
         // sized from the renderer's rect.
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\n"]);
 
         $this->runIde(
@@ -343,7 +343,7 @@ final class IdeLayoutFocusTest extends TestCase
                     $this->assertSame($shrunk, $panel->visibleRows(), 'back to the hand-chosen height');
 
                     $this->assertFileExists($project->dir.'/.porta/layout.json');
-                    $layout = json_decode((string) file_get_contents($project->dir.'/.porta/layout.json'), associative: true);
+                    $layout = \json_decode((string) \file_get_contents($project->dir.'/.porta/layout.json'), associative: true);
                     // The hand-chosen 16 of 24 rows, not the maximised 18:
                     // maximising is a thing you are doing now, not a layout you
                     // chose, so it never reaches the file.
@@ -361,7 +361,7 @@ final class IdeLayoutFocusTest extends TestCase
         // both read the SAME rect, so the second computed the same height as
         // the first and the panel moved one row for two presses. A key held
         // down is exactly that burst.
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\n"]);
 
         $this->runIde(
@@ -399,7 +399,7 @@ final class IdeLayoutFocusTest extends TestCase
 
     public function testShiftF11AndF12ResizeTheFocusedPaneAndPersist(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\n\$a = 1;\n"]);
 
         $this->runIde(
@@ -424,7 +424,7 @@ final class IdeLayoutFocusTest extends TestCase
                     $this->assertSame($rows + 1, Probe::get($tui->getById('terminal'), 'visibleRows'));
                 },
                 500 => function () use ($project): void {
-                    $layout = json_decode((string) file_get_contents($project->dir.'/.porta/layout.json'), associative: true);
+                    $layout = \json_decode((string) \file_get_contents($project->dir.'/.porta/layout.json'), associative: true);
                     $this->assertSame(19, $layout['sidebarWidthPercent'], 'the last tree width (30 of 160 cols) persisted');
                     $this->assertArrayHasKey('bottomPanelHeightPercent', $layout, 'the panel grow persisted too');
                 },

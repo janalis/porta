@@ -31,9 +31,9 @@ final class ComposerRoots
                 }
                 /** @var mixed $dir */
                 foreach (\is_array($dirs) ? $dirs : [$dirs] as $dir) {
-                    $path = \is_string($dir) ? $rootDir.'/'.rtrim($dir, characters: '/') : '';
-                    if ('' !== $path && is_dir($path)) {
-                        $roots[trim($prefix, characters: '\\')] = $path;
+                    $path = \is_string($dir) ? $rootDir.'/'.\rtrim($dir, characters: '/') : '';
+                    if ('' !== $path && \is_dir($path)) {
+                        $roots[\trim($prefix, characters: '\\')] = $path;
                         break; // first existing dir wins for a multi-dir prefix
                     }
                 }

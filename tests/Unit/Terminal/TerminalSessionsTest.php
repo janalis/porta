@@ -109,7 +109,7 @@ final class TerminalSessionsTest extends TestCase
         $b = $sessions->create('b', 'b');
         $sessions->create('c', 'c');
         $d = $sessions->create('d', 'd'); // active
-        $order = static fn (): array => array_map(static fn ($s) => $s->id, $sessions->all());
+        $order = static fn (): array => \array_map(static fn ($s) => $s->id, $sessions->all());
 
         $sessions->move(9, 0);
         $this->assertSame(['a', 'b', 'c', 'd'], $order(), 'an out-of-range source is a no-op');
@@ -141,7 +141,7 @@ final class TerminalSessionsTest extends TestCase
         }
         $sessions = new TerminalSessions();
         $session = $sessions->create('shell:1', 'sh');
-        $cwd = getcwd();
+        $cwd = \getcwd();
         $process = new PtyProcess(['/bin/sh', '-c', 'sleep 10'], $cwd ? $cwd : '/tmp');
         $session->attach($process);
         $this->assertTrue($process->start());
@@ -168,7 +168,7 @@ final class TerminalSessionsTest extends TestCase
         $session = new \Porta\Terminal\TerminalSession('x', 'x', new \Porta\Terminal\TerminalBuffer());
         $this->assertFalse($session->isRunning());
 
-        $cwd = getcwd();
+        $cwd = \getcwd();
         $first = new PtyProcess(['/bin/sh', '-c', 'sleep 10'], $cwd ? $cwd : '/tmp');
         $session->attach($first);
         $first->start();

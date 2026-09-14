@@ -88,7 +88,7 @@ final class SettingsScopeRowTest extends TestCase
 
         $rows = $this->row()->lead([$own]);
 
-        $this->assertSame([SettingsScopeRow::KEY, 'theme'], array_map(static fn (SettingsRow $r): string => $r->key, $rows));
+        $this->assertSame([SettingsScopeRow::KEY, 'theme'], \array_map(static fn (SettingsRow $r): string => $r->key, $rows));
     }
 
     /** With no row to lead with, a page's rows are handed back untouched. */

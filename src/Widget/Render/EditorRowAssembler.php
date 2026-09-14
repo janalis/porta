@@ -69,9 +69,9 @@ final readonly class EditorRowAssembler
         private bool $showWhitespace = false,
     ) {
         $this->styles = $styles ?? Styles::dark();
-        $this->breakpointSet = array_fill_keys($store->breakpointLines(), value: true);
-        $this->conditionalBreakpointSet = array_fill_keys($store->conditionalBreakpointLines(), value: true);
-        $this->logpointSet = array_fill_keys($store->logpointLines(), value: true);
+        $this->breakpointSet = \array_fill_keys($store->breakpointLines(), value: true);
+        $this->conditionalBreakpointSet = \array_fill_keys($store->conditionalBreakpointLines(), value: true);
+        $this->logpointSet = \array_fill_keys($store->logpointLines(), value: true);
     }
 
     /**
@@ -131,7 +131,7 @@ final readonly class EditorRowAssembler
                 // The tilde is a GUTTER cell, so it goes when the gutter does.
                 // `str_pad` never truncates — `str_pad('~', 0)` is `'~'` — so
                 // the old `max(0, …)` looked like a clamp and was not one.
-                $placeholder = 0 === $geo->gutterWidth ? '' : $this->styles->of(Role::Placeholder)->apply(str_pad('~', $geo->gutterWidth));
+                $placeholder = 0 === $geo->gutterWidth ? '' : $this->styles->of(Role::Placeholder)->apply(\str_pad('~', $geo->gutterWidth));
                 $result[] = $placeholder.AnsiText::blank($geo->contentWidth).$stripe[$stickyCount + $row];
                 continue;
             }
@@ -261,7 +261,7 @@ final readonly class EditorRowAssembler
         // least as reachable as that one was.
         $gutter = 0 === $geo->gutterWidth
             ? ''
-            : $this->vcsCell($docLine).$this->styles->of(Role::Gutter)->apply(str_pad($stickyLabel, $geo->numberWidth, pad_string: ' ', pad_type: \STR_PAD_LEFT).' ').$this->foldCell($docLine).' ';
+            : $this->vcsCell($docLine).$this->styles->of(Role::Gutter)->apply(\str_pad($stickyLabel, $geo->numberWidth, pad_string: ' ', pad_type: \STR_PAD_LEFT).' ').$this->foldCell($docLine).' ';
         $raw = $highlighted[$docLine] ?? '';
         $hl = $this->indentGuides ? EditorRenderer::applyIndentGuides($this->document, $raw, $docLine, $this->styles) : $raw;
         $content = EditorRenderer::renderContentLine($hScroll, $hl, $geo->contentWidth, CursorVisibility::Hidden, 0, $this->cursorStyle->marker());
@@ -278,7 +278,7 @@ final readonly class EditorRowAssembler
     {
         $text = AnsiUtils::sliceWithWidth($this->styles->of(Role::Dim)->apply($title), 0, $geo->contentWidth)['text'];
 
-        return AnsiText::blank(max(0, $geo->gutterWidth)).AnsiText::padRight($text, $geo->contentWidth);
+        return AnsiText::blank(\max(0, $geo->gutterWidth)).AnsiText::padRight($text, $geo->contentWidth);
     }
 
     /**
@@ -356,10 +356,10 @@ final readonly class EditorRowAssembler
         // the caret on non-caret lines in Relative mode (Vim "relativenumber").
         $numberLabel = LineNumberMode::Off === $this->lineNumbers ? '' : (string) ($lineIndex + 1);
         if (LineNumberMode::Relative === $this->lineNumbers && CaretLine::Other === $isCursorLine) {
-            $numberLabel = (string) abs($lineIndex - $this->document->getCursorLine());
+            $numberLabel = (string) \abs($lineIndex - $this->document->getCursorLine());
         }
 
-        return $this->vcsCell($lineIndex).$numStyle->apply(str_pad($numberLabel, $numberWidth, pad_string: ' ', pad_type: \STR_PAD_LEFT)).$marker.$this->foldCell($lineIndex).' ';
+        return $this->vcsCell($lineIndex).$numStyle->apply(\str_pad($numberLabel, $numberWidth, pad_string: ' ', pad_type: \STR_PAD_LEFT)).$marker.$this->foldCell($lineIndex).' ';
     }
 
     /**
@@ -450,10 +450,10 @@ final readonly class EditorRowAssembler
         if ($padTo > 0) {
             // Pad so an end-of-line caret has a cell to invert (the window
             // bound keeps padding within what's visible).
-            $need = min($padTo, $hScroll + $contentWidth);
+            $need = \min($padTo, $hScroll + $contentWidth);
             $width = AnsiUtils::visibleWidth($hlLine);
             if ($need > $width) {
-                $hlLine .= str_repeat(' ', max(0, $need - $width));
+                $hlLine .= \str_repeat(' ', \max(0, $need - $width));
             }
         }
         // One-pass application over viewport-clipped spans: the sequential

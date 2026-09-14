@@ -37,10 +37,10 @@ final class TerminalRestorerTest extends TestCase
             this_function_does_not_exist(); // the fatal no finally survives
             PHP);
 
-        exec(\sprintf('%s %s %s 2>/dev/null', escapeshellarg(\PHP_BINARY), escapeshellarg($script), escapeshellarg(\dirname(__DIR__, levels: 3))), $output, $exit);
+        \exec(\sprintf('%s %s %s 2>/dev/null', \escapeshellarg(\PHP_BINARY), \escapeshellarg($script), \escapeshellarg(\dirname(__DIR__, levels: 3))), $output, $exit);
 
         $this->assertNotSame(0, $exit, 'the script died on the fatal');
-        $this->assertStringContainsString(TerminalRestorer::RESTORE, implode("\n", $output), 'the shutdown net re-emitted the teardown sequence');
+        $this->assertStringContainsString(TerminalRestorer::RESTORE, \implode("\n", $output), 'the shutdown net re-emitted the teardown sequence');
     }
 
     public function testDisarmMakesRestoreANoOp(): void

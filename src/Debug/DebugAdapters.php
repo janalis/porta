@@ -59,7 +59,7 @@ final class DebugAdapters
     /** The configured adapter command as one string ('' when unset), for the settings row. */
     public function adapterCommand(string $languageId): string
     {
-        return implode(' ', ($this->configs[$languageId] ?? null)->adapterArgv ?? []);
+        return \implode(' ', ($this->configs[$languageId] ?? null)->adapterArgv ?? []);
     }
 
     /**
@@ -79,7 +79,7 @@ final class DebugAdapters
      */
     public function set(string $languageId, string $adapterCommand, array $launch): void
     {
-        $adapterCommand = trim($adapterCommand);
+        $adapterCommand = \trim($adapterCommand);
         if ('' === $adapterCommand) {
             unset($this->configs[$languageId]);
 

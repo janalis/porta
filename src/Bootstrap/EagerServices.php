@@ -29,6 +29,6 @@ final readonly class EagerServices
     /** Force-construct every eager service (for its self-registering side effect). */
     public function boot(): void
     {
-        iterator_to_array($this->eager, preserve_keys: false);
+        \iterator_to_array($this->eager, preserve_keys: false);
     }
 }

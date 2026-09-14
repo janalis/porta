@@ -21,7 +21,7 @@ final class PluginOrderTest extends TestCase
     /** A warning rendered the way an 'en' Translator would (untranslated: identity substitution), for readable substring assertions. */
     private static function render(ConfigWarning $warning): string
     {
-        return strtr($warning->key, $warning->params);
+        return \strtr($warning->key, $warning->params);
     }
 
     /**
@@ -31,7 +31,7 @@ final class PluginOrderTest extends TestCase
      */
     private function names(array $resolved): array
     {
-        return array_map(static fn (PluginManifest $manifest): string => $manifest->name, $resolved['order']);
+        return \array_map(static fn (PluginManifest $manifest): string => $manifest->name, $resolved['order']);
     }
 
     public function testPluginsWithoutDependenciesKeepDiscoveryOrder(): void
@@ -89,7 +89,7 @@ final class PluginOrderTest extends TestCase
         $resolved = PluginOrder::resolve([$this->manifest('a', ['b']), $this->manifest('b', ['a'])]);
 
         $this->assertSame([], $this->names($resolved), 'neither loads');
-        $this->assertStringContainsString('dependency cycle', implode(' ', array_map(self::render(...), $resolved['skipped'])));
+        $this->assertStringContainsString('dependency cycle', \implode(' ', \array_map(self::render(...), $resolved['skipped'])));
     }
 
     public function testASharedDependencyLoadsOnce(): void

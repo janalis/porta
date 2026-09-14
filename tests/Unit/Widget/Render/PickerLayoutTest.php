@@ -54,7 +54,7 @@ final class PickerLayoutTest extends TestCase
     public function testTheListFillerIsNotCutByABoxSizedWithoutIt(string $message): void
     {
         $filter = new TextField();
-        foreach (str_split('zzz') as $character) {
+        foreach (\str_split('zzz') as $character) {
             $filter->insert($character);
         }
 
@@ -78,8 +78,8 @@ final class PickerLayoutTest extends TestCase
 
         $this->assertContains(
             $message,
-            array_map(
-                static fn (string $row): string => trim(AnsiUtils::stripAnsiCodes($row), characters: ' │'),
+            \array_map(
+                static fn (string $row): string => \trim(AnsiUtils::stripAnsiCodes($row), characters: ' │'),
                 $out['rows'],
             ),
             'the filler row is drawn whole',
@@ -104,7 +104,7 @@ final class PickerLayoutTest extends TestCase
     {
         $typed = 'feature/a-very-long-branch-name';
         $filter = new TextField();
-        foreach (mb_str_split($typed) as $character) {
+        foreach (\mb_str_split($typed) as $character) {
             $filter->insert($character);
         }
 
@@ -113,7 +113,7 @@ final class PickerLayoutTest extends TestCase
         // Whatever the box has room for must come from the END of the typed
         // text — the box is narrow, so the assertion asks for the last few
         // characters rather than a fixed count that would pin the width.
-        $this->assertStringContainsString(mb_substr($typed, start: -6), $row, 'the end of the filter, where the caret is');
+        $this->assertStringContainsString(\mb_substr($typed, start: -6), $row, 'the end of the filter, where the caret is');
         $this->assertStringNotContainsString('feature/', $row, 'not the start, which is what an end-truncate keeps');
         $this->assertStringContainsString('≡', $row, 'and the glyph identifying the row does not scroll away');
     }
@@ -122,7 +122,7 @@ final class PickerLayoutTest extends TestCase
     public function testAFilterThatFitsIsUnchanged(): void
     {
         $filter = new TextField();
-        foreach (mb_str_split('dev') as $character) {
+        foreach (\mb_str_split('dev') as $character) {
             $filter->insert($character);
         }
 
@@ -163,7 +163,7 @@ final class PickerLayoutTest extends TestCase
 
         foreach ($out['rows'] as $row) {
             $plain = AnsiUtils::stripAnsiCodes($row);
-            if (str_contains($plain, '≡')) {
+            if (\str_contains($plain, '≡')) {
                 return $plain;
             }
         }
@@ -186,7 +186,7 @@ final class PickerLayoutTest extends TestCase
         $widths = [];
         foreach (['', 'd', 'zz'] as $typed) {
             $filter = new TextField();
-            foreach (mb_str_split($typed) as $character) {
+            foreach (\mb_str_split($typed) as $character) {
                 $filter->insert($character);
             }
             $widths[] = $this->layout($filter, 'aucune correspondance')['width'];
@@ -216,8 +216,8 @@ final class PickerLayoutTest extends TestCase
 
         $this->assertContains(
             $message,
-            array_map(
-                static fn (string $row): string => trim(AnsiUtils::stripAnsiCodes($row), characters: ' │'),
+            \array_map(
+                static fn (string $row): string => \trim(AnsiUtils::stripAnsiCodes($row), characters: ' │'),
                 $out['rows'],
             ),
             'the filler row is drawn whole',

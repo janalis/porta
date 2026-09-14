@@ -37,9 +37,9 @@ final class IdeViewerPluginsTest extends TestCase
 
     public function testDisabledViewerPluginsRouteToTheTextPath(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject([
-            '.porta.json' => (string) json_encode(['enabledPlugins' => []]), // explicit: BOTH viewers off
+            '.porta.json' => (string) \json_encode(['enabledPlugins' => []]), // explicit: BOTH viewers off
             'g.dot' => self::SMALL_DOT,
             'img.png' => $this->onePixelPng(),
         ]);
@@ -54,7 +54,7 @@ final class IdeViewerPluginsTest extends TestCase
 
                     $buffers = Services::resolve($ide, BufferManager::class);
                     $this->assertCount(1, $buffers->all());
-                    Services::resolve($ide, BufferService::class)->openFile((string) realpath($project->path('img.png')));
+                    Services::resolve($ide, BufferService::class)->openFile((string) \realpath($project->path('img.png')));
                     // The refusal FLASH is the positive; "still one buffer" is
                     // also true before the open has been refused at all.
                     $this->awaitPainted($tui, $terminal, 'Not a UTF-8 text file');
@@ -69,7 +69,7 @@ final class IdeViewerPluginsTest extends TestCase
     public function testLiveToggleRoutesSubsequentOpensAndKeepsOpenTabs(): void
     {
         $project = new TempProject([
-            '.porta.json' => (string) json_encode(['plugins' => ['graph-viewer' => ['dotPath' => \dirname(__DIR__).'/Support/fake-dot']]]),
+            '.porta.json' => (string) \json_encode(['plugins' => ['graph-viewer' => ['dotPath' => \dirname(__DIR__).'/Support/fake-dot']]]),
             'a.dot' => self::SMALL_DOT,
             'b.dot' => self::SMALL_DOT,
             'c.dot' => self::SMALL_DOT,
@@ -81,27 +81,27 @@ final class IdeViewerPluginsTest extends TestCase
             $project->path('a.dot'),
             [
                 200 => function ($tui, $terminal, $ide) use ($project): void {
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'nodes'), what: 'the graph layout');
+                    $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'nodes'), what: 'the graph layout');
                     $buffers = Services::resolve($ide, BufferManager::class);
-                    $aPath = (string) realpath($project->path('a.dot'));
-                    $this->assertTrue($buffers->get($aPath)?->paneId === 'graph', 'default-enabled: the viewer routed the initial file');
+                    $aPath = (string) \realpath($project->path('a.dot'));
+                    $this->assertTrue('graph' === $buffers->get($aPath)?->paneId, 'default-enabled: the viewer routed the initial file');
 
                     $lifecycle = Services::resolve($ide, PluginLifecycle::class);
                     $lifecycle->disable('graph-viewer');
-                    $this->assertTrue($buffers->get($aPath)?->paneId === 'graph', 'the open tab STAYS a graph tab');
+                    $this->assertTrue('graph' === $buffers->get($aPath)?->paneId, 'the open tab STAYS a graph tab');
                     $this->assertNull(Services::resolve($ide, CommandRegistry::class)->label('graph-viewer:architecture'), 'the plugin commands left the registry live');
 
                     $service = Services::resolve($ide, BufferService::class);
-                    $bPath = (string) realpath($project->path('b.dot'));
+                    $bPath = (string) \realpath($project->path('b.dot'));
                     $service->openFile($bPath);
                     $tui->tick();
-                    $this->assertFalse($buffers->get($bPath)?->paneId === 'graph', 'a NEW .dot open routes to text while disabled');
+                    $this->assertFalse('graph' === $buffers->get($bPath)?->paneId, 'a NEW .dot open routes to text while disabled');
 
                     $lifecycle->enable('graph-viewer');
                     $this->assertNotNull(Services::resolve($ide, CommandRegistry::class)->label('graph-viewer:architecture'), 're-enable restores the commands live');
-                    $cPath = (string) realpath($project->path('c.dot'));
+                    $cPath = (string) \realpath($project->path('c.dot'));
                     $service->openFile($cPath);
-                    $this->assertTrue($buffers->get($cPath)?->paneId === 'graph', 'routing resumed for files opened afterwards');
+                    $this->assertTrue('graph' === $buffers->get($cPath)?->paneId, 'routing resumed for files opened afterwards');
                 },
             ],
         );
@@ -114,9 +114,9 @@ final class IdeViewerPluginsTest extends TestCase
         // the id — and no pane existed to serve it, so the file silently fell
         // through to the text path (here: the not-text refusal). The live
         // enable must build the pane, not just the claim.
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject([
-            '.porta.json' => (string) json_encode(['enabledPlugins' => []]), // viewers off AT BOOT
+            '.porta.json' => (string) \json_encode(['enabledPlugins' => []]), // viewers off AT BOOT
             'a.php' => "<?php\n",
             'img.png' => $this->onePixelPng(),
         ]);
@@ -133,7 +133,7 @@ final class IdeViewerPluginsTest extends TestCase
 
                     $built = $panes->paneFor('image');
                     $this->assertNotNull($built, 'a first-time enable builds the pane live');
-                    $imgPath = (string) realpath($project->path('img.png'));
+                    $imgPath = (string) \realpath($project->path('img.png'));
                     Services::resolve($ide, BufferService::class)->openFile($imgPath);
                     $tui->tick();
                     $buffers = Services::resolve($ide, BufferManager::class);
@@ -156,7 +156,7 @@ final class IdeViewerPluginsTest extends TestCase
         // built from the plugin's own class, answering to the id its claim
         // returns. Consumption comes later — what this pins is that the
         // registration survives the boot and dies with the plugin.
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\n", 'doc.demo' => 'demo payload']);
         $this->demoPanePlugin($project);
 
@@ -177,7 +177,7 @@ final class IdeViewerPluginsTest extends TestCase
                     // Open the claimed file IN the pane while the plugin is live.
                     $buffers = Services::resolve($ide, BufferManager::class);
                     $service = Services::resolve($ide, BufferService::class);
-                    $demo = (string) realpath($project->path('doc.demo'));
+                    $demo = (string) \realpath($project->path('doc.demo'));
                     $service->openFile($demo);
                     $this->assertSame('demo', $buffers->get($demo)?->paneId, 'the claim routed it to the plugin pane');
 
@@ -197,8 +197,8 @@ final class IdeViewerPluginsTest extends TestCase
                     // loader there is nothing to read a new payload with, and that
                     // must read as "keep what you have", not as a crash — on the
                     // explicit re-open AND on the filesystem poll.
-                    file_put_contents($demo, data: 'changed underneath');
-                    touch($demo, mtime: time() + 5);
+                    \file_put_contents($demo, data: 'changed underneath');
+                    \touch($demo, mtime: \time() + 5);
                     $service->openFile($demo);
                     $service->pollFilesystem();
                     $this->assertSame('demo payload', $buffers->get($demo)?->panePayload, 'no loader, no refresh');
@@ -209,7 +209,7 @@ final class IdeViewerPluginsTest extends TestCase
 
     public function testALoaderBugFlashesGenericWordsWhileARefusalSpeaksVerbatim(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject([
             'a.php' => "<?php\n",
             'polite.demo' => 'refused politely',
@@ -234,7 +234,7 @@ final class IdeViewerPluginsTest extends TestCase
                     $this->awaitPainted($tui, $terminal, 'Internal error');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringNotContainsString('secret internals', $screen, 'a TypeError-style message never reaches the status bar');
-                    $this->assertStringContainsString('secret internals', (string) file_get_contents($project->path('.porta/error.log')), 'the trace survives where a maintainer can read it');
+                    $this->assertStringContainsString('secret internals', (string) \file_get_contents($project->path('.porta/error.log')), 'the trace survives where a maintainer can read it');
                 },
             ],
         );
@@ -244,8 +244,8 @@ final class IdeViewerPluginsTest extends TestCase
     private function throwingLoaderPlugin(TempProject $project): void
     {
         $dir = $project->path('.porta/plugins/throwing-pane');
-        mkdir($dir, permissions: 0o777, recursive: true);
-        file_put_contents($dir.'/plugin.php', data: <<<'PHP'
+        \mkdir($dir, permissions: 0o777, recursive: true);
+        \file_put_contents($dir.'/plugin.php', data: <<<'PHP'
             <?php
 
             declare(strict_types=1);
@@ -289,8 +289,8 @@ final class IdeViewerPluginsTest extends TestCase
     private function demoPanePlugin(TempProject $project): void
     {
         $dir = $project->path('.porta/plugins/demo-pane');
-        mkdir($dir, permissions: 0o777, recursive: true);
-        file_put_contents($dir.'/plugin.php', data: <<<'PHP'
+        \mkdir($dir, permissions: 0o777, recursive: true);
+        \file_put_contents($dir.'/plugin.php', data: <<<'PHP'
             <?php
 
             declare(strict_types=1);
@@ -342,19 +342,19 @@ final class IdeViewerPluginsTest extends TestCase
     private function phpOnlyPath(TempProject $project): void
     {
         $bin = $project->path('.php-only-bin');
-        mkdir($bin);
-        symlink(\PHP_BINARY, $bin.'/php');
-        putenv('PATH='.$bin);
+        \mkdir($bin);
+        \symlink(\PHP_BINARY, $bin.'/php');
+        \putenv('PATH='.$bin);
     }
 
     /** A 1×1 PNG, enough to exercise the routing refusal. */
     private function onePixelPng(): string
     {
-        $gd = imagecreatetruecolor(1, height: 1);
+        $gd = \imagecreatetruecolor(1, height: 1);
         \assert(false !== $gd, description: 'the GD handle was created');
-        ob_start();
-        imagepng($gd);
+        \ob_start();
+        \imagepng($gd);
 
-        return (string) ob_get_clean();
+        return (string) \ob_get_clean();
     }
 }

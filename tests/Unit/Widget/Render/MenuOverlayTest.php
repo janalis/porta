@@ -11,7 +11,7 @@ final class MenuOverlayTest extends TestCase
 {
     public function testASpanClippedToExactlyZeroWidthIsSkipped(): void
     {
-        $lines = [str_repeat(' ', times: 10)];
+        $lines = [\str_repeat(' ', times: 10)];
         // col=10 on a 10-column line leaves 0 columns of room: min(width, 10-10) === 0.
         $span = ['row' => 0, 'col' => 10, 'width' => 5, 'segment' => 'XXXXX'];
 
@@ -22,7 +22,7 @@ final class MenuOverlayTest extends TestCase
 
     public function testASpanExactlyAsWideAsItsColumnBudgetIsCompositedUnclipped(): void
     {
-        $lines = [str_repeat(' ', times: 10)];
+        $lines = [\str_repeat(' ', times: 10)];
         // width === span width exactly: no clipping needed, the raw segment is used
         // untouched — slicing it (even at its own full length) would strip its
         // trailing reset, since AnsiUtils::sliceByColumn does not preserve one.

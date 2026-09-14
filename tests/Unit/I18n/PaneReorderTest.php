@@ -85,7 +85,7 @@ final class PaneReorderTest extends TestCase
 
         // Each run is closed with a reset, so the open background can't paint the
         // next pane — the exact cross-pane bleed this fix removes.
-        $this->assertGreaterThanOrEqual(2, substr_count($out, needle: "\x1b[0m"), 'a reset per run');
+        $this->assertGreaterThanOrEqual(2, \substr_count($out, needle: "\x1b[0m"), 'a reset per run');
         $this->assertStringEndsWith("\x1b[0m", $out, 'the row ends reset');
     }
 
@@ -149,7 +149,7 @@ final class PaneReorderTest extends TestCase
 
         $out = new PaneReorder()->reorderRow($line, $runs);
 
-        $this->assertSame(1, substr_count($out, AnsiUtils::CURSOR_MARKER_PREFIX), 'exactly one hardware cursor');
+        $this->assertSame(1, \substr_count($out, AnsiUtils::CURSOR_MARKER_PREFIX), 'exactly one hardware cursor');
     }
 
     /**
@@ -174,7 +174,7 @@ final class PaneReorderTest extends TestCase
 
         $out = new PaneReorder()->reorderRow($line, $runs);
 
-        $this->assertSame(1, substr_count($out, AnsiUtils::CURSOR_MARKER_PREFIX), 'the caret is this run\'s own');
+        $this->assertSame(1, \substr_count($out, AnsiUtils::CURSOR_MARKER_PREFIX), 'the caret is this run\'s own');
     }
 
     /** The pane that actually HOLDS the caret keeps it — the floor. */
@@ -188,7 +188,7 @@ final class PaneReorderTest extends TestCase
 
         $out = new PaneReorder()->reorderRow($line, $runs);
 
-        $this->assertSame(1, substr_count($out, AnsiUtils::CURSOR_MARKER_PREFIX), 'the caret is still on screen');
+        $this->assertSame(1, \substr_count($out, AnsiUtils::CURSOR_MARKER_PREFIX), 'the caret is still on screen');
     }
 
     public function testLogicalColumnMatchesBidiWithinTheRtlSlice(): void
@@ -267,7 +267,7 @@ final class PaneReorderTest extends TestCase
         // And the surface itself survives: blanking it for the pane's pass and
         // stamping it back must not lose it, nor leave a second copy elsewhere.
         $reorder = new PaneReorder();
-        $line = str_repeat(' ', times: 10).'[TOAST]'.str_repeat(' ', times: 3);
+        $line = \str_repeat(' ', times: 10).'[TOAST]'.\str_repeat(' ', times: 3);
         $width = AnsiUtils::visibleWidth($line);
         $pane = [['start' => 0, 'width' => $width, 'ltr' => false]];
 
@@ -275,7 +275,7 @@ final class PaneReorderTest extends TestCase
 
         // width 20, box at logical 10 wide 7 -> mirrored start 20-10-7 = 3.
         $this->assertSame('[TOAST]', AnsiUtils::sliceByColumn($with, startCol: 3, length: 7), 'the surface is where it belongs');
-        $this->assertSame(1, substr_count($with, needle: '[TOAST]'), 'and there is exactly one of it');
+        $this->assertSame(1, \substr_count($with, needle: '[TOAST]'), 'and there is exactly one of it');
     }
 
     /**
@@ -359,7 +359,7 @@ final class PaneReorderTest extends TestCase
         $out = $reorder->freezeRow($line);
 
         $this->assertSame(Bidi::LTR_OVERRIDE, AnsiUtils::sliceByColumn(AnsiUtils::stripAnsiCodes($out), startCol: 0, length: 1));
-        $this->assertSame(1, substr_count($out, needle: Bidi::LTR_OVERRIDE), 'one is enough, and no pop is needed');
+        $this->assertSame(1, \substr_count($out, needle: Bidi::LTR_OVERRIDE), 'one is enough, and no pop is needed');
         $this->assertSame(AnsiUtils::visibleWidth($line), AnsiUtils::visibleWidth(AnsiUtils::stripAnsiCodes($out)), 'the row keeps its width');
     }
 
@@ -394,11 +394,11 @@ final class PaneReorderTest extends TestCase
         // A row-level freeze cannot do that: it touches column zero and nothing
         // else, whatever is on the row.
         $reorder = new PaneReorder();
-        $line = ' '.str_repeat('x', times: 8).'╭───╮';
+        $line = ' '.\str_repeat('x', times: 8).'╭───╮';
 
         $out = AnsiUtils::stripAnsiCodes($reorder->freezeRow($line));
 
-        $this->assertSame(Bidi::LTR_OVERRIDE.str_repeat('x', times: 8).'╭───╮', $out, 'everything after column zero is untouched');
+        $this->assertSame(Bidi::LTR_OVERRIDE.\str_repeat('x', times: 8).'╭───╮', $out, 'everything after column zero is untouched');
     }
 
     public function testAFloatingBoxIsMirroredWithTheFrame(): void
@@ -411,7 +411,7 @@ final class PaneReorderTest extends TestCase
         // drew `קובץ` at the far right. Reported, reproduced at 226 columns
         // (region 0+38 against a title at ~218), and fixed here.
         $reorder = new PaneReorder();
-        $line = '[AB]'.str_repeat(' ', times: 6);
+        $line = '[AB]'.\str_repeat(' ', times: 6);
         $pane = [['start' => 0, 'width' => 10, 'ltr' => false]];
 
         $out = AnsiUtils::stripAnsiCodes($reorder->reorderRow($line, $pane, [['start' => 0, 'width' => 4, 'ltr' => true]]));
@@ -428,12 +428,12 @@ final class PaneReorderTest extends TestCase
         // show a gap in one place and the box in another -- which is what a
         // second copy of the menu box looked like.
         $reorder = new PaneReorder();
-        $line = '[AB]'.str_repeat(' ', times: 6);
+        $line = '[AB]'.\str_repeat(' ', times: 6);
         $pane = [['start' => 0, 'width' => 10, 'ltr' => false]];
 
         $out = AnsiUtils::stripAnsiCodes($reorder->reorderRow($line, $pane, [['start' => 0, 'width' => 4, 'ltr' => true]]));
 
-        $this->assertSame(1, substr_count($out, needle: '[AB]'), 'exactly one copy of the box');
+        $this->assertSame(1, \substr_count($out, needle: '[AB]'), 'exactly one copy of the box');
     }
 
     public function testASurfaceStartingPastTheRowIsNotStampedAtAll(): void
@@ -459,7 +459,7 @@ final class PaneReorderTest extends TestCase
         // the PANE underneath a mirrored dropdown lands somewhere else entirely
         // and the menu item is never hit.
         $reorder = new PaneReorder();
-        $line = '[AB]'.str_repeat(' ', times: 6);
+        $line = '[AB]'.\str_repeat(' ', times: 6);
         $pane = [['start' => 0, 'width' => 10, 'ltr' => false]];
         $region = [['start' => 0, 'width' => 4, 'ltr' => true]];
 
@@ -471,7 +471,7 @@ final class PaneReorderTest extends TestCase
     public function testAClickOutsideTheBoxStillMapsThroughThePane(): void
     {
         $reorder = new PaneReorder();
-        $line = '[AB]'.str_repeat(' ', times: 6);
+        $line = '[AB]'.\str_repeat(' ', times: 6);
         $pane = [['start' => 0, 'width' => 10, 'ltr' => false]];
         $region = [['start' => 0, 'width' => 4, 'ltr' => true]];
 
@@ -484,7 +484,7 @@ final class PaneReorderTest extends TestCase
     {
         // Surfaces paint in order, so the LAST one drawn owns the click.
         $reorder = new PaneReorder();
-        $line = str_repeat('x', times: 10);
+        $line = \str_repeat('x', times: 10);
         $pane = [['start' => 0, 'width' => 10, 'ltr' => false]];
         $regions = [
             ['start' => 0, 'width' => 4, 'ltr' => true], // mirrors to 6..9
@@ -499,7 +499,7 @@ final class PaneReorderTest extends TestCase
         // A surface starting past the row owns no cell here, so the pane must
         // still answer — otherwise a stale box would swallow every click.
         $reorder = new PaneReorder();
-        $line = str_repeat('x', times: 10);
+        $line = \str_repeat('x', times: 10);
         $pane = [['start' => 0, 'width' => 10, 'ltr' => false]];
 
         $this->assertSame(
@@ -514,7 +514,7 @@ final class PaneReorderTest extends TestCase
         // not just its position: the menu items inside a dropdown are Hebrew.
         $reorder = new PaneReorder();
         $hebrew = "\u{05D0}\u{05D1}\u{05D2}\u{05D3}";
-        $line = $hebrew.str_repeat(' ', times: 6);
+        $line = $hebrew.\str_repeat(' ', times: 6);
         $pane = [['start' => 0, 'width' => 10, 'ltr' => false]];
         $region = [['start' => 0, 'width' => 4, 'ltr' => false]];
 

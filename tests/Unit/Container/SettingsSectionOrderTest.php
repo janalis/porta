@@ -28,13 +28,13 @@ final class SettingsSectionOrderTest extends ContainerTestCase
         $container = $this->buildContainer();
 
         $priorities = [];
-        foreach (array_keys($container->findTaggedServiceIds('porta.settings_section')) as $id) {
+        foreach (\array_keys($container->findTaggedServiceIds('porta.settings_section')) as $id) {
             $attributes = new \ReflectionClass($id)->getAttributes(AsTaggedItem::class);
-            self::assertCount(1, $attributes, $id.' must declare its match order with #[AsTaggedItem]');
+            $this->assertCount(1, $attributes, $id.' must declare its match order with #[AsTaggedItem]');
             $priorities[$id] = (int) $attributes[0]->newInstance()->priority;
         }
-        arsort($priorities);
-        $actual = array_keys($priorities);
+        \arsort($priorities);
+        $actual = \array_keys($priorities);
 
         $expected = [
             InterfaceSection::class, // 600
@@ -44,7 +44,7 @@ final class SettingsSectionOrderTest extends ContainerTestCase
             GeneralSection::class, // 100 — the catch-all; MUST stay last
         ];
 
-        self::assertSame($expected, $actual, 'every settings section must carry #[AsTaggedItem] with its contractual priority');
+        $this->assertSame($expected, $actual, 'every settings section must carry #[AsTaggedItem] with its contractual priority');
     }
 
     public function testOnlyTheGeneralSectionClaimsAnUnknownNavId(): void
@@ -52,7 +52,7 @@ final class SettingsSectionOrderTest extends ContainerTestCase
         $container = $this->buildContainer();
 
         $claimers = [];
-        foreach (array_keys($container->findTaggedServiceIds('porta.settings_section')) as $id) {
+        foreach (\array_keys($container->findTaggedServiceIds('porta.settings_section')) as $id) {
             // The sections are private services, and handles() reads no
             // constructor state — so ask the class, not the container.
             /** @var \Porta\Settings\SettingsSection $section */
@@ -62,6 +62,6 @@ final class SettingsSectionOrderTest extends ContainerTestCase
             }
         }
 
-        self::assertSame([GeneralSection::class], $claimers, 'exactly one catch-all section, or the fallback is ambiguous');
+        $this->assertSame([GeneralSection::class], $claimers, 'exactly one catch-all section, or the fallback is ambiguous');
     }
 }

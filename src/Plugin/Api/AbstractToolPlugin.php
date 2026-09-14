@@ -49,13 +49,13 @@ abstract class AbstractToolPlugin extends AbstractPlugin
      */
     protected function binary(PluginApi $api): ?string
     {
-        $configured = trim((string) $api->setting('binary'));
+        $configured = \trim((string) $api->setting('binary'));
         if ('' !== $configured) {
             return $configured;
         }
         if (BinarySearch::VendorBinThenPath === $this->search) {
             $local = $api->projectRoot().'/vendor/bin/'.$this->binaryName;
-            if (is_file($local) && is_executable($local)) {
+            if (\is_file($local) && \is_executable($local)) {
                 return $local;
             }
         }
@@ -102,7 +102,7 @@ abstract class AbstractToolPlugin extends AbstractPlugin
     protected function activeFileOrFlash(PluginApi $api, string $extension = '.php'): ?string
     {
         $file = $api->activeFile();
-        if (null === $file || !str_ends_with($file, $extension)) {
+        if (null === $file || !\str_ends_with($file, $extension)) {
             $api->flash($api->trans('%tool%: open a PHP file first', ['%tool%' => $this->name()]));
 
             return null;
@@ -159,7 +159,7 @@ abstract class AbstractToolPlugin extends AbstractPlugin
         if (null === $before || $api->activeFile() !== $file) {
             return; // the user moved on; the file on disk is still correct
         }
-        $formatted = is_file($file) ? file_get_contents($file) : false;
+        $formatted = \is_file($file) ? \file_get_contents($file) : false;
         if (false === $formatted || $formatted === $before || $api->documentText() !== $before) {
             return; // unreadable, unchanged, or typed into while the tool ran
         }
@@ -249,7 +249,7 @@ abstract class AbstractToolPlugin extends AbstractPlugin
             '%count%' => $count,
             '%noun%' => $noun,
             '%nouns%' => $noun.'s',
-            '%file%' => basename($file),
+            '%file%' => \basename($file),
         ];
         $api->flash(
             0 === $count

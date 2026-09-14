@@ -24,7 +24,7 @@ final class SemanticTokenStyleTest extends TestCase
     {
         $theme = new DarkTerminalTheme();
 
-        self::assertSame(
+        $this->assertSame(
             $theme->before(TokenTypeEnum::PROPERTY),
             SemanticTokenStyle::open('property', [], $theme),
         );
@@ -35,8 +35,8 @@ final class SemanticTokenStyleTest extends TestCase
         $theme = new DarkTerminalTheme();
         $expected = $theme->before(TokenTypeEnum::VARIABLE);
 
-        self::assertSame($expected, SemanticTokenStyle::open('parameter', [], $theme));
-        self::assertSame($expected, SemanticTokenStyle::open('variable', [], $theme));
+        $this->assertSame($expected, SemanticTokenStyle::open('parameter', [], $theme));
+        $this->assertSame($expected, SemanticTokenStyle::open('variable', [], $theme));
     }
 
     public function testAPropertyAndALocalDoNotShareAColour(): void
@@ -44,7 +44,7 @@ final class SemanticTokenStyleTest extends TestCase
         // The whole point of the feature: the lexer cannot tell these apart.
         $theme = new DarkTerminalTheme();
 
-        self::assertNotSame(
+        $this->assertNotSame(
             SemanticTokenStyle::open('property', [], $theme),
             SemanticTokenStyle::open('variable', [], $theme),
         );
@@ -60,7 +60,7 @@ final class SemanticTokenStyleTest extends TestCase
     {
         $theme = new DarkTerminalTheme();
 
-        self::assertSame($theme->before($expected), SemanticTokenStyle::open($type, [], $theme));
+        $this->assertSame($theme->before($expected), SemanticTokenStyle::open($type, [], $theme));
     }
 
     public static function mappedTypes(): \Generator
@@ -94,18 +94,18 @@ final class SemanticTokenStyleTest extends TestCase
         // Asserted WHOLE, not by containment: the modifiers are appended to the
         // colour, so a `.=` that became a `=` would drop the colour entirely
         // and still contain the strikethrough. A mutant did exactly that.
-        self::assertSame(
+        $this->assertSame(
             $theme->before(TokenTypeEnum::GENERIC)."\x1b[9m\x1b[3m",
             SemanticTokenStyle::open('method', ['deprecated', 'static'], $theme),
         );
-        self::assertSame("\x1b[23m\x1b[29m".Sgr::DEFAULT_FG, SemanticTokenStyle::close('method', ['deprecated', 'static'], $theme));
+        $this->assertSame("\x1b[23m\x1b[29m".Sgr::DEFAULT_FG, SemanticTokenStyle::close('method', ['deprecated', 'static'], $theme));
     }
 
     public function testAModifierWeDoNotRenderChangesNothing(): void
     {
         $theme = new DarkTerminalTheme();
 
-        self::assertSame(
+        $this->assertSame(
             SemanticTokenStyle::open('method', [], $theme),
             SemanticTokenStyle::open('method', ['declaration', 'readonly'], $theme),
         );
@@ -114,12 +114,12 @@ final class SemanticTokenStyleTest extends TestCase
     public function testAnUnmappedTypeWithNoModifiersSaysNothingAtAll(): void
     {
         // '' is the signal the row assembler uses to leave the lexer alone.
-        self::assertSame('', SemanticTokenStyle::open('somethingNewInTheSpec', [], new DarkTerminalTheme()));
+        $this->assertSame('', SemanticTokenStyle::open('somethingNewInTheSpec', [], new DarkTerminalTheme()));
     }
 
     public function testAnUnmappedTypeStillCarriesItsModifiers(): void
     {
-        self::assertSame("\x1b[9m", SemanticTokenStyle::open('somethingNewInTheSpec', ['deprecated'], new DarkTerminalTheme()));
+        $this->assertSame("\x1b[9m", SemanticTokenStyle::open('somethingNewInTheSpec', ['deprecated'], new DarkTerminalTheme()));
     }
 
     public function testThePlainThemeOpensNoColourAndSoResetsNone(): void
@@ -128,15 +128,15 @@ final class SemanticTokenStyleTest extends TestCase
         // theme's contract is that it emits none.
         $theme = new PlainTerminalTheme();
 
-        self::assertSame('', SemanticTokenStyle::open('property', [], $theme));
-        self::assertSame('', SemanticTokenStyle::close('property', [], $theme));
+        $this->assertSame('', SemanticTokenStyle::open('property', [], $theme));
+        $this->assertSame('', SemanticTokenStyle::close('property', [], $theme));
     }
 
     public function testThePlainThemeStillClosesAModifierItOpened(): void
     {
         $theme = new PlainTerminalTheme();
 
-        self::assertSame("\x1b[9m", SemanticTokenStyle::open('property', ['deprecated'], $theme));
-        self::assertSame("\x1b[29m", SemanticTokenStyle::close('property', ['deprecated'], $theme));
+        $this->assertSame("\x1b[9m", SemanticTokenStyle::open('property', ['deprecated'], $theme));
+        $this->assertSame("\x1b[29m", SemanticTokenStyle::close('property', ['deprecated'], $theme));
     }
 }

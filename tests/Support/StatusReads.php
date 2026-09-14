@@ -31,6 +31,6 @@ trait StatusReads
     /** The composed status row, ANSI-stripped (rendered read). */
     private function statusRow(StatusBarWidget $status, int $columns = 100): string
     {
-        return AnsiUtils::stripAnsiCodes(implode(' ', $status->render(new RenderContext($columns, 1))));
+        return AnsiUtils::stripAnsiCodes(\implode(' ', $status->render(new RenderContext($columns, 1))));
     }
 }

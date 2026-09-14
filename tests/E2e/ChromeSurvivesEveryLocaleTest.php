@@ -80,10 +80,10 @@ final class ChromeSurvivesEveryLocaleTest extends TestCase
     #[DataProvider('locales')]
     public function testEveryChromeRowStillSaysWhatItIsFor(string $locale): void
     {
-        putenv('PATH=/nonexistent'); // no machine-dependent LSP status in the bar
+        \putenv('PATH=/nonexistent'); // no machine-dependent LSP status in the bar
         $this->project = new TempProject([
             self::FIXTURE => "<?php\n\$x = 1;\n",
-            '.porta.json' => json_encode(['settings' => ['language' => $locale]], \JSON_THROW_ON_ERROR),
+            '.porta.json' => \json_encode(['settings' => ['language' => $locale]], \JSON_THROW_ON_ERROR),
         ]);
 
         $this->runIde(
@@ -119,7 +119,7 @@ final class ChromeSurvivesEveryLocaleTest extends TestCase
             $this->assertStringContainsString(
                 'Class.php',
                 $row,
-                \sprintf('[%s @ %d] the status bar dropped the file name: |%s|', $locale, $width, rtrim($row)),
+                \sprintf('[%s @ %d] the status bar dropped the file name: |%s|', $locale, $width, \rtrim($row)),
             );
             $this->assertSame($width, AnsiUtils::visibleWidth($row), \sprintf('[%s @ %d] the status row is exactly its width', $locale, $width));
         }
@@ -147,7 +147,7 @@ final class ChromeSurvivesEveryLocaleTest extends TestCase
             foreach ($menus as $menu) {
                 /** @var string $title */
                 $title = $menu->title;
-                if (!str_contains($row, $title)) {
+                if (!\str_contains($row, $title)) {
                     $missing[] = $title;
                 }
             }
@@ -157,8 +157,8 @@ final class ChromeSurvivesEveryLocaleTest extends TestCase
 
             $this->assertStringEndsWith(
                 Glyphs::ELLIPSIS,
-                rtrim($row),
-                \sprintf('[%s @ %d] the menu bar dropped %s with nothing to say it did: |%s|', $locale, $width, implode(', ', $missing), rtrim($row)),
+                \rtrim($row),
+                \sprintf('[%s @ %d] the menu bar dropped %s with nothing to say it did: |%s|', $locale, $width, \implode(', ', $missing), \rtrim($row)),
             );
         }
     }
@@ -184,7 +184,7 @@ final class ChromeSurvivesEveryLocaleTest extends TestCase
             $this->assertStringNotContainsString(
                 Glyphs::ELLIPSIS,
                 $row,
-                \sprintf('[%s] the settings nav cannot spell its own rows at its floor of %d: |%s|', $locale, $floor, rtrim($row)),
+                \sprintf('[%s] the settings nav cannot spell its own rows at its floor of %d: |%s|', $locale, $floor, \rtrim($row)),
             );
         }
     }
@@ -205,7 +205,7 @@ final class ChromeSurvivesEveryLocaleTest extends TestCase
             $this->assertStringContainsString(
                 'Ctrl+F',
                 $header,
-                \sprintf('[%s @ %d] the keybindings header lost its filter hint: |%s|', $locale, $width, rtrim($header)),
+                \sprintf('[%s @ %d] the keybindings header lost its filter hint: |%s|', $locale, $width, \rtrim($header)),
             );
         }
     }

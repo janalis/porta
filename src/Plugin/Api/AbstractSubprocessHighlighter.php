@@ -139,7 +139,7 @@ abstract class AbstractSubprocessHighlighter extends AbstractToolPlugin implemen
         $sequence = ++$this->sequence;
         $this->latest[$language] = $sequence;
 
-        $delay = max(0, (int) $api->setting('debounce')) / 1000;
+        $delay = \max(0, (int) $api->setting('debounce')) / 1000;
         $this->timers[$language] = EventLoop::delay($delay, function () use ($api, $theme, $text, $language, $deliver, $sequence): void {
             unset($this->timers[$language]);
             $this->run($api, $theme, $text, $language, $deliver, $sequence);
@@ -209,7 +209,7 @@ abstract class AbstractSubprocessHighlighter extends AbstractToolPlugin implemen
      */
     private function dispatchPending(): void
     {
-        $language = array_key_first($this->pending);
+        $language = \array_key_first($this->pending);
         if (null === $language) {
             return;
         }
@@ -228,7 +228,7 @@ abstract class AbstractSubprocessHighlighter extends AbstractToolPlugin implemen
     {
         try {
             /** @var array<array-key, mixed>|scalar|null $tokens */
-            $tokens = json_decode($json, associative: true, flags: \JSON_THROW_ON_ERROR);
+            $tokens = \json_decode($json, associative: true, flags: \JSON_THROW_ON_ERROR);
         } catch (\JsonException) {
             return null;
         }
@@ -254,7 +254,7 @@ abstract class AbstractSubprocessHighlighter extends AbstractToolPlugin implemen
     private function tokenType(string $name): ?TokenTypeEnum
     {
         foreach ($this->tokenMap() as $prefix => $type) {
-            if (str_starts_with($name, $prefix)) {
+            if (\str_starts_with($name, $prefix)) {
                 return $type;
             }
         }

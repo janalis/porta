@@ -55,7 +55,7 @@ final class TreeDragAndDropTest extends TestCase
 
     public function testDraggingAFileOntoAFolderMovesItAndTakesItsMarksAlong(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = $this->project();
 
         $this->runIde(
@@ -69,7 +69,7 @@ final class TreeDragAndDropTest extends TestCase
                     // dispatched FileRenamed rather than renaming by hand.
                     Services::resolve($ide, BookmarkActions::class)->toggle();
                     $this->assertSame(
-                        [(string) realpath($project->path('top.php')) => [0]],
+                        [(string) \realpath($project->path('top.php')) => [0]],
                         Services::resolve($ide, Bookmarks::class)->all(),
                     );
                 },
@@ -77,7 +77,7 @@ final class TreeDragAndDropTest extends TestCase
                     $rows = $this->treeRows($tui);
                     // Row 0 is the header, 1 is `▸ src/` (collapsed — a drop
                     // does not need it open), 2 is top.php.
-                    $this->assertSame('top.php', trim($rows[2] ?? ''), 'the fixture rows are where the drag expects them');
+                    $this->assertSame('top.php', \trim($rows[2] ?? ''), 'the fixture rows are where the drag expects them');
                     // The tree sits below the menu bar, so a widget-relative
                     // row N is SGR row N + 2 (one for the bar, one for 1-based).
                     $tui->handleInput("\x1b[<0;3;4M"); // press top.php (relative row 2)
@@ -88,7 +88,7 @@ final class TreeDragAndDropTest extends TestCase
                     $this->assertFileDoesNotExist($project->path('top.php'), 'the file left its old home');
                     $this->assertFileExists($project->path('src/top.php'), 'and landed in the folder it was dropped on');
                     $this->assertSame(
-                        [(string) realpath($project->path('src/top.php')) => [0]],
+                        [(string) \realpath($project->path('src/top.php')) => [0]],
                         Services::resolve($ide, Bookmarks::class)->all(),
                         'the bookmark followed, which only FileRenamed can do',
                     );
@@ -110,7 +110,7 @@ final class TreeDragAndDropTest extends TestCase
      */
     public function testCutAndPasteMoveAFileFromTheKeyboard(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = $this->project();
 
         $this->runIde(
@@ -160,7 +160,7 @@ final class TreeDragAndDropTest extends TestCase
                     $this->assertFileDoesNotExist($project->path('top.php'), 'the file left its old home');
                     $this->assertFileExists($project->path('src/top.php'), 'and landed in the folder that was selected');
                     $this->assertSame(
-                        [(string) realpath($project->path('src/top.php')) => [0]],
+                        [(string) \realpath($project->path('src/top.php')) => [0]],
                         Services::resolve($ide, Bookmarks::class)->all(),
                         'the bookmark followed, so the paste took the drop path rather than renaming by hand',
                     );
@@ -199,7 +199,7 @@ final class TreeDragAndDropTest extends TestCase
      */
     public function testCopyAndPasteLeavesTheOriginalAndOffersPasteInTheMenu(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = $this->project();
 
         $this->runIde(
@@ -252,7 +252,7 @@ final class TreeDragAndDropTest extends TestCase
                     // rule a drop onto a file follows. The first copy is removed
                     // first, or the assertion below would be satisfied by it and
                     // could not tell the two targets apart.
-                    unlink($project->path('src/top.php'));
+                    \unlink($project->path('src/top.php'));
                     $this->assertFileDoesNotExist($project->path('src/top.php'));
 
                     $tui->handleInput("\x1b1");
@@ -272,7 +272,7 @@ final class TreeDragAndDropTest extends TestCase
     /** A press and release without motion is the click that already ran, not a drop. */
     public function testAClickInTheTreeIsStillJustAClick(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = $this->project();
 
         $this->runIde(
@@ -301,7 +301,7 @@ final class TreeDragAndDropTest extends TestCase
      */
     public function testAFolderDroppedOnItsOwnChildIsRefused(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $this->project = new TempProject(['src/deep/A.php' => "<?php\n", 'keep.php' => "<?php\n"]);
         $project = $this->project;
 
@@ -319,8 +319,8 @@ final class TreeDragAndDropTest extends TestCase
                 },
                 300 => function ($tui): void {
                     $rows = $this->treeRows($tui);
-                    $this->assertSame('▾ src/', trim($rows[1] ?? ''), 'src/ is open');
-                    $this->assertSame('▸ deep/', trim($rows[2] ?? ''), 'and deep/ is its child');
+                    $this->assertSame('▾ src/', \trim($rows[1] ?? ''), 'src/ is open');
+                    $this->assertSame('▸ deep/', \trim($rows[2] ?? ''), 'and deep/ is its child');
                     $tui->handleInput("\x1b[<0;3;3M"); // press src/
                     $tui->handleInput("\x1b[<32;3;4M"); // drag onto its own child
                     $tui->handleInput("\x1b[<0;3;4m"); // release
@@ -328,7 +328,7 @@ final class TreeDragAndDropTest extends TestCase
                 420 => function ($tui, $terminal, $ide) use ($project): void {
                     $this->assertDirectoryExists($project->path('src/deep'), 'the child is where it was');
                     $this->assertDirectoryDoesNotExist($project->path('src/deep/src'), 'and src/ did not go inside it');
-                    $this->assertStringContainsString('into itself', implode(' | ', Toasts::all($ide)), 'the refusal says why');
+                    $this->assertStringContainsString('into itself', \implode(' | ', Toasts::all($ide)), 'the refusal says why');
                 },
             ],
             columns: 120,
@@ -347,7 +347,7 @@ final class TreeDragAndDropTest extends TestCase
      */
     public function testDraggingAFolderTakesItsSubtreeAndTheOpenBufferInsideIt(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $this->project = new TempProject(['pkg/A.php' => "<?php\n// a\n", 'dest/keep.php' => "<?php\n"]);
         $project = $this->project;
 
@@ -359,7 +359,7 @@ final class TreeDragAndDropTest extends TestCase
                     $this->frame($tui);
                     Services::resolve($ide, BookmarkActions::class)->toggle();
                     $this->assertSame(
-                        [(string) realpath($project->path('pkg/A.php')) => [0]],
+                        [(string) \realpath($project->path('pkg/A.php')) => [0]],
                         Services::resolve($ide, Bookmarks::class)->all(),
                         'the mark starts on the file inside the folder',
                     );
@@ -370,8 +370,8 @@ final class TreeDragAndDropTest extends TestCase
                     // inside pkg/ is open in the editor without its folder
                     // being expanded, which is the point: the buffer has to
                     // follow whether or not the tree is showing it.
-                    $this->assertSame('▸ dest/', trim($rows[1] ?? ''), 'dest/ is row 1');
-                    $this->assertSame('▸ pkg/', trim($rows[2] ?? ''), 'and pkg/ is row 2');
+                    $this->assertSame('▸ dest/', \trim($rows[1] ?? ''), 'dest/ is row 1');
+                    $this->assertSame('▸ pkg/', \trim($rows[2] ?? ''), 'and pkg/ is row 2');
                     $tui->handleInput("\x1b[<0;3;4M"); // press pkg/
                     $tui->handleInput("\x1b[<32;3;3M"); // drag onto dest/
                     $tui->handleInput("\x1b[<0;3;3m"); // release
@@ -385,7 +385,7 @@ final class TreeDragAndDropTest extends TestCase
                         'the buffer that was open inside it followed',
                     );
                     $this->assertSame(
-                        [(string) realpath($project->path('dest/pkg/A.php')) => [0]],
+                        [(string) \realpath($project->path('dest/pkg/A.php')) => [0]],
                         Services::resolve($ide, Bookmarks::class)->all(),
                         'and so did the mark, two levels down',
                     );
@@ -405,7 +405,7 @@ final class TreeDragAndDropTest extends TestCase
      */
     public function testACollisionAnsweredWithCancelMovesNothing(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $this->project = new TempProject([
             'src/dup.php' => "<?php\n// the one already there\n",
             'dup.php' => "<?php\n// the one being dragged\n",
@@ -423,7 +423,7 @@ final class TreeDragAndDropTest extends TestCase
                     $tui->handleInput("\x1b[<0;3;3m"); // release
                 },
                 320 => function ($tui, $terminal): void {
-                    $screen = implode("\n", $this->screenGrid($tui, $terminal));
+                    $screen = \implode("\n", $this->screenGrid($tui, $terminal));
                     $this->assertStringContainsString('already exists', $screen, 'the prompt is up');
                     $tui->handleInput("\x1b[B"); // → Rename…
                     $tui->handleInput("\x1b[B"); // → Cancel
@@ -432,12 +432,12 @@ final class TreeDragAndDropTest extends TestCase
                 460 => function ($tui) use ($project): void {
                     $this->assertStringContainsString(
                         'the one being dragged',
-                        (string) file_get_contents($project->path('dup.php')),
+                        (string) \file_get_contents($project->path('dup.php')),
                         'the dragged file stayed put, with its own contents',
                     );
                     $this->assertStringContainsString(
                         'the one already there',
-                        (string) file_get_contents($project->path('src/dup.php')),
+                        (string) \file_get_contents($project->path('src/dup.php')),
                         'and the one it would have replaced is untouched',
                     );
                 },
@@ -456,7 +456,7 @@ final class TreeDragAndDropTest extends TestCase
      */
     public function testAMultiFileDropAnnouncesTheWorkingTreeChangeOnce(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $this->project = new TempProject([
             'a.php' => "<?php\n",
             'b.php' => "<?php\n",
@@ -506,7 +506,7 @@ final class TreeDragAndDropTest extends TestCase
      */
     public function testEscapeMidDragLeavesNoToggleForTheNextClickToPay(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $this->project = new TempProject(['src/deep/A.php' => "<?php\n", 'keep.php' => "<?php\n"]);
         $project = $this->project;
 
@@ -517,14 +517,14 @@ final class TreeDragAndDropTest extends TestCase
                 200 => function ($tui): void {
                     $this->frame($tui);
                     $rows = $this->treeRows($tui);
-                    $this->assertSame('▸ src/', trim($rows[1] ?? ''), 'src/ starts closed');
+                    $this->assertSame('▸ src/', \trim($rows[1] ?? ''), 'src/ starts closed');
                     $tui->handleInput("\x1b[<0;3;3M"); // press src/ — the toggle is deferred
                     $tui->handleInput("\x1b[<32;3;4M"); // drag down a row
                     $tui->handleInput("\x1b"); // …and think better of it
                     $tui->handleInput("\x1b[<0;3;4m"); // the button comes up over nothing
                 },
                 300 => function ($tui): void {
-                    $this->assertSame('▸ src/', trim($this->treeRows($tui)[1] ?? ''), 'the cancelled drag expanded nothing');
+                    $this->assertSame('▸ src/', \trim($this->treeRows($tui)[1] ?? ''), 'the cancelled drag expanded nothing');
                     // An ordinary click on a FILE, two rows down. It ends where
                     // it began, which is what pays a deferred toggle.
                     $tui->handleInput("\x1b[<0;3;4M");
@@ -533,7 +533,7 @@ final class TreeDragAndDropTest extends TestCase
                 400 => function ($tui): void {
                     $this->assertSame(
                         '▸ src/',
-                        trim($this->treeRows($tui)[1] ?? ''),
+                        \trim($this->treeRows($tui)[1] ?? ''),
                         'and clicking a file did not open a folder nobody touched',
                     );
                 },
@@ -548,7 +548,7 @@ final class TreeDragAndDropTest extends TestCase
      */
     public function testADropOnTheEditorOpensTheFileAndMovesNothing(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = $this->project();
 
         $this->runIde(
@@ -576,7 +576,7 @@ final class TreeDragAndDropTest extends TestCase
      */
     public function testACollisionAsksAndOverwriteAnswersIt(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $this->project = new TempProject([
             'src/dup.php' => "<?php\n// the one already there\n",
             'dup.php' => "<?php\n// the one being dragged\n",
@@ -590,14 +590,14 @@ final class TreeDragAndDropTest extends TestCase
                 200 => function ($tui): void {
                     $this->frame($tui);
                     $rows = $this->treeRows($tui);
-                    $this->assertSame('dup.php', trim($rows[2] ?? ''), 'the dragged file is row 2');
+                    $this->assertSame('dup.php', \trim($rows[2] ?? ''), 'the dragged file is row 2');
                     $tui->handleInput("\x1b[<0;3;4M"); // press the root dup.php
                     $tui->handleInput("\x1b[<32;3;3M"); // drag onto src/
                     $tui->handleInput("\x1b[<0;3;3m"); // release
                 },
                 320 => function ($tui, $terminal) use ($project): void {
                     $this->assertFileExists($project->path('dup.php'), 'nothing moved while the question is open');
-                    $screen = implode("\n", $this->screenGrid($tui, $terminal));
+                    $screen = \implode("\n", $this->screenGrid($tui, $terminal));
                     $this->assertStringContainsString('already exists', $screen, 'the prompt names the collision');
                     $tui->handleInput("\r"); // the first choice is Overwrite
                 },
@@ -605,7 +605,7 @@ final class TreeDragAndDropTest extends TestCase
                     $this->assertFileDoesNotExist($project->path('dup.php'), 'the drag completed after the answer');
                     $this->assertStringContainsString(
                         'the one being dragged',
-                        (string) file_get_contents($project->path('src/dup.php')),
+                        (string) \file_get_contents($project->path('src/dup.php')),
                         'and the dragged file won',
                     );
                 },
@@ -617,7 +617,7 @@ final class TreeDragAndDropTest extends TestCase
     /** A drop back into the folder a file already lives in is a slip, not an instruction. */
     public function testADropIntoItsOwnFolderDoesNothing(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = $this->project();
 
         $this->runIde(
@@ -631,7 +631,7 @@ final class TreeDragAndDropTest extends TestCase
                 },
                 300 => function ($tui): void {
                     $rows = $this->treeRows($tui);
-                    $this->assertSame('A.php', trim($rows[2] ?? ''), 'src/A.php is row 2');
+                    $this->assertSame('A.php', \trim($rows[2] ?? ''), 'src/A.php is row 2');
                     $tui->handleInput("\x1b[<0;3;4M"); // press src/A.php
                     $tui->handleInput("\x1b[<32;3;3M"); // drag onto src/, where it already is
                     $tui->handleInput("\x1b[<0;3;3m");
@@ -643,7 +643,7 @@ final class TreeDragAndDropTest extends TestCase
                     // collides with itself and the collision prompt opens, which
                     // is silent in every other respect and would pass the two
                     // assertions above.
-                    $this->assertStringNotContainsString('already exists', implode("\n", $this->screenGrid($tui, $terminal)));
+                    $this->assertStringNotContainsString('already exists', \implode("\n", $this->screenGrid($tui, $terminal)));
                 },
             ],
             columns: 120,
@@ -656,7 +656,7 @@ final class TreeDragAndDropTest extends TestCase
      */
     public function testSeveralCollisionsAskOnce(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $this->project = new TempProject([
             'src/a.php' => "<?php\n// theirs\n",
             'src/b.php' => "<?php\n// theirs\n",
@@ -683,7 +683,7 @@ final class TreeDragAndDropTest extends TestCase
                     $tui->handleInput("\x1b[<0;3;3m");
                 },
                 420 => function ($tui, $terminal) use ($project): void {
-                    $screen = implode("\n", $this->screenGrid($tui, $terminal));
+                    $screen = \implode("\n", $this->screenGrid($tui, $terminal));
                     $this->assertStringContainsString('2 files already exist', $screen, 'one question, naming the count');
                     $this->assertStringNotContainsString('Rename', $screen, 'and no Rename… — it has no single answer for a set');
                     $this->assertFileExists($project->path('a.php'), 'nothing moved while the question is open');
@@ -696,7 +696,7 @@ final class TreeDragAndDropTest extends TestCase
     /** Rename… chains into the name prompt and moves under the typed name. */
     public function testACollisionAnsweredWithRenameMovesUnderTheNewName(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $this->project = new TempProject([
             'src/dup.php' => "<?php\n// theirs\n",
             'dup.php' => "<?php\n// mine\n",
@@ -733,7 +733,7 @@ final class TreeDragAndDropTest extends TestCase
                     $this->assertFileDoesNotExist($project->path('dup.php'), 'and left its old home');
                     $this->assertStringContainsString(
                         'theirs',
-                        (string) file_get_contents($project->path('src/dup.php')),
+                        (string) \file_get_contents($project->path('src/dup.php')),
                         'the file that was already there is untouched',
                     );
                 },
@@ -745,7 +745,7 @@ final class TreeDragAndDropTest extends TestCase
     /** Alt on the RELEASE copies instead of moving, and the original stays put. */
     public function testAltOnTheReleaseCopiesInsteadOfMoving(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = $this->project();
 
         $this->runIde(
@@ -778,7 +778,7 @@ final class TreeDragAndDropTest extends TestCase
      */
     public function testUnsavedEditsSurviveADrag(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = $this->project();
 
         $this->runIde(
@@ -799,7 +799,7 @@ final class TreeDragAndDropTest extends TestCase
                     $this->assertFileExists($project->path('src/top.php'));
                     $this->assertStringContainsString(
                         'EDIT',
-                        (string) file_get_contents($project->path('src/top.php')),
+                        (string) \file_get_contents($project->path('src/top.php')),
                         'the unsaved edit went with the file rather than being dropped on the floor',
                     );
                 },
@@ -821,7 +821,7 @@ final class TreeDragAndDropTest extends TestCase
     {
         $rows = [];
         foreach ($tui->getById('tree')->render(new \Symfony\Component\Tui\Render\RenderContext(30, 12)) as $line) {
-            $rows[] = rtrim(\Symfony\Component\Tui\Ansi\AnsiUtils::stripAnsiCodes($line));
+            $rows[] = \rtrim(\Symfony\Component\Tui\Ansi\AnsiUtils::stripAnsiCodes($line));
         }
 
         return $rows;
@@ -862,10 +862,10 @@ final class TreeDragAndDropTest extends TestCase
                     // The prompt is pre-filled with the source's name, so clear
                     // it before typing or the two run together and there is no
                     // clash left to test.
-                    foreach (str_split(str_repeat("\x7f", times: 12)) as $bs) {
+                    foreach (\str_split(\str_repeat("\x7f", times: 12)) as $bs) {
                         $tui->handleInput($bs);
                     }
-                    foreach (str_split('other.php') as $ch) {
+                    foreach (\str_split('other.php') as $ch) {
                         $tui->handleInput($ch);
                     }
                     $tui->handleInput("\r");
@@ -873,7 +873,7 @@ final class TreeDragAndDropTest extends TestCase
 
                     $this->assertStringContainsString(
                         'PRECIOUS',
-                        (string) file_get_contents($project->path('dest/other.php')),
+                        (string) \file_get_contents($project->path('dest/other.php')),
                         'a rename onto a second taken name destroyed it',
                     );
                     // And it SAYS so: a copy that silently does nothing is its

@@ -37,12 +37,12 @@ final class EditorActionRouterTest extends TestCase
             $maps[$method] = Probe::invoke($router, $method);
         }
 
-        $overlap = array_intersect(array_keys($maps['simpleHandlers']), array_keys($maps['positionalHandlers']));
+        $overlap = \array_intersect(\array_keys($maps['simpleHandlers']), \array_keys($maps['positionalHandlers']));
         $this->assertSame([], $overlap, 'an action id lives in exactly one of the two maps');
 
         foreach ($maps as $method => $handlers) {
             $this->assertNotSame([], $handlers, $method.' is non-empty');
-            foreach (array_keys($handlers) as $action) {
+            foreach (\array_keys($handlers) as $action) {
                 $this->assertArrayHasKey($action, ActionCatalog::ACTIONS, $method.': "'.$action.'" is a catalog action (rebindable, visible in the keymap page)');
             }
         }

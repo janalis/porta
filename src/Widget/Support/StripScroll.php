@@ -30,7 +30,7 @@ trait StripScroll
      */
     public function scrollBy(int $tabs): void
     {
-        $this->scroll = max(0, $this->scroll + $tabs);
+        $this->scroll = \max(0, $this->scroll + $tabs);
         $this->invalidate();
     }
 

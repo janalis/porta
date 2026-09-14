@@ -93,7 +93,7 @@ final class PluginAutoloader
             // A class already claimed keeps its first claimant: plugins are
             // registered in load order, so the earlier plugin wins the same way
             // it wins a command-key collision.
-            if (!\is_string($class) || !\is_string($file) || array_key_exists($class, self::$classes)) {
+            if (!\is_string($class) || !\is_string($file) || \array_key_exists($class, self::$classes)) {
                 continue;
             }
             self::$classes[$class] = $file;
@@ -103,7 +103,7 @@ final class PluginAutoloader
     /** A composer-generated map file's return value, or null when it is absent or not a file. */
     private static function readMap(string $path): mixed
     {
-        return is_file($path) ? (require $path) : null;
+        return \is_file($path) ? (require $path) : null;
     }
 
     /**
@@ -129,26 +129,26 @@ final class PluginAutoloader
     {
         if (!self::$registered) {
             self::$registered = true;
-            spl_autoload_register(self::load(...));
+            \spl_autoload_register(self::load(...));
         }
     }
 
     private static function load(string $class): void
     {
         $mapped = self::$classes[$class] ?? null;
-        if (null !== $mapped && is_file($mapped)) {
+        if (null !== $mapped && \is_file($mapped)) {
             require $mapped;
 
             return;
         }
         foreach (self::$prefixes as $prefix => $directories) {
-            if (!str_starts_with($class, $prefix)) {
+            if (!\str_starts_with($class, $prefix)) {
                 continue;
             }
-            $relative = str_replace('\\', replace: '/', subject: substr($class, \strlen($prefix)));
+            $relative = \str_replace('\\', replace: '/', subject: \substr($class, \strlen($prefix)));
             foreach ($directories as $directory) {
                 $file = $directory.'/'.$relative.'.php';
-                if (is_file($file)) {
+                if (\is_file($file)) {
                     require $file;
 
                     return;

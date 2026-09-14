@@ -20,14 +20,14 @@ final class CodeEditorHScrollTest extends TestCase
     private function editor(): CodeEditorWidget
     {
         $editor = new CodeEditorWidget();
-        $editor->openFile('x.php', str_repeat('x', times: 40).'NEEDLE'.str_repeat('y', times: 10)."\nshort\n");
+        $editor->openFile('x.php', \str_repeat('x', times: 40).'NEEDLE'.\str_repeat('y', times: 10)."\nshort\n");
 
         return $editor;
     }
 
     private function screen(CodeEditorWidget $editor): string
     {
-        return implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $editor->render(new RenderContext(40, 5))));
+        return \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $editor->render(new RenderContext(40, 5))));
     }
 
     private function hScroll(CodeEditorWidget $editor): int

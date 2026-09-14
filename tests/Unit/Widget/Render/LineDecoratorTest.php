@@ -259,7 +259,7 @@ final class LineDecoratorTest extends TestCase
         // The regression this method exists for: 12 same-word spans on one
         // prose line produced >120KB (and OOM at higher counts) through the
         // sequential fold. Linear growth stays in the low kilobytes.
-        $line = str_repeat('the quick brown fox jumps over the lazy dog ', times: 3); // 135 cols
+        $line = \str_repeat('the quick brown fox jumps over the lazy dog ', times: 3); // 135 cols
         $spans = [];
         for ($i = 0; $i < 12; ++$i) {
             $start = $i * 10;

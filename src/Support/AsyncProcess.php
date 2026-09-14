@@ -89,7 +89,7 @@ final class AsyncProcess
             2 => $this->captureStderr ? ['pipe', 'w'] : ['file', '/dev/null', 'w'],
         ];
         // @mago-expect lint:no-error-control-operator -- proc_open on a nonexistent/unusable binary emits a spawn ("posix_spawn() failed") warning that guarding the inputs cannot reliably prevent; the false return is handled below.
-        $process = @proc_open($this->command, $descriptors, $pipes, $cwd, $this->env);
+        $process = @\proc_open($this->command, $descriptors, $pipes, $cwd, $this->env);
         if (!\is_resource($process)) {
             // Reached whenever the binary is not on the PATH: the ARRAY form
             // of proc_open resolves the program itself and returns false when
@@ -113,7 +113,7 @@ final class AsyncProcess
                 $onChunk($chunk);
             }
         });
-        if ($this->captureStderr && array_key_exists(2, $pipes)) {
+        if ($this->captureStderr && \array_key_exists(2, $pipes)) {
             $this->watch($pipes[2], $onExit, function (string $chunk): void {
                 $this->stderr .= $chunk;
             });
@@ -144,11 +144,11 @@ final class AsyncProcess
      */
     private function feed($stream, string $payload): void
     {
-        stream_set_blocking($stream, enable: false);
+        \stream_set_blocking($stream, enable: false);
         $offset = 0;
         $this->watchers[] = EventLoop::onWritable($stream, function (string $watcherId) use ($stream, $payload, &$offset): void {
             // @mago-expect lint:no-error-control-operator -- writing to a child that already exited raises an unavoidable EPIPE warning no is_resource guard prevents.
-            $written = \is_resource($stream) ? @fwrite($stream, substr($payload, $offset)) : false;
+            $written = \is_resource($stream) ? @\fwrite($stream, \substr($payload, $offset)) : false;
             if (\is_int($written)) {
                 $offset += $written;
             }
@@ -158,9 +158,9 @@ final class AsyncProcess
             }
 
             EventLoop::cancel($watcherId);
-            $this->watchers = array_values(array_filter($this->watchers, static fn (string $id): bool => $id !== $watcherId));
+            $this->watchers = \array_values(\array_filter($this->watchers, static fn (string $id): bool => $id !== $watcherId));
             if (\is_resource($stream)) {
-                fclose($stream);
+                \fclose($stream);
             }
         });
     }
@@ -175,19 +175,19 @@ final class AsyncProcess
      */
     private function watch($stream, callable $onExit, \Closure $accumulate): void
     {
-        stream_set_blocking($stream, enable: false);
+        \stream_set_blocking($stream, enable: false);
         $this->watchers[] = EventLoop::onReadable($stream, function (string $watcherId) use ($stream, $onExit, $accumulate): void {
-            $chunk = \is_resource($stream) ? fread($stream, length: 65_536) : false;
+            $chunk = \is_resource($stream) ? \fread($stream, length: 65_536) : false;
             if (\is_string($chunk) && '' !== $chunk) {
                 $accumulate($chunk);
 
                 return;
             }
-            if (feof($stream)) {
+            if (\feof($stream)) {
                 EventLoop::cancel($watcherId);
-                $this->watchers = array_values(array_filter($this->watchers, static fn (string $id): bool => $id !== $watcherId));
+                $this->watchers = \array_values(\array_filter($this->watchers, static fn (string $id): bool => $id !== $watcherId));
                 if (\is_resource($stream)) {
-                    fclose($stream);
+                    \fclose($stream);
                 }
                 if (--$this->openStreams > 0) {
                     return; // the other pipe is still draining
@@ -243,7 +243,7 @@ final class AsyncProcess
         $this->watchers = [];
         $this->cancelTimeout();
         if (\is_resource($this->process)) {
-            proc_terminate($this->process);
+            \proc_terminate($this->process);
             $this->closeWhenDead($this->process);
         }
         $this->process = null;

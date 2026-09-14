@@ -37,15 +37,15 @@ final class IdePluginInstallTest extends TestCase
 
     protected function setUp(): void
     {
-        $portaHome = getenv('PORTA_HOME');
+        $portaHome = \getenv('PORTA_HOME');
         $this->portaHome = $portaHome ? $portaHome : null;
-        $this->composerBin = FakeComposer::write(sys_get_temp_dir().'/porta-e2e-fakebin-'.bin2hex(random_bytes(4)));
-        putenv('PATH='.$this->composerBin);
+        $this->composerBin = FakeComposer::write(\sys_get_temp_dir().'/porta-e2e-fakebin-'.\bin2hex(\random_bytes(4)));
+        \putenv('PATH='.$this->composerBin);
     }
 
     protected function tearDown(): void
     {
-        putenv(null !== $this->portaHome ? 'PORTA_HOME='.$this->portaHome : 'PORTA_HOME');
+        \putenv(null !== $this->portaHome ? 'PORTA_HOME='.$this->portaHome : 'PORTA_HOME');
     }
 
     /** A plugin source registering one flashing command, with a composer.json declaring it a Porta plugin package. */
@@ -72,7 +72,7 @@ final class IdePluginInstallTest extends TestCase
     /** The composer.json a plugin source dir needs for a path/vcs install to find it. */
     private function pluginManifest(string $name): string
     {
-        return (string) json_encode(['name' => 'test/'.$name, 'type' => 'porta-plugin']);
+        return (string) \json_encode(['name' => 'test/'.$name, 'type' => 'porta-plugin']);
     }
 
     /** Open settings and select the Plugins section, leaving focus on the form. */
@@ -87,7 +87,7 @@ final class IdePluginInstallTest extends TestCase
     /** Type into the form's inline text editor. */
     private function type($tui, string $text): void
     {
-        foreach (str_split($text) as $char) {
+        foreach (\str_split($text) as $char) {
             $tui->handleInput($char);
         }
     }
@@ -121,7 +121,7 @@ final class IdePluginInstallTest extends TestCase
                     $tui->handleInput("\r"); // start inline editing
                     $this->type($tui, $project->path('plugin-src/installee'));
                     $tui->handleInput("\r"); // commit → async composer require + live activation
-                    $this->await(static fn (): bool => str_contains(\Porta\Tests\Support\Toasts::last($ide), 'Plugin installed'));
+                    $this->await(static fn (): bool => \str_contains(\Porta\Tests\Support\Toasts::last($ide), 'Plugin installed'));
                     // The toast is the MODEL saying so; the re-listed section is
                     // a later paint, and a bare tick() is not a frame.
                     $this->awaitPainted($tui, $terminal, 'installee (project)');
@@ -133,7 +133,7 @@ final class IdePluginInstallTest extends TestCase
 
                     // Live activation: the command is in the registry and the palette.
                     $commands = Services::resolve($ide, CommandRegistry::class);
-                    $this->assertContains('Hi from installee', array_column($commands->paletteCommands(), 'label'));
+                    $this->assertContains('Hi from installee', \array_column($commands->paletteCommands(), 'label'));
                     $commands->run('installee:hi');
                     $this->awaitPainted($tui, $terminal, 'installee says hi');
                     $this->assertStringContainsString('installee says hi', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
@@ -151,7 +151,7 @@ final class IdePluginInstallTest extends TestCase
                     $tui->handleInput("\r"); // the install row is still selected
                     $this->type($tui, $project->path('plugin-src/broken'));
                     $tui->handleInput("\r");
-                    $this->await(static fn (): bool => str_contains(\Porta\Tests\Support\Toasts::last($ide), 'failed to load'));
+                    $this->await(static fn (): bool => \str_contains(\Porta\Tests\Support\Toasts::last($ide), 'failed to load'));
                     $tui->tick();
                     $this->assertStringContainsString('Plugin "broken" failed to load: plugin.php must return a PortaPlugin instance', \Porta\Tests\Support\Toasts::last($ide));
                 },
@@ -168,12 +168,12 @@ final class IdePluginInstallTest extends TestCase
                     $tui->handleInput("\r"); // toggle off
                     $this->awaitPainted($tui, $terminal, 'Plugin "installee" disabled');
                     $this->assertStringContainsString('Plugin "installee" disabled', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
-                    $config = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
+                    $config = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true);
                     $this->assertSame(['installee'], $config['disabledPlugins'] ?? null, 'a project plugin disables via disabledPlugins');
 
                     $tui->handleInput("\r"); // toggle back on
                     $tui->tick();
-                    $config = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
+                    $config = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true);
                     $this->assertArrayNotHasKey('disabledPlugins', $config, 're-enabling clears the list');
                 },
             ],
@@ -197,7 +197,7 @@ final class IdePluginInstallTest extends TestCase
             [
                 100 => function ($tui, $terminal, $ide) use ($project): void {
                     $commands = Services::resolve($ide, CommandRegistry::class);
-                    $this->assertContains('Hi from demo', array_column($commands->paletteCommands(), 'label'), 'active before removal');
+                    $this->assertContains('Hi from demo', \array_column($commands->paletteCommands(), 'label'), 'active before removal');
 
                     $this->openPluginsSection($tui, $ide);
                     $tui->handleInput("\x1b[B"); // install row
@@ -215,7 +215,7 @@ final class IdePluginInstallTest extends TestCase
                     // The loaded code cannot be unloaded: the command still runs.
                     // Live deactivation: palette entry, key dispatch and menu are gone.
                     $commands = Services::resolve($ide, CommandRegistry::class);
-                    $this->assertNotContains('Hi from demo', array_column($commands->paletteCommands(), 'label'), 'palette entry died');
+                    $this->assertNotContains('Hi from demo', \array_column($commands->paletteCommands(), 'label'), 'palette entry died');
                     $this->assertNotContains('demo:hi', $commands->keyBoundIds(), 'key dispatch died');
                     $terminal->clearOutput();
                     $commands->run('demo:hi'); // unknown id → safe no-op
@@ -231,9 +231,9 @@ final class IdePluginInstallTest extends TestCase
                     $tui->handleInput("\r");
                     $this->type($tui, $project->path('plugin-src/demo'));
                     $tui->handleInput("\r");
-                    $this->await(static fn (): bool => str_contains(\Porta\Tests\Support\Toasts::last($ide), 'Plugin installed'));
+                    $this->await(static fn (): bool => \str_contains(\Porta\Tests\Support\Toasts::last($ide), 'Plugin installed'));
                     $tui->tick();
-                    $this->assertContains('Hi from demo', array_column($commands->paletteCommands(), 'label'), 'reinstalled live');
+                    $this->assertContains('Hi from demo', \array_column($commands->paletteCommands(), 'label'), 'reinstalled live');
                     $commands->run('demo:hi');
                     $this->awaitPainted($tui, $terminal, 'demo says hi');
                     $this->assertStringContainsString('demo says hi', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'and its boot-time key/handler works again');
@@ -248,9 +248,9 @@ final class IdePluginInstallTest extends TestCase
     {
         // The installer needs a real git to peek the repository, AND the fake
         // composer to actually require the package once peeked — both on PATH.
-        putenv('PATH='.$this->composerBin.\PATH_SEPARATOR.PORTA_TEST_PRISTINE_PATH);
+        \putenv('PATH='.$this->composerBin.\PATH_SEPARATOR.\PORTA_TEST_PRISTINE_PATH);
         if (null === new ExecutableFinder()->find('git')) {
-            self::markTestSkipped('git binary not available');
+            $this->markTestSkipped('git binary not available');
         }
 
         // The installed name derives from the repo's OWN composer.json "name",
@@ -259,8 +259,8 @@ final class IdePluginInstallTest extends TestCase
             'cloned/plugin.php' => $this->pluginSource('cloned'),
             'cloned/composer.json' => $this->pluginManifest('cloned'),
         ]);
-        $dir = escapeshellarg($host->path('cloned'));
-        exec("git -C {$dir} init -q 2>/dev/null && git -C {$dir} config user.email t@t && git -C {$dir} config user.name t && git -C {$dir} add -A && git -C {$dir} commit -qm init 2>/dev/null");
+        $dir = \escapeshellarg($host->path('cloned'));
+        \exec("git -C {$dir} init -q 2>/dev/null && git -C {$dir} config user.email t@t && git -C {$dir} config user.name t && git -C {$dir} add -A && git -C {$dir} commit -qm init 2>/dev/null");
         $project = new TempProject(['a.php' => "<?php\n"]);
 
         $this->runIde(
@@ -275,7 +275,7 @@ final class IdePluginInstallTest extends TestCase
                     $tui->handleInput("\r"); // commit → async clone
                 },
                 300 => function ($tui, $terminal, $ide) use ($project): void {
-                    $this->await(static fn (): bool => str_contains(\Porta\Tests\Support\Toasts::last($ide), 'Plugin installed'));
+                    $this->await(static fn (): bool => \str_contains(\Porta\Tests\Support\Toasts::last($ide), 'Plugin installed'));
                     $this->awaitPainted($tui, $terminal, 'cloned (project)');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('Plugin installed', \Porta\Tests\Support\Toasts::last($ide));
@@ -296,7 +296,7 @@ final class IdePluginInstallTest extends TestCase
     public function testGlobalScopeInstallLandsInPortaHome(): void
     {
         $home = new TempProject();
-        putenv('PORTA_HOME='.$home->dir);
+        \putenv('PORTA_HOME='.$home->dir);
         $project = new TempProject([
             'plugin-src/worldwide/plugin.php' => $this->pluginSource('worldwide'),
             'plugin-src/worldwide/composer.json' => $this->pluginManifest('worldwide'),
@@ -320,7 +320,7 @@ final class IdePluginInstallTest extends TestCase
                     $tui->handleInput("\r");
                     $this->type($tui, $project->path('plugin-src/worldwide'));
                     $tui->handleInput("\r");
-                    $this->await(static fn (): bool => str_contains(\Porta\Tests\Support\Toasts::last($ide), 'Plugin installed'));
+                    $this->await(static fn (): bool => \str_contains(\Porta\Tests\Support\Toasts::last($ide), 'Plugin installed'));
                     $this->awaitPainted($tui, $terminal, 'worldwide (global)');
 
                     $this->assertFileExists($home->dir.'/.porta/plugins/worldwide/plugin.php');

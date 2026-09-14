@@ -26,7 +26,7 @@ trait PreservesPortaHome
     #[After]
     protected function restorePristinePortaHome(): void
     {
-        $home = (string) PORTA_TEST_PRISTINE_PORTA_HOME;
-        putenv('' !== $home ? 'PORTA_HOME='.$home : 'PORTA_HOME');
+        $home = (string) \PORTA_TEST_PRISTINE_PORTA_HOME;
+        \putenv('' !== $home ? 'PORTA_HOME='.$home : 'PORTA_HOME');
     }
 }

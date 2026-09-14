@@ -37,7 +37,7 @@ final readonly class LanguageSection implements SettingsSection
     #[\Override]
     public function handles(string $section): bool
     {
-        return str_starts_with($section, self::PREFIX);
+        return \str_starts_with($section, self::PREFIX);
     }
 
     /**
@@ -107,6 +107,6 @@ final readonly class LanguageSection implements SettingsSection
 
     private function language(string $section): string
     {
-        return substr($section, offset: \strlen(self::PREFIX));
+        return \substr($section, offset: \strlen(self::PREFIX));
     }
 }

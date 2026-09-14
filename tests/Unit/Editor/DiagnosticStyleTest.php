@@ -54,7 +54,7 @@ final class DiagnosticStyleTest extends TestCase
         $this->assertSame('·', DiagnosticStyle::glyph(4));
         $this->assertSame('·', DiagnosticStyle::glyph(9), 'unknown → hint glyph');
         foreach ([1, 2, 3, 4] as $severity) {
-            $this->assertSame(1, mb_strwidth(DiagnosticStyle::glyph($severity)), 'glyphs are one column wide');
+            $this->assertSame(1, \mb_strwidth(DiagnosticStyle::glyph($severity)), 'glyphs are one column wide');
         }
     }
 

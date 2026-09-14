@@ -98,8 +98,8 @@ final class MultiSelection
      */
     public function keepOnly(array $existing): void
     {
-        $keep = array_fill_keys($existing, value: true);
-        $this->paths = array_intersect_key($this->paths, $keep);
+        $keep = \array_fill_keys($existing, value: true);
+        $this->paths = \array_intersect_key($this->paths, $keep);
         if (null !== $this->anchor && !\array_key_exists($this->anchor, $keep)) {
             $this->anchor = null;
         }

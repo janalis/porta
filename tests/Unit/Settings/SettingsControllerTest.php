@@ -65,7 +65,7 @@ final class SettingsControllerTest extends TestCase
 
     protected function setUp(): void
     {
-        putenv('PATH=/nonexistent'); // keep git/LSP out of these unit runs
+        \putenv('PATH=/nonexistent'); // keep git/LSP out of these unit runs
     }
 
     /** @var list<string> */
@@ -189,11 +189,11 @@ final class SettingsControllerTest extends TestCase
         $controller = $this->controller($project->dir, new CodeEditorWidget(), new StatusBarWidget(), ['autoPairs' => false]);
 
         $rows = $controller->formRows();
-        $byKey = array_column($rows, null, 'key');
+        $byKey = \array_column($rows, null, 'key');
 
         $this->assertSame(
             ['inlineDiagnostics', 'autoPairs', 'formatOnSave', 'searchIncludeVendor'],
-            array_column($rows, 'key'),
+            \array_column($rows, 'key'),
             'General holds editor behavior (the viewer-tool paths live on their plugins\' pages now); appearance moved to Interface',
         );
         $this->assertFalse($byKey['autoPairs']->value);
@@ -207,11 +207,11 @@ final class SettingsControllerTest extends TestCase
         $controller = $this->controller($project->dir, new CodeEditorWidget(), new StatusBarWidget(), ['theme' => 'light']);
 
         $rows = $controller->interfaceRows();
-        $byKey = array_column($rows, null, 'key');
+        $byKey = \array_column($rows, null, 'key');
 
         $this->assertSame(
             ['language', 'theme', 'cursorShape', 'tabBarPosition', 'lineNumbers', 'stickyScroll', 'indentGuides', 'showWhitespace', 'methodSeparators', 'breadcrumbs'],
-            array_column($rows, 'key'),
+            \array_column($rows, 'key'),
         );
         $this->assertSame(['en', 'fr', 'de', 'es', 'it', 'ja', 'he'], $byKey['language']->options);
         $this->assertSame(Translator::LOCALE_NAMES, $byKey['language']->optionLabels, 'the picker shows language names');
@@ -251,10 +251,10 @@ final class SettingsControllerTest extends TestCase
         $project = new TempProject();
         $controller = $this->controller($project->dir, new CodeEditorWidget(), new StatusBarWidget(), ['autoPairs' => 1, 'theme' => 0]);
 
-        $general = array_column($controller->formRows(), null, 'key');
-        $interface = array_column($controller->interfaceRows(), null, 'key');
+        $general = \array_column($controller->formRows(), null, 'key');
+        $interface = \array_column($controller->interfaceRows(), null, 'key');
 
-        $this->assertSame(true, $general['autoPairs']->value, 'a truthy non-bool coerces to strict bool true');
+        $this->assertTrue($general['autoPairs']->value, 'a truthy non-bool coerces to strict bool true');
         $this->assertSame('0', $interface['theme']->value, 'a non-string coerces to a strict string');
     }
 
@@ -446,13 +446,13 @@ final class SettingsControllerTest extends TestCase
         $controller->changeSetting('bogus', true);
 
         $this->assertStringContainsString('Unknown setting "bogus"', $this->flashText($status));
-        $this->assertFalse(is_file($project->path('.porta.json')));
+        $this->assertFalse(\is_file($project->path('.porta.json')));
     }
 
     public function testAFailedPersistIsFlaggedInTheFlash(): void
     {
         $project = new TempProject();
-        mkdir($project->path('.porta.json')); // a directory blocks the file write
+        \mkdir($project->path('.porta.json')); // a directory blocks the file write
 
         $controller = $this->controller($project->dir, new CodeEditorWidget(), $status = new StatusBarWidget());
         $controller->changeSetting('autoPairs', false);
@@ -479,10 +479,10 @@ final class SettingsControllerTest extends TestCase
         $controller = $this->controller($project->dir, new CodeEditorWidget(), new StatusBarWidget());
 
         $controller->changeSetting('searchIncludeVendor', true);
-        $this->assertContains('vendor/pkg/Lib.php', array_column($this->files->entries(), 'path'), 'the toggle re-scopes go-to-file live');
+        $this->assertContains('vendor/pkg/Lib.php', \array_column($this->files->entries(), 'path'), 'the toggle re-scopes go-to-file live');
 
         $controller->changeSetting('searchIncludeVendor', false);
-        $paths = array_column($this->files->entries(), 'path');
+        $paths = \array_column($this->files->entries(), 'path');
         $this->assertContains('a.php', $paths);
         $this->assertNotContains('vendor/pkg/Lib.php', $paths, 'disabling narrows the live index back');
     }
@@ -564,13 +564,13 @@ final class SettingsControllerTest extends TestCase
         // The toast arms an expiry timer, and this Ide never run()s — so
         // nothing else will ever cancel it.
         Services::resolve($ide, Notifier::class)->dismissAll();
-        $this->assertFalse(is_file($project->path('.porta.json')), 'nothing was persisted');
+        $this->assertFalse(\is_file($project->path('.porta.json')), 'nothing was persisted');
     }
 
     private static function formatOnSave(): FormatOnSave
     {
         $editor = new CodeEditorWidget();
-        $pool = new LspSessionPool(sys_get_temp_dir(), new FixedActiveFile(), new Translator('en'));
+        $pool = new LspSessionPool(\sys_get_temp_dir(), new FixedActiveFile(), new Translator('en'));
 
         return new FormatOnSave(
             $pool,
@@ -684,13 +684,13 @@ final class SettingsControllerTest extends TestCase
         $controller->resetSetting('ghost');
 
         $this->assertStringContainsString('Unknown setting', $this->statusRow($status));
-        $this->assertFalse(is_file($project->path('.porta.json')), 'nothing was written');
+        $this->assertFalse(\is_file($project->path('.porta.json')), 'nothing was written');
     }
 
     /** @return array<string, mixed> */
     private function written(TempProject $project): array
     {
         /** @var array<string, mixed> */
-        return json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
+        return \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true);
     }
 }

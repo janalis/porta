@@ -80,7 +80,7 @@ final class RecentLocationsTest extends TestCase
 
         $this->assertSame(
             [['line' => 7], ['line' => 3], ['line' => 5]],
-            array_map(static fn (array $r): array => ['line' => $r['line']], $rows),
+            \array_map(static fn (array $r): array => ['line' => $r['line']], $rows),
             'the repeat collapses, and everything older than it still shows',
         );
     }

@@ -60,7 +60,7 @@ final class FuzzyMatcherTest extends TestCase
         ] as [$haystack, $query, $boundary]) {
             $this->assertSame(
                 FuzzyMatcher::score($haystack, $query, $boundary),
-                FuzzyMatcher::scoreLowered(strtolower($haystack), strtolower($query), $boundary, $haystack),
+                FuzzyMatcher::scoreLowered(\strtolower($haystack), \strtolower($query), $boundary, $haystack),
                 "parity for {$haystack}",
             );
         }

@@ -58,7 +58,7 @@ final class PluginHighlighterTest extends TestCase
         $providers = $manager->highlightProviders();
 
         $this->assertCount(2, $providers);
-        $this->assertSame(['one', 'two'], array_map(static fn ($p): string => $p->id(), $providers));
+        $this->assertSame(['one', 'two'], \array_map(static fn ($p): string => $p->id(), $providers));
         $this->assertTrue($providers[0]->supports('php'));
         $this->assertFalse($providers[0]->supports('rust'));
         $this->assertSame('ONE:x', $this->markup($providers[0], 'x'));
@@ -83,7 +83,7 @@ final class PluginHighlighterTest extends TestCase
         );
         $manager->commit($api);
 
-        $this->assertSame(['mytool', 'custom'], array_map(static fn ($p): string => $p->id(), $manager->highlightProviders()));
+        $this->assertSame(['mytool', 'custom'], \array_map(static fn ($p): string => $p->id(), $manager->highlightProviders()));
     }
 
     /** A closure claim list is re-resolved per query, so a setting edit applies live. */
@@ -177,10 +177,10 @@ final class PluginHighlighterTest extends TestCase
 
         $provider = $manager->highlightProviders()[0];
 
-        foreach (range(1, end: 3) as $_) {
+        foreach (\range(1, end: 3) as $_) {
             try {
                 $this->markup($provider, 'x');
-                self::fail('expected the throw to propagate');
+                $this->fail('expected the throw to propagate');
             } catch (\RuntimeException $error) {
                 $this->assertSame('parse failed', $error->getMessage());
             }

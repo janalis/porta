@@ -63,7 +63,7 @@ final class TokenClassifier
         $spanStart = 0;
         $length = \strlen($marked);
         for ($i = 0; $i < $length;) {
-            $pair = substr($marked, $i, length: 2);
+            $pair = \substr($marked, $i, length: 2);
             if (CommentStringTheme::OPEN === $pair) {
                 if (0 === $depth) {
                     $spanStart = $sourceOffset;

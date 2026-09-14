@@ -86,7 +86,7 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverla
         if (null === $this->provider) {
             return;
         }
-        $tabs = array_map(static fn (array $tab): array => [self::family($tab['tab'], $tab['key']), $tab['key'], $tab['label'], $tab['active'], $tab['status']], ($this->provider)());
+        $tabs = \array_map(static fn (array $tab): array => [self::family($tab['tab'], $tab['key']), $tab['key'], $tab['label'], $tab['active'], $tab['status']], ($this->provider)());
         $this->refreshFingerprint($tabs);
     }
 
@@ -279,7 +279,7 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverla
             $status = $tab['status'];
         }
         $strip = TabStripRenderer::render(
-            array_map(
+            \array_map(
                 // A session tab and a tool tab are different families: a drag
                 // reorders within one and ignores a cross-family endpoint, so
                 // the strip draws that boundary heavier.
@@ -322,12 +322,12 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverla
 
         // The tail fills the room the tabs leave; the active tool's status, when
         // there is one, sits right-aligned on top of it.
-        $tail = str_repeat($fill, max(0, $columns - $used));
+        $tail = \str_repeat($fill, \max(0, $columns - $used));
         if ('' !== $status) {
             $room = $columns - $used - 2;
-            $text = AnsiText::truncate($status, max(0, $room), pad: false);
-            $pad = max(0, $columns - $used - mb_strwidth($text) - 1);
-            $tail = str_repeat($fill, $pad).$this->styles->merge(Role::Toolbar, Role::Dim)->apply($text);
+            $text = AnsiText::truncate($status, \max(0, $room), pad: false);
+            $pad = \max(0, $columns - $used - \mb_strwidth($text) - 1);
+            $tail = \str_repeat($fill, $pad).$this->styles->merge(Role::Toolbar, Role::Dim)->apply($text);
         }
         $line .= $tail;
 

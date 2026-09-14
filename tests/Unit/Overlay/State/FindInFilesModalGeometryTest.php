@@ -58,7 +58,7 @@ final class FindInFilesModalGeometryTest extends TestCase
         $modal->open('Find in Files');
         $modal->setScopes(['A directory whose name runs long'], index: 0);
 
-        $screen = AnsiUtils::stripAnsiCodes(implode("\n", $this->compose($modal, columns: 56)));
+        $screen = AnsiUtils::stripAnsiCodes(\implode("\n", $this->compose($modal, columns: 56)));
 
         $this->assertStringContainsString('(Alt+S)', $screen, 'the key is never what gets cut');
         $this->assertStringNotContainsString('A directory whose name runs long', $screen, 'the label is');
@@ -85,7 +85,7 @@ final class FindInFilesModalGeometryTest extends TestCase
         // Read the FOOTER row, not the screen: 'Portée' is also the options
         // row's scope caption, so a screen-wide assertion passes on the wrong
         // row while the footer is cut behind it.
-        $rows = array_values(array_filter(explode("\n", $this->screen($modal)), static fn (string $r): bool => str_contains($r, '(Alt+Enter)')));
+        $rows = \array_values(\array_filter(\explode("\n", $this->screen($modal)), static fn (string $r): bool => \str_contains($r, '(Alt+Enter)')));
 
         $this->assertCount(1, $rows, 'the footer, and only the footer, names this key');
         $this->assertStringContainsString('Portée', $rows[0], 'the action after the key is still on the row');
@@ -126,7 +126,7 @@ final class FindInFilesModalGeometryTest extends TestCase
             $this->assertIsString($line);
             $this->assertSame(
                 Probe::invoke($modal, $declared),
-                AnsiUtils::visibleWidth(rtrim(AnsiUtils::stripAnsiCodes($line))),
+                AnsiUtils::visibleWidth(\rtrim(AnsiUtils::stripAnsiCodes($line))),
                 $drawn.'() draws a different width from the one '.$declared.'() promises boxWidth()',
             );
         }

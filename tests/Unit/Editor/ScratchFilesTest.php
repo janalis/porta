@@ -81,12 +81,12 @@ final class ScratchFilesTest extends TestCase
     {
         $this->scratches()->open();
 
-        $labels = array_column($this->items, 'label');
+        $labels = \array_column($this->items, 'label');
         $this->assertSame('PHP', $labels[0], 'PHP first: this is a PHP IDE');
         $this->assertContains('Markdown', $labels);
         $this->assertSame(
             ['label' => 'Plain text', 'hint' => '.txt', 'value' => 'txt'],
-            end($this->items),
+            \end($this->items),
             'the pick that is not a language comes last, and still names its extension',
         );
         $this->assertCount(\count(LanguageCatalog::EXTENSIONS) + 1, $labels);
@@ -95,14 +95,14 @@ final class ScratchFilesTest extends TestCase
         // read in the list is what lands on disk.
         $this->assertSame(['.php', '.md'], [
             $this->items[0]['hint'],
-            $this->items[array_search('Markdown', $labels, strict: true)]['hint'],
+            $this->items[\array_search('Markdown', $labels, strict: true)]['hint'],
         ]);
     }
 
     public function testPickingALanguageMintsAnEmptyFileAndOpensIt(): void
     {
         $home = new TempProject();
-        putenv('PORTA_HOME='.$home->dir);
+        \putenv('PORTA_HOME='.$home->dir);
         $scratches = $this->scratches();
         $scratches->open();
 
@@ -110,7 +110,7 @@ final class ScratchFilesTest extends TestCase
 
         $path = $home->path('.porta/scratches/scratch_1.php');
         $this->assertFileExists($path);
-        $this->assertSame('', (string) file_get_contents($path), 'a scratch starts empty');
+        $this->assertSame('', (string) \file_get_contents($path), 'a scratch starts empty');
         $this->assertSame([[$path, OpenFocus::Editor]], $this->opened, 'and the caret lands in it');
     }
 
@@ -120,7 +120,7 @@ final class ScratchFilesTest extends TestCase
         // the Markdown file is 1 rather than 3 — the number belongs to the
         // language, which is what makes it readable in a tab strip.
         $home = new TempProject();
-        putenv('PORTA_HOME='.$home->dir);
+        \putenv('PORTA_HOME='.$home->dir);
         $scratches = $this->scratches();
         $scratches->open();
 
@@ -134,7 +134,7 @@ final class ScratchFilesTest extends TestCase
                 $home->path('.porta/scratches/scratch_2.php'),
                 $home->path('.porta/scratches/scratch_1.md'),
             ],
-            array_column($this->opened, 0),
+            \array_column($this->opened, 0),
         );
     }
 
@@ -142,9 +142,9 @@ final class ScratchFilesTest extends TestCase
     {
         // Neither PORTA_HOME nor HOME: the environment in which the global
         // config layer goes away too. The working directory is not a home.
-        $home = getenv('HOME');
-        putenv('PORTA_HOME=');
-        putenv('HOME=');
+        $home = \getenv('HOME');
+        \putenv('PORTA_HOME=');
+        \putenv('HOME=');
 
         try {
             $scratches = $this->scratches();
@@ -153,7 +153,7 @@ final class ScratchFilesTest extends TestCase
         } finally {
             // PreservesPortaHome covers only its own variable; HOME is the
             // developer's and putenv is process-global.
-            putenv(false !== $home ? 'HOME='.$home : 'HOME');
+            \putenv(false !== $home ? 'HOME='.$home : 'HOME');
         }
 
         $this->assertSame('No home directory for scratch files', $this->flashText($this->statusBar));
@@ -163,7 +163,7 @@ final class ScratchFilesTest extends TestCase
     public function testAnUnWRITABLEScratchDirIsReportedNotThrown(): void
     {
         $home = new TempProject();
-        putenv('PORTA_HOME='.$home->dir);
+        \putenv('PORTA_HOME='.$home->dir);
         // A FILE where the scratches directory needs to be: dumpFile cannot
         // mkdir through it, and the failure must not take the IDE down.
         new Filesystem()->dumpFile($home->path('.porta/scratches'), '');

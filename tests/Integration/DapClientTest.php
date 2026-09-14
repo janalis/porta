@@ -61,12 +61,12 @@ final class DapClientTest extends TestCase
         $this->assertTrue($capabilities['supportsConfigurationDoneRequest'] ?? false);
 
         $this->await(static function () use (&$events): bool {
-            return \in_array('initialized', array_column($events, 0), strict: true);
+            return \in_array('initialized', \array_column($events, 0), strict: true);
         });
         $this->await(static function () use (&$events): bool {
-            return \in_array('reverseRejected', array_column($events, 0), strict: true);
+            return \in_array('reverseRejected', \array_column($events, 0), strict: true);
         }, 2.0);
-        $this->assertContains('reverseRejected', array_column($events, 0), 'the client rejected the reverse request');
+        $this->assertContains('reverseRejected', \array_column($events, 0), 'the client rejected the reverse request');
 
         $verified = null;
         $client->request(
@@ -83,12 +83,12 @@ final class DapClientTest extends TestCase
         $client->request('configurationDone');
 
         $this->await(static function () use (&$events): bool {
-            return \in_array('stopped', array_column($events, 0), strict: true);
+            return \in_array('stopped', \array_column($events, 0), strict: true);
         });
-        $stopped = array_values(array_filter($events, static fn (array $e): bool => 'stopped' === $e[0]))[0][1];
+        $stopped = \array_values(\array_filter($events, static fn (array $e): bool => 'stopped' === $e[0]))[0][1];
         $this->assertSame('breakpoint', $stopped['reason']);
         $this->assertSame([['verified' => true, 'line' => 5]], $verified);
-        $this->assertContains('output', array_column($events, 0), 'debuggee stdout arrived as an output event');
+        $this->assertContains('output', \array_column($events, 0), 'debuggee stdout arrived as an output event');
 
         $frames = null;
         $client->request('stackTrace', ['threadId' => 1], static function (array $body) use (&$frames): void {
@@ -102,9 +102,9 @@ final class DapClientTest extends TestCase
 
         $client->request('continue', ['threadId' => 1]);
         $this->await(static function () use (&$events): bool {
-            return \in_array('terminated', array_column($events, 0), strict: true);
+            return \in_array('terminated', \array_column($events, 0), strict: true);
         });
-        $this->assertContains('exited', array_column($events, 0));
+        $this->assertContains('exited', \array_column($events, 0));
 
         $this->await(static function () use (&$log): bool {
             return [] !== $log;
@@ -187,7 +187,7 @@ final class DapClientTest extends TestCase
         $transport = Probe::get($client, 'transport');
         $stderr = Probe::get($transport, 'stderr');
         if (\is_resource($stderr)) {
-            fclose($stderr);
+            \fclose($stderr);
         }
 
         $client->stop();
@@ -211,7 +211,7 @@ final class DapClientTest extends TestCase
 
         // The adapter is dead but the pipe resources still exist: the write fails and is logged.
         $client->request('initialize');
-        $failed = static fn (array $log): bool => [] !== array_filter($log, static fn (string $line): bool => str_contains($line, 'write to debug adapter failed'));
+        $failed = static fn (array $log): bool => [] !== \array_filter($log, static fn (string $line): bool => \str_contains($line, 'write to debug adapter failed'));
         $this->await(static function () use (&$failed, &$log): bool {
             return $failed($log);
         }, 2.0);

@@ -39,7 +39,7 @@ trait ComposesFindModal
      */
     private function compose(FindInFilesModal $modal, int $columns = 100, int $rows = 24): array
     {
-        $lines = array_fill(0, count: $rows, value: str_repeat(' ', times: $columns));
+        $lines = \array_fill(0, count: $rows, value: \str_repeat(' ', times: $columns));
         $placed = $modal->layout([0, 0, $rows, $columns], CaretVisibility::Shown);
         if (null === $placed) {
             return $lines;
@@ -75,6 +75,6 @@ trait ComposesFindModal
     /** The composed screen as one plain string. */
     private function screen(FindInFilesModal $modal): string
     {
-        return AnsiUtils::stripAnsiCodes(implode("\n", $this->compose($modal)));
+        return AnsiUtils::stripAnsiCodes(\implode("\n", $this->compose($modal)));
     }
 }

@@ -110,6 +110,6 @@ final class CommandRegistryTest extends TestCase
             ->add('listed', static function (): void {}, inPalette: PaletteVisibility::Listed, label: 'Listed')
             ->add('hidden', static function (): void {}, inPalette: PaletteVisibility::Hidden, label: 'Hidden');
 
-        $this->assertSame(['Listed'], array_column($registry->paletteCommands(), 'label'), 'the Hidden command is excluded from the palette');
+        $this->assertSame(['Listed'], \array_column($registry->paletteCommands(), 'label'), 'the Hidden command is excluded from the palette');
     }
 }

@@ -292,7 +292,7 @@ final class KeybindingsListWidgetTest extends TestCase
         // shifts the label's truncation boundary at a width tight enough to
         // matter — pin the boundary exactly instead of just presence.
         $widget = new KeybindingsListWidget(new Translator('en'));
-        $widget->setRows([new KeybindingRow('a', str_repeat('X', times: 50), '')]);
+        $widget->setRows([new KeybindingRow('a', \str_repeat('X', times: 50), '')]);
 
         // width=10: labelWidth = max(0, 10 - 1 - 2) = 7 → truncated label ' XXXXX…'.
         $line = AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(10, 4))[1]);
@@ -378,7 +378,7 @@ final class KeybindingsListWidgetTest extends TestCase
 
         // The KEY is searchable too: "what is Ctrl+S" is the other half of what
         // this page is opened for.
-        foreach (str_split('xxx') as $ignored) {
+        foreach (\str_split('xxx') as $ignored) {
             $widget->handleInput("\x7f"); // backspace, one key at a time
         }
         $widget->handleInput('ctrl+s');
@@ -471,7 +471,7 @@ final class KeybindingsListWidgetTest extends TestCase
     private function rowWith(array $lines, string $label): string
     {
         foreach ($lines as $line) {
-            if (str_contains(AnsiUtils::stripAnsiCodes($line), $label)) {
+            if (\str_contains(AnsiUtils::stripAnsiCodes($line), $label)) {
                 return $line;
             }
         }
@@ -482,9 +482,9 @@ final class KeybindingsListWidgetTest extends TestCase
     /** The escape sequence immediately before $needle — what makes the two rows differ, or not. */
     private function markup(string $line, string $needle): string
     {
-        $at = mb_strpos($line, $needle);
+        $at = \mb_strpos($line, $needle);
 
-        return false === $at ? '' : mb_substr($line, start: 0, length: $at);
+        return false === $at ? '' : \mb_substr($line, start: 0, length: $at);
     }
 
     public function testEscapeLeavesTheFilterAndBringsEveryActionBack(): void
@@ -544,10 +544,10 @@ final class KeybindingsListWidgetTest extends TestCase
         $columns = [];
         foreach (\array_slice($widget->render(new RenderContext(52, 6)), offset: 1, length: 4) as $line) {
             $mirrored = AnsiUtils::stripAnsiCodes(Bidi::reorder($line, BaseDirection::Rtl));
-            $columns[] = mb_strpos($mirrored, needle: 'Ctrl+S', encoding: 'UTF-8');
+            $columns[] = \mb_strpos($mirrored, needle: 'Ctrl+S', encoding: 'UTF-8');
         }
 
-        $this->assertCount(1, array_unique($columns), 'every chord is in the same column: '.json_encode($columns));
+        $this->assertCount(1, \array_unique($columns), 'every chord is in the same column: '.\json_encode($columns));
     }
 
     /** And a Latin tail stays with its label rather than crossing the chord. */
@@ -559,8 +559,8 @@ final class KeybindingsListWidgetTest extends TestCase
 
         $mirrored = AnsiUtils::stripAnsiCodes(Bidi::reorder($widget->render(new RenderContext(52, 4))[1], BaseDirection::Rtl));
 
-        $chord = mb_strpos($mirrored, needle: 'Ctrl+S', encoding: 'UTF-8');
-        $tail = mb_strpos($mirrored, needle: 'TODO', encoding: 'UTF-8');
+        $chord = \mb_strpos($mirrored, needle: 'Ctrl+S', encoding: 'UTF-8');
+        $tail = \mb_strpos($mirrored, needle: 'TODO', encoding: 'UTF-8');
         $this->assertNotFalse($chord);
         $this->assertNotFalse($tail);
         $this->assertLessThan($tail, $chord, 'the whole label sits to the right of the chord');

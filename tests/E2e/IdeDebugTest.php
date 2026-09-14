@@ -31,7 +31,7 @@ final class IdeDebugTest extends TestCase
     /** A .porta.json wiring php files to the scripted mock adapter. */
     private function mockDapConfig(): string
     {
-        return (string) json_encode([
+        return (string) \json_encode([
             'languages' => [
                 'php' => ['debug' => [
                     'adapter' => \PHP_BINARY.' '.__DIR__.'/../Support/mock-dap-adapter.php',
@@ -48,7 +48,7 @@ final class IdeDebugTest extends TestCase
 
     public function testBreakpointsToggleAndSurviveTabSwitches(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['prog.php' => $this->program(), 'other.php' => "<?php\n"]);
 
         $this->runIde(
@@ -62,7 +62,7 @@ final class IdeDebugTest extends TestCase
                     $this->assertStringContainsString('●', $terminal->getOutput(), 'gutter dot rendered');
                 },
                 340 => function ($tui, $terminal, $ide) use ($project): void {
-                    $editorScreen = static fn (): string => implode("\n", $tui->getById('editor')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 20)));
+                    $editorScreen = static fn (): string => \implode("\n", $tui->getById('editor')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 20)));
                     Services::resolve($ide, BufferService::class)
                         ->openFile($project->path('other.php'), OpenFocus::Editor);
                     $this->assertStringNotContainsString('●', $editorScreen(), 'no dot in the other file');
@@ -76,7 +76,7 @@ final class IdeDebugTest extends TestCase
                     $tui->tick();
                     $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('editor'));
-                    $editorScreen = static fn (): string => implode("\n", $tui->getById('editor')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 20)));
+                    $editorScreen = static fn (): string => \implode("\n", $tui->getById('editor')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 20)));
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + 2, $rect->row + 2)); // gutter, row 1
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $rect->col + 2, $rect->row + 2));
                     $this->assertStringContainsString('●', $editorScreen(), 'gutter click set a breakpoint');
@@ -92,7 +92,7 @@ final class IdeDebugTest extends TestCase
 
     public function testDebugSessionStopsStepsAndTerminates(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['.porta.json' => $this->mockDapConfig(), 'prog.php' => $this->program()]);
 
         $this->runIde(
@@ -148,7 +148,7 @@ final class IdeDebugTest extends TestCase
                 500 => function ($tui, $terminal): void {
                     $this->awaitPainted($tui, $terminal, 'terminated');
                     $this->assertStringContainsString('terminated', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
-                    $editorScreen = implode("\n", $tui->getById('editor')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 20)));
+                    $editorScreen = \implode("\n", $tui->getById('editor')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 20)));
                     $this->assertStringNotContainsString("\x1b[48;5;52m", $editorScreen, 'the band cleared');
                 },
             ],
@@ -159,7 +159,7 @@ final class IdeDebugTest extends TestCase
 
     public function testGuardsFallThroughAndAdapterlessLaunchFlashes(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['prog.php' => "<?php\n<<<<<<< HEAD\n=======\n>>>>>>> x\n"]);
 
         $this->runIde(
@@ -173,7 +173,7 @@ final class IdeDebugTest extends TestCase
                     $this->assertGreaterThan(0, $tui->getById('editor')->getDocument()->getCursorLine(), 'F7 reached next_conflict while no session runs');
 
                     $tui->handleInput("\x1b[20;2~"); // shift+f9 with no adapter configured
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'No debug adapter configured for php'), what: 'the adapterless-launch flash');
+                    $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'No debug adapter configured for php'), what: 'the adapterless-launch flash');
                 },
             ],
         );
@@ -183,7 +183,7 @@ final class IdeDebugTest extends TestCase
 
     public function testStopMidPauseCleansUpAndPanelMouseWorks(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['.porta.json' => $this->mockDapConfig(), 'prog.php' => $this->program()]);
 
         $this->runIde(
@@ -243,7 +243,7 @@ final class IdeDebugTest extends TestCase
                         $rect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
                         $strip = AnsiUtils::stripAnsiCodes($tui->getById('dock-tabs')->render(new \Symfony\Component\Tui\Render\RenderContext($rect->columns, 1))[0]);
                         // The 2nd 'Debug' occurrence is the debug panel's tab.
-                        $second = (int) mb_strpos($strip, needle: 'Debug', offset: (int) mb_strpos($strip, needle: 'Debug') + 1);
+                        $second = (int) \mb_strpos($strip, needle: 'Debug', offset: (int) \mb_strpos($strip, needle: 'Debug') + 1);
 
                         return $rect->col + $second + 1;
                     };
@@ -274,7 +274,7 @@ final class IdeDebugTest extends TestCase
 
     public function testConditionalBreakpointsAndWatchesEndToEnd(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['.porta.json' => $this->mockDapConfig(), 'prog.php' => $this->program()]);
 
         $this->runIde(
@@ -284,14 +284,14 @@ final class IdeDebugTest extends TestCase
                 100 => function ($tui): void {
                     $tui->getById('editor')->getDocument()->setCursor(4, 0);
                     $tui->handleInput("\x1b[19;6~"); // ctrl+shift+f8: edit → creates the breakpoint too
-                    foreach (str_split('$x > 1') as $ch) {
+                    foreach (\str_split('$x > 1') as $ch) {
                         $tui->handleInput($ch);
                     }
                     $tui->handleInput("\r"); // condition submitted
                     $tui->handleInput("\r"); // hit count left empty
                     $tui->handleInput("\r"); // log message left empty
                     $tui->tick();
-                    $editorScreen = implode("\n", $tui->getById('editor')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 20)));
+                    $editorScreen = \implode("\n", $tui->getById('editor')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 20)));
                     $this->assertStringContainsString('◆', $editorScreen, 'the conditional breakpoint renders a diamond');
                     $tui->handleInput("\x1b[20;2~"); // shift+f9 debug
                 },
@@ -304,7 +304,7 @@ final class IdeDebugTest extends TestCase
                     $tui->handleInput("\x1b[6;3~"); // alt+page_down wraps back to the Debug tab
                     $tui->tick();
                     $tui->handleInput("\x1b[20;6~"); // ctrl+shift+f9: add watch
-                    foreach (str_split('$x') as $ch) {
+                    foreach (\str_split('$x') as $ch) {
                         $tui->handleInput($ch);
                     }
                     $tui->handleInput("\r");
@@ -328,7 +328,7 @@ final class IdeDebugTest extends TestCase
 
     public function testRunToCursorStopsAtTheCaretOnce(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['.porta.json' => $this->mockDapConfig(), 'prog.php' => $this->program()]);
 
         $this->runIde(
@@ -363,12 +363,12 @@ final class IdeDebugTest extends TestCase
 
     public function testExceptionFiltersReachTheAdapterAndToggleLive(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['.porta.json' => $this->mockDapConfig(), 'prog.php' => $this->program()]);
 
         $palette = static function ($tui, string $label): void {
             $tui->handleInput("\x1b[97;6u");
-            foreach (str_split($label) as $ch) {
+            foreach (\str_split($label) as $ch) {
                 $tui->handleInput($ch);
             }
             $tui->handleInput("\r");
@@ -387,7 +387,7 @@ final class IdeDebugTest extends TestCase
                     $tui->handleInput("\x1b[96;5u"); // ctrl+` → the adapter echo lives in the debug terminal session
                     // The defaults go out during the adapter handshake — a
                     // whole php subprocess spawn; await, never a fixed gap.
-                    $this->await(static fn (): bool => str_contains(
+                    $this->await(static fn (): bool => \str_contains(
                         AnsiUtils::stripAnsiCodes($terminal->getOutput()),
                         'xfilters: exception',
                     ), what: 'the default exception filters to reach the adapter');
@@ -395,7 +395,7 @@ final class IdeDebugTest extends TestCase
                     $palette($tui, label: 'Debug: Exception Breakpoints');
                     $this->await(static fn (): bool => EditorState::pickerOpen($tui->getById('editor')));
                     $tui->handleInput("\r"); // toggle Warnings on → re-sync + re-open
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'xfilters: exception,warning'));
+                    $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'xfilters: exception,warning'));
                     $tui->handleInput("\x1b"); // leave the chooser
                 },
             ],
@@ -406,7 +406,7 @@ final class IdeDebugTest extends TestCase
 
     public function testDebugStatePersistsAcrossRelaunch(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['.porta.json' => $this->mockDapConfig(), 'prog.php' => $this->program()]);
 
         $this->runIde(
@@ -416,14 +416,14 @@ final class IdeDebugTest extends TestCase
                 200 => static function ($tui): void {
                     $tui->getById('editor')->getDocument()->setCursor(4, 0);
                     $tui->handleInput("\x1b[19;6~"); // ctrl+shift+f8: conditional breakpoint
-                    foreach (str_split('$x > 1') as $ch) {
+                    foreach (\str_split('$x > 1') as $ch) {
                         $tui->handleInput($ch);
                     }
                     $tui->handleInput("\r");
                     $tui->handleInput("\r"); // no hit count
                     $tui->handleInput("\r"); // no log message
                     $tui->handleInput("\x1b[20;6~"); // ctrl+shift+f9: add a watch
-                    foreach (str_split('$x') as $ch) {
+                    foreach (\str_split('$x') as $ch) {
                         $tui->handleInput($ch);
                     }
                     $tui->handleInput("\r");
@@ -431,9 +431,9 @@ final class IdeDebugTest extends TestCase
             ],
         );
 
-        $saved = json_decode((string) file_get_contents($project->path('.porta/debug.json')), associative: true);
-        $this->assertSame('$x > 1', array_values($saved['breakpoints'])[0][0]['condition'], 'the condition persisted');
-        $this->assertSame(4, array_values($saved['breakpoints'])[0][0]['line']);
+        $saved = \json_decode((string) \file_get_contents($project->path('.porta/debug.json')), associative: true);
+        $this->assertSame('$x > 1', \array_values($saved['breakpoints'])[0][0]['condition'], 'the condition persisted');
+        $this->assertSame(4, \array_values($saved['breakpoints'])[0][0]['line']);
         $this->assertSame(['$x'], $saved['watches']);
 
         // Second boot on the same project: the gutter shows the restored
@@ -443,7 +443,7 @@ final class IdeDebugTest extends TestCase
             $project->path('prog.php'),
             [
                 300 => function ($tui): void {
-                    $editorScreen = static fn (): string => implode("\n", $tui->getById('editor')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 20)));
+                    $editorScreen = static fn (): string => \implode("\n", $tui->getById('editor')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 20)));
                     $this->assertStringContainsString('◆', $editorScreen(), 'the restored conditional breakpoint paints at boot');
                     $tui->handleInput("\x1b[20;2~"); // shift+f9 debug
                 },

@@ -21,14 +21,14 @@ trait UsesBundledPlugins
     #[Before]
     protected function pointAtBundledPlugins(): void
     {
-        $current = getenv('PORTA_EMBEDDED_PLUGINS');
+        $current = \getenv('PORTA_EMBEDDED_PLUGINS');
         $this->savedEmbeddedPlugins = false === $current ? null : $current;
-        putenv('PORTA_EMBEDDED_PLUGINS='.\dirname(__DIR__, levels: 2).'/plugins');
+        \putenv('PORTA_EMBEDDED_PLUGINS='.\dirname(__DIR__, levels: 2).'/plugins');
     }
 
     #[After]
     protected function restoreBundledPlugins(): void
     {
-        putenv('PORTA_EMBEDDED_PLUGINS='.($this->savedEmbeddedPlugins ?? ''));
+        \putenv('PORTA_EMBEDDED_PLUGINS='.($this->savedEmbeddedPlugins ?? ''));
     }
 }

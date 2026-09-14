@@ -88,7 +88,7 @@ final class SearchActions
 
             return;
         }
-        $rows = array_map(static fn (string $rel): array => ['path' => $rel, 'line' => 0, 'text' => $rel], $candidates);
+        $rows = \array_map(static fn (string $rel): array => ['path' => $rel, 'line' => 0, 'text' => $rel], $candidates);
         $this->panels->showList(ResultsPanelMode::Search, $this->translator->trans('Choose target'), $rows);
     }
 

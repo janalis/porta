@@ -69,9 +69,9 @@ final readonly class DocumentReplacer
      */
     private function matchesDisk(Buffer $buffer, string $text): bool
     {
-        $size = is_file($buffer->path) ? filesize($buffer->path) : false;
+        $size = \is_file($buffer->path) ? \filesize($buffer->path) : false;
 
-        return $size === \strlen($text) && file_get_contents($buffer->path) === $text;
+        return \strlen($text) === $size && \file_get_contents($buffer->path) === $text;
     }
 
     /**

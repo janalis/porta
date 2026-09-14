@@ -579,7 +579,7 @@ final class OverlayHost
         if (null === $search || [] === $search->rows) {
             return;
         }
-        for ($i = 0; $i < abs($delta); ++$i) {
+        for ($i = 0; $i < \abs($delta); ++$i) {
             $search->selected = $this->stepHit($search, $delta > 0 ? 1 : -1);
         }
         ($this->invalidate)();

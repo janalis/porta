@@ -264,7 +264,7 @@ final class BidiTui extends Tui implements FrameHooks
      */
     public function logicalColumn(int $row, int $visualCol): int
     {
-        if (null === $this->reorder || !array_key_exists($row, $this->lastLines) || !array_key_exists($row, $this->lastRuns)) {
+        if (null === $this->reorder || !\array_key_exists($row, $this->lastLines) || !\array_key_exists($row, $this->lastRuns)) {
             return $visualCol;
         }
 
@@ -428,7 +428,7 @@ final class BidiTui extends Tui implements FrameHooks
         // every mutation of those guards escaped because nothing could tell.
         $clock = $this->clock;
         $t0 = null !== $clock ? Clocks::seconds($clock) : 0.0;
-        $lines = array_values($renderer->render($root, $columns, $rows));
+        $lines = \array_values($renderer->render($root, $columns, $rows));
         // A frame is never taller than the screen. The renderer does not clip:
         // a flex:0 child gets its intrinsic height whatever the terminal has, so
         // the real workbench composes THREE rows — menu bar, main, status bar —
@@ -460,7 +460,7 @@ final class BidiTui extends Tui implements FrameHooks
                 // used to stand here — write the row unmirrored — was reachable
                 // only through an over-tall frame, which is the thing the clip
                 // now makes impossible.
-                \assert(array_key_exists($row, $this->lastRuns), description: 'a clipped frame has no row the segmenter did not map');
+                \assert(\array_key_exists($row, $this->lastRuns), description: 'a clipped frame has no row the segmenter did not map');
                 $runs = $this->lastRuns[$row];
                 $region = $regions[$row];
                 $hit = $this->arranged[$row] ?? null;

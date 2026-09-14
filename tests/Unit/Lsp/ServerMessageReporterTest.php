@@ -50,7 +50,7 @@ final class ServerMessageReporterTest extends TestCase
     /** @return list<ToastSeverity> */
     private function severities(): array
     {
-        return array_map(static fn (Toast $toast): ToastSeverity => $toast->severity, $this->toasts->toasts());
+        return \array_map(static fn (Toast $toast): ToastSeverity => $toast->severity, $this->toasts->toasts());
     }
 
     #[DataProvider('severityMapping')]
@@ -60,7 +60,7 @@ final class ServerMessageReporterTest extends TestCase
 
         $reporter->report(['type' => $type, 'message' => 'something happened']);
 
-        self::assertSame([$expected], $this->severities());
+        $this->assertSame([$expected], $this->severities());
     }
 
     public static function severityMapping(): \Generator
@@ -78,9 +78,9 @@ final class ServerMessageReporterTest extends TestCase
 
         $reporter->report(['type' => 4, 'message' => 'reindexed 402 files']);
 
-        self::assertSame([], $this->severities(), 'a log-level message must not raise a toast');
-        $texts = array_map(static fn (array $entry): string => $entry['text'], $this->log->entries());
-        self::assertContains('reindexed 402 files', $texts);
+        $this->assertSame([], $this->severities(), 'a log-level message must not raise a toast');
+        $texts = \array_map(static fn (array $entry): string => $entry['text'], $this->log->entries());
+        $this->assertContains('reindexed 402 files', $texts);
     }
 
     public function testATypeOutsideTheEnumIsShownRatherThanDropped(): void
@@ -89,7 +89,7 @@ final class ServerMessageReporterTest extends TestCase
 
         $reporter->report(['type' => 99, 'message' => 'from the future']);
 
-        self::assertSame([ToastSeverity::Info], $this->severities());
+        $this->assertSame([ToastSeverity::Info], $this->severities());
     }
 
     public function testAMissingTypeIsTreatedAsInfo(): void
@@ -98,7 +98,7 @@ final class ServerMessageReporterTest extends TestCase
 
         $reporter->report(['message' => 'no type field']);
 
-        self::assertSame([ToastSeverity::Info], $this->severities());
+        $this->assertSame([ToastSeverity::Info], $this->severities());
     }
 
     public function testAnEmptyOrWhitespaceMessageSaysNothingAtAll(): void
@@ -110,6 +110,6 @@ final class ServerMessageReporterTest extends TestCase
         $reporter->report(['type' => 1, 'message' => '   ']);
         $reporter->report(['type' => 1]);
 
-        self::assertSame([], $this->severities());
+        $this->assertSame([], $this->severities());
     }
 }

@@ -28,7 +28,7 @@ final class IdeMousePrimitivesTest extends TestCase
 
     public function testLeftClickBelowTheEditorIsIgnored(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\necho 1;\necho 2;\necho 3;\n"]);
 
         $this->runIde(
@@ -64,7 +64,7 @@ final class IdeMousePrimitivesTest extends TestCase
 
     public function testSidebarHoverHighlightsRow(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\n", 'b.php' => "<?php\n"]);
 
         $this->runIde(
@@ -88,7 +88,7 @@ final class IdeMousePrimitivesTest extends TestCase
                 },
                 360 => function ($tui): void {
                     $tree = $tui->getById('tree');
-                    $joined = implode('', $tree->render(new \Symfony\Component\Tui\Render\RenderContext(30, 24)));
+                    $joined = \implode('', $tree->render(new \Symfony\Component\Tui\Render\RenderContext(30, 24)));
                     $this->assertStringNotContainsString("\x1b[48;5;236m", $joined, 'hover cleared after leaving the tree');
                 },
             ],
@@ -99,11 +99,11 @@ final class IdeMousePrimitivesTest extends TestCase
 
     public function testMouseClickAndWheel(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         // Root-level files so the tree lists them directly (dirs sort first,
         // so keeping it flat makes row math simple).
         // Line 3 is long so the horizontal-wheel step has room to scroll.
-        $long = "<?php\n".implode("\n", array_map(static fn (int $i) => "// line {$i}".(3 === $i ? str_repeat(' pad', times: 30) : ''), range(1, end: 60)))."\n";
+        $long = "<?php\n".\implode("\n", \array_map(static fn (int $i) => "// line {$i}".(3 === $i ? \str_repeat(' pad', times: 30) : ''), \range(1, end: 60)))."\n";
         $project = new TempProject(['A.php' => $long, 'B.php' => "<?php\n// this is B\n"]);
 
         $terminal = $this->runIde(
@@ -139,7 +139,7 @@ final class IdeMousePrimitivesTest extends TestCase
                     // no longer line 1.
                     $editor = $tui->getById('editor');
                     $rendered = $editor->render(new \Symfony\Component\Tui\Render\RenderContext(69, 20));
-                    $topLineNumber = (int) trim(AnsiUtils::stripAnsiCodes($rendered[0]));
+                    $topLineNumber = (int) \trim(AnsiUtils::stripAnsiCodes($rendered[0]));
                     $this->assertGreaterThan(1, $topLineNumber, 'wheel scrolled the viewport down');
                     $this->assertSame(2, $editor->getDocument()->getCursorLine(), 'wheel scroll left the caret behind');
                     // A caret move snaps the detached viewport back to the caret.
@@ -183,7 +183,7 @@ final class IdeMousePrimitivesTest extends TestCase
 
     public function testMouseClicksOutsideAllWidgetsAreIgnored(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "<?php\necho 1;\n"]);
 
         $this->runIde(
@@ -215,7 +215,7 @@ final class IdeMousePrimitivesTest extends TestCase
     // 39+C, SGR row 3+L.
     public function testMouseDragSelectsText(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "hello world\nsecond line\n"]);
 
         $terminal = $this->runIde(
@@ -239,7 +239,7 @@ final class IdeMousePrimitivesTest extends TestCase
 
     public function testMouseDragAcrossLines(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "abc\ndef\nghi\n"]);
 
         $this->runIde(
@@ -263,7 +263,7 @@ final class IdeMousePrimitivesTest extends TestCase
 
     public function testMouseDoubleClickSelectsWord(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "hello world\n"]);
 
         $this->runIde(
@@ -286,7 +286,7 @@ final class IdeMousePrimitivesTest extends TestCase
 
     public function testMouseTripleClickSelectsLine(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "hello world\nsecond\n"]);
 
         $this->runIde(
@@ -310,7 +310,7 @@ final class IdeMousePrimitivesTest extends TestCase
 
     public function testMouseShiftClickExtendsSelection(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "hello world\n"]);
 
         $this->runIde(
@@ -333,7 +333,7 @@ final class IdeMousePrimitivesTest extends TestCase
 
     public function testMouseAltClickTogglesCaret(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "one\ntwo\nthree\n"]);
 
         $this->runIde(
@@ -355,7 +355,7 @@ final class IdeMousePrimitivesTest extends TestCase
 
     public function testMousePlainClickCollapsesCarets(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "one\ntwo\nthree\n"]);
 
         $this->runIde(
@@ -377,7 +377,7 @@ final class IdeMousePrimitivesTest extends TestCase
 
     public function testMouseAltShiftDragColumnSelection(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "aaaa\nbb\ncccc\n"]);
 
         $this->runIde(
@@ -405,7 +405,7 @@ final class IdeMousePrimitivesTest extends TestCase
 
     public function testMouseClicksUnsavedChangesDialog(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php // a\n"]);
 
         $terminal = $this->runIde(
@@ -446,7 +446,7 @@ final class IdeMousePrimitivesTest extends TestCase
                 },
                 660 => function ($tui) use ($project): void {
                     $this->assertFalse(EditorState::pickerOpen($tui->getById('editor')));
-                    $this->assertStringNotContainsString('E', (string) file_get_contents($project->path('a.php')), 'discard did not save the edit');
+                    $this->assertStringNotContainsString('E', (string) \file_get_contents($project->path('a.php')), 'discard did not save the edit');
                 },
             ],
         );
@@ -456,7 +456,7 @@ final class IdeMousePrimitivesTest extends TestCase
 
     public function testMouseClickThroughOpenCompletion(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\n\$foo = 1;\n\$foobar = 2;\n"]);
 
         $this->runIde(
@@ -516,7 +516,7 @@ final class IdeMousePrimitivesTest extends TestCase
      */
     public function testCtrlAndShiftClickSelectTreeFilesWithoutOpeningThem(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php // a\n", 'b.php' => "<?php // b\n", 'c.php' => "<?php // c\n"]);
 
         $this->runIde(
@@ -533,7 +533,7 @@ final class IdeMousePrimitivesTest extends TestCase
                     $tree = $tui->getById('tree');
                     $this->assertSame(
                         ['a.php', 'c.php'],
-                        array_map(basename(...), $tree->selectedPaths()),
+                        \array_map(basename(...), $tree->selectedPaths()),
                         'the ctrl-click added the third row to the file the tree opened with',
                     );
                     $this->assertStringEndsWith('a.php', (string) $tui->getById('editor')->getFilePath(), 'and did not open it — the editor is what you compare against');
@@ -546,7 +546,7 @@ final class IdeMousePrimitivesTest extends TestCase
                 500 => function ($tui): void {
                     $this->assertSame(
                         ['b.php', 'c.php'],
-                        array_map(basename(...), $tui->getById('tree')->selectedPaths()),
+                        \array_map(basename(...), $tui->getById('tree')->selectedPaths()),
                         'the shift-click took the range from the ctrl-clicked row, dropping the one outside it',
                     );
                 },

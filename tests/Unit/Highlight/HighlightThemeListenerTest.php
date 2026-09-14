@@ -29,7 +29,7 @@ final class HighlightThemeListenerTest extends TestCase
             $buffer->highlighter->highlight(['<?php', 'return 1;'], 1);
         }
 
-        $before = array_map(static fn ($b): int => Probe::get($b->highlighter, 'fullParses'), [$one, $two]);
+        $before = \array_map(static fn ($b): int => Probe::get($b->highlighter, 'fullParses'), [$one, $two]);
 
         new HighlightThemeListener($buffers)->onThemeChanged(new ThemeChanged(Theme::Light));
 
@@ -38,7 +38,7 @@ final class HighlightThemeListenerTest extends TestCase
             $buffer->highlighter->highlight(['<?php', 'return 1;'], 1);
         }
 
-        $after = array_map(static fn ($b): int => Probe::get($b->highlighter, 'fullParses'), [$one, $two]);
+        $after = \array_map(static fn ($b): int => Probe::get($b->highlighter, 'fullParses'), [$one, $two]);
 
         $this->assertSame([$before[0] + 1, $before[1] + 1], $after);
     }
@@ -54,6 +54,6 @@ final class HighlightThemeListenerTest extends TestCase
 
         $repainted = $buffer->highlighter->highlight($lines, 1);
 
-        $this->assertSame($lines, array_map(AnsiUtils::stripAnsiCodes(...), $repainted));
+        $this->assertSame($lines, \array_map(AnsiUtils::stripAnsiCodes(...), $repainted));
     }
 }

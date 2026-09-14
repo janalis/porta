@@ -51,8 +51,8 @@ final class BreakpointStore
     /** @return list<int> the file's breakpoint lines, ascending */
     public function linesFor(string $path): array
     {
-        $lines = array_keys($this->breakpoints[$path] ?? []);
-        sort($lines);
+        $lines = \array_keys($this->breakpoints[$path] ?? []);
+        \sort($lines);
 
         return $lines;
     }
@@ -60,11 +60,11 @@ final class BreakpointStore
     /** @return list<int> the file's lines whose breakpoint carries a condition/hit-count (◆), ascending */
     public function conditionalLinesFor(string $path): array
     {
-        $lines = array_keys(array_filter(
+        $lines = \array_keys(\array_filter(
             $this->breakpoints[$path] ?? [],
             static fn (array $breakpoint): bool => null !== $breakpoint['condition'] || null !== $breakpoint['hitCondition'],
         ));
-        sort($lines);
+        \sort($lines);
 
         return $lines;
     }
@@ -72,11 +72,11 @@ final class BreakpointStore
     /** @return list<int> the file's logpoint lines (a breakpoint carrying a log message, ◇), ascending */
     public function logpointLinesFor(string $path): array
     {
-        $lines = array_keys(array_filter(
+        $lines = \array_keys(\array_filter(
             $this->breakpoints[$path] ?? [],
             static fn (array $breakpoint): bool => null !== $breakpoint['logMessage'],
         ));
-        sort($lines);
+        \sort($lines);
 
         return $lines;
     }
@@ -96,7 +96,7 @@ final class BreakpointStore
     public function all(): array
     {
         $all = [];
-        foreach (array_keys($this->breakpoints) as $path) {
+        foreach (\array_keys($this->breakpoints) as $path) {
             $all[$path] = $this->breakpointsFor($path);
         }
 
@@ -110,7 +110,7 @@ final class BreakpointStore
      */
     public function rename(string $from, string $to): void
     {
-        foreach (array_keys($this->breakpoints) as $file) {
+        foreach (\array_keys($this->breakpoints) as $file) {
             $moved = ProjectPaths::moved($file, $from, $to);
             if (null === $moved || $moved === $file) {
                 continue;
@@ -123,7 +123,7 @@ final class BreakpointStore
     /** Drop every breakpoint on a deleted file, or under a deleted directory. */
     public function forget(string $path): void
     {
-        foreach (array_keys($this->breakpoints) as $file) {
+        foreach (\array_keys($this->breakpoints) as $file) {
             if (!ProjectPaths::isUnder($file, $path)) {
                 continue;
             }

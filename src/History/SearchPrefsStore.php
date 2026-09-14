@@ -89,11 +89,11 @@ final class SearchPrefsStore
     /** Promote a committed mask to the most-recent recall list (on panel close). */
     public function addRecentMask(string $mask): void
     {
-        if ('' === trim($mask)) {
+        if ('' === \trim($mask)) {
             return;
         }
-        $this->recentMasks = array_values(array_filter($this->recentMasks, static fn (string $m): bool => $m !== $mask));
-        array_unshift($this->recentMasks, $mask);
+        $this->recentMasks = \array_values(\array_filter($this->recentMasks, static fn (string $m): bool => $m !== $mask));
+        \array_unshift($this->recentMasks, $mask);
         $this->recentMasks = \array_slice($this->recentMasks, offset: 0, length: self::MAX_MASKS);
         $this->save();
     }
@@ -108,7 +108,7 @@ final class SearchPrefsStore
         if (!\is_array($entries)) {
             return [];
         }
-        $masks = array_values(array_filter($entries, static fn (mixed $entry): bool => \is_string($entry) && '' !== $entry));
+        $masks = \array_values(\array_filter($entries, static fn (mixed $entry): bool => \is_string($entry) && '' !== $entry));
 
         /** @var list<string> $masks */
         return \array_slice($masks, offset: 0, length: self::MAX_MASKS);

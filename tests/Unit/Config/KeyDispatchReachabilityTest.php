@@ -33,7 +33,7 @@ final class KeyDispatchReachabilityTest extends TestCase
     public function testEveryIdeScopeDefaultKeyReachesTheInputDispatcher(): void
     {
         $ide = $this->bootIde(['composer.json' => '{}']);
-        $dispatchable = array_flip(Services::resolve($ide, CommandRegistry::class)->keyBoundIds());
+        $dispatchable = \array_flip(Services::resolve($ide, CommandRegistry::class)->keyBoundIds());
 
         $dead = [];
         foreach (ActionCatalog::ACTIONS as $id => $spec) {
@@ -43,11 +43,11 @@ final class KeyDispatchReachabilityTest extends TestCase
                 // project does not load.
                 continue;
             }
-            if (str_starts_with($id, 'graph_') || str_starts_with($id, 'image_')) {
+            if (\str_starts_with($id, 'graph_') || \str_starts_with($id, 'image_')) {
                 continue; // a viewer plugin's pane binds these; its own suite pins them
             }
             if (!\array_key_exists($id, $dispatchable)) {
-                $dead[$id] = implode(', ', $spec['keys']);
+                $dead[$id] = \implode(', ', $spec['keys']);
             }
         }
 

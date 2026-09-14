@@ -69,8 +69,8 @@ final class ArchitectureArtifactTest extends TestCase
         [$error, $path] = $this->generate($artifact, null);
 
         $this->assertNull($error);
-        $this->assertSame(realpath($project->path('architecture.dot')), $path, 'the REALPATH, so a path-keyed tab reuse matches');
-        $this->assertStringContainsString('digraph', (string) file_get_contents((string) $path));
+        $this->assertSame(\realpath($project->path('architecture.dot')), $path, 'the REALPATH, so a path-keyed tab reuse matches');
+        $this->assertStringContainsString('digraph', (string) \file_get_contents((string) $path));
     }
 
     public function testAConfiguredCommandSuppliesTheDotAndItsDirectoryIsCreated(): void
@@ -81,7 +81,7 @@ final class ArchitectureArtifactTest extends TestCase
         [$error, $path] = $this->generate($artifact, "printf 'digraph { FromCommand }'");
 
         $this->assertNull($error);
-        $this->assertSame('digraph { FromCommand }', (string) file_get_contents((string) $path), 'stdout is the artifact');
+        $this->assertSame('digraph { FromCommand }', (string) \file_get_contents((string) $path), 'stdout is the artifact');
         $this->assertDirectoryExists($project->path('docs/deep/arch'), 'a configured directory need not exist yet');
     }
 
@@ -123,7 +123,7 @@ final class ArchitectureArtifactTest extends TestCase
         [$error, $path] = $this->generate($artifact, "printf 'digraph { Fast }'");
 
         $this->assertNull($error);
-        $this->assertSame('digraph { Fast }', (string) file_get_contents((string) $path));
+        $this->assertSame('digraph { Fast }', (string) \file_get_contents((string) $path));
         $this->assertNull($first, 'the superseded run reports nothing at all');
     }
 

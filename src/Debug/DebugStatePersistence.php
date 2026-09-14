@@ -29,7 +29,7 @@ final readonly class DebugStatePersistence
             return;
         }
         foreach ($state['breakpoints'] as $path => $entries) {
-            if (!is_file($path)) {
+            if (!\is_file($path)) {
                 continue; // the file vanished since the last session
             }
             foreach ($entries as $entry) {

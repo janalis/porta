@@ -83,7 +83,7 @@ final class MenuBarWidgetTest extends TestCase
         $this->assertExactWidth($rows, 9, 'the mark is inside the row, not beyond it');
         $this->assertStringContainsString('File', $narrow);
         $this->assertStringNotContainsString('Edit', $narrow);
-        $this->assertStringEndsWith(Glyphs::ELLIPSIS, rtrim($narrow));
+        $this->assertStringEndsWith(Glyphs::ELLIPSIS, \rtrim($narrow));
     }
 
     /**
@@ -110,7 +110,7 @@ final class MenuBarWidgetTest extends TestCase
         $this->assertExactWidth($rows, 12, 'the mark is inside the row, never beyond it');
         $this->assertStringContainsString('File', $plain);
         $this->assertStringNotContainsString('Edit', $plain, 'the second title paid for the mark');
-        $this->assertStringEndsWith(Glyphs::ELLIPSIS, rtrim($plain));
+        $this->assertStringEndsWith(Glyphs::ELLIPSIS, \rtrim($plain));
         $this->assertNull($bar->titleAtColumn(11), 'and the mark is not a click target for the menu it stands for');
     }
 
@@ -157,7 +157,7 @@ final class MenuBarWidgetTest extends TestCase
         foreach ($segments as $segment) {
             $this->assertSame($width, AnsiUtils::visibleWidth($segment['segment']), 'each segment is exactly panelWidth wide');
         }
-        $plain = $this->plain(array_column($segments, 'segment'));
+        $plain = $this->plain(\array_column($segments, 'segment'));
         $this->assertStringContainsString('Save', $plain);
         $this->assertStringContainsString('Ctrl+S', $plain);
         $this->assertStringContainsString('Quit', $plain);

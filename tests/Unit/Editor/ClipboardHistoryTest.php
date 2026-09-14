@@ -79,13 +79,13 @@ final class ClipboardHistoryTest extends TestCase
     public function testABigCopyDoesNotLeaveTwentyOfItselfBehind(): void
     {
         $ring = new ClipboardRing();
-        $big = str_repeat('x', times: 600_000);
+        $big = \str_repeat('x', times: 600_000);
 
-        foreach (range(start: 1, end: 10) as $i) {
+        foreach (\range(start: 1, end: 10) as $i) {
             $ring->push($big.$i);
         }
 
-        $retained = array_sum(array_map(\strlen(...), $ring->entries()));
+        $retained = \array_sum(\array_map(\strlen(...), $ring->entries()));
         $this->assertLessThanOrEqual(ClipboardRing::BUDGET, $retained, 'inside the budget');
         // EXACTLY one: ten copies of 600 kB against a 1 MB budget leave room
         // for a single entry. `assertLessThan(10, …)` was the first version and
@@ -108,27 +108,27 @@ final class ClipboardHistoryTest extends TestCase
     public function testOnePushCanCostSeveralEntries(): void
     {
         $ring = new ClipboardRing();
-        foreach (range(start: 0, end: 9) as $i) {
-            $ring->push(str_repeat((string) $i, times: 100_000));
+        foreach (\range(start: 0, end: 9) as $i) {
+            $ring->push(\str_repeat((string) $i, times: 100_000));
         }
         $this->assertCount(10, $ring->entries(), 'a megabyte of small copies all fit');
 
-        $ring->push(str_repeat('Z', times: 900_000));
+        $ring->push(\str_repeat('Z', times: 900_000));
 
         $this->assertCount(2, $ring->entries(), 'the newcomer and one survivor');
-        $this->assertLessThanOrEqual(ClipboardRing::BUDGET, array_sum(array_map(\strlen(...), $ring->entries())));
+        $this->assertLessThanOrEqual(ClipboardRing::BUDGET, \array_sum(\array_map(\strlen(...), $ring->entries())));
     }
 
     /** Exactly at the budget is inside it, so nothing is dropped. */
     public function testEntriesSummingToExactlyTheBudgetAreAllKept(): void
     {
         $ring = new ClipboardRing();
-        $half = intdiv(ClipboardRing::BUDGET, num2: 2);
-        $ring->push(str_repeat('a', times: $half));
-        $ring->push(str_repeat('b', times: $half));
+        $half = \intdiv(ClipboardRing::BUDGET, num2: 2);
+        $ring->push(\str_repeat('a', times: $half));
+        $ring->push(\str_repeat('b', times: $half));
 
         $this->assertCount(2, $ring->entries());
-        $this->assertSame(ClipboardRing::BUDGET, array_sum(array_map(\strlen(...), $ring->entries())));
+        $this->assertSame(ClipboardRing::BUDGET, \array_sum(\array_map(\strlen(...), $ring->entries())));
     }
 
     /**
@@ -139,7 +139,7 @@ final class ClipboardHistoryTest extends TestCase
     public function testTheNewestCopySurvivesEvenAloneOverBudget(): void
     {
         $ring = new ClipboardRing();
-        $huge = str_repeat('y', times: 4_000_000);
+        $huge = \str_repeat('y', times: 4_000_000);
 
         $ring->push('small');
         $ring->push($huge);
@@ -151,7 +151,7 @@ final class ClipboardHistoryTest extends TestCase
     public function testItForgetsPastItsDepth(): void
     {
         $ring = new ClipboardRing();
-        foreach (range(1, ClipboardRing::DEPTH + 5) as $i) {
+        foreach (\range(1, ClipboardRing::DEPTH + 5) as $i) {
             $ring->push("entry{$i}");
         }
 

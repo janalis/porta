@@ -97,7 +97,7 @@ final class SettingsKeymapControllerTest extends TestCase
         $controller = $this->controller($project->dir, new StatusBarWidget(), new Keybindings(['ide_problems' => ['ctrl+6']]));
 
         $rows = $controller->rows();
-        $byAction = array_column($rows, null, 'action');
+        $byAction = \array_column($rows, null, 'action');
 
         $this->assertCount(\count(\Porta\Config\ActionCatalog::ACTIONS), $rows, 'one row per catalog action — no plugin registered any here');
         $this->assertSame('ctrl+d', $byAction['duplicate_line']->binding, 'editor binding wins');
@@ -236,8 +236,8 @@ final class SettingsKeymapControllerTest extends TestCase
      */
     public function testResettingWhatTheOtherFileAlsoBindsSaysTheBindingStays(): void
     {
-        $this->home = new TempProject(['.porta/config.json' => json_encode(['keymap' => ['copy_path' => ['f9']]], \JSON_THROW_ON_ERROR)]);
-        putenv('PORTA_HOME='.$this->home->dir);
+        $this->home = new TempProject(['.porta/config.json' => \json_encode(['keymap' => ['copy_path' => ['f9']]], \JSON_THROW_ON_ERROR)]);
+        \putenv('PORTA_HOME='.$this->home->dir);
         $project = new TempProject();
         $controller = $this->controller($project->dir, $status = new StatusBarWidget(), new Keybindings());
         $controller->rebind('copy_path', "\x1b[24~"); // F12, in the project file
@@ -272,7 +272,7 @@ final class SettingsKeymapControllerTest extends TestCase
         $controller = $this->controller($project->dir, new StatusBarWidget(), new Keybindings());
         $controller->rebind('copy_path', "\x1b[24~");
 
-        $byAction = array_column($controller->rows(), null, 'action');
+        $byAction = \array_column($controller->rows(), null, 'action');
 
         $this->assertTrue($byAction['copy_path']->overridden);
         $this->assertFalse($byAction['duplicate_line']->overridden, 'a shipped default is not a choice');
@@ -282,7 +282,7 @@ final class SettingsKeymapControllerTest extends TestCase
     private function configFile(string $rootDir): array
     {
         $file = $rootDir.'/.porta.json';
-        $decoded = is_file($file) ? json_decode((string) file_get_contents($file), associative: true) : null;
+        $decoded = \is_file($file) ? \json_decode((string) \file_get_contents($file), associative: true) : null;
 
         return \is_array($decoded) ? $decoded : [];
     }
@@ -304,13 +304,13 @@ final class SettingsKeymapControllerTest extends TestCase
         $controller->rebind('save', "\x1b[17;2~"); // legacy shift+F6, not decodable here
 
         $this->assertStringContainsString('Unsupported key', $this->flashText($status));
-        $this->assertFalse(is_file($project->path('.porta.json')));
+        $this->assertFalse(\is_file($project->path('.porta.json')));
     }
 
     public function testAFailedPersistIsFlagged(): void
     {
         $project = new TempProject();
-        mkdir($project->path('.porta.json')); // block the write
+        \mkdir($project->path('.porta.json')); // block the write
 
         $controller = $this->controller($project->dir, $status = new StatusBarWidget(), new Keybindings());
         $controller->rebind('save', 'a');
@@ -338,7 +338,7 @@ final class SettingsKeymapControllerTest extends TestCase
         // page can exist — the registry lists the plugins that have LOADED.
         $this->host->ensureLoaded();
 
-        $byAction = array_column($controller->rows(), null, 'action');
+        $byAction = \array_column($controller->rows(), null, 'action');
         $this->assertArrayHasKey('hex_next_field', $byAction, 'the plugin\'s action is on the keymap page');
         $this->assertSame('Hex: Next Field', $byAction['hex_next_field']->label);
         $this->assertSame('', $byAction['hex_next_field']->binding, 'no default at IDE scope — the pane binds it');
@@ -371,7 +371,7 @@ final class SettingsKeymapControllerTest extends TestCase
         $controller = $this->controller($project->dir, new StatusBarWidget(), new Keybindings(), $panes);
         $this->host->ensureLoaded();
 
-        $byAction = array_column($controller->rows(), null, 'action');
+        $byAction = \array_column($controller->rows(), null, 'action');
 
         $this->assertSame('n', $byAction['test_pane_step']->binding, "the pane's own action shows the pane's key");
         $this->assertSame('ctrl+shift+n', $byAction['goto_file']->binding, "a core action the editor also binds keeps the editor's");
@@ -396,7 +396,7 @@ final class SettingsKeymapControllerTest extends TestCase
         $controller = $this->controller($project->dir, new StatusBarWidget(), new Keybindings(['test_pane_step' => ['x']]), $panes);
         $this->host->ensureLoaded();
 
-        $byAction = array_column($controller->rows(), null, 'action');
+        $byAction = \array_column($controller->rows(), null, 'action');
 
         $this->assertSame('n', $byAction['test_pane_step']->binding, "the pane's own key wins over the ide-scope default");
     }

@@ -26,7 +26,7 @@ final class ClaudeMdBudgetTest extends TestCase
     public function testClaudeMdStaysWithinItsBudget(): void
     {
         $path = \dirname(__DIR__, levels: 3).'/CLAUDE.md';
-        $lines = substr_count((string) file_get_contents($path), needle: "\n");
+        $lines = \substr_count((string) \file_get_contents($path), needle: "\n");
 
         $this->assertLessThanOrEqual(
             self::BUDGET,
@@ -38,12 +38,12 @@ final class ClaudeMdBudgetTest extends TestCase
     public function testEveryRoutedPageExists(): void
     {
         $root = \dirname(__DIR__, levels: 3);
-        $claude = (string) file_get_contents($root.'/CLAUDE.md');
+        $claude = (string) \file_get_contents($root.'/CLAUDE.md');
 
         $missing = [];
-        preg_match_all('/`(docs\/[a-z\/-]+\.md)`/', $claude, $matches);
-        foreach (array_unique($matches[1]) as $page) {
-            if (is_file($root.'/'.$page)) {
+        \preg_match_all('/`(docs\/[a-z\/-]+\.md)`/', $claude, $matches);
+        foreach (\array_unique($matches[1]) as $page) {
+            if (\is_file($root.'/'.$page)) {
                 continue;
             }
             $missing[] = $page;

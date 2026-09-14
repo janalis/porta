@@ -47,11 +47,11 @@ final class StatusToneTest extends TestCase
         // The failure this catches: a mapping collapsed onto one role. The
         // debugger's segment and the branch would still paint, in the same
         // colour, and only a golden render would notice.
-        $roles = array_map(
+        $roles = \array_map(
             static fn (StatusTone $tone): Role => Probe::invokeStatic(StatusBarProvider::class, 'role', $tone),
             StatusTone::cases(),
         );
 
-        $this->assertCount(\count($roles), array_unique(array_map(static fn (Role $role): string => $role->name, $roles)));
+        $this->assertCount(\count($roles), \array_unique(\array_map(static fn (Role $role): string => $role->name, $roles)));
     }
 }

@@ -110,7 +110,7 @@ final class BreakpointStoreTest extends TestCase
 
         $store->rename('/p/Unmarked.php', '/p/Renamed.php');
 
-        $this->assertSame(['/p/Other.php'], array_keys($store->all()));
+        $this->assertSame(['/p/Other.php'], \array_keys($store->all()));
     }
 
     public function testForgetDropsADeletedFilesBreakpointsAndItsDirectorys(): void

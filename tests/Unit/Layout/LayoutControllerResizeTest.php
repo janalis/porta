@@ -148,9 +148,9 @@ final class LayoutControllerResizeTest extends TestCase
         $this->assertTrue(Probe::get($this->tui, 'renderRequested'), 'the release requests a render');
 
         $file = $this->project->dir.'/.porta/layout.json';
-        $this->assertTrue(is_file($file), 'the release persisted the new width');
+        $this->assertTrue(\is_file($file), 'the release persisted the new width');
         /** @var array<string, mixed> $saved */
-        $saved = json_decode((string) file_get_contents($file), associative: true);
+        $saved = \json_decode((string) \file_get_contents($file), associative: true);
         $this->assertSame(35, $saved['sidebarWidthPercent'], 'persisted as a percent of the 100-column terminal');
 
         // The drag is now disarmed: a further drag (no fresh press) must not move it.
@@ -173,7 +173,7 @@ final class LayoutControllerResizeTest extends TestCase
         $layout->continueResizeDrag($this->release(30), $tree);
 
         $this->assertSame(30, $this->tree->width(), 'width did not move');
-        $this->assertFalse(is_file($file), 'nothing was ever committed to disk');
+        $this->assertFalse(\is_file($file), 'nothing was ever committed to disk');
     }
 
     public function testAnUnmintedViewSidebarNeverArms(): void

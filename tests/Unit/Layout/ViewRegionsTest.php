@@ -76,7 +76,7 @@ final class ViewRegionsTest extends TestCase
 
         $this->assertSame(
             ['settings-left', 'settings-separator', 'settings-content'],
-            array_map(static fn (AbstractWidget $w): string => $w->getId(), $region->panes()),
+            \array_map(static fn (AbstractWidget $w): string => $w->getId(), $region->panes()),
         );
     }
 

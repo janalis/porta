@@ -32,19 +32,19 @@ final class DocsIndexTest extends TestCase
             $folder = \dirname($page);
             // A folder's own index is linked from its PARENT's, by the relative
             // path the browser resolves: `(internals/README.md)`.
-            [$index, $target] = 'README.md' === basename($page)
-                ? [\dirname($folder).'/README.md', basename($folder).'/README.md']
-                : [$folder.'/README.md', basename($page)];
+            [$index, $target] = 'README.md' === \basename($page)
+                ? [\dirname($folder).'/README.md', \basename($folder).'/README.md']
+                : [$folder.'/README.md', \basename($page)];
 
-            if ($folder === $docs && 'README.md' === basename($page)) {
+            if ($folder === $docs && 'README.md' === \basename($page)) {
                 continue; // the root index is the browser's home; nothing above it
             }
-            if (!is_file($index) || !str_contains((string) file_get_contents($index), '('.$target.')')) {
-                $unlinked[] = substr($page, \strlen($docs) + 1);
+            if (!\is_file($index) || !\str_contains((string) \file_get_contents($index), '('.$target.')')) {
+                $unlinked[] = \substr($page, \strlen($docs) + 1);
             }
         }
 
-        sort($unlinked);
+        \sort($unlinked);
         $this->assertSame([], $unlinked, 'unreachable from the F1 browser — add a row to the README.md beside it');
     }
 
@@ -69,28 +69,28 @@ final class DocsIndexTest extends TestCase
         $dead = [];
         foreach (self::pages($docs) as $page) {
             $matches = [];
-            preg_match_all('~\]\(([^)#][^)]*)\)~', (string) file_get_contents($page), $matches);
+            \preg_match_all('~\]\(([^)#][^)]*)\)~', (string) \file_get_contents($page), $matches);
             foreach ($matches[1] as $link) {
-                if (1 === preg_match('~^(?:[a-z][a-z0-9+.-]*:|//)~i', $link)) {
+                if (1 === \preg_match('~^(?:[a-z][a-z0-9+.-]*:|//)~i', $link)) {
                     continue; // an external scheme is not ours to resolve
                 }
-                $target = explode('#', $link)[0];
+                $target = \explode('#', $link)[0];
                 if ('' === $target) {
                     continue;
                 }
                 ++$checked;
-                if (file_exists(\dirname($page).'/'.$target)) {
+                if (\file_exists(\dirname($page).'/'.$target)) {
                     continue;
                 }
-                $dead[] = substr($page, \strlen($docs) + 1).' → '.$link;
+                $dead[] = \substr($page, \strlen($docs) + 1).' → '.$link;
             }
         }
 
-        sort($dead);
+        \sort($dead);
         // Asserted first: a regex that stopped matching would find no dead
         // links either, and this gate would go green and stay there.
         $this->assertGreaterThanOrEqual(40, $checked, 'the links were read, not skipped');
-        $this->assertSame([], $dead, "docs link to files that do not exist — the F1 browser offers a page it cannot open:\n  ".implode("\n  ", $dead));
+        $this->assertSame([], $dead, "docs link to files that do not exist — the F1 browser offers a page it cannot open:\n  ".\implode("\n  ", $dead));
     }
 
     /** @return list<string> every .md under docs/, at any depth */
@@ -98,17 +98,17 @@ final class DocsIndexTest extends TestCase
     {
         $pages = [];
         $walk = static function (string $dir) use (&$walk, &$pages): void {
-            foreach ((array) scandir($dir) as $entry) {
-                if (!\is_string($entry) || str_starts_with($entry, '.')) {
+            foreach ((array) \scandir($dir) as $entry) {
+                if (!\is_string($entry) || \str_starts_with($entry, '.')) {
                     continue;
                 }
                 $path = $dir.'/'.$entry;
-                if (is_dir($path)) {
+                if (\is_dir($path)) {
                     $walk($path);
 
                     continue;
                 }
-                if (str_ends_with($entry, '.md')) {
+                if (\str_ends_with($entry, '.md')) {
                     $pages[] = $path;
                 }
             }

@@ -42,7 +42,7 @@ final class TerminalPanelWidgetTest extends TestCase
         $panel->open('bash', $buffer);
 
         $lines = $panel->render(new RenderContext(40, 6));
-        $plain = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $lines));
+        $plain = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $lines));
         $this->assertStringContainsString('line-c', $plain);
         foreach ($lines as $line) {
             $this->assertSame(40, AnsiUtils::visibleWidth($line));
@@ -58,11 +58,11 @@ final class TerminalPanelWidgetTest extends TestCase
 
         $panel->setFocused(true);
         $lines = $panel->render(new RenderContext(40, 6));
-        $joined = implode('', $lines);
-        $this->assertSame(1, substr_count($joined, AnsiUtils::CURSOR_MARKER_PREFIX), 'exactly one marker on the live tail');
+        $joined = \implode('', $lines);
+        $this->assertSame(1, \substr_count($joined, AnsiUtils::CURSOR_MARKER_PREFIX), 'exactly one marker on the live tail');
         $markerLine = null;
         foreach ($lines as $line) {
-            if (!str_contains($line, AnsiUtils::CURSOR_MARKER_PREFIX)) {
+            if (!\str_contains($line, AnsiUtils::CURSOR_MARKER_PREFIX)) {
                 continue;
             }
 
@@ -70,32 +70,32 @@ final class TerminalPanelWidgetTest extends TestCase
         }
         $this->assertNotNull($markerLine);
         $this->assertStringContainsString('prompt$', AnsiUtils::stripAnsiCodes($markerLine), 'the marker sits on the last body line');
-        $pos = strpos($markerLine, AnsiUtils::CURSOR_MARKER_PREFIX);
-        $this->assertSame(8, AnsiUtils::visibleWidth(substr($markerLine, offset: 0, length: (int) $pos)), 'at the buffer cursor column');
+        $pos = \strpos($markerLine, AnsiUtils::CURSOR_MARKER_PREFIX);
+        $this->assertSame(8, AnsiUtils::visibleWidth(\substr($markerLine, offset: 0, length: (int) $pos)), 'at the buffer cursor column');
         foreach ($lines as $line) {
             $this->assertSame(40, AnsiUtils::visibleWidth($line), 'the zero-width marker keeps the width contract');
         }
 
         $panel->setFocused(false);
-        $this->assertStringNotContainsString(AnsiUtils::CURSOR_MARKER_PREFIX, implode('', $panel->render(new RenderContext(40, 6))), 'unfocused: no marker');
+        $this->assertStringNotContainsString(AnsiUtils::CURSOR_MARKER_PREFIX, \implode('', $panel->render(new RenderContext(40, 6))), 'unfocused: no marker');
 
         $panel->setFocused(true);
-        $buffer->feed(str_repeat("history\n", times: 30)); // enough scrollback to page up into
+        $buffer->feed(\str_repeat("history\n", times: 30)); // enough scrollback to page up into
         $panel->handleInput("\x1b[5~"); // PageUp: scrolled back
-        $this->assertStringNotContainsString(AnsiUtils::CURSOR_MARKER_PREFIX, implode('', $panel->render(new RenderContext(40, 6))), 'scrolled back: no marker');
+        $this->assertStringNotContainsString(AnsiUtils::CURSOR_MARKER_PREFIX, \implode('', $panel->render(new RenderContext(40, 6))), 'scrolled back: no marker');
     }
 
     public function testCursorColumnIsClampedToThePanelWidth(): void
     {
         $buffer = new TerminalBuffer();
-        $buffer->feed(str_repeat('x', times: 60));
+        $buffer->feed(\str_repeat('x', times: 60));
         $panel = new TerminalPanelWidget();
         $panel->setFocused(true);
         $panel->open('bash', $buffer);
 
         $lines = $panel->render(new RenderContext(20, 6));
-        $joined = implode('', $lines);
-        $this->assertSame(1, substr_count($joined, AnsiUtils::CURSOR_MARKER_PREFIX), 'a cursor past the width clamps to the last column');
+        $joined = \implode('', $lines);
+        $this->assertSame(1, \substr_count($joined, AnsiUtils::CURSOR_MARKER_PREFIX), 'a cursor past the width clamps to the last column');
         foreach ($lines as $line) {
             $this->assertSame(20, AnsiUtils::visibleWidth($line));
         }

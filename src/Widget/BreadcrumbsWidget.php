@@ -108,7 +108,7 @@ final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost
                 $col += 3;
             }
             $label = $crumb['label'];
-            $width = mb_strwidth($label);
+            $width = \mb_strwidth($label);
             $this->lastLayout[] = ['start' => $col, 'width' => $width, 'line' => $crumb['line']];
             // Bar chrome, so the pointer tints with BarHoverBg (not a list
             // row's RowHighlightBg) under whichever foreground the crumb has.

@@ -339,7 +339,7 @@ final class MultiCaret
      */
     public function pasteBlock(string $clipboard): void
     {
-        $lines = explode("\n", $clipboard);
+        $lines = \explode("\n", $clipboard);
         // No ">1 line" clause: with one line the two branches insert the same
         // text, so it would be a guard nothing could ever distinguish.
         $perCaret = \count($lines) === \count($this->caretRecords());
@@ -363,11 +363,11 @@ final class MultiCaret
         $doc = $this->document;
         $records = $this->caretRecords();
         // Numbered top-to-bottom first...
-        usort($records, static fn (Caret $a, Caret $b) => [$a->line, $a->col] <=> [$b->line, $b->col]);
+        \usort($records, static fn (Caret $a, Caret $b) => [$a->line, $a->col] <=> [$b->line, $b->col]);
         // ...then walked bottom-to-top, keeping those numbers, so earlier
         // (higher) edits never invalidate the positions of carets still to be
         // processed.
-        $walk = array_reverse($records, preserve_keys: true);
+        $walk = \array_reverse($records, preserve_keys: true);
 
         $results = [];
         $doc->transact(function () use ($doc, $walk, $op, &$results): void {
@@ -407,8 +407,8 @@ final class MultiCaret
      */
     private function rebuildFromPositions(array $positions): void
     {
-        sort($positions);
-        $positions = array_values(array_unique($positions, \SORT_REGULAR));
+        \sort($positions);
+        $positions = \array_values(\array_unique($positions, \SORT_REGULAR));
         [$pl, $pc] = $positions[0];
         $this->document->setCursor($pl, $pc);
         $this->extraCarets = [];
@@ -492,12 +492,12 @@ final class MultiCaret
      */
     private function rebuildFromRecords(array $records): void
     {
-        usort($records, static fn (Caret $a, Caret $b) => [$a->line, $a->col] <=> [$b->line, $b->col]);
+        \usort($records, static fn (Caret $a, Caret $b) => [$a->line, $a->col] <=> [$b->line, $b->col]);
         $seen = [];
         $unique = [];
         foreach ($records as $record) {
             $key = $record->line.':'.$record->col;
-            if (!array_key_exists($key, $seen)) {
+            if (!\array_key_exists($key, $seen)) {
                 $seen[$key] = true;
                 $unique[] = $record;
             }
@@ -516,8 +516,8 @@ final class MultiCaret
     public function setColumnSelection(int $anchorRow, int $anchorDisplayCol, int $caretRow, int $caretDisplayCol): void
     {
         $doc = $this->document;
-        $top = $doc->clampLine(min($anchorRow, $caretRow));
-        $bottom = $doc->clampLine(max($anchorRow, $caretRow));
+        $top = $doc->clampLine(\min($anchorRow, $caretRow));
+        $bottom = $doc->clampLine(\max($anchorRow, $caretRow));
 
         $this->extraCarets = [];
         for ($row = $top; $row <= $bottom; ++$row) {
@@ -551,7 +551,7 @@ final class MultiCaret
             if ([] === $this->extraCarets) {
                 return; // never remove the only caret
             }
-            $promoted = array_shift($this->extraCarets);
+            $promoted = \array_shift($this->extraCarets);
             $doc->setCursor($promoted->line, $promoted->col);
             ($this->onInvalidate)();
 
@@ -563,7 +563,7 @@ final class MultiCaret
                 continue;
             }
 
-            array_splice($this->extraCarets, $i, length: 1);
+            \array_splice($this->extraCarets, $i, length: 1);
             ($this->onInvalidate)();
 
             return;
@@ -580,9 +580,9 @@ final class MultiCaret
     public function selectedBlockText(): string
     {
         $records = $this->caretRecords();
-        usort($records, static fn (Caret $a, Caret $b) => [$a->line, $a->col] <=> [$b->line, $b->col]);
+        \usort($records, static fn (Caret $a, Caret $b) => [$a->line, $a->col] <=> [$b->line, $b->col]);
 
-        return implode("\n", array_map($this->rangeText(...), $records));
+        return \implode("\n", \array_map($this->rangeText(...), $records));
     }
 
     /** The text of a caret's selection (possibly spanning lines); '' for a point. */
@@ -606,7 +606,7 @@ final class MultiCaret
         $unique = [];
         foreach ($this->extraCarets as $caret) {
             $key = $caret->line.':'.$caret->col;
-            if (!array_key_exists($key, $seen)) {
+            if (!\array_key_exists($key, $seen)) {
                 $seen[$key] = true;
                 $unique[] = $caret;
             }
@@ -624,9 +624,9 @@ final class MultiCaret
         $result = [];
         foreach ($this->document->getLines() as $lineIndex => $line) {
             $offset = 0;
-            while (false !== ($pos = strpos($line, $word, $offset))) {
+            while (false !== ($pos = \strpos($line, $word, $offset))) {
                 $result[] = [(int) $lineIndex, $pos];
-                $offset = $pos + max(1, \strlen($word));
+                $offset = $pos + \max(1, \strlen($word));
             }
         }
 

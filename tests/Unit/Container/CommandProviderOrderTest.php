@@ -32,13 +32,13 @@ final class CommandProviderOrderTest extends ContainerTestCase
         $container = $this->buildContainer();
 
         $priorities = [];
-        foreach (array_keys($container->findTaggedServiceIds('porta.command_provider')) as $id) {
+        foreach (\array_keys($container->findTaggedServiceIds('porta.command_provider')) as $id) {
             $attributes = new \ReflectionClass($id)->getAttributes(AsTaggedItem::class);
-            self::assertCount(1, $attributes, $id.' must declare its palette order with #[AsTaggedItem]');
+            $this->assertCount(1, $attributes, $id.' must declare its palette order with #[AsTaggedItem]');
             $priorities[$id] = (int) $attributes[0]->newInstance()->priority;
         }
-        arsort($priorities);
-        $actual = array_keys($priorities);
+        \arsort($priorities);
+        $actual = \array_keys($priorities);
 
         $expected = [
             WorkbenchCommands::class, // 700
@@ -53,6 +53,6 @@ final class CommandProviderOrderTest extends ContainerTestCase
             TreeCommands::class,
         ];
 
-        self::assertSame($expected, $actual, 'every command provider must carry #[AsTaggedItem] with its contractual priority');
+        $this->assertSame($expected, $actual, 'every command provider must carry #[AsTaggedItem] with its contractual priority');
     }
 }

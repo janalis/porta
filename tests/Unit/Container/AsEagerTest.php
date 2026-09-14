@@ -13,13 +13,13 @@ final class AsEagerTest extends TestCase
     {
         $tags = new AsEager()->tags;
 
-        self::assertSame(['porta.eager' => ['priority' => 0]], $tags[0]);
+        $this->assertSame(['porta.eager' => ['priority' => 0]], $tags[0]);
     }
 
     public function testAnExplicitPriorityTravelsAsTheTagAttribute(): void
     {
         $tags = new AsEager(600)->tags;
 
-        self::assertSame(['porta.eager' => ['priority' => 600]], $tags[0]);
+        $this->assertSame(['porta.eager' => ['priority' => 600]], $tags[0]);
     }
 }

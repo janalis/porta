@@ -18,7 +18,7 @@ final class WhitespaceGlyphsTest extends TestCase
     {
         $out = WhitespaceGlyphs::apply('    $x = 1;', '    $x = 1;');
 
-        self::assertSame('····$x = 1;', $out, 'the indent is marked and the inner spaces are not');
+        $this->assertSame('····$x = 1;', $out, 'the indent is marked and the inner spaces are not');
     }
 
     public function testATABIsAnArrowAndThenBLANK(): void
@@ -30,7 +30,7 @@ final class WhitespaceGlyphsTest extends TestCase
         // because four spaces there would still be dots.
         $out = WhitespaceGlyphs::apply('        $x = 1;', "\t\t\$x = 1;");
 
-        self::assertSame('→   →   $x = 1;', $out);
+        $this->assertSame('→   →   $x = 1;', $out);
     }
 
     public function testTabsAndSpacesMIXEDInOneIndent(): void
@@ -39,7 +39,7 @@ final class WhitespaceGlyphsTest extends TestCase
         // indent either way, and only the markers say which is which.
         $out = WhitespaceGlyphs::apply('        $x = 1;', "\t    \$x = 1;");
 
-        self::assertSame('→   ····$x = 1;', $out, 'a tab, then four spaces — and they look different');
+        $this->assertSame('→   ····$x = 1;', $out, 'a tab, then four spaces — and they look different');
     }
 
     public function testATabStartingOffAStopCoversOnlyWhatIsLeftOfIt(): void
@@ -53,7 +53,7 @@ final class WhitespaceGlyphsTest extends TestCase
         // anything noticing, because nothing reads past the indent.
         $out = WhitespaceGlyphs::apply('      $x;', "  \t  \$x;");
 
-        self::assertSame('··→ ··$x;', $out, 'dots, arrow, blank, then dots again');
+        $this->assertSame('··→ ··$x;', $out, 'dots, arrow, blank, then dots again');
     }
 
     public function testWhitespaceAFTERTheIndentIsNeverReadAsATab(): void
@@ -63,7 +63,7 @@ final class WhitespaceGlyphsTest extends TestCase
         // indent columns and mark the wrong cell.
         $out = WhitespaceGlyphs::apply('  $x;      ', "  \$x;\t\t");
 
-        self::assertSame('··$x;······', $out, 'the indent is dotted; the rest is trailing, not tabs');
+        $this->assertSame('··$x;······', $out, 'the indent is dotted; the rest is trailing, not tabs');
     }
 
     public function testTRAILINGSpacesAreMarkedToo(): void
@@ -72,20 +72,20 @@ final class WhitespaceGlyphsTest extends TestCase
         // semicolon. Inner spaces stay bare so the line is still readable.
         $out = WhitespaceGlyphs::apply('  $x = 1;   ', '  $x = 1;   ');
 
-        self::assertSame('··$x = 1;···', $out);
+        $this->assertSame('··$x = 1;···', $out);
     }
 
     public function testALineOfNOTHINGBUTSpacesIsAllIndent(): void
     {
         // No non-space character ever arrives, so the run is the indent and
         // the trailing pass has nothing left to do.
-        self::assertSame('····', WhitespaceGlyphs::apply('    ', '    '));
+        $this->assertSame('····', WhitespaceGlyphs::apply('    ', '    '));
     }
 
     public function testALineWithNoWhitespaceIsUntouched(): void
     {
-        self::assertSame('$x=1;', WhitespaceGlyphs::apply('$x=1;', '$x=1;'));
-        self::assertSame('', WhitespaceGlyphs::apply('', ''));
+        $this->assertSame('$x=1;', WhitespaceGlyphs::apply('$x=1;', '$x=1;'));
+        $this->assertSame('', WhitespaceGlyphs::apply('', ''));
     }
 
     public function testESCAPESSurviveVerbatimAndTheWIDTHIsUnchanged(): void
@@ -95,9 +95,9 @@ final class WhitespaceGlyphsTest extends TestCase
         $highlighted = "    \x1b[38;5;176m\$x\x1b[39m = 1;  ";
         $out = WhitespaceGlyphs::apply($highlighted, '    $x = 1;  ');
 
-        self::assertStringContainsString("\x1b[38;5;176m", $out, 'the colour is intact');
-        self::assertSame(AnsiUtils::visibleWidth($highlighted), AnsiUtils::visibleWidth($out));
-        self::assertSame(
+        $this->assertStringContainsString("\x1b[38;5;176m", $out, 'the colour is intact');
+        $this->assertSame(AnsiUtils::visibleWidth($highlighted), AnsiUtils::visibleWidth($out));
+        $this->assertSame(
             '····$x = 1;··',
             AnsiUtils::stripAnsiCodes($out),
             'and the marked text is what a bare line would have been',
@@ -110,14 +110,14 @@ final class WhitespaceGlyphsTest extends TestCase
         // They carry no column, so the tab at column 4 has to still be found.
         $out = WhitespaceGlyphs::apply("    \x1b[39m    \$x;", "    \t\$x;");
 
-        self::assertSame('····→   $x;', AnsiUtils::stripAnsiCodes($out));
+        $this->assertSame('····→   $x;', AnsiUtils::stripAnsiCodes($out));
     }
 
     public function testTheGlyphsAreOneColumnWide(): void
     {
         // Glyphs promises this for the whole vocabulary; these two are drawn
         // inside the code text, where breaking it would garble the row.
-        self::assertSame(1, AnsiUtils::visibleWidth(Glyphs::WHITESPACE_SPACE));
-        self::assertSame(1, AnsiUtils::visibleWidth(Glyphs::WHITESPACE_TAB));
+        $this->assertSame(1, AnsiUtils::visibleWidth(Glyphs::WHITESPACE_SPACE));
+        $this->assertSame(1, AnsiUtils::visibleWidth(Glyphs::WHITESPACE_TAB));
     }
 }

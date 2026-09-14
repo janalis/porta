@@ -39,7 +39,7 @@ final class DebouncedRequest
      */
     public function want(float $value, \Closure $request): void
     {
-        if (null !== $this->wanted && abs($value - $this->wanted) < 1e-9) {
+        if (null !== $this->wanted && \abs($value - $this->wanted) < 1e-9) {
             return;
         }
         $this->wanted = $value;

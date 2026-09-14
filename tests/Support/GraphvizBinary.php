@@ -24,9 +24,9 @@ trait GraphvizBinary
 
     private function whichDot(): ?string
     {
-        foreach (explode(\PATH_SEPARATOR, (string) getenv('PATH')) as $dir) {
+        foreach (\explode(\PATH_SEPARATOR, (string) \getenv('PATH')) as $dir) {
             $candidate = $dir.\DIRECTORY_SEPARATOR.'dot';
-            if ('' !== $dir && is_file($candidate) && is_executable($candidate)) {
+            if ('' !== $dir && \is_file($candidate) && \is_executable($candidate)) {
                 return $candidate;
             }
         }

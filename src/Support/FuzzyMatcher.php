@@ -25,7 +25,7 @@ final class FuzzyMatcher
      */
     public static function score(string $haystack, string $query, int $boundaryStart = 0): ?int
     {
-        return self::scoreLowered(strtolower($haystack), strtolower($query), $boundaryStart, $haystack);
+        return self::scoreLowered(\strtolower($haystack), \strtolower($query), $boundaryStart, $haystack);
     }
 
     /**
@@ -43,7 +43,7 @@ final class FuzzyMatcher
         $prevPos = -2;
 
         for ($i = 0, $queryLen = \strlen($lowerQuery); $i < $queryLen; ++$i) {
-            $pos = strpos($lowerHaystack, $lowerQuery[$i], $pos + 1);
+            $pos = \strpos($lowerHaystack, $lowerQuery[$i], $pos + 1);
             if (false === $pos) {
                 return null;
             }
@@ -59,12 +59,12 @@ final class FuzzyMatcher
             if ($wordBoundary) {
                 $score += 4; // word-boundary start
             }
-            if (!$wordBoundary && null !== $original && ctype_lower($original[$pos - 1]) && ctype_upper($original[$pos])) {
+            if (!$wordBoundary && null !== $original && \ctype_lower($original[$pos - 1]) && \ctype_upper($original[$pos])) {
                 $score += 4; // camelCase hump
             }
             $prevPos = $pos;
         }
 
-        return $score - intdiv($length, num2: 10);
+        return $score - \intdiv($length, num2: 10);
     }
 }

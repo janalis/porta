@@ -47,7 +47,7 @@ final class MenuRegistrarTest extends TestCase
     {
         return [
             'plugin' => $plugin,
-            'contribution' => new MenuContribution($title, after: 'Run', items: ['i:demo'], viewId: strtolower($title), viewSafe: ['ide_quit']),
+            'contribution' => new MenuContribution($title, after: 'Run', items: ['i:demo'], viewId: \strtolower($title), viewSafe: ['ide_quit']),
         ];
     }
 
@@ -56,7 +56,7 @@ final class MenuRegistrarTest extends TestCase
         $menus = new MenuContributions();
         new MenuRegistrar($this->source([$this->contribution('git', 'Git'), $this->contribution('demo', 'Demo')]), $menus)->register();
 
-        $this->assertSame(['Git', 'Demo'], array_map(static fn (MenuContribution $c): string => $c->title, $menus->all()), 'in load order');
+        $this->assertSame(['Git', 'Demo'], \array_map(static fn (MenuContribution $c): string => $c->title, $menus->all()), 'in load order');
         $this->assertSame(['git' => ['ide_quit'], 'demo' => ['ide_quit']], $menus->viewSafe(), 'and both halves travelled');
     }
 
@@ -97,7 +97,7 @@ final class MenuRegistrarTest extends TestCase
         $registrar->registerFor('git');
         $registrar->registerFor('git');
 
-        $this->assertSame(['Git'], array_map(static fn (MenuContribution $c): string => $c->title, $menus->all()), 'one copy, only the named plugin');
+        $this->assertSame(['Git'], \array_map(static fn (MenuContribution $c): string => $c->title, $menus->all()), 'one copy, only the named plugin');
     }
 
     public function testForgetRetractsThePluginsMenus(): void
@@ -108,6 +108,6 @@ final class MenuRegistrarTest extends TestCase
 
         $registrar->forget('git');
 
-        $this->assertSame(['Demo'], array_map(static fn (MenuContribution $c): string => $c->title, $menus->all()));
+        $this->assertSame(['Demo'], \array_map(static fn (MenuContribution $c): string => $c->title, $menus->all()));
     }
 }

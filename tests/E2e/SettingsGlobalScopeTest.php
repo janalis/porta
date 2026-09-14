@@ -87,10 +87,10 @@ final class SettingsGlobalScopeTest extends TestCase
 
     public function testAGlobalWriteLandsInTheUsersFileAndLeavesTheProjectAlone(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $this->home = new TempProject([]);
         $this->project = new TempProject(['A.php' => "<?php\n\$x = 1;\n"]);
-        putenv('PORTA_HOME='.$this->home->dir);
+        \putenv('PORTA_HOME='.$this->home->dir);
 
         $this->runIde(
             $this->project,
@@ -121,7 +121,7 @@ final class SettingsGlobalScopeTest extends TestCase
                     $global = $this->home->path('.porta/config.json');
                     $this->assertFileExists($global, 'the global file was created on first write');
 
-                    $written = json_decode((string) file_get_contents($global), associative: true);
+                    $written = \json_decode((string) \file_get_contents($global), associative: true);
                     $this->assertIsArray($written);
                     $this->assertFalse(
                         $written['settings']['stickyScroll'] ?? null,
@@ -162,13 +162,13 @@ final class SettingsGlobalScopeTest extends TestCase
      */
     public function testAProjectOverrideSurvivesAGlobalWriteAndSaysSo(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $this->home = new TempProject([]);
         $this->project = new TempProject([
             'A.php' => "<?php\n\$x = 1;\n",
-            '.porta.json' => json_encode(['settings' => ['stickyScroll' => true]], \JSON_THROW_ON_ERROR),
+            '.porta.json' => \json_encode(['settings' => ['stickyScroll' => true]], \JSON_THROW_ON_ERROR),
         ]);
-        putenv('PORTA_HOME='.$this->home->dir);
+        \putenv('PORTA_HOME='.$this->home->dir);
 
         $this->runIde(
             $this->project,
@@ -177,7 +177,7 @@ final class SettingsGlobalScopeTest extends TestCase
                 ...$this->reachTheStickyScrollRow("\r"),
                 700 => function ($tui, $terminal, $ide): void {
                     $global = $this->home->path('.porta/config.json');
-                    $written = json_decode((string) file_get_contents($global), associative: true);
+                    $written = \json_decode((string) \file_get_contents($global), associative: true);
                     $this->assertIsArray($written);
                     $this->assertArrayHasKey('stickyScroll', $written['settings'] ?? [], 'the global write happened');
 
@@ -192,9 +192,9 @@ final class SettingsGlobalScopeTest extends TestCase
                     // the notification instead of the setting. The checkbox is
                     // what tells them apart.
                     $form = $this->settingsForm($tui);
-                    $rows = array_values(array_filter(
+                    $rows = \array_values(\array_filter(
                         $form->render(new \Symfony\Component\Tui\Render\RenderContext(110, 22)),
-                        static fn (string $line): bool => str_contains(AnsiUtils::stripAnsiCodes($line), '['),
+                        static fn (string $line): bool => \str_contains(AnsiUtils::stripAnsiCodes($line), '['),
                     ));
                     $this->assertStringContainsString(
                         'overrides global',
@@ -224,16 +224,16 @@ final class SettingsGlobalScopeTest extends TestCase
      */
     public function testEditingTheProjectFileOverAGlobalValueIsNotWarnedAbout(): void
     {
-        putenv('PATH=/nonexistent');
-        $this->home = new TempProject(['.porta/config.json' => json_encode(
+        \putenv('PATH=/nonexistent');
+        $this->home = new TempProject(['.porta/config.json' => \json_encode(
             ['settings' => ['stickyScroll' => false]],
             \JSON_THROW_ON_ERROR,
         )]);
         $this->project = new TempProject([
             'A.php' => "<?php\n\$x = 1;\n",
-            '.porta.json' => json_encode(['settings' => ['stickyScroll' => true]], \JSON_THROW_ON_ERROR),
+            '.porta.json' => \json_encode(['settings' => ['stickyScroll' => true]], \JSON_THROW_ON_ERROR),
         ]);
-        putenv('PORTA_HOME='.$this->home->dir);
+        \putenv('PORTA_HOME='.$this->home->dir);
 
         $this->runIde(
             $this->project,
@@ -278,16 +278,16 @@ final class SettingsGlobalScopeTest extends TestCase
      */
     public function testClearingAShadowedGlobalValueSaysThatToo(): void
     {
-        putenv('PATH=/nonexistent');
-        $this->home = new TempProject(['.porta/config.json' => json_encode(
+        \putenv('PATH=/nonexistent');
+        $this->home = new TempProject(['.porta/config.json' => \json_encode(
             ['settings' => ['stickyScroll' => false]],
             \JSON_THROW_ON_ERROR,
         )]);
         $this->project = new TempProject([
             'A.php' => "<?php\n\$x = 1;\n",
-            '.porta.json' => json_encode(['settings' => ['stickyScroll' => true]], \JSON_THROW_ON_ERROR),
+            '.porta.json' => \json_encode(['settings' => ['stickyScroll' => true]], \JSON_THROW_ON_ERROR),
         ]);
-        putenv('PORTA_HOME='.$this->home->dir);
+        \putenv('PORTA_HOME='.$this->home->dir);
 
         $this->runIde(
             $this->project,
@@ -296,7 +296,7 @@ final class SettingsGlobalScopeTest extends TestCase
                 // 'r' resets the row to its default rather than toggling it.
                 ...$this->reachTheStickyScrollRow('r'),
                 700 => function ($tui, $terminal, $ide): void {
-                    $written = json_decode((string) file_get_contents($this->home->path('.porta/config.json')), associative: true);
+                    $written = \json_decode((string) \file_get_contents($this->home->path('.porta/config.json')), associative: true);
                     $this->assertIsArray($written);
                     $this->assertArrayNotHasKey(
                         'stickyScroll',
@@ -323,8 +323,8 @@ final class SettingsGlobalScopeTest extends TestCase
      */
     public function testEnablingAPluginTheGlobalFileDisablesSaysWhyItStaysOff(): void
     {
-        putenv('PATH=/nonexistent');
-        $this->home = new TempProject(['.porta/config.json' => json_encode(
+        \putenv('PATH=/nonexistent');
+        $this->home = new TempProject(['.porta/config.json' => \json_encode(
             ['disabledPlugins' => ['noisy']],
             \JSON_THROW_ON_ERROR,
         )]);
@@ -344,7 +344,7 @@ final class SettingsGlobalScopeTest extends TestCase
                 };
                 PHP,
         ]);
-        putenv('PORTA_HOME='.$this->home->dir);
+        \putenv('PORTA_HOME='.$this->home->dir);
 
         $this->runIde(
             $this->project,
@@ -361,7 +361,7 @@ final class SettingsGlobalScopeTest extends TestCase
                         IdeConfig::load($this->project->dir)->disabledPlugins,
                         'the union keeps it off, which is the documented rule',
                     );
-                    $shown = implode(' | ', Toasts::all($ide));
+                    $shown = \implode(' | ', Toasts::all($ide));
                     $this->assertStringContainsString(
                         'stays off',
                         $shown,
@@ -398,8 +398,8 @@ final class SettingsGlobalScopeTest extends TestCase
      */
     public function testTheLspAndDebugRowsSayWhereTheirValuesCameFrom(): void
     {
-        putenv('PATH=/nonexistent');
-        $this->home = new TempProject(['.porta/config.json' => json_encode(
+        \putenv('PATH=/nonexistent');
+        $this->home = new TempProject(['.porta/config.json' => \json_encode(
             [
                 'lsp' => ['php' => 'global-ls --stdio'],
                 'languages' => ['php' => ['debug' => ['adapter' => 'global-dap']]],
@@ -407,7 +407,7 @@ final class SettingsGlobalScopeTest extends TestCase
             \JSON_THROW_ON_ERROR,
         )]);
         $this->project = new TempProject(['A.php' => "<?php\n\$x = 1;\n"]);
-        putenv('PORTA_HOME='.$this->home->dir);
+        \putenv('PORTA_HOME='.$this->home->dir);
 
         $this->runIde(
             $this->project,
@@ -445,13 +445,13 @@ final class SettingsGlobalScopeTest extends TestCase
      */
     public function testARebindTheProjectOverrulesSaysSoInsteadOfClaimingSuccess(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $this->home = new TempProject([]);
         $this->project = new TempProject([
             'A.php' => "<?php\n\$x = 1;\n",
-            '.porta.json' => json_encode(['keymap' => ['save_all' => ['ctrl+w']]], \JSON_THROW_ON_ERROR),
+            '.porta.json' => \json_encode(['keymap' => ['save_all' => ['ctrl+w']]], \JSON_THROW_ON_ERROR),
         ]);
-        putenv('PORTA_HOME='.$this->home->dir);
+        \putenv('PORTA_HOME='.$this->home->dir);
 
         $this->runIde(
             $this->project,
@@ -481,7 +481,7 @@ final class SettingsGlobalScopeTest extends TestCase
                     $this->frame($tui);
                 },
                 700 => function ($tui, $terminal, $ide): void {
-                    $shown = implode(' | ', Toasts::all($ide));
+                    $shown = \implode(' | ', Toasts::all($ide));
                     $this->assertStringContainsString('keeps its binding', $shown, 'the rebind said it did not take');
                     $this->assertStringContainsString('.porta.json', $shown, 'and named the file that binds it');
                     $this->assertStringNotContainsString('Rebound', $shown, 'and never claimed success');
@@ -512,7 +512,7 @@ final class SettingsGlobalScopeTest extends TestCase
      */
     public function testAPluginSettingFollowsTheScopeTheScreenShows(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $this->home = new TempProject([]);
         $this->project = new TempProject([
             'A.php' => "<?php\n\$x = 1;\n",
@@ -520,7 +520,7 @@ final class SettingsGlobalScopeTest extends TestCase
             // that has one to Project. Without it a scope built by mistake
             // would default to Global too, both paths would write to the same
             // file, and this test would pass whatever the wiring did.
-            '.porta.json' => json_encode(['settings' => ['theme' => 'dark']], \JSON_THROW_ON_ERROR),
+            '.porta.json' => \json_encode(['settings' => ['theme' => 'dark']], \JSON_THROW_ON_ERROR),
             '.porta/plugins/noisy/plugin.php' => <<<'PHP'
                 <?php
                 use Porta\Plugin\Api\PluginApi;
@@ -535,7 +535,7 @@ final class SettingsGlobalScopeTest extends TestCase
                 };
                 PHP,
         ]);
-        putenv('PORTA_HOME='.$this->home->dir);
+        \putenv('PORTA_HOME='.$this->home->dir);
 
         $this->runIde(
             $this->project,
@@ -559,11 +559,11 @@ final class SettingsGlobalScopeTest extends TestCase
                     $global = $this->home->path('.porta/config.json');
                     $this->assertFileExists($global, 'the plugin setting went to the user file');
 
-                    $written = json_decode((string) file_get_contents($global), associative: true);
+                    $written = \json_decode((string) \file_get_contents($global), associative: true);
                     $this->assertIsArray($written);
                     $this->assertSame(4, $written['plugins']['noisy']['volume'] ?? null, 'stepped and stored there');
 
-                    $project = json_decode((string) file_get_contents($this->project->path('.porta.json')), associative: true);
+                    $project = \json_decode((string) \file_get_contents($this->project->path('.porta.json')), associative: true);
                     $this->assertIsArray($project);
                     $this->assertArrayNotHasKey(
                         'plugins',

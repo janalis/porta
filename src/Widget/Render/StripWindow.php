@@ -28,16 +28,16 @@ final class StripWindow
     {
         // An overflowing strip reserves one column per side for the ‹/› scroll
         // indicators, so the tab geometry never depends on which sides clip.
-        $overflow = $columns > 2 && array_sum($widths) > $columns;
+        $overflow = $columns > 2 && \array_sum($widths) > $columns;
         $budget = $overflow ? $columns - 2 : $columns;
 
         // Clamp against a blank tail, then follow the active tab — but only when
         // it changed, so a user's manual scroll survives.
-        $scroll = min($scroll, self::maxStart($widths, $budget));
+        $scroll = \min($scroll, self::maxStart($widths, $budget));
         if ($activeIndex !== $lastActive) {
             $lastActive = $activeIndex;
-            $scroll = min($scroll, $activeIndex);
-            while ($scroll < $activeIndex && array_sum(\array_slice($widths, $scroll, $activeIndex - $scroll + 1)) > $budget) {
+            $scroll = \min($scroll, $activeIndex);
+            while ($scroll < $activeIndex && \array_sum(\array_slice($widths, $scroll, $activeIndex - $scroll + 1)) > $budget) {
                 ++$scroll;
             }
         }
@@ -62,6 +62,6 @@ final class StripWindow
             $start = $i;
         }
 
-        return max(0, $start);
+        return \max(0, $start);
     }
 }

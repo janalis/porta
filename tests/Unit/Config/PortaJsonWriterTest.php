@@ -38,7 +38,7 @@ final class PortaJsonWriterTest extends TestCase
     {
         // member: true (add) with an already-non-empty list: the new plugin
         // must land alongside the existing entries, not replace or nest them.
-        $project = new TempProject(['.porta.json' => json_encode(['disabledPlugins' => ['already-off']])]);
+        $project = new TempProject(['.porta.json' => \json_encode(['disabledPlugins' => ['already-off']])]);
         $writer = new PortaJsonWriter(ConfigFiles::for($project->dir));
 
         $this->assertTrue($writer->persistPluginDisabled(ConfigScope::Project, 'newly-off'));
@@ -53,7 +53,7 @@ final class PortaJsonWriterTest extends TestCase
 
         $this->assertTrue($writer->persistSetting(ConfigScope::Project, 'theme', 'light'));
 
-        $raw = (string) file_get_contents($project->path('.porta.json'));
+        $raw = (string) \file_get_contents($project->path('.porta.json'));
         $this->assertStringEndsWith(\PHP_EOL, $raw);
     }
 
@@ -82,10 +82,10 @@ final class PortaJsonWriterTest extends TestCase
         $this->assertTrue($writer->persistSetting(ConfigScope::Project, 'autoPairs', false), 'the setting still saves');
         $this->assertSame(
             $malformed,
-            file_get_contents($project->path('.porta.json.invalid')),
+            \file_get_contents($project->path('.porta.json.invalid')),
             'and the unreadable file is set aside byte-for-byte',
         );
-        $fresh = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
+        $fresh = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true);
         $this->assertFalse($fresh['settings']['autoPairs'], 'the new file holds the change');
     }
 
@@ -123,23 +123,23 @@ final class PortaJsonWriterTest extends TestCase
         ]);
         $writer = new PortaJsonWriter(ConfigFiles::for($project->dir));
 
-        error_clear_last();
-        ob_start();
+        \error_clear_last();
+        \ob_start();
         $saved = $writer->persistSetting(ConfigScope::Project, 'autoPairs', false);
-        $printed = (string) ob_get_clean();
+        $printed = (string) \ob_get_clean();
 
         $this->assertTrue($saved, 'the setting still saves');
         $this->assertSame('', $printed, 'and nothing was printed at the terminal');
-        $this->assertNull(error_get_last(), 'the failed rename raised nothing');
+        $this->assertNull(\error_get_last(), 'the failed rename raised nothing');
         $this->assertFileExists($project->path('.porta.json.invalid/occupied.txt'), 'the rename could not happen');
-        $fresh = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
+        $fresh = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true);
         $this->assertFalse($fresh['settings']['autoPairs'], 'and the change landed anyway');
     }
 
     /** A readable file is edited in place — nothing is set aside. */
     public function testAReadableConfigIsNotMovedAside(): void
     {
-        $project = new TempProject(['.porta.json' => json_encode(['settings' => ['theme' => 'light']])]);
+        $project = new TempProject(['.porta.json' => \json_encode(['settings' => ['theme' => 'light']])]);
         $writer = new PortaJsonWriter(ConfigFiles::for($project->dir));
 
         $this->assertTrue($writer->persistSetting(ConfigScope::Project, 'autoPairs', false));

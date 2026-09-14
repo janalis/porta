@@ -364,7 +364,7 @@ final class LspSessionPool
             null === $onShowMessage
                 ? null
                 : static function (array $params) use ($onShowMessage, $server): void {
-                    $message = \is_string($params['message'] ?? null) ? trim($params['message']) : '';
+                    $message = \is_string($params['message'] ?? null) ? \trim($params['message']) : '';
                     // An empty body is left empty so the reporter still drops it —
                     // prefixing it would turn silence into a toast saying only the
                     // server's name.
@@ -380,6 +380,6 @@ final class LspSessionPool
     /** @param array{command: list<string>, name: string, initializationOptions?: array<string, mixed>} $server */
     private static function signature(array $server): string
     {
-        return implode("\0", $server['command'])."\0".json_encode($server['initializationOptions'] ?? null, \JSON_THROW_ON_ERROR);
+        return \implode("\0", $server['command'])."\0".\json_encode($server['initializationOptions'] ?? null, \JSON_THROW_ON_ERROR);
     }
 }

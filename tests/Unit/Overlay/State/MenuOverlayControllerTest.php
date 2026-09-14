@@ -49,7 +49,7 @@ final class MenuOverlayControllerTest extends TestCase
         $controller->refreshContextMenu();
 
         $this->assertNotNull($controller->contextMenuDropdown());
-        $rendered = implode("\n", $pane->render(new RenderContext(100, 24)));
+        $rendered = \implode("\n", $pane->render(new RenderContext(100, 24)));
         $this->assertStringContainsString('Copy', $rendered, 'the framed dropdown composited onto the pane');
     }
 }

@@ -92,7 +92,7 @@ final class NonBlockingTerminal implements TerminalInterface
                 ($this->onKittyActivated)();
             }
         });
-        stream_set_blocking($this->stream, enable: false);
+        \stream_set_blocking($this->stream, enable: false);
         // The writer's own cap is out of the picture (PHP_INT_MAX): overflow is
         // enforced here as a flush-first pre-check, because the writer's cap
         // would DROP the queue — never acceptable for terminal bytes.
@@ -140,7 +140,7 @@ final class NonBlockingTerminal implements TerminalInterface
         }
         if ($this->nonBlockingActive) {
             if (\is_resource($this->stream)) {
-                stream_set_blocking($this->stream, enable: true);
+                \stream_set_blocking($this->stream, enable: true);
             }
             $this->nonBlockingActive = false;
         }
@@ -239,7 +239,7 @@ final class NonBlockingTerminal implements TerminalInterface
     #[\Override]
     public function setTitle(string $title): void
     {
-        $safe = (string) preg_replace("/[\x00-\x1f\x7f]|\xc2[\x80-\x9f]/", replacement: '', subject: $title);
+        $safe = (string) \preg_replace("/[\x00-\x1f\x7f]|\xc2[\x80-\x9f]/", replacement: '', subject: $title);
         $this->write("\x1b]0;{$safe}\x07");
     }
 

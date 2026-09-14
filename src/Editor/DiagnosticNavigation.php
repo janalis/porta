@@ -52,21 +52,21 @@ final readonly class DiagnosticNavigation
         if (null === $buffer || $buffer->isViewer()) {
             return;
         }
-        $lines = array_keys(array_filter($buffer->diagnostics, static fn (array $d): bool => [] !== $d));
+        $lines = \array_keys(\array_filter($buffer->diagnostics, static fn (array $d): bool => [] !== $d));
         if ([] === $lines) {
             $this->notifier->flash($this->translator->trans('No problems in this file'));
 
             return;
         }
-        sort($lines);
+        \sort($lines);
         if (ProblemStep::Previous === $step) {
             // One direction of travel, read backwards: everything below works
             // on "the next line in $lines past the caret".
-            $lines = array_reverse($lines);
+            $lines = \array_reverse($lines);
         }
         $caret = $buffer->document->getCursorLine();
         $past = static fn (int $line): bool => ProblemStep::Next === $step ? $line > $caret : $line < $caret;
-        $ahead = array_values(array_filter($lines, $past));
+        $ahead = \array_values(\array_filter($lines, $past));
 
         // Wrapping to $lines[0] IS the far end, because $lines runs the way we
         // are travelling.

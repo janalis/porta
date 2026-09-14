@@ -39,7 +39,7 @@ final class MenuOverlayHostTraitTest extends TestCase
         $host->setModalOverlay([['row' => 0, 'col' => 0, 'width' => 6, 'segment' => 'MMMMMM']]);
         $host->setMenuOverlay([['row' => 0, 'col' => 4, 'width' => 4, 'segment' => 'DDDD']]);
 
-        $lines = array_map(AnsiUtils::stripAnsiCodes(...), $host->render(new RenderContext(10, 2)));
+        $lines = \array_map(AnsiUtils::stripAnsiCodes(...), $host->render(new RenderContext(10, 2)));
 
         $this->assertSame('MMMMDDDD..', $lines[0], 'the dropdown covers the modal where they overlap');
         $this->assertSame('..........', $lines[1]);
@@ -69,7 +69,7 @@ final class MenuOverlayHostTraitTest extends TestCase
         $host->setToastOverlay([['row' => 0, 'col' => 2, 'width' => 6, 'segment' => 'TTTTTT']]);
         $host->setMenuOverlay([['row' => 0, 'col' => 6, 'width' => 4, 'segment' => 'DDDD']]);
 
-        $lines = array_map(AnsiUtils::stripAnsiCodes(...), $host->render(new RenderContext(10, 2)));
+        $lines = \array_map(AnsiUtils::stripAnsiCodes(...), $host->render(new RenderContext(10, 2)));
 
         $this->assertSame('MMTTTTDDDD', $lines[0], 'toast over modal, menu over toast');
     }
@@ -105,7 +105,7 @@ final class MenuOverlayHostTraitTest extends TestCase
         $host->setMenuOverlay([['row' => 0, 'col' => 0, 'width' => 2, 'segment' => 'DD']]);
         $host->setMenuOverlay([]);
 
-        $lines = array_map(AnsiUtils::stripAnsiCodes(...), $host->render(new RenderContext(10, 2)));
+        $lines = \array_map(AnsiUtils::stripAnsiCodes(...), $host->render(new RenderContext(10, 2)));
 
         $this->assertSame('..........', $lines[0], 'the menu layer cleared');
         $this->assertSame('..MMM.....', $lines[1], 'the modal layer stayed');

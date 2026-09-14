@@ -57,8 +57,8 @@ final class ClipboardRing
         // `analyze` refuses the gapped result for a list<string> property. The
         // runtime would survive without it (array_unshift renumbers), the gate
         // would not.
-        $kept = array_values(array_filter($this->entries, static fn (string $entry): bool => $entry !== $text));
-        array_unshift($kept, $text);
+        $kept = \array_values(\array_filter($this->entries, static fn (string $entry): bool => $entry !== $text));
+        \array_unshift($kept, $text);
         $this->entries = self::withinBudget(\array_slice($kept, offset: 0, length: self::DEPTH));
     }
 
@@ -87,9 +87,9 @@ final class ClipboardRing
      */
     private static function withinBudget(array $entries): array
     {
-        $total = array_sum(array_map(\strlen(...), $entries));
+        $total = \array_sum(\array_map(\strlen(...), $entries));
         while (\count($entries) > 1 && $total > self::BUDGET) {
-            $total -= \strlen(array_pop($entries));
+            $total -= \strlen(\array_pop($entries));
         }
 
         return $entries;

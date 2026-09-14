@@ -53,7 +53,7 @@ final class EditHistory
 
         $this->sites[] = ['path' => $path, 'line' => $line];
         if (\count($this->sites) > self::DEPTH) {
-            array_shift($this->sites);
+            \array_shift($this->sites);
         }
     }
 

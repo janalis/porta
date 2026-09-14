@@ -151,7 +151,7 @@ final class StatementSyntax
     public function opensABlock(string $line): bool
     {
         $head = [];
-        if (1 !== preg_match('/^[A-Za-z_]+/', ltrim($line), $head)) {
+        if (1 !== \preg_match('/^[A-Za-z_]+/', \ltrim($line), $head)) {
             return false;
         }
 
@@ -159,6 +159,6 @@ final class StatementSyntax
         // only, so the head cannot contain anything the multibyte fold would
         // treat differently — and reaching for mb_ here would be a guard
         // against an input this function cannot receive.
-        return \in_array(strtolower($head[0]), $this->blockKeywords, strict: true);
+        return \in_array(\strtolower($head[0]), $this->blockKeywords, strict: true);
     }
 }

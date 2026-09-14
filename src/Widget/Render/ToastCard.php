@@ -38,28 +38,28 @@ final class ToastCard
         // `╭ ✗ ──── ×╮`: glyph chrome is 4 columns (corner, spaces, glyph),
         // close chrome 3 (space, ×, corner) — the × lands at width − 2, the
         // exact cell ModalBox::closeHit answers for.
-        $fill = max(0, $innerWidth - 5);
+        $fill = \max(0, $innerWidth - 5);
         $top =
             $accent->apply(Glyphs::MODAL_TOP_LEFT.' ')
             .$accent->withBold()->apply($toast->severity->glyph())
             .' '
-            .$accent->apply(str_repeat(Glyphs::FRAME_HORIZONTAL, $fill))
+            .$accent->apply(\str_repeat(Glyphs::FRAME_HORIZONTAL, $fill))
             .' '
             .$close
             .$accent->apply(Glyphs::MODAL_TOP_RIGHT);
 
         $rail = $accent->apply(Glyphs::FRAME_VERTICAL);
-        $rows = [AnsiText::truncate($top, max(0, $innerWidth + PopupFrame::CHROME_COLS), pad: true)];
-        $lines = AnsiText::wrap($toast->message, max(1, $innerWidth - 2));
+        $rows = [AnsiText::truncate($top, \max(0, $innerWidth + PopupFrame::CHROME_COLS), pad: true)];
+        $lines = AnsiText::wrap($toast->message, \max(1, $innerWidth - 2));
         if (\count($lines) > self::MAX_MESSAGE_ROWS) {
             $lines = \array_slice($lines, offset: 0, length: self::MAX_MESSAGE_ROWS);
-            $lines[self::MAX_MESSAGE_ROWS - 1] = AnsiText::truncate($lines[self::MAX_MESSAGE_ROWS - 1].'…', max(1, $innerWidth - 2));
+            $lines[self::MAX_MESSAGE_ROWS - 1] = AnsiText::truncate($lines[self::MAX_MESSAGE_ROWS - 1].'…', \max(1, $innerWidth - 2));
         }
         foreach ($lines as $line) {
-            $body = $styles->of(Role::Bright)->apply(AnsiText::truncate(' '.$line, max(0, $innerWidth), pad: true));
+            $body = $styles->of(Role::Bright)->apply(AnsiText::truncate(' '.$line, \max(0, $innerWidth), pad: true));
             $rows[] = $rail.$body.$rail;
         }
-        $rows[] = $accent->apply(Glyphs::MODAL_BOTTOM_LEFT.str_repeat(Glyphs::FRAME_HORIZONTAL, max(0, $innerWidth)).Glyphs::MODAL_BOTTOM_RIGHT);
+        $rows[] = $accent->apply(Glyphs::MODAL_BOTTOM_LEFT.\str_repeat(Glyphs::FRAME_HORIZONTAL, \max(0, $innerWidth)).Glyphs::MODAL_BOTTOM_RIGHT);
 
         return $rows;
     }

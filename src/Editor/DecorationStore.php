@@ -172,7 +172,7 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
         // three lines and the caret sits three below the first of them; delete a
         // selection and the caret is left at its start, which is that line
         // already. Exact for a single caret, which is every ordinary edit.
-        $this->remapVcsMarks(max(0, $cursorLine - max(0, $delta)), $delta);
+        $this->remapVcsMarks(\max(0, $cursorLine - \max(0, $delta)), $delta);
     }
 
     private function remapVcsMarks(int $atLine, int $lineDelta): void
@@ -197,7 +197,7 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
         for ($line = $atLine + 1; $line <= ($atLine + $lineDelta); ++$line) {
             $moved[$line] ??= ChangeMarkKind::Added;
         }
-        ksort($moved);
+        \ksort($moved);
 
         $this->vcsMarks = $moved;
         ($this->invalidate)();
@@ -256,7 +256,7 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
     /** @param list<int> $lines 0-based bookmarked lines; [] clears */
     public function setBookmarkLines(array $lines): void
     {
-        $this->bookmarkLines = array_fill_keys($lines, value: true);
+        $this->bookmarkLines = \array_fill_keys($lines, value: true);
         ($this->invalidate)();
     }
 

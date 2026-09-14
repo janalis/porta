@@ -44,15 +44,15 @@ final class IndentModel
         $usesTabs = null;
         foreach ($lines as $line) {
             $usesTabs ??= match (true) {
-                str_starts_with($line, "\t") => true,
-                str_starts_with($line, ' ') => false,
+                \str_starts_with($line, "\t") => true,
+                \str_starts_with($line, ' ') => false,
                 default => null,
             };
-            if ('' === trim($line)) {
+            if ('' === \trim($line)) {
                 continue; // a blank line indents nothing and says nothing
             }
-            $width = strspn($line, characters: ' ');
-            $step = null === $previous ? 0 : abs($width - $previous);
+            $width = \strspn($line, characters: ' ');
+            $step = null === $previous ? 0 : \abs($width - $previous);
             $previous = $width;
             if ($step > 0 && $step <= 8) {
                 $steps[$step] = ($steps[$step] ?? 0) + 1;
@@ -73,10 +73,10 @@ final class IndentModel
         if ([] === $steps) {
             return null;
         }
-        ksort($steps);
-        arsort($steps, flags: \SORT_NUMERIC);
+        \ksort($steps);
+        \arsort($steps, flags: \SORT_NUMERIC);
 
-        return array_key_first($steps);
+        return \array_key_first($steps);
     }
 
     public function usesTabs(): bool
@@ -92,14 +92,14 @@ final class IndentModel
     public function set(IndentKind $kind, int $size): void
     {
         $this->usesTabs = IndentKind::Tabs === $kind;
-        $this->indentSize = max(1, $size);
-        $this->tabWidth = max(1, $size);
+        $this->indentSize = \max(1, $size);
+        $this->tabWidth = \max(1, $size);
     }
 
     /** The indentation unit for one level: a tab, or {@see $indentSize} spaces. */
     public function unit(): string
     {
-        return $this->usesTabs ? "\t" : str_repeat(' ', max(0, $this->indentSize));
+        return $this->usesTabs ? "\t" : \str_repeat(' ', \max(0, $this->indentSize));
     }
 
     /** Spaces per indent level (EditorConfig indent_size). */

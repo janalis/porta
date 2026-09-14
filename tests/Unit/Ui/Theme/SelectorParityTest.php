@@ -20,12 +20,12 @@ final class SelectorParityTest extends TestCase
 {
     public function testEveryThemeDefinesTheSameSelectorSet(): void
     {
-        $reference = array_keys(DarkTheme::definition()->rules());
-        sort($reference);
+        $reference = \array_keys(DarkTheme::definition()->rules());
+        \sort($reference);
 
         foreach (['light' => LightTheme::definition(), 'high-contrast' => HighContrastTheme::definition(), 'monochrome' => MonochromeTheme::definition()] as $name => $def) {
-            $selectors = array_keys($def->rules());
-            sort($selectors);
+            $selectors = \array_keys($def->rules());
+            \sort($selectors);
             $this->assertSame($reference, $selectors, "the {$name} theme must cover the same selectors as dark");
         }
     }
@@ -47,7 +47,7 @@ final class SelectorParityTest extends TestCase
         $this->assertSame('.role-add-emphasis-bg', Role::AddEmphasisBg->selector());
         $this->assertSame('.role-diag-error-underline', Role::DiagErrorUnderline->selector());
 
-        $selectors = array_map(static fn (Role $role) => $role->selector(), Role::cases());
-        $this->assertSame($selectors, array_unique($selectors), 'no two roles may share a selector');
+        $selectors = \array_map(static fn (Role $role) => $role->selector(), Role::cases());
+        $this->assertSame($selectors, \array_unique($selectors), 'no two roles may share a selector');
     }
 }

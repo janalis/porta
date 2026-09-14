@@ -88,7 +88,7 @@ final class PickerModalPresenter
 
         $this->delivery->deliverModal($placed);
         $this->shown = true;
-        $this->shadowRegions = array_map(
+        $this->shadowRegions = \array_map(
             static fn (array $box): DropdownRegion => DropdownRegion::shadowClamped($box['top'], $box['col'], $box['width'], \count($box['rows']), $bounds, ltr: true),
             $placed,
         );

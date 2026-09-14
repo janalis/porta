@@ -27,8 +27,8 @@ final class ChromeRootMembershipTest extends ContainerTestCase
     {
         $container = $this->buildContainer();
 
-        $actual = array_keys($container->findTaggedServiceIds('porta.chrome_root'));
-        sort($actual);
+        $actual = \array_keys($container->findTaggedServiceIds('porta.chrome_root'));
+        \sort($actual);
 
         $expected = [
             ContextMenu::class,
@@ -41,8 +41,8 @@ final class ChromeRootMembershipTest extends ContainerTestCase
             TerminalPanelWidget::class,
             'porta.widget.main',
         ];
-        sort($expected);
+        \sort($expected);
 
-        self::assertSame($expected, $actual, 'every chrome root must carry #[AsChromeRoot] (or the porta.widget.main tag)');
+        $this->assertSame($expected, $actual, 'every chrome root must carry #[AsChromeRoot] (or the porta.widget.main tag)');
     }
 }

@@ -117,8 +117,8 @@ final class ArchitectureCheckCommandTest extends TestCase
         // must pass, and grading must WALK PAST it to reach the oversized one.
         $project = new TempProject([
             'src/Alpha/One.php' => $this->file('Alpha', 'One'),
-            'tests/E2e/AaFineTest.php' => "<?php\n".str_repeat("    public function testMany(): void {}\n", times: 60),
-            'tests/E2e/HugeTest.php' => "<?php\n".str_repeat("    public function testMany(): void {}\n", times: 61),
+            'tests/E2e/AaFineTest.php' => "<?php\n".\str_repeat("    public function testMany(): void {}\n", times: 60),
+            'tests/E2e/HugeTest.php' => "<?php\n".\str_repeat("    public function testMany(): void {}\n", times: 61),
         ]);
 
         $tester = $this->tester();
@@ -186,7 +186,7 @@ final class ArchitectureCheckCommandTest extends TestCase
         // The documented migration path — a plugin-driving E2e belongs under
         // plugins/<name>/tests — must not be the ratchet's blind spot, and a
         // #[Test]-attributed method must not silently zero a file's count.
-        $methods = str_repeat("    public function testMany(): void {}\n", times: 60)."    #[Test]\n    public function attributedStyle(): void {}\n";
+        $methods = \str_repeat("    public function testMany(): void {}\n", times: 60)."    #[Test]\n    public function attributedStyle(): void {}\n";
         $project = new TempProject([
             'src/Alpha/One.php' => $this->file('Alpha', 'One'),
             'plugins/thing/tests/HugeTest.php' => "<?php\n".$methods,
@@ -344,7 +344,7 @@ final class ArchitectureCheckCommandTest extends TestCase
         // If unsorted, "NEW edge Zulu>Alpha" would list before "NEW edge
         // Alpha>Beta" — assert the reverse (sorted) ordering in the raw output.
         $errors = $tester->getErrorOutput();
-        $this->assertLessThan(strpos($errors, needle: 'NEW edge Zulu>Alpha'), strpos($errors, needle: 'NEW edge Alpha>Beta'), 'sorted order: Alpha before Zulu');
+        $this->assertLessThan(\strpos($errors, needle: 'NEW edge Zulu>Alpha'), \strpos($errors, needle: 'NEW edge Alpha>Beta'), 'sorted order: Alpha before Zulu');
     }
 
     public function testBothANewCircularDependencyAndAVanishedPinnedOneFailTogether(): void
@@ -418,8 +418,8 @@ final class ArchitectureCheckCommandTest extends TestCase
     {
         $project = new TempProject([
             'src/Alpha/One.php' => $this->file('Alpha', 'One'),
-            'tests/E2e/AaHugeTest.php' => "<?php\n".str_repeat("    public function testMany(): void {}\n", times: 61),
-            'tests/E2e/ZzHugeTest.php' => "<?php\n".str_repeat("    public function testMany(): void {}\n", times: 61),
+            'tests/E2e/AaHugeTest.php' => "<?php\n".\str_repeat("    public function testMany(): void {}\n", times: 61),
+            'tests/E2e/ZzHugeTest.php' => "<?php\n".\str_repeat("    public function testMany(): void {}\n", times: 61),
         ]);
 
         $tester = $this->tester();
@@ -431,7 +431,7 @@ final class ArchitectureCheckCommandTest extends TestCase
         $this->assertStringContainsString('ZzHugeTest.php has 61', $errors);
         // Explicit pathname sort, not filesystem enumeration order (which
         // varies) — the gate's own docblock calls this a byte contract.
-        $this->assertLessThan(strpos($errors, needle: 'ZzHugeTest.php'), strpos($errors, needle: 'AaHugeTest.php'), 'the failure list is in sorted pathname order');
+        $this->assertLessThan(\strpos($errors, needle: 'ZzHugeTest.php'), \strpos($errors, needle: 'AaHugeTest.php'), 'the failure list is in sorted pathname order');
     }
 
     public function testPluginTestDirsOnlyGlobsTestsSubdirectoriesNotThePluginRoot(): void
@@ -440,7 +440,7 @@ final class ArchitectureCheckCommandTest extends TestCase
         // to trip the size cap if it were scanned. If pluginTestDirs() globbed
         // the plugins root instead of `*/tests`, Finder's own recursion would
         // still find and wrongly grade this src file.
-        $methods = str_repeat("    public function testMany(): void {}\n", times: 61);
+        $methods = \str_repeat("    public function testMany(): void {}\n", times: 61);
         $project = new TempProject([
             'src/Alpha/One.php' => $this->file('Alpha', 'One'),
             'plugins/thing/src/NotATest.php' => "<?php\n".$methods,

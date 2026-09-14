@@ -9,6 +9,15 @@
 # php-cs-fixer never reflows code, so to match it the formatter is configured
 # NOT to re-wrap: a wide print width plus "preserve breaking" keeps every line
 # exactly where it is and only normalises spacing/braces/imports.
+#
+# mago ships no `symfony` formatter preset (1.47 offers default, psr-12, pint,
+# tempest, hack and drupal), which is why the options below are spelled out.
+#
+# The linter follows the same standard (see [linter] and [linter.rules]):
+# yoda comparisons (yoda_style), fully qualified native functions and constants
+# (native_function_invocation / native_constant_invocation — ALL of them, not
+# only @compiler_optimized, because mago cannot scope the rule to a list), and
+# `$this->assert*()` in tests, which is how Symfony's own suites call PHPUnit.
 
 php-version = "8.5"
 
@@ -103,6 +112,10 @@ sort-uses = true
 # The mock LSP/DAP servers are standalone procedural scripts, not codebase
 # code — they keep their script idioms (camelCase helpers, `global`).
 excludes = ["tests/Support/lsp-stub.php", "tests/Support/slow-reading-lsp-server.php", "tests/Support/demanding-lsp-server.php", "tests/Support/incremental-lsp-server.php", "tests/Support/mock-lsp-server.php", "tests/Support/command-lsp-server.php", "tests/Support/mock-dap-adapter.php"]
+# The symfony integration reports nothing on this codebase today (no
+# controllers, no bundles); it is on so that the day it would, it does. The
+# phpunit integration is what brings assertion-style below.
+integrations = ["symfony", "phpunit"]
 
 # [linter.rules] — every rule runs (no disables). The size/complexity metric
 # rules stay enabled but are calibrated to this TUI codebase's maxima: the
@@ -279,3 +292,11 @@ too-many-enum-cases = { threshold = 61 }
 excessive-parameter-list = { threshold = 24 }
 kan-defect = { threshold = 8 }
 halstead = { effort-threshold = 21435, difficulty-threshold = 30, volume-threshold = 3236 }
+
+# Symfony coding standard, linter half (see the header). These four are off or
+# at `help` by default, and `help` never fails `--minimum-fail-level=note` —
+# so each is raised to `warning` explicitly, or it would be advice, not a gate.
+assertion-style = { style = "this" }
+yoda-conditions = { enabled = true, level = "warning", mode = "require" }
+ambiguous-function-call = { enabled = true, level = "warning" }
+ambiguous-constant-access = { enabled = true, level = "warning" }

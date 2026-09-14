@@ -485,7 +485,7 @@ final class EditorActionsTest extends TestCase
     public function testPageMovementUsesTheViewportRows(): void
     {
         $kb = new Keybindings(['page_down' => ['page_down']]);
-        $actions = $this->actions(str_repeat("line\n", times: 20));
+        $actions = $this->actions(\str_repeat("line\n", times: 20));
         $actions->handleKey("\x1b[6~", $kb);
         $this->assertSame(5, $this->doc->getCursorLine(), 'contentRows closure supplies the page size');
     }
@@ -769,7 +769,7 @@ final class EditorActionsTest extends TestCase
     public function testPageMovementClearsSelectionInvalidatesAndStopsTheCascade(): void
     {
         $kb = new Keybindings(['page_down' => ['q']]);
-        $actions = $this->actions(str_repeat("line\n", times: 20));
+        $actions = $this->actions(\str_repeat("line\n", times: 20));
         $this->doc->setSelectionRange(0, 0, 0, 2);
         $actions->handleKey('q', $kb);
 
@@ -989,7 +989,7 @@ final class EditorActionsTest extends TestCase
     public function testPageMovementClearsAnExistingSelection(): void
     {
         $kb = new Keybindings(['page_down' => ['q']]);
-        $actions = $this->actions(str_repeat("line\n", times: 20));
+        $actions = $this->actions(\str_repeat("line\n", times: 20));
         $this->doc->setSelectionRange(0, 0, 0, 2);
         $actions->handleKey('q', $kb);
 

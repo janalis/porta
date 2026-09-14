@@ -54,11 +54,11 @@ final class MockServerContractTest extends TestCase
 
     public function testTheMockAdvertisesEveryGatedMethodItAnswers(): void
     {
-        $source = (string) file_get_contents(__DIR__.'/../../Support/mock-lsp-server.php');
+        $source = (string) \file_get_contents(__DIR__.'/../../Support/mock-lsp-server.php');
         $answered = self::answeredMethods($source);
         $advertised = self::advertisedCapabilities($source);
 
-        self::assertNotSame([], $answered, 'the parse found no handlers — this test would pass vacuously');
+        $this->assertNotSame([], $answered, 'the parse found no handlers — this test would pass vacuously');
 
         $missing = [];
         foreach ($answered as $method) {
@@ -72,14 +72,14 @@ final class MockServerContractTest extends TestCase
             [],
             $missing,
             "the mock answers these but advertises no capability for them, so a client that gates on one would find the request unanswerable while every test stayed green:\n  "
-                .implode("\n  ", array_map(static fn (string $m, string $c): string => "{$m} needs {$c}", array_keys($missing), $missing)),
+                .\implode("\n  ", \array_map(static fn (string $m, string $c): string => "{$m} needs {$c}", \array_keys($missing), $missing)),
         );
     }
 
     /** And the reverse: a capability nothing answers is a different lie, told the same way. */
     public function testTheMockAnswersEveryGatedCapabilityItAdvertises(): void
     {
-        $source = (string) file_get_contents(__DIR__.'/../../Support/mock-lsp-server.php');
+        $source = (string) \file_get_contents(__DIR__.'/../../Support/mock-lsp-server.php');
         $answered = self::answeredMethods($source);
         $backed = [];
         foreach ($answered as $method) {
@@ -89,29 +89,29 @@ final class MockServerContractTest extends TestCase
             }
         }
 
-        $gated = array_values(array_unique(array_values(self::GATED_BY)));
-        $empty = array_values(array_diff(array_intersect(self::advertisedCapabilities($source), $gated), $backed));
+        $gated = \array_values(\array_unique(\array_values(self::GATED_BY)));
+        $empty = \array_values(\array_diff(\array_intersect(self::advertisedCapabilities($source), $gated), $backed));
 
-        $this->assertSame([], $empty, 'advertised with no handler behind it: '.implode(', ', $empty));
+        $this->assertSame([], $empty, 'advertised with no handler behind it: '.\implode(', ', $empty));
     }
 
     /** @return list<string> */
     private static function answeredMethods(string $source): array
     {
-        preg_match_all("/'([a-zA-Z\\/\\\$]+\\/[a-zA-Z]+)' === \\\$method/", $source, $m);
+        \preg_match_all("/'([a-zA-Z\\/\\\$]+\\/[a-zA-Z]+)' === \\\$method/", $source, $m);
 
-        return array_values(array_unique($m[1]));
+        return \array_values(\array_unique($m[1]));
     }
 
     /** @return list<string> */
     private static function advertisedCapabilities(string $source): array
     {
-        $start = strpos($source, needle: "'capabilities' => [");
+        $start = \strpos($source, needle: "'capabilities' => [");
         self::assertNotFalse($start, 'no capabilities block in the mock');
-        $end = strpos($source, needle: "'serverInfo'", offset: $start);
+        $end = \strpos($source, needle: "'serverInfo'", offset: $start);
         self::assertNotFalse($end);
-        preg_match_all("/'([a-zA-Z]+Provider)'\\s*=>/", substr($source, $start, $end - $start), $m);
+        \preg_match_all("/'([a-zA-Z]+Provider)'\\s*=>/", \substr($source, $start, $end - $start), $m);
 
-        return array_values(array_unique($m[1]));
+        return \array_values(\array_unique($m[1]));
     }
 }

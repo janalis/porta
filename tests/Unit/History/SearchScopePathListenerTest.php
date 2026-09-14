@@ -27,10 +27,10 @@ final class SearchScopePathListenerTest extends TestCase
         $project = new TempProject(['src/A.php' => "<?php\n"]);
         $store = new SearchScopeStore($project->dir);
         $store->addPinned('src', ['src']);
-        $from = (string) realpath($project->path('src'));
-        rename($from, $project->path('lib'));
+        $from = (string) \realpath($project->path('src'));
+        \rename($from, $project->path('lib'));
 
-        $this->listener($project, $store)->onFileRenamed(new FileRenamed($from, (string) realpath($project->path('lib'))));
+        $this->listener($project, $store)->onFileRenamed(new FileRenamed($from, (string) \realpath($project->path('lib'))));
 
         $this->assertSame([['label' => 'lib', 'paths' => ['lib'], 'pinned' => true]], $store->all());
     }
@@ -71,7 +71,7 @@ final class SearchScopePathListenerTest extends TestCase
         $store = new SearchScopeStore($project->dir);
         $store->addPinned('src', ['src']);
 
-        $this->listener($project, $store)->onFileRenamed(new FileRenamed((string) realpath($project->path('src')), '/elsewhere/lib'));
+        $this->listener($project, $store)->onFileRenamed(new FileRenamed((string) \realpath($project->path('src')), '/elsewhere/lib'));
 
         $this->assertSame([['label' => 'src', 'paths' => ['src'], 'pinned' => true]], $store->all());
     }

@@ -47,9 +47,9 @@ final class IdeGraphViewerTest extends TestCase
     private function phpOnlyPath(TempProject $project): void
     {
         $bin = $project->path('.php-only-bin');
-        mkdir($bin);
-        symlink(\PHP_BINARY, $bin.'/php');
-        putenv('PATH='.$bin);
+        \mkdir($bin);
+        \symlink(\PHP_BINARY, $bin.'/php');
+        \putenv('PATH='.$bin);
     }
 
     public function testAPreMoveDotPathAdoptsOnceAndWritesThrough(): void
@@ -59,7 +59,7 @@ final class IdeGraphViewerTest extends TestCase
         // through to plugins.graph-viewer from onReady, so the file stops
         // answering the same question twice.
         $project = new TempProject([
-            '.porta.json' => (string) json_encode(['enabledPlugins' => ['graph-viewer', 'image-viewer'], 'settings' => ['dotPath' => self::fakeDot()]]),
+            '.porta.json' => (string) \json_encode(['enabledPlugins' => ['graph-viewer', 'image-viewer'], 'settings' => ['dotPath' => self::fakeDot()]]),
             'g.dot' => self::SMALL_DOT,
         ]);
         $this->phpOnlyPath($project);
@@ -69,9 +69,9 @@ final class IdeGraphViewerTest extends TestCase
             $project->path('g.dot'),
             [
                 200 => function ($tui, $terminal, $ide) use ($project): void {
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'nodes'), what: 'the adopted dotPath laying out the graph');
+                    $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'nodes'), what: 'the adopted dotPath laying out the graph');
                     $this->await(static function () use ($project): bool {
-                        $file = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
+                        $file = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true);
 
                         return \is_array($file) && ($file['plugins']['graph-viewer']['dotPath'] ?? null) === self::fakeDot();
                     }, what: 'the adoption written through to plugins.graph-viewer');
@@ -87,7 +87,7 @@ final class IdeGraphViewerTest extends TestCase
         // path and the pane the mode, so editing either in Settings did
         // nothing until the next launch — which their hints admitted.
         $project = new TempProject([
-            '.porta.json' => (string) json_encode([
+            '.porta.json' => (string) \json_encode([
                 // image-viewer too: graph-viewer `requires` it, and PluginOrder
                 // skips a plugin whose requirement is off.
                 'enabledPlugins' => ['graph-viewer', 'image-viewer'],
@@ -105,7 +105,7 @@ final class IdeGraphViewerTest extends TestCase
                 200 => function ($tui, $terminal, $ide) use ($project): void {
                     // A bogus path: the engine reports rather than laying out.
                     $this->await(
-                        static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'could not start dot'),
+                        static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'could not start dot'),
                         what: 'the graph pane to report the bogus binary',
                     );
                     $this->assertStringNotContainsString('nodes', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'nothing laid out yet');
@@ -119,9 +119,9 @@ final class IdeGraphViewerTest extends TestCase
                     // A DIFFERENT document, so the pane asks the engine again
                     // rather than reusing the layout it cached by hash; the NEW
                     // binary is what answers, with no restart.
-                    Services::resolve($ide, BufferService::class)->openFile((string) realpath($project->path('h.dot')));
+                    Services::resolve($ide, BufferService::class)->openFile((string) \realpath($project->path('h.dot')));
                     $this->await(
-                        static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'nodes'),
+                        static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'nodes'),
                         what: 'the edited dotPath laying out the graph',
                     );
 
@@ -129,7 +129,7 @@ final class IdeGraphViewerTest extends TestCase
                     $settings->change('graph-viewer', 'renderMode', 'cells');
                     $lifecycle->onPluginSettingChanged('graph-viewer', 'renderMode', 'cells');
                     $this->await(
-                        static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), '┌'),
+                        static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), '┌'),
                         what: 'the standing pane switching to cell rendering',
                     );
                 },
@@ -145,7 +145,7 @@ final class IdeGraphViewerTest extends TestCase
         // open nothing at all. Its own session — opening a menu mid-script
         // perturbs the interactions the long test above asserts on.
         $project = new TempProject([
-            '.porta.json' => (string) json_encode(['enabledPlugins' => ['graph-viewer', 'image-viewer'], 'plugins' => ['graph-viewer' => ['dotPath' => self::fakeDot()]]]),
+            '.porta.json' => (string) \json_encode(['enabledPlugins' => ['graph-viewer', 'image-viewer'], 'plugins' => ['graph-viewer' => ['dotPath' => self::fakeDot()]]]),
             'g.dot' => self::SMALL_DOT,
         ]);
         $this->phpOnlyPath($project);
@@ -155,7 +155,7 @@ final class IdeGraphViewerTest extends TestCase
             $project->path('g.dot'),
             [
                 200 => function ($tui, $terminal, $ide): void {
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'nodes'), what: 'the graph layout to land');
+                    $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'nodes'), what: 'the graph layout to land');
                     $this->assertSame('graph-viewer', $tui->getFocus()?->getId());
 
                     $terminal->clearOutput();
@@ -171,7 +171,7 @@ final class IdeGraphViewerTest extends TestCase
     public function testDotFileOpensInTheGraphViewerWithZoomPanAndSelection(): void
     {
         $project = new TempProject([
-            '.porta.json' => (string) json_encode(['enabledPlugins' => ['graph-viewer', 'image-viewer'], 'plugins' => ['graph-viewer' => ['dotPath' => self::fakeDot()]]]),
+            '.porta.json' => (string) \json_encode(['enabledPlugins' => ['graph-viewer', 'image-viewer'], 'plugins' => ['graph-viewer' => ['dotPath' => self::fakeDot()]]]),
             'g.dot' => self::SMALL_DOT,
         ]);
         $this->phpOnlyPath($project);
@@ -183,7 +183,7 @@ final class IdeGraphViewerTest extends TestCase
             [
                 200 => function ($tui, $terminal, $ide): void {
                     // The stub answers on the loop: await the layout instead of sleeping.
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'nodes'), what: 'the graph layout to land');
+                    $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'nodes'), what: 'the graph layout to land');
                     $this->frame($tui);
                     $this->assertSame('graph-viewer', $tui->getFocus()?->getId(), 'the viewer takes editor-area focus');
                     $output = AnsiUtils::stripAnsiCodes($terminal->getOutput());
@@ -212,19 +212,19 @@ final class IdeGraphViewerTest extends TestCase
                     $this->assertSame('graph-viewer', $tui->getFocus()?->getId(), 'drag interactions keep the viewer focused');
                     // Break the document on disk: the reconciler re-shows it, the
                     // failing layout keeps the previous rendering under a banner.
-                    file_put_contents($dotPath, data: 'digraph { broken');
+                    \file_put_contents($dotPath, data: 'digraph { broken');
                     Services::resolve($ide, BufferService::class)->pollFilesystem();
                     $this->await(static function () use ($terminal): bool {
                         $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
 
-                        return str_contains($screen, '✗') || str_contains($screen, 'syntax error');
+                        return \str_contains($screen, '✗') || \str_contains($screen, 'syntax error');
                     }, what: 'the error banner');
                     $output = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('3 nodes · 2 edges', $output, 'the last good graph is still the model');
 
                     // Exporting the broken document fails the same loud way.
                     Services::resolve($ide, CommandRegistry::class)->run('graph-viewer:export-svg');
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Export failed'), what: 'the export-failure flash');
+                    $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Export failed'), what: 'the export-failure flash');
                 },
             ],
         );
@@ -241,7 +241,7 @@ final class IdeGraphViewerTest extends TestCase
     public function testTheFindKeyOpensAPickerThatFiltersAndSelectsTheNode(): void
     {
         $project = new TempProject([
-            '.porta.json' => (string) json_encode(['enabledPlugins' => ['graph-viewer', 'image-viewer'], 'plugins' => ['graph-viewer' => ['dotPath' => self::fakeDot()]]]),
+            '.porta.json' => (string) \json_encode(['enabledPlugins' => ['graph-viewer', 'image-viewer'], 'plugins' => ['graph-viewer' => ['dotPath' => self::fakeDot()]]]),
             'g.dot' => self::SMALL_DOT,
         ]);
         $this->phpOnlyPath($project);
@@ -252,11 +252,11 @@ final class IdeGraphViewerTest extends TestCase
             [
                 200 => function ($tui, $terminal, $ide): void {
                     $screen = static fn (): string => AnsiUtils::stripAnsiCodes($terminal->getOutput());
-                    $this->await(static fn (): bool => str_contains($screen(), 'nodes'), what: 'the graph layout to land');
+                    $this->await(static fn (): bool => \str_contains($screen(), 'nodes'), what: 'the graph layout to land');
 
                     $terminal->clearOutput();
                     $tui->handleInput('/');
-                    $this->await(static fn (): bool => str_contains($screen(), 'Find node'), what: 'the node picker to paint');
+                    $this->await(static fn (): bool => \str_contains($screen(), 'Find node'), what: 'the node picker to paint');
                     $listed = $screen();
                     $this->assertStringContainsString('1 in · 1 out', $listed, 'each row carries the node degree');
 
@@ -265,11 +265,11 @@ final class IdeGraphViewerTest extends TestCase
                     // "A is gone" before anything has repainted at all.
                     $terminal->clearOutput();
                     $tui->handleInput('c');
-                    $this->await(static fn (): bool => str_contains($screen(), '1 in · 0 out') && !str_contains($screen(), '0 in · 1 out'), what: 'the filter to leave C and drop A');
+                    $this->await(static fn (): bool => \str_contains($screen(), '1 in · 0 out') && !\str_contains($screen(), '0 in · 1 out'), what: 'the filter to leave C and drop A');
 
                     $terminal->clearOutput();
                     $tui->handleInput("\r");
-                    $this->await(static fn (): bool => str_contains($screen(), '· C'), what: 'the picked node to reach the status bar');
+                    $this->await(static fn (): bool => \str_contains($screen(), '· C'), what: 'the picked node to reach the status bar');
                 },
             ],
         );
@@ -281,7 +281,7 @@ final class IdeGraphViewerTest extends TestCase
     public function testTheFindCommandSaysSoWhenNoGraphIsOpen(): void
     {
         $project = new TempProject([
-            '.porta.json' => (string) json_encode(['enabledPlugins' => ['graph-viewer', 'image-viewer'], 'plugins' => ['graph-viewer' => ['dotPath' => self::fakeDot()]]]),
+            '.porta.json' => (string) \json_encode(['enabledPlugins' => ['graph-viewer', 'image-viewer'], 'plugins' => ['graph-viewer' => ['dotPath' => self::fakeDot()]]]),
             'a.php' => "<?php\n",
         ]);
         $this->phpOnlyPath($project);
@@ -293,7 +293,7 @@ final class IdeGraphViewerTest extends TestCase
                 200 => function ($tui, $terminal, $ide): void {
                     $terminal->clearOutput();
                     Services::resolve($ide, CommandRegistry::class)->run('graph-viewer:find-node');
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'No graph nodes to search'), what: 'the empty-graph flash');
+                    $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'No graph nodes to search'), what: 'the empty-graph flash');
                 },
             ],
         );
@@ -304,7 +304,7 @@ final class IdeGraphViewerTest extends TestCase
     public function testTheBitmapPaintsAndTheRenderModeKeyFlipsBackToTheCells(): void
     {
         $project = new TempProject([
-            '.porta.json' => (string) json_encode(['enabledPlugins' => ['graph-viewer', 'image-viewer'], 'plugins' => ['graph-viewer' => ['dotPath' => self::fakeDot()]]]),
+            '.porta.json' => (string) \json_encode(['enabledPlugins' => ['graph-viewer', 'image-viewer'], 'plugins' => ['graph-viewer' => ['dotPath' => self::fakeDot()]]]),
             'g.dot' => self::SMALL_DOT,
         ]);
         $this->phpOnlyPath($project);
@@ -316,15 +316,15 @@ final class IdeGraphViewerTest extends TestCase
                 200 => function ($tui, $terminal): void {
                     // Read the CURRENT grid: the accumulated output still holds
                     // the cell rendering that painted before the bitmap landed.
-                    $grid = fn (): string => implode("\n", $this->screenGrid($tui, $terminal));
-                    $this->await(static fn (): bool => str_contains($grid(), '▀'), what: "dot's bitmap to paint");
+                    $grid = fn (): string => \implode("\n", $this->screenGrid($tui, $terminal));
+                    $this->await(static fn (): bool => \str_contains($grid(), '▀'), what: "dot's bitmap to paint");
 
                     $tui->handleInput('v');
-                    $this->await(static fn (): bool => str_contains($grid(), 'calls'), what: 'the cell rendering to come back');
+                    $this->await(static fn (): bool => \str_contains($grid(), 'calls'), what: 'the cell rendering to come back');
                     $this->assertStringNotContainsString('▀', $grid(), 'the picture stepped aside');
 
                     $tui->handleInput('v');
-                    $this->await(static fn (): bool => str_contains($grid(), '▀'), what: 'the picture to come back');
+                    $this->await(static fn (): bool => \str_contains($grid(), '▀'), what: 'the picture to come back');
                 },
             ],
         );
@@ -333,7 +333,7 @@ final class IdeGraphViewerTest extends TestCase
     public function testAPlantUmlDocumentOpensInTheDiagramPane(): void
     {
         $project = new TempProject([
-            '.porta.json' => (string) json_encode([
+            '.porta.json' => (string) \json_encode([
                 'enabledPlugins' => ['graph-viewer', 'image-viewer'],
                 'plugins' => ['graph-viewer' => ['plantumlPath' => \dirname(__DIR__, levels: 3).'/tests/Support/fake-plantuml']],
             ]),
@@ -346,8 +346,8 @@ final class IdeGraphViewerTest extends TestCase
             $project->path('seq.puml'),
             [
                 200 => function ($tui, $terminal): void {
-                    $grid = fn (): string => implode("\n", $this->screenGrid($tui, $terminal));
-                    $this->await(static fn (): bool => str_contains($grid(), '▀'), what: "PlantUML's picture to paint");
+                    $grid = fn (): string => \implode("\n", $this->screenGrid($tui, $terminal));
+                    $this->await(static fn (): bool => \str_contains($grid(), '▀'), what: "PlantUML's picture to paint");
 
                     $this->assertSame('graph-viewer', $tui->getFocus()?->getId(), 'a .puml takes the diagram pane');
                     // screenGrid() consumes the accumulated output, so the tab
@@ -363,7 +363,7 @@ final class IdeGraphViewerTest extends TestCase
 
     public function testWithoutPlantumlADocumentStaysText(): void
     {
-        putenv('PATH=/nonexistent'); // nothing to discover, and no setting
+        \putenv('PATH=/nonexistent'); // nothing to discover, and no setting
         $project = new TempProject(['seq.puml' => "@startuml\nBob -> Alice\n@enduml\n"]);
 
         $this->runIde(
@@ -382,7 +382,7 @@ final class IdeGraphViewerTest extends TestCase
     public function testMissingBinaryShowsTheActionablePane(): void
     {
         // No dotPath setting and an empty PATH: discovery finds nothing.
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject([
             'g.dot' => self::SMALL_DOT,
         ]);
@@ -404,10 +404,10 @@ final class IdeGraphViewerTest extends TestCase
     public function testGraphTabReusesAndClosesLikeAnyTab(): void
     {
         $project = new TempProject([
-            '.porta.json' => (string) json_encode(['enabledPlugins' => ['graph-viewer', 'image-viewer'], 'plugins' => ['graph-viewer' => ['dotPath' => self::fakeDot()]]]),
+            '.porta.json' => (string) \json_encode(['enabledPlugins' => ['graph-viewer', 'image-viewer'], 'plugins' => ['graph-viewer' => ['dotPath' => self::fakeDot()]]]),
             'g.dot' => self::SMALL_DOT,
             'src/A.php' => "<?php\n",
-            'big.dot' => str_repeat('/* pad */ ', times: 1_100_000).'digraph {}',
+            'big.dot' => \str_repeat('/* pad */ ', times: 1_100_000).'digraph {}',
             'binary.dot' => "\xff\xfe\x00digraph",
             '.porta/architecture.dot' => self::SMALL_DOT,
         ]);
@@ -415,17 +415,17 @@ final class IdeGraphViewerTest extends TestCase
 
         // Buffers are keyed by realpath (macOS /var symlinks to /private/var),
         // so the paths handed to open/close must be canonical too.
-        $dotPath = (string) realpath($project->path('g.dot'));
-        $phpPath = (string) realpath($project->path('src/A.php'));
-        $bigPath = (string) realpath($project->path('big.dot'));
-        $binaryPath = (string) realpath($project->path('binary.dot'));
-        $archPath = (string) realpath($project->path('.porta/architecture.dot'));
+        $dotPath = (string) \realpath($project->path('g.dot'));
+        $phpPath = (string) \realpath($project->path('src/A.php'));
+        $bigPath = (string) \realpath($project->path('big.dot'));
+        $binaryPath = (string) \realpath($project->path('binary.dot'));
+        $archPath = (string) \realpath($project->path('.porta/architecture.dot'));
         $this->runIde(
             $project,
             $dotPath,
             [
                 200 => function ($tui, $terminal, $ide) use ($dotPath, $phpPath, $bigPath, $binaryPath, $archPath): void {
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'nodes'), what: 'the graph layout');
+                    $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'nodes'), what: 'the graph layout');
                     $buffers = Services::resolve($ide, BufferManager::class);
                     $this->assertCount(1, $buffers->all());
                     $service = Services::resolve($ide, BufferService::class);
@@ -446,7 +446,7 @@ final class IdeGraphViewerTest extends TestCase
                     // (The display cannot prove it — fake-dot ignores stdin —
                     // so assert the model; the synchronous refresh needs no await.)
                     $service->openFile($phpPath);
-                    file_put_contents($dotPath, data: "digraph G { A -> B; }\n");
+                    \file_put_contents($dotPath, data: "digraph G { A -> B; }\n");
                     $service->openFile($dotPath);
                     $this->assertSame("digraph G { A -> B; }\n", $buffers->get($dotPath)?->panePayload, 'the payload refreshed on the explicit re-open');
 
@@ -480,8 +480,8 @@ final class IdeGraphViewerTest extends TestCase
     public function testArchitectureCommandScansOpensReusesAndExports(): void
     {
         $project = new TempProject([
-            '.porta.json' => (string) json_encode(['enabledPlugins' => ['graph-viewer', 'image-viewer'], 'plugins' => ['graph-viewer' => ['dotPath' => self::fakeDot()]]]),
-            'composer.json' => (string) json_encode(['autoload' => ['psr-4' => ['App\\' => 'src/']]]),
+            '.porta.json' => (string) \json_encode(['enabledPlugins' => ['graph-viewer', 'image-viewer'], 'plugins' => ['graph-viewer' => ['dotPath' => self::fakeDot()]]]),
+            'composer.json' => (string) \json_encode(['autoload' => ['psr-4' => ['App\\' => 'src/']]]),
             'src/Editor/Doc.php' => "<?php\nnamespace App\\Editor;\nuse App\\Support\\Text;\nfinal class Doc {}\n",
             'src/Support/Text.php' => "<?php\nnamespace App\\Support;\nfinal class Text {}\n",
         ]);
@@ -493,10 +493,10 @@ final class IdeGraphViewerTest extends TestCase
             [
                 200 => function ($tui, $terminal, $ide) use ($project): void {
                     Services::resolve($ide, CommandRegistry::class)->run('graph-viewer:architecture');
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'nodes'), what: 'the architecture graph');
+                    $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'nodes'), what: 'the architecture graph');
                     $artifact = $project->path('architecture.dot');
                     $this->assertFileExists($artifact);
-                    $this->assertStringContainsString('App\\\\Editor', (string) file_get_contents($artifact), 'the scanner produced the namespace graph');
+                    $this->assertStringContainsString('App\\\\Editor', (string) \file_get_contents($artifact), 'the scanner produced the namespace graph');
                     $this->frame($tui);
                     $this->assertStringContainsString('Project Architecture', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the titled tab');
 
@@ -506,9 +506,9 @@ final class IdeGraphViewerTest extends TestCase
                     $this->assertCount(1, $buffers->all(), 'the second invocation reused the tab');
 
                     Services::resolve($ide, CommandRegistry::class)->run('graph-viewer:export-svg');
-                    $this->await(static fn (): bool => is_file($project->path('architecture.svg')), what: 'the SVG export');
+                    $this->await(static fn (): bool => \is_file($project->path('architecture.svg')), what: 'the SVG export');
                     Services::resolve($ide, CommandRegistry::class)->run('graph-viewer:export-png');
-                    $this->await(static fn (): bool => is_file($project->path('architecture.png')), what: 'the PNG export');
+                    $this->await(static fn (): bool => \is_file($project->path('architecture.png')), what: 'the PNG export');
                 },
             ],
         );
@@ -517,14 +517,14 @@ final class IdeGraphViewerTest extends TestCase
     public function testTheOutputDirectorySettingPlacesTheArtifact(): void
     {
         $project = new TempProject([
-            '.porta.json' => (string) json_encode([
+            '.porta.json' => (string) \json_encode([
                 // BOTH: this plugin `requires` the image viewer for the shared
                 // rasterizer, and boot skips a plugin whose requirement is off
                 // rather than quietly enabling it.
                 'enabledPlugins' => ['graph-viewer', 'image-viewer'],
                 'plugins' => ['graph-viewer' => ['dotPath' => self::fakeDot(), 'outputDir' => 'docs/arch']],
             ]),
-            'composer.json' => (string) json_encode(['autoload' => ['psr-4' => ['App\\' => 'src/']]]),
+            'composer.json' => (string) \json_encode(['autoload' => ['psr-4' => ['App\\' => 'src/']]]),
             'src/A.php' => "<?php\nnamespace App;\nfinal class A {}\n",
         ]);
         $this->phpOnlyPath($project);
@@ -535,14 +535,14 @@ final class IdeGraphViewerTest extends TestCase
             [
                 200 => function ($tui, $terminal, $ide) use ($project): void {
                     Services::resolve($ide, CommandRegistry::class)->run('graph-viewer:architecture');
-                    $this->await(static fn (): bool => is_file($project->path('docs/arch/architecture.dot')), what: 'the artifact in its configured directory');
+                    $this->await(static fn (): bool => \is_file($project->path('docs/arch/architecture.dot')), what: 'the artifact in its configured directory');
                     $this->assertFileDoesNotExist($project->path('architecture.dot'), 'and not in the default one');
 
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Project Architecture'), what: 'the titled tab');
+                    $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Project Architecture'), what: 'the titled tab');
 
                     // The exports land beside the artifact, wherever it is.
                     Services::resolve($ide, CommandRegistry::class)->run('graph-viewer:export-svg');
-                    $this->await(static fn (): bool => is_file($project->path('docs/arch/architecture.svg')), what: 'the SVG beside it');
+                    $this->await(static fn (): bool => \is_file($project->path('docs/arch/architecture.svg')), what: 'the SVG beside it');
                 },
             ],
         );
@@ -551,7 +551,7 @@ final class IdeGraphViewerTest extends TestCase
     public function testConfiguredGeneratorCommandTakesPrecedence(): void
     {
         $project = new TempProject([
-            '.porta.json' => (string) json_encode([
+            '.porta.json' => (string) \json_encode([
                 'enabledPlugins' => ['graph-viewer', 'image-viewer'],
                 'plugins' => ['graph-viewer' => ['dotPath' => self::fakeDot(), 'command' => 'printf \'digraph FromCommand { X -> Y; }\'']],
             ]),
@@ -564,8 +564,8 @@ final class IdeGraphViewerTest extends TestCase
             [
                 200 => function ($tui, $terminal, $ide) use ($project): void {
                     Services::resolve($ide, CommandRegistry::class)->run('graph-viewer:architecture');
-                    $this->await(static fn (): bool => is_file($project->path('architecture.dot')), what: 'the generated artifact');
-                    $this->assertStringContainsString('FromCommand', (string) file_get_contents($project->path('architecture.dot')), 'the configured command supplied the DOT');
+                    $this->await(static fn (): bool => \is_file($project->path('architecture.dot')), what: 'the generated artifact');
+                    $this->assertStringContainsString('FromCommand', (string) \file_get_contents($project->path('architecture.dot')), 'the configured command supplied the DOT');
                 },
             ],
         );
@@ -574,7 +574,7 @@ final class IdeGraphViewerTest extends TestCase
     public function testGeneratorFailuresFlashInsteadOfOpening(): void
     {
         $project = new TempProject([
-            '.porta.json' => (string) json_encode([
+            '.porta.json' => (string) \json_encode([
                 'enabledPlugins' => ['graph-viewer', 'image-viewer'],
                 'plugins' => ['graph-viewer' => ['dotPath' => self::fakeDot(), 'command' => 'echo doomed >&2; exit 3']],
             ]),
@@ -587,7 +587,7 @@ final class IdeGraphViewerTest extends TestCase
             [
                 200 => function ($tui, $terminal, $ide) use ($project): void {
                     Services::resolve($ide, CommandRegistry::class)->run('graph-viewer:architecture');
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'doomed'), what: 'the failure flash');
+                    $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'doomed'), what: 'the failure flash');
                     $this->assertFileDoesNotExist($project->path('architecture.dot'));
                 },
             ],
@@ -597,7 +597,7 @@ final class IdeGraphViewerTest extends TestCase
     public function testEmptyGeneratorOutputFlashes(): void
     {
         $project = new TempProject([
-            '.porta.json' => (string) json_encode([
+            '.porta.json' => (string) \json_encode([
                 'enabledPlugins' => ['graph-viewer', 'image-viewer'],
                 'plugins' => ['graph-viewer' => ['dotPath' => self::fakeDot(), 'command' => 'true']],
             ]),
@@ -610,7 +610,7 @@ final class IdeGraphViewerTest extends TestCase
             [
                 200 => function ($tui, $terminal, $ide) use ($project): void {
                     Services::resolve($ide, CommandRegistry::class)->run('graph-viewer:architecture');
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'produced no output'), what: 'the empty-output flash');
+                    $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'produced no output'), what: 'the empty-output flash');
                     $this->assertFileDoesNotExist($project->path('architecture.dot'));
                 },
             ],
@@ -622,10 +622,10 @@ final class IdeGraphViewerTest extends TestCase
         $project = new TempProject([
             // The configured output directory cannot be created: a FILE sits
             // where its parent would have to be.
-            '.porta.json' => (string) json_encode(['plugins' => ['graph-viewer' => ['outputDir' => 'blocked/sub']]]),
+            '.porta.json' => (string) \json_encode(['plugins' => ['graph-viewer' => ['outputDir' => 'blocked/sub']]]),
             'blocked' => 'a FILE squatting on the output path',
             'src/A.php' => "<?php\n",
-            'composer.json' => (string) json_encode(['autoload' => ['psr-4' => ['App\\' => 'src/']]]),
+            'composer.json' => (string) \json_encode(['autoload' => ['psr-4' => ['App\\' => 'src/']]]),
         ]);
         $this->phpOnlyPath($project);
 
@@ -635,7 +635,7 @@ final class IdeGraphViewerTest extends TestCase
             [
                 200 => function ($tui, $terminal, $ide): void {
                     Services::resolve($ide, CommandRegistry::class)->run('graph-viewer:architecture');
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Cannot write'), what: 'the unwritable flash');
+                    $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Cannot write'), what: 'the unwritable flash');
 
                     // A text tab active: the plugin export handler self-guards.
                     Services::resolve($ide, CommandRegistry::class)->run('graph-viewer:export-svg');

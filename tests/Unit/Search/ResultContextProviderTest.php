@@ -35,7 +35,7 @@ final class ResultContextProviderTest extends TestCase
 
         $context = $provider->around('a.php', 1);
 
-        $this->assertSame(['new0', 'new2'], array_column($context, 'text'), 'unsaved buffer content wins over disk');
+        $this->assertSame(['new0', 'new2'], \array_column($context, 'text'), 'unsaved buffer content wins over disk');
     }
 
     public function testBufferLookupFallsBackToARealpathMatch(): void
@@ -46,12 +46,12 @@ final class ResultContextProviderTest extends TestCase
         // fallback finds the live buffer instead of falling through to disk.
         $project = new TempProject(['sub/a.php' => "x0\nx1\nx2"]);
         $buffers = new BufferManager();
-        $buffers->open((string) realpath($project->path('sub/a.php')), "y0\ny1\ny2");
+        $buffers->open((string) \realpath($project->path('sub/a.php')), "y0\ny1\ny2");
         $provider = new ResultContextProvider($buffers, new ProjectPaths($project->dir));
 
         $context = $provider->around('sub/../sub/a.php', 1);
 
-        $this->assertSame(['y0', 'y2'], array_column($context, 'text'), 'the realpath fallback finds the live buffer');
+        $this->assertSame(['y0', 'y2'], \array_column($context, 'text'), 'the realpath fallback finds the live buffer');
     }
 
     public function testClampsAtTheStartOfTheFile(): void
@@ -61,7 +61,7 @@ final class ResultContextProviderTest extends TestCase
 
         $context = $provider->around('a.php', 0);
 
-        $this->assertSame([1, 2], array_column($context, 'line'), 'no negative lines before the start');
+        $this->assertSame([1, 2], \array_column($context, 'line'), 'no negative lines before the start');
     }
 
     public function testClampsAtTheEndOfTheFile(): void
@@ -71,7 +71,7 @@ final class ResultContextProviderTest extends TestCase
 
         $context = $provider->around('a.php', 3);
 
-        $this->assertSame([1, 2], array_column($context, 'line'), 'no lines requested past the last one');
+        $this->assertSame([1, 2], \array_column($context, 'line'), 'no lines requested past the last one');
     }
 
     public function testTrimsTrailingWhitespaceFromEachContextLine(): void

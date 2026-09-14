@@ -74,7 +74,7 @@ final class PluginManagerTest extends TestCase
                 new StatusBarWidget(),
                 new CodeEditorWidget(),
                 new FakePluginLifecycle(),
-                new FileTreeWidget(sys_get_temp_dir()),
+                new FileTreeWidget(\sys_get_temp_dir()),
             ),
         );
 
@@ -91,7 +91,7 @@ final class PluginManagerTest extends TestCase
         $manager->commit($api);
 
         $this->assertTrue($manager->hasPlugin('demo'));
-        $this->assertSame(['demo'], array_keys(Probe::get($manager, 'names')));
+        $this->assertSame(['demo'], \array_keys(Probe::get($manager, 'names')));
         $this->assertSame(['demo:hello' => ['ctrl+alt+y']], $manager->defaultKeys(), 'keyless commands contribute no defaults');
         $this->assertEquals([new PluginMenuSpec('demo', 'i:demo:hello')], $manager->menuSpecs());
 
@@ -99,7 +99,7 @@ final class PluginManagerTest extends TestCase
         $manager->registerCommands($registry);
         $this->assertSame('Say Hello', $registry->label('demo:hello'));
         $this->assertContains('demo:quiet', $registry->keyBoundIds(), 'always keyBound so user rebinds dispatch');
-        $this->assertContains('Say Hello', array_column($registry->paletteCommands(), 'label'));
+        $this->assertContains('Say Hello', \array_column($registry->paletteCommands(), 'label'));
     }
 
     public function testCommittedViewsSurviveToTheRegistrarAndLeaveOnDeactivate(): void
@@ -149,9 +149,9 @@ final class PluginManagerTest extends TestCase
         $manager->commit($second);
         $manager->registerCommands($registry);
 
-        $labels = array_column($registry->paletteCommands(), 'label');
-        $this->assertSame(1, \count(array_keys($labels, 'Command A', true)), 'no palette duplicate from re-registration');
-        $this->assertSame(1, \count(array_keys($labels, 'Command B', true)));
+        $labels = \array_column($registry->paletteCommands(), 'label');
+        $this->assertSame(1, \count(\array_keys($labels, 'Command A', true)), 'no palette duplicate from re-registration');
+        $this->assertSame(1, \count(\array_keys($labels, 'Command B', true)));
     }
 
     public function testDeactivateUndoesEverythingAndAllowsAReinstall(): void
@@ -182,13 +182,13 @@ final class PluginManagerTest extends TestCase
         $manager->deactivate('demo', $registry); // unknown now → no-op
 
         $this->assertFalse($manager->hasPlugin('demo'));
-        $this->assertSame(['bystander'], array_keys(Probe::get($manager, 'names')), 'the other plugin is untouched');
+        $this->assertSame(['bystander'], \array_keys(Probe::get($manager, 'names')), 'the other plugin is untouched');
         $this->assertContains('bystander:stay', $registry->keyBoundIds());
         $this->assertSame([], $manager->menuSpecs());
         $this->assertSame([], $manager->defaultKeys());
         $this->assertNotContains('demo:hi', $registry->keyBoundIds(), 'key dispatch died');
         $this->assertContains('core:stay', $registry->keyBoundIds(), 'core commands survive');
-        $this->assertNotContains('Say Hi', array_column($registry->paletteCommands(), 'label'), 'palette entry died');
+        $this->assertNotContains('Say Hi', \array_column($registry->paletteCommands(), 'label'), 'palette entry died');
         $this->assertSame([], $settings->rows('demo'), 'setting descriptors dropped');
         $events->dispatch(new BufferSaved($this->buffer('/a')));
         $this->assertSame(0, $hookRan, 'hooks unsubscribed');
@@ -198,8 +198,8 @@ final class PluginManagerTest extends TestCase
         $again->registerCommand('hi', 'Say Hi Again', static function (): void {});
         $manager->commit($again);
         $manager->registerCommands($registry);
-        $labels = array_column($registry->paletteCommands(), 'label');
-        $this->assertSame(1, \count(array_keys($labels, 'Say Hi Again', true)));
+        $labels = \array_column($registry->paletteCommands(), 'label');
+        $this->assertSame(1, \count(\array_keys($labels, 'Say Hi Again', true)));
         $this->assertNotContains('Say Hi', $labels, 'no stale duplicate came back');
     }
 
@@ -511,7 +511,7 @@ final class PluginManagerTest extends TestCase
 
     private function renderedStatus(): string
     {
-        return \Symfony\Component\Tui\Ansi\AnsiUtils::stripAnsiCodes(implode(' ', $this->status->render(new \Symfony\Component\Tui\Render\RenderContext(120, 1))));
+        return \Symfony\Component\Tui\Ansi\AnsiUtils::stripAnsiCodes(\implode(' ', $this->status->render(new \Symfony\Component\Tui\Render\RenderContext(120, 1))));
     }
 
     public function testDeactivatingOnePluginLeavesAnothersListenerOnTheSameEventAlive(): void

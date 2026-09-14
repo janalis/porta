@@ -172,7 +172,7 @@ final class AbstractToolPluginTest extends TestCase
             new StatusBarWidget(),
             new CodeEditorWidget(),
             new FakePluginLifecycle(),
-            new FileTreeWidget(sys_get_temp_dir()),
+            new FileTreeWidget(\sys_get_temp_dir()),
         ));
 
         return new PluginApi($pluginName, $manager, $this->project->dir, $settings);
@@ -192,7 +192,7 @@ final class AbstractToolPluginTest extends TestCase
     public function testBinaryDiscoveryWalksItsThreeTiers(): void
     {
         $project = new TempProject(['vendor/bin/demo' => "#!/bin/sh\n"]);
-        chmod($project->path('vendor/bin/demo'), permissions: 0o755);
+        \chmod($project->path('vendor/bin/demo'), permissions: 0o755);
         $this->project = $project;
         $api = $this->api();
         $plugin = $this->plugin();
@@ -218,7 +218,7 @@ final class AbstractToolPluginTest extends TestCase
     public function testPathOnlySearchSkipsTheVendorShim(): void
     {
         $project = new TempProject(['vendor/bin/demo' => "#!/bin/sh\n"]);
-        chmod($project->path('vendor/bin/demo'), permissions: 0o755);
+        \chmod($project->path('vendor/bin/demo'), permissions: 0o755);
         $this->project = $project;
 
         $api = $this->api();
@@ -238,7 +238,7 @@ final class AbstractToolPluginTest extends TestCase
         $this->assertStringContainsString('demo not found (vendor/bin or PATH)', $this->flashText($this->status));
 
         $project = new TempProject(['vendor/bin/demo' => "#!/bin/sh\n"]);
-        chmod($project->path('vendor/bin/demo'), permissions: 0o755);
+        \chmod($project->path('vendor/bin/demo'), permissions: 0o755);
         $this->project = $project;
         $api = $this->api();
         $plugin = $this->plugin();
@@ -281,7 +281,7 @@ final class AbstractToolPluginTest extends TestCase
     public function testAvailabilityPredicateFollowsTheBinary(): void
     {
         $project = new TempProject(['vendor/bin/demo' => "#!/bin/sh\n"]);
-        chmod($project->path('vendor/bin/demo'), permissions: 0o755);
+        \chmod($project->path('vendor/bin/demo'), permissions: 0o755);
         $this->project = $project;
         $api = $this->api();
         $found = $this->plugin();
@@ -344,7 +344,7 @@ final class AbstractToolPluginTest extends TestCase
     public function testASpawnThatFailsReleasesTheSlotAndSaysSo(): void
     {
         $this->project = new TempProject(['vendor/bin/demo' => "#!/nonexistent/interpreter\n"]);
-        chmod($this->project->path('vendor/bin/demo'), permissions: 0o755);
+        \chmod($this->project->path('vendor/bin/demo'), permissions: 0o755);
         $api = $this->api();
         $plugin = $this->plugin();
         $plugin->activate($api);
@@ -429,7 +429,7 @@ final class AbstractToolPluginTest extends TestCase
         $plugin = $this->plugin();
         $plugin->activate($api);
         $path = $this->project->path('a.php');
-        file_put_contents($path, data: "formatted\n");
+        \file_put_contents($path, data: "formatted\n");
         $buffer = $this->buffers->open($path, "before\n");
         $this->buffers->setActive($path);
         $this->editor->showDocument($path, $buffer->document); // documentText() reads the widget's
@@ -440,7 +440,7 @@ final class AbstractToolPluginTest extends TestCase
 
         // Started on another file, and that file is not the active one now.
         $other = $this->project->path('b.php');
-        file_put_contents($other, data: "formatted\n");
+        \file_put_contents($other, data: "formatted\n");
         $plugin->callApplyFormatted($api, $other, before: "before\n"); // started elsewhere
         $this->assertSame("before\n", $this->buffers->active()?->document->getText(), 'the active buffer is not the one that was formatted');
 

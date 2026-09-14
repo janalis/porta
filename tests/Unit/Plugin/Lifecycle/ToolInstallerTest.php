@@ -19,9 +19,9 @@ final class ToolInstallerTest extends TestCase
     /** An executable stand-in that records its argv to $logPath, then exits with $exitCode after an optional sleep. */
     private function fakeManager(int $exitCode, string $logPath, int $sleepSeconds = 0): string
     {
-        $path = (string) tempnam(sys_get_temp_dir(), prefix: 'porta-mgr');
-        file_put_contents($path, "#!/bin/sh\nprintf '%s\\n' \"$@\" > '{$logPath}'\nsleep {$sleepSeconds}\nexit {$exitCode}\n");
-        chmod($path, permissions: 0o755);
+        $path = (string) \tempnam(\sys_get_temp_dir(), prefix: 'porta-mgr');
+        \file_put_contents($path, "#!/bin/sh\nprintf '%s\\n' \"$@\" > '{$logPath}'\nsleep {$sleepSeconds}\nexit {$exitCode}\n");
+        \chmod($path, permissions: 0o755);
 
         return $path;
     }
@@ -48,7 +48,7 @@ final class ToolInstallerTest extends TestCase
             return null !== $result;
         }, what: "brew's exit");
         $this->assertTrue($result, 'a zero exit is a successful install');
-        $this->assertSame("install\nphpantom-lsp\n", file_get_contents($log), 'brew install <pkg>, brew winning over cargo');
+        $this->assertSame("install\nphpantom-lsp\n", \file_get_contents($log), 'brew install <pkg>, brew winning over cargo');
     }
 
     public function testSkipsAbsentManagersAndAppendsCargosLockedFlag(): void
@@ -72,7 +72,7 @@ final class ToolInstallerTest extends TestCase
         $this->await(static function () use (&$result): bool {
             return null !== $result;
         }, what: "cargo's exit");
-        $this->assertSame("install\nphpantom_lsp\n--locked\n", file_get_contents($log), 'cargo install <pkg> --locked');
+        $this->assertSame("install\nphpantom_lsp\n--locked\n", \file_get_contents($log), 'cargo install <pkg> --locked');
     }
 
     public function testComposerCandidateGetsTheDevFlag(): void
@@ -89,7 +89,7 @@ final class ToolInstallerTest extends TestCase
         $this->await(static function () use (&$result): bool {
             return null !== $result;
         }, what: "composer's exit");
-        $this->assertSame("require\n--dev\nphpstan/phpstan\n", file_get_contents($log), 'composer require --dev <pkg>');
+        $this->assertSame("require\n--dev\nphpstan/phpstan\n", \file_get_contents($log), 'composer require --dev <pkg>');
     }
 
     public function testReportsFailureWhenTheManagerExitsNonZero(): void

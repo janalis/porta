@@ -199,7 +199,7 @@ final class StatusBarWidget extends AbstractWidget
      */
     private function leftFloor(string $left, int $columns): int
     {
-        return min(AnsiUtils::visibleWidth($left), self::LEFT_FLOOR, intdiv($columns, num2: 2));
+        return \min(AnsiUtils::visibleWidth($left), self::LEFT_FLOOR, \intdiv($columns, num2: 2));
     }
 
     #[\Override]
@@ -213,7 +213,7 @@ final class StatusBarWidget extends AbstractWidget
         // width fight: the right side (whose tail is the static key legend)
         // yields to it. The steady-state left (the file path) yields as before.
         if (null !== $this->flash) {
-            $rightMax = max(0, $columns - min(AnsiUtils::visibleWidth($left), $columns - 3) - 3);
+            $rightMax = \max(0, $columns - \min(AnsiUtils::visibleWidth($left), $columns - 3) - 3);
             $right = AnsiText::truncate($right, $rightMax);
         }
 
@@ -233,9 +233,9 @@ final class StatusBarWidget extends AbstractWidget
         // the last: at 100 columns the name was gone in English, at 140 in
         // German. The right's tail IS that legend, so cutting it here spends
         // the difference on hints nobody needs twice.
-        $right = AnsiText::truncate($right, max(0, $columns - 3 - $this->leftFloor($left, $columns)));
+        $right = AnsiText::truncate($right, \max(0, $columns - 3 - $this->leftFloor($left, $columns)));
         $rightWidth = AnsiUtils::visibleWidth($right);
-        $leftMax = max(0, $columns - $rightWidth - 3);
+        $leftMax = \max(0, $columns - $rightWidth - 3);
         // Elided in the MIDDLE, because the left ends with the file's name and
         // begins with the contributed cells: a tail cut kept `src/Some…` and
         // threw away the one word that says which file this is.
@@ -252,12 +252,12 @@ final class StatusBarWidget extends AbstractWidget
         $this->renderedMenus =
             null !== $this->flash || $left !== $whole
                 ? []
-                : array_values(array_map(
+                : \array_values(\array_map(
                     static fn (StatusMenuSpan $span): StatusMenuSpan => $span->shifted(1),
-                    array_filter($this->cellMenus, static fn (StatusMenuSpan $span): bool => $span->to <= $leftWidth),
+                    \array_filter($this->cellMenus, static fn (StatusMenuSpan $span): bool => $span->to <= $leftWidth),
                 ));
 
-        $gap = max(1, $columns - $leftWidth - $rightWidth - 2);
+        $gap = \max(1, $columns - $leftWidth - $rightWidth - 2);
         // The right segment starts after the leading space, the left, and the
         // gap — so its cells only get screen columns once the gap is known.
         // A flash steals the row, and a truncated right side would put the
@@ -265,11 +265,11 @@ final class StatusBarWidget extends AbstractWidget
         $rightStart = 1 + $leftWidth + $gap;
         $this->renderedClicks = null !== $this->flash
             ? []
-            : array_values(array_map(
+            : \array_values(\array_map(
                 static fn (StatusClickSpan $span): StatusClickSpan => $span->shifted($rightStart),
-                array_filter($this->cellClicks, static fn (StatusClickSpan $span): bool => $span->to <= $rightWidth),
+                \array_filter($this->cellClicks, static fn (StatusClickSpan $span): bool => $span->to <= $rightWidth),
             ));
-        $line = ' '.$left.str_repeat(' ', $gap).$right.' ';
+        $line = ' '.$left.\str_repeat(' ', $gap).$right.' ';
         // '' ellipsis: chrome already gap-padded to the width — never mark it.
         $line = AnsiText::truncate($line, $columns, pad: true, ellipsis: '');
 

@@ -121,7 +121,7 @@ final class PluginApiTest extends TestCase
                     new StatusBarWidget(),
                     $this->editor,
                     new FakePluginLifecycle(),
-                    new FileTreeWidget(sys_get_temp_dir()),
+                    new FileTreeWidget(\sys_get_temp_dir()),
                 ),
             );
         }
@@ -431,7 +431,7 @@ final class PluginApiTest extends TestCase
                 new StatusBarWidget(),
                 new CodeEditorWidget(),
                 lifecycle: $lifecycle = new FakePluginLifecycle(),
-                tree: new FileTreeWidget(sys_get_temp_dir()),
+                tree: new FileTreeWidget(\sys_get_temp_dir()),
             ),
         );
         $api = new PluginApi('demo', $manager, $project->dir, $settings);
@@ -677,7 +677,7 @@ final class PluginApiTest extends TestCase
             new StatusBarWidget(),
             new CodeEditorWidget(),
             new FakePluginLifecycle(),
-            new FileTreeWidget(sys_get_temp_dir()),
+            new FileTreeWidget(\sys_get_temp_dir()),
         ));
         $api = new PluginApi('demo', $manager, '/p', new PluginSettings('/p', [], null, self::projectScope('/p')));
         $api->registerListTool('todo', 'TODO');
@@ -726,11 +726,11 @@ final class PluginApiTest extends TestCase
         ));
         $api = new PluginApi('demo', $manager, $project->dir, new PluginSettings($project->dir, [], null, self::projectScope($project->dir)));
 
-        $this->assertSame(['a.php'], array_map(basename(...), $api->selectedFiles()), 'the tree opens with its cursor row selected');
+        $this->assertSame(['a.php'], \array_map(basename(...), $api->selectedFiles()), 'the tree opens with its cursor row selected');
 
         $tree->clickRow(2, ClickIntent::Add);
 
-        $this->assertSame(['a.php', 'b.php'], array_map(basename(...), $api->selectedFiles()));
+        $this->assertSame(['a.php', 'b.php'], \array_map(basename(...), $api->selectedFiles()));
     }
 
     public function testAPluginMayAskTheUserSomething(): void
@@ -845,7 +845,7 @@ final class PluginApiTest extends TestCase
             $statusBar ?? new StatusBarWidget(),
             $editor,
             new FakePluginLifecycle(),
-            new FileTreeWidget(sys_get_temp_dir()),
+            new FileTreeWidget(\sys_get_temp_dir()),
         ));
 
         return new PluginApi('demo', $manager, '/p', new PluginSettings('/p', [], null, self::projectScope('/p')));
@@ -1046,8 +1046,8 @@ final class PluginApiTest extends TestCase
         $api->registerActions(['zoom_in' => 'Zoom In', 'zoom_out' => 'Zoom Out']);
 
         $buffered = $api->bufferedActions();
-        $this->assertSame(['zoom_in', 'zoom_out'], array_column($buffered, 'id'));
-        $this->assertSame(['Zoom In', 'Zoom Out'], array_column($buffered, 'label'));
+        $this->assertSame(['zoom_in', 'zoom_out'], \array_column($buffered, 'id'));
+        $this->assertSame(['Zoom In', 'Zoom Out'], \array_column($buffered, 'label'));
 
         try {
             $api->registerActions(['bad id' => 'X']);

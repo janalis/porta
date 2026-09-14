@@ -83,7 +83,7 @@ final class WhitespaceGlyphs
         // A run of spaces still open at end-of-line is the trailing one. Marked
         // here rather than as it was written, because until the line ends there
         // is no telling a trailing run from an inner one.
-        return null === $trailing ? $out : substr($out, offset: 0, length: $trailing).str_replace(' ', Glyphs::WHITESPACE_SPACE, substr($out, $trailing));
+        return null === $trailing ? $out : \substr($out, offset: 0, length: $trailing).\str_replace(' ', Glyphs::WHITESPACE_SPACE, \substr($out, $trailing));
     }
 
     private const int TAB_START = 1;
@@ -107,7 +107,7 @@ final class WhitespaceGlyphs
         // Bounded by the indent itself rather than broken out of: the loop then
         // has no exit to get wrong, and `strspn` is how the indent guides find
         // the same run.
-        for ($i = 0, $indent = strspn($raw, characters: " \t"); $i < $indent; ++$i) {
+        for ($i = 0, $indent = \strspn($raw, characters: " \t"); $i < $indent; ++$i) {
             if (' ' === $raw[$i]) {
                 ++$col;
                 continue;

@@ -72,7 +72,7 @@ final class MenuPanelTest extends TestCase
         $this->assertStringContainsString("\x1b[48;5;31m", $segments[2]['segment']);
         $this->assertStringNotContainsString("\x1b[48;5;31m", $segments[0]['segment']);
 
-        $plain = AnsiUtils::stripAnsiCodes(implode("\n", array_column($segments, 'segment')));
+        $plain = AnsiUtils::stripAnsiCodes(\implode("\n", \array_column($segments, 'segment')));
         $this->assertStringContainsString('Save', $plain);
         $this->assertStringContainsString('Ctrl+S', $plain);
     }
@@ -161,7 +161,7 @@ final class MenuPanelTest extends TestCase
 
     public function testLongLabelWithNoShortcutTruncatesToExactlyTheInnerWidth(): void
     {
-        $items = [new MenuItem(str_repeat('x', times: 20), '', static fn () => null)];
+        $items = [new MenuItem(\str_repeat('x', times: 20), '', static fn () => null)];
         $segment = MenuPanel::segments($items, 0, 14, new Styles(DarkTheme::definition()))[0]['segment'];
         // inner = 12: 11 x's plus the truncation ellipsis exactly fill it.
         $this->assertSame(' xxxxxxxxxxx…  ', AnsiUtils::stripAnsiCodes($segment));
@@ -205,10 +205,10 @@ final class MenuPanelTest extends TestCase
         $columns = [];
         foreach (MenuPanel::segments($items, 0, 30, new Styles(DarkTheme::definition()), BaseDirection::Rtl) as $row) {
             $mirrored = AnsiUtils::stripAnsiCodes(Bidi::reorder($row['segment'], BaseDirection::Rtl));
-            $columns[] = mb_strpos($mirrored, needle: 'Ctrl+Q', encoding: 'UTF-8');
+            $columns[] = \mb_strpos($mirrored, needle: 'Ctrl+Q', encoding: 'UTF-8');
         }
 
-        $this->assertCount(1, array_unique($columns), 'every shortcut is in the same column: '.json_encode($columns));
+        $this->assertCount(1, \array_unique($columns), 'every shortcut is in the same column: '.\json_encode($columns));
     }
 
     /**

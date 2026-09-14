@@ -26,8 +26,8 @@ final class SettingsPagesTest extends TestCase
             $this->section(['b' => 'Beta', 'b:one' => 'One'], claims: 'b'),
         ])->all();
 
-        $this->assertSame(['a', 'b', 'b:one'], array_column($pages, 'id'));
-        $this->assertSame(['Alpha', 'Beta', 'One'], array_column($pages, 'label'));
+        $this->assertSame(['a', 'b', 'b:one'], \array_column($pages, 'id'));
+        $this->assertSame(['Alpha', 'Beta', 'One'], \array_column($pages, 'label'));
     }
 
     public function testEveryPageIdIsClaimedBySomeSection(): void
@@ -55,8 +55,8 @@ final class SettingsPagesTest extends TestCase
             $this->section(['b' => 'Beta'], claims: 'b'),
         ])->all();
 
-        $ids = array_column($pages, 'id');
-        $this->assertSame($ids, array_values(array_unique($ids)));
+        $ids = \array_column($pages, 'id');
+        $this->assertSame($ids, \array_values(\array_unique($ids)));
     }
 
     public function testTheFirstClaimingSectionWins(): void

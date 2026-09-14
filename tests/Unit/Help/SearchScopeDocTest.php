@@ -45,7 +45,7 @@ final class SearchScopeDocTest extends TestCase
 
         $this->assertSame([], $missing, 'search scopes the selector offers and the doc never describes');
         foreach ($rows as $label => $describes) {
-            $this->assertNotSame('', trim($describes), "the {$label} row names the scope and says nothing about it");
+            $this->assertNotSame('', \trim($describes), "the {$label} row names the scope and says nothing about it");
         }
     }
 
@@ -56,22 +56,22 @@ final class SearchScopeDocTest extends TestCase
      */
     private static function scopeTable(): array
     {
-        $lines = explode("\n", (string) file_get_contents(self::DOC));
+        $lines = \explode("\n", (string) \file_get_contents(self::DOC));
         $rows = [];
         $inTable = false;
         foreach ($lines as $line) {
-            if (str_starts_with($line, '| Scope | Searches |')) {
+            if (\str_starts_with($line, '| Scope | Searches |')) {
                 $inTable = true;
                 continue;
             }
             if (!$inTable) {
                 continue;
             }
-            if (!str_starts_with($line, '|')) {
+            if (!\str_starts_with($line, '|')) {
                 break;
             }
-            $cells = array_map(trim(...), explode('|', trim($line, characters: '|')));
-            if (2 === \count($cells) && !str_starts_with($cells[0], '---')) {
+            $cells = \array_map(trim(...), \explode('|', \trim($line, characters: '|')));
+            if (2 === \count($cells) && !\str_starts_with($cells[0], '---')) {
                 $rows[$cells[0]] = $cells[1];
             }
         }
@@ -85,7 +85,7 @@ final class SearchScopeDocTest extends TestCase
      */
     public function testTheModuleFallbackIsSpelledOut(): void
     {
-        $doc = mb_strtolower((string) file_get_contents(self::DOC));
+        $doc = \mb_strtolower((string) \file_get_contents(self::DOC));
 
         $this->assertStringContainsString('composer.json', $doc, 'what makes a directory a module');
         $this->assertStringContainsString('or the whole project when there is none', $doc);

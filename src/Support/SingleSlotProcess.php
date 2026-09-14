@@ -38,7 +38,7 @@ final class SingleSlotProcess
                 $this->current = null;
             }
             if (0 !== $code) {
-                $stderr = trim($process->errorOutput());
+                $stderr = \trim($process->errorOutput());
                 $onFailure('' !== $stderr ? $stderr : "{$label} failed (exit {$code})");
 
                 return;

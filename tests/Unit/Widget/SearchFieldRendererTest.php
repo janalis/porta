@@ -39,6 +39,6 @@ final class SearchFieldRendererTest extends TestCase
         $withoutHint = AnsiUtils::stripAnsiCodes(SearchFieldRenderer::row('Find', new TextField('x'), CaretVisibility::Hidden, '', 40, Role::Toolbar, $styles));
 
         $this->assertNotSame($withHint, $withoutHint, 'a real hint changes the row');
-        $this->assertSame(' Find: x'.str_repeat(' ', 40 - \strlen(' Find: x')), $withoutHint, 'an empty hint appends nothing beyond padding');
+        $this->assertSame(' Find: x'.\str_repeat(' ', 40 - \strlen(' Find: x')), $withoutHint, 'an empty hint appends nothing beyond padding');
     }
 }

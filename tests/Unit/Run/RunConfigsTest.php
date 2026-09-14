@@ -12,7 +12,7 @@ final class RunConfigsTest extends TestCase
 {
     public function testComposerScripts(): void
     {
-        $project = new TempProject(['composer.json' => json_encode([
+        $project = new TempProject(['composer.json' => \json_encode([
             'name' => 'acme/x',
             'scripts' => ['test' => 'phpunit', 'cs' => ['step-a', 'step-b'], 'coverage' => 'phpunit --coverage'],
         ])]);
@@ -25,7 +25,7 @@ final class RunConfigsTest extends TestCase
         $tempProject = new TempProject();
         $this->assertSame([], new RunConfigs($tempProject->dir)->composerScripts());
 
-        $noScripts = new TempProject(['composer.json' => json_encode(['name' => 'x'])]);
+        $noScripts = new TempProject(['composer.json' => \json_encode(['name' => 'x'])]);
         $this->assertSame([], new RunConfigs($noScripts->dir)->composerScripts());
 
         $corrupt = new TempProject(['composer.json' => '{not json']);
@@ -65,13 +65,13 @@ final class RunConfigsTest extends TestCase
     public function testDiscoverCombinesEverythingWithCurrentFileFirst(): void
     {
         $project = new TempProject([
-            'composer.json' => json_encode(['scripts' => ['test' => 'phpunit']]),
+            'composer.json' => \json_encode(['scripts' => ['test' => 'phpunit']]),
             'Makefile' => "build:\n\techo\n",
         ]);
         $current = $project->write('src/Foo.php', "<?php\n");
 
         $tasks = new RunConfigs($project->dir)->discover($current);
-        $labels = array_column($tasks, 'label');
+        $labels = \array_column($tasks, 'label');
 
         $this->assertSame(
             [
@@ -120,7 +120,7 @@ final class RunConfigsTest extends TestCase
 
     public function testEmptyStringScriptNameIsFiltered(): void
     {
-        $project = new TempProject(['composer.json' => (string) json_encode(['scripts' => ['' => 'do-nothing', 'test' => 'phpunit']])]);
+        $project = new TempProject(['composer.json' => (string) \json_encode(['scripts' => ['' => 'do-nothing', 'test' => 'phpunit']])]);
         $this->assertSame(['test'], new RunConfigs($project->dir)->composerScripts());
     }
 
@@ -128,10 +128,10 @@ final class RunConfigsTest extends TestCase
     {
         // The empty key sorts BEFORE the valid one, so filtering it out
         // leaves a gap unless the result is reindexed.
-        $project = new TempProject(['composer.json' => (string) json_encode(['scripts' => ['' => 'x', 'test' => 'phpunit']])]);
+        $project = new TempProject(['composer.json' => (string) \json_encode(['scripts' => ['' => 'x', 'test' => 'phpunit']])]);
         $names = new RunConfigs($project->dir)->composerScripts();
         $this->assertSame(['test'], $names);
-        $this->assertSame('["test"]', json_encode($names), 'stays a JSON array, not an object');
+        $this->assertSame('["test"]', \json_encode($names), 'stays a JSON array, not an object');
     }
 
     public function testAPurelyNumericScriptNameDoesNotCrashDiscovery(): void
@@ -139,7 +139,7 @@ final class RunConfigsTest extends TestCase
         // JSON decodes a numeric string key ("0") back to an int array key
         // — composerScripts() must still hand the filter closure a real
         // string, or a strict-typed parameter throws under strict_types.
-        $project = new TempProject(['composer.json' => (string) json_encode(['scripts' => ['0' => 'legacy', 'test' => 'phpunit']])]);
+        $project = new TempProject(['composer.json' => (string) \json_encode(['scripts' => ['0' => 'legacy', 'test' => 'phpunit']])]);
         $this->assertSame(['0', 'test'], new RunConfigs($project->dir)->composerScripts());
     }
 

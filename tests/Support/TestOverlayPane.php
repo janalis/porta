@@ -49,9 +49,9 @@ final class TestOverlayPane extends AbstractWidget implements MenuOverlayHost
 
     public function render(RenderContext $context): array
     {
-        $columns = max(0, $context->getColumns());
+        $columns = \max(0, $context->getColumns());
 
-        return $this->withMenuOverlay(array_fill(0, max(0, $context->getRows()), str_repeat('.', $columns)), $columns);
+        return $this->withMenuOverlay(\array_fill(0, \max(0, $context->getRows()), \str_repeat('.', $columns)), $columns);
     }
 
     public function handleInput(string $data): void {}

@@ -52,7 +52,7 @@ final class PluginStatusSegmentsTest extends TestCase
         $menu = static fn (): array => [];
         $cells = $this->slot([new StatusCell('⎇ main', StatusTone::Accent, $menu)])->statusCells();
 
-        self::assertCount(1, $cells);
+        $this->assertCount(1, $cells);
         $this->assertSame('⎇ main', $cells[0]->text);
         $this->assertSame(StatusTone::Accent, $cells[0]->tone);
         $this->assertSame($menu, $cells[0]->menu);
@@ -65,7 +65,7 @@ final class PluginStatusSegmentsTest extends TestCase
         // cell-returning plugin does not shuffle what was already there.
         $cells = $this->slot(['▶ build', new StatusCell('⎇ main', StatusTone::Accent), '3 ahead'])->statusCells();
 
-        $this->assertSame(['▶ build · 3 ahead', '⎇ main'], array_map(static fn (StatusCell $c): string => $c->text, $cells));
+        $this->assertSame(['▶ build · 3 ahead', '⎇ main'], \array_map(static fn (StatusCell $c): string => $c->text, $cells));
     }
 
     public function testEveryPluginSegmentPaintsInAnExistingRole(): void

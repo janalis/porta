@@ -26,12 +26,12 @@ final class JsonFile
      */
     public static function read(string $path, ?string &$error = null): ?array
     {
-        if (!is_file($path)) {
+        if (!\is_file($path)) {
             return null;
         }
         try {
             /** @var array<array-key, mixed>|scalar|null $data */
-            $data = json_decode((string) file_get_contents($path), associative: true, depth: 512, flags: JSON_THROW_ON_ERROR);
+            $data = \json_decode((string) \file_get_contents($path), associative: true, depth: 512, flags: \JSON_THROW_ON_ERROR);
         } catch (\JsonException $e) {
             $error = $e->getMessage();
 
@@ -60,7 +60,7 @@ final class JsonFile
     public static function write(Filesystem $fs, string $path, array $data, bool $trailingNewline = false): bool
     {
         try {
-            $fs->dumpFile($path, json_encode($data, \JSON_THROW_ON_ERROR | \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES).($trailingNewline ? \PHP_EOL : ''));
+            $fs->dumpFile($path, \json_encode($data, \JSON_THROW_ON_ERROR | \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES).($trailingNewline ? \PHP_EOL : ''));
         } catch (IOExceptionInterface|\JsonException) {
             return false;
         }

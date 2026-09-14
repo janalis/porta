@@ -25,7 +25,7 @@ final class FakeFindTarget implements FindTarget
 
     public function findLines(): array
     {
-        return array_values($this->document->getLines());
+        return \array_values($this->document->getLines());
     }
 
     public function findVersion(): int

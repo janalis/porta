@@ -41,7 +41,7 @@ final class BreadcrumbTrailProviderTest extends TestCase
         ]);
         $this->editor->getDocument()->setCursor(2, 0);
 
-        self::assertSame(
+        $this->assertSame(
             [['label' => 'Svc', 'line' => 0], ['label' => 'run', 'line' => 1]],
             $provider->trail(),
         );
@@ -56,10 +56,10 @@ final class BreadcrumbTrailProviderTest extends TestCase
         $this->scopes->set('/p/a.php', [['label' => 'FromTheServer', 'startLine' => 1, 'endLine' => 99, 'kind' => 'type']]);
         $this->editor->getDocument()->setCursor(5, 0);
 
-        $labels = array_column($provider->trail(), 'label');
+        $labels = \array_column($provider->trail(), 'label');
 
-        self::assertNotContains('FromTheServer', $labels);
-        self::assertSame(['Real', 'go'], $labels);
+        $this->assertNotContains('FromTheServer', $labels);
+        $this->assertSame(['Real', 'go'], $labels);
     }
 
     public function testAFileWithNoStoredScopesHasNoTrail(): void
@@ -67,11 +67,11 @@ final class BreadcrumbTrailProviderTest extends TestCase
         $provider = $this->provider();
         $this->editor->showDocument('/p/a.ts', new Document("let x = 1;\n"));
 
-        self::assertSame([], $provider->trail());
+        $this->assertSame([], $provider->trail());
     }
 
     public function testNoOpenFileHasNoTrail(): void
     {
-        self::assertSame([], $this->provider()->trail());
+        $this->assertSame([], $this->provider()->trail());
     }
 }

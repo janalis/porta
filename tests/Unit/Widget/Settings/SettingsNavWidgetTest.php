@@ -63,7 +63,7 @@ final class SettingsNavWidgetTest extends TestCase
         $widget->handleInput("\x1b[B"); // move the selection: invalidates
         $second = $widget->render(new RenderContext(24, 20));
         $this->assertNotSame($first, $second, 'a selection move must miss the memo');
-        $this->assertNotSame(implode('', $first), implode('', $second), 'the moved shade recolors the rows');
+        $this->assertNotSame(\implode('', $first), \implode('', $second), 'the moved shade recolors the rows');
     }
 
     public function testRendersSectionsHeaderAndLanguages(): void
@@ -272,7 +272,7 @@ final class SettingsNavWidgetTest extends TestCase
     {
         $lines = [];
         foreach ($widget->render(new RenderContext($width, $rows)) as $line) {
-            $lines[] = rtrim(AnsiUtils::stripAnsiCodes($line));
+            $lines[] = \rtrim(AnsiUtils::stripAnsiCodes($line));
         }
 
         return $lines;
@@ -295,8 +295,8 @@ final class SettingsNavWidgetTest extends TestCase
 
         $rows = $this->navRows($widget, 22, rows: 22);
 
-        $this->assertSame('', trim($rows[0]), 'nothing is clipped above yet, so the top edge stays blank');
-        $this->assertStringContainsString(Glyphs::SCROLL_DOWN, end($rows), 'and the bottom says there is more');
+        $this->assertSame('', \trim($rows[0]), 'nothing is clipped above yet, so the top edge stays blank');
+        $this->assertStringContainsString(Glyphs::SCROLL_DOWN, \end($rows), 'and the bottom says there is more');
         $this->assertContains(' General', $rows, 'the list itself still starts where it did');
     }
 
@@ -312,7 +312,7 @@ final class SettingsNavWidgetTest extends TestCase
         $rows = $this->navRows($widget, 22, rows: 22);
 
         $this->assertStringContainsString(Glyphs::SCROLL_UP, $rows[0]);
-        $this->assertSame('', trim((string) end($rows)), 'nothing below the last entry, so the bottom edge is blank');
+        $this->assertSame('', \trim((string) \end($rows)), 'nothing below the last entry, so the bottom edge is blank');
     }
 
     /**
@@ -328,9 +328,9 @@ final class SettingsNavWidgetTest extends TestCase
 
         $rows = $this->navRows($widget, 22, rows: $count);
 
-        $this->assertStringNotContainsString(Glyphs::SCROLL_DOWN, implode('', $rows));
+        $this->assertStringNotContainsString(Glyphs::SCROLL_DOWN, \implode('', $rows));
         $this->assertSame(' General', $rows[0]);
-        $this->assertSame(' '.$this->lastEntryLabel($widget), rtrim((string) end($rows)), 'and the last entry is drawn, not traded for a marker');
+        $this->assertSame(' '.$this->lastEntryLabel($widget), \rtrim((string) \end($rows)), 'and the last entry is drawn, not traded for a marker');
     }
 
     private function lastEntryLabel(SettingsNavWidget $widget): string
@@ -349,8 +349,8 @@ final class SettingsNavWidgetTest extends TestCase
         $rows = $this->navRows($widget, 22, rows: 40);
 
         $this->assertSame(' General', $rows[0], 'the first entry is on the first row');
-        $this->assertStringNotContainsString(Glyphs::SCROLL_DOWN, implode('', $rows));
-        $this->assertStringNotContainsString(Glyphs::SCROLL_UP, implode('', $rows));
+        $this->assertStringNotContainsString(Glyphs::SCROLL_DOWN, \implode('', $rows));
+        $this->assertStringNotContainsString(Glyphs::SCROLL_UP, \implode('', $rows));
     }
 
     public function testMaxWidthIsSixty(): void
@@ -430,7 +430,7 @@ final class SettingsNavWidgetTest extends TestCase
         $widget = $this->widget();
         $widget->setPluginEntries(['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta']);
         $rows = $widget->render(new RenderContext(24, 6));
-        $this->assertSame('', trim(AnsiUtils::stripAnsiCodes($rows[0])), 'the first line is the reserved indicator slot');
+        $this->assertSame('', \trim(AnsiUtils::stripAnsiCodes($rows[0])), 'the first line is the reserved indicator slot');
 
         $widget->handleClick(1);
 
@@ -469,7 +469,7 @@ final class SettingsNavWidgetTest extends TestCase
         $widget = $this->widget();
         $widget->setPluginEntries(['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta']);
         $rows = $widget->render(new RenderContext(24, 6));
-        $this->assertStringContainsString(Glyphs::SCROLL_DOWN, end($rows), 'the list overflows, so the ▼ is drawn');
+        $this->assertStringContainsString(Glyphs::SCROLL_DOWN, \end($rows), 'the list overflows, so the ▼ is drawn');
         $before = $widget->selectedId();
 
         $widget->handleClick(5); // the last row of a six-row pane: the ▼ itself
@@ -487,6 +487,6 @@ final class SettingsNavWidgetTest extends TestCase
         $widget->hoverRow(5);
 
         $rows = $widget->render(new RenderContext(24, 6));
-        $this->assertStringNotContainsString("\x1b[48;5;236m", implode('', $rows), 'nothing was tinted by hovering the indicator');
+        $this->assertStringNotContainsString("\x1b[48;5;236m", \implode('', $rows), 'nothing was tinted by hovering the indicator');
     }
 }

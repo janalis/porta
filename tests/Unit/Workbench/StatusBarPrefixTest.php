@@ -37,7 +37,7 @@ final class StatusBarPrefixTest extends TestCase
     /** @param list<list<StatusCell>> $perSource */
     private function provider(array $perSource): StatusBarProvider
     {
-        $sources = array_map(
+        $sources = \array_map(
             static fn (array $cells): StatusSegment => new class($cells) implements StatusSegment {
                 /** @param list<StatusCell> $cells */
                 public function __construct(
@@ -57,11 +57,11 @@ final class StatusBarPrefixTest extends TestCase
             new CodeEditorWidget(),
             new EditorPanes(),
             $sources,
-            new LspSessionPool(sys_get_temp_dir(), new FixedActiveFile(), new Translator('en')),
+            new LspSessionPool(\sys_get_temp_dir(), new FixedActiveFile(), new Translator('en')),
             new ServerProgress(new Tui(terminal: new VirtualTerminal(columns: 100, rows: 20))),
             Styles::dark(),
             new Translator('en'),
-            new ProjectPaths(sys_get_temp_dir()),
+            new ProjectPaths(\sys_get_temp_dir()),
         );
     }
 
@@ -71,7 +71,7 @@ final class StatusBarPrefixTest extends TestCase
 
         $this->assertCount(1, $segments['menus']);
         $span = $segments['menus'][0];
-        self::assertInstanceOf(StatusMenuSpan::class, $span);
+        $this->assertInstanceOf(StatusMenuSpan::class, $span);
         $this->assertSame(0, $span->from, 'the first cell starts at column 0');
         $this->assertSame(AnsiUtils::visibleWidth('⎇ main'), $span->to, 'and ends at its visible width, not its byte length');
     }

@@ -93,7 +93,7 @@ final class ContainerDebugCommand extends Command
         ?string $tagView = null,
     ): int {
         // Non-destructive: only the keys a caller has not already set.
-        $_ENV += ['PORTA_ROOT_DIR' => (string) getcwd()] + self::ENV_DEFAULTS;
+        $_ENV += ['PORTA_ROOT_DIR' => (string) \getcwd()] + self::ENV_DEFAULTS;
 
         $container = new ContainerBuilder();
         new PhpFileLoader($container, new FileLocator($this->configDir))->load('services.php');
@@ -131,7 +131,7 @@ final class ContainerDebugCommand extends Command
         foreach ($tagged as $id => $tags) {
             /** @var mixed $attributes */
             foreach ($tags as $attributes) {
-                $rows[] = [$id, [] === $attributes ? '' : (string) json_encode($attributes)];
+                $rows[] = [$id, [] === $attributes ? '' : (string) \json_encode($attributes)];
             }
         }
         $io->table(['Service', 'Tag attributes'], $rows);
@@ -140,7 +140,7 @@ final class ContainerDebugCommand extends Command
     private function printAliases(OutputInterface $output, SymfonyStyle $io, ContainerBuilder $container, string $view): void
     {
         $aliases = $container->getAliases();
-        ksort($aliases);
+        \ksort($aliases);
         $output->writeln(\sprintf('# %d alias(es) — %s view', \count($aliases), $view));
         $rows = [];
         foreach ($aliases as $alias => $target) {
@@ -152,7 +152,7 @@ final class ContainerDebugCommand extends Command
     private function printServices(OutputInterface $output, SymfonyStyle $io, ContainerBuilder $container, string $view): void
     {
         $definitions = $container->getDefinitions();
-        ksort($definitions);
+        \ksort($definitions);
         $output->writeln(\sprintf('# %d service(s) — %s view', \count($definitions), $view));
         $rows = [];
         foreach ($definitions as $id => $definition) {
@@ -175,6 +175,6 @@ final class ContainerDebugCommand extends Command
             $flags[] = 'factory';
         }
 
-        return [] === $flags ? '' : '['.implode(',', $flags).']';
+        return [] === $flags ? '' : '['.\implode(',', $flags).']';
     }
 }

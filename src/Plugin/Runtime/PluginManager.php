@@ -153,13 +153,13 @@ final class PluginManager implements
 
     public function hasPlugin(string $name): bool
     {
-        return array_key_exists($name, $this->names);
+        return \array_key_exists($name, $this->names);
     }
 
     /** Whether $plugin has registered a language server (so an enable/disable/setting change reconfigures LSP). */
     public function providesLanguageServer(string $plugin): bool
     {
-        return null !== array_find($this->languageServers, static fn (array $server): bool => $plugin === $server['plugin']);
+        return null !== \array_find($this->languageServers, static fn (array $server): bool => $plugin === $server['plugin']);
     }
 
     /**
@@ -274,7 +274,7 @@ final class PluginManager implements
     {
         $servers = [];
         foreach ($this->languageServers as $server) {
-            if (array_key_exists($server['languageId'], $servers)) {
+            if (\array_key_exists($server['languageId'], $servers)) {
                 continue; // an earlier provider already serves this language
             }
             try {
@@ -285,7 +285,7 @@ final class PluginManager implements
                 // signature on the render path, where a NAN/INF/bad-UTF-8
                 // value from a plugin would otherwise become a recurring
                 // render fault instead of one reported plugin failure.
-                json_encode($options, \JSON_THROW_ON_ERROR);
+                \json_encode($options, \JSON_THROW_ON_ERROR);
             } catch (\Throwable $error) {
                 $this->reportFailure($server['plugin'], $error);
 
@@ -294,7 +294,7 @@ final class PluginManager implements
             if (null === $command || [] === $command) {
                 continue; // the server's binary is not available
             }
-            $entry = ['command' => array_values($command), 'name' => $server['name']];
+            $entry = ['command' => \array_values($command), 'name' => $server['name']];
             if ([] !== $options) {
                 $entry['initializationOptions'] = $options;
             }
@@ -315,7 +315,7 @@ final class PluginManager implements
      */
     public function deactivate(string $name, CommandRegistry $registry): void
     {
-        if (!array_key_exists($name, $this->names)) {
+        if (!\array_key_exists($name, $this->names)) {
             return;
         }
         unset($this->names[$name]);
@@ -334,7 +334,7 @@ final class PluginManager implements
         }
 
         $removed = [];
-        $this->commands = array_values(array_filter($this->commands, function (array $command) use ($name, &$removed): bool {
+        $this->commands = \array_values(\array_filter($this->commands, function (array $command) use ($name, &$removed): bool {
             if ($name !== $command['plugin']) {
                 return true;
             }
@@ -343,23 +343,23 @@ final class PluginManager implements
 
             return false;
         }));
-        $this->menuSpecs = array_values(array_filter($this->menuSpecs, static fn (PluginMenuSpec $spec): bool => $name !== $spec->plugin));
-        $this->languageServers = array_values(array_filter($this->languageServers, static fn (array $server): bool => $name !== $server['plugin']));
-        $this->installers = array_values(array_filter($this->installers, static fn (array $installer): bool => $name !== $installer['plugin']));
-        $this->highlighters = array_values(array_filter($this->highlighters, static fn (array $highlighter): bool => $name !== $highlighter['plugin']));
-        $this->tokenSpans = array_values(array_filter($this->tokenSpans, static fn (array $spans): bool => $name !== $spans['plugin']));
-        $this->viewers = array_values(array_filter($this->viewers, static fn (array $viewer): bool => $name !== $viewer['plugin']));
-        $this->panes = array_values(array_filter($this->panes, static fn (array $pane): bool => $name !== $pane['plugin']));
-        $this->views = array_values(array_filter($this->views, static fn (array $view): bool => $name !== $view['plugin']));
-        $this->menus = array_values(array_filter($this->menus, static fn (array $menu): bool => $name !== $menu['plugin']));
-        $this->settingHooks = array_values(array_filter($this->settingHooks, static fn (array $hook): bool => $name !== $hook['plugin']));
-        $this->actions = array_values(array_filter($this->actions, static fn (array $action): bool => $name !== $action['plugin']));
-        $this->listTools = array_values(array_filter($this->listTools, static fn (array $tool): bool => $name !== $tool['plugin']));
-        $this->statusSegments = array_values(array_filter($this->statusSegments, static fn (array $segment): bool => $name !== $segment['plugin']));
-        $this->debugAdapters = array_values(array_filter($this->debugAdapters, static fn (array $adapter): bool => $name !== $adapter['plugin']));
+        $this->menuSpecs = \array_values(\array_filter($this->menuSpecs, static fn (PluginMenuSpec $spec): bool => $name !== $spec->plugin));
+        $this->languageServers = \array_values(\array_filter($this->languageServers, static fn (array $server): bool => $name !== $server['plugin']));
+        $this->installers = \array_values(\array_filter($this->installers, static fn (array $installer): bool => $name !== $installer['plugin']));
+        $this->highlighters = \array_values(\array_filter($this->highlighters, static fn (array $highlighter): bool => $name !== $highlighter['plugin']));
+        $this->tokenSpans = \array_values(\array_filter($this->tokenSpans, static fn (array $spans): bool => $name !== $spans['plugin']));
+        $this->viewers = \array_values(\array_filter($this->viewers, static fn (array $viewer): bool => $name !== $viewer['plugin']));
+        $this->panes = \array_values(\array_filter($this->panes, static fn (array $pane): bool => $name !== $pane['plugin']));
+        $this->views = \array_values(\array_filter($this->views, static fn (array $view): bool => $name !== $view['plugin']));
+        $this->menus = \array_values(\array_filter($this->menus, static fn (array $menu): bool => $name !== $menu['plugin']));
+        $this->settingHooks = \array_values(\array_filter($this->settingHooks, static fn (array $hook): bool => $name !== $hook['plugin']));
+        $this->actions = \array_values(\array_filter($this->actions, static fn (array $action): bool => $name !== $action['plugin']));
+        $this->listTools = \array_values(\array_filter($this->listTools, static fn (array $tool): bool => $name !== $tool['plugin']));
+        $this->statusSegments = \array_values(\array_filter($this->statusSegments, static fn (array $segment): bool => $name !== $segment['plugin']));
+        $this->debugAdapters = \array_values(\array_filter($this->debugAdapters, static fn (array $adapter): bool => $name !== $adapter['plugin']));
         $this->registered = \count($this->commands);
 
-        foreach (array_keys($this->reported) as $channel) {
+        foreach (\array_keys($this->reported) as $channel) {
             unset($this->reported[$channel][$name]);
         }
         $registry->remove($removed);
@@ -436,7 +436,7 @@ final class PluginManager implements
      */
     public function menuSpecs(MenuSurface $surface = MenuSurface::Plugins): array
     {
-        return array_values(array_filter($this->menuSpecs, static fn (PluginMenuSpec $spec): bool => $surface === $spec->surface));
+        return \array_values(\array_filter($this->menuSpecs, static fn (PluginMenuSpec $spec): bool => $surface === $spec->surface));
     }
 
     /**
@@ -587,7 +587,7 @@ final class PluginManager implements
     {
         $adapters = [];
         foreach ($this->debugAdapters as $adapter) {
-            if (array_key_exists($adapter['languageId'], $adapters)) {
+            if (\array_key_exists($adapter['languageId'], $adapters)) {
                 continue; // an earlier plugin already claims this language
             }
             try {
@@ -600,7 +600,7 @@ final class PluginManager implements
             if (null === $command || [] === $command) {
                 continue; // the adapter's binary is not available
             }
-            $adapters[$adapter['languageId']] = array_values($command);
+            $adapters[$adapter['languageId']] = \array_values($command);
         }
 
         return $adapters;
@@ -651,7 +651,7 @@ final class PluginManager implements
     #[\Override]
     public function listTools(): array
     {
-        return array_map(fn (array $tool): array => [
+        return \array_map(fn (array $tool): array => [
             ...$tool,
             'rerun' => null === $tool['rerun'] ? null : $this->wrapCommand($tool['plugin'], $tool['rerun']),
             'activate' => null === $tool['activate'] ? null : $this->wrapActivate($tool['plugin'], $tool['activate']),
@@ -700,7 +700,7 @@ final class PluginManager implements
     /** Report a plugin's failure at most once per $channel — see {@see $reported}. */
     private function reportOnce(string $channel, string $plugin, \Throwable $error): void
     {
-        if (array_key_exists($plugin, $this->reported[$channel] ?? [])) {
+        if (\array_key_exists($plugin, $this->reported[$channel] ?? [])) {
             return;
         }
         $this->reported[$channel][$plugin] = true;

@@ -32,11 +32,11 @@ final class FilesTest extends TestCase
     {
         $project = new TempProject(['a.txt' => 'hello']);
         $path = $project->path('a.txt');
-        chmod($path, permissions: 0o444);
+        \chmod($path, permissions: 0o444);
         try {
             $this->assertNull(Files::readWritable($path), 'existing but unwritable must not be read as writable');
         } finally {
-            chmod($path, permissions: 0o644);
+            \chmod($path, permissions: 0o644);
         }
     }
 

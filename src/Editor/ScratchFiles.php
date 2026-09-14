@@ -75,7 +75,7 @@ final readonly class ScratchFiles
         try {
             $this->fs->dumpFile($path, content: '');
         } catch (\Throwable) {
-            $this->notifier->error($this->translator->trans('Cannot create %file%', ['%file%' => basename($path)]));
+            $this->notifier->error($this->translator->trans('Cannot create %file%', ['%file%' => \basename($path)]));
 
             return;
         }
@@ -91,7 +91,7 @@ final readonly class ScratchFiles
     {
         $n = 1;
         $path = \sprintf('%s/scratch_%d.%s', $dir, $n, $extension);
-        while (file_exists($path)) {
+        while (\file_exists($path)) {
             $path = \sprintf('%s/scratch_%d.%s', $dir, ++$n, $extension);
         }
 

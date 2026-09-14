@@ -27,7 +27,7 @@ final class DiagnosticNavigationTest extends TestCase
         $this->buffers = new BufferManager();
         $this->editor = new CodeEditorWidget();
         $this->status = new StatusBarWidget();
-        $text = str_repeat("// line\n", times: 12);
+        $text = \str_repeat("// line\n", times: 12);
 
         $buffer = null === $paneId ? $this->buffers->open('/p/a.php', $text) : $this->buffers->openPane('/p/a.php', $paneId, payload: null);
         $this->buffers->setActive('/p/a.php');
@@ -50,7 +50,7 @@ final class DiagnosticNavigationTest extends TestCase
 
     private function flashed(): string
     {
-        return AnsiUtils::stripAnsiCodes(implode('', $this->status->render(new RenderContext(100, 1))));
+        return AnsiUtils::stripAnsiCodes(\implode('', $this->status->render(new RenderContext(100, 1))));
     }
 
     private function caretLine(): int

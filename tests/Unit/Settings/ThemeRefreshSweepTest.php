@@ -85,7 +85,7 @@ final class ThemeRefreshSweepTest extends TestCase
             $regions,
             new EditorPanes(),
             new TabBarWidget(),
-            TestWorkspaceLayout::create(rootDir: sys_get_temp_dir()),
+            TestWorkspaceLayout::create(rootDir: \sys_get_temp_dir()),
             new EventDispatcher(),
             self::formatOnSave(),
             true,
@@ -95,7 +95,7 @@ final class ThemeRefreshSweepTest extends TestCase
     private static function formatOnSave(): FormatOnSave
     {
         $editor = new CodeEditorWidget();
-        $pool = new LspSessionPool(sys_get_temp_dir(), new FixedActiveFile(), new Translator('en'));
+        $pool = new LspSessionPool(\sys_get_temp_dir(), new FixedActiveFile(), new Translator('en'));
 
         return new FormatOnSave(
             $pool,
@@ -171,7 +171,7 @@ final class ThemeRefreshSweepTest extends TestCase
             new ViewRegions(Styles::dark()),
             new EditorPanes(),
             new TabBarWidget(),
-            TestWorkspaceLayout::create(rootDir: sys_get_temp_dir()),
+            TestWorkspaceLayout::create(rootDir: \sys_get_temp_dir()),
             new EventDispatcher(),
             self::formatOnSave(),
             true,
@@ -208,7 +208,7 @@ final class ThemeRefreshSweepTest extends TestCase
             new ViewRegions(Styles::dark()),
             new EditorPanes(),
             new TabBarWidget(),
-            TestWorkspaceLayout::create(rootDir: sys_get_temp_dir()),
+            TestWorkspaceLayout::create(rootDir: \sys_get_temp_dir()),
             new EventDispatcher(),
             self::formatOnSave(),
             false, // ansi disabled
@@ -297,7 +297,7 @@ final class ThemeRefreshSweepTest extends TestCase
             new ViewRegions(Styles::dark()),
             $panes,
             new TabBarWidget(),
-            TestWorkspaceLayout::create(rootDir: sys_get_temp_dir()),
+            TestWorkspaceLayout::create(rootDir: \sys_get_temp_dir()),
             new EventDispatcher(),
             self::formatOnSave(),
             true,

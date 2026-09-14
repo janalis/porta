@@ -79,7 +79,7 @@ final class NavigationController extends AbstractLspController implements Editor
             return null;
         }
         $lineText = $doc->getLine($line);
-        $word = substr($lineText, $range['startCol'], $range['endCol'] - $range['startCol']);
+        $word = \substr($lineText, $range['startCol'], $range['endCol'] - $range['startCol']);
         if ($this->boundToProjectSymbol($lineText, $range['startCol'], $range['endCol'], $word)) {
             return null;
         }
@@ -99,28 +99,28 @@ final class NavigationController extends AbstractLspController implements Editor
      */
     private function boundToProjectSymbol(string $lineText, int $startCol, int $endCol, string $word): bool
     {
-        $before = rtrim(substr($lineText, offset: 0, length: $startCol));
-        if (str_ends_with($before, '->') || str_ends_with($before, '::')) {
+        $before = \rtrim(\substr($lineText, offset: 0, length: $startCol));
+        if (\str_ends_with($before, '->') || \str_ends_with($before, '::')) {
             return true;
         }
         // `.` is member access in these languages; in PHP it is concatenation,
         // where `'a'.count($x)` really is the global function.
         $language = $this->editor->getLanguage();
-        if (\in_array($language, ['python', 'javascript', 'typescript'], strict: true) && str_ends_with($before, '.')) {
+        if (\in_array($language, ['python', 'javascript', 'typescript'], strict: true) && \str_ends_with($before, '.')) {
             return true;
         }
         // A backslash flanked by identifier text is a namespace-qualified name.
-        if (1 === preg_match('/\w\\\\$/', $before) || str_starts_with(substr($lineText, $endCol), '\\')) {
+        if (1 === \preg_match('/\w\\\\$/', $before) || \str_starts_with(\substr($lineText, $endCol), '\\')) {
             return true;
         }
-        if (1 === preg_match('/\b(?:function|class|interface|trait|enum|const|def)$/', $before)) {
+        if (1 === \preg_match('/\b(?:function|class|interface|trait|enum|const|def)$/', $before)) {
             return true;
         }
 
         // A qualified `use App\...\Word;` (or `... as Word;`) rebinds the bare
         // name for the whole file, so the import's target must answer.
-        return 1 === preg_match(
-            '/^[ \t]*use\s+(?:function\s+|const\s+)?(?:[\w\\\\]*\\\\'.preg_quote($word, delimiter: '/').'|[^;\n]*\bas\s+'.preg_quote($word, delimiter: '/').')\s*;/mi',
+        return 1 === \preg_match(
+            '/^[ \t]*use\s+(?:function\s+|const\s+)?(?:[\w\\\\]*\\\\'.\preg_quote($word, delimiter: '/').'|[^;\n]*\bas\s+'.\preg_quote($word, delimiter: '/').')\s*;/mi',
             $this->editor->getDocument()->getText(),
         );
     }
@@ -256,7 +256,7 @@ final class NavigationController extends AbstractLspController implements Editor
             $rows[] = [
                 'path' => $this->paths->relative($target),
                 'line' => $line,
-                'text' => trim($this->lineAt($target, $line)),
+                'text' => \trim($this->lineAt($target, $line)),
             ];
         }
 
@@ -361,7 +361,7 @@ final class NavigationController extends AbstractLspController implements Editor
                 // selection — so slicing the text to twelve threw away
                 // documentation the surface was perfectly able to show, and
                 // did it silently.
-                $items = array_map(static fn (string $l) => ['label' => $l, 'hint' => '', 'value' => ''], explode("\n", $text));
+                $items = \array_map(static fn (string $l) => ['label' => $l, 'hint' => '', 'value' => ''], \explode("\n", $text));
                 $this->editor->openListOverlay($this->trans('Documentation'), $items, static function (): void {});
                 $this->tui->requestRender();
 
@@ -505,9 +505,9 @@ final class NavigationController extends AbstractLspController implements Editor
                 // scrolls, so a window that stopped at six was cutting off
                 // bodies the surface could have paged through.
                 $read = $this->text->forPath($target); // one read for the whole window
-                for ($i = max(0, $targetLine - 1); $i <= ($targetLine + self::PEEK_LINES_AFTER); ++$i) {
+                for ($i = \max(0, $targetLine - 1); $i <= ($targetLine + self::PEEK_LINES_AFTER); ++$i) {
                     $items[] = [
-                        'label' => ($i === $targetLine ? Glyphs::NAV_CURRENT.' ' : '  ').rtrim($read($i)),
+                        'label' => ($i === $targetLine ? Glyphs::NAV_CURRENT.' ' : '  ').\rtrim($read($i)),
                         'hint' => (string) ($i + 1),
                         'value' => $target.':'.$i,
                     ];
@@ -521,14 +521,14 @@ final class NavigationController extends AbstractLspController implements Editor
                 // the marker glyph, so the walk always stops on a non-blank row
                 // long before the list could empty. It is written this way
                 // because `array_key_last()` is nullable, not to guard.
-                while (null !== ($last = array_key_last($items)) && '' === trim($items[$last]['label'])) {
-                    array_pop($items);
+                while (null !== ($last = \array_key_last($items)) && '' === \trim($items[$last]['label'])) {
+                    \array_pop($items);
                 }
                 // The target line is always in range, so $items is never empty.
 
                 $title = $this->trans('Peek: %location%', ['%location%' => $this->paths->relative($target).':'.($targetLine + 1)]);
                 $this->editor->openListOverlay($title, $items, function (string $value): void {
-                    [$file, $lineNo] = [substr($value, offset: 0, length: (int) strrpos($value, needle: ':')), (int) substr($value, (int) strrpos($value, needle: ':') + 1)];
+                    [$file, $lineNo] = [\substr($value, offset: 0, length: (int) \strrpos($value, needle: ':')), (int) \substr($value, (int) \strrpos($value, needle: ':') + 1)];
                     $this->files->openFile($file, focus: OpenFocus::Editor);
                     $this->editor->jumpTo($lineNo, 0);
                     $this->tui->requestRender();
@@ -555,7 +555,7 @@ final class NavigationController extends AbstractLspController implements Editor
                 /** @var list<array<array-key, mixed>> $result */
                 LspMapper::flattenSymbols($result, 0, $items);
                 $this->editor->openListOverlay($this->trans('File Structure'), $items, function (string $pos): void {
-                    [$line, $character] = array_map('intval', explode(':', $pos));
+                    [$line, $character] = \array_map('intval', \explode(':', $pos));
                     $this->editor->jumpTo($line, $character);
                 });
                 $this->tui->requestRender();
@@ -644,7 +644,7 @@ final class NavigationController extends AbstractLspController implements Editor
         $relative = null === $path ? '' : $this->paths->relative($path);
         $rows = [];
         foreach ($items as $item) {
-            [$line] = array_map('intval', explode(':', $item['value']));
+            [$line] = \array_map('intval', \explode(':', $item['value']));
             $hint = '' === $item['hint'] ? '' : '  '.$item['hint'];
             $rows[] = ['path' => $relative, 'line' => $line, 'text' => $item['label'].$hint];
         }

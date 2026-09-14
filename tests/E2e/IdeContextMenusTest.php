@@ -67,7 +67,7 @@ final class IdeContextMenusTest extends TestCase
         // a blank pane; the menu's clipped slice must not bleed its box background
         // across that pane. Regression: OverlayCompositor left the popup
         // background active over the tail, painting a full-width box.
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['alpha.php' => "<?php\n"]);
 
         $this->runIde(
@@ -102,7 +102,7 @@ final class IdeContextMenusTest extends TestCase
 
     public function testTreeContextMenuCoversTheSidebarSeparator(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['alpha.php' => "<?php\n"]);
 
         $this->runIde(
@@ -116,7 +116,7 @@ final class IdeContextMenusTest extends TestCase
                 280 => function ($tui): void {
                     $this->assertTrue($tui->getById('context-menu')->isOpen(), 'tree context menu opened');
                     $lines = $tui->getById('separator')->render(new \Symfony\Component\Tui\Render\RenderContext(1, 24));
-                    $painted = array_filter($lines, static fn (string $l): bool => ' ' !== $l);
+                    $painted = \array_filter($lines, static fn (string $l): bool => ' ' !== $l);
                     $this->assertNotEmpty($painted, 'the context menu paints over the separator column (no hole)');
                 },
             ],
@@ -127,7 +127,7 @@ final class IdeContextMenusTest extends TestCase
 
     public function testContextMenuHighlightsTheItemUnderTheHoveringPointer(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['alpha.php' => "<?php\n"]);
 
         $this->runIde(
@@ -193,7 +193,7 @@ final class IdeContextMenusTest extends TestCase
                     $tui->tick();
                     $this->assertTrue($tui->getById('editor')->isFindModalOpen(), 'the find modal opened, scoped to the folder');
                     $this->assertStringContainsString('Scope: sub', $this->modalText($tui), 'the modal is scoped to the clicked folder');
-                    foreach (str_split('scopedMarker') as $ch) {
+                    foreach (\str_split('scopedMarker') as $ch) {
                         $tui->handleInput($ch);
                     }
                 },
@@ -201,11 +201,11 @@ final class IdeContextMenusTest extends TestCase
                     // The grep is a subprocess: await its row in the MODAL (the
                     // results pane holds nothing until promote() moves it there)
                     // instead of asserting a fixed number of ms after the query.
-                    $this->await(fn (): bool => str_contains($this->modalText($tui), 'Inside.php'), what: 'the folder-scoped search to land');
+                    $this->await(fn (): bool => \str_contains($this->modalText($tui), 'Inside.php'), what: 'the folder-scoped search to land');
                     $this->promote($tui); // modal → results pane
                     // Assert on the results panel itself (the tree sidebar also lists
                     // Outside.php, so the whole screen is the wrong surface).
-                    $panel = AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 14))));
+                    $panel = AnsiUtils::stripAnsiCodes(\implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 14))));
                     $this->assertStringContainsString('1 result', $tui->getById('results')->statusText(), 'only the in-folder match counts (root is out of scope)');
                     $this->assertStringContainsString('sub/Inside.php', $panel, 'the in-folder match is listed');
                     $this->assertStringNotContainsString('Outside.php', $panel, 'the root match is excluded');
@@ -252,7 +252,7 @@ final class IdeContextMenusTest extends TestCase
                     $tui->tick();
                     $this->assertTrue($tui->getById('editor')->isFindModalOpen(), 'the find modal opened, scoped to the folder');
                     $this->assertStringContainsString('Scope: sub', $this->modalText($tui), 'the modal is scoped to the clicked folder');
-                    foreach (str_split('token') as $ch) {
+                    foreach (\str_split('token') as $ch) {
                         $tui->handleInput($ch); // the search term (query field)
                     }
                 },
@@ -260,16 +260,16 @@ final class IdeContextMenusTest extends TestCase
                     // The grep is a subprocess: await its row in the MODAL before
                     // acting on it, instead of asserting a fixed number of ms
                     // after the query.
-                    $this->await(fn (): bool => str_contains($this->modalText($tui), 'Inside.php'), what: 'the folder-scoped search to land');
+                    $this->await(fn (): bool => \str_contains($this->modalText($tui), 'Inside.php'), what: 'the folder-scoped search to land');
                     $tui->handleInput("\t"); // modal: query → replace
-                    foreach (str_split('renamed') as $ch) {
+                    foreach (\str_split('renamed') as $ch) {
                         $tui->handleInput($ch);
                     }
                     $tui->handleInput("\x1ba"); // alt+a → replace all (scoped)
                 },
                 1000 => function ($tui) use ($project): void {
-                    $this->assertStringContainsString('$renamed = 1;', (string) file_get_contents($project->path('sub/Inside.php')), 'the in-folder file is replaced');
-                    $this->assertStringContainsString('$token = 2;', (string) file_get_contents($project->path('Outside.php')), 'the out-of-scope file is untouched');
+                    $this->assertStringContainsString('$renamed = 1;', (string) \file_get_contents($project->path('sub/Inside.php')), 'the in-folder file is replaced');
+                    $this->assertStringContainsString('$token = 2;', (string) \file_get_contents($project->path('Outside.php')), 'the out-of-scope file is untouched');
                 },
             ],
         );
@@ -277,7 +277,7 @@ final class IdeContextMenusTest extends TestCase
 
     public function testEditorContextMenuCutsTheSelection(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "hello world\n"]);
 
         $this->runIde(
@@ -309,7 +309,7 @@ final class IdeContextMenusTest extends TestCase
 
     public function testEditorContextMenuPlacesCaretWhenThereIsNoSelectionThenEscapes(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "one\ntwo\nthree\n"]);
 
         $this->runIde(
@@ -339,7 +339,7 @@ final class IdeContextMenusTest extends TestCase
 
     public function testRightClickClosesAnOpenApplicationMenu(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "<?php\n"]);
 
         $this->runIde(
@@ -366,7 +366,7 @@ final class IdeContextMenusTest extends TestCase
 
     public function testRightClickOnHeaderOrEmptyTabStripOpensNothing(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "<?php\n"]);
 
         $this->runIde(
@@ -395,7 +395,7 @@ final class IdeContextMenusTest extends TestCase
         // A floating picker owns input while it is up, so a right-click under
         // it opens nothing. Deleting that guard failed no test: every other
         // right-click case starts from a screen with no picker on it.
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "<?php\n\$x = 1;\n"]);
 
         $this->runIde(
@@ -427,7 +427,7 @@ final class IdeContextMenusTest extends TestCase
         // directory: the surface names a file, and a folder's own verbs are the
         // ones that make sense there. Nothing covered the directory half —
         // handing folders the file items too went unnoticed.
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject([
             '.porta/plugins/filesurf/plugin.php' => $this->fileSurfacePlugin(),
             'pkg/deep.php' => "<?php\n",
@@ -461,14 +461,14 @@ final class IdeContextMenusTest extends TestCase
                     $terminal->clearOutput();
                     $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 3, $rect->row + $dirRow + 1)); // SGR is 1-based
                     $this->assertTrue($tui->getById('context-menu')->isOpen(), 'the directory has a menu');
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'New File'), what: 'the folder menu to paint');
+                    $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'New File'), what: 'the folder menu to paint');
                     $this->assertStringNotContainsString('Touch This File', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'a folder gets no file-surface item');
                     $tui->handleInput("\x1b"); // close
 
                     $terminal->clearOutput();
                     $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 3, $rect->row + $fileRow + 1));
                     $this->assertTrue($tui->getById('context-menu')->isOpen(), 'the file has a menu');
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Touch This File'), what: 'the file-surface item to paint');
+                    $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Touch This File'), what: 'the file-surface item to paint');
                 },
             ],
         );
@@ -502,7 +502,7 @@ final class IdeContextMenusTest extends TestCase
 
     public function testTabContextMenuCloseClosesTheClickedTab(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "<?php\n", 'B.php' => "<?php\n"]);
 
         $this->runIde(
@@ -532,7 +532,7 @@ final class IdeContextMenusTest extends TestCase
 
     public function testTreeContextMenuNewFileAndNewFolder(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['src/keep.php' => "<?php\n"]);
 
         $this->runIde(
@@ -571,7 +571,7 @@ final class IdeContextMenusTest extends TestCase
 
     public function testTreeNewEntryWithBlankNameIsIgnored(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['src/keep.php' => "<?php\n"]);
 
         $this->runIde(
@@ -602,12 +602,12 @@ final class IdeContextMenusTest extends TestCase
             ],
         );
 
-        $this->assertSame(['keep.php'], array_values(array_diff(scandir($project->path('src')), ['.', '..'])), 'no blank-named entry was created');
+        $this->assertSame(['keep.php'], \array_values(\array_diff(\scandir($project->path('src')), ['.', '..'])), 'no blank-named entry was created');
     }
 
     public function testTreeContextMenuRenameUpdatesDiskAndBuffer(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "<?php\n"]);
 
         $this->runIde(
@@ -642,19 +642,19 @@ final class IdeContextMenusTest extends TestCase
                     // the parity round have something to lose too.
                     $tui->handleInput('X');
                     $this->assertSame(
-                        [(string) realpath($project->path('A.php')) => [0]],
+                        [(string) \realpath($project->path('A.php')) => [0]],
                         Services::resolve($ide, Bookmarks::class)->all(),
                     );
                     $tui->handleInput("\x1b[<2;3;3M"); // right-click A.php again
                 },
                 460 => static function ($tui): void {
-                    foreach (range(1, end: 6) as $_) {
+                    foreach (\range(1, end: 6) as $_) {
                         $tui->handleInput("\x1b[B"); // → Rename…
                     }
                     $tui->handleInput("\r");
                 },
                 540 => function ($tui): void {
-                    foreach (range(1, end: 10) as $_) {
+                    foreach (\range(1, end: 10) as $_) {
                         $tui->handleInput("\x7f"); // backspace out the prefill
                     }
                     $this->typeString($tui, 'renamed.php');
@@ -665,20 +665,20 @@ final class IdeContextMenusTest extends TestCase
                     // The whole FileRenamed chain: the mark moved with the file
                     // rather than being silently dropped on the dead path.
                     $this->assertSame(
-                        [(string) realpath($project->path('renamed.php')) => [0]],
+                        [(string) \realpath($project->path('renamed.php')) => [0]],
                         Services::resolve($ide, Bookmarks::class)->all(),
                         'the bookmark followed the rename',
                     );
                     $this->assertStringContainsString(
                         Glyphs::BOOKMARK,
-                        implode("\n", $tui->getById('editor')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 20))),
+                        \implode("\n", $tui->getById('editor')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 20))),
                         'and is painted on the new buffer',
                     );
 
                     // Every store keyed by path has to follow, not just the
                     // marks. These two are the newest of them, and a listener
                     // nobody registers passes every gate.
-                    $renamed = (string) realpath($project->path('renamed.php'));
+                    $renamed = (string) \realpath($project->path('renamed.php'));
                     $this->assertContains(
                         $renamed,
                         Services::resolve($ide, RecentFilesStore::class)->all(),
@@ -705,9 +705,9 @@ final class IdeContextMenusTest extends TestCase
         // "deleted on disk" for a file that had merely moved, and saving it
         // wrote the old folder back into existence, because dumpFile() creates
         // the directories it needs.
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['src/A.php' => "<?php\n", 'outside.php' => "<?php\n"]);
-        $inside = (string) realpath($project->path('src/A.php'));
+        $inside = (string) \realpath($project->path('src/A.php'));
 
         $this->runIde(
             $project,
@@ -730,25 +730,25 @@ final class IdeContextMenusTest extends TestCase
                     // A folder's menu carries the three search items a file's
                     // does not, and Cut/Copy sit above Copy Path, so Rename… is
                     // the 10th selectable row.
-                    foreach (range(1, end: 9) as $_) {
+                    foreach (\range(1, end: 9) as $_) {
                         $tui->handleInput("\x1b[B");
                     }
                     $tui->handleInput("\r");
                 },
                 410 => function ($tui): void {
-                    foreach (range(1, end: 10) as $_) {
+                    foreach (\range(1, end: 10) as $_) {
                         $tui->handleInput("\x7f"); // backspace out the prefilled name
                     }
                     $this->typeString($tui, 'lib');
                     $tui->handleInput("\r");
                 },
                 520 => function ($tui, $terminal, $ide) use ($project, $inside): void {
-                    $open = array_map(static fn ($b): string => $b->path, Services::resolve($ide, BufferManager::class)->all());
-                    $this->assertContains((string) realpath($project->path('lib/A.php')), $open, 'the tab inside the folder followed it');
+                    $open = \array_map(static fn ($b): string => $b->path, Services::resolve($ide, BufferManager::class)->all());
+                    $this->assertContains((string) \realpath($project->path('lib/A.php')), $open, 'the tab inside the folder followed it');
                     $this->assertNotContains($inside, $open, 'and none is left on the path that is gone');
-                    $this->assertContains((string) realpath($project->path('outside.php')), $open, 'the tab outside the folder was left alone');
+                    $this->assertContains((string) \realpath($project->path('outside.php')), $open, 'the tab outside the folder was left alone');
                     $this->assertSame(
-                        [(string) realpath($project->path('lib/A.php')) => [0]],
+                        [(string) \realpath($project->path('lib/A.php')) => [0]],
                         Services::resolve($ide, Bookmarks::class)->all(),
                         'and so did the mark inside it',
                     );
@@ -769,9 +769,9 @@ final class IdeContextMenusTest extends TestCase
         // into a file that is gone. Three of the four are asserted here;
         // BreakpointStore is not on the `porta.ide` boundary, so its listener
         // is unit-tested instead.
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "<?php\n", 'B.php' => "<?php\n"]);
-        $a = (string) realpath($project->path('A.php'));
+        $a = (string) \realpath($project->path('A.php'));
 
         $this->runIde(
             $project,
@@ -790,7 +790,7 @@ final class IdeContextMenusTest extends TestCase
                     $tui->handleInput("\x1b[<2;3;3M"); // right-click A.php
                 },
                 350 => static function ($tui): void {
-                    foreach (range(1, end: 7) as $_) {
+                    foreach (\range(1, end: 7) as $_) {
                         $tui->handleInput("\x1b[B"); // → Delete…
                     }
                     $tui->handleInput("\r");
@@ -813,7 +813,7 @@ final class IdeContextMenusTest extends TestCase
 
     public function testEditorContextMenuNearTheBottomFlipsUp(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "<?php\necho 1;\n"]);
 
         $this->runIde(
@@ -838,7 +838,7 @@ final class IdeContextMenusTest extends TestCase
 
     public function testTreeContextMenuNearTheRightEdgeStraddlesPanes(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "<?php\n"]);
 
         $this->runIde(
@@ -863,7 +863,7 @@ final class IdeContextMenusTest extends TestCase
 
     public function testTreeRenameOntoAnExistingNameFlashesError(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "<?php\n", 'B.php' => "<?php\n"]);
 
         $terminal = $this->runIde(
@@ -885,7 +885,7 @@ final class IdeContextMenusTest extends TestCase
                     $tui->handleInput("\r");
                 },
                 380 => function ($tui): void {
-                    foreach (range(1, end: 10) as $_) {
+                    foreach (\range(1, end: 10) as $_) {
                         $tui->handleInput("\x7f");
                     }
                     $this->typeString($tui, 'B.php'); // clashes with an existing file
@@ -900,7 +900,7 @@ final class IdeContextMenusTest extends TestCase
 
     public function testTreeContextMenuCopyPathAndRelativePath(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "<?php\n"]);
 
         $terminal = $this->runIde(
@@ -935,14 +935,14 @@ final class IdeContextMenusTest extends TestCase
         $raw = $terminal->getOutput();
         // The status bar truncates a long flash, so verify the full paths landed
         // on the clipboard via the OSC 52 base64 payload.
-        $this->assertStringContainsString(base64_encode($project->path('A.php')), $raw, 'absolute path copied to the clipboard');
-        $this->assertStringContainsString(base64_encode('A.php'), $raw, 'relative path copied to the clipboard');
+        $this->assertStringContainsString(\base64_encode($project->path('A.php')), $raw, 'absolute path copied to the clipboard');
+        $this->assertStringContainsString(\base64_encode('A.php'), $raw, 'relative path copied to the clipboard');
         $this->assertStringContainsString('Copied A.php', AnsiUtils::stripAnsiCodes($raw), 'relative-path copy flashed');
     }
 
     public function testTreeContextMenuDeleteConfirmedClosesBufferAndShowsNext(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "<?php\n", 'B.php' => "<?php\n"]);
 
         $this->runIde(
@@ -960,7 +960,7 @@ final class IdeContextMenusTest extends TestCase
                 350 => static function ($tui): void {
                     // Delete is the 8th selectable item: Cut and Copy joined
                     // the menu above Copy Path.
-                    foreach (range(1, end: 7) as $_) {
+                    foreach (\range(1, end: 7) as $_) {
                         $tui->handleInput("\x1b[B");
                     }
                     $tui->handleInput("\r"); // Delete… → confirm prompt
@@ -980,7 +980,7 @@ final class IdeContextMenusTest extends TestCase
 
     public function testTreeContextMenuDeleteLastBufferEmptiesTheEditor(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "<?php\n"]);
 
         $this->runIde(
@@ -992,7 +992,7 @@ final class IdeContextMenusTest extends TestCase
                     $tui->handleInput("\x1b[<2;3;3M"); // right-click A.php
                 },
                 300 => static function ($tui): void {
-                    foreach (range(1, end: 7) as $_) {
+                    foreach (\range(1, end: 7) as $_) {
                         $tui->handleInput("\x1b[B");
                     }
                     $tui->handleInput("\r"); // Delete…
@@ -1009,7 +1009,7 @@ final class IdeContextMenusTest extends TestCase
 
     public function testTreeContextMenuDeleteCancelledKeepsTheFile(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "<?php\n"]);
 
         $this->runIde(
@@ -1021,7 +1021,7 @@ final class IdeContextMenusTest extends TestCase
                     $tui->handleInput("\x1b[<2;3;3M");
                 },
                 300 => static function ($tui): void {
-                    foreach (range(1, end: 7) as $_) {
+                    foreach (\range(1, end: 7) as $_) {
                         $tui->handleInput("\x1b[B");
                     }
                     $tui->handleInput("\r"); // Delete…
@@ -1041,7 +1041,7 @@ final class IdeContextMenusTest extends TestCase
 
     public function testTreeContextMenuOpenAndRefreshViaMouse(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "<?php\n"]);
 
         $this->runIde(
@@ -1083,7 +1083,7 @@ final class IdeContextMenusTest extends TestCase
 
     public function testRightClickInTheGapDismissesAnOpenContextMenu(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "<?php\n"]);
 
         $this->runIde(
@@ -1111,7 +1111,7 @@ final class IdeContextMenusTest extends TestCase
 
     public function testCtrlF10OpensTheContextMenuForTheFocusedPane(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\n\$a = 1;\n"]);
 
         $this->runIde(
@@ -1168,14 +1168,14 @@ final class IdeContextMenusTest extends TestCase
     {
         $slice = AnsiUtils::sliceByColumn($line, $col, 1, true); // carries all prior SGR as pending
         $bg = 'default';
-        if (preg_match_all('/\x1b\[([0-9;]*)m/', $slice, $codes)) {
+        if (\preg_match_all('/\x1b\[([0-9;]*)m/', $slice, $codes)) {
             foreach ($codes[1] as $params) {
                 if ('' === $params || '0' === $params || '49' === $params) {
                     $bg = 'default';
 
                     continue;
                 }
-                if (preg_match('/48;5;(\d+)/', $params, $m)) {
+                if (\preg_match('/48;5;(\d+)/', $params, $m)) {
                     $bg = '48;5;'.$m[1];
                 }
             }
@@ -1187,7 +1187,7 @@ final class IdeContextMenusTest extends TestCase
     /** Type each character of $text into the currently focused prompt/editor. */
     private function typeString(Tui $tui, string $text): void
     {
-        foreach (mb_str_split($text) as $char) {
+        foreach (\mb_str_split($text) as $char) {
             $tui->handleInput($char);
         }
     }

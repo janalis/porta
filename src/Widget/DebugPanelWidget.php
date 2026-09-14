@@ -147,7 +147,7 @@ final class DebugPanelWidget extends DockPanelWidget implements FocusableInterfa
             $this->scopes = [];
             $this->children = [];
             $this->expanded = [];
-            $this->watches = array_map(static fn (array $watch): array => [...$watch, 'value' => null, 'ref' => 0, 'error' => null], $this->watches);
+            $this->watches = \array_map(static fn (array $watch): array => [...$watch, 'value' => null, 'ref' => 0, 'error' => null], $this->watches);
         }
         $this->rebuild();
     }
@@ -183,14 +183,14 @@ final class DebugPanelWidget extends DockPanelWidget implements FocusableInterfa
     /** @param list<string> $expressions the watch expressions; all values reset to pending */
     public function setWatches(array $expressions): void
     {
-        $this->watches = array_map(static fn (string $expr): array => ['expr' => $expr, 'value' => null, 'ref' => 0, 'error' => null], $expressions);
+        $this->watches = \array_map(static fn (string $expr): array => ['expr' => $expr, 'value' => null, 'ref' => 0, 'error' => null], $expressions);
         $this->rebuild();
     }
 
     /** Index-addressed delivery; a stale index (the watch was removed meanwhile) is ignored. */
     public function setWatchResult(int $index, string $value, int $ref, ?string $error = null): void
     {
-        if (!array_key_exists($index, $this->watches)) {
+        if (!\array_key_exists($index, $this->watches)) {
             return;
         }
         $this->watches[$index] = [...$this->watches[$index], 'value' => $value, 'ref' => $ref, 'error' => $error];
@@ -220,7 +220,7 @@ final class DebugPanelWidget extends DockPanelWidget implements FocusableInterfa
             $row = $this->rows[$this->list->selected()] ?? null;
             if (null !== $row && DebugRowKind::Variable === $row->kind && $row->parentRef > 0) {
                 // The label is "name = value"; hand the current value back for prefill.
-                $value = explode(' = ', $row->label, limit: 2)[1] ?? '';
+                $value = \explode(' = ', $row->label, limit: 2)[1] ?? '';
                 $this->events?->dispatch(new DebugVariableEditRequested($row->parentRef, $row->name, $value));
             }
 
@@ -281,13 +281,13 @@ final class DebugPanelWidget extends DockPanelWidget implements FocusableInterfa
 
     private function rowText(DebugRow $row): string
     {
-        $indent = str_repeat('  ', max(0, $row->depth));
+        $indent = \str_repeat('  ', \max(0, $row->depth));
 
         return match ($row->kind) {
             DebugRowKind::Watch => $this->watchText($row),
             DebugRowKind::Section => ' '.$this->styles->of(Role::Dim)->apply($row->label),
             DebugRowKind::Frame => ' '.$indent.$row->label.'  '.$this->styles->of(Role::TabAccent)->apply($row->path.':'.($row->line + 1)),
-            DebugRowKind::Scope => ' '.$indent.(array_key_exists($row->ref, $this->expanded) ? Glyphs::EXPANDED.' ' : Glyphs::COLLAPSED.' ').$this->styles->of(Role::Bright)->apply($row->label),
+            DebugRowKind::Scope => ' '.$indent.(\array_key_exists($row->ref, $this->expanded) ? Glyphs::EXPANDED.' ' : Glyphs::COLLAPSED.' ').$this->styles->of(Role::Bright)->apply($row->label),
             DebugRowKind::Variable => ' '.$indent.$this->expandArrow($row->ref).$row->label,
         };
     }
@@ -299,12 +299,12 @@ final class DebugPanelWidget extends DockPanelWidget implements FocusableInterfa
             return '  ';
         }
 
-        return array_key_exists($ref, $this->expanded) ? Glyphs::EXPANDED.' ' : Glyphs::COLLAPSED.' ';
+        return \array_key_exists($ref, $this->expanded) ? Glyphs::EXPANDED.' ' : Glyphs::COLLAPSED.' ';
     }
 
     private function watchText(DebugRow $row): string
     {
-        $indent = str_repeat('  ', max(0, $row->depth));
+        $indent = \str_repeat('  ', \max(0, $row->depth));
         $watch = $this->watches[$row->watchIndex] ?? null;
         $arrow = $this->expandArrow($row->ref);
         $value = match (true) {
@@ -337,7 +337,7 @@ final class DebugPanelWidget extends DockPanelWidget implements FocusableInterfa
             $rows[] = new DebugRow(DebugRowKind::Section, $this->translator->trans('Watches'));
             foreach ($this->watches as $i => $watch) {
                 $rows[] = new DebugRow(DebugRowKind::Watch, $watch['expr'], ref: $watch['ref'], depth: 1, watchIndex: $i);
-                if ($watch['ref'] > 0 && array_key_exists($watch['ref'], $this->expanded)) {
+                if ($watch['ref'] > 0 && \array_key_exists($watch['ref'], $this->expanded)) {
                     $this->appendChildren($rows, $watch['ref'], 2);
                 }
             }
@@ -346,7 +346,7 @@ final class DebugPanelWidget extends DockPanelWidget implements FocusableInterfa
             $rows[] = new DebugRow(DebugRowKind::Section, $this->translator->trans('Variables'));
             foreach ($this->scopes as $scope) {
                 $rows[] = new DebugRow(DebugRowKind::Scope, $scope['name'], ref: $scope['variablesReference'], depth: 1);
-                if (array_key_exists($scope['variablesReference'], $this->expanded)) {
+                if (\array_key_exists($scope['variablesReference'], $this->expanded)) {
                     $this->appendChildren($rows, $scope['variablesReference'], 2);
                 }
             }
@@ -368,7 +368,7 @@ final class DebugPanelWidget extends DockPanelWidget implements FocusableInterfa
                 parentRef: $reference,
                 name: $variable['name'],
             );
-            if ($variable['variablesReference'] > 0 && array_key_exists($variable['variablesReference'], $this->expanded)) {
+            if ($variable['variablesReference'] > 0 && \array_key_exists($variable['variablesReference'], $this->expanded)) {
                 $this->appendChildren($rows, $variable['variablesReference'], $depth + 1);
             }
         }
@@ -393,14 +393,14 @@ final class DebugPanelWidget extends DockPanelWidget implements FocusableInterfa
 
     private function toggleExpand(int $reference): void
     {
-        if (array_key_exists($reference, $this->expanded)) {
+        if (\array_key_exists($reference, $this->expanded)) {
             unset($this->expanded[$reference]);
             $this->rebuild();
 
             return;
         }
         $this->expanded[$reference] = true;
-        if (!array_key_exists($reference, $this->children) && null !== $this->callbacks->onExpandVariable) {
+        if (!\array_key_exists($reference, $this->children) && null !== $this->callbacks->onExpandVariable) {
             ($this->callbacks->onExpandVariable)($reference, fn (array $variables) => $this->setVariables($reference, $variables));
         }
         $this->rebuild();

@@ -68,7 +68,7 @@ final class ToastPresenterTest extends TestCase
         $this->assertCount(1, $presenter->regions());
         $this->assertTrue($this->toasts->clickAt($presenter->regions()[0]->top + 1, $presenter->regions()[0]->col + 2), 'the recorded box hit-tests');
 
-        $rightmost = max(array_map(static fn (array $s): int => $s['col'] + $s['width'], $this->pane->toastSpans));
+        $rightmost = \max(\array_map(static fn (array $s): int => $s['col'] + $s['width'], $this->pane->toastSpans));
         $this->assertGreaterThan(60, $rightmost, 'the stack hangs off the top-right corner');
     }
 
@@ -132,7 +132,7 @@ final class ToastPresenterTest extends TestCase
         $this->assertSame(1, $region->top, 'boundTop + 1');
         $this->assertSame(63, $region->col);
         $this->assertSame(36, $region->width);
-        $this->assertStringContainsString('hi', implode('', array_column($this->pane->toastSpans, 'segment')), 'the card carries its real message, not a malformed row entry');
+        $this->assertStringContainsString('hi', \implode('', \array_column($this->pane->toastSpans, 'segment')), 'the card carries its real message, not a malformed row entry');
     }
 
     public function testSyncRecordsTheExactBoxWindowShapeForHitTesting(): void
@@ -164,7 +164,7 @@ final class ToastPresenterTest extends TestCase
         // inactive close glyph — not just "whichever card isn't the one we're
         // about to hover", which a flipped `===`/`!==` comparison against a
         // null closeHoveredId can't distinguish from the correct baseline.
-        $beforeTitles = implode('', array_column($before, 'segment'));
+        $beforeTitles = \implode('', \array_column($before, 'segment'));
         $this->assertStringNotContainsString("\x1b[38;5;252m×", $beforeTitles, 'no card starts out showing the active (hovered) close glyph');
 
         // Boxes carry the real (non-shadow-inclusive) width the closeHit
@@ -183,8 +183,8 @@ final class ToastPresenterTest extends TestCase
 
         // The older card's own title row (its top-border span) is byte-identical —
         // the hover styling did not leak onto a card that isn't hovered.
-        $oldestTitleBefore = array_values(array_filter($before, static fn (array $s): bool => $s['row'] === $oldestBox->startRow && $s['col'] === $oldestBox->col));
-        $oldestTitleAfter = array_values(array_filter($after, static fn (array $s): bool => $s['row'] === $oldestBox->startRow && $s['col'] === $oldestBox->col));
+        $oldestTitleBefore = \array_values(\array_filter($before, static fn (array $s): bool => $s['row'] === $oldestBox->startRow && $s['col'] === $oldestBox->col));
+        $oldestTitleAfter = \array_values(\array_filter($after, static fn (array $s): bool => $s['row'] === $oldestBox->startRow && $s['col'] === $oldestBox->col));
         $this->assertNotEmpty($oldestTitleBefore);
         $this->assertSame($oldestTitleBefore, $oldestTitleAfter);
     }
@@ -202,7 +202,7 @@ final class ToastPresenterTest extends TestCase
         $presenter = $this->presenter();
         $this->frame(rows: 12);
         $this->toasts->push('early-short', ToastSeverity::Info); // oldest: must never render
-        $this->toasts->push(str_repeat('word ', times: 60), ToastSeverity::Info); // too tall to fit once reached
+        $this->toasts->push(\str_repeat('word ', times: 60), ToastSeverity::Info); // too tall to fit once reached
         $this->toasts->push('filler', ToastSeverity::Info); // newest: consumes the room first
 
         $presenter->sync();
@@ -251,8 +251,8 @@ final class ToastPresenterTest extends TestCase
     {
         $presenter = $this->presenter();
         $this->frame();
-        foreach (range(1, end: 5) as $i) {
-            $this->toasts->push(str_repeat("very long message {$i} ", times: 12), ToastSeverity::Info);
+        foreach (\range(1, end: 5) as $i) {
+            $this->toasts->push(\str_repeat("very long message {$i} ", times: 12), ToastSeverity::Info);
         }
 
         $presenter->sync();

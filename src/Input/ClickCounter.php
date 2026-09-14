@@ -47,7 +47,7 @@ final class ClickCounter
     {
         $now = Clocks::seconds($this->clock);
         $sameCell = ($now - $this->lastTime) < self::WINDOW_SECONDS && $row === $this->lastRow && $col === $this->lastCol;
-        $this->count = $sameCell ? min($this->count + 1, 3) : 1;
+        $this->count = $sameCell ? \min($this->count + 1, 3) : 1;
         $this->lastTime = $now;
         $this->lastRow = $row;
         $this->lastCol = $col;

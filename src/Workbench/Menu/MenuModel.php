@@ -266,7 +266,7 @@ final class MenuModel
             // that plugin disabled the item would render, carry the catalog's
             // shortcut and do nothing. Every other 'i:' id is core's own and
             // its provider always registers it.
-            if (self::SEP !== $spec && str_starts_with($spec, 'i:') && ActionCatalog::isAdoptable(substr($spec, offset: 2)) && !$commands->has(substr($spec, offset: 2))) {
+            if (self::SEP !== $spec && \str_starts_with($spec, 'i:') && ActionCatalog::isAdoptable(\substr($spec, offset: 2)) && !$commands->has(\substr($spec, offset: 2))) {
                 continue;
             }
             if (self::SEP === $spec && ([] === $items || $items[\count($items) - 1]->separator)) {
@@ -277,7 +277,7 @@ final class MenuModel
                 : self::item($spec, $commands, $editor, $ideKeys, $translator, $activeView, $viewSafe, $when);
         }
         while ([] !== $items && $items[\count($items) - 1]->separator) {
-            array_pop($items);
+            \array_pop($items);
         }
 
         return $items;
@@ -317,7 +317,7 @@ final class MenuModel
         array $viewSafe,
         ?\Closure $pluginWhen = null,
     ): MenuItem {
-        [$scope, $id] = explode(':', $spec, limit: 2);
+        [$scope, $id] = \explode(':', $spec, limit: 2);
         $label = $translator->trans(
             'i' === $scope
                 ? $commands->label($id) ?? ActionCatalog::label($id)

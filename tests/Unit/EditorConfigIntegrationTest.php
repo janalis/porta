@@ -33,7 +33,7 @@ final class EditorConfigIntegrationTest extends TestCase
 
     protected function setUp(): void
     {
-        putenv('PATH=/nonexistent'); // keep git/LSP out of these unit runs
+        \putenv('PATH=/nonexistent'); // keep git/LSP out of these unit runs
     }
 
     /** The Ide the current test built, so tearDown can perform the teardown run() never gets to. */
@@ -114,7 +114,7 @@ final class EditorConfigIntegrationTest extends TestCase
 
         $this->save($ide, $buffer);
 
-        $this->assertSame("hello\r\nworld\r\n", (string) file_get_contents($project->path('note.txt')));
+        $this->assertSame("hello\r\nworld\r\n", (string) \file_get_contents($project->path('note.txt')));
     }
 
     public function testLegacyEditorConfigKeyIsSilentlyIgnored(): void
@@ -123,7 +123,7 @@ final class EditorConfigIntegrationTest extends TestCase
         // false in an old .porta.json must neither disable .editorconfig nor warn.
         $project = new TempProject([
             'composer.json' => '{}',
-            '.porta.json' => json_encode(['settings' => ['editorConfig' => false]]),
+            '.porta.json' => \json_encode(['settings' => ['editorConfig' => false]]),
             '.editorconfig' => "root = true\n[*.txt]\nindent_size = 2\ntrim_trailing_whitespace = true\ninsert_final_newline = true\n",
             'note.txt' => "keep  \n",
         ]);
@@ -139,7 +139,7 @@ final class EditorConfigIntegrationTest extends TestCase
 
         // Save runs the .editorconfig transforms (trailing spaces trimmed).
         $this->save($ide, $buffer);
-        $this->assertSame("keep\n", (string) file_get_contents($project->path('note.txt')));
+        $this->assertSame("keep\n", (string) \file_get_contents($project->path('note.txt')));
     }
 
     public function testSaveWithoutAResolvedConfigWritesThePlainBytes(): void
@@ -157,7 +157,7 @@ final class EditorConfigIntegrationTest extends TestCase
         $buffer->editorConfig = null;
         $this->save($ide, $buffer);
 
-        $this->assertSame("keep  \nno final newline", (string) file_get_contents($project->path('note.txt')), 'no transforms without a config');
+        $this->assertSame("keep  \nno final newline", (string) \file_get_contents($project->path('note.txt')), 'no transforms without a config');
     }
 
     public function testUnsupportedCharsetFlashesWarning(): void

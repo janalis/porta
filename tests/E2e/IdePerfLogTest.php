@@ -26,8 +26,8 @@ final class IdePerfLogTest extends TestCase
 
     public function testAnActiveSecondAppendsAStatsLine(): void
     {
-        putenv('PATH=/nonexistent');
-        $project = new TempProject(['a.php' => "<?php\n".str_repeat("// filler\n", times: 40)]);
+        \putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n".\str_repeat("// filler\n", times: 40)]);
 
         $this->runIde(
             $project,
@@ -47,11 +47,11 @@ final class IdePerfLogTest extends TestCase
                         static function () use ($project): bool {
                             $path = $project->path('.porta/perf.log');
 
-                            return is_file($path) && str_contains((string) file_get_contents($path), 'wheel=1');
+                            return \is_file($path) && \str_contains((string) \file_get_contents($path), 'wheel=1');
                         },
                         what: 'the perf stats line to land',
                     );
-                    $log = (string) file_get_contents($project->path('.porta/perf.log'));
+                    $log = (string) \file_get_contents($project->path('.porta/perf.log'));
                     $this->assertMatchesRegularExpression('/in=\d+ wheel=1 passes=[1-9]/', $log, 'inputs and render passes were counted');
                     $this->assertMatchesRegularExpression(
                         '/edMs p50=\d+\.\d p95=\d+\.\d hlFull=\d+ hlSplice=\d+/',

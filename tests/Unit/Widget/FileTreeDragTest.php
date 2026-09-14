@@ -85,7 +85,7 @@ final class FileTreeDragTest extends TestCase
     /** The rows a render of $rows lines actually shows, header stripped. */
     private function rowsOf(FileTreeWidget $tree, int $rows, int $width = 40): string
     {
-        return AnsiUtils::stripAnsiCodes(implode("\n", \array_slice($tree->render(new RenderContext($width, $rows)), offset: 1)));
+        return AnsiUtils::stripAnsiCodes(\implode("\n", \array_slice($tree->render(new RenderContext($width, $rows)), offset: 1)));
     }
 
     /**
@@ -169,7 +169,7 @@ final class FileTreeDragTest extends TestCase
         $tree->setDropTarget($this->project->path('src'), "\u{2190} 3 files");
 
         $rows = \array_slice($tree->render(new RenderContext(40, 12)), offset: 1);
-        $plain = array_map(AnsiUtils::stripAnsiCodes(...), $rows);
+        $plain = \array_map(AnsiUtils::stripAnsiCodes(...), $rows);
 
         // Row 0 of the entries is `src/`, the drop target; 1 and 2 are its file
         // and top.php, and the rest are blank filler.
@@ -193,7 +193,7 @@ final class FileTreeDragTest extends TestCase
         $tree = $this->tree();
         $tree->setDropTarget($this->project->path('src'), "\u{2190} 3 files");
 
-        $narrow = AnsiUtils::stripAnsiCodes(implode("\n", \array_slice($tree->render(new RenderContext(12, 12)), offset: 1)));
+        $narrow = AnsiUtils::stripAnsiCodes(\implode("\n", \array_slice($tree->render(new RenderContext(12, 12)), offset: 1)));
 
         $this->assertStringNotContainsString('3 files', $narrow, 'the label stood down');
         $this->assertStringContainsString('src', $narrow, 'and the name survived');
@@ -412,7 +412,7 @@ final class FileTreeDragTest extends TestCase
         // Raw, not stripped: the target is marked with a STYLE, so the plain
         // text is identical either way and a stripped comparison would pass
         // for a change that never happened.
-        $raw = static fn (): string => implode("\n", $tree->render(new RenderContext(40, 12)));
+        $raw = static fn (): string => \implode("\n", $tree->render(new RenderContext(40, 12)));
 
         $before = $raw();
         $tree->setDropTarget($this->project->path('src'));
@@ -529,9 +529,9 @@ final class FileTreeDragTest extends TestCase
      */
     public function testTheDeferredToggleIsPaidByTheClickAndDroppedByTheDrag(): void
     {
-        $rows = static fn (FileTreeWidget $tree): int => \count(array_filter(
+        $rows = static fn (FileTreeWidget $tree): int => \count(\array_filter(
             $tree->render(new RenderContext(40, 12)),
-            static fn (string $line): bool => '' !== trim(AnsiUtils::stripAnsiCodes($line)),
+            static fn (string $line): bool => '' !== \trim(AnsiUtils::stripAnsiCodes($line)),
         ));
 
         $tree = $this->tree(); // src/ starts EXPANDED, so the toggle collapses it
@@ -639,8 +639,8 @@ final class FileTreeDragTest extends TestCase
 
         $this->assertCount(
             \count($painted),
-            array_unique($painted),
-            'two states of the same row rendered identically, so at least one arm of the chain is unreachable: '.implode(', ', array_keys($painted)),
+            \array_unique($painted),
+            'two states of the same row rendered identically, so at least one arm of the chain is unreachable: '.\implode(', ', \array_keys($painted)),
         );
     }
 

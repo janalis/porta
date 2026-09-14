@@ -47,7 +47,7 @@ final class StatusBarClickAtTest extends TestCase
     private static function columnOf(string $row, string $needle): int
     {
         $plain = AnsiUtils::stripAnsiCodes($row);
-        $at = mb_strpos($plain, $needle);
+        $at = \mb_strpos($plain, $needle);
         self::assertNotFalse($at, "the row should contain '{$needle}'");
 
         return $at;
@@ -58,8 +58,8 @@ final class StatusBarClickAtTest extends TestCase
         $status = $this->bar();
         $row = $status->render(new RenderContext(self::COLUMNS, 1))[0];
 
-        self::assertSame('ide_problems', $status->clickAt(self::columnOf($row, 'AB')));
-        self::assertSame('goto_line', $status->clickAt(self::columnOf($row, 'CD')));
+        $this->assertSame('ide_problems', $status->clickAt(self::columnOf($row, 'AB')));
+        $this->assertSame('goto_line', $status->clickAt(self::columnOf($row, 'CD')));
     }
 
     public function testTheGapBetweenTwoCellsBelongsToNeither(): void
@@ -67,7 +67,7 @@ final class StatusBarClickAtTest extends TestCase
         $status = $this->bar();
         $row = $status->render(new RenderContext(self::COLUMNS, 1))[0];
 
-        self::assertNull($status->clickAt(self::columnOf($row, 'AB') + 2));
+        $this->assertNull($status->clickAt(self::columnOf($row, 'AB') + 2));
     }
 
     public function testTheLeftSideAndTheEmptyGapAreNotClickable(): void
@@ -75,8 +75,8 @@ final class StatusBarClickAtTest extends TestCase
         $status = $this->bar();
         $status->render(new RenderContext(self::COLUMNS, 1));
 
-        self::assertNull($status->clickAt(0));
-        self::assertNull($status->clickAt(3));
+        $this->assertNull($status->clickAt(0));
+        $this->assertNull($status->clickAt(3));
     }
 
     public function testTheSpansFollowTheRightSegmentWhenTheTerminalIsResized(): void
@@ -87,12 +87,12 @@ final class StatusBarClickAtTest extends TestCase
 
         $narrow = $status->render(new RenderContext(40, 1))[0];
         $narrowCol = self::columnOf($narrow, 'AB');
-        self::assertSame('ide_problems', $status->clickAt($narrowCol));
+        $this->assertSame('ide_problems', $status->clickAt($narrowCol));
 
         $wide = $status->render(new RenderContext(100, 1))[0];
         $wideCol = self::columnOf($wide, 'AB');
-        self::assertNotSame($narrowCol, $wideCol, 'the right segment must actually move');
-        self::assertSame('ide_problems', $status->clickAt($wideCol));
+        $this->assertNotSame($narrowCol, $wideCol, 'the right segment must actually move');
+        $this->assertSame('ide_problems', $status->clickAt($wideCol));
     }
 
     public function testAFlashRemovesEveryHitRegion(): void
@@ -106,7 +106,7 @@ final class StatusBarClickAtTest extends TestCase
         $status->flash('Saved!', 5.0);
         $status->render(new RenderContext(self::COLUMNS, 1));
 
-        self::assertNull($status->clickAt($col));
+        $this->assertNull($status->clickAt($col));
     }
 
     public function testAProviderWithNoClickSpansOffersNothing(): void
@@ -116,6 +116,6 @@ final class StatusBarClickAtTest extends TestCase
         $status->beforeRender();
         $status->render(new RenderContext(self::COLUMNS, 1));
 
-        self::assertNull($status->clickAt(50));
+        $this->assertNull($status->clickAt(50));
     }
 }

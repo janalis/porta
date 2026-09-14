@@ -141,7 +141,7 @@ final class GraphViewerWidget extends NavigablePaneWidget
     public function show(string $path, mixed $payload): void
     {
         $dot = (string) $payload;
-        $hash = hash('xxh128', $dot);
+        $hash = \hash('xxh128', $dot);
         if ($path === $this->path && $hash === $this->dotHash) {
             return; // same tab, same content — nothing to do
         }
@@ -188,7 +188,7 @@ final class GraphViewerWidget extends NavigablePaneWidget
                 $this->layingOut = false;
                 $this->layoutCache[$hash] = $layout;
                 if (\count($this->layoutCache) > self::LAYOUT_CACHE_CAP) {
-                    array_shift($this->layoutCache);
+                    \array_shift($this->layoutCache);
                 }
                 $this->adopt($layout);
             },
@@ -236,7 +236,7 @@ final class GraphViewerWidget extends NavigablePaneWidget
         $info = \sprintf('%d nodes · %d edges', $this->layout->nodeCount(), $this->layout->edgeCount());
         $selected = null !== $this->selected ? $this->layout->nodes[$this->selected] ?? null : null;
 
-        return null !== $selected ? $info.' · '.strtr($selected->label, ["\n" => ' ']) : $info;
+        return null !== $selected ? $info.' · '.\strtr($selected->label, ["\n" => ' ']) : $info;
     }
 
     /** This pane's status-segment key hints (n/p select, unlike the image pane's). */
@@ -363,8 +363,8 @@ final class GraphViewerWidget extends NavigablePaneWidget
     {
         $this->layout = $layout;
         $this->error = null;
-        $width = max(1, (int) ceil($layout->width));
-        $height = max(1, (int) ceil($layout->height));
+        $width = \max(1, (int) \ceil($layout->width));
+        $height = \max(1, (int) \ceil($layout->height));
         $this->extentW = $width;
         $this->extentH = $height;
         $this->pending->reset(); // re-decide the resolution for this graph
@@ -379,8 +379,8 @@ final class GraphViewerWidget extends NavigablePaneWidget
         foreach ($layout->nodes as $node) {
             $order[] = [$node->y, $node->x, $node->id];
         }
-        sort($order);
-        $this->selectionOrder = array_map(static fn (array $entry): int => (int) $entry[2], $order);
+        \sort($order);
+        $this->selectionOrder = \array_map(static fn (array $entry): int => (int) $entry[2], $order);
         $this->invalidate();
         $this->handler?->viewChanged();
         $this->scheduleRefine();
@@ -406,11 +406,11 @@ final class GraphViewerWidget extends NavigablePaneWidget
         // CEIL, not round: a continuous zoom (the Ctrl+scroll glide) would
         // otherwise ask for a different dpi at every nudge, where ceiling to
         // the next whole multiple asks once per doubling and never undersamples.
-        $wanted = $base * (int) ceil(max(1.0, $scale));
+        $wanted = $base * (int) \ceil(\max(1.0, $scale));
         // pixels = extent × dpi/base per axis, so the ceiling scales with 1/√area.
-        $cap = (int) floor($base * sqrt(ImageDecoder::MAX_PIXELS / ($this->extentW * $this->extentH)));
+        $cap = (int) \floor($base * \sqrt(ImageDecoder::MAX_PIXELS / ($this->extentW * $this->extentH)));
 
-        return max(1, min($wanted, $cap));
+        return \max(1, \min($wanted, $cap));
     }
 
     /**
@@ -474,8 +474,8 @@ final class GraphViewerWidget extends NavigablePaneWidget
                 // higher dpi must not redefine its own coordinate space.
                 if (null === $this->view) {
                     $base = $engine->baseDpi();
-                    $this->extentW = max(1, (int) round(($image->width * $base) / $dpi));
-                    $this->extentH = max(1, (int) round(($image->height * $base) / $dpi));
+                    $this->extentW = \max(1, (int) \round(($image->width * $base) / $dpi));
+                    $this->extentH = \max(1, (int) \round(($image->height * $base) / $dpi));
                     $this->view = new ZoomPanModel($this->extentW, $this->extentH, self::ZOOM_STEPS);
                 }
                 $this->invalidate();
@@ -537,7 +537,7 @@ final class GraphViewerWidget extends NavigablePaneWidget
         $count = \count($this->selectionOrder);
         $index = $dir > 0 ? -1 : 0;
         if (null !== $this->selected) {
-            $index = (int) array_search($this->selected, $this->selectionOrder, strict: true);
+            $index = (int) \array_search($this->selected, $this->selectionOrder, strict: true);
         }
         $this->focusNode($this->selectionOrder[((($index + $dir) % $count) + $count) % $count]);
     }
@@ -572,8 +572,8 @@ final class GraphViewerWidget extends NavigablePaneWidget
         $this->selected = $id;
         $scale = $this->view->effectiveScale($this->lastCols, 2 * $this->lastRows);
         $rect = $this->view->visibleRect($this->lastCols, 2 * $this->lastRows);
-        $dx = (int) round(($node->x - ($rect['srcX'] + (($this->lastCols / $scale) / 2))) * $scale);
-        $dy = (int) round(($node->y - ($rect['srcY'] + ($this->lastRows / $scale))) * $scale);
+        $dx = (int) \round(($node->x - ($rect['srcX'] + (($this->lastCols / $scale) / 2))) * $scale);
+        $dy = (int) \round(($node->y - ($rect['srcY'] + ($this->lastRows / $scale))) * $scale);
         $this->view->panBy($dx, $dy, $this->lastCols, 2 * $this->lastRows);
         $this->afterViewChange();
     }
@@ -606,7 +606,7 @@ final class GraphViewerWidget extends NavigablePaneWidget
             // same access {@see cycleSelection()} has always made.
             $node = $this->layout->nodes[$id];
             $rows[] = [
-                'label' => strtr($node->label, ["\n" => ' ']),
+                'label' => \strtr($node->label, ["\n" => ' ']),
                 'hint' => $this->translator->trans('%in% in · %out% out', ['%in%' => $in[$id] ?? 0, '%out%' => $out[$id] ?? 0]),
                 'value' => (string) $id,
             ];

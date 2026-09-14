@@ -29,7 +29,7 @@ final class IdeStatusBarClickTest extends TestCase
 
     public function testClickingTheCaretPositionOpensGoToLine(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\n\$a = 1;\n\$b = 2;\n"]);
 
         $this->runIde(
@@ -43,7 +43,7 @@ final class IdeStatusBarClickTest extends TestCase
                     // rows: the dock and the find bar move it.
                     $row = $this->rowOf($grid, 'LSP:');
                     self::assertNotNull($row, 'the status bar is on screen');
-                    $col = mb_strpos($grid[$row], needle: '1:1');
+                    $col = \mb_strpos($grid[$row], needle: '1:1');
                     self::assertIsInt($col, 'the caret position cell is on the status bar');
                 },
                 260 => static function ($tui) use (&$row, &$col): void {

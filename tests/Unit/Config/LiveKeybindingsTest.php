@@ -58,12 +58,12 @@ final class LiveKeybindingsTest extends TestCase
      */
     public function testARebuildKeepsTheUsersOwnKeymapNotJustTheProjects(): void
     {
-        $home = new TempProject(['.porta/config.json' => json_encode(
+        $home = new TempProject(['.porta/config.json' => \json_encode(
             ['keymap' => ['save_all' => ['ctrl+alt+g']]],
             \JSON_THROW_ON_ERROR,
         )]);
         $project = new TempProject([]);
-        putenv('PORTA_HOME='.$home->dir);
+        \putenv('PORTA_HOME='.$home->dir);
         [$live] = $this->live($project);
 
         $this->assertTrue($live->matches("\x1b\x07", 'save_all'), 'the user file bound it at boot');
@@ -92,7 +92,7 @@ final class LiveKeybindingsTest extends TestCase
     public function testRebuildDropsADeactivatedPluginsKeysAndUserKeymapStillWins(): void
     {
         $project = new TempProject([
-            '.porta.json' => json_encode(['keymap' => ['save' => ['ctrl+shift+s']]]),
+            '.porta.json' => \json_encode(['keymap' => ['save' => ['ctrl+shift+s']]]),
             '.porta/plugins/keyed/plugin.php' => self::PLUGIN,
         ]);
         [$live, $host] = $this->live($project);

@@ -36,7 +36,7 @@ trait ProviderFingerprint
     /** Repaint when the provided content changed since the last frame. */
     private function refreshFingerprint(mixed $provided): void
     {
-        $fingerprint = (string) json_encode($provided);
+        $fingerprint = (string) \json_encode($provided);
         if ($fingerprint !== $this->lastFingerprint) {
             $this->lastFingerprint = $fingerprint;
             $this->invalidate();

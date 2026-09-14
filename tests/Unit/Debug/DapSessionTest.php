@@ -30,7 +30,7 @@ final class DapSessionTest extends TestCase
             new RecordingDebugObserver(function (string $event): void {
                 $this->events[] = $event;
             }),
-            $this->exceptionFiltersProvider ?? static fn (array $advertised): array => array_column(array_filter($advertised, static fn (array $f): bool => $f['default']), 'filter'),
+            $this->exceptionFiltersProvider ?? static fn (array $advertised): array => \array_column(\array_filter($advertised, static fn (array $f): bool => $f['default']), 'filter'),
         );
     }
 
@@ -105,7 +105,7 @@ final class DapSessionTest extends TestCase
         $this->assertContains('continue', $client->commands());
 
         $session->stepOver();
-        $this->assertSame(1, \count(array_filter($client->commands(), static fn (string $c): bool => 'next' === $c)), 'steps while running are ignored');
+        $this->assertSame(1, \count(\array_filter($client->commands(), static fn (string $c): bool => 'next' === $c)), 'steps while running are ignored');
     }
 
     public function testStoppedWithoutAThreadIdAsksTheAdapterForThreads(): void
@@ -172,14 +172,14 @@ final class DapSessionTest extends TestCase
         $client->emit('terminated');
         $client->emit('exited', ['exitCode' => 0]);
         $client->close();
-        $this->assertSame(1, \count(array_filter($this->events, static fn (string $e): bool => 'terminated' === $e)), 'reported exactly once');
+        $this->assertSame(1, \count(\array_filter($this->events, static fn (string $e): bool => 'terminated' === $e)), 'reported exactly once');
         $this->assertSame(DebugState::Terminated, $session->state());
 
         $client->emit('continued'); // a straggler event after termination stays ignored
         $this->assertNotContains('continued', $this->events);
 
         $session->setBreakpoints('/p/b.php', [self::bp(5)]);
-        $this->assertSame([2 + 1], array_column($client->argumentsOf('setBreakpoints')['breakpoints'], 'line'), 'no sends after termination');
+        $this->assertSame([2 + 1], \array_column($client->argumentsOf('setBreakpoints')['breakpoints'], 'line'), 'no sends after termination');
     }
 
     public function testExitedAloneReportsTermination(): void
@@ -338,7 +338,7 @@ final class DapSessionTest extends TestCase
             $client->argumentsOf('setBreakpoints')['breakpoints'],
             'the condition rides along; the unsupported hitCondition is stripped',
         );
-        $warnings = array_values(array_filter($this->events, static fn (string $e): bool => str_contains($e, 'output:console:')));
+        $warnings = \array_values(\array_filter($this->events, static fn (string $e): bool => \str_contains($e, 'output:console:')));
         $this->assertCount(1, $warnings);
         $this->assertStringContainsString("does not support 'hitCondition'", $warnings[0]);
         $this->assertStringContainsString('/p/a.php:3', $warnings[0]);
@@ -438,7 +438,7 @@ final class DapSessionTest extends TestCase
 
         $session->setBreakpoints('/p/a.php', [self::bp(4, logMessage: 'hit')]);
         $this->assertSame([['line' => 5]], $client->argumentsOf('setBreakpoints')['breakpoints'], 'the unsupported log message is stripped');
-        $warnings = array_values(array_filter($this->events, static fn (string $e): bool => str_contains($e, "does not support 'logMessage'")));
+        $warnings = \array_values(\array_filter($this->events, static fn (string $e): bool => \str_contains($e, "does not support 'logMessage'")));
         $this->assertCount(1, $warnings);
     }
 
@@ -506,15 +506,15 @@ final class DapSessionTest extends TestCase
         $this->assertSame($session->exceptionBreakpointFilters(), $captured, 'the provider saw the advertised set');
         $commands = $client->commands();
         $this->assertGreaterThan(
-            array_search('setExceptionBreakpoints', $commands, strict: true),
-            array_search('configurationDone', $commands, strict: true),
+            \array_search('setExceptionBreakpoints', $commands, strict: true),
+            \array_search('configurationDone', $commands, strict: true),
             'filters are sent before configurationDone',
         );
 
         // A live toggle re-sends.
         $this->exceptionFiltersProvider = static fn (): array => [];
         $session->syncExceptionBreakpoints();
-        $this->assertSame(2, \count(array_filter($client->commands(), static fn (string $c): bool => 'setExceptionBreakpoints' === $c)));
+        $this->assertSame(2, \count(\array_filter($client->commands(), static fn (string $c): bool => 'setExceptionBreakpoints' === $c)));
     }
 
     public function testAdaptersWithoutFiltersNeverGetTheRequest(): void
@@ -552,11 +552,11 @@ final class DapSessionTest extends TestCase
 
         // A user toggle in the same file mid-run keeps the temp merged.
         $session->setBreakpoints('/p/a.php', [self::bp(2, '$x > 1'), self::bp(5)]);
-        $this->assertSame([3, 6, 9], array_column($client->argumentsOf('setBreakpoints')['breakpoints'], 'line'));
+        $this->assertSame([3, 6, 9], \array_column($client->argumentsOf('setBreakpoints')['breakpoints'], 'line'));
 
         // The next stop (any reason) retires the temp and re-sends without it.
         $client->emit('stopped', ['reason' => 'step', 'threadId' => 1]);
-        $this->assertSame([3], array_column($client->argumentsOf('setBreakpoints')['breakpoints'], 'line'), 'the store list only (the toggle above never entered the provider)');
+        $this->assertSame([3], \array_column($client->argumentsOf('setBreakpoints')['breakpoints'], 'line'), 'the store list only (the toggle above never entered the provider)');
     }
 
     public function testRunToOntoAnExistingBreakpointJustContinues(): void
@@ -593,7 +593,7 @@ final class DapSessionTest extends TestCase
 
         $this->assertSame(
             [3, 9],
-            array_column($client->argumentsOf('setBreakpoints')['breakpoints'], 'line'),
+            \array_column($client->argumentsOf('setBreakpoints')['breakpoints'], 'line'),
             'the temp is not duplicated once a real breakpoint already covers its line',
         );
     }
@@ -619,6 +619,6 @@ final class DapSessionTest extends TestCase
 
         $session->disconnect(); // no double reporting, no second request
         $this->assertSame(['terminated'], $this->events);
-        $this->assertSame(1, \count(array_filter($client->commands(), static fn (string $c): bool => 'disconnect' === $c)));
+        $this->assertSame(1, \count(\array_filter($client->commands(), static fn (string $c): bool => 'disconnect' === $c)));
     }
 }

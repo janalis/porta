@@ -57,7 +57,7 @@ final class WrapLayout
 
         $displayWidth = $this->document->lineDisplayWidth($line);
 
-        return $this->rows[$line] = $displayWidth <= $width ? 1 : (int) ceil($displayWidth / $width);
+        return $this->rows[$line] = $displayWidth <= $width ? 1 : (int) \ceil($displayWidth / $width);
     }
 
     /**
@@ -66,7 +66,7 @@ final class WrapLayout
      */
     public static function offsetOf(int $segment, int $width): int
     {
-        return max(0, $segment) * max(0, $width);
+        return \max(0, $segment) * \max(0, $width);
     }
 
     /**
@@ -75,7 +75,7 @@ final class WrapLayout
      */
     public static function segmentOf(int $displayCol, int $width): int
     {
-        return $width <= 0 ? 0 : intdiv(max(0, $displayCol), $width);
+        return $width <= 0 ? 0 : \intdiv(\max(0, $displayCol), $width);
     }
 
     /** Drop the memo when the width changed or the document moved on. */

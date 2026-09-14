@@ -19,7 +19,7 @@ final class EditorScrollTest extends TestCase
     #[\Override]
     protected function setUp(): void
     {
-        $this->document = new Document(implode("\n", array_map(static fn (int $i): string => "line{$i}", range(start: 0, end: 99))));
+        $this->document = new Document(\implode("\n", \array_map(static fn (int $i): string => "line{$i}", \range(start: 0, end: 99))));
         $this->foldModel = new FoldModel($this->document);
         $this->scroll = new EditorScroll($this->document, $this->foldModel, function (): void {
             ++$this->invalidations;

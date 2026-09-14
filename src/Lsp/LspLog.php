@@ -35,12 +35,12 @@ final class LspLog
     public function append(string $chunk): void
     {
         $before = \count($this->entries);
-        foreach (explode("\n", $chunk) as $line) {
-            $line = trim($line);
+        foreach (\explode("\n", $chunk) as $line) {
+            $line = \trim($line);
             if ('' === $line) {
                 continue;
             }
-            $this->entries[] = ['time' => $this->clock->now(), 'text' => mb_substr($line, start: 0, length: self::MAX_LINE_LENGTH)];
+            $this->entries[] = ['time' => $this->clock->now(), 'text' => \mb_substr($line, start: 0, length: self::MAX_LINE_LENGTH)];
         }
         if (\count($this->entries) === $before) {
             return; // an all-blank chunk changes nothing

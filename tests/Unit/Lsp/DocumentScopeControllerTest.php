@@ -76,7 +76,7 @@ final class DocumentScopeControllerTest extends TestCase
 
         $controller->requestScopes();
 
-        self::assertCount($before, $this->client->requests);
+        $this->assertCount($before, $this->client->requests);
     }
 
     public function testAServerWithoutTheCapabilityIsNeverAsked(): void
@@ -87,7 +87,7 @@ final class DocumentScopeControllerTest extends TestCase
 
         $controller->requestScopes();
 
-        self::assertCount($before, $this->client->requests);
+        $this->assertCount($before, $this->client->requests);
     }
 
     public function testAnAnswerBecomesTheFilesScopes(): void
@@ -96,9 +96,9 @@ final class DocumentScopeControllerTest extends TestCase
         $this->readyOn($controller, '/p/a.ts');
 
         $controller->requestScopes();
-        end($this->client->requests)['respond']([self::symbol('Svc', 5, 0, 9)]);
+        \end($this->client->requests)['respond']([self::symbol('Svc', 5, 0, 9)]);
 
-        self::assertSame(
+        $this->assertSame(
             [['label' => 'Svc', 'startLine' => 1, 'endLine' => 10, 'kind' => 'type']],
             $this->scopes->forPath('/p/a.ts'),
         );
@@ -110,10 +110,10 @@ final class DocumentScopeControllerTest extends TestCase
         $controller = $this->controller();
         $this->readyOn($controller, '/p/a.ts');
         $controller->requestScopes();
-        end($this->client->requests)['respond']([self::symbol('Svc', 5, 0, 9)]);
+        \end($this->client->requests)['respond']([self::symbol('Svc', 5, 0, 9)]);
 
-        self::assertSame([], $this->scopes->forPath('/p/other.ts'));
-        self::assertSame([], $this->scopes->forPath(null));
+        $this->assertSame([], $this->scopes->forPath('/p/other.ts'));
+        $this->assertSame([], $this->scopes->forPath(null));
     }
 
     public function testAnAnswerArrivingAfterABufferSwitchIsDropped(): void
@@ -123,9 +123,9 @@ final class DocumentScopeControllerTest extends TestCase
         $controller->requestScopes();
 
         $this->editor->showDocument('/p/other.ts', new Document("x\n"));
-        end($this->client->requests)['respond']([self::symbol('Svc', 5, 0, 9)]);
+        \end($this->client->requests)['respond']([self::symbol('Svc', 5, 0, 9)]);
 
-        self::assertSame([], $this->scopes->forPath('/p/a.ts'));
+        $this->assertSame([], $this->scopes->forPath('/p/a.ts'));
     }
 
     public function testTheRefresherAsksOnAllTHREESettlePoints(): void
@@ -141,6 +141,6 @@ final class DocumentScopeControllerTest extends TestCase
         $refresher->onBufferSaved(new BufferSaved(new Buffer('/p/a.ts', new Document("x\n"))));
         $refresher->onLspStatusChanged(new LspStatusChanged());
 
-        self::assertCount($before + 3, $this->client->requests);
+        $this->assertCount($before + 3, $this->client->requests);
     }
 }

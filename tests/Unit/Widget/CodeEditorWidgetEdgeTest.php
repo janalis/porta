@@ -175,7 +175,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         // Typing identifier chars narrows the filter
         $editor->handleInput('l');
         $this->assertTrue($editor->isCompletionOpen());
-        $rendered = implode("\n", $editor->render(new RenderContext(80, 10)));
+        $rendered = \implode("\n", $editor->render(new RenderContext(80, 10)));
         $this->assertStringContainsString('strlen', AnsiUtils::stripAnsiCodes($rendered));
         $this->assertStringNotContainsString('strrev', AnsiUtils::stripAnsiCodes($rendered));
 
@@ -203,12 +203,12 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         $editor->handleInput('m');
         $this->assertTrue($editor->isCompletionOpen());
 
-        $plain = AnsiUtils::stripAnsiCodes(implode("\n", $editor->render(new RenderContext(80, 10))));
+        $plain = AnsiUtils::stripAnsiCodes(\implode("\n", $editor->render(new RenderContext(80, 10))));
         $this->assertStringContainsString('getMessage', $plain);
         $this->assertStringContainsString('genericmoment', $plain);
         $this->assertLessThan(
-            strpos($plain, needle: 'genericmoment'),
-            strpos($plain, needle: 'getMessage'),
+            \strpos($plain, needle: 'genericmoment'),
+            \strpos($plain, needle: 'getMessage'),
             'camelCase-hump match ranks first',
         );
     }
@@ -326,8 +326,8 @@ final class CodeEditorWidgetEdgeTest extends TestCase
     /** @return string[] visible screen rows, ANSI stripped */
     private function screenRows(CodeEditorWidget $editor, int $w = 60, int $h = 10): array
     {
-        return array_map(
-            static fn (string $r) => rtrim(AnsiUtils::stripAnsiCodes($r)),
+        return \array_map(
+            static fn (string $r) => \rtrim(AnsiUtils::stripAnsiCodes($r)),
             $editor->render(new RenderContext($w, $h)),
         );
     }
@@ -338,13 +338,13 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         $editor->getDocument()->setCursor(1, 0); // on "function f() {"
 
         $editor->handleInput(self::CTRL_DOT); // fold
-        $joined = implode("\n", $this->screenRows($editor));
+        $joined = \implode("\n", $this->screenRows($editor));
         $this->assertStringContainsString('⋯', $joined, 'fold marker shown');
         $this->assertStringNotContainsString('a();', $joined, 'interior hidden');
         $this->assertStringContainsString('after();', $joined, 'code after the fold still visible');
 
         $editor->handleInput(self::CTRL_DOT); // unfold
-        $joined = implode("\n", $this->screenRows($editor));
+        $joined = \implode("\n", $this->screenRows($editor));
         $this->assertStringContainsString('a();', $joined, 'interior restored');
         $this->assertStringNotContainsString('⋯', $joined);
     }
@@ -366,11 +366,11 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         $editor = $this->foldFixture();
         $editor->getDocument()->setCursor(1, 0);
         $editor->handleInput(self::CTRL_DOT);
-        $this->assertStringNotContainsString('a();', implode("\n", $this->screenRows($editor)));
+        $this->assertStringNotContainsString('a();', \implode("\n", $this->screenRows($editor)));
 
         // Placing the caret inside the collapsed region reveals it on render.
         $editor->getDocument()->setCursor(3, 0);
-        $this->assertStringContainsString('a();', implode("\n", $this->screenRows($editor)));
+        $this->assertStringContainsString('a();', \implode("\n", $this->screenRows($editor)));
     }
 
     public function testToggleFoldWithNoRegionDoesNothing(): void
@@ -378,7 +378,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         $editor = $this->foldFixture();
         $editor->getDocument()->setCursor(0, 0); // "<?php" — no enclosing block
         $editor->handleInput(self::CTRL_DOT);
-        $joined = implode("\n", $this->screenRows($editor));
+        $joined = \implode("\n", $this->screenRows($editor));
         $this->assertStringNotContainsString('⋯', $joined);
         $this->assertStringContainsString('a();', $joined);
     }
@@ -399,7 +399,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         $editor->getDocument()->setCursor(20, 0); // well below the viewport
 
         $rows = $this->screenRows($editor, 60, 6);
-        $this->assertStringContainsString('line15();', implode("\n", $rows), 'caret line is scrolled into view');
+        $this->assertStringContainsString('line15();', \implode("\n", $rows), 'caret line is scrolled into view');
     }
 
     public function testScrollingUpAcrossAFoldSnapsToVisibleLine(): void
@@ -424,7 +424,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         // Height 2 with the caret at the bottom forces the anchor above the
         // caret to land inside the collapsed region and snap to line 1.
         $rows = $this->screenRows($editor, 60, 2);
-        $joined = implode("\n", $rows);
+        $joined = \implode("\n", $rows);
         $this->assertStringContainsString('tail();', $joined);
         $this->assertStringContainsString('⋯', $joined, 'fold start becomes the scroll anchor');
     }
@@ -478,7 +478,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         for ($i = 0; $i < 10; ++$i) {
             $editor->handleInput("\x1b[B");
         }
-        $plain = AnsiUtils::stripAnsiCodes(implode("\n", $editor->render(new RenderContext(80, 20))));
+        $plain = AnsiUtils::stripAnsiCodes(\implode("\n", $editor->render(new RenderContext(80, 20))));
         $this->assertStringContainsString('item10', $plain, 'window followed selection');
         $this->assertStringNotContainsString('item00', $plain);
     }
@@ -524,12 +524,12 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         $editor->setSignatureHint('f(int $x)');
 
         $editor->handleInput(')');
-        $rendered = AnsiUtils::stripAnsiCodes(implode("\n", $editor->render(new RenderContext(80, 10))));
+        $rendered = AnsiUtils::stripAnsiCodes(\implode("\n", $editor->render(new RenderContext(80, 10))));
         $this->assertStringNotContainsString('f(int $x)', $rendered, 'closing paren clears the hint');
 
         $editor->setSignatureHint('f(int $x)');
         $editor->handleInput("\x1b[A"); // cursor up clears
-        $rendered = AnsiUtils::stripAnsiCodes(implode("\n", $editor->render(new RenderContext(80, 10))));
+        $rendered = AnsiUtils::stripAnsiCodes(\implode("\n", $editor->render(new RenderContext(80, 10))));
         $this->assertStringNotContainsString('f(int $x)', $rendered);
     }
 
@@ -540,7 +540,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
 
         // Tiny width: hint area (columns - gutter - 1) < 4 -> skipped
         $lines = $editor->render(new RenderContext(9, 3));
-        $this->assertStringNotContainsString('very', AnsiUtils::stripAnsiCodes(implode("\n", $lines)));
+        $this->assertStringNotContainsString('very', AnsiUtils::stripAnsiCodes(\implode("\n", $lines)));
     }
 
     public function testCommentPrefixVariants(): void
@@ -616,7 +616,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
 
     public function testScrollClampsWhenJumpingBackToTop(): void
     {
-        $lines = implode("\n", array_map(static fn (int $i) => "row {$i}", range(0, end: 99)));
+        $lines = \implode("\n", \array_map(static fn (int $i) => "row {$i}", \range(0, end: 99)));
         $editor = $this->editor($lines);
         $editor->getDocument()->setCursor(80, 0);
         $editor->render(new RenderContext(40, 10)); // scrolls down
@@ -628,7 +628,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
 
     public function testHorizontalScrollSnapsLeftward(): void
     {
-        $long = str_repeat('x', times: 200);
+        $long = \str_repeat('x', times: 200);
         $editor = $this->editor("<?php\n{$long}\n");
         $doc = $editor->getDocument();
         $doc->setCursor(1, 150);
@@ -639,17 +639,17 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         foreach ($rendered as $line) {
             $this->assertSame(40, AnsiUtils::visibleWidth($line));
         }
-        $this->assertStringContainsString("\x1b_pi:c;", implode('', $rendered));
+        $this->assertStringContainsString("\x1b_pi:c;", \implode('', $rendered));
     }
 
     public function testBracketScanGivesUpAtCapAndOnUnmatched(): void
     {
         // Unmatched opening brace with > 20k characters of scan distance
-        $filler = str_repeat(str_repeat('x', times: 100)."\n", times: 250);
+        $filler = \str_repeat(\str_repeat('x', times: 100)."\n", times: 250);
         $editor = $this->editor("{\n".$filler);
         $editor->getDocument()->setCursor(0, 0);
         $rendered = $editor->render(new RenderContext(120, 5));
-        $this->assertSame(0, substr_count($rendered[0], needle: "\x1b[1m\x1b[7m"), 'no highlight for unmatched bracket');
+        $this->assertSame(0, \substr_count($rendered[0], needle: "\x1b[1m\x1b[7m"), 'no highlight for unmatched bracket');
 
         // No bracket near the cursor at all
         $editor2 = $this->editor("plain text\n");
@@ -660,7 +660,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         $editor3 = $this->editor("(a)\n");
         $editor3->getDocument()->setCursor(0, 3); // just after ')'
         $rendered = $editor3->render(new RenderContext(40, 3));
-        $this->assertSame(2, substr_count($rendered[0], needle: "\x1b[1m\x1b[7m"));
+        $this->assertSame(2, \substr_count($rendered[0], needle: "\x1b[1m\x1b[7m"));
     }
 
     public function testDiagnosticSpanningToLineEnd(): void
@@ -722,7 +722,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         $editor->getDocument()->insert('zzz');
 
         $rendered = $editor->render(new RenderContext(60, 8));
-        $this->assertStringNotContainsString('strlen', AnsiUtils::stripAnsiCodes(implode("\n", $rendered)));
+        $this->assertStringNotContainsString('strlen', AnsiUtils::stripAnsiCodes(\implode("\n", $rendered)));
     }
 
     public function testInlineDiagnosticRendersAndCanBeDisabled(): void
@@ -746,12 +746,12 @@ final class CodeEditorWidgetEdgeTest extends TestCase
 
         // inlineDiagnostics defaults on: disable (set), disable again (skip), enable (set), enable again (skip).
         $editor->display()->setInlineDiagnostics(false);
-        $this->assertStringNotContainsString('undefined variable', AnsiUtils::stripAnsiCodes(implode("\n", $editor->render(new RenderContext(80, 5)))));
+        $this->assertStringNotContainsString('undefined variable', AnsiUtils::stripAnsiCodes(\implode("\n", $editor->render(new RenderContext(80, 5)))));
         $editor->display()->setInlineDiagnostics(false);
         $editor->display()->setInlineDiagnostics(true);
-        $this->assertStringContainsString('undefined variable', AnsiUtils::stripAnsiCodes(implode("\n", $editor->render(new RenderContext(80, 5)))));
+        $this->assertStringContainsString('undefined variable', AnsiUtils::stripAnsiCodes(\implode("\n", $editor->render(new RenderContext(80, 5)))));
         $editor->display()->setInlineDiagnostics(true);
-        $this->assertStringContainsString('undefined variable', AnsiUtils::stripAnsiCodes(implode("\n", $editor->render(new RenderContext(80, 5)))));
+        $this->assertStringContainsString('undefined variable', AnsiUtils::stripAnsiCodes(\implode("\n", $editor->render(new RenderContext(80, 5)))));
 
         // lineNumbers defaults to absolute: change to relative, set relative again (no-op), then absolute, then off.
         $editor->display()->setLineNumbers(LineNumberMode::Relative);
@@ -818,15 +818,15 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         $this->assertStringContainsString('$x = 1;', $plain, 'the code itself is intact');
         $this->assertStringContainsString($hint, $plain, 'the inlay hint is not overprinted by the message');
         // The hint precedes the message rather than being sliced by it.
-        $hintPos = (int) strpos($plain, $hint);
-        $messagePos = (int) strpos($plain, $message);
+        $hintPos = (int) \strpos($plain, $hint);
+        $messagePos = (int) \strpos($plain, $message);
         $this->assertLessThan($messagePos, $hintPos, 'the inlay hint stays left of the diagnostic message');
     }
 
     public function testInlineDiagnosticSkippedWhenNoRoom(): void
     {
         // A long line leaves no trailing room for the message.
-        $long = str_repeat('x', times: 70);
+        $long = \str_repeat('x', times: 70);
         $editor = $this->editor("<?php\n{$long}\n");
         $editor->getDocument()->setCursor(1, 0);
         $editor->decorations()->setDiagnostics([1 => [['severity' => 2, 'message' => 'a warning here', 'col' => 0]]]);
@@ -903,7 +903,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
 
         $rendered = $editor->render(new RenderContext(60, 2));
         $this->assertStringContainsString('f(int $x): void', AnsiUtils::stripAnsiCodes($rendered[1]), 'the bare hint row below the caret');
-        $this->assertStringNotContainsString('╭', AnsiUtils::stripAnsiCodes(implode('', $rendered)), 'no frame on a pane too small for one');
+        $this->assertStringNotContainsString('╭', AnsiUtils::stripAnsiCodes(\implode('', $rendered)), 'no frame on a pane too small for one');
     }
 
     public function testSignatureHintWithSingleRowViewportIsDropped(): void
@@ -913,7 +913,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         $editor->setSignatureHint('f(int $x): void');
 
         $rendered = $editor->render(new RenderContext(60, 1));
-        $this->assertStringNotContainsString('f(int', AnsiUtils::stripAnsiCodes(implode('', $rendered)));
+        $this->assertStringNotContainsString('f(int', AnsiUtils::stripAnsiCodes(\implode('', $rendered)));
     }
 
     // --- showDocument: highlighter, caret hooks, closeList, invalidate --------
@@ -1111,7 +1111,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
 
     public function testAWheelScrollNotifiesTheCompletionHandler(): void
     {
-        $editor = $this->editor(str_repeat("line\n", times: 100));
+        $editor = $this->editor(\str_repeat("line\n", times: 100));
         $scrolled = 0;
         $editor->setCallbacks(new EditorCallbacks(completion: new FakeEditorCompletion(
             viewportScrolled: static function () use (&$scrolled): void {
@@ -1131,7 +1131,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         $editor->openFile('demo.php', "<?php\nclass Alpha\n{\n}\n");
 
         $first = $editor->scopes();
-        $this->assertSame(['Alpha'], array_column($first, 'label'), 'the first look scans in place, scheduler or not');
+        $this->assertSame(['Alpha'], \array_column($first, 'label'), 'the first look scans in place, scheduler or not');
         $this->assertSame([], $scheduler->scheduled, 'a cache hit arms nothing');
 
         // Rename the class: the trail must stay stale (no per-keystroke
@@ -1139,7 +1139,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         $editor->getDocument()->setCursor(1, 11);
         $editor->getDocument()->insert('X');
         $this->assertSame($first, $editor->scopes(), 'mid-typing the stale trail is served');
-        $this->assertSame([0.15], array_values($scheduler->delays), 'one idle rescan armed');
+        $this->assertSame([0.15], \array_values($scheduler->delays), 'one idle rescan armed');
 
         // Frames keep calling scopes() at the same version: no re-arm, or an
         // ambient repaint stream would push the rescan out forever.
@@ -1147,7 +1147,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         $this->assertCount(1, $scheduler->scheduled, 'a same-version call must not push the timer out');
 
         $scheduler->fire();
-        $this->assertSame(['AlphaX'], array_column($editor->scopes(), 'label'), 'the settled rescan shows the edit');
+        $this->assertSame(['AlphaX'], \array_column($editor->scopes(), 'label'), 'the settled rescan shows the edit');
         $this->assertSame([], $scheduler->scheduled, 'nothing left armed after settling');
     }
 
@@ -1168,7 +1168,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         $this->assertCount(1, $scheduler->scheduled);
 
         $scheduler->fire();
-        $this->assertSame(['AlphaXY'], array_column($editor->scopes(), 'label'), 'the one rescan sees both edits');
+        $this->assertSame(['AlphaXY'], \array_column($editor->scopes(), 'label'), 'the one rescan sees both edits');
     }
 
     public function testSwitchingDocumentsRescansInPlaceEvenWithAScheduler(): void
@@ -1180,7 +1180,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
 
         // Another buffer must never show Alpha's trail for a debounce window.
         $editor->showDocument('other.php', new Document("<?php\nclass Beta\n{\n}\n"));
-        $this->assertSame(['Beta'], array_column($editor->scopes(), 'label'), 'a document switch cannot serve a stale trail');
+        $this->assertSame(['Beta'], \array_column($editor->scopes(), 'label'), 'a document switch cannot serve a stale trail');
         $this->assertSame([], $scheduler->scheduled, 'the switch scanned synchronously');
     }
 

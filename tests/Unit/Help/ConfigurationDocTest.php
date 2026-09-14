@@ -40,14 +40,14 @@ final class ConfigurationDocTest extends TestCase
     public function testEverySettingKeyHasARowInTheTable(): void
     {
         $missing = [];
-        foreach (array_keys(IdeConfig::DEFAULT_SETTINGS) as $key) {
-            if (str_contains($this->table(), '| `'.$key.'` |')) {
+        foreach (\array_keys(IdeConfig::DEFAULT_SETTINGS) as $key) {
+            if (\str_contains($this->table(), '| `'.$key.'` |')) {
                 continue;
             }
 
             $missing[] = $key;
         }
-        sort($missing);
+        \sort($missing);
 
         $this->assertSame([], $missing, 'a .porta.json accepts these and docs/configuration.md does not describe them');
     }
@@ -56,14 +56,14 @@ final class ConfigurationDocTest extends TestCase
     {
         $stale = [];
         $matches = [];
-        preg_match_all('/^\| `([a-zA-Z]+)` \|/m', $this->table(), $matches);
+        \preg_match_all('/^\| `([a-zA-Z]+)` \|/m', $this->table(), $matches);
         foreach ($matches[1] as $key) {
             if (\array_key_exists($key, IdeConfig::DEFAULT_SETTINGS) || \array_key_exists($key, self::MAY_LINGER)) {
                 continue;
             }
             $stale[] = $key;
         }
-        sort($stale);
+        \sort($stale);
 
         $this->assertSame([], $stale, 'the table describes settings nothing reads: remove the row, or list the key in MAY_LINGER with its reason');
     }
@@ -71,7 +71,7 @@ final class ConfigurationDocTest extends TestCase
     /** A legacy key the table keeps must still be one the code knows about. */
     public function testALingeringKeyIsStillRecognisedByTheConfig(): void
     {
-        foreach (array_keys(self::MAY_LINGER) as $key) {
+        foreach (\array_keys(self::MAY_LINGER) as $key) {
             $this->assertArrayHasKey(
                 $key,
                 IdeConfig::SUPERSEDED_BY,
@@ -92,14 +92,14 @@ final class ConfigurationDocTest extends TestCase
         $section = $this->languagesSection();
 
         $missing = [];
-        foreach (array_keys(LanguageCatalog::LANGUAGES) as $id) {
-            if (str_contains($section, '`'.$id.'`')) {
+        foreach (\array_keys(LanguageCatalog::LANGUAGES) as $id) {
+            if (\str_contains($section, '`'.$id.'`')) {
                 continue;
             }
 
             $missing[] = $id;
         }
-        sort($missing);
+        \sort($missing);
 
         $this->assertSame([], $missing, 'languages.<id> accepts these and the page does not list them');
     }
@@ -107,12 +107,12 @@ final class ConfigurationDocTest extends TestCase
     /** The `languages.<id>` heading down to the next one. */
     private function languagesSection(): string
     {
-        $doc = (string) file_get_contents(self::DOC);
-        $start = strpos($doc, needle: '### `languages.<id>`');
+        $doc = (string) \file_get_contents(self::DOC);
+        $start = \strpos($doc, needle: '### `languages.<id>`');
         self::assertNotFalse($start, 'the languages section is where this test expects it');
-        $end = strpos($doc, needle: "\n## ", offset: $start);
+        $end = \strpos($doc, needle: "\n## ", offset: $start);
 
-        return substr($doc, $start, false === $end ? null : $end - $start);
+        return \substr($doc, $start, false === $end ? null : $end - $start);
     }
 
     /**
@@ -121,11 +121,11 @@ final class ConfigurationDocTest extends TestCase
      */
     private function table(): string
     {
-        $doc = (string) file_get_contents(self::DOC);
-        $start = strpos($doc, needle: '| Key | Default | Effect |');
+        $doc = (string) \file_get_contents(self::DOC);
+        $start = \strpos($doc, needle: '| Key | Default | Effect |');
         self::assertNotFalse($start, 'the settings table is where this test expects it');
-        $end = strpos($doc, needle: "\n\n", offset: $start);
+        $end = \strpos($doc, needle: "\n\n", offset: $start);
 
-        return substr($doc, $start, false === $end ? null : $end - $start);
+        return \substr($doc, $start, false === $end ? null : $end - $start);
     }
 }

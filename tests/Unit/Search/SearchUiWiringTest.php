@@ -63,7 +63,7 @@ final class SearchUiWiringTest extends TestCase
     {
         // No grep on PATH → ProjectSearch takes its synchronous PHP fallback,
         // so a search's results are available immediately, deterministically.
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
     }
 
     private function wiring(string $rootDir): SearchUiWiring
@@ -105,7 +105,7 @@ final class SearchUiWiringTest extends TestCase
             public function openFile(string $path, OpenFocus $focus = OpenFocus::Keep): void
             {
                 $this->opened[] = $path;
-                $this->editor->showDocument($path, new \Porta\Editor\Document((string) file_get_contents($path)));
+                $this->editor->showDocument($path, new \Porta\Editor\Document((string) \file_get_contents($path)));
             }
         };
 
@@ -255,7 +255,7 @@ final class SearchUiWiringTest extends TestCase
         $wiring->onExportRequested(new ResultsExportRequested());
 
         $this->assertCount(1, $this->opened, 'the exported file was opened');
-        $this->assertStringContainsString('needle', (string) file_get_contents($this->opened[0]));
+        $this->assertStringContainsString('needle', (string) \file_get_contents($this->opened[0]));
     }
 
     public function testExportRequestedFromAPanelThatIsNOTASearchDoesNothing(): void

@@ -78,7 +78,7 @@ final class ContextMenuRouter
             $rel = $tabsRect->toRelative($mouse->row, $mouse->col);
             $index = $this->panes->tabBar()->tabIndexAt($rel['row'], $rel['col']);
             $buffers = $this->buffers->all();
-            if (null === $index || !array_key_exists($index, $buffers)) {
+            if (null === $index || !\array_key_exists($index, $buffers)) {
                 $this->opener->flashNoMenu(); // the strip's empty tail
 
                 return;

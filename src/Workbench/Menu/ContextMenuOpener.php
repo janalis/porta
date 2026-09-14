@@ -101,7 +101,7 @@ final class ContextMenuOpener
         // named the image and help viewers and was never revisited.
         if ($focus instanceof EditorPaneWidget && null !== ($active = $this->buffers->active())) {
             $rect = $this->renderer->getWidgetRect($this->tabBar);
-            $index = array_search($active, $this->buffers->all(), strict: true);
+            $index = \array_search($active, $this->buffers->all(), strict: true);
             // A scrolled-out active tab falls back to the strip's origin cell.
             $anchor = (false === $index ? null : $this->tabBar->tabAnchor($index)) ?? ['row' => 0, 'col' => 0];
             // One row below the tab; a bottom strip anchors on its own row so the

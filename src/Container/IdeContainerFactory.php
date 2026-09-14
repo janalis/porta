@@ -80,11 +80,11 @@ final class IdeContainerFactory
             'PORTA_HIGHLIGHT' => $config->highlight,
         ];
         foreach ($jsonEnv as $key => $value) {
-            $_ENV[$key] = json_encode($value, \JSON_THROW_ON_ERROR);
+            $_ENV[$key] = \json_encode($value, \JSON_THROW_ON_ERROR);
         }
 
         $cacheDir = $this->cacheDir();
-        if (null === $cacheDir || 'off' === getenv('PORTA_CONTAINER_CACHE')) {
+        if (null === $cacheDir || 'off' === \getenv('PORTA_CONTAINER_CACHE')) {
             return $this->compileFresh(CompileTarget::Direct);
         }
 
@@ -96,13 +96,13 @@ final class IdeContainerFactory
         // from "another install sharing this per-user cache dir" — without it,
         // a dev checkout beside a release would evict each other's dump on
         // every boot and permanently defeat the cache for both.
-        $installKey = hash('xxh32', \dirname(__DIR__, levels: 2));
-        $hash = hash('xxh128', Ide::VERSION.\PHP_VERSION.\dirname(__DIR__, levels: 2).'/config'.$cacheDir.self::installedPackages());
+        $installKey = \hash('xxh32', \dirname(__DIR__, levels: 2));
+        $hash = \hash('xxh128', Ide::VERSION.\PHP_VERSION.\dirname(__DIR__, levels: 2).'/config'.$cacheDir.self::installedPackages());
         $file = $cacheDir.'/container-'.$installKey.'-'.$hash.'.php';
         /** @var class-string<Container> $class The PhpDumper-generated class (declared by the require below). */
         $class = 'PortaCachedContainer_'.$hash;
 
-        $trackSources = $this->trackSources ?? 'debug' === getenv('PORTA_CONTAINER_CACHE') || is_dir(\dirname(__DIR__, levels: 2).'/.git');
+        $trackSources = $this->trackSources ?? 'debug' === \getenv('PORTA_CONTAINER_CACHE') || \is_dir(\dirname(__DIR__, levels: 2).'/.git');
         $cache = new ConfigCache($file, $trackSources);
         if (!$cache->isFresh()) {
             // Compiled for the dump: env placeholders stay unresolved so the
@@ -117,7 +117,7 @@ final class IdeContainerFactory
             } catch (IOException) {
                 return $this->compileFresh(CompileTarget::Direct); // unwritable cache dir: serve this boot uncached
             }
-            if (class_exists($class, false)) {
+            if (\class_exists($class, false)) {
                 // The stale dump is already loaded in this process and PHP
                 // cannot redeclare it. Serve a direct-use build now — the
                 // rewritten file benefits the next process.
@@ -125,7 +125,7 @@ final class IdeContainerFactory
             }
         }
 
-        if (!class_exists($class, false)) {
+        if (!\class_exists($class, false)) {
             require_once $file;
         }
 
@@ -155,9 +155,9 @@ final class IdeContainerFactory
                 $versions[] = $name.'@'.($package['version'] ?? '');
             }
         }
-        sort($versions);
+        \sort($versions);
 
-        return implode("\n", $versions);
+        return \implode("\n", $versions);
     }
 
     /**
@@ -190,33 +190,33 @@ final class IdeContainerFactory
         // The pre-installKey naming (container-<32hex>.php*) predates the GC
         // itself, so those generations were never anyone's to collect and
         // strand ~0.5 MB each forever; sweep them alongside this install's own.
-        $all = glob($cacheDir.'/container-*.php*');
-        $legacy = array_filter(
+        $all = \glob($cacheDir.'/container-*.php*');
+        $legacy = \array_filter(
             \is_array($all) ? $all : [],
-            static fn (string $file): bool => 1 === preg_match('/^container-[0-9a-f]{32}\.php(\.meta(\.json)?)?$/', basename($file)),
+            static fn (string $file): bool => 1 === \preg_match('/^container-[0-9a-f]{32}\.php(\.meta(\.json)?)?$/', \basename($file)),
         );
-        $mine = glob($cacheDir.'/container-'.$installKey.'-*.php*');
+        $mine = \glob($cacheDir.'/container-'.$installKey.'-*.php*');
         foreach ([...(\is_array($mine) ? $mine : []), ...$legacy] as $file) {
-            if (str_starts_with(basename($file), 'container-'.$installKey.'-'.$hash.'.php')) {
+            if (\str_starts_with(\basename($file), 'container-'.$installKey.'-'.$hash.'.php')) {
                 continue;
             }
             // @mago-expect lint:no-error-control-operator — best-effort GC: an unremovable sibling costs disk, not correctness.
-            @unlink($file);
+            @\unlink($file);
         }
     }
 
     /** The porta cache dir: $PORTA_CACHE_DIR as-is, else XDG/HOME + /porta, else null (no caching). */
     private function cacheDir(): ?string
     {
-        $explicit = getenv('PORTA_CACHE_DIR');
+        $explicit = \getenv('PORTA_CACHE_DIR');
         if (\is_string($explicit) && '' !== $explicit) {
             return $explicit;
         }
-        $xdg = getenv('XDG_CACHE_HOME');
+        $xdg = \getenv('XDG_CACHE_HOME');
         if (\is_string($xdg) && '' !== $xdg) {
             return $xdg.'/porta';
         }
-        $home = getenv('HOME');
+        $home = \getenv('HOME');
         if (\is_string($home) && '' !== $home) {
             return $home.'/.cache/porta';
         }

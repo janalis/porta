@@ -82,9 +82,9 @@ final readonly class PluginManifest
         foreach ($this->autoload as $prefix => $relatives) {
             $existing = [];
             foreach ($relatives as $relative) {
-                $trimmed = trim($relative, characters: '/');
+                $trimmed = \trim($relative, characters: '/');
                 $dir = '' === $trimmed || '.' === $trimmed ? $this->directory : $this->directory.'/'.$trimmed;
-                if (is_dir($dir)) {
+                if (\is_dir($dir)) {
                     $existing[] = $dir;
                 }
             }
@@ -106,7 +106,7 @@ final readonly class PluginManifest
     {
         $dir = $this->directory.'/vendor';
 
-        return is_dir($dir) ? $dir : null;
+        return \is_dir($dir) ? $dir : null;
     }
 
     /**
@@ -127,7 +127,7 @@ final readonly class PluginManifest
         $data = null === $path ? null : JsonFile::read($path);
         $packages = \is_array($data['packages'] ?? null) ? $data['packages'] : [];
 
-        $ours = array_fill_keys(InstalledVersions::getInstalledPackages(), value: true);
+        $ours = \array_fill_keys(InstalledVersions::getInstalledPackages(), value: true);
         $shadowed = [];
         /** @var mixed $package */
         foreach ($packages as $package) {
@@ -173,7 +173,7 @@ final readonly class PluginManifest
      */
     public function installablePackages(): array
     {
-        return array_values(array_filter($this->packages, static fn (string $package): bool => !InstalledVersions::isInstalled($package)));
+        return \array_values(\array_filter($this->packages, static fn (string $package): bool => !InstalledVersions::isInstalled($package)));
     }
 
     /**
@@ -188,7 +188,7 @@ final readonly class PluginManifest
     public static function beside(string $pluginFile, ?string &$manifestError = null): self
     {
         $directory = \dirname($pluginFile);
-        $name = basename($directory);
+        $name = \basename($directory);
         $data = JsonFile::read($directory.'/composer.json', $manifestError);
         if (null === $data) {
             return new self($name, $directory);
@@ -218,7 +218,7 @@ final readonly class PluginManifest
         $map = [];
         /** @var mixed $relatives */
         foreach (\is_array($autoload['psr-4'] ?? null) ? $autoload['psr-4'] : [] as $prefix => $relatives) {
-            if (!\is_string($prefix) || '' === trim($prefix, characters: '\\')) {
+            if (!\is_string($prefix) || '' === \trim($prefix, characters: '\\')) {
                 continue;
             }
             $directories = [];
@@ -230,7 +230,7 @@ final readonly class PluginManifest
                 $directories[] = $relative;
             }
             if ([] !== $directories) {
-                $map[trim($prefix, characters: '\\').'\\'] = $directories;
+                $map[\trim($prefix, characters: '\\').'\\'] = $directories;
             }
         }
 
@@ -270,7 +270,7 @@ final readonly class PluginManifest
      */
     public function hasLegacyManifest(): bool
     {
-        return is_file($this->directory.'/plugin.json');
+        return \is_file($this->directory.'/plugin.json');
     }
 
     /**
@@ -309,7 +309,7 @@ final readonly class PluginManifest
         $platform = [];
         /** @var mixed $constraint */
         foreach (\is_array($data['require'] ?? null) ? $data['require'] : [] as $need => $constraint) {
-            if (!\is_string($need) || str_contains($need, needle: '/') || !\is_string($constraint)) {
+            if (!\is_string($need) || \str_contains($need, needle: '/') || !\is_string($constraint)) {
                 continue;
             }
             $platform[$need] = $constraint;
@@ -350,7 +350,7 @@ final readonly class PluginManifest
 
                 continue;
             }
-            $extension = str_starts_with($need, 'ext-') ? substr($need, offset: 4) : '';
+            $extension = \str_starts_with($need, 'ext-') ? \substr($need, offset: 4) : '';
             if ('' !== $extension && !\extension_loaded($extension)) {
                 $unmet[] = $need;
             }
@@ -386,8 +386,8 @@ final readonly class PluginManifest
     private static function packages(array $data): array
     {
         $packages = [];
-        foreach (array_keys(\is_array($data['require'] ?? null) ? $data['require'] : []) as $package) {
-            if (!\is_string($package) || !str_contains($package, needle: '/')) {
+        foreach (\array_keys(\is_array($data['require'] ?? null) ? $data['require'] : []) as $package) {
+            if (!\is_string($package) || !\str_contains($package, needle: '/')) {
                 continue;
             }
             $packages[] = $package;

@@ -45,7 +45,7 @@ final class MenuPanel
             if ($item->separator) {
                 continue;
             }
-            $width = max($width, mb_strwidth($item->label) + ('' !== $item->shortcut ? mb_strwidth($item->shortcut) + self::SHORTCUT_GAP : 0) + self::ITEM_CHROME);
+            $width = \max($width, \mb_strwidth($item->label) + ('' !== $item->shortcut ? \mb_strwidth($item->shortcut) + self::SHORTCUT_GAP : 0) + self::ITEM_CHROME);
         }
 
         return $width;
@@ -65,7 +65,7 @@ final class MenuPanel
         foreach ($items as $index => $item) {
             $out[] = [
                 'segment' => $item->separator
-                    ? $styles->merge(Role::RowHighlightBg, Role::Placeholder)->apply(str_repeat(Glyphs::MENU_SEPARATOR, max(0, $panelWidth)))
+                    ? $styles->merge(Role::RowHighlightBg, Role::Placeholder)->apply(\str_repeat(Glyphs::MENU_SEPARATOR, \max(0, $panelWidth)))
                     : self::itemSegment(
                         $item,
                         $panelWidth,
@@ -125,11 +125,11 @@ final class MenuPanel
 
     private static function itemSegment(MenuItem $item, int $panelWidth, MenuSelection $selection, MenuAvailability $availability, Styles $styles, BaseDirection $direction): string
     {
-        $inner = max(0, $panelWidth - self::EDGE_COLS);
+        $inner = \max(0, $panelWidth - self::EDGE_COLS);
         $shortcut = $item->shortcut;
-        $labelMax = max(0, $inner - ('' !== $shortcut ? mb_strwidth($shortcut) + self::SHORTCUT_GAP : 0));
+        $labelMax = \max(0, $inner - ('' !== $shortcut ? \mb_strwidth($shortcut) + self::SHORTCUT_GAP : 0));
         $label = AnsiText::truncate($item->label, $labelMax);
-        $gap = max(1, $inner - AnsiUtils::visibleWidth($label) - mb_strwidth($shortcut));
+        $gap = \max(1, $inner - AnsiUtils::visibleWidth($label) - \mb_strwidth($shortcut));
 
         // Disabled always reads dim and never shows the selected highlight; the
         // SGR dim attribute keeps the state visible without color (monochrome).
@@ -138,7 +138,7 @@ final class MenuPanel
             MenuSelection::Selected === $selection => $styles->of(Role::SelectedRow),
             default => $styles->of(Role::PopupRow),
         };
-        $tail = '' !== $shortcut ? $styles->of(Role::CompletionHint)->apply($shortcut) : str_repeat(' ', max(0, mb_strwidth($shortcut)));
+        $tail = '' !== $shortcut ? $styles->of(Role::CompletionHint)->apply($shortcut) : \str_repeat(' ', \max(0, \mb_strwidth($shortcut)));
 
         // A mirrored menu spends one gap column on a mark that ENDS the label's
         // run. Four shipped action labels end in a Latin run (`הצג TODO`,
@@ -147,8 +147,8 @@ final class MenuPanel
         // is drawn inside the label. `$gap` is floored at 1, and Bidi spends the
         // mark for a space, so the row keeps its width either way.
         $divide = BaseDirection::Rtl === $direction
-            ? Bidi::RTL_MARK.str_repeat(' ', $gap - 1)
-            : str_repeat(' ', $gap);
+            ? Bidi::RTL_MARK.\str_repeat(' ', $gap - 1)
+            : \str_repeat(' ', $gap);
 
         return $style->apply(' '.$label.$divide.$tail.' ');
     }

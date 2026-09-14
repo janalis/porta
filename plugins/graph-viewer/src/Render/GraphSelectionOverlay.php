@@ -37,17 +37,17 @@ final class GraphSelectionOverlay
         }
 
         [$x0, $y0, $x1, $y1] = new GraphCellGrid($cols, $rows, $view, null)->nodeBox($node);
-        $x0 = max(0, $x0);
-        $y0 = max(0, $y0);
-        $x1 = min($cols - 1, $x1);
-        $y1 = min($rows - 1, $y1);
+        $x0 = \max(0, $x0);
+        $y0 = \max(0, $y0);
+        $x1 = \min($cols - 1, $x1);
+        $y1 = \min($rows - 1, $y1);
         if ($x1 < $x0 || $y1 < $y0) {
             return $lines; // the node is scrolled out of the pane
         }
 
         $accent = $styles->of(Role::TabAccent);
-        $span = max(1, $x1 - $x0 + 1); // the guard above proves this, max() proves it to the analyzer
-        $rule = $accent->apply(str_repeat(Glyphs::FRAME_HORIZONTAL, $span));
+        $span = \max(1, $x1 - $x0 + 1); // the guard above proves this, max() proves it to the analyzer
+        $rule = $accent->apply(\str_repeat(Glyphs::FRAME_HORIZONTAL, $span));
         $rail = $accent->apply(Glyphs::FRAME_VERTICAL);
         for ($row = $y0; $row <= $y1; ++$row) {
             $lines[$row] =

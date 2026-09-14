@@ -96,24 +96,24 @@ final class SettingsPluginsControllerTest extends TestCase
 
     private function seedPlugin(TempProject $base, string $name): void
     {
-        mkdir($base->dir.'/.porta/plugins/'.$name, permissions: 0o777, recursive: true);
-        file_put_contents($base->dir.'/.porta/plugins/'.$name.'/plugin.php', data: "<?php\n");
+        \mkdir($base->dir.'/.porta/plugins/'.$name, permissions: 0o777, recursive: true);
+        \file_put_contents($base->dir.'/.porta/plugins/'.$name.'/plugin.php', data: "<?php\n");
     }
 
     /** A plugin source dir outside the scope bases, with a valid composer.json for a path install. */
     private function sourceDir(string $name): string
     {
         $dir = $this->project->dir.'/src/'.$name;
-        mkdir($dir, permissions: 0o777, recursive: true);
-        file_put_contents($dir.'/plugin.php', data: "<?php\n");
-        file_put_contents($dir.'/composer.json', data: (string) json_encode(['name' => 'test/'.$name, 'type' => 'porta-plugin']));
+        \mkdir($dir, permissions: 0o777, recursive: true);
+        \file_put_contents($dir.'/plugin.php', data: "<?php\n");
+        \file_put_contents($dir.'/composer.json', data: (string) \json_encode(['name' => 'test/'.$name, 'type' => 'porta-plugin']));
 
         return $dir;
     }
 
     private function fakeComposer(int $exitCode = 0): string
     {
-        return FakeComposer::write(sys_get_temp_dir().'/porta-fakebin-'.bin2hex(random_bytes(4)), $exitCode);
+        return FakeComposer::write(\sys_get_temp_dir().'/porta-fakebin-'.\bin2hex(\random_bytes(4)), $exitCode);
     }
 
     public function testRowsShapeScopeChoiceInstallFieldAndRemoveButtons(): void
@@ -123,8 +123,8 @@ final class SettingsPluginsControllerTest extends TestCase
         $this->seedPlugin($this->global, 'shared');
 
         $rows = $controller->rows();
-        $this->assertSame(['configScope', 'pluginInstall', 'pluginRemove:project:local', 'pluginRemove:global:shared'], array_column($rows, 'key'));
-        $this->assertSame([SettingsRowKind::Choice, SettingsRowKind::Text, SettingsRowKind::Action, SettingsRowKind::Action], array_column($rows, 'kind'));
+        $this->assertSame(['configScope', 'pluginInstall', 'pluginRemove:project:local', 'pluginRemove:global:shared'], \array_column($rows, 'key'));
+        $this->assertSame([SettingsRowKind::Choice, SettingsRowKind::Text, SettingsRowKind::Action, SettingsRowKind::Action], \array_column($rows, 'kind'));
         $this->assertSame('project', $rows[0]->value);
         $this->assertSame(['global', 'project'], $rows[0]->options);
         $this->assertSame('.porta.json', $rows[0]->optionLabels['project'] ?? null);
@@ -177,7 +177,7 @@ final class SettingsPluginsControllerTest extends TestCase
             ['key' => 'binary', 'label' => 'Binary', 'kind' => 'text', 'default' => '', 'options' => null, 'hint' => null, 'min' => null, 'max' => null, 'step' => null],
         ]);
         $rows = $controller->pluginRows('demo');
-        $this->assertSame(['pluginEnabled', 'pluginSetting:binary'], array_column($rows, 'key'));
+        $this->assertSame(['pluginEnabled', 'pluginSetting:binary'], \array_column($rows, 'key'));
 
         $controller->changePlugin('demo', 'pluginSetting:binary', '/opt/x');
         $controller->changePlugin('demo', 'someOtherKey', 'ignored');
@@ -204,7 +204,7 @@ final class SettingsPluginsControllerTest extends TestCase
     public function testTheEnabledToggleSaysWhichFileDecidesIt(): void
     {
         $controller = $this->bundled(['git']);
-        file_put_contents($this->project->path('.porta.json'), json_encode(['enabledPlugins' => ['todo']], \JSON_THROW_ON_ERROR));
+        \file_put_contents($this->project->path('.porta.json'), \json_encode(['enabledPlugins' => ['todo']], \JSON_THROW_ON_ERROR));
 
         $row = $controller->pluginRows('git')[0];
 
@@ -221,9 +221,9 @@ final class SettingsPluginsControllerTest extends TestCase
     {
         $controller = $this->controller();
         $this->lifecycle->names = ['demo'];
-        mkdir($this->project->path('.porta/plugins/demo'), permissions: 0o755, recursive: true);
-        file_put_contents($this->project->path('.porta/plugins/demo/plugin.php'), data: '<?php return new stdClass();');
-        file_put_contents($this->project->path('.porta.json'), json_encode(['enabledPlugins' => ['todo']], \JSON_THROW_ON_ERROR));
+        \mkdir($this->project->path('.porta/plugins/demo'), permissions: 0o755, recursive: true);
+        \file_put_contents($this->project->path('.porta/plugins/demo/plugin.php'), data: '<?php return new stdClass();');
+        \file_put_contents($this->project->path('.porta.json'), \json_encode(['enabledPlugins' => ['todo']], \JSON_THROW_ON_ERROR));
 
         $this->assertNull($controller->pluginRows('demo')[0]->origin);
     }
@@ -241,8 +241,8 @@ final class SettingsPluginsControllerTest extends TestCase
         $this->embedded = new TempProject();
         $this->embeddedDir = $this->embedded->dir;
         foreach ($names as $name) {
-            mkdir($this->embeddedDir.'/'.$name, permissions: 0o755, recursive: true);
-            file_put_contents($this->embeddedDir.'/'.$name.'/plugin.php', data: '<?php return new stdClass();');
+            \mkdir($this->embeddedDir.'/'.$name, permissions: 0o755, recursive: true);
+            \file_put_contents($this->embeddedDir.'/'.$name.'/plugin.php', data: '<?php return new stdClass();');
         }
         $controller = $this->controller();
         $this->lifecycle->names = $names;
@@ -340,7 +340,7 @@ final class SettingsPluginsControllerTest extends TestCase
 
         $this->declareInstaller('demo', 'phpstan', available: false);
         $rows = $controller->pluginRows('demo');
-        $install = $rows[array_key_last($rows)];
+        $install = $rows[\array_key_last($rows)];
         $this->assertSame('pluginInstallBinary', $install->key);
         $this->assertSame(SettingsRowKind::Action, $install->kind);
         $this->assertSame('Install phpstan', $install->label);
@@ -352,7 +352,7 @@ final class SettingsPluginsControllerTest extends TestCase
         $this->lifecycle->names = ['demo'];
 
         $this->declareInstaller('demo', 'phpstan', available: true);
-        $this->assertSame(['pluginEnabled'], array_column($controller->pluginRows('demo'), 'key'), 'an available binary offers no install');
+        $this->assertSame(['pluginEnabled'], \array_column($controller->pluginRows('demo'), 'key'), 'an available binary offers no install');
     }
 
     public function testInstallingTheBinaryRunsTheManagerAndReconfiguresOnSuccess(): void
@@ -432,9 +432,9 @@ final class SettingsPluginsControllerTest extends TestCase
     /** An executable stand-in for a package manager that exits with $exitCode after an optional sleep. */
     private function fakeManager(int $exitCode, int $sleepSeconds = 0): string
     {
-        $path = (string) tempnam(sys_get_temp_dir(), prefix: 'porta-mgr');
-        file_put_contents($path, "#!/bin/sh\nsleep {$sleepSeconds}\nexit {$exitCode}\n");
-        chmod($path, permissions: 0o755);
+        $path = (string) \tempnam(\sys_get_temp_dir(), prefix: 'porta-mgr');
+        \file_put_contents($path, "#!/bin/sh\nsleep {$sleepSeconds}\nexit {$exitCode}\n");
+        \chmod($path, permissions: 0o755);
 
         return $path;
     }

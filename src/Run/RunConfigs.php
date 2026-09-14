@@ -36,7 +36,7 @@ final readonly class RunConfigs
 
         if (null !== $currentFile && 'php' === ProjectPaths::extension($currentFile)) {
             $tasks[] = [
-                'label' => 'Run current file: '.basename($currentFile),
+                'label' => 'Run current file: '.\basename($currentFile),
                 'command' => [...$this->phpArgv(), $currentFile],
             ];
         }
@@ -67,7 +67,7 @@ final readonly class RunConfigs
      */
     private function phpArgv(): array
     {
-        $command = trim($this->languages['php']['runCommand'] ?? '');
+        $command = \trim($this->languages['php']['runCommand'] ?? '');
         if ('' === $command) {
             return [\PHP_BINARY];
         }
@@ -89,8 +89,8 @@ final readonly class RunConfigs
             return [];
         }
 
-        return array_values(array_filter(
-            array_map('strval', array_keys($json['scripts'])),
+        return \array_values(\array_filter(
+            \array_map('strval', \array_keys($json['scripts'])),
             static fn (string $name) => '' !== $name,
         ));
     }
@@ -101,15 +101,15 @@ final readonly class RunConfigs
     public function makeTargets(): array
     {
         $file = $this->rootDir.'/Makefile';
-        if (!is_file($file)) {
+        if (!\is_file($file)) {
             return [];
         }
 
         $targets = [];
-        foreach (explode("\n", (string) file_get_contents($file)) as $line) {
+        foreach (\explode("\n", (string) \file_get_contents($file)) as $line) {
             // "target: deps" at column 0 — skip pattern rules and variables.
             $m = [];
-            if (preg_match('/^([a-zA-Z0-9][a-zA-Z0-9_.-]*)\s*:(?!=)/', $line, $m)) {
+            if (\preg_match('/^([a-zA-Z0-9][a-zA-Z0-9_.-]*)\s*:(?!=)/', $line, $m)) {
                 if (!\in_array($m[1], $targets, strict: true)) {
                     $targets[] = $m[1];
                 }

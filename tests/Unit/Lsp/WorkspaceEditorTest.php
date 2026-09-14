@@ -46,7 +46,7 @@ final class WorkspaceEditorTest extends TestCase
         return new WorkspaceEditor(
             $this->buffers,
             $this->editor,
-            new LspSessionPool(sys_get_temp_dir(), new FixedActiveFile(), new Translator('en')),
+            new LspSessionPool(\sys_get_temp_dir(), new FixedActiveFile(), new Translator('en')),
             $events ?? new EventDispatcher(),
             new RefactoringUndo(new BufferManager(), new EventDispatcher()),
             notifier: new Notifier($this->statusBar = new StatusBarWidget(), TestTui::create()),
@@ -263,7 +263,7 @@ final class WorkspaceEditorTest extends TestCase
         $outcome = $we->applyWorkspaceEdit(['changes' => [Uri::fromPath($project->path('a.php')) => $edit]]);
 
         $this->assertSame(1, $outcome->touched);
-        $this->assertSame("X123456789\n", file_get_contents($project->path('a.php')));
+        $this->assertSame("X123456789\n", \file_get_contents($project->path('a.php')));
     }
 
     /**
@@ -290,8 +290,8 @@ final class WorkspaceEditorTest extends TestCase
             ],
         ]);
 
-        $this->assertSame([[realpath($project->path('a.php')), "0123456789\n"]], $seen);
-        $this->assertSame("X123456789\n", file_get_contents($project->path('a.php')), 'and the new text is on disk');
+        $this->assertSame([[\realpath($project->path('a.php')), "0123456789\n"]], $seen);
+        $this->assertSame("X123456789\n", \file_get_contents($project->path('a.php')), 'and the new text is on disk');
     }
 
     /**
@@ -323,7 +323,7 @@ final class WorkspaceEditorTest extends TestCase
     {
         $project = new TempProject(['a.php' => "0123456789\n"]);
         $path = $project->path('a.php');
-        chmod($path, permissions: 0o444);
+        \chmod($path, permissions: 0o444);
         $seen = 0;
         $events = new EventDispatcher();
         $events->addListener(FileRewritten::class, static function () use (&$seen): void {
@@ -338,7 +338,7 @@ final class WorkspaceEditorTest extends TestCase
                 ],
             ]);
         } finally {
-            chmod($path, permissions: 0o644);
+            \chmod($path, permissions: 0o644);
         }
 
         $this->assertSame(0, $seen);
@@ -348,18 +348,18 @@ final class WorkspaceEditorTest extends TestCase
     {
         $project = new TempProject(['a.php' => "0123456789\n"]);
         $path = $project->path('a.php');
-        chmod($path, permissions: 0o444);
+        \chmod($path, permissions: 0o444);
         $we = $this->workspaceEditor();
         $edit = [self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 1]], 'X')];
 
         try {
             $outcome = $we->applyWorkspaceEdit(['changes' => [Uri::fromPath($path) => $edit]]);
         } finally {
-            chmod($path, permissions: 0o644);
+            \chmod($path, permissions: 0o644);
         }
 
         $this->assertSame(0, $outcome->touched, 'an unwritable file is not touched');
-        $this->assertSame("0123456789\n", file_get_contents($path), 'and its content is left alone');
+        $this->assertSame("0123456789\n", \file_get_contents($path), 'and its content is left alone');
     }
 
     /**
@@ -408,8 +408,8 @@ final class WorkspaceEditorTest extends TestCase
         $this->assertSame(0, $outcome->touched);
         // realpath'd: the URI is canonicalised on the way in, and on macOS
         // the temp dir is a symlink.
-        $this->assertSame([realpath($project->path('a.php'))], $outcome->skipped);
-        $this->assertSame("0123456789\n", file_get_contents($project->path('a.php')), 'nothing was written');
+        $this->assertSame([\realpath($project->path('a.php'))], $outcome->skipped);
+        $this->assertSame("0123456789\n", \file_get_contents($project->path('a.php')), 'nothing was written');
     }
 
     /**
@@ -444,8 +444,8 @@ final class WorkspaceEditorTest extends TestCase
     public function testBufferLookupFallsBackToARealpathMatch(): void
     {
         $project = new TempProject(['a.php' => "0123456789\n"]);
-        $canonical = realpath($project->dir).'/a.php';
-        $this->assertNotSame($project->dir, realpath($project->dir), 'precondition: the temp dir itself has a non-canonical alias to resolve through (e.g. /var vs /private/var)');
+        $canonical = \realpath($project->dir).'/a.php';
+        $this->assertNotSame($project->dir, \realpath($project->dir), 'precondition: the temp dir itself has a non-canonical alias to resolve through (e.g. /var vs /private/var)');
         // The buffer is opened under the CANONICAL path (as our own editor
         // always resolves it), but the incoming edit's URI — as a real LSP
         // server would send it — carries the non-canonical alias raw, with no
@@ -459,7 +459,7 @@ final class WorkspaceEditorTest extends TestCase
 
         $this->assertSame(1, $outcome->touched);
         $this->assertSame("X123456789\n", $buffer->document->getText(), 'the realpath-equivalent buffer was found and edited in place');
-        $this->assertSame("0123456789\n", (string) file_get_contents($canonical), 'an open buffer is never also written straight to disk');
+        $this->assertSame("0123456789\n", (string) \file_get_contents($canonical), 'an open buffer is never also written straight to disk');
     }
 
     /**
@@ -488,7 +488,7 @@ final class WorkspaceEditorTest extends TestCase
 
         $this->assertFalse($outcome->isRefused());
         $this->assertFileExists($new);
-        $this->assertSame("<?php\nclass Extracted {}\n", (string) file_get_contents($new));
+        $this->assertSame("<?php\nclass Extracted {}\n", (string) \file_get_contents($new));
         $this->assertSame(1, $outcome->touched);
     }
 
@@ -589,8 +589,8 @@ final class WorkspaceEditorTest extends TestCase
         // Its contract is CANONICAL paths, and by now the old file is gone, so
         // the dispatcher must have resolved it through its directory.
         $this->assertCount(1, $renamed);
-        $this->assertSame(realpath($project->dir).'/old.php', $renamed[0][0], 'the old path, canonical despite no longer existing');
-        $this->assertSame(realpath($new), $renamed[0][1]);
+        $this->assertSame(\realpath($project->dir).'/old.php', $renamed[0][0], 'the old path, canonical despite no longer existing');
+        $this->assertSame(\realpath($new), $renamed[0][1]);
     }
 
     /**
@@ -605,7 +605,7 @@ final class WorkspaceEditorTest extends TestCase
     {
         $project = new TempProject(['old.php' => "<?php\n"]);
         $unresolved = $project->path('old.php');
-        self::assertNotSame(realpath($project->dir), $project->dir, 'the fixture root must be a symlink for this to test anything');
+        $this->assertNotSame(\realpath($project->dir), $project->dir, 'the fixture root must be a symlink for this to test anything');
 
         $events = new EventDispatcher();
         $renamed = [];
@@ -623,8 +623,8 @@ final class WorkspaceEditorTest extends TestCase
         ]);
 
         $this->assertCount(1, $renamed);
-        $this->assertSame(realpath($project->dir).'/old.php', $renamed[0][0], 'canonical despite the file already being gone');
-        $this->assertSame(realpath($project->path('new.php')), $renamed[0][1]);
+        $this->assertSame(\realpath($project->dir).'/old.php', $renamed[0][0], 'canonical despite the file already being gone');
+        $this->assertSame(\realpath($project->path('new.php')), $renamed[0][1]);
     }
 
     public function testADeleteOperationRemovesTheFile(): void
@@ -656,8 +656,8 @@ final class WorkspaceEditorTest extends TestCase
     {
         $project = new TempProject(['gone.php' => "<?php\n"]);
         $unresolved = $project->path('gone.php');
-        self::assertNotSame(realpath($project->dir), $project->dir, 'the fixture root must be a symlink for this to test anything');
-        $expected = realpath($unresolved);
+        $this->assertNotSame(\realpath($project->dir), $project->dir, 'the fixture root must be a symlink for this to test anything');
+        $expected = \realpath($unresolved);
 
         $events = new EventDispatcher();
         $deleted = [];
@@ -699,7 +699,7 @@ final class WorkspaceEditorTest extends TestCase
         $this->assertTrue($outcome->isRefused());
         $this->assertStringContainsString('taken.php', (string) $outcome->refused);
         $this->assertSame(0, $outcome->touched);
-        $this->assertSame("<?php\nold\n", (string) file_get_contents($project->path('a.php')), 'the edit beside it was not applied either');
+        $this->assertSame("<?php\nold\n", (string) \file_get_contents($project->path('a.php')), 'the edit beside it was not applied either');
     }
 
     /** @return \Generator<string, array{list<array<string, mixed>>, string}> */
@@ -744,7 +744,7 @@ final class WorkspaceEditorTest extends TestCase
             ],
         ]);
         $this->assertFalse($ignored->isRefused());
-        $this->assertSame("<?php\nkeep\n", (string) file_get_contents($project->path('there.php')), 'ignoreIfExists leaves the file alone');
+        $this->assertSame("<?php\nkeep\n", (string) \file_get_contents($project->path('there.php')), 'ignoreIfExists leaves the file alone');
 
         $overwritten = $this->workspaceEditor()->applyWorkspaceEdit([
             'documentChanges' => [
@@ -803,7 +803,7 @@ final class WorkspaceEditorTest extends TestCase
 
         $this->assertTrue($outcome->isRefused());
         $this->assertStringContainsString('onto.php', (string) $outcome->refused);
-        $this->assertSame("b\n", (string) file_get_contents($project->path('onto.php')), 'and it was not clobbered');
+        $this->assertSame("b\n", (string) \file_get_contents($project->path('onto.php')), 'and it was not clobbered');
     }
 
     /** A deleted file's buffer goes with it — nothing should be left showing a file that is gone. */
@@ -811,7 +811,7 @@ final class WorkspaceEditorTest extends TestCase
     {
         $project = new TempProject(['gone.php' => "<?php\n"]);
         $we = $this->workspaceEditor();
-        $path = (string) realpath($project->path('gone.php'));
+        $path = (string) \realpath($project->path('gone.php'));
         $this->buffers->open($path, "<?php\n");
 
         $we->applyWorkspaceEdit(['documentChanges' => [['kind' => 'delete', 'uri' => Uri::fromPath($path)]]]);
@@ -837,7 +837,7 @@ final class WorkspaceEditorTest extends TestCase
         $we = new WorkspaceEditor(
             new BufferManager(),
             new CodeEditorWidget(),
-            new LspSessionPool(sys_get_temp_dir(), new FixedActiveFile(), new Translator('en')),
+            new LspSessionPool(\sys_get_temp_dir(), new FixedActiveFile(), new Translator('en')),
             new EventDispatcher(),
             new RefactoringUndo(new BufferManager(), new EventDispatcher()),
             $throwing,
@@ -876,7 +876,7 @@ final class WorkspaceEditorTest extends TestCase
 
         $this->assertFalse($outcome->isRefused(), (string) $outcome->refused);
         $this->assertFileDoesNotExist($project->path('from.php'));
-        $this->assertStringContainsString('the survivor', (string) file_get_contents($project->path('onto.php')));
+        $this->assertStringContainsString('the survivor', (string) \file_get_contents($project->path('onto.php')));
     }
 
     /**
@@ -891,14 +891,14 @@ final class WorkspaceEditorTest extends TestCase
     public function testTheRefusalPassSimulatesEarlierOperations(array $changes, bool $honourable, string $because): void
     {
         $project = new TempProject(['there.php' => "<?php\n"]);
-        $resolve = static fn (array $c): array => array_map(
-            static fn (mixed $v): mixed => \is_string($v) && str_starts_with($v, 'file://')
-                ? 'file://'.$project->path(substr($v, offset: 7))
+        $resolve = static fn (array $c): array => \array_map(
+            static fn (mixed $v): mixed => \is_string($v) && \str_starts_with($v, 'file://')
+                ? 'file://'.$project->path(\substr($v, offset: 7))
                 : $v,
             $c,
         );
 
-        $outcome = $this->workspaceEditor()->applyWorkspaceEdit(['documentChanges' => array_map($resolve, $changes)]);
+        $outcome = $this->workspaceEditor()->applyWorkspaceEdit(['documentChanges' => \array_map($resolve, $changes)]);
 
         $this->assertSame($honourable, !$outcome->isRefused(), $because.' — refusal said: '.(string) $outcome->refused);
     }
@@ -971,7 +971,7 @@ final class WorkspaceEditorTest extends TestCase
     {
         $project = new TempProject(['gone.php' => "<?php\n"]);
         $we = $this->workspaceEditor();
-        $path = (string) realpath($project->path('gone.php'));
+        $path = (string) \realpath($project->path('gone.php'));
         $this->buffers->open($path, "<?php\n")->document->insert('// edited');
 
         $we->applyWorkspaceEdit(['documentChanges' => [['kind' => 'delete', 'uri' => Uri::fromPath($path)]]]);
@@ -985,7 +985,7 @@ final class WorkspaceEditorTest extends TestCase
     {
         $project = new TempProject(['gone.php' => "<?php\n"]);
         $we = $this->workspaceEditor();
-        $path = (string) realpath($project->path('gone.php'));
+        $path = (string) \realpath($project->path('gone.php'));
         $this->buffers->open($path, "<?php\n");
 
         $we->applyWorkspaceEdit(['documentChanges' => [['kind' => 'delete', 'uri' => Uri::fromPath($path)]]]);

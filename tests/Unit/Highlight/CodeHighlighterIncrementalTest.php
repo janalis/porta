@@ -78,12 +78,12 @@ final class CodeHighlighterIncrementalTest extends TestCase
         $doc = $this->bigDocument();
         $highlighter->highlight($doc, 1);
 
-        array_splice($doc, offset: 100, length: 0, replacement: ['$inserted = true;']);
+        \array_splice($doc, offset: 100, length: 0, replacement: ['$inserted = true;']);
         $afterInsert = $highlighter->highlight($doc, 2);
         $this->assertSame('$inserted = true;', AnsiUtils::stripAnsiCodes($afterInsert[100]));
         $this->assertCount(\count($doc), $afterInsert);
 
-        array_splice($doc, offset: 100, length: 1);
+        \array_splice($doc, offset: 100, length: 1);
         $afterDelete = $highlighter->highlight($doc, 3);
         $this->assertCount(\count($doc), $afterDelete);
         $this->assertSame(1, Probe::get($highlighter, 'fullParses'));
@@ -140,7 +140,7 @@ final class CodeHighlighterIncrementalTest extends TestCase
     public function testEmptyEditedLineAndParserFailureFallbacks(): void
     {
         $failing = new CodeHighlighter(new ClosureHighlightProvider(static function (string $content): string {
-            if (!str_contains($content, "\n")) {
+            if (!\str_contains($content, "\n")) {
                 throw new \RuntimeException('single-line parse fails');
             }
 
@@ -161,7 +161,7 @@ final class CodeHighlighterIncrementalTest extends TestCase
 
     public function testSingleLineParserProducingNewlinesFallsBackToRaw(): void
     {
-        $mangler = new CodeHighlighter(new ClosureHighlightProvider(static fn (string $content): string => str_contains($content, "\n") ? $content : $content."\nEXTRA"));
+        $mangler = new CodeHighlighter(new ClosureHighlightProvider(static fn (string $content): string => \str_contains($content, "\n") ? $content : $content."\nEXTRA"));
         $mangler->setFile('big.php');
         $doc = $this->bigDocument();
         $mangler->highlight($doc, 1);
@@ -211,7 +211,7 @@ final class CodeHighlighterIncrementalTest extends TestCase
         $doc = $this->bigDocument();
         $highlighter->highlight($doc, 1);
 
-        array_splice($doc, offset: 100, length: 0, replacement: ['$one = 1;', '$two = 2;', '$three = 3;']);
+        \array_splice($doc, offset: 100, length: 0, replacement: ['$one = 1;', '$two = 2;', '$three = 3;']);
         $highlighter->highlight($doc, 2);
 
         $this->assertSame(1, Probe::get($highlighter, 'incrementalUpdates'), 'a 3-line delta is still within MAX_LOCAL_CHANGE');
@@ -260,7 +260,7 @@ final class CodeHighlighterIncrementalTest extends TestCase
         $doc = $this->bigDocument();
         $highlighter->highlight($doc, 1);
 
-        array_unshift($doc, '$prepended = true;'); // every old line is an exact suffix of the new document
+        \array_unshift($doc, '$prepended = true;'); // every old line is an exact suffix of the new document
         $highlighter->highlight($doc, 2);
 
         $this->assertSame(1, Probe::get($highlighter, 'incrementalUpdates'));
@@ -289,7 +289,7 @@ final class CodeHighlighterIncrementalTest extends TestCase
         $doc = $this->bigDocument();
         $first = $highlighter->highlight($doc, 1);
 
-        array_splice($doc, offset: 100, length: 1); // pure deletion: a real (nonzero) suffix shift
+        \array_splice($doc, offset: 100, length: 1); // pure deletion: a real (nonzero) suffix shift
         $second = $highlighter->highlight($doc, 2);
 
         $this->assertSame(1, Probe::get($highlighter, 'incrementalUpdates'));
@@ -326,7 +326,7 @@ final class CodeHighlighterIncrementalTest extends TestCase
         // Replace 2 old lines with 5 new ones: middleOld=2 (within budget),
         // middleNew=5 (over budget), overall delta=+3 (within budget too) —
         // only the AND-vulnerable middleNew side trips the guard.
-        array_splice($doc, offset: 100, length: 2, replacement: ['$a=1;', '$b=2;', '$c=3;', '$d=4;', '$e=5;']);
+        \array_splice($doc, offset: 100, length: 2, replacement: ['$a=1;', '$b=2;', '$c=3;', '$d=4;', '$e=5;']);
         $highlighter->highlight($doc, 2);
 
         $this->assertSame(2, Probe::get($highlighter, 'fullParses'), 'middleNew alone exceeding the budget must still force a full parse');
@@ -380,7 +380,7 @@ final class CodeHighlighterIncrementalTest extends TestCase
 
             public function highlight(HighlightRequest $request, HighlightSink $sink): void
             {
-                if (str_contains($request->text, "\n")) {
+                if (\str_contains($request->text, "\n")) {
                     $sink->deliver($request->documentId, $request->version, $request->text);
 
                     return;

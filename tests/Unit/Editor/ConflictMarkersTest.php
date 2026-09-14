@@ -12,7 +12,7 @@ final class ConflictMarkersTest extends TestCase
     /** @return list<string> */
     private function lines(string $text): array
     {
-        return explode("\n", $text);
+        return \explode("\n", $text);
     }
 
     public function testFindsWellFormedRegions(): void

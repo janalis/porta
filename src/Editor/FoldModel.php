@@ -52,7 +52,7 @@ final class FoldModel
             return null;
         }
 
-        return array_key_exists($line, $this->folds);
+        return \array_key_exists($line, $this->folds);
     }
 
     /** Whether a foldable region starts at $line. */
@@ -100,7 +100,7 @@ final class FoldModel
                 continue;
             }
             if ('}' === $text[$i]) {
-                $open = max(0, $open - 1);
+                $open = \max(0, $open - 1);
             }
         }
 
@@ -116,7 +116,7 @@ final class FoldModel
     /** The next visible line at or after $line, skipping any fold interior. */
     public function nextVisibleLine(int $line): int
     {
-        return array_key_exists($line, $this->folds) ? $this->folds[$line] + 1 : $line + 1;
+        return \array_key_exists($line, $this->folds) ? $this->folds[$line] + 1 : $line + 1;
     }
 
     /** Snap a line to the nearest visible line at or above it (fold starts are visible). */
@@ -217,7 +217,7 @@ final class FoldModel
             $this->folds[$start] = $end;
         }
         $line = $this->snapVisible($this->document->getCursorLine());
-        $this->document->setCursor($line, min($this->document->getCursorCol(), \strlen($this->document->getLine($line))));
+        $this->document->setCursor($line, \min($this->document->getCursorCol(), \strlen($this->document->getLine($line))));
     }
 
     public function unfoldAll(): void
@@ -229,7 +229,7 @@ final class FoldModel
     public function toggle(): void
     {
         $line = $this->document->getCursorLine();
-        if (array_key_exists($line, $this->folds)) {
+        if (\array_key_exists($line, $this->folds)) {
             unset($this->folds[$line]);
 
             return;
@@ -237,7 +237,7 @@ final class FoldModel
         if (null !== ($region = $this->foldableRegionAt($line))) {
             $this->folds[$region[0]] = $region[1];
             // Keep the caret on the (visible) fold-start line.
-            $this->document->setCursor($region[0], min($this->document->getCursorCol(), \strlen($this->document->getLine($region[0]))));
+            $this->document->setCursor($region[0], \min($this->document->getCursorCol(), \strlen($this->document->getLine($region[0]))));
         }
     }
 
@@ -295,7 +295,7 @@ final class FoldModel
                     continue;
                 }
                 if ('}' === $text[$c] && [] !== $stack) {
-                    $start = array_pop($stack);
+                    $start = \array_pop($stack);
                     if ($lineIndex > $start) {
                         $regions[] = [$start, (int) $lineIndex];
                     }

@@ -31,18 +31,18 @@ final class ConflictMarkers
         $start = null;
         $sep = null;
         foreach ($lines as $i => $line) {
-            if (str_starts_with($line, '<<<<<<<')) {
+            if (\str_starts_with($line, '<<<<<<<')) {
                 $start = $i;
                 $sep = null;
 
                 continue;
             }
-            if (null !== $start && null === $sep && str_starts_with($line, '=======')) {
+            if (null !== $start && null === $sep && \str_starts_with($line, '=======')) {
                 $sep = $i;
 
                 continue;
             }
-            if (null !== $start && null !== $sep && str_starts_with($line, '>>>>>>>')) {
+            if (null !== $start && null !== $sep && \str_starts_with($line, '>>>>>>>')) {
                 $regions[] = ['start' => (int) $start, 'sep' => (int) $sep, 'end' => $i];
                 $start = null;
                 $sep = null;
@@ -62,7 +62,7 @@ final class ConflictMarkers
      */
     public static function regionAt(array $lines, int $line): ?array
     {
-        return array_find(self::find($lines), static fn ($region) => $line >= $region['start'] && $line <= $region['end']);
+        return \array_find(self::find($lines), static fn ($region) => $line >= $region['start'] && $line <= $region['end']);
     }
 
     /**

@@ -195,7 +195,7 @@ final class LspSession
      */
     public function closeUnder(string $root): void
     {
-        foreach (array_keys($this->syncedText) as $path) {
+        foreach (\array_keys($this->syncedText) as $path) {
             if (!ProjectPaths::isUnder($path, $root)) {
                 continue;
             }

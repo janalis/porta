@@ -380,11 +380,11 @@ final class ArchitectureCheckCommand extends Command
         #[Argument('Project root to scan (defaults to the working directory)')]
         ?string $path = null,
     ): int {
-        $root = rtrim($path ?? (string) getcwd(), characters: '/');
+        $root = \rtrim($path ?? (string) \getcwd(), characters: '/');
 
         [$nsEdges, $classEdges] = $this->graphs([$root.'/src' => 'Porta\\', ...$this->pluginRoots($root.'/plugins')]);
-        $current = array_keys($nsEdges);
-        sort($current);
+        $current = \array_keys($nsEdges);
+        \sort($current);
         $sccs = $this->cycles($classEdges);
 
         $failures = [
@@ -429,14 +429,14 @@ final class ArchitectureCheckCommand extends Command
     private function pluginRoots(string $pluginsDir): array
     {
         $roots = [];
-        $manifests = glob($pluginsDir.'/*/composer.json');
+        $manifests = \glob($pluginsDir.'/*/composer.json');
         foreach (false === $manifests ? [] : $manifests as $path) {
             /** @var array<array-key, mixed>|scalar|null $data */
-            $data = json_decode((string) file_get_contents($path), associative: true);
+            $data = \json_decode((string) \file_get_contents($path), associative: true);
             $autoload = \is_array($data) && \is_array($data['autoload'] ?? null) ? $data['autoload'] : [];
             /** @var mixed $relatives */
             foreach (\is_array($autoload['psr-4'] ?? null) ? $autoload['psr-4'] : [] as $prefix => $relatives) {
-                if (!\is_string($prefix) || '' === trim($prefix, characters: '\\')) {
+                if (!\is_string($prefix) || '' === \trim($prefix, characters: '\\')) {
                     continue; // a plugin that ships no classes has no graph
                 }
                 /** @var mixed $relative */
@@ -444,9 +444,9 @@ final class ArchitectureCheckCommand extends Command
                     if (!\is_string($relative)) {
                         continue;
                     }
-                    $dir = \dirname($path).'/'.trim($relative, characters: '/');
-                    if (is_dir($dir)) {
-                        $roots[$dir] = trim($prefix, characters: '\\').'\\';
+                    $dir = \dirname($path).'/'.\trim($relative, characters: '/');
+                    if (\is_dir($dir)) {
+                        $roots[$dir] = \trim($prefix, characters: '\\').'\\';
                     }
                 }
             }
@@ -487,26 +487,26 @@ final class ArchitectureCheckCommand extends Command
     private function scan(string $srcDir, string $prefix, array &$nsEdges, array &$classEdges): void
     {
         foreach ($this->phpFiles($srcDir) as $path) {
-            $rel = substr($path, \strlen($srcDir) + 1, -4); // strip the src dir and .php
-            $fqcn = $prefix.str_replace('/', replace: '\\', subject: $rel);
+            $rel = \substr($path, \strlen($srcDir) + 1, -4); // strip the src dir and .php
+            $fqcn = $prefix.\str_replace('/', replace: '\\', subject: $rel);
             // `Porta\Ui\Foo` is a Ui file and `Porta\GraphViewer\Foo` a GraphViewer
             // one; a plugin under a vendor prefix of its own keeps that prefix as
             // its namespace, so its edges are attributed to it and not to Porta.
-            $parts = explode(separator: '\\', string: str_starts_with($fqcn, needle: 'Porta\\') ? substr($fqcn, offset: 6) : $fqcn);
+            $parts = \explode(separator: '\\', string: \str_starts_with($fqcn, needle: 'Porta\\') ? \substr($fqcn, offset: 6) : $fqcn);
             $ns = \count($parts) > 1 ? $parts[0] : null;
-            $source = (string) file_get_contents($path);
+            $source = (string) \file_get_contents($path);
             $code = $this->stripComments($source);
             $matches = [];
-            preg_match_all('/^use (Porta\\\\[A-Za-z\\\\]+);$/m', $source, $matches);
-            $body = (string) preg_replace('/^use [^;]+;$/m', replacement: '', subject: $code);
+            \preg_match_all('/^use (Porta\\\\[A-Za-z\\\\]+);$/m', $source, $matches);
+            $body = (string) \preg_replace('/^use [^;]+;$/m', replacement: '', subject: $code);
             foreach ($matches[1] as $import) {
-                $short = substr((string) strrchr($import, needle: '\\'), offset: 1);
-                if (1 !== preg_match('/\\b'.preg_quote($short, delimiter: '/').'\\b/', $body)) {
+                $short = \substr((string) \strrchr($import, needle: '\\'), offset: 1);
+                if (1 !== \preg_match('/\\b'.\preg_quote($short, delimiter: '/').'\\b/', $body)) {
                     continue;
                 }
                 $classEdges[$fqcn][] = $import;
-                $importNs = explode(separator: '\\', string: $import)[1] ?? '';
-                if (null !== $ns && '' !== $importNs && $importNs !== $ns && str_contains($import, needle: '\\'.$importNs.'\\')) {
+                $importNs = \explode(separator: '\\', string: $import)[1] ?? '';
+                if (null !== $ns && '' !== $importNs && $importNs !== $ns && \str_contains($import, needle: '\\'.$importNs.'\\')) {
                     $nsEdges[$ns.'>'.$importNs] = true;
                 }
             }
@@ -524,10 +524,10 @@ final class ArchitectureCheckCommand extends Command
     private function edgeDrift(array $current): array
     {
         $failures = [];
-        foreach (array_diff($current, $this->allowedEdges) as $edge) {
+        foreach (\array_diff($current, $this->allowedEdges) as $edge) {
             $failures[] = "namespace: NEW edge {$edge} — new coupling; if deliberate, add it to ALLOWED_EDGES in this PR";
         }
-        foreach (array_diff($this->allowedEdges, $current) as $edge) {
+        foreach (\array_diff($this->allowedEdges, $current) as $edge) {
             $failures[] = "namespace: edge {$edge} no longer exists — remove it from ALLOWED_EDGES (a stale allowlist is not a gate)";
         }
 
@@ -546,13 +546,13 @@ final class ArchitectureCheckCommand extends Command
             if (\in_array($scc, $this->allowedSccs, strict: true)) {
                 continue;
             }
-            $failures[] = 'classes: new circular dependency — '.implode(' <-> ', $scc).' (re-opening acyclicity needs new evidence, recorded in docs/internals/decisions.md)';
+            $failures[] = 'classes: new circular dependency — '.\implode(' <-> ', $scc).' (re-opening acyclicity needs new evidence, recorded in docs/internals/decisions.md)';
         }
         foreach ($this->allowedSccs as $allowed) {
             if (\in_array($allowed, $sccs, strict: true)) {
                 continue;
             }
-            $failures[] = 'classes: allowed SCC {'.implode(', ', $allowed).'} no longer exists — remove it from ALLOWED_SCCS';
+            $failures[] = 'classes: allowed SCC {'.\implode(', ', $allowed).'} no longer exists — remove it from ALLOWED_SCCS';
         }
 
         return $failures;
@@ -566,7 +566,7 @@ final class ArchitectureCheckCommand extends Command
             foreach ($this->phpFiles($dir) as $path) {
                 // #[Test] counts too — one attributed method would otherwise
                 // silently zero a file's count.
-                $count = (int) preg_match_all('/^    (?:public function test|#\[Test\])/m', (string) file_get_contents($path));
+                $count = (int) \preg_match_all('/^    (?:public function test|#\[Test\])/m', (string) \file_get_contents($path));
                 if ($count <= self::E2E_MAX_TESTS) {
                     continue;
                 }
@@ -594,8 +594,8 @@ final class ArchitectureCheckCommand extends Command
         $failures = [];
         foreach ($suiteDirs as $dir) {
             foreach ($this->phpFiles($dir) as $path) {
-                foreach (explode("\n", $this->stripComments((string) file_get_contents($path))) as $i => $line) {
-                    if (1 !== preg_match('/new TempProject\([^;]*\)->/', $line)) {
+                foreach (\explode("\n", $this->stripComments((string) \file_get_contents($path))) as $i => $line) {
+                    if (1 !== \preg_match('/new TempProject\([^;]*\)->/', $line)) {
                         continue;
                     }
 
@@ -619,7 +619,7 @@ final class ArchitectureCheckCommand extends Command
      */
     private function pluginTestDirs(string $pluginsDir): array
     {
-        $dirs = glob($pluginsDir.'/*/tests', \GLOB_ONLYDIR);
+        $dirs = \glob($pluginsDir.'/*/tests', \GLOB_ONLYDIR);
 
         return false === $dirs ? [] : $dirs;
     }
@@ -653,11 +653,11 @@ final class ArchitectureCheckCommand extends Command
                 }
                 if (!\array_key_exists($w, $indices)) {
                     $strongconnect($w);
-                    $low[$v] = min($low[$v], $low[$w]);
+                    $low[$v] = \min($low[$v], $low[$w]);
                     continue;
                 }
                 if ($onStack[$w] ?? false) {
-                    $low[$v] = min($low[$v], $indices[$w]);
+                    $low[$v] = \min($low[$v], $indices[$w]);
                 }
             }
             // Only a component ROOT pops a component — Tarjan's invariant, and
@@ -675,12 +675,12 @@ final class ArchitectureCheckCommand extends Command
             if ($low[$v] === $indices[$v]) {
                 $scc = self::popComponent($v, $stack, $onStack);
                 if (\count($scc) > 1) {
-                    sort($scc);
+                    \sort($scc);
                     $sccs[] = $scc;
                 }
             }
         };
-        foreach (array_keys($classEdges) as $v) {
+        foreach (\array_keys($classEdges) as $v) {
             if (\array_key_exists($v, $indices)) {
                 continue;
             }
@@ -703,7 +703,7 @@ final class ArchitectureCheckCommand extends Command
     {
         $scc = [];
         do {
-            $popped = (string) array_pop($stack);
+            $popped = (string) \array_pop($stack);
             $onStack[$popped] = false;
             $scc[] = $popped;
         } while ($popped !== $root);
@@ -719,7 +719,7 @@ final class ArchitectureCheckCommand extends Command
      */
     private function phpFiles(string $dir): array
     {
-        if (!is_dir($dir)) {
+        if (!\is_dir($dir)) {
             return [];
         }
         $files = [];
@@ -739,7 +739,7 @@ final class ArchitectureCheckCommand extends Command
         // Explicit pathname sort, not Finder::sortByName() — that key is the
         // realpath, which diverges under symlinks, and gate output is a byte
         // contract.
-        sort($files);
+        \sort($files);
 
         return $files;
     }
@@ -753,13 +753,13 @@ final class ArchitectureCheckCommand extends Command
     private function stripComments(string $source): string
     {
         $out = '';
-        foreach (token_get_all($source) as $token) {
+        foreach (\token_get_all($source) as $token) {
             if (!\is_array($token)) {
                 $out .= $token;
                 continue;
             }
             if (\T_COMMENT === $token[0] || \T_DOC_COMMENT === $token[0]) {
-                $out .= str_repeat("\n", substr_count($token[1], needle: "\n"));
+                $out .= \str_repeat("\n", \substr_count($token[1], needle: "\n"));
                 continue;
             }
             $out .= $token[1];

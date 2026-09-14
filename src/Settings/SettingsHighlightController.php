@@ -135,7 +135,7 @@ final class SettingsHighlightController
             return;
         }
 
-        $language = self::DEFAULT_KEY === $key ? null : substr($key, offset: 5);
+        $language = self::DEFAULT_KEY === $key ? null : \substr($key, offset: 5);
 
         $this->preferences->change($language, $value);
         $this->writer->persistHighlighter($this->scope->current(), $language, $value);
@@ -178,7 +178,7 @@ final class SettingsHighlightController
         $plain = $this->plainId();
         unset($ids[$plain]);
 
-        return [...array_keys($ids), $plain];
+        return [...\array_keys($ids), $plain];
     }
 
     private function plainId(): string

@@ -22,7 +22,7 @@ final class FindBarWidgetTest extends TestCase
 {
     private function type(FindBarWidget $bar, string $text): void
     {
-        foreach (str_split($text) as $ch) {
+        foreach (\str_split($text) as $ch) {
             $bar->handleInput($ch);
         }
     }
@@ -36,15 +36,15 @@ final class FindBarWidgetTest extends TestCase
      */
     private function shownQuery(FindBarWidget $bar): string
     {
-        $plain = AnsiUtils::stripAnsiCodes(implode('', $bar->render(new RenderContext(120, 1))));
+        $plain = AnsiUtils::stripAnsiCodes(\implode('', $bar->render(new RenderContext(120, 1))));
         // Up to the `[n/m]` counter, not `\S+`: an EMPTY query leaves the field
         // blank and the counter is the next non-space thing on the row, so a
         // greedy match reports `[0/0]` as the query and every assertion about
         // clearing the field passes against it.
         $m = [];
-        self::assertSame(1, preg_match('/Find:([^\[]*)/', $plain, $m), 'the bar draws a Find field');
+        self::assertSame(1, \preg_match('/Find:([^\[]*)/', $plain, $m), 'the bar draws a Find field');
 
-        return trim($m[1]);
+        return \trim($m[1]);
     }
 
     /**
@@ -121,7 +121,7 @@ final class FindBarWidgetTest extends TestCase
 
         $bar->handleInput("\x1b[1;3A");
 
-        $plain = AnsiUtils::stripAnsiCodes(implode('', $bar->render(new RenderContext(120, 1))));
+        $plain = AnsiUtils::stripAnsiCodes(\implode('', $bar->render(new RenderContext(120, 1))));
         $this->assertStringNotContainsString('earlier', $plain, 'neither field took it');
     }
 
@@ -350,7 +350,7 @@ final class FindBarWidgetTest extends TestCase
         $doc->insert("match two\n"); // document changed behind the bar's back
 
         $bar->handleInput("\r"); // find_next refreshes first
-        $flat = array_merge(...array_values($bar->getMatchesByLine()));
+        $flat = \array_merge(...\array_values($bar->getMatchesByLine()));
         $this->assertCount(2, $flat);
     }
 
@@ -399,7 +399,7 @@ final class FindBarWidgetTest extends TestCase
 
         $bar->handleInput('Z'); // consumed
         $bar->handleInput('x');
-        $flat = array_merge(...array_values($bar->getMatchesByLine()));
+        $flat = \array_merge(...\array_values($bar->getMatchesByLine()));
         $this->assertCount(1, $flat, 'query is "x", not "Zx"');
     }
 
@@ -415,11 +415,11 @@ final class FindBarWidgetTest extends TestCase
 
     public function testMatchCap(): void
     {
-        $doc = new Document(str_repeat("x\n", times: 6000));
+        $doc = new Document(\str_repeat("x\n", times: 6000));
         $bar = new FindBarWidget(new Translator('en'));
         $bar->open(new FakeFindTarget($doc), mode: FindMode::Find, initialQuery: 'x');
 
-        $flat = array_merge(...array_values($bar->getMatchesByLine()));
+        $flat = \array_merge(...\array_values($bar->getMatchesByLine()));
         $this->assertCount(5000, $flat);
     }
 
@@ -428,12 +428,12 @@ final class FindBarWidgetTest extends TestCase
         $bar = new FindBarWidget(new Translator('en'));
         $bar->setFocused(true);
         $bar->open(new FakeFindTarget(new Document("x\n")), mode: FindMode::Find);
-        $this->type($bar, str_repeat('q', times: 100)); // overflow the 80-column bar
+        $this->type($bar, \str_repeat('q', times: 100)); // overflow the 80-column bar
 
         $line = $bar->render(new RenderContext(80, 1))[0];
         $marker = AnsiUtils::cursorMarker(CursorShape::Bar);
 
-        $this->assertSame(1, substr_count($line, $marker), 'the caret scrolls into view');
+        $this->assertSame(1, \substr_count($line, $marker), 'the caret scrolls into view');
         $this->assertSame(80, AnsiUtils::visibleWidth($line), 'the bar stays the terminal width');
     }
 
@@ -450,7 +450,7 @@ final class FindBarWidgetTest extends TestCase
         $bar->handleInput("\x1bx"); // alt+x → regex mode
         $matches = $bar->getMatchesByLine();
         $this->assertCount(2, $matches, 'regex matches on two lines');
-        $this->assertSame([['start' => 0, 'end' => 3]], array_map(static fn (array $m): array => ['start' => $m['start'], 'end' => $m['end']], $matches[0]), 'greedy run of a\'s');
+        $this->assertSame([['start' => 0, 'end' => 3]], \array_map(static fn (array $m): array => ['start' => $m['start'], 'end' => $m['end']], $matches[0]), 'greedy run of a\'s');
 
         $bar->handleInput("\x1bx"); // back to literal
         $this->assertSame([], $bar->getMatchesByLine());
@@ -472,7 +472,7 @@ final class FindBarWidgetTest extends TestCase
      */
     public function testAPatternThatExhaustsTheEngineSaysSoRatherThanReportingNothing(): void
     {
-        $doc = new Document(str_repeat('a', times: 20)."!\n");
+        $doc = new Document(\str_repeat('a', times: 20)."!\n");
         $bar = new FindBarWidget(new Translator('en'));
         $bar->setFocused(true);
         $bar->open(new FakeFindTarget($doc), mode: FindMode::Find);
@@ -480,17 +480,17 @@ final class FindBarWidgetTest extends TestCase
         $this->type($bar, '^(a|a?)+$');
 
         $this->assertSame([], $bar->getMatchesByLine(), 'nothing matched, which is true as far as it goes');
-        $screen = AnsiUtils::stripAnsiCodes(implode('', $bar->render(new RenderContext(120, 1))));
+        $screen = AnsiUtils::stripAnsiCodes(\implode('', $bar->render(new RenderContext(120, 1))));
         $this->assertStringContainsString('too complex', $screen, 'and the bar says why it is empty');
 
         // And it is not sticky: a state set on a bad pattern that outlives it
         // is the same lie in the other direction.
-        foreach (range(1, end: 9) as $_) {
+        foreach (\range(1, end: 9) as $_) {
             $bar->handleInput("\x7f"); // backspace out the whole pattern
         }
         $this->type($bar, 'a+');
 
-        $recovered = AnsiUtils::stripAnsiCodes(implode('', $bar->render(new RenderContext(120, 1))));
+        $recovered = AnsiUtils::stripAnsiCodes(\implode('', $bar->render(new RenderContext(120, 1))));
         $this->assertStringNotContainsString('too complex', $recovered, 'a workable pattern clears it');
         $this->assertNotSame([], $bar->getMatchesByLine(), 'and matches again');
     }
@@ -502,14 +502,14 @@ final class FindBarWidgetTest extends TestCase
         $bar->setFocused(true);
         $bar->open(new FakeFindTarget($doc), mode: FindMode::Find);
         $this->type($bar, 'foo');
-        $this->assertCount(3, array_merge(...array_values($bar->getMatchesByLine())), 'substring mode hits foobar too');
+        $this->assertCount(3, \array_merge(...\array_values($bar->getMatchesByLine())), 'substring mode hits foobar too');
 
         $bar->handleInput("\x1bw"); // alt+w → whole word
-        $this->assertCount(2, array_merge(...array_values($bar->getMatchesByLine())), 'foobar no longer matches');
+        $this->assertCount(2, \array_merge(...\array_values($bar->getMatchesByLine())), 'foobar no longer matches');
 
         // Bracketed = enabled, so the tags read without colour (the toggle
         // convention the find modal and the checkboxes already follow).
-        $screen = AnsiUtils::stripAnsiCodes(implode('', $bar->render(new RenderContext(120, 1))));
+        $screen = AnsiUtils::stripAnsiCodes(\implode('', $bar->render(new RenderContext(120, 1))));
         $this->assertStringContainsString('[\b]', $screen, 'the enabled whole-word tag is bracketed');
         $this->assertStringNotContainsString('[.*]', $screen, 'the disabled regex tag is not');
         $this->assertStringContainsString(' .* ', $screen, 'but it still occupies its zone');
@@ -525,11 +525,11 @@ final class FindBarWidgetTest extends TestCase
         $this->type($bar, 'a(');
 
         $this->assertSame([], $bar->getMatchesByLine(), 'a half-typed regex matches nothing');
-        $screen = AnsiUtils::stripAnsiCodes(implode('', $bar->render(new RenderContext(120, 1))));
+        $screen = AnsiUtils::stripAnsiCodes(\implode('', $bar->render(new RenderContext(120, 1))));
         $this->assertStringContainsString('bad regex', $screen);
 
         $this->type($bar, ')'); // completing it recovers
-        $this->assertCount(1, array_merge(...array_values($bar->getMatchesByLine())));
+        $this->assertCount(1, \array_merge(...\array_values($bar->getMatchesByLine())));
     }
 
     public function testZeroWidthRegexMatchesAreSkipped(): void
@@ -549,7 +549,7 @@ final class FindBarWidgetTest extends TestCase
         // A pattern valid against '' but that exhausts the PCRE backtrack limit
         // on a long line: preg_match_all returns false for that line, which the
         // per-line scan skips — so the final match set is empty.
-        $doc = new Document(str_repeat('a', times: 30)."!\n");
+        $doc = new Document(\str_repeat('a', times: 30)."!\n");
         $bar = new FindBarWidget(new Translator('en'));
         $bar->setFocused(true);
         $bar->open(new FakeFindTarget($doc), mode: FindMode::Find);
@@ -580,14 +580,14 @@ final class FindBarWidgetTest extends TestCase
     public function testRegexModeRespectsTheMatchCap(): void
     {
         // 5001 single-char matches across two lines exceed MAX_MATCHES (5000).
-        $doc = new Document(str_repeat('a', times: 4000)."\n".str_repeat('a', times: 1001)."\n");
+        $doc = new Document(\str_repeat('a', times: 4000)."\n".\str_repeat('a', times: 1001)."\n");
         $bar = new FindBarWidget(new Translator('en'));
         $bar->setFocused(true);
         $bar->open(new FakeFindTarget($doc), mode: FindMode::Find);
         $bar->handleInput("\x1bx");
         $this->type($bar, 'a');
 
-        $this->assertSame(5000, \count(array_merge(...array_values($bar->getMatchesByLine()))), 'the scan stops at the cap');
+        $this->assertSame(5000, \count(\array_merge(...\array_values($bar->getMatchesByLine()))), 'the scan stops at the cap');
     }
 
     public function testRegexReplaceExpandsBackreferences(): void
@@ -630,22 +630,22 @@ final class FindBarWidgetTest extends TestCase
         $bar->open(new FakeFindTarget($doc), mode: FindMode::Find);
         $this->type($bar, 'foo');
         $bar->render(new RenderContext(80, 1)); // the zones come from the last render
-        $this->assertCount(3, array_merge(...array_values($bar->getMatchesByLine())));
+        $this->assertCount(3, \array_merge(...\array_values($bar->getMatchesByLine())));
 
         // The tags are right-aligned: at 80 columns [.*] spans 72-75, [\b] 76-79.
         $bar->handleClick(77);
-        $this->assertCount(2, array_merge(...array_values($bar->getMatchesByLine())), 'the click re-ran the search, exactly as Alt+W does');
+        $this->assertCount(2, \array_merge(...\array_values($bar->getMatchesByLine())), 'the click re-ran the search, exactly as Alt+W does');
 
         $bar->handleClick(10); // the query field is not a tag
-        $this->assertCount(2, array_merge(...array_values($bar->getMatchesByLine())), 'a click off the tags is inert');
+        $this->assertCount(2, \array_merge(...\array_values($bar->getMatchesByLine())), 'a click off the tags is inert');
 
         $bar->handleClick(77);
-        $this->assertCount(3, array_merge(...array_values($bar->getMatchesByLine())), 'and it toggles back off');
+        $this->assertCount(3, \array_merge(...\array_values($bar->getMatchesByLine())), 'and it toggles back off');
 
         // The other tag, on its own zone: regex mode makes the query a pattern.
         $bar->handleClick(73);
         $this->type($bar, '+');
-        $this->assertCount(3, array_merge(...array_values($bar->getMatchesByLine())), 'foo+ is a regex now, not a literal');
+        $this->assertCount(3, \array_merge(...\array_values($bar->getMatchesByLine())), 'foo+ is a regex now, not a literal');
     }
 
     public function testHoverTintsTheTagUnderThePointer(): void
@@ -710,15 +710,15 @@ final class FindBarWidgetTest extends TestCase
         $marker = AnsiUtils::cursorMarker(CursorShape::Bar);
 
         $line = $bar->render(new RenderContext(120, 1))[0];
-        $this->assertSame(1, substr_count($line, $marker), 'find field shows the caret');
+        $this->assertSame(1, \substr_count($line, $marker), 'find field shows the caret');
 
         $bar->handleInput("\t"); // → replace field
         $line = $bar->render(new RenderContext(120, 1))[0];
-        $this->assertSame(1, substr_count($line, $marker), 'replace field shows the caret');
+        $this->assertSame(1, \substr_count($line, $marker), 'replace field shows the caret');
 
         $bar->handleInput("\t"); // → back to find field
         $line = $bar->render(new RenderContext(120, 1))[0];
-        $this->assertSame(1, substr_count($line, $marker), 'back on the find field');
+        $this->assertSame(1, \substr_count($line, $marker), 'back on the find field');
     }
 
     public function testDeleteCharBackwardDoesNotFallThroughToInsertTheDeletedByte(): void
@@ -730,7 +730,7 @@ final class FindBarWidgetTest extends TestCase
 
         $bar->handleInput("\x7f"); // backspace: query becomes "b" — must not also insert the \x7f byte
 
-        $flat = array_merge(...array_values($bar->getMatchesByLine()));
+        $flat = \array_merge(...\array_values($bar->getMatchesByLine()));
         $this->assertCount(1, $flat, '"b" matches once');
         $this->assertSame(1, $flat[0]['end'] - $flat[0]['start'], 'the query is "b" (1 char), not "b\x7f" or longer');
     }
@@ -873,9 +873,9 @@ final class FindBarWidgetTest extends TestCase
         // The hints text also mentions ".*" and "\b" literally, earlier in the
         // line; the tags strip is appended last, so its own occurrences are
         // the *last* ones in the string.
-        $tint = strrpos($line, needle: "\x1b[48;5;236m");
-        $star = strrpos($line, needle: '.*');
-        $backslashB = strrpos($line, needle: '\b');
+        $tint = \strrpos($line, needle: "\x1b[48;5;236m");
+        $star = \strrpos($line, needle: '.*');
+        $backslashB = \strrpos($line, needle: '\b');
         $this->assertNotFalse($tint);
         $this->assertLessThan($star, $tint, 'the tint wraps the hovered [.*] tag');
         $this->assertLessThan($backslashB, $star, 'and .* still comes before \b in the strip');
@@ -889,20 +889,20 @@ final class FindBarWidgetTest extends TestCase
         $bar->handleInput("\x1bx"); // regex
         $this->type($bar, 'a');
 
-        $this->assertCount(2, array_merge(...array_values($bar->getMatchesByLine())), 'the blank line is skipped, not treated as end-of-document');
+        $this->assertCount(2, \array_merge(...\array_values($bar->getMatchesByLine())), 'the blank line is skipped, not treated as end-of-document');
     }
 
     public function testAnUnmatchableLineDoesNotAbortTheRestOfTheDocument(): void
     {
         // A catastrophic-backtrack line makes preg_match_all return false for
         // just that line; the scan must move on to the next line, not stop.
-        $doc = new Document(str_repeat('a', times: 30)."!\naaa\n");
+        $doc = new Document(\str_repeat('a', times: 30)."!\naaa\n");
         $bar = new FindBarWidget(new Translator('en'));
         $bar->open(new FakeFindTarget($doc), mode: FindMode::Find);
         $bar->handleInput("\x1bx");
         $this->type($bar, '(a+)+$');
 
-        $this->assertCount(1, array_merge(...array_values($bar->getMatchesByLine())), 'line 2 still matches after line 1 fails to scan');
+        $this->assertCount(1, \array_merge(...\array_values($bar->getMatchesByLine())), 'line 2 still matches after line 1 fails to scan');
     }
 
     public function testAZeroWidthHitDoesNotAbortTheRestOfTheLine(): void
@@ -913,7 +913,7 @@ final class FindBarWidgetTest extends TestCase
         $bar->handleInput("\x1bx");
         $this->type($bar, 'z*');
 
-        $this->assertCount(1, array_merge(...array_values($bar->getMatchesByLine())), 'the real "z" hit after the zero-width ones is still found');
+        $this->assertCount(1, \array_merge(...\array_values($bar->getMatchesByLine())), 'the real "z" hit after the zero-width ones is still found');
     }
 
     public function testRegexMatchStartUsesTheByteOffsetNotTheMatchedText(): void
@@ -924,7 +924,7 @@ final class FindBarWidgetTest extends TestCase
         $bar->handleInput("\x1bx");
         $this->type($bar, 'match');
 
-        $flat = array_merge(...array_values($bar->getMatchesByLine()));
+        $flat = \array_merge(...\array_values($bar->getMatchesByLine()));
         $this->assertSame(3, $flat[0]['start'], 'the offset is 3, not (int) of the matched text');
     }
 
@@ -932,13 +932,13 @@ final class FindBarWidgetTest extends TestCase
     {
         // Cap hit mid-way through line 0's own hits: the scan must stop right
         // there, not merely stop the current line and move to the next one.
-        $doc = new Document(str_repeat('a', times: 5002)."\naaa\n");
+        $doc = new Document(\str_repeat('a', times: 5002)."\naaa\n");
         $bar = new FindBarWidget(new Translator('en'));
         $bar->open(new FakeFindTarget($doc), mode: FindMode::Find);
         $bar->handleInput("\x1bx");
         $this->type($bar, 'a');
 
-        $this->assertCount(5000, array_merge(...array_values($bar->getMatchesByLine())), 'stops exactly at the cap, not 3 over from line 2');
+        $this->assertCount(5000, \array_merge(...\array_values($bar->getMatchesByLine())), 'stops exactly at the cap, not 3 over from line 2');
     }
 
     public function testRegexReplacementExpandsOnlyTheMatchedSubstring(): void
@@ -968,7 +968,7 @@ final class FindBarWidgetTest extends TestCase
         $bar->open(new FakeFindTarget(new Document("foo\n")), mode: FindMode::Find);
 
         $zones = null;
-        foreach (['', 'foo', str_repeat('long-query-', times: 8)] as $query) {
+        foreach (['', 'foo', \str_repeat('long-query-', times: 8)] as $query) {
             $this->type($bar, $query);
             $line = $bar->render(new RenderContext(80, 1))[0];
             $this->assertSame(80, AnsiUtils::visibleWidth($line), 'the bar always fills its row');

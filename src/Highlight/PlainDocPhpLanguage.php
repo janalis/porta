@@ -25,7 +25,7 @@ final class PlainDocPhpLanguage extends PhpLanguage
     #[\Override]
     public function getInjections(): array
     {
-        return array_values(array_filter(
+        return \array_values(\array_filter(
             parent::getInjections(),
             static fn (object $injection): bool => !$injection instanceof PhpDocCommentInjection,
         ));

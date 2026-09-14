@@ -27,13 +27,13 @@ trait PreservesShell
     #[Before]
     protected function rememberShell(): void
     {
-        $shell = getenv('SHELL');
+        $shell = \getenv('SHELL');
         $this->pristineShell = false === $shell ? null : $shell;
     }
 
     #[After]
     protected function restoreShell(): void
     {
-        putenv(null === $this->pristineShell ? 'SHELL' : 'SHELL='.$this->pristineShell);
+        \putenv(null === $this->pristineShell ? 'SHELL' : 'SHELL='.$this->pristineShell);
     }
 }

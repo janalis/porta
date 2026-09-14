@@ -114,7 +114,7 @@ final class NavigationControllerTest extends TestCase
 
     private function flashed(): string
     {
-        return AnsiUtils::stripAnsiCodes(implode('', $this->statusBar->render(new RenderContext(100, 1))));
+        return AnsiUtils::stripAnsiCodes(\implode('', $this->statusBar->render(new RenderContext(100, 1))));
     }
 
     /** Opens $path in the editor, the buffer manager and the fake LSP session, ready to answer requests. */
@@ -184,7 +184,7 @@ final class NavigationControllerTest extends TestCase
     /** The rendered picker rows, plain. */
     private function pickerText(): string
     {
-        return implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->layoutPickers([0, 0, 20, 100])[0]['rows']));
+        return \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->layoutPickers([0, 0, 20, 100])[0]['rows']));
     }
 
     public function testDocumentationPastTheTWELFTHLineIsStillReachable(): void
@@ -194,7 +194,7 @@ final class NavigationControllerTest extends TestCase
         // surface required — and the rest was gone, not merely off screen.
         $controller = $this->controller();
         $this->readyOn($controller, '/p/a.php', "<?php\n\$x = 1;\n");
-        $doc = implode("\n", array_map(static fn (int $n): string => "line{$n}", range(start: 1, end: 30)));
+        $doc = \implode("\n", \array_map(static fn (int $n): string => "line{$n}", \range(start: 1, end: 30)));
 
         $controller->requestHover(1, 0);
         $this->client->requests[0]['respond'](['contents' => $doc], error: null);
@@ -221,7 +221,7 @@ final class NavigationControllerTest extends TestCase
             'range' => ['start' => ['line' => 1, 'character' => 0], 'end' => ['line' => 1, 'character' => 8]],
         ], error: null);
 
-        $picker = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->layoutPickers([0, 0, 20, 100])[0]['rows']));
+        $picker = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->layoutPickers([0, 0, 20, 100])[0]['rows']));
         $this->assertStringContainsString('Peek: a.php:2', $picker);
         $this->assertStringContainsString('function f() {}', $picker);
     }
@@ -230,7 +230,7 @@ final class NavigationControllerTest extends TestCase
     {
         // Six lines cut most method bodies in half; the overlay pages through
         // twelve at a time and can scroll the rest.
-        $body = "<?php\nfunction f(): void\n{\n".implode("\n", array_map(static fn (int $n): string => "    \$s{$n} = {$n};", range(start: 1, end: 12)))."\n}\n";
+        $body = "<?php\nfunction f(): void\n{\n".\implode("\n", \array_map(static fn (int $n): string => "    \$s{$n} = {$n};", \range(start: 1, end: 12)))."\n}\n";
         $controller = $this->controller();
         $this->readyOn($controller, '/p/a.php', $body);
 
@@ -270,20 +270,20 @@ final class NavigationControllerTest extends TestCase
     {
         // The window bound itself, which a short fixture cannot show: every
         // line exists, so nothing is trimmed and the last row IS the bound.
-        $long = "<?php\n".implode("\n", array_map(static fn (int $n): string => "\$s{$n} = {$n};", range(start: 1, end: 80)))."\n";
+        $long = "<?php\n".\implode("\n", \array_map(static fn (int $n): string => "\$s{$n} = {$n};", \range(start: 1, end: 80)))."\n";
         $this->peekAt(1, $long);
 
         $items = $this->overlayItems();
         // One line before the target, then thirty after it.
         $this->assertSame('1', $items[0]['hint']);
-        $this->assertSame((string) (1 + 30 + 1), $items[array_key_last($items)]['hint']);
+        $this->assertSame((string) (1 + 30 + 1), $items[\array_key_last($items)]['hint']);
     }
 
     public function testTheWindowOpensExACTLYOneLineBeforeTheTarget(): void
     {
         // Asserted away from line 1, where `max(0, …)` clamps and hides an
         // off-by-one in the offset entirely.
-        $long = "<?php\n".implode("\n", array_map(static fn (int $n): string => "\$s{$n} = {$n};", range(start: 1, end: 40)))."\n";
+        $long = "<?php\n".\implode("\n", \array_map(static fn (int $n): string => "\$s{$n} = {$n};", \range(start: 1, end: 40)))."\n";
         $this->peekAt(5, $long);
 
         // Target is line 5, so the window opens on line 4 — hint 5, one-based.
@@ -307,7 +307,7 @@ final class NavigationControllerTest extends TestCase
         $this->peekAt(2, "\n\n\n\n");
 
         $items = $this->overlayItems();
-        $this->assertSame(Glyphs::NAV_CURRENT, trim($items[array_key_last($items)]['label']));
+        $this->assertSame(Glyphs::NAV_CURRENT, \trim($items[\array_key_last($items)]['label']));
         $this->assertStringContainsString('Peek: a.php:3', $this->pickerText());
     }
 
@@ -354,8 +354,8 @@ final class NavigationControllerTest extends TestCase
         $rows = Probe::object($this->editor, 'overlayHost');
         /** @var array{items: list<array{label: string, hint: string, value: string}>}|null $overlay */
         $overlay = Probe::get($rows, 'overlay');
-        self::assertNotNull($overlay);
-        $this->assertSame(['<?php', '$x = 1;'], array_map(static fn (array $i): string => trim(mb_substr($i['label'], start: 2)), $overlay['items']));
+        $this->assertNotNull($overlay);
+        $this->assertSame(['<?php', '$x = 1;'], \array_map(static fn (array $i): string => \trim(\mb_substr($i['label'], start: 2)), $overlay['items']));
     }
 
     public function testRequestPeekFlashesWhenNothingIsFound(): void
@@ -401,7 +401,7 @@ final class NavigationControllerTest extends TestCase
             ],
         ], error: null);
 
-        $picker = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->layoutPickers([0, 0, 20, 100])[0]['rows']));
+        $picker = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->layoutPickers([0, 0, 20, 100])[0]['rows']));
         $this->assertStringContainsString('Foo', $picker);
 
         $this->editor->handleInput("\r"); // pick the only row
@@ -422,34 +422,34 @@ final class NavigationControllerTest extends TestCase
 
     public function testLineAtPrefersTheLiveBufferOverDisk(): void
     {
-        $project = sys_get_temp_dir().'/nav-line-at-'.bin2hex(random_bytes(4));
-        mkdir($project);
+        $project = \sys_get_temp_dir().'/nav-line-at-'.\bin2hex(\random_bytes(4));
+        \mkdir($project);
         try {
             $path = $project.'/a.php';
-            file_put_contents($path, data: "on-disk line 0\non-disk line 1\n");
+            \file_put_contents($path, data: "on-disk line 0\non-disk line 1\n");
 
             $controller = $this->controller();
             $this->buffers->open($path, "buffer line 0\nbuffer line 1\n");
             $this->assertSame('buffer line 1', Probe::invoke($controller, 'lineAt', $path, 1), 'the live (unsaved) buffer wins over the on-disk file');
         } finally {
-            is_file($project.'/a.php') && unlink($project.'/a.php');
-            is_dir($project) && rmdir($project);
+            \is_file($project.'/a.php') && \unlink($project.'/a.php');
+            \is_dir($project) && \rmdir($project);
         }
     }
 
     public function testLineAtFallsBackToDiskWhenNoBufferIsOpen(): void
     {
-        $project = sys_get_temp_dir().'/nav-line-at-'.bin2hex(random_bytes(4));
-        mkdir($project);
+        $project = \sys_get_temp_dir().'/nav-line-at-'.\bin2hex(\random_bytes(4));
+        \mkdir($project);
         try {
             $path = $project.'/a.php';
-            file_put_contents($path, data: "on-disk line 0\non-disk line 1\n");
+            \file_put_contents($path, data: "on-disk line 0\non-disk line 1\n");
 
             $controller = $this->controller();
             $this->assertSame('on-disk line 1', Probe::invoke($controller, 'lineAt', $path, 1));
         } finally {
-            is_file($project.'/a.php') && unlink($project.'/a.php');
-            is_dir($project) && rmdir($project);
+            \is_file($project.'/a.php') && \unlink($project.'/a.php');
+            \is_dir($project) && \rmdir($project);
         }
     }
 
@@ -462,17 +462,17 @@ final class NavigationControllerTest extends TestCase
 
     public function testLineAtWithAnOutOfRangeLineReturnsEmpty(): void
     {
-        $project = sys_get_temp_dir().'/nav-line-at-'.bin2hex(random_bytes(4));
-        mkdir($project);
+        $project = \sys_get_temp_dir().'/nav-line-at-'.\bin2hex(\random_bytes(4));
+        \mkdir($project);
         try {
             $path = $project.'/a.php';
-            file_put_contents($path, data: "only line\n");
+            \file_put_contents($path, data: "only line\n");
 
             $controller = $this->controller();
             $this->assertSame('', Probe::invoke($controller, 'lineAt', $path, 5));
         } finally {
-            is_file($project.'/a.php') && unlink($project.'/a.php');
-            is_dir($project) && rmdir($project);
+            \is_file($project.'/a.php') && \unlink($project.'/a.php');
+            \is_dir($project) && \rmdir($project);
         }
     }
 
@@ -527,7 +527,7 @@ final class NavigationControllerTest extends TestCase
 
     private function plainPanel(): string
     {
-        return AnsiUtils::stripAnsiCodes(implode("\n", $this->results->render(new RenderContext(100, 12))));
+        return AnsiUtils::stripAnsiCodes(\implode("\n", $this->results->render(new RenderContext(100, 12))));
     }
 
     public function testStructurePanelListsTheSymbolTreeIndentedByNesting(): void
@@ -731,7 +731,7 @@ final class NavigationControllerTest extends TestCase
     /** The results panel's rendered rows. */
     private function panel(): string
     {
-        return AnsiUtils::stripAnsiCodes(implode("\n", $this->results->render(new RenderContext(100, 12))));
+        return AnsiUtils::stripAnsiCodes(\implode("\n", $this->results->render(new RenderContext(100, 12))));
     }
 
     /**

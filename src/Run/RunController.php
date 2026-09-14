@@ -121,9 +121,9 @@ final class RunController
     /** Ctrl+Shift+` (or Alt+F11): spawn another interactive shell session. */
     public function newTerminalSession(): void
     {
-        $shellEnv = getenv('SHELL');
+        $shellEnv = \getenv('SHELL');
         $shell = $shellEnv ? $shellEnv : '/bin/sh';
-        $session = $this->sessions->create('shell:'.++$this->shellCounter, basename($shell).' '.$this->shellCounter);
+        $session = $this->sessions->create('shell:'.++$this->shellCounter, \basename($shell).' '.$this->shellCounter);
         $this->spawn($session, [$shell, '-i']);
     }
 

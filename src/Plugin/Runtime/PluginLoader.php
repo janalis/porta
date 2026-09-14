@@ -51,7 +51,7 @@ final class PluginLoader
      */
     public static function embeddedDir(): string
     {
-        $dir = getenv('PORTA_EMBEDDED_PLUGINS');
+        $dir = \getenv('PORTA_EMBEDDED_PLUGINS');
 
         // src/Plugin/Runtime → the package root is three levels up.
         return \is_string($dir) && '' !== $dir ? $dir : \dirname(__DIR__, levels: 3).'/plugins';
@@ -126,14 +126,14 @@ final class PluginLoader
         // Walked over the MANIFESTS rather than over $skipped, so each name's
         // requires are in hand without a lookup that could miss.
         foreach ($manifests as $manifest) {
-            if (!array_key_exists($manifest->name, $skipped)) {
+            if (!\array_key_exists($manifest->name, $skipped)) {
                 continue;
             }
             // A plugin held out because something it needs is being INSTALLED
             // is a different story from one held out because its requirement is
             // absent: this one gets to load the moment the install lands, so it
             // is deferred rather than complained about.
-            if ([] !== array_intersect($manifest->requires, $pending)) {
+            if ([] !== \array_intersect($manifest->requires, $pending)) {
                 $manager->addDeferred($manifest->name);
 
                 continue;
@@ -160,8 +160,8 @@ final class PluginLoader
     private function discover(): array
     {
         // Disabled names are pre-seeded as "seen" so every copy is skipped.
-        $seen = array_fill_keys($this->disabled, value: true);
-        $enabled = array_fill_keys($this->enabled, value: true);
+        $seen = \array_fill_keys($this->disabled, value: true);
+        $enabled = \array_fill_keys($this->enabled, value: true);
         $files = [];
 
         // Project then global: user-installed plugins, loaded by default (opt-out).
@@ -170,10 +170,10 @@ final class PluginLoader
             if (null === $dir) {
                 continue;
             }
-            $dirFiles = glob($dir.'/*/plugin.php');
+            $dirFiles = \glob($dir.'/*/plugin.php');
             foreach (\is_array($dirFiles) ? $dirFiles : [] as $file) {
-                $name = basename(\dirname($file));
-                if (!array_key_exists($name, $seen)) {
+                $name = \basename(\dirname($file));
+                if (!\array_key_exists($name, $seen)) {
                     $seen[$name] = true;
                     $files[] = $file;
                 }
@@ -181,19 +181,19 @@ final class PluginLoader
         }
 
         // Bundled (embedded) plugins are off unless opted into `enabledPlugins`.
-        $embeddedFiles = null === $this->embeddedDir ? [] : glob($this->embeddedDir.'/*/plugin.php');
+        $embeddedFiles = null === $this->embeddedDir ? [] : \glob($this->embeddedDir.'/*/plugin.php');
         foreach (\is_array($embeddedFiles) ? $embeddedFiles : [] as $file) {
-            $name = basename(\dirname($file));
-            if (array_key_exists($name, $seen)) {
+            $name = \basename(\dirname($file));
+            if (\array_key_exists($name, $seen)) {
                 continue; // shadowed by a project/global copy, or explicitly disabled
             }
             $seen[$name] = true;
-            if (array_key_exists($name, $enabled)) {
+            if (\array_key_exists($name, $enabled)) {
                 $files[] = $file;
             }
         }
 
-        return array_values($files);
+        return \array_values($files);
     }
 
     /**
@@ -213,7 +213,7 @@ final class PluginLoader
             return null;
         }
 
-        return new ConfigWarning('Plugin "%name%" needs %needs% — not loaded', ['%name%' => $manifest->name, '%needs%' => implode(', ', $needs)]);
+        return new ConfigWarning('Plugin "%name%" needs %needs% — not loaded', ['%name%' => $manifest->name, '%needs%' => \implode(', ', $needs)]);
     }
 
     /**
@@ -237,7 +237,7 @@ final class PluginLoader
                 throw new PluginException('plugin.php must return a PortaPlugin instance');
             }
             $name = $plugin->name();
-            if (1 !== preg_match(self::NAME_PATTERN, $name)) {
+            if (1 !== \preg_match(self::NAME_PATTERN, $name)) {
                 throw new PluginException(\sprintf('invalid plugin name "%s" (expected /^[a-z0-9][a-z0-9_-]*$/i)', $name));
             }
             if ($manager->hasPlugin($name)) {
@@ -248,7 +248,7 @@ final class PluginLoader
             $plugin->activate($api);
             $manager->commit($api, $plugin); // atomic: a throwing activate() lands nothing
         } catch (\Throwable $error) {
-            return new ConfigWarning('Plugin "%name%" failed to load: %message%', ['%name%' => basename(\dirname($file)), '%message%' => $error->getMessage()]);
+            return new ConfigWarning('Plugin "%name%" failed to load: %message%', ['%name%' => \basename(\dirname($file)), '%message%' => $error->getMessage()]);
         }
 
         return null;

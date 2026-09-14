@@ -207,11 +207,11 @@ final class LspSessionTest extends TestCase
 
         $this->assertSame(
             ['file:///tmp/old/a.php', 'file:///tmp/old/deep/b.php'],
-            array_map(static fn (array $sent): string => $sent['params']['textDocument']['uri'], $client->notifications),
+            \array_map(static fn (array $sent): string => $sent['params']['textDocument']['uri'], $client->notifications),
         );
         $this->assertSame(
             ['textDocument/didClose', 'textDocument/didClose'],
-            array_map(static fn (array $sent): string => $sent['method'], $client->notifications),
+            \array_map(static fn (array $sent): string => $sent['method'], $client->notifications),
         );
     }
 
@@ -318,11 +318,11 @@ final class LspSessionTest extends TestCase
 
         $session->ready('/tmp/project/a.php', $doc, FlushMode::Keep);
         $this->assertSame($before, \count(\Revolt\EventLoop::getIdentifiers()), 'Keep leaves the debounce armed');
-        $this->assertSame([], array_column($client->notifications, 'method'), 'and sends nothing yet');
+        $this->assertSame([], \array_column($client->notifications, 'method'), 'and sends nothing yet');
 
         $session->ready('/tmp/project/a.php', $doc, FlushMode::Flush);
         $this->assertLessThan($before, \count(\Revolt\EventLoop::getIdentifiers()), 'Flush (the default) cancels the pending debounce');
-        $this->assertSame(['textDocument/didChange'], array_column($client->notifications, 'method'), 'and sends the pending edit immediately');
+        $this->assertSame(['textDocument/didChange'], \array_column($client->notifications, 'method'), 'and sends the pending edit immediately');
     }
 
     public function testRequestAndStopDelegateToClient(): void
@@ -372,7 +372,7 @@ final class LspSessionTest extends TestCase
         $session->scheduleDidChange($doc, static fn (): ?string => '/tmp/project/a.php', static function (): void {});
         $session->flushPendingChange('/tmp/project/a.php', $doc);
 
-        $sent = end($client->notifications);
+        $sent = \end($client->notifications);
         $this->assertNotFalse($sent);
         $this->assertSame('textDocument/didChange', $sent['method']);
         $change = $sent['params']['contentChanges'][0];
@@ -391,7 +391,7 @@ final class LspSessionTest extends TestCase
         $session->scheduleDidChange($doc, static fn (): ?string => '/tmp/project/a.php', static function (): void {});
         $session->flushPendingChange('/tmp/project/a.php', $doc);
 
-        $sent = end($client->notifications);
+        $sent = \end($client->notifications);
         $this->assertNotFalse($sent);
         $this->assertSame([['text' => "<?php\necho 1;\n"]], $sent['params']['contentChanges']);
     }
@@ -421,7 +421,7 @@ final class LspSessionTest extends TestCase
         $this->assertSame($before, \count(\Revolt\EventLoop::getIdentifiers()), 'stop() cancels the debounce — nothing may fire into the next loop consumer');
 
         $this->pump(0.35); // past the debounce window
-        $sent = array_column($client->notifications, 'method');
+        $sent = \array_column($client->notifications, 'method');
         $this->assertNotContains('textDocument/didChange', $sent, 'no late didChange after stop');
     }
 
@@ -436,7 +436,7 @@ final class LspSessionTest extends TestCase
         $session->scheduleDidChange(new Document('x'), static fn (): ?string => null, static function (): void {});
         $this->pump(0.35);
 
-        $sent = array_column($client->notifications, 'method');
+        $sent = \array_column($client->notifications, 'method');
         $this->assertNotContains('textDocument/didChange', $sent, 'a closed buffer sends no didChange');
     }
 }

@@ -38,7 +38,7 @@ final class CommentSyntaxTest extends TestCase
             $undecided[] = $grammar;
         }
 
-        $this->assertSame([], $undecided, 'CommentSyntax has no entry for: '.implode(', ', $undecided));
+        $this->assertSame([], $undecided, 'CommentSyntax has no entry for: '.\implode(', ', $undecided));
     }
 
     /**
@@ -48,9 +48,9 @@ final class CommentSyntaxTest extends TestCase
      */
     public function testTheTableNamesNoGrammarThatCannotBeOpened(): void
     {
-        $unreachable = array_values(array_diff(array_keys(self::rawTable()), LanguageMap::grammars()));
+        $unreachable = \array_values(\array_diff(\array_keys(self::rawTable()), LanguageMap::grammars()));
 
-        $this->assertSame([], $unreachable, 'CommentSyntax names grammars LanguageMap cannot produce: '.implode(', ', $unreachable));
+        $this->assertSame([], $unreachable, 'CommentSyntax names grammars LanguageMap cannot produce: '.\implode(', ', $unreachable));
     }
 
     /**
@@ -72,7 +72,7 @@ final class CommentSyntaxTest extends TestCase
             $malformed[] = $grammar;
         }
 
-        $this->assertSame([], $malformed, 'not a delimiter pair: '.implode(', ', $malformed));
+        $this->assertSame([], $malformed, 'not a delimiter pair: '.\implode(', ', $malformed));
     }
 
     public function testTheThreeShapesAndTheAbsentOne(): void
@@ -131,7 +131,7 @@ final class CommentSyntaxTest extends TestCase
             $wrong[] = $grammar;
         }
 
-        $this->assertSame([], $wrong, 'forGrammar() disagrees with the table for: '.implode(', ', $wrong));
+        $this->assertSame([], $wrong, 'forGrammar() disagrees with the table for: '.\implode(', ', $wrong));
     }
 
     /**

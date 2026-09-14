@@ -211,7 +211,7 @@ final class CodeHighlighter implements HighlightSink
             return $this->cache = $incremental;
         }
 
-        $text = implode("\n", $lines);
+        $text = \implode("\n", $lines);
         if (\strlen($text) > self::MAX_HIGHLIGHT_BYTES) {
             // The cap is applied here, so no backend is ever handed a huge file.
             $this->lastRawLines = null;
@@ -377,7 +377,7 @@ final class CodeHighlighter implements HighlightSink
      */
     private function normalize(string $markup, array $sourceLines): ?array
     {
-        $hlLines = explode("\n", $markup);
+        $hlLines = \explode("\n", $markup);
         if (\count($hlLines) !== \count($sourceLines)) {
             return null;
         }
@@ -386,7 +386,7 @@ final class CodeHighlighter implements HighlightSink
         $result = [];
         foreach ($hlLines as $index => $line) {
             $source = $sourceLines[$index] ?? '';
-            if (1 === preg_match(self::MALFORMED_ESCAPE, $line)) {
+            if (1 === \preg_match(self::MALFORMED_ESCAPE, $line)) {
                 $line = self::repair($line, $source) ?? $source;
             }
 
@@ -425,8 +425,8 @@ final class CodeHighlighter implements HighlightSink
      */
     private static function repair(string $line, string $source): ?string
     {
-        $fixed = preg_replace(self::SPLIT_ESCAPE, replacement: "\x1b[$1", subject: $line);
-        if (null === $fixed || 1 === preg_match(self::MALFORMED_ESCAPE, $fixed)) {
+        $fixed = \preg_replace(self::SPLIT_ESCAPE, replacement: "\x1b[$1", subject: $line);
+        if (null === $fixed || 1 === \preg_match(self::MALFORMED_ESCAPE, $fixed)) {
             return null;
         }
 
@@ -477,17 +477,17 @@ final class CodeHighlighter implements HighlightSink
             return null;
         }
 
-        if (null === $old || $newCount < self::INCREMENTAL_MIN_LINES || abs($newCount - \count($old)) > self::MAX_LOCAL_CHANGE || $this->staleEdits >= self::REPAIR_EVERY) {
+        if (null === $old || $newCount < self::INCREMENTAL_MIN_LINES || \abs($newCount - \count($old)) > self::MAX_LOCAL_CHANGE || $this->staleEdits >= self::REPAIR_EVERY) {
             return null;
         }
 
         $oldCount = \count($old);
-        $maxPrefix = min($oldCount, $newCount);
+        $maxPrefix = \min($oldCount, $newCount);
         $prefix = 0;
         while ($prefix < $maxPrefix && $old[$prefix] === $lines[$prefix]) {
             ++$prefix;
         }
-        $maxSuffix = min($oldCount, $newCount) - $prefix;
+        $maxSuffix = \min($oldCount, $newCount) - $prefix;
         $suffix = 0;
         while ($suffix < $maxSuffix && $old[$oldCount - 1 - $suffix] === $lines[$newCount - 1 - $suffix]) {
             ++$suffix;
@@ -535,6 +535,6 @@ final class CodeHighlighter implements HighlightSink
         // use — it has to splice a colored line into the cache right now.
         $highlighted = $capture->markup;
 
-        return null === $highlighted || str_contains($highlighted, "\n") ? $line : $highlighted;
+        return null === $highlighted || \str_contains($highlighted, "\n") ? $line : $highlighted;
     }
 }

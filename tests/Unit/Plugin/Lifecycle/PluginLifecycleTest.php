@@ -43,7 +43,7 @@ final class PluginLifecycleTest extends TestCase
     {
         $files = [];
         if ([] !== $porta) {
-            $files['.porta.json'] = json_encode($porta);
+            $files['.porta.json'] = \json_encode($porta);
         }
         $this->project = new TempProject($files);
         new OnboardingState($this->project->dir)->markWelcomeSeen();
@@ -70,8 +70,8 @@ final class PluginLifecycleTest extends TestCase
     private function writePlugin(string $name, array $requires = [], string $command = 'boom'): void
     {
         $dir = $this->project->dir.'/.porta/plugins/'.$name;
-        mkdir($dir, permissions: 0o777, recursive: true);
-        file_put_contents($dir.'/plugin.php', <<<PHP
+        \mkdir($dir, permissions: 0o777, recursive: true);
+        \file_put_contents($dir.'/plugin.php', <<<PHP
             <?php
             return new class implements Porta\\Plugin\\Api\\PortaPlugin {
                 public function name(): string { return '{$name}'; }
@@ -82,7 +82,7 @@ final class PluginLifecycleTest extends TestCase
             };
             PHP);
         if ([] !== $requires) {
-            file_put_contents($dir.'/composer.json', json_encode([
+            \file_put_contents($dir.'/composer.json', \json_encode([
                 'extra' => ['porta' => ['requires' => $requires]],
             ]));
         }
@@ -91,8 +91,8 @@ final class PluginLifecycleTest extends TestCase
     private function writeMalformedPlugin(string $name): void
     {
         $dir = $this->project->dir.'/.porta/plugins/'.$name;
-        mkdir($dir, permissions: 0o777, recursive: true);
-        file_put_contents($dir.'/plugin.php', data: '<?php return 42;');
+        \mkdir($dir, permissions: 0o777, recursive: true);
+        \file_put_contents($dir.'/plugin.php', data: '<?php return 42;');
     }
 
     private function lifecycle(Ide $ide): PluginLifecycle
@@ -116,7 +116,7 @@ final class PluginLifecycleTest extends TestCase
 
         $this->assertFalse($lifecycle->isDisabled('acme'), 'enable() flips the live state');
         $this->assertTrue($this->hasCommand($ide, 'acme:boom'), 'enable() actually loads the plugin');
-        $onDisk = json_decode((string) file_get_contents($this->project->dir.'/.porta.json'), associative: true);
+        $onDisk = \json_decode((string) \file_get_contents($this->project->dir.'/.porta.json'), associative: true);
         $this->assertSame([], $onDisk['disabledPlugins'] ?? [], 'the choice is persisted, not just held in memory');
     }
 
@@ -132,7 +132,7 @@ final class PluginLifecycleTest extends TestCase
 
         $this->assertTrue($lifecycle->isDisabled('acme'));
         $this->assertFalse($this->hasCommand($ide, 'acme:boom'), 'no other copy exists, so nothing reloads');
-        $onDisk = json_decode((string) file_get_contents($this->project->dir.'/.porta.json'), associative: true);
+        $onDisk = \json_decode((string) \file_get_contents($this->project->dir.'/.porta.json'), associative: true);
         $this->assertSame(['acme'], $onDisk['disabledPlugins'] ?? []);
     }
 
@@ -241,7 +241,7 @@ final class PluginLifecycleTest extends TestCase
 
         $names = $lifecycle->listedNames();
 
-        $this->assertSame(array_unique($names), $names, 'no name repeats even though installed() can yield duplicates across scopes');
+        $this->assertSame(\array_unique($names), $names, 'no name repeats even though installed() can yield duplicates across scopes');
     }
 
     public function testOnPluginSettingChangedForwardsToTheManagerAndReconfiguresProviderSettings(): void
@@ -268,7 +268,7 @@ final class PluginLifecycleTest extends TestCase
 
         $lifecycle->refreshNav();
 
-        $ids = array_column(Probe::get($nav, 'entries'), 'id');
+        $ids = \array_column(Probe::get($nav, 'entries'), 'id');
         $this->assertContains('plugin:acme', $ids, 'refreshNav() syncs the sidebar to the current listedNames()');
     }
 }

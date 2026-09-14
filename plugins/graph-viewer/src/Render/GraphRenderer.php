@@ -119,8 +119,8 @@ final class GraphRenderer
         $dx = $edge->arrowTip[0] - $last[0];
         $dy = $edge->arrowTip[1] - $last[1];
         $glyph = match (true) {
-            abs($dx) >= abs($dy) && $dx >= 0 => '▸',
-            abs($dx) >= abs($dy) => '◂',
+            \abs($dx) >= \abs($dy) && $dx >= 0 => '▸',
+            \abs($dx) >= \abs($dy) => '◂',
             $dy >= 0 => '▾',
             default => '▴',
         };
@@ -132,11 +132,11 @@ final class GraphRenderer
         if (null === $edge->label || null === $edge->labelPos || !$grid->intersects($edge->minX, $edge->minY, $edge->maxX, $edge->maxY)) {
             return;
         }
-        $label = explode("\n", $edge->label)[0];
+        $label = \explode("\n", $edge->label)[0];
         if ('' === $label) {
             return;
         }
-        $col = $grid->colOf($edge->labelPos[0]) - intdiv(mb_strlen($label), num2: 2);
+        $col = $grid->colOf($edge->labelPos[0]) - \intdiv(\mb_strlen($label), num2: 2);
         $grid->text($col, $grid->rowOf($edge->labelPos[1]), $label, $grid->colorKey($edge->color, Role::Muted), null);
     }
 
@@ -148,7 +148,7 @@ final class GraphRenderer
         [$x0, $y0, $x1, $y1] = $grid->nodeBox($node);
         $key = $node->id === $selected ? $grid->roleKey(Role::SelectedRow) : $grid->colorKey($node->color, Role::Bright);
         if (($x1 - $x0) < 2 || ($y1 - $y0) < 1) {
-            $grid->put(intdiv($x0 + $x1, num2: 2), intdiv($y0 + $y1, num2: 2), '▪', $key);
+            $grid->put(\intdiv($x0 + $x1, num2: 2), \intdiv($y0 + $y1, num2: 2), '▪', $key);
 
             return;
         }
@@ -169,16 +169,16 @@ final class GraphRenderer
                 $grid->put($x, $y, ' ', $key); // blank the interior so edges never show through a node
             }
         }
-        $labelLines = explode("\n", $node->label);
+        $labelLines = \explode("\n", $node->label);
         $innerRows = $y1 - $y0 - 1;
-        $labelLines = \array_slice($labelLines, offset: 0, length: max(1, $innerRows));
-        $firstRow = $y0 + 1 + intdiv(max(0, $innerRows - \count($labelLines)), num2: 2);
+        $labelLines = \array_slice($labelLines, offset: 0, length: \max(1, $innerRows));
+        $firstRow = $y0 + 1 + \intdiv(\max(0, $innerRows - \count($labelLines)), num2: 2);
         foreach ($labelLines as $index => $line) {
             $width = $x1 - $x0 - 1;
-            if (mb_strlen($line) > $width) {
-                $line = $width > 1 ? mb_substr($line, start: 0, length: $width - 1).'…' : '…';
+            if (\mb_strlen($line) > $width) {
+                $line = $width > 1 ? \mb_substr($line, start: 0, length: $width - 1).'…' : '…';
             }
-            $col = $x0 + 1 + intdiv(max(0, $width - mb_strlen($line)), num2: 2);
+            $col = $x0 + 1 + \intdiv(\max(0, $width - \mb_strlen($line)), num2: 2);
             $grid->text($col, $firstRow + $index, $line, $key, $x1 - 1);
         }
     }

@@ -29,7 +29,7 @@ final class FreezeWatchdogTest extends TestCase
         $watchdog->heartbeat();
         $watchdog->stop();
 
-        $log = (string) file_get_contents($watchdog->logFile());
+        $log = (string) \file_get_contents($watchdog->logFile());
         $this->assertStringContainsString('loop stalled for 5.00s (recovered)', $log);
         $this->assertStringContainsString('2026-07-13 10:00:05', $log, 'the wall clock still stamps the line — it just no longer measures the gap');
     }
@@ -85,10 +85,10 @@ final class FreezeWatchdogTest extends TestCase
         $watchdog->handleAlarm();
         $watchdog->stop();
 
-        $log = (string) file_get_contents($watchdog->logFile());
+        $log = (string) \file_get_contents($watchdog->logFile());
         $this->assertStringContainsString('loop blocked ≥ 30s', $log);
         $this->assertStringContainsString('#0', $log, 'the backtrace names the blocking site');
-        $this->assertSame(0, pcntl_alarm(0), 'stop() disarmed the pending alarm');
+        $this->assertSame(0, \pcntl_alarm(0), 'stop() disarmed the pending alarm');
     }
 
     public function testSignalsArmByDefault(): void
@@ -97,7 +97,7 @@ final class FreezeWatchdogTest extends TestCase
         $watchdog = new FreezeWatchdog($project->dir, new MockClock(), alarmSeconds: 30);
 
         $watchdog->start(); // ext-pcntl is a hard requirement, so the default arms the alarm
-        $this->assertGreaterThan(0, pcntl_alarm(0), 'the alarm was armed by default');
+        $this->assertGreaterThan(0, \pcntl_alarm(0), 'the alarm was armed by default');
         $watchdog->stop();
     }
 
@@ -124,13 +124,13 @@ final class FreezeWatchdogTest extends TestCase
 
         $watchdog->start();
         EventLoop::delay(0.08, static function (): void {
-            usleep(300_000); // block the loop long past the drift threshold
+            \usleep(300_000); // block the loop long past the drift threshold
         });
         $this->runLoopFor(0.6);
         $watchdog->stop();
 
         $this->assertFileExists($watchdog->logFile());
-        $this->assertStringContainsString('loop stalled for', (string) file_get_contents($watchdog->logFile()));
+        $this->assertStringContainsString('loop stalled for', (string) \file_get_contents($watchdog->logFile()));
     }
 
     public function testARealHardHangFiresTheAlarmMidBlock(): void
@@ -140,12 +140,12 @@ final class FreezeWatchdogTest extends TestCase
 
         $watchdog->start();
         EventLoop::delay(0.05, static function (): void {
-            sleep(2); // a hard block: only the async SIGALRM can interrupt it
+            \sleep(2); // a hard block: only the async SIGALRM can interrupt it
         });
         $this->runLoopFor(2.6);
         $watchdog->stop();
 
-        $log = (string) file_get_contents($watchdog->logFile());
+        $log = (string) \file_get_contents($watchdog->logFile());
         $this->assertStringContainsString('loop blocked ≥ 1s', $log);
         $this->assertStringContainsString('sleep', $log, 'the backtrace names the blocking call');
     }

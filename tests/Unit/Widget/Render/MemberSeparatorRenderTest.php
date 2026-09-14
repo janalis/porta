@@ -33,7 +33,7 @@ final class MemberSeparatorRenderTest extends TestCase
         $highlighter = new CodeHighlighter();
         $highlighter->setFile('/fixture.php');
 
-        return $highlighter->highlight(explode("\n", self::CODE), version: 1);
+        return $highlighter->highlight(\explode("\n", self::CODE), version: 1);
     }
 
     /** @param array<int, true> $separators */
@@ -59,7 +59,7 @@ final class MemberSeparatorRenderTest extends TestCase
             new EditorDecorations(false, null, [], [], null),
             sticky: [],
             highlighted: $this->highlighted(),
-            stripe: array_fill(start_index: 0, count: 7, value: ''),
+            stripe: \array_fill(start_index: 0, count: 7, value: ''),
             contentRows: 6,
             vScroll: 0,
             cursorLine: -1,
@@ -76,14 +76,14 @@ final class MemberSeparatorRenderTest extends TestCase
         // The underline opens and then covers the whole content width. It is
         // closed by the row's own reset rather than by NO_UNDERLINE — every
         // row ends with one, and a second close would be bytes for nothing.
-        $at = strpos($ruled, Sgr::UNDERLINE);
-        self::assertNotFalse($at, 'the rule is drawn');
-        self::assertSame(
-            str_repeat(' ', self::CONTENT_WIDTH),
-            substr($ruled, $at + \strlen(Sgr::UNDERLINE), self::CONTENT_WIDTH),
+        $at = \strpos($ruled, Sgr::UNDERLINE);
+        $this->assertNotFalse($at, 'the rule is drawn');
+        $this->assertSame(
+            \str_repeat(' ', self::CONTENT_WIDTH),
+            \substr($ruled, $at + \strlen(Sgr::UNDERLINE), self::CONTENT_WIDTH),
             'and covers the content width',
         );
-        self::assertStringEndsWith(Sgr::RESET, $ruled, 'the row closes it');
+        $this->assertStringEndsWith(Sgr::RESET, $ruled, 'the row closes it');
     }
 
     public function testARuleOnALineWithTEXTStillSpansTheContentWidth(): void
@@ -93,13 +93,13 @@ final class MemberSeparatorRenderTest extends TestCase
         // the highlighter's colour codes in the text nor the padding may break
         // the underline, so measure it as the terminal does, by replaying the
         // row and asking which cells carry it.
-        self::assertStringContainsString("\x1b[", $this->highlighted()[2], 'the fixture line is really coloured');
+        $this->assertStringContainsString("\x1b[", $this->highlighted()[2], 'the fixture line is really coloured');
 
         $row = $this->rows([2 => true])[2];
         $underlined = 0;
         $on = false;
-        foreach (preg_split('/(\x1b\[[0-9;]*m)/', $row, flags: \PREG_SPLIT_DELIM_CAPTURE) as $piece) {
-            if (str_starts_with($piece, "\x1b")) {
+        foreach (\preg_split('/(\x1b\[[0-9;]*m)/', $row, flags: \PREG_SPLIT_DELIM_CAPTURE) as $piece) {
+            if (\str_starts_with($piece, "\x1b")) {
                 $on = match ($piece) {
                     Sgr::UNDERLINE => true,
                     Sgr::NO_UNDERLINE, Sgr::RESET => false,
@@ -107,18 +107,18 @@ final class MemberSeparatorRenderTest extends TestCase
                 };
                 continue;
             }
-            $underlined += $on ? mb_strlen($piece) : 0;
+            $underlined += $on ? \mb_strlen($piece) : 0;
         }
 
-        self::assertSame(self::CONTENT_WIDTH, $underlined, 'every content cell is ruled');
+        $this->assertSame(self::CONTENT_WIDTH, $underlined, 'every content cell is ruled');
     }
 
     public function testTheRuleCanLandOnTheBLANKLineBetweenTwoMembers(): void
     {
         // A blank line has no cells of its own, so this is the case that needs
         // the padding: without it the rule would be zero columns wide.
-        self::assertSame('', explode("\n", self::CODE)[3], 'the fixture line is empty');
-        self::assertStringContainsString(Sgr::UNDERLINE, $this->rows([3 => true])[3]);
+        $this->assertSame('', \explode("\n", self::CODE)[3], 'the fixture line is empty');
+        $this->assertStringContainsString(Sgr::UNDERLINE, $this->rows([3 => true])[3]);
     }
 
     public function testTheROWSWIDTHIsUnchanged(): void
@@ -126,7 +126,7 @@ final class MemberSeparatorRenderTest extends TestCase
         // The one thing a decoration may never do, and the failure mode this
         // codebase calls garble.
         foreach ($this->rows([3 => true]) as $index => $row) {
-            self::assertSame(
+            $this->assertSame(
                 AnsiUtils::visibleWidth($this->rows([])[$index]),
                 AnsiUtils::visibleWidth($row),
                 "row {$index} keeps its width",
@@ -139,8 +139,8 @@ final class MemberSeparatorRenderTest extends TestCase
         $with = $this->rows([3 => true]);
         $without = $this->rows([]);
 
-        self::assertSame($without[2], $with[2], 'the line above the rule is identical');
-        self::assertSame($without[4], $with[4], 'and so is the one below');
-        self::assertNotSame($without[3], $with[3], 'only the ruled line differs');
+        $this->assertSame($without[2], $with[2], 'the line above the rule is identical');
+        $this->assertSame($without[4], $with[4], 'and so is the one below');
+        $this->assertNotSame($without[3], $with[3], 'only the ruled line differs');
     }
 }

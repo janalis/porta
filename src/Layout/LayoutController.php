@@ -115,14 +115,14 @@ final class LayoutController
             return;
         }
         if (null !== $this->bottomPanelHeightPercent) {
-            $this->resizeBottomPanels($this->clampPanel((int) round(($this->bottomPanelHeightPercent * $rows) / 100), $rows));
+            $this->resizeBottomPanels($this->clampPanel((int) \round(($this->bottomPanelHeightPercent * $rows) / 100), $rows));
         }
     }
 
     /** Restore a persisted proportion as columns, clamped like a drag would. */
     private function applyPercent(ResizableSidebar $sidebar, int $percent, int $cols): void
     {
-        $sidebar->setWidth($this->clampSidebarWidth($sidebar, (int) round(($percent * $cols) / 100), $cols));
+        $sidebar->setWidth($this->clampSidebarWidth($sidebar, (int) \round(($percent * $cols) / 100), $cols));
     }
 
     /**
@@ -334,7 +334,7 @@ final class LayoutController
 
     private function maximisedRows(): int
     {
-        return max(3, $this->tui->getTerminal()->getRows() - 6);
+        return \max(3, $this->tui->getTerminal()->getRows() - 6);
     }
 
     /** Shared keyboard-nudge path: clamp like the drags do, persist, repaint. */
@@ -368,7 +368,7 @@ final class LayoutController
     /** @return list<SidebarResizeState> */
     private function sidebarResizes(): array
     {
-        return [$this->treeResize, ...array_values($this->viewResizes)];
+        return [$this->treeResize, ...\array_values($this->viewResizes)];
     }
 
     private function resizeBottomPanels(int $height): void
@@ -394,7 +394,7 @@ final class LayoutController
      */
     private function clampSidebarWidth(ResizableSidebar $sidebar, int $width, int $cols): int
     {
-        return max($sidebar->minWidth(), min($width, $sidebar->maxWidth(), (int) round($cols * $sidebar->maxRatio()), $cols - 20));
+        return \max($sidebar->minWidth(), \min($width, $sidebar->maxWidth(), (int) \round($cols * $sidebar->maxRatio()), $cols - 20));
     }
 
     /** Clamp a bottom-panel height so the editor keeps room above it. */
@@ -410,7 +410,7 @@ final class LayoutController
      */
     private function commitPercent(int $value, int $total, ?int &$target): void
     {
-        $pct = $total > 0 ? (int) round(($value * 100) / $total) : null;
+        $pct = $total > 0 ? (int) \round(($value * 100) / $total) : null;
         if ($pct !== $target) {
             $target = $pct;
             $this->persistLayout();

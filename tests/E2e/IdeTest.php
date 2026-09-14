@@ -33,7 +33,7 @@ final class IdeTest extends TestCase
     {
         $this->project = new TempProject(
             [
-                'composer.json' => json_encode(
+                'composer.json' => \json_encode(
                     [
                         'name' => 'acme/demo',
                         'autoload' => ['psr-4' => ['Acme\\' => 'src/']],
@@ -53,7 +53,7 @@ final class IdeTest extends TestCase
                     }
 
                     PHP,
-                '.porta.json' => json_encode([
+                '.porta.json' => \json_encode([
                     'lsp' => \PHP_BINARY.' '.__DIR__.'/../Support/mock-lsp-server.php',
                     'keymap' => ['duplicate_line' => ['f8']], // prove .porta.json rebinding works
                 ]),
@@ -125,7 +125,7 @@ final class IdeTest extends TestCase
         $this->step(1.5, static fn () => $tui->handleInput("\x13"));
         $this->step(1.8, function () use ($screen): void {
             $this->assertStringContainsString('Saved src/Demo.php', $screen());
-            $this->assertStringContainsString('strlen(', (string) file_get_contents($this->project->path('src/Demo.php')));
+            $this->assertStringContainsString('strlen(', (string) \file_get_contents($this->project->path('src/Demo.php')));
         });
 
         // --- Definition jump + back-nav ---------------------------------------
@@ -177,7 +177,7 @@ final class IdeTest extends TestCase
         $this->step(2.8, function () use ($tui): void {
             $tui->handleInput("\x06"); // ctrl+f
             $this->assertSame('find-bar', $tui->getFocus()?->getId());
-            foreach (str_split('acme') as $ch) {
+            foreach (\str_split('acme') as $ch) {
                 $tui->handleInput($ch);
             }
         });
@@ -202,7 +202,7 @@ final class IdeTest extends TestCase
             $tui->handleInput("\x10"); // ctrl+p
             $this->assertTrue($editor()->isSearchOverlayOpen(), 'Ctrl+P opens the centered go-to-file picker');
             $this->assertStringContainsString('Go to File', $screen(), 'the picker title');
-            foreach (str_split('target') as $ch) {
+            foreach (\str_split('target') as $ch) {
                 $tui->handleInput($ch);
             }
         });
@@ -220,7 +220,7 @@ final class IdeTest extends TestCase
         $this->step(3.35, function () use ($editor, $tui): void {
             $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f → the Find-in-Files modal
             $this->assertTrue($editor()->isFindModalOpen(), 'the find modal opened');
-            foreach (str_split('class Target') as $ch) {
+            foreach (\str_split('class Target') as $ch) {
                 $tui->handleInput($ch);
             }
         });
@@ -260,7 +260,7 @@ final class IdeTest extends TestCase
             $tui->handleInput("\x1b[17;2~"); // shift+f6 -> prepareRename validates, then the prompt opens
         });
         $this->step(4.42, static function () use ($tui): void {
-            foreach (str_split('Renamed') as $ch) {
+            foreach (\str_split('Renamed') as $ch) {
                 $tui->handleInput($ch);
             }
             $tui->handleInput("\r");
@@ -336,7 +336,7 @@ final class IdeTest extends TestCase
 
         // Type a filename → the Files source lists it (synchronously); Enter opens it.
         $this->step(0.7, static function () use ($tui): void {
-            foreach (str_split('Target') as $ch) {
+            foreach (\str_split('Target') as $ch) {
                 $tui->handleInput($ch);
             }
         });
@@ -352,7 +352,7 @@ final class IdeTest extends TestCase
         // Reopen; a class name drives the async LSP workspace/symbol source.
         $this->step(1.1, static function () use ($tui): void {
             $tui->handleInput("\x1b[101;6u");
-            foreach (str_split('Greeter') as $ch) {
+            foreach (\str_split('Greeter') as $ch) {
                 $tui->handleInput($ch);
             }
         });

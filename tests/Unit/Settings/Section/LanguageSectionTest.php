@@ -119,7 +119,7 @@ final class LanguageSectionTest extends TestCase
         // every page that writes a file, so index past it: what this test is
         // about is the three controllers' own rows, not the page's lead.
         $this->assertSame(SettingsScopeRow::KEY, $rows[0]->key);
-        $keys = array_column(\array_slice($rows, offset: 1), 'key');
+        $keys = \array_column(\array_slice($rows, offset: 1), 'key');
         $this->assertSame(['indentStyle', 'indentSize', 'runCommand', 'lspServer', 'debugAdapter', 'debugLaunch'], $keys);
     }
 

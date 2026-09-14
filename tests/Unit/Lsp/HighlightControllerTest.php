@@ -62,7 +62,7 @@ final class HighlightControllerTest extends TestCase
     /** @return list<array{method: string, params: mixed, respond?: \Closure}> */
     private function highlightRequests(): array
     {
-        return array_values(array_filter($this->client->requests, static fn (array $r): bool => 'textDocument/documentHighlight' === $r['method']));
+        return \array_values(\array_filter($this->client->requests, static fn (array $r): bool => 'textDocument/documentHighlight' === $r['method']));
     }
 
     public function testAServerWithoutTheCapabilityIsNeverAsked(): void

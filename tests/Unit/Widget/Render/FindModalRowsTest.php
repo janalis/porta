@@ -35,7 +35,7 @@ final class FindModalRowsTest extends TestCase
     {
         $header = AnsiUtils::stripAnsiCodes(FindModalRows::fileHeader('src/x.php', 3, 40, Styles::dark()));
 
-        $this->assertSame(' src/x.php  (3)'.str_repeat(' ', times: 40 - 15), $header);
+        $this->assertSame(' src/x.php  (3)'.\str_repeat(' ', times: 40 - 15), $header);
         $this->assertSame(40, AnsiUtils::visibleWidth($header));
     }
 
@@ -53,7 +53,7 @@ final class FindModalRowsTest extends TestCase
         $plain = AnsiUtils::stripAnsiCodes(FindModalRows::match($result, RowSelection::Unselected, 40, Styles::dark()));
 
         // line is 0-based internally; the rendered label is 1-based.
-        $this->assertSame('    5  needle here'.str_repeat(' ', times: 40 - 18), $plain);
+        $this->assertSame('    5  needle here'.\str_repeat(' ', times: 40 - 18), $plain);
     }
 
     public function testMatchHighlightsRangesAtThePrefixWidthOffset(): void

@@ -91,6 +91,6 @@ final readonly class LayoutStore
 
     private function percent(mixed $value): ?int
     {
-        return \is_int($value) || \is_float($value) || \is_string($value) && is_numeric($value) ? (int) $value : null;
+        return \is_int($value) || \is_float($value) || \is_string($value) && \is_numeric($value) ? (int) $value : null;
     }
 }

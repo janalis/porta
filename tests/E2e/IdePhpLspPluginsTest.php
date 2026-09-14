@@ -36,23 +36,23 @@ final class IdePhpLspPluginsTest extends TestCase
 
     protected function setUp(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
     }
 
     /** An embedded dir holding only the real phpantom plugin (loads its actual code). */
     private function embeddedPhpantom(): TempProject
     {
-        return new TempProject(['phpantom/plugin.php' => (string) file_get_contents(__DIR__.'/../../plugins/phpantom/plugin.php')]);
+        return new TempProject(['phpantom/plugin.php' => (string) \file_get_contents(__DIR__.'/../../plugins/phpantom/plugin.php')]);
     }
 
     public function testPhpantomProvidesThePhpServerAndTogglingItReconfiguresLive(): void
     {
         $embedded = $this->embeddedPhpantom();
-        putenv('PORTA_EMBEDDED_PLUGINS='.$embedded->dir);
+        \putenv('PORTA_EMBEDDED_PLUGINS='.$embedded->dir);
         // The plugin's binary is set, so its resolver yields a php server.
         $project = new TempProject([
             'a.php' => "<?php\n",
-            '.porta.json' => json_encode(['enabledPlugins' => ['phpantom'], 'plugins' => ['phpantom' => ['binary' => '/opt/phpantom_lsp']]]),
+            '.porta.json' => \json_encode(['enabledPlugins' => ['phpantom'], 'plugins' => ['phpantom' => ['binary' => '/opt/phpantom_lsp']]]),
         ]);
 
         $this->runIde(
@@ -106,9 +106,9 @@ final class IdePhpLspPluginsTest extends TestCase
     public function testWithoutABinaryPhpantomSuggestsInstalling(): void
     {
         $embedded = $this->embeddedPhpantom();
-        putenv('PORTA_EMBEDDED_PLUGINS='.$embedded->dir);
+        \putenv('PORTA_EMBEDDED_PLUGINS='.$embedded->dir);
         // phpantom enabled but no binary configured and none on PATH → serves nothing.
-        $project = new TempProject(['a.php' => "<?php\n", '.porta.json' => json_encode(['enabledPlugins' => ['phpantom']])]);
+        $project = new TempProject(['a.php' => "<?php\n", '.porta.json' => \json_encode(['enabledPlugins' => ['phpantom']])]);
 
         $this->runIde(
             $project,
@@ -127,8 +127,8 @@ final class IdePhpLspPluginsTest extends TestCase
     public function testThePhpantomSettingsPageOffersToInstallTheBinary(): void
     {
         $embedded = $this->embeddedPhpantom();
-        putenv('PORTA_EMBEDDED_PLUGINS='.$embedded->dir);
-        $project = new TempProject(['a.php' => "<?php\n", '.porta.json' => json_encode(['enabledPlugins' => ['phpantom']])]);
+        \putenv('PORTA_EMBEDDED_PLUGINS='.$embedded->dir);
+        $project = new TempProject(['a.php' => "<?php\n", '.porta.json' => \json_encode(['enabledPlugins' => ['phpantom']])]);
 
         $this->runIde(
             $project,
@@ -162,9 +162,9 @@ final class IdePhpLspPluginsTest extends TestCase
             ."exit(0);\n";
         $project = new TempProject(['a.php' => "<?php\n\$x=1;\n"]);
         $binPath = $project->path('phpantom_stub');
-        file_put_contents($binPath, $stub);
-        chmod($binPath, permissions: 0o755);
-        file_put_contents($project->path('.porta.json'), json_encode(['enabledPlugins' => ['phpantom'], 'plugins' => ['phpantom' => ['binary' => $binPath]]]));
+        \file_put_contents($binPath, $stub);
+        \chmod($binPath, permissions: 0o755);
+        \file_put_contents($project->path('.porta.json'), \json_encode(['enabledPlugins' => ['phpantom'], 'plugins' => ['phpantom' => ['binary' => $binPath]]]));
 
         return $project;
     }
@@ -172,7 +172,7 @@ final class IdePhpLspPluginsTest extends TestCase
     public function testFixAndInitCommandsDriveTheCli(): void
     {
         $embedded = $this->embeddedPhpantom();
-        putenv('PORTA_EMBEDDED_PLUGINS='.$embedded->dir);
+        \putenv('PORTA_EMBEDDED_PLUGINS='.$embedded->dir);
         $project = $this->phpantomCliProject();
 
         $this->runIde(
@@ -183,10 +183,10 @@ final class IdePhpLspPluginsTest extends TestCase
                     Services::resolve($ide, CommandRegistry::class)->run('phpantom:fix');
                 },
                 300 => function ($tui, $terminal, $ide) use ($project): void {
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'phpantom: fixed a.php'));
+                    $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'phpantom: fixed a.php'));
                     $tui->tick();
                     $this->assertStringContainsString('phpantom: fixed a.php', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
-                    $this->await(static fn (): bool => str_contains((string) (is_file($project->path('a.php')) ? file_get_contents($project->path('a.php')) : false), '// fixed'));
+                    $this->await(static fn (): bool => \str_contains((string) (\is_file($project->path('a.php')) ? \file_get_contents($project->path('a.php')) : false), '// fixed'));
                     Services::resolve($ide, BufferService::class)
                         ->pollFilesystem();
                     $this->assertStringContainsString('// fixed', $tui->getById('editor')->getDocument()->getText(), 'buffer reloaded with the fixed content');
@@ -197,7 +197,7 @@ final class IdePhpLspPluginsTest extends TestCase
                     // Await the FLASH, not the file: the stub writes the config
                     // before it exits, so the file exists a moment before the
                     // exit callback flashes — and one tick() may not paint it.
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'phpantom: generated config'));
+                    $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'phpantom: generated config'));
                     $this->assertStringContainsString('phpantom: generated config', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $this->assertFileExists($project->path('phpantom.json'));
                 },

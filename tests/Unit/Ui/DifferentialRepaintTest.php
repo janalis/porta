@@ -84,7 +84,7 @@ final class DifferentialRepaintTest extends TestCase
      */
     private static function row(string $left, string $right): string
     {
-        $pane = intdiv(self::COLUMNS - 1, num2: 2);
+        $pane = \intdiv(self::COLUMNS - 1, num2: 2);
 
         return AnsiText::padRight($left, $pane).'|'.AnsiText::padRight($right, self::COLUMNS - 1 - $pane);
     }
@@ -98,7 +98,7 @@ final class DifferentialRepaintTest extends TestCase
         $intended = [];
 
         foreach ($frames as $frame) {
-            self::$lines = array_map(static fn (array $pair): string => self::row($pair[0], $pair[1]), $frame);
+            self::$lines = \array_map(static fn (array $pair): string => self::row($pair[0], $pair[1]), $frame);
             $terminal->clearOutput();
             // A widget caches its rendered lines; without this the second frame
             // re-serves the first and the differential path is never taken.
@@ -110,8 +110,8 @@ final class DifferentialRepaintTest extends TestCase
         }
 
         return [
-            array_map(rtrim(...), array_slice($replay->rows(), offset: 0, length: \count($intended))),
-            array_map(static fn (string $l): string => rtrim(AnsiUtils::stripAnsiCodes($l)), $intended),
+            \array_map(rtrim(...), \array_slice($replay->rows(), offset: 0, length: \count($intended))),
+            \array_map(static fn (string $l): string => \rtrim(AnsiUtils::stripAnsiCodes($l)), $intended),
         ];
     }
 

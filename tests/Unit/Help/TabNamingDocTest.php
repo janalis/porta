@@ -30,12 +30,12 @@ final class TabNamingDocTest extends TestCase
             $buffers->open($path, '<?php');
         }
 
-        return array_column(new TabListProvider($buffers, new Translator('en'))->tabs(), 'name');
+        return \array_column(new TabListProvider($buffers, new Translator('en'))->tabs(), 'name');
     }
 
     public function testTheDocumentedCollisionExampleIsWhatTheCodeProduces(): void
     {
-        $doc = (string) file_get_contents(self::DOC);
+        $doc = (string) \file_get_contents(self::DOC);
 
         $titles = self::titlesFor(['/p/plugins/git/plugin.php', '/p/plugins/symfony-lsp/plugin.php']);
 
@@ -47,7 +47,7 @@ final class TabNamingDocTest extends TestCase
 
     public function testTheDocumentedDeeperExampleIsToo(): void
     {
-        $doc = (string) file_get_contents(self::DOC);
+        $doc = (string) \file_get_contents(self::DOC);
 
         $titles = self::titlesFor(['/p/plugins/git/src/View/GitSidebar.php', '/p/plugins/other/src/View/GitSidebar.php']);
 

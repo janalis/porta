@@ -59,10 +59,10 @@ final class IdeUnimplementedVerbTest extends TestCase
     {
         // This repo's own `.porta.json` shape: a list written to add language
         // servers, keeping four of the five bundled defaults and dropping todo.
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject([
             'a.php' => "<?php\n// TODO: something\n",
-            '.porta.json' => json_encode(['enabledPlugins' => ['git', 'image-viewer', 'graph-viewer', 'local-history']], \JSON_THROW_ON_ERROR),
+            '.porta.json' => \json_encode(['enabledPlugins' => ['git', 'image-viewer', 'graph-viewer', 'local-history']], \JSON_THROW_ON_ERROR),
         ]);
 
         $this->pressAlt8($project, function (string $screen): void {
@@ -77,10 +77,10 @@ final class IdeUnimplementedVerbTest extends TestCase
         // with the embedded dir pinned to `/nonexistent` the explanation fired
         // here too, because `todo` was missing for a reason that had nothing to
         // do with the config.
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject([
             'a.php' => "<?php\n// TODO: something\n",
-            '.porta.json' => json_encode(['enabledPlugins' => ['todo']], \JSON_THROW_ON_ERROR),
+            '.porta.json' => \json_encode(['enabledPlugins' => ['todo']], \JSON_THROW_ON_ERROR),
         ]);
 
         $this->pressAlt8($project, function (string $screen): void {

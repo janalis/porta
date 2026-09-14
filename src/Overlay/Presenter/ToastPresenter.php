@@ -88,9 +88,9 @@ final class ToastPresenter
         // Cards cap at a third of the union: on a narrow terminal a flat-width
         // card would blanket half the workspace, burying the content the
         // notification is ABOUT.
-        $inner = min(PopupMetrics::TOAST_MAX_INNER, intdiv($boundRight - $boundLeft, num2: 3));
+        $inner = \min(PopupMetrics::TOAST_MAX_INNER, \intdiv($boundRight - $boundLeft, num2: 3));
         $width = $inner + PopupFrame::CHROME_COLS;
-        $col = max($boundLeft, $boundRight - $width - 2); // 1 margin + 1 shadow column
+        $col = \max($boundLeft, $boundRight - $width - 2); // 1 margin + 1 shadow column
         $top = $boundTop + 1;
 
         $cards = [];
@@ -106,13 +106,13 @@ final class ToastPresenter
             $top += \count($rows) + 1; // the gap row doubles as the shadow band
         }
 
-        $this->delivery->deliverToast(array_map(
+        $this->delivery->deliverToast(\array_map(
             static fn (array $card): array => ['rows' => $card['rows'], 'top' => $card['top'], 'col' => $col, 'width' => $width],
             $cards,
         ));
         $this->shown = true;
         $this->toasts->setBoxes($boxes);
-        $this->regions = array_map(
+        $this->regions = \array_map(
             static fn (array $card): DropdownRegion => DropdownRegion::shadowClamped($card['top'], $col, $width, \count($card['rows']), $bounds),
             $cards,
         );

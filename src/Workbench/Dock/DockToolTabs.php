@@ -119,7 +119,7 @@ final class DockToolTabs
 
     public function makeActive(DockToolTab $tab): void
     {
-        $index = array_search($tab, $this->tabs, strict: true);
+        $index = \array_search($tab, $this->tabs, strict: true);
         if (false !== $index) {
             $this->active = $index;
         }
@@ -133,12 +133,12 @@ final class DockToolTabs
     /** Remove a tab; the active pointer moves to the nearest surviving neighbour. Returns the new active tab, or null when emptied. */
     public function close(DockToolTab $tab): ?DockToolTab
     {
-        $index = array_search($tab, $this->tabs, strict: true);
+        $index = \array_search($tab, $this->tabs, strict: true);
         if (false === $index) {
             return $this->active();
         }
-        array_splice($this->tabs, $index, length: 1);
-        $this->active = min($this->active <= $index ? $this->active : $this->active - 1, \count($this->tabs) - 1);
+        \array_splice($this->tabs, $index, length: 1);
+        $this->active = \min($this->active <= $index ? $this->active : $this->active - 1, \count($this->tabs) - 1);
 
         return $this->active();
     }

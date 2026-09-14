@@ -81,9 +81,9 @@ final class SemanticSpanRenderTest extends TestCase
             $theme,
         );
 
-        self::assertStringContainsString($theme->before(TokenTypeEnum::PROPERTY), $row);
+        $this->assertStringContainsString($theme->before(TokenTypeEnum::PROPERTY), $row);
         // The colour must be closed, or it runs to the end of the line.
-        self::assertStringContainsString(Sgr::DEFAULT_FG, $row);
+        $this->assertStringContainsString(Sgr::DEFAULT_FG, $row);
     }
 
     public function testTheVISIBLETextIsByteForByteUNCHANGED(): void
@@ -101,8 +101,8 @@ final class SemanticSpanRenderTest extends TestCase
             new DarkTerminalTheme(),
         );
 
-        self::assertNotSame($plain, $coloured, 'the token must actually change the row, or this test proves nothing');
-        self::assertSame(AnsiUtils::stripAnsiCodes($plain), AnsiUtils::stripAnsiCodes($coloured));
+        $this->assertNotSame($plain, $coloured, 'the token must actually change the row, or this test proves nothing');
+        $this->assertSame(AnsiUtils::stripAnsiCodes($plain), AnsiUtils::stripAnsiCodes($coloured));
     }
 
     public function testNoThemeMeansTheLexersColoursAreLeftAlone(): void
@@ -111,7 +111,7 @@ final class SemanticSpanRenderTest extends TestCase
         $doc = new Document("aaa bbb ccc\n");
         $tokens = [0 => [['col' => 4, 'endCol' => 7, 'type' => 'property', 'modifiers' => []]]];
 
-        self::assertSame(
+        $this->assertSame(
             $this->render($doc, $this->store([]), 'aaa bbb ccc', null),
             $this->render($doc, $this->store($tokens), 'aaa bbb ccc', null),
         );
@@ -122,7 +122,7 @@ final class SemanticSpanRenderTest extends TestCase
         $doc = new Document("aaa bbb ccc\n");
         $tokens = [0 => [['col' => 4, 'endCol' => 7, 'type' => 'notInOurPalette', 'modifiers' => []]]];
 
-        self::assertSame(
+        $this->assertSame(
             $this->render($doc, $this->store([]), 'aaa bbb ccc', new DarkTerminalTheme()),
             $this->render($doc, $this->store($tokens), 'aaa bbb ccc', new DarkTerminalTheme()),
         );
@@ -140,8 +140,8 @@ final class SemanticSpanRenderTest extends TestCase
             new PlainTerminalTheme(),
         );
 
-        self::assertStringContainsString("\x1b[9m", $row);
-        self::assertStringContainsString("\x1b[29m", $row);
+        $this->assertStringContainsString("\x1b[9m", $row);
+        $this->assertStringContainsString("\x1b[29m", $row);
     }
 
     public function testAWideCharacterBeforeTheTokenShiftsItToTheRightDisplayColumn(): void
@@ -162,9 +162,9 @@ final class SemanticSpanRenderTest extends TestCase
         );
 
         $open = $theme->before(TokenTypeEnum::PROPERTY);
-        $at = strpos($row, $open);
-        self::assertNotFalse($at, 'the token must be painted at all');
-        self::assertSame('abc', substr($row, $at + \strlen($open), length: 3), 'the colour must open exactly at "abc"');
+        $at = \strpos($row, $open);
+        $this->assertNotFalse($at, 'the token must be painted at all');
+        $this->assertSame('abc', \substr($row, $at + \strlen($open), length: 3), 'the colour must open exactly at "abc"');
     }
 
     public function testATokenENTIRELYPastTheLineEndPaintsNothing(): void
@@ -182,7 +182,7 @@ final class SemanticSpanRenderTest extends TestCase
             new DarkTerminalTheme(),
         );
 
-        self::assertSame($this->render($doc, $this->store([]), 'ab', new DarkTerminalTheme()), $stale);
+        $this->assertSame($this->render($doc, $this->store([]), 'ab', new DarkTerminalTheme()), $stale);
     }
 
     public function testATokenReachingPastTheLineEndDoesNotWidenTheRow(): void
@@ -200,7 +200,7 @@ final class SemanticSpanRenderTest extends TestCase
         );
         $none = $this->render($doc, $this->store([]), 'ab', new DarkTerminalTheme());
 
-        self::assertSame(
+        $this->assertSame(
             AnsiUtils::visibleWidth($none),
             AnsiUtils::visibleWidth($wide),
         );

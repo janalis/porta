@@ -16,7 +16,7 @@ final class BreadcrumbScannerTest extends TestCase
      */
     private function labels(array $trail): array
     {
-        return array_map(static fn (array $c): string => $c['label'], $trail);
+        return \array_map(static fn (array $c): string => $c['label'], $trail);
     }
 
     public function testNamespaceClassMethodPath(): void
@@ -28,7 +28,7 @@ final class BreadcrumbScannerTest extends TestCase
         $trail = BreadcrumbScanner::select($scopes, 6);
         $this->assertSame(['A\\B', 'C', 'd'], $this->labels($trail));
         // Jump lines are the 0-based declaration lines: namespace@1, class@2, method@4.
-        $this->assertSame([1, 2, 4], array_map(static fn (array $c): int => $c['line'], $trail));
+        $this->assertSame([1, 2, 4], \array_map(static fn (array $c): int => $c['line'], $trail));
     }
 
     public function testTopLevelBeforeAnyScopeIsEmpty(): void
@@ -178,7 +178,7 @@ final class BreadcrumbScannerTest extends TestCase
     {
         $src = "<?php\nnamespace A;\nclass X {}\nnamespace B;\nclass Y {}\n";
         $scopes = BreadcrumbScanner::scan($src);
-        $namespaces = array_values(array_filter($scopes, static fn (array $s): bool => 'namespace' === $s['kind']));
+        $namespaces = \array_values(\array_filter($scopes, static fn (array $s): bool => 'namespace' === $s['kind']));
 
         $this->assertSame(['label' => 'A', 'startLine' => 2, 'endLine' => 3, 'kind' => 'namespace'], $namespaces[0]);
         $this->assertSame('B', $namespaces[1]['label']);
@@ -222,7 +222,7 @@ final class BreadcrumbScannerTest extends TestCase
         // on one line); the namespace's wider endLine must sort it first.
         $src = "<?php\nnamespace App { class C {\n}\n\$x = 1;\n}\n";
         $scopes = BreadcrumbScanner::scan($src);
-        $this->assertSame(['App', 'C'], array_column($scopes, 'label'));
+        $this->assertSame(['App', 'C'], \array_column($scopes, 'label'));
     }
 
     public function testSelectSkipsNonEnclosingSiblingsToFindTheRealMatch(): void
@@ -240,8 +240,8 @@ final class BreadcrumbScannerTest extends TestCase
         // real line 8 (still inside, inclusive), top of 8 is real line 9 (past it).
         $src = "<?php\nnamespace App;\nclass Service\n{\n    public function handle(): void\n    {\n        \$x = 1;\n    }\n}\n";
         $scopes = BreadcrumbScanner::scan($src);
-        $this->assertSame(['Service', 'handle'], array_column(BreadcrumbScanner::stickyHeaders($scopes, 7, 5), 'label'));
-        $this->assertSame(['Service'], array_column(BreadcrumbScanner::stickyHeaders($scopes, 8, 5), 'label'));
+        $this->assertSame(['Service', 'handle'], \array_column(BreadcrumbScanner::stickyHeaders($scopes, 7, 5), 'label'));
+        $this->assertSame(['Service'], \array_column(BreadcrumbScanner::stickyHeaders($scopes, 8, 5), 'label'));
     }
 
     public function testStickyHeadersRejectsNegativeCapWithoutSlicingFromTheEnd(): void
@@ -265,10 +265,10 @@ final class BreadcrumbScannerTest extends TestCase
         // line: if the cap check vanished (or flipped to >=), the scan would
         // find Demo and the assertions below would disagree.
         $head = "<?php\nclass Demo\n{\n    public function foo(): void {}\n}\n// ";
-        $atCap = $head.str_repeat('x', BreadcrumbScanner::MAX_SCAN_BYTES - \strlen($head));
+        $atCap = $head.\str_repeat('x', BreadcrumbScanner::MAX_SCAN_BYTES - \strlen($head));
         $this->assertSame(BreadcrumbScanner::MAX_SCAN_BYTES, \strlen($atCap));
 
-        $this->assertSame(['Demo', 'foo'], array_column(BreadcrumbScanner::scan($atCap), 'label'), 'exactly at the cap still scans');
+        $this->assertSame(['Demo', 'foo'], \array_column(BreadcrumbScanner::scan($atCap), 'label'), 'exactly at the cap still scans');
         $this->assertSame([], BreadcrumbScanner::scan($atCap.'x'), 'one byte past the cap scans nothing');
     }
 }

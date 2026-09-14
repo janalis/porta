@@ -46,9 +46,9 @@ final class ModalShadow
         }
         $bottom = $startRow + $rows;
         if ($bottom < \count($lines)) {
-            $bandWidth = min($width, $columns - $col - 1);
+            $bandWidth = \min($width, $columns - $col - 1);
             if ($bandWidth > 0) {
-                $band = $styles->rule('.modal::shadow')->apply(str_repeat(' ', $bandWidth));
+                $band = $styles->rule('.modal::shadow')->apply(\str_repeat(' ', $bandWidth));
                 $lines[$bottom] = OverlayCompositor::into($lines[$bottom], $col + 1, $bandWidth, $columns, $band);
             }
         }
@@ -69,7 +69,7 @@ final class ModalShadow
         $band = $styles->rule('.modal::shadow')->apply(AnsiText::blank($width));
 
         return [
-            ...SpanSlicer::localSpans(array_fill(0, max(0, $rows - 1), $cell), $rect, $top + 1, $col + $width, 1),
+            ...SpanSlicer::localSpans(\array_fill(0, \max(0, $rows - 1), $cell), $rect, $top + 1, $col + $width, 1),
             ...SpanSlicer::localSpans([$band], $rect, $top + $rows, $col + 1, $width),
         ];
     }

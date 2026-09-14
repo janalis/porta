@@ -195,7 +195,7 @@ final class CodeEditorInputRoutingTest extends TestCase
         $foldModel = Probe::get($editor, 'foldModel');
         $stickyCount = \count(Probe::get($editor, 'stickyLines'));
         $this->assertGreaterThan(0, $stickyCount, 'sanity: sticky header pinned');
-        $expectedRow = max(0, $foldModel->screenRowFor($scroll->vScroll(), 38)) + $stickyCount;
+        $expectedRow = \max(0, $foldModel->screenRowFor($scroll->vScroll(), 38)) + $stickyCount;
 
         $editor->setSignatureHint('f(): void');
         $rendered = $editor->render(new RenderContext(80, 10));
@@ -205,7 +205,7 @@ final class CodeEditorInputRoutingTest extends TestCase
         // top border and back out which row it anchored from.
         $frameTopRow = null;
         foreach ($rendered as $i => $row) {
-            if (!str_contains(AnsiUtils::stripAnsiCodes($row), '╭')) {
+            if (!\str_contains(AnsiUtils::stripAnsiCodes($row), '╭')) {
                 continue;
             }
             $frameTopRow = $i;
@@ -238,7 +238,7 @@ final class CodeEditorInputRoutingTest extends TestCase
         // (hScroll, word width) must SUBTRACT, not add — with hScroll=0 (the
         // common case) a +/- flip on it is unobservable, so this forces a
         // real scroll.
-        $prefix = str_repeat('x', times: 60).' ';
+        $prefix = \str_repeat('x', times: 60).' ';
         $editor = $this->editor("<?php\n{$prefix}fooBarBaz\n");
         $editor->getDocument()->setCursor(1, \strlen($prefix) + 9); // end of "fooBarBaz"
         $editor->render(new RenderContext(30, 10)); // narrow enough to force hScroll > 0

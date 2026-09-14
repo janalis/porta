@@ -56,8 +56,8 @@ final class ProjectSearch
     {
         $this->cancel();
         $this->gaveUp = false;
-        $paths = \is_array($scope) ? array_values($scope) : [$scope];
-        if ('' === trim($query) || [] === $paths) {
+        $paths = \is_array($scope) ? \array_values($scope) : [$scope];
+        if ('' === \trim($query) || [] === $paths) {
             $onDone([]);
 
             return;
@@ -71,7 +71,7 @@ final class ProjectSearch
         }
 
         // A query spanning lines can't go through line-based grep: scan whole files.
-        if (str_contains($query, "\n")) {
+        if (\str_contains($query, "\n")) {
             $onDone($this->searchMultiline($pattern, $paths, $mask));
 
             return;
@@ -100,14 +100,14 @@ final class ProjectSearch
         // (AsyncProcess below), so a `subdir/file:line` match stays root-relative.
         $command = [$grep, ...$flags, '--', $query, ...$paths];
         foreach (self::EXCLUDES as $dir) {
-            array_splice($command, offset: 1, length: 0, replacement: ['--exclude-dir='.$dir]);
+            \array_splice($command, offset: 1, length: 0, replacement: ['--exclude-dir='.$dir]);
         }
 
         $process = new AsyncProcess($command, $this->rootDir);
         $started = $process->start(
             onExit: fn (int $code, string $out) => $this->finish($out, $onDone, $pattern),
             onChunk: function () use ($process, $onDone, $pattern): void {
-                if (substr_count($process->output(), needle: "\n") > self::MAX_RESULTS) {
+                if (\substr_count($process->output(), needle: "\n") > self::MAX_RESULTS) {
                     // Enough results; stop early
                     $this->finish($process->output(), $onDone, $pattern);
                 }
@@ -145,12 +145,12 @@ final class ProjectSearch
     private function parse(string $output, string $pattern): array
     {
         $results = [];
-        foreach (explode("\n", $output) as $line) {
+        foreach (\explode("\n", $output) as $line) {
             $m = [];
-            if ('' === $line || !preg_match('/^(?:\.\/)?(.+?):(\d+):(.*)$/', $line, $m)) {
+            if ('' === $line || !\preg_match('/^(?:\.\/)?(.+?):(\d+):(.*)$/', $line, $m)) {
                 continue;
             }
-            $text = trim($m[3]);
+            $text = \trim($m[3]);
             $results[] = ['path' => $m[1], 'line' => (int) $m[2] - 1, 'text' => $text, 'ranges' => $this->rangesFor($text, $pattern)];
             if (\count($results) >= self::MAX_RESULTS) {
                 break;
@@ -173,9 +173,9 @@ final class ProjectSearch
         if ('' === $text) {
             return [];
         }
-        set_error_handler(static fn (): bool => true);
-        $count = preg_match_all($pattern, $text, $matches, \PREG_OFFSET_CAPTURE);
-        restore_error_handler();
+        \set_error_handler(static fn (): bool => true);
+        $count = \preg_match_all($pattern, $text, $matches, \PREG_OFFSET_CAPTURE);
+        \restore_error_handler();
         if (false === $count) {
             $this->gaveUp = true;
 
@@ -187,7 +187,7 @@ final class ProjectSearch
             if ('' === $match) {
                 continue; // a zero-width match highlights nothing
             }
-            $ranges[] = ['start' => mb_strwidth(substr($text, offset: 0, length: (int) $hit[1])), 'length' => mb_strwidth($match)];
+            $ranges[] = ['start' => \mb_strwidth(\substr($text, offset: 0, length: (int) $hit[1])), 'length' => \mb_strwidth($match)];
         }
 
         return $ranges;
@@ -211,15 +211,15 @@ final class ProjectSearch
                 }
                 $seen[$rel] = true;
                 $content = $this->readFile($abs);
-                if (str_contains($content, "\0")) {
+                if (\str_contains($content, "\0")) {
                     continue;
                 }
-                foreach (explode("\n", $content) as $lineIndex => $line) {
-                    if (1 !== preg_match($pattern, $line)) {
+                foreach (\explode("\n", $content) as $lineIndex => $line) {
+                    if (1 !== \preg_match($pattern, $line)) {
                         continue;
                     }
 
-                    $text = trim($line);
+                    $text = \trim($line);
                     $results[] = ['path' => $rel, 'line' => $lineIndex, 'text' => $text, 'ranges' => $this->rangesFor($text, $pattern)];
                     if (\count($results) >= self::MAX_RESULTS) {
                         return $results;
@@ -253,12 +253,12 @@ final class ProjectSearch
                 $seen[$rel] = true;
                 $content = $this->readFile($abs);
                 $matches = [];
-                if (str_contains($content, "\0")) {
+                if (\str_contains($content, "\0")) {
                     continue;
                 }
-                set_error_handler(static fn (): bool => true);
-                $count = preg_match_all($pattern, $content, $matches, \PREG_OFFSET_CAPTURE);
-                restore_error_handler();
+                \set_error_handler(static fn (): bool => true);
+                $count = \preg_match_all($pattern, $content, $matches, \PREG_OFFSET_CAPTURE);
+                \restore_error_handler();
                 if (false === $count) {
                     $this->gaveUp = true;
 
@@ -286,10 +286,10 @@ final class ProjectSearch
      */
     private function multilineResult(string $rel, string $content, string $match, int $offset): array
     {
-        $line = substr_count(substr($content, offset: 0, length: $offset), needle: "\n");
-        $firstLine = explode("\n", $match)[0];
-        $preview = str_contains($match, "\n") ? $firstLine.' ⏎…' : $firstLine;
-        $width = mb_strwidth($firstLine);
+        $line = \substr_count(\substr($content, offset: 0, length: $offset), needle: "\n");
+        $firstLine = \explode("\n", $match)[0];
+        $preview = \str_contains($match, "\n") ? $firstLine.' ⏎…' : $firstLine;
+        $width = \mb_strwidth($firstLine);
         $ranges = 0 === $width ? [] : [['start' => 0, 'length' => $width]];
 
         return ['path' => $rel, 'line' => $line, 'text' => $preview, 'ranges' => $ranges];
@@ -308,7 +308,7 @@ final class ProjectSearch
     private function scopeFiles(string $scope, array $globs): iterable
     {
         $abs = '.' === $scope ? $this->rootDir : $this->rootDir.'/'.$scope;
-        if (is_file($abs)) {
+        if (\is_file($abs)) {
             // The mask narrows an explicitly named file too, because grep does:
             // `--include` is a filter on every candidate, not just on the ones
             // the walk turned up, and both greps this runs on (BSD and ugrep)
@@ -316,13 +316,13 @@ final class ProjectSearch
             // is the primary engine, so this branch is what a handful of users
             // without it on PATH see — aligning it toward what everyone else
             // already experiences is the change that surprises nobody.
-            if ([] === $globs || self::matchesAnyGlob(basename($abs), $globs)) {
+            if ([] === $globs || self::matchesAnyGlob(\basename($abs), $globs)) {
                 yield $scope => $abs;
             }
 
             return;
         }
-        $prefix = '.' === $scope ? '' : rtrim($scope, characters: '/').'/';
+        $prefix = '.' === $scope ? '' : \rtrim($scope, characters: '/').'/';
         $finder = new Finder()
             ->files()
             ->in($abs)
@@ -348,7 +348,7 @@ final class ProjectSearch
     private static function matchesAnyGlob(string $name, array $globs): bool
     {
         foreach ($globs as $glob) {
-            if (fnmatch($glob, $name)) {
+            if (\fnmatch($glob, $name)) {
                 return true;
             }
         }
@@ -368,18 +368,18 @@ final class ProjectSearch
     {
         $globs = [];
         foreach ($this->splitTopLevel($mask) as $token) {
-            $token = trim($token);
+            $token = \trim($token);
             if ('' === $token) {
                 continue;
             }
             $m = [];
-            if (1 !== preg_match('/^(.*)\{([^{}]*)\}(.*)$/', $token, $m)) {
+            if (1 !== \preg_match('/^(.*)\{([^{}]*)\}(.*)$/', $token, $m)) {
                 $globs[] = $token;
 
                 continue;
             }
-            foreach (explode(',', $m[2]) as $option) {
-                $globs[] = $m[1].trim($option).$m[3];
+            foreach (\explode(',', $m[2]) as $option) {
+                $globs[] = $m[1].\trim($option).$m[3];
             }
         }
 
@@ -397,12 +397,12 @@ final class ProjectSearch
         $tokens = [];
         $current = '';
         $depth = 0;
-        foreach (str_split($mask) as $ch) {
+        foreach (\str_split($mask) as $ch) {
             if ('{' === $ch) {
                 ++$depth;
             }
             if ('}' === $ch) {
-                $depth = max(0, $depth - 1);
+                $depth = \max(0, $depth - 1);
             }
             if (',' === $ch && 0 === $depth) {
                 $tokens[] = $current;
@@ -429,19 +429,19 @@ final class ProjectSearch
         // Preserve-case (literal replace only): map each match's casing onto the
         // replacement so foo→bar, Foo→Bar and FOO→BAR in one pass.
         if ($options->preserveCase && !$options->regex) {
-            set_error_handler(static fn (): bool => true);
+            \set_error_handler(static fn (): bool => true);
             try {
-                $result = preg_replace_callback($pattern, fn (array $m): string => $this->applyCasePattern($m[0], $replacement), $content);
+                $result = \preg_replace_callback($pattern, fn (array $m): string => $this->applyCasePattern($m[0], $replacement), $content);
             } finally {
-                restore_error_handler();
+                \restore_error_handler();
             }
 
             return null === $result ? $content : $result;
         }
-        $repl = $options->regex ? $replacement : (string) preg_replace('/[\\\\$]/', replacement: '\\\\$0', subject: $replacement);
-        set_error_handler(static fn (): bool => true);
-        $result = preg_replace($pattern, $repl, $content);
-        restore_error_handler();
+        $repl = $options->regex ? $replacement : (string) \preg_replace('/[\\\\$]/', replacement: '\\\\$0', subject: $replacement);
+        \set_error_handler(static fn (): bool => true);
+        $result = \preg_replace($pattern, $repl, $content);
+        \restore_error_handler();
 
         return null === $result ? $content : $result;
     }
@@ -455,17 +455,17 @@ final class ProjectSearch
         if ('' === $replacement) {
             return $replacement;
         }
-        $lower = mb_strtolower($match);
-        $upper = mb_strtoupper($match);
+        $lower = \mb_strtolower($match);
+        $upper = \mb_strtoupper($match);
         if ($match === $upper && $match !== $lower) {
-            return mb_strtoupper($replacement); // ALL CAPS (and has letters)
+            return \mb_strtoupper($replacement); // ALL CAPS (and has letters)
         }
         if ($match === $lower) {
-            return mb_strtolower($replacement); // all lowercase
+            return \mb_strtolower($replacement); // all lowercase
         }
-        $title = mb_strtoupper(mb_substr($match, start: 0, length: 1)).mb_strtolower(mb_substr($match, start: 1));
+        $title = \mb_strtoupper(\mb_substr($match, start: 0, length: 1)).\mb_strtolower(\mb_substr($match, start: 1));
         if ($match === $title) {
-            return mb_strtoupper(mb_substr($replacement, start: 0, length: 1)).mb_strtolower(mb_substr($replacement, start: 1)); // Titlecase
+            return \mb_strtoupper(\mb_substr($replacement, start: 0, length: 1)).\mb_strtolower(\mb_substr($replacement, start: 1)); // Titlecase
         }
 
         return $replacement; // mixed / unknown → leave the replacement as typed
@@ -480,7 +480,7 @@ final class ProjectSearch
      */
     public function matchOffsets(string $line, string $query, SearchOptions $options): array
     {
-        return array_column($this->matchSpans($line, $query, $options), column_key: 'start');
+        return \array_column($this->matchSpans($line, $query, $options), column_key: 'start');
     }
 
     /**
@@ -498,9 +498,9 @@ final class ProjectSearch
         if ('' === $line) {
             return [];
         }
-        set_error_handler(static fn (): bool => true);
-        $count = preg_match_all($this->pattern($query, $options), $line, $matches, \PREG_OFFSET_CAPTURE);
-        restore_error_handler();
+        \set_error_handler(static fn (): bool => true);
+        $count = \preg_match_all($this->pattern($query, $options), $line, $matches, \PREG_OFFSET_CAPTURE);
+        \restore_error_handler();
         if (false === $count) {
             $this->gaveUp = true;
 
@@ -532,9 +532,9 @@ final class ProjectSearch
     /** Whether a user regex compiles, swallowing the warning a malformed pattern raises. */
     private function patternValid(string $pattern): bool
     {
-        set_error_handler(static fn (): bool => true);
-        $ok = preg_match($pattern, subject: '');
-        restore_error_handler();
+        \set_error_handler(static fn (): bool => true);
+        $ok = \preg_match($pattern, subject: '');
+        \restore_error_handler();
 
         return false !== $ok;
     }

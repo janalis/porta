@@ -56,16 +56,16 @@ final class ActionCatalogTest extends TestCase
         foreach (self::WIDGETS as $widget) {
             /** @var array<string, string[]> $bindings */
             $bindings = Probe::invokeStatic($widget, 'getDefaultKeybindings');
-            foreach (array_keys($bindings) as $id) {
+            foreach (\array_keys($bindings) as $id) {
                 $widgetBound[$id] = true;
             }
         }
 
         foreach (ActionCatalog::ACTIONS as $id => $spec) {
-            if (str_starts_with($id, 'graph_') || str_starts_with($id, 'image_')) {
+            if (\str_starts_with($id, 'graph_') || \str_starts_with($id, 'image_')) {
                 continue; // bound by a viewer plugin's pane; each is pinned in its own suite
             }
-            if (!array_key_exists('keys', $spec)) {
+            if (!\array_key_exists('keys', $spec)) {
                 // An ADOPTABLE id needs no binding at all: core names the verb,
                 // a plugin implements it, and it is reached from the palette and
                 // its menu item. The rule below asks whether a keyless action is
@@ -116,14 +116,14 @@ final class ActionCatalogTest extends TestCase
         /** @var array<string, array<string, mixed>> $actions */
         $actions = Probe::getStatic(ActionCatalog::class, 'ACTIONS');
         foreach ($actions as $id => $action) {
-            if (!str_starts_with((string) $id, 'git_')) {
+            if (!\str_starts_with((string) $id, 'git_')) {
                 continue;
             }
 
             $actual[$id] = ActionCatalog::label((string) $id);
             $this->assertTrue(ActionCatalog::isAdoptable((string) $id), $id.' must be adoptable before the plugin can implement it');
         }
-        ksort($actual);
+        \ksort($actual);
 
         $this->assertSame($expected, $actual);
     }

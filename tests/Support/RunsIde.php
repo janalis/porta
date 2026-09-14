@@ -49,7 +49,7 @@ trait RunsIde
             function () use ($tui, $terminal, $needle): bool {
                 $this->frame($tui);
 
-                return str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), $needle);
+                return \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), $needle);
             },
             timeout: $timeout,
             what: $needle.' to paint',
@@ -76,10 +76,10 @@ trait RunsIde
             function () use ($tui, $terminal, $needle): bool {
                 $this->frame($tui);
 
-                return str_contains($terminal->getOutput(), $needle);
+                return \str_contains($terminal->getOutput(), $needle);
             },
             timeout: $timeout,
-            what: 'raw '.addcslashes($needle, characters: "\0..\37").' to paint',
+            what: 'raw '.\addcslashes($needle, characters: "\0..\37").' to paint',
         );
     }
 
@@ -147,13 +147,13 @@ trait RunsIde
         // DELTA after it completes. A step may await() (suspending on the
         // loop) without a later step's timer firing underneath it.
         $timers = [];
-        ksort($steps);
-        $keys = array_keys($steps);
+        \ksort($steps);
+        $keys = \array_keys($steps);
         $schedule = static function (int $index, int $previousKey) use (&$schedule, &$timers, $steps, $keys, $tui, $terminal, $ide, $duration): void {
             $key = $keys[$index];
             $timers[] = EventLoop::delay(($key - $previousKey) / 1000, static function () use ($index, $key, $steps, $keys, $tui, $terminal, $ide, $duration, $schedule, &$timers): void {
                 $steps[$key]($tui, $terminal, $ide);
-                if (array_key_exists($index + 1, $keys)) {
+                if (\array_key_exists($index + 1, $keys)) {
                     $schedule($index + 1, $key);
 
                     return;

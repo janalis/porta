@@ -109,24 +109,24 @@ final class ContainerDebugCommandTest extends TestCase
         // the factory's half by seeding into a scrubbed $_ENV, then require the
         // two sets to be identical in BOTH directions — a key seeded but not
         // mirrored fails, and a mirrored key no longer seeded fails too.
-        $savedCache = getenv('PORTA_CONTAINER_CACHE');
+        $savedCache = \getenv('PORTA_CONTAINER_CACHE');
         /** @var array<string, mixed> $saved */
         $saved = [];
         foreach ($_ENV as $key => $value) {
-            if (!(\is_string($key) && str_starts_with($key, 'PORTA_'))) {
+            if (!(\is_string($key) && \str_starts_with($key, 'PORTA_'))) {
                 continue;
             }
 
             $saved[$key] = $value;
             unset($_ENV[$key]);
         }
-        putenv('PORTA_CONTAINER_CACHE=off');
+        \putenv('PORTA_CONTAINER_CACHE=off');
 
         try {
             new IdeContainerFactory()->build('/tmp/porta-env-contract-test', IdeConfig::load('/tmp/porta-env-contract-test'), Ansi::Enabled);
             $seeded = [];
-            foreach (array_keys($_ENV) as $key) {
-                if (!(\is_string($key) && str_starts_with($key, 'PORTA_'))) {
+            foreach (\array_keys($_ENV) as $key) {
+                if (!(\is_string($key) && \str_starts_with($key, 'PORTA_'))) {
                     continue;
                 }
 
@@ -135,20 +135,20 @@ final class ContainerDebugCommandTest extends TestCase
         } finally {
             // No `continue` in a finally block (the lint gate forbids control
             // flow there): filter first, then sweep.
-            $portaKeys = array_filter(array_keys($_ENV), static fn (int|string $key): bool => \is_string($key) && str_starts_with($key, 'PORTA_'));
+            $portaKeys = \array_filter(\array_keys($_ENV), static fn (int|string $key): bool => \is_string($key) && \str_starts_with($key, 'PORTA_'));
             foreach ($portaKeys as $key) {
                 unset($_ENV[$key]);
             }
             foreach ($saved as $key => $value) {
                 $_ENV[$key] = $value;
             }
-            putenv(false === $savedCache ? 'PORTA_CONTAINER_CACHE' : 'PORTA_CONTAINER_CACHE='.$savedCache);
+            \putenv(false === $savedCache ? 'PORTA_CONTAINER_CACHE' : 'PORTA_CONTAINER_CACHE='.$savedCache);
         }
 
         /** @var array<string, string> $defaults */
         $defaults = Probe::getStatic(ContainerDebugCommand::class, 'ENV_DEFAULTS');
         $this->assertEqualsCanonicalizing(
-            [...array_keys($defaults), 'PORTA_ROOT_DIR'],
+            [...\array_keys($defaults), 'PORTA_ROOT_DIR'],
             $seeded,
             'ENV_DEFAULTS + PORTA_ROOT_DIR (set separately in execute()) must equal the keys the factory seeds',
         );
@@ -246,13 +246,13 @@ final class ContainerDebugCommandTest extends TestCase
         $tester->execute(['--aliases' => true]);
         $display = $tester->getDisplay();
 
-        $lines = false !== preg_split('/\R/', $display) ? preg_split('/\R/', $display) : [];
-        $aliasLines = array_values(array_filter(
+        $lines = false !== \preg_split('/\R/', $display) ? \preg_split('/\R/', $display) : [];
+        $aliasLines = \array_values(\array_filter(
             $lines,
-            static fn (string $line): bool => 1 === preg_match('/^Porta\\\\[A-Z]/', trim($line)),
+            static fn (string $line): bool => 1 === \preg_match('/^Porta\\\\[A-Z]/', \trim($line)),
         ));
         $sorted = $aliasLines;
-        sort($sorted);
+        \sort($sorted);
         $this->assertNotEmpty($aliasLines);
         $this->assertSame($sorted, $aliasLines, 'alias rows appear in sorted key order');
     }
@@ -273,14 +273,14 @@ final class ContainerDebugCommandTest extends TestCase
         $tester->execute([]);
         $display = $tester->getDisplay();
 
-        $lines = false !== preg_split('/\R/', $display) ? preg_split('/\R/', $display) : [];
-        $ids = array_filter(
+        $lines = false !== \preg_split('/\R/', $display) ? \preg_split('/\R/', $display) : [];
+        $ids = \array_filter(
             $lines,
-            static fn (string $line): bool => str_starts_with(trim($line), 'porta.'),
+            static fn (string $line): bool => \str_starts_with(\trim($line), 'porta.'),
         );
-        $sorted = array_values($ids);
-        sort($sorted);
-        $this->assertSame($sorted, array_values($ids), 'porta.* service ids appear in sorted order');
+        $sorted = \array_values($ids);
+        \sort($sorted);
+        $this->assertSame($sorted, \array_values($ids), 'porta.* service ids appear in sorted order');
     }
 
     public function testTheServicesTableHasAllThreeColumnHeaders(): void
@@ -353,7 +353,7 @@ final class ContainerDebugCommandTest extends TestCase
     private function serviceCount(string $display): int
     {
         $matches = [];
-        preg_match('/# (\d+) service\(s\)/', $display, $matches);
+        \preg_match('/# (\d+) service\(s\)/', $display, $matches);
 
         return (int) ($matches[1] ?? 0);
     }

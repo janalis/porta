@@ -26,7 +26,7 @@ final class BookmarkDecorationsTest extends TestCase
 
     private function painted(CodeEditorWidget $editor): string
     {
-        return implode("\n", $editor->render(new RenderContext(40, 8)));
+        return \implode("\n", $editor->render(new RenderContext(40, 8)));
     }
 
     public function testApplyPaintsOnlyTheMarkedLine(): void

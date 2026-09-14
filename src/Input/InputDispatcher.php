@@ -145,7 +145,7 @@ final class InputDispatcher
      */
     private function explainAnAdoptedVerbNobodyImplements(string $data): void
     {
-        foreach (array_keys(ActionCatalog::ACTIONS) as $id) {
+        foreach (\array_keys(ActionCatalog::ACTIONS) as $id) {
             // `has()` is the short circuit that makes this free: with every
             // bundled plugin loaded it is true for all eighteen adoptable ids
             // and nothing reaches the descriptor match below. The cost appears

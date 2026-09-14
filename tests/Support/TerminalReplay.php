@@ -52,7 +52,7 @@ final class TerminalReplay
          */
         private readonly int $ambiguousWidth = 1,
     ) {
-        $this->grid = array_fill(0, $rows, value: array_fill(0, $columns, value: ' '));
+        $this->grid = \array_fill(0, $rows, value: \array_fill(0, $columns, value: ' '));
     }
 
     /** Feed one frame's bytes. State carries over: that is the point. */
@@ -87,8 +87,8 @@ final class TerminalReplay
     /** The visible screen, trailing blanks trimmed, one string per row. */
     public function rows(): array
     {
-        return array_map(
-            static fn (array $cells): string => rtrim(implode('', array_filter($cells, static fn (string $c): bool => '' !== $c))),
+        return \array_map(
+            static fn (array $cells): string => \rtrim(\implode('', \array_filter($cells, static fn (string $c): bool => '' !== $c))),
             $this->grid,
         );
     }
@@ -97,14 +97,14 @@ final class TerminalReplay
     private function escape(string $bytes, int $i): int
     {
         $m = [];
-        if (preg_match('/\G\x1b\[([0-9;?]*)([@-~])/', $bytes, $m, offset: $i)) {
+        if (\preg_match('/\G\x1b\[([0-9;?]*)([@-~])/', $bytes, $m, offset: $i)) {
             $this->csi($m[1], $m[2]);
 
             return \strlen($m[0]);
         }
         // OSC/APC/DCS carry a payload and end with BEL or ST; they paint nothing.
         $m2 = [];
-        if (preg_match('/\G\x1b[_\]P][^\x07\x1b]*(?:\x07|\x1b\\\\)/', $bytes, $m2, offset: $i)) {
+        if (\preg_match('/\G\x1b[_\]P][^\x07\x1b]*(?:\x07|\x1b\\\\)/', $bytes, $m2, offset: $i)) {
             return \strlen($m2[0]);
         }
 
@@ -114,16 +114,16 @@ final class TerminalReplay
     private function csi(string $params, string $final): void
     {
         $found = [];
-        preg_match_all('/\d+/', $params, $found);
-        $nums = array_values(array_map(intval(...), $found[0]));
+        \preg_match_all('/\d+/', $params, $found);
+        $nums = \array_values(\array_map(intval(...), $found[0]));
         $n = $nums[0] ?? 1;
 
         match ($final) {
             'H' => $this->home($nums),
-            'A' => $this->row = max(0, $this->row - $n),
+            'A' => $this->row = \max(0, $this->row - $n),
             'B' => $this->row += $n,
             'C' => $this->col += $n,
-            'D' => $this->col = max(0, $this->col - $n),
+            'D' => $this->col = \max(0, $this->col - $n),
             'K' => $this->eraseLine($nums[0] ?? 0),
             'J' => $this->eraseDisplay($nums[0] ?? 0),
             default => null, // SGR and the private modes paint nothing.
@@ -152,7 +152,7 @@ final class TerminalReplay
     private function eraseDisplay(int $mode): void
     {
         if (2 === $mode || 3 === $mode) {
-            $this->grid = array_fill(0, $this->rows, value: array_fill(0, $this->columns, value: ' '));
+            $this->grid = \array_fill(0, $this->rows, value: \array_fill(0, $this->columns, value: ' '));
 
             return;
         }
@@ -204,7 +204,7 @@ final class TerminalReplay
      */
     private static function isAmbiguous(string $character): bool
     {
-        $cp = mb_ord($character, encoding: 'UTF-8');
+        $cp = \mb_ord($character, encoding: 'UTF-8');
 
         return (
             false !== $cp
@@ -250,6 +250,6 @@ final class TerminalReplay
     {
         $m = [];
 
-        return 1 === preg_match('/\G./u', $bytes, $m, offset: $offset) ? $m[0] : $bytes[$offset];
+        return 1 === \preg_match('/\G./u', $bytes, $m, offset: $offset) ? $m[0] : $bytes[$offset];
     }
 }

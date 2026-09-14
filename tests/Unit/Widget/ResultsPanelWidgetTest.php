@@ -22,9 +22,9 @@ final class ResultsPanelWidgetTest extends TestCase
     /** @return list<array{path: string, line: int, text: string}> */
     private function results(int $count): array
     {
-        return array_map(
+        return \array_map(
             static fn (int $i) => ['path' => "src/File{$i}.php", 'line' => $i, 'text' => "match {$i}"],
-            range(0, $count - 1),
+            \range(0, $count - 1),
         );
     }
 
@@ -111,13 +111,13 @@ final class ResultsPanelWidgetTest extends TestCase
             $panel->handleInput("\x1b[B");
         }
         $lines = $panel->render(new RenderContext(60, 12));
-        $plain = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $lines));
+        $plain = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $lines));
         $this->assertStringContainsString('File15.php:16', $plain, 'selection scrolled into view');
 
         for ($i = 0; $i < 20; ++$i) {
             $panel->handleInput("\x1b[A"); // up, clamped at 0
         }
-        $plain = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $panel->render(new RenderContext(60, 12))));
+        $plain = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $panel->render(new RenderContext(60, 12))));
         $this->assertStringContainsString('File0.php:1', $plain);
     }
 
@@ -129,11 +129,11 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->setResults($this->results(25));
 
         $panel->scrollBy(100); // wheel down past the end → clamps at the last row
-        $plain = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $panel->render(new RenderContext(60, 12))));
+        $plain = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $panel->render(new RenderContext(60, 12))));
         $this->assertStringContainsString('File24.php', $plain, 'scrolled to the bottom');
 
         $panel->scrollBy(-100); // wheel up past the top → clamps at the first row
-        $plain = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $panel->render(new RenderContext(60, 12))));
+        $plain = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $panel->render(new RenderContext(60, 12))));
         $this->assertStringContainsString('File0.php', $plain, 'scrolled back to the top');
     }
 
@@ -160,7 +160,7 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel = new ResultsPanelWidget();
         $panel->open('Find in Project', ResultsPanelFields::searchResults());
         $panel->setResults($this->groupedResults()); // 2 file headers, 3 real matches
-        foreach (str_split('match') as $ch) {
+        foreach (\str_split('match') as $ch) {
             $panel->handleInput($ch);
         } // a filter every fixture row matches, so nothing is hidden
 
@@ -179,7 +179,7 @@ final class ResultsPanelWidgetTest extends TestCase
         foreach ($lines as $line) {
             $this->assertSame(44, AnsiUtils::visibleWidth($line));
         }
-        $this->assertStringContainsString("\x1b[48;5;237m", implode('', $lines), 'unfocused selection background');
+        $this->assertStringContainsString("\x1b[48;5;237m", \implode('', $lines), 'unfocused selection background');
     }
 
     public function testSearchResultRowHighlightsMatchRangesWithoutChangingWidth(): void
@@ -195,7 +195,7 @@ final class ResultsPanelWidgetTest extends TestCase
         foreach ($lines as $line) {
             $this->assertSame(60, AnsiUtils::visibleWidth($line), 'the highlight only inserts zero-width SGR');
         }
-        $body = implode("\n", $lines);
+        $body = \implode("\n", $lines);
         $this->assertStringContainsString("\x1b[48;5;58m", $body, 'the matched span carries the SearchBg background');
         $this->assertStringContainsString('needle', AnsiUtils::stripAnsiCodes($body), 'the match text is still shown');
     }
@@ -208,7 +208,7 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->open('Find in Project', ResultsPanelFields::resultsOnly());
         $panel->setResults([['path' => 'src/A.php', 'line' => 4, 'text' => 'the needle here']]);
 
-        $row = rtrim(AnsiUtils::stripAnsiCodes($panel->render(new RenderContext(60, 4))[0]));
+        $row = \rtrim(AnsiUtils::stripAnsiCodes($panel->render(new RenderContext(60, 4))[0]));
 
         $this->assertSame(' src/A.php:5  the needle here', $row);
     }
@@ -238,7 +238,7 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->open('Problems', ResultsPanelFields::resultsOnly());
         $panel->setResults([['path' => '', 'line' => 0, 'text' => 'a diagnostic message']]);
 
-        $row = rtrim(AnsiUtils::stripAnsiCodes($panel->render(new RenderContext(60, 4))[0]));
+        $row = \rtrim(AnsiUtils::stripAnsiCodes($panel->render(new RenderContext(60, 4))[0]));
 
         $this->assertSame(' a diagnostic message', $row);
     }
@@ -265,7 +265,7 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->open('Usages', ResultsPanelFields::resultsOnly());
         $panel->setResults($this->results(2));
 
-        $body = implode('', $panel->render(new RenderContext(60, 12)));
+        $body = \implode('', $panel->render(new RenderContext(60, 12)));
         $this->assertStringNotContainsString("\x1b[48;5;58m", $body, 'no highlight without ranges');
     }
 
@@ -278,7 +278,7 @@ final class ResultsPanelWidgetTest extends TestCase
 
         $panel->handleInput('Z'); // consumed by the hook, never reaches the filter
         $panel->handleInput('a'); // the filter takes this
-        $plain = implode('', array_map(AnsiUtils::stripAnsiCodes(...), $panel->render(new RenderContext(60, 12))));
+        $plain = \implode('', \array_map(AnsiUtils::stripAnsiCodes(...), $panel->render(new RenderContext(60, 12))));
         $this->assertStringContainsString('Filter: a', $plain, 'the filter took the un-hooked key');
         $this->assertStringNotContainsString('Z', $plain, 'the hooked key never reached the filter');
     }
@@ -303,11 +303,11 @@ final class ResultsPanelWidgetTest extends TestCase
         $marker = AnsiUtils::cursorMarker(CursorShape::Bar);
 
         $panel->setFocused(true);
-        $focused = implode('', $panel->render(new RenderContext(60, 12)));
+        $focused = \implode('', $panel->render(new RenderContext(60, 12)));
         $this->assertStringContainsString($marker, $focused, 'the focused filter field shows its caret');
 
         $panel->setFocused(false);
-        $blurred = implode('', $panel->render(new RenderContext(60, 12)));
+        $blurred = \implode('', $panel->render(new RenderContext(60, 12)));
         $this->assertStringNotContainsString($marker, $blurred, 'a blurred filter field hides the caret');
     }
 
@@ -392,7 +392,7 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->setResults($this->results(5));
         $lines = $panel->render(new RenderContext(60, 12));
 
-        $this->assertStringNotContainsString("\x1b[48;5;236m", implode("\n", $lines), 'no row stays tinted after the list is rebuilt');
+        $this->assertStringNotContainsString("\x1b[48;5;236m", \implode("\n", $lines), 'no row stays tinted after the list is rebuilt');
     }
 
     public function testDefaultVisibleRowsIsExactlyTen(): void
@@ -402,7 +402,7 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->setResults($this->results(15));
 
         $lines = $panel->render(new RenderContext(60, 24));
-        $resultRows = array_filter($lines, static fn (string $l) => str_contains(AnsiUtils::stripAnsiCodes($l), '.php:'));
+        $resultRows = \array_filter($lines, static fn (string $l) => \str_contains(AnsiUtils::stripAnsiCodes($l), '.php:'));
         $this->assertCount(10, $resultRows, 'the un-configured default is exactly 10 rows');
     }
 
@@ -421,7 +421,7 @@ final class ResultsPanelWidgetTest extends TestCase
 
         $this->assertSame('', Probe::get($panel, 'filter')->value());
         $this->assertFalse(Probe::get($panel, 'searching'));
-        $lines = AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(80, 12))));
+        $lines = AnsiUtils::stripAnsiCodes(\implode("\n", $panel->render(new RenderContext(80, 12))));
         $this->assertStringNotContainsString('match zero', $lines, 'the stale results are gone — setResults([]) via open()');
     }
 
@@ -433,7 +433,7 @@ final class ResultsPanelWidgetTest extends TestCase
 
         $panel->setVisibleRows(3);
         $lines = $panel->render(new RenderContext(60, 24));
-        $resultRows = array_filter($lines, static fn (string $l) => str_contains(AnsiUtils::stripAnsiCodes($l), '.php:'));
+        $resultRows = \array_filter($lines, static fn (string $l) => \str_contains(AnsiUtils::stripAnsiCodes($l), '.php:'));
         $this->assertCount(3, $resultRows, 'only the resized number of result rows render');
     }
 
@@ -602,11 +602,11 @@ final class ResultsPanelWidgetTest extends TestCase
         ]);
 
         // The results window opens focused on the filter field — typing narrows.
-        foreach (str_split('Api') as $ch) {
+        foreach (\str_split('Api') as $ch) {
             $panel->handleInput($ch);
         }
 
-        $plain = AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(90, 16))));
+        $plain = AnsiUtils::stripAnsiCodes(\implode("\n", $panel->render(new RenderContext(90, 16))));
         $this->assertStringContainsString('Filter: Api', $plain);
         $this->assertStringContainsString('· 1 shown', $panel->statusText(), 'the filtered count rides the dock-strip status');
         $this->assertStringContainsString('src/Api.php', $plain);
@@ -617,7 +617,7 @@ final class ResultsPanelWidgetTest extends TestCase
         foreach (['', '', '', ''] as $_) {
             $panel->handleInput("\x7f");
         }
-        $widened = AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(90, 16))));
+        $widened = AnsiUtils::stripAnsiCodes(\implode("\n", $panel->render(new RenderContext(90, 16))));
         $this->assertStringContainsString('src/Web.php', $widened, 'clearing the filter restores the hidden file');
     }
 
@@ -628,7 +628,7 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->open('Find in Project', ResultsPanelFields::searchResults());
         $panel->setResults($this->groupedResults());
 
-        $plain = AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(80, 12))));
+        $plain = AnsiUtils::stripAnsiCodes(\implode("\n", $panel->render(new RenderContext(80, 12))));
         $this->assertStringContainsString('▾ src/A.php  (2)', $plain, 'file header with match count');
         $this->assertStringContainsString('▾ src/B.php  (1)', $plain);
         $this->assertStringContainsString('match zero', $plain);
@@ -664,7 +664,7 @@ final class ResultsPanelWidgetTest extends TestCase
         // Row 0 is the filter (the tool title lives on the dock strip) →
         // grouped rows begin at row 1 (the src/A.php header).
         $panel->handleClick(1);
-        $collapsed = AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(80, 12))));
+        $collapsed = AnsiUtils::stripAnsiCodes(\implode("\n", $panel->render(new RenderContext(80, 12))));
         $this->assertStringContainsString('▸ src/A.php  (2)', $collapsed, 'collapsed arrow');
         $this->assertStringNotContainsString('match zero', $collapsed, "A's matches are hidden");
         $this->assertStringNotContainsString('match one', $collapsed);
@@ -672,7 +672,7 @@ final class ResultsPanelWidgetTest extends TestCase
 
         // Click again → expand.
         $panel->handleClick(1);
-        $expanded = AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(80, 12))));
+        $expanded = AnsiUtils::stripAnsiCodes(\implode("\n", $panel->render(new RenderContext(80, 12))));
         $this->assertStringContainsString('▾ src/A.php', $expanded);
         $this->assertStringContainsString('match zero', $expanded);
     }
@@ -713,7 +713,7 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->handleInput("\x1bg"); // → Nested
 
         $panel->handleInput("\x1be"); // alt+e → collapse all
-        $plain = AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(80, 12))));
+        $plain = AnsiUtils::stripAnsiCodes(\implode("\n", $panel->render(new RenderContext(80, 12))));
 
         $this->assertStringContainsString('▸ src/', $plain, 'the first directory collapsed');
         $this->assertStringContainsString('▸ other/', $plain, 'the second directory (from the second result) collapsed too');
@@ -737,7 +737,7 @@ final class ResultsPanelWidgetTest extends TestCase
 
         $panel->handleInput("\x1be"); // alt+e: not everything is collapsed → collapse ALL
 
-        $plain = AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(80, 12))));
+        $plain = AnsiUtils::stripAnsiCodes(\implode("\n", $panel->render(new RenderContext(80, 12))));
         $this->assertStringContainsString('▸ src/B.php', $plain, 'B collapsed too, not left open by a premature all-collapsed verdict');
     }
 
@@ -760,7 +760,7 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->setFocused(true);
         $panel->open('Find in Project', ResultsPanelFields::searchResults());
         $panel->setResults($this->groupedResults());
-        $render = static fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(80, 12))));
+        $render = static fn (): string => AnsiUtils::stripAnsiCodes(\implode("\n", $panel->render(new RenderContext(80, 12))));
 
         // Move the selection to the last match so collapse clamps it.
         for ($i = 0; $i < 6; ++$i) {
@@ -790,7 +790,7 @@ final class ResultsPanelWidgetTest extends TestCase
             ['path' => 'src/B.php', 'line' => 9, 'text' => 'foo two', 'ranges' => []],
             ['path' => 'other/C.php', 'line' => 2, 'text' => 'foo three', 'ranges' => []],
         ]);
-        $plain = static fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(120, 20))));
+        $plain = static fn (): string => AnsiUtils::stripAnsiCodes(\implode("\n", $panel->render(new RenderContext(120, 20))));
 
         // Default: one header per file.
         $byFile = $plain();
@@ -825,7 +825,7 @@ final class ResultsPanelWidgetTest extends TestCase
             ['path' => 'src/A.php', 'line' => 9, 'text' => 'foo two', 'ranges' => []],
             ['path' => 'other/C.php', 'line' => 2, 'text' => 'foo three', 'ranges' => []],
         ]);
-        $plain = static fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(120, 20))));
+        $plain = static fn (): string => AnsiUtils::stripAnsiCodes(\implode("\n", $panel->render(new RenderContext(120, 20))));
 
         $panel->handleInput("\x1bg"); // → Directory
         $panel->handleInput("\x1bg"); // → Nested
@@ -862,7 +862,7 @@ final class ResultsPanelWidgetTest extends TestCase
             ['path' => 'src/A.php', 'line' => 4, 'text' => 'foo one', 'ranges' => []],
             ['path' => 'src/B.php', 'line' => 2, 'text' => 'foo two', 'ranges' => []],
         ]);
-        $plain = static fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(120, 20))));
+        $plain = static fn (): string => AnsiUtils::stripAnsiCodes(\implode("\n", $panel->render(new RenderContext(120, 20))));
 
         $panel->handleInput("\x1bg"); // → Directory
         $panel->handleInput("\x1bg"); // → Nested
@@ -955,7 +955,7 @@ final class ResultsPanelWidgetTest extends TestCase
         $this->assertStringStartsWith("\x1b[48;5;235m", $raw[3], 'the row background opens first');
         $this->assertStringEndsWith("\x1b[0m", $raw[3], 'and resets last, after all the content');
 
-        $plain = rtrim(AnsiUtils::stripAnsiCodes($raw[3]));
+        $plain = \rtrim(AnsiUtils::stripAnsiCodes($raw[3]));
         $this->assertSame('      4  above line', $plain, 'indent(4) + gap(2) + (line+1) + gap(2) + text, in that exact order');
     }
 
@@ -969,7 +969,7 @@ final class ResultsPanelWidgetTest extends TestCase
         ]);
         $panel->open('Find in Project', ResultsPanelFields::searchResults());
         $panel->setResults([['path' => 'src/A.php', 'line' => 4, 'text' => 'the match', 'ranges' => []]]);
-        $plain = static fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(120, 20))));
+        $plain = static fn (): string => AnsiUtils::stripAnsiCodes(\implode("\n", $panel->render(new RenderContext(120, 20))));
 
         $this->assertStringNotContainsString('above line', $plain(), 'no context until expanded');
 
@@ -1061,7 +1061,7 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->open('Find in Project', ResultsPanelFields::searchResults());
         $panel->setResults($this->groupedResults());
         $panel->restoreViewState($state);
-        $rendered = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $panel->render(new RenderContext(80, 12))));
+        $rendered = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $panel->render(new RenderContext(80, 12))));
         $this->assertStringContainsString('▸', $rendered, 'the collapse state survived');
 
         // A state whose identities all vanished clamps to the stored index.
@@ -1086,14 +1086,14 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->open('Find in Project', ResultsPanelFields::searchResults());
         $panel->setResults($this->groupedResults());
         $panel->restoreViewState($state);
-        $rendered = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $panel->render(new RenderContext(80, 14))));
+        $rendered = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $panel->render(new RenderContext(80, 14))));
         $this->assertStringContainsString('ctx of src/A.php', $rendered, 'the expanded context re-mapped to the same match');
 
         // An identity that no longer matches any result drops silently.
         $panel->open('Find in Project', ResultsPanelFields::searchResults());
         $panel->setResults([['path' => 'src/Z.php', 'line' => 7, 'text' => 'other', 'ranges' => []]]);
         $panel->restoreViewState($state);
-        $rendered = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $panel->render(new RenderContext(80, 14))));
+        $rendered = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $panel->render(new RenderContext(80, 14))));
         $this->assertStringNotContainsString('ctx of', $rendered);
     }
 
@@ -1140,7 +1140,7 @@ final class ResultsPanelWidgetTest extends TestCase
             ['path' => '', 'line' => 0, 'text' => 'newest'],
             ['path' => '', 'line' => 0, 'text' => 'older'],
         ]);
-        $rendered = array_map(AnsiUtils::stripAnsiCodes(...), $panel->render(new RenderContext(80, 6)));
+        $rendered = \array_map(AnsiUtils::stripAnsiCodes(...), $panel->render(new RenderContext(80, 6)));
         $this->assertStringContainsString('newest', $rendered[0] ?? '', 'log refresh keeps the latest line on top and selected');
     }
 
@@ -1217,7 +1217,7 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->handleInput("\x1bg"); // → Nested
 
         $raw = $panel->render(new RenderContext(30, 4));
-        $rows = array_map(static fn (string $r): string => rtrim(AnsiUtils::stripAnsiCodes($r)), $raw);
+        $rows = \array_map(static fn (string $r): string => \rtrim(AnsiUtils::stripAnsiCodes($r)), $raw);
 
         $this->assertStringStartsWith("\x1b[48;5;235m", $raw[1], 'the row background opens first, before any content');
         $this->assertStringEndsWith("\x1b[0m", $raw[1], 'and resets last, after all the content');
@@ -1249,7 +1249,7 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel = new ResultsPanelWidget();
         $panel->open('X', ResultsPanelFields::searchResults());
 
-        $plain = AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(90, 12))));
+        $plain = AnsiUtils::stripAnsiCodes(\implode("\n", $panel->render(new RenderContext(90, 12))));
         $this->assertStringContainsString('Filter:   (narrows the results below)', $plain);
     }
 
@@ -1262,7 +1262,7 @@ final class ResultsPanelWidgetTest extends TestCase
 
         $panel->open('Usages', ResultsPanelFields::resultsOnly());
 
-        $lines = AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(60, 12))));
+        $lines = AnsiUtils::stripAnsiCodes(\implode("\n", $panel->render(new RenderContext(60, 12))));
         $this->assertStringNotContainsString('File0.php', $lines, 'the prior session\'s display rows are gone, not just its results array');
     }
 
@@ -1486,7 +1486,7 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->handleInput("\x1b[B");
         $panel->handleInput("\x1b[B"); // selection at index 2 ("drop me")
 
-        foreach (str_split('keep') as $ch) {
+        foreach (\str_split('keep') as $ch) {
             $panel->handleInput($ch);
         } // narrows to exactly 2 rows (A, B) — selection (2) now equals the new count
 

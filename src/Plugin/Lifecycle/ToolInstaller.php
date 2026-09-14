@@ -48,7 +48,7 @@ final class ToolInstaller
     {
         $finder = new ExecutableFinder();
         $binaries = [];
-        foreach (array_keys(self::MANAGERS) as $manager) {
+        foreach (\array_keys(self::MANAGERS) as $manager) {
             $binaries[$manager] = $finder->find($manager);
         }
 

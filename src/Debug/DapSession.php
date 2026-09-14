@@ -155,7 +155,7 @@ final class DapSession
         // Run-to-cursor's one-shot rides along on every send for its file, so
         // a user toggling another breakpoint mid-run cannot wipe it.
         $temp = $this->tempBreakpoint;
-        if (null !== $temp && $temp['path'] === $path && !\in_array($temp['line'] + 1, array_column($wire, 'line'), strict: true)) {
+        if (null !== $temp && $temp['path'] === $path && !\in_array($temp['line'] + 1, \array_column($wire, 'line'), strict: true)) {
             $wire[] = ['line' => $temp['line'] + 1];
         }
         $this->client->request('setBreakpoints', [
@@ -216,7 +216,7 @@ final class DapSession
             return;
         }
         $existing = ($this->breakpointsProvider)()[$path] ?? [];
-        if (!\in_array($line, array_column($existing, 'line'), strict: true)) {
+        if (!\in_array($line, \array_column($existing, 'line'), strict: true)) {
             $this->tempBreakpoint = ['path' => $path, 'line' => $line];
             $this->setBreakpoints($path, $existing);
         }
@@ -261,7 +261,7 @@ final class DapSession
                     'id' => $frame['id'] ?? 0,
                     'name' => $frame['name'] ?? '?',
                     'path' => $frame['source']['path'] ?? '',
-                    'line' => max(0, ($frame['line'] ?? 1) - 1),
+                    'line' => \max(0, ($frame['line'] ?? 1) - 1),
                 ];
             },
             $deliver,

@@ -34,8 +34,8 @@ final class IdeTerminalRunTest extends TestCase
 
     public function testClickingTerminalPaneRefocusesIt(): void
     {
-        putenv('PATH='.PORTA_TEST_PRISTINE_PATH); // needs /bin/sh
-        putenv('SHELL=/bin/sh');
+        \putenv('PATH='.\PORTA_TEST_PRISTINE_PATH); // needs /bin/sh
+        \putenv('SHELL=/bin/sh');
         $project = new TempProject(['A.php' => "<?php\n"]);
 
         $this->runIde(
@@ -55,8 +55,8 @@ final class IdeTerminalRunTest extends TestCase
                     $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('terminal'));
                     $this->assertNotNull($rect, 'terminal pane is laid out');
-                    $row = $rect->row + intdiv($rect->rows, num2: 2);
-                    $col = $rect->col + intdiv($rect->columns, num2: 2);
+                    $row = $rect->row + \intdiv($rect->rows, num2: 2);
+                    $col = $rect->col + \intdiv($rect->columns, num2: 2);
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $col + 1, $row + 1)); // SGR is 1-based
                     $this->assertSame('terminal', $tui->getFocus()?->getId(), 'clicking the terminal pane refocused it');
                 },
@@ -68,8 +68,8 @@ final class IdeTerminalRunTest extends TestCase
 
     public function testMouseWheelScrollsTheTerminal(): void
     {
-        putenv('PATH='.PORTA_TEST_PRISTINE_PATH); // needs /bin/sh + seq
-        putenv('SHELL=/bin/sh');
+        \putenv('PATH='.\PORTA_TEST_PRISTINE_PATH); // needs /bin/sh + seq
+        \putenv('SHELL=/bin/sh');
         $project = new TempProject(['A.php' => "<?php\n"]);
 
         $this->runIde(
@@ -78,7 +78,7 @@ final class IdeTerminalRunTest extends TestCase
             [
                 300 => static function ($tui): void {
                     $tui->handleInput("\x1b[96;5u"); // open the terminal
-                    foreach (str_split("seq 30\n") as $ch) {
+                    foreach (\str_split("seq 30\n") as $ch) {
                         $tui->handleInput($ch); // produce more than a screenful of output
                     }
                 },
@@ -94,8 +94,8 @@ final class IdeTerminalRunTest extends TestCase
                     $this->frame($tui);
                     $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($panel);
-                    $row = $rect->row + intdiv($rect->rows, num2: 2);
-                    $col = $rect->col + intdiv($rect->columns, num2: 2);
+                    $row = $rect->row + \intdiv($rect->rows, num2: 2);
+                    $col = $rect->col + \intdiv($rect->columns, num2: 2);
                     // Wheel up (SGR code 64) over the terminal pane → scroll into history.
                     $tui->handleInput(\sprintf("\x1b[<64;%d;%dM", $col + 1, $row + 1));
                     $tui->tick();
@@ -110,8 +110,8 @@ final class IdeTerminalRunTest extends TestCase
 
     public function testKittyKeyInputIsTranslatedForTheShell(): void
     {
-        putenv('PATH='.PORTA_TEST_PRISTINE_PATH); // needs /bin/sh
-        putenv('SHELL=/bin/sh');
+        \putenv('PATH='.\PORTA_TEST_PRISTINE_PATH); // needs /bin/sh
+        \putenv('SHELL=/bin/sh');
         $project = new TempProject(['A.php' => "<?php\n"]);
 
         $terminal = $this->runIde(
@@ -122,7 +122,7 @@ final class IdeTerminalRunTest extends TestCase
                     $terminal->setKittyProtocolActive(true); // pretend the host terminal speaks kitty
                     $tui->handleInput("\x1b[96;5u"); // ctrl+` opens + focuses the terminal
                     $this->assertSame('terminal', $tui->getFocus()?->getId());
-                    foreach (str_split('printf hi') as $ch) {
+                    foreach (\str_split('printf hi') as $ch) {
                         $tui->handleInput($ch);
                     }
                     $tui->handleInput("\x1b[104;1:3u"); // a stray key-release event → must be dropped
@@ -132,7 +132,7 @@ final class IdeTerminalRunTest extends TestCase
                     // Await the shell's echo: spawning /bin/sh and round-tripping
                     // the command is real subprocess latency, and a fixed delay
                     // races it under pcov + machine load.
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'hi'), what: 'the shell echo');
+                    $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'hi'), what: 'the shell echo');
                     // Only reachable if the release was dropped and Enter was translated.
                     $this->assertStringContainsString('hi', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
@@ -145,8 +145,8 @@ final class IdeTerminalRunTest extends TestCase
     public function testIntegratedTerminalOpensRunsAndCloses(): void
     {
         // Force a predictable shell so the panel spawns deterministically.
-        putenv('PATH='.PORTA_TEST_PRISTINE_PATH); // needs /bin/sh
-        putenv('SHELL=/bin/sh');
+        \putenv('PATH='.\PORTA_TEST_PRISTINE_PATH); // needs /bin/sh
+        \putenv('SHELL=/bin/sh');
         $project = new TempProject(['A.php' => "<?php\n"]);
 
         $terminal = $this->runIde(
@@ -164,7 +164,7 @@ final class IdeTerminalRunTest extends TestCase
                     $this->assertSame('terminal', $tui->getFocus()?->getId());
                     $this->assertTrue($tui->getById('terminal')->isOpen());
                     // Type a command into the shell.
-                    foreach (str_split("echo hello-term\n") as $ch) {
+                    foreach (\str_split("echo hello-term\n") as $ch) {
                         $tui->handleInput($ch);
                     }
                 },
@@ -172,7 +172,7 @@ final class IdeTerminalRunTest extends TestCase
                     // Await the shell's echo: spawning /bin/sh and round-tripping
                     // the command is real subprocess latency, and a fixed delay
                     // races it under pcov + machine load.
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'hello-term'), what: 'the shell echo');
+                    $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'hello-term'), what: 'the shell echo');
                     // Hide the dock; the session stays alive and the editor regains focus.
                     $tui->handleInput("\x1b[96;5u");
                     $this->assertFalse($tui->getById('terminal')->isVisible());
@@ -184,7 +184,7 @@ final class IdeTerminalRunTest extends TestCase
                     $tui->handleInput("\x1b[96;5u");
                     $this->assertTrue($tui->getById('terminal')->isVisible());
                     // Now exit the shell so onExit updates the title.
-                    foreach (str_split("exit\n") as $ch) {
+                    foreach (\str_split("exit\n") as $ch) {
                         $tui->handleInput($ch);
                     }
                 },
@@ -204,7 +204,7 @@ final class IdeTerminalRunTest extends TestCase
                     // no glyph). The strip's rendering of labels is pinned by
                     // the DockTabsWidget tests; what this test owns is that an
                     // exited session is LABELLED stopped, with its code.
-                    $labels = implode(' | ', array_column(Services::resolve($ide, BottomDock::class)->aliveTabs(), 'label'));
+                    $labels = \implode(' | ', \array_column(Services::resolve($ide, BottomDock::class)->aliveTabs(), 'label'));
                     $this->assertStringContainsString(Glyphs::SESSION_STOPPED, $labels, 'the exited session is marked ○ stopped');
                     $this->assertStringContainsString('(0)', $labels, 'and carries its exit code — without the redundant "exited" prose');
                     $this->assertStringNotContainsString('exited', $labels, 'the "exited" word is gone; the glyph carries the state');
@@ -213,12 +213,12 @@ final class IdeTerminalRunTest extends TestCase
         );
 
         $this->addToAssertionCount(1);
-        putenv('SHELL');
+        \putenv('SHELL');
     }
 
     public function testTerminalScrollAndPanelKeys(): void
     {
-        putenv('SHELL=/bin/sh');
+        \putenv('SHELL=/bin/sh');
         $project = new TempProject(['A.php' => "<?php\n"]);
 
         $terminal = $this->runIde(
@@ -230,13 +230,13 @@ final class IdeTerminalRunTest extends TestCase
                     // Emit clearly more lines than the 12-row panel: the scroll
                     // clamp is lineCount − visibleRows, so a shorter transcript
                     // can leave nothing to scroll into.
-                    foreach (str_split("for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do echo row-\$i; done\n") as $ch) {
+                    foreach (\str_split("for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do echo row-\$i; done\n") as $ch) {
                         $tui->handleInput($ch);
                     }
                 },
                 700 => function ($tui, $terminal): void {
                     // Await the shell's echo loop; a fixed delay races under load.
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'row-20'));
+                    $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'row-20'));
                     // Page up inside the await: late shell output (the trailing
                     // prompt) resets the scrollback to the live tail, so a
                     // single press can lose the race under load — keep pressing
@@ -245,7 +245,7 @@ final class IdeTerminalRunTest extends TestCase
                         $tui->handleInput("\x1b[5~"); // page up: scroll back
                         $tui->tick();
 
-                        return str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'scrolled');
+                        return \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'scrolled');
                     });
                     $this->assertStringContainsString('scrolled', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $tui->handleInput("\x1b[6~"); // page down
@@ -257,12 +257,12 @@ final class IdeTerminalRunTest extends TestCase
         );
 
         $this->addToAssertionCount(1);
-        putenv('SHELL');
+        \putenv('SHELL');
     }
 
     public function testTerminalViaCommandPalette(): void
     {
-        putenv('SHELL=/bin/sh');
+        \putenv('SHELL=/bin/sh');
         $project = new TempProject(['A.php' => "<?php\n"]);
 
         $terminal = $this->runIde(
@@ -271,7 +271,7 @@ final class IdeTerminalRunTest extends TestCase
             [
                 300 => static function ($tui): void {
                     $tui->handleInput("\x1b[97;6u"); // ctrl+shift+a palette
-                    foreach (str_split('terminal') as $ch) {
+                    foreach (\str_split('terminal') as $ch) {
                         $tui->handleInput($ch);
                     }
                 },
@@ -287,12 +287,12 @@ final class IdeTerminalRunTest extends TestCase
         );
 
         $this->addToAssertionCount(1);
-        putenv('SHELL');
+        \putenv('SHELL');
     }
 
     public function testRunMenuRunsCurrentFileInTerminal(): void
     {
-        putenv('PATH='.PORTA_TEST_PRISTINE_PATH); // needs php + a shell
+        \putenv('PATH='.\PORTA_TEST_PRISTINE_PATH); // needs php + a shell
         $project = new TempProject(['hello.php' => "<?php\necho \"run-output-ok\\n\";\n"]);
 
         $terminal = $this->runIde(
@@ -355,7 +355,7 @@ final class IdeTerminalRunTest extends TestCase
 
     public function testRunMenuEmptyWhenNothingToRun(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['notes.txt' => "plain\n"]);
 
         $terminal = $this->runIde(

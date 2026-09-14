@@ -71,7 +71,7 @@ final class MenuModelTest extends TestCase
     {
         $menus = $this->build(new CommandRegistry(), new CodeEditorWidget());
 
-        $titles = array_map(static fn (Menu $m) => $m->title, $menus);
+        $titles = \array_map(static fn (Menu $m) => $m->title, $menus);
         $this->assertSame(['File', 'Edit', 'Navigate', 'Code', 'Run', 'Git', 'View', 'Help'], $titles);
     }
 
@@ -106,7 +106,7 @@ final class MenuModelTest extends TestCase
 
         $menus = MenuModel::build(new CommandRegistry(), new CodeEditorWidget(), $ideKeys, new Translator('en'), contributions: [$viewless, self::gitContribution()]);
 
-        $titles = array_map(static fn (Menu $m) => $m->title, $menus);
+        $titles = \array_map(static fn (Menu $m) => $m->title, $menus);
         $this->assertContains('Tools', $titles, 'the viewless menu still places');
         $this->assertContains('Git', $titles, 'and the contribution after it is not skipped over');
     }
@@ -133,7 +133,7 @@ final class MenuModelTest extends TestCase
             pluginSpecs: [new PluginMenuSpec('demo', 'i:demo:hello')],
             contributions: [self::gitContribution()],
         );
-        $titles = array_map(static fn (Menu $m) => $m->title, $menus);
+        $titles = \array_map(static fn (Menu $m) => $m->title, $menus);
         $this->assertSame(['File', 'Edit', 'Navigate', 'Code', 'Plugins', 'Run', 'Git', 'View', 'Help'], $titles, 'the Plugins menu sits between Code and Run');
         $plugins = $menus[4];
         $this->assertSame('Say Hello', $plugins->items[0]->label, 'label resolves from the registry');
@@ -162,8 +162,8 @@ final class MenuModelTest extends TestCase
 
         $items = $menus[4]->items;
         $this->assertCount(4, $items, 'three entries plus one separator');
-        $this->assertSame([false, false, true, false], array_map(static fn (MenuItem $i) => $i->separator, $items), 'one separator, exactly where the owning plugin changes');
-        $this->assertSame(['Alpha One', 'Alpha Two', 'Beta One'], array_values(array_map(static fn (MenuItem $i) => $i->label, array_filter($items, static fn (MenuItem $i) => !$i->separator))));
+        $this->assertSame([false, false, true, false], \array_map(static fn (MenuItem $i) => $i->separator, $items), 'one separator, exactly where the owning plugin changes');
+        $this->assertSame(['Alpha One', 'Alpha Two', 'Beta One'], \array_values(\array_map(static fn (MenuItem $i) => $i->label, \array_filter($items, static fn (MenuItem $i) => !$i->separator))));
     }
 
     public function testASinglePluginGetsNoSeparators(): void
@@ -177,7 +177,7 @@ final class MenuModelTest extends TestCase
             new PluginMenuSpec('demo', 'i:demo:b'),
         ]);
 
-        $this->assertSame([false, false], array_map(static fn (MenuItem $i) => $i->separator, $menus[4]->items), 'a single plugin keeps a flat, separator-free list');
+        $this->assertSame([false, false], \array_map(static fn (MenuItem $i) => $i->separator, $menus[4]->items), 'a single plugin keeps a flat, separator-free list');
     }
 
     public function testPluginWhenClosureGatesTheMenuItemOnTopOfViewGating(): void
@@ -224,7 +224,7 @@ final class MenuModelTest extends TestCase
         $menus = $this->build(new CommandRegistry(), new CodeEditorWidget(), $translator);
 
         $this->assertSame('Fichier', $menus[0]->title, 'the File title is translated');
-        $labels = array_map(static fn (MenuItem $i) => $i->label, $menus[0]->items);
+        $labels = \array_map(static fn (MenuItem $i) => $i->label, $menus[0]->items);
         $this->assertContains('Enregistrer le fichier', $labels, 'the Save File item is translated');
     }
 
@@ -487,7 +487,7 @@ final class MenuModelTest extends TestCase
         $file = $menus[0];
         $this->assertSame('File', $file->title);
         $this->assertTrue(
-            array_any($file->items, static fn (MenuItem $i) => $i->separator),
+            \array_any($file->items, static fn (MenuItem $i) => $i->separator),
             'File menu has at least one separator',
         );
     }
@@ -515,7 +515,7 @@ final class MenuModelTest extends TestCase
         $registry->register('git', self::gitContribution());
         $map = [...$map, ...$registry->viewSafe()];
 
-        $this->assertSame(['settings', 'welcome', 'git'], array_keys($map));
+        $this->assertSame(['settings', 'welcome', 'git'], \array_keys($map));
         foreach ($map as $id => $safe) {
             $this->assertNotSame([], $safe, $id.': an empty entry disables every menu item silently');
             $this->assertContains('ide_quit', $safe, $id.': quitting stays reachable');
@@ -534,7 +534,7 @@ final class MenuModelTest extends TestCase
         $editor = new CodeEditorWidget();
         $ideKeys = new Keybindings();
 
-        $kinds = static fn (array $items): array => array_map(
+        $kinds = static fn (array $items): array => \array_map(
             static fn (MenuItem $item): string => $item->separator ? '---' : $item->label,
             $items,
         );

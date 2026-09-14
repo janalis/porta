@@ -45,7 +45,7 @@ final class SymbolScopesTest extends TestCase
     {
         $scopes = LspMapper::symbolScopes([null, 'not a symbol', self::symbol('Svc', 5, 4, 40)]);
 
-        self::assertSame([['label' => 'Svc', 'startLine' => 5, 'endLine' => 41, 'kind' => 'type']], $scopes);
+        $this->assertSame([['label' => 'Svc', 'startLine' => 5, 'endLine' => 41, 'kind' => 'type']], $scopes);
     }
 
     public function testTheFULLRangeIsKeptNotTheNameSSelectionRange(): void
@@ -54,15 +54,15 @@ final class SymbolScopesTest extends TestCase
         // line long, so every crumb would vanish the moment you moved.
         $scopes = LspMapper::symbolScopes([self::symbol('Svc', 5, 4, 40)]);
 
-        self::assertSame([['label' => 'Svc', 'startLine' => 5, 'endLine' => 41, 'kind' => 'type']], $scopes);
+        $this->assertSame([['label' => 'Svc', 'startLine' => 5, 'endLine' => 41, 'kind' => 'type']], $scopes);
     }
 
     public function testLinesAreConvertedFromLspSZeroBaseToTheScopesOneBase(): void
     {
         $scopes = LspMapper::symbolScopes([self::symbol('f', 12, 0, 2)]);
 
-        self::assertSame(1, $scopes[0]['startLine']);
-        self::assertSame(3, $scopes[0]['endLine']);
+        $this->assertSame(1, $scopes[0]['startLine']);
+        $this->assertSame(3, $scopes[0]['endLine']);
     }
 
     public function testAParentAlwaysPrecedesItsChildren(): void
@@ -77,8 +77,8 @@ final class SymbolScopesTest extends TestCase
             ]),
         ]);
 
-        self::assertSame(['App', 'Svc', 'run'], array_column($scopes, 'label'));
-        self::assertSame(['namespace', 'type', 'function'], array_column($scopes, 'kind'));
+        $this->assertSame(['App', 'Svc', 'run'], \array_column($scopes, 'label'));
+        $this->assertSame(['namespace', 'type', 'function'], \array_column($scopes, 'kind'));
     }
 
     public function testMembersThatAreNotContainersAreNotCrumbs(): void
@@ -94,7 +94,7 @@ final class SymbolScopesTest extends TestCase
             ]),
         ]);
 
-        self::assertSame(['Svc', 'run'], array_column($scopes, 'label'));
+        $this->assertSame(['Svc', 'run'], \array_column($scopes, 'label'));
     }
 
     public function testAnUncontainedSymbolStillHasItsChildrenWalked(): void
@@ -104,7 +104,7 @@ final class SymbolScopesTest extends TestCase
             self::symbol('field', 7, 0, 9, [self::symbol('run', 6, 2, 5)]),
         ]);
 
-        self::assertSame(['run'], array_column($scopes, 'label'));
+        $this->assertSame(['run'], \array_column($scopes, 'label'));
     }
 
     public function testASymbolWithNoUsableRangeIsSkipped(): void
@@ -116,7 +116,7 @@ final class SymbolScopesTest extends TestCase
             'not an object',
         ]);
 
-        self::assertSame([], $scopes);
+        $this->assertSame([], $scopes);
     }
 
     public function testAONELINESymbolIsStillAScope(): void
@@ -125,7 +125,7 @@ final class SymbolScopesTest extends TestCase
         // check has to accept an empty span, not merely a growing one.
         $scopes = LspMapper::symbolScopes([self::symbol('f', 12, 7, 7)]);
 
-        self::assertSame([['label' => 'f', 'startLine' => 8, 'endLine' => 8, 'kind' => 'function']], $scopes);
+        $this->assertSame([['label' => 'f', 'startLine' => 8, 'endLine' => 8, 'kind' => 'function']], $scopes);
     }
 
     public function testARangeMissingItsSTARTIsSkipped(): void
@@ -139,7 +139,7 @@ final class SymbolScopesTest extends TestCase
             'range' => ['end' => ['line' => 9]],
         ]]);
 
-        self::assertSame([], $scopes);
+        $this->assertSame([], $scopes);
     }
 
     public function testARangeMissingItsENDIsSkippedEvenAtTheFirstLine(): void
@@ -151,7 +151,7 @@ final class SymbolScopesTest extends TestCase
             'range' => ['start' => ['line' => 0]],
         ]]);
 
-        self::assertSame([], $scopes);
+        $this->assertSame([], $scopes);
     }
 
     public function testANonStringNameIsNotAScope(): void
@@ -162,7 +162,7 @@ final class SymbolScopesTest extends TestCase
             'range' => ['start' => ['line' => 0], 'end' => ['line' => 3]],
         ]]);
 
-        self::assertSame([], $scopes);
+        $this->assertSame([], $scopes);
     }
 
     public function testTheOLDERSymbolInformationShapeIsReadToo(): void
@@ -173,7 +173,7 @@ final class SymbolScopesTest extends TestCase
             'location' => ['range' => ['start' => ['line' => 2], 'end' => ['line' => 8]]],
         ]]);
 
-        self::assertSame([['label' => 'Legacy', 'startLine' => 3, 'endLine' => 9, 'kind' => 'type']], $scopes);
+        $this->assertSame([['label' => 'Legacy', 'startLine' => 3, 'endLine' => 9, 'kind' => 'type']], $scopes);
     }
 
     public function testTheREALSelectorReadsTheMappedScopes(): void
@@ -188,7 +188,7 @@ final class SymbolScopesTest extends TestCase
             ]),
         ]);
 
-        self::assertSame(
+        $this->assertSame(
             [['label' => 'App', 'line' => 0], ['label' => 'Svc', 'line' => 4], ['label' => 'run', 'line' => 10]],
             BreadcrumbScanner::select($scopes, 12),
         );

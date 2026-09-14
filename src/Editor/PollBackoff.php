@@ -101,6 +101,6 @@ final class PollBackoff
         // `max(1, …)` would paper over — which is how the first draft's reset
         // survived being mutated to -1.
         $this->skips = $this->gap;
-        $this->gap = min(self::MAX_SKIPS, 2 * $this->gap);
+        $this->gap = \min(self::MAX_SKIPS, 2 * $this->gap);
     }
 }

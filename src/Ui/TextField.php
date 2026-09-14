@@ -83,7 +83,7 @@ final class TextField
             return false;
         }
         $from = TextMetrics::prevCharBoundary($this->value, $this->col);
-        $this->value = substr($this->value, offset: 0, length: $from).substr($this->value, $this->col);
+        $this->value = \substr($this->value, offset: 0, length: $from).\substr($this->value, $this->col);
         $this->col = $from;
 
         return true;
@@ -96,7 +96,7 @@ final class TextField
             return false;
         }
         $to = TextMetrics::nextCharBoundary($this->value, $this->col);
-        $this->value = substr($this->value, offset: 0, length: $this->col).substr($this->value, $to);
+        $this->value = \substr($this->value, offset: 0, length: $this->col).\substr($this->value, $to);
 
         return true;
     }
@@ -115,7 +115,7 @@ final class TextField
         while ($from > 0 && ' ' !== $this->value[$from - 1]) {
             $from = TextMetrics::prevCharBoundary($this->value, $from);
         }
-        $this->value = substr($this->value, offset: 0, length: $from).substr($this->value, $this->col);
+        $this->value = \substr($this->value, offset: 0, length: $from).\substr($this->value, $this->col);
         $this->col = $from;
 
         return true;
@@ -164,7 +164,7 @@ final class TextField
     /** Write $text at the caret and leave the caret after it. */
     private function write(string $text): void
     {
-        $this->value = substr($this->value, offset: 0, length: $this->col).$text.substr($this->value, $this->col);
+        $this->value = \substr($this->value, offset: 0, length: $this->col).$text.\substr($this->value, $this->col);
         $this->col += \strlen($text);
     }
 
@@ -178,19 +178,19 @@ final class TextField
     {
         $shown = CaretVisibility::Shown === $cursor;
         // Newlines (multiline query/replace) show as a visible ⏎ so the row stays one line.
-        $display = str_replace("\n", replace: '⏎', subject: $this->value);
+        $display = \str_replace("\n", replace: '⏎', subject: $this->value);
         if (!$shown) {
             return $display;
         }
         // The marker goes AT the caret, which is why the caret had to become a
         // real offset: pinning it to the tail is what made every consumer
         // append-only.
-        $before = str_replace("\n", replace: '⏎', subject: substr($this->value, offset: 0, length: $this->col));
+        $before = \str_replace("\n", replace: '⏎', subject: \substr($this->value, offset: 0, length: $this->col));
         $caret = AnsiUtils::visibleWidth($before);
         if (null !== $width) {
             return AnsiText::caretWindow($display, $caret, $width, $this->style->marker());
         }
 
-        return $before.$this->style->marker().substr($display, \strlen($before));
+        return $before.$this->style->marker().\substr($display, \strlen($before));
     }
 }

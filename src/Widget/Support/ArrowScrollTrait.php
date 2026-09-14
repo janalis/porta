@@ -28,7 +28,7 @@ trait ArrowScrollTrait
     public function scrollBy(int $delta): void
     {
         $key = $delta < 0 ? "\x1b[A" : "\x1b[B";
-        for ($i = 0; $i < abs($delta); ++$i) {
+        for ($i = 0; $i < \abs($delta); ++$i) {
             $this->handleInput($key);
         }
     }

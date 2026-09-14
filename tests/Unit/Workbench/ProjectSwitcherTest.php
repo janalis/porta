@@ -45,7 +45,7 @@ final class ProjectSwitcherTest extends TestCase
     private function switcher(string ...$recent): ProjectSwitcher
     {
         $this->home = new TempProject([]);
-        putenv('PORTA_HOME='.$this->home->dir);
+        \putenv('PORTA_HOME='.$this->home->dir);
         $this->here = new TempProject(['composer.json' => '{}']);
 
         $store = new RecentProjectsStore();
@@ -83,7 +83,7 @@ final class ProjectSwitcherTest extends TestCase
         $this->assertTrue(EditorState::pickerOpen($this->editor), 'the list is up');
         $this->editor->handleInput("\r"); // the first entry
 
-        $this->assertSame([(string) realpath($other->dir)], $this->requested);
+        $this->assertSame([(string) \realpath($other->dir)], $this->requested);
     }
 
     /**
@@ -115,7 +115,7 @@ final class ProjectSwitcherTest extends TestCase
         $switcher->open();
         $this->editor->handleInput("\r");
 
-        $this->assertSame([(string) realpath($alive->dir)], $this->requested, 'the live one was first, the dead one absent');
+        $this->assertSame([(string) \realpath($alive->dir)], $this->requested, 'the live one was first, the dead one absent');
     }
 
     public function testTypingAPathThatIsNotADirectoryIsRefusedBeforeAnythingTearsDown(): void
@@ -123,7 +123,7 @@ final class ProjectSwitcherTest extends TestCase
         $switcher = $this->switcher();
 
         $switcher->open(); // nothing recent → straight to the prompt
-        foreach (str_split('/no/such/place') as $ch) {
+        foreach (\str_split('/no/such/place') as $ch) {
             $this->editor->handleInput($ch);
         }
         $this->editor->handleInput("\r");
@@ -138,7 +138,7 @@ final class ProjectSwitcherTest extends TestCase
         $switcher = $this->switcher();
 
         $switcher->open();
-        foreach (str_split($this->here->dir) as $ch) {
+        foreach (\str_split($this->here->dir) as $ch) {
             $this->editor->handleInput($ch);
         }
         $this->editor->handleInput("\r");
@@ -186,15 +186,15 @@ final class ProjectSwitcherTest extends TestCase
     {
         $switcher = $this->switcher();
         $target = $this->home->dir.'/projects/alpha';
-        mkdir($target, permissions: 0o755, recursive: true);
+        \mkdir($target, permissions: 0o755, recursive: true);
 
         $switcher->open(); // nothing recent → the prompt
-        foreach (str_split('~/projects/alpha') as $ch) {
+        foreach (\str_split('~/projects/alpha') as $ch) {
             $this->editor->handleInput($ch);
         }
         $this->editor->handleInput("\r");
 
-        $this->assertSame([(string) realpath($target)], $this->requested);
+        $this->assertSame([(string) \realpath($target)], $this->requested);
     }
 
     /**
@@ -225,7 +225,7 @@ final class ProjectSwitcherTest extends TestCase
         $switcher->open();
         $this->editor->handleInput("\r");
 
-        $this->assertSame([(string) realpath($other->dir)], $this->requested);
+        $this->assertSame([(string) \realpath($other->dir)], $this->requested);
     }
 
     /**

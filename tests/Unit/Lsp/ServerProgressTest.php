@@ -48,8 +48,8 @@ final class ServerProgressTest extends TestCase
     {
         $progress = $this->progress();
 
-        self::assertNull($progress->label());
-        self::assertFalse($progress->isBusy());
+        $this->assertNull($progress->label());
+        $this->assertFalse($progress->isBusy());
     }
 
     public function testABegunTaskIsReportedByTitle(): void
@@ -58,8 +58,8 @@ final class ServerProgressTest extends TestCase
 
         $progress->handle(self::begin(self::FIRST, 'Indexing'));
 
-        self::assertSame('Indexing', $progress->label());
-        self::assertTrue($progress->isBusy());
+        $this->assertSame('Indexing', $progress->label());
+        $this->assertTrue($progress->isBusy());
     }
 
     public function testAPercentageIsAppendedToTheTitle(): void
@@ -69,7 +69,7 @@ final class ServerProgressTest extends TestCase
         $progress->handle(self::begin(self::FIRST, 'Indexing'));
         $progress->handle(['token' => self::FIRST, 'value' => ['kind' => 'report', 'percentage' => 40]]);
 
-        self::assertSame('Indexing 40%', $progress->label());
+        $this->assertSame('Indexing 40%', $progress->label());
     }
 
     public function testAReportKeepsFieldsItDoesNotMention(): void
@@ -81,7 +81,7 @@ final class ServerProgressTest extends TestCase
         $progress->handle(self::begin(self::FIRST, 'Indexing', 10));
         $progress->handle(['token' => self::FIRST, 'value' => ['kind' => 'report', 'message' => 'src/']]);
 
-        self::assertSame('Indexing: src/ 10%', $progress->label());
+        $this->assertSame('Indexing: src/ 10%', $progress->label());
     }
 
     public function testEndClearsTheTaskCompletely(): void
@@ -91,8 +91,8 @@ final class ServerProgressTest extends TestCase
         $progress->handle(self::begin(self::FIRST, 'Indexing'));
         $progress->handle(['token' => self::FIRST, 'value' => ['kind' => 'end']]);
 
-        self::assertNull($progress->label());
-        self::assertFalse($progress->isBusy());
+        $this->assertNull($progress->label());
+        $this->assertFalse($progress->isBusy());
     }
 
     public function testTheNEWESTTaskIsTheOneShown(): void
@@ -104,7 +104,7 @@ final class ServerProgressTest extends TestCase
         $progress->handle(self::begin(self::FIRST, 'Indexing'));
         $progress->handle(self::begin(self::SECOND, 'Resolving'));
 
-        self::assertSame('Resolving', $progress->label());
+        $this->assertSame('Resolving', $progress->label());
     }
 
     public function testEndingOneOfTwoTasksFallsBackToTheOther(): void
@@ -115,7 +115,7 @@ final class ServerProgressTest extends TestCase
         $progress->handle(self::begin(self::SECOND, 'Resolving'));
         $progress->handle(['token' => self::SECOND, 'value' => ['kind' => 'end']]);
 
-        self::assertSame('Indexing', $progress->label());
+        $this->assertSame('Indexing', $progress->label());
     }
 
     public function testAnIntegerTokenIsAcceptedAndEndsUnderTheSameKey(): void
@@ -123,10 +123,10 @@ final class ServerProgressTest extends TestCase
         $progress = $this->progress();
 
         $progress->handle(['token' => self::NUMERIC, 'value' => ['kind' => 'begin', 'title' => 'Indexing']]);
-        self::assertTrue($progress->isBusy());
+        $this->assertTrue($progress->isBusy());
 
         $progress->handle(['token' => self::NUMERIC, 'value' => ['kind' => 'end']]);
-        self::assertFalse($progress->isBusy());
+        $this->assertFalse($progress->isBusy());
     }
 
     public function testAReportForWorkThatNeverBeganIsIgnored(): void
@@ -137,7 +137,7 @@ final class ServerProgressTest extends TestCase
 
         $progress->handle(['token' => self::ABSENT, 'value' => ['kind' => 'report', 'percentage' => 50]]);
 
-        self::assertFalse($progress->isBusy());
+        $this->assertFalse($progress->isBusy());
     }
 
     public function testTheMapIsBoundedSoAServerCannotGrowItForever(): void
@@ -150,7 +150,7 @@ final class ServerProgressTest extends TestCase
         }
 
         // The 33rd onwards were refused, so the newest TRACKED task still shows.
-        self::assertSame('Task 31', $progress->label());
+        $this->assertSame('Task 31', $progress->label());
     }
 
     public function testTasksAlreadyTrackedStillUpdateOnceTheBoundIsReached(): void
@@ -162,7 +162,7 @@ final class ServerProgressTest extends TestCase
 
         $progress->handle(['token' => self::LAST_TRACKED, 'value' => ['kind' => 'report', 'percentage' => 90]]);
 
-        self::assertSame('Task 31 90%', $progress->label());
+        $this->assertSame('Task 31 90%', $progress->label());
     }
 
     public function testAMalformedNotificationIsIgnored(): void
@@ -174,6 +174,6 @@ final class ServerProgressTest extends TestCase
         $progress->handle(['token' => self::FIRST]);
         $progress->handle(['token' => self::FIRST, 'value' => ['kind' => 'unknown']]);
 
-        self::assertFalse($progress->isBusy());
+        $this->assertFalse($progress->isBusy());
     }
 }

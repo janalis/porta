@@ -33,7 +33,7 @@ final class TextPreviewWidgetTest extends TestCase
     /** @return list<string> the rendered rows with their decoration stripped */
     private function plain(TextPreviewWidget $widget, int $cols = 40, int $rows = 4): array
     {
-        return array_map(AnsiUtils::stripAnsiCodes(...), $widget->render(new RenderContext($cols, $rows)));
+        return \array_map(AnsiUtils::stripAnsiCodes(...), $widget->render(new RenderContext($cols, $rows)));
     }
 
     public function testTheBannerSaysTheSizeAndTheBodyShowsTheTop(): void
@@ -45,7 +45,7 @@ final class TextPreviewWidgetTest extends TestCase
         $this->assertStringContainsString('huge.log', $rows[0]);
         $this->assertStringContainsString('5.0 MB', $rows[0], 'the size of the WHOLE file, not the prefix');
         $this->assertStringContainsString('showing the first', $rows[0]);
-        $this->assertSame(['l0', 'l1', 'l2'], array_map(rtrim(...), \array_slice($rows, offset: 1)));
+        $this->assertSame(['l0', 'l1', 'l2'], \array_map(rtrim(...), \array_slice($rows, offset: 1)));
     }
 
     /**
@@ -70,7 +70,7 @@ final class TextPreviewWidgetTest extends TestCase
     public function testABannerNeverSaysTheWholeFileIsTheSizeOfThePrefix(): void
     {
         $cap = Files::MAX_TEXT_BYTES;
-        $widget = $this->widget(new TextPreview(str_repeat('x', times: $cap), bytes: $cap + 30_000, truncated: true));
+        $widget = $this->widget(new TextPreview(\str_repeat('x', times: $cap), bytes: $cap + 30_000, truncated: true));
 
         $banner = $this->plain($widget, cols: 90)[0];
 
@@ -88,7 +88,7 @@ final class TextPreviewWidgetTest extends TestCase
     public function testSizesThatStayEqualAtTwoDecimalsKeepTheShortForm(): void
     {
         $cap = Files::MAX_TEXT_BYTES;
-        $widget = $this->widget(new TextPreview(str_repeat('x', times: $cap), bytes: $cap + 100, truncated: true));
+        $widget = $this->widget(new TextPreview(\str_repeat('x', times: $cap), bytes: $cap + 100, truncated: true));
 
         $this->assertStringContainsString('is 2.00 MB, showing the first 2.00 MB', $this->plain($widget, cols: 90)[0]);
     }
@@ -96,42 +96,42 @@ final class TextPreviewWidgetTest extends TestCase
     /** Sizes that already differ are left alone: one decimal is what a size reads as. */
     public function testDistinctSizesKeepOneDecimal(): void
     {
-        $widget = $this->widget(new TextPreview(str_repeat('a', times: 2048), bytes: 1_073_741_824, truncated: true));
+        $widget = $this->widget(new TextPreview(\str_repeat('a', times: 2048), bytes: 1_073_741_824, truncated: true));
 
         $this->assertSame('Read-only preview  2.0 KB of 1.0 GB', $widget->statusRight());
     }
 
     public function testScrollingStopsAtTheLastBodyFullOfLines(): void
     {
-        $widget = $this->widget(new TextPreview(implode("\n", range(start: 0, end: 9)), bytes: 3_000_000, truncated: false));
+        $widget = $this->widget(new TextPreview(\implode("\n", \range(start: 0, end: 9)), bytes: 3_000_000, truncated: false));
 
         // 4 rows = 1 banner + 3 body, over ten lines: the last top is line 7.
         $widget->render(new RenderContext(40, 4));
         $widget->handleInput("\x1b[6~");
-        $this->assertSame(['3', '4', '5'], array_map(rtrim(...), \array_slice($this->plain($widget), offset: 1)));
+        $this->assertSame(['3', '4', '5'], \array_map(rtrim(...), \array_slice($this->plain($widget), offset: 1)));
 
         $widget->handleInput("\x1b[F");
-        $this->assertSame(['7', '8', '9'], array_map(rtrim(...), \array_slice($this->plain($widget), offset: 1)), 'clamped at the tail');
+        $this->assertSame(['7', '8', '9'], \array_map(rtrim(...), \array_slice($this->plain($widget), offset: 1)), 'clamped at the tail');
 
         $widget->handleInput("\x1b[B"); // already at the end
-        $this->assertSame(['7', '8', '9'], array_map(rtrim(...), \array_slice($this->plain($widget), offset: 1)));
+        $this->assertSame(['7', '8', '9'], \array_map(rtrim(...), \array_slice($this->plain($widget), offset: 1)));
 
         $widget->handleInput("\x1b[H");
-        $this->assertSame(['0', '1', '2'], array_map(rtrim(...), \array_slice($this->plain($widget), offset: 1)));
+        $this->assertSame(['0', '1', '2'], \array_map(rtrim(...), \array_slice($this->plain($widget), offset: 1)));
 
         $widget->handleInput("\x1b[A"); // already at the top
-        $this->assertSame(['0', '1', '2'], array_map(rtrim(...), \array_slice($this->plain($widget), offset: 1)));
+        $this->assertSame(['0', '1', '2'], \array_map(rtrim(...), \array_slice($this->plain($widget), offset: 1)));
     }
 
     /** The wheel is the same verb, which is what makes the pane feel like a document. */
     public function testTheWheelScrollsTheSameRows(): void
     {
-        $widget = $this->widget(new TextPreview(implode("\n", range(start: 0, end: 9)), bytes: 3_000_000, truncated: false));
+        $widget = $this->widget(new TextPreview(\implode("\n", \range(start: 0, end: 9)), bytes: 3_000_000, truncated: false));
         $widget->render(new RenderContext(40, 4));
 
         $widget->wheelBy(2);
 
-        $this->assertSame(['2', '3', '4'], array_map(rtrim(...), \array_slice($this->plain($widget), offset: 1)));
+        $this->assertSame(['2', '3', '4'], \array_map(rtrim(...), \array_slice($this->plain($widget), offset: 1)));
     }
 
     /**
@@ -142,7 +142,7 @@ final class TextPreviewWidgetTest extends TestCase
      */
     public function testAnEnormousLineIsCutToThePaneRatherThanOverflowingIt(): void
     {
-        $widget = $this->widget(new TextPreview(str_repeat('x', times: 5_000)."\nshort\n", bytes: 9_000_000, truncated: true));
+        $widget = $this->widget(new TextPreview(\str_repeat('x', times: 5_000)."\nshort\n", bytes: 9_000_000, truncated: true));
 
         foreach ([1, 2, 7, 20, 80] as $cols) {
             foreach ($widget->render(new RenderContext($cols, 4)) as $row => $line) {
@@ -153,14 +153,14 @@ final class TextPreviewWidgetTest extends TestCase
 
     public function testTheStatusSegmentNamesBothSizesAndGoesQuietWhenCleared(): void
     {
-        $widget = $this->widget(new TextPreview(str_repeat('a', times: 2048), bytes: 1_073_741_824, truncated: true));
+        $widget = $this->widget(new TextPreview(\str_repeat('a', times: 2048), bytes: 1_073_741_824, truncated: true));
 
         $this->assertSame('Read-only preview  2.0 KB of 1.0 GB', $widget->statusRight());
 
         $widget->clear();
 
         $this->assertSame('', $widget->statusRight());
-        $this->assertSame([], array_filter(array_map(rtrim(...), \array_slice($this->plain($widget), offset: 1))), 'and draws nothing');
+        $this->assertSame([], \array_filter(\array_map(rtrim(...), \array_slice($this->plain($widget), offset: 1))), 'and draws nothing');
     }
 
     /**
@@ -174,7 +174,7 @@ final class TextPreviewWidgetTest extends TestCase
         $widget->show('/tmp/x.bin', ['not' => 'a preview']);
 
         $this->assertSame('', $widget->statusRight());
-        $this->assertSame('', rtrim($this->plain($widget)[0]), 'no banner without a payload to describe');
+        $this->assertSame('', \rtrim($this->plain($widget)[0]), 'no banner without a payload to describe');
     }
 
     /**
@@ -190,13 +190,13 @@ final class TextPreviewWidgetTest extends TestCase
      */
     public function testEndThenDownWithNoFrameBetweenThemStaysAnInt(): void
     {
-        $widget = $this->widget(new TextPreview(implode("\n", range(start: 0, end: 9)), bytes: 3_000_000, truncated: false));
+        $widget = $this->widget(new TextPreview(\implode("\n", \range(start: 0, end: 9)), bytes: 3_000_000, truncated: false));
         $widget->render(new RenderContext(40, 4)); // one frame, to fix the body height
 
         $widget->handleInput("\x1b[F"); // End
         $widget->handleInput("\x1b[B"); // Down, with no frame in between
 
-        $this->assertSame(['7', '8', '9'], array_map(rtrim(...), \array_slice($this->plain($widget), offset: 1)));
+        $this->assertSame(['7', '8', '9'], \array_map(rtrim(...), \array_slice($this->plain($widget), offset: 1)));
     }
 
     /**
@@ -224,7 +224,7 @@ final class TextPreviewWidgetTest extends TestCase
     /** A key this pane does not bind is left alone rather than swallowed. */
     public function testAnUnboundKeyDoesNothing(): void
     {
-        $widget = $this->widget(new TextPreview(implode("\n", range(start: 0, end: 9)), bytes: 3_000_000, truncated: false));
+        $widget = $this->widget(new TextPreview(\implode("\n", \range(start: 0, end: 9)), bytes: 3_000_000, truncated: false));
         $handler = new RecordingViewerTabHandler();
         $widget->setHandler($handler);
         $widget->render(new RenderContext(40, 4));
@@ -232,7 +232,7 @@ final class TextPreviewWidgetTest extends TestCase
         $widget->handleInput('q');
 
         $this->assertSame([], $handler->events);
-        $this->assertSame(['0', '1', '2'], array_map(rtrim(...), \array_slice($this->plain($widget), offset: 1)), 'and did not scroll');
+        $this->assertSame(['0', '1', '2'], \array_map(rtrim(...), \array_slice($this->plain($widget), offset: 1)), 'and did not scroll');
     }
 
     /**

@@ -26,10 +26,10 @@ final class LaunchArguments
         if ([] !== $runCommandArgv) {
             $template['runtimeExecutable'] = $runCommandArgv[0];
             if (\count($runCommandArgv) > 1) {
-                $template['runtimeArgs'] = array_slice($runCommandArgv, offset: 1);
+                $template['runtimeArgs'] = \array_slice($runCommandArgv, offset: 1);
             }
         }
-        $arguments = array_replace($template, $overrides);
+        $arguments = \array_replace($template, $overrides);
 
         return self::substitute($arguments, $file, $rootDir);
     }
@@ -44,7 +44,7 @@ final class LaunchArguments
         /** @var mixed $value */
         foreach ($values as $key => $value) {
             if (\is_string($value)) {
-                $values[$key] = str_replace(['${file}', '${workspaceRoot}'], [$file, $rootDir], $value);
+                $values[$key] = \str_replace(['${file}', '${workspaceRoot}'], [$file, $rootDir], $value);
 
                 continue;
             }

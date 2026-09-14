@@ -68,6 +68,6 @@ final class ViewRegions
      */
     public function all(): array
     {
-        return array_values($this->regions);
+        return \array_values($this->regions);
     }
 }

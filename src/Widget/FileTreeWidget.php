@@ -150,7 +150,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
     ) {
         $this->width = $width;
         $this->initStyles($styles);
-        $this->realRoot = ($resolved = realpath($rootDir)) ? $resolved : $rootDir;
+        $this->realRoot = ($resolved = \realpath($rootDir)) ? $resolved : $rootDir;
         $this->list = new ListSelection();
         $this->selection = new MultiSelection();
         $this->addStyleClass('list'); // the theme's .list::selected(:focus) rules style the selection
@@ -499,12 +499,12 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
         // Buffer paths are realpath'd (symlinks resolved) while the tree's nodes
         // are built from the raw root, so compare in realpath space, then map the
         // target back to the raw-root path the node/expansion keys use.
-        $root = realpath($this->rootDir);
-        $target = realpath($path);
-        if (false === $root || false === $target || !str_starts_with($target, $root.\DIRECTORY_SEPARATOR)) {
+        $root = \realpath($this->rootDir);
+        $target = \realpath($path);
+        if (false === $root || false === $target || !\str_starts_with($target, $root.\DIRECTORY_SEPARATOR)) {
             return;
         }
-        $path = $this->rootDir.\DIRECTORY_SEPARATOR.substr($target, \strlen($root) + 1);
+        $path = $this->rootDir.\DIRECTORY_SEPARATOR.\substr($target, \strlen($root) + 1);
         // Expand every ancestor directory between the root and the file.
         $dir = \dirname($path);
         while (\strlen($dir) > \strlen($this->rootDir)) {
@@ -539,7 +539,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
 
         if ($kb->matches($data, 'select_up') || $kb->matches($data, 'select_down')) {
             $step = $kb->matches($data, 'select_up') ? -1 : 1;
-            $index = max(0, min($count - 1, $this->list->selected() + $step));
+            $index = \max(0, \min($count - 1, $this->list->selected() + $step));
             $this->list->select($index);
             $this->extendSelection($index, ClickIntent::Range);
             $this->invalidate();
@@ -637,7 +637,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
         // which degrades a range into a plain selection rather than throwing.
         $from = $this->rowOf($anchor) ?? $index;
         $range = [];
-        foreach (range($from, $index) as $row) {
+        foreach (\range($from, $index) as $row) {
             $range[] = $this->visible[$row]->path;
         }
         $this->selection->replaceRange($range);
@@ -646,7 +646,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
     /** Where $path sits in the visible rows, or null when it is not there. */
     private function rowOf(string $path): ?int
     {
-        $rows = array_keys(array_filter($this->visible, static fn (FileTreeNode $node): bool => $node->path === $path));
+        $rows = \array_keys(\array_filter($this->visible, static fn (FileTreeNode $node): bool => $node->path === $path));
 
         return $rows[0] ?? null;
     }
@@ -715,8 +715,8 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
     #[\Override]
     public function render(RenderContext $context): array
     {
-        $width = min($this->width, $context->getColumns());
-        $rows = max(1, $context->getRows() > 0 ? $context->getRows() : 24);
+        $width = \min($this->width, $context->getColumns());
+        $rows = \max(1, $context->getRows() > 0 ? $context->getRows() : 24);
         $this->lastRows = $rows;
 
         // Both per-frame calls (the intrinsic measure and the real pass) clamp
@@ -731,7 +731,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
         $scroll = $this->list->follow($rows - 1);
 
         $lines = [];
-        $lines[] = HeaderRenderer::title(' '.basename($this->rootDir).'/', $width, $this->styles);
+        $lines[] = HeaderRenderer::title(' '.\basename($this->rootDir).'/', $width, $this->styles);
 
         for ($row = 1; $row < $rows; ++$row) {
             $index = $scroll + $row - 1;
@@ -753,7 +753,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
             $marks = $this->marksFor($node);
             $marks .= $this->dropTrailing($node, $width - AnsiUtils::visibleWidth($marks));
             $text = AnsiText::blank($node->depth + 1).$icon.$node->name.($node->isDir ? '/' : '');
-            $text = AnsiText::truncate($text, max(1, $width - AnsiUtils::visibleWidth($marks)), pad: true).$marks;
+            $text = AnsiText::truncate($text, \max(1, $width - AnsiUtils::visibleWidth($marks)), pad: true).$marks;
 
             // Subtle hover background beneath the pointer keeps the dir/file foreground.
             $lines[] = match (true) {
@@ -822,7 +822,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
      */
     private function bufferPath(string $path): string
     {
-        return $this->realRoot.substr($path, \strlen($this->rootDir));
+        return $this->realRoot.\substr($path, \strlen($this->rootDir));
     }
 
     private function rebuild(): void
@@ -833,7 +833,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
         // A path that has left the tree leaves the selection with it: a
         // collapsed directory or a deleted file must not stay in a pair the
         // user can no longer see.
-        $this->selection->keepOnly(array_map(static fn (FileTreeNode $node): string => $node->path, $this->visible));
+        $this->selection->keepOnly(\array_map(static fn (FileTreeNode $node): string => $node->path, $this->visible));
         // An EMPTY selection takes the cursor row, so a Shift+arrow has an
         // anchor on the first keystroke of a session. Only when it is empty:
         // seeding unconditionally would let a rebuild — a directory expanding,
@@ -857,7 +857,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
     public function refreshIfChanged(): bool
     {
         $freshBefore = $this->clock->now()->getTimestamp() - self::POLL_GRACE_SECONDS;
-        foreach (array_keys($this->scannedSigs) as $dir) {
+        foreach (\array_keys($this->scannedSigs) as $dir) {
             if (!$this->dirChangedSince($dir, $freshBefore)) {
                 continue;
             }
@@ -879,11 +879,11 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
      */
     public function refreshDirsSlice(int $budget): bool
     {
-        $dirs = array_keys($this->scannedSigs);
+        $dirs = \array_keys($this->scannedSigs);
         $count = \count($dirs); // never 0: rebuild() always records the root
         $freshBefore = $this->clock->now()->getTimestamp() - self::POLL_GRACE_SECONDS;
         // The modulo also re-clamps the cursor after a rebuild shrank the map.
-        for ($i = 0; $i < min($budget, $count); ++$i) {
+        for ($i = 0; $i < \min($budget, $count); ++$i) {
             $dir = $dirs[$this->dirCursor % $count];
             $this->dirCursor = ($this->dirCursor + 1) % $count;
             if ($this->dirChangedSince($dir, $freshBefore)) {
@@ -907,10 +907,10 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
         // and since an unchanged mtime past the grace window is trusted without
         // a scandir, the directory would then be trusted forever. Measured: a
         // file created by a separate process was never seen.
-        clearstatcache(clear_realpath_cache: true, filename: $dir);
+        \clearstatcache(clear_realpath_cache: true, filename: $dir);
         // Read the mtime BEFORE the signature it vouches for: a change
         // landing after this read bumps the mtime again → caught next tick.
-        $mtime = is_dir($dir) ? (int) filemtime($dir) : -1;
+        $mtime = \is_dir($dir) ? (int) \filemtime($dir) : -1;
         if ($mtime === $scan['mtime'] && $mtime < $freshBefore && -1 !== $mtime) {
             return false;
         }
@@ -925,24 +925,24 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
     /** A stable fingerprint of a directory's entries, or '' when it is gone. */
     private function dirSignature(string $dir): string
     {
-        if (!is_dir($dir)) {
+        if (!\is_dir($dir)) {
             return '';
         }
-        $entries = scandir($dir);
+        $entries = \scandir($dir);
 
-        return implode("\0", $entries ? $entries : []);
+        return \implode("\0", $entries ? $entries : []);
     }
 
     private function walk(string $dir, int $depth): void
     {
-        $mtime = is_dir($dir) ? (int) filemtime($dir) : -1; // before the scandir it vouches for
-        $scanned = is_dir($dir) ? scandir($dir) : false;
+        $mtime = \is_dir($dir) ? (int) \filemtime($dir) : -1; // before the scandir it vouches for
+        $scanned = \is_dir($dir) ? \scandir($dir) : false;
         $entries = $scanned ? $scanned : [];
         // The one scandir serves both the walk and the recorded signature —
         // byte-identical to what dirSignature() would produce over the same
         // entries, so every expanded directory costs one read per rebuild,
         // not two. The mtime above still precedes the scan it vouches for.
-        $this->scannedSigs[$dir] = ['sig' => implode("\0", $entries), 'mtime' => $mtime];
+        $this->scannedSigs[$dir] = ['sig' => \implode("\0", $entries), 'mtime' => $mtime];
         $dirs = [];
         $files = [];
 
@@ -951,11 +951,11 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
                 continue;
             }
             $path = $dir.\DIRECTORY_SEPARATOR.$entry;
-            is_dir($path) ? ($dirs[] = $entry) : ($files[] = $entry);
+            \is_dir($path) ? ($dirs[] = $entry) : ($files[] = $entry);
         }
 
-        sort($dirs, \SORT_NATURAL | \SORT_FLAG_CASE);
-        sort($files, \SORT_NATURAL | \SORT_FLAG_CASE);
+        \sort($dirs, \SORT_NATURAL | \SORT_FLAG_CASE);
+        \sort($files, \SORT_NATURAL | \SORT_FLAG_CASE);
 
         foreach ($dirs as $name) {
             $path = $dir.\DIRECTORY_SEPARATOR.$name;

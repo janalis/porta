@@ -37,25 +37,25 @@ final class LeakLog
 
     public static function append(string $line): void
     {
-        fwrite(\STDERR, $line);
+        \fwrite(\STDERR, $line);
 
         $path = self::path();
         $dir = \dirname($path);
         // Concurrent workers race to create this; the recursive flag plus the
         // is_dir re-check is what makes losing that race harmless, and is why
         // the failure is ignored rather than silenced with `@`.
-        if (!is_dir($dir) && !mkdir($dir, permissions: 0o777, recursive: true) && !is_dir($dir)) {
+        if (!\is_dir($dir) && !\mkdir($dir, permissions: 0o777, recursive: true) && !\is_dir($dir)) {
             return;
         }
-        if (is_dir($dir)) {
-            file_put_contents($path, $line, flags: \FILE_APPEND);
+        if (\is_dir($dir)) {
+            \file_put_contents($path, $line, flags: \FILE_APPEND);
         }
     }
 
     /** Where the reports are accumulating for this run. */
     public static function path(): string
     {
-        $configured = getenv(self::PATH_ENV);
+        $configured = \getenv(self::PATH_ENV);
 
         return \is_string($configured) && '' !== $configured
             ? $configured

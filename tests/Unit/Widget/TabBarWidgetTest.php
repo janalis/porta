@@ -22,11 +22,11 @@ final class TabBarWidgetTest extends TestCase
     private static function glyphAtColumn(string $plain, int $col): string
     {
         $at = 0;
-        foreach (mb_str_split($plain) as $glyph) {
+        foreach (\mb_str_split($plain) as $glyph) {
             if ($at === $col) {
                 return $glyph;
             }
-            $at += mb_strwidth($glyph);
+            $at += \mb_strwidth($glyph);
         }
 
         return '';
@@ -40,8 +40,8 @@ final class TabBarWidgetTest extends TestCase
         // The strip keeps its Toolbar base even with no tabs, so closing the
         // last one never drops the bar to the terminal default.
         $line = $bar->render(new RenderContext(40, 1))[0];
-        $this->assertSame(str_repeat(' ', times: 40), AnsiUtils::stripAnsiCodes($line));
-        $this->assertNotSame(str_repeat(' ', times: 40), $line, 'the empty strip is styled, not bare');
+        $this->assertSame(\str_repeat(' ', times: 40), AnsiUtils::stripAnsiCodes($line));
+        $this->assertNotSame(\str_repeat(' ', times: 40), $line, 'the empty strip is styled, not bare');
     }
 
     public function testWithoutProviderRendersAToolbarStyledBlankLine(): void
@@ -49,7 +49,7 @@ final class TabBarWidgetTest extends TestCase
         $bar = new TabBarWidget();
 
         $line = $bar->render(new RenderContext(20, 1))[0];
-        $this->assertSame(str_repeat(' ', times: 20), AnsiUtils::stripAnsiCodes($line));
+        $this->assertSame(\str_repeat(' ', times: 20), AnsiUtils::stripAnsiCodes($line));
     }
 
     public function testRendersTabsWithDirtyDotAndActiveStyle(): void
@@ -144,7 +144,7 @@ final class TabBarWidgetTest extends TestCase
         $bar->setProvider(static fn () => $tabs);
         $bar->beforeRender();
 
-        $plain = AnsiUtils::stripAnsiCodes(implode("\n", $bar->render(new RenderContext(24, 10))));
+        $plain = AnsiUtils::stripAnsiCodes(\implode("\n", $bar->render(new RenderContext(24, 10))));
 
         $this->assertStringContainsString('file-29.php', $plain, 'the active tab is on screen');
         $this->assertStringNotContainsString('file-00.php', $plain, 'and the window scrolled past the first');
@@ -222,7 +222,7 @@ final class TabBarWidgetTest extends TestCase
         $bar->beforeRender();
         $plain = AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(60, 1))[0]);
 
-        $this->assertSame(2, substr_count($plain, needle: '×'), 'a close × per tab');
+        $this->assertSame(2, \substr_count($plain, needle: '×'), 'a close × per tab');
         $this->assertStringContainsString('a.php ×', $plain, 'clean tab: name then ×');
         $this->assertStringContainsString('b.php ●×', $plain, 'dirty tab: name, dirty dot, then ×');
     }
@@ -244,7 +244,7 @@ final class TabBarWidgetTest extends TestCase
         $bar->beforeRender();
         $plain = AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(60, 1))[0]);
 
-        $this->assertSame(60, mb_strwidth($plain), 'the strip fills its row exactly');
+        $this->assertSame(60, \mb_strwidth($plain), 'the strip fills its row exactly');
         foreach ([0, 1] as $index) {
             $col = 0;
             while ($col < 60 && $bar->closeIndexAt(0, $col) !== $index) {
@@ -358,10 +358,10 @@ final class TabBarWidgetTest extends TestCase
 
         foreach ([1, 4, 7, 8, 9, 16, 23, 24, 40] as $columns) {
             $rows = $bar->render(new RenderContext($columns, 5));
-            $expected = min(24, $columns);
+            $expected = \min(24, $columns);
 
             $this->assertCount(5, $rows, "the pane's rows are filled at {$columns} columns");
-            $this->assertTrue(array_is_list($rows), "the rows are a list at {$columns} columns");
+            $this->assertTrue(\array_is_list($rows), "the rows are a list at {$columns} columns");
             foreach ($rows as $i => $row) {
                 $this->assertSame(
                     $expected,
@@ -380,7 +380,7 @@ final class TabBarWidgetTest extends TestCase
         // a floor one column out either way is invisible to a width assertion.
         $bar = $this->verticalBar([['name' => 'Alpha.php', 'dirty' => false, 'active' => true]]);
 
-        $atFloor = AnsiUtils::stripAnsiCodes(implode("\n", $bar->render(new RenderContext(8, 3))));
+        $atFloor = AnsiUtils::stripAnsiCodes(\implode("\n", $bar->render(new RenderContext(8, 3))));
         $this->assertStringContainsString('A', $atFloor, 'a name, however truncated, at the floor');
 
         // The row's shape, at a width that seats the whole name: a leading pad,
@@ -389,8 +389,8 @@ final class TabBarWidgetTest extends TestCase
         $this->assertStringStartsWith(' Alpha.php', $wide, 'one leading pad, then the name');
         $this->assertStringEndsWith(' ', $wide, 'and a trailing pad after the close glyph');
 
-        $belowFloor = AnsiUtils::stripAnsiCodes(implode('', $bar->render(new RenderContext(7, 3))));
-        $this->assertSame('', trim($belowFloor), 'and nothing but blanks below it');
+        $belowFloor = AnsiUtils::stripAnsiCodes(\implode('', $bar->render(new RenderContext(7, 3))));
+        $this->assertSame('', \trim($belowFloor), 'and nothing but blanks below it');
     }
 
     public function testSetPositionInvalidatesOnlyOnChange(): void
@@ -479,7 +479,7 @@ final class TabBarWidgetTest extends TestCase
         $this->assertStringContainsString('●×', $row1, 'dirty dot right-aligned beside the close ×');
         $this->assertStringContainsString(' × ', AnsiUtils::stripAnsiCodes($lines[0]), 'clean tab keeps a blank marker cell before its ×');
         $this->assertStringContainsString("\x1b[48;5;238m", $lines[1], 'active row background');
-        $this->assertSame(str_repeat(' ', TabBarWidget::VERTICAL_WIDTH), $lines[2], 'filler row below the last tab');
+        $this->assertSame(\str_repeat(' ', TabBarWidget::VERTICAL_WIDTH), $lines[2], 'filler row below the last tab');
     }
 
     public function testVerticalTruncatesLongNamesWithAnEllipsis(): void
@@ -497,11 +497,11 @@ final class TabBarWidgetTest extends TestCase
     public function testVerticalEmptyAndProviderlessStatesRenderABlankColumn(): void
     {
         $empty = $this->verticalBar([]);
-        $this->assertSame(array_fill(0, count: 4, value: str_repeat(' ', TabBarWidget::VERTICAL_WIDTH)), $empty->render(new RenderContext(80, 4)));
+        $this->assertSame(\array_fill(0, count: 4, value: \str_repeat(' ', TabBarWidget::VERTICAL_WIDTH)), $empty->render(new RenderContext(80, 4)));
 
         $bare = new TabBarWidget();
         $bare->setPosition(TabBarPosition::Right);
-        $this->assertSame([str_repeat(' ', TabBarWidget::VERTICAL_WIDTH)], $bare->render(new RenderContext(80, 0)), 'a zero-row context still yields one row');
+        $this->assertSame([\str_repeat(' ', TabBarWidget::VERTICAL_WIDTH)], $bare->render(new RenderContext(80, 0)), 'a zero-row context still yields one row');
     }
 
     public function testVerticalKeepsTheActiveTabVisible(): void
@@ -513,7 +513,7 @@ final class TabBarWidgetTest extends TestCase
         $bar = $this->verticalBar($tabs);
 
         $lines = $bar->render(new RenderContext(80, 5));
-        $plain = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $lines));
+        $plain = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $lines));
 
         $this->assertStringContainsString('file-11.php', $plain, 'active (last) tab visible after dropping leading rows');
         $this->assertStringNotContainsString('file-06.php', $plain);
@@ -579,7 +579,7 @@ final class TabBarWidgetTest extends TestCase
 
     private function plainRender(TabBarWidget $bar, int $columns = 60, int $rows = 1): string
     {
-        return AnsiUtils::stripAnsiCodes(implode("\n", $bar->render(new RenderContext($columns, $rows))));
+        return AnsiUtils::stripAnsiCodes(\implode("\n", $bar->render(new RenderContext($columns, $rows))));
     }
 
     public function testScrollByRevealsClippedTrailingTabsAndSurvivesParkedFrames(): void
@@ -713,7 +713,7 @@ final class TabBarWidgetTest extends TestCase
 
         // Window at the first tab: only the bottom is clipped.
         $plain = $this->plainRender($bar, 80, 5);
-        $lines = explode("\n", $plain);
+        $lines = \explode("\n", $plain);
         $this->assertStringNotContainsString('▲', $lines[0], 'the top indicator row is reserved but blank');
         $this->assertStringContainsString('▼', $lines[4]);
         $this->assertNull($bar->scrollIndicatorAt(0, 1), 'a blank indicator row is not clickable');
@@ -723,7 +723,7 @@ final class TabBarWidgetTest extends TestCase
         // Window at the last tab: only the top is clipped.
         $bar->scrollBy(99);
         $plain = $this->plainRender($bar, 80, 5);
-        $lines = explode("\n", $plain);
+        $lines = \explode("\n", $plain);
         $this->assertStringContainsString('▲', $lines[0]);
         $this->assertStringNotContainsString('▼', $lines[4]);
         $this->assertSame(-3, $bar->scrollIndicatorAt(0, 1), 'the ▲ row scrolls back three rows');
@@ -811,7 +811,7 @@ final class TabBarWidgetTest extends TestCase
 
         // Closing the second tab leaves the pointer's column past the only tab
         // left — the cell resolves to nothing, so no stale tint lingers.
-        array_pop($tabs);
+        \array_pop($tabs);
         $bar->beforeRender();
         $this->assertStringNotContainsString("\x1b[48;5;240m", $bar->render(new RenderContext(60, 1))[0], 'nothing is tinted where the removed tab was');
     }
@@ -841,9 +841,9 @@ final class TabBarWidgetTest extends TestCase
 
         $lines = $bar->render(new RenderContext($columns, 5));
 
-        self::assertNotSame([], $lines);
+        $this->assertNotSame([], $lines);
         foreach ($lines as $row => $line) {
-            self::assertSame($columns, AnsiUtils::visibleWidth($line), "row {$row} fills the pane exactly");
+            $this->assertSame($columns, AnsiUtils::visibleWidth($line), "row {$row} fills the pane exactly");
         }
     }
 

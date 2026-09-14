@@ -40,11 +40,11 @@ abstract class AbstractPlugin implements PortaPlugin
      */
     protected function claimedLanguages(PluginApi $api, string $key = 'languages'): array
     {
-        $raw = trim((string) $api->setting($key));
+        $raw = \trim((string) $api->setting($key));
         if ('' === $raw) {
             return [];
         }
 
-        return array_values(array_filter(array_map(trim(...), explode(',', $raw))));
+        return \array_values(\array_filter(\array_map(trim(...), \explode(',', $raw))));
     }
 }

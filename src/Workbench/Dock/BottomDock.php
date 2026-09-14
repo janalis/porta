@@ -521,7 +521,7 @@ final class BottomDock
     /** @return list<DockPanelWidget> */
     private function panels(): array
     {
-        return [$this->terminalPanel, $this->resultsPanel, ...array_map(static fn (array $e): DockPanelWidget => $e['panel'], $this->panelRegistry->all())];
+        return [$this->terminalPanel, $this->resultsPanel, ...\array_map(static fn (array $e): DockPanelWidget => $e['panel'], $this->panelRegistry->all())];
     }
 
     /** A panel opened (or re-opened): it takes the dock slot; the others park behind it. */
@@ -534,7 +534,7 @@ final class BottomDock
 
             $other->conceal();
         }
-        $this->mru = [...array_values(array_filter($this->mru, static fn (AbstractWidget $seen): bool => $seen !== $panel)), $panel];
+        $this->mru = [...\array_values(\array_filter($this->mru, static fn (AbstractWidget $seen): bool => $seen !== $panel)), $panel];
     }
 
     /**
@@ -544,7 +544,7 @@ final class BottomDock
      */
     private function restoreAfter(DockPanelWidget $panel): void
     {
-        $this->mru = array_values(array_filter($this->mru, static fn (AbstractWidget $seen): bool => $seen !== $panel));
+        $this->mru = \array_values(\array_filter($this->mru, static fn (AbstractWidget $seen): bool => $seen !== $panel));
         $last = $this->mru[\count($this->mru) - 1] ?? null;
         $last?->reveal();
         $this->returnFocusFrom($panel);

@@ -94,17 +94,17 @@ final class SettingsPagesGoldenTest extends TestCase
     public function testEverySettingsSectionHasAGoldenPage(): void
     {
         $sections = [];
-        foreach (glob(\dirname(__DIR__, levels: 2).'/src/Settings/Section/*.php') as $file) {
-            $sections[] = 'Porta\\Settings\\Section\\'.basename($file, suffix: '.php');
+        foreach (\glob(\dirname(__DIR__, levels: 2).'/src/Settings/Section/*.php') as $file) {
+            $sections[] = 'Porta\\Settings\\Section\\'.\basename($file, suffix: '.php');
         }
-        sort($sections);
-        $mapped = array_keys(self::SECTION_PAGES);
-        sort($mapped);
+        \sort($sections);
+        $mapped = \array_keys(self::SECTION_PAGES);
+        \sort($mapped);
 
         $this->assertSame($mapped, $sections, 'a settings section appeared or moved: give it a page in SECTION_PAGES and PAGES, then regenerate the golden');
         $this->assertSame(
             [],
-            array_values(array_diff(array_values(self::SECTION_PAGES), self::PAGES)),
+            \array_values(\array_diff(\array_values(self::SECTION_PAGES), self::PAGES)),
             'every section stands for a page the golden actually captures',
         );
     }
@@ -118,21 +118,21 @@ final class SettingsPagesGoldenTest extends TestCase
     {
         $actual = $this->renderPages();
 
-        if (getenv('UPDATE_SETTINGS_PAGES_GOLDEN')) {
-            file_put_contents(self::GOLDEN, json_encode($actual, \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE));
+        if (\getenv('UPDATE_SETTINGS_PAGES_GOLDEN')) {
+            \file_put_contents(self::GOLDEN, \json_encode($actual, \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE));
             $this->markTestSkipped('Golden regenerated.');
         }
 
         $this->assertFileExists(self::GOLDEN, 'run once with UPDATE_SETTINGS_PAGES_GOLDEN=1 to seed');
         /** @var array<string, list<string>> $expected */
-        $expected = json_decode((string) file_get_contents(self::GOLDEN), associative: true);
+        $expected = \json_decode((string) \file_get_contents(self::GOLDEN), associative: true);
 
         // Page by page, so a failure names the page rather than the whole file.
         foreach ($expected as $page => $lines) {
             $this->assertArrayHasKey($page, $actual, "page {$page} missing");
             $this->assertSame($lines, $actual[$page], "page {$page} reads differently");
         }
-        $this->assertSame(array_keys($expected), array_keys($actual), 'the page set changed');
+        $this->assertSame(\array_keys($expected), \array_keys($actual), 'the page set changed');
     }
 
     /**
@@ -148,8 +148,8 @@ final class SettingsPagesGoldenTest extends TestCase
     {
         // No PATH: the LSP page must not report whatever this machine happens
         // to have installed, or the golden is per-developer.
-        putenv('PATH=/nonexistent');
-        $this->home = new TempProject(['.porta/config.json' => json_encode(
+        \putenv('PATH=/nonexistent');
+        $this->home = new TempProject(['.porta/config.json' => \json_encode(
             [
                 'settings' => ['theme' => 'light', 'stickyScroll' => false],
                 'languages' => ['php' => ['indentStyle' => 'tabs', 'indentSize' => 4]],
@@ -158,7 +158,7 @@ final class SettingsPagesGoldenTest extends TestCase
         )]);
         $this->project = new TempProject([
             'A.php' => "<?php\n\$x = 1;\n",
-            '.porta.json' => json_encode(
+            '.porta.json' => \json_encode(
                 [
                     // Overrides the global theme — the only way a row can say
                     // "overrides global". The empty plugin list keeps the Plugins
@@ -169,7 +169,7 @@ final class SettingsPagesGoldenTest extends TestCase
                 \JSON_THROW_ON_ERROR,
             ),
         ]);
-        putenv('PORTA_HOME='.$this->home->dir);
+        \putenv('PORTA_HOME='.$this->home->dir);
 
         $pages = [];
         $this->runIde(
@@ -199,7 +199,7 @@ final class SettingsPagesGoldenTest extends TestCase
     {
         $lines = [];
         foreach ($form->render(new RenderContext(110, 22)) as $line) {
-            $lines[] = rtrim(\Symfony\Component\Tui\Ansi\AnsiUtils::stripAnsiCodes($line));
+            $lines[] = \rtrim(\Symfony\Component\Tui\Ansi\AnsiUtils::stripAnsiCodes($line));
         }
 
         return $lines;

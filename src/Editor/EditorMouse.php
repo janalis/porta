@@ -154,11 +154,11 @@ final class EditorMouse
         $onSticky = $relRow >= 0 && $relRow < $stickyCount;
         [$line, $segment] = $onSticky
             ? [$vp->stickyLines[$relRow], 0]
-            : $this->lineAtRow(max(0, $relRow - $stickyCount), $vp);
+            : $this->lineAtRow(\max(0, $relRow - $stickyCount), $vp);
         // Wrapping forces hScroll to 0, so exactly one of these is ever non-zero.
         $displayCol = $segment < 0
             ? 0 // a lens row: the line it describes, at its start
-            : max(0, $relCol - $vp->gutterWidth) + $vp->hScroll + WrapLayout::offsetOf($segment, $vp->wrapWidth ?? 0);
+            : \max(0, $relCol - $vp->gutterWidth) + $vp->hScroll + WrapLayout::offsetOf($segment, $vp->wrapWidth ?? 0);
 
         return ['line' => $line, 'col' => $doc->byteColForDisplayCol($line, $displayCol), 'displayCol' => $displayCol, 'lens' => $segment < 0 ? -$segment - 1 : null];
     }
@@ -216,7 +216,7 @@ final class EditorMouse
     private function stripeJump(int $relRow, EditorViewport $vp): void
     {
         $lineCount = $this->document->getLineCount();
-        $line = (int) ((($relRow + 0.5) * $lineCount) / max(1, $vp->renderRows));
+        $line = (int) ((($relRow + 0.5) * $lineCount) / \max(1, $vp->renderRows));
         $line = IntMath::clamp($line, 0, $lineCount - 1);
         $this->document->setCursor($line, 0);
         ($this->centerOnLine)($line);

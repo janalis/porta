@@ -37,12 +37,12 @@ final class IdeTerminalTest extends TestCase
 
     private function bufferText(\Porta\Terminal\TerminalSession $session): string
     {
-        return implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $session->buffer->lines));
+        return \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $session->buffer->lines));
     }
 
     public function testTwoSessionsIsolateInputAndCycle(): void
     {
-        putenv('SHELL=/bin/sh');
+        \putenv('SHELL=/bin/sh');
         $project = new TempProject(['A.php' => "<?php\n"]);
 
         $this->runIde(
@@ -67,10 +67,10 @@ final class IdeTerminalTest extends TestCase
                     );
 
                     // Type a marker into shell 1.
-                    foreach (str_split("echo AAA-marker\n") as $ch) {
+                    foreach (\str_split("echo AAA-marker\n") as $ch) {
                         $tui->handleInput($ch);
                     }
-                    $this->await(fn (): bool => str_contains($this->bufferText($this->sessions($ide)[0]), 'AAA-marker'));
+                    $this->await(fn (): bool => \str_contains($this->bufferText($this->sessions($ide)[0]), 'AAA-marker'));
 
                     // Ctrl+Shift+` opens a second shell (Ide-scope key).
                     $tui->handleInput("\x1b[96;6u");
@@ -83,17 +83,17 @@ final class IdeTerminalTest extends TestCase
                     $sessions = $this->sessions($ide);
 
                     // Type into shell 2 — the marker must not appear in shell 1.
-                    foreach (str_split("echo BBB-marker\n") as $ch) {
+                    foreach (\str_split("echo BBB-marker\n") as $ch) {
                         $tui->handleInput($ch);
                     }
-                    $this->await(fn (): bool => str_contains($this->bufferText($this->sessions($ide)[1]), 'BBB-marker'));
+                    $this->await(fn (): bool => \str_contains($this->bufferText($this->sessions($ide)[1]), 'BBB-marker'));
                     $this->assertStringNotContainsString('BBB-marker', $this->bufferText($sessions[0]), 'input reached only the active shell');
 
                     // The dock strip shows both sessions as first-class tabs.
                     $renderer = Services::resolve($ide, Renderer::class);
                     $stripRect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
                     $strip = AnsiUtils::stripAnsiCodes($tui->getById('dock-tabs')->render(new \Symfony\Component\Tui\Render\RenderContext($stripRect->columns, 1))[0]);
-                    $this->assertSame(2, substr_count($strip, needle: 'sh'), 'both shell tabs render on the dock strip');
+                    $this->assertSame(2, \substr_count($strip, needle: 'sh'), 'both shell tabs render on the dock strip');
                 },
                 300 => function ($tui, $terminal, $ide): void {
                     // Ctrl+Page Up cycles back to shell 1 (widget-scope, terminal focused).
@@ -107,7 +107,7 @@ final class IdeTerminalTest extends TestCase
                     $rect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
                     $strip = AnsiUtils::stripAnsiCodes($tui->getById('dock-tabs')->render(new \Symfony\Component\Tui\Render\RenderContext($rect->columns, 1))[0]);
                     // The second "sh" occurrence is shell 2's tab.
-                    $secondTab = (int) mb_strpos($strip, needle: 'sh', offset: (int) mb_strpos($strip, needle: 'sh') + 1);
+                    $secondTab = (int) \mb_strpos($strip, needle: 'sh', offset: (int) \mb_strpos($strip, needle: 'sh') + 1);
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + $secondTab + 1, $rect->row + 1));
                     $this->assertSame('shell:2', $sessionsOf()->active()?->id, 'clicking the tab activated shell 2');
                 },
@@ -119,7 +119,7 @@ final class IdeTerminalTest extends TestCase
 
     public function testCloseSessionByTabClickThenCloseLastClosesPanel(): void
     {
-        putenv('SHELL=/bin/sh');
+        \putenv('SHELL=/bin/sh');
         $project = new TempProject(['A.php' => "<?php\n"]);
 
         $this->runIde(
@@ -139,7 +139,7 @@ final class IdeTerminalTest extends TestCase
                     $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
                     $strip = AnsiUtils::stripAnsiCodes($tui->getById('dock-tabs')->render(new \Symfony\Component\Tui\Render\RenderContext($rect->columns, 1))[0]);
-                    $closeCol = (int) mb_strpos($strip, needle: '×');
+                    $closeCol = (int) \mb_strpos($strip, needle: '×');
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + $closeCol + 1, $rect->row + 1));
 
                     $this->assertCount(1, $this->sessions($ide), 'the clicked tab closed');
@@ -162,7 +162,7 @@ final class IdeTerminalTest extends TestCase
 
     public function testSessionTabDragReorders(): void
     {
-        putenv('SHELL=/bin/sh');
+        \putenv('SHELL=/bin/sh');
         $project = new TempProject(['A.php' => "<?php\n"]);
 
         $this->runIde(
@@ -175,14 +175,14 @@ final class IdeTerminalTest extends TestCase
                 },
                 600 => function ($tui, $terminal, $ide): void {
                     $tui->tick();
-                    $ids = fn (): array => array_map(static fn ($s) => $s->id, $this->sessions($ide));
+                    $ids = fn (): array => \array_map(static fn ($s) => $s->id, $this->sessions($ide));
                     $this->assertSame(['shell:1', 'shell:2'], $ids());
 
                     $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
                     $strip = AnsiUtils::stripAnsiCodes($tui->getById('dock-tabs')->render(new \Symfony\Component\Tui\Render\RenderContext($rect->columns, 1))[0]);
-                    $firstTab = (int) mb_strpos($strip, needle: 'sh');
-                    $secondTab = (int) mb_strpos($strip, needle: 'sh', offset: $firstTab + 1);
+                    $firstTab = (int) \mb_strpos($strip, needle: 'sh');
+                    $secondTab = (int) \mb_strpos($strip, needle: 'sh', offset: $firstTab + 1);
 
                     // Press shell 1's dock tab body, drag it over shell 2's slot, release.
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + $firstTab + 1, $rect->row + 1));
@@ -201,7 +201,7 @@ final class IdeTerminalTest extends TestCase
 
     public function testSessionTabContextMenuOffersNewAndCloseSession(): void
     {
-        putenv('SHELL=/bin/sh');
+        \putenv('SHELL=/bin/sh');
         $project = new TempProject(['A.php' => "<?php\n"]);
 
         $this->runIde(
@@ -218,9 +218,9 @@ final class IdeTerminalTest extends TestCase
                     $strip = AnsiUtils::stripAnsiCodes($tui->getById('dock-tabs')->render(new \Symfony\Component\Tui\Render\RenderContext($rect->columns, 1))[0]);
 
                     $terminal->clearOutput();
-                    $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + (int) mb_strpos($strip, needle: 'sh') + 1, $rect->row + 1));
+                    $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + (int) \mb_strpos($strip, needle: 'sh') + 1, $rect->row + 1));
                     $this->assertTrue($tui->getById('context-menu')->isOpen(), 'right-clicking a session tab opened its menu');
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'New Session'));
+                    $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'New Session'));
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('New Session', $screen);
                     $this->assertStringContainsString('Close Session', $screen);
@@ -237,7 +237,7 @@ final class IdeTerminalTest extends TestCase
                     $terminal->clearOutput();
                     $tui->handleInput("\x1b[21;5~");
                     $this->assertTrue($tui->getById('context-menu')->isOpen(), 'Ctrl+F10 opened the session menu');
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Close Session'));
+                    $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Close Session'));
                     $tui->handleInput("\x1b");
                 },
             ],
@@ -248,7 +248,7 @@ final class IdeTerminalTest extends TestCase
 
     public function testRunConfigurationGetsItsOwnTabBesideTheShellAndReRunsInPlace(): void
     {
-        putenv('SHELL=/bin/sh');
+        \putenv('SHELL=/bin/sh');
         $project = new TempProject(['run.php' => "<?php\necho 'RAN-'.getmypid().PHP_EOL;\n"]);
 
         $this->runIde(
@@ -268,27 +268,27 @@ final class IdeTerminalTest extends TestCase
                 900 => function ($tui, $terminal, $ide): void {
                     $tui->tick();
                     $sessions = $this->sessions($ide);
-                    $ids = array_map(static fn ($s) => $s->id, $sessions);
+                    $ids = \array_map(static fn ($s) => $s->id, $sessions);
                     $this->assertContains('shell:1', $ids, 'the shell survived the run');
                     $this->assertContains('run:Run current file: run.php', $ids, 'the run got its own session');
 
                     $run = null;
                     foreach ($sessions as $session) {
-                        if (!str_starts_with($session->id, 'run:')) {
+                        if (!\str_starts_with($session->id, 'run:')) {
                             continue;
                         }
 
                         $run = $session;
                     }
                     self::assertNotNull($run);
-                    $this->await(fn (): bool => str_contains($this->bufferText($run), 'RAN-'));
+                    $this->await(fn (): bool => \str_contains($this->bufferText($run), 'RAN-'));
                     $firstOutput = $this->bufferText($run);
-                    $this->await(fn (): bool => str_contains($this->bufferText($run), '(0)') || null === $run->process() || !$run->isRunning());
+                    $this->await(fn (): bool => \str_contains($this->bufferText($run), '(0)') || null === $run->process() || !$run->isRunning());
 
                     // Re-run: only this session's process is replaced (its buffer clears).
                     $countBefore = \count($this->sessions($ide));
                     $tui->handleInput("\x1b[21;2~"); // shift+f10 → run last
-                    $this->await(fn (): bool => str_contains($this->bufferText($run), 'RAN-') && $this->bufferText($run) !== $firstOutput, 2.0);
+                    $this->await(fn (): bool => \str_contains($this->bufferText($run), 'RAN-') && $this->bufferText($run) !== $firstOutput, 2.0);
                     $this->assertCount($countBefore, $this->sessions($ide), 're-run reused the run session, no new tab');
                 },
             ],

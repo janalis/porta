@@ -55,7 +55,7 @@ final class ActionRegistry
     /** Whether $id is a rebindable action at all — core's or a plugin's. */
     public function has(string $id): bool
     {
-        return array_key_exists($id, $this->labels());
+        return \array_key_exists($id, $this->labels());
     }
 
     /** The action's untranslated label, or the id itself when nothing declares it. */

@@ -36,7 +36,7 @@ final class PluginOrder
         $order = [];
         $skipped = [];
         $state = []; // name => 'visiting' | 'done'
-        foreach (array_keys($byName) as $name) {
+        foreach (\array_keys($byName) as $name) {
             self::visit($name, $byName, $state, $order, $skipped);
         }
 
@@ -55,7 +55,7 @@ final class PluginOrder
     private static function visit(string $name, array $byName, array &$state, array &$order, array &$skipped): bool
     {
         if ('done' === ($state[$name] ?? null)) {
-            return !array_key_exists($name, $skipped);
+            return !\array_key_exists($name, $skipped);
         }
         if ('visiting' === ($state[$name] ?? null)) {
             $skipped[$name] = new ConfigWarning('Plugin "%name%" is part of a dependency cycle', ['%name%' => $name]);
@@ -67,7 +67,7 @@ final class PluginOrder
         $state[$name] = 'visiting';
         $manifest = $byName[$name];
         foreach ($manifest->requires as $required) {
-            if (!array_key_exists($required, $byName)) {
+            if (!\array_key_exists($required, $byName)) {
                 $skipped[$name] = new ConfigWarning('Plugin "%name%" needs "%required%", which is not installed or is disabled', ['%name%' => $name, '%required%' => $required]);
                 $state[$name] = 'done';
 

@@ -57,7 +57,7 @@ final class BlockPasteTest extends TestCase
 
         self::paste($mc, "X\nY\nZ");
 
-        self::assertSame("aX\nbY\ncZ\n", $doc->getText());
+        $this->assertSame("aX\nbY\ncZ\n", $doc->getText());
     }
 
     public function testTheTOPLineGoesToTheTOPCaret(): void
@@ -71,7 +71,7 @@ final class BlockPasteTest extends TestCase
 
         self::paste($mc, "1\n2\n3");
 
-        self::assertSame("a1\nb2\nc3\n", $doc->getText());
+        $this->assertSame("a1\nb2\nc3\n", $doc->getText());
     }
 
     public function testCaretsCreATEDOutOfOrderStillReceiveTheBlockTopDown(): void
@@ -85,7 +85,7 @@ final class BlockPasteTest extends TestCase
 
         self::paste($mc, "1\n2\n3");
 
-        self::assertSame("a1\nb2\nc3\n", $doc->getText());
+        $this->assertSame("a1\nb2\nc3\n", $doc->getText());
     }
 
     public function testAMISMATCHEDClipboardIsRepeatedWholeAtEveryCaret(): void
@@ -98,7 +98,7 @@ final class BlockPasteTest extends TestCase
 
         self::paste($mc, "X\nY");
 
-        self::assertSame("aX\nY\nbX\nY\ncX\nY\n", $doc->getText());
+        $this->assertSame("aX\nY\nbX\nY\ncX\nY\n", $doc->getText());
     }
 
     public function testASINGLELineClipboardStillGoesToEveryCaret(): void
@@ -111,7 +111,7 @@ final class BlockPasteTest extends TestCase
 
         self::paste($mc, 'X');
 
-        self::assertSame("aX\nbX\ncX\n", $doc->getText());
+        $this->assertSame("aX\nbX\ncX\n", $doc->getText());
     }
 
     public function testABlockSurvivesACopyAndPasteUNCHANGED(): void
@@ -123,11 +123,11 @@ final class BlockPasteTest extends TestCase
         $mc->setExtras([new Caret(line: 1, col: 1, anchorLine: 1, anchorCol: 0), new Caret(line: 2, col: 1, anchorLine: 2, anchorCol: 0)]);
 
         $copied = $mc->selectedBlockText();
-        self::assertSame("1\n3\n5", $copied, 'a column copy is one line per caret');
+        $this->assertSame("1\n3\n5", $copied, 'a column copy is one line per caret');
 
         // Paste it into the same rectangle: each cell gets its own line back.
         self::paste($mc, $copied);
 
-        self::assertSame("12\n34\n56\n", $doc->getText());
+        $this->assertSame("12\n34\n56\n", $doc->getText());
     }
 }

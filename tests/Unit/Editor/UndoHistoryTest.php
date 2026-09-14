@@ -29,7 +29,7 @@ final class UndoHistoryTest extends TestCase
     /** @return array{lines: string[], line: int, col: int} */
     private function bigSnap(int $id, int $lines): array
     {
-        return ['lines' => array_fill(0, $lines, "line of state{$id}"), 'line' => $id, 'col' => 0];
+        return ['lines' => \array_fill(0, $lines, "line of state{$id}"), 'line' => $id, 'col' => 0];
     }
 
     public function testTheLineBudgetDropsTheOldestStepsBeforeTheStepCap(): void

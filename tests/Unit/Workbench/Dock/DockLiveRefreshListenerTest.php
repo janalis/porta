@@ -53,7 +53,7 @@ final class DockLiveRefreshListenerTest extends TestCase
 
     private function plainPanel(): string
     {
-        return AnsiUtils::stripAnsiCodes(implode("\n", $this->results->render(new RenderContext(100, 12))));
+        return AnsiUtils::stripAnsiCodes(\implode("\n", $this->results->render(new RenderContext(100, 12))));
     }
 
     public function testRefreshesAnOpenProblemsTabInPlace(): void
@@ -175,6 +175,6 @@ final class DockLiveRefreshListenerTest extends TestCase
 
         $this->notificationLog->append('newest');
         $listener->onNotificationLogged(new NotificationLogged());
-        $this->assertStringContainsString('newest', explode("\n", $this->plainPanel())[0], 'location-less rows re-select the newest line on refresh');
+        $this->assertStringContainsString('newest', \explode("\n", $this->plainPanel())[0], 'location-less rows re-select the newest line on refresh');
     }
 }

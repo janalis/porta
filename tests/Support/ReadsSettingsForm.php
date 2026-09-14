@@ -54,8 +54,8 @@ trait ReadsSettingsForm
     {
         foreach ($lines as $line) {
             $plain = AnsiUtils::stripAnsiCodes($line);
-            if (str_contains($plain, $label)) {
-                return rtrim($plain);
+            if (\str_contains($plain, $label)) {
+                return \rtrim($plain);
             }
         }
 
@@ -70,7 +70,7 @@ trait ReadsSettingsForm
     private function hasSettingRow(array $lines, string $label): bool
     {
         foreach ($lines as $line) {
-            if (str_contains(AnsiUtils::stripAnsiCodes($line), $label)) {
+            if (\str_contains(AnsiUtils::stripAnsiCodes($line), $label)) {
                 return true;
             }
         }
@@ -88,7 +88,7 @@ trait ReadsSettingsForm
             $form->handleInput("\x1b[A");
         }
         for ($i = 0; $i < self::MAX_FORM_ROWS; ++$i) {
-            if (str_contains($this->selectedSettingRow($form, $columns, $rows), $label)) {
+            if (\str_contains($this->selectedSettingRow($form, $columns, $rows), $label)) {
                 return;
             }
             $form->handleInput("\x1b[B");
@@ -107,9 +107,9 @@ trait ReadsSettingsForm
     private function selectedSettingRow(SettingsFormWidget $form, int $columns = 80, int $rows = 24): string
     {
         $lines = $form->render(new RenderContext($columns, $rows));
-        foreach (array_slice($lines, offset: 1, length: -1) as $line) {
-            if (str_contains($line, "\x1b[48;5;")) {
-                return rtrim(AnsiUtils::stripAnsiCodes($line));
+        foreach (\array_slice($lines, offset: 1, length: -1) as $line) {
+            if (\str_contains($line, "\x1b[48;5;")) {
+                return \rtrim(AnsiUtils::stripAnsiCodes($line));
             }
         }
 

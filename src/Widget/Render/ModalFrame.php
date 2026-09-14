@@ -38,15 +38,15 @@ final class ModalFrame
 
         // '┌ ' + label + ' ' + fill + [' ' + hint] + ' ' + × + '┐': the fixed
         // chrome is 6 columns, plus the hint and its separator when shown.
-        $hintWidth = mb_strwidth($hint);
+        $hintWidth = \mb_strwidth($hint);
         $room = $width - 6 - ($hintWidth > 0 ? $hintWidth + 1 : 0);
         if ($room < 8 && $hintWidth > 0) {
             $hint = '';
             $hintWidth = 0;
             $room = $width - 6;
         }
-        $label = AnsiText::truncate($title, max(0, $room));
-        $fill = str_repeat(Glyphs::FRAME_HORIZONTAL, max(0, $room - AnsiUtils::visibleWidth($label)));
+        $label = AnsiText::truncate($title, \max(0, $room));
+        $fill = \str_repeat(Glyphs::FRAME_HORIZONTAL, \max(0, $room - AnsiUtils::visibleWidth($label)));
 
         $bar =
             $accent->apply(Glyphs::MODAL_TOP_LEFT)
@@ -62,7 +62,7 @@ final class ModalFrame
         // By construction the bar is exactly $width columns; the truncate is
         // the degenerate-width backstop (a box too narrow for its chrome) that
         // keeps the compositor invariant unconditional.
-        return AnsiText::truncate($bar, max(0, $width), pad: true);
+        return AnsiText::truncate($bar, \max(0, $width), pad: true);
     }
 
     /**
@@ -110,10 +110,10 @@ final class ModalFrame
         $rows = [$pad];
         foreach ($sections as $i => $section) {
             if ($i > 0) {
-                $rows[] = $accent->apply(Glyphs::MODAL_TEE_LEFT.str_repeat(Glyphs::FRAME_HORIZONTAL, max(0, $innerWidth + 2)).Glyphs::MODAL_TEE_RIGHT);
+                $rows[] = $accent->apply(Glyphs::MODAL_TEE_LEFT.\str_repeat(Glyphs::FRAME_HORIZONTAL, \max(0, $innerWidth + 2)).Glyphs::MODAL_TEE_RIGHT);
             }
             foreach ($section as $line) {
-                $rows[] = $rail.' '.AnsiText::truncate($line, max(0, $innerWidth), pad: true).' '.$rail;
+                $rows[] = $rail.' '.AnsiText::truncate($line, \max(0, $innerWidth), pad: true).' '.$rail;
             }
         }
         $rows[] = $pad;
@@ -124,7 +124,7 @@ final class ModalFrame
         $corner = $resizeCornerHot
             ? $styles->of(Role::Bright)->withBold()->apply(Glyphs::MODAL_RESIZE_GRAB)
             : $accent->apply(Glyphs::MODAL_BOTTOM_RIGHT);
-        $rows[] = $accent->apply(Glyphs::MODAL_BOTTOM_LEFT.str_repeat(Glyphs::FRAME_HORIZONTAL, max(0, $innerWidth + 2))).$corner;
+        $rows[] = $accent->apply(Glyphs::MODAL_BOTTOM_LEFT.\str_repeat(Glyphs::FRAME_HORIZONTAL, \max(0, $innerWidth + 2))).$corner;
 
         return $rows;
     }

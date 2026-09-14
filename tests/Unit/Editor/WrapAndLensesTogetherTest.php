@@ -30,7 +30,7 @@ final class WrapAndLensesTogetherTest extends TestCase
     private function editor(int $rows = 6): CodeEditorWidget
     {
         $this->editor = new CodeEditorWidget();
-        $this->editor->showDocument('/p/a.php', new Document("top\n".str_repeat('W', times: 60)."\nlast\n"));
+        $this->editor->showDocument('/p/a.php', new Document("top\n".\str_repeat('W', times: 60)."\nlast\n"));
         $this->editor->setFocused(true);
         $this->editor->display()->setSoftWrap(true);
         $lens = static fn (string $t): array => ['title' => $t, 'command' => '', 'arguments' => []];
@@ -43,8 +43,8 @@ final class WrapAndLensesTogetherTest extends TestCase
     /** @return list<string> */
     private function rows(int $rows = 6): array
     {
-        return array_map(
-            static fn (string $r): string => trim(AnsiUtils::stripAnsiCodes($r)),
+        return \array_map(
+            static fn (string $r): string => \trim(AnsiUtils::stripAnsiCodes($r)),
             $this->editor->render(new RenderContext(30, $rows)),
         );
     }
@@ -61,7 +61,7 @@ final class WrapAndLensesTogetherTest extends TestCase
         $this->assertStringContainsString('WWW', $painted[3], 'then the line itself');
         $this->assertStringContainsString('2', $painted[3], 'numbered on its first row only');
         $this->assertStringContainsString('WWW', $painted[4], 'and its continuation');
-        $this->assertSame('', trim($painted[4], characters: "W \t"), 'which carries no number');
+        $this->assertSame('', \trim($painted[4], characters: "W \t"), 'which carries no number');
     }
 
     /**
@@ -90,7 +90,7 @@ final class WrapAndLensesTogetherTest extends TestCase
         $editor->getDocument()->setCursor(2, 0);
         $this->rows(5);
 
-        $this->assertStringContainsString('last', implode("\n", $this->rows(5)), 'the caret line is on screen');
+        $this->assertStringContainsString('last', \implode("\n", $this->rows(5)), 'the caret line is on screen');
         $this->assertGreaterThan(0, Probe::get($editor, 'scroll')->vScroll() + Probe::get($editor, 'scroll')->vScrollSegment(), 'which took scrolling');
     }
 

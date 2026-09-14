@@ -276,7 +276,7 @@ final class Ide
         // A terminal that runs the bidi algorithm itself would reorder a row
         // Porta has already ordered. {@see TerminalBidi} says which, and why
         // the test is by name rather than by probe.
-        if (TerminalBidi::isApplied(getenv())) {
+        if (TerminalBidi::isApplied(\getenv())) {
             $this->bidiTui->setTerminalBidi(true);
         }
         // Always REMEMBER the last frame; write it out at shutdown. A screen
@@ -284,12 +284,12 @@ final class Ide
         // next to error.log and perf.log, with nothing to switch on first --
         // five rounds of this were argued from photographs of Hebrew glyphs.
         // PORTA_FRAME_DUMP additionally writes every frame to a chosen path.
-        $dump = getenv('PORTA_FRAME_DUMP');
+        $dump = \getenv('PORTA_FRAME_DUMP');
         $target = \is_string($dump) && '' !== $dump ? $dump : null;
         $this->bidiTui->setFrameSink(function (array $lines) use ($target): void {
-            $this->lastFrame = array_map(AnsiUtils::stripAnsiCodes(...), $lines);
+            $this->lastFrame = \array_map(AnsiUtils::stripAnsiCodes(...), $lines);
             if (null !== $target) {
-                file_put_contents($target, implode("\n", $this->lastFrame));
+                \file_put_contents($target, \implode("\n", $this->lastFrame));
             }
         });
         $this->tui->addListener($this->perf->countInput(...), priority: 1000);
@@ -317,8 +317,8 @@ final class Ide
         // writes error.log and perf.log into, so if it is there the write is
         // ordinary, and if it is not there is nothing to suppress.
         $dir = $this->rootDir.'/.porta';
-        if (is_dir($dir)) {
-            file_put_contents($dir.'/frame.txt', implode("\n", $this->lastFrame));
+        if (\is_dir($dir)) {
+            \file_put_contents($dir.'/frame.txt', \implode("\n", $this->lastFrame));
         }
     }
 

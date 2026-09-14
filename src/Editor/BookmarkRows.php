@@ -32,10 +32,10 @@ final readonly class BookmarkRows
         foreach ($this->bookmarks->all() as $path => $lines) {
             $read = $this->text->forPath($path);
             foreach ($lines as $line) {
-                $rows[] = ['path' => $this->paths->relative($path), 'line' => $line, 'text' => trim($read($line))];
+                $rows[] = ['path' => $this->paths->relative($path), 'line' => $line, 'text' => \trim($read($line))];
             }
         }
-        usort($rows, static fn (array $a, array $b): int => [$a['path'], $a['line']] <=> [$b['path'], $b['line']]);
+        \usort($rows, static fn (array $a, array $b): int => [$a['path'], $a['line']] <=> [$b['path'], $b['line']]);
 
         return $rows;
     }

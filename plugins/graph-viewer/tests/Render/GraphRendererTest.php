@@ -26,15 +26,15 @@ final class GraphRendererTest extends TestCase
     /** @param list<array{float, float}> $points */
     private static function edge(int $tail, int $head, array $points, ?array $tip, ?string $label = null, ?array $lp = null): GraphEdge
     {
-        $xs = array_column($points, 0);
-        $ys = array_column($points, 1);
+        $xs = \array_column($points, 0);
+        $ys = \array_column($points, 1);
 
-        return new GraphEdge($tail, $head, $points, $tip, min($xs), min($ys), max($xs), max($ys), null, $label, $lp, false);
+        return new GraphEdge($tail, $head, $points, $tip, \min($xs), \min($ys), \max($xs), \max($ys), null, $label, $lp, false);
     }
 
     private static function plain(array $lines): string
     {
-        return implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $lines));
+        return \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $lines));
     }
 
     public function testArrowheadsPointInAllFourDirections(): void
@@ -135,7 +135,7 @@ final class GraphRendererTest extends TestCase
         $grid = new GraphCellGrid(100, 30, $view, null);
         [$x0, $y0, $x1, $y1] = $grid->nodeBox($layout->nodes[5]);
 
-        $this->assertSame(5, GraphRenderer::nodeAt($layout, $view, 100, 30, intdiv($y0 + $y1, num2: 2), intdiv($x0 + $x1, num2: 2)));
+        $this->assertSame(5, GraphRenderer::nodeAt($layout, $view, 100, 30, \intdiv($y0 + $y1, num2: 2), \intdiv($x0 + $x1, num2: 2)));
         $this->assertNull(GraphRenderer::nodeAt($layout, $view, 100, 30, 0, 0));
     }
 
@@ -146,8 +146,8 @@ final class GraphRendererTest extends TestCase
         $this->assertSame('', $grid->roleKey(Role::Dim), 'no styles, no painter');
         $grid->text(0, 0, 'clipped-by-max', '', maxCol: 3);
         $lines = $grid->lines();
-        $this->assertSame('clip', substr($lines[0], offset: 0, length: 4), 'text stops at maxCol');
-        $this->assertStringNotContainsString("\x1b[", implode('', $lines), 'a style-less grid emits no escapes');
+        $this->assertSame('clip', \substr($lines[0], offset: 0, length: 4), 'text stops at maxCol');
+        $this->assertStringNotContainsString("\x1b[", \implode('', $lines), 'a style-less grid emits no escapes');
     }
 
     public function testABlankRunUnderAnOrdinaryRoleSkipsEscapesButASelectedRowRunDoesNot(): void

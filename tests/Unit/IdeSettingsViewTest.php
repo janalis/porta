@@ -57,7 +57,7 @@ final class IdeSettingsViewTest extends TestCase
     /** @return list<string> */
     private function mainIds(): array
     {
-        return array_map(static fn (AbstractWidget $w): string => $w->getId(), $this->main->all());
+        return \array_map(static fn (AbstractWidget $w): string => $w->getId(), $this->main->all());
     }
 
     public function testSettingsCommandOpensAndTogglesTheView(): void

@@ -417,10 +417,10 @@ final class WelcomeModalController implements ContributedView
         // last one off. A Symfony project adds a sixth card, which overflows
         // this window by design: the widget's followHeights() scrolls the
         // selection into view, so navigating down reveals what the fold hides.
-        $innerWidth = max(20, min($this->userInnerWidth ?? self::MAX_INNER_WIDTH, $boundRight - $boundLeft - 8));
-        $innerHeight = max(5, min($this->userInnerHeight ?? self::MAX_INNER_HEIGHT, $boundBottom - $boundTop - ModalFrame::CHROME_ROWS));
+        $innerWidth = \max(20, \min($this->userInnerWidth ?? self::MAX_INNER_WIDTH, $boundRight - $boundLeft - 8));
+        $innerHeight = \max(5, \min($this->userInnerHeight ?? self::MAX_INNER_HEIGHT, $boundBottom - $boundTop - ModalFrame::CHROME_ROWS));
         $width = $innerWidth + ModalFrame::CHROME_COLS;
-        $content = array_values($this->welcome->render(new RenderContext($innerWidth, $innerHeight)));
+        $content = \array_values($this->welcome->render(new RenderContext($innerWidth, $innerHeight)));
         $panel = [
             ModalFrame::titleBar($this->welcome->title(), $width, $this->styles, $this->closeHovered),
             ...ModalFrame::wrap($content, $innerWidth, $this->styles, resizeCornerHot: $this->cornerHovered || $this->resizing),
@@ -429,10 +429,10 @@ final class WelcomeModalController implements ContributedView
 
         // Auto-center (a third down, like the pickers) until a drag freezes an
         // absolute position; clamp either into the pane union.
-        $top = $this->top ?? ($boundTop + max(0, intdiv($boundBottom - $boundTop - $rows, num2: 3)));
-        $col = $this->col ?? ($boundLeft + max(0, intdiv($boundRight - $boundLeft - $width, num2: 2)));
-        $top = IntMath::clamp($top, $boundTop, max($boundTop, $boundBottom - $rows));
-        $col = IntMath::clamp($col, $boundLeft, max($boundLeft, $boundRight - $width));
+        $top = $this->top ?? ($boundTop + \max(0, \intdiv($boundBottom - $boundTop - $rows, num2: 3)));
+        $col = $this->col ?? ($boundLeft + \max(0, \intdiv($boundRight - $boundLeft - $width, num2: 2)));
+        $top = IntMath::clamp($top, $boundTop, \max($boundTop, $boundBottom - $rows));
+        $col = IntMath::clamp($col, $boundLeft, \max($boundLeft, $boundRight - $width));
         if (null !== $this->top || null !== $this->col) {
             $this->top = $top;
             $this->col = $col;

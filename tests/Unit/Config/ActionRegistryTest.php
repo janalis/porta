@@ -38,9 +38,9 @@ final class ActionRegistryTest extends TestCase
         // The order IS the keymap page's order: core, then plugins in load
         // order — so enabling a plugin appends rows rather than reshuffling the
         // page under the user.
-        $ids = array_keys($labels);
+        $ids = \array_keys($labels);
         $this->assertSame(['demo_zoom', 'demo_pan'], \array_slice($ids, -2));
-        $this->assertSame(array_keys(ActionCatalog::ACTIONS), \array_slice($ids, offset: 0, length: \count(ActionCatalog::ACTIONS)));
+        $this->assertSame(\array_keys(ActionCatalog::ACTIONS), \array_slice($ids, offset: 0, length: \count(ActionCatalog::ACTIONS)));
     }
 
     public function testMembershipCoversBothHalves(): void
@@ -70,7 +70,7 @@ final class ActionRegistryTest extends TestCase
         $labels = $this->registry(['save' => 'Demo: Not Save', 'demo_zoom' => 'Demo: Zoom'])->labels();
 
         $this->assertSame('Save File', $labels['save']);
-        $this->assertSame(array_keys(ActionCatalog::ACTIONS), \array_slice(array_keys($labels), offset: 0, length: \count(ActionCatalog::ACTIONS)));
+        $this->assertSame(\array_keys(ActionCatalog::ACTIONS), \array_slice(\array_keys($labels), offset: 0, length: \count(ActionCatalog::ACTIONS)));
         $this->assertSame('Demo: Zoom', $labels['demo_zoom'], 'a non-colliding row still lands');
     }
 }

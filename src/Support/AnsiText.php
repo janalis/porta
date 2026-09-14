@@ -61,7 +61,7 @@ final class AnsiText
         }
         // The tail gets the larger half: it carries the filename.
         $room = $width - $mark;
-        $head = intdiv($room, num2: 2);
+        $head = \intdiv($room, num2: 2);
 
         return AnsiUtils::sliceByColumn($text, startCol: 0, length: $head).$ellipsis.AnsiUtils::sliceByColumn($text, startCol: $visible - ($room - $head), length: $room - $head);
     }
@@ -79,14 +79,14 @@ final class AnsiText
      */
     public static function dim(string $line): string
     {
-        if (!str_contains($line, "\x1b")) {
+        if (!\str_contains($line, "\x1b")) {
             return Sgr::FAINT.$line.Sgr::NORMAL_INTENSITY;
         }
 
-        $reArmed = (string) preg_replace_callback(
+        $reArmed = (string) \preg_replace_callback(
             '/\x1b\[([\d;]*)m/',
             static function (array $match): string {
-                $params = explode(';', $match[1]);
+                $params = \explode(';', $match[1]);
 
                 return '' === $match[1] || \in_array('0', $params, strict: true) || \in_array('22', $params, strict: true)
                     ? $match[0].Sgr::FAINT
@@ -105,7 +105,7 @@ final class AnsiText
      */
     public static function blank(int $width): string
     {
-        return str_repeat(' ', max(0, $width));
+        return \str_repeat(' ', \max(0, $width));
     }
 
     /**
@@ -114,7 +114,7 @@ final class AnsiText
      */
     public static function padRight(string $text, int $width): string
     {
-        return $text.str_repeat(' ', max(0, $width - AnsiUtils::visibleWidth($text)));
+        return $text.\str_repeat(' ', \max(0, $width - AnsiUtils::visibleWidth($text)));
     }
 
     /**
@@ -128,10 +128,10 @@ final class AnsiText
      */
     public static function wrap(string $text, int $width): array
     {
-        $width = max(1, $width);
+        $width = \max(1, $width);
         $lines = [];
         $line = '';
-        foreach (explode(' ', $text) as $word) {
+        foreach (\explode(' ', $text) as $word) {
             $candidate = '' === $line ? $word : $line.' '.$word;
             if (AnsiUtils::visibleWidth($candidate) <= $width) {
                 $line = $candidate;
@@ -147,7 +147,7 @@ final class AnsiText
                 }
                 $lines[] = $head;
                 // Plain text, so the byte length of the head is exactly what was consumed.
-                $word = substr($word, \strlen($head));
+                $word = \substr($word, \strlen($head));
             }
             $line = $word;
         }
@@ -177,7 +177,7 @@ final class AnsiText
      */
     public static function caretWindow(string $text, int $caretCol, int $width, string $marker): string
     {
-        $off = max(0, $caretCol - $width + 1);
+        $off = \max(0, $caretCol - $width + 1);
         $left = AnsiUtils::sliceByColumn($text, $off, $caretCol - $off, strict: true);
         $right = AnsiUtils::sliceByColumn($text, $caretCol, $width - ($caretCol - $off), strict: true);
 
@@ -194,14 +194,14 @@ final class AnsiText
      */
     public static function scrollLineToCaret(string $line, int $width): string
     {
-        $pos = strpos($line, AnsiUtils::CURSOR_MARKER_PREFIX);
-        $end = false === $pos ? false : strpos($line, needle: "\x07", offset: $pos);
+        $pos = \strpos($line, AnsiUtils::CURSOR_MARKER_PREFIX);
+        $end = false === $pos ? false : \strpos($line, needle: "\x07", offset: $pos);
         if (false === $pos || false === $end) {
             return self::padRight(self::truncate($line, $width), $width);
         }
-        $marker = substr($line, $pos, $end - $pos + 1);
-        $caretCol = AnsiUtils::visibleWidth(substr($line, offset: 0, length: $pos));
-        $bare = substr($line, offset: 0, length: $pos).substr($line, $end + 1);
+        $marker = \substr($line, $pos, $end - $pos + 1);
+        $caretCol = AnsiUtils::visibleWidth(\substr($line, offset: 0, length: $pos));
+        $bare = \substr($line, offset: 0, length: $pos).\substr($line, $end + 1);
 
         return self::padRight(self::caretWindow($bare, $caretCol, $width, $marker), $width);
     }

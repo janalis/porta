@@ -55,7 +55,7 @@ final class ColumnSelection
     public function extend(int $rowDelta, int $colDelta, Document $document): array
     {
         $this->caretRow = $document->clampLine($this->caretRow + $rowDelta);
-        $this->caretCol = max(0, $this->caretCol + $colDelta);
+        $this->caretCol = \max(0, $this->caretCol + $colDelta);
 
         return [$this->anchorRow ?? $this->caretRow, $this->anchorCol, $this->caretRow, $this->caretCol];
     }

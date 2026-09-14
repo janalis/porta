@@ -30,7 +30,7 @@ final class HintDialectTest extends TestCase
     /** @return list<string> every <source> text of the English catalog */
     private function sources(): array
     {
-        $xml = simplexml_load_file(self::CATALOG);
+        $xml = \simplexml_load_file(self::CATALOG);
         self::assertNotFalse($xml, 'messages.en.xlf is not valid XML');
         $xml->registerXPathNamespace('x', 'urn:oasis:names:tc:xliff:document:1.2');
 

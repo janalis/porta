@@ -22,10 +22,10 @@ final class UseScanner
     {
         // Files may be mid-edit or malformed: swallow tokenizer warnings,
         // keeping the tokens it still returns (the BreadcrumbScanner idiom).
-        set_error_handler(static fn (): bool => true);
+        \set_error_handler(static fn (): bool => true);
         /** @var list<array{0: int, 1: string, 2: int}|string> $tokens */
-        $tokens = token_get_all($source);
-        restore_error_handler();
+        $tokens = \token_get_all($source);
+        \restore_error_handler();
 
         $namespace = null;
         $uses = [];
@@ -85,13 +85,13 @@ final class UseScanner
                         break;
                     }
                     if ('namespace' === $collecting) {
-                        $namespace = '' !== $buffer ? trim($buffer, characters: '\\') : null;
+                        $namespace = '' !== $buffer ? \trim($buffer, characters: '\\') : null;
                         $collecting = null;
                     }
                     ++$depth;
                     break;
                 case '}':
-                    $depth = max(0, $depth - 1);
+                    $depth = \max(0, $depth - 1);
                     if ('use' === $collecting && null !== $groupPrefix) {
                         if (!$dropStatement && !$suppressItem) {
                             self::flush($uses, $buffer, $groupPrefix);
@@ -118,7 +118,7 @@ final class UseScanner
                     break;
                 case ';':
                     if ('namespace' === $collecting) {
-                        $namespace = '' !== $buffer ? trim($buffer, characters: '\\') : null;
+                        $namespace = '' !== $buffer ? \trim($buffer, characters: '\\') : null;
                     }
                     if ('use' === $collecting && !$dropStatement && !$suppressItem) {
                         self::flush($uses, $buffer, $groupPrefix);
@@ -142,7 +142,7 @@ final class UseScanner
         if ('' === $buffer) {
             return;
         }
-        $name = trim((null !== $groupPrefix ? rtrim($groupPrefix, characters: '\\').'\\' : '').$buffer, characters: '\\');
+        $name = \trim((null !== $groupPrefix ? \rtrim($groupPrefix, characters: '\\').'\\' : '').$buffer, characters: '\\');
         if ('' !== $name) {
             $uses[] = $name;
         }

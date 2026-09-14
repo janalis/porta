@@ -40,7 +40,7 @@ final class PluginInstallerTest extends TestCase
      */
     private function fakeComposer(int $exitCode = 0, array $packages = []): string
     {
-        return FakeComposer::write($this->project->dir.'/fakebin-'.bin2hex(random_bytes(3)), $exitCode, $packages);
+        return FakeComposer::write($this->project->dir.'/fakebin-'.\bin2hex(\random_bytes(3)), $exitCode, $packages);
     }
 
     /** Runs install() and pumps the loop until the callback fires; returns [error, file]. */
@@ -86,12 +86,12 @@ final class PluginInstallerTest extends TestCase
     private function sourceDir(string $name, Presence $withPluginPhp = Presence::With, Presence $withManifest = Presence::With): string
     {
         $dir = $this->project->dir.'/src-plugins/'.$name;
-        mkdir($dir, permissions: 0o777, recursive: true);
+        \mkdir($dir, permissions: 0o777, recursive: true);
         if (Presence::With === $withPluginPhp) {
-            file_put_contents($dir.'/plugin.php', "<?php\n// {$name}\n");
+            \file_put_contents($dir.'/plugin.php', "<?php\n// {$name}\n");
         }
         if (Presence::With === $withManifest) {
-            file_put_contents($dir.'/composer.json', (string) json_encode(['name' => 'test/'.$name, 'type' => 'porta-plugin']));
+            \file_put_contents($dir.'/composer.json', (string) \json_encode(['name' => 'test/'.$name, 'type' => 'porta-plugin']));
         }
 
         return $dir;
@@ -108,8 +108,8 @@ final class PluginInstallerTest extends TestCase
     private function repo(Presence $withPluginPhp): string
     {
         $dir = $this->sourceDir('repo-plugin', $withPluginPhp);
-        $q = escapeshellarg($dir);
-        exec("git -C {$q} init -q 2>/dev/null && git -C {$q} config user.email t@t && git -C {$q} config user.name t && git -C {$q} add -A && git -C {$q} commit -qm init --allow-empty 2>/dev/null");
+        $q = \escapeshellarg($dir);
+        \exec("git -C {$q} init -q 2>/dev/null && git -C {$q} config user.email t@t && git -C {$q} config user.name t && git -C {$q} add -A && git -C {$q} commit -qm init --allow-empty 2>/dev/null");
 
         return $dir;
     }
@@ -123,7 +123,7 @@ final class PluginInstallerTest extends TestCase
         $this->assertNull($error);
         $this->assertSame($this->project->dir.'/.porta/plugins/demo/plugin.php', $file);
         $this->assertFileExists((string) $file);
-        $this->assertTrue(is_link($this->project->dir.'/.porta/plugins/demo'), 'a composer-managed install is a symlink');
+        $this->assertTrue(\is_link($this->project->dir.'/.porta/plugins/demo'), 'a composer-managed install is a symlink');
 
         [$error, $file] = $this->install($this->installer(composer: $this->fakeComposer()), $source, 'global');
         $this->assertNull($error);
@@ -166,11 +166,11 @@ final class PluginInstallerTest extends TestCase
     {
         $source = $this->sourceDir('demo');
         $composer = $this->fakeComposer();
-        chmod($this->project->dir, permissions: 0o555);
+        \chmod($this->project->dir, permissions: 0o555);
         try {
             [$error] = $this->install($this->installer(composer: $composer), $source);
         } finally {
-            chmod($this->project->dir, permissions: 0o755);
+            \chmod($this->project->dir, permissions: 0o755);
         }
         $this->assertStringContainsString('Could not write', (string) $error);
         $this->assertStringContainsString('composer.json', (string) $error);
@@ -184,11 +184,11 @@ final class PluginInstallerTest extends TestCase
         // call's ensureScaffold() finds the file already there and succeeds —
         // isolating the second write (addPathRepository) as the one that fails.
         new PluginComposerProject()->ensureScaffold($this->project->dir);
-        chmod($this->project->dir.'/.porta', permissions: 0o555);
+        \chmod($this->project->dir.'/.porta', permissions: 0o555);
         try {
             [$error] = $this->install($this->installer(composer: $composer), $source);
         } finally {
-            chmod($this->project->dir.'/.porta', permissions: 0o755);
+            \chmod($this->project->dir.'/.porta', permissions: 0o755);
         }
         $this->assertStringContainsString('Could not write', (string) $error);
         $this->assertStringContainsString('composer.json', (string) $error);
@@ -202,7 +202,7 @@ final class PluginInstallerTest extends TestCase
         $this->assertNull($error);
         $this->assertSame($this->project->dir.'/.porta/plugins/mylint/plugin.php', $file);
         $this->assertFileExists((string) $file);
-        $this->assertTrue(is_link($this->project->dir.'/.porta/plugins/mylint'));
+        $this->assertTrue(\is_link($this->project->dir.'/.porta/plugins/mylint'));
     }
 
     public function testNameInstallGuards(): void
@@ -220,7 +220,7 @@ final class PluginInstallerTest extends TestCase
 
     public function testNameInstallRollsBackAPackageThatIsNotAPortaPlugin(): void
     {
-        $composer = $this->fakeComposer(packages: ['acme/wrong' => ['composerJson' => (string) json_encode(['name' => 'acme/wrong', 'type' => 'library'])]]);
+        $composer = $this->fakeComposer(packages: ['acme/wrong' => ['composerJson' => (string) \json_encode(['name' => 'acme/wrong', 'type' => 'library'])]]);
         [$error, $file] = $this->install($this->installer(composer: $composer), 'acme/wrong');
 
         $this->assertSame('"acme/wrong" is not a Porta plugin package', $error);
@@ -229,7 +229,7 @@ final class PluginInstallerTest extends TestCase
         // The rollback `composer remove` is fire-and-forget — $onDone fires
         // before it necessarily finishes — so await its effect rather than
         // asserting on it immediately.
-        $this->await(fn (): bool => !is_dir($this->project->dir.'/.porta/vendor/acme/wrong'), what: 'the best-effort rollback removing what composer landed');
+        $this->await(fn (): bool => !\is_dir($this->project->dir.'/.porta/vendor/acme/wrong'), what: 'the best-effort rollback removing what composer landed');
     }
 
     public function testNameInstallReportsAComposerFailure(): void
@@ -241,11 +241,11 @@ final class PluginInstallerTest extends TestCase
     public function testNameInstallFailsClearlyWhenTheScaffoldCannotBeWritten(): void
     {
         $composer = $this->fakeComposer();
-        chmod($this->project->dir, permissions: 0o555);
+        \chmod($this->project->dir, permissions: 0o555);
         try {
             [$error] = $this->install($this->installer(composer: $composer), 'acme/mylint');
         } finally {
-            chmod($this->project->dir, permissions: 0o755);
+            \chmod($this->project->dir, permissions: 0o755);
         }
         $this->assertStringContainsString('Could not write', (string) $error);
         $this->assertStringContainsString('composer.json', (string) $error);
@@ -271,15 +271,15 @@ final class PluginInstallerTest extends TestCase
     {
         $git = $this->git();
         $repo = $this->repo(withPluginPhp: Presence::With);
-        $branch = trim((string) shell_exec('git -C '.escapeshellarg($repo).' rev-parse --abbrev-ref HEAD'));
+        $branch = \trim((string) \shell_exec('git -C '.\escapeshellarg($repo).' rev-parse --abbrev-ref HEAD'));
 
         $composer = $this->fakeComposer();
         [$error, $file] = $this->install($this->installer(git: $git, composer: $composer), 'file://'.$repo);
 
         $this->assertNull($error);
         $this->assertSame($this->project->dir.'/.porta/plugins/repo-plugin/plugin.php', $file);
-        $this->assertTrue(is_link($this->project->dir.'/.porta/plugins/repo-plugin'));
-        $composerJson = json_decode((string) file_get_contents($this->project->dir.'/.porta/composer.json'), associative: true);
+        $this->assertTrue(\is_link($this->project->dir.'/.porta/plugins/repo-plugin'));
+        $composerJson = \json_decode((string) \file_get_contents($this->project->dir.'/.porta/composer.json'), associative: true);
         $this->assertSame('dev-'.$branch, $composerJson['require']['test/repo-plugin'] ?? null, 'requires the exact peeked branch, not a released version');
     }
 
@@ -298,12 +298,12 @@ final class PluginInstallerTest extends TestCase
     /** A local git repo whose composer.json is $manifestJson, usable as a clone URL. */
     private function repoWithManifest(string $manifestJson): string
     {
-        $dir = $this->project->dir.'/src-plugins/manifest-'.bin2hex(random_bytes(3));
-        mkdir($dir, permissions: 0o777, recursive: true);
-        file_put_contents($dir.'/plugin.php', data: "<?php\n");
-        file_put_contents($dir.'/composer.json', $manifestJson);
-        $q = escapeshellarg($dir);
-        exec("git -C {$q} init -q 2>/dev/null && git -C {$q} config user.email t@t && git -C {$q} config user.name t && git -C {$q} add -A && git -C {$q} commit -qm init --allow-empty 2>/dev/null");
+        $dir = $this->project->dir.'/src-plugins/manifest-'.\bin2hex(\random_bytes(3));
+        \mkdir($dir, permissions: 0o777, recursive: true);
+        \file_put_contents($dir.'/plugin.php', data: "<?php\n");
+        \file_put_contents($dir.'/composer.json', $manifestJson);
+        $q = \escapeshellarg($dir);
+        \exec("git -C {$q} init -q 2>/dev/null && git -C {$q} config user.email t@t && git -C {$q} config user.name t && git -C {$q} add -A && git -C {$q} commit -qm init --allow-empty 2>/dev/null");
 
         return $dir;
     }
@@ -312,11 +312,11 @@ final class PluginInstallerTest extends TestCase
     {
         $git = $this->git();
 
-        $badName = $this->repoWithManifest((string) json_encode(['name' => 'acme/a.b', 'type' => 'porta-plugin']));
+        $badName = $this->repoWithManifest((string) \json_encode(['name' => 'acme/a.b', 'type' => 'porta-plugin']));
         [$error] = $this->install($this->installer(git: $git, composer: $this->fakeComposer()), 'file://'.$badName);
         $this->assertSame('"a.b" is not a valid plugin name', $error);
 
-        $dup = $this->repoWithManifest((string) json_encode(['name' => 'acme/demo', 'type' => 'porta-plugin']));
+        $dup = $this->repoWithManifest((string) \json_encode(['name' => 'acme/demo', 'type' => 'porta-plugin']));
         $installer = $this->installer(git: $git, composer: $this->fakeComposer());
         $this->install($installer, 'file://'.$dup);
         [$error] = $this->install($installer, 'file://'.$dup);
@@ -327,10 +327,10 @@ final class PluginInstallerTest extends TestCase
     {
         $git = $this->git();
         $dir = $this->project->dir.'/src-plugins/bad-manifest';
-        mkdir($dir, permissions: 0o777, recursive: true);
-        file_put_contents($dir.'/plugin.php', data: "<?php\n");
-        $q = escapeshellarg($dir);
-        exec("git -C {$q} init -q 2>/dev/null && git -C {$q} config user.email t@t && git -C {$q} config user.name t && git -C {$q} add -A && git -C {$q} commit -qm init --allow-empty 2>/dev/null");
+        \mkdir($dir, permissions: 0o777, recursive: true);
+        \file_put_contents($dir.'/plugin.php', data: "<?php\n");
+        $q = \escapeshellarg($dir);
+        \exec("git -C {$q} init -q 2>/dev/null && git -C {$q} config user.email t@t && git -C {$q} config user.name t && git -C {$q} add -A && git -C {$q} commit -qm init --allow-empty 2>/dev/null");
 
         [$error] = $this->install($this->installer(git: $git, composer: $this->fakeComposer()), 'file://'.$dir);
         $this->assertStringContainsString('No installable plugin package found in', (string) $error);
@@ -365,11 +365,11 @@ final class PluginInstallerTest extends TestCase
         $git = $this->git();
         $repo = $this->repo(withPluginPhp: Presence::With);
         $composer = $this->fakeComposer();
-        chmod($this->project->dir, permissions: 0o555);
+        \chmod($this->project->dir, permissions: 0o555);
         try {
             [$error] = $this->install($this->installer(git: $git, composer: $composer), 'file://'.$repo);
         } finally {
-            chmod($this->project->dir, permissions: 0o755);
+            \chmod($this->project->dir, permissions: 0o755);
         }
         $this->assertStringContainsString('Could not write', (string) $error);
         $this->assertStringContainsString('composer.json', (string) $error);
@@ -381,11 +381,11 @@ final class PluginInstallerTest extends TestCase
         $repo = $this->repo(withPluginPhp: Presence::With);
         $composer = $this->fakeComposer();
         new PluginComposerProject()->ensureScaffold($this->project->dir);
-        chmod($this->project->dir.'/.porta', permissions: 0o555);
+        \chmod($this->project->dir.'/.porta', permissions: 0o555);
         try {
             [$error] = $this->install($this->installer(git: $git, composer: $composer), 'file://'.$repo);
         } finally {
-            chmod($this->project->dir.'/.porta', permissions: 0o755);
+            \chmod($this->project->dir.'/.porta', permissions: 0o755);
         }
         $this->assertStringContainsString('Could not write', (string) $error);
         $this->assertStringContainsString('composer.json', (string) $error);
@@ -450,16 +450,16 @@ final class PluginInstallerTest extends TestCase
         // not happen through this class's own install() path, but remove()
         // must fail safely rather than guess a package to `composer remove`.
         $target = $this->project->dir.'/elsewhere/broken';
-        mkdir($target, permissions: 0o777, recursive: true);
-        file_put_contents($target.'/plugin.php', data: "<?php\n");
+        \mkdir($target, permissions: 0o777, recursive: true);
+        \file_put_contents($target.'/plugin.php', data: "<?php\n");
         $dest = $this->project->dir.'/.porta/plugins/broken';
-        mkdir(\dirname($dest), permissions: 0o777, recursive: true);
-        symlink($target, $dest);
+        \mkdir(\dirname($dest), permissions: 0o777, recursive: true);
+        \symlink($target, $dest);
 
         $error = $this->remove($this->installer(), 'broken', 'project');
 
         $this->assertSame('Cannot remove "broken"', $error);
-        $this->assertTrue(is_link($dest), 'left standing — nothing safe to do');
+        $this->assertTrue(\is_link($dest), 'left standing — nothing safe to do');
     }
 
     public function testRemovingASymlinkedPluginWithoutComposerFails(): void
@@ -479,8 +479,8 @@ final class PluginInstallerTest extends TestCase
         // A pre-existing git-clone/copy install from before composer-managed
         // installs: a real directory, not a symlink.
         $dir = $this->project->dir.'/.porta/plugins/legacy';
-        mkdir($dir, permissions: 0o777, recursive: true);
-        file_put_contents($dir.'/plugin.php', data: "<?php\n");
+        \mkdir($dir, permissions: 0o777, recursive: true);
+        \file_put_contents($dir.'/plugin.php', data: "<?php\n");
 
         $error = $this->remove($this->installer(), 'legacy', 'project');
 
@@ -490,22 +490,22 @@ final class PluginInstallerTest extends TestCase
 
     public function testARemovalThatWillNotDeleteIsReportedNotSwallowed(): void
     {
-        if (0 === posix_geteuid()) {
+        if (0 === \posix_geteuid()) {
             $this->markTestSkipped('root deletes anything');
         }
         $dir = $this->project->dir.'/.porta/plugins/stuck';
-        mkdir($dir, permissions: 0o777, recursive: true);
-        file_put_contents($dir.'/plugin.php', data: "<?php\n");
+        \mkdir($dir, permissions: 0o777, recursive: true);
+        \file_put_contents($dir.'/plugin.php', data: "<?php\n");
         // No write bit on the PARENT: the entry itself cannot be unlinked
         // however writable the tree below it is.
-        chmod($this->project->dir.'/.porta/plugins', permissions: 0o555);
+        \chmod($this->project->dir.'/.porta/plugins', permissions: 0o555);
 
         try {
             $error = $this->remove($this->installer(), 'stuck', 'project');
             $this->assertSame('Cannot remove "stuck"', $error);
             $this->assertDirectoryExists($dir);
         } finally {
-            chmod($this->project->dir.'/.porta/plugins', permissions: 0o777);
+            \chmod($this->project->dir.'/.porta/plugins', permissions: 0o777);
         }
     }
 
@@ -525,12 +525,12 @@ final class PluginInstallerTest extends TestCase
         // file already there and succeeds regardless of directory
         // permissions): delete it, then block the directory it would
         // recreate it in.
-        unlink($this->project->dir.'/.porta/composer.json');
-        chmod($this->project->dir.'/.porta', permissions: 0o555);
+        \unlink($this->project->dir.'/.porta/composer.json');
+        \chmod($this->project->dir.'/.porta', permissions: 0o555);
         try {
             $error = $this->remove($installer, 'demo', 'project');
         } finally {
-            chmod($this->project->dir.'/.porta', permissions: 0o755);
+            \chmod($this->project->dir.'/.porta', permissions: 0o755);
         }
         $this->assertSame('Cannot remove "demo"', $error);
     }
@@ -559,8 +559,8 @@ final class PluginInstallerTest extends TestCase
     {
         // PORTA_EMBEDDED_PLUGINS pointed at the project's own plugin dir: the
         // realpath-equality guard keeps those entries non-removable.
-        mkdir($this->project->dir.'/.porta/plugins/bundled', permissions: 0o777, recursive: true);
-        file_put_contents($this->project->dir.'/.porta/plugins/bundled/plugin.php', data: "<?php\n");
+        \mkdir($this->project->dir.'/.porta/plugins/bundled', permissions: 0o777, recursive: true);
+        \file_put_contents($this->project->dir.'/.porta/plugins/bundled/plugin.php', data: "<?php\n");
         $installer = new PluginInstaller($this->project->dir, null, new Translator('en'), null, $this->project->dir.'/.porta/plugins');
 
         $this->assertSame(
@@ -604,7 +604,7 @@ final class PluginInstallerTest extends TestCase
         // In the PLUGIN's directory, never the user's project — that tree is
         // ToolInstaller's, and a plugin's libraries have no business in it.
         $source = $this->sourceDir('needy');
-        file_put_contents($source.'/composer.json', data: '{"name":"test/needy","type":"porta-plugin","require":{"vend/lib":"^1.0"}}');
+        \file_put_contents($source.'/composer.json', data: '{"name":"test/needy","type":"porta-plugin","require":{"vend/lib":"^1.0"}}');
 
         [$error, $file] = $this->install($this->installer(composer: $this->fakeComposer()), $source);
 
@@ -625,12 +625,12 @@ final class PluginInstallerTest extends TestCase
         // ordinary case: a composer that can `require` but chokes on the
         // plugin's OWN dependency install.
         $source = $this->sourceDir('flaky');
-        file_put_contents($source.'/composer.json', data: '{"name":"test/flaky","type":"porta-plugin","require":{"vend/lib":"^1.0"}}');
+        \file_put_contents($source.'/composer.json', data: '{"name":"test/flaky","type":"porta-plugin","require":{"vend/lib":"^1.0"}}');
 
         $composer = $this->project->dir.'/fakebin-inner/composer';
-        mkdir(\dirname($composer), permissions: 0o777, recursive: true);
-        file_put_contents($this->project->dir.'/fakebin-inner/composer-recipe.json', data: '[]');
-        file_put_contents($composer, '#!'.\PHP_BINARY.' -n'."\n<?php\n".<<<'PHP'
+        \mkdir(\dirname($composer), permissions: 0o777, recursive: true);
+        \file_put_contents($this->project->dir.'/fakebin-inner/composer-recipe.json', data: '[]');
+        \file_put_contents($composer, '#!'.\PHP_BINARY.' -n'."\n<?php\n".<<<'PHP'
             $cmd = $argv[1] ?? '';
             if ('install' === $cmd) {
                 exit(3);
@@ -651,7 +651,7 @@ final class PluginInstallerTest extends TestCase
             }
             exit(0);
             PHP);
-        chmod($composer, permissions: 0o755);
+        \chmod($composer, permissions: 0o755);
 
         [$error, $file] = $this->install($this->installer(composer: $composer), $source);
 
@@ -665,7 +665,7 @@ final class PluginInstallerTest extends TestCase
     {
         // No composer binary at all is caught before any require ever runs.
         $source = $this->sourceDir('needy');
-        file_put_contents($source.'/composer.json', data: '{"name":"test/needy","type":"porta-plugin","require":{"vend/lib":"^1.0"}}');
+        \file_put_contents($source.'/composer.json', data: '{"name":"test/needy","type":"porta-plugin","require":{"vend/lib":"^1.0"}}');
 
         [$error, $file] = $this->install($this->installer(), $source);
 
@@ -677,9 +677,9 @@ final class PluginInstallerTest extends TestCase
     private function pluginDir(string $name, string $json): string
     {
         $dir = $this->project->dir.'/.porta/plugins/'.$name;
-        mkdir($dir, permissions: 0o777, recursive: true);
-        file_put_contents($dir.'/plugin.php', data: "<?php\n");
-        file_put_contents($dir.'/composer.json', data: $json);
+        \mkdir($dir, permissions: 0o777, recursive: true);
+        \file_put_contents($dir.'/plugin.php', data: "<?php\n");
+        \file_put_contents($dir.'/composer.json', data: $json);
 
         return $dir;
     }
@@ -812,8 +812,8 @@ final class PluginInstallerTest extends TestCase
         // must not lose tracked files to a checkbox.
         $installer = $this->installer();
         $dir = $this->pluginDir('shipped', '{"require":{"vend/lib":"^1.0"}}');
-        mkdir($dir.'/vendor/vend', permissions: 0o777, recursive: true);
-        file_put_contents($dir.'/vendor/vend/Thing.php', data: "<?php\n");
+        \mkdir($dir.'/vendor/vend', permissions: 0o777, recursive: true);
+        \file_put_contents($dir.'/vendor/vend/Thing.php', data: "<?php\n");
 
         $this->assertSame(DependencyRemoval::NotOurs, $installer->removeDependencies($dir));
         $this->assertFileExists($dir.'/vendor/vend/Thing.php');
@@ -831,8 +831,8 @@ final class PluginInstallerTest extends TestCase
         // needsInstall() would then call complete.
         $installer = $this->installer(git: $this->git(), composer: $this->fakeComposer());
         $dir = $this->pluginDir('marked', '{"require":{"vend/lib":"^1.0"}}');
-        mkdir($dir.'/vendor', permissions: 0o777, recursive: true);
-        file_put_contents($dir.'/'.PluginInstaller::MARKER, data: "x\n");
+        \mkdir($dir.'/vendor', permissions: 0o777, recursive: true);
+        \file_put_contents($dir.'/'.PluginInstaller::MARKER, data: "x\n");
 
         $done = false;
         $installer->install('file://'.$this->repo(Presence::With), 'project', static function (?string $error, ?string $file) use (&$done): void {
@@ -849,22 +849,22 @@ final class PluginInstallerTest extends TestCase
 
     public function testAVendorTreeThatWillNotDeleteIsReportedNotSwallowed(): void
     {
-        if (0 === posix_geteuid()) {
+        if (0 === \posix_geteuid()) {
             $this->markTestSkipped('root deletes anything');
         }
         $installer = $this->installer();
         $dir = $this->pluginDir('stuck', '{"require":{"vend/lib":"^1.0"}}');
-        mkdir($dir.'/vendor', permissions: 0o777, recursive: true);
-        file_put_contents($dir.'/'.PluginInstaller::MARKER, data: "x\n");
+        \mkdir($dir.'/vendor', permissions: 0o777, recursive: true);
+        \file_put_contents($dir.'/'.PluginInstaller::MARKER, data: "x\n");
         // No write bit on the PLUGIN directory, so its `vendor` entry cannot be
         // unlinked however writable the tree below it is.
-        chmod($dir, permissions: 0o555);
+        \chmod($dir, permissions: 0o555);
 
         try {
             $this->assertSame(DependencyRemoval::Failed, $installer->removeDependencies($dir));
             $this->assertDirectoryExists($dir.'/vendor');
         } finally {
-            chmod($dir, permissions: 0o777);
+            \chmod($dir, permissions: 0o777);
         }
     }
 }

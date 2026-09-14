@@ -195,7 +195,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
         }
         // The overflow window (reserve ‹/› cells, clamp, follow-active-on-change)
         // is shared with the dock strip so the two cannot drift apart.
-        $window = StripWindow::of(array_column($parts, 'width'), $columns, $this->scroll, $activeIndex, $this->lastActive);
+        $window = StripWindow::of(\array_column($parts, 'width'), $columns, $this->scroll, $activeIndex, $this->lastActive);
         $this->scroll = $window['scroll'];
         $this->lastActive = $window['lastActive'];
         $overflow = $window['overflow'];
@@ -251,12 +251,12 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
      */
     private function renderVertical(RenderContext $context): array
     {
-        $rows = max(1, $context->getRows());
+        $rows = \max(1, $context->getRows());
         // NEVER the constant: a widget may not emit a line wider than the pane
         // it was handed — the renderer throws on it, and that exception escapes
         // the render loop. The strip asks for VERTICAL_WIDTH and takes what it
         // is given, which on a narrow terminal is less.
-        $width = min(self::VERTICAL_WIDTH, max(0, $context->getColumns()));
+        $width = \min(self::VERTICAL_WIDTH, \max(0, $context->getColumns()));
 
         // The FileTreeWidget idiom: in side position the layout engine's
         // intrinsic-width measure renders this widget and clears the vendor
@@ -279,7 +279,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
         if ($width < self::VERTICAL_MIN) {
             // Too narrow for a tab; blank rows of the right width beat a
             // truncated one, and beat an exception by more.
-            return $this->memoLines = array_fill(start_index: 0, count: $rows, value: AnsiText::blank($width));
+            return $this->memoLines = \array_fill(start_index: 0, count: $rows, value: AnsiText::blank($width));
         }
         if ([] !== $tabs) {
             $activeIndex = 0;
@@ -298,11 +298,11 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
             // Rows are uniform height, so the window is the manual scroll
             // offset (clamped against a blank tail) that follows the active
             // tab only when it changed — a user's scroll survives otherwise.
-            $this->scroll = min($this->scroll, max(0, \count($tabs) - $budget));
+            $this->scroll = \min($this->scroll, \max(0, \count($tabs) - $budget));
             if ($activeIndex !== $this->lastActive) {
                 $this->lastActive = $activeIndex;
-                $this->scroll = min($this->scroll, $activeIndex);
-                $this->scroll = max($this->scroll, $activeIndex - $budget + 1);
+                $this->scroll = \min($this->scroll, $activeIndex);
+                $this->scroll = \max($this->scroll, $activeIndex - $budget + 1);
             }
             $start = $this->scroll;
             if ($overflow) {
@@ -352,7 +352,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
     private function indicatorRow(string $glyph, int $step, int $row, int $width): string
     {
         $this->indicatorZones[] = ['row' => $row, 'col' => 0, 'width' => $width, 'step' => $step];
-        $left = str_repeat(' ', times: max(0, intdiv($width, num2: 2) - 1));
+        $left = \str_repeat(' ', times: \max(0, \intdiv($width, num2: 2) - 1));
 
         return $this->styles->of(Role::Faint)->apply(AnsiText::truncate($left.$glyph, $width, pad: true, ellipsis: ''));
     }

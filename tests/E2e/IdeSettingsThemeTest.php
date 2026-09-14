@@ -37,16 +37,16 @@ final class IdeSettingsThemeTest extends TestCase
     protected function tearDown(): void
     {
         if (null !== $this->portaHomeToRestore) {
-            putenv('PORTA_HOME='.$this->portaHomeToRestore);
+            \putenv('PORTA_HOME='.$this->portaHomeToRestore);
             $this->portaHomeToRestore = null;
         }
     }
 
     public function testSettingsAppliedAtStartup(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject([
-            '.porta.json' => json_encode(['settings' => ['inlineDiagnostics' => false, 'lineNumbers' => 'relative']]),
+            '.porta.json' => \json_encode(['settings' => ['inlineDiagnostics' => false, 'lineNumbers' => 'relative']]),
             'A.php' => "<?php\n\$x = 1;\n",
         ]);
 
@@ -73,10 +73,10 @@ final class IdeSettingsThemeTest extends TestCase
         // Plugin-list navigation is index-based, so keep the suite-wide
         // `tempest` highlighting fixture (installed via PORTA_HOME) out of it.
         // tearDown puts it back — paratest reuses the process.
-        $portaHome = getenv('PORTA_HOME');
+        $portaHome = \getenv('PORTA_HOME');
         $this->portaHomeToRestore = false === $portaHome ? null : $portaHome;
-        putenv('PORTA_HOME=/nonexistent');
-        putenv('PATH=/nonexistent'); // no git/LSP subprocesses needed
+        \putenv('PORTA_HOME=/nonexistent');
+        \putenv('PATH=/nonexistent'); // no git/LSP subprocesses needed
         $project = new TempProject(['a.php' => "<?php\n"]);
 
         $terminal = $this->runIde(
@@ -169,7 +169,7 @@ final class IdeSettingsThemeTest extends TestCase
                     $tui->handleInput("\x1b[<0;40;7m");
                     $tui->handleInput("\x1b[<0;40;7M");
                     $tui->handleInput("\x1b[<0;40;7m");
-                    foreach (str_split('my-ls --stdio') as $char) {
+                    foreach (\str_split('my-ls --stdio') as $char) {
                         $tui->handleInput($char);
                     }
                     $tui->handleInput("\r"); // commit → persists + reconfigures the LSP pool live
@@ -192,7 +192,7 @@ final class IdeSettingsThemeTest extends TestCase
 
     public function testThemeSwitchLiveRecolorsChromeAndSyntax(): void
     {
-        putenv('PATH=/nonexistent'); // no git/LSP subprocesses needed
+        \putenv('PATH=/nonexistent'); // no git/LSP subprocesses needed
         $project = new TempProject(['a.php' => "<?php\nreturn 1;\n"]);
 
         $terminal = $this->runIde(
@@ -242,13 +242,13 @@ final class IdeSettingsThemeTest extends TestCase
 
     public function testSettingsSidebarResizesAndPersists(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\n"]);
         // A seeded percent must be applied at startup (25% of 160 cols = 40).
-        if (!is_dir($project->path('.porta'))) {
-            mkdir($project->path('.porta'), permissions: 0o777, recursive: true);
+        if (!\is_dir($project->path('.porta'))) {
+            \mkdir($project->path('.porta'), permissions: 0o777, recursive: true);
         }
-        file_put_contents($project->path('.porta/layout.json'), json_encode(['settingsSidebarWidthPercent' => 25]));
+        \file_put_contents($project->path('.porta/layout.json'), \json_encode(['settingsSidebarWidthPercent' => 25]));
 
         $this->runIde(
             $project,
@@ -267,7 +267,7 @@ final class IdeSettingsThemeTest extends TestCase
                 },
                 900 => function ($tui) use ($project): void {
                     $this->assertSame(30, $tui->getById('settings-nav')->width(), 'the drag resized the sidebar');
-                    $layout = json_decode((string) file_get_contents($project->path('.porta/layout.json')), associative: true);
+                    $layout = \json_decode((string) \file_get_contents($project->path('.porta/layout.json')), associative: true);
                     $this->assertSame(19, $layout['viewSidebarWidthPercent']['settings'], 'saved as a percentage (round(30/160))');
                 },
             ],
@@ -276,7 +276,7 @@ final class IdeSettingsThemeTest extends TestCase
 
     public function testCursorShapeSettingSwitchesTheMarkerLiveAndTerminalPanelPlacesTheCursor(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\n\$a = 1;\n"]);
 
         $this->runIde(

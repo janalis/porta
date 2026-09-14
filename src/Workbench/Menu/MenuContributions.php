@@ -24,7 +24,7 @@ final class MenuContributions
     /** Drop everything $plugin contributed — the disable half of the symmetry. */
     public function forget(string $plugin): void
     {
-        $this->contributions = array_values(array_filter(
+        $this->contributions = \array_values(\array_filter(
             $this->contributions,
             static fn (array $entry): bool => $plugin !== $entry['plugin'],
         ));
@@ -33,7 +33,7 @@ final class MenuContributions
     /** @return list<MenuContribution> */
     public function all(): array
     {
-        return array_column($this->contributions, 'contribution');
+        return \array_column($this->contributions, 'contribution');
     }
 
     /**

@@ -21,8 +21,8 @@ final class PortaHome
     /** The home base, or null when the environment names none usable. */
     public static function base(): ?string
     {
-        $portaHome = getenv('PORTA_HOME');
-        $base = $portaHome ? $portaHome : getenv('HOME');
+        $portaHome = \getenv('PORTA_HOME');
+        $base = $portaHome ? $portaHome : \getenv('HOME');
 
         return \is_string($base) && '' !== $base ? $base : null;
     }

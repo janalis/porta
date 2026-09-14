@@ -20,7 +20,7 @@ final class MemberSeparatorsTest extends TestCase
         // scanner line 9 rules document line 8.
         $scopes = [['label' => 'run', 'startLine' => 5, 'endLine' => 9, 'kind' => 'function']];
 
-        self::assertSame([8 => true], MemberSeparators::linesFor($scopes));
+        $this->assertSame([8 => true], MemberSeparators::linesFor($scopes));
     }
 
     public function testClassesAndNamespacesGetNoRule(): void
@@ -32,7 +32,7 @@ final class MemberSeparatorsTest extends TestCase
             ['label' => 'Svc', 'startLine' => 5, 'endLine' => 39, 'kind' => 'type'],
         ];
 
-        self::assertSame([], MemberSeparators::linesFor($scopes));
+        $this->assertSame([], MemberSeparators::linesFor($scopes));
     }
 
     public function testTwoMembersClosingOnTheSameLineRuleItOnce(): void
@@ -43,7 +43,7 @@ final class MemberSeparatorsTest extends TestCase
             ['label' => 'inner', 'startLine' => 5, 'endLine' => 7, 'kind' => 'function'],
         ];
 
-        self::assertSame([6 => true], MemberSeparators::linesFor($scopes));
+        $this->assertSame([6 => true], MemberSeparators::linesFor($scopes));
     }
 
     public function testItReadsTheSCANNERSOwnOutput(): void
@@ -71,6 +71,6 @@ final class MemberSeparatorsTest extends TestCase
 
         // one() closes on line 7 (1-based) → rules line 6, the row above the
         // blank line and two lines above two()'s docblock. two() closes on 12.
-        self::assertSame([6 => true, 11 => true], $lines);
+        $this->assertSame([6 => true, 11 => true], $lines);
     }
 }

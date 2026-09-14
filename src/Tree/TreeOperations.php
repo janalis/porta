@@ -210,7 +210,7 @@ final class TreeOperations
     {
         $dir = $this->treeTargetDir($node);
         $this->promptName($this->translator->trans('New File'), '', function (string $name) use ($dir): void {
-            if ('' === ($name = trim($name))) {
+            if ('' === ($name = \trim($name))) {
                 return;
             }
             $path = $dir.'/'.$name;
@@ -228,7 +228,7 @@ final class TreeOperations
     {
         $dir = $this->treeTargetDir($node);
         $this->promptName($this->translator->trans('New Folder'), '', function (string $name) use ($dir): void {
-            if ('' === ($name = trim($name))) {
+            if ('' === ($name = \trim($name))) {
                 return;
             }
             $path = $dir.'/'.$name;
@@ -246,8 +246,8 @@ final class TreeOperations
     {
         $old = $node->path;
         $this->promptName($this->translator->trans('Rename'), $node->name, function (string $name) use ($old): void {
-            $name = trim($name);
-            if ('' === $name || $name === basename($old)) {
+            $name = \trim($name);
+            if ('' === $name || \basename($old) === $name) {
                 return;
             }
             $this->moveInto(
@@ -275,7 +275,7 @@ final class TreeOperations
     {
         // Buffers are keyed by realpath(); resolve the old path the same way
         // so an open file's buffer is re-pointed at the new name.
-        $resolvedOld = realpath($old);
+        $resolvedOld = \realpath($old);
         $oldKey = $resolvedOld ? $resolvedOld : $old;
         $this->withFs($failure, function () use ($old, $new, $oldKey, $success, $overwrite): void {
             // Write BEFORE the rename, or the edits are gone: the move closes
@@ -314,7 +314,7 @@ final class TreeOperations
             // Canonical both sides, per FileRenamed's contract: $oldKey was
             // resolved BEFORE the rename (it cannot be, after), and the new
             // path resolves now that it exists.
-            $newKey = ($resolvedNew = realpath($new)) ? $resolvedNew : $new;
+            $newKey = ($resolvedNew = \realpath($new)) ? $resolvedNew : $new;
             $this->events->dispatch(new FileRenamed($oldKey, $newKey));
             $this->tree->refresh();
             $this->tui->setFocus($this->tree);
@@ -368,13 +368,13 @@ final class TreeOperations
     {
         $path = $node->path;
         $this->promptName($this->translator->trans('Delete %name%? (y/N)', ['%name%' => $node->name]), '', danger: true, onSubmit: function (string $answer) use ($path): void {
-            if (!\in_array(strtolower(trim($answer)), ['y', 'yes'], strict: true)) {
+            if (!\in_array(\strtolower(\trim($answer)), ['y', 'yes'], strict: true)) {
                 $this->tui->setFocus($this->tree);
 
                 return;
             }
             // buffers are keyed by realpath()
-            $resolved = realpath($path);
+            $resolved = \realpath($path);
             $key = $resolved ? $resolved : $path;
             $this->withFs($this->translator->trans('Cannot delete %file%', ['%file%' => $this->paths->relative($path)]), function () use ($path, $key): void {
                 $this->fs->remove($path);
@@ -435,7 +435,7 @@ final class TreeOperations
      */
     private function dropOnto(array $sources, string $targetDir, bool $copy = false): void
     {
-        $moving = array_values(array_filter($sources, static fn (string $path): bool => \dirname($path) !== $targetDir));
+        $moving = \array_values(\array_filter($sources, static fn (string $path): bool => \dirname($path) !== $targetDir));
         if ([] === $moving) {
             return;
         }
@@ -444,11 +444,11 @@ final class TreeOperations
                 continue;
             }
 
-            $this->notifier->error($this->translator->trans('Cannot move %name% into itself', ['%name%' => basename($path)]));
+            $this->notifier->error($this->translator->trans('Cannot move %name% into itself', ['%name%' => \basename($path)]));
 
             return;
         }
-        $taken = array_values(array_filter($moving, fn (string $path): bool => $this->fs->exists($targetDir.'/'.basename($path))));
+        $taken = \array_values(\array_filter($moving, fn (string $path): bool => $this->fs->exists($targetDir.'/'.\basename($path))));
         if ([] === $taken) {
             $this->moveEach($moving, $targetDir, $copy);
 
@@ -478,7 +478,7 @@ final class TreeOperations
             ['label' => $this->translator->trans('Cancel'), 'hint' => '', 'value' => 'cancel'],
         ];
         $title = $single
-            ? $this->translator->trans('%name% already exists in %dir%', ['%name%' => basename($taken[0]), '%dir%' => $this->paths->relative($targetDir)])
+            ? $this->translator->trans('%name% already exists in %dir%', ['%name%' => \basename($taken[0]), '%dir%' => $this->paths->relative($targetDir)])
             : $this->translator->trans('%count% files already exist in %dir%', ['%count%' => \count($taken), '%dir%' => $this->paths->relative($targetDir)]);
 
         $this->tui->setFocus($this->editor);
@@ -490,8 +490,8 @@ final class TreeOperations
             }
             if ('rename' === $choice) {
                 $source = $moving[0];
-                $this->promptName($this->translator->trans('Move as'), basename($source), function (string $name) use ($source, $targetDir, $copy): void {
-                    $name = trim($name);
+                $this->promptName($this->translator->trans('Move as'), \basename($source), function (string $name) use ($source, $targetDir, $copy): void {
+                    $name = \trim($name);
                     if ('' !== $name) {
                         $this->moveOne($source, $targetDir.'/'.$name, $copy);
                     }
@@ -510,7 +510,7 @@ final class TreeOperations
 
         try {
             foreach ($moving as $path) {
-                $this->moveOne($path, $targetDir.'/'.basename($path), $copy, $overwrite);
+                $this->moveOne($path, $targetDir.'/'.\basename($path), $copy, $overwrite);
             }
         } finally {
             --$this->batch;
@@ -528,7 +528,7 @@ final class TreeOperations
     // @mago-expect lint:no-boolean-flag-parameter -- copy-versus-move is the one fact a drop carries; it decides which verb runs, not a second responsibility.
     private function moveOne(string $source, string $target, bool $copy, bool $overwrite = false): void
     {
-        $name = basename($target);
+        $name = \basename($target);
         if (!$copy) {
             $this->moveInto(
                 $source,
@@ -558,8 +558,8 @@ final class TreeOperations
             // A copy reads from DISK, so an unsaved edit would be missing from
             // the copy while staying in the original — the same surprise as
             // losing it, wearing a different face.
-            $this->saveDirtyUnder(($resolved = realpath($source)) ? $resolved : $source);
-            is_dir($source) ? $this->fs->mirror($source, $target) : $this->fs->copy($source, $target, overwriteNewerFiles: true);
+            $this->saveDirtyUnder(($resolved = \realpath($source)) ? $resolved : $source);
+            \is_dir($source) ? $this->fs->mirror($source, $target) : $this->fs->copy($source, $target, overwriteNewerFiles: true);
             $this->tree->refresh();
             $this->tui->setFocus($this->tree);
             $this->notifier->success($this->translator->trans('Copied %name%', ['%name%' => $name]));

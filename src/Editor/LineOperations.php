@@ -33,7 +33,7 @@ final class LineOperations
     public static function sorted(array $block): array
     {
         $sorted = $block;
-        sort($sorted, \SORT_STRING);
+        \sort($sorted, \SORT_STRING);
 
         return $sorted;
     }
@@ -49,10 +49,10 @@ final class LineOperations
      */
     public static function caseToggled(array $block): array
     {
-        $joined = implode("\n", $block);
-        $upper = mb_strtoupper($joined);
+        $joined = \implode("\n", $block);
+        $upper = \mb_strtoupper($joined);
 
-        return explode("\n", $joined === $upper ? mb_strtolower($joined) : $upper);
+        return \explode("\n", $joined === $upper ? \mb_strtolower($joined) : $upper);
     }
 
     /**
@@ -64,9 +64,9 @@ final class LineOperations
      */
     public static function joined(array $lines, int $first, int $last): string
     {
-        $joined = rtrim($lines[$first]);
+        $joined = \rtrim($lines[$first]);
         for ($i = $first + 1; $i <= $last; ++$i) {
-            $joined = rtrim($joined.' '.ltrim($lines[$i]));
+            $joined = \rtrim($joined.' '.\ltrim($lines[$i]));
         }
 
         return $joined;
@@ -85,8 +85,8 @@ final class LineOperations
     {
         $allCommented = true;
         foreach ($block as $line) {
-            $trimmed = ltrim($line);
-            if ('' !== $trimmed && !str_starts_with($trimmed, $prefix)) {
+            $trimmed = \ltrim($line);
+            if ('' !== $trimmed && !\str_starts_with($trimmed, $prefix)) {
                 $allCommented = false;
                 break;
             }
@@ -94,7 +94,7 @@ final class LineOperations
 
         $out = [];
         foreach ($block as $line) {
-            $trimmed = ltrim($line);
+            $trimmed = \ltrim($line);
             if ('' === $trimmed) {
                 $out[] = $line;
 
@@ -102,12 +102,12 @@ final class LineOperations
             }
             $indent = \strlen($line) - \strlen($trimmed);
             if ($allCommented) {
-                $rest = substr($trimmed, \strlen($prefix));
-                $out[] = substr($line, offset: 0, length: $indent).ltrim($rest, characters: ' ');
+                $rest = \substr($trimmed, \strlen($prefix));
+                $out[] = \substr($line, offset: 0, length: $indent).\ltrim($rest, characters: ' ');
 
                 continue;
             }
-            $out[] = substr($line, offset: 0, length: $indent).$prefix.' '.$trimmed;
+            $out[] = \substr($line, offset: 0, length: $indent).$prefix.' '.$trimmed;
         }
 
         return $out;
@@ -131,7 +131,7 @@ final class LineOperations
     {
         $allCommented = true;
         foreach ($block as $line) {
-            $trimmed = trim($line);
+            $trimmed = \trim($line);
             if ('' !== $trimmed && null === self::blockUnwrapped($trimmed, $open, $close)) {
                 $allCommented = false;
                 break;
@@ -140,13 +140,13 @@ final class LineOperations
 
         $out = [];
         foreach ($block as $line) {
-            $trimmed = trim($line);
+            $trimmed = \trim($line);
             if ('' === $trimmed) {
                 $out[] = $line;
 
                 continue;
             }
-            $indent = substr($line, offset: 0, length: \strlen($line) - \strlen(ltrim($line)));
+            $indent = \substr($line, offset: 0, length: \strlen($line) - \strlen(\ltrim($line)));
             // Asked only while uncommenting, so the null branch below reads as
             // one condition rather than as `$allCommented` plus a null check
             // the loop above has already proved cannot fire.
@@ -171,11 +171,11 @@ final class LineOperations
      */
     public static function blockUnwrapped(string $text, string $open, string $close): ?string
     {
-        if (\strlen($text) < (\strlen($open) + \strlen($close)) || !str_starts_with($text, $open) || !str_ends_with($text, $close)) {
+        if (\strlen($text) < (\strlen($open) + \strlen($close)) || !\str_starts_with($text, $open) || !\str_ends_with($text, $close)) {
             return null;
         }
 
-        return trim(substr($text, \strlen($open), \strlen($text) - \strlen($open) - \strlen($close)));
+        return \trim(\substr($text, \strlen($open), \strlen($text) - \strlen($open) - \strlen($close)));
     }
 
     /**
@@ -194,18 +194,18 @@ final class LineOperations
     {
         $pairs = ['(' => ')', '[' => ']'];
         $stack = [];
-        foreach (str_split($line) as $char) {
+        foreach (\str_split($line) as $char) {
             if (\array_key_exists($char, $pairs)) {
                 $stack[] = $pairs[$char];
 
                 continue;
             }
             if ([] !== $stack && $char === $stack[\count($stack) - 1]) {
-                array_pop($stack);
+                \array_pop($stack);
             }
         }
 
-        return implode('', array_reverse($stack));
+        return \implode('', \array_reverse($stack));
     }
 
     /**
@@ -218,12 +218,12 @@ final class LineOperations
      */
     public static function wantsTerminator(string $line, string $terminator): bool
     {
-        $trimmed = rtrim($line);
-        if ('' === $trimmed || str_ends_with($trimmed, $terminator)) {
+        $trimmed = \rtrim($line);
+        if ('' === $trimmed || \str_ends_with($trimmed, $terminator)) {
             return false;
         }
 
-        return !\in_array(substr($trimmed, offset: -1), ['{', '}', ',', ':', '(', '[', '&', '|', '+', '-', '*', '/', '.', '=', '?'], strict: true);
+        return !\in_array(\substr($trimmed, offset: -1), ['{', '}', ',', ':', '(', '[', '&', '|', '+', '-', '*', '/', '.', '=', '?'], strict: true);
     }
 
     /**
@@ -241,12 +241,12 @@ final class LineOperations
      */
     public static function wantsBlockOpener(string $line, string $opener, ?string $closer): bool
     {
-        $trimmed = rtrim($line);
-        if ('' === $trimmed || str_ends_with($trimmed, trim($opener))) {
+        $trimmed = \rtrim($line);
+        if ('' === $trimmed || \str_ends_with($trimmed, \trim($opener))) {
             return false;
         }
 
-        return null === $closer || !str_ends_with($trimmed, $closer);
+        return null === $closer || !\str_ends_with($trimmed, $closer);
     }
 
     /**
@@ -264,28 +264,28 @@ final class LineOperations
                 return null;
             }
             $step = 1;
-            if ('' === trim($lines[$first - 1])) {
+            if ('' === \trim($lines[$first - 1])) {
                 $g = $first - 1;
-                while ($g > 0 && '' === trim($lines[$g - 1])) {
+                while ($g > 0 && '' === \trim($lines[$g - 1])) {
                     --$g;
                 }
                 $step = $first - $g;
             }
 
-            return max(0, $first - $step);
+            return \max(0, $first - $step);
         }
         if ($last === ($n - 1)) {
             return null;
         }
         $step = 1;
-        if ('' === trim($lines[$last + 1])) {
+        if ('' === \trim($lines[$last + 1])) {
             $g = $last + 1;
-            while ($g < ($n - 1) && '' === trim($lines[$g + 1])) {
+            while ($g < ($n - 1) && '' === \trim($lines[$g + 1])) {
                 ++$g;
             }
             $step = $g - $last;
         }
 
-        return min($first + $step, $first + ($n - 1 - $last));
+        return \min($first + $step, $first + ($n - 1 - $last));
     }
 }

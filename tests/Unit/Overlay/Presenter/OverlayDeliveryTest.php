@@ -84,7 +84,7 @@ final class OverlayDeliveryTest extends TestCase
             ['rows' => ['XYZ'], 'top' => 10, 'col' => 4, 'width' => 3],
         ]);
         $this->assertNotSame([], $this->pane->modalSpans, 'the box sliced into the rendered pane');
-        $rows = array_column($this->pane->modalSpans, 'row');
+        $rows = \array_column($this->pane->modalSpans, 'row');
         $this->assertContains(2, $rows, 'the first box contributed its spans');
         $this->assertContains(10, $rows, 'the second box contributed its spans too, not replacing the first');
         $this->assertTrue($this->pane->backdrop, 'the modal slot dims');

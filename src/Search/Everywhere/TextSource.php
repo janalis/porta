@@ -42,7 +42,7 @@ final class TextSource implements SearchSource
                 $line = $result['line'];
                 $hits[] = new SearchHit(
                     SearchCategory::Text,
-                    trim($result['text']),
+                    \trim($result['text']),
                     $result['path'].':'.($line + 1),
                     function () use ($absolute, $line): void {
                         $column = 0;

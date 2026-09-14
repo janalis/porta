@@ -42,10 +42,10 @@ final class EditorDecorationsTest extends TestCase
         $decorations = new EditorDecorations($breakpoints, new DebugSessionState(), $editor->decorations());
 
         $decorations->onBufferSwitched(new BufferSwitched(new Buffer('/p/a.php', new Document(''))));
-        $this->assertStringContainsString('●', implode("\n", $editor->render(new RenderContext(40, 6))), 'a plain text buffer switch applies decorations');
+        $this->assertStringContainsString('●', \implode("\n", $editor->render(new RenderContext(40, 6))), 'a plain text buffer switch applies decorations');
 
         $editor->decorations()->setBreakpointLines([]); // reset before the viewer case, isolating its effect
         $decorations->onBufferSwitched(new BufferSwitched(new Buffer('/p/a.php', new Document(''), paneId: 'graph')));
-        $this->assertStringNotContainsString('●', implode("\n", $editor->render(new RenderContext(40, 6))), 'a viewer tab has no gutter, so it is skipped');
+        $this->assertStringNotContainsString('●', \implode("\n", $editor->render(new RenderContext(40, 6))), 'a viewer tab has no gutter, so it is skipped');
     }
 }

@@ -81,7 +81,7 @@ final class TreeDragRouterTest extends TestCase
     private function pending(float $seconds): array
     {
         $ids = [];
-        foreach (array_keys($this->clock->scheduled) as $id) {
+        foreach (\array_keys($this->clock->scheduled) as $id) {
             if ($this->clock->delays[$id] !== $seconds) {
                 continue;
             }
@@ -436,7 +436,7 @@ final class TreeDragRouterTest extends TestCase
     /** What the status bar is showing right now, ANSI stripped. */
     private function flashed(): string
     {
-        return AnsiUtils::stripAnsiCodes(implode('', $this->statusBar->render(new RenderContext(100, 1))));
+        return AnsiUtils::stripAnsiCodes(\implode('', $this->statusBar->render(new RenderContext(100, 1))));
     }
 
     /**
@@ -493,7 +493,7 @@ final class TreeDragRouterTest extends TestCase
 
         $router->continueDrag($this->drag(2, 1), self::rect(), null);
 
-        $rows = AnsiUtils::stripAnsiCodes(implode("\n", $this->tree->render(new RenderContext(40, self::ROWS))));
+        $rows = AnsiUtils::stripAnsiCodes(\implode("\n", $this->tree->render(new RenderContext(40, self::ROWS))));
         // The arrow and its spacing included: asserting only the count leaves
         // the label free to arrive backwards or run into the filename.
         $this->assertStringContainsString("\u{2190} 1 file", $rows);

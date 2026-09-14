@@ -89,7 +89,7 @@ final class CompletionController extends AbstractLspController implements Editor
                     return;
                 }
                 /** @var list<array<string, mixed>> $items */
-                $items = $result['items'] ?? (\is_array($result) && array_is_list($result) ? $result : []);
+                $items = $result['items'] ?? (\is_array($result) && \array_is_list($result) ? $result : []);
                 $this->editor->showCompletions(LspMapper::mapCompletionItems($items));
                 $this->tui->requestRender();
             },
@@ -111,10 +111,10 @@ final class CompletionController extends AbstractLspController implements Editor
             return;
         }
         $path = (string) $this->editor->getFilePath();
-        $lastLine = max(0, $this->editor->getDocument()->getLineCount() - 1);
+        $lastLine = \max(0, $this->editor->getDocument()->getLineCount() - 1);
         $viewport = $this->editor->viewport();
-        $first = max(0, min($viewport->vScroll - self::HINT_MARGIN_LINES, $lastLine));
-        $last = min($lastLine, $viewport->vScroll + $viewport->renderRows + self::HINT_MARGIN_LINES);
+        $first = \max(0, \min($viewport->vScroll - self::HINT_MARGIN_LINES, $lastLine));
+        $last = \min($lastLine, $viewport->vScroll + $viewport->renderRows + self::HINT_MARGIN_LINES);
         $this->hintedRange = [$path, $first, $last];
         $this->lsp->request(
             'textDocument/inlayHint',
@@ -165,7 +165,7 @@ final class CompletionController extends AbstractLspController implements Editor
             return;
         }
         $viewport = $this->editor->viewport();
-        $lastVisible = min(max(0, $this->editor->getDocument()->getLineCount() - 1), $viewport->vScroll + $viewport->renderRows);
+        $lastVisible = \min(\max(0, $this->editor->getDocument()->getLineCount() - 1), $viewport->vScroll + $viewport->renderRows);
         $range = $this->hintedRange;
         if (null !== $range && $range[0] === $path && $range[1] <= $viewport->vScroll && $lastVisible <= $range[2]) {
             return; // still inside the hinted window — nothing new to fetch
@@ -291,7 +291,7 @@ final class CompletionController extends AbstractLspController implements Editor
     private static function activeParameterRange(array $signature, string $label, mixed $fallbackIndex): ?array
     {
         /** @var list<array<string, mixed>> $parameters */
-        $parameters = \is_array($signature['parameters'] ?? null) ? array_values($signature['parameters']) : [];
+        $parameters = \is_array($signature['parameters'] ?? null) ? \array_values($signature['parameters']) : [];
         $index = match (true) {
             \is_int($signature['activeParameter'] ?? null) => $signature['activeParameter'],
             \is_int($fallbackIndex) => $fallbackIndex,
@@ -327,7 +327,7 @@ final class CompletionController extends AbstractLspController implements Editor
      */
     private static function rangeOfSubstring(string $label, string $name): ?array
     {
-        $at = strpos($label, $name);
+        $at = \strpos($label, $name);
 
         return false === $at ? null : [$at, $at + \strlen($name)];
     }

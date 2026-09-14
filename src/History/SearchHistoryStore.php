@@ -37,11 +37,11 @@ final class SearchHistoryStore
     /** Record a query as the most recent (dedup, capped), and persist. */
     public function add(string $query): void
     {
-        if ('' === trim($query)) {
+        if ('' === \trim($query)) {
             return;
         }
-        $this->queries = array_values(array_filter($this->queries, static fn (string $q): bool => $q !== $query));
-        array_unshift($this->queries, $query);
+        $this->queries = \array_values(\array_filter($this->queries, static fn (string $q): bool => $q !== $query));
+        \array_unshift($this->queries, $query);
         $this->queries = \array_slice($this->queries, offset: 0, length: self::MAX);
         $this->save();
     }

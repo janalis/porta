@@ -154,7 +154,7 @@ final class RefactoringUndo
         // happen: refactor one file, close its tab, and the answer was
         // "Refactoring undone" over a workspace nothing had touched. What is
         // pending is what could actually be restored.
-        foreach (array_keys($this->buffers) as $path) {
+        foreach (\array_keys($this->buffers) as $path) {
             if (null !== $this->bufferManager->get($path)) {
                 return true;
             }
@@ -177,7 +177,7 @@ final class RefactoringUndo
             return $blocker;
         }
 
-        foreach (array_keys($this->buffers) as $path) {
+        foreach (\array_keys($this->buffers) as $path) {
             $this->bufferManager->get($path)?->document->undo();
         }
         foreach ($this->files as $path => $texts) {

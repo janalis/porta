@@ -29,7 +29,7 @@ final readonly class PluginsSection implements SettingsSection
     #[\Override]
     public function handles(string $section): bool
     {
-        return 'plugins' === $section || str_starts_with($section, self::PREFIX);
+        return 'plugins' === $section || \str_starts_with($section, self::PREFIX);
     }
 
     /**
@@ -88,6 +88,6 @@ final readonly class PluginsSection implements SettingsSection
 
     private function name(string $section): string
     {
-        return substr($section, offset: \strlen(self::PREFIX));
+        return \substr($section, offset: \strlen(self::PREFIX));
     }
 }

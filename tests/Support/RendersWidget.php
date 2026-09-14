@@ -17,7 +17,7 @@ trait RendersWidget
     /** @param list<string> $lines */
     private function plain(array $lines): string
     {
-        return implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $lines));
+        return \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $lines));
     }
 
     /**
@@ -27,6 +27,6 @@ trait RendersWidget
      */
     private function rows(array $lines): array
     {
-        return array_map(AnsiUtils::stripAnsiCodes(...), $lines);
+        return \array_map(AnsiUtils::stripAnsiCodes(...), $lines);
     }
 }

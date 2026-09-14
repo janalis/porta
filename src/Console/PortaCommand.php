@@ -66,7 +66,7 @@ final class PortaCommand extends Command
         $this->launch = $launch ?? self::launchIde(...);
         // stream_isatty is core PHP — the posix_isatty it replaced needed
         // ext-posix, and a box without it was refused as "not interactive".
-        $this->isInteractive = $isInteractive ?? static fn (): bool => stream_isatty(\STDIN) && stream_isatty(\STDOUT);
+        $this->isInteractive = $isInteractive ?? static fn (): bool => \stream_isatty(\STDIN) && \stream_isatty(\STDOUT);
     }
 
     public function __invoke(
@@ -94,15 +94,15 @@ final class PortaCommand extends Command
             return Command::INVALID;
         }
 
-        if (null !== $line && !ctype_digit($line)) {
+        if (null !== $line && !\ctype_digit($line)) {
             $io->error(\sprintf('porta: --line expects a line number, got "%s".', $line));
 
             return Command::INVALID;
         }
 
-        $target = $path ?? (string) getcwd();
+        $target = $path ?? (string) \getcwd();
         try {
-            $workspace = new WorkspaceResolver()->resolve($target, (string) getcwd());
+            $workspace = new WorkspaceResolver()->resolve($target, (string) \getcwd());
         } catch (\InvalidArgumentException $e) {
             $io->error('porta: '.$e->getMessage());
 
@@ -110,7 +110,7 @@ final class PortaCommand extends Command
         }
 
         // An explicit --line overrides the file:line shorthand.
-        $openAt = null !== $line ? max(1, (int) $line) : $workspace->line;
+        $openAt = null !== $line ? \max(1, (int) $line) : $workspace->line;
         $workspace = new Workspace($workspace->rootDir, $workspace->initialFile, $openAt);
 
         if (!($this->isInteractive)()) {
@@ -177,7 +177,7 @@ final class PortaCommand extends Command
                 ansi: Ansi::Enabled === $ansi,
                 // REQUEST_TIME_FLOAT is the interpreter's own start: the trace's
                 // prelude covers PHP + autoload, which no later clock can see.
-                bootTrace: new BootTrace($_SERVER['REQUEST_TIME_FLOAT'] ?? microtime(true)),
+                bootTrace: new BootTrace($_SERVER['REQUEST_TIME_FLOAT'] ?? \microtime(true)),
             );
             $onBooted();
             $ide->run();

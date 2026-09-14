@@ -109,7 +109,7 @@ final class LineSpans
         foreach ($diags as $diag) {
             $startDisp = EditorRenderer::utf16ToDisplayCol($doc, $lineIndex, $diag['col']);
             $endUtf16 = $diag['endCol'] ?? ($diag['col'] + 1);
-            $endDisp = \PHP_INT_MAX === $endUtf16 ? \PHP_INT_MAX : max($startDisp + 1, EditorRenderer::utf16ToDisplayCol($doc, $lineIndex, $endUtf16));
+            $endDisp = \PHP_INT_MAX === $endUtf16 ? \PHP_INT_MAX : \max($startDisp + 1, EditorRenderer::utf16ToDisplayCol($doc, $lineIndex, $endUtf16));
             // Curly, severity-colored underline (degrades to a plain
             // underline), plus what the diagnostic's tags say about the code
             // itself: faint for unused, struck through for deprecated.
@@ -134,7 +134,7 @@ final class LineSpans
                 $col = $doc->displayColAt($lineIndex, $caret->col);
                 $spans[] = [$col, $col + 1, Sgr::REVERSE, Sgr::NO_REVERSE, null];
                 // An end-of-line caret needs a padded cell to invert.
-                $padTo = max($padTo, $col + 1);
+                $padTo = \max($padTo, $col + 1);
             }
         }
 
@@ -160,8 +160,8 @@ final class LineSpans
             if ($span[1] <= $winStart || $span[0] >= $winEnd) {
                 continue;
             }
-            $span[0] = max($span[0], $winStart);
-            $span[1] = min($span[1], $winEnd);
+            $span[0] = \max($span[0], $winStart);
+            $span[1] = \min($span[1], $winEnd);
             $clipped[] = $span;
         }
 

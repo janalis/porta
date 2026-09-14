@@ -87,7 +87,7 @@ final class ResponsiveLayoutTest extends TestCase
     /** @return list<string> */
     private function mainIds(): array
     {
-        return array_map(static fn (AbstractWidget $w): string => $w->getId(), $this->layout->main()->all());
+        return \array_map(static fn (AbstractWidget $w): string => $w->getId(), $this->layout->main()->all());
     }
 
     public function testApplyingDirectionBeforeAnyViewMintsARegionIsANoOp(): void
@@ -118,7 +118,7 @@ final class ResponsiveLayoutTest extends TestCase
         $this->assertSame([], $regions->all(), 'nothing minted, so nothing to arrange');
         $this->assertSame(
             ['tree', 'separator', 'editor-pane'],
-            array_map(static fn (AbstractWidget $w): string => $w->getId(), $this->layout->main()->all()),
+            \array_map(static fn (AbstractWidget $w): string => $w->getId(), $this->layout->main()->all()),
             'and the editor area was left in its build-time order',
         );
 
@@ -129,7 +129,7 @@ final class ResponsiveLayoutTest extends TestCase
         $paneLayout->applyDirection();
         $this->assertSame(
             ['editor-pane', 'separator', 'tree'],
-            array_map(static fn (AbstractWidget $w): string => $w->getId(), $this->layout->main()->all()),
+            \array_map(static fn (AbstractWidget $w): string => $w->getId(), $this->layout->main()->all()),
         );
     }
 
@@ -254,11 +254,11 @@ final class ResponsiveLayoutTest extends TestCase
         $responsive->apply(40);
 
         // A swapped-in view restoring the editor area reads the collapsed list.
-        $ids = array_map(static fn (AbstractWidget $w): string => $w->getId(), $this->paneLayout->orderedEditorPanes());
+        $ids = \array_map(static fn (AbstractWidget $w): string => $w->getId(), $this->paneLayout->orderedEditorPanes());
         $this->assertSame(['editor-pane'], $ids);
 
         $responsive->apply(200);
-        $ids = array_map(static fn (AbstractWidget $w): string => $w->getId(), $this->paneLayout->orderedEditorPanes());
+        $ids = \array_map(static fn (AbstractWidget $w): string => $w->getId(), $this->paneLayout->orderedEditorPanes());
         $this->assertSame(['tree', 'separator', 'editor-pane'], $ids);
     }
 
@@ -346,7 +346,7 @@ final class ResponsiveLayoutTest extends TestCase
 
         $this->assertSame(
             ['acme-left', 'acme-separator', 'acme-content'],
-            array_map(static fn (AbstractWidget $w): string => $w->getId(), $region->area()->all()),
+            \array_map(static fn (AbstractWidget $w): string => $w->getId(), $region->area()->all()),
             'the region\'s own area got filled — main() is a different container entirely',
         );
     }
@@ -420,7 +420,7 @@ final class ResponsiveLayoutTest extends TestCase
 
         $this->assertSame(
             ['acme-left', 'acme-separator', 'acme-content'],
-            array_map(static fn (AbstractWidget $w): string => $w->getId(), $region->area()->all()),
+            \array_map(static fn (AbstractWidget $w): string => $w->getId(), $region->area()->all()),
         );
     }
 }

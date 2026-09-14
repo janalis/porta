@@ -69,7 +69,7 @@ final class OverlayHostTest extends TestCase
      */
     private function canvas(OverlayHost $host, int $columns, int $rows): array
     {
-        $lines = array_fill(0, $rows, str_repeat(' ', max(0, $columns)));
+        $lines = \array_fill(0, $rows, \str_repeat(' ', \max(0, $columns)));
         foreach ($host->layout([0, 0, $rows, $columns]) as $box) {
             foreach ($box['rows'] as $i => $rowText) {
                 $row = $box['top'] + $i;
@@ -575,7 +575,7 @@ final class OverlayHostTest extends TestCase
     {
         $labels = ['a', 'b', 'c', 'd', 'e', 'f'];
 
-        return array_map(
+        return \array_map(
             fn (string $label): SearchRow => SearchRow::hit($this->hit(SearchCategory::Files, $label, static fn () => null)),
             \array_slice($labels, offset: 0, length: $count),
         );
@@ -692,7 +692,7 @@ final class OverlayHostTest extends TestCase
         $host->setSearchRows([]); // a query that found nothing
 
         $lines = $this->canvas($host, 80, 20);
-        $joined = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $lines));
+        $joined = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $lines));
         $this->assertStringContainsString('no results', $joined, 'the no-hit filler row shows the empty message, like the sibling pickers');
     }
 
@@ -807,7 +807,7 @@ final class OverlayHostTest extends TestCase
             SearchRow::header('Text'),
             SearchRow::hit(new SearchHit(
                 SearchCategory::Text,
-                str_repeat('"ext-simplexml": "*", ', times: 8),
+                \str_repeat('"ext-simplexml": "*", ', times: 8),
                 'vendor/phpunit/phpunit/src/Framework/Constraint/Traversable/ArraySubset/DeeplyNested.php:1234',
                 static fn () => null,
             )),
@@ -972,14 +972,14 @@ final class OverlayHostTest extends TestCase
         $host = $this->host();
         // A value far longer than the box: a plain truncate would clip the
         // caret marker off the right edge and lose the hardware cursor.
-        $host->openPrompt('Rename to', str_repeat('x', times: 80), static fn () => null);
+        $host->openPrompt('Rename to', \str_repeat('x', times: 80), static fn () => null);
 
         $lines = $this->canvas($host, 60, 24);
-        $joined = implode("\n", $lines);
+        $joined = \implode("\n", $lines);
 
         $this->assertStringContainsString(AnsiUtils::CURSOR_MARKER_PREFIX, $joined, 'the caret marker survived the truncation');
         $this->assertStringContainsString('Esc', AnsiUtils::stripAnsiCodes($joined), 'the dismiss hint shows');
-        $this->assertSame(str_repeat(' ', times: 60), $lines[0], 'the prompt is centered, not on the top row');
+        $this->assertSame(\str_repeat(' ', times: 60), $lines[0], 'the prompt is centered, not on the top row');
         foreach ($lines as $line) {
             $this->assertSame(60, AnsiUtils::visibleWidth($line), 'every row fills its width');
         }
@@ -1000,11 +1000,11 @@ final class OverlayHostTest extends TestCase
         // not by the caret logic. Read each box's OWN rows straight from
         // layout()'s return instead.
         [$searchPlaced, $promptPlaced] = $host->layout([0, 0, 24, 60]);
-        $this->assertStringNotContainsString(AnsiUtils::CURSOR_MARKER_PREFIX, implode("\n", $searchPlaced['rows']), 'the prompt wins: the search query embeds no marker');
-        $this->assertStringContainsString(AnsiUtils::CURSOR_MARKER_PREFIX, implode("\n", $promptPlaced['rows']), 'the prompt embeds its own marker');
+        $this->assertStringNotContainsString(AnsiUtils::CURSOR_MARKER_PREFIX, \implode("\n", $searchPlaced['rows']), 'the prompt wins: the search query embeds no marker');
+        $this->assertStringContainsString(AnsiUtils::CURSOR_MARKER_PREFIX, \implode("\n", $promptPlaced['rows']), 'the prompt embeds its own marker');
 
         $lines = $this->canvas($host, 60, 24);
-        $joined = implode("\n", $lines);
+        $joined = \implode("\n", $lines);
         $stripped = AnsiUtils::stripAnsiCodes($joined);
         $this->assertStringContainsString('Go to line', $stripped, 'the label titles the frame');
         $this->assertStringContainsString('42', $stripped, 'the value on the field row');
@@ -1031,7 +1031,7 @@ final class OverlayHostTest extends TestCase
         }
         $this->assertGreaterThanOrEqual(0, $hitRow, 'a hit row tinted');
         $this->assertTrue($this->repainted(), 'a changed hover requests a render (the return value alone does not prove this)');
-        $body = implode("\n", $this->canvas($host, 80, 20));
+        $body = \implode("\n", $this->canvas($host, 80, 20));
         $this->assertStringContainsString("\x1b[48;5;31m", $body, 'the selected hit keeps its background');
         $this->assertStringContainsString("\x1b[48;5;236m", $body, 'the hovered hit takes the tint, not the selection');
     }
@@ -1184,10 +1184,10 @@ final class OverlayHostTest extends TestCase
         $selectedRow = null;
         $hoveredRow = null;
         foreach ($lines as $row => $line) {
-            if (str_contains($line, 'item15')) {
+            if (\str_contains($line, 'item15')) {
                 $selectedRow = $row;
             }
-            if (str_contains($line, 'item10')) {
+            if (\str_contains($line, 'item10')) {
                 $hoveredRow = $row;
             }
         }
@@ -1204,9 +1204,9 @@ final class OverlayHostTest extends TestCase
 
     public function testSearchSelectedAndHoveredRowsAreStyledIndependentlyWhenScrolled(): void
     {
-        $rows = array_map(
+        $rows = \array_map(
             fn (int $i): SearchRow => SearchRow::hit($this->hit(SearchCategory::Files, "hit{$i}", static fn () => null)),
-            range(0, end: 19),
+            \range(0, end: 19),
         );
         $host = $this->host();
         $host->openSearch('Search', static fn () => null, static fn () => null, static fn () => null);
@@ -1219,10 +1219,10 @@ final class OverlayHostTest extends TestCase
         $selectedRow = null;
         $hoveredRow = null;
         foreach ($lines as $row => $line) {
-            if (str_contains($line, 'hit15')) {
+            if (\str_contains($line, 'hit15')) {
                 $selectedRow = $row;
             }
-            if (str_contains($line, 'hit10')) {
+            if (\str_contains($line, 'hit10')) {
                 $hoveredRow = $row;
             }
         }
@@ -1257,7 +1257,7 @@ final class OverlayHostTest extends TestCase
         $count = 0;
         foreach ($lines as $line) {
             for ($n = 0; $n < 20; ++$n) {
-                if (!str_contains($line, "item{$n} ")) {
+                if (!\str_contains($line, "item{$n} ")) {
                     continue;
                 }
                 ++$count;
@@ -1291,7 +1291,7 @@ final class OverlayHostTest extends TestCase
         // formula (label(30) + hint(10) + 6 = 46), with columns generous
         // enough (100) to stay clear of the centered-picker clamps.
         $host = $this->host();
-        $host->openList('X', [['label' => str_repeat('A', times: 30), 'hint' => str_repeat('B', times: 10), 'value' => 'v']], static fn () => null);
+        $host->openList('X', [['label' => \str_repeat('A', times: 30), 'hint' => \str_repeat('B', times: 10), 'value' => 'v']], static fn () => null);
 
         [$box] = $host->layout([0, 0, 20, 100]);
         $this->assertSame(50, $box['width'], '46 (label+hint+6) + 4 chrome columns');
@@ -1301,7 +1301,7 @@ final class OverlayHostTest extends TestCase
     {
         $host = $this->host();
         $host->openSearch('X', static fn () => null, static fn () => null, static fn () => null);
-        $host->setSearchRows([SearchRow::hit(new SearchHit(SearchCategory::Files, str_repeat('A', times: 30), str_repeat('B', times: 10), static fn () => null))]);
+        $host->setSearchRows([SearchRow::hit(new SearchHit(SearchCategory::Files, \str_repeat('A', times: 30), \str_repeat('B', times: 10), static fn () => null))]);
 
         [$box] = $host->layout([0, 0, 20, 100]);
         $this->assertSame(50, $box['width'], '46 (label+detail+6) + 4 chrome columns');

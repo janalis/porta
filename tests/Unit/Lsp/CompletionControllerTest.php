@@ -89,7 +89,7 @@ final class CompletionControllerTest extends TestCase
         });
         $this->assertTrue($requested, 'applying the hints requests a render');
 
-        $screen = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->render(new RenderContext(80, 8))));
+        $screen = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->render(new RenderContext(80, 8))));
         $this->assertStringContainsString(': int', $screen);
     }
 
@@ -128,7 +128,7 @@ final class CompletionControllerTest extends TestCase
         $this->editor->showDocument('/p/other.php', new Document("<?php\n"));
         $respond([['position' => ['line' => 1, 'character' => 0], 'label' => 'stale']]);
 
-        $screen = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->render(new RenderContext(80, 8))));
+        $screen = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->render(new RenderContext(80, 8))));
         $this->assertStringNotContainsString('stale', $screen, 'a response for a file that is no longer open must be dropped');
     }
 
@@ -158,7 +158,7 @@ final class CompletionControllerTest extends TestCase
     public function testRequestInlayHintsClampsToTheViewportPlusMargin(): void
     {
         $controller = $this->controller();
-        $this->readyOn($controller, '/p/a.php', str_repeat("\$x = 1;\n", times: 2_000));
+        $this->readyOn($controller, '/p/a.php', \str_repeat("\$x = 1;\n", times: 2_000));
         $this->editor->scrollBy(600);
 
         $controller->requestInlayHints();
@@ -171,7 +171,7 @@ final class CompletionControllerTest extends TestCase
     public function testASettledScrollOutsideTheHintedWindowRefetches(): void
     {
         $controller = $this->controller();
-        $this->readyOn($controller, '/p/a.php', str_repeat("\$x = 1;\n", times: 2_000));
+        $this->readyOn($controller, '/p/a.php', \str_repeat("\$x = 1;\n", times: 2_000));
         $controller->requestInlayHints(); // hinted window: lines 0..524
 
         $this->editor->scrollBy(600); // visible 600..624 — outside the window
@@ -188,7 +188,7 @@ final class CompletionControllerTest extends TestCase
     {
         $scheduler = new FakeScheduler();
         $controller = $this->controller(scheduler: $scheduler);
-        $this->readyOn($controller, '/p/a.php', str_repeat("\$x = 1;\n", times: 2_000));
+        $this->readyOn($controller, '/p/a.php', \str_repeat("\$x = 1;\n", times: 2_000));
         $controller->requestInlayHints();
 
         $this->editor->scrollBy(600);
@@ -222,7 +222,7 @@ final class CompletionControllerTest extends TestCase
         $this->assertSame('textDocument/completion', $this->client->requests[0]['method']);
         $this->client->requests[0]['respond'](['items' => [['label' => 'foo'], ['label' => 'bar']]], error: null);
 
-        $screen = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->render(new RenderContext(80, 8))));
+        $screen = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->render(new RenderContext(80, 8))));
         $this->assertStringContainsString('foo', $screen);
         $this->assertStringContainsString('bar', $screen);
     }
@@ -250,7 +250,7 @@ final class CompletionControllerTest extends TestCase
             'activeSignature' => 0,
         ], error: null);
 
-        $screen = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->render(new RenderContext(80, 8))));
+        $screen = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->render(new RenderContext(80, 8))));
         $this->assertStringContainsString('strlen(string $string): int', $screen);
     }
 
@@ -270,7 +270,7 @@ final class CompletionControllerTest extends TestCase
         ]);
 
         $this->assertStringContainsString('use App\\Foo;', $this->editor->getDocument()->getText());
-        $this->assertSame('textDocument/didChange', end($this->client->notifications)['method'] ?? null, 'the buffer resync notifies the server');
+        $this->assertSame('textDocument/didChange', \end($this->client->notifications)['method'] ?? null, 'the buffer resync notifies the server');
     }
 
     public function testResolveCompletionDetailAnswersWithTheServersType(): void

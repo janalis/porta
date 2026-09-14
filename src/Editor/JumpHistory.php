@@ -32,7 +32,7 @@ final class JumpHistory
     {
         $this->stack[] = ['path' => $path, 'line' => $line, 'col' => $col];
         if (\count($this->stack) > self::DEPTH) {
-            array_shift($this->stack);
+            \array_shift($this->stack);
         }
     }
 
@@ -78,12 +78,12 @@ final class JumpHistory
     /** @return array{path: string, line: int, col: int}|null */
     public function pop(): ?array
     {
-        return array_pop($this->stack);
+        return \array_pop($this->stack);
     }
 
     /** @return list<array{path: string, line: int, col: int}> most recent first, as the list reads */
     public function entries(): array
     {
-        return array_reverse($this->stack);
+        return \array_reverse($this->stack);
     }
 }

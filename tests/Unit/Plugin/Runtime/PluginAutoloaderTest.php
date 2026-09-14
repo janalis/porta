@@ -68,7 +68,7 @@ final class PluginAutoloaderTest extends TestCase
         PluginAutoloader::register(PluginManifest::beside(self::fixture()));
 
         $this->assertArrayHasKey('Acme\\Tools\\', self::registered());
-        $this->assertTrue(class_exists('Acme\\Tools\\Greeting'), 'loaded from the plugin, not from composer');
+        $this->assertTrue(\class_exists('Acme\\Tools\\Greeting'), 'loaded from the plugin, not from composer');
         $this->assertSame('hello from acme-tools', \Acme\Tools\Greeting::text());
     }
 
@@ -86,8 +86,8 @@ final class PluginAutoloaderTest extends TestCase
         // The autoloader must not fatal, warn, or claim a class it has no file
         // for — PHP's own "class not found" names the class and the namespace,
         // which is the useful message.
-        $this->assertFalse(class_exists('Acme\\Tools\\Missing'));
-        $this->assertFalse(class_exists('Someone\\Else\\Thing'));
+        $this->assertFalse(\class_exists('Acme\\Tools\\Missing'));
+        $this->assertFalse(\class_exists('Someone\\Else\\Thing'));
     }
 
     public function testAVendoredPackageResolvesThroughPortasOwnLoader(): void
@@ -111,7 +111,7 @@ final class PluginAutoloaderTest extends TestCase
         // answers before we are asked.
         PluginAutoloader::register(PluginManifest::beside(self::vendored()));
 
-        $this->assertTrue(class_exists(\Symfony\Component\Clock\NativeClock::class));
+        $this->assertTrue(\class_exists(\Symfony\Component\Clock\NativeClock::class));
         $reflection = new \ReflectionClass(\Symfony\Component\Clock\NativeClock::class);
         $this->assertStringContainsString('/vendor/symfony/clock/', (string) $reflection->getFileName(), "Porta's copy, not the plugin's");
     }

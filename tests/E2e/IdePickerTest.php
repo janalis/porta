@@ -37,7 +37,7 @@ final class IdePickerTest extends TestCase
     public function testGoToFileFillsItsBoxRatherThanStoppingAtTheSharedCap(): void
     {
         $files = ['composer.json' => '{}'];
-        foreach (range(start: 1, end: 40) as $n) {
+        foreach (\range(start: 1, end: 40) as $n) {
             $files[\sprintf('src/Widget/Thing%02d.php', $n)] = "<?php\n";
         }
         $project = new TempProject($files);
@@ -48,7 +48,7 @@ final class IdePickerTest extends TestCase
             [
                 100 => static function ($tui): void {
                     $tui->handleInput("\x10"); // ctrl+p
-                    foreach (str_split('Thing') as $ch) {
+                    foreach (\str_split('Thing') as $ch) {
                         $tui->handleInput($ch);
                     }
                 },
@@ -56,12 +56,12 @@ final class IdePickerTest extends TestCase
                     // The eleventh row is the one the shared cap made
                     // unreachable without activating a grow row first.
                     $this->await(
-                        static fn (): bool => str_contains(implode("\n", $tui->getById('editor')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 30))), 'Thing11.php'),
+                        static fn (): bool => \str_contains(\implode("\n", $tui->getById('editor')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 30))), 'Thing11.php'),
                         what: 'the picker to fill its box',
                     );
 
                     $grid = $this->screenGrid($tui, $tui->getTerminal());
-                    $shown = \count(array_filter($grid, static fn (string $row): bool => str_contains($row, '.php    src/Widget')));
+                    $shown = \count(\array_filter($grid, static fn (string $row): bool => \str_contains($row, '.php    src/Widget')));
 
                     $this->assertGreaterThan(5, $shown, 'past the shared per-category cap');
                     $this->assertSame(11, $shown, 'the box seats twelve rows: a group header and eleven hits');

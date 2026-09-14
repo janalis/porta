@@ -27,7 +27,7 @@ final class DotJsonParser
     {
         try {
             /** @var array<array-key, mixed>|scalar|null $data */
-            $data = json_decode($json, associative: true, flags: \JSON_THROW_ON_ERROR);
+            $data = \json_decode($json, associative: true, flags: \JSON_THROW_ON_ERROR);
         } catch (\JsonException $e) {
             throw new GraphParseException('dot produced invalid JSON: '.$e->getMessage(), previous: $e);
         }
@@ -37,7 +37,7 @@ final class DotJsonParser
         [$llx, $lly, $urx, $ury] = self::floats($data['bb'] ?? null, count: 4, what: 'graph bb');
 
         $subgraphCount = (int) ($data['_subgraph_cnt'] ?? 0);
-        $objects = \is_array($data['objects'] ?? null) ? array_values($data['objects']) : [];
+        $objects = \is_array($data['objects'] ?? null) ? \array_values($data['objects']) : [];
         $nodes = [];
         $clusters = [];
         /** @var mixed $object */
@@ -77,7 +77,7 @@ final class DotJsonParser
     private static function cluster(array $object, float $llx, float $ury): ?GraphCluster
     {
         $name = (string) ($object['name'] ?? '');
-        if (!str_starts_with($name, 'cluster') || !\array_key_exists('bb', $object)) {
+        if (!\str_starts_with($name, 'cluster') || !\array_key_exists('bb', $object)) {
             return null;
         }
         [$x0, $y0, $x1, $y1] = self::floats($object['bb'], count: 4, what: 'cluster bb');
@@ -118,7 +118,7 @@ final class DotJsonParser
             $h * 72.0,
             DotColor::normalize(self::attr($object, 'color')),
             DotColor::normalize(self::attr($object, 'fillcolor')),
-            str_contains($style, 'dash') || str_contains($style, 'dot'),
+            \str_contains($style, 'dash') || \str_contains($style, 'dot'),
         );
     }
 
@@ -128,16 +128,16 @@ final class DotJsonParser
         [$minX, $minY] = $points[0];
         [$maxX, $maxY] = $points[0];
         foreach ($points as [$x, $y]) {
-            $minX = min($minX, $x);
-            $maxX = max($maxX, $x);
-            $minY = min($minY, $y);
-            $maxY = max($maxY, $y);
+            $minX = \min($minX, $x);
+            $maxX = \max($maxX, $x);
+            $minY = \min($minY, $y);
+            $maxY = \max($maxY, $y);
         }
         if (null !== $tip) {
-            $minX = min($minX, $tip[0]);
-            $maxX = max($maxX, $tip[0]);
-            $minY = min($minY, $tip[1]);
-            $maxY = max($maxY, $tip[1]);
+            $minX = \min($minX, $tip[0]);
+            $maxX = \max($maxX, $tip[0]);
+            $minY = \min($minY, $tip[1]);
+            $maxY = \max($maxY, $tip[1]);
         }
         $style = self::attr($edge, 'style') ?? '';
 
@@ -153,7 +153,7 @@ final class DotJsonParser
             DotColor::normalize(self::attr($edge, 'color')),
             self::label($edge['label'] ?? ''),
             self::optionalPoint($edge['lp'] ?? null, $llx, $ury),
-            str_contains($style, 'dash') || str_contains($style, 'dot'),
+            \str_contains($style, 'dash') || \str_contains($style, 'dot'),
         );
     }
 
@@ -167,16 +167,16 @@ final class DotJsonParser
      */
     private static function spline(string $pos, float $llx, float $ury): array
     {
-        $tokens = preg_split('/\s+/', trim($pos), flags: \PREG_SPLIT_NO_EMPTY);
+        $tokens = \preg_split('/\s+/', \trim($pos), flags: \PREG_SPLIT_NO_EMPTY);
         \assert(false !== $tokens, description: 'the pattern is valid, preg_split cannot fail');
         $tip = null;
         $points = [];
         foreach ($tokens as $token) {
-            if (str_starts_with($token, 'e,')) {
-                $tip = self::point(substr($token, offset: 2), $llx, $ury, what: 'edge arrow tip');
+            if (\str_starts_with($token, 'e,')) {
+                $tip = self::point(\substr($token, offset: 2), $llx, $ury, what: 'edge arrow tip');
                 continue;
             }
-            if (str_starts_with($token, 's,')) {
+            if (\str_starts_with($token, 's,')) {
                 continue; // tail-arrow point — Porta draws head arrows only
             }
             $points[] = self::point($token, $llx, $ury, what: 'edge spline point');
@@ -194,8 +194,8 @@ final class DotJsonParser
             $p1 = $points[$i + 1];
             $p2 = $points[$i + 2];
             $p3 = $points[$i + 3];
-            $chord = hypot($p3[0] - $p0[0], $p3[1] - $p0[1]);
-            $steps = max(2, (int) ceil($chord / self::FLATTEN_CHORD_PT));
+            $chord = \hypot($p3[0] - $p0[0], $p3[1] - $p0[1]);
+            $steps = \max(2, (int) \ceil($chord / self::FLATTEN_CHORD_PT));
             for ($j = 1; $j <= $steps; ++$j) {
                 $t = $j / $steps;
                 $u = 1.0 - $t;
@@ -217,7 +217,7 @@ final class DotJsonParser
             return null;
         }
 
-        return str_replace(['\n', '\l', '\r'], replace: "\n", subject: $label);
+        return \str_replace(['\n', '\l', '\r'], replace: "\n", subject: $label);
     }
 
     private static function attr(array $object, string $key): ?string
@@ -257,13 +257,13 @@ final class DotJsonParser
         if (!\is_string($raw)) {
             throw new GraphParseException("missing {$what}");
         }
-        $parts = explode(',', rtrim($raw, characters: '!'));
+        $parts = \explode(',', \rtrim($raw, characters: '!'));
         if (\count($parts) !== $count) {
             throw new GraphParseException("malformed {$what}: \"{$raw}\"");
         }
         $floats = [];
         foreach ($parts as $part) {
-            if (!is_numeric($part)) {
+            if (!\is_numeric($part)) {
                 throw new GraphParseException("non-numeric {$what}: \"{$raw}\"");
             }
             $floats[] = (float) $part;

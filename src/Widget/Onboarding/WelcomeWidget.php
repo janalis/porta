@@ -156,7 +156,7 @@ final class WelcomeWidget extends AbstractWidget implements FocusableInterface, 
     public function render(RenderContext $context): array
     {
         $width = $context->getColumns();
-        $rows = max(1, $context->getRows() > 0 ? $context->getRows() : 12);
+        $rows = \max(1, $context->getRows() > 0 ? $context->getRows() : 12);
 
         $lines = [];
         $this->rowOwner = [];
@@ -177,14 +177,14 @@ final class WelcomeWidget extends AbstractWidget implements FocusableInterface, 
     /** The modal frame's title-bar text: the progress count and the key hints. */
     public function title(): string
     {
-        $checkable = array_filter($this->steps, static fn (WelcomeStep $step): bool => $step->isCheckable());
+        $checkable = \array_filter($this->steps, static fn (WelcomeStep $step): bool => $step->isCheckable());
         $total = \count($checkable);
         if (0 === $total) {
             return $this->translator->trans('Welcome');
         }
 
         return $this->translator->trans('Welcome — %done% of %total% done · ⏎ run · ↑↓ move', [
-            '%done%' => \count(array_filter($checkable, static fn (WelcomeStep $step): bool => $step->isDone())),
+            '%done%' => \count(\array_filter($checkable, static fn (WelcomeStep $step): bool => $step->isDone())),
             '%total%' => $total,
         ]);
     }
@@ -202,8 +202,8 @@ final class WelcomeWidget extends AbstractWidget implements FocusableInterface, 
      */
     private function body(int $width, int $rows): array
     {
-        $content = max(1, min($width - (2 * self::H_MARGIN), self::CONTENT_MAX));
-        $margin = str_repeat(' ', max(self::H_MARGIN, intdiv($width - $content, num2: 2)));
+        $content = \max(1, \min($width - (2 * self::H_MARGIN), self::CONTENT_MAX));
+        $margin = \str_repeat(' ', \max(self::H_MARGIN, \intdiv($width - $content, num2: 2)));
 
         $body = $rows >= self::HERO_MIN_ROWS ? $this->hero($width) : [];
         $chrome = \count($body); // the hero block (the title bar belongs to the modal frame)
@@ -213,8 +213,8 @@ final class WelcomeWidget extends AbstractWidget implements FocusableInterface, 
 
             return $body;
         }
-        $checkable = array_filter($this->steps, static fn (WelcomeStep $step): bool => $step->isCheckable());
-        if ([] !== $checkable && [] === array_filter($checkable, static fn (WelcomeStep $step): bool => !$step->isDone())) {
+        $checkable = \array_filter($this->steps, static fn (WelcomeStep $step): bool => $step->isCheckable());
+        if ([] !== $checkable && [] === \array_filter($checkable, static fn (WelcomeStep $step): bool => !$step->isDone())) {
             // A banner, not a replacement: the cards — their [x]s, and any link
             // step — stay visible and navigable beneath it.
             $body[] = $this->message($this->translator->trans('All set. Reopen this any time from Help.'), $width, $margin);
@@ -226,8 +226,8 @@ final class WelcomeWidget extends AbstractWidget implements FocusableInterface, 
         foreach ($this->steps as $index => $step) {
             $cards[] = $this->card($step, $index, $width, $content, $margin);
         }
-        $heights = array_map(static fn (array $card): int => \count($card), $cards);
-        $budget = max(1, $rows - $chrome);
+        $heights = \array_map(static fn (array $card): int => \count($card), $cards);
+        $budget = \max(1, $rows - $chrome);
         $scroll = $this->list->followHeights($heights, $budget);
         // How many cards FIT from here — which is what a page IS. This list is
         // measured in cards and drawn in rows, so the pane height is not a page
@@ -253,7 +253,7 @@ final class WelcomeWidget extends AbstractWidget implements FocusableInterface, 
     private function hero(int $width): array
     {
         $title = $this->translator->trans('Welcome to Porta');
-        $pad = str_repeat(' ', max(0, intdiv($width - AnsiUtils::visibleWidth($title), num2: 2)));
+        $pad = \str_repeat(' ', \max(0, \intdiv($width - AnsiUtils::visibleWidth($title), num2: 2)));
 
         return [
             [AnsiText::blank($width), null],
@@ -295,9 +295,9 @@ final class WelcomeWidget extends AbstractWidget implements FocusableInterface, 
 
         $rows = [[$this->paint($margin, $title, $index, $width, isTitle: true), $index]];
 
-        $indent = str_repeat(' ', max(0, AnsiUtils::visibleWidth($prefix)));
+        $indent = \str_repeat(' ', \max(0, AnsiUtils::visibleWidth($prefix)));
         $dim = $this->styles->of(Role::Dim);
-        foreach (AnsiText::wrap($step->detail, max(1, $content - AnsiUtils::visibleWidth($prefix))) as $chunk) {
+        foreach (AnsiText::wrap($step->detail, \max(1, $content - AnsiUtils::visibleWidth($prefix))) as $chunk) {
             $rows[] = [$this->paint($margin, $indent.$dim->apply($chunk), $index, $width), $index];
         }
         $rows[] = [AnsiText::blank($width), null];
@@ -324,7 +324,7 @@ final class WelcomeWidget extends AbstractWidget implements FocusableInterface, 
             $body = $this->styles->of(Role::Bright)->withBold()->apply($body);
         }
         $bar = $this->styles->of(Role::TabAccent)->withBold()->apply(Glyphs::CARD_ACCENT);
-        $text = AnsiText::truncate(substr($margin, offset: 0, length: -2).$bar.' '.$body, $width, pad: true);
+        $text = AnsiText::truncate(\substr($margin, offset: 0, length: -2).$bar.' '.$body, $width, pad: true);
 
         return $this->applyElement('selected', $text);
     }

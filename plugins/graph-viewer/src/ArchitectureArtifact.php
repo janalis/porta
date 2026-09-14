@@ -41,14 +41,14 @@ final class ArchitectureArtifact
     /** Where this run will write, created on demand by {@see generate()}. */
     public function path(): string
     {
-        $dir = trim($this->outputDir);
+        $dir = \trim($this->outputDir);
         $base = match (true) {
             '' === $dir => $this->rootDir,
-            str_starts_with($dir, '/') => $dir,
+            \str_starts_with($dir, '/') => $dir,
             default => $this->rootDir.'/'.$dir,
         };
 
-        return rtrim($base, characters: '/').'/'.self::FILENAME;
+        return \rtrim($base, characters: '/').'/'.self::FILENAME;
     }
 
     /** @param \Closure(?string $error, ?string $path): void $done exactly one call; a newer generate() supersedes an in-flight command */
@@ -67,12 +67,12 @@ final class ArchitectureArtifact
                 $this->running = null;
             }
             if (0 !== $code) {
-                $stderr = trim($process->errorOutput());
+                $stderr = \trim($process->errorOutput());
                 self::fail($done, 'Architecture command failed: '.('' !== $stderr ? $stderr : "exit {$code}"));
 
                 return;
             }
-            if ('' === trim($stdout)) {
+            if ('' === \trim($stdout)) {
                 self::fail($done, 'Architecture command produced no output');
 
                 return;
@@ -114,6 +114,6 @@ final class ArchitectureArtifact
 
             return;
         }
-        $done(null, ($resolved = realpath($path)) ? $resolved : $path);
+        $done(null, ($resolved = \realpath($path)) ? $resolved : $path);
     }
 }

@@ -26,8 +26,8 @@ final class IdeFramePacingTest extends TestCase
 
     public function testAWheelBurstIsCappedAndTheRestingFrameStillLands(): void
     {
-        putenv('PATH=/nonexistent');
-        $lines = "<?php\n".implode("\n", array_map(static fn (int $i): string => "// line {$i}", range(start: 1, end: 60)))."\n";
+        \putenv('PATH=/nonexistent');
+        $lines = "<?php\n".\implode("\n", \array_map(static fn (int $i): string => "// line {$i}", \range(start: 1, end: 60)))."\n";
         $project = new TempProject(['a.php' => $lines]);
 
         $this->runIde(

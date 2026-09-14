@@ -116,7 +116,7 @@ final class TerminalPanelWidget extends DockPanelWidget implements FocusableInte
      */
     public function scroll(int $lines): void
     {
-        $max = max(0, $this->buffer->lineCount() - $this->visibleRows);
+        $max = \max(0, $this->buffer->lineCount() - $this->visibleRows);
         $this->scrollBack = IntMath::clamp($this->scrollBack + $lines, 0, $max);
         $this->invalidate();
     }
@@ -197,7 +197,7 @@ final class TerminalPanelWidget extends DockPanelWidget implements FocusableInte
         $lines = [];
         $all = $this->buffer->lines;
         $end = \count($all) - $this->scrollBack;
-        $start = max(0, $end - $rows);
+        $start = \max(0, $end - $rows);
         $window = \array_slice($all, $start, $rows);
 
         foreach ($window as $line) {
@@ -214,9 +214,9 @@ final class TerminalPanelWidget extends DockPanelWidget implements FocusableInte
         // it. The buffer is line oriented, so the cursor is on its last line.
         if ($this->focused && 0 === $this->scrollBack && [] !== $window) {
             $row = \count($window) - 1; // the last body line's index
-            $col = min($this->buffer->cursorColumn(), max(0, $columns - 1));
+            $col = \min($this->buffer->cursorColumn(), \max(0, $columns - 1));
             $byte = \strlen(AnsiUtils::sliceByColumn($lines[$row], 0, $col));
-            $lines[$row] = substr($lines[$row], offset: 0, length: $byte).$this->cursorStyle->marker().substr($lines[$row], $byte);
+            $lines[$row] = \substr($lines[$row], offset: 0, length: $byte).$this->cursorStyle->marker().\substr($lines[$row], $byte);
         }
 
         return $this->withMenuOverlay($lines, $columns);

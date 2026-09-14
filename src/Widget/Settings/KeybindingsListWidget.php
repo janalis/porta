@@ -120,15 +120,15 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
     /** The rows the filter leaves — what the list shows, selects and rebinds. */
     private function applyFilter(): void
     {
-        $needle = mb_strtolower(trim($this->filter->value()));
+        $needle = \mb_strtolower(\trim($this->filter->value()));
         $this->shown = '' === $needle
             ? $this->rows
-            : array_values(array_filter(
+            : \array_values(\array_filter(
                 $this->rows,
                 // The KEY as well as the label: "what is Ctrl+Shift+N bound to" is
                 // the other half of what anyone opens this page to find out, and
                 // PhpStorm gives it a mode of its own. One field answers both.
-                static fn (KeybindingRow $row): bool => str_contains(mb_strtolower($row->label), $needle) || str_contains(mb_strtolower(ShortcutFormatter::format($row->binding)), $needle),
+                static fn (KeybindingRow $row): bool => \str_contains(\mb_strtolower($row->label), $needle) || \str_contains(\mb_strtolower(ShortcutFormatter::format($row->binding)), $needle),
             ));
         $this->list->clamp(\count($this->shown));
     }
@@ -279,7 +279,7 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
     public function render(RenderContext $context): array
     {
         $width = $context->getColumns();
-        $rows = max(1, $context->getRows() > 0 ? $context->getRows() : 12);
+        $rows = \max(1, $context->getRows() > 0 ? $context->getRows() : 12);
         $this->lastRows = $rows;
 
         $title =
@@ -296,7 +296,7 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
         }
 
         $headerRows = $this->headerRows();
-        $scroll = $this->list->follow(max(1, $rows - $headerRows));
+        $scroll = $this->list->follow(\max(1, $rows - $headerRows));
         for ($row = $headerRows; $row < $rows; ++$row) {
             $index = $scroll + $row - $headerRows;
             $entry = $this->shown[$index] ?? null;
@@ -317,14 +317,14 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
                 $entry->overridden => $this->styles->of(Role::Modified)->apply($shortcut),
                 default => $shortcut,
             };
-            $rightWidth = '' === $shortcut ? 1 : mb_strwidth($shortcut);
+            $rightWidth = '' === $shortcut ? 1 : \mb_strwidth($shortcut);
             if ($index === $this->capturingIndex) {
                 $prompt = $this->translator->trans('Press a key… (Esc to cancel)');
                 $right = $this->styles->of(Role::Modified)->apply($prompt);
-                $rightWidth = mb_strwidth($prompt);
+                $rightWidth = \mb_strwidth($prompt);
             }
 
-            $labelWidth = max(0, $width - $rightWidth - 2);
+            $labelWidth = \max(0, $width - $rightWidth - 2);
             $label = AnsiText::truncate(' '.$entry->label, $labelWidth, pad: true);
             // Clamped, because the label alone yielding is not enough: once
             // $labelWidth hits its floor of zero the row is still

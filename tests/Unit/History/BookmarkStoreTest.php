@@ -45,7 +45,7 @@ final class BookmarkStoreTest extends TestCase
         $project->write('src/Gone.php', "<?php\n");
         $store = new BookmarkStore($project->dir);
         $store->save([$project->path('src/A.php') => [1], $project->path('src/Gone.php') => [3]]);
-        unlink($project->path('src/Gone.php'));
+        \unlink($project->path('src/Gone.php'));
 
         $this->assertSame([$project->path('src/A.php') => [1]], $store->load(), 'a deleted file cannot be jumped to');
     }
@@ -55,18 +55,18 @@ final class BookmarkStoreTest extends TestCase
         $project = new TempProject();
         $project->write('src/A.php', "<?php\n");
         $file = $project->path('.porta/bookmarks.json');
-        mkdir(\dirname($file), permissions: 0o777, recursive: true);
+        \mkdir(\dirname($file), permissions: 0o777, recursive: true);
 
-        file_put_contents($file, data: '{"bookmarks":"nope"}');
+        \file_put_contents($file, data: '{"bookmarks":"nope"}');
         $this->assertSame([], new BookmarkStore($project->dir)->load(), 'bookmarks must be a map');
 
-        file_put_contents($file, json_encode(['bookmarks' => [$project->path('src/A.php') => 'nope']]));
+        \file_put_contents($file, \json_encode(['bookmarks' => [$project->path('src/A.php') => 'nope']]));
         $this->assertSame([], new BookmarkStore($project->dir)->load(), 'a file entry must be a list');
 
-        file_put_contents($file, json_encode(['bookmarks' => [$project->path('src/A.php') => [-1, 'x', 2]]]));
+        \file_put_contents($file, \json_encode(['bookmarks' => [$project->path('src/A.php') => [-1, 'x', 2]]]));
         $this->assertSame([$project->path('src/A.php') => [2]], new BookmarkStore($project->dir)->load(), 'non-lines are dropped, the rest survives');
 
-        file_put_contents($file, json_encode(['bookmarks' => [$project->path('src/A.php') => [-1]]]));
+        \file_put_contents($file, \json_encode(['bookmarks' => [$project->path('src/A.php') => [-1]]]));
         $this->assertSame([], new BookmarkStore($project->dir)->load(), 'a file left with no usable line is dropped whole');
     }
 
@@ -119,7 +119,7 @@ final class BookmarkStoreTest extends TestCase
             $project->path('b-kept.php') => [2],
             $project->path('c-kept.php') => [3],
         ]);
-        unlink($project->path('a-gone.php'));
+        \unlink($project->path('a-gone.php'));
 
         $this->assertSame(
             [$project->path('b-kept.php') => [2], $project->path('c-kept.php') => [3]],
@@ -134,8 +134,8 @@ final class BookmarkStoreTest extends TestCase
         $project = new TempProject();
         $project->write('src/A.php', "<?php\n");
         $file = $project->path('.porta/bookmarks.json');
-        mkdir(\dirname($file), permissions: 0o777, recursive: true);
-        file_put_contents($file, (string) json_encode(['bookmarks' => [$project->path('src/A.php') => ['1' => 7, '0' => 2]]]));
+        \mkdir(\dirname($file), permissions: 0o777, recursive: true);
+        \file_put_contents($file, (string) \json_encode(['bookmarks' => [$project->path('src/A.php') => ['1' => 7, '0' => 2]]]));
 
         $this->assertSame([$project->path('src/A.php') => [7, 2]], new BookmarkStore($project->dir)->load());
     }

@@ -35,7 +35,7 @@ final class PluginComposerProjectTest extends TestCase
 
         // A second call is idempotent — it must not clobber an entry a
         // require/repository call already added.
-        file_put_contents($path, (string) json_encode(['name' => 'porta/local-plugins', 'require' => ['acme/x' => '^1.0']]));
+        \file_put_contents($path, (string) \json_encode(['name' => 'porta/local-plugins', 'require' => ['acme/x' => '^1.0']]));
         $this->project->ensureScaffold($this->scope->dir);
         $this->assertSame(['acme/x' => '^1.0'], JsonFile::read($path)['require'] ?? null, 'scaffold left an existing file untouched');
     }
@@ -92,22 +92,22 @@ final class PluginComposerProjectTest extends TestCase
 
     public function testEnsureScaffoldReturnsNullWhenTheScopeIsUnwritable(): void
     {
-        chmod($this->scope->dir, permissions: 0o555);
+        \chmod($this->scope->dir, permissions: 0o555);
         try {
             $this->assertNull($this->project->ensureScaffold($this->scope->dir));
         } finally {
-            chmod($this->scope->dir, permissions: 0o755);
+            \chmod($this->scope->dir, permissions: 0o755);
         }
     }
 
     public function testAddPathRepositoryAndAddVcsRepositoryReturnFalseWhenTheScopeIsUnwritable(): void
     {
-        chmod($this->scope->dir, permissions: 0o555);
+        \chmod($this->scope->dir, permissions: 0o555);
         try {
             $this->assertFalse($this->project->addPathRepository($this->scope->dir, 'acme/mine', '/src/acme-mine'));
             $this->assertFalse($this->project->addVcsRepository($this->scope->dir, 'acme/mine', 'https://example.com/mine.git'));
         } finally {
-            chmod($this->scope->dir, permissions: 0o755);
+            \chmod($this->scope->dir, permissions: 0o755);
         }
     }
 }

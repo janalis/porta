@@ -384,10 +384,10 @@ final class WelcomeModalControllerTest extends TestCase
 
         $this->assertTrue($controller->hoverAt($region->top + $region->count - 2, $region->col + $region->width - 2), 'onto the corner (inside the shadow-widened region)');
         $spans = $this->pane->modalSpans;
-        $joined = implode('', array_column($spans, 'segment'));
+        $joined = \implode('', \array_column($spans, 'segment'));
         $this->assertStringContainsString(\Porta\Ui\Glyphs::MODAL_RESIZE_GRAB, $joined, 'the corner heavied');
         $this->assertTrue($controller->hoverAt(0, 0), 'off it again');
-        $this->assertStringNotContainsString(\Porta\Ui\Glyphs::MODAL_RESIZE_GRAB, implode('', array_column($this->pane->modalSpans, 'segment')));
+        $this->assertStringNotContainsString(\Porta\Ui\Glyphs::MODAL_RESIZE_GRAB, \implode('', \array_column($this->pane->modalSpans, 'segment')));
     }
 
     public function testAFreshPressCancelsAnArmedDrag(): void
@@ -592,15 +592,15 @@ final class WelcomeModalControllerTest extends TestCase
         $this->frame(80);
 
         $controller->open();
-        $before = implode('', array_column($this->pane->modalSpans, 'segment'));
+        $before = \implode('', \array_column($this->pane->modalSpans, 'segment'));
         $this->assertStringContainsString('php-cs-fixer', $before);
         $this->assertStringNotContainsString('mago', $before);
 
         $magoBinary = $project->write('vendor/bin/mago', '');
-        chmod($magoBinary, permissions: 0o755);
+        \chmod($magoBinary, permissions: 0o755);
         $controller->refresh();
 
-        $after = implode('', array_column($this->pane->modalSpans, 'segment'));
+        $after = \implode('', \array_column($this->pane->modalSpans, 'segment'));
         $this->assertStringContainsString('mago', $after, 'refresh() re-detected mago and rebuilt the step label');
     }
 

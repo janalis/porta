@@ -30,7 +30,7 @@ final class ResultsPanelRuleColumnTest extends TestCase
         $panel->open('Problems' === $mode ? 'Problems' : 'Find in Project', 'problems' === $mode ? ResultsPanelFields::resultsOnly() : ResultsPanelFields::searchResults());
         $panel->setResults($rows);
 
-        return implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $panel->render(new RenderContext($columns, 6))));
+        return \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $panel->render(new RenderContext($columns, 6))));
     }
 
     /**

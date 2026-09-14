@@ -82,7 +82,7 @@ final class LspMapper
      */
     public static function mapCompletionItems(array $items): array
     {
-        usort($items, static fn (array $a, array $b) => (string) ($a['sortText'] ?? $a['label'] ?? '') <=> (string) ($b['sortText'] ?? $b['label'] ?? ''));
+        \usort($items, static fn (array $a, array $b) => (string) ($a['sortText'] ?? $a['label'] ?? '') <=> (string) ($b['sortText'] ?? $b['label'] ?? ''));
 
         $mapped = [];
         foreach (\array_slice($items, offset: 0, length: 80) as $item) {
@@ -98,8 +98,8 @@ final class LspMapper
             // placeholders ${1:foo} → foo, $0 → ''.
             $insert = $raw;
             if ($isSnippet) {
-                $insert = preg_replace('/\$\{\d+:?([^}]*)}/', replacement: '$1', subject: $insert) ?? $insert;
-                $insert = preg_replace('/\$\d+/', replacement: '', subject: $insert) ?? $insert;
+                $insert = \preg_replace('/\$\{\d+:?([^}]*)}/', replacement: '$1', subject: $insert) ?? $insert;
+                $insert = \preg_replace('/\$\d+/', replacement: '', subject: $insert) ?? $insert;
             }
 
             // additionalTextEdits carry auto-import / use-statement insertions that
@@ -228,9 +228,9 @@ final class LspMapper
             $label = $hint['label'] ?? '';
             if (\is_array($label)) {
                 // label is an InlayHintLabelPart[]; concatenate the parts' text.
-                $label = implode('', array_map(static fn ($part) => \is_array($part) ? (string) ($part['value'] ?? '') : (string) $part, $label));
+                $label = \implode('', \array_map(static fn ($part) => \is_array($part) ? (string) ($part['value'] ?? '') : (string) $part, $label));
             }
-            $label = trim((string) $label);
+            $label = \trim((string) $label);
             if ('' === $label) {
                 continue;
             }
@@ -258,7 +258,7 @@ final class LspMapper
 
         $parts = [];
         /** @var mixed $chunk each chunk is untrusted wire data — the guards below are the narrowing */
-        foreach (\is_array($contents) && array_is_list($contents) ? $contents : [$contents] as $chunk) {
+        foreach (\is_array($contents) && \array_is_list($contents) ? $contents : [$contents] as $chunk) {
             if (\is_string($chunk)) {
                 $parts[] = $chunk;
                 continue;
@@ -268,14 +268,14 @@ final class LspMapper
             }
         }
 
-        $text = trim(implode("\n", $parts));
+        $text = \trim(\implode("\n", $parts));
         if ('' === $text) {
             return null;
         }
         // Light markdown cleanup: drop code fences, collapse blank runs
-        $text = preg_replace('/^```\w*$/m', replacement: '', subject: $text) ?? $text;
+        $text = \preg_replace('/^```\w*$/m', replacement: '', subject: $text) ?? $text;
 
-        return preg_replace("/\n{3,}/", replacement: "\n\n", subject: trim($text)) ?? $text;
+        return \preg_replace("/\n{3,}/", replacement: "\n\n", subject: \trim($text)) ?? $text;
     }
 
     /**
@@ -290,7 +290,7 @@ final class LspMapper
             return [];
         }
         /** @var list<array{uri?: string, range?: array<array-key, mixed>, targetUri?: string, targetSelectionRange?: array<array-key, mixed>, targetRange?: array<array-key, mixed>}|scalar|null> $candidates */
-        $candidates = array_is_list($result) ? $result : [$result];
+        $candidates = \array_is_list($result) ? $result : [$result];
         $out = [];
         foreach ($candidates as $candidate) {
             if (!\is_array($candidate)) {
@@ -366,7 +366,7 @@ final class LspMapper
             $start = $range['start'] ?? ['line' => 0, 'character' => 0];
 
             $items[] = [
-                'label' => str_repeat('  ', max(0, $depth)).(string) $symbol['name'],
+                'label' => \str_repeat('  ', \max(0, $depth)).(string) $symbol['name'],
                 'hint' => self::SYMBOL_KINDS[$symbol['kind'] ?? 0] ?? '',
                 'value' => (int) ($start['line'] ?? 0).':'.(int) ($start['character'] ?? 0),
             ];
@@ -497,7 +497,7 @@ final class LspMapper
             $sameLine = ($diag['range']['end']['line'] ?? $line) === $line;
             $mapped = [
                 'severity' => (int) ($diag['severity'] ?? 1),
-                'message' => trim((string) preg_replace('/\s+/', replacement: ' ', subject: $diag['message'] ?? '')),
+                'message' => \trim((string) \preg_replace('/\s+/', replacement: ' ', subject: $diag['message'] ?? '')),
                 'col' => $diag['range']['start']['character'] ?? 0,
                 'endCol' => $sameLine ? $diag['range']['end']['character'] ?? 0 : \PHP_INT_MAX,
             ];
@@ -522,13 +522,13 @@ final class LspMapper
             // until the tag is drawn. Kept as ints rather than the enum: this
             // is wire data, and a server may send a tag from a spec newer than
             // this one, which the renderer should ignore rather than choke on.
-            $tags = array_values(array_filter($diag['tags'] ?? [], \is_int(...)));
+            $tags = \array_values(\array_filter($diag['tags'] ?? [], \is_int(...)));
             if ([] !== $tags) {
                 $mapped['tags'] = $tags;
             }
             $byLine[$line][] = $mapped;
         }
-        ksort($byLine);
+        \ksort($byLine);
 
         return $byLine;
     }

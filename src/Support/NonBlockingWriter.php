@@ -101,22 +101,22 @@ final class NonBlockingWriter
             EventLoop::cancel($this->watcher);
             $this->watcher = null;
         }
-        stream_set_blocking($this->stream, enable: true);
+        \stream_set_blocking($this->stream, enable: true);
         while ('' !== $this->buffer) {
             // @mago-expect lint:no-error-control-operator -- fwrite to a pipe whose peer has died (the local fd is still a live resource) raises an unavoidable EPIPE warning that no is_resource guard prevents; the false/0 return is the handled failure signal.
-            $n = @fwrite($this->stream, $this->buffer);
+            $n = @\fwrite($this->stream, $this->buffer);
             if (false === $n || 0 === $n) {
-                stream_set_blocking($this->stream, enable: false);
+                \stream_set_blocking($this->stream, enable: false);
                 $this->fail('write failed');
 
                 return;
             }
-            $this->buffer = substr($this->buffer, $n);
+            $this->buffer = \substr($this->buffer, $n);
         }
         if (\is_resource($this->stream)) {
-            fflush($this->stream);
+            \fflush($this->stream);
         }
-        stream_set_blocking($this->stream, enable: false);
+        \stream_set_blocking($this->stream, enable: false);
     }
 
     /** Cancel the drain watcher and forget the stream (the owner fcloses the fd). */
@@ -136,7 +136,7 @@ final class NonBlockingWriter
             return;
         }
         // @mago-expect lint:no-error-control-operator -- fwrite to a pipe whose peer has died (the local fd is still a live resource) raises an unavoidable EPIPE warning that no is_resource guard prevents; the false return is the handled failure signal.
-        $n = @fwrite($this->stream, $this->buffer);
+        $n = @\fwrite($this->stream, $this->buffer);
         if (false === $n) {
             $this->fail('write failed');
 
@@ -146,9 +146,9 @@ final class NonBlockingWriter
         // (stream_set_write_buffer fails on proc pipes); push it to the fd —
         // on a non-blocking stream this never blocks.
         if (\is_resource($this->stream)) {
-            fflush($this->stream);
+            \fflush($this->stream);
         }
-        $this->buffer = substr($this->buffer, $n);
+        $this->buffer = \substr($this->buffer, $n);
 
         if ('' === $this->buffer) {
             if (null !== $this->watcher) {

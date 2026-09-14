@@ -41,7 +41,7 @@ final class PortaCommandTest extends TestCase
 
         $this->assertSame(Command::SUCCESS, $tester->execute(['path' => $project->dir]));
         [$workspace, $lsp, $noLsp] = $this->launched;
-        $this->assertSame(realpath($project->dir), $workspace->rootDir);
+        $this->assertSame(\realpath($project->dir), $workspace->rootDir);
         $this->assertNull($workspace->initialFile);
         $this->assertNull($lsp);
         $this->assertSame(LspMode::Enabled, $noLsp);
@@ -54,7 +54,7 @@ final class PortaCommandTest extends TestCase
 
         $tester->execute(['path' => $project->path('src/Foo.php').':17']);
         [$workspace] = $this->launched;
-        $this->assertSame(realpath($project->path('src/Foo.php')), $workspace->initialFile);
+        $this->assertSame(\realpath($project->path('src/Foo.php')), $workspace->initialFile);
         $this->assertSame(17, $workspace->line);
     }
 
@@ -189,7 +189,7 @@ final class PortaCommandTest extends TestCase
         $this->assertStringContainsString('porta: fatal: poll tick exploded', $tester->getDisplay());
         $this->assertStringNotContainsString('delete ~/.cache/porta', $tester->getDisplay(), 'a mid-session crash must not send the user to delete a healthy cache');
         $this->assertStringContainsString('.porta/error.log', $tester->getDisplay());
-        $this->assertStringContainsString('poll tick exploded', (string) file_get_contents($project->dir.'/.porta/error.log'), 'the trace survives the crash');
+        $this->assertStringContainsString('poll tick exploded', (string) \file_get_contents($project->dir.'/.porta/error.log'), 'the trace survives the crash');
     }
 
     public function testVerboseModeRethrowsForTheFullTrace(): void

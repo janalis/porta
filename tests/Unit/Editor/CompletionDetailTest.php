@@ -110,7 +110,7 @@ final class CompletionDetailTest extends TestCase
         // the project. Resolving all of them to fill eight visible rows is a
         // request storm nobody sees the result of.
         $items = [];
-        foreach (range(1, end: 40) as $n) {
+        foreach (\range(1, end: 40) as $n) {
             $items[] = $this->item('item'.$n);
         }
         $completion = $this->completion();
@@ -157,7 +157,7 @@ final class CompletionDetailTest extends TestCase
         // leaves the selection at 0, where the window arithmetic cannot be
         // wrong.
         $items = [];
-        foreach (range(1, end: 40) as $n) {
+        foreach (\range(1, end: 40) as $n) {
             $items[] = $this->item('item'.$n);
         }
         $completion = $this->completion();
@@ -168,7 +168,7 @@ final class CompletionDetailTest extends TestCase
 
         $this->assertSame(
             ['item'.(PopupMetrics::COMPLETION_ROWS + 1)],
-            array_column($this->asked, 'label'),
+            \array_column($this->asked, 'label'),
             'exactly the row that scrolled in, and none of the ones already asked about',
         );
     }
@@ -189,7 +189,7 @@ final class CompletionDetailTest extends TestCase
             $this->item('alsoUntyped'),
         ]);
 
-        $this->assertSame(['untyped', 'alsoUntyped'], array_column($this->asked, 'label'), 'the local item has no raw server item to ask about');
+        $this->assertSame(['untyped', 'alsoUntyped'], \array_column($this->asked, 'label'), 'the local item has no raw server item to ask about');
     }
 
     public function testAnAnswerForAnItemFURTHERDownTheListLandsOnTheRightRow(): void
@@ -238,7 +238,7 @@ final class CompletionDetailTest extends TestCase
         // above is the other door to the same room, and each was wired
         // separately.
         $items = [];
-        foreach (range(1, end: 40) as $n) {
+        foreach (\range(1, end: 40) as $n) {
             $items[] = $this->item('item'.$n);
         }
         $completion = $this->completion();
@@ -246,17 +246,17 @@ final class CompletionDetailTest extends TestCase
         $this->asked = [];
         $keys = new Keybindings(['cursor_down' => ['j'], 'cursor_up' => ['k']]);
 
-        foreach (range(1, end: PopupMetrics::COMPLETION_ROWS) as $_) {
+        foreach (\range(1, end: PopupMetrics::COMPLETION_ROWS) as $_) {
             $completion->handleInput('j', $keys);
         }
 
-        $this->assertSame(['item'.(PopupMetrics::COMPLETION_ROWS + 1)], array_column($this->asked, 'label'));
+        $this->assertSame(['item'.(PopupMetrics::COMPLETION_ROWS + 1)], \array_column($this->asked, 'label'));
     }
 
     public function testARROWINGBackUpAsksAboutTheRowThatScrollsInAtTheTop(): void
     {
         $items = [];
-        foreach (range(1, end: 40) as $n) {
+        foreach (\range(1, end: 40) as $n) {
             $items[] = $this->item('item'.$n);
         }
         $completion = $this->completion();
@@ -268,7 +268,7 @@ final class CompletionDetailTest extends TestCase
         $this->asked = [];
         $completion->handleInput('k', $keys);
 
-        $this->assertSame('item40', end($this->asked)['label'], 'the wrap lands on the last row and asks about it');
+        $this->assertSame('item40', \end($this->asked)['label'], 'the wrap lands on the last row and asks about it');
     }
 
     public function testTheDOCBLOCKArrivesOnTheSameRoundTrip(): void
@@ -308,6 +308,6 @@ final class CompletionDetailTest extends TestCase
 
         $completion->show([$this->item('name', 'string')]);
 
-        $this->assertSame(['name'], array_column($this->asked, 'label'));
+        $this->assertSame(['name'], \array_column($this->asked, 'label'));
     }
 }

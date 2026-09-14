@@ -22,7 +22,7 @@ final class FoldModelTest extends TestCase
 
     public function testSnapVisibleEndBoundaryIsInclusive(): void
     {
-        $doc = new Document(str_repeat("l\n", times: 10));
+        $doc = new Document(\str_repeat("l\n", times: 10));
         $model = new FoldModel($doc);
         $model->setRegions([[0, 5]], $doc->getVersion());
         $model->foldAll();
@@ -56,7 +56,7 @@ final class FoldModelTest extends TestCase
 
     public function testToggleCreatesAndRemovesFoldAtCaret(): void
     {
-        $doc = new Document(str_repeat("l\n", times: 10));
+        $doc = new Document(\str_repeat("l\n", times: 10));
         $model = new FoldModel($doc);
         $model->setRegions([[2, 5]], $doc->getVersion());
         $doc->setCursor(2, 0);
@@ -71,7 +71,7 @@ final class FoldModelTest extends TestCase
 
     public function testToggleWithNoEnclosingRegionIsNoOp(): void
     {
-        $doc = new Document(str_repeat("l\n", times: 10));
+        $doc = new Document(\str_repeat("l\n", times: 10));
         $model = new FoldModel($doc);
         $model->setRegions([], $doc->getVersion());
         $doc->setCursor(3, 0);
@@ -86,7 +86,7 @@ final class FoldModelTest extends TestCase
         // Start line is long (11 cols), the end line is short (1 col): the
         // caret's clamped column after toggling proves which line's length was
         // actually used.
-        $doc = new Document("0123456789{\n".str_repeat('a', times: 20)."\n}\n");
+        $doc = new Document("0123456789{\n".\str_repeat('a', times: 20)."\n}\n");
         $model = new FoldModel($doc);
         $model->setRegions([[0, 2]], $doc->getVersion());
         $doc->setCursor(1, 20);
@@ -100,7 +100,7 @@ final class FoldModelTest extends TestCase
 
     public function testFoldableRegionBoundariesAreInclusiveOnBothEnds(): void
     {
-        $doc = new Document(str_repeat("l\n", times: 10));
+        $doc = new Document(\str_repeat("l\n", times: 10));
 
         $atStart = new FoldModel($doc);
         $atStart->setRegions([[3, 7]], $doc->getVersion());
@@ -117,7 +117,7 @@ final class FoldModelTest extends TestCase
 
     public function testFoldableRegionRejectsLineOutsideRange(): void
     {
-        $doc = new Document(str_repeat("l\n", times: 30));
+        $doc = new Document(\str_repeat("l\n", times: 30));
         $model = new FoldModel($doc);
         $model->setRegions([[3, 7]], $doc->getVersion());
         $doc->setCursor(20, 0);
@@ -129,7 +129,7 @@ final class FoldModelTest extends TestCase
 
     public function testFoldableRegionPicksFirstFoundOnStartTie(): void
     {
-        $doc = new Document(str_repeat("l\n", times: 15));
+        $doc = new Document(\str_repeat("l\n", times: 15));
         $model = new FoldModel($doc);
         // Two candidates share the same start: the first one encountered wins.
         $model->setRegions([[0, 10], [0, 5]], $doc->getVersion());
@@ -142,7 +142,7 @@ final class FoldModelTest extends TestCase
 
     public function testFoldableRegionPicksInnermostByHighestStart(): void
     {
-        $doc = new Document(str_repeat("l\n", times: 15));
+        $doc = new Document(\str_repeat("l\n", times: 15));
         $model = new FoldModel($doc);
         $model->setRegions([[0, 10], [2, 5]], $doc->getVersion());
         $doc->setCursor(3, 0);
@@ -155,7 +155,7 @@ final class FoldModelTest extends TestCase
 
     public function testFoldableRegionAcceptsFirstCandidateWithZeroStart(): void
     {
-        $doc = new Document(str_repeat("l\n", times: 10));
+        $doc = new Document(\str_repeat("l\n", times: 10));
         $model = new FoldModel($doc);
         $model->setRegions([[0, 4]], $doc->getVersion());
         $doc->setCursor(2, 0);

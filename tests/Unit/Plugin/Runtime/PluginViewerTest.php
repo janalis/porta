@@ -54,7 +54,7 @@ final class PluginViewerTest extends TestCase
     {
         $manager = $this->manager();
         $one = $this->api($manager, 'one');
-        $one->registerViewer('hex', static fn (string $path): bool => str_ends_with($path, '.bin'));
+        $one->registerViewer('hex', static fn (string $path): bool => \str_ends_with($path, '.bin'));
         $manager->commit($one);
         $two = $this->api($manager, 'two');
         $two->registerViewer('image', ['bin']);
@@ -199,8 +199,8 @@ final class PluginViewerTest extends TestCase
         $manager->commit($api);
 
         $tools = $manager->listTools();
-        $this->assertSame(['demo:todo', 'demo:bare'], array_column($tools, 'id'), 'namespaced, in registration order');
-        $this->assertSame(['TODO', 'Bare'], array_column($tools, 'title'));
+        $this->assertSame(['demo:todo', 'demo:bare'], \array_column($tools, 'id'), 'namespaced, in registration order');
+        $this->assertSame(['TODO', 'Bare'], \array_column($tools, 'title'));
         $this->assertNull($tools[1]['rerun'], 'an undeclared F5 stays null rather than becoming a no-op closure');
         $this->assertNull($tools[1]['activate']);
 
@@ -317,7 +317,7 @@ final class PluginViewerTest extends TestCase
         $manager->commit($api);
 
         $menus = $manager->contributedMenus();
-        self::assertCount(1, $menus);
+        $this->assertCount(1, $menus);
         // Plugin-keyed, so a live disable can retract exactly its contributor's.
         $this->assertSame('vcs', $menus[0]['plugin']);
         $this->assertSame('Git', $menus[0]['contribution']->title);
@@ -414,8 +414,8 @@ final class PluginViewerTest extends TestCase
         $manager->commit($api);
 
         $segments = $manager->statusSegments();
-        self::assertCount(1, $segments, 'the empty cell contributes nothing');
-        self::assertInstanceOf(StatusCell::class, $segments[0]);
+        $this->assertCount(1, $segments, 'the empty cell contributes nothing');
+        $this->assertInstanceOf(StatusCell::class, $segments[0]);
         $this->assertSame('⎇ main', $segments[0]->text);
         $this->assertSame(StatusTone::Accent, $segments[0]->tone);
     }
@@ -463,8 +463,8 @@ final class PluginViewerTest extends TestCase
         $api->addMenuItem('ide_todo', surface: MenuSurface::EditorContext);
         $manager->commit($api);
 
-        $this->assertSame(['i:demo:own'], array_map(static fn (PluginMenuSpec $s): string => $s->spec, $manager->menuSpecs()));
-        $this->assertSame(['i:ide_todo'], array_map(static fn (PluginMenuSpec $s): string => $s->spec, $manager->menuSpecs(MenuSurface::EditorContext)), 'bare, because core owns the id');
+        $this->assertSame(['i:demo:own'], \array_map(static fn (PluginMenuSpec $s): string => $s->spec, $manager->menuSpecs()));
+        $this->assertSame(['i:ide_todo'], \array_map(static fn (PluginMenuSpec $s): string => $s->spec, $manager->menuSpecs(MenuSurface::EditorContext)), 'bare, because core owns the id');
 
         $manager->deactivate('demo', new CommandRegistry());
         $this->assertSame([], $manager->menuSpecs(MenuSurface::EditorContext), 'a removed plugin takes its context item with it');

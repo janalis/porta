@@ -28,7 +28,7 @@ final class AutoPairService
     {
         // Note: with multiple carets, MultiCaret::handleInput intercepts typing
         // before this is reached, so no extra-caret guard is needed here.
-        $isOpen = array_key_exists($keys, self::PAIRS);
+        $isOpen = \array_key_exists($keys, self::PAIRS);
 
         // Wrap a selection in the pair.
         if ($isOpen && null !== ($range = $doc->getSelectionRange())) {
@@ -56,12 +56,12 @@ final class AutoPairService
         $close = self::PAIRS[$keys];
         if ($keys === $close) {
             $prevChar = $doc->getCursorCol() > 0 ? $line[$doc->getCursorCol() - 1] ?? '' : '';
-            if (1 === preg_match('/[\w]/', $prevChar)) {
+            if (1 === \preg_match('/[\w]/', $prevChar)) {
                 return false;
             }
         }
         // Don't pair when the next char is an identifier char (would be noise).
-        if ('' !== $nextChar && 1 === preg_match('/[\w]/', $nextChar)) {
+        if ('' !== $nextChar && 1 === \preg_match('/[\w]/', $nextChar)) {
             return false;
         }
 
@@ -104,6 +104,6 @@ final class AutoPairService
         $before = $line[$col - 1];
         $after = $line[$col];
 
-        return array_key_exists($before, self::PAIRS) && self::PAIRS[$before] === $after;
+        return \array_key_exists($before, self::PAIRS) && self::PAIRS[$before] === $after;
     }
 }

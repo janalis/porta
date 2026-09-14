@@ -94,8 +94,8 @@ final class RefactorController extends AbstractLspController implements EditorRe
                     return;
                 }
                 $this->editor->openPrompt($this->trans('Rename to'), $word, function (string $value) use ($line, $col): void {
-                    if ('' !== trim($value)) {
-                        $this->requestRename(trim($value), $line, $col);
+                    if ('' !== \trim($value)) {
+                        $this->requestRename(\trim($value), $line, $col);
                     }
                 });
                 $this->tui->requestRender();
@@ -229,7 +229,7 @@ final class RefactorController extends AbstractLspController implements EditorRe
                     return;
                 }
                 /** @var list<array<string, mixed>> $actions */
-                $actions = array_values(array_filter($result, static fn ($a) => \is_array($a) && '' !== (string) ($a['title'] ?? '')));
+                $actions = \array_values(\array_filter($result, static fn ($a) => \is_array($a) && '' !== (string) ($a['title'] ?? '')));
                 if ([] === $actions) {
                     $this->flash($this->trans($empty));
 
@@ -317,7 +317,7 @@ final class RefactorController extends AbstractLspController implements EditorRe
      */
     private function preferredFirst(array $actions): array
     {
-        usort($actions, static fn (array $a, array $b): int => (true === ($b['isPreferred'] ?? null) ? 1 : 0) <=> (true === ($a['isPreferred'] ?? null) ? 1 : 0));
+        \usort($actions, static fn (array $a, array $b): int => (true === ($b['isPreferred'] ?? null) ? 1 : 0) <=> (true === ($a['isPreferred'] ?? null) ? 1 : 0));
 
         return $actions;
     }
@@ -327,14 +327,14 @@ final class RefactorController extends AbstractLspController implements EditorRe
      */
     private function pick(string $title, array $actions): void
     {
-        $items = array_map(
+        $items = \array_map(
             static fn (array $a, int $i) => [
                 'label' => (string) $a['title'],
                 'hint' => self::kindLabel((string) ($a['kind'] ?? '')),
                 'value' => (string) $i,
             ],
             $actions,
-            array_keys($actions),
+            \array_keys($actions),
         );
 
         $this->editor->openListOverlay($title, $items, function (string $index) use ($actions): void {
@@ -349,7 +349,7 @@ final class RefactorController extends AbstractLspController implements EditorRe
      */
     private static function kindLabel(string $kind): string
     {
-        $family = strstr($kind, needle: '.', before_needle: true);
+        $family = \strstr($kind, needle: '.', before_needle: true);
 
         return false === $family ? $kind : $family;
     }

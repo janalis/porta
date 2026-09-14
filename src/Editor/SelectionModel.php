@@ -57,7 +57,7 @@ final class SelectionModel
     public function shiftColClamped(int $delta): void
     {
         if (null !== $this->anchor) {
-            $this->anchor['col'] = max(0, $this->anchor['col'] + $delta);
+            $this->anchor['col'] = \max(0, $this->anchor['col'] + $delta);
         }
     }
 

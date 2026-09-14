@@ -29,7 +29,7 @@ final class CodeEditorDebugTest extends TestCase
     public function testBreakpointDotRendersInTheGutterMarkerColumn(): void
     {
         $editor = $this->editor();
-        $plain = implode("\n", $this->render($editor));
+        $plain = \implode("\n", $this->render($editor));
         $this->assertStringNotContainsString('●', $plain);
 
         $editor->decorations()->setBreakpointLines([1]);
@@ -39,7 +39,7 @@ final class CodeEditorDebugTest extends TestCase
         $this->assertStringContainsString("\x1b[38;5;203m●", $lines[1], 'Breakpoint role color (dark palette)');
 
         $editor->decorations()->setBreakpointLines([]);
-        $this->assertStringNotContainsString('●', implode("\n", $this->render($editor)));
+        $this->assertStringNotContainsString('●', \implode("\n", $this->render($editor)));
     }
 
     public function testDebugLineBandOutranksTheCurrentLineBackground(): void
@@ -59,7 +59,7 @@ final class CodeEditorDebugTest extends TestCase
         $this->assertStringContainsString("\x1b[48;5;236m", $lines[2], 'cursor line highlight returns');
 
         $editor->decorations()->setDebugLine(null);
-        $this->assertStringNotContainsString("\x1b[48;5;52m", implode("\n", $this->render($editor)));
+        $this->assertStringNotContainsString("\x1b[48;5;52m", \implode("\n", $this->render($editor)));
     }
 
     public function testStoppedLineArrowOutranksBreakpointDotAndDiagnosticGlyph(): void
@@ -89,7 +89,7 @@ final class CodeEditorDebugTest extends TestCase
     public function testDocumentLineAtResolvesStickyHeadersAndScrolledRows(): void
     {
         $editor = new CodeEditorWidget();
-        $code = "<?php\n\nnamespace App;\n\nclass Service\n{\n    public function handle(): void\n    {\n".str_repeat("        \$x = 1;\n", times: 20)."    }\n}\n";
+        $code = "<?php\n\nnamespace App;\n\nclass Service\n{\n    public function handle(): void\n    {\n".\str_repeat("        \$x = 1;\n", times: 20)."    }\n}\n";
         $editor->showDocument('/p/Service.php', new Document($code));
         $editor->getDocument()->setCursor(24, 8); // deep inside handle(): class + method pin
         $editor->render(new RenderContext(60, 12));
@@ -107,7 +107,7 @@ final class CodeEditorDebugTest extends TestCase
         $editor->decorations()->setDebugLine(1);
 
         $editor->showDocument('/p/b.php', new Document("<?php\n// other\n"));
-        $screen = implode("\n", $this->render($editor));
+        $screen = \implode("\n", $this->render($editor));
         $this->assertStringNotContainsString('●', $screen);
         $this->assertStringNotContainsString("\x1b[48;5;52m", $screen);
         $this->assertSame(4, AnsiUtils::visibleWidth('●●●●'), 'the dot is single-width (sanity)');

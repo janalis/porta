@@ -35,7 +35,7 @@ final class FocusRing
         }
 
         $count = \count($members);
-        $current = array_search($this->tui->getFocus(), $members, strict: true);
+        $current = \array_search($this->tui->getFocus(), $members, strict: true);
         // Focus outside the ring (menu bar, popups): enter at the edge.
         $edge = $direction > 0 ? 0 : $count - 1;
         $index = false === $current

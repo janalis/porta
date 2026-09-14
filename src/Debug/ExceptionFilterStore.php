@@ -40,14 +40,14 @@ final class ExceptionFilterStore
     public function enabledFor(array $advertised): array
     {
         if (null === $this->selection) {
-            return array_values(array_map(
+            return \array_values(\array_map(
                 static fn (array $filter): string => $filter['filter'],
-                array_filter($advertised, static fn (array $filter): bool => $filter['default']),
+                \array_filter($advertised, static fn (array $filter): bool => $filter['default']),
             ));
         }
-        $ids = array_column($advertised, 'filter');
+        $ids = \array_column($advertised, 'filter');
 
-        return array_values(array_intersect($this->selection, $ids));
+        return \array_values(\array_intersect($this->selection, $ids));
     }
 
     /**
@@ -60,7 +60,7 @@ final class ExceptionFilterStore
     {
         $enabled = $this->enabledFor($advertised);
         $this->selection = \in_array($id, $enabled, strict: true)
-            ? array_values(array_diff($enabled, [$id]))
+            ? \array_values(\array_diff($enabled, [$id]))
             : [...$enabled, $id];
     }
 }

@@ -44,7 +44,7 @@ final class ServerLocator
         /** @var array{lsp?: string|array<array-key, mixed>}|null $config */
         $config = JsonFile::read($rootDir.'/.porta.json');
         $lsp = $config['lsp'] ?? null;
-        if (\is_array($lsp) && [] !== $lsp && !array_is_list($lsp)) {
+        if (\is_array($lsp) && [] !== $lsp && !\array_is_list($lsp)) {
             // {languageId: command} map: each entry (a string or argv list) overrides
             // that language, but the rest keep their default (plugin or auto-detected)
             // — so configuring one language never silently unserves the others.
@@ -56,7 +56,7 @@ final class ServerLocator
                     continue;
                 }
                 if (\is_array($command) && [] !== $command) {
-                    $servers[(string) $language] = self::server(array_values(array_map(strval(...), $command)));
+                    $servers[(string) $language] = self::server(\array_values(\array_map(strval(...), $command)));
                 }
             }
 
@@ -100,11 +100,11 @@ final class ServerLocator
         if (\is_string($lsp) && '' !== $lsp) {
             return self::server(self::split($lsp));
         }
-        if (\is_array($lsp) && [] !== $lsp && array_is_list($lsp)) {
-            return self::server(array_values(array_map(strval(...), $lsp)));
+        if (\is_array($lsp) && [] !== $lsp && \array_is_list($lsp)) {
+            return self::server(\array_values(\array_map(strval(...), $lsp)));
         }
 
-        $env = getenv('PORTA_LSP');
+        $env = \getenv('PORTA_LSP');
         if (\is_string($env) && '' !== $env) {
             return self::server(self::split($env));
         }
@@ -175,13 +175,13 @@ final class ServerLocator
     private static function displayName(array $command): string
     {
         foreach ($command as $token) {
-            $base = strtolower(basename($token));
-            if (!\in_array(preg_replace('/\d+(\.\d+)*$/', replacement: '', subject: $base), ['php', 'node', 'python', ''], strict: true)) {
-                return preg_replace('/\.(phar|js|php)$/', replacement: '', subject: basename($token)) ?? basename($token);
+            $base = \strtolower(\basename($token));
+            if (!\in_array(\preg_replace('/\d+(\.\d+)*$/', replacement: '', subject: $base), ['php', 'node', 'python', ''], strict: true)) {
+                return \preg_replace('/\.(phar|js|php)$/', replacement: '', subject: \basename($token)) ?? \basename($token);
             }
         }
 
-        return basename($command[0] ?? 'lsp');
+        return \basename($command[0] ?? 'lsp');
     }
 
     /**

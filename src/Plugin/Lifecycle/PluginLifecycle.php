@@ -72,8 +72,8 @@ final class PluginLifecycle implements PluginLifecycleOps
         #[Autowire('%env(json:PORTA_ENABLED_PLUGINS)%')]
         array $enabledPlugins,
     ) {
-        $this->disabled = array_fill_keys($disabledPlugins, value: true);
-        $this->enabled = array_fill_keys($enabledPlugins, value: true);
+        $this->disabled = \array_fill_keys($disabledPlugins, value: true);
+        $this->enabled = \array_fill_keys($enabledPlugins, value: true);
     }
 
     /**
@@ -112,7 +112,7 @@ final class PluginLifecycle implements PluginLifecycleOps
         $this->plugins->registerCommands($this->commands);
         // Identity is the plugin's directory basename — the same convention
         // enabledPlugins, requires and the installer's listing all key on.
-        $this->registerContributionsOf(basename(\dirname($file)));
+        $this->registerContributionsOf(\basename(\dirname($file)));
         $this->keys->rebuild();
         $this->menuRebuilder->rebuild();
         $this->refreshNav();
@@ -257,7 +257,7 @@ final class PluginLifecycle implements PluginLifecycleOps
     private function activateQueue(array $queue, ?string $name, array $required, EnableProgress $progress): void
     {
         while ([] !== $queue) {
-            $target = array_shift($queue);
+            $target = \array_shift($queue);
             $dir = $this->installedDir($target);
             $outcome = null === $dir
                 ? DependencyInstall::NotNeeded
@@ -416,7 +416,7 @@ final class PluginLifecycle implements PluginLifecycleOps
      */
     private function appendDepsFirst(string $name, array $pending, array &$ordered, array &$seen): void
     {
-        if (array_key_exists($name, $seen)) {
+        if (\array_key_exists($name, $seen)) {
             return;
         }
         $seen[$name] = true;
@@ -539,7 +539,7 @@ final class PluginLifecycle implements PluginLifecycleOps
             $needed = [...$this->missingRequirementsOf($required), $required, ...$needed];
         }
 
-        return array_values(array_unique($needed));
+        return \array_values(\array_unique($needed));
     }
 
     /**
@@ -561,7 +561,7 @@ final class PluginLifecycle implements PluginLifecycleOps
             }
         }
 
-        return array_values(array_unique($dependents));
+        return \array_values(\array_unique($dependents));
     }
 
     /**
@@ -583,7 +583,7 @@ final class PluginLifecycle implements PluginLifecycleOps
     private function flashCompanions(string $message, array $names): void
     {
         if ([] !== $names) {
-            $this->notifier->flash($this->translator->trans($message, ['%names%' => implode(', ', $names)]));
+            $this->notifier->flash($this->translator->trans($message, ['%names%' => \implode(', ', $names)]));
         }
     }
 
@@ -704,8 +704,8 @@ final class PluginLifecycle implements PluginLifecycleOps
     public function isDisabled(string $name): bool
     {
         return $this->isBundled($name)
-            ? !array_key_exists($name, $this->enabled)
-            : array_key_exists($name, $this->disabled);
+            ? !\array_key_exists($name, $this->enabled)
+            : \array_key_exists($name, $this->disabled);
     }
 
     /**
@@ -723,7 +723,7 @@ final class PluginLifecycle implements PluginLifecycleOps
             $names[$plugin['name']] = true;
         }
 
-        return array_keys($names);
+        return \array_keys($names);
     }
 
     /** Sync the per-plugin settings pages with the installed set. */

@@ -155,7 +155,7 @@ final class DebugControllerTest extends TestCase
             // exactly what they saw before it existed. The join has its own
             // test.
             new InlineValues(
-                new InlineValueRequest($lsp ?? new LspSessionPool(sys_get_temp_dir(), new FixedActiveFile(), new Translator())),
+                new InlineValueRequest($lsp ?? new LspSessionPool(\sys_get_temp_dir(), new FixedActiveFile(), new Translator())),
                 $this->editor->decorations(),
                 $tui,
                 $this->editor,
@@ -171,7 +171,7 @@ final class DebugControllerTest extends TestCase
 
     private function flashed(): string
     {
-        return AnsiUtils::stripAnsiCodes(implode('', $this->statusBar->render(new RenderContext(100, 1))));
+        return AnsiUtils::stripAnsiCodes(\implode('', $this->statusBar->render(new RenderContext(100, 1))));
     }
 
     /** Clears the flag first: a caller checks whether ITS action requested a render, not a stale one. */
@@ -236,7 +236,7 @@ final class DebugControllerTest extends TestCase
         });
 
         $this->assertTrue($requested);
-        $this->assertStringContainsString('●', implode("\n", $this->editor->render(new RenderContext(80, 8))), 'the gutter updates without a live session');
+        $this->assertStringContainsString('●', \implode("\n", $this->editor->render(new RenderContext(80, 8))), 'the gutter updates without a live session');
         $this->assertSame([], $this->client->requests, 'nothing was sent — there is no session to sync');
     }
 
@@ -277,7 +277,7 @@ final class DebugControllerTest extends TestCase
         $this->assertStringContainsString('Debugger already running', $this->flashed());
         $this->assertSame(
             1,
-            \count(array_filter($this->client->commands(), static fn (string $c): bool => 'initialize' === $c)),
+            \count(\array_filter($this->client->commands(), static fn (string $c): bool => 'initialize' === $c)),
             'the guard stops before a second session is spun up',
         );
     }
@@ -305,26 +305,26 @@ final class DebugControllerTest extends TestCase
     {
         $controller = $this->controller();
         $this->pauseAtBreakpoint($controller);
-        $this->assertStringContainsString('▶', implode("\n", $this->editor->render(new RenderContext(80, 8))));
+        $this->assertStringContainsString('▶', \implode("\n", $this->editor->render(new RenderContext(80, 8))));
 
         $requested = $this->requestedRenderSince(function (): void {
             $this->client->emit('terminated', []);
         });
 
         $this->assertTrue($requested);
-        $this->assertStringNotContainsString('▶', implode("\n", $this->editor->render(new RenderContext(80, 8))), 'the debug-line marker clears on termination');
+        $this->assertStringNotContainsString('▶', \implode("\n", $this->editor->render(new RenderContext(80, 8))), 'the debug-line marker clears on termination');
         $this->assertStringContainsString('terminated', $this->panel->statusText());
 
         // A stale stopped-state must not leak back in through a decoration re-apply.
         $controller->applyEditorDecorations('/p/prog.php');
-        $this->assertStringNotContainsString('▶', implode("\n", $this->editor->render(new RenderContext(80, 8))), 'a stale stopped line must not reappear via a decoration re-apply');
+        $this->assertStringNotContainsString('▶', \implode("\n", $this->editor->render(new RenderContext(80, 8))), 'a stale stopped line must not reappear via a decoration re-apply');
     }
 
     public function testStartForCurrentFileReusesTheDebugTerminalSessionAndResetsPanelState(): void
     {
         $controller = $this->controller();
         $controller->addWatch();
-        foreach (str_split('$x') as $ch) {
+        foreach (\str_split('$x') as $ch) {
             $this->editor->handleInput($ch);
         }
         $this->editor->handleInput("\r");
@@ -343,7 +343,7 @@ final class DebugControllerTest extends TestCase
         // (setWatches not called again) would be visibly incomplete, not
         // just "same as before".
         $controller->addWatch();
-        foreach (str_split('$y') as $ch) {
+        foreach (\str_split('$y') as $ch) {
             $this->editor->handleInput($ch);
         }
         $this->editor->handleInput("\r");
@@ -355,7 +355,7 @@ final class DebugControllerTest extends TestCase
         $this->assertTrue($requested);
         $this->assertSame(
             [$debugSession],
-            array_values(array_filter($this->sessions->all(), static fn (object $s): bool => 'debug' === $s->id)),
+            \array_values(\array_filter($this->sessions->all(), static fn (object $s): bool => 'debug' === $s->id)),
             'the same debug terminal session is reused, not duplicated',
         );
         $this->assertSame(1, $debugSession->buffer->lineCount(), 'a fresh launch clears stale output');
@@ -367,14 +367,14 @@ final class DebugControllerTest extends TestCase
         // leave that stale text in place.
         $this->assertStringContainsString('starting', $this->panel->statusText(), 'the panel resets to the fresh session, not the old paused one');
         $this->assertTrue($this->panel->isVisible());
-        $panelScreen = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $this->panel->render(new RenderContext(100, 14))));
+        $panelScreen = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $this->panel->render(new RenderContext(100, 14))));
         $this->assertStringContainsString('$x', $panelScreen, 'the stored watches reseed the freshly opened panel');
         $this->assertStringContainsString('$y', $panelScreen, 'including the one added since the first session opened');
 
         // The debug-line marker from the first session's stop must not leak
         // into the fresh session before it has stopped anywhere of its own.
         $controller->applyEditorDecorations('/p/prog.php');
-        $this->assertStringNotContainsString('▶', implode("\n", $this->editor->render(new RenderContext(80, 8))), 'no stale stopped-line from the previous session');
+        $this->assertStringNotContainsString('▶', \implode("\n", $this->editor->render(new RenderContext(80, 8))), 'no stale stopped-line from the previous session');
     }
 
     public function testTheStopASKSTheServerAboutTheTOPFramesVariables(): void
@@ -387,7 +387,7 @@ final class DebugControllerTest extends TestCase
 
         $this->pauseAtBreakpoint($controller, line: 2);
 
-        $asked = array_values(array_filter($this->lspClient->requests, static fn (array $r): bool => 'textDocument/inlineValue' === $r['method']));
+        $asked = \array_values(\array_filter($this->lspClient->requests, static fn (array $r): bool => 'textDocument/inlineValue' === $r['method']));
         $this->assertCount(1, $asked, 'one request per stop');
         $this->assertSame(1, $asked[0]['params']['context']['frameId'], 'the TOP frame, which is #0');
         $this->assertSame(2, $asked[0]['params']['context']['stoppedLocation']['start']['line']);
@@ -436,13 +436,13 @@ final class DebugControllerTest extends TestCase
         $this->assertSame(['/p/prog.php'], $this->opened, 'stop opened the file through the choke point');
         $this->assertSame(2, $this->editor->getDocument()->getCursorLine());
         $this->assertSame(0, $this->editor->getDocument()->getCursorCol(), 'the stop jumps to the line start');
-        $this->assertStringContainsString('▶', implode("\n", $this->editor->render(new RenderContext(80, 8))), 'the stopped-line decoration was applied');
+        $this->assertStringContainsString('▶', \implode("\n", $this->editor->render(new RenderContext(80, 8))), 'the stopped-line decoration was applied');
         $this->assertTrue($controller->isPaused());
         $this->assertSame('⏸ prog.php:3', $controller->statusCells()[0]->text);
         $this->assertStringContainsString('paused at prog.php:3', $this->panel->statusText(), 'the panel gets its own location string, independent of the status cell');
         $this->assertSame(2, $this->statusEvents, 'start and pause each dispatched DebugStatusChanged');
 
-        $panelScreen = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $this->panel->render(new RenderContext(100, 14))));
+        $panelScreen = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $this->panel->render(new RenderContext(100, 14))));
         $this->assertStringContainsString('#0 {main}  prog.php:3', $panelScreen, 'frames display relative paths');
         $this->assertStringContainsString('$x = 42', $panelScreen);
 
@@ -453,13 +453,13 @@ final class DebugControllerTest extends TestCase
             $this->panel->handleInput("\x1b[B");
         }
         $this->panel->handleInput("\r");
-        $this->assertStringContainsString("0 = 'a'", implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $this->panel->render(new RenderContext(100, 14)))));
+        $this->assertStringContainsString("0 = 'a'", \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $this->panel->render(new RenderContext(100, 14)))));
 
         // Clicking the second frame jumps to its (absolute) source.
         $requested = $this->requestedRenderSince(function (): void {
             $this->panel->handleClick(2); // Frames + #0 → rel 2 is #1 (no header row)
         });
-        $this->assertSame('/p/other.php', end($this->opened));
+        $this->assertSame('/p/other.php', \end($this->opened));
         $this->assertSame(0, $this->editor->getDocument()->getCursorLine());
         $this->assertSame(0, $this->editor->getDocument()->getCursorCol(), 'the frame jump lands on the line start');
         $this->assertTrue($requested, 'a frame jump requests a render');
@@ -517,19 +517,19 @@ final class DebugControllerTest extends TestCase
     {
         $controller = $this->controller();
         $this->pauseAtBreakpoint($controller);
-        $this->assertStringContainsString('▶', implode("\n", $this->editor->render(new RenderContext(80, 8))));
+        $this->assertStringContainsString('▶', \implode("\n", $this->editor->render(new RenderContext(80, 8))));
 
         $requested = $this->requestedRenderSince(function (): void {
             $this->client->emit('continued', []);
         });
 
         $this->assertTrue($requested);
-        $this->assertStringNotContainsString('▶', implode("\n", $this->editor->render(new RenderContext(80, 8))), 'the debug-line marker clears on resume');
+        $this->assertStringNotContainsString('▶', \implode("\n", $this->editor->render(new RenderContext(80, 8))), 'the debug-line marker clears on resume');
         $this->assertStringContainsString('running', $this->panel->statusText());
 
         // A stale stopped-state must not leak back in through a decoration re-apply.
         $controller->applyEditorDecorations('/p/prog.php');
-        $this->assertStringNotContainsString('▶', implode("\n", $this->editor->render(new RenderContext(80, 8))), 'a stale stopped line must not reappear via a decoration re-apply');
+        $this->assertStringNotContainsString('▶', \implode("\n", $this->editor->render(new RenderContext(80, 8))), 'a stale stopped line must not reappear via a decoration re-apply');
     }
 
     public function testStoppedWithATopFrameLackingAPathStillShowsTheFullFrameList(): void
@@ -556,7 +556,7 @@ final class DebugControllerTest extends TestCase
         $this->assertSame([], $this->opened, 'no usable path on the top frame — nothing opens');
         $this->assertTrue($requested);
         $this->assertGreaterThan($statusEventsBefore, $this->statusEvents, 'the pause still announces itself on the bus');
-        $panelScreen = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $this->panel->render(new RenderContext(100, 14))));
+        $panelScreen = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $this->panel->render(new RenderContext(100, 14))));
         $this->assertStringContainsString('{closure}', $panelScreen, 'the frame list still renders even without a usable top frame');
         $this->assertStringContainsString('main', $panelScreen);
 
@@ -594,12 +594,12 @@ final class DebugControllerTest extends TestCase
 
         $this->assertTrue($controller->isPaused());
         $this->assertTrue($requested, 'the scopes callback still requests a render');
-        $variableRequests = array_filter(
+        $variableRequests = \array_filter(
             $this->client->requests,
             static fn (array $r): bool => 'variables' === $r['command'],
         );
         $this->assertCount(1, $variableRequests, 'only the ref>0 scope requested its variables');
-        $this->assertSame(1000, $variableRequests[array_key_first($variableRequests)]['arguments']['variablesReference']);
+        $this->assertSame(1000, $variableRequests[\array_key_first($variableRequests)]['arguments']['variablesReference']);
     }
 
     public function testBreakpointTogglesSyncTheLiveSessionAndOtherFiles(): void
@@ -609,14 +609,14 @@ final class DebugControllerTest extends TestCase
 
         $controller->toggleBreakpoint('/p/prog.php', 1);
         $this->assertSame([['line' => 2]], $this->client->argumentsOf('setBreakpoints')['breakpoints'], 'live session got the 1-based line');
-        $this->assertStringContainsString('●', implode("\n", $this->editor->render(new RenderContext(80, 8))));
+        $this->assertStringContainsString('●', \implode("\n", $this->editor->render(new RenderContext(80, 8))));
 
         $controller->toggleBreakpoint('/p/elsewhere.php', 5);
         $this->assertSame('/p/elsewhere.php', $this->client->argumentsOf('setBreakpoints')['source']['path'], 'other files sync without touching the editor');
 
         // Re-applying decorations for another file clears this file's marks.
         $controller->applyEditorDecorations('/p/clean.php');
-        $this->assertStringNotContainsString('●', implode("\n", $this->editor->render(new RenderContext(80, 8))));
+        $this->assertStringNotContainsString('●', \implode("\n", $this->editor->render(new RenderContext(80, 8))));
     }
 
     public function testEditBreakpointPromptsStoreConditionAndSyncLive(): void
@@ -627,7 +627,7 @@ final class DebugControllerTest extends TestCase
 
         $controller->editBreakpointAtCaret();
         $this->assertSame($this->editor, $this->tui->getFocus(), 'the prompt is drivable even from a focused dock panel');
-        foreach (str_split('$x > 1') as $ch) {
+        foreach (\str_split('$x > 1') as $ch) {
             $this->editor->handleInput($ch);
         }
         $this->editor->handleInput("\r"); // condition submitted → hit-count prompt chains
@@ -636,7 +636,7 @@ final class DebugControllerTest extends TestCase
         $this->editor->handleInput("\r"); // empty log message → a plain conditional breakpoint
 
         $this->assertSame('/p/prog.php', $this->client->argumentsOf('setBreakpoints')['source']['path']);
-        $this->assertStringContainsString('◆', implode("\n", $this->editor->render(new RenderContext(80, 8))), 'the conditional breakpoint renders a diamond');
+        $this->assertStringContainsString('◆', \implode("\n", $this->editor->render(new RenderContext(80, 8))), 'the conditional breakpoint renders a diamond');
 
         // Re-editing prefills the real stored values, not blanks. Focus is
         // already on the editor here, so setFocus() below is a no-op — this
@@ -645,20 +645,20 @@ final class DebugControllerTest extends TestCase
             $controller->editBreakpointAtCaret();
         });
         $this->assertTrue($opened, 're-opening the condition prompt requests a render');
-        $conditionPrompt = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->layoutPickers([0, 0, 20, 100])[0]['rows']));
+        $conditionPrompt = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->layoutPickers([0, 0, 20, 100])[0]['rows']));
         $this->assertStringContainsString('$x > 1', $conditionPrompt, 'the condition prompt prefills the stored condition');
-        foreach (range(1, end: 12) as $_) {
+        foreach (\range(1, end: 12) as $_) {
             $this->editor->handleInput("\x7f");
         }
         $this->editor->handleInput("\r");
-        $hitConditionPrompt = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->layoutPickers([0, 0, 20, 100])[0]['rows']));
+        $hitConditionPrompt = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->layoutPickers([0, 0, 20, 100])[0]['rows']));
         $this->assertStringContainsString('3', $hitConditionPrompt, 'the hit-count prompt prefills the stored hit condition');
-        foreach (range(1, end: 6) as $_) {
+        foreach (\range(1, end: 6) as $_) {
             $this->editor->handleInput("\x7f");
         }
         $this->editor->handleInput("\r");
         $this->editor->handleInput("\r"); // the (empty) log-message prompt
-        $screen = implode("\n", $this->editor->render(new RenderContext(80, 8)));
+        $screen = \implode("\n", $this->editor->render(new RenderContext(80, 8)));
         $this->assertStringNotContainsString('◆', $screen, 'cleared conditions drop the diamond');
         $this->assertStringContainsString('●', $screen, 'the breakpoint itself survives');
 
@@ -676,12 +676,12 @@ final class DebugControllerTest extends TestCase
         $controller->editBreakpointAtCaret();
         $this->editor->handleInput("\r"); // no condition
         $this->editor->handleInput("\r"); // no hit-count
-        foreach (str_split('x={$x}') as $ch) {
+        foreach (\str_split('x={$x}') as $ch) {
             $this->editor->handleInput($ch);
         }
         $this->editor->handleInput("\r"); // a log message → this is a logpoint
 
-        $screen = implode("\n", $this->editor->render(new RenderContext(80, 8)));
+        $screen = \implode("\n", $this->editor->render(new RenderContext(80, 8)));
         $this->assertStringContainsString('◇', $screen, 'a logpoint renders a hollow diamond');
         $this->assertStringNotContainsString('◆', $screen, 'and not the conditional diamond');
 
@@ -689,7 +689,7 @@ final class DebugControllerTest extends TestCase
         $controller->editBreakpointAtCaret();
         $this->editor->handleInput("\r"); // no condition
         $this->editor->handleInput("\r"); // no hit-count
-        $logPrompt = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->layoutPickers([0, 0, 20, 100])[0]['rows']));
+        $logPrompt = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->layoutPickers([0, 0, 20, 100])[0]['rows']));
         $this->assertStringContainsString('x={$x}', $logPrompt, 'the log-message prompt prefills the stored message');
         $this->editor->handleInput("\x1b"); // leave it as-is
     }
@@ -706,15 +706,15 @@ final class DebugControllerTest extends TestCase
 
         // Padded-but-meaningful values must be stored trimmed.
         $controller->editBreakpointAtCaret();
-        foreach (str_split('  $x > 1  ') as $ch) {
+        foreach (\str_split('  $x > 1  ') as $ch) {
             $this->editor->handleInput($ch);
         }
         $this->editor->handleInput("\r");
-        foreach (str_split('   ') as $ch) { // whitespace-only hit-count: must clear to null, not ''
+        foreach (\str_split('   ') as $ch) { // whitespace-only hit-count: must clear to null, not ''
             $this->editor->handleInput($ch);
         }
         $this->editor->handleInput("\r");
-        foreach (str_split('  hit  ') as $ch) {
+        foreach (\str_split('  hit  ') as $ch) {
             $this->editor->handleInput($ch);
         }
         $this->editor->handleInput("\r");
@@ -726,21 +726,21 @@ final class DebugControllerTest extends TestCase
 
         // Whitespace-only values must clear the field entirely (null), not store ''.
         $controller->editBreakpointAtCaret();
-        foreach (range(1, end: 6) as $_) { // clear the '$x > 1' prefill
+        foreach (\range(1, end: 6) as $_) { // clear the '$x > 1' prefill
             $this->editor->handleInput("\x7f");
         }
-        foreach (str_split('   ') as $ch) {
+        foreach (\str_split('   ') as $ch) {
             $this->editor->handleInput($ch);
         }
         $this->editor->handleInput("\r"); // whitespace-only condition
-        foreach (str_split(' 5 ') as $ch) {
+        foreach (\str_split(' 5 ') as $ch) {
             $this->editor->handleInput($ch);
         }
         $this->editor->handleInput("\r"); // padded hit-count
-        foreach (range(1, end: 3) as $_) { // clear the 'hit' prefill
+        foreach (\range(1, end: 3) as $_) { // clear the 'hit' prefill
             $this->editor->handleInput("\x7f");
         }
-        foreach (str_split('   ') as $ch) { // whitespace-only log message: must clear to null, not ''
+        foreach (\str_split('   ') as $ch) { // whitespace-only log message: must clear to null, not ''
             $this->editor->handleInput($ch);
         }
         $this->editor->handleInput("\r");
@@ -766,12 +766,12 @@ final class DebugControllerTest extends TestCase
         });
         $this->assertTrue($openRequested, 'opening the prompt requests a render');
         $this->assertSame($this->editor, $this->tui->getFocus(), 'the prompt is drivable: focus moved to the editor');
-        $promptScreen = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->layoutPickers([0, 0, 20, 100])[0]['rows']));
+        $promptScreen = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->layoutPickers([0, 0, 20, 100])[0]['rows']));
         $this->assertStringContainsString('Set $x to', $promptScreen, 'the prompt title names the variable');
 
         $this->editor->handleInput("\x7f"); // clear the prefill
         $this->editor->handleInput("\x7f");
-        foreach (str_split('99') as $ch) {
+        foreach (\str_split('99') as $ch) {
             $this->editor->handleInput($ch);
         }
 
@@ -787,7 +787,7 @@ final class DebugControllerTest extends TestCase
             'the edit reaches the adapter with the container reference, name and new value',
         );
         $this->assertTrue($submitRequested, 'delivering the new value requests a render');
-        $panelScreen = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $this->panel->render(new RenderContext(100, 14))));
+        $panelScreen = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $this->panel->render(new RenderContext(100, 14))));
         $this->assertStringContainsString('$x = 99', $panelScreen, 'the panel re-fetched the container to reflect the adapter-stored value');
 
         // Editing again: focus is already on the editor from the submission
@@ -811,7 +811,7 @@ final class DebugControllerTest extends TestCase
         $this->assertContains('restart', $this->client->commands(), 'the adapter restarts in place');
         $this->assertTrue($requested);
         $this->assertNotContains('disconnect', $this->client->commands(), 'the native path does not also fall through to stop+relaunch');
-        $this->assertSame(1, \count(array_filter($this->client->commands(), static fn (string $c): bool => 'initialize' === $c)), 'no second session was spun up');
+        $this->assertSame(1, \count(\array_filter($this->client->commands(), static fn (string $c): bool => 'initialize' === $c)), 'no second session was spun up');
     }
 
     public function testRestartFallsBackToStopAndRelaunchWithoutNativeSupport(): void
@@ -822,7 +822,7 @@ final class DebugControllerTest extends TestCase
         $controller->restart();
         // The old session disconnected and a fresh launch began.
         $this->assertContains('disconnect', $this->client->commands(), 'the old session was ended');
-        $this->assertSame(2, \count(array_filter($this->client->commands(), static fn (string $c): bool => 'initialize' === $c)), 'a new session was launched');
+        $this->assertSame(2, \count(\array_filter($this->client->commands(), static fn (string $c): bool => 'initialize' === $c)), 'a new session was launched');
     }
 
     public function testRestartWithoutASessionFlashes(): void
@@ -858,16 +858,16 @@ final class DebugControllerTest extends TestCase
             $this->panel->handleInput("\x1b[B");
         }
         $this->panel->handleInput('e');
-        foreach (str_split('bad') as $ch) {
+        foreach (\str_split('bad') as $ch) {
             $this->editor->handleInput($ch);
         }
-        $variablesRequestsBefore = \count(array_filter($this->client->commands(), static fn (string $c): bool => 'variables' === $c));
+        $variablesRequestsBefore = \count(\array_filter($this->client->commands(), static fn (string $c): bool => 'variables' === $c));
         $this->editor->handleInput("\r");
 
         $this->assertStringContainsString('invalid value', $this->flashed(), 'the adapter error reaches the status bar');
         $this->assertSame(
             $variablesRequestsBefore,
-            \count(array_filter($this->client->commands(), static fn (string $c): bool => 'variables' === $c)),
+            \count(\array_filter($this->client->commands(), static fn (string $c): bool => 'variables' === $c)),
             'an error does not re-fetch the container',
         );
     }
@@ -895,12 +895,12 @@ final class DebugControllerTest extends TestCase
 
         $controller->addWatch();
         $this->assertSame($this->editor, $this->tui->getFocus(), 'the prompt is drivable from a focused dock panel too');
-        foreach (str_split('  $x  ') as $ch) { // padded: trim() must strip it before it reaches evaluate()
+        foreach (\str_split('  $x  ') as $ch) { // padded: trim() must strip it before it reaches evaluate()
             $this->editor->handleInput($ch);
         }
         $this->editor->handleInput("\r");
         $this->assertSame(['expression' => '$x', 'context' => 'watch', 'frameId' => 1], $this->client->argumentsOf('evaluate'), 'a new watch evaluates against the paused frame, trimmed');
-        $panelScreen = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $this->panel->render(new RenderContext(100, 14))));
+        $panelScreen = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $this->panel->render(new RenderContext(100, 14))));
         $this->assertStringContainsString('$x = 42', $panelScreen);
 
         // An empty submission adds nothing; the blank prompt is a no-op. Focus
@@ -915,19 +915,19 @@ final class DebugControllerTest extends TestCase
         // A frame jump re-evaluates against the new frame; a different result
         // proves the panel actually re-fetched, not just re-rendered stale state.
         $this->client->responses['evaluate'] = [['result' => '7', 'variablesReference' => 0], null];
-        $evaluatesBefore = \count(array_filter($this->client->commands(), static fn (string $c): bool => 'evaluate' === $c));
+        $evaluatesBefore = \count(\array_filter($this->client->commands(), static fn (string $c): bool => 'evaluate' === $c));
         $requested = $this->requestedRenderSince(function (): void {
             $this->panel->handleClick(2); // the #1 frame row (no header row)
         });
-        $this->assertSame($evaluatesBefore + 1, \count(array_filter($this->client->commands(), static fn (string $c): bool => 'evaluate' === $c)));
+        $this->assertSame($evaluatesBefore + 1, \count(\array_filter($this->client->commands(), static fn (string $c): bool => 'evaluate' === $c)));
         $this->assertSame(['expression' => '$x', 'context' => 'watch', 'frameId' => 2], $this->client->argumentsOf('evaluate'));
         $this->assertTrue($requested, 'the re-evaluated watch result requests a render');
-        $panelScreen = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $this->panel->render(new RenderContext(100, 14))));
+        $panelScreen = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $this->panel->render(new RenderContext(100, 14))));
         $this->assertStringContainsString('$x = 7', $panelScreen, 'the panel reflects the re-evaluated result');
 
         // A second watch, so removing the first still leaves one to re-evaluate.
         $controller->addWatch();
-        foreach (str_split('$z') as $ch) {
+        foreach (\str_split('$z') as $ch) {
             $this->editor->handleInput($ch);
         }
         $this->editor->handleInput("\r");
@@ -935,20 +935,20 @@ final class DebugControllerTest extends TestCase
         // Removing $x through the panel: $z must be re-evaluated too, proving
         // the removal re-runs reevaluateWatches() rather than just re-rendering.
         $this->client->responses['evaluate'] = [['result' => '99', 'variablesReference' => 0], null];
-        $evaluatesBefore = \count(array_filter($this->client->commands(), static fn (string $c): bool => 'evaluate' === $c));
+        $evaluatesBefore = \count(\array_filter($this->client->commands(), static fn (string $c): bool => 'evaluate' === $c));
         // Frame click left the selection on row 2 (#1) — two downs reach the
         // $x row (3 Watches, 4 $x, 5 $z).
         for ($i = 0; $i < 2; ++$i) {
             $this->panel->handleInput("\x1b[B");
         }
         $this->panel->handleInput("\x1b[3~");
-        $this->assertGreaterThan($evaluatesBefore, \count(array_filter($this->client->commands(), static fn (string $c): bool => 'evaluate' === $c)), 'removing one watch re-evaluates the ones left');
-        $panelScreen = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $this->panel->render(new RenderContext(100, 14))));
+        $this->assertGreaterThan($evaluatesBefore, \count(\array_filter($this->client->commands(), static fn (string $c): bool => 'evaluate' === $c)), 'removing one watch re-evaluates the ones left');
+        $panelScreen = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $this->panel->render(new RenderContext(100, 14))));
         $this->assertStringContainsString('$z = 99', $panelScreen, 'the remaining watch reflects the fresh evaluation');
 
         // Removing the last watch drops the section entirely.
         $this->panel->handleInput("\x1b[3~");
-        $panelScreen = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $this->panel->render(new RenderContext(100, 14))));
+        $panelScreen = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $this->panel->render(new RenderContext(100, 14))));
         $this->assertStringNotContainsString('Watches', $panelScreen, 'the last watch removed drops the section');
     }
 
@@ -970,7 +970,7 @@ final class DebugControllerTest extends TestCase
         $this->panel->close();
         $this->client->emit('stopped', ['reason' => 'step', 'threadId' => 1]);
         $this->assertTrue($this->panel->isVisible(), 'a stop re-opens a closed Debug tab');
-        $screen = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $this->panel->render(new RenderContext(100, 14))));
+        $screen = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $this->panel->render(new RenderContext(100, 14))));
         $this->assertStringContainsString('Watches', $screen, 'the stored watches reseed the re-opened panel');
         $this->assertStringContainsString('$x', $screen);
         $this->assertSame('prog.php', $this->panel->getTitle(), 'the re-opened tab keeps the launched file title');
@@ -1002,7 +1002,7 @@ final class DebugControllerTest extends TestCase
 
         // Closing the debug tab outright: output must still be harmless (no session to feed).
         $this->sessions->makeActive($debugSession);
-        $index = array_search($debugSession, $this->sessions->all(), strict: true);
+        $index = \array_search($debugSession, $this->sessions->all(), strict: true);
         $this->sessions->close($index);
         $this->client->emit('output', ['category' => 'stdout', 'output' => "gone\n"]);
         $this->assertSame(3, Probe::get($this->terminalPanel, 'scrollBack'), 'no session — the panel is untouched');
@@ -1012,7 +1012,7 @@ final class DebugControllerTest extends TestCase
     {
         $controller = $this->controller();
         $controller->addWatch();
-        foreach (str_split('$x') as $ch) {
+        foreach (\str_split('$x') as $ch) {
             $this->editor->handleInput($ch);
         }
         $this->editor->handleInput("\r");
@@ -1027,7 +1027,7 @@ final class DebugControllerTest extends TestCase
 
         $controller->evaluatePrompt();
         $this->assertSame($this->editor, $this->tui->getFocus(), 'the prompt is drivable from a focused dock panel too');
-        foreach (str_split('  $name  ') as $ch) { // padded: trim() must strip it before it reaches evaluate()
+        foreach (\str_split('  $name  ') as $ch) { // padded: trim() must strip it before it reaches evaluate()
             $this->editor->handleInput($ch);
         }
         $this->editor->handleInput("\r");
@@ -1036,7 +1036,7 @@ final class DebugControllerTest extends TestCase
 
         $this->client->responses['evaluate'] = [[], 'oops'];
         $controller->evaluatePrompt();
-        foreach (str_split('$bad') as $ch) {
+        foreach (\str_split('$bad') as $ch) {
             $this->editor->handleInput($ch);
         }
         $this->editor->handleInput("\r");
@@ -1081,7 +1081,7 @@ final class DebugControllerTest extends TestCase
         $this->pauseAtBreakpoint($controller);
         $controller->exceptionBreakpointsOverlay();
         $this->assertSame($this->editor, $this->tui->getFocus(), 'drivable from a focused dock panel too');
-        $screen = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->layoutPickers([0, 0, 20, 100])[0]['rows']));
+        $screen = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->layoutPickers([0, 0, 20, 100])[0]['rows']));
         $this->assertStringContainsString('[ ] Warnings', $screen);
         $this->assertStringContainsString('[x] Uncaught Exceptions', $screen, 'the default-on filter renders checked');
 
@@ -1092,7 +1092,7 @@ final class DebugControllerTest extends TestCase
         });
         $this->assertTrue($requested, 're-opening the overlay after a toggle requests a render');
         $this->assertSame(['filters' => ['exception', 'warning']], $this->client->argumentsOf('setExceptionBreakpoints'));
-        $screen = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->layoutPickers([0, 0, 20, 100])[0]['rows']));
+        $screen = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->layoutPickers([0, 0, 20, 100])[0]['rows']));
         $this->assertStringContainsString('[x] Warnings', $screen, 'the overlay re-opened with the new state');
 
         $this->editor->handleInput("\x1b[B");

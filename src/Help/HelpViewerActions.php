@@ -67,9 +67,9 @@ final class HelpViewerActions implements HelpViewerHandler
     #[\Override]
     public function labelFor(string $path): string
     {
-        return realpath($path) === realpath($this->docsDir.'/README.md')
+        return \realpath($path) === \realpath($this->docsDir.'/README.md')
             ? $this->translator->trans('Documentation')
-            : basename($path, suffix: '.md');
+            : \basename($path, suffix: '.md');
     }
 
     #[\Override]

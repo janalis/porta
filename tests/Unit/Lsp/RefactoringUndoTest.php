@@ -42,7 +42,7 @@ final class RefactoringUndoTest extends TestCase
         return new WorkspaceEditor(
             $this->buffers,
             new CodeEditorWidget(),
-            new LspSessionPool(sys_get_temp_dir(), new FixedActiveFile(), new Translator('en')),
+            new LspSessionPool(\sys_get_temp_dir(), new FixedActiveFile(), new Translator('en')),
             $events,
             $this->undo,
         );
@@ -83,13 +83,13 @@ final class RefactoringUndoTest extends TestCase
             ],
         ]);
         $this->assertSame("new open\n", $open->document->getText());
-        $this->assertSame("new closed\n", file_get_contents($project->path('closed.php')));
+        $this->assertSame("new closed\n", \file_get_contents($project->path('closed.php')));
         $this->assertTrue($this->undo->hasPending());
 
         $this->assertNull($this->undo->undo(), 'nothing blocked it');
 
         $this->assertSame("old open\n", $open->document->getText());
-        $this->assertSame("old closed\n", file_get_contents($project->path('closed.php')));
+        $this->assertSame("old closed\n", \file_get_contents($project->path('closed.php')));
     }
 
     /**
@@ -259,7 +259,7 @@ final class RefactoringUndoTest extends TestCase
         $we = new WorkspaceEditor(
             $this->buffers,
             new CodeEditorWidget(),
-            new LspSessionPool(sys_get_temp_dir(), new FixedActiveFile(), new Translator('en')),
+            new LspSessionPool(\sys_get_temp_dir(), new FixedActiveFile(), new Translator('en')),
             $events,
             $this->undo,
         );
@@ -298,7 +298,7 @@ final class RefactoringUndoTest extends TestCase
 
         $this->assertSame('/p/open.php', $this->undo->undo(), 'it names the file that moved on');
         $this->assertStringContainsString('typed ', $open->document->getText(), 'the typing survives');
-        $this->assertSame("new closed\n", file_get_contents($project->path('closed.php')), 'and the OTHER file is untouched too');
+        $this->assertSame("new closed\n", \file_get_contents($project->path('closed.php')), 'and the OTHER file is untouched too');
     }
 
     /**
@@ -319,10 +319,10 @@ final class RefactoringUndoTest extends TestCase
             ],
         ]);
 
-        file_put_contents($project->path('closed.php'), data: "someone else\n");
+        \file_put_contents($project->path('closed.php'), data: "someone else\n");
 
-        $this->assertSame(realpath($project->path('closed.php')), $this->undo->undo());
-        $this->assertSame("someone else\n", file_get_contents($project->path('closed.php')), 'their content survives');
+        $this->assertSame(\realpath($project->path('closed.php')), $this->undo->undo());
+        $this->assertSame("someone else\n", \file_get_contents($project->path('closed.php')), 'their content survives');
         $this->assertSame("new open\n", $open->document->getText(), 'and the buffer was not rolled back either');
     }
 
@@ -370,7 +370,7 @@ final class RefactoringUndoTest extends TestCase
         $this->buffers->close('/p/open.php');
 
         $this->assertNull($this->undo->undo());
-        $this->assertSame("old closed\n", file_get_contents($project->path('closed.php')), 'the file still came back');
+        $this->assertSame("old closed\n", \file_get_contents($project->path('closed.php')), 'the file still came back');
     }
 
     /**

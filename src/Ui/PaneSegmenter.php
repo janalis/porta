@@ -83,14 +83,14 @@ final class PaneSegmenter
      */
     public static function regionRunsForRow(array $regions, int $row, int $columns): array
     {
-        $columns = max(0, $columns);
+        $columns = \max(0, $columns);
         $runs = [];
         foreach ($regions as $region) {
             if (!$region->coversRow($row)) {
                 continue;
             }
-            $start = max(0, $region->col);
-            $end = min($columns, $region->col + $region->width);
+            $start = \max(0, $region->col);
+            $end = \min($columns, $region->col + $region->width);
             if ($end > $start) {
                 $runs[] = ['start' => $start, 'width' => $end - $start, 'ltr' => $region->ltr];
             }
@@ -139,17 +139,17 @@ final class PaneSegmenter
      */
     public static function runsForRow(array $leaves, int $row, int $columns): array
     {
-        $columns = max(0, $columns);
+        $columns = \max(0, $columns);
         /** @var list<int|string> $owner -1 = uncovered gap (verbatim) */
-        $owner = array_fill(0, $columns, -1);
-        $ltr = array_fill(0, $columns, value: true);
+        $owner = \array_fill(0, $columns, -1);
+        $ltr = \array_fill(0, $columns, value: true);
 
         foreach ($leaves as $index => $leaf) {
             $rect = $leaf['rect'];
             if ($row < $rect->row || $row >= ($rect->row + $rect->rows)) {
                 continue;
             }
-            for ($col = max(0, $rect->col), $end = min($columns, $rect->col + $rect->columns); $col < $end; ++$col) {
+            for ($col = \max(0, $rect->col), $end = \min($columns, $rect->col + $rect->columns); $col < $end; ++$col) {
                 $owner[$col] = $index;
                 $ltr[$col] = $leaf['ltr'];
             }

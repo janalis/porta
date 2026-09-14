@@ -43,7 +43,7 @@ final class GlyphsWidthTest extends TestCase
     #[\PHPUnit\Framework\Attributes\DataProvider('glyphs')]
     public function testEveryGlyphIsOneColumnPerCharacter(string $name, string $glyph): void
     {
-        $characters = preg_split('//u', $glyph, flags: \PREG_SPLIT_NO_EMPTY);
+        $characters = \preg_split('//u', $glyph, flags: \PREG_SPLIT_NO_EMPTY);
         \assert(false !== $characters, description: 'the glyph splits into characters');
         $expected = \count($characters);
 
@@ -58,6 +58,6 @@ final class GlyphsWidthTest extends TestCase
     {
         // The provider is reflective: a rename that emptied it would make every
         // case above vacuously pass.
-        $this->assertGreaterThan(50, iterator_count(self::glyphs()));
+        $this->assertGreaterThan(50, \iterator_count(self::glyphs()));
     }
 }

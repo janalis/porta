@@ -35,10 +35,10 @@ final class BufferTest extends TestCase
         $path = $project->path('a.php');
         $buffer = new Buffer($path, new Document(''));
 
-        $expected = (int) filemtime($path).':'.(int) filesize($path);
+        $expected = (int) \filemtime($path).':'.(int) \filesize($path);
         $this->assertSame($expected, $buffer->diskStampNow());
         $this->assertStringContainsString(':', $buffer->diskStampNow() ?? '');
-        $this->assertSame((string) filesize($path), explode(':', (string) $buffer->diskStampNow())[1]);
+        $this->assertSame((string) \filesize($path), \explode(':', (string) $buffer->diskStampNow())[1]);
     }
 
     public function testDiskStampNowIsNullForAPathThatIsNotAFile(): void
@@ -59,10 +59,10 @@ final class BufferTest extends TestCase
         $buffer = new Buffer($path, new Document(''));
         $before = $buffer->diskStampNow(); // any cached stat would date from here
 
-        exec('printf "a longer rewrite" > '.escapeshellarg($path));
+        \exec('printf "a longer rewrite" > '.\escapeshellarg($path));
 
         $this->assertNotSame($before, $buffer->diskStampNow(), 'the external write is visible immediately');
-        $this->assertSame((string) \strlen('a longer rewrite'), explode(':', (string) $buffer->diskStampNow())[1]);
+        $this->assertSame((string) \strlen('a longer rewrite'), \explode(':', (string) $buffer->diskStampNow())[1]);
     }
 
     public function testStampFromDiskRecordsTheCurrentFingerprint(): void
@@ -96,16 +96,16 @@ final class BufferTest extends TestCase
         $before = $buffer->diskStampNow();
         $this->assertNotNull($before);
 
-        $proc = proc_open(['/bin/sh', '-c', 'sleep 1; printf "changed-externally\n" > '.escapeshellarg($path)], [], $pipes);
+        $proc = \proc_open(['/bin/sh', '-c', 'sleep 1; printf "changed-externally\n" > '.\escapeshellarg($path)], [], $pipes);
         \assert(\is_resource($proc), description: 'the external writer started');
         try {
             $after = $before;
             for ($i = 0; $i < 30 && $after === $before; ++$i) {
-                usleep(100_000);
+                \usleep(100_000);
                 $after = $buffer->diskStampNow();
             }
         } finally {
-            proc_close($proc);
+            \proc_close($proc);
         }
 
         $this->assertNotSame($before, $after, 'an edit by another process is never noticed');

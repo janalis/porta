@@ -42,7 +42,7 @@ final readonly class ResolvedEditorConfig
      */
     public static function fromProps(array $props): self
     {
-        $rawIndentSize = ($props['indent_size'] ?? null) !== null ? strtolower(trim($props['indent_size'])) : null;
+        $rawIndentSize = ($props['indent_size'] ?? null) !== null ? \strtolower(\trim($props['indent_size'])) : null;
         $rawTabWidth = $props['tab_width'] ?? null;
 
         $tabWidth = self::toPositiveInt($rawTabWidth);
@@ -70,7 +70,7 @@ final readonly class ResolvedEditorConfig
 
     private static function indentStyle(?string $value): ?bool
     {
-        return match (null === $value ? null : strtolower(trim($value))) {
+        return match (null === $value ? null : \strtolower(\trim($value))) {
             'tab' => true,
             'space' => false,
             default => null,
@@ -79,21 +79,21 @@ final readonly class ResolvedEditorConfig
 
     private static function eol(?string $value): ?string
     {
-        $eol = null === $value ? null : strtolower(trim($value));
+        $eol = null === $value ? null : \strtolower(\trim($value));
 
         return \in_array($eol, ['lf', 'crlf', 'cr'], strict: true) ? $eol : null;
     }
 
     private static function charset(?string $value): ?string
     {
-        $charset = null === $value ? null : strtolower(trim($value));
+        $charset = null === $value ? null : \strtolower(\trim($value));
 
         return '' === $charset || null === $charset ? null : $charset;
     }
 
     private static function boolProp(?string $value): ?bool
     {
-        return match (null === $value ? null : strtolower(trim($value))) {
+        return match (null === $value ? null : \strtolower(\trim($value))) {
             'true' => true,
             'false' => false,
             default => null,
@@ -102,10 +102,10 @@ final readonly class ResolvedEditorConfig
 
     private static function toPositiveInt(?string $value): ?int
     {
-        if (null === $value || 1 !== preg_match('/^\d+$/', trim($value))) {
+        if (null === $value || 1 !== \preg_match('/^\d+$/', \trim($value))) {
             return null;
         }
 
-        return max(1, (int) trim($value));
+        return \max(1, (int) \trim($value));
     }
 }

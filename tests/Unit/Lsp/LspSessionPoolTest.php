@@ -109,8 +109,8 @@ final class LspSessionPoolTest extends TestCase
                 ['textDocument/didClose file:///tmp/proj/src/Old/a.php'],
                 ['textDocument/didClose file:///tmp/proj/src/Old/a.ts'],
             ],
-            array_map(
-                static fn (array $built): array => array_map(
+            \array_map(
+                static fn (array $built): array => \array_map(
                     static fn (array $sent): string => $sent['method'].' '.$sent['params']['textDocument']['uri'],
                     $built['client']->notifications,
                 ),
@@ -313,7 +313,7 @@ final class LspSessionPoolTest extends TestCase
         $this->activeFile->set('/tmp/proj/b.ts');
         $pool->request('textDocument/definition', ['x' => 1], static function (): void {});
 
-        $this->assertCount(0, array_filter($this->clients[0]['client']->requests));
+        $this->assertCount(0, \array_filter($this->clients[0]['client']->requests));
         $this->assertSame('textDocument/definition', $this->clients[1]['client']->requests[0]['method']);
         $this->assertTrue($pool->isActive());
         $this->assertSame('/tmp/proj/b.ts', $pool->ready('/tmp/proj/b.ts', new Document('y')));
@@ -500,7 +500,7 @@ final class LspSessionPoolTest extends TestCase
         $pool->notifyDidClose('/tmp/proj/a.php');
         $pool->notifyDidSave('/tmp/proj/other.md'); // unmatched: dropped
 
-        $methods = array_column($phpClient->notifications, 'method');
+        $methods = \array_column($phpClient->notifications, 'method');
         $this->assertSame(
             ['textDocument/didOpen', 'textDocument/didSave', 'textDocument/didChange', 'textDocument/didClose'],
             $methods,

@@ -30,9 +30,9 @@ final class TemplateExpander
      */
     public static function at(string $line, int $col, array $templates): ?array
     {
-        $before = substr($line, offset: 0, length: max(0, $col));
+        $before = \substr($line, offset: 0, length: \max(0, $col));
         foreach (self::longestFirst($templates) as $abbreviation => $body) {
-            $match = str_starts_with($abbreviation, '.')
+            $match = \str_starts_with($abbreviation, '.')
                 ? self::postfix($before, $abbreviation, $body)
                 : self::plain($before, $abbreviation, $body);
             if (null !== $match) {
@@ -51,11 +51,11 @@ final class TemplateExpander
      */
     private static function plain(string $before, string $abbreviation, string $body): ?array
     {
-        if (!str_ends_with($before, $abbreviation)) {
+        if (!\str_ends_with($before, $abbreviation)) {
             return null;
         }
-        $preceding = substr($before, offset: 0, length: \strlen($before) - \strlen($abbreviation));
-        if ('' !== $preceding && 1 === preg_match('/[\w$]$/', $preceding)) {
+        $preceding = \substr($before, offset: 0, length: \strlen($before) - \strlen($abbreviation));
+        if ('' !== $preceding && 1 === \preg_match('/[\w$]$/', $preceding)) {
             return null;
         }
 
@@ -72,19 +72,19 @@ final class TemplateExpander
      */
     private static function postfix(string $before, string $abbreviation, string $body): ?array
     {
-        if (!str_ends_with($before, $abbreviation)) {
+        if (!\str_ends_with($before, $abbreviation)) {
             return null;
         }
-        $expression = substr($before, offset: 0, length: \strlen($before) - \strlen($abbreviation));
+        $expression = \substr($before, offset: 0, length: \strlen($before) - \strlen($abbreviation));
         $matches = [];
-        if (1 !== preg_match('/(\$?[\w\\\\]+(?:(?:->|::|\.)\w+|\([^()]*\)|\[[^\[\]]*\])*)$/', $expression, $matches)) {
+        if (1 !== \preg_match('/(\$?[\w\\\\]+(?:(?:->|::|\.)\w+|\([^()]*\)|\[[^\[\]]*\])*)$/', $expression, $matches)) {
             return null;
         }
         $receiver = $matches[1];
 
         return [
             'consume' => \strlen($receiver) + \strlen($abbreviation),
-            'snippet' => str_replace(TemplateCatalog::EXPRESSION, $receiver, $body),
+            'snippet' => \str_replace(TemplateCatalog::EXPRESSION, $receiver, $body),
         ];
     }
 
@@ -98,12 +98,12 @@ final class TemplateExpander
      */
     private static function longestFirst(array $templates): array
     {
-        uksort($templates, static function (string $a, string $b): int {
+        \uksort($templates, static function (string $a, string $b): int {
             $byLength = \strlen($b) <=> \strlen($a);
 
             // Alphabetical within a length, so the order never depends on how
             // the catalogue happens to be written.
-            return 0 === $byLength ? strcmp($a, $b) : $byLength;
+            return 0 === $byLength ? \strcmp($a, $b) : $byLength;
         });
 
         return $templates;

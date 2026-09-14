@@ -59,8 +59,8 @@ final class WhitespaceRenderTest extends TestCase
             $geo,
             new EditorDecorations(false, null, [], [], null),
             sticky: [],
-            highlighted: explode("\n", self::CODE),
-            stripe: array_fill(start_index: 0, count: 5, value: ''),
+            highlighted: \explode("\n", self::CODE),
+            stripe: \array_fill(start_index: 0, count: 5, value: ''),
             contentRows: 4,
             vScroll: 0,
             cursorLine: -1,
@@ -73,8 +73,8 @@ final class WhitespaceRenderTest extends TestCase
     {
         $indented = AnsiUtils::stripAnsiCodes($this->rows()[2]);
 
-        self::assertStringContainsString('    function one() {}', $indented, 'the indent is left as spaces');
-        self::assertStringNotContainsString(Glyphs::WHITESPACE_SPACE, $indented);
+        $this->assertStringContainsString('    function one() {}', $indented, 'the indent is left as spaces');
+        $this->assertStringNotContainsString(Glyphs::WHITESPACE_SPACE, $indented);
     }
 
     public function testAskingForItMarksTheIndentAndKeepsTheWidth(): void
@@ -82,9 +82,9 @@ final class WhitespaceRenderTest extends TestCase
         $on = $this->rows(true);
         $indented = AnsiUtils::stripAnsiCodes($on[2]);
 
-        self::assertStringContainsString('····function one() {}', $indented);
+        $this->assertStringContainsString('····function one() {}', $indented);
         foreach ($on as $index => $row) {
-            self::assertSame(
+            $this->assertSame(
                 AnsiUtils::visibleWidth($this->rows(false)[$index]),
                 AnsiUtils::visibleWidth($row),
                 "row {$index} keeps its width",

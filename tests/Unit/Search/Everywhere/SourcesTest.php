@@ -27,7 +27,7 @@ final class SourcesTest extends TestCase
     {
         // No grep on PATH → ProjectSearch takes its synchronous PHP fallback, so
         // the TextSource emit is deterministic in-test.
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
     }
 
     /** @return list<SearchHit> */
@@ -83,7 +83,7 @@ final class SourcesTest extends TestCase
         $this->assertSame(SearchCategory::Actions, $source->category());
         $hits = $this->collect(static fn (\Closure $emit) => $source->query('save', $emit));
 
-        $labels = array_map(static fn (SearchHit $h): string => $h->label, $hits);
+        $labels = \array_map(static fn (SearchHit $h): string => $h->label, $hits);
         $this->assertContains('Save File', $labels);
         $this->assertNotContains('Nothing Here', $labels, 'non-subsequence dropped');
         ($hits[0]->activate)();
@@ -109,7 +109,7 @@ final class SourcesTest extends TestCase
 
         $hits = $this->collect(static fn (\Closure $emit) => $source->query('save', $emit));
 
-        $labels = array_map(static fn (SearchHit $h): string => $h->label, $hits);
+        $labels = \array_map(static fn (SearchHit $h): string => $h->label, $hits);
         $this->assertSame(['Save File'], $labels, 'the non-matching first entry was skipped, not treated as the end');
     }
 
@@ -126,7 +126,7 @@ final class SourcesTest extends TestCase
 
         $hits = $this->collect(static fn (\Closure $emit) => $source->query('b', $emit));
 
-        $this->assertSame(['Bravo', 'Alpha Beta'], array_map(static fn (SearchHit $h): string => $h->label, $hits));
+        $this->assertSame(['Bravo', 'Alpha Beta'], \array_map(static fn (SearchHit $h): string => $h->label, $hits));
     }
 
     public function testAnActionCarriesItsKeyAsTheHint(): void

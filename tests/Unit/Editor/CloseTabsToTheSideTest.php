@@ -58,7 +58,7 @@ final class CloseTabsToTheSideTest extends TestCase
     private function openedPath(string $name): string
     {
         foreach (Services::resolve($this->ide, BufferManager::class)->all() as $buffer) {
-            if (basename($buffer->path) === $name) {
+            if (\basename($buffer->path) === $name) {
                 return $buffer->path;
             }
         }
@@ -69,8 +69,8 @@ final class CloseTabsToTheSideTest extends TestCase
     /** @return list<string> the open tabs, in strip order */
     private function tabs(): array
     {
-        return array_map(
-            static fn (object $buffer): string => basename($buffer->path),
+        return \array_map(
+            static fn (object $buffer): string => \basename($buffer->path),
             Services::resolve($this->ide, BufferManager::class)->all(),
         );
     }
@@ -102,7 +102,7 @@ final class CloseTabsToTheSideTest extends TestCase
         $buffers->closeTabsToTheSide($this->openedPath('a.php'), TabSide::Right);
 
         $this->assertSame(['a.php'], $this->tabs());
-        $this->assertSame('a.php', basename((string) Services::resolve($this->ide, BufferManager::class)->active()?->path));
+        $this->assertSame('a.php', \basename((string) Services::resolve($this->ide, BufferManager::class)->active()?->path));
     }
 
     public function testClosingLeftOfTheFIRSTTabClosesNothing(): void

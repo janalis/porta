@@ -65,7 +65,7 @@ final class PtyProcess
 
     public function start(): bool
     {
-        $env = array_merge(getenv(), $this->env, [
+        $env = \array_merge(\getenv(), $this->env, [
             'COLUMNS' => (string) $this->columns,
             'LINES' => (string) $this->rows,
             'TERM' => 'xterm-256color',
@@ -81,7 +81,7 @@ final class PtyProcess
         // @mago-expect lint:no-error-control-operator -- proc_open on a nonexistent/unusable binary emits a spawn ("posix_spawn() failed") warning that guarding the inputs cannot reliably prevent; the false return drives the pipe fallback below.
         // Irreducible without lying about the descriptor. Re-checked 2026-09-02.
         // @mago-expect analysis:possibly-invalid-argument
-        $process = @proc_open($this->command, $ptyDescriptors, $pipes, $cwd, $env);
+        $process = @\proc_open($this->command, $ptyDescriptors, $pipes, $cwd, $env);
         $this->pty = \is_resource($process);
 
         // Pipe fallback only runs where PTYs are unavailable; unreachable on
@@ -90,7 +90,7 @@ final class PtyProcess
         if (!$this->pty) {
             $pipeDescriptors = [['pipe', 'r'], ['pipe', 'w'], ['pipe', 'w']];
             // @mago-expect lint:no-error-control-operator -- proc_open on a nonexistent/unusable binary emits a spawn ("posix_spawn() failed") warning that guarding the inputs cannot reliably prevent; the false return is handled below.
-            $process = @proc_open($this->command, $pipeDescriptors, $pipes, $cwd, $env);
+            $process = @\proc_open($this->command, $pipeDescriptors, $pipes, $cwd, $env);
             if (!\is_resource($process)) {
                 return false;
             }
@@ -103,13 +103,13 @@ final class PtyProcess
         $this->process = $process;
         /** @var array{0: resource, 1?: resource, 2?: resource} $pipes */
         $this->master = $pipes[1] ?? $pipes[0];
-        stream_set_blocking($this->master, enable: false);
+        \stream_set_blocking($this->master, enable: false);
         $this->running = true;
 
         $this->watcher = EventLoop::onReadable($this->master, function (string $watcherId): void {
             /** @var resource $master */
             $master = $this->master;
-            $chunk = \is_resource($master) ? fread($master, length: 65_536) : false;
+            $chunk = \is_resource($master) ? \fread($master, length: 65_536) : false;
             if (\is_string($chunk) && '' !== $chunk) {
                 if (null !== $this->onOutput) {
                     ($this->onOutput)($chunk);
@@ -117,7 +117,7 @@ final class PtyProcess
 
                 return;
             }
-            if (!\is_resource($this->master) || feof($this->master)) {
+            if (!\is_resource($this->master) || \feof($this->master)) {
                 $this->finish();
             }
         });
@@ -133,7 +133,7 @@ final class PtyProcess
         $target = $this->pty ? $this->master : $this->stdin;
         if (\is_resource($target)) {
             // @mago-expect lint:no-error-control-operator -- fwrite to a pty/pipe whose child has died (the fd is still a live resource) raises an unavoidable EPIPE/EIO warning that no is_resource guard prevents.
-            @fwrite($target, $data);
+            @\fwrite($target, $data);
         }
     }
 
@@ -144,8 +144,8 @@ final class PtyProcess
             $this->watcher = null;
         }
         if (\is_resource($this->process)) {
-            proc_terminate($this->process, \SIGKILL);
-            proc_close($this->process);
+            \proc_terminate($this->process, \SIGKILL);
+            \proc_close($this->process);
         }
         $this->process = null;
         $this->running = false;
@@ -160,19 +160,19 @@ final class PtyProcess
         if (\is_resource($this->process)) {
             // PTY EOF can arrive a hair before the child is reaped; poll briefly
             // so the real exit code is observed rather than a transient -1.
-            $status = proc_get_status($this->process);
+            $status = \proc_get_status($this->process);
             for ($i = 0; $i < 50 && $status['running']; ++$i) {
                 // The EOF-before-reap window is sub-200µs (the kernel releases
                 // the controlling terminal during exit processing), so event-loop
                 // dispatch latency makes this body unreachable deterministically.
                 // @codeCoverageIgnoreStart
-                usleep(2000);
-                $status = proc_get_status($this->process);
+                \usleep(2000);
+                $status = \proc_get_status($this->process);
 
                 // @codeCoverageIgnoreEnd
             }
             $this->exitCode = $status['running'] ? -1 : (int) $status['exitcode'];
-            proc_close($this->process);
+            \proc_close($this->process);
         }
         $this->process = null;
         $this->running = false;

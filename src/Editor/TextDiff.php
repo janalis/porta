@@ -26,7 +26,7 @@ final class TextDiff
 
         // Longest common prefix (in bytes).
         $prefix = 0;
-        $max = min($oldLen, $newLen);
+        $max = \min($oldLen, $newLen);
         while ($prefix < $max && $old[$prefix] === $new[$prefix]) {
             ++$prefix;
         }
@@ -55,7 +55,7 @@ final class TextDiff
                 'end' => self::offsetToPosition($old, $endOffset),
             ],
             'rangeLength' => $endOffset - $startOffset,
-            'text' => substr($new, $prefix, $newLen - $suffix - $prefix),
+            'text' => \substr($new, $prefix, $newLen - $suffix - $prefix),
         ];
     }
 
@@ -66,11 +66,11 @@ final class TextDiff
      */
     private static function offsetToPosition(string $text, int $offset): array
     {
-        $before = substr($text, offset: 0, length: $offset);
-        $line = substr_count($before, needle: "\n");
-        $lastNewline = strrpos($before, needle: "\n");
-        $lineStart = false === $lastNewline ? $before : substr($before, $lastNewline + 1);
-        $character = '' === $lineStart ? 0 : \strlen((string) mb_convert_encoding($lineStart, to_encoding: 'UTF-16LE', from_encoding: 'UTF-8')) >> 1;
+        $before = \substr($text, offset: 0, length: $offset);
+        $line = \substr_count($before, needle: "\n");
+        $lastNewline = \strrpos($before, needle: "\n");
+        $lineStart = false === $lastNewline ? $before : \substr($before, $lastNewline + 1);
+        $character = '' === $lineStart ? 0 : \strlen((string) \mb_convert_encoding($lineStart, to_encoding: 'UTF-16LE', from_encoding: 'UTF-8')) >> 1;
 
         return ['line' => $line, 'character' => $character];
     }

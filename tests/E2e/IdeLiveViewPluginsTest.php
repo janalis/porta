@@ -38,13 +38,13 @@ final class IdeLiveViewPluginsTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->originalEmbedded = (string) getenv('PORTA_EMBEDDED_PLUGINS');
-        putenv('PATH=/nonexistent');
+        $this->originalEmbedded = (string) \getenv('PORTA_EMBEDDED_PLUGINS');
+        \putenv('PATH=/nonexistent');
     }
 
     protected function tearDown(): void
     {
-        putenv('PORTA_EMBEDDED_PLUGINS='.$this->originalEmbedded);
+        \putenv('PORTA_EMBEDDED_PLUGINS='.$this->originalEmbedded);
     }
 
     /** An embedded fixture plugin contributing a view, a top-level menu and the toggle verb. */
@@ -144,7 +144,7 @@ final class IdeLiveViewPluginsTest extends TestCase
     /** @return list<string> the menu bar's top-level titles */
     private function menuTitles($tui): array
     {
-        return array_column(Probe::get($tui->getById('menu'), 'menus'), 'title');
+        return \array_column(Probe::get($tui->getById('menu'), 'menus'), 'title');
     }
 
     public function testTogglingFromTheRealSettingsScreenBuildsAndRetractsTheView(): void
@@ -156,8 +156,8 @@ final class IdeLiveViewPluginsTest extends TestCase
         // directly would pass every other test in this file and still be dead
         // on the screen the user actually touches.
         $embedded = $this->embeddedViewFixture();
-        putenv('PORTA_EMBEDDED_PLUGINS='.$embedded->dir);
-        $project = new TempProject(['a.php' => "<?php\n", '.porta.json' => (string) json_encode(['enabledPlugins' => []])]);
+        \putenv('PORTA_EMBEDDED_PLUGINS='.$embedded->dir);
+        $project = new TempProject(['a.php' => "<?php\n", '.porta.json' => (string) \json_encode(['enabledPlugins' => []])]);
 
         $this->runIde(
             $project,
@@ -183,7 +183,7 @@ final class IdeLiveViewPluginsTest extends TestCase
 
                     $this->assertNotNull($views->find('demo-view'), 'the view was built from the Settings screen');
                     $this->assertNotNull($regions->find('demo-view'), 'and its region minted');
-                    $config = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
+                    $config = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true);
                     $this->assertSame(['demo'], \is_array($config) ? $config['enabledPlugins'] ?? null : null, 'and the choice persisted');
 
                     // Leave the settings view — through the same command that
@@ -220,8 +220,8 @@ final class IdeLiveViewPluginsTest extends TestCase
     public function testAViewPluginTogglesLiveThroughItsWholeLifecycle(): void
     {
         $embedded = $this->embeddedViewFixture();
-        putenv('PORTA_EMBEDDED_PLUGINS='.$embedded->dir);
-        $project = new TempProject(['a.php' => "<?php\n", '.porta.json' => (string) json_encode(['enabledPlugins' => []])]);
+        \putenv('PORTA_EMBEDDED_PLUGINS='.$embedded->dir);
+        $project = new TempProject(['a.php' => "<?php\n", '.porta.json' => (string) \json_encode(['enabledPlugins' => []])]);
 
         $this->runIde(
             $project,
@@ -297,8 +297,8 @@ final class IdeLiveViewPluginsTest extends TestCase
                     }
                 };
                 PHP]);
-        putenv('PORTA_EMBEDDED_PLUGINS='.$embedded->dir);
-        $project = new TempProject(['a.php' => "<?php\n", '.porta.json' => (string) json_encode(['enabledPlugins' => []])]);
+        \putenv('PORTA_EMBEDDED_PLUGINS='.$embedded->dir);
+        $project = new TempProject(['a.php' => "<?php\n", '.porta.json' => (string) \json_encode(['enabledPlugins' => []])]);
 
         $this->runIde(
             $project,

@@ -36,7 +36,7 @@ final class ScopeRescanDebounceTest extends TestCase
     /** @return list<string> */
     private static function labels(CodeEditorWidget $editor): array
     {
-        return array_column($editor->scopes(), 'label');
+        return \array_column($editor->scopes(), 'label');
     }
 
     public function testAnEditDefersTheRescanRatherThanPayingPerKeystroke(): void
@@ -46,8 +46,8 @@ final class ScopeRescanDebounceTest extends TestCase
 
         $editor->getDocument()->replaceAll(self::AFTER);
 
-        self::assertSame(['Alpha'], self::labels($editor), 'the trail stays stale until the typing pauses');
-        self::assertCount(1, $scheduler->scheduled, 'and a rescan is armed');
+        $this->assertSame(['Alpha'], self::labels($editor), 'the trail stays stale until the typing pauses');
+        $this->assertCount(1, $scheduler->scheduled, 'and a rescan is armed');
     }
 
     public function testFiringTheTimerRescansFromTheLIVEDocument(): void
@@ -61,7 +61,7 @@ final class ScopeRescanDebounceTest extends TestCase
 
         $scheduler->fire();
 
-        self::assertSame(['Renamed'], self::labels($editor));
+        $this->assertSame(['Renamed'], self::labels($editor));
     }
 
     public function testASETTLEDRescanAsksForAFrame(): void
@@ -76,7 +76,7 @@ final class ScopeRescanDebounceTest extends TestCase
 
         $scheduler->fire();
 
-        self::assertNotSame($before, Probe::get($editor, 'renderRevision'), 'the settled trail needs a frame to show');
+        $this->assertNotSame($before, Probe::get($editor, 'renderRevision'), 'the settled trail needs a frame to show');
     }
 
     public function testARE_EDITDoesNotPushTheRescanOutForever(): void
@@ -91,7 +91,7 @@ final class ScopeRescanDebounceTest extends TestCase
         $editor->scopes();
         $editor->scopes();
 
-        self::assertCount(1, $scheduler->scheduled, 'one timer for one version, however often it is asked');
-        self::assertSame([], $scheduler->cancelled, 'and nothing re-armed');
+        $this->assertCount(1, $scheduler->scheduled, 'one timer for one version, however often it is asked');
+        $this->assertSame([], $scheduler->cancelled, 'and nothing re-armed');
     }
 }

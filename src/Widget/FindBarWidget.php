@@ -392,7 +392,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
         }
         foreach ([['regex', '.*', $this->regex], ['word', '\b', $this->wholeWord]] as [$name, $glyph, $on]) {
             $tags .= FindModalRows::optionTag($glyph, OptionTagState::of($on, $name === $this->hoveredTag), $this->styles);
-            $width = mb_strwidth($glyph) + 2;
+            $width = \mb_strwidth($glyph) + 2;
             $this->optionZones->add($name, $col, $col + $width);
             $col += $width;
         }
@@ -429,7 +429,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
         $this->patternInvalid = false;
         $this->patternTooComplex = false;
         $query = $this->query->value();
-        $caseInsensitive = strtolower($query) === $query; // smart-case carries into regex mode via the i flag
+        $caseInsensitive = \strtolower($query) === $query; // smart-case carries into regex mode via the i flag
 
         if ($this->regex || $this->wholeWord) {
             $pattern = SearchPattern::build(
@@ -438,9 +438,9 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
                 $this->wholeWord ? WordMode::WholeWord : WordMode::Anywhere,
                 $caseInsensitive ? CaseMode::Insensitive : CaseMode::Sensitive,
             );
-            set_error_handler(static fn (): bool => true);
-            $valid = preg_match($pattern, subject: '');
-            restore_error_handler();
+            \set_error_handler(static fn (): bool => true);
+            $valid = \preg_match($pattern, subject: '');
+            \restore_error_handler();
             if (false === $valid) {
                 $this->patternInvalid = true;
                 $this->notifyUpdate();
@@ -452,9 +452,9 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
                 if ('' === $line) {
                     continue;
                 }
-                set_error_handler(static fn (): bool => true);
-                $count = preg_match_all($pattern, $line, $found, \PREG_OFFSET_CAPTURE);
-                restore_error_handler();
+                \set_error_handler(static fn (): bool => true);
+                $count = \preg_match_all($pattern, $line, $found, \PREG_OFFSET_CAPTURE);
+                \restore_error_handler();
                 if (false === $count) {
                     // The engine gave up on this line: skip it, but remember,
                     // so the count below is not offered as an answer.
@@ -476,15 +476,15 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
             }
         }
         if (!$this->regex && !$this->wholeWord) {
-            $needle = $caseInsensitive ? strtolower($query) : $query;
+            $needle = $caseInsensitive ? \strtolower($query) : $query;
             $needleLen = \strlen($query);
 
             foreach ($this->target->findLines() as $lineIndex => $line) {
-                $haystack = $caseInsensitive ? strtolower($line) : $line;
+                $haystack = $caseInsensitive ? \strtolower($line) : $line;
                 $offset = 0;
-                while (false !== ($pos = strpos($haystack, $needle, $offset))) {
+                while (false !== ($pos = \strpos($haystack, $needle, $offset))) {
                     $this->matches[] = ['line' => (int) $lineIndex, 'start' => $pos, 'end' => $pos + $needleLen];
-                    $offset = $pos + max(1, $needleLen);
+                    $offset = $pos + \max(1, $needleLen);
                     if (\count($this->matches) >= self::MAX_MATCHES) {
                         break 2;
                     }
@@ -532,7 +532,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
     {
         // Replace is editor-only; a read-only target (docs) returns no document.
         $doc = $this->target?->replaceDocument();
-        if (!$this->withReplace || null === $doc || $this->currentIndex < 0 || !array_key_exists($this->currentIndex, $this->matches)) {
+        if (!$this->withReplace || null === $doc || $this->currentIndex < 0 || !\array_key_exists($this->currentIndex, $this->matches)) {
             return;
         }
         $match = $this->matches[$this->currentIndex];
@@ -543,7 +543,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
 
         $keepIndex = $this->currentIndex;
         $this->recompute(jumpToNearest: MatchJump::None);
-        $this->gotoMatch(min($keepIndex, \count($this->matches) - 1));
+        $this->gotoMatch(\min($keepIndex, \count($this->matches) - 1));
     }
 
     private function replaceAll(): void
@@ -565,7 +565,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
         // throws, and bought an arm no test can reach in exchange.
         $doc->beginCompound();
         // Bottom-up so earlier offsets stay valid
-        foreach (array_reverse($this->matches) as $match) {
+        foreach (\array_reverse($this->matches) as $match) {
             $doc->setCursor($match['line'], $match['start']);
             $doc->beginSelect();
             $doc->setCursor($match['line'], $match['end'], selection: SelectionMode::Keep);
@@ -588,16 +588,16 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
         if (!$this->regex) {
             return $replacement;
         }
-        $matched = substr($doc->getLines()[$match['line']] ?? '', $match['start'], $match['end'] - $match['start']);
+        $matched = \substr($doc->getLines()[$match['line']] ?? '', $match['start'], $match['end'] - $match['start']);
         $pattern = SearchPattern::build(
             $this->query->value(),
             MatchMode::Regex,
             $this->wholeWord ? WordMode::WholeWord : WordMode::Anywhere,
-            strtolower($this->query->value()) !== $this->query->value() ? CaseMode::Sensitive : CaseMode::Insensitive,
+            \strtolower($this->query->value()) !== $this->query->value() ? CaseMode::Sensitive : CaseMode::Insensitive,
         );
-        set_error_handler(static fn (): bool => true);
-        $expanded = preg_replace($pattern, $replacement, $matched, limit: 1);
-        restore_error_handler();
+        \set_error_handler(static fn (): bool => true);
+        $expanded = \preg_replace($pattern, $replacement, $matched, limit: 1);
+        \restore_error_handler();
 
         return \is_string($expanded) ? $expanded : $replacement;
     }
@@ -614,7 +614,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
     /** Display columns of the right-aligned option-tag strip (both tags are glyph + 2). */
     private static function tagsWidth(): int
     {
-        return mb_strwidth('.*') + 2 + mb_strwidth('\b') + 2;
+        return \mb_strwidth('.*') + 2 + \mb_strwidth('\b') + 2;
     }
 
     /** Flip regex matching and re-search (Alt+X, or a click on the [.*] tag). */

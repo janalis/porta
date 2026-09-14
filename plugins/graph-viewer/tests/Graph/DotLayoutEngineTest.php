@@ -28,7 +28,7 @@ final class DotLayoutEngineTest extends TestCase
 
     private function engine(string $stub): DotLayoutEngine
     {
-        return new DotLayoutEngine(sys_get_temp_dir(), self::stub($stub));
+        return new DotLayoutEngine(\sys_get_temp_dir(), self::stub($stub));
     }
 
     public function testLaysOutThroughTheStubBinary(): void
@@ -125,8 +125,8 @@ final class DotLayoutEngineTest extends TestCase
 
     public function testMissingBinaryErrorsWithoutSpawning(): void
     {
-        putenv('PATH=/nonexistent');
-        $engine = new DotLayoutEngine(sys_get_temp_dir(), null);
+        \putenv('PATH=/nonexistent');
+        $engine = new DotLayoutEngine(\sys_get_temp_dir(), null);
         $error = null;
         $engine->layout(
             self::SMALL_DOT,
@@ -159,7 +159,7 @@ final class DotLayoutEngineTest extends TestCase
         // string, which is what makes the setting live. Memoizing the first
         // answer would make it restart-required again.
         $configured = self::stub('fake-dot');
-        $engine = new DotLayoutEngine(sys_get_temp_dir(), static function () use (&$configured): ?string {
+        $engine = new DotLayoutEngine(\sys_get_temp_dir(), static function () use (&$configured): ?string {
             return $configured;
         });
         $this->assertSame(self::stub('fake-dot'), $engine->binary());
@@ -173,17 +173,17 @@ final class DotLayoutEngineTest extends TestCase
     {
         // Clearing the setting means "discover on PATH" — the same '' -to-null
         // the string form has always had, through the closure.
-        putenv('PATH=/nonexistent');
-        $engine = new DotLayoutEngine(sys_get_temp_dir(), static fn (): ?string => null);
+        \putenv('PATH=/nonexistent');
+        $engine = new DotLayoutEngine(\sys_get_temp_dir(), static fn (): ?string => null);
 
         $this->assertNull($engine->binary());
     }
 
     public function testExportWritesTheTargetFile(): void
     {
-        $out = sys_get_temp_dir().'/porta-graph-export-'.getmypid().'.svg';
-        if (is_file($out)) {
-            unlink($out);
+        $out = \sys_get_temp_dir().'/porta-graph-export-'.\getmypid().'.svg';
+        if (\is_file($out)) {
+            \unlink($out);
         }
         $engine = $this->engine('fake-dot');
         $result = 'unset';
@@ -196,8 +196,8 @@ final class DotLayoutEngineTest extends TestCase
 
         $this->assertNull($result);
         $this->assertFileExists($out);
-        $this->assertStringContainsString('-Tsvg', (string) file_get_contents($out), 'the stub recorded the format flag');
-        unlink($out);
+        $this->assertStringContainsString('-Tsvg', (string) \file_get_contents($out), 'the stub recorded the format flag');
+        \unlink($out);
     }
 
     public function testExportFailureReportsTheError(): void
@@ -352,9 +352,9 @@ final class DotLayoutEngineTest extends TestCase
 
     public function testRenderWithoutABinaryErrorsWithoutSpawning(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $error = null;
-        new DotLayoutEngine(sys_get_temp_dir(), null)->render(
+        new DotLayoutEngine(\sys_get_temp_dir(), null)->render(
             self::SMALL_DOT,
             72,
             static function (): void {
@@ -371,7 +371,7 @@ final class DotLayoutEngineTest extends TestCase
     public function testRealGraphvizSmokeTest(): void
     {
         $this->skipWithoutDot();
-        $engine = new DotLayoutEngine(sys_get_temp_dir(), null);
+        $engine = new DotLayoutEngine(\sys_get_temp_dir(), null);
         $this->assertNotNull($engine->binary());
 
         $layout = null;
@@ -400,7 +400,7 @@ final class DotLayoutEngineTest extends TestCase
         $this->skipWithoutDot();
         $png = null;
         $error = null;
-        new DotLayoutEngine(sys_get_temp_dir(), null)->render(
+        new DotLayoutEngine(\sys_get_temp_dir(), null)->render(
             self::SMALL_DOT,
             72,
             static function (string $bytes) use (&$png): void {
@@ -417,7 +417,7 @@ final class DotLayoutEngineTest extends TestCase
         if (null !== $error) {
             // PNG output is optional in graphviz (it needs libgd), and a build
             // without it is the case the viewer's cell fallback exists for.
-            self::markTestSkipped('this dot has no PNG support: '.$error);
+            $this->markTestSkipped('this dot has no PNG support: '.$error);
         }
         $image = new ImageDecoder()->decodeBytes((string) $png);
         $this->assertNotNull($image, 'real dot emitted a decodable PNG');

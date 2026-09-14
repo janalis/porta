@@ -38,23 +38,23 @@ final class SettingsRenderGoldenTest extends TestCase
     {
         $actual = $this->renderAllScenarios();
 
-        if (getenv('UPDATE_SETTINGS_GOLDEN')) {
-            if (!is_dir(\dirname(self::GOLDEN))) {
-                mkdir(\dirname(self::GOLDEN), permissions: 0o777, recursive: true);
+        if (\getenv('UPDATE_SETTINGS_GOLDEN')) {
+            if (!\is_dir(\dirname(self::GOLDEN))) {
+                \mkdir(\dirname(self::GOLDEN), permissions: 0o777, recursive: true);
             }
-            file_put_contents(self::GOLDEN, json_encode($actual, \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE));
+            \file_put_contents(self::GOLDEN, \json_encode($actual, \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE));
             $this->markTestSkipped('Golden regenerated.');
         }
 
         $this->assertFileExists(self::GOLDEN, 'run once with UPDATE_SETTINGS_GOLDEN=1 to seed');
-        $expected = json_decode((string) file_get_contents(self::GOLDEN), associative: true);
+        $expected = \json_decode((string) \file_get_contents(self::GOLDEN), associative: true);
 
         // Compare scenario by scenario for a readable diff on failure.
         foreach ($expected as $name => $rows) {
             $this->assertArrayHasKey($name, $actual, "scenario {$name} missing");
             $this->assertSame($rows, $actual[$name], "scenario {$name} render changed");
         }
-        $this->assertSame(array_keys($expected), array_keys($actual), 'scenario set changed');
+        $this->assertSame(\array_keys($expected), \array_keys($actual), 'scenario set changed');
     }
 
     /** @return array<string, string[]> */
@@ -213,7 +213,7 @@ final class SettingsRenderGoldenTest extends TestCase
                         new SettingsRow(key: 'lspServer', label: 'LSP server', kind: SettingsRowKind::Text, value: '', restart: false, hint: 'auto-detect'),
                     ], 'PHP');
                     $w->handleInput("\r"); // opens the inline editor
-                    foreach (str_split('my-ls') as $char) {
+                    foreach (\str_split('my-ls') as $char) {
                         $w->handleInput($char);
                     }
                 },

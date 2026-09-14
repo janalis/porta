@@ -90,7 +90,7 @@ final class CompleteStatementTest extends TestCase
             $doc = new Document($text."\n");
             $doc->setCursor(0, 5);
             $doc->completeStatement(self::php());
-            $this->assertStringEndsNotWith(';', rtrim($doc->getLine(0)), $text);
+            $this->assertStringEndsNotWith(';', \rtrim($doc->getLine(0)), $text);
         }
     }
 

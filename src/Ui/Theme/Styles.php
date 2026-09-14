@@ -51,9 +51,9 @@ final class Styles
     /** Several roles merged into one Style — later roles win per property. */
     public function merge(Role ...$roles): Style
     {
-        $key = implode('|', array_map(static fn (Role $role): string => $role->name, $roles));
+        $key = \implode('|', \array_map(static fn (Role $role): string => $role->name, $roles));
 
-        return $this->mergeMemo[$key] ??= Style::mergeAll(array_map($this->current->of(...), $roles));
+        return $this->mergeMemo[$key] ??= Style::mergeAll(\array_map($this->current->of(...), $roles));
     }
 
     /** The SGR-58 underline-color sequence for $role ('' when the theme defines none). */

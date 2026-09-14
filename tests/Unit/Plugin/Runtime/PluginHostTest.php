@@ -50,7 +50,7 @@ final class PluginHostTest extends TestCase
     public function testKeybindingsFactoryMergesDefaultsPluginKeysAndUserKeymap(): void
     {
         $project = new TempProject([
-            '.porta.json' => json_encode(['keymap' => ['save' => ['ctrl+shift+s']]]),
+            '.porta.json' => \json_encode(['keymap' => ['save' => ['ctrl+shift+s']]]),
             '.porta/plugins/keyed/plugin.php' => <<<'PHP'
                 <?php
                 return new class implements Porta\Plugin\Api\PortaPlugin {

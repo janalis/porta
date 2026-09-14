@@ -22,20 +22,20 @@ final class WorkspaceResolver
         $line = null;
         $m = [];
         // Peel a trailing ":<digits>" off (`src/Foo.php:42`) only when the rest is a file.
-        if (1 === preg_match('/^(.*):(\d+)$/', $target, $m) && is_file($this->absolute($m[1], $cwd))) {
+        if (1 === \preg_match('/^(.*):(\d+)$/', $target, $m) && \is_file($this->absolute($m[1], $cwd))) {
             $target = $m[1];
             $line = (int) $m[2];
         }
 
         $abs = $this->absolute($target, $cwd);
-        if (is_file($abs)) {
-            $real = realpath($abs);
+        if (\is_file($abs)) {
+            $real = \realpath($abs);
             $file = $real ? $real : $abs;
 
             return new Workspace($this->projectRoot(\dirname($file)), $file, $line);
         }
-        if (is_dir($abs)) {
-            $real = realpath($abs);
+        if (\is_dir($abs)) {
+            $real = \realpath($abs);
 
             return new Workspace($real ? $real : $abs, null, $line);
         }
@@ -54,7 +54,7 @@ final class WorkspaceResolver
     {
         $probe = $dir;
         while ('/' !== $probe && \strlen($probe) > 1) {
-            if (is_file($probe.'/composer.json')) {
+            if (\is_file($probe.'/composer.json')) {
                 return $probe;
             }
             $probe = \dirname($probe);

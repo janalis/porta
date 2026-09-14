@@ -38,13 +38,13 @@ final readonly class MouseEvent
     public static function parse(string $data): ?self
     {
         $m = [];
-        if (!preg_match('/^\x1b\[<(\d+);(\d+);(\d+)([Mm])$/', $data, $m)) {
+        if (!\preg_match('/^\x1b\[<(\d+);(\d+);(\d+)([Mm])$/', $data, $m)) {
             return null;
         }
 
         $code = (int) $m[1];
-        $col = max(0, (int) $m[2] - 1);
-        $row = max(0, (int) $m[3] - 1);
+        $col = \max(0, (int) $m[2] - 1);
+        $row = \max(0, (int) $m[3] - 1);
 
         $motion = (bool) ($code & 32);
         $wheel = (bool) ($code & 64);

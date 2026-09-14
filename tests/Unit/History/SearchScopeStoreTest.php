@@ -35,13 +35,13 @@ final class SearchScopeStoreTest extends TestCase
 
         $store->forget('docs'); // takes the middle one out
 
-        $raw = (string) file_get_contents($project->dir.'/.porta/search-scopes.json');
-        $decoded = json_decode($raw, associative: true);
+        $raw = (string) \file_get_contents($project->dir.'/.porta/search-scopes.json');
+        $decoded = \json_decode($raw, associative: true);
         $this->assertIsArray($decoded);
         $this->assertArrayHasKey('scopes', $decoded);
         $this->assertSame(
-            array_keys($decoded['scopes']),
-            range(0, \count($decoded['scopes']) - 1),
+            \array_keys($decoded['scopes']),
+            \range(0, \count($decoded['scopes']) - 1),
             'the keys are 0..n with no gaps, so this encodes as an array and not an object',
         );
         $this->assertStringNotContainsString('"0":', $raw, 'and the bytes say so too');
@@ -61,7 +61,7 @@ final class SearchScopeStoreTest extends TestCase
         $store->addRecent('tests', ['tests']);
         $store->addRecent('src', ['src']); // moves src to the front
 
-        $this->assertSame(['src', 'tests'], array_column($store->all(), 'label'));
+        $this->assertSame(['src', 'tests'], \array_column($store->all(), 'label'));
     }
 
     public function testUnpinnedScopesEvictPastTheCap(): void
@@ -85,14 +85,14 @@ final class SearchScopeStoreTest extends TestCase
             $store->addRecent("dir{$i}", ["dir{$i}"]);
         }
 
-        $labels = array_column($store->all(), 'label');
+        $labels = \array_column($store->all(), 'label');
         $this->assertContains('lib', $labels, 'the pinned scope survives eviction');
         $this->assertSame('lib', $labels[0], 'pinned scopes come first');
         $this->assertCount(11, $labels, '10 recent + 1 pinned');
 
         // A pin sticks even when the same label is later recorded as recent.
         $store->addRecent('lib', ['lib']);
-        $lib = array_values(array_filter($store->all(), static fn (array $s): bool => 'lib' === $s['label']))[0];
+        $lib = \array_values(\array_filter($store->all(), static fn (array $s): bool => 'lib' === $s['label']))[0];
         $this->assertTrue($lib['pinned']);
     }
 
@@ -104,7 +104,7 @@ final class SearchScopeStoreTest extends TestCase
         $project = new TempProject([]);
         $project->write(
             '.porta/search-scopes.json',
-            (string) json_encode([
+            (string) \json_encode([
                 'scopes' => [
                     ['label' => 'other', 'paths' => ['o'], 'pinned' => false],
                     ['label' => 'target', 'paths' => ['t'], 'pinned' => true],
@@ -115,7 +115,7 @@ final class SearchScopeStoreTest extends TestCase
         new SearchScopeStore($project->dir)->addRecent('target', ['t2']);
 
         $reloaded = new SearchScopeStore($project->dir)->all();
-        $target = $reloaded[array_search('target', array_column($reloaded, 'label'), strict: true)];
+        $target = $reloaded[\array_search('target', \array_column($reloaded, 'label'), strict: true)];
         $this->assertTrue($target['pinned'], 'a pin sticks even when re-recorded as recent');
     }
 
@@ -127,7 +127,7 @@ final class SearchScopeStoreTest extends TestCase
         $project = new TempProject([]);
         $project->write(
             '.porta/search-scopes.json',
-            (string) json_encode([
+            (string) \json_encode([
                 'scopes' => [
                     ['label' => 'dup', 'paths' => ['first'], 'pinned' => false],
                     ['label' => 'dup', 'paths' => ['second'], 'pinned' => true],
@@ -146,7 +146,7 @@ final class SearchScopeStoreTest extends TestCase
         // `null === $data` is false here (the file parses), so this only
         // exercises the second half of the guard — a non-array `scopes`.
         $project = new TempProject([]);
-        $project->write('.porta/search-scopes.json', (string) json_encode(['scopes' => 'not-an-array']));
+        $project->write('.porta/search-scopes.json', (string) \json_encode(['scopes' => 'not-an-array']));
 
         $this->assertSame([], new SearchScopeStore($project->dir)->all());
     }
@@ -158,7 +158,7 @@ final class SearchScopeStoreTest extends TestCase
         $project = new TempProject([]);
         $project->write(
             '.porta/search-scopes.json',
-            (string) json_encode([
+            (string) \json_encode([
                 'scopes' => [
                     ['label' => 'bad'], // missing paths
                     ['label' => 'ok', 'paths' => ['x']],
@@ -166,7 +166,7 @@ final class SearchScopeStoreTest extends TestCase
             ]),
         );
 
-        $this->assertSame(['ok'], array_column(new SearchScopeStore($project->dir)->all(), 'label'));
+        $this->assertSame(['ok'], \array_column(new SearchScopeStore($project->dir)->all(), 'label'));
     }
 
     public function testLoadedPathsStayContiguouslyIndexedAfterFilteringInvalidOnes(): void
@@ -178,14 +178,14 @@ final class SearchScopeStoreTest extends TestCase
         $project = new TempProject([]);
         $project->write(
             '.porta/search-scopes.json',
-            (string) json_encode([
+            (string) \json_encode([
                 'scopes' => [['label' => 'ok', 'paths' => [7, 'src', '']]],
             ]),
         );
 
         $loaded = new SearchScopeStore($project->dir)->all();
         $this->assertSame(['src'], $loaded[0]['paths']);
-        $this->assertSame('["src"]', json_encode($loaded[0]['paths']), 'stays a JSON array, not an object');
+        $this->assertSame('["src"]', \json_encode($loaded[0]['paths']), 'stays a JSON array, not an object');
     }
 
     public function testLoadKeepsEveryValidScopeNotJustTheFirst(): void
@@ -193,7 +193,7 @@ final class SearchScopeStoreTest extends TestCase
         $project = new TempProject([]);
         $project->write(
             '.porta/search-scopes.json',
-            (string) json_encode([
+            (string) \json_encode([
                 'scopes' => [
                     ['label' => 'a', 'paths' => ['a']],
                     ['label' => 'b', 'paths' => ['b']],
@@ -201,7 +201,7 @@ final class SearchScopeStoreTest extends TestCase
             ]),
         );
 
-        $this->assertSame(['a', 'b'], array_column(new SearchScopeStore($project->dir)->all(), 'label'));
+        $this->assertSame(['a', 'b'], \array_column(new SearchScopeStore($project->dir)->all(), 'label'));
     }
 
     public function testPersistsAcrossInstancesAndToleratesBadFiles(): void
@@ -222,7 +222,7 @@ final class SearchScopeStoreTest extends TestCase
         $mixed = new TempProject([]);
         $mixed->write(
             '.porta/search-scopes.json',
-            (string) json_encode([
+            (string) \json_encode([
                 'scopes' => [
                     ['label' => 'ok', 'paths' => ['src', 7, ''], 'pinned' => true],
                     ['label' => 'no-paths', 'paths' => []],
@@ -237,14 +237,14 @@ final class SearchScopeStoreTest extends TestCase
 
     public function testAddToleratesAnUnwritableLocation(): void
     {
-        $file = (string) tempnam(sys_get_temp_dir(), prefix: 'porta-scopes-');
+        $file = (string) \tempnam(\sys_get_temp_dir(), prefix: 'porta-scopes-');
 
         try {
             $store = new SearchScopeStore($file);
             $store->addRecent('src', ['src']); // dumpFile throws → caught, in-memory list still updated
-            $this->assertSame(['src'], array_column($store->all(), 'label'));
+            $this->assertSame(['src'], \array_column($store->all(), 'label'));
         } finally {
-            is_file($file) && unlink($file);
+            \is_file($file) && \unlink($file);
         }
     }
 
@@ -256,7 +256,7 @@ final class SearchScopeStoreTest extends TestCase
         $store->addRecent("scope\xB1", ['/p/src']);
 
         $this->assertCount(1, $store->all(), 'the live list keeps the scope');
-        $this->assertFalse(is_file($project->path('.porta/search-scopes.json')), 'the file write degraded silently');
+        $this->assertFalse(\is_file($project->path('.porta/search-scopes.json')), 'the file write degraded silently');
     }
 
     public function testARenamedFolderTakesItsScopeWithIt(): void
@@ -302,13 +302,13 @@ final class SearchScopeStoreTest extends TestCase
         $store = new SearchScopeStore($tempProject->dir);
         $store->addRecent('src', ['src']);
         $file = $tempProject->dir.'/.porta/search-scopes.json';
-        touch($file, mtime: 1_000_000_000); // backdated: mtime resolves to the second
-        clearstatcache();
+        \touch($file, mtime: 1_000_000_000); // backdated: mtime resolves to the second
+        \clearstatcache();
 
         $store->rename('tests', 'spec');
 
-        $this->assertSame(['src'], array_column($store->all(), 'label'));
-        $this->assertSame(1_000_000_000, filemtime($file), 'no write for a rename that changed nothing');
+        $this->assertSame(['src'], \array_column($store->all(), 'label'));
+        $this->assertSame(1_000_000_000, \filemtime($file), 'no write for a rename that changed nothing');
     }
 
     public function testADeletedFolderLeavesTheScopeWithNowhereToSearch(): void
@@ -337,12 +337,12 @@ final class SearchScopeStoreTest extends TestCase
         $store = new SearchScopeStore($tempProject->dir);
         $store->addRecent('src', ['src']);
         $file = $tempProject->dir.'/.porta/search-scopes.json';
-        touch($file, mtime: 1_000_000_000);
-        clearstatcache();
+        \touch($file, mtime: 1_000_000_000);
+        \clearstatcache();
 
         $store->forget('tests');
 
-        $this->assertSame(['src'], array_column($store->all(), 'label'));
-        $this->assertSame(1_000_000_000, filemtime($file), 'no write for a delete that changed nothing');
+        $this->assertSame(['src'], \array_column($store->all(), 'label'));
+        $this->assertSame(1_000_000_000, \filemtime($file), 'no write for a delete that changed nothing');
     }
 }

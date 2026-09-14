@@ -25,7 +25,7 @@ final class SemanticTokensDecodeTest extends TestCase
         // line 1 char 4; then same line +7; then two lines on at char 2.
         $data = [1, 4, 5, 1, 0, 0, 7, 3, 0, 0, 2, 2, 4, 2, 0];
 
-        self::assertSame(
+        $this->assertSame(
             [
                 1 => [
                     ['col' => 4, 'endCol' => 9, 'type' => 'property', 'modifiers' => []],
@@ -45,7 +45,7 @@ final class SemanticTokensDecodeTest extends TestCase
         // the running column it would land at 21, not 1.
         $decoded = SemanticTokensController::decode([0, 20, 2, 0, 0, 1, 1, 2, 0, 0], self::TYPES, self::MODS);
 
-        self::assertSame(1, $decoded[1][0]['col']);
+        $this->assertSame(1, $decoded[1][0]['col']);
     }
 
     public function testModifierBitsIndexIntoTheServersOwnLegend(): void
@@ -54,8 +54,8 @@ final class SemanticTokensDecodeTest extends TestCase
         $both = SemanticTokensController::decode([0, 0, 3, 0, 3], self::TYPES, self::MODS);
         $deprecatedOnly = SemanticTokensController::decode([0, 0, 3, 0, 2], self::TYPES, self::MODS);
 
-        self::assertSame(['static', 'deprecated'], $both[0][0]['modifiers']);
-        self::assertSame(['deprecated'], $deprecatedOnly[0][0]['modifiers']);
+        $this->assertSame(['static', 'deprecated'], $both[0][0]['modifiers']);
+        $this->assertSame(['deprecated'], $deprecatedOnly[0][0]['modifiers']);
     }
 
     public function testATypeIndexOutsideTheLegendIsSkippedButTheWalkContinues(): void
@@ -65,13 +65,13 @@ final class SemanticTokensDecodeTest extends TestCase
         // the skip happened AFTER the running position was advanced.
         $decoded = SemanticTokensController::decode([0, 0, 3, 9, 0, 1, 2, 4, 2, 0], self::TYPES, self::MODS);
 
-        self::assertArrayNotHasKey(0, $decoded);
-        self::assertSame([['col' => 2, 'endCol' => 6, 'type' => 'variable', 'modifiers' => []]], $decoded[1]);
+        $this->assertArrayNotHasKey(0, $decoded);
+        $this->assertSame([['col' => 2, 'endCol' => 6, 'type' => 'variable', 'modifiers' => []]], $decoded[1]);
     }
 
     public function testAZeroLengthTokenIsDropped(): void
     {
-        self::assertSame([], SemanticTokensController::decode([0, 0, 0, 1, 0], self::TYPES, self::MODS));
+        $this->assertSame([], SemanticTokensController::decode([0, 0, 0, 1, 0], self::TYPES, self::MODS));
     }
 
     public function testATrailingPartialTupleIsIgnoredRatherThanReadPast(): void
@@ -79,7 +79,7 @@ final class SemanticTokensDecodeTest extends TestCase
         // Six entries: one whole tuple and one stray value.
         $decoded = SemanticTokensController::decode([0, 0, 3, 1, 0, 7], self::TYPES, self::MODS);
 
-        self::assertSame([['col' => 0, 'endCol' => 3, 'type' => 'property', 'modifiers' => []]], $decoded[0]);
+        $this->assertSame([['col' => 0, 'endCol' => 3, 'type' => 'property', 'modifiers' => []]], $decoded[0]);
     }
 
     public function testALongPartialTailIsNotWalkedIntoAtAll(): void
@@ -90,8 +90,8 @@ final class SemanticTokensDecodeTest extends TestCase
         // a single stray value — the latter walks off the end of the array.
         $decoded = SemanticTokensController::decode([0, 0, 3, 1, 0, 1, 1, 2, 0], self::TYPES, self::MODS);
 
-        self::assertSame([0], array_keys($decoded));
-        self::assertCount(1, $decoded[0]);
+        $this->assertSame([0], \array_keys($decoded));
+        $this->assertCount(1, $decoded[0]);
     }
 
     public function testANegativeDeltaThatWalksAboveTheFirstLineIsDropped(): void
@@ -100,7 +100,7 @@ final class SemanticTokensDecodeTest extends TestCase
         // line would key the map with a line that cannot be painted.
         $decoded = SemanticTokensController::decode([-1, 0, 3, 1, 0], self::TYPES, self::MODS);
 
-        self::assertSame([], $decoded);
+        $this->assertSame([], $decoded);
     }
 
     public function testANegativeColumnIsDroppedButLaterTokensSurvive(): void
@@ -109,12 +109,12 @@ final class SemanticTokensDecodeTest extends TestCase
         // so its column restarts and it must still be decoded.
         $decoded = SemanticTokensController::decode([0, -4, 3, 1, 0, 1, 2, 4, 2, 0], self::TYPES, self::MODS);
 
-        self::assertSame([1], array_keys($decoded));
-        self::assertSame([['col' => 2, 'endCol' => 6, 'type' => 'variable', 'modifiers' => []]], $decoded[1]);
+        $this->assertSame([1], \array_keys($decoded));
+        $this->assertSame([['col' => 2, 'endCol' => 6, 'type' => 'variable', 'modifiers' => []]], $decoded[1]);
     }
 
     public function testAnEmptyLegendYieldsNothingRatherThanUntypedTokens(): void
     {
-        self::assertSame([], SemanticTokensController::decode([0, 0, 3, 0, 0], [], self::MODS));
+        $this->assertSame([], SemanticTokensController::decode([0, 0, 3, 0, 0], [], self::MODS));
     }
 }

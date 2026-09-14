@@ -41,8 +41,8 @@ final class Bookmarks
     /** @return list<int> the file's bookmarked lines, ascending */
     public function linesFor(string $path): array
     {
-        $lines = array_keys($this->marks[$path] ?? []);
-        sort($lines);
+        $lines = \array_keys($this->marks[$path] ?? []);
+        \sort($lines);
 
         return $lines;
     }
@@ -51,7 +51,7 @@ final class Bookmarks
     public function all(): array
     {
         $out = [];
-        foreach (array_keys($this->marks) as $path) {
+        foreach (\array_keys($this->marks) as $path) {
             $out[$path] = $this->linesFor($path);
         }
 
@@ -65,7 +65,7 @@ final class Bookmarks
      */
     public function rename(string $from, string $to): void
     {
-        foreach (array_keys($this->marks) as $marked) {
+        foreach (\array_keys($this->marks) as $marked) {
             $moved = ProjectPaths::moved($marked, $from, $to);
             if (null === $moved || $moved === $marked) {
                 continue;
@@ -87,7 +87,7 @@ final class Bookmarks
      */
     public function forget(string $path): void
     {
-        foreach (array_keys($this->marks) as $marked) {
+        foreach (\array_keys($this->marks) as $marked) {
             if (!ProjectPaths::isUnder($marked, $path)) {
                 continue;
             }

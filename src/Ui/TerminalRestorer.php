@@ -26,7 +26,7 @@ final class TerminalRestorer
     public function arm(TerminalInterface $terminal): void
     {
         if (null === $this->terminal) {
-            register_shutdown_function($this->restore(...));
+            \register_shutdown_function($this->restore(...));
         }
         $this->terminal = $terminal;
     }

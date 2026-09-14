@@ -41,7 +41,7 @@ final class DebugStateStoreTest extends TestCase
         $store = new DebugStateStore($project->dir);
         $store->save(['/p/a.php' => [['line' => 1, 'condition' => null, 'hitCondition' => null]]], [], null);
 
-        $this->assertStringNotContainsString('exceptionFilters', (string) file_get_contents($project->path('.porta/debug.json')));
+        $this->assertStringNotContainsString('exceptionFilters', (string) \file_get_contents($project->path('.porta/debug.json')));
         $this->assertNull($store->load()['exceptionFilters']);
     }
 
@@ -65,7 +65,7 @@ final class DebugStateStoreTest extends TestCase
         $project->write('.porta/debug.json', '{not json');
         $this->assertNull($store->load(), 'corrupt file');
 
-        $project->write('.porta/debug.json', json_encode([
+        $project->write('.porta/debug.json', \json_encode([
             'breakpoints' => [
                 // An invalid path (or entry list) must be skipped, not abort
                 // the rest of the loop — so a valid path/entry is placed
@@ -99,7 +99,7 @@ final class DebugStateStoreTest extends TestCase
         $store = new DebugStateStore($project->dir);
         $store->save([], ['$x'], null);
 
-        $decoded = json_decode((string) file_get_contents($project->path('.porta/debug.json')), associative: false, flags: \JSON_THROW_ON_ERROR);
+        $decoded = \json_decode((string) \file_get_contents($project->path('.porta/debug.json')), associative: false, flags: \JSON_THROW_ON_ERROR);
         $this->assertInstanceOf(\stdClass::class, $decoded->breakpoints, 'an empty map must decode as an object, not an array');
     }
 
@@ -143,7 +143,7 @@ final class DebugStateStoreTest extends TestCase
         $watches->remove(0);
         $persistence->save();
         $reloaded = $store->load();
-        $this->assertSame([$real], array_keys($reloaded['breakpoints']));
+        $this->assertSame([$real], \array_keys($reloaded['breakpoints']));
         $this->assertSame([], $reloaded['watches']);
     }
 
@@ -158,7 +158,7 @@ final class DebugStateStoreTest extends TestCase
         $saved = new DebugStateStore($project->dir)->save([], ["\$x\xB1"], null);
 
         $this->assertFalse($saved);
-        $this->assertFalse(is_file($project->path('.porta/debug.json')), 'nothing half-written');
+        $this->assertFalse(\is_file($project->path('.porta/debug.json')), 'nothing half-written');
     }
 
     public function testPersistenceRestoreWithoutAFileIsANoOp(): void

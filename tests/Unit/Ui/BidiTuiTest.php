@@ -72,7 +72,7 @@ final class BidiTuiTest extends TestCase
         $tui->requestRender();
         $tui->processRender();
 
-        self::assertStringContainsString(self::SHALOM, $terminal->getOutput());
+        $this->assertStringContainsString(self::SHALOM, $terminal->getOutput());
     }
 
     public function testARtlReorderRewritesEachLineToVisualOrder(): void
@@ -84,8 +84,8 @@ final class BidiTuiTest extends TestCase
         $tui->processRender();
 
         $out = $terminal->getOutput();
-        self::assertStringContainsString(self::SHALOM_VISUAL, $out, 'the Hebrew word is reversed to visual order');
-        self::assertStringNotContainsString(self::SHALOM, $out, 'the logical-order form is not written');
+        $this->assertStringContainsString(self::SHALOM_VISUAL, $out, 'the Hebrew word is reversed to visual order');
+        $this->assertStringNotContainsString(self::SHALOM, $out, 'the logical-order form is not written');
     }
 
     /**
@@ -131,12 +131,12 @@ final class BidiTuiTest extends TestCase
         $tui->processRender();
 
         $out = $terminal->getOutput();
-        self::assertStringContainsString('x', $out, 'the rows the terminal has are written');
-        self::assertStringNotContainsString(self::SHALOM, $out, 'and the rows it does not have are not');
-        self::assertStringNotContainsString('tail', $out);
+        $this->assertStringContainsString('x', $out, 'the rows the terminal has are written');
+        $this->assertStringNotContainsString(self::SHALOM, $out, 'and the rows it does not have are not');
+        $this->assertStringNotContainsString('tail', $out);
         $arranged = Probe::get($tui, 'arranged');
-        self::assertIsArray($arranged);
-        self::assertSame([0, 1], array_keys($arranged), 'only the rows that exist were mirrored at all');
+        $this->assertIsArray($arranged);
+        $this->assertSame([0, 1], \array_keys($arranged), 'only the rows that exist were mirrored at all');
     }
 
     public function testAnUnchangedRowIsMirroredOnceAndReused(): void
@@ -154,7 +154,7 @@ final class BidiTuiTest extends TestCase
         $tui->requestRender();
         $tui->processRender();
 
-        self::assertStringContainsString(self::MARKER, $terminal->getOutput(), 'the unchanged row was not mirrored a second time');
+        $this->assertStringContainsString(self::MARKER, $terminal->getOutput(), 'the unchanged row was not mirrored a second time');
     }
 
     public function testARowWhoseTextChangedIsMirroredAgain(): void
@@ -168,8 +168,8 @@ final class BidiTuiTest extends TestCase
         $tui->processRender();
 
         $out = $terminal->getOutput();
-        self::assertStringNotContainsString(self::MARKER, $out, 'a row whose text moved on is stale, not reusable');
-        self::assertStringContainsString(self::SHALOM_VISUAL, $out, 'it was mirrored again');
+        $this->assertStringNotContainsString(self::MARKER, $out, 'a row whose text moved on is stale, not reusable');
+        $this->assertStringContainsString(self::SHALOM_VISUAL, $out, 'it was mirrored again');
     }
 
     public function testARowWhosePanesChangedIsMirroredAgain(): void
@@ -185,8 +185,8 @@ final class BidiTuiTest extends TestCase
         $tui->processRender();
 
         $out = $terminal->getOutput();
-        self::assertStringNotContainsString(self::MARKER, $out, 'a resized pane invalidates the row');
-        self::assertStringContainsString(self::SHALOM_VISUAL, $out);
+        $this->assertStringNotContainsString(self::MARKER, $out, 'a resized pane invalidates the row');
+        $this->assertStringContainsString(self::SHALOM_VISUAL, $out);
     }
 
     public function testARowWhoseFloatingBoxesChangedIsMirroredAgain(): void
@@ -202,8 +202,8 @@ final class BidiTuiTest extends TestCase
         $tui->processRender();
 
         $out = $terminal->getOutput();
-        self::assertStringNotContainsString(self::MARKER, $out, 'a box appearing over the row invalidates it');
-        self::assertStringContainsString(self::SHALOM_VISUAL, $out);
+        $this->assertStringNotContainsString(self::MARKER, $out, 'a box appearing over the row invalidates it');
+        $this->assertStringContainsString(self::SHALOM_VISUAL, $out);
     }
 
     public function testTheRememberedFrameHoldsOnlyTheRowsTheLastFrameHad(): void
@@ -216,17 +216,17 @@ final class BidiTuiTest extends TestCase
         $tui->requestRender();
         $tui->processRender();
         $arranged = Probe::get($tui, 'arranged');
-        self::assertIsArray($arranged);
+        $this->assertIsArray($arranged);
         Probe::set($tui, 'arranged', [...$arranged, 99 => $arranged[0]]);
 
         $tui->requestRender();
         $tui->processRender();
 
         $after = Probe::get($tui, 'arranged');
-        self::assertIsArray($after);
+        $this->assertIsArray($after);
         // One row: this rig's widget renders a single line, and the frame is
         // exactly as tall as what the tree produced.
-        self::assertSame([0], array_keys($after), 'only the rows this frame had');
+        $this->assertSame([0], \array_keys($after), 'only the rows this frame had');
     }
 
     public function testTheTerminalBidiSwitchForgetsTheMirroredRows(): void
@@ -238,11 +238,11 @@ final class BidiTuiTest extends TestCase
         $this->enableRtl($tui);
         $tui->requestRender();
         $tui->processRender();
-        self::assertNotSame([], Probe::get($tui, 'arranged'));
+        $this->assertNotSame([], Probe::get($tui, 'arranged'));
 
         $tui->setTerminalBidi(true);
 
-        self::assertSame([], Probe::get($tui, 'arranged'), 'the frozen and unfrozen forms are not interchangeable');
+        $this->assertSame([], Probe::get($tui, 'arranged'), 'the frozen and unfrozen forms are not interchangeable');
     }
 
     public function testInstallingAReorderForgetsTheMirroredRows(): void
@@ -252,11 +252,11 @@ final class BidiTuiTest extends TestCase
         $this->enableRtl($tui);
         $tui->requestRender();
         $tui->processRender();
-        self::assertNotSame([], Probe::get($tui, 'arranged'));
+        $this->assertNotSame([], Probe::get($tui, 'arranged'));
 
         $this->enableRtl($tui); // a live locale switch replaces the reorder
 
-        self::assertSame([], Probe::get($tui, 'arranged'), 'rows the previous reorder mirrored are not this one\'s work');
+        $this->assertSame([], Probe::get($tui, 'arranged'), 'rows the previous reorder mirrored are not this one\'s work');
     }
 
     public function testAFrameWithNothingPendingIsANoOp(): void
@@ -267,16 +267,16 @@ final class BidiTuiTest extends TestCase
         // No requestRender(): the reorder branch must early-return without writing.
         $tui->processRender();
 
-        self::assertSame('', $terminal->getOutput());
+        $this->assertSame('', $terminal->getOutput());
     }
 
     public function testABackloggedTerminalSkipsFrameGenerationUntilDrained(): void
     {
         // The scroll-lag regression: frame generation must self-pace to the
         // terminal's drain rate instead of queueing stale frames.
-        $pair = stream_socket_pair(\STREAM_PF_UNIX, \STREAM_SOCK_STREAM, protocol: 0);
+        $pair = \stream_socket_pair(\STREAM_PF_UNIX, \STREAM_SOCK_STREAM, protocol: 0);
         \assert(false !== $pair, description: 'stream_socket_pair created a socket pair');
-        stream_set_blocking($pair[1], enable: false);
+        \stream_set_blocking($pair[1], enable: false);
         $terminal = new \Porta\Ui\NonBlockingTerminal(new VirtualTerminal(columns: 20, rows: 2), $pair[0]);
         $terminal->start(static function (): void {}, static function (): void {}, static function (): void {});
         $tui = $this->tuiWith($terminal);
@@ -285,7 +285,7 @@ final class BidiTuiTest extends TestCase
         $perf = new \Porta\Support\PerfCollector($perfProject->dir, new \Symfony\Component\Clock\MockClock());
         $tui->setPerfSink($perf);
 
-        $terminal->write(str_repeat('#', times: 524_288)); // a wedged tty: backlog past the socket buffer
+        $terminal->write(\str_repeat('#', times: 524_288)); // a wedged tty: backlog past the socket buffer
         $backlog = $terminal->pendingBytes();
         $this->assertGreaterThan(0, $backlog);
 
@@ -299,7 +299,7 @@ final class BidiTuiTest extends TestCase
         // Drain the peer; the writer's watcher empties the queue as the loop runs.
         $suspension = \Revolt\EventLoop::getSuspension();
         $drain = \Revolt\EventLoop::repeat(0.01, static function () use ($pair, $terminal, $suspension): void {
-            fread($pair[1], length: 65_536);
+            \fread($pair[1], length: 65_536);
             if (0 === $terminal->pendingBytes()) {
                 $suspension->resume();
             }
@@ -309,42 +309,42 @@ final class BidiTuiTest extends TestCase
 
         $tui->processRender();
         $this->assertFalse((bool) Probe::get($tui, 'renderRequested'), 'the queued request rendered once the tty caught up');
-        $this->assertGreaterThan(0, $terminal->pendingBytes() + \strlen((string) fread($pair[1], length: 65_536)), 'the frame reached the terminal');
+        $this->assertGreaterThan(0, $terminal->pendingBytes() + \strlen((string) \fread($pair[1], length: 65_536)), 'the frame reached the terminal');
 
         $terminal->stop();
-        fclose($pair[1]);
+        \fclose($pair[1]);
     }
 
     public function testADrainedBacklogRepaintsWithoutAManualPump(): void
     {
-        $pair = stream_socket_pair(\STREAM_PF_UNIX, \STREAM_SOCK_STREAM, protocol: 0);
+        $pair = \stream_socket_pair(\STREAM_PF_UNIX, \STREAM_SOCK_STREAM, protocol: 0);
         \assert(false !== $pair, description: 'stream_socket_pair created a socket pair');
-        stream_set_blocking($pair[1], enable: false);
+        \stream_set_blocking($pair[1], enable: false);
         $terminal = new \Porta\Ui\NonBlockingTerminal(new VirtualTerminal(columns: 20, rows: 2), $pair[0]);
         $tui = $this->tuiWith($terminal);
         $tui->start();
         $this->microTurn(); // first frame out into the socket
-        fread($pair[1], length: 65_536);
+        \fread($pair[1], length: 65_536);
 
-        $terminal->write(str_repeat('#', times: 524_288)); // a wedged tty
+        $terminal->write(\str_repeat('#', times: 524_288)); // a wedged tty
         $tui->requestRender();
         $this->microTurn(); // the deferred tick skips generation and arms the wakeup
 
-        self::assertTrue((bool) Probe::get($tui, 'renderRequested'), 'the request stays pending while the tty is behind');
-        self::assertTrue((bool) Probe::get($tui, 'drainWakeupArmed'));
-        self::assertNotNull(Probe::get(Probe::object($terminal, 'writer'), 'onDrain'), 'the skip installed the drain hook on the live writer');
+        $this->assertTrue((bool) Probe::get($tui, 'renderRequested'), 'the request stays pending while the tty is behind');
+        $this->assertTrue((bool) Probe::get($tui, 'drainWakeupArmed'));
+        $this->assertNotNull(Probe::get(Probe::object($terminal, 'writer'), 'onDrain'), 'the skip installed the drain hook on the live writer');
 
         // Drain the peer using defer-only turns: the 10ms ticker cannot fire
         // inside them, so ONLY the drain wakeup can paint the skipped frame.
         for ($i = 0; $i < 500 && 0 !== $terminal->pendingBytes(); ++$i) {
-            fread($pair[1], length: 65_536);
+            \fread($pair[1], length: 65_536);
             $this->microTurn();
         }
-        self::assertSame(0, $terminal->pendingBytes(), 'the backlog drained');
+        $this->assertSame(0, $terminal->pendingBytes(), 'the backlog drained');
         $this->microTurn(); // run the wakeup's deferred tick
         $this->microTurn();
 
-        self::assertFalse((bool) Probe::get($tui, 'renderRequested'), 'the skipped frame painted at drain time, not on the ticker');
+        $this->assertFalse((bool) Probe::get($tui, 'renderRequested'), 'the skipped frame painted at drain time, not on the ticker');
 
         // Empty the socket buffer first: stop()'s teardown escapes flush
         // BLOCKING, and a full buffer with no reader would park the worker.
@@ -355,10 +355,10 @@ final class BidiTuiTest extends TestCase
         // deadlock at 99%, so the rule is suppressed here rather than left to
         // be rediscovered.
         // @mago-expect lint:no-empty-loop -- the fread in the condition is the body
-        while ('' !== (string) fread($pair[1], length: 65_536)) {
+        while ('' !== (string) \fread($pair[1], length: 65_536)) {
         }
         $tui->stop();
-        fclose($pair[1]);
+        \fclose($pair[1]);
     }
 
     public function testClearingTheReorderRestoresTheStockPath(): void
@@ -370,7 +370,7 @@ final class BidiTuiTest extends TestCase
         $tui->requestRender();
         $tui->processRender();
 
-        self::assertStringContainsString(self::SHALOM, $terminal->getOutput());
+        $this->assertStringContainsString(self::SHALOM, $terminal->getOutput());
     }
 
     public function testLogicalColumnMapsClicksBackThroughTheReorder(): void
@@ -383,8 +383,8 @@ final class BidiTuiTest extends TestCase
 
         // Row 0 renders שלום (reversed on screen); the leftmost screen column
         // maps back to the last logical character.
-        self::assertSame(3, $tui->logicalColumn(0, 0));
-        self::assertSame(0, $tui->logicalColumn(0, 3));
+        $this->assertSame(3, $tui->logicalColumn(0, 0));
+        $this->assertSame(0, $tui->logicalColumn(0, 3));
     }
 
     public function testLogicalColumnIsIdentityWithoutAReorder(): void
@@ -394,7 +394,7 @@ final class BidiTuiTest extends TestCase
         $tui->requestRender();
         $tui->processRender();
 
-        self::assertSame(5, $tui->logicalColumn(0, 5)); // no reorder → identity
+        $this->assertSame(5, $tui->logicalColumn(0, 5)); // no reorder → identity
     }
 
     public function testLogicalColumnIsIdentityForAnUnknownRow(): void
@@ -405,7 +405,7 @@ final class BidiTuiTest extends TestCase
         $tui->requestRender();
         $tui->processRender();
 
-        self::assertSame(7, $tui->logicalColumn(99, 7)); // row not in the last frame
+        $this->assertSame(7, $tui->logicalColumn(99, 7)); // row not in the last frame
     }
 
     /**
@@ -429,7 +429,7 @@ final class BidiTuiTest extends TestCase
 
         $this->microTurn();
 
-        self::assertStringContainsString(self::SHALOM, $terminal->getOutput(), 'the frame painted before any 10ms ticker interval elapsed');
+        $this->assertStringContainsString(self::SHALOM, $terminal->getOutput(), 'the frame painted before any 10ms ticker interval elapsed');
         $tui->stop();
     }
 
@@ -450,12 +450,12 @@ final class BidiTuiTest extends TestCase
 
         $tui->requestRender();
         $tui->requestRender();
-        self::assertTrue((bool) Probe::get($tui, 'immediateTickQueued'), 'a burst holds one queued tick');
+        $this->assertTrue((bool) Probe::get($tui, 'immediateTickQueued'), 'a burst holds one queued tick');
         $this->microTurn();
 
-        self::assertSame(1, $ticks, 'N requests in one iteration coalesce into one tick');
-        self::assertGreaterThanOrEqual(1, Probe::get($perf, 'coalesced'), 'the deduped request was counted');
-        self::assertFalse((bool) Probe::get($tui, 'immediateTickQueued'), 'the queue flag cleared after the tick');
+        $this->assertSame(1, $ticks, 'N requests in one iteration coalesce into one tick');
+        $this->assertGreaterThanOrEqual(1, Probe::get($perf, 'coalesced'), 'the deduped request was counted');
+        $this->assertFalse((bool) Probe::get($tui, 'immediateTickQueued'), 'the queue flag cleared after the tick');
         $tui->stop();
     }
 
@@ -466,7 +466,7 @@ final class BidiTuiTest extends TestCase
 
         $tui->requestRender();
 
-        self::assertFalse((bool) Probe::get($tui, 'immediateTickQueued'), 'no tick is queued while the Tui is not running');
+        $this->assertFalse((bool) Probe::get($tui, 'immediateTickQueued'), 'no tick is queued while the Tui is not running');
     }
 
     public function testAStopBetweenQueueAndFireSuppressesTheTick(): void
@@ -482,7 +482,7 @@ final class BidiTuiTest extends TestCase
         $baseline = $terminal->getOutput(); // stop()'s own teardown writes
         $this->microTurn();
 
-        self::assertSame($baseline, $terminal->getOutput(), 'the queued tick did not paint into the stopped terminal');
+        $this->assertSame($baseline, $terminal->getOutput(), 'the queued tick did not paint into the stopped terminal');
     }
 
     public function testADefaultRequestRenderDiffsInsteadOfForcingAFullRepaint(): void
@@ -501,7 +501,7 @@ final class BidiTuiTest extends TestCase
         $tui->add($widget);
         $tui->start();
         $this->microTurn();
-        self::assertStringContainsString('stable', $terminal->getOutput());
+        $this->assertStringContainsString('stable', $terminal->getOutput());
 
         $widget->second = 'bbbb';
         $widget->invalidate();
@@ -510,8 +510,8 @@ final class BidiTuiTest extends TestCase
         $this->microTurn();
 
         $out = $terminal->getOutput();
-        self::assertStringContainsString('bbbb', $out, 'the changed line was rewritten');
-        self::assertStringNotContainsString('stable', $out, 'a default request diffs — it must not reset the writer into a full repaint');
+        $this->assertStringContainsString('bbbb', $out, 'the changed line was rewritten');
+        $this->assertStringNotContainsString('stable', $out, 'a default request diffs — it must not reset the writer into a full repaint');
         $tui->stop();
     }
 
@@ -522,7 +522,7 @@ final class BidiTuiTest extends TestCase
         $tui->start();
         $this->microTurn();
         $painted = \strlen($terminal->getOutput());
-        self::assertGreaterThan(0, $painted);
+        $this->assertGreaterThan(0, $painted);
 
         // Pump real time: no busy loop may replace the torn-down ticker.
         $suspension = \Revolt\EventLoop::getSuspension();
@@ -533,7 +533,7 @@ final class BidiTuiTest extends TestCase
             \Revolt\EventLoop::cancel($timer);
         }
 
-        self::assertSame($painted, \strlen($terminal->getOutput()), 'an idle Tui emits no further bytes');
+        $this->assertSame($painted, \strlen($terminal->getOutput()), 'an idle Tui emits no further bytes');
         $tui->stop();
     }
 
@@ -548,16 +548,16 @@ final class BidiTuiTest extends TestCase
 
         $tui->requestRender();
         $tui->processRender();
-        self::assertSame([80], $widths, 'the first frame reports the initial width');
+        $this->assertSame([80], $widths, 'the first frame reports the initial width');
 
         $tui->requestRender();
         $tui->processRender();
-        self::assertSame([80], $widths, 'an unchanged width stays quiet');
+        $this->assertSame([80], $widths, 'an unchanged width stays quiet');
 
         $terminal->simulateResize(120, 30);
         $tui->requestRender();
         $tui->processRender();
-        self::assertSame([80, 120], $widths, 'a resize fires with the new width');
+        $this->assertSame([80, 120], $widths, 'a resize fires with the new width');
     }
 
     public function testTheFrameSinkSeesTheFinalMirroredLines(): void
@@ -573,7 +573,7 @@ final class BidiTuiTest extends TestCase
         $tui->processRender();
 
         $this->assertNotSame([], $seen, 'the sink was handed the frame');
-        $this->assertStringContainsString(self::SHALOM_VISUAL, implode('', $seen), 'and it is the mirrored form, as written');
+        $this->assertStringContainsString(self::SHALOM_VISUAL, \implode('', $seen), 'and it is the mirrored form, as written');
     }
 
     public function testClearingTheFrameSinkStopsIt(): void
@@ -619,7 +619,7 @@ final class BidiTuiTest extends TestCase
         $tui->processRender();
 
         $out = $terminal->getOutput();
-        self::assertStringContainsString(self::SHALOM_VISUAL, $out, 'Porta still laid the row out');
-        self::assertStringContainsString(Bidi::LTR_OVERRIDE, $out, 'and told the terminal not to');
+        $this->assertStringContainsString(self::SHALOM_VISUAL, $out, 'Porta still laid the row out');
+        $this->assertStringContainsString(Bidi::LTR_OVERRIDE, $out, 'and told the terminal not to');
     }
 }

@@ -22,9 +22,9 @@ final class LogRows
      */
     public static function build(array $entries): array
     {
-        return array_map(
+        return \array_map(
             static fn (array $entry): array => ['path' => '', 'line' => 0, 'text' => $entry['time']->format('H:i:s').'  '.$entry['text']],
-            array_reverse($entries),
+            \array_reverse($entries),
         );
     }
 }

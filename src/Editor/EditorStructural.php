@@ -47,7 +47,7 @@ final class EditorStructural
         [$start, $end] = $this->currentOffsets();
         // A caret movement or manual selection since the last expand resets
         // the shrink history so a fresh ladder starts here.
-        if ($this->expandAnchor !== [$start, $end]) {
+        if ([$start, $end] !== $this->expandAnchor) {
             $this->expandStack = [];
         }
 
@@ -68,11 +68,11 @@ final class EditorStructural
     public function shrinkSelection(): void
     {
         [$start, $end] = $this->currentOffsets();
-        if ($this->expandAnchor !== [$start, $end] || [] === $this->expandStack) {
+        if ([$start, $end] !== $this->expandAnchor || [] === $this->expandStack) {
             return;
         }
 
-        $prev = array_pop($this->expandStack);
+        $prev = \array_pop($this->expandStack);
         $this->applyOffsetSelection($prev[0], $prev[1]);
         $this->expandAnchor = $prev;
         ($this->invalidate)();
@@ -146,12 +146,12 @@ final class EditorStructural
             ['label' => 'foreach (…) { … }', 'value' => "foreach (| as \$item) {\n\n}"],
             ['label' => 'try { … } catch', 'value' => "try {\n|\n} catch (\\Throwable \$e) {\n}"],
         ];
-        $items = array_map(
+        $items = \array_map(
             static fn (array $c): array => ['label' => $c['label'], 'hint' => '', 'value' => $c['value']],
             $choices,
         );
         ($this->openListOverlay)('Surround With', $items, function (string $template): void {
-            [$open, $close] = explode('|', $template, limit: 2);
+            [$open, $close] = \explode('|', $template, limit: 2);
             $range = $this->document->getSelectionRange();
             if (null !== $range) {
                 $this->autoPair->wrapSelection($this->document, $open, $close, $range);
@@ -198,7 +198,7 @@ final class EditorStructural
 
             return $regions[0];
         }
-        foreach (array_reverse($regions) as $region) {
+        foreach (\array_reverse($regions) as $region) {
             if ($region['start'] < $cursor) {
                 return $region;
             }
@@ -237,7 +237,7 @@ final class EditorStructural
         /** @var list<string> $lines */
         $lines = $doc->getLines();
         /** @var 'ours'|'theirs'|'both' $which */
-        $replacement = implode("\n", ConflictMarkers::resolution($lines, $region, $which));
+        $replacement = \implode("\n", ConflictMarkers::resolution($lines, $region, $which));
 
         $doc->setCursor($region['start'], 0);
         $doc->beginSelect();

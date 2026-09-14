@@ -26,7 +26,7 @@ final class PlantUmlCommand
      */
     public static function tool(?string $configured): ?string
     {
-        $path = trim((string) $configured);
+        $path = \trim((string) $configured);
         if ('' !== $path) {
             return $path;
         }
@@ -48,7 +48,7 @@ final class PlantUmlCommand
     public static function argv(string $tool, int $dpi): array
     {
         // A jar cannot be executed; the launcher scripts are just this line.
-        $prefix = str_ends_with(strtolower($tool), '.jar') ? ['java', '-jar', $tool] : [$tool];
+        $prefix = \str_ends_with(\strtolower($tool), '.jar') ? ['java', '-jar', $tool] : [$tool];
 
         return [...$prefix, '-tpng', '-pipe', '-failfast2', '-charset', 'UTF-8', '-Sdpi='.$dpi];
     }

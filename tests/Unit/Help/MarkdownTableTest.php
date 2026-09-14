@@ -45,11 +45,11 @@ final class MarkdownTableTest extends TestCase
         $doc = $this->render("| Key | Action |\n| --- | --- |\n| `F1` | Open [docs](guide.md) now |");
         $plain = $this->rows($doc->lines);
 
-        $this->assertSame(' Key  Action', rtrim($plain[0]));
+        $this->assertSame(' Key  Action', \rtrim($plain[0]));
         $this->assertStringContainsString("\x1b[1m", $doc->lines[0], 'header row is bold');
-        $this->assertMatchesRegularExpression('/^─+\s+─+/u', trim($plain[1]), 'separator renders as rules');
-        $this->assertSame(' F1   Open docs now', rtrim($plain[2]));
-        $this->assertSame(strpos($plain[0], needle: 'Action'), strpos($plain[2], needle: 'Open'), 'columns align to natural widths');
+        $this->assertMatchesRegularExpression('/^─+\s+─+/u', \trim($plain[1]), 'separator renders as rules');
+        $this->assertSame(' F1   Open docs now', \rtrim($plain[2]));
+        $this->assertSame(\strpos($plain[0], needle: 'Action'), \strpos($plain[2], needle: 'Open'), 'columns align to natural widths');
 
         $this->assertSame(1, $doc->groupCount());
         $span = $doc->links[0];
@@ -64,8 +64,8 @@ final class MarkdownTableTest extends TestCase
         // rule-building loop (dropping str_repeat, or reordering the glyphs
         // vs the 2-space gap) is only observable when the columns differ.
         $doc = $this->render("| A | BBBB |\n| --- | --- |\n| x | y |");
-        $sep = rtrim($this->rows($doc->lines)[1]);
-        $this->assertSame(' '.str_repeat('─', times: 1).'  '.str_repeat('─', times: 4), $sep);
+        $sep = \rtrim($this->rows($doc->lines)[1]);
+        $this->assertSame(' '.\str_repeat('─', times: 1).'  '.\str_repeat('─', times: 4), $sep);
     }
 
     public function testTableSeparatorLineIsExactlyMutedColorThenRuleThenReset(): void
@@ -81,7 +81,7 @@ final class MarkdownTableTest extends TestCase
         // (non-separator) row — a second separator-shaped row appearing
         // later must still be rendered as a rule, not as a bolded header.
         $doc = $this->render("| A |\n| --- |\n| x |\n| --- |\n| y |");
-        $plain = array_map(rtrim(...), $this->rows($doc->lines));
+        $plain = \array_map(rtrim(...), $this->rows($doc->lines));
         $this->assertSame(' ─', $plain[1]);
         $this->assertSame(' ─', $plain[3]);
         $this->assertStringNotContainsString("\x1b[1m", $doc->lines[3], 'a later row is not re-bolded as a header');
@@ -104,7 +104,7 @@ final class MarkdownTableTest extends TestCase
     public function testANonHeaderTableRowIsNotWrappedInBoldOrAResetPair(): void
     {
         $doc = $this->render("| Head |\n| --- |\n| x |");
-        $this->assertSame(' x', rtrim($doc->lines[2]), 'no leading bold or trailing reset on a plain data row');
+        $this->assertSame(' x', \rtrim($doc->lines[2]), 'no leading bold or trailing reset on a plain data row');
     }
 
     public function testATableColumnPadsToTheWidestCellPlusATwoColumnGap(): void
@@ -120,7 +120,7 @@ final class MarkdownTableTest extends TestCase
         $doc = $this->render("| AAAA | B |\n| --- | --- |\n| x | [l](t.md) |");
         $span = $doc->links[0];
         $text = $this->rows($doc->lines)[2];
-        $this->assertSame('l', mb_substr($text, $span->col, $span->endCol - $span->col), 'the span column is offset past column 0s full padded width');
+        $this->assertSame('l', \mb_substr($text, $span->col, $span->endCol - $span->col), 'the span column is offset past column 0s full padded width');
     }
 
     public function testAnEmptyTableCellStillContributesAZeroWidthColumnNotOne(): void
@@ -129,7 +129,7 @@ final class MarkdownTableTest extends TestCase
         // be 0, or a never-otherwise-populated column would pad to width 1
         // instead of collapsing to nothing.
         $doc = $this->render('|  |');
-        $this->assertSame('', rtrim($this->rows($doc->lines)[0]));
+        $this->assertSame('', \rtrim($this->rows($doc->lines)[0]));
     }
 
     /**
@@ -157,7 +157,7 @@ final class MarkdownTableTest extends TestCase
 
         $ruleRow = '';
         foreach ($rows as $row) {
-            if (!str_contains($row, '─')) {
+            if (!\str_contains($row, '─')) {
                 continue;
             }
             $ruleRow = $row;
@@ -165,7 +165,7 @@ final class MarkdownTableTest extends TestCase
         }
         $this->assertNotSame('', $ruleRow, 'the table drew its separator rule');
 
-        $rule = mb_str_split($ruleRow);
+        $rule = \mb_str_split($ruleRow);
         $starts = [];
         foreach ($rule as $index => $character) {
             if ('─' !== $character || '─' === ($rule[$index - 1] ?? ' ')) {
@@ -177,11 +177,11 @@ final class MarkdownTableTest extends TestCase
 
         $begun = [];
         foreach ($rows as $index => $row) {
-            $this->assertLessThanOrEqual($width, mb_strwidth($row), "row {$index} overflows the pane");
-            if ($row === $ruleRow || '' === trim($row)) {
+            $this->assertLessThanOrEqual($width, \mb_strwidth($row), "row {$index} overflows the pane");
+            if ($row === $ruleRow || '' === \trim($row)) {
                 continue;
             }
-            $characters = mb_str_split($row);
+            $characters = \mb_str_split($row);
             foreach ($starts as $column => $start) {
                 // A cell is left-aligned in its column, so within the span this
                 // column owns, the first non-space must be the column's own
@@ -189,11 +189,11 @@ final class MarkdownTableTest extends TestCase
                 // padding error, one place early is a cell bleeding out of the
                 // column before it.
                 $span = \array_slice($characters, $start, ($starts[$column + 1] ?? (\count($characters) + 2)) - $start - 2);
-                $text = implode('', $span);
-                if ('' === trim($text)) {
+                $text = \implode('', $span);
+                if ('' === \trim($text)) {
                     continue; // this row leaves the column empty
                 }
-                $this->assertSame($start, $start + \strlen($text) - \strlen(ltrim($text)), "row {$index} does not start column {$column} at the rule");
+                $this->assertSame($start, $start + \strlen($text) - \strlen(\ltrim($text)), "row {$index} does not start column {$column} at the rule");
                 if (0 !== $column) {
                     $this->assertSame(' ', $characters[$start - 1] ?? ' ', "row {$index} runs into column {$column}");
                 }
@@ -203,7 +203,7 @@ final class MarkdownTableTest extends TestCase
 
         // Alignment is only proven if cells actually START at each boundary —
         // a table of blank rows satisfies every assertion above.
-        $this->assertSame(range(start: 0, end: \count($starts) - 1), array_keys($begun), 'every column has a row whose cell begins at the rule');
+        $this->assertSame(\range(start: 0, end: \count($starts) - 1), \array_keys($begun), 'every column has a row whose cell begins at the rule');
     }
 
     /**
@@ -250,7 +250,7 @@ final class MarkdownTableTest extends TestCase
     {
         $doc = $this->render("| A | B |\n| --- | --- |\n| xxxxxxxxxx | words then a [link](far.md) |", 20);
 
-        $body = implode(' ', array_map(rtrim(...), \array_slice($this->rows($doc->lines), offset: 2)));
+        $body = \implode(' ', \array_map(rtrim(...), \array_slice($this->rows($doc->lines), offset: 2)));
         foreach (['xxxxxxxx', 'words', 'then', 'a', 'link'] as $word) {
             $this->assertStringContainsString($word, $body, 'every word of both cells is on screen somewhere');
         }
@@ -266,10 +266,10 @@ final class MarkdownTableTest extends TestCase
      */
     public function testALinkAtTheEndOfAWrappedCellSurvives(): void
     {
-        $doc = $this->render('| '.str_repeat('a', times: 16).' [bb](t.md) |', 20);
+        $doc = $this->render('| '.\str_repeat('a', times: 16).' [bb](t.md) |', 20);
 
-        $rows = array_map(rtrim(...), $this->rows($doc->lines));
-        $this->assertSame(' '.str_repeat('a', times: 16), $rows[0]);
+        $rows = \array_map(rtrim(...), $this->rows($doc->lines));
+        $this->assertSame(' '.\str_repeat('a', times: 16), $rows[0]);
         $this->assertSame(' bb', $rows[1], 'the tail wrapped rather than being cut');
         $this->assertNotEmpty($doc->links, 'and it is still a link');
     }
@@ -281,17 +281,17 @@ final class MarkdownTableTest extends TestCase
      */
     public function testBothLinksAroundAnOverWideWordSurviveTheWrap(): void
     {
-        $doc = $this->render('| [aa](x.md) '.str_repeat('b', times: 20).' [cc](y.md) |', 20);
+        $doc = $this->render('| [aa](x.md) '.\str_repeat('b', times: 20).' [cc](y.md) |', 20);
 
         $this->assertCount(2, $doc->links, 'the link after the over-wide run used to be truncated away');
-        $this->assertSame(['x.md', 'y.md'], array_map(static fn (object $l): string => $l->target, $doc->links));
+        $this->assertSame(['x.md', 'y.md'], \array_map(static fn (object $l): string => $l->target, $doc->links));
     }
 
     public function testAnIndentedTableRowIsStillRecognized(): void
     {
         $doc = $this->render("  | A | B |\n  | --- | --- |\n  | x | y |");
         $plain = $this->rows($doc->lines);
-        $this->assertSame(' A  B', rtrim($plain[0]));
+        $this->assertSame(' A  B', \rtrim($plain[0]));
     }
 
     public function testATableFlushesAPendingParagraphFirst(): void
@@ -305,20 +305,20 @@ final class MarkdownTableTest extends TestCase
     {
         $doc = $this->render("| A | B |   \n| --- | --- |\n| x | y |");
         $plain = $this->rows($doc->lines);
-        $this->assertSame(' A  B', rtrim($plain[0]));
-        $this->assertSame(' x  y', rtrim($plain[2]));
+        $this->assertSame(' A  B', \rtrim($plain[0]));
+        $this->assertSame(' x  y', \rtrim($plain[2]));
     }
 
     public function testContentImmediatelyAfterATableWithNoBlankLineStillRenders(): void
     {
         $doc = $this->render("| A |\n| --- |\n| x |\nafter");
         $plain = $this->rows($doc->lines);
-        $this->assertSame('after', end($plain), 'the boundary line was reprocessed as a paragraph, not swallowed by the table scan');
+        $this->assertSame('after', \end($plain), 'the boundary line was reprocessed as a paragraph, not swallowed by the table scan');
     }
 
     public function testATableRowOneColumnUnderWidthKeepsASpanEndingAtItsLastColumn(): void
     {
-        $doc = $this->render('| '.str_repeat('a', times: 15).' [bb](t.md) |', 20);
+        $doc = $this->render('| '.\str_repeat('a', times: 15).' [bb](t.md) |', 20);
         $this->assertNotEmpty($doc->links, 'one column of slack: the same span is kept, not hidden');
     }
 }

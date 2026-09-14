@@ -27,7 +27,7 @@ final class NotifierTest extends TestCase
 
         $notifier->flash('saved a.php');
 
-        $this->assertSame(['saved a.php'], array_column($log->entries(), 'text'), 'the flash was logged');
+        $this->assertSame(['saved a.php'], \array_column($log->entries(), 'text'), 'the flash was logged');
     }
 
     public function testFlashWithoutALogStillWorks(): void
@@ -79,9 +79,9 @@ final class NotifierTest extends TestCase
 
         $this->assertSame(
             [ToastSeverity::Error, ToastSeverity::Warn, ToastSeverity::Success, ToastSeverity::Info],
-            array_reverse(array_map(static fn ($t) => $t->severity, $toasts->toasts())),
+            \array_reverse(\array_map(static fn ($t) => $t->severity, $toasts->toasts())),
         );
-        $this->assertSame(['✗ disk full', '▲ slow disk', '✓ saved', 'opened'], array_column($log->entries(), 'text'), 'non-info entries carry their glyph into the log');
+        $this->assertSame(['✗ disk full', '▲ slow disk', '✓ saved', 'opened'], \array_column($log->entries(), 'text'), 'non-info entries carry their glyph into the log');
 
         $notifier->dismissAll();
         $this->assertTrue($toasts->isEmpty(), 'teardown drops the stack');

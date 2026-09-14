@@ -161,7 +161,7 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
             // A column held back for the mark, which may cost one more title:
             // a row filled to its edge cannot say that it was cut.
             $mark = Glyphs::ELLIPSIS;
-            $shown = $this->fittingTitles($columns - mb_strwidth($mark));
+            $shown = $this->fittingTitles($columns - \mb_strwidth($mark));
         }
 
         $line = '';
@@ -176,12 +176,12 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
             // like a tab. Only the rest background differs: titles sit on the
             // HeaderBar strip, not the tabs' Toolbar.
             $line .= BarChromeStyle::of($this->styles, TabState::of($active, $hovered), Role::HeaderBar)->apply($label);
-            $this->titleLayout[] = ['index' => $i, 'start' => $used, 'width' => mb_strwidth($label)];
-            $used += mb_strwidth($label);
+            $this->titleLayout[] = ['index' => $i, 'start' => $used, 'width' => \mb_strwidth($label)];
+            $used += \mb_strwidth($label);
         }
-        $pad = max(0, $columns - $used - mb_strwidth($mark));
+        $pad = \max(0, $columns - $used - \mb_strwidth($mark));
 
-        return $line.$this->styles->of(Role::HeaderBar)->apply(str_repeat(' ', $pad).$mark);
+        return $line.$this->styles->of(Role::HeaderBar)->apply(\str_repeat(' ', $pad).$mark);
     }
 
     /** How many titles fit in $columns, in order. */
@@ -190,7 +190,7 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
         $used = 0;
         $count = 0;
         foreach ($this->menus as $menu) {
-            $used += mb_strwidth(' '.$menu->title.' ');
+            $used += \mb_strwidth(' '.$menu->title.' ');
             if ($used > $columns) {
                 break;
             }

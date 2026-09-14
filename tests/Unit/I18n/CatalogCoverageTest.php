@@ -36,12 +36,12 @@ final class CatalogCoverageTest extends TestCase
 
     public function testEveryUiStringLiteralReachesTheEnglishCatalogOrTheShrinkList(): void
     {
-        $ids = array_values(array_unique([...$this->transLiterals(), ...$this->labelLiterals(), ...$this->categoryLiterals()]));
-        $missing = array_values(array_diff($ids, $this->englishSources()));
-        sort($missing);
+        $ids = \array_values(\array_unique([...$this->transLiterals(), ...$this->labelLiterals(), ...$this->categoryLiterals()]));
+        $missing = \array_values(\array_diff($ids, $this->englishSources()));
+        \sort($missing);
 
         $gaps = self::KNOWN_GAPS;
-        sort($gaps);
+        \sort($gaps);
         $this->assertSame(
             $gaps,
             $missing,
@@ -87,16 +87,16 @@ final class CatalogCoverageTest extends TestCase
         foreach ($this->englishSources() as $source) {
             // A pipe plural is one unit; either half is a legitimate spelling
             // for code to carry, and the catalog stores them joined.
-            foreach ([$source, ...explode('|', $source)] as $needle) {
-                if ('' !== $needle && str_contains($corpus, $needle)) {
+            foreach ([$source, ...\explode('|', $source)] as $needle) {
+                if ('' !== $needle && \str_contains($corpus, $needle)) {
                     continue 2;
                 }
             }
             $unused[] = $source;
         }
-        sort($unused);
+        \sort($unused);
 
-        $this->assertSame([], $unused, "messages.en.xlf carries strings that appear nowhere in the tree — a reword left the old unit behind in all seven catalogs:\n  ".implode("\n  ", $unused));
+        $this->assertSame([], $unused, "messages.en.xlf carries strings that appear nowhere in the tree — a reword left the old unit behind in all seven catalogs:\n  ".\implode("\n  ", $unused));
     }
 
     /**
@@ -116,7 +116,7 @@ final class CatalogCoverageTest extends TestCase
 
         $corpus = '';
         foreach ($tree as $file) {
-            $corpus .= str_replace(["\\'", '\\"', '\\\\'], ["'", '"', '\\'], (string) file_get_contents($file->getPathname()))."\n";
+            $corpus .= \str_replace(["\\'", '\\"', '\\\\'], ["'", '"', '\\'], (string) \file_get_contents($file->getPathname()))."\n";
         }
 
         return $corpus;
@@ -147,7 +147,7 @@ final class CatalogCoverageTest extends TestCase
     {
         $ids = [];
         foreach ($this->phpFiles() as $path) {
-            $tokens = token_get_all((string) file_get_contents($path));
+            $tokens = \token_get_all((string) \file_get_contents($path));
             $count = \count($tokens);
             for ($i = 1; $i < $count; ++$i) {
                 $token = $tokens[$i];
@@ -220,9 +220,9 @@ final class CatalogCoverageTest extends TestCase
             }
         }
 
-        return array_values(array_map(
+        return \array_values(\array_map(
             static fn (array $found): string => (string) $found[1],
-            array_filter($strings, static fn (array $found): bool => null === $branchesFrom || $found[0] > $branchesFrom),
+            \array_filter($strings, static fn (array $found): bool => null === $branchesFrom || $found[0] > $branchesFrom),
         ));
     }
 
@@ -266,16 +266,16 @@ final class CatalogCoverageTest extends TestCase
     {
         $found = [];
         foreach ($this->phpFiles() as $path) {
-            if (1 !== preg_match("/'label' => '/", (string) file_get_contents($path))) {
+            if (1 !== \preg_match("/'label' => '/", (string) \file_get_contents($path))) {
                 continue;
             }
             // phpFiles() yields paths with the `../../..` still in them, so
             // both sides are resolved before the root prefix comes off.
-            $found[] = str_replace((string) realpath(self::ROOT), replace: '', subject: (string) realpath($path));
+            $found[] = \str_replace((string) \realpath(self::ROOT), replace: '', subject: (string) \realpath($path));
         }
-        sort($found);
-        $classified = array_keys(self::LABEL_TABLES);
-        sort($classified);
+        \sort($found);
+        $classified = \array_keys(self::LABEL_TABLES);
+        \sort($classified);
 
         $this->assertSame(
             $classified,
@@ -293,12 +293,12 @@ final class CatalogCoverageTest extends TestCase
     private function labelLiterals(): array
     {
         $labels = [];
-        foreach (array_keys(array_filter(self::LABEL_TABLES)) as $file) {
-            $source = (string) file_get_contents(self::ROOT.$file);
+        foreach (\array_keys(\array_filter(self::LABEL_TABLES)) as $file) {
+            $source = (string) \file_get_contents(self::ROOT.$file);
             $matches = [];
-            preg_match_all("/'label' => '((?:[^'\\\\]|\\\\.)*)'/", $source, $matches);
+            \preg_match_all("/'label' => '((?:[^'\\\\]|\\\\.)*)'/", $source, $matches);
             foreach ($matches[1] as $label) {
-                $labels[] = str_replace(['\\\\', "\\'"], ['\\', "'"], $label);
+                $labels[] = \str_replace(['\\\\', "\\'"], ['\\', "'"], $label);
             }
         }
 
@@ -328,15 +328,15 @@ final class CatalogCoverageTest extends TestCase
     {
         $found = [];
         foreach ($this->phpFiles() as $path) {
-            if (1 !== preg_match('/->trans\(\$[a-zA-Z]+->[a-zA-Z]+\(\)/', (string) file_get_contents($path))) {
+            if (1 !== \preg_match('/->trans\(\$[a-zA-Z]+->[a-zA-Z]+\(\)/', (string) \file_get_contents($path))) {
                 continue;
             }
-            $resolved = (string) realpath($path);
-            $found[] = str_replace([(string) realpath(self::ROOT).'/src/', (string) realpath(self::ROOT).'/'], replace: '', subject: $resolved);
+            $resolved = (string) \realpath($path);
+            $found[] = \str_replace([(string) \realpath(self::ROOT).'/src/', (string) \realpath(self::ROOT).'/'], replace: '', subject: $resolved);
         }
-        sort($found);
+        \sort($found);
         $pinned = self::ENUM_LABEL_CALLS;
-        sort($pinned);
+        \sort($pinned);
 
         $this->assertSame(
             $pinned,
@@ -360,15 +360,15 @@ final class CatalogCoverageTest extends TestCase
     private function categoryLiterals(): array
     {
         return [
-            ...array_map(static fn (SearchCategory $c): string => $c->title(), SearchCategory::cases()),
-            ...array_map(static fn (ScopeKind $k): string => $k->label(), ScopeKind::cases()),
+            ...\array_map(static fn (SearchCategory $c): string => $c->title(), SearchCategory::cases()),
+            ...\array_map(static fn (ScopeKind $k): string => $k->label(), ScopeKind::cases()),
         ];
     }
 
     /** @return list<string> the en catalog's <source> texts */
     private function englishSources(): array
     {
-        $xml = simplexml_load_file(self::ROOT.'/translations/messages.en.xlf');
+        $xml = \simplexml_load_file(self::ROOT.'/translations/messages.en.xlf');
         self::assertNotFalse($xml, 'messages.en.xlf is not valid XML');
         $xml->registerXPathNamespace('x', 'urn:oasis:names:tc:xliff:document:1.2');
 
@@ -389,7 +389,7 @@ final class CatalogCoverageTest extends TestCase
     /** @return list<string> every .php file under src/ and plugins/<name>/src/ */
     private function phpFiles(): array
     {
-        $pluginSrc = glob(self::ROOT.'/plugins/*/src');
+        $pluginSrc = \glob(self::ROOT.'/plugins/*/src');
         $roots = [self::ROOT.'/src', ...(\is_array($pluginSrc) ? $pluginSrc : [])];
         $files = [];
         foreach ($roots as $root) {
@@ -415,9 +415,9 @@ final class CatalogCoverageTest extends TestCase
      */
     private function unquote(string $literal): string
     {
-        $body = substr($literal, offset: 1, length: -1);
+        $body = \substr($literal, offset: 1, length: -1);
 
-        return "'" === $literal[0] ? str_replace(['\\\\', "\\'"], ['\\', "'"], $body) : stripcslashes($body);
+        return "'" === $literal[0] ? \str_replace(['\\\\', "\\'"], ['\\', "'"], $body) : \stripcslashes($body);
     }
 
     /**

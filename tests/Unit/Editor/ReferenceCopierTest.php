@@ -58,7 +58,7 @@ final class ReferenceCopierTest extends TestCase
     private function copierFor(string $path, DocumentScopes $scopes): ReferenceCopier
     {
         $this->editor = new CodeEditorWidget(documentScopes: $scopes);
-        $this->editor->openFile($path, (string) file_get_contents($path));
+        $this->editor->openFile($path, (string) \file_get_contents($path));
         $this->status = new StatusBarWidget();
         $this->tui = TestTui::create(80, 24);
 
@@ -93,7 +93,7 @@ final class ReferenceCopierTest extends TestCase
     {
         $flash = $this->flashText($this->status);
 
-        return str_starts_with($flash, 'Copied ') ? substr($flash, offset: 7) : $flash;
+        return \str_starts_with($flash, 'Copied ') ? \substr($flash, offset: 7) : $flash;
     }
 
     public function testCopyPathIsRelativeToTheProject(): void
@@ -103,7 +103,7 @@ final class ReferenceCopierTest extends TestCase
 
         $copier->copyPath();
 
-        self::assertSame('src/Svc.php', $this->copied());
+        $this->assertSame('src/Svc.php', $this->copied());
     }
 
     public function testWhatTheFLASHSaysIsWhatReachesTheClipboard(): void
@@ -118,8 +118,8 @@ final class ReferenceCopierTest extends TestCase
 
         $terminal = $this->tui->getTerminal();
         \assert($terminal instanceof VirtualTerminal, description: 'TestTui builds a virtual terminal');
-        self::assertStringContainsString(
-            "\x1b]52;c;".base64_encode('App\\Http\\Svc::run')."\x07",
+        $this->assertStringContainsString(
+            "\x1b]52;c;".\base64_encode('App\\Http\\Svc::run')."\x07",
             $terminal->getOutput(),
             'the reference went out as an OSC 52 clipboard write',
         );
@@ -132,7 +132,7 @@ final class ReferenceCopierTest extends TestCase
 
         $copier->copyReference();
 
-        self::assertSame('App\Http\Svc::run', $this->copied());
+        $this->assertSame('App\Http\Svc::run', $this->copied());
     }
 
     public function testTheSECONDMethodIsNamed_NotTheClassAlone(): void
@@ -162,7 +162,7 @@ final class ReferenceCopierTest extends TestCase
 
         $copier->copyReference();
 
-        self::assertSame('App\Http\Svc::second', $this->copied());
+        $this->assertSame('App\Http\Svc::second', $this->copied());
     }
 
     public function testAScopesFirstAndLASTLinesAreInsideIt(): void
@@ -181,7 +181,7 @@ final class ReferenceCopierTest extends TestCase
         foreach ($cases as $line => $expected) {
             $this->editor->getDocument()->setCursor($line, 0);
             $copier->copyReference();
-            self::assertSame($expected, $this->copied(), "line {$line}");
+            $this->assertSame($expected, $this->copied(), "line {$line}");
         }
     }
 
@@ -192,7 +192,7 @@ final class ReferenceCopierTest extends TestCase
 
         $copier->copyReference();
 
-        self::assertSame('App\Http\Svc', $this->copied());
+        $this->assertSame('App\Http\Svc', $this->copied());
     }
 
     public function testAReferenceFollowsTheLANGUAGESSpelling(): void
@@ -212,7 +212,7 @@ final class ReferenceCopierTest extends TestCase
 
         $copier->copyReference();
 
-        self::assertSame('Service.handle', $this->copied());
+        $this->assertSame('Service.handle', $this->copied());
     }
 
     public function testWithONLYANamespaceAroundItItFallsBackToPathAndLine(): void
@@ -224,7 +224,7 @@ final class ReferenceCopierTest extends TestCase
 
         $copier->copyReference();
 
-        self::assertSame('src/Svc.php:4', $this->copied());
+        $this->assertSame('src/Svc.php:4', $this->copied());
     }
 
     public function testAPlainFUNCTIONNeedsNoClassToBeNamed(): void
@@ -235,7 +235,7 @@ final class ReferenceCopierTest extends TestCase
 
         $copier->copyReference();
 
-        self::assertSame('App\helper', $this->copied());
+        $this->assertSame('App\helper', $this->copied());
     }
 
     public function testAFunctionInAFileWithNONamespaceIsJustItsName(): void
@@ -247,7 +247,7 @@ final class ReferenceCopierTest extends TestCase
 
         $copier->copyReference();
 
-        self::assertSame('helper', $this->copied());
+        $this->assertSame('helper', $this->copied());
     }
 
     public function testAFileWithNoStructureAtAllIsAlwaysPathAndLine(): void
@@ -257,7 +257,7 @@ final class ReferenceCopierTest extends TestCase
 
         $copier->copyReference();
 
-        self::assertSame('bin/run.php:4', $this->copied());
+        $this->assertSame('bin/run.php:4', $this->copied());
     }
 
     public function testWithNOFileOpenNeitherVerbCopiesAnything(): void
@@ -278,6 +278,6 @@ final class ReferenceCopierTest extends TestCase
         $copier->copyPath();
         $copier->copyReference();
 
-        self::assertSame('', $this->flashText($this->status));
+        $this->assertSame('', $this->flashText($this->status));
     }
 }

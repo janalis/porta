@@ -45,7 +45,7 @@ final class TerminalKeyEncoder
         if (null === $parsed) {
             // Drop unrecognised CSI-u (media/function keys); forward plain text and
             // legacy sequences untouched.
-            return str_starts_with($data, "\x1b[") && str_ends_with($data, 'u') ? '' : $data;
+            return \str_starts_with($data, "\x1b[") && \str_ends_with($data, 'u') ? '' : $data;
         }
 
         return $this->toLegacyBytes($parsed['key']);
@@ -53,19 +53,19 @@ final class TerminalKeyEncoder
 
     private function toLegacyBytes(string $name): string
     {
-        $parts = explode('+', $name);
-        $base = array_pop($parts);
+        $parts = \explode('+', $name);
+        $base = \array_pop($parts);
         $shift = \in_array('shift', $parts, strict: true);
         $alt = \in_array('alt', $parts, strict: true);
         $ctrl = \in_array('ctrl', $parts, strict: true);
         $modifier = 1 + ($shift ? 1 : 0) + ($alt ? 2 : 0) + ($ctrl ? 4 : 0);
 
-        if (array_key_exists($base, self::CSI_LETTER)) {
+        if (\array_key_exists($base, self::CSI_LETTER)) {
             $final = self::CSI_LETTER[$base];
 
             return $modifier > 1 ? "\x1b[1;{$modifier}{$final}" : "\x1b[{$final}";
         }
-        if (array_key_exists($base, self::CSI_TILDE)) {
+        if (\array_key_exists($base, self::CSI_TILDE)) {
             $number = self::CSI_TILDE[$base];
 
             return $modifier > 1 ? "\x1b[{$number};{$modifier}~" : "\x1b[{$number}~";
@@ -90,7 +90,7 @@ final class TerminalKeyEncoder
         }
 
         // A printable character key.
-        $char = $shift && ctype_alpha($base) ? strtoupper($base) : $base;
+        $char = $shift && \ctype_alpha($base) ? \strtoupper($base) : $base;
         if ($ctrl) {
             $char = $this->control($char);
             if ('' === $char) {
@@ -104,7 +104,7 @@ final class TerminalKeyEncoder
     /** The control byte for Ctrl+$char, or '' when there is none. */
     private function control(string $char): string
     {
-        $upper = strtoupper($char);
+        $upper = \strtoupper($char);
         if ($upper >= 'A' && $upper <= 'Z') {
             return \chr(\ord($upper) - 64);
         }

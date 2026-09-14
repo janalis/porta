@@ -101,7 +101,7 @@ final class CodeEditorTrailingCellTest extends TestCase
         $editor->display()->setSoftWrap(true);
         $editor->decorations()->setLineAnnotations([1 => 'you, 3 days ago']);
 
-        $rows = array_map(AnsiUtils::stripAnsiCodes(...), $editor->render(new RenderContext(40, 10)));
+        $rows = \array_map(AnsiUtils::stripAnsiCodes(...), $editor->render(new RenderContext(40, 10)));
 
         $this->assertStringNotContainsString('3 days ago', $rows[1], 'the first segment is full');
         $this->assertStringContainsString('3 days ago', $rows[2], 'it goes after the text ends, on the last segment');
@@ -113,7 +113,7 @@ final class CodeEditorTrailingCellTest extends TestCase
         $editor->display()->setSoftWrap(true);
         $editor->decorations()->setDebugValues([1 => 'V = 1']);
 
-        $rows = array_map(AnsiUtils::stripAnsiCodes(...), $editor->render(new RenderContext(40, 10)));
+        $rows = \array_map(AnsiUtils::stripAnsiCodes(...), $editor->render(new RenderContext(40, 10)));
 
         $this->assertStringNotContainsString('V = 1', $rows[1]);
         $this->assertStringContainsString('V = 1', $rows[2]);
@@ -133,7 +133,7 @@ final class CodeEditorTrailingCellTest extends TestCase
         $row = AnsiUtils::stripAnsiCodes($editor->render(new RenderContext(60, 5))[1]);
 
         $this->assertStringContainsString('add(a:1, b:2);', $row, 'both hints survive intact');
-        $this->assertLessThan(mb_strpos($row, needle: '$r = 3'), mb_strpos($row, needle: 'b:2'), 'and the value comes after them');
+        $this->assertLessThan(\mb_strpos($row, needle: '$r = 3'), \mb_strpos($row, needle: 'b:2'), 'and the value comes after them');
     }
 
     public function testTheDebugValueIsDrawnInItsOWNPenNotTheInlayGrey(): void

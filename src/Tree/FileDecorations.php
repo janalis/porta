@@ -73,7 +73,7 @@ final readonly class FileDecorations
             if ([] === $diagnostics) {
                 continue;
             }
-            $worst = min($worst, DiagnosticStyle::worst($diagnostics));
+            $worst = \min($worst, DiagnosticStyle::worst($diagnostics));
             if (1 === $worst) {
                 break;
             }

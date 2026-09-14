@@ -66,7 +66,7 @@ final class TabStripRenderer
             $parts[] = ['tab' => $tab] + self::measureCell($tab['label']);
         }
 
-        $window = StripWindow::of(array_column($parts, 'width'), $columns, $scroll, $activeIndex, $lastActive);
+        $window = StripWindow::of(\array_column($parts, 'width'), $columns, $scroll, $activeIndex, $lastActive);
         $overflow = $window['overflow'];
         $start = $window['start'];
 

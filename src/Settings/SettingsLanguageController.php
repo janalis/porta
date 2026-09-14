@@ -122,12 +122,12 @@ final class SettingsLanguageController
         }
 
         if ('runCommand' === $key) {
-            $this->changeRunCommand($language, trim((string) $value));
+            $this->changeRunCommand($language, \trim((string) $value));
 
             return;
         }
 
-        $stored = 'indentSize' === $key && 'auto' !== $value && is_numeric((string) $value) ? (int) $value : (string) $value;
+        $stored = 'indentSize' === $key && 'auto' !== $value && \is_numeric((string) $value) ? (int) $value : (string) $value;
         $this->config[$language] = 'indentStyle' === $key
             ? new LanguageIndent((string) $stored, $current->indentSize)
             : new LanguageIndent($current->indentStyle, $stored);

@@ -44,7 +44,7 @@ final class LanguageFilterTest extends TestCase
         $project = $this->project();
         $kept = $this->filter($project)->apply($this->results(), 'needle', new SearchOptions(tokenScope: TokenScope::InCommentsStrings));
 
-        $this->assertSame([2, 3], array_column($kept, 'line'), 'only the string and comment lines survive');
+        $this->assertSame([2, 3], \array_column($kept, 'line'), 'only the string and comment lines survive');
     }
 
     public function testExceptCommentsStringsKeepsOnlyCodeMatches(): void
@@ -52,7 +52,7 @@ final class LanguageFilterTest extends TestCase
         $project = $this->project();
         $kept = $this->filter($project)->apply($this->results(), 'needle', new SearchOptions(tokenScope: TokenScope::ExceptCommentsStrings));
 
-        $this->assertSame([1], array_column($kept, 'line'), 'only the code line survives');
+        $this->assertSame([1], \array_column($kept, 'line'), 'only the code line survives');
     }
 
     public function testAnyScopeReturnsEverythingUnfiltered(): void

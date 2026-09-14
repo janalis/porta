@@ -59,12 +59,12 @@ final class FileIndex
     {
         $entries = $this->entries();
         if ('' === $query) {
-            return array_map(static fn (array $entry): string => $entry['path'], \array_slice($entries, offset: 0, length: $limit));
+            return \array_map(static fn (array $entry): string => $entry['path'], \array_slice($entries, offset: 0, length: $limit));
         }
 
         /** @var list<array{0: int, 1: string}> $scored */
         $scored = [];
-        $lower = strtolower($query);
+        $lower = \strtolower($query);
         foreach ($entries as $entry) {
             // Pre-lowered haystack (no camelCase noise on paths, by design);
             // the basename offset is the primary segment.
@@ -73,9 +73,9 @@ final class FileIndex
                 $scored[] = [$score, $entry['path']];
             }
         }
-        usort($scored, static fn (array $a, array $b) => $b[0] <=> $a[0] ? $b[0] <=> $a[0] : \strlen($a[1]) <=> \strlen($b[1]));
+        \usort($scored, static fn (array $a, array $b) => $b[0] <=> $a[0] ? $b[0] <=> $a[0] : \strlen($a[1]) <=> \strlen($b[1]));
 
-        return array_map(static fn (array $row): string => $row[1], \array_slice($scored, offset: 0, length: $limit));
+        return \array_map(static fn (array $row): string => $row[1], \array_slice($scored, offset: 0, length: $limit));
     }
 
     /** @return list<array{path: string, lower: string, boundary: int}> sorted by path */
@@ -101,12 +101,12 @@ final class FileIndex
         foreach (new \LimitIterator($finder->getIterator(), 0, self::MAX_FILES) as $file) {
             $paths[] = $file->getRelativePathname();
         }
-        sort($paths);
+        \sort($paths);
 
-        return array_map(static function (string $path): array {
-            $lower = strtolower($path);
+        return \array_map(static function (string $path): array {
+            $lower = \strtolower($path);
 
-            return ['path' => $path, 'lower' => $lower, 'boundary' => \strlen($lower) - \strlen(basename($lower))];
+            return ['path' => $path, 'lower' => $lower, 'boundary' => \strlen($lower) - \strlen(\basename($lower))];
         }, $paths);
     }
 }

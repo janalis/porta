@@ -32,8 +32,8 @@ final class LineDecorator
     public static function apply(string $line, int $startCol, int $endCol, string $openSgr, string $closeSgr, ?string $bgReapply = null): string
     {
         $lineWidth = AnsiUtils::visibleWidth($line);
-        $startCol = max(0, $startCol);
-        $endCol = min($endCol, max($lineWidth, $startCol));
+        $startCol = \max(0, $startCol);
+        $endCol = \min($endCol, \max($lineWidth, $startCol));
         if ($endCol <= $startCol) {
             return $line;
         }
@@ -75,8 +75,8 @@ final class LineDecorator
         $lineWidth = AnsiUtils::visibleWidth($line);
         $clamped = [];
         foreach ($spans as $i => [$startCol, $endCol, $openSgr, $closeSgr, $bgReapply]) {
-            $startCol = max(0, $startCol);
-            $endCol = min($endCol, max($lineWidth, $startCol));
+            $startCol = \max(0, $startCol);
+            $endCol = \min($endCol, \max($lineWidth, $startCol));
             if ($endCol <= $startCol) {
                 continue;
             }
@@ -91,15 +91,15 @@ final class LineDecorator
             $bounds[$start] = true;
             $bounds[$end] = true;
         }
-        $bounds = array_keys($bounds);
-        sort($bounds);
+        $bounds = \array_keys($bounds);
+        \sort($bounds);
 
         $out = $bounds[0] > 0 ? AnsiUtils::sliceByColumn($line, 0, $bounds[0]) : '';
         /** @var array<int, array{0: int, 1: int, 2: string, 3: string, 4: ?string}> $active keyed by application index */
         $active = [];
         foreach ($bounds as $bi => $col) {
             $closed = false;
-            foreach (array_reverse($active, preserve_keys: true) as $i => $span) {
+            foreach (\array_reverse($active, preserve_keys: true) as $i => $span) {
                 if ($span[1] !== $col) {
                     continue;
                 }
@@ -123,7 +123,7 @@ final class LineDecorator
                 $active[$i] = $span;
                 $out .= $span[2];
             }
-            ksort($active); // application order for the restore and bg chains
+            \ksort($active); // application order for the restore and bg chains
 
             $next = $bounds[$bi + 1] ?? $lineWidth;
             if ($next <= $col) {
@@ -158,7 +158,7 @@ final class LineDecorator
     {
         $lineWidth = AnsiUtils::visibleWidth($line);
         if ($lineWidth < $width) {
-            $line .= str_repeat(' ', max(0, $width - $lineWidth));
+            $line .= \str_repeat(' ', \max(0, $width - $lineWidth));
         }
 
         return $bg->apply($line);

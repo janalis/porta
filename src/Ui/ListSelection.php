@@ -60,19 +60,19 @@ final class ListSelection
     /** Move the selection up $step entries, stopping at the first. */
     public function moveUp(int $step = 1): void
     {
-        $this->selected = max(0, $this->selected - $step);
+        $this->selected = \max(0, $this->selected - $step);
     }
 
     /** Move the selection down $step entries within a $count-entry list. */
     public function moveDown(int $count, int $step = 1): void
     {
-        $this->selected = min(max(0, $count - 1), $this->selected + $step);
+        $this->selected = \min(\max(0, $count - 1), $this->selected + $step);
     }
 
     /** Re-clamp the selection after the list shrank (e.g. a tree refresh). */
     public function clamp(int $count): void
     {
-        $this->selected = min($this->selected, max(0, $count - 1));
+        $this->selected = \min($this->selected, \max(0, $count - 1));
     }
 
     /**
@@ -111,13 +111,13 @@ final class ListSelection
      */
     public function scrollWindow(int $delta, int $count, int $visibleRows): bool
     {
-        $last = max(0, $count - $visibleRows);
-        $scroll = min($last, max(0, $this->scroll + $delta));
+        $last = \max(0, $count - $visibleRows);
+        $scroll = \min($last, \max(0, $this->scroll + $delta));
         if ($scroll === $this->scroll) {
             return false;
         }
         $this->scroll = $scroll;
-        $this->selected = min(max($this->selected, $scroll), $scroll + $visibleRows - 1);
+        $this->selected = \min(\max($this->selected, $scroll), $scroll + $visibleRows - 1);
 
         return true;
     }
@@ -143,7 +143,7 @@ final class ListSelection
         for ($i = $this->selected; $i >= $this->scroll; --$i) {
             $sum += $heights[$i] ?? 0;
             if ($sum > $availableRows) {
-                $this->scroll = min($i + 1, $this->selected);
+                $this->scroll = \min($i + 1, $this->selected);
                 break;
             }
         }
@@ -175,7 +175,7 @@ final class ListSelection
             ++$fitting;
         }
 
-        return max(1, $fitting);
+        return \max(1, $fitting);
     }
 
     /**

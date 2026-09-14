@@ -41,10 +41,10 @@ final class LanguageCatalogTest extends TestCase
     public function testCatalogCoversExactlyTheResolvableLanguageIds(): void
     {
         $catalog = LanguageCatalog::ids();
-        $resolvable = array_values(array_unique(array_filter(array_map(static fn (array $entry): ?string => $entry[1], Probe::getStatic(LanguageMap::class, 'EXTENSIONS')))));
+        $resolvable = \array_values(\array_unique(\array_filter(\array_map(static fn (array $entry): ?string => $entry[1], Probe::getStatic(LanguageMap::class, 'EXTENSIONS')))));
 
-        sort($catalog);
-        sort($resolvable);
+        \sort($catalog);
+        \sort($resolvable);
 
         $this->assertSame($resolvable, $catalog);
     }
@@ -56,9 +56,9 @@ final class LanguageCatalogTest extends TestCase
     public function testEveryLanguageHasAnExtensionThatResolvesBackToIt(): void
     {
         $ids = LanguageCatalog::ids();
-        sort($ids);
-        $extensionIds = array_keys(LanguageCatalog::EXTENSIONS);
-        sort($extensionIds);
+        \sort($ids);
+        $extensionIds = \array_keys(LanguageCatalog::EXTENSIONS);
+        \sort($extensionIds);
 
         $this->assertSame($ids, $extensionIds, 'every catalogued language can be scratched, and nothing else is');
 

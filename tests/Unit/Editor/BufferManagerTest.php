@@ -181,7 +181,7 @@ final class BufferManagerTest extends TestCase
         $manager->open('/p/b.php', 'B');
         $manager->setActive('/p/a.php');
 
-        $paths = array_map(static fn ($b) => $b->path, $manager->recent());
+        $paths = \array_map(static fn ($b) => $b->path, $manager->recent());
         $this->assertSame(['/p/a.php', '/p/b.php'], $paths);
     }
 
@@ -288,7 +288,7 @@ final class BufferManagerTest extends TestCase
         $manager->openPane('/p/one.dot', 'graph', 'A');
         $manager->openPane('/p/two.dot', 'graph', 'B');
 
-        $paths = array_map(static fn ($b) => $b->path, $manager->recent());
+        $paths = \array_map(static fn ($b) => $b->path, $manager->recent());
         $this->assertSame(['/p/two.dot', '/p/one.dot'], $paths, 'the pane opened last is the most recently focused');
     }
 

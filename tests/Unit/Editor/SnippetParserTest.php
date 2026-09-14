@@ -78,7 +78,7 @@ final class SnippetParserTest extends TestCase
     public function testFinalStopSortsLast(): void
     {
         $result = SnippetParser::parse('$0 first-written $1');
-        $indices = array_column($result['stops'], 'index');
+        $indices = \array_column($result['stops'], 'index');
         $this->assertSame([1, 0], $indices, '$0 always visited last');
     }
 
@@ -152,7 +152,7 @@ final class SnippetParserTest extends TestCase
         // sentinel must be trusted exactly, or the parser mistakes trailing
         // garbage for a real stop (and can even loop forever re-scanning
         // from the start).
-        $snippet = '${1:'.str_repeat('b', times: 20);
+        $snippet = '${1:'.\str_repeat('b', times: 20);
         $result = SnippetParser::parse($snippet);
         $this->assertSame($snippet, $result['text']);
         $this->assertSame([], $result['stops']);

@@ -26,6 +26,6 @@ final class MagoDetector
     {
         $binary = $this->rootDir.'/vendor/bin/mago';
 
-        return is_file($binary) && is_executable($binary);
+        return \is_file($binary) && \is_executable($binary);
     }
 }

@@ -15,7 +15,7 @@ final class PluginManifestTest extends TestCase
     private function pluginDir(TempProject $project, string $name, ?string $json): string
     {
         $dir = $project->path('plugins/'.$name);
-        mkdir($dir.'/src', permissions: 0o777, recursive: true);
+        \mkdir($dir.'/src', permissions: 0o777, recursive: true);
 
         return $this->entryFile($dir, $json);
     }
@@ -24,16 +24,16 @@ final class PluginManifestTest extends TestCase
     private function pluginDirWithoutSrc(TempProject $project, string $name, ?string $json): string
     {
         $dir = $project->path('plugins/'.$name);
-        mkdir($dir, permissions: 0o777, recursive: true);
+        \mkdir($dir, permissions: 0o777, recursive: true);
 
         return $this->entryFile($dir, $json);
     }
 
     private function entryFile(string $dir, ?string $json): string
     {
-        file_put_contents($dir.'/plugin.php', data: "<?php\n");
+        \file_put_contents($dir.'/plugin.php', data: "<?php\n");
         if (null !== $json) {
-            file_put_contents($dir.'/composer.json', data: $json);
+            \file_put_contents($dir.'/composer.json', data: $json);
         }
 
         return $dir.'/plugin.php';
@@ -43,12 +43,12 @@ final class PluginManifestTest extends TestCase
     private function composerPlugin(TempProject $project, string $name, string $json, string ...$with): PluginManifest
     {
         $dir = $project->path('plugins/'.$name);
-        mkdir($dir, permissions: 0o777, recursive: true);
+        \mkdir($dir, permissions: 0o777, recursive: true);
         foreach ($with as $extra) {
-            mkdir($dir.'/'.$extra, permissions: 0o777, recursive: true);
+            \mkdir($dir.'/'.$extra, permissions: 0o777, recursive: true);
         }
-        file_put_contents($dir.'/plugin.php', data: "<?php\n");
-        file_put_contents($dir.'/composer.json', data: $json);
+        \file_put_contents($dir.'/plugin.php', data: "<?php\n");
+        \file_put_contents($dir.'/composer.json', data: $json);
 
         return PluginManifest::beside($dir.'/plugin.php');
     }
@@ -71,8 +71,8 @@ final class PluginManifestTest extends TestCase
 
         $this->assertSame(['Acme\\Tools\\' => ['src/']], $manifest->autoload, 'the prefix keeps its trailing separator');
         $this->assertSame(
-            [realpath($project->path('plugins/acme/src'))],
-            array_map(realpath(...), $manifest->autoloadDirs()['Acme\\Tools\\'] ?? []),
+            [\realpath($project->path('plugins/acme/src'))],
+            \array_map(realpath(...), $manifest->autoloadDirs()['Acme\\Tools\\'] ?? []),
         );
         $this->assertSame(['image-viewer'], $manifest->requires);
     }
@@ -86,10 +86,10 @@ final class PluginManifestTest extends TestCase
         $dirs = PluginManifest::beside($file)->autoloadDirs();
 
         $this->assertSame(
-            [realpath($project->path('plugins/multi/src')), realpath($project->path('plugins/multi'))],
-            array_map(realpath(...), $dirs['A\\'] ?? []),
+            [\realpath($project->path('plugins/multi/src')), \realpath($project->path('plugins/multi'))],
+            \array_map(realpath(...), $dirs['A\\'] ?? []),
         );
-        $this->assertSame([realpath($project->path('plugins/multi/src'))], array_map(realpath(...), $dirs['B\\'] ?? []));
+        $this->assertSame([\realpath($project->path('plugins/multi/src'))], \array_map(realpath(...), $dirs['B\\'] ?? []));
     }
 
     public function testAnAutoloadDirectoryThatDoesNotExistIsNotOne(): void
@@ -193,7 +193,7 @@ final class PluginManifestTest extends TestCase
         foreach ($junk as $index => $json) {
             $manifest = PluginManifest::beside($this->pluginDir($project, 'junk'.$index, $json));
             $this->assertSame([], $manifest->autoload, $json);
-            $this->assertSame(str_contains($json, '"ok"') ? ['ok'] : [], $manifest->requires, $json);
+            $this->assertSame(\str_contains($json, '"ok"') ? ['ok'] : [], $manifest->requires, $json);
         }
     }
 
@@ -257,7 +257,7 @@ final class PluginManifestTest extends TestCase
         $manifest = PluginManifest::beside($this->pluginDir($project, 'nolegacy', null));
         $this->assertFalse($manifest->hasLegacyManifest());
 
-        file_put_contents($project->path('plugins/nolegacy/plugin.json'), data: '{}');
+        \file_put_contents($project->path('plugins/nolegacy/plugin.json'), data: '{}');
         $this->assertTrue($manifest->hasLegacyManifest(), 'a plugin.json beside it, even discovered after construction, is still a stale file on disk');
     }
 
@@ -265,9 +265,9 @@ final class PluginManifestTest extends TestCase
     {
         $project = new TempProject();
         $manifest = $this->composerPlugin($project, 'vendoring', '{}', 'vendor/composer');
-        file_put_contents(
+        \file_put_contents(
             $project->path('plugins/vendoring/vendor/composer/installed.json'),
-            data: json_encode(['packages' => [['name' => 'symfony/filesystem'], ['name' => 'acme/unknown'], ['not' => 'a package']]]),
+            data: \json_encode(['packages' => [['name' => 'symfony/filesystem'], ['name' => 'acme/unknown'], ['not' => 'a package']]]),
         );
 
         $this->assertSame(['symfony/filesystem'], $manifest->shadowedPackages(), 'only the host-shipped one, and a malformed entry is skipped rather than crashing');
@@ -279,7 +279,7 @@ final class PluginManifestTest extends TestCase
         $this->assertSame([], $this->composerPlugin($project, 'novendor', '{}')->shadowedPackages(), 'no vendor/ at all');
 
         $withVendor = $this->composerPlugin($project, 'badjson', '{}', 'vendor/composer');
-        file_put_contents($project->path('plugins/badjson/vendor/composer/installed.json'), data: 'not json at all');
+        \file_put_contents($project->path('plugins/badjson/vendor/composer/installed.json'), data: 'not json at all');
         $this->assertSame([], $withVendor->shadowedPackages(), 'an unreadable installed.json degrades to none, not a crash');
     }
 }

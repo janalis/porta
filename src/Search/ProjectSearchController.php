@@ -79,7 +79,7 @@ final class ProjectSearchController
     {
         $this->rebuildScopeChoices();
         $this->scopeKind = $this->prefs->lastScope();
-        $this->scopeIndex = (int) array_search($this->scopeKind, self::BUILT_INS, strict: true);
+        $this->scopeIndex = (int) \array_search($this->scopeKind, self::BUILT_INS, strict: true);
         // A saved scope wins when it is still there. Gone — renamed, deleted —
         // and the built-in kind above stands, which is why it is still recorded.
         $saved = $this->prefs->lastSavedScope();
@@ -127,7 +127,7 @@ final class ProjectSearchController
     /** Open (or reuse, keyed by the query title) this search's dock tab with the current results. */
     private function showResultsPane(): void
     {
-        $title = '' === trim($this->lastSearchQuery)
+        $title = '' === \trim($this->lastSearchQuery)
             ? $this->translator->trans('Find in Project')
             : $this->translator->trans('Find in Project: %query%', ['%query%' => $this->lastSearchQuery]);
         // The bind hook re-adopts a tab's frozen state — suppressed while WE
@@ -188,7 +188,7 @@ final class ProjectSearchController
     /** @return list<string> the choice labels shown in the panel's Alt+S selector */
     private function scopeLabels(): array
     {
-        return array_map(fn (ScopeChoice $choice): string => null !== $choice->kind ? $this->qualified($choice->kind) : $choice->label, $this->scopeChoices);
+        return \array_map(fn (ScopeChoice $choice): string => null !== $choice->kind ? $this->qualified($choice->kind) : $choice->label, $this->scopeChoices);
     }
 
     /**
@@ -218,7 +218,7 @@ final class ProjectSearchController
             return $label.' ('.\count($paths).')';
         }
 
-        return $label.' ('.(['.'] === $paths ? $this->translator->trans('Whole Project') : implode(', ', $paths)).')';
+        return $label.' ('.(['.'] === $paths ? $this->translator->trans('Whole Project') : \implode(', ', $paths)).')';
     }
 
     /**
@@ -245,7 +245,7 @@ final class ProjectSearchController
     private function scopedOpen(string $absDir): void
     {
         $relative = $this->paths->relative($absDir);
-        if ('' === $relative || str_starts_with($relative, '/')) {
+        if ('' === $relative || \str_starts_with($relative, '/')) {
             $this->open();
 
             return;
@@ -260,8 +260,8 @@ final class ProjectSearchController
     /** The choice index of the saved scope labelled $label (falls back to the whole project). */
     private function indexOfSaved(string $label): int
     {
-        $labels = array_map(static fn (ScopeChoice $choice): ?string => null === $choice->kind ? $choice->label : null, $this->scopeChoices);
-        $index = array_search($label, $labels, strict: true);
+        $labels = \array_map(static fn (ScopeChoice $choice): ?string => null === $choice->kind ? $choice->label : null, $this->scopeChoices);
+        $index = \array_search($label, $labels, strict: true);
 
         return false === $index ? 0 : $index;
     }
@@ -274,7 +274,7 @@ final class ProjectSearchController
     public function addSearchScope(string $absDir): void
     {
         $relative = $this->paths->relative($absDir);
-        if ('' === $relative || str_starts_with($relative, '/')) {
+        if ('' === $relative || \str_starts_with($relative, '/')) {
             return;
         }
         $this->scopeStore->addPinned($relative, [$relative]);
@@ -365,13 +365,13 @@ final class ProjectSearchController
         // A multiline query's matches span lines, so the per-kept-line rewrite
         // can't apply — replace over each matched file's whole text instead
         // (no per-occurrence exclude for multiline queries).
-        if (str_contains($this->lastSearchQuery, "\n")) {
+        if (\str_contains($this->lastSearchQuery, "\n")) {
             $this->replaceAllMultiline($replacement);
 
             return;
         }
 
-        $excludedSet = array_fill_keys($excluded, value: true);
+        $excludedSet = \array_fill_keys($excluded, value: true);
         /** @var array<string, list<int>> $keptLinesByPath */
         $keptLinesByPath = [];
         foreach ($this->lastSearchResults as $index => $result) {
@@ -382,7 +382,7 @@ final class ProjectSearchController
             $keptLinesByPath[$result['path']][] = $result['line'];
         }
 
-        if ('' === trim($this->lastSearchQuery) || [] === $keptLinesByPath) {
+        if ('' === \trim($this->lastSearchQuery) || [] === $keptLinesByPath) {
             $this->statusBar->flash($this->translator->trans('Nothing to replace'));
             $this->tui->requestRender();
 
@@ -416,7 +416,7 @@ final class ProjectSearchController
             // content, and a replace over a file touches many lines of it.
             $approved = $this->languageFilter->approvedSpans($relPath, $this->lastSearchQuery, $this->searchOptions);
             $abs = $this->paths->absolute($relPath);
-            $buffer = $this->buffers->get($abs) ?? $this->buffers->get(($real = realpath($abs)) ? $real : $abs);
+            $buffer = $this->buffers->get($abs) ?? $this->buffers->get(($real = \realpath($abs)) ? $real : $abs);
             if (null !== $buffer) {
                 $old = $buffer->document->getText();
                 $new = $this->replaceLines($old, $lineIndices, $replacement, $approved);
@@ -450,9 +450,9 @@ final class ProjectSearchController
         }
 
         $touched = 0;
-        foreach (array_unique(array_column($this->lastSearchResults, 'path')) as $relPath) {
+        foreach (\array_unique(\array_column($this->lastSearchResults, 'path')) as $relPath) {
             $abs = $this->paths->absolute($relPath);
-            $buffer = $this->buffers->get($abs) ?? $this->buffers->get(($real = realpath($abs)) ? $real : $abs);
+            $buffer = $this->buffers->get($abs) ?? $this->buffers->get(($real = \realpath($abs)) ? $real : $abs);
             if (null !== $buffer) {
                 $old = $buffer->document->getText();
                 $new = $this->projectSearch->applyReplacement($old, $this->lastSearchQuery, $replacement, $this->searchOptions);
@@ -502,7 +502,7 @@ final class ProjectSearchController
      */
     private function replaceLines(string $content, array $lineIndices, string $replacement, ?array $approved = null): string
     {
-        $lines = explode("\n", $content);
+        $lines = \explode("\n", $content);
         foreach ($lineIndices as $index) {
             if (($lines[$index] ?? null) === null) {
                 continue;
@@ -516,7 +516,7 @@ final class ProjectSearchController
             $lines[$index] = $this->projectSearch->applyReplacement($lines[$index], $this->lastSearchQuery, $replacement, $this->searchOptions);
         }
 
-        return implode("\n", $lines);
+        return \implode("\n", $lines);
     }
 
     /**
@@ -527,12 +527,12 @@ final class ProjectSearchController
      */
     private static function spliceSpans(string $line, array $spans, string $replacement): string
     {
-        usort($spans, static fn (array $a, array $b): int => $b['start'] <=> $a['start']);
+        \usort($spans, static fn (array $a, array $b): int => $b['start'] <=> $a['start']);
         foreach ($spans as $span) {
             // max(0,…) on both: the analyzer cannot see that a match offset and
             // a match length are non-negative by construction, and a negative
             // either way would splice from the END of the line.
-            $line = substr_replace($line, $replacement, max(0, $span['start']), max(0, $span['length']));
+            $line = \substr_replace($line, $replacement, \max(0, $span['start']), \max(0, $span['length']));
         }
 
         return $line;
@@ -566,7 +566,7 @@ final class ProjectSearchController
         }
 
         $abs = $this->paths->absolute('.porta/search-results.txt');
-        $this->fs->dumpFile($abs, implode("\n", $lines)."\n");
+        $this->fs->dumpFile($abs, \implode("\n", $lines)."\n");
         $this->statusBar->flash($this->translator->trans('Exported %count% result|Exported %count% results', ['%count%' => \count($this->lastSearchResults)]));
 
         return $abs;

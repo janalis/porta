@@ -34,7 +34,7 @@ final class DiagnosticLogTest extends TestCase
         $log->append('first');
         $log->append('second');
 
-        $this->assertSame(self::STAMP." first\n".self::STAMP." second\n", file_get_contents($log->path()));
+        $this->assertSame(self::STAMP." first\n".self::STAMP." second\n", \file_get_contents($log->path()));
     }
 
     /**
@@ -58,7 +58,7 @@ final class DiagnosticLogTest extends TestCase
 
         $this->assertSame(
             "2026-09-05 15:39:00 RenderException: the same crash\n2026-09-08 15:39:00 RenderException: the same crash\n",
-            file_get_contents($log->path()),
+            \file_get_contents($log->path()),
             'two identical faults, told apart by nothing but their stamps',
         );
     }
@@ -77,7 +77,7 @@ final class DiagnosticLogTest extends TestCase
 
         $this->assertSame(
             self::STAMP." RuntimeException: boom\n#0 /app/src/A.php(1)\n#1 {main}\n",
-            file_get_contents($log->path()),
+            \file_get_contents($log->path()),
         );
     }
 
@@ -98,7 +98,7 @@ final class DiagnosticLogTest extends TestCase
         $log->append('0123456789'); // stamp + 11 bytes on disk — past the cap
         $log->append('fresh');
 
-        $this->assertSame(self::STAMP." fresh\n", file_get_contents($log->path()), 'nothing of the old file survived, because none of its tail was an entry');
+        $this->assertSame(self::STAMP." fresh\n", \file_get_contents($log->path()), 'nothing of the old file survived, because none of its tail was an entry');
     }
 
     /**
@@ -121,12 +121,12 @@ final class DiagnosticLogTest extends TestCase
         $n = 0;
         do {
             $log->append('entry '.++$n);
-        } while (filesize($log->path()) <= 120 && $n < 100);
+        } while (\filesize($log->path()) <= 120 && $n < 100);
         $last = 'entry '.$n;
 
         $log->append('newest');
 
-        $kept = (string) file_get_contents($log->path());
+        $kept = (string) \file_get_contents($log->path());
         $this->assertStringEndsWith(self::STAMP." newest\n", $kept, 'the entry that crossed the cap is there, and LAST — a log whose newest line is in the middle is not a log');
         $this->assertStringContainsString($last, $kept, 'and so is the one before it — the file was trimmed, not emptied');
         $this->assertStringNotContainsString('entry 1'."\n", $kept, 'while the oldest was dropped to make room');
@@ -141,7 +141,7 @@ final class DiagnosticLogTest extends TestCase
         $log->append('0123'); // stamp + space + 4 + newline = exactly 25 bytes — at the cap, not past it
         $log->append('456');
 
-        $this->assertSame(self::STAMP." 0123\n".self::STAMP." 456\n", file_get_contents($log->path()));
+        $this->assertSame(self::STAMP." 0123\n".self::STAMP." 456\n", \file_get_contents($log->path()));
     }
 
     /**
@@ -165,10 +165,10 @@ final class DiagnosticLogTest extends TestCase
         $log->append('first');
 
         // Another writer pushes the file far past the cap between appends.
-        file_put_contents($log->path(), str_repeat('x', times: 500), \FILE_APPEND);
+        \file_put_contents($log->path(), \str_repeat('x', times: 500), \FILE_APPEND);
         $log->append('second');
 
-        $kept = (string) file_get_contents($log->path());
+        $kept = (string) \file_get_contents($log->path());
         $this->assertStringContainsString('first', $kept, 'no trim happened: this writer has not written that much');
         $this->assertStringContainsString(self::STAMP.' second', $kept);
         $this->assertGreaterThan(500, \strlen($kept), 'and the other writer\'s bytes are all still there');
@@ -179,13 +179,13 @@ final class DiagnosticLogTest extends TestCase
         // The counter starts from what is already on disk, or a session that
         // opens a log left oversized by the last one would never trim it.
         $project = new TempProject();
-        mkdir($project->dir.'/.porta', permissions: 0o755, recursive: true);
-        file_put_contents($project->dir.'/.porta/diag.log', self::STAMP." old\n".str_repeat('y', times: 200)."\n");
+        \mkdir($project->dir.'/.porta', permissions: 0o755, recursive: true);
+        \file_put_contents($project->dir.'/.porta/diag.log', self::STAMP." old\n".\str_repeat('y', times: 200)."\n");
         $log = $this->log($project->dir.'/.porta/diag.log', maxBytes: 60);
 
         $log->append('fresh');
 
-        $kept = (string) file_get_contents($log->path());
+        $kept = (string) \file_get_contents($log->path());
         $this->assertStringContainsString('fresh', $kept);
         $this->assertLessThanOrEqual((2 * 60) + \strlen(self::STAMP.' fresh'), \strlen($kept), 'the inherited size was read and the file trimmed');
     }
@@ -198,14 +198,14 @@ final class DiagnosticLogTest extends TestCase
         $project = new TempProject();
         $log = $this->log($project->dir.'/.porta/diag.log');
         $log->append('before');
-        exec('rm -rf '.escapeshellarg($project->dir.'/.porta'));
+        \exec('rm -rf '.\escapeshellarg($project->dir.'/.porta'));
 
         $log->append('lost with the directory');
         $this->assertFileDoesNotExist($log->path(), 'the write failed and the line went with it');
 
         $log->append('after');
 
-        $kept = (string) file_get_contents($log->path());
+        $kept = (string) \file_get_contents($log->path());
         $this->assertStringContainsString('after', $kept, 'the directory was recreated for the next line');
         $this->assertStringNotContainsString('lost', $kept);
     }
@@ -244,15 +244,15 @@ final class DiagnosticLogTest extends TestCase
         // pass or fail on the machine rather than on the code.
         $project = new TempProject();
         $log = $this->log($project->dir.'/.porta/diag.log');
-        $previous = umask(0o022);
+        $previous = \umask(0o022);
 
         try {
             $log->append('first');
         } finally {
-            umask($previous);
+            \umask($previous);
         }
 
-        $this->assertSame(0o755, 0o777 & (int) fileperms($project->dir.'/.porta'));
+        $this->assertSame(0o755, 0o777 & (int) \fileperms($project->dir.'/.porta'));
     }
 
     /**
@@ -264,13 +264,13 @@ final class DiagnosticLogTest extends TestCase
     public function testANativeMkdirWarningIsSuppressedNotLeaked(): void
     {
         $project = new TempProject();
-        chmod($project->dir, permissions: 0o555); // exists, but mkdir() inside it fails
+        \chmod($project->dir, permissions: 0o555); // exists, but mkdir() inside it fails
         $log = $this->log($project->dir.'/.porta/diag.log');
 
         try {
             $log->append('lost');
         } finally {
-            chmod($project->dir, permissions: 0o755);
+            \chmod($project->dir, permissions: 0o755);
         }
 
         $this->assertFileDoesNotExist($log->path());
@@ -280,14 +280,14 @@ final class DiagnosticLogTest extends TestCase
     public function testANativeFilePutContentsWarningIsSuppressedNotLeaked(): void
     {
         $project = new TempProject();
-        mkdir($project->dir.'/.porta', permissions: 0o777, recursive: true);
-        chmod($project->dir.'/.porta', permissions: 0o555); // exists, but is not writable
+        \mkdir($project->dir.'/.porta', permissions: 0o777, recursive: true);
+        \chmod($project->dir.'/.porta', permissions: 0o555); // exists, but is not writable
         $log = $this->log($project->dir.'/.porta/diag.log');
 
         try {
             $log->append('lost');
         } finally {
-            chmod($project->dir.'/.porta', permissions: 0o755);
+            \chmod($project->dir.'/.porta', permissions: 0o755);
         }
 
         $this->assertFileDoesNotExist($log->path());

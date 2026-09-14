@@ -51,18 +51,18 @@ final class EditorRenderer
 
         // Bracket under the cursor, else just before it
         $char = $text[$col] ?? '';
-        if (!array_key_exists($char, $pairs) && !\in_array($char, $pairs, strict: true)) {
+        if (!\array_key_exists($char, $pairs) && !\in_array($char, $pairs, strict: true)) {
             --$col;
             $char = $col >= 0 ? $text[$col] ?? '' : '';
         }
 
-        $isOpen = array_key_exists($char, $pairs);
+        $isOpen = \array_key_exists($char, $pairs);
         $isClose = \in_array($char, $pairs, strict: true);
         if (!$isOpen && !$isClose) {
             return null;
         }
 
-        $open = $isOpen ? $char : array_search($char, $pairs, strict: true);
+        $open = $isOpen ? $char : \array_search($char, $pairs, strict: true);
         $close = $pairs[$open];
         $direction = $isOpen ? 1 : -1;
 
@@ -110,20 +110,20 @@ final class EditorRenderer
         $col = $doc->getCursorCol();
 
         $start = $col;
-        while ($start > 0 && 1 === preg_match('/[\w$]/', $line[$start - 1])) {
+        while ($start > 0 && 1 === \preg_match('/[\w$]/', $line[$start - 1])) {
             --$start;
         }
         $end = $col;
         $len = \strlen($line);
-        while ($end < $len && 1 === preg_match('/\w/', $line[$end])) {
+        while ($end < $len && 1 === \preg_match('/\w/', $line[$end])) {
             ++$end;
         }
         if ($end <= $start) {
             return null;
         }
-        $word = substr($line, $start, $end - $start);
+        $word = \substr($line, $start, $end - $start);
 
-        return 1 === preg_match('/^\$?[A-Za-z_]\w*$/', $word) ? $word : null;
+        return 1 === \preg_match('/^\$?[A-Za-z_]\w*$/', $word) ? $word : null;
     }
 
     /**
@@ -144,15 +144,15 @@ final class EditorRenderer
             return [];
         }
         $word = self::identifierUnderCaret($doc);
-        if (null === $word || \strlen(ltrim($word, characters: '$')) < 2) {
+        if (null === $word || \strlen(\ltrim($word, characters: '$')) < 2) {
             return [];
         }
 
-        $pattern = '/(?<![\w$])'.preg_quote($word, delimiter: '/').'(?!\w)/';
+        $pattern = '/(?<![\w$])'.\preg_quote($word, delimiter: '/').'(?!\w)/';
         $occurrences = [];
         $matches = [];
         for ($line = $fromLine; $line <= $toLine; ++$line) {
-            $count = preg_match_all($pattern, $doc->getLine($line), $matches, \PREG_OFFSET_CAPTURE);
+            $count = \preg_match_all($pattern, $doc->getLine($line), $matches, \PREG_OFFSET_CAPTURE);
             if (0 === $count || false === $count) {
                 continue;
             }
@@ -211,7 +211,7 @@ final class EditorRenderer
                 continue;
             }
 
-            $shift += mb_strwidth($hint['text']);
+            $shift += \mb_strwidth($hint['text']);
         }
 
         return $shift;
@@ -236,13 +236,13 @@ final class EditorRenderer
         foreach ($lineHints as $i => $hint) {
             $placed[] = [$doc->displayColAt($line, $hint['col']), -$i, $styles->of(Role::Inlay)->apply($hint['text'])];
         }
-        usort($placed, static fn (array $a, array $b) => [$a[0], $a[1]] <=> [$b[0], $b[1]]);
+        \usort($placed, static fn (array $a, array $b) => [$a[0], $a[1]] <=> [$b[0], $b[1]]);
 
         $lineWidth = AnsiUtils::visibleWidth($hlLine);
         $out = '';
         $prev = 0;
         foreach ($placed as [$col, , $text]) {
-            $col = min($col, $lineWidth);
+            $col = \min($col, $lineWidth);
             if ($col > $prev) {
                 $out .= AnsiUtils::sliceByColumn($hlLine, $prev, $col - $prev);
                 $prev = $col;
@@ -263,7 +263,7 @@ final class EditorRenderer
     public static function applyIndentGuides(Document $doc, string $hlLine, int $lineIndex, Styles $styles): string
     {
         $raw = $doc->getLine($lineIndex);
-        $wsBytes = strspn($raw, characters: " \t");
+        $wsBytes = \strspn($raw, characters: " \t");
         if (0 === $wsBytes) {
             return $hlLine;
         }
@@ -313,9 +313,9 @@ final class EditorRenderer
         // prefix, so the marker lands cleanly without disturbing any styling.
         $windowed = AnsiUtils::sliceWithWidth($highlightedLine, $hScroll, $contentWidth);
         $text = $windowed['text'];
-        $cursorOffset = max(0, $cursorDisplayCol - $hScroll);
+        $cursorOffset = \max(0, $cursorDisplayCol - $hScroll);
         $byte = \strlen(AnsiUtils::sliceByColumn($text, 0, $cursorOffset));
-        $withCursorText = substr($text, offset: 0, length: $byte).$cursorMarker.substr($text, $byte);
+        $withCursorText = \substr($text, offset: 0, length: $byte).$cursorMarker.\substr($text, $byte);
 
         return AnsiText::padRight($withCursorText.Sgr::RESET, $contentWidth);
     }
@@ -352,8 +352,8 @@ final class EditorRenderer
         }
 
         // Where the decorated text ends on screen (accounting for horizontal scroll).
-        $textEnd = max(0, $textDisplayWidth - $hScroll);
-        $start = min($contentWidth, $textEnd) + 2; // two-space gap
+        $textEnd = \max(0, $textDisplayWidth - $hScroll);
+        $start = \min($contentWidth, $textEnd) + 2; // two-space gap
         $available = $contentWidth - $start;
         if ($available < 8) {
             return $content; // not enough room to be useful
@@ -361,7 +361,7 @@ final class EditorRenderer
 
         $extra = \count($diags) > 1 ? ' +'.(\count($diags) - 1) : '';
         // Severity glyph prefix, so error vs warning reads without color.
-        $label = AnsiText::truncate('‹ '.DiagnosticStyle::glyph($worst).' '.(string) preg_replace('/\s+/', replacement: ' ', subject: $message).$extra.' ›', $available);
+        $label = AnsiText::truncate('‹ '.DiagnosticStyle::glyph($worst).' '.(string) \preg_replace('/\s+/', replacement: ' ', subject: $message).$extra.' ›', $available);
         $head = AnsiText::padRight(AnsiUtils::sliceByColumn($content, 0, $start), $start);
 
         return AnsiText::padRight($head.$styles->of(DiagnosticStyle::dimRole($worst))->apply($label), $contentWidth);
@@ -375,14 +375,14 @@ final class EditorRenderer
      */
     public static function appendAnnotation(int $hScroll, int $textDisplayWidth, string $text, string $content, int $contentWidth, Styles $styles, Role $role = Role::Inlay): string
     {
-        $textEnd = max(0, $textDisplayWidth - $hScroll);
-        $start = min($contentWidth, $textEnd) + 2; // two-space gap
+        $textEnd = \max(0, $textDisplayWidth - $hScroll);
+        $start = \min($contentWidth, $textEnd) + 2; // two-space gap
         $available = $contentWidth - $start;
         if ($available < 8) {
             return $content; // not enough room to be useful
         }
 
-        $label = AnsiText::truncate((string) preg_replace('/\s+/', replacement: ' ', subject: $text), $available);
+        $label = AnsiText::truncate((string) \preg_replace('/\s+/', replacement: ' ', subject: $text), $available);
         $head = AnsiText::padRight(AnsiUtils::sliceByColumn($content, 0, $start), $start);
 
         return AnsiText::padRight($head.$styles->of($role)->apply($label), $contentWidth);
@@ -408,7 +408,7 @@ final class EditorRenderer
         $text = ' '.$hint.' ';
         $col = $gutterWidth;
         $frameMax = $columns - $gutterWidth - 1 - PopupFrame::CHROME_COLS;
-        $width = min(mb_strwidth($text), $frameMax);
+        $width = \min(\mb_strwidth($text), $frameMax);
         if ($width >= 4) {
             $top = $cursorScreenRow >= 3 ? $cursorScreenRow - 3 : $cursorScreenRow + 1;
             if ($top >= 0 && ($top + 3) <= \count($lines)) {
@@ -423,7 +423,7 @@ final class EditorRenderer
         }
 
         $row = $cursorScreenRow > 0 ? $cursorScreenRow - 1 : $cursorScreenRow + 1;
-        $width = min(mb_strwidth($text), $columns - $gutterWidth - 1);
+        $width = \min(\mb_strwidth($text), $columns - $gutterWidth - 1);
         if ($row < 0 || $row >= \count($lines) || $width < 4) {
             return;
         }
@@ -453,7 +453,7 @@ final class EditorRenderer
         // land inside, which produces invalid UTF-8 and a garbled row. A hint
         // that does not fit is already degraded; it degrades the rest of the
         // way rather than being spliced.
-        if (null === $activeRange || mb_strwidth($text) > $width) {
+        if (null === $activeRange || \mb_strwidth($text) > $width) {
             return $style->apply($plain);
         }
 
@@ -461,7 +461,7 @@ final class EditorRenderer
         $start = $activeRange[0] + 1;
         $end = $activeRange[1] + 1;
 
-        return $style->apply(substr($plain, offset: 0, length: $start)).$style->withBold()->apply(substr($plain, $start, $end - $start)).$style->apply(substr($plain, $end));
+        return $style->apply(\substr($plain, offset: 0, length: $start)).$style->withBold()->apply(\substr($plain, $start, $end - $start)).$style->apply(\substr($plain, $end));
     }
 
     /**
@@ -476,27 +476,27 @@ final class EditorRenderer
      */
     public static function completionPopup(array &$lines, int $columns, int $rows, int $cursorScreenRow, int $anchorCol, array $items, int $selected, ?int $hovered, Styles $styles): CompletionBox
     {
-        $windowOffset = max(0, $selected - self::POPUP_MAX_ITEMS + 1);
+        $windowOffset = \max(0, $selected - self::POPUP_MAX_ITEMS + 1);
         $visible = \array_slice($items, $windowOffset, self::POPUP_MAX_ITEMS);
-        $selectedInWindow = min($selected, self::POPUP_MAX_ITEMS - 1);
+        $selectedInWindow = \min($selected, self::POPUP_MAX_ITEMS - 1);
 
         $width = 12;
         foreach ($visible as $item) {
-            $width = max($width, mb_strwidth($item->label) + mb_strwidth($item->kind) + 5);
+            $width = \max($width, \mb_strwidth($item->label) + \mb_strwidth($item->kind) + 5);
             // The server's `detail` — a signature for a method, a type for a
             // property — asked for but never drawn until now. Guarded on the
             // detail being there at all: the extra column this term adds is the
             // SEPARATOR, and an item with no type needs no separator. Without
             // the guard every popup in the IDE grew by one column.
             if ('' !== $item->detail) {
-                $width = max($width, mb_strwidth($item->label) + mb_strwidth($item->detail) + mb_strwidth($item->kind) + 6);
+                $width = \max($width, \mb_strwidth($item->label) + \mb_strwidth($item->detail) + \mb_strwidth($item->kind) + 6);
             }
         }
-        $width = min($width, PopupMetrics::COMPLETION_MAX_INNER, $columns - 2 - PopupFrame::CHROME_COLS);
+        $width = \min($width, PopupMetrics::COMPLETION_MAX_INNER, $columns - 2 - PopupFrame::CHROME_COLS);
 
         $framedHeight = \count($visible) + PopupFrame::CHROME_ROWS;
         $below = ($cursorScreenRow + 1 + $framedHeight) <= $rows;
-        $borderTop = $below ? $cursorScreenRow + 1 : max(0, $cursorScreenRow - $framedHeight);
+        $borderTop = $below ? $cursorScreenRow + 1 : \max(0, $cursorScreenRow - $framedHeight);
 
         // The content column stays anchored at the typed prefix (the border
         // sits one cell left of it), clamped so the framed box fits the pane.
@@ -510,12 +510,12 @@ final class EditorRenderer
             // The label column absorbs the slack, so the kind tag stays flush
             // right whatever the item is called; the detail is what is left
             // between them, which puts it flush right against the kind.
-            $avail = $width - mb_strwidth($item->kind) - 3;
+            $avail = $width - \mb_strwidth($item->kind) - 3;
             // The NAME is served first and the type takes what is left: a
             // completion whose label you cannot read is not a completion, while
             // the type is what you check once the name is already the one you
             // meant. At a narrow width the type disappears rather than the name.
-            $detailWidth = min(mb_strwidth($item->detail), max(0, $avail - min(mb_strwidth($item->label), $avail) - 1));
+            $detailWidth = \min(\mb_strwidth($item->detail), \max(0, $avail - \min(\mb_strwidth($item->label), $avail) - 1));
             $detail = 0 === $detailWidth
                 ? ''
                 // No pad: $detailWidth is capped BY the detail's own width, so
@@ -596,7 +596,7 @@ final class EditorRenderer
         }
 
         $body = [];
-        foreach (explode("\n", $text) as $paragraph) {
+        foreach (\explode("\n", $text) as $paragraph) {
             foreach (AnsiText::wrap($paragraph, PopupMetrics::COMPLETION_DOC_INNER) as $wrapped) {
                 $body[] = $wrapped;
             }
@@ -616,7 +616,7 @@ final class EditorRenderer
         // fitting its OWN frame there, and that frame is two rows of chrome
         // plus an item — so `$room` is never below three and this slice never
         // empties the panel.
-        $body = \array_slice($body, offset: 0, length: min(self::POPUP_MAX_ITEMS, $room - PopupFrame::CHROME_ROWS));
+        $body = \array_slice($body, offset: 0, length: \min(self::POPUP_MAX_ITEMS, $room - PopupFrame::CHROME_ROWS));
         $framedHeight = \count($body) + PopupFrame::CHROME_ROWS;
         $top = $below ? $popupTop : $popupTop + $popupHeight - $framedHeight;
 

@@ -40,7 +40,7 @@ final class ResultsView
         array $expanded = [],
         array $context = [],
     ): array {
-        $needle = mb_strtolower($filter);
+        $needle = \mb_strtolower($filter);
 
         if (ResultLayout::Flat === $grouped) {
             $rows = [];
@@ -162,6 +162,6 @@ final class ResultsView
      */
     private static function passes(array $result, string $needle): bool
     {
-        return '' === $needle || str_contains(mb_strtolower($result['text']), $needle) || str_contains(mb_strtolower($result['path']), $needle);
+        return '' === $needle || \str_contains(\mb_strtolower($result['text']), $needle) || \str_contains(\mb_strtolower($result['path']), $needle);
     }
 }

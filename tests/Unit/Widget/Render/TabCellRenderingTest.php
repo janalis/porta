@@ -37,7 +37,7 @@ final class TabCellRenderingTest extends TestCase
         // cell and the strip would garble at exactly this tab.
         $cell = TabStripRenderer::measureCell('日本');
 
-        $this->assertSame(mb_strwidth($cell['text']) + 1, $cell['width']);
+        $this->assertSame(\mb_strwidth($cell['text']) + 1, $cell['width']);
         $this->assertSame(6, $cell['closeOffset'], '" 日本 " is six display columns');
     }
 
@@ -77,9 +77,9 @@ final class TabCellRenderingTest extends TestCase
         $cell = TabStripRenderer::measureCell('one');
         $rendered = TabStripRenderer::renderCell($cell['text'], $cell['closeOffset'], Styles::dark(), TabState::Active);
 
-        $body = substr($rendered, offset: 0, length: (int) strrpos($rendered, Glyphs::SEPARATOR));
+        $body = \substr($rendered, offset: 0, length: (int) \strrpos($rendered, Glyphs::SEPARATOR));
         $this->assertStringNotContainsString("\x1b[0m", $body, 'no full reset inside the tab run');
-        $this->assertSame(1, substr_count($body, needle: "\x1b[48;5;238m"), 'the background opens once and is never re-opened, so it never lapsed');
+        $this->assertSame(1, \substr_count($body, needle: "\x1b[48;5;238m"), 'the background opens once and is never re-opened, so it never lapsed');
     }
 
     public function testACloseGlyphInTheLabelIsNotRestyledAsACloseButton(): void
@@ -92,7 +92,7 @@ final class TabCellRenderingTest extends TestCase
         $plain = AnsiUtils::stripAnsiCodes($rendered);
         $this->assertSame(' a×b.php × '.Glyphs::SEPARATOR, $plain, 'both × survive as plain text');
         // Exactly one × carries the bright close shade; the label × does not.
-        $this->assertSame(1, substr_count($rendered, needle: "\x1b[38;5;252m×"), 'only the real close glyph is shaded');
+        $this->assertSame(1, \substr_count($rendered, needle: "\x1b[38;5;252m×"), 'only the real close glyph is shaded');
         $this->assertSame($cell['width'], AnsiUtils::visibleWidth($rendered), 'the label × did not shift the width');
     }
 }

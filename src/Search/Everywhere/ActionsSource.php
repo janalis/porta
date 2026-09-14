@@ -51,9 +51,9 @@ final class ActionsSource implements SearchSource
                     $run();
                 })];
         }
-        usort($scored, static fn (array $a, array $b): int => $b[0] <=> $a[0]);
+        \usort($scored, static fn (array $a, array $b): int => $b[0] <=> $a[0]);
 
-        $emit(array_map(static fn (array $entry): SearchHit => $entry[1], $scored));
+        $emit(\array_map(static fn (array $entry): SearchHit => $entry[1], $scored));
     }
 
     #[\Override]

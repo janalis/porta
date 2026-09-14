@@ -53,8 +53,8 @@ final class LastEditNavigatorTest extends TestCase
         // it does.
         $this->navigator(new EditHistory())->goBack();
 
-        self::assertSame('No edits to go back to', $this->flashText($this->status));
-        self::assertSame([], $this->files->opened, 'and nothing was opened');
+        $this->assertSame('No edits to go back to', $this->flashText($this->status));
+        $this->assertSame([], $this->files->opened, 'and nothing was opened');
     }
 
     public function testWalkingPastTheOLDESTEditSaysSoToo(): void
@@ -66,7 +66,7 @@ final class LastEditNavigatorTest extends TestCase
         $navigator->goBack();
         $navigator->goBack(); // one press past the end
 
-        self::assertSame('No edits to go back to', $this->flashText($this->status));
+        $this->assertSame('No edits to go back to', $this->flashText($this->status));
     }
 
     public function testAnEditInANOTHERFileOpensThatFile(): void
@@ -81,7 +81,7 @@ final class LastEditNavigatorTest extends TestCase
 
         $navigator->goBack();
 
-        self::assertSame([['path' => '/b.php', 'focus' => true]], $this->files->opened, 'opened, and focused');
+        $this->assertSame([['path' => '/b.php', 'focus' => true]], $this->files->opened, 'opened, and focused');
     }
 
     public function testAREFUSEDOpenLeavesTheCaretWhereItWas(): void
@@ -99,10 +99,10 @@ final class LastEditNavigatorTest extends TestCase
 
         $navigator->goBack();
 
-        self::assertSame([['path' => '/gone.php', 'focus' => true]], $this->files->opened, 'it did try');
-        self::assertSame('/a.php', $this->editor->getFilePath(), 'and is still here');
-        self::assertSame(1, $this->editor->getDocument()->getCursorLine(), 'the caret did not move');
-        self::assertSame(2, $this->editor->getDocument()->getCursorCol());
+        $this->assertSame([['path' => '/gone.php', 'focus' => true]], $this->files->opened, 'it did try');
+        $this->assertSame('/a.php', $this->editor->getFilePath(), 'and is still here');
+        $this->assertSame(1, $this->editor->getDocument()->getCursorLine(), 'the caret did not move');
+        $this->assertSame(2, $this->editor->getDocument()->getCursorCol());
     }
 
     public function testItLandsAtTheSTARTOfTheLineAndAsksForAFrame(): void
@@ -121,10 +121,10 @@ final class LastEditNavigatorTest extends TestCase
 
         $navigator->goBack();
 
-        self::assertSame(2, $this->editor->getDocument()->getCursorLine());
-        self::assertSame(0, $this->editor->getDocument()->getCursorCol(), 'the start of the line, not the old column');
-        self::assertGreaterThan($revision, $this->editor->getRenderRevision(), 'the widget dropped its cached rows');
-        self::assertTrue(Probe::get($this->tui, 'renderRequested'), 'and a frame was asked for');
+        $this->assertSame(2, $this->editor->getDocument()->getCursorLine());
+        $this->assertSame(0, $this->editor->getDocument()->getCursorCol(), 'the start of the line, not the old column');
+        $this->assertGreaterThan($revision, $this->editor->getRenderRevision(), 'the widget dropped its cached rows');
+        $this->assertTrue(Probe::get($this->tui, 'renderRequested'), 'and a frame was asked for');
     }
 
     public function testAnEditInTheFileYouAreALREADYInDoesNotReopenIt(): void
@@ -139,7 +139,7 @@ final class LastEditNavigatorTest extends TestCase
 
         $navigator->goBack();
 
-        self::assertSame([], $this->files->opened, 'the file was not reopened');
-        self::assertSame(6, $this->editor->getDocument()->getCursorLine());
+        $this->assertSame([], $this->files->opened, 'the file was not reopened');
+        $this->assertSame(6, $this->editor->getDocument()->getCursorLine());
     }
 }

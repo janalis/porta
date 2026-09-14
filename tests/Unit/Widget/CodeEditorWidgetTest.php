@@ -60,7 +60,7 @@ final class CodeEditorWidgetTest extends TestCase
 
     public function testCaretScreenCellClampsToTheGutterWhenScrolledPastTheCaret(): void
     {
-        $long = "<?php\n\$x = '".str_repeat('a', times: 120)."';\n";
+        $long = "<?php\n\$x = '".\str_repeat('a', times: 120)."';\n";
         $editor = $this->editor($long);
         $editor->getDocument()->setCursor(1, 100);
         $editor->render(new RenderContext(40, 10)); // narrow: forces hScroll to follow the caret
@@ -82,7 +82,7 @@ final class CodeEditorWidgetTest extends TestCase
 
     private function stickyEditor(): CodeEditorWidget
     {
-        $code = "<?php\n\nnamespace App;\n\nclass Service\n{\n    public function handle(): void\n    {\n".str_repeat("        \$x = 1;\n", times: 20)."    }\n}\n";
+        $code = "<?php\n\nnamespace App;\n\nclass Service\n{\n    public function handle(): void\n    {\n".\str_repeat("        \$x = 1;\n", times: 20)."    }\n}\n";
 
         return $this->editor($code, 'Service.php');
     }
@@ -100,7 +100,7 @@ final class CodeEditorWidgetTest extends TestCase
         $this->assertStringContainsString('function handle', $second, 'method header pinned at row 1');
         $this->assertStringContainsString("\x1b[48;5;237m", $rendered[0], 'pinned band background');
         $this->assertStringNotContainsString('namespace', $top.$second, 'the namespace is not pinned');
-        $this->assertStringContainsString("\x1b_pi:c;", implode('', $rendered), 'the caret is still visible below the band');
+        $this->assertStringContainsString("\x1b_pi:c;", \implode('', $rendered), 'the caret is still visible below the band');
     }
 
     public function testStickyHeaderClickJumpsToDeclaration(): void
@@ -157,7 +157,7 @@ final class CodeEditorWidgetTest extends TestCase
         $sticky = AnsiUtils::stripAnsiCodes($rendered[1]);
         $this->assertStringContainsString('function handle', $sticky, 'the sticky header still pins with the number gone');
         $this->assertDoesNotMatchRegularExpression('/^\s*\d/', $sticky, 'and shows no number');
-        $this->assertStringContainsString("\x1b_pi:c;", implode('', $rendered), 'the caret marker column survives');
+        $this->assertStringContainsString("\x1b_pi:c;", \implode('', $rendered), 'the caret marker column survives');
     }
 
     public function testDisablingIndentGuidesRemovesTheGuides(): void
@@ -248,10 +248,10 @@ final class CodeEditorWidgetTest extends TestCase
         // Both gutter inputs are present: the vcs strip and a line count wide
         // enough to push the number field past its floor of three. A fixture
         // with neither would pass a clamp that only half works.
-        $editor = $this->editor("<?php\n".str_repeat("// a line\n", times: 120), 'narrow.php');
+        $editor = $this->editor("<?php\n".\str_repeat("// a line\n", times: 120), 'narrow.php');
         $editor->display()->setVcsGutter(true);
 
-        foreach (range(start: 1, end: 20) as $columns) {
+        foreach (\range(start: 1, end: 20) as $columns) {
             $rows = $editor->render(new RenderContext($columns, 6));
             $this->assertExactWidth($rows, $columns, "at {$columns} columns");
         }
@@ -261,7 +261,7 @@ final class CodeEditorWidgetTest extends TestCase
     {
         // `Off` collapses the number column to zero, which is a different
         // arithmetic path through the gutter width than Absolute or Relative.
-        $editor = $this->editor("<?php\n".str_repeat("// a line\n", times: 120), 'narrow.php');
+        $editor = $this->editor("<?php\n".\str_repeat("// a line\n", times: 120), 'narrow.php');
 
         foreach ([LineNumberMode::Off, LineNumberMode::Absolute, LineNumberMode::Relative] as $mode) {
             $editor->display()->setLineNumbers($mode);
@@ -279,7 +279,7 @@ final class CodeEditorWidgetTest extends TestCase
         // row whose visible width is not the pane's — is what a decoration
         // that miscounts produces, and a wide character is where miscounting
         // shows first.
-        $long = str_repeat('y', times: 60);
+        $long = \str_repeat('y', times: 60);
         $editor = $this->editor(
             "<?php\n\nclass A\n{\n    public function one(): void\n    {\n\t\$s = \"日本語{$long}\";   \n    }\n}\n",
             'everything.php',
@@ -293,13 +293,13 @@ final class CodeEditorWidgetTest extends TestCase
         $this->assertExactWidth($rows, 46);
         foreach ($rows as $index => $row) {
             $this->assertTrue(
-                mb_check_encoding(AnsiUtils::stripAnsiCodes($row), encoding: 'UTF-8'),
+                \mb_check_encoding(AnsiUtils::stripAnsiCodes($row), encoding: 'UTF-8'),
                 "row {$index} is still valid UTF-8",
             );
         }
 
         // And the rule is still one rule, on the member's closing line.
-        $ruled = array_keys(array_filter($rows, static fn (string $row): bool => str_contains($row, Sgr::UNDERLINE)));
+        $ruled = \array_keys(\array_filter($rows, static fn (string $row): bool => \str_contains($row, Sgr::UNDERLINE)));
         $this->assertCount(1, $ruled);
         $this->assertStringContainsString('}', AnsiUtils::stripAnsiCodes($rows[$ruled[0]]));
     }
@@ -311,7 +311,7 @@ final class CodeEditorWidgetTest extends TestCase
         // line occupied — three stacked underlines instead of one rule closing
         // off the member. Only reachable with wrap ON and a member whose last
         // line is long enough to wrap, which is why every gate passed it.
-        $long = str_repeat('y', times: 70);
+        $long = \str_repeat('y', times: 70);
         $editor = $this->editor(
             "<?php\n\nclass A\n{\n    public function one(): void { \$x = \"{$long}\"; }\n}\n",
             'wrapped.php',
@@ -320,7 +320,7 @@ final class CodeEditorWidgetTest extends TestCase
         $editor->display()->setSoftWrap(true);
 
         $rows = $editor->render(new RenderContext(50, 12));
-        $ruled = array_keys(array_filter($rows, static fn (string $row): bool => str_contains($row, Sgr::UNDERLINE)));
+        $ruled = \array_keys(\array_filter($rows, static fn (string $row): bool => \str_contains($row, Sgr::UNDERLINE)));
 
         $this->assertCount(1, $ruled, 'one rule, however many rows the member takes');
         $this->assertStringContainsString('"; }', AnsiUtils::stripAnsiCodes($rows[$ruled[0]]), 'and it is the row the member ENDS on');
@@ -335,7 +335,7 @@ final class CodeEditorWidgetTest extends TestCase
         // — same width, marker one column out, and the pinned band no longer
         // reading as the lines below it.
         $editor = $this->editor(
-            "<?php\n\nclass A\n{\n    public function one(): void\n    {\n".str_repeat("        \$x = 1;\n", times: 30)."    }\n}\n",
+            "<?php\n\nclass A\n{\n    public function one(): void\n    {\n".\str_repeat("        \$x = 1;\n", times: 30)."    }\n}\n",
             'sticky.php',
         );
         // Server-shaped fold regions, which start at the DECLARATION rather
@@ -352,16 +352,16 @@ final class CodeEditorWidgetTest extends TestCase
 
         $this->assertStringContainsString('class A', $pinned, 'the class header is the pinned row');
         $this->assertContains(
-            mb_substr($pinned, $gutterWidth - 2, length: 1),
+            \mb_substr($pinned, $gutterWidth - 2, length: 1),
             [Glyphs::EXPANDED, Glyphs::COLLAPSED],
             'the fold marker sits in the fold column, one before the pad',
         );
-        $this->assertSame(' ', mb_substr($pinned, $gutterWidth - 1, length: 1), 'and the gutter ends on its pad');
+        $this->assertSame(' ', \mb_substr($pinned, $gutterWidth - 1, length: 1), 'and the gutter ends on its pad');
     }
 
     public function testNoStickyRowsForStructurelessFile(): void
     {
-        $editor = $this->editor("<?php\n".str_repeat("echo 1;\n", times: 30), 'flat.php');
+        $editor = $this->editor("<?php\n".\str_repeat("echo 1;\n", times: 30), 'flat.php');
         $editor->getDocument()->setCursor(25, 0);
         $rendered = $editor->render(new RenderContext(60, 12));
 
@@ -377,14 +377,14 @@ final class CodeEditorWidgetTest extends TestCase
         $this->assertCount(20, $rendered);
         $this->assertExactWidth($rendered, 80);
 
-        $plain = AnsiUtils::stripAnsiCodes(implode("\n", $rendered));
+        $plain = AnsiUtils::stripAnsiCodes(\implode("\n", $rendered));
         $this->assertStringContainsString('No file open', $plain, 'placeholder hint is shown');
         $this->assertStringContainsString('Ctrl+Shift+N', $plain, 'the primary Go to File chord, as the menu and the keymap page print it');
 
         // And it FOLLOWS the map rather than spelling a chord out: the one hint
         // a new user reads must not point at a key they have rebound.
         $editor->setKeybindings(new Keybindings(['goto_file' => ['f4']]));
-        $rebound = AnsiUtils::stripAnsiCodes(implode("\n", $editor->render(new RenderContext(80, 20))));
+        $rebound = AnsiUtils::stripAnsiCodes(\implode("\n", $editor->render(new RenderContext(80, 20))));
         $this->assertStringContainsString('press F4 to open a file', $rebound);
 
         // And with the action unbound entirely it names the action instead of
@@ -392,16 +392,16 @@ final class CodeEditorWidgetTest extends TestCase
         // An explicit empty list, which is what a keymap file naming the
         // action with no keys leaves behind — the merge replaces per action.
         $editor->setKeybindings(new Keybindings(['goto_file' => []]));
-        $unbound = AnsiUtils::stripAnsiCodes(implode("\n", $editor->render(new RenderContext(80, 20))));
+        $unbound = AnsiUtils::stripAnsiCodes(\implode("\n", $editor->render(new RenderContext(80, 20))));
         $this->assertStringContainsString('use Go to File to open one', $unbound);
-        $joined = implode('', $rendered);
+        $joined = \implode('', $rendered);
         $this->assertStringNotContainsString("\x1b_pi:c;", $joined, 'no cursor marker when no file is open');
 
         // Opening a file restores the normal document render (gutter + cursor).
         $editor->openFile('demo.php', "<?php\n");
         $withFile = $editor->render(new RenderContext(80, 20));
         $this->assertStringContainsString("\x1b_pi:c;", $withFile[0], 'cursor returns once a file is open');
-        $this->assertStringNotContainsString('No file open', AnsiUtils::stripAnsiCodes(implode("\n", $withFile)));
+        $this->assertStringNotContainsString('No file open', AnsiUtils::stripAnsiCodes(\implode("\n", $withFile)));
     }
 
     public function testMenuOverlayCompositesOverEditorRows(): void
@@ -416,7 +416,7 @@ final class CodeEditorWidgetTest extends TestCase
 
         $this->assertCount(20, $rendered);
         $this->assertExactWidth($rendered, 80);
-        $plain = AnsiUtils::stripAnsiCodes(implode("\n", $rendered));
+        $plain = AnsiUtils::stripAnsiCodes(\implode("\n", $rendered));
         $this->assertStringContainsString('Paste', $plain, 'dropdown item floats over the editor');
         $this->assertStringContainsString('Find', $plain);
     }
@@ -461,7 +461,7 @@ final class CodeEditorWidgetTest extends TestCase
         $this->assertTrue($editor->isCompletionOpen());
 
         $rendered = $editor->render(new RenderContext(80, 20));
-        $this->assertStringContainsString('echoFirst', implode("\n", $rendered));
+        $this->assertStringContainsString('echoFirst', \implode("\n", $rendered));
         $this->assertExactWidth($rendered, 80);
 
         $editor->handleInput("\x1b[B"); // select second
@@ -741,13 +741,13 @@ final class CodeEditorWidgetTest extends TestCase
     {
         $editor = $this->editor("<?php\nfunction a()\n{\n    return 1;\n}\n");
 
-        $rows = AnsiUtils::stripAnsiCodes(implode("\n", $editor->render(new RenderContext(80, 10))));
+        $rows = AnsiUtils::stripAnsiCodes(\implode("\n", $editor->render(new RenderContext(80, 10))));
         $this->assertMatchesRegularExpression('/^\s+3\s*'.Glyphs::EXPANDED.' \{/m', $rows, 'the fold start wears an open triangle');
         $this->assertStringNotContainsString(Glyphs::COLLAPSED, $rows, 'nothing is collapsed yet');
 
         $editor->getDocument()->setCursor(2, 0);
         $editor->runAction('toggle_fold');
-        $rows = AnsiUtils::stripAnsiCodes(implode("\n", $editor->render(new RenderContext(80, 10))));
+        $rows = AnsiUtils::stripAnsiCodes(\implode("\n", $editor->render(new RenderContext(80, 10))));
 
         $this->assertStringContainsString(Glyphs::COLLAPSED, $rows, 'the collapsed fold flips the triangle');
         $this->assertStringNotContainsString(Glyphs::EXPANDED, $rows);
@@ -758,7 +758,7 @@ final class CodeEditorWidgetTest extends TestCase
     {
         $editor = $this->editor("<?php\n\$a = 1;\n\$b = 2;\n");
 
-        $rows = AnsiUtils::stripAnsiCodes(implode("\n", $editor->render(new RenderContext(80, 10))));
+        $rows = AnsiUtils::stripAnsiCodes(\implode("\n", $editor->render(new RenderContext(80, 10))));
 
         $this->assertStringNotContainsString(Glyphs::EXPANDED, $rows);
         $this->assertStringNotContainsString(Glyphs::COLLAPSED, $rows);
@@ -781,7 +781,7 @@ final class CodeEditorWidgetTest extends TestCase
         $editor = $this->editor("<?php\n\$only = 1;\necho 2;\n");
         $editor->getDocument()->setCursor(1, 3); // inside $only (appears once)
         $rendered = $editor->render(new RenderContext(80, 10));
-        $this->assertStringNotContainsString("\x1b[48;5;23m", implode('', $rendered));
+        $this->assertStringNotContainsString("\x1b[48;5;23m", \implode('', $rendered));
     }
 
     public function testOccurrenceHighlightSkipsShortAndNumericTokens(): void
@@ -792,11 +792,11 @@ final class CodeEditorWidgetTest extends TestCase
 
         $editor->getDocument()->setCursor(1, 1); // on $i
         $short = $editor->render(new RenderContext(80, 10));
-        $this->assertStringNotContainsString("\x1b[48;5;23m", implode('', $short));
+        $this->assertStringNotContainsString("\x1b[48;5;23m", \implode('', $short));
 
         $editor->getDocument()->setCursor(1, 6); // on 11
         $numeric = $editor->render(new RenderContext(80, 10));
-        $this->assertStringNotContainsString("\x1b[48;5;23m", implode('', $numeric));
+        $this->assertStringNotContainsString("\x1b[48;5;23m", \implode('', $numeric));
     }
 
     public function testIndentGuidesDrawnAtEachLevel(): void
@@ -811,7 +811,7 @@ final class CodeEditorWidgetTest extends TestCase
         $line2 = AnsiUtils::stripAnsiCodes($rendered[4]); // "        deep();" — 2 levels
 
         $this->assertStringNotContainsString('│', $line1, 'unindented line has no guide');
-        $this->assertSame(2, substr_count($line2, needle: '│'), 'a guide per indent level');
+        $this->assertSame(2, \substr_count($line2, needle: '│'), 'a guide per indent level');
         $this->assertStringContainsString('deep();', $line2);
     }
 
@@ -933,7 +933,7 @@ final class CodeEditorWidgetTest extends TestCase
 
         $this->assertStringContainsString("\x1b[48;5;236m", $rendered[2]);
         $bracketRows = $rendered[2]."\n".$rendered[4];
-        $this->assertSame(2, substr_count($bracketRows, LineDecorator::BRACKET_SGR), 'both brackets highlighted');
+        $this->assertSame(2, \substr_count($bracketRows, LineDecorator::BRACKET_SGR), 'both brackets highlighted');
         $this->assertExactWidth($rendered, 80);
     }
 
@@ -1061,9 +1061,9 @@ final class CodeEditorWidgetTest extends TestCase
 
         // The stripe carries a block whose density encodes the worst severity,
         // mapped to its proportional row.
-        $this->assertStringContainsString("\x1b[38;5;203m█", implode('', $rendered), 'error: full block, colored red, in the stripe');
-        $this->assertStringContainsString("\x1b[38;5;75m▒", implode('', $rendered), 'info: medium-shade block in the stripe');
-        $this->assertStringContainsString("\x1b[38;5;244m░", implode('', $rendered), 'hint: light-shade block in the stripe');
+        $this->assertStringContainsString("\x1b[38;5;203m█", \implode('', $rendered), 'error: full block, colored red, in the stripe');
+        $this->assertStringContainsString("\x1b[38;5;75m▒", \implode('', $rendered), 'info: medium-shade block in the stripe');
+        $this->assertStringContainsString("\x1b[38;5;244m░", \implode('', $rendered), 'hint: light-shade block in the stripe');
 
         // The gutter marker column repeats the severity as a glyph.
         $this->assertStringContainsString('✗', AnsiUtils::stripAnsiCodes($rendered[1]), 'error glyph in the gutter');
@@ -1078,7 +1078,7 @@ final class CodeEditorWidgetTest extends TestCase
 
     public function testErrorStripeShowsWholeFileAndClickJumps(): void
     {
-        $src = "<?php\n".str_repeat("\$x = 1;\n", times: 60);
+        $src = "<?php\n".\str_repeat("\$x = 1;\n", times: 60);
         $editor = $this->editor($src, 'stripe.php');
         $editor
             ->decorations()
@@ -1092,11 +1092,11 @@ final class CodeEditorWidgetTest extends TestCase
         $this->assertExactWidth($rendered, 80);
 
         // The stripe (last column) marks both problems even though line 55 is off-screen.
-        $all = implode('', $rendered);
+        $all = \implode('', $rendered);
         $this->assertStringContainsString("\x1b[38;5;203m\x1b[48;5;236m█", $all, 'error block in the stripe, over the viewport thumb');
         $this->assertStringContainsString("\x1b[38;5;179m▓", $all, 'off-screen warning shown as a dashed amber block');
-        $this->assertSame(1, substr_count($all, needle: '█'), 'the empty list draws no stripe mark');
-        $this->assertSame(1, substr_count($all, needle: '▓'), 'one warning mark');
+        $this->assertSame(1, \substr_count($all, needle: '█'), 'the empty list draws no stripe mark');
+        $this->assertSame(1, \substr_count($all, needle: '▓'), 'one warning mark');
 
         // Clicking low in the stripe jumps deep into the file (near the warning).
         $editor->clickAt(18, 79);
@@ -1135,12 +1135,12 @@ final class CodeEditorWidgetTest extends TestCase
         $editor->setSignatureHint('greet(string $name): string');
 
         $rendered = $editor->render(new RenderContext(80, 10));
-        $this->assertStringContainsString('greet(string $name): string', AnsiUtils::stripAnsiCodes(implode("\n", $rendered)));
+        $this->assertStringContainsString('greet(string $name): string', AnsiUtils::stripAnsiCodes(\implode("\n", $rendered)));
         $this->assertExactWidth($rendered, 80);
 
         $editor->handleInput("\x1b"); // escape clears the hint
         $rendered = $editor->render(new RenderContext(80, 10));
-        $this->assertStringNotContainsString('$name', AnsiUtils::stripAnsiCodes(implode("\n", $rendered)));
+        $this->assertStringNotContainsString('$name', AnsiUtils::stripAnsiCodes(\implode("\n", $rendered)));
     }
 
     public function testAutoTriggerOnArrowAndSignatureOnParen(): void
@@ -1197,7 +1197,7 @@ final class CodeEditorWidgetTest extends TestCase
 
     public function testJumpToCentersAndConverts(): void
     {
-        $lines = implode("\n", array_map(static fn (int $i) => "line {$i}", range(0, end: 99)));
+        $lines = \implode("\n", \array_map(static fn (int $i) => "line {$i}", \range(0, end: 99)));
         $editor = $this->editor($lines);
         $editor->jumpTo(50, 3);
 
@@ -1205,7 +1205,7 @@ final class CodeEditorWidgetTest extends TestCase
         $this->assertSame(3, $editor->getDocument()->getCursorCol());
 
         $rendered = $editor->render(new RenderContext(80, 20));
-        $plain = AnsiUtils::stripAnsiCodes(implode("\n", $rendered));
+        $plain = AnsiUtils::stripAnsiCodes(\implode("\n", $rendered));
         $this->assertStringContainsString('line 50', $plain, 'target line visible after jump');
     }
 
@@ -1253,7 +1253,7 @@ final class CodeEditorWidgetTest extends TestCase
         $editor->setCallbacks(new EditorCallbacks(
             file: new FakeEditorFileActions(
                 openFind: static function (FindMode $r) use (&$events): void {
-                    $events[] = 'find:'.var_export(FindMode::Replace === $r, return: true);
+                    $events[] = 'find:'.\var_export(FindMode::Replace === $r, return: true);
                 },
                 openGotoFile: static function () use (&$events): void {
                     $events[] = 'goto';
@@ -1318,13 +1318,13 @@ final class CodeEditorWidgetTest extends TestCase
 
     public function testHorizontalScrollKeepsCursorVisible(): void
     {
-        $long = str_repeat('abcdefghij', times: 20);
+        $long = \str_repeat('abcdefghij', times: 20);
         $editor = $this->editor("<?php\n{$long}\n");
         $editor->getDocument()->setCursor(1, 150);
 
         $rendered = $editor->render(new RenderContext(40, 5));
         $this->assertExactWidth($rendered, 40);
-        $this->assertStringContainsString("\x1b_pi:c;", implode('', $rendered), 'cursor marker still rendered');
+        $this->assertStringContainsString("\x1b_pi:c;", \implode('', $rendered), 'cursor marker still rendered');
     }
 
     public function testRenameKeystrokeOpensPrefilledPrompt(): void
@@ -1336,7 +1336,7 @@ final class CodeEditorWidgetTest extends TestCase
                 // Mirror RefactorController's flow: prompt for the new name, then rename.
                 requestPrepareRename: static function (int $l, int $c, string $word) use ($editor, &$renamed): void {
                     $editor->openPrompt('Rename to', $word, static function (string $value) use ($l, $c, &$renamed): void {
-                        $renamed = [trim($value), $l, $c];
+                        $renamed = [\trim($value), $l, $c];
                     });
                 },
             ),
@@ -1442,24 +1442,24 @@ final class CodeEditorWidgetTest extends TestCase
         $editor = $this->editor("alpha;\nbeta;\n", '/tmp/a.php');
         $editor->decorations()->setLineAnnotations([0 => 'abc12345 tester 2026-01-01', 1 => 'abc12345 tester 2026-01-01']);
 
-        $screen = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $editor->render(new RenderContext(80, 6))));
-        $this->assertSame(2, substr_count($screen, needle: 'abc12345 tester'), 'both annotations render in the trailing space');
+        $screen = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $editor->render(new RenderContext(80, 6))));
+        $this->assertSame(2, \substr_count($screen, needle: 'abc12345 tester'), 'both annotations render in the trailing space');
 
         // A diagnostic on line 0 wins the trailing slot; line 1 keeps its blame.
         $editor->display()->setInlineDiagnostics(true);
         $editor->decorations()->setDiagnostics([0 => [['severity' => 1, 'message' => 'Boom', 'col' => 0]]]);
-        $screen = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $editor->render(new RenderContext(80, 6))));
+        $screen = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $editor->render(new RenderContext(80, 6))));
         $this->assertStringContainsString('Boom', $screen);
-        $this->assertSame(1, substr_count($screen, needle: 'abc12345 tester'), 'the diagnosed line dropped its annotation');
+        $this->assertSame(1, \substr_count($screen, needle: 'abc12345 tester'), 'the diagnosed line dropped its annotation');
 
         // Too narrow: the annotation is dropped rather than truncated to noise.
         $editor->decorations()->setDiagnostics([]);
-        $narrow = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $editor->render(new RenderContext(16, 6))));
+        $narrow = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $editor->render(new RenderContext(16, 6))));
         $this->assertStringNotContainsString('abc12345', $narrow);
 
         // A document switch clears the annotations with the other decorations.
         $editor->openFile('/tmp/b.php', "gamma;\n");
-        $screen = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $editor->render(new RenderContext(80, 6))));
+        $screen = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $editor->render(new RenderContext(80, 6))));
         $this->assertStringNotContainsString('abc12345', $screen);
     }
 
@@ -1596,7 +1596,7 @@ final class CodeEditorWidgetTest extends TestCase
     public function testShowingAnotherDocumentRebasesTheRemap(): void
     {
         $widget = new CodeEditorWidget();
-        $widget->showDocument('/tmp/long.php', new Document(str_repeat("x\n", times: 40)));
+        $widget->showDocument('/tmp/long.php', new Document(\str_repeat("x\n", times: 40)));
 
         $short = new Document("a\nb\nc\n");
         $widget->showDocument('/tmp/short.php', $short);

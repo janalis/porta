@@ -17,7 +17,7 @@ final class RecordingHelpViewerHandler implements HelpViewerHandler
 
     public function openHelp(string $path): void
     {
-        $this->events[] = 'help:'.basename($path);
+        $this->events[] = 'help:'.\basename($path);
         if (null !== $this->onOpenHelp) {
             ($this->onOpenHelp)($path);
         }
@@ -25,7 +25,7 @@ final class RecordingHelpViewerHandler implements HelpViewerHandler
 
     public function openFile(string $path): void
     {
-        $this->events[] = 'file:'.basename($path);
+        $this->events[] = 'file:'.\basename($path);
     }
 
     public function openUrl(string $url): void
@@ -45,7 +45,7 @@ final class RecordingHelpViewerHandler implements HelpViewerHandler
 
     public function labelFor(string $path): string
     {
-        return basename($path, suffix: '.md');
+        return \basename($path, suffix: '.md');
     }
 
     public function backEmpty(): void

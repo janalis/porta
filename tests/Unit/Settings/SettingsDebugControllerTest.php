@@ -51,7 +51,7 @@ final class SettingsDebugControllerTest extends TestCase
 
     private function flashed(): string
     {
-        return AnsiUtils::stripAnsiCodes(implode('', $this->statusBar->render(new RenderContext(100, 1))));
+        return AnsiUtils::stripAnsiCodes(\implode('', $this->statusBar->render(new RenderContext(100, 1))));
     }
 
     public function testRowsExposeTheConfiguredAdapterAndLaunchJson(): void
@@ -101,7 +101,7 @@ final class SettingsDebugControllerTest extends TestCase
         $controller = $this->controller();
         $controller->change('php', 'debugAdapter', ' node b.js ');
 
-        $written = json_decode((string) file_get_contents($this->project->path('.porta.json')), associative: true);
+        $written = \json_decode((string) \file_get_contents($this->project->path('.porta.json')), associative: true);
         $this->assertSame('node b.js', $written['languages']['php']['debug']['adapter']);
         $this->assertSame(['node', 'b.js'], $this->adapters->adapterFor('php')?->adapterArgv, 'live registry updated');
         $this->assertSame(['env' => ['X' => '1']], $this->adapters->adapterFor('php')?->launch, 'launch overrides preserved');
@@ -117,7 +117,7 @@ final class SettingsDebugControllerTest extends TestCase
         $controller = $this->controller();
         $this->assertTrue($controller->change('php', 'debugLaunch', '{"stopOnEntry": true}'), 'accepted');
 
-        $written = json_decode((string) file_get_contents($this->project->path('.porta.json')), associative: true);
+        $written = \json_decode((string) \file_get_contents($this->project->path('.porta.json')), associative: true);
         $this->assertSame(['stopOnEntry' => true], $written['languages']['php']['debug']['launch']);
         $this->assertSame(['stopOnEntry' => true], $this->adapters->launchOverrides('php'));
         $this->assertStringContainsString('PHP: Launch config (JSON)', $this->flashed(), 'a successful launch change flashes, same as the adapter change does');
@@ -131,7 +131,7 @@ final class SettingsDebugControllerTest extends TestCase
 
         $controller->change('php', 'debugLaunch', '');
         $this->assertSame([], $this->adapters->launchOverrides('php'), 'blank clears the overrides');
-        $written = json_decode((string) file_get_contents($this->project->path('.porta.json')), associative: true);
+        $written = \json_decode((string) \file_get_contents($this->project->path('.porta.json')), associative: true);
         $this->assertArrayNotHasKey('launch', $written['languages']['php']['debug'] ?? []);
     }
 

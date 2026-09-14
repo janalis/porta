@@ -37,7 +37,7 @@ final class SettingsSearchTest extends TestCase
 
     public function testCtrlFFindsASettingOnAnotherPageAndLandsOnItsRow(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "<?php\n\$x = 1;\n"]);
 
         $this->runIde(
@@ -59,7 +59,7 @@ final class SettingsSearchTest extends TestCase
                         $this->rowOf($this->screenGrid($tui, $terminal), 'Find Setting'),
                         'the picker paints over the full-screen settings view',
                     );
-                    foreach (str_split('sticky') as $char) {
+                    foreach (\str_split('sticky') as $char) {
                         $tui->handleInput($char);
                     }
                 },
@@ -98,7 +98,7 @@ final class SettingsSearchTest extends TestCase
      */
     public function testPickingWithTheViewClosedOpensItOnTheSettingsOwnPage(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "<?php\n\$x = 1;\n"]);
 
         $this->runIde(
@@ -113,7 +113,7 @@ final class SettingsSearchTest extends TestCase
                         $this->rowOf($this->screenGrid($tui, $terminal), 'Find Setting'),
                         'the picker opens over the editor',
                     );
-                    foreach (str_split('sticky') as $char) {
+                    foreach (\str_split('sticky') as $char) {
                         $tui->handleInput($char);
                     }
                 },
@@ -141,7 +141,7 @@ final class SettingsSearchTest extends TestCase
      */
     public function testSearchEverywhereFindsSettingsToo(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "<?php\n\$x = 1;\n"]);
 
         $this->runIde(
@@ -156,7 +156,7 @@ final class SettingsSearchTest extends TestCase
                         $this->rowOf($this->screenGrid($tui, $terminal), 'Search Everywhere'),
                         'the aggregate picker opened',
                     );
-                    foreach (str_split('sticky scroll') as $char) {
+                    foreach (\str_split('sticky scroll') as $char) {
                         $tui->handleInput($char);
                     }
                 },
@@ -190,7 +190,7 @@ final class SettingsSearchTest extends TestCase
      */
     public function testTheScopeChooserDoesNotFloodResultsWithItself(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "<?php\n\$x = 1;\n"]);
 
         $this->runIde(
@@ -199,7 +199,7 @@ final class SettingsSearchTest extends TestCase
             [
                 300 => function ($tui, $terminal, $ide): void {
                     $index = Services::resolve($ide, SettingsSearchIndex::class);
-                    $labels = array_map(
+                    $labels = \array_map(
                         static fn (SettingsSearchEntry $e): string => $e->label,
                         $index->search('save', 60),
                     );
@@ -221,7 +221,7 @@ final class SettingsSearchTest extends TestCase
      */
     public function testASearchHitOnAPluginsOwnPageRevealsItThere(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject([
             'A.php' => "<?php\n\$x = 1;\n",
             '.porta/plugins/noisy/plugin.php' => <<<'PHP'

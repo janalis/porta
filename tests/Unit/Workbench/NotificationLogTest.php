@@ -36,7 +36,7 @@ final class NotificationLogTest extends TestCase
         $log->append('second');
 
         $entries = $log->entries();
-        $this->assertSame(['first', 'second'], array_column($entries, 'text'));
+        $this->assertSame(['first', 'second'], \array_column($entries, 'text'));
         $this->assertSame('10:00:00', $entries[0]['time']->format('H:i:s'));
         $this->assertSame('10:00:05', $entries[1]['time']->format('H:i:s'));
     }

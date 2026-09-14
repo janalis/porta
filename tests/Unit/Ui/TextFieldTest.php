@@ -106,12 +106,12 @@ final class TextFieldTest extends TestCase
 
     public function testRenderScrollsToTheTailWhenTheFocusedValueOverflowsWidth(): void
     {
-        $field = new TextField(str_repeat('x', times: 60));
+        $field = new TextField(\str_repeat('x', times: 60));
         $marker = AnsiUtils::cursorMarker(CursorShape::Bar);
 
         $out = $field->render(cursor: CaretVisibility::Shown, width: 10);
 
-        $this->assertSame(1, substr_count($out, $marker), 'the end caret marker stays visible');
+        $this->assertSame(1, \substr_count($out, $marker), 'the end caret marker stays visible');
         $this->assertStringEndsWith($marker, $out, 'scrolled to the tail, caret last');
         $this->assertLessThanOrEqual(10, AnsiUtils::visibleWidth($out), 'clipped to width');
     }
@@ -122,7 +122,7 @@ final class TextFieldTest extends TestCase
 
         $this->assertTrue($field->backspace());
         $this->assertSame('caf', $field->value(), 'the whole é is removed, not one byte');
-        $this->assertTrue(mb_check_encoding($field->value(), encoding: 'UTF-8'), 'never leaves a partial sequence');
+        $this->assertTrue(\mb_check_encoding($field->value(), encoding: 'UTF-8'), 'never leaves a partial sequence');
     }
 
     public function testBackspaceDeletesAWholeEmojiAndEmDash(): void
@@ -130,12 +130,12 @@ final class TextFieldTest extends TestCase
         $field = new TextField("done \u{1F41B}"); // 4-byte emoji
         $field->backspace();
         $this->assertSame('done ', $field->value());
-        $this->assertTrue(mb_check_encoding($field->value(), encoding: 'UTF-8'));
+        $this->assertTrue(\mb_check_encoding($field->value(), encoding: 'UTF-8'));
 
         $dash = new TextField("slow \u{2014}"); // 3-byte em-dash
         $dash->backspace();
         $this->assertSame('slow ', $dash->value());
-        $this->assertTrue(mb_check_encoding($dash->value(), encoding: 'UTF-8'));
+        $this->assertTrue(\mb_check_encoding($dash->value(), encoding: 'UTF-8'));
     }
 
     public function testTheCaretMovesAndTypingLandsWhereItIs(): void
@@ -235,7 +235,7 @@ final class TextFieldTest extends TestCase
 
     public function testAnOverflowingValueScrollsToTheCaretWhereverItIs(): void
     {
-        $field = new TextField(str_repeat('x', times: 40).'END');
+        $field = new TextField(\str_repeat('x', times: 40).'END');
         $field->moveHome();
 
         $rendered = $field->render(CaretVisibility::Shown, width: 10);

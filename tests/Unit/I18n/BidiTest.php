@@ -22,50 +22,50 @@ final class BidiTest extends TestCase
 
     private static function strip(string $s): string
     {
-        return (string) preg_replace('/\x1b\[[0-9;]*m/', replacement: '', subject: $s);
+        return (string) \preg_replace('/\x1b\[[0-9;]*m/', replacement: '', subject: $s);
     }
 
     public function testEmptyLineIsReturnedUnchanged(): void
     {
-        self::assertSame('', Bidi::reorder('', BaseDirection::Rtl));
+        $this->assertSame('', Bidi::reorder('', BaseDirection::Rtl));
     }
 
     public function testAPureEscapeSequenceLineHasNothingToReorder(): void
     {
-        self::assertSame("\x1b[0m", Bidi::reorder("\x1b[0m", BaseDirection::Rtl));
+        $this->assertSame("\x1b[0m", Bidi::reorder("\x1b[0m", BaseDirection::Rtl));
     }
 
     public function testLtrBaseWithoutRtlContentIsReturnedUnchanged(): void
     {
-        self::assertSame('hello world', Bidi::reorder('hello world', BaseDirection::Ltr));
+        $this->assertSame('hello world', Bidi::reorder('hello world', BaseDirection::Ltr));
     }
 
     public function testLatinUnderRtlBaseStaysReadableButRightAnchored(): void
     {
-        self::assertSame('abc', self::strip(Bidi::reorder('abc', BaseDirection::Rtl)));
-        self::assertSame('   abc', self::strip(Bidi::reorder('abc   ', BaseDirection::Rtl)));
+        $this->assertSame('abc', self::strip(Bidi::reorder('abc', BaseDirection::Rtl)));
+        $this->assertSame('   abc', self::strip(Bidi::reorder('abc   ', BaseDirection::Rtl)));
     }
 
     public function testHebrewUnderRtlBaseIsReversedToVisualOrder(): void
     {
-        self::assertSame(self::SHALOM_VISUAL, self::strip(Bidi::reorder(self::SHALOM, BaseDirection::Rtl)));
+        $this->assertSame(self::SHALOM_VISUAL, self::strip(Bidi::reorder(self::SHALOM, BaseDirection::Rtl)));
     }
 
     public function testMixedLineOrdersRunsForTheRtlBase(): void
     {
         $line = 'abc '.self::SHALOM.' def';
-        self::assertSame('def '.self::SHALOM_VISUAL.' abc', self::strip(Bidi::reorder($line, BaseDirection::Rtl)));
+        $this->assertSame('def '.self::SHALOM_VISUAL.' abc', self::strip(Bidi::reorder($line, BaseDirection::Rtl)));
     }
 
     public function testHebrewRunReversesWhileLatinStaysUnderAnLtrBase(): void
     {
         $line = 'x '.self::SHALOM.' y';
-        self::assertSame('x '.self::SHALOM_VISUAL.' y', self::strip(Bidi::reorder($line, BaseDirection::Ltr)));
+        $this->assertSame('x '.self::SHALOM_VISUAL.' y', self::strip(Bidi::reorder($line, BaseDirection::Ltr)));
     }
 
     public function testDigitsReadLeftToRightUnderAnRtlBase(): void
     {
-        self::assertSame(self::SHALOM_VISUAL.' 12', self::strip(Bidi::reorder('12 '.self::SHALOM, BaseDirection::Rtl)));
+        $this->assertSame(self::SHALOM_VISUAL.' 12', self::strip(Bidi::reorder('12 '.self::SHALOM, BaseDirection::Rtl)));
     }
 
     /**
@@ -78,12 +78,12 @@ final class BidiTest extends TestCase
      */
     public function testASeparatorBetweenTwoNumbersHoldsThemTogether(): void
     {
-        self::assertSame('12:5', self::strip(Bidi::reorder('12:5', BaseDirection::Rtl)), 'line:column');
-        self::assertSame('3.14', self::strip(Bidi::reorder('3.14', BaseDirection::Rtl)), 'a decimal');
-        self::assertSame('1,234', self::strip(Bidi::reorder('1,234', BaseDirection::Rtl)), 'a thousands group');
-        self::assertSame('2026-09-11', self::strip(Bidi::reorder('2026-09-11', BaseDirection::Rtl)), 'a date');
-        self::assertSame('1+2', self::strip(Bidi::reorder('1+2', BaseDirection::Rtl)), 'a European separator');
-        self::assertSame('1/2', self::strip(Bidi::reorder('1/2', BaseDirection::Rtl)), 'a ratio');
+        $this->assertSame('12:5', self::strip(Bidi::reorder('12:5', BaseDirection::Rtl)), 'line:column');
+        $this->assertSame('3.14', self::strip(Bidi::reorder('3.14', BaseDirection::Rtl)), 'a decimal');
+        $this->assertSame('1,234', self::strip(Bidi::reorder('1,234', BaseDirection::Rtl)), 'a thousands group');
+        $this->assertSame('2026-09-11', self::strip(Bidi::reorder('2026-09-11', BaseDirection::Rtl)), 'a date');
+        $this->assertSame('1+2', self::strip(Bidi::reorder('1+2', BaseDirection::Rtl)), 'a European separator');
+        $this->assertSame('1/2', self::strip(Bidi::reorder('1/2', BaseDirection::Rtl)), 'a ratio');
     }
 
     /**
@@ -102,7 +102,7 @@ final class BidiTest extends TestCase
         foreach (['UTF-8', 'autoload.psr-4', 'PHP 8.4', 'v1.2'] as $token) {
             $out = self::strip(Bidi::reorder(self::SHALOM.' '.$token, BaseDirection::Rtl));
 
-            self::assertStringContainsString($token, $out, $token.' is one token, not two');
+            $this->assertStringContainsString($token, $out, $token.' is one token, not two');
         }
     }
 
@@ -117,7 +117,7 @@ final class BidiTest extends TestCase
      */
     public function testAPathWithALineNumberSurvives(): void
     {
-        self::assertSame(
+        $this->assertSame(
             'src/Foo.php:42',
             self::strip(Bidi::reorder('src/Foo.php:42', BaseDirection::Rtl)),
             'a file reference is one token',
@@ -130,8 +130,8 @@ final class BidiTest extends TestCase
         // The status bar's caret indicator: nothing Latin precedes it, so W7
         // leaves it alone and W4 keeps its separator. Were W7 to fire here the
         // digits would read as Latin text and the row would lay out differently.
-        self::assertSame('12:5', self::strip(Bidi::reorder('12:5', BaseDirection::Rtl)));
-        self::assertStringContainsString('12:5', self::strip(Bidi::reorder(self::SHALOM.' 12:5', BaseDirection::Rtl)));
+        $this->assertSame('12:5', self::strip(Bidi::reorder('12:5', BaseDirection::Rtl)));
+        $this->assertStringContainsString('12:5', self::strip(Bidi::reorder(self::SHALOM.' 12:5', BaseDirection::Rtl)));
     }
 
     /**
@@ -145,8 +145,8 @@ final class BidiTest extends TestCase
     public function testASeparatorAtEitherEndDoesNotJoinAnything(): void
     {
         // Neutral, so it takes the base direction and moves to the far side.
-        self::assertSame('12:', self::strip(Bidi::reorder(':12', BaseDirection::Rtl)), 'nothing to its left');
-        self::assertSame(':12', self::strip(Bidi::reorder('12:', BaseDirection::Rtl)), 'nothing to its right');
+        $this->assertSame('12:', self::strip(Bidi::reorder(':12', BaseDirection::Rtl)), 'nothing to its left');
+        $this->assertSame(':12', self::strip(Bidi::reorder('12:', BaseDirection::Rtl)), 'nothing to its right');
     }
 
     /** The number survives with Hebrew around it, which is the real setting. */
@@ -154,7 +154,7 @@ final class BidiTest extends TestCase
     {
         $line = self::SHALOM.' 12:5';
 
-        self::assertStringContainsString('12:5', self::strip(Bidi::reorder($line, BaseDirection::Rtl)));
+        $this->assertStringContainsString('12:5', self::strip(Bidi::reorder($line, BaseDirection::Rtl)));
     }
 
     /**
@@ -166,41 +166,41 @@ final class BidiTest extends TestCase
      */
     public function testOnlyASingleSeparatorJoinsTwoNumbers(): void
     {
-        self::assertSame('5::12', self::strip(Bidi::reorder('12::5', BaseDirection::Rtl)), 'two separators stay neutral');
+        $this->assertSame('5::12', self::strip(Bidi::reorder('12::5', BaseDirection::Rtl)), 'two separators stay neutral');
     }
 
     public function testWideCharacterWidthIsPreserved(): void
     {
         $out = self::strip(Bidi::reorder("a\u{65E5}b", BaseDirection::Rtl)); // 日 is two columns
-        self::assertSame(4, mb_strwidth($out, encoding: 'UTF-8'));
+        $this->assertSame(4, \mb_strwidth($out, encoding: 'UTF-8'));
     }
 
     public function testSgrColourSpansTravelWithTheirText(): void
     {
         $out = Bidi::reorder("\x1b[31mred\x1b[0m", BaseDirection::Rtl);
-        self::assertSame('red', self::strip($out));
-        self::assertStringContainsString("\x1b[31m", $out, 'the colour is retained');
+        $this->assertSame('red', self::strip($out));
+        $this->assertStringContainsString("\x1b[31m", $out, 'the colour is retained');
     }
 
     public function testStyleChangesAndAFinalResetAreEmitted(): void
     {
         // "A" is red, "B" is default (after reset); reordered under RTL base.
         $out = Bidi::reorder("\x1b[31mA\x1b[0mB", BaseDirection::Rtl);
-        self::assertSame('AB', self::strip($out));
+        $this->assertSame('AB', self::strip($out));
         // A styled span still opens with red somewhere in the output.
-        self::assertStringContainsString("\x1b[31m", $out);
+        $this->assertStringContainsString("\x1b[31m", $out);
 
         // A line that never resets keeps its style active to the end.
         $trailing = Bidi::reorder("\x1b[1mAB", BaseDirection::Rtl);
-        self::assertStringEndsWith("\x1b[0m", $trailing);
+        $this->assertStringEndsWith("\x1b[0m", $trailing);
     }
 
     public function testPairedPunctuationMirrorsInsideARightToLeftRun(): void
     {
         // A parenthesis adjacent to Hebrew resolves rtl and mirrors under L4.
         $out = self::strip(Bidi::reorder('('.self::SHALOM, BaseDirection::Rtl));
-        self::assertStringContainsString(')', $out, 'the opening paren mirrors to a closing one');
-        self::assertStringNotContainsString('(', $out);
+        $this->assertStringContainsString(')', $out, 'the opening paren mirrors to a closing one');
+        $this->assertStringNotContainsString('(', $out);
     }
 
     /**
@@ -219,8 +219,8 @@ final class BidiTest extends TestCase
     {
         $out = self::strip(Bidi::reorder($glyph.self::SHALOM, BaseDirection::Rtl));
 
-        self::assertStringContainsString($mirrored, $out, $glyph.' should mirror to '.$mirrored);
-        self::assertStringNotContainsString($glyph, $out);
+        $this->assertStringContainsString($mirrored, $out, $glyph.' should mirror to '.$mirrored);
+        $this->assertStringNotContainsString($glyph, $out);
     }
 
     /** @return iterable<string, array{string, string}> */
@@ -246,7 +246,7 @@ final class BidiTest extends TestCase
     {
         foreach (['▲', '▼', '▾'] as $glyph) {
             $out = self::strip(Bidi::reorder($glyph.self::SHALOM, BaseDirection::Rtl));
-            self::assertStringContainsString($glyph, $out, $glyph.' points up or down and has no mirror');
+            $this->assertStringContainsString($glyph, $out, $glyph.' points up or down and has no mirror');
         }
     }
 
@@ -256,33 +256,33 @@ final class BidiTest extends TestCase
         // same way the parenthesis above does — a border row caught in an RTL
         // run keeps reading as a box instead of ending in two left corners.
         $out = self::strip(Bidi::reorder('╭'.self::SHALOM, BaseDirection::Rtl));
-        self::assertStringContainsString('╮', $out, 'the top-left corner mirrors to a top-right one');
-        self::assertStringNotContainsString('╭', $out);
+        $this->assertStringContainsString('╮', $out, 'the top-left corner mirrors to a top-right one');
+        $this->assertStringNotContainsString('╭', $out);
 
         $bottom = self::strip(Bidi::reorder('╰'.self::SHALOM.'╯', BaseDirection::Rtl));
-        self::assertStringContainsString('╰', $bottom);
-        self::assertStringContainsString('╯', $bottom, 'both bottom corners survive as a mirrored pair');
+        $this->assertStringContainsString('╰', $bottom);
+        $this->assertStringContainsString('╯', $bottom, 'both bottom corners survive as a mirrored pair');
     }
 
     public function testTeesAndSquareCornersMirrorInsideARightToLeftRun(): void
     {
         $tee = self::strip(Bidi::reorder('├'.self::SHALOM, BaseDirection::Rtl));
-        self::assertStringContainsString('┤', $tee, 'the left tee mirrors to a right tee');
-        self::assertStringNotContainsString('├', $tee);
+        $this->assertStringContainsString('┤', $tee, 'the left tee mirrors to a right tee');
+        $this->assertStringNotContainsString('├', $tee);
 
         $square = self::strip(Bidi::reorder('┌'.self::SHALOM, BaseDirection::Rtl));
-        self::assertStringContainsString('┐', $square);
-        self::assertStringNotContainsString('┌', $square);
+        $this->assertStringContainsString('┐', $square);
+        $this->assertStringNotContainsString('┌', $square);
 
         $bottom = self::strip(Bidi::reorder('└'.self::SHALOM, BaseDirection::Rtl));
-        self::assertStringContainsString('┘', $bottom);
-        self::assertStringNotContainsString('└', $bottom);
+        $this->assertStringContainsString('┘', $bottom);
+        $this->assertStringNotContainsString('└', $bottom);
     }
 
     public function testNeutralsBetweenMatchingRunsJoinThatSide(): void
     {
         // Two Latin words split by a space stay in reading order (space joins L).
-        self::assertSame('one two', self::strip(Bidi::reorder('one two', BaseDirection::Rtl)));
+        $this->assertSame('one two', self::strip(Bidi::reorder('one two', BaseDirection::Rtl)));
     }
 
     public function testACombiningGraphemeClusterIsCarriedThroughIntact(): void
@@ -290,7 +290,7 @@ final class BidiTest extends TestCase
         // "e" + combining acute is one grapheme cluster (classified by its base
         // codepoint); it must stay a single intact cell through the reorder.
         $line = "e\u{0301}";
-        self::assertSame($line, self::strip(Bidi::reorder($line, BaseDirection::Rtl)));
+        $this->assertSame($line, self::strip(Bidi::reorder($line, BaseDirection::Rtl)));
     }
 
     public function testTheZeroWidthCursorMarkerSurvivesAndTracksTheCaret(): void
@@ -298,52 +298,52 @@ final class BidiTest extends TestCase
         $marker = "\x1b_pi:c;5\x07";
         // Caret before "c" in Latin: the marker stays put (all-LTR run).
         $out = Bidi::reorder("ab{$marker}cd", BaseDirection::Rtl);
-        self::assertSame(1, substr_count($out, $marker), 'the marker is not shattered');
-        self::assertStringContainsString("ab{$marker}cd", $out);
+        $this->assertSame(1, \substr_count($out, $marker), 'the marker is not shattered');
+        $this->assertStringContainsString("ab{$marker}cd", $out);
 
         // Caret inside Hebrew: the marker rides the reversed run to the matching gap.
         $he = self::SHALOM;
-        $withCaret = mb_substr($he, start: 0, length: 2, encoding: 'UTF-8').$marker.mb_substr($he, start: 2, length: null, encoding: 'UTF-8');
+        $withCaret = \mb_substr($he, start: 0, length: 2, encoding: 'UTF-8').$marker.\mb_substr($he, start: 2, length: null, encoding: 'UTF-8');
         $reordered = Bidi::reorder($withCaret, BaseDirection::Rtl);
-        self::assertSame(1, substr_count($reordered, $marker));
+        $this->assertSame(1, \substr_count($reordered, $marker));
     }
 
     public function testVisualToLogicalColumnInvertsTheHebrewReversal(): void
     {
         // שלום reverses under rtl, so the leftmost screen column shows the last
         // logical character and vice versa.
-        self::assertSame(3, Bidi::visualToLogicalColumn(self::SHALOM, 0, BaseDirection::Rtl));
-        self::assertSame(2, Bidi::visualToLogicalColumn(self::SHALOM, 1, BaseDirection::Rtl));
-        self::assertSame(1, Bidi::visualToLogicalColumn(self::SHALOM, 2, BaseDirection::Rtl));
-        self::assertSame(0, Bidi::visualToLogicalColumn(self::SHALOM, 3, BaseDirection::Rtl));
+        $this->assertSame(3, Bidi::visualToLogicalColumn(self::SHALOM, 0, BaseDirection::Rtl));
+        $this->assertSame(2, Bidi::visualToLogicalColumn(self::SHALOM, 1, BaseDirection::Rtl));
+        $this->assertSame(1, Bidi::visualToLogicalColumn(self::SHALOM, 2, BaseDirection::Rtl));
+        $this->assertSame(0, Bidi::visualToLogicalColumn(self::SHALOM, 3, BaseDirection::Rtl));
     }
 
     public function testVisualToLogicalColumnIsIdentityForUnreorderedContent(): void
     {
-        self::assertSame(2, Bidi::visualToLogicalColumn('abc', 2, BaseDirection::Ltr)); // ltr, no rtl
-        self::assertSame(1, Bidi::visualToLogicalColumn('abc', 1, BaseDirection::Rtl)); // latin under rtl
+        $this->assertSame(2, Bidi::visualToLogicalColumn('abc', 2, BaseDirection::Ltr)); // ltr, no rtl
+        $this->assertSame(1, Bidi::visualToLogicalColumn('abc', 1, BaseDirection::Rtl)); // latin under rtl
     }
 
     public function testVisualToLogicalColumnHandlesEdges(): void
     {
-        self::assertSame(0, Bidi::visualToLogicalColumn(self::SHALOM, -3, BaseDirection::Rtl)); // negative clamps
-        self::assertSame(4, Bidi::visualToLogicalColumn(self::SHALOM, 99, BaseDirection::Rtl)); // past end → line end
-        self::assertSame(5, Bidi::visualToLogicalColumn('', 5, BaseDirection::Rtl)); // empty line: identity
-        self::assertSame(2, Bidi::visualToLogicalColumn("\x1b[0m", 2, BaseDirection::Rtl)); // pure SGR: identity
+        $this->assertSame(0, Bidi::visualToLogicalColumn(self::SHALOM, -3, BaseDirection::Rtl)); // negative clamps
+        $this->assertSame(4, Bidi::visualToLogicalColumn(self::SHALOM, 99, BaseDirection::Rtl)); // past end → line end
+        $this->assertSame(5, Bidi::visualToLogicalColumn('', 5, BaseDirection::Rtl)); // empty line: identity
+        $this->assertSame(2, Bidi::visualToLogicalColumn("\x1b[0m", 2, BaseDirection::Rtl)); // pure SGR: identity
     }
 
     public function testVisualToLogicalColumnSkipsTheZeroWidthMarker(): void
     {
         $marker = "\x1b_pi:c;5\x07";
         // The marker occupies no column, so mapping still lands on the glyphs.
-        self::assertSame(1, Bidi::visualToLogicalColumn("a{$marker}bc", 1, BaseDirection::Rtl));
+        $this->assertSame(1, Bidi::visualToLogicalColumn("a{$marker}bc", 1, BaseDirection::Rtl));
     }
 
     public function testVisualToLogicalColumnMapsWithinWideCharacters(): void
     {
         // 日 occupies screen columns 1–2; a click on its first cell maps to its
         // logical column (1), just past the leading "a".
-        self::assertSame(1, Bidi::visualToLogicalColumn("a\u{65E5}b", 1, BaseDirection::Rtl));
+        $this->assertSame(1, Bidi::visualToLogicalColumn("a\u{65E5}b", 1, BaseDirection::Rtl));
     }
 
     /**
@@ -368,13 +368,13 @@ final class BidiTest extends TestCase
     {
         $offenders = [];
         foreach (new \ReflectionClass(Glyphs::class)->getConstants() as $name => $value) {
-            $chars = preg_split('//u', (string) $value, flags: \PREG_SPLIT_NO_EMPTY);
+            $chars = \preg_split('//u', (string) $value, flags: \PREG_SPLIT_NO_EMPTY);
             foreach (false === $chars ? [] : $chars as $char) {
-                $codepoint = mb_ord($char, encoding: 'UTF-8');
+                $codepoint = \mb_ord($char, encoding: 'UTF-8');
                 // ASCII letters and digits ARE strong Latin (CHECKBOX_ON is
                 // "[x]"), and U+E000-F8FF is Private Use, which Unicode assigns
                 // to L — the branch icon there sits beside its Latin name.
-                $exempt = 1 === preg_match('/[A-Za-z0-9]/', $char) || $codepoint >= 0xE000 && $codepoint <= 0xF8FF;
+                $exempt = 1 === \preg_match('/[A-Za-z0-9]/', $char) || $codepoint >= 0xE000 && $codepoint <= 0xF8FF;
                 if ($exempt || 'L' !== Probe::invokeStatic(Bidi::class, 'classify', $char)) {
                     continue;
                 }
@@ -400,7 +400,7 @@ final class BidiTest extends TestCase
     public function testEveryMirroredGlyphCanReachTheMirror(): void
     {
         $unreachable = [];
-        foreach (array_keys(Probe::getStatic(Bidi::class, 'MIRROR')) as $glyph) {
+        foreach (\array_keys(Probe::getStatic(Bidi::class, 'MIRROR')) as $glyph) {
             if ('L' !== Probe::invokeStatic(Bidi::class, 'classify', (string) $glyph)) {
                 continue;
             }
@@ -421,12 +421,12 @@ final class BidiTest extends TestCase
      */
     public function testTheDirectionalMarksAreStrong(): void
     {
-        self::assertSame('L', Probe::invokeStatic(Bidi::class, 'classify', "\u{200E}"), 'left-to-right mark');
-        self::assertSame('R', Probe::invokeStatic(Bidi::class, 'classify', "\u{200F}"), 'right-to-left mark');
+        $this->assertSame('L', Probe::invokeStatic(Bidi::class, 'classify', "\u{200E}"), 'left-to-right mark');
+        $this->assertSame('R', Probe::invokeStatic(Bidi::class, 'classify', "\u{200F}"), 'right-to-left mark');
         // The arabic letter mark needs no branch of its own — the Arabic block
         // already classifies it R. It is asserted here so that staying true is
         // deliberate, and spent below because it is zero-width all the same.
-        self::assertSame('R', Probe::invokeStatic(Bidi::class, 'classify', "\u{061C}"), 'arabic letter mark');
+        $this->assertSame('R', Probe::invokeStatic(Bidi::class, 'classify', "\u{061C}"), 'arabic letter mark');
     }
 
     /**
@@ -441,11 +441,11 @@ final class BidiTest extends TestCase
     public function testAMarkBindsALatinGroupThatWouldOtherwiseShatter(): void
     {
         $shattered = self::strip(Bidi::reorder(self::SHALOM.'  < dark > · light', BaseDirection::Rtl));
-        self::assertStringNotContainsString('< dark >', $shattered, 'the defect this mark exists to fix');
+        $this->assertStringNotContainsString('< dark >', $shattered, 'the defect this mark exists to fix');
 
         $bound = self::strip(Bidi::reorder(self::SHALOM.'  '."\u{200E}".'< dark > · light', BaseDirection::Rtl));
 
-        self::assertStringContainsString('< dark > · light', $bound, 'the value keeps its brackets and its order');
+        $this->assertStringContainsString('< dark > · light', $bound, 'the value keeps its brackets and its order');
     }
 
     /**
@@ -464,8 +464,8 @@ final class BidiTest extends TestCase
 
         $out = Bidi::reorder($line, BaseDirection::Rtl);
 
-        self::assertStringNotContainsString("\u{200E}", $out, 'the mark is spent, not shipped to the terminal');
-        self::assertSame(AnsiUtils::visibleWidth($line), AnsiUtils::visibleWidth($out), 'and the row is exactly as wide as before');
+        $this->assertStringNotContainsString("\u{200E}", $out, 'the mark is spent, not shipped to the terminal');
+        $this->assertSame(AnsiUtils::visibleWidth($line), AnsiUtils::visibleWidth($out), 'and the row is exactly as wide as before');
     }
 
     /** Every zero-width mark is spent, not only the one the settings form uses. */
@@ -474,7 +474,7 @@ final class BidiTest extends TestCase
         foreach (["\u{200E}", "\u{200F}", "\u{061C}"] as $mark) {
             $out = Bidi::reorder(self::SHALOM.$mark.'abc', BaseDirection::Rtl);
 
-            self::assertStringNotContainsString($mark, $out, 'a mark reaching the terminal costs the row a column');
+            $this->assertStringNotContainsString($mark, $out, 'a mark reaching the terminal costs the row a column');
         }
     }
 
@@ -491,9 +491,9 @@ final class BidiTest extends TestCase
     #[\PHPUnit\Framework\Attributes\DataProvider('neutralRangeEdgeProvider')]
     public function testTheNeutralRangesEndWhereTheySay(int $codepoint, bool $neutral): void
     {
-        $class = Probe::invokeStatic(Bidi::class, 'classify', mb_chr($codepoint, encoding: 'UTF-8'));
+        $class = Probe::invokeStatic(Bidi::class, 'classify', \mb_chr($codepoint, encoding: 'UTF-8'));
 
-        self::assertSame($neutral, 'N' === $class, sprintf('U+%04X', $codepoint));
+        $this->assertSame($neutral, 'N' === $class, \sprintf('U+%04X', $codepoint));
     }
 
     /** @return iterable<string, array{int, bool}> codepoint => is it neutral */
@@ -536,8 +536,8 @@ final class BidiTest extends TestCase
         // covers the two boundary chars this provider probes that are mirror
         // pairs), so look for whichever form actually landed in the output.
         $needle = self::MIRROR_PAIRS[$char] ?? $char;
-        $charPos = mb_strpos($plain, needle: $needle, encoding: 'UTF-8');
-        $xPos = mb_strpos($plain, needle: 'x', encoding: 'UTF-8');
+        $charPos = \mb_strpos($plain, needle: $needle, encoding: 'UTF-8');
+        $xPos = \mb_strpos($plain, needle: 'x', encoding: 'UTF-8');
         \assert(false !== $charPos && false !== $xPos, description: 'both the probe char and the x marker must appear in the output');
 
         return $charPos > $xPos;
@@ -584,9 +584,9 @@ final class BidiTest extends TestCase
     #[\PHPUnit\Framework\Attributes\DataProvider('classifyBoundaryProvider')]
     public function testClassifyBoundary(int $codepoint, bool $expectedNonL): void
     {
-        $char = mb_chr($codepoint, encoding: 'UTF-8');
+        $char = \mb_chr($codepoint, encoding: 'UTF-8');
         \assert(false !== $char, description: 'the data provider only feeds valid codepoints');
-        self::assertSame($expectedNonL, self::classifiesAsNonL($char), \sprintf('codepoint 0x%04X', $codepoint));
+        $this->assertSame($expectedNonL, self::classifiesAsNonL($char), \sprintf('codepoint 0x%04X', $codepoint));
     }
 
     /**
@@ -599,8 +599,8 @@ final class BidiTest extends TestCase
     public function testClassifyBoundaryForCombiningMarkCodepoints(): void
     {
         $classify = new \ReflectionMethod(Bidi::class, 'classify');
-        self::assertSame('R', $classify->invoke(null, mb_chr(0x0600, encoding: 'UTF-8')), 'R2 start');
-        self::assertSame('R', $classify->invoke(null, mb_chr(0x08FF, encoding: 'UTF-8')), 'R3 end');
+        $this->assertSame('R', $classify->invoke(null, \mb_chr(0x0600, encoding: 'UTF-8')), 'R2 start');
+        $this->assertSame('R', $classify->invoke(null, \mb_chr(0x08FF, encoding: 'UTF-8')), 'R3 end');
     }
 
     /**
@@ -617,13 +617,13 @@ final class BidiTest extends TestCase
 
     public function testEnBoundaryDigitsPullAnAdjacentSpaceToTheRtlSide(): void
     {
-        self::assertTrue(self::digitPullsTheFollowingSpaceRtlward('0'), '0x30, the EN range start');
-        self::assertTrue(self::digitPullsTheFollowingSpaceRtlward('9'), '0x39, the EN range end');
+        $this->assertTrue(self::digitPullsTheFollowingSpaceRtlward('0'), '0x30, the EN range start');
+        $this->assertTrue(self::digitPullsTheFollowingSpaceRtlward('9'), '0x39, the EN range end');
     }
 
     public function testALetterDoesNotPullAnAdjacentSpaceToTheRtlSide(): void
     {
-        self::assertFalse(self::digitPullsTheFollowingSpaceRtlward('q'), 'a plain L char leaves the space on its own side');
+        $this->assertFalse(self::digitPullsTheFollowingSpaceRtlward('q'), 'a plain L char leaves the space on its own side');
     }
 
     public function testConsecutiveStyleChangesBothAccumulateIntoTheActiveState(): void
@@ -631,9 +631,9 @@ final class BidiTest extends TestCase
         // Two SGR codes in a row (no reset between) must both be part of the
         // active style carried forward, not just the last one seen.
         $out = Bidi::reorder("\x1b[31m\x1b[1mAB", BaseDirection::Rtl);
-        self::assertStringContainsString("\x1b[31m", $out);
-        self::assertStringContainsString("\x1b[1m", $out);
-        self::assertSame("\x1b[0m\x1b[31m\x1b[1mAB\x1b[0m", $out);
+        $this->assertStringContainsString("\x1b[31m", $out);
+        $this->assertStringContainsString("\x1b[1m", $out);
+        $this->assertSame("\x1b[0m\x1b[31m\x1b[1mAB\x1b[0m", $out);
     }
 
     public function testLtrBaseWithSgrAndNoRtlContentIsReturnedByteIdentical(): void
@@ -642,7 +642,7 @@ final class BidiTest extends TestCase
         // routing SGR-styled content through the full reorder pipeline
         // anyway would re-derive a leading reset that was never there.
         $line = "\x1b[31mred\x1b[0m";
-        self::assertSame($line, Bidi::reorder($line, BaseDirection::Ltr));
+        $this->assertSame($line, Bidi::reorder($line, BaseDirection::Ltr));
     }
 
     public function testVisualToLogicalColumnSkipsAnSgrSequenceNotJustTheCursorMarker(): void
@@ -651,8 +651,8 @@ final class BidiTest extends TestCase
         // exercised with real Hebrew content so a broken skip shifts the
         // mapped column, not just the raw token count.
         $line = "\x1b[31m\u{05E9}\u{05DC}"; // styled, 2 Hebrew chars, reversed under RTL
-        self::assertSame(1, Bidi::visualToLogicalColumn($line, 0, BaseDirection::Rtl));
-        self::assertSame(0, Bidi::visualToLogicalColumn($line, 1, BaseDirection::Rtl));
+        $this->assertSame(1, Bidi::visualToLogicalColumn($line, 0, BaseDirection::Rtl));
+        $this->assertSame(0, Bidi::visualToLogicalColumn($line, 1, BaseDirection::Rtl));
     }
 
     public function testVisualToLogicalColumnMarkerWidthBoundaryIsExactlyZero(): void
@@ -663,8 +663,8 @@ final class BidiTest extends TestCase
         // shifts which side of the marker a given visual column lands on.
         $marker = "\x1b_pi:c;5\x07";
         $line = "\u{05E9}{$marker}\u{05DC}";
-        self::assertSame(1, Bidi::visualToLogicalColumn($line, 0, BaseDirection::Rtl));
-        self::assertSame(0, Bidi::visualToLogicalColumn($line, 1, BaseDirection::Rtl));
+        $this->assertSame(1, Bidi::visualToLogicalColumn($line, 0, BaseDirection::Rtl));
+        $this->assertSame(0, Bidi::visualToLogicalColumn($line, 1, BaseDirection::Rtl));
     }
 
     public function testClassifyTreatsTheCursorMarkerAsNeutralNotLtr(): void
@@ -674,7 +674,7 @@ final class BidiTest extends TestCase
         // letting it join the Hebrew run it's adjacent to.
         $marker = "\x1b_pi:c;5\x07";
         $out = self::strip(Bidi::reorder("\u{05E9}\u{05DC}{$marker}x", BaseDirection::Rtl));
-        self::assertSame("x{$marker}\u{05DC}\u{05E9}", $out);
+        $this->assertSame("x{$marker}\u{05DC}\u{05E9}", $out);
     }
 
     public function testABaseCodepointFromAMultiCharGraphemeClusterIsTheFirstOne(): void
@@ -684,7 +684,7 @@ final class BidiTest extends TestCase
         // the trailing combining mark, or the cluster would misclassify as
         // neutral/L and land on the wrong side of the reorder.
         $cluster = "\u{05D0}\u{0301}"; // aleph + combining acute, one grapheme
-        self::assertSame('b'.$cluster, self::strip(Bidi::reorder($cluster.'b', BaseDirection::Rtl)));
+        $this->assertSame('b'.$cluster, self::strip(Bidi::reorder($cluster.'b', BaseDirection::Rtl)));
     }
 
     public function testStyleChangeMidRunEmitsResetBeforeTheNewCode(): void
@@ -693,6 +693,6 @@ final class BidiTest extends TestCase
         // new SGR code, so a reordered run never inherits a stale style from
         // whatever preceded it in visual order.
         $out = Bidi::reorder("\x1b[31mA\x1b[0mB", BaseDirection::Rtl);
-        self::assertSame("\x1b[0m\x1b[31mA\x1b[0mB", $out);
+        $this->assertSame("\x1b[0m\x1b[31mA\x1b[0mB", $out);
     }
 }

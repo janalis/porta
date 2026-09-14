@@ -129,7 +129,7 @@ final class HighlightRegistryTest extends TestCase
     {
         $registry = $this->registry([$this->provider('alpha', ['php'])]);
 
-        $ids = array_map(static fn (SyntaxHighlightProvider $p): string => $p->id(), $registry->available('php'));
+        $ids = \array_map(static fn (SyntaxHighlightProvider $p): string => $p->id(), $registry->available('php'));
 
         $this->assertSame(['alpha', 'plain'], $ids);
     }
@@ -142,7 +142,7 @@ final class HighlightRegistryTest extends TestCase
     {
         $registry = $this->registry([$this->provider('alpha', ['php'])]);
 
-        $ids = array_map(static fn (SyntaxHighlightProvider $p): string => $p->id(), $registry->available(''));
+        $ids = \array_map(static fn (SyntaxHighlightProvider $p): string => $p->id(), $registry->available(''));
 
         $this->assertSame(['plain'], $ids);
     }

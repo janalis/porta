@@ -29,7 +29,7 @@ final class IdeToastsTest extends TestCase
 
     public function testAFlashRendersAsACornerCardDismissableByItsClose(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\n"]);
 
         $this->runIde(
@@ -83,7 +83,7 @@ final class IdeToastsTest extends TestCase
 
     public function testALoopCallbackThrowBecomesAToastAndTheSessionSurvives(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\n"]);
 
         try {
@@ -101,7 +101,7 @@ final class IdeToastsTest extends TestCase
                     },
                     300 => function ($tui, $terminal, $ide) use ($project): void {
                         $this->awaitPainted($tui, $terminal, 'Internal error');
-                        $this->assertStringContainsString('boom-in-callback', (string) file_get_contents($project->dir.'/.porta/error.log'), 'the throwable landed in error.log');
+                        $this->assertStringContainsString('boom-in-callback', (string) \file_get_contents($project->dir.'/.porta/error.log'), 'the throwable landed in error.log');
                         $this->assertTrue($tui->isRunning(), 'the loop survived the throw');
                     },
                 ],

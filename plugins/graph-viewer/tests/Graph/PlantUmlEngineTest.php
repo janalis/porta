@@ -46,7 +46,7 @@ final class PlantUmlEngineTest extends TestCase
 
     public function testRendersPngBytesAtTheRequestedDpi(): void
     {
-        $engine = new PlantUmlEngine(sys_get_temp_dir(), self::stub());
+        $engine = new PlantUmlEngine(\sys_get_temp_dir(), self::stub());
         $this->assertSame(96, $engine->baseDpi(), "PlantUML's natural size, not graphviz's 72");
 
         [$png, $error] = $this->render($engine, self::SMALL_UML, 192);
@@ -62,7 +62,7 @@ final class PlantUmlEngineTest extends TestCase
         // -failfast2 is what makes this an ERROR: by default PlantUML draws the
         // message into the image and exits 0, which would reach the pane as a
         // perfectly valid picture of a mistake.
-        [$png, $error] = $this->render(new PlantUmlEngine(sys_get_temp_dir(), self::stub()), "@startuml\nbroken\n@enduml", 96);
+        [$png, $error] = $this->render(new PlantUmlEngine(\sys_get_temp_dir(), self::stub()), "@startuml\nbroken\n@enduml", 96);
 
         $this->assertNull($png);
         $this->assertStringContainsString('Syntax Error', (string) $error);
@@ -70,7 +70,7 @@ final class PlantUmlEngineTest extends TestCase
 
     public function testANewRenderSupersedesTheInFlightOne(): void
     {
-        $engine = new PlantUmlEngine(sys_get_temp_dir(), self::stub());
+        $engine = new PlantUmlEngine(\sys_get_temp_dir(), self::stub());
         $fired = [];
         $onError = static function (string $message): void {
             self::fail("unexpected render error: {$message}");
@@ -101,7 +101,7 @@ final class PlantUmlEngineTest extends TestCase
 
     public function testCancelIsIdempotentAndStopsInFlightWork(): void
     {
-        $engine = new PlantUmlEngine(sys_get_temp_dir(), self::stub());
+        $engine = new PlantUmlEngine(\sys_get_temp_dir(), self::stub());
         $fired = false;
         $mark = static function () use (&$fired): void {
             $fired = true;
@@ -116,8 +116,8 @@ final class PlantUmlEngineTest extends TestCase
 
     public function testWithoutTheToolItErrorsWithoutSpawning(): void
     {
-        putenv('PATH=/nonexistent');
-        $engine = new PlantUmlEngine(sys_get_temp_dir(), null);
+        \putenv('PATH=/nonexistent');
+        $engine = new PlantUmlEngine(\sys_get_temp_dir(), null);
         $error = null;
         $engine->render(
             self::SMALL_UML,
@@ -138,9 +138,9 @@ final class PlantUmlEngineTest extends TestCase
     {
         // The plugin hands a closure over its `plantumlPath` setting, which is
         // what makes the setting live; memoizing would make it restart-required.
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $configured = null;
-        $engine = new PlantUmlEngine(sys_get_temp_dir(), static function () use (&$configured): ?string {
+        $engine = new PlantUmlEngine(\sys_get_temp_dir(), static function () use (&$configured): ?string {
             return $configured;
         });
         $this->assertNull($engine->binary(), 'nothing configured, nothing on PATH');

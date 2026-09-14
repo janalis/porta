@@ -32,8 +32,8 @@ final class ContainerSmokeTest extends ContainerTestCase
         // plugin.php via PluginHost::ensureLoaded(), and the loader's global
         // base must not be this machine's real ~/.porta.
         $home = new TempProject();
-        $savedHome = getenv('PORTA_HOME');
-        putenv('PORTA_HOME='.$home->dir);
+        $savedHome = \getenv('PORTA_HOME');
+        \putenv('PORTA_HOME='.$home->dir);
 
         try {
             $container = $this->buildContainer();
@@ -58,7 +58,7 @@ final class ContainerSmokeTest extends ContainerTestCase
 
             $locator = $container->get('porta.ide');
             \assert($locator instanceof ServiceLocator, description: 'porta.ide is the ide-service locator');
-            foreach (array_keys($locator->getProvidedServices()) as $id) {
+            foreach (\array_keys($locator->getProvidedServices()) as $id) {
                 $this->assertNotNull($locator->get($id), \sprintf('porta.ide locator entry "%s" resolves', $id));
                 ++$resolved;
             }
@@ -70,7 +70,7 @@ final class ContainerSmokeTest extends ContainerTestCase
             // roots constructs the whole reachable graph.
             $this->assertGreaterThan(60, $resolved, 'the sweep saw the real service surface, not a stub of it');
         } finally {
-            putenv(false === $savedHome ? 'PORTA_HOME' : 'PORTA_HOME='.$savedHome);
+            \putenv(false === $savedHome ? 'PORTA_HOME' : 'PORTA_HOME='.$savedHome);
         }
     }
 }

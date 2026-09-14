@@ -33,7 +33,7 @@ final class WorkspaceLayoutTest extends TestCase
     /** @return list<string> */
     private function ids(ContainerWidget $container): array
     {
-        return array_map(static fn (AbstractWidget $w): string => $w->getId(), $container->all());
+        return \array_map(static fn (AbstractWidget $w): string => $w->getId(), $container->all());
     }
 
     public function testAssemblesTheCompositeTreeWithStableIds(): void
@@ -46,7 +46,7 @@ final class WorkspaceLayoutTest extends TestCase
         // A full-screen view's own sidebar/separator/content is ViewRegions'
         // now, minted at runtime — see ViewRegionsTest.
         $this->assertSame('separator', $layout->separator()->getId());
-        $this->assertSame(['tree', 'separator', 'editor-pane'], array_map(static fn (AbstractWidget $w): string => $w->getId(), $layout->editorPanes()));
+        $this->assertSame(['tree', 'separator', 'editor-pane'], \array_map(static fn (AbstractWidget $w): string => $w->getId(), $layout->editorPanes()));
     }
 
     public function testMountAddsTheChromeInZOrder(): void

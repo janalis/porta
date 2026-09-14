@@ -23,7 +23,7 @@ final class TabListProvider
         $buffers = $this->buffers->all();
         $titles = $this->titles($buffers);
 
-        return array_map(
+        return \array_map(
             fn (Buffer $b, string $title) => [
                 // The pin rides the NAME rather than becoming a fourth field: the
                 // strip's width arithmetic already measures the label, and adding a
@@ -75,7 +75,7 @@ final class TabListProvider
             }
         }
 
-        return array_values($titles);
+        return \array_values($titles);
     }
 
     /**
@@ -103,24 +103,24 @@ final class TabListProvider
         $segments = [];
         $qualified = [];
         foreach ($indexes as $i) {
-            $parts = explode(\DIRECTORY_SEPARATOR, trim($buffers[$i]->path, characters: \DIRECTORY_SEPARATOR));
+            $parts = \explode(\DIRECTORY_SEPARATOR, \trim($buffers[$i]->path, characters: \DIRECTORY_SEPARATOR));
             // Drop the basename itself: what is left is the parent path, and
             // its tail is what tells these buffers apart.
-            array_pop($parts);
+            \array_pop($parts);
             $segments[$i] = $parts;
             // Seeded with the bare names, so paths with no parent at all to
             // offer answer with those rather than with nothing.
             $qualified[$i] = $titles[$i];
         }
-        $deepest = max(array_map(\count(...), $segments));
+        $deepest = \max(\array_map(\count(...), $segments));
         for ($depth = 1; $depth <= $deepest; ++$depth) {
             foreach ($indexes as $i) {
                 $tail = \array_slice($segments[$i], -$depth);
-                $qualified[$i] = [] === $tail ? $titles[$i] : $titles[$i].' ('.implode(\DIRECTORY_SEPARATOR, $tail).')';
+                $qualified[$i] = [] === $tail ? $titles[$i] : $titles[$i].' ('.\implode(\DIRECTORY_SEPARATOR, $tail).')';
             }
             // Distinct, or as distinct as these paths can be made: either way
             // this is the shortest qualifier that says everything it can.
-            if (\count(array_unique($qualified)) === \count($qualified)) {
+            if (\count(\array_unique($qualified)) === \count($qualified)) {
                 break;
             }
         }
@@ -141,6 +141,6 @@ final class TabListProvider
             return $this->translator->trans('Documentation');
         }
 
-        return null !== $b->title ? $this->translator->trans($b->title) : basename($b->path);
+        return null !== $b->title ? $this->translator->trans($b->title) : \basename($b->path);
     }
 }

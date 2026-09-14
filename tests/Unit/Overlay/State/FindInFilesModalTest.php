@@ -54,13 +54,13 @@ final class FindInFilesModalTest extends TestCase
             onReplaceAll: static function (string $r, array $excluded) use (&$replaced): void {
                 $replaced = [$r, $excluded];
             },
-            previewReplacement: static fn (string $old, string $repl): string => str_replace('foo', $repl, $old),
+            previewReplacement: static fn (string $old, string $repl): string => \str_replace('foo', $repl, $old),
         ));
         $modal->open('Find in Files');
         $modal->setPreview($this->results());
 
         $modal->handleInput("\t", $this->kb); // query → replace
-        foreach (str_split('bar') as $ch) {
+        foreach (\str_split('bar') as $ch) {
             $modal->handleInput($ch, $this->kb);
         }
 
@@ -94,7 +94,7 @@ final class FindInFilesModalTest extends TestCase
      */
     private function composeWithFocus(FindInFilesModal $modal, CaretVisibility $focused, int $columns = 100, int $rows = 24): array
     {
-        $lines = array_fill(0, count: $rows, value: str_repeat(' ', times: $columns));
+        $lines = \array_fill(0, count: $rows, value: \str_repeat(' ', times: $columns));
         $placed = $modal->layout([0, 0, $rows, $columns], $focused);
         if (null === $placed) {
             return $lines;
@@ -279,14 +279,14 @@ final class FindInFilesModalTest extends TestCase
             onReplaceAll: static function (string $r, array $excluded) use (&$replaced): void {
                 $replaced = [$r, $excluded];
             },
-            previewReplacement: static fn (string $old, string $repl): string => str_replace('foo', $repl, $old),
+            previewReplacement: static fn (string $old, string $repl): string => \str_replace('foo', $repl, $old),
         ));
         $modal->open('Find in Files');
         $modal->setPreview($this->results()); // rows: [hdr A, match(4), match(9), hdr B, match(2)]
 
         // Type a replacement → the preview flips to old → new with checkboxes.
         $modal->handleInput("\t", $this->kb); // query → replace
-        foreach (str_split('bar') as $ch) {
+        foreach (\str_split('bar') as $ch) {
             $modal->handleInput($ch, $this->kb);
         }
         $screen = $this->screen($modal);
@@ -361,7 +361,7 @@ final class FindInFilesModalTest extends TestCase
             $out = $this->compose($modal);
             $box = $modal->lastBox();
 
-            return AnsiUtils::stripAnsiCodes(implode("\n", $out));
+            return AnsiUtils::stripAnsiCodes(\implode("\n", $out));
         })();
         $this->assertNotNull($box);
         $this->assertGreaterThan(0, $box->windowStart, 'the window scrolled to keep the selection visible');
@@ -746,7 +746,7 @@ final class FindInFilesModalTest extends TestCase
         $optionsLine = AnsiUtils::stripAnsiCodes($lines[$optionsRow]);
 
         // The two-space gap between the last tag and the scope label hits no zone.
-        $scopeCol = mb_strpos($optionsLine, needle: 'Scope:');
+        $scopeCol = \mb_strpos($optionsLine, needle: 'Scope:');
         $this->assertIsInt($scopeCol);
         $this->assertTrue($modal->clickAt($optionsRow, $scopeCol - 1));
         $this->assertSame([], $scopeIdx, 'the gap before the scope label is inert');
@@ -779,7 +779,7 @@ final class FindInFilesModalTest extends TestCase
 
         // Hover the scope label → changes and still renders.
         $optionsLine = AnsiUtils::stripAnsiCodes($lines[$optionsRow]);
-        $scopeCol = mb_strpos($optionsLine, needle: 'Scope:');
+        $scopeCol = \mb_strpos($optionsLine, needle: 'Scope:');
         $this->assertIsInt($scopeCol);
         $this->assertTrue($modal->hoverAt($optionsRow, $scopeCol + 2));
         $this->assertStringContainsString('Scope: Whole Project', $this->screen($modal));
@@ -796,12 +796,12 @@ final class FindInFilesModalTest extends TestCase
             onJump: static function (string $p, int $l) use (&$jumped): void {
                 $jumped = [$p, $l];
             },
-            previewReplacement: static fn (string $old, string $repl): string => str_replace('foo', $repl, $old),
+            previewReplacement: static fn (string $old, string $repl): string => \str_replace('foo', $repl, $old),
         ));
         $modal->open('Find in Files');
         $modal->setPreview($this->results());
         $modal->handleInput("\t", $this->kb); // query → replace
-        foreach (str_split('bar') as $ch) {
+        foreach (\str_split('bar') as $ch) {
             $modal->handleInput($ch, $this->kb);
         }
         $this->screen($modal);
@@ -849,7 +849,7 @@ final class FindInFilesModalTest extends TestCase
         // 5 is one past the checkbox range and must jump, not toggle.
         $jumped = null;
         $modal->handleInput("\t", $this->kb);
-        foreach (str_split('bar') as $ch) {
+        foreach (\str_split('bar') as $ch) {
             $modal->handleInput($ch, $this->kb);
         }
         $this->screen($modal);
@@ -882,7 +882,7 @@ final class FindInFilesModalTest extends TestCase
         $footerLine = AnsiUtils::stripAnsiCodes($lines[$footerRow]);
 
         // Hover the "Find window" action → highlight changes and still renders.
-        $fwCol = mb_strpos($footerLine, needle: 'Find window');
+        $fwCol = \mb_strpos($footerLine, needle: 'Find window');
         $this->assertIsInt($fwCol);
         $this->assertTrue($modal->hoverAt($footerRow, $fwCol));
         $this->assertStringContainsString('Find window', $this->screen($modal));
@@ -891,13 +891,13 @@ final class FindInFilesModalTest extends TestCase
         $this->assertTrue($modal->clickAt($footerRow, $fwCol));
         $this->assertTrue($opened, 'Find window promotes to the results pane');
 
-        $scopeCol = mb_strpos($footerLine, needle: 'Scope');
+        $scopeCol = \mb_strpos($footerLine, needle: 'Scope');
         $this->assertIsInt($scopeCol);
         $this->assertTrue($modal->clickAt($footerRow, $scopeCol));
         $this->assertSame([1], $scopeIdx, 'the footer Scope action cycles the scope');
 
         // No footer Close word anymore: Esc dismisses instead.
-        $this->assertFalse(mb_strpos($footerLine, needle: 'Close'), 'the footer carries no Close action');
+        $this->assertFalse(\mb_strpos($footerLine, needle: 'Close'), 'the footer carries no Close action');
         $modal->handleInput("\x1b", new Keybindings([]));
         $this->assertTrue($closed, 'Esc fires the close hook');
     }
@@ -1231,7 +1231,7 @@ final class FindInFilesModalTest extends TestCase
         $box = $modal->lastBox();
         $this->assertNotNull($box);
         $innerWidth = $box->width - ModalFrame::CHROME_COLS;
-        $expectedCol = max(0, intdiv(100 - $innerWidth - ModalFrame::CHROME_COLS, num2: 2));
+        $expectedCol = \max(0, \intdiv(100 - $innerWidth - ModalFrame::CHROME_COLS, num2: 2));
         $this->assertSame($expectedCol, $box->col, 'centering follows (columns - width - CHROME_COLS) / 2 exactly');
     }
 
@@ -1262,7 +1262,7 @@ final class FindInFilesModalTest extends TestCase
         $this->assertNotNull($box);
 
         $titleBar = AnsiUtils::stripAnsiCodes($placed['rows'][0]);
-        $this->assertSame($box->width, mb_strwidth($titleBar), 'the title bar spans width + CHROME_COLS, matching the rest of the box');
+        $this->assertSame($box->width, \mb_strwidth($titleBar), 'the title bar spans width + CHROME_COLS, matching the rest of the box');
     }
 
     public function testTitleBarTextHasTheDocumentedGapAndOrder(): void
@@ -1315,7 +1315,7 @@ final class FindInFilesModalTest extends TestCase
         $modal->layout([0, 0, 24, 100], CaretVisibility::Shown);
         $box = $modal->lastBox();
         $this->assertNotNull($box);
-        $expectedStartRow = max(0, intdiv(24 - $box->rows, num2: 3));
+        $expectedStartRow = \max(0, \intdiv(24 - $box->rows, num2: 3));
         $this->assertSame($expectedStartRow, $box->startRow, 'startRow follows (rows - popupRows) / 3 exactly');
     }
 
@@ -1385,22 +1385,22 @@ final class FindInFilesModalTest extends TestCase
         $relRow = $box->startRow + 20; // comfortably above the max(3, ...) floor
         $modal->continueDragTo($relRow, $box->col, release: false);
 
-        $this->assertSame(max(3, $relRow - $box->startRow + 1 - 11), Probe::get($modal, 'userRows'), 'userRows follows relRow - startRow + 1 - 11 exactly');
+        $this->assertSame(\max(3, $relRow - $box->startRow + 1 - 11), Probe::get($modal, 'userRows'), 'userRows follows relRow - startRow + 1 - 11 exactly');
     }
 
     public function testBoxWidthBaselineFormulaWithNoPreviewContent(): void
     {
         $modal = $this->modal();
         $translator = new Translator('en');
-        $title = str_repeat('A', times: 50);
+        $title = \str_repeat('A', times: 50);
         $modal->open($title);
         // No setPreview(): displayRows=[] keeps the per-row loop from contributing.
 
         $this->screen($modal);
         $box = $modal->lastBox();
         $this->assertNotNull($box);
-        $statusW = mb_strwidth($translator->trans('%count% results', ['%count%' => 0]));
-        $expectedInner = max(mb_strwidth($title) + $statusW + 10, mb_strwidth('') + 9, PopupMetrics::FIND_MIN_WIDTH);
+        $statusW = \mb_strwidth($translator->trans('%count% results', ['%count%' => 0]));
+        $expectedInner = \max(\mb_strwidth($title) + $statusW + 10, \mb_strwidth('') + 9, PopupMetrics::FIND_MIN_WIDTH);
         $this->assertSame($expectedInner, $box->width - ModalFrame::CHROME_COLS, 'title_w + status_w + 10, exactly');
     }
 
@@ -1408,35 +1408,35 @@ final class FindInFilesModalTest extends TestCase
     {
         $modal = $this->modal();
         $modal->open('Find in Files'); // short title, so the query dominates
-        $query = str_repeat('Q', times: 60);
-        foreach (str_split($query) as $ch) {
+        $query = \str_repeat('Q', times: 60);
+        foreach (\str_split($query) as $ch) {
             $modal->handleInput($ch, $this->kb);
         }
 
         $this->screen($modal);
         $box = $modal->lastBox();
         $this->assertNotNull($box);
-        $this->assertSame(mb_strwidth($query) + 9, $box->width - ModalFrame::CHROME_COLS, 'a long query widens the box by query_w + 9');
+        $this->assertSame(\mb_strwidth($query) + 9, $box->width - ModalFrame::CHROME_COLS, 'a long query widens the box by query_w + 9');
     }
 
     public function testBoxWidthIncorporatesTheWidestVisibleRowTextExactly(): void
     {
         $modal = $this->modal();
         $modal->open('Find in Files'); // short title, so the row text dominates
-        $text = str_repeat('B', times: 60);
+        $text = \str_repeat('B', times: 60);
         $modal->setPreview([['path' => 'f.php', 'line' => 0, 'text' => $text, 'ranges' => []]]);
 
         $this->screen($modal);
         $box = $modal->lastBox();
         $this->assertNotNull($box);
-        $this->assertSame(mb_strwidth($text) + 8, $box->width - ModalFrame::CHROME_COLS, 'a long match line widens the box by text_w + 8');
+        $this->assertSame(\mb_strwidth($text) + 8, $box->width - ModalFrame::CHROME_COLS, 'a long match line widens the box by text_w + 8');
     }
 
     public function testBoxWidthClampsToThePaneMarginWhenContentIsWide(): void
     {
         $modal = $this->modal();
         $modal->open('Find in Files');
-        $modal->setPreview([['path' => 'f.php', 'line' => 0, 'text' => str_repeat('C', times: 200), 'ranges' => []]]);
+        $modal->setPreview([['path' => 'f.php', 'line' => 0, 'text' => \str_repeat('C', times: 200), 'ranges' => []]]);
 
         $this->compose($modal, columns: 60, rows: 24);
         $box = $modal->lastBox();
@@ -1448,7 +1448,7 @@ final class FindInFilesModalTest extends TestCase
     {
         $modal = $this->modal();
         $modal->open('Find in Files');
-        $modal->setPreview([['path' => 'f.php', 'line' => 0, 'text' => str_repeat('D', times: 200), 'ranges' => []]]);
+        $modal->setPreview([['path' => 'f.php', 'line' => 0, 'text' => \str_repeat('D', times: 200), 'ranges' => []]]);
 
         $this->compose($modal, columns: 200, rows: 24);
         $box = $modal->lastBox();
@@ -1554,13 +1554,13 @@ final class FindInFilesModalTest extends TestCase
         ));
         $modal->setScopes(['Whole Project Extra Padding Text Here', 'A'], 0);
         $modal->open('Find in Files');
-        $modal->setPreview([...$this->results(), ['path' => 'w.php', 'line' => 0, 'text' => str_repeat('W', times: 80), 'ranges' => []]]);
+        $modal->setPreview([...$this->results(), ['path' => 'w.php', 'line' => 0, 'text' => \str_repeat('W', times: 80), 'ranges' => []]]);
         $lines = $this->compose($modal);
         $box = $modal->lastBox();
         $this->assertNotNull($box);
         $optionsRow = $box->windowTop() - 3;
         $optionsLine = AnsiUtils::stripAnsiCodes($lines[$optionsRow]);
-        $scopeCol = mb_strpos($optionsLine, needle: 'Scope:');
+        $scopeCol = \mb_strpos($optionsLine, needle: 'Scope:');
         $this->assertIsInt($scopeCol);
         $farCol = $scopeCol + 30; // within the long label's old zone, past where 'A' now renders
 
@@ -1613,7 +1613,7 @@ final class FindInFilesModalTest extends TestCase
     {
         $modal = $this->modal();
         $modal->open('Find in Files');
-        $modal->setPreview([...$this->results(), ['path' => 'w.php', 'line' => 0, 'text' => str_repeat('W', times: 80), 'ranges' => []]]);
+        $modal->setPreview([...$this->results(), ['path' => 'w.php', 'line' => 0, 'text' => \str_repeat('W', times: 80), 'ranges' => []]]);
 
         $screen = $this->screen($modal);
         $this->assertStringContainsString('  Scope: Whole Project', $screen, 'the scope block keeps its leading two-space gap');
@@ -1634,13 +1634,13 @@ final class FindInFilesModalTest extends TestCase
         $modal->open('Find in Files');
         // A wide box (via a long match line) so the zone's end is driven by
         // the label's own width, not clamped short by the box's own $width.
-        $modal->setPreview([...$this->results(), ['path' => 'w.php', 'line' => 0, 'text' => str_repeat('W', times: 150), 'ranges' => []]]);
+        $modal->setPreview([...$this->results(), ['path' => 'w.php', 'line' => 0, 'text' => \str_repeat('W', times: 150), 'ranges' => []]]);
         $lines = $this->compose($modal, columns: 200);
         $box = $modal->lastBox();
         $this->assertNotNull($box);
         $optionsRow = $box->windowTop() - 3;
         $optionsLine = AnsiUtils::stripAnsiCodes($lines[$optionsRow]);
-        $scopeCol = mb_strpos($optionsLine, needle: 'Scope:');
+        $scopeCol = \mb_strpos($optionsLine, needle: 'Scope:');
         $this->assertIsInt($scopeCol);
 
         // Start boundary: exactly at "Scope:" cycles; one column before does not.
@@ -1656,7 +1656,7 @@ final class FindInFilesModalTest extends TestCase
         $this->compose($modal, columns: 200);
         $label = 'Directory';
         $scopeText = $translator->trans('Scope:').' '.$label.' (Alt+S)';
-        $endCol = $scopeCol + mb_strwidth($scopeText) - 1;
+        $endCol = $scopeCol + \mb_strwidth($scopeText) - 1;
         $modal->clickAt($optionsRow, $endCol + 1);
         $this->assertSame([1], $scopeIdx, 'one column past the zone is inert');
         $modal->clickAt($optionsRow, $endCol);
@@ -1668,7 +1668,7 @@ final class FindInFilesModalTest extends TestCase
         $modal = $this->modal();
         // A long title forces a box much wider than the options row's own
         // (short) natural content, so padding to $width is actually exercised.
-        $modal->open(str_repeat('T', times: 80));
+        $modal->open(\str_repeat('T', times: 80));
         $modal->setPreview($this->results());
         $placed = $modal->layout([0, 0, 24, 100], CaretVisibility::Shown);
         $this->assertNotNull($placed);
@@ -1680,7 +1680,7 @@ final class FindInFilesModalTest extends TestCase
         $this->assertStringContainsString('   .*', AnsiUtils::stripAnsiCodes($optionsRawRow), "the row's own leading space precedes the first tag's own padding");
         $this->assertSame(
             $box->width, // the full wrapped row: rail + pad + content($width) + pad + rail
-            mb_strwidth(AnsiUtils::stripAnsiCodes($optionsRawRow)),
+            \mb_strwidth(AnsiUtils::stripAnsiCodes($optionsRawRow)),
             'the options row pads out to the full inner width, not left short',
         );
     }
@@ -1706,7 +1706,7 @@ final class FindInFilesModalTest extends TestCase
         // machinery, but "highlighted style opened, then the text" is a
         // stable, unambiguous marker of the hovered rendering.
         $hoveredOpening = $styles->merge(Role::RowHighlightBg, Role::Bright)->apply($label);
-        $hoveredOpening = mb_substr($hoveredOpening, start: 0, length: mb_strpos($hoveredOpening, $label) + mb_strlen($label));
+        $hoveredOpening = \mb_substr($hoveredOpening, start: 0, length: \mb_strpos($hoveredOpening, $label) + \mb_strlen($label));
 
         $modal = $this->modal();
         $modal->setScopes(['Whole Project', 'Directory'], 0);
@@ -1715,7 +1715,7 @@ final class FindInFilesModalTest extends TestCase
         $lines = $this->compose($modal);
         $footerRow = Probe::get($modal, 'box')->footerRow ?? -1;
         $footerLine = AnsiUtils::stripAnsiCodes($lines[$footerRow]);
-        $fwCol = mb_strpos($footerLine, needle: 'Find window');
+        $fwCol = \mb_strpos($footerLine, needle: 'Find window');
         $this->assertIsInt($fwCol);
 
         $before = $this->compose($modal)[$footerRow];
@@ -1723,11 +1723,11 @@ final class FindInFilesModalTest extends TestCase
 
         $this->assertTrue($modal->hoverAt($footerRow, $fwCol));
         $after = $this->compose($modal)[$footerRow];
-        $labelEnd = mb_strpos($after, $label) + mb_strlen($label);
+        $labelEnd = \mb_strpos($after, $label) + \mb_strlen($label);
         $this->assertIsInt($labelEnd);
-        $scopeAt = mb_strpos($after, needle: 'Scope', offset: $labelEnd);
+        $scopeAt = \mb_strpos($after, needle: 'Scope', offset: $labelEnd);
         $this->assertIsInt($scopeAt);
-        $gap = mb_substr($after, $labelEnd, $scopeAt - $labelEnd);
+        $gap = \mb_substr($after, $labelEnd, $scopeAt - $labelEnd);
         $this->assertStringContainsString($hoveredOpening, $after, 'hovering the action highlights it');
         $this->assertStringContainsString(
             $styles->of(Role::Dim)->getAnsiRestore(),
@@ -1741,7 +1741,7 @@ final class FindInFilesModalTest extends TestCase
         $modal = $this->modal();
         // A long title forces a box much wider than the footer's own (short)
         // natural content, so padding to $width is actually exercised.
-        $modal->open(str_repeat('T', times: 80));
+        $modal->open(\str_repeat('T', times: 80));
         $modal->setPreview($this->results());
         $placed = $modal->layout([0, 0, 24, 100], CaretVisibility::Shown);
         $this->assertNotNull($placed);
@@ -1752,7 +1752,7 @@ final class FindInFilesModalTest extends TestCase
 
         $this->assertSame(
             $box->width,
-            mb_strwidth(AnsiUtils::stripAnsiCodes($footerRawRow)),
+            \mb_strwidth(AnsiUtils::stripAnsiCodes($footerRawRow)),
             'the footer row pads out to the full box width, not left short',
         );
     }
@@ -1810,7 +1810,7 @@ final class FindInFilesModalTest extends TestCase
         $box = $modal->lastBox();
         $this->assertNotNull($box);
         $footerLine = AnsiUtils::stripAnsiCodes($lines[$box->footerRow]);
-        $fwCol = mb_strpos($footerLine, needle: 'Find window');
+        $fwCol = \mb_strpos($footerLine, needle: 'Find window');
         $this->assertIsInt($fwCol);
 
         // hoverZone(...) alone changes (true), closeChanged is false (never
@@ -1843,7 +1843,7 @@ final class FindInFilesModalTest extends TestCase
         $this->assertNotNull($box);
         $optionsRow = $box->windowTop() - 3;
         $optionsLine = AnsiUtils::stripAnsiCodes($lines[$optionsRow]);
-        $scopeCol = mb_strpos($optionsLine, needle: 'Scope:');
+        $scopeCol = \mb_strpos($optionsLine, needle: 'Scope:');
         $this->assertIsInt($scopeCol);
 
         $modal->clickAt($optionsRow, $scopeCol);

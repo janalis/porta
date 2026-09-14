@@ -50,17 +50,17 @@ final class PickerLayout
         $filter = $overlay['filter']->value();
         $items = ListFilter::matching($overlay['items'], $filter);
         $selected = $overlay['selected'];
-        $maxItems = max(1, min(\count($items), $rows - 5, 12));
+        $maxItems = \max(1, \min(\count($items), $rows - 5, 12));
         $windowStart = IntMath::clamp($selected - $maxItems + 1, 0, \count($items) - $maxItems);
         $visible = \array_slice($items, $windowStart, $maxItems);
 
-        $width = mb_strwidth($overlay['title']) + 8; // the frame's title-bar chrome (corners, hint, ×) needs its room
+        $width = \mb_strwidth($overlay['title']) + 8; // the frame's title-bar chrome (corners, hint, ×) needs its room
         // Measured over the UNFILTERED list, and over all of it rather than the
         // visible window: a box sized from what survives the filter shrinks and
         // re-centres on every keystroke, walking out from under the eye reading
         // it. The width is a property of the list, not of this frame's slice.
         foreach ($overlay['items'] as $item) {
-            $width = max($width, mb_strwidth($item['label']) + mb_strwidth($item['hint']) + 6);
+            $width = \max($width, \mb_strwidth($item['label']) + \mb_strwidth($item['hint']) + 6);
         }
         // The filler row shown when nothing matches: measured ALWAYS, not only
         // when it is about to be drawn. Nothing else in this width measures it
@@ -73,13 +73,13 @@ final class PickerLayout
         // and counting this one only when the filter stops matching puts that
         // resize straight back: measured at 15 columns, then 27 on the
         // keystroke that emptied the list.
-        $width = max($width, mb_strwidth($emptyMessage) + 2);
-        $width = min($width, $columns - PopupMetrics::CENTERED_MARGIN, PopupMetrics::CENTERED_MAX_INNER);
+        $width = \max($width, \mb_strwidth($emptyMessage) + 2);
+        $width = \min($width, $columns - PopupMetrics::CENTERED_MARGIN, PopupMetrics::CENTERED_MAX_INNER);
 
         $content = [];
         foreach ($visible as $i => $item) {
             $style = $styles->of(ModalRowStyle::role(RowSelection::of(($windowStart + $i) === $selected, ($windowStart + $i) === $overlay['hovered'])));
-            $hintWidth = mb_strwidth($item['hint']);
+            $hintWidth = \mb_strwidth($item['hint']);
             $label = AnsiText::truncate($item['label'], $width - $hintWidth - 3, pad: true);
             $content[] = $style->apply(' '.$label.' '.$styles->of(Role::CompletionHint)->apply($item['hint']).' ');
         }
@@ -100,7 +100,7 @@ final class PickerLayout
         // marker to scroll to. This row deliberately carries none, so the
         // window is taken at the end of the text instead.
         $prefix = ' '.self::FILTER_GLYPH.' ';
-        $room = max(1, $width - mb_strwidth($prefix));
+        $room = \max(1, $width - \mb_strwidth($prefix));
         $header = '' === $filter
             ? []
             : [$styles->of(Role::Toolbar)->apply(
@@ -136,8 +136,8 @@ final class PickerLayout
         $columns = $boundRight - $boundLeft;
         $rows = $boundBottom - $boundTop;
 
-        $maxRows = max(1, min(\count($search->rows), $rows - 6, 12));
-        $windowStart = IntMath::clamp($search->selected - $maxRows + 1, 0, max(0, \count($search->rows) - $maxRows));
+        $maxRows = \max(1, \min(\count($search->rows), $rows - 6, 12));
+        $windowStart = IntMath::clamp($search->selected - $maxRows + 1, 0, \max(0, \count($search->rows) - $maxRows));
         $visible = \array_slice($search->rows, $windowStart, $maxRows);
 
         // The modal owns the caret while open, wherever pane focus sits — but
@@ -146,15 +146,15 @@ final class PickerLayout
         // visibleWidth strips the field's zero-width caret marker, so the
         // width measures the query text alone.
         $queryField = $search->query->render($caret);
-        $width = max(mb_strwidth($search->title) + 8, AnsiUtils::visibleWidth($queryField) + 6, 24); // + 8: the frame's title-bar chrome
+        $width = \max(\mb_strwidth($search->title) + 8, AnsiUtils::visibleWidth($queryField) + 6, 24); // + 8: the frame's title-bar chrome
         foreach ($visible as $row) {
-            $width = max($width, mb_strwidth($row->hit->label ?? '') + mb_strwidth($row->hit->detail ?? '') + 6);
+            $width = \max($width, \mb_strwidth($row->hit->label ?? '') + \mb_strwidth($row->hit->detail ?? '') + 6);
         }
         // Same rule as the list's filler, and unconditional for the same
         // reason. The 24-column floor happens to seat every translation of
         // "no results" today, which is luck rather than a guarantee.
-        $width = max($width, mb_strwidth($search->emptyMessage) + 2);
-        $width = min($width, $columns - PopupMetrics::CENTERED_MARGIN, PopupMetrics::CENTERED_MAX_INNER);
+        $width = \max($width, \mb_strwidth($search->emptyMessage) + 2);
+        $width = \min($width, $columns - PopupMetrics::CENTERED_MARGIN, PopupMetrics::CENTERED_MAX_INNER);
 
         $popup = [
             $styles->of(Role::Toolbar)->apply(AnsiText::scrollLineToCaret(' > '.$queryField, $width)),
@@ -169,10 +169,10 @@ final class PickerLayout
             // ` label · detail ` — three chrome columns (leading, gap, trailing).
             // Bound the detail first (leaving ≥1 column for the label) so a long
             // path can never push the row past $width and overflow the pane.
-            $avail = max(1, $width - 3);
-            $detail = AnsiText::truncate($row->hit->detail ?? '', max(0, $avail - 1), pad: false);
+            $avail = \max(1, $width - 3);
+            $detail = AnsiText::truncate($row->hit->detail ?? '', \max(0, $avail - 1), pad: false);
             $detailWidth = AnsiUtils::visibleWidth($detail);
-            $label = AnsiText::truncate($row->hit->label ?? '', max(1, $avail - $detailWidth), pad: true);
+            $label = AnsiText::truncate($row->hit->label ?? '', \max(1, $avail - $detailWidth), pad: true);
             $popup[] = $style->apply(' '.$label.' '.$styles->of(Role::CompletionHint)->apply($detail).' ');
         }
         // A no-hit query gets the same empty-state filler the find-in-files
@@ -204,7 +204,7 @@ final class PickerLayout
         $columns = $boundRight - $boundLeft;
 
         $text = ' '.$prompt['label'].': '.$prompt['value']->value();
-        $innerWidth = min($columns - PopupMetrics::CENTERED_MARGIN, max(30, mb_strwidth($text) + 4));
+        $innerWidth = \min($columns - PopupMetrics::CENTERED_MARGIN, \max(30, \mb_strwidth($text) + 4));
         $rendered = ' '.$prompt['value']->render(cursor: CaretVisibility::Shown);
         // The prompt is a framed 3-row modal like its siblings: the frame's
         // title bar carries the label, the Esc hint and the ×; the content
@@ -235,8 +235,8 @@ final class PickerLayout
         [$boundTop, $boundLeft, $boundBottom, $boundRight] = $bounds;
 
         return [
-            $boundTop + max(0, intdiv($boundBottom - $boundTop - $boxRows, num2: 3)),
-            $boundLeft + max(0, intdiv($boundRight - $boundLeft - $boxWidth, num2: 2)),
+            $boundTop + \max(0, \intdiv($boundBottom - $boundTop - $boxRows, num2: 3)),
+            $boundLeft + \max(0, \intdiv($boundRight - $boundLeft - $boxWidth, num2: 2)),
         ];
     }
 }

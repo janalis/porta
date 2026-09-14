@@ -38,7 +38,7 @@ final class FilesSource implements SearchSource
             $dir = \dirname($path);
             $hits[] = new SearchHit(
                 SearchCategory::Files,
-                basename($path),
+                \basename($path),
                 '.' === $dir ? '' : $dir,
                 function () use ($absolute): void {
                     ($this->openFile)($absolute, OpenFocus::Editor);

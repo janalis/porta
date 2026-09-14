@@ -58,7 +58,7 @@ final class LiveSettingsApplierTest extends TestCase
             new ViewRegions(Styles::dark()),
             new EditorPanes(),
             $tabBar ?? new TabBarWidget(),
-            TestWorkspaceLayout::create(rootDir: sys_get_temp_dir()),
+            TestWorkspaceLayout::create(rootDir: \sys_get_temp_dir()),
             new EventDispatcher(),
             $this->formatOnSave,
             true,
@@ -68,7 +68,7 @@ final class LiveSettingsApplierTest extends TestCase
     private static function buildFormatOnSave(): FormatOnSave
     {
         $editor = new CodeEditorWidget();
-        $pool = new LspSessionPool(sys_get_temp_dir(), new FixedActiveFile(), new Translator('en'));
+        $pool = new LspSessionPool(\sys_get_temp_dir(), new FixedActiveFile(), new Translator('en'));
 
         return new FormatOnSave(
             $pool,
@@ -125,7 +125,7 @@ final class LiveSettingsApplierTest extends TestCase
     {
         $this->formatOnSave = self::buildFormatOnSave();
         $tabBar = new TabBarWidget();
-        $workspaceLayout = TestWorkspaceLayout::create(rootDir: sys_get_temp_dir(), tabBar: $tabBar);
+        $workspaceLayout = TestWorkspaceLayout::create(rootDir: \sys_get_temp_dir(), tabBar: $tabBar);
         $applier = new LiveSettingsApplier(
             Themes::createSwitchable(ColorMode::Ansi, 'dark'),
             new StyleSheetThemer(new Renderer(new StyleSheet())),

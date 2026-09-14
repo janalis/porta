@@ -47,7 +47,7 @@ final class IdeFilesystemSessionTest extends TestCase
      */
     private function runUntilCtrlQ(VirtualTerminal $terminal): Tui
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $this->quitProject = new TempProject(['a.php' => "<?php\n"]);
         new OnboardingState($this->quitProject->dir)->markWelcomeSeen();
         $ide = new Ide($this->quitProject->dir, $this->quitProject->path('a.php'), $terminal);
@@ -66,7 +66,7 @@ final class IdeFilesystemSessionTest extends TestCase
 
     public function testStartupWithoutInitialFileFocusesTree(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\n"]);
 
         $this->runIde(
@@ -82,9 +82,9 @@ final class IdeFilesystemSessionTest extends TestCase
 
     public function testConfigWarningsAreFlashed(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject([
-            '.porta.json' => json_encode(['keymap' => ['not_a_real_action' => ['f9']]]),
+            '.porta.json' => \json_encode(['keymap' => ['not_a_real_action' => ['f9']]]),
             'a.php' => "<?php\n",
         ]);
 
@@ -95,12 +95,12 @@ final class IdeFilesystemSessionTest extends TestCase
 
     public function testUnopenableFiles(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['ok.php' => "<?php\n"]);
         $unreadable = $project->write('secret.php', 'nope');
-        chmod($unreadable, permissions: 0o000);
-        $project->write('exactly.bin', str_repeat("x\n", 1024 * 1024)); // exactly MAX_TEXT_BYTES, many short lines
-        $project->write('huge.bin', str_repeat('x', (2 * 1024 * 1024) + 1));
+        \chmod($unreadable, permissions: 0o000);
+        $project->write('exactly.bin', \str_repeat("x\n", 1024 * 1024)); // exactly MAX_TEXT_BYTES, many short lines
+        $project->write('huge.bin', \str_repeat('x', (2 * 1024 * 1024) + 1));
         $project->write('latin1.txt', "caf\xE9");
 
         $terminal = $this->runIde(
@@ -137,7 +137,7 @@ final class IdeFilesystemSessionTest extends TestCase
             ],
         );
 
-        chmod($unreadable, permissions: 0o644);
+        \chmod($unreadable, permissions: 0o644);
         $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
         // Too large is no longer a refusal: the file opens read-only, and the
         // banner naming its real size is what the user gets instead of a flash.
@@ -150,7 +150,7 @@ final class IdeFilesystemSessionTest extends TestCase
 
     public function testNoFileOpenShowsPlaceholder(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php // a\n"]);
 
         $terminal = $this->runIde(
@@ -170,7 +170,7 @@ final class IdeFilesystemSessionTest extends TestCase
 
     public function testQuitWithASingleDirtyBufferWarnsInTheSingular(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php // a\n"]);
 
         $terminal = $this->runIde(
@@ -193,7 +193,7 @@ final class IdeFilesystemSessionTest extends TestCase
 
     public function testSessionSavedOnQuitAndRestoredOnStartup(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "aaa\nbbb\n", 'B.php' => "ccc\n"]);
 
         // First run: open A and B, move the cursor, quit.
@@ -237,7 +237,7 @@ final class IdeFilesystemSessionTest extends TestCase
 
     public function testSaveAllAndSaveAndCloseDialog(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php // a\n", 'b.php' => "<?php // b\n"]);
 
         $terminal = $this->runIde(
@@ -260,8 +260,8 @@ final class IdeFilesystemSessionTest extends TestCase
                 },
                 650 => function ($tui, $terminal) use ($project): void {
                     $this->assertStringContainsString('Saved 2 files', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
-                    $this->assertStringContainsString('X', (string) file_get_contents($project->path('a.php')));
-                    $this->assertStringContainsString('Y', (string) file_get_contents($project->path('b.php')));
+                    $this->assertStringContainsString('X', (string) \file_get_contents($project->path('a.php')));
+                    $this->assertStringContainsString('Y', (string) \file_get_contents($project->path('b.php')));
                     // Now the Save & Close dialog path
                     $tui->handleInput('Z'); // dirty b.php again
                     $tui->handleInput("\x1bw"); // dialog
@@ -269,7 +269,7 @@ final class IdeFilesystemSessionTest extends TestCase
                 },
                 800 => function ($tui) use ($project): void {
                     $this->assertStringEndsWith('a.php', (string) $tui->getById('editor')->getFilePath());
-                    $this->assertStringContainsString('Z', (string) file_get_contents($project->path('b.php')), 'saved before closing');
+                    $this->assertStringContainsString('Z', (string) \file_get_contents($project->path('b.php')), 'saved before closing');
                 },
             ],
         );
@@ -279,7 +279,7 @@ final class IdeFilesystemSessionTest extends TestCase
 
     public function testSaveFailureAndSaveWithoutFile(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['dir/locked.php' => "<?php\n"]);
 
         $terminal = $this->runIde(
@@ -288,13 +288,13 @@ final class IdeFilesystemSessionTest extends TestCase
             [
                 200 => static function ($tui) use ($project): void {
                     $tui->handleInput('x'); // dirty it
-                    chmod($project->path('dir/locked.php'), permissions: 0o444);
-                    chmod($project->path('dir'), permissions: 0o555);
+                    \chmod($project->path('dir/locked.php'), permissions: 0o444);
+                    \chmod($project->path('dir'), permissions: 0o555);
                     $tui->handleInput("\x13"); // ctrl+s fails
                 },
                 400 => static function ($tui) use ($project): void {
-                    chmod($project->path('dir'), permissions: 0o755);
-                    chmod($project->path('dir/locked.php'), permissions: 0o644);
+                    \chmod($project->path('dir'), permissions: 0o755);
+                    \chmod($project->path('dir/locked.php'), permissions: 0o644);
                     $tui->handleInput("\x1a"); // undo -> clean
                     $tui->handleInput("\x1bw"); // close buffer
                     $tui->handleInput("\x13"); // save with no file: no-op
@@ -307,7 +307,7 @@ final class IdeFilesystemSessionTest extends TestCase
 
     public function testSaveAllDoesNotClaimNothingToSaveWhenEverySaveFails(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['dir/locked.php' => "<?php\n"]);
 
         $terminal = $this->runIde(
@@ -316,13 +316,13 @@ final class IdeFilesystemSessionTest extends TestCase
             [
                 200 => static function ($tui) use ($project): void {
                     $tui->handleInput('x'); // dirty it
-                    chmod($project->path('dir/locked.php'), permissions: 0o444);
-                    chmod($project->path('dir'), permissions: 0o555);
+                    \chmod($project->path('dir/locked.php'), permissions: 0o444);
+                    \chmod($project->path('dir'), permissions: 0o555);
                     $tui->handleInput("\x1b\x13"); // ctrl+alt+s: save all, the only dirty buffer fails
                 },
                 400 => static function ($tui) use ($project): void {
-                    chmod($project->path('dir'), permissions: 0o755);
-                    chmod($project->path('dir/locked.php'), permissions: 0o644);
+                    \chmod($project->path('dir'), permissions: 0o755);
+                    \chmod($project->path('dir/locked.php'), permissions: 0o644);
                 },
             ],
         );
@@ -350,7 +350,7 @@ final class IdeFilesystemSessionTest extends TestCase
         // is restored to its pre-launch state (no leftover IDE frame).
         $this->assertStringContainsString("\x1b[?1049h", $out, 'entered the alternate screen');
         $this->assertStringContainsString("\x1b[?1049l", $out, 'left the alternate screen on quit');
-        $this->assertGreaterThan(strpos($out, needle: "\x1b[?1049h"), strrpos($out, needle: "\x1b[?1049l"), 'leave comes after enter');
+        $this->assertGreaterThan(\strpos($out, needle: "\x1b[?1049h"), \strrpos($out, needle: "\x1b[?1049l"), 'leave comes after enter');
         $this->assertStringContainsString("\x1b[?1000l", $out, 'mouse tracking disabled on quit');
 
         // And the cursor is homed the moment the alternate screen is entered.
@@ -361,15 +361,15 @@ final class IdeFilesystemSessionTest extends TestCase
         // repaint the same distance off, for the whole session. Measured in a
         // real pty with eight lines printed first: nine rows of scroll without
         // this, none with it.
-        $entered = strpos($out, needle: "\x1b[?1049h");
-        $homed = strpos($out, needle: "\x1b[2J\x1b[H");
+        $entered = \strpos($out, needle: "\x1b[?1049h");
+        $homed = \strpos($out, needle: "\x1b[2J\x1b[H");
         $this->assertNotFalse($homed, 'the screen is cleared and the cursor homed');
         $this->assertGreaterThan($entered, $homed, 'and that happens after entering the alternate screen');
     }
 
     public function testSigtermStopsTheSessionAndRestoresTheTerminal(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\n"]);
         $terminal = new VirtualTerminal(columns: 80, rows: 20);
         new OnboardingState($project->dir)->markWelcomeSeen();
@@ -379,7 +379,7 @@ final class IdeFilesystemSessionTest extends TestCase
         // An outside kill, not an in-process call: the real delivery path.
         // `kill` is a shell builtin, so the poisoned PATH above cannot hide it.
         EventLoop::delay(0.2, static function (): void {
-            exec('kill -s TERM '.getmypid());
+            \exec('kill -s TERM '.\getmypid());
         });
         $watchdog = EventLoop::delay(5.0, static function () use ($tui): void {
             $tui->stop();
@@ -398,7 +398,7 @@ final class IdeFilesystemSessionTest extends TestCase
 
     public function testInitialLineJumpsCaretOnBoot(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "l0\nl1\nl2\nl3\nl4\nl5\n"]);
         $terminal = new VirtualTerminal(columns: 80, rows: 24);
         new OnboardingState($project->dir)->markWelcomeSeen();
@@ -421,7 +421,7 @@ final class IdeFilesystemSessionTest extends TestCase
 
     public function testExternalChangeReloadsCleanBuffer(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "<?php\n// original\n"]);
 
         $this->runIde(
@@ -448,7 +448,7 @@ final class IdeFilesystemSessionTest extends TestCase
 
     public function testExternalChangeToUnreadableContentLeavesBufferUntouched(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "<?php\n// original\n"]);
 
         $this->runIde(
@@ -459,7 +459,7 @@ final class IdeFilesystemSessionTest extends TestCase
                     $tui->tick();
                     // The file grows beyond the 2 MB text limit → the poll must not
                     // try to load it, leaving the open buffer as-is.
-                    $project->write('A.php', str_repeat('x', (2 * 1024 * 1024) + 1));
+                    $project->write('A.php', \str_repeat('x', (2 * 1024 * 1024) + 1));
                     $ide->pollFilesystem();
                 },
                 300 => function ($tui): void {
@@ -475,7 +475,7 @@ final class IdeFilesystemSessionTest extends TestCase
 
     public function testExternalChangeKeepsDirtyBufferAndWarns(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "<?php\n"]);
 
         $terminal = $this->runIde(
@@ -502,7 +502,7 @@ final class IdeFilesystemSessionTest extends TestCase
 
     public function testDeletedFileKeepsBufferAndWarns(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "<?php\n// keep me\n"]);
 
         $terminal = $this->runIde(
@@ -511,7 +511,7 @@ final class IdeFilesystemSessionTest extends TestCase
             [
                 200 => static function ($tui, $terminal, $ide) use ($project): void {
                     $tui->tick();
-                    unlink($project->path('A.php')); // deleted on disk
+                    \unlink($project->path('A.php')); // deleted on disk
                     $ide->pollFilesystem();
                     $ide->pollFilesystem(); // second poll must not re-flash
                 },
@@ -523,12 +523,12 @@ final class IdeFilesystemSessionTest extends TestCase
 
         $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
         $this->assertStringContainsString('A.php deleted on disk', $screen);
-        $this->assertSame(1, substr_count($screen, needle: 'deleted on disk'), 'warns exactly once');
+        $this->assertSame(1, \substr_count($screen, needle: 'deleted on disk'), 'warns exactly once');
     }
 
     public function testOwnSaveDoesNotTriggerReload(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "<?php\n"]);
 
         $terminal = $this->runIde(
@@ -554,7 +554,7 @@ final class IdeFilesystemSessionTest extends TestCase
 
     public function testNewFileOnDiskAppearsInTreeAfterPoll(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "<?php\n"]);
 
         $this->runIde(
@@ -591,7 +591,7 @@ final class IdeFilesystemSessionTest extends TestCase
      */
     public function testAFileWithAByteOrderMarkKeepsItAcrossAnEdit(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['marked.php' => "\u{FEFF}<?php\n"]);
 
         $this->runIde(
@@ -609,7 +609,7 @@ final class IdeFilesystemSessionTest extends TestCase
                     $tui->handleInput("\x13"); // ctrl+s
                 },
                 400 => function ($tui) use ($project): void {
-                    $saved = (string) file_get_contents($project->path('marked.php'));
+                    $saved = (string) \file_get_contents($project->path('marked.php'));
                     $this->assertStringStartsWith("\u{FEFF}", $saved, 'the mark went back on the bytes');
                     $this->assertSame("\u{FEFF}X<?php\n", $saved, 'and the edit landed after it, not in front of it');
                 },
@@ -620,7 +620,7 @@ final class IdeFilesystemSessionTest extends TestCase
     /** A CRLF file edited and saved keeps its line endings. */
     public function testACrlfFileKeepsItsLineEndingsAcrossAnEdit(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['win.php' => "<?php\r\n\r\necho 1;\r\n"]);
 
         $this->runIde(
@@ -633,7 +633,7 @@ final class IdeFilesystemSessionTest extends TestCase
                     $tui->handleInput("\x13"); // ctrl+s
                 },
                 400 => function ($tui) use ($project): void {
-                    $saved = (string) file_get_contents($project->path('win.php'));
+                    $saved = (string) \file_get_contents($project->path('win.php'));
                     $this->assertStringContainsString("\r\n", $saved, 'the file still uses CRLF');
                     $this->assertSame("<?phpX\r\n\r\necho 1;\r\n", $saved);
                 },
@@ -653,7 +653,7 @@ final class IdeFilesystemSessionTest extends TestCase
      */
     public function testSaveAllReachesADirtyBufferBehindACleanOne(): void
     {
-        putenv('PATH=/nonexistent');
+        \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\n// a\n", 'b.php' => "<?php\n// b\n"]);
 
         $this->runIde(
@@ -673,7 +673,7 @@ final class IdeFilesystemSessionTest extends TestCase
                 600 => function ($tui, $terminal) use ($project): void {
                     $this->assertStringContainsString(
                         'Y',
-                        (string) file_get_contents($project->path('b.php')),
+                        (string) \file_get_contents($project->path('b.php')),
                         'the dirty buffer behind the clean one was written',
                     );
                     $this->assertStringContainsString('Saved 1 file', AnsiUtils::stripAnsiCodes($terminal->getOutput()));

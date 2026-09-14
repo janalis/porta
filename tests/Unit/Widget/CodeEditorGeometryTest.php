@@ -78,7 +78,7 @@ final class CodeEditorGeometryTest extends TestCase
 
         $scroll = Probe::get($editor, 'scroll');
         $foldModel = Probe::get($editor, 'foldModel');
-        $expectedBase = max(0, $foldModel->screenRowFor($scroll->vScroll(), 38));
+        $expectedBase = \max(0, $foldModel->screenRowFor($scroll->vScroll(), 38));
 
         $cell = $editor->caretScreenCell();
         // Exact formula: max(0, screenRowFor(...)) + stickyCount. A
@@ -149,7 +149,7 @@ final class CodeEditorGeometryTest extends TestCase
         // widest visible line is 50. A 4th, off-screen line (200 c's) must
         // NOT be counted, and dropping the last visible line from the scan
         // must not either (both would change the exact clamp target).
-        $editor = $this->editor("<?php\n".str_repeat('a', times: 20)."\n".str_repeat('b', times: 50)."\n".str_repeat('c', times: 200)."\n");
+        $editor = $this->editor("<?php\n".\str_repeat('a', times: 20)."\n".\str_repeat('b', times: 50)."\n".\str_repeat('c', times: 200)."\n");
         $editor->render(new RenderContext(80, 3));
 
         $editor->scrollHBy(1000); // scroll far right; clamp caps at (widest VISIBLE line - 10)
@@ -164,7 +164,7 @@ final class CodeEditorGeometryTest extends TestCase
         // itself, not the viewport, is the binding constraint on the scan's
         // upper bound. An off-by-one that shortens the range excludes this
         // widest line entirely.
-        $editor = $this->editor("<?php\n".str_repeat('x', times: 100));
+        $editor = $this->editor("<?php\n".\str_repeat('x', times: 100));
         $editor->render(new RenderContext(80, 10));
 
         $editor->scrollHBy(1000);
@@ -246,17 +246,17 @@ final class CodeEditorGeometryTest extends TestCase
         // the binding constraint, distinguishing it from rows-3 or rows-5.
         $lines = "<?php\n";
         for ($depth = 0; $depth < 6; ++$depth) {
-            $lines .= str_repeat('    ', $depth)."function f{$depth}()\n".str_repeat('    ', $depth)."{\n";
+            $lines .= \str_repeat('    ', $depth)."function f{$depth}()\n".\str_repeat('    ', $depth)."{\n";
         }
         for ($depth = 5; $depth >= 0; --$depth) {
-            $lines .= str_repeat('    ', $depth)."}\n";
+            $lines .= \str_repeat('    ', $depth)."}\n";
         }
         $editor = $this->editor($lines);
         // Deep inside the innermost scope, well past every opening line.
         $doc = $editor->getDocument();
         $innerLine = null;
         for ($i = 0; $i < $doc->getLineCount(); ++$i) {
-            if (!str_contains($doc->getLine($i), 'function f5')) {
+            if (!\str_contains($doc->getLine($i), 'function f5')) {
                 continue;
             }
             $innerLine = $i + 1;
@@ -275,7 +275,7 @@ final class CodeEditorGeometryTest extends TestCase
             $expected = \Porta\Editor\BreadcrumbScanner::stickyHeaders($editor->scopes(), $top, $budget);
 
             $actual = Probe::get($editor, 'stickyLines');
-            $this->assertSame(array_map(static fn (array $h): int => $h['line'], $expected), $actual, "rows={$rows}");
+            $this->assertSame(\array_map(static fn (array $h): int => $h['line'], $expected), $actual, "rows={$rows}");
         }
     }
 
@@ -426,7 +426,7 @@ final class CodeEditorGeometryTest extends TestCase
         $editor = $this->editor("<?php\n\$distinctive = 1;\n");
 
         $seatsAGutter = null;
-        foreach (range(start: 1, end: 40) as $columns) {
+        foreach (\range(start: 1, end: 40) as $columns) {
             $editor->render(new RenderContext($columns, 4));
             if ($editor->gutterWidth() > 0) {
                 $seatsAGutter = $columns;
@@ -497,19 +497,19 @@ final class CodeEditorGeometryTest extends TestCase
         $hint = $translator->trans('No file open · press %key% to open a file', ['%key%' => 'Ctrl+Shift+N']);
         $text = AnsiText::truncate($hint, 200);
         $textWidth = AnsiUtils::visibleWidth($text);
-        $expectedLeft = max(0, intdiv(200 - $textWidth, num2: 2));
+        $expectedLeft = \max(0, \intdiv(200 - $textWidth, num2: 2));
 
         $rendered = $editor->render(new RenderContext(200, 5));
         $hintRow = null;
         foreach ($rendered as $row) {
             $plain = AnsiUtils::stripAnsiCodes($row);
-            if (str_contains($plain, 'No file open')) {
+            if (\str_contains($plain, 'No file open')) {
                 $hintRow = $plain;
                 break;
             }
         }
         $this->assertNotNull($hintRow);
-        $leadingSpaces = \strlen($hintRow) - \strlen(ltrim($hintRow, characters: ' '));
+        $leadingSpaces = \strlen($hintRow) - \strlen(\ltrim($hintRow, characters: ' '));
         // Exact leading-space count pins the divisor (2, not 1 or 3) and the
         // floor (0, not -1 — unreachable here since truncate() guarantees
         // textWidth &lt;= columns, but pinned for documentation).
@@ -521,12 +521,12 @@ final class CodeEditorGeometryTest extends TestCase
         $editor = new CodeEditorWidget();
 
         $rendered = $editor->render(new RenderContext(80, 5)); // middle = intdiv(5,2) = 2
-        $middleHasHint = str_contains(AnsiUtils::stripAnsiCodes($rendered[2]), 'No file open');
+        $middleHasHint = \str_contains(AnsiUtils::stripAnsiCodes($rendered[2]), 'No file open');
         $otherRowsBlank =
-            !str_contains(AnsiUtils::stripAnsiCodes($rendered[0]), 'No file open')
-            && !str_contains(AnsiUtils::stripAnsiCodes($rendered[1]), 'No file open')
-            && !str_contains(AnsiUtils::stripAnsiCodes($rendered[3]), 'No file open')
-            && !str_contains(AnsiUtils::stripAnsiCodes($rendered[4]), 'No file open');
+            !\str_contains(AnsiUtils::stripAnsiCodes($rendered[0]), 'No file open')
+            && !\str_contains(AnsiUtils::stripAnsiCodes($rendered[1]), 'No file open')
+            && !\str_contains(AnsiUtils::stripAnsiCodes($rendered[3]), 'No file open')
+            && !\str_contains(AnsiUtils::stripAnsiCodes($rendered[4]), 'No file open');
 
         $this->assertTrue($middleHasHint, 'the hint must land on row intdiv(rows,2), row 2 of 5');
         $this->assertTrue($otherRowsBlank, 'every other row must be blank, not the hint (rules out the ternary being flipped)');

@@ -27,7 +27,7 @@ final class WrapCaretMotionTest extends TestCase
     private function editor(bool $wrap): CodeEditorWidget
     {
         $this->editor = new CodeEditorWidget();
-        $this->editor->showDocument('/p/a.php', new Document("first\n".str_repeat('x', times: 60)."\nlast\n"));
+        $this->editor->showDocument('/p/a.php', new Document("first\n".\str_repeat('x', times: 60)."\nlast\n"));
         $this->editor->setFocused(true);
         $this->editor->display()->setSoftWrap($wrap);
         $this->editor->render(new RenderContext(30, 12)); // establishes the content width
@@ -118,7 +118,7 @@ final class WrapCaretMotionTest extends TestCase
     public function testDownOntoAnotherWrappedLineLandsInItsFirstSegment(): void
     {
         $editor = new CodeEditorWidget();
-        $long = str_repeat('x', times: 60);
+        $long = \str_repeat('x', times: 60);
         $editor->showDocument('/p/a.php', new Document("{$long}\n{$long}\n"));
         $editor->setFocused(true);
         $editor->display()->setSoftWrap(true);
@@ -147,11 +147,11 @@ final class WrapCaretMotionTest extends TestCase
     {
         $editor = new CodeEditorWidget();
         $editor->showDocument('/p/a.php', new Document(
-            str_repeat('A', times: 80)."\n".str_repeat('B', times: 80)."\n".str_repeat('C', times: 80)."\n",
+            \str_repeat('A', times: 80)."\n".\str_repeat('B', times: 80)."\n".\str_repeat('C', times: 80)."\n",
         ));
         $editor->setFocused(true);
         $editor->display()->setSoftWrap(true);
-        $screen = static fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $editor->render(new RenderContext(30, 6))));
+        $screen = static fn (): string => AnsiUtils::stripAnsiCodes(\implode("\n", $editor->render(new RenderContext(30, 6))));
         $screen();
 
         $this->assertStringNotContainsString('C', $screen(), 'the third line starts off screen');
@@ -174,10 +174,10 @@ final class WrapCaretMotionTest extends TestCase
     public function testScrollingUpTakesTheLinesThatFitAndStopsAtTheOneThatDoesNot(): void
     {
         $editor = new CodeEditorWidget();
-        $editor->showDocument('/p/a.php', new Document("aaa\nbbb\n".str_repeat('X', times: 80)."\n"));
+        $editor->showDocument('/p/a.php', new Document("aaa\nbbb\n".\str_repeat('X', times: 80)."\n"));
         $editor->setFocused(true);
         $editor->display()->setSoftWrap(true);
-        $screen = static fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $editor->render(new RenderContext(30, 5))));
+        $screen = static fn (): string => AnsiUtils::stripAnsiCodes(\implode("\n", $editor->render(new RenderContext(30, 5))));
         $screen();
 
         // Down to the wrapped line's last segment.
@@ -208,7 +208,7 @@ final class WrapCaretMotionTest extends TestCase
         $editor->setFocused(true);
         $lens = static fn (string $t): array => ['title' => $t, 'command' => '', 'arguments' => []];
         $editor->decorations()->setCodeLenses([1 => [$lens('lens one'), $lens('lens two')]]);
-        $screen = static fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $editor->render(new RenderContext(30, 5))));
+        $screen = static fn (): string => AnsiUtils::stripAnsiCodes(\implode("\n", $editor->render(new RenderContext(30, 5))));
 
         // aaa, two lenses, BBB — four rows in five, so nothing needs to scroll.
         $editor->getDocument()->setCursor(1, 0);
@@ -229,7 +229,7 @@ final class WrapCaretMotionTest extends TestCase
     public function testACaretDeepInsideALineTallerThanTheViewportIsReached(): void
     {
         $editor = new CodeEditorWidget();
-        $editor->showDocument('/p/a.php', new Document(str_repeat('X', times: 120)."\nafter\n"));
+        $editor->showDocument('/p/a.php', new Document(\str_repeat('X', times: 120)."\nafter\n"));
         $editor->setFocused(true);
         $editor->display()->setSoftWrap(true);
         $editor->render(new RenderContext(30, 4));
@@ -246,7 +246,7 @@ final class WrapCaretMotionTest extends TestCase
 
         // The caret's own segment is the last one shown, not one below it.
         $hidden = $scroll->vScrollSegment();
-        $caretSegment = intdiv(110, (int) $editor->wrapWidth());
+        $caretSegment = \intdiv(110, (int) $editor->wrapWidth());
         $this->assertGreaterThanOrEqual($hidden, $caretSegment, 'the caret is at or below the first visible row');
         $this->assertLessThan($hidden + 4, $caretSegment, 'and within the four rows on screen');
     }
@@ -255,7 +255,7 @@ final class WrapCaretMotionTest extends TestCase
     public function testMovingBackToTheTopOfATallLineUnscrollsIt(): void
     {
         $editor = new CodeEditorWidget();
-        $editor->showDocument('/p/a.php', new Document(str_repeat('X', times: 120)."\nafter\n"));
+        $editor->showDocument('/p/a.php', new Document(\str_repeat('X', times: 120)."\nafter\n"));
         $editor->setFocused(true);
         $editor->display()->setSoftWrap(true);
         $editor->render(new RenderContext(30, 4));
@@ -273,7 +273,7 @@ final class WrapCaretMotionTest extends TestCase
     private function scrolledIntoATallLine(): CodeEditorWidget
     {
         $editor = new CodeEditorWidget();
-        $editor->showDocument('/p/a.php', new Document(str_repeat('X', times: 120)."\nafter\nlast\n"));
+        $editor->showDocument('/p/a.php', new Document(\str_repeat('X', times: 120)."\nafter\nlast\n"));
         $editor->setFocused(true);
         $editor->display()->setSoftWrap(true);
         $editor->render(new RenderContext(30, 4));

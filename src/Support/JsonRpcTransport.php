@@ -71,7 +71,7 @@ final class JsonRpcTransport
         $cwd = $this->rootDir;
         $pipes = [];
         // @mago-expect lint:no-error-control-operator -- proc_open on a nonexistent/unusable binary emits a spawn ("posix_spawn() failed") warning that guarding the inputs cannot reliably prevent; the false return is handled below.
-        $process = @proc_open($this->command, $descriptors, $pipes, $cwd);
+        $process = @\proc_open($this->command, $descriptors, $pipes, $cwd);
         if (!\is_resource($process)) {
             return false;
         }
@@ -82,9 +82,9 @@ final class JsonRpcTransport
         // stdin non-blocking too: a peer that stops draining its stdin must
         // never park the whole event loop inside a blocking fwrite (the classic
         // stdio deadlock once a frame exceeds the OS pipe buffer).
-        stream_set_blocking($this->stdin, enable: false);
-        stream_set_blocking($this->stdout, enable: false);
-        stream_set_blocking($this->stderr, enable: false);
+        \stream_set_blocking($this->stdin, enable: false);
+        \stream_set_blocking($this->stdout, enable: false);
+        \stream_set_blocking($this->stderr, enable: false);
         $this->writer = new NonBlockingWriter($this->stdin, $this->onWriteError(...), $this->maxWriteBuffer);
 
         $this->stdoutWatcher = EventLoop::onReadable($this->stdout, function () use ($onMessage, $onEof): void {
@@ -93,9 +93,9 @@ final class JsonRpcTransport
         $this->stderrWatcher = EventLoop::onReadable($this->stderr, function (): void {
             /** @var resource $stderr */
             $stderr = $this->stderr;
-            $data = \is_resource($stderr) ? fread($stderr, length: 8192) : false;
+            $data = \is_resource($stderr) ? \fread($stderr, length: 8192) : false;
             if (\is_string($data) && '' !== $data && null !== $this->logger) {
-                ($this->logger)(rtrim($data));
+                ($this->logger)(\rtrim($data));
             }
         });
 
@@ -104,7 +104,7 @@ final class JsonRpcTransport
 
     public function isRunning(): bool
     {
-        return null !== $this->process && proc_get_status($this->process)['running'];
+        return null !== $this->process && \proc_get_status($this->process)['running'];
     }
 
     /** Frame and queue one outbound message; never throws (a dead writer is a no-op). */
@@ -133,10 +133,10 @@ final class JsonRpcTransport
                     continue;
                 }
 
-                fclose($pipe);
+                \fclose($pipe);
             }
             if (\is_resource($process)) {
-                proc_terminate($process);
+                \proc_terminate($process);
                 ProcessReaper::closeWhenDead($process);
             }
             $this->process = null;
@@ -152,9 +152,9 @@ final class JsonRpcTransport
         if (!\is_resource($this->stdout)) {
             return;
         }
-        $data = fread($this->stdout, length: 65_536);
+        $data = \fread($this->stdout, length: 65_536);
         if (!\is_string($data) || '' === $data) {
-            if (feof($this->stdout)) {
+            if (\feof($this->stdout)) {
                 $this->log($this->peerName.' closed its stdout');
                 if (null !== $this->stdoutWatcher) {
                     EventLoop::cancel($this->stdoutWatcher);
@@ -190,7 +190,7 @@ final class JsonRpcTransport
     {
         $this->log('write to '.$this->peerName.' failed: '.$reason);
         if (\is_resource($this->process)) {
-            proc_terminate($this->process);
+            \proc_terminate($this->process);
         }
     }
 

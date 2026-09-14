@@ -158,7 +158,7 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
     {
         $selected = $this->selectedId();
         $this->entries = $this->buildEntries($names);
-        $ids = array_column($this->entries, 'id');
+        $ids = \array_column($this->entries, 'id');
         $this->setActive(null !== $selected && \in_array($selected, $ids, strict: true) ? $selected : 'plugins');
         $this->invalidate();
     }
@@ -180,10 +180,10 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
     {
         $widest = 0;
         foreach ($this->entries as $entry) {
-            $widest = max($widest, AnsiUtils::visibleWidth($this->rowText($entry)));
+            $widest = \max($widest, AnsiUtils::visibleWidth($this->rowText($entry)));
         }
 
-        return max(self::NARROWEST, min($widest, self::WIDEST_MINIMUM));
+        return \max(self::NARROWEST, \min($widest, self::WIDEST_MINIMUM));
     }
 
     #[\Override]
@@ -367,7 +367,7 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
      */
     private function indicatorRow(string $glyph, int $width): string
     {
-        $left = str_repeat(' ', times: max(0, intdiv($width, num2: 2) - 1));
+        $left = \str_repeat(' ', times: \max(0, \intdiv($width, num2: 2) - 1));
 
         return $this->styles->of(Role::Faint)->apply(AnsiText::padRight($left.$glyph, $width));
     }
@@ -393,8 +393,8 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
     #[\Override]
     public function render(RenderContext $context): array
     {
-        $width = min($this->width, $context->getColumns());
-        $rows = max(1, $context->getRows() > 0 ? $context->getRows() : 12);
+        $width = \min($this->width, $context->getColumns());
+        $rows = \max(1, $context->getRows() > 0 ? $context->getRows() : 12);
 
         // The FileTreeWidget idiom: this flex-0 side pane is rendered twice
         // per frame (intrinsic measure + real pass); one memo serves both.

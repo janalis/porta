@@ -200,10 +200,10 @@ final class SettingsPluginsController
 
     public function resetPlugin(string $name, string $key): void
     {
-        if (!str_starts_with($key, self::SETTING_PREFIX)) {
+        if (!\str_starts_with($key, self::SETTING_PREFIX)) {
             return;
         }
-        $setting = substr($key, offset: \strlen(self::SETTING_PREFIX));
+        $setting = \substr($key, offset: \strlen(self::SETTING_PREFIX));
         $this->pluginSettings->reset($name, $setting);
         // The plugin hears about it like any other write, so a holder it keeps
         // is put back too rather than staying on the value just removed.
@@ -224,8 +224,8 @@ final class SettingsPluginsController
 
             return;
         }
-        if (str_starts_with($key, self::SETTING_PREFIX)) {
-            $setting = substr($key, offset: \strlen(self::SETTING_PREFIX));
+        if (\str_starts_with($key, self::SETTING_PREFIX)) {
+            $setting = \substr($key, offset: \strlen(self::SETTING_PREFIX));
             $this->pluginSettings->change($name, $setting, $value);
             $this->lifecycle->onPluginSettingChanged($name, $setting, $value);
         }
@@ -272,11 +272,11 @@ final class SettingsPluginsController
         }
         if ('pluginInstall' === $key) {
             $this->armed = null;
-            $this->install(trim($value));
+            $this->install(\trim($value));
 
             return;
         }
-        if (str_starts_with($key, 'pluginInfo:')) {
+        if (\str_starts_with($key, 'pluginInfo:')) {
             return; // a built-in marker / placeholder row — nothing to actuate
         }
         $this->removalPressed($key);
@@ -296,7 +296,7 @@ final class SettingsPluginsController
 
     private function removalPressed(string $key): void
     {
-        $parts = explode(':', $key, limit: 3);
+        $parts = \explode(':', $key, limit: 3);
         $scope = $parts[1] ?? '';
         $name = $parts[2] ?? '';
         if ($this->armed !== $key) {

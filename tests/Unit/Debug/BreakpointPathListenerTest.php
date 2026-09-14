@@ -27,13 +27,13 @@ final class BreakpointPathListenerTest extends TestCase
         // Showing the new path first proves the repaint below is the listener's
         // doing: nothing has painted a dot for it yet.
         $decorations->apply('/p/New.php');
-        $this->assertStringNotContainsString('●', implode("\n", $editor->render(new RenderContext(40, 6))));
+        $this->assertStringNotContainsString('●', \implode("\n", $editor->render(new RenderContext(40, 6))));
 
         new BreakpointPathListener($breakpoints, $decorations)->onFileRenamed(new FileRenamed('/p/Old.php', '/p/New.php'));
 
         $this->assertSame([1], $breakpoints->linesFor('/p/New.php'), 'the breakpoint came with the file');
         $this->assertSame([], $breakpoints->linesFor('/p/Old.php'), 'and is gone from the dead path');
-        $this->assertStringContainsString('●', implode("\n", $editor->render(new RenderContext(40, 6))), 'the gutter shows it without waiting for a buffer switch');
+        $this->assertStringContainsString('●', \implode("\n", $editor->render(new RenderContext(40, 6))), 'the gutter shows it without waiting for a buffer switch');
     }
 
     public function testADeletedFilesBreakpointsAreRetired(): void

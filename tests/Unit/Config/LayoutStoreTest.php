@@ -38,10 +38,10 @@ final class LayoutStoreTest extends TestCase
     public function testMissingKeysAndNonNumericBecomeNull(): void
     {
         $project = new TempProject();
-        if (!is_dir($project->path('.porta'))) {
-            mkdir($project->path('.porta'), permissions: 0o777, recursive: true);
+        if (!\is_dir($project->path('.porta'))) {
+            \mkdir($project->path('.porta'), permissions: 0o777, recursive: true);
         }
-        file_put_contents($project->path('.porta/layout.json'), json_encode(['sidebarWidthPercent' => 'nope']));
+        \file_put_contents($project->path('.porta/layout.json'), \json_encode(['sidebarWidthPercent' => 'nope']));
 
         $loaded = new LayoutStore($project->dir)->load();
         $this->assertNotNull($loaded);
@@ -53,10 +53,10 @@ final class LayoutStoreTest extends TestCase
     public function testHandEditedNumericStringIsAccepted(): void
     {
         $project = new TempProject();
-        if (!is_dir($project->path('.porta'))) {
-            mkdir($project->path('.porta'), permissions: 0o777, recursive: true);
+        if (!\is_dir($project->path('.porta'))) {
+            \mkdir($project->path('.porta'), permissions: 0o777, recursive: true);
         }
-        file_put_contents($project->path('.porta/layout.json'), json_encode(['sidebarWidthPercent' => '18']));
+        \file_put_contents($project->path('.porta/layout.json'), \json_encode(['sidebarWidthPercent' => '18']));
 
         $this->assertSame(18, new LayoutStore($project->dir)->load()?->sidebarWidthPercent);
     }
@@ -67,7 +67,7 @@ final class LayoutStoreTest extends TestCase
         $store = new LayoutStore($project->dir);
         $store->save(new LayoutPrefs(sidebarWidthPercent: 20));
 
-        $raw = (string) file_get_contents($project->path('.porta/layout.json'));
+        $raw = (string) \file_get_contents($project->path('.porta/layout.json'));
         $this->assertStringContainsString('sidebarWidthPercent', $raw);
         $this->assertStringNotContainsString('bottomPanelHeightPercent', $raw);
         $this->assertStringNotContainsString('viewSidebarWidthPercent', $raw, 'no view resized, no key');
@@ -78,7 +78,7 @@ final class LayoutStoreTest extends TestCase
     public function testSaveFailsWhenDirCannotBeCreated(): void
     {
         $project = new TempProject();
-        file_put_contents($project->path('.porta'), data: 'not a dir'); // block mkdir of .porta/
+        \file_put_contents($project->path('.porta'), data: 'not a dir'); // block mkdir of .porta/
 
         $this->assertFalse(new LayoutStore($project->dir)->save(new LayoutPrefs(sidebarWidthPercent: 20, bottomPanelHeightPercent: 30)));
     }
@@ -91,12 +91,12 @@ final class LayoutStoreTest extends TestCase
         // migrated in place, because this file is hand-editable — the old
         // spelling keeps working until the next drag rewrites the map.
         $project = new TempProject();
-        if (!is_dir($project->path('.porta'))) {
-            mkdir($project->path('.porta'), permissions: 0o777, recursive: true);
+        if (!\is_dir($project->path('.porta'))) {
+            \mkdir($project->path('.porta'), permissions: 0o777, recursive: true);
         }
-        file_put_contents(
+        \file_put_contents(
             $project->path('.porta/layout.json'),
-            json_encode([
+            \json_encode([
                 'gitSidebarWidthPercent' => 28,
                 'settingsSidebarWidthPercent' => 19,
             ]),
@@ -111,12 +111,12 @@ final class LayoutStoreTest extends TestCase
         // the map from the first drag after it. The map is the one the user's
         // last drag wrote.
         $project = new TempProject();
-        if (!is_dir($project->path('.porta'))) {
-            mkdir($project->path('.porta'), permissions: 0o777, recursive: true);
+        if (!\is_dir($project->path('.porta'))) {
+            \mkdir($project->path('.porta'), permissions: 0o777, recursive: true);
         }
-        file_put_contents(
+        \file_put_contents(
             $project->path('.porta/layout.json'),
-            json_encode([
+            \json_encode([
                 'gitSidebarWidthPercent' => 28,
                 'viewSidebarWidthPercent' => ['git' => 44, 'lsp-explorer' => 12],
             ]),
@@ -136,12 +136,12 @@ final class LayoutStoreTest extends TestCase
         // leak into the width map. Likewise a non-numeric percent must not
         // leak in under a valid string id.
         $project = new TempProject();
-        if (!is_dir($project->path('.porta'))) {
-            mkdir($project->path('.porta'), permissions: 0o777, recursive: true);
+        if (!\is_dir($project->path('.porta'))) {
+            \mkdir($project->path('.porta'), permissions: 0o777, recursive: true);
         }
-        file_put_contents(
+        \file_put_contents(
             $project->path('.porta/layout.json'),
-            json_encode(['viewSidebarWidthPercent' => ['5' => 50, 'git' => 'not-a-number']]),
+            \json_encode(['viewSidebarWidthPercent' => ['5' => 50, 'git' => 'not-a-number']]),
         );
 
         $this->assertSame([], new LayoutStore($project->dir)->load()?->viewSidebarWidthPercent);
@@ -156,6 +156,6 @@ final class LayoutStoreTest extends TestCase
         $saved = new LayoutStore($project->dir)->save(new LayoutPrefs(viewSidebarWidthPercent: ["v\xB1" => 40]));
 
         $this->assertFalse($saved);
-        $this->assertFalse(is_file($project->path('.porta/layout.json')), 'nothing half-written');
+        $this->assertFalse(\is_file($project->path('.porta/layout.json')), 'nothing half-written');
     }
 }

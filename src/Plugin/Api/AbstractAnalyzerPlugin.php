@@ -123,7 +123,7 @@ abstract class AbstractAnalyzerPlugin extends AbstractToolPlugin
         $api->addMenuItem('toggle-on-save');
 
         $api->onFileSaved(function (string $path) use ($api): void {
-            if ((bool) $api->setting('autoLint') && str_ends_with($path, '.php')) {
+            if ((bool) $api->setting('autoLint') && \str_ends_with($path, '.php')) {
                 $this->analyse($api, $path);
             }
         });
@@ -170,7 +170,7 @@ abstract class AbstractAnalyzerPlugin extends AbstractToolPlugin
     private function publish(PluginApi $api, string $file, int $code, string $stdout): void
     {
         /** @var array<array-key, mixed>|scalar|null $report */
-        $report = json_decode($stdout, associative: true);
+        $report = \json_decode($stdout, associative: true);
         if (!$this->acceptsExitCode($code) || !\is_array($report)) {
             $this->flashFailure($api, $code);
 

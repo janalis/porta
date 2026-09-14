@@ -54,7 +54,7 @@ class FakeDapClient implements DapClientInterface
         if (null === $onResult) {
             return;
         }
-        if (array_key_exists($command, $this->responses)) {
+        if (\array_key_exists($command, $this->responses)) {
             [$body, $error] = $this->responses[$command];
             $onResult($body, $error);
 
@@ -85,7 +85,7 @@ class FakeDapClient implements DapClientInterface
                 continue;
             }
 
-            array_splice($this->pending, $i, length: 1);
+            \array_splice($this->pending, $i, length: 1);
             $entry['callback']($body, $error);
 
             return;
@@ -99,7 +99,7 @@ class FakeDapClient implements DapClientInterface
      */
     public function emit(string $event, array $body = []): void
     {
-        if (array_key_exists($event, $this->eventHandlers)) {
+        if (\array_key_exists($event, $this->eventHandlers)) {
             $this->eventHandlers[$event]($body);
         }
     }
@@ -115,13 +115,13 @@ class FakeDapClient implements DapClientInterface
     /** @return list<string> */
     public function commands(): array
     {
-        return array_column($this->requests, 'command');
+        return \array_column($this->requests, 'command');
     }
 
     /** @return array<string, mixed> the arguments of the most recent $command request */
     public function argumentsOf(string $command): array
     {
-        foreach (array_reverse($this->requests) as $request) {
+        foreach (\array_reverse($this->requests) as $request) {
             if ($request['command'] === $command) {
                 return $request['arguments'];
             }
