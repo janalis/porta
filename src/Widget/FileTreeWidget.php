@@ -546,7 +546,14 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
 
             return;
         }
-        if (ListNavigation::handleKey($data, $kb, $this->list, $count, page: $this->lastRows)) {
+        // Row 0 is the header, so a page is one row SHORTER than the pane —
+        // the same budget render() gives follow() and scrollWindow() gets above.
+        // Paging by the full height scrolled one entry past the bottom of the
+        // screen every press, and the entry you landed on had never been drawn.
+        // No floor, for the reason scrollWindow() has none: a pane with no room
+        // to draw an entry has no page to turn, and ListNavigation already
+        // ignores a page of zero.
+        if (ListNavigation::handleKey($data, $kb, $this->list, $count, page: $this->lastRows - 1)) {
             // Moving the cursor with no modifier collapses the selection to the
             // row under it: a pair is built deliberately, and a stale second
             // file surviving a walk through the tree is how a compare ends up

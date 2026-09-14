@@ -191,7 +191,10 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
 
             return;
         }
-        if (ListNavigation::handleKey($data, $kb, $this->list, \count($this->shown), page: $this->lastRows)) {
+        // The title row — and the filter row while it is showing — are not
+        // list rows, so a page is what render() hands follow(), not the pane
+        // height. With the filter open the difference was two entries.
+        if (ListNavigation::handleKey($data, $kb, $this->list, \count($this->shown), page: $this->lastRows - $this->headerRows())) {
             $this->invalidate();
         }
     }

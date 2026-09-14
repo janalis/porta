@@ -11,6 +11,7 @@ use Porta\I18n\BaseDirection;
 use Porta\I18n\Bidi;
 use Porta\I18n\Translator;
 use Porta\Tests\Support\AttachedStyles;
+use Porta\Tests\Support\PagesThroughRows;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RendersWidget;
 use Porta\Widget\Settings\KeybindingsListWidget;
@@ -20,6 +21,7 @@ use Symfony\Component\Tui\Render\RenderContext;
 
 final class KeybindingsListWidgetTest extends TestCase
 {
+    use PagesThroughRows;
     use RendersWidget;
 
     /** @return list<KeybindingRow> */
@@ -324,6 +326,34 @@ final class KeybindingsListWidgetTest extends TestCase
 
         $widget->handleInput("\x1b[5~"); // Page Up
         $this->assertSame('a0', $this->selectedAction($widget), 'page_up brought it back');
+    }
+
+    /**
+     * With the filter row open the page was TWO entries longer than the body,
+     * so the rows between one screen and the next were never drawn.
+     */
+    public function testPagingDownShowsEveryRowFilterOpenOrClosed(): void
+    {
+        foreach ([false, true] as $filtering) {
+            $widget = new KeybindingsListWidget(new Translator('en'));
+            $rows = [];
+            $labels = [];
+            for ($i = 0; $i < 40; ++$i) {
+                $label = \sprintf('Action %02d', $i);
+                $labels[] = $label;
+                $rows[] = new KeybindingRow(\sprintf('a%02d', $i), $label, '');
+            }
+            $widget->setRows($rows);
+            if ($filtering) {
+                $widget->handleInput('/'); // opens the filter row, stealing a body row
+            }
+
+            self::assertPagingShowsEveryRow(
+                fn (): string => $this->plain($widget->render(new RenderContext(60, 9))),
+                static fn () => $widget->handleInput("\x1b[6~"),
+                $labels,
+            );
+        }
     }
 
     /** The action of the row under the selection (the widget's private rows + list, via Probe). */

@@ -9,6 +9,7 @@ use Porta\Editor\BufferManager;
 use Porta\Editor\ChangeMarkKind;
 use Porta\Event\TreeFileActivated;
 use Porta\Tests\Support\AttachedStyles;
+use Porta\Tests\Support\PagesThroughRows;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RendersWidget;
 use Porta\Tests\Support\TempProject;
@@ -23,7 +24,36 @@ use Symfony\Component\Tui\Render\RenderContext;
 
 final class FileTreeWidgetTest extends TestCase
 {
+    use PagesThroughRows;
     use RendersWidget;
+
+    /**
+     * The tree's own comment says row 0 is the header and `$rows - 1` entries
+     * are visible — and then it paged by the full height, so one file per press
+     * scrolled by without ever being drawn.
+     */
+    public function testPagingDownShowsEveryFile(): void
+    {
+        $files = [];
+        $labels = [];
+        for ($i = 0; $i < 40; ++$i) {
+            $name = \sprintf('f%02d.php', $i);
+            $labels[] = $name;
+            $files[$name] = "<?php\n";
+        }
+        $project = new TempProject($files);
+        $tree = new FileTreeWidget($project->dir);
+
+        self::assertPagingShowsEveryRow(
+            function () use ($tree): string {
+                $tree->beforeRender();
+
+                return $this->plain($tree->render(new RenderContext(30, 9)));
+            },
+            static fn () => $tree->handleInput("\x1b[6~"),
+            $labels,
+        );
+    }
 
     public function testAFileRowIsMarkedWithItsWorstDiagnosticAndItsUnsavedChanges(): void
     {
@@ -792,8 +822,11 @@ final class FileTreeWidgetTest extends TestCase
         }
         $this->assertStringContainsString('file-20.php', $this->plain($lines), 'viewport followed the selection');
 
-        $tree->handleInput("\x1b[5~"); // page up: selection moves one page back
-        $this->assertStringContainsString('file-12.php', $this->plain($tree->render($context)));
+        // A page is the seven ENTRY rows, not the eight-row pane: row 0 is the
+        // header. So page up from 20 lands on 13, and the two screens meet —
+        // paging by 8 landed on 12 and slid file-13 past unseen.
+        $tree->handleInput("\x1b[5~");
+        $this->assertStringContainsString('file-13.php', $this->plain($tree->render($context)));
         $tree->handleInput("\x1b[6~"); // page down
         $this->assertStringContainsString('file-20.php', $this->plain($tree->render($context)));
     }
