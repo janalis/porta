@@ -21,7 +21,7 @@ final class CodeEditorAutoPairsTest extends TestCase
 
     public function testDefaultsOn(): void
     {
-        $this->assertTrue($this->editor()->display->autoPairs());
+        $this->assertTrue($this->editor()->display->autoPairs);
     }
 
     public function testInsertsMatchingPairWithCursorBetween(): void
@@ -154,7 +154,7 @@ final class CodeEditorAutoPairsTest extends TestCase
         $editor->handleInput('(');
 
         $this->assertSame('(', $editor->getDocument()->getLine(0));
-        $this->assertFalse($editor->display->autoPairs());
+        $this->assertFalse($editor->display->autoPairs);
     }
 
     public function testMultiCaretFallsBackToPlainInsert(): void

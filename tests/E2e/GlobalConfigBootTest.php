@@ -66,7 +66,7 @@ final class GlobalConfigBootTest extends TestCase
                     $editor = $tui->getById('editor');
                     $this->assertSame(
                         LineNumberMode::Relative,
-                        $editor->display->lineNumbers(),
+                        $editor->display->lineNumbers,
                         'the editor booted from the user file',
                     );
 
@@ -114,7 +114,7 @@ final class GlobalConfigBootTest extends TestCase
                     $editor = $tui->getById('editor');
                     $this->assertSame(
                         LineNumberMode::Absolute,
-                        $editor->display->lineNumbers(),
+                        $editor->display->lineNumbers,
                         'the project overrode the key it names',
                     );
 

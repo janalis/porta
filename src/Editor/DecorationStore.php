@@ -16,10 +16,10 @@ namespace Porta\Editor;
 final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
 {
     /** @var array<int, list<array{start: int, end: int, current: bool}>> search matches by line (byte cols) */
-    private array $searchMatches = [];
+    public private(set) array $searchMatches = [];
 
     /** @var array<int, ChangeMarkKind> 0-based line => kind */
-    private array $vcsMarks = [];
+    public private(set) array $vcsMarks = [];
 
     /**
      * The document's line count as of the last edit, for {@see
@@ -31,10 +31,10 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
     private int $vcsMarkLineCount = 0;
 
     /** @var array<int, string> 0-based line => trailing annotation (blame) */
-    private array $lineAnnotations = [];
+    public private(set) array $lineAnnotations = [];
 
     /** @var list<int> 0-based lines with a breakpoint (● in the gutter) */
-    private array $breakpointLines = [];
+    public private(set) array $breakpointLines = [];
 
     /** @var array<int, list<array{title: string, command: string, arguments: list<mixed>}>> 0-based line => the lenses shown ABOVE it */
     private array $codeLenses = [];
@@ -46,24 +46,24 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
     private array $bookmarkLines = [];
 
     /** @var list<int> the subset of breakpoint lines carrying a condition (◆ in the gutter) */
-    private array $conditionalBreakpointLines = [];
+    public private(set) array $conditionalBreakpointLines = [];
 
     /** @var list<int> the subset of breakpoint lines carrying a log message (◇ in the gutter) */
-    private array $logpointLines = [];
+    public private(set) array $logpointLines = [];
 
     /** The debugger's stopped line (full-width band), or null when not paused here. */
-    private ?int $debugLine = null;
+    public private(set) ?int $debugLine = null;
 
     /** @var array<int, list<array{severity: DiagnosticSeverity, message: string, col: int, endCol?: int, code?: int|string, source?: string, tags?: list<int>}>> keyed by 0-based line */
-    private array $diagnostics = [];
+    public private(set) array $diagnostics = [];
 
     /** @var array{errors: int, warnings: int} maintained by {@see recountDiagnostics} on every diagnostics change */
-    private array $counts = ['errors' => 0, 'warnings' => 0];
+    public private(set) array $diagnosticCounts = ['errors' => 0, 'warnings' => 0];
 
     /** @var array<int, list<array{col: int, text: string}>> inlay hints per line: byte col => dim label */
     private array $inlayHints = [];
     /** @var array<int, string> 0-based line => the debugger's values for it */
-    private array $debugValues = [];
+    public private(set) array $debugValues = [];
 
     /** @param \Closure(): void $invalidate request a redraw */
     public function __construct(
@@ -102,12 +102,6 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
         ($this->invalidate)();
     }
 
-    /** @return array<int, list<array{start: int, end: int, current: bool}>> */
-    public function searchMatches(): array
-    {
-        return $this->searchMatches;
-    }
-
     /**
      * @param array<int, ChangeMarkKind> $byLine    0-based line => kind
      * @param int|null                   $lineCount the document these marks describe, which REBASES the
@@ -126,12 +120,6 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
             $this->vcsMarkLineCount = $lineCount;
         }
         ($this->invalidate)();
-    }
-
-    /** @return array<int, ChangeMarkKind> */
-    public function vcsMarks(): array
-    {
-        return $this->vcsMarks;
     }
 
     /**
@@ -221,23 +209,11 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
         ($this->invalidate)();
     }
 
-    /** @return array<int, string> */
-    public function debugValues(): array
-    {
-        return $this->debugValues;
-    }
-
     /** @param array<int, string> $byLine 0-based line => trailing annotation (blame); [] clears */
     public function setLineAnnotations(array $byLine): void
     {
         $this->lineAnnotations = $byLine;
         ($this->invalidate)();
-    }
-
-    /** @return array<int, string> */
-    public function lineAnnotations(): array
-    {
-        return $this->lineAnnotations;
     }
 
     /**
@@ -265,34 +241,11 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
         return ($this->bookmarkLines[$line] ?? null) !== null;
     }
 
-    /** @return list<int> */
-    public function breakpointLines(): array
-    {
-        return $this->breakpointLines;
-    }
-
-    /** @return list<int> */
-    public function conditionalBreakpointLines(): array
-    {
-        return $this->conditionalBreakpointLines;
-    }
-
-    /** @return list<int> */
-    public function logpointLines(): array
-    {
-        return $this->logpointLines;
-    }
-
     /** Highlight (or clear) the debugger's stopped line. */
     public function setDebugLine(?int $line): void
     {
         $this->debugLine = $line;
         ($this->invalidate)();
-    }
-
-    public function debugLine(): ?int
-    {
-        return $this->debugLine;
     }
 
     /** @param array<int, list<array{severity: DiagnosticSeverity, message: string, col: int, endCol?: int, code?: int|string, source?: string, tags?: list<int>}>> $byLine */
@@ -317,19 +270,7 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
                 DiagnosticSeverity::Error === $d['severity'] ? ++$errors : ++$warnings;
             }
         }
-        $this->counts = ['errors' => $errors, 'warnings' => $warnings];
-    }
-
-    /** @return array<int, list<array{severity: DiagnosticSeverity, message: string, col: int, endCol?: int, code?: int|string, source?: string, tags?: list<int>}>> */
-    public function diagnostics(): array
-    {
-        return $this->diagnostics;
-    }
-
-    /** @return array{errors: int, warnings: int} */
-    public function diagnosticCounts(): array
-    {
-        return $this->counts;
+        $this->diagnosticCounts = ['errors' => $errors, 'warnings' => $warnings];
     }
 
     /** The first diagnostic message on $line (the status bar's caret readout), or null. */

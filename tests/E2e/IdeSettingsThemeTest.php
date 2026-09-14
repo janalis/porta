@@ -60,7 +60,7 @@ final class IdeSettingsThemeTest extends TestCase
             [
                 300 => function ($tui): void {
                     $editor = $tui->getById('editor');
-                    $this->assertSame(LineNumberMode::Relative, $editor->display->lineNumbers(), 'setting applied from file');
+                    $this->assertSame(LineNumberMode::Relative, $editor->display->lineNumbers, 'setting applied from file');
                     // Inline diagnostics disabled: even with a diagnostic, no inline text.
                     $editor->decorations->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'boom', 'col' => 0]]]);
                     $rendered = $editor->render(new RenderContext(80, 5));

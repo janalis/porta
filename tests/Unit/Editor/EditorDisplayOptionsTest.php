@@ -27,13 +27,13 @@ final class EditorDisplayOptionsTest extends TestCase
             ++$repaints;
         });
 
-        $this->assertTrue($options->inlineDiagnostics(), 'on by default');
+        $this->assertTrue($options->inlineDiagnostics, 'on by default');
         $this->assertFalse($options->setInlineDiagnostics(true), 'setting the value it already holds is not a change');
         $this->assertSame(0, $repaints, 'and does not repaint');
 
         $this->assertTrue($options->setInlineDiagnostics(false), 'a real change answers true');
         $this->assertSame(1, $repaints, 'and repaints exactly once');
-        $this->assertFalse($options->inlineDiagnostics());
+        $this->assertFalse($options->inlineDiagnostics);
 
         $this->assertFalse($options->setInlineDiagnostics(false), 'idempotent at the new value too');
         $this->assertSame(1, $repaints, 'still one repaint');
@@ -49,12 +49,12 @@ final class EditorDisplayOptionsTest extends TestCase
         });
 
         $toggles = [
-            'inlineDiagnostics' => [$options->setInlineDiagnostics(...), $options->inlineDiagnostics(...)],
-            'vcsGutter' => [$options->setVcsGutter(...), $options->vcsGutter(...)],
-            'stickyScroll' => [$options->setStickyScroll(...), $options->stickyScroll(...)],
-            'indentGuides' => [$options->setIndentGuides(...), $options->indentGuides(...)],
-            'autoPairs' => [$options->setAutoPairs(...), $options->autoPairs(...)],
-            'softWrap' => [$options->setSoftWrap(...), $options->softWrap(...)],
+            'inlineDiagnostics' => [$options->setInlineDiagnostics(...), static fn (): bool => $options->inlineDiagnostics],
+            'vcsGutter' => [$options->setVcsGutter(...), static fn (): bool => $options->vcsGutter],
+            'stickyScroll' => [$options->setStickyScroll(...), static fn (): bool => $options->stickyScroll],
+            'indentGuides' => [$options->setIndentGuides(...), static fn (): bool => $options->indentGuides],
+            'autoPairs' => [$options->setAutoPairs(...), static fn (): bool => $options->autoPairs],
+            'softWrap' => [$options->setSoftWrap(...), static fn (): bool => $options->softWrap],
         ];
 
         $expected = 0;
@@ -78,12 +78,12 @@ final class EditorDisplayOptionsTest extends TestCase
             ++$repaints;
         });
 
-        $this->assertSame(LineNumberMode::Absolute, $options->lineNumbers(), 'absolute by default');
+        $this->assertSame(LineNumberMode::Absolute, $options->lineNumbers, 'absolute by default');
         $this->assertFalse($options->setLineNumbers(LineNumberMode::Absolute), 'the mode it already shows is not a change');
         $this->assertSame(0, $repaints, 'and does not repaint');
 
         $this->assertTrue($options->setLineNumbers(LineNumberMode::Relative));
-        $this->assertSame(LineNumberMode::Relative, $options->lineNumbers());
+        $this->assertSame(LineNumberMode::Relative, $options->lineNumbers);
         $this->assertSame(1, $repaints);
 
         $this->assertFalse($options->setLineNumbers(LineNumberMode::Relative), 'idempotent at the new mode');

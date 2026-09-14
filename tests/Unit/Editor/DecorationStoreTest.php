@@ -17,7 +17,7 @@ final class DecorationStoreTest extends TestCase
         // every frame) — BOTH mutators must recount, or a buffer switch would
         // show the previous file's totals.
         $store = new DecorationStore(static function (): void {});
-        $this->assertSame(['errors' => 0, 'warnings' => 0], $store->diagnosticCounts());
+        $this->assertSame(['errors' => 0, 'warnings' => 0], $store->diagnosticCounts);
 
         $store->setDiagnostics([
             3 => [
@@ -25,13 +25,13 @@ final class DecorationStoreTest extends TestCase
                 ['severity' => DiagnosticSeverity::Warning, 'message' => 'meh', 'col' => 4],
             ],
         ]);
-        $this->assertSame(['errors' => 1, 'warnings' => 1], $store->diagnosticCounts());
+        $this->assertSame(['errors' => 1, 'warnings' => 1], $store->diagnosticCounts);
 
         $store->resetForBuffer([5 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'other file', 'col' => 0]]]);
-        $this->assertSame(['errors' => 0, 'warnings' => 1], $store->diagnosticCounts(), 'a buffer switch recounts');
+        $this->assertSame(['errors' => 0, 'warnings' => 1], $store->diagnosticCounts, 'a buffer switch recounts');
 
         $store->setDiagnostics([]);
-        $this->assertSame(['errors' => 0, 'warnings' => 0], $store->diagnosticCounts(), 'clearing recounts to zero');
+        $this->assertSame(['errors' => 0, 'warnings' => 0], $store->diagnosticCounts, 'clearing recounts to zero');
     }
 
     /**
@@ -55,7 +55,7 @@ final class DecorationStoreTest extends TestCase
 
         $this->assertSame(
             [1 => ChangeMarkKind::Deleted, 3 => ChangeMarkKind::Modified, 4 => ChangeMarkKind::Added, 5 => ChangeMarkKind::Added, 10 => ChangeMarkKind::Modified],
-            $store->vcsMarks(),
+            $store->vcsMarks,
             'the mark above stays, the two new lines are Added, and the one below moved by two',
         );
     }
@@ -80,7 +80,7 @@ final class DecorationStoreTest extends TestCase
 
         $this->assertSame(
             [2 => ChangeMarkKind::Added, 7 => ChangeMarkKind::Modified],
-            $store->vcsMarks(),
+            $store->vcsMarks,
             "line 4's mark went with the line; line 9 moved up two",
         );
     }
@@ -97,7 +97,7 @@ final class DecorationStoreTest extends TestCase
 
         $store->remapVcsMarksForEdit(cursorLine: 2, lineCount: 10);
 
-        $this->assertSame([2 => ChangeMarkKind::Modified, 6 => ChangeMarkKind::Added], $store->vcsMarks());
+        $this->assertSame([2 => ChangeMarkKind::Modified, 6 => ChangeMarkKind::Added], $store->vcsMarks);
     }
 
     /**
@@ -113,7 +113,7 @@ final class DecorationStoreTest extends TestCase
 
         $store->remapVcsMarksForEdit(cursorLine: 2, lineCount: 10);
 
-        $this->assertSame([2 => ChangeMarkKind::Added], $store->vcsMarks(), 'still Added, not Modified');
+        $this->assertSame([2 => ChangeMarkKind::Added], $store->vcsMarks, 'still Added, not Modified');
     }
 
     /**
@@ -131,7 +131,7 @@ final class DecorationStoreTest extends TestCase
 
         $store->remapVcsMarksForEdit(cursorLine: 4, lineCount: 0);
 
-        $this->assertSame([], $store->vcsMarks());
+        $this->assertSame([], $store->vcsMarks);
         $this->assertSame(0, $repaints, 'and no repaint was asked for');
     }
 
@@ -159,7 +159,7 @@ final class DecorationStoreTest extends TestCase
 
         $this->assertSame(
             [1 => ChangeMarkKind::Modified, 5 => ChangeMarkKind::Modified],
-            $store->vcsMarks(),
+            $store->vcsMarks,
             'one keystroke, no shift: the 188-line difference was the reload, not an edit',
         );
     }
@@ -184,6 +184,6 @@ final class DecorationStoreTest extends TestCase
         // Nothing here may rebase to zero: the next keystroke would then read
         // the whole 30-line file as lines this edit had just added, and paint a
         // gutter of thirty-one marks on a file whose gutter is off.
-        $this->assertSame([], $store->vcsMarks(), 'cleared stays cleared');
+        $this->assertSame([], $store->vcsMarks, 'cleared stays cleared');
     }
 }

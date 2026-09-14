@@ -70,9 +70,9 @@ final readonly class EditorRowAssembler
         private bool $showWhitespace = false,
     ) {
         $this->styles = $styles ?? Styles::dark();
-        $this->breakpointSet = \array_fill_keys($store->breakpointLines(), value: true);
-        $this->conditionalBreakpointSet = \array_fill_keys($store->conditionalBreakpointLines(), value: true);
-        $this->logpointSet = \array_fill_keys($store->logpointLines(), value: true);
+        $this->breakpointSet = \array_fill_keys($store->breakpointLines, value: true);
+        $this->conditionalBreakpointSet = \array_fill_keys($store->conditionalBreakpointLines, value: true);
+        $this->logpointSet = \array_fill_keys($store->logpointLines, value: true);
     }
 
     /**
@@ -148,7 +148,7 @@ final readonly class EditorRowAssembler
             $rowSegment = $atRow - \count($lenses);
 
             $isCursorLine = $lineIndex === $cursorLine && (null === $this->wrap || $rowSegment === WrapLayout::segmentOf($cursorDisplayCol, $geo->contentWidth));
-            $lineDiags = $this->store->diagnostics()[$lineIndex] ?? [];
+            $lineDiags = $this->store->diagnostics[$lineIndex] ?? [];
 
             // A continuation row is the same line, so it carries no number and
             // no gutter marks — repeating them would read as another line.
@@ -197,11 +197,11 @@ final readonly class EditorRowAssembler
             );
 
             // The debugger's stopped line outranks the current-line background.
-            if ($lineIndex === $this->store->debugLine()) {
+            if ($lineIndex === $this->store->debugLine) {
                 $content = LineDecorator::applyFullWidth($content, $geo->contentWidth, $this->styles->of(Role::DebugLineBg));
             }
             // Current-line background (skip when a selection is being shown)
-            if ($lineIndex !== $this->store->debugLine() && $isCursorLine && $this->focused && null === $decorations->selection) {
+            if ($lineIndex !== $this->store->debugLine && $isCursorLine && $this->focused && null === $decorations->selection) {
                 $content = LineDecorator::applyFullWidth($content, $geo->contentWidth, $this->styles->of(Role::RowHighlightBg));
             }
 
@@ -221,9 +221,9 @@ final readonly class EditorRowAssembler
             // asked right now — and because the other two keep their other
             // surfaces: a diagnostic still has its squiggle, its gutter mark,
             // its stripe cell and the Problems panel; blame has Alt+B.
-            $debugValue = $this->store->debugValues()[$lineIndex] ?? '';
+            $debugValue = $this->store->debugValues[$lineIndex] ?? '';
             $hasInlineDiagnostic = '' === $debugValue && $this->inlineDiagnostics && [] !== $lineDiags;
-            $trailing = '' !== $debugValue || $hasInlineDiagnostic ? $debugValue : $this->store->lineAnnotations()[$lineIndex] ?? '';
+            $trailing = '' !== $debugValue || $hasInlineDiagnostic ? $debugValue : $this->store->lineAnnotations[$lineIndex] ?? '';
             if ($hasInlineDiagnostic || '' !== $trailing) {
                 $textDisplayWidth = AnsiUtils::visibleWidth($hlLine);
                 // $rowOffset, not $hScroll: on a wrapped line those differ, and
@@ -344,7 +344,7 @@ final readonly class EditorRowAssembler
         // else. Ordered the other way, a single HINT — the weakest severity
         // there is — made a bookmark invisible.
         $marker = match (true) {
-            $lineIndex === $this->store->debugLine() => $this->styles->of(Role::Breakpoint)->apply(Glyphs::STOPPED_LINE),
+            $lineIndex === $this->store->debugLine => $this->styles->of(Role::Breakpoint)->apply(Glyphs::STOPPED_LINE),
             ($this->logpointSet[$lineIndex] ?? null) !== null => $this->styles->of(Role::Breakpoint)->apply(Glyphs::LOGPOINT),
             ($this->conditionalBreakpointSet[$lineIndex] ?? null) !== null => $this->styles->of(Role::Breakpoint)->apply(Glyphs::BREAKPOINT_CONDITIONAL),
             ($this->breakpointSet[$lineIndex] ?? null) !== null => $this->styles->of(Role::Breakpoint)->apply(Glyphs::BREAKPOINT),
@@ -381,7 +381,7 @@ final readonly class EditorRowAssembler
     /** The one-column git change strip, or '' when the gutter marks are disabled. */
     private function vcsCell(int $line): string
     {
-        return $this->vcsGutter ? EditorRenderer::vcsCell($this->store->vcsMarks()[$line] ?? null, $this->styles) : '';
+        return $this->vcsGutter ? EditorRenderer::vcsCell($this->store->vcsMarks[$line] ?? null, $this->styles) : '';
     }
 
     /**
@@ -442,7 +442,7 @@ final readonly class EditorRowAssembler
             $doc,
             $lineIndex,
             $decorations,
-            $this->store->searchMatches()[$lineIndex] ?? [],
+            $this->store->searchMatches[$lineIndex] ?? [],
             $lineDiags,
             $this->styles,
             $this->semanticSpansFor($lineIndex),

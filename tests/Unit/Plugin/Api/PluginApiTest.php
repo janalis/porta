@@ -559,8 +559,8 @@ final class PluginApiTest extends TestCase
 
         $api->showChangeMarkGutter(false);
 
-        $this->assertFalse(Probe::get($this->editor, 'display')->vcsGutter(), 'the strip is hidden');
-        $this->assertSame([], $this->editor->decorations->vcsMarks(), 'and it took the stale marks with it');
+        $this->assertFalse($this->editor->display->vcsGutter, 'the strip is hidden');
+        $this->assertSame([], $this->editor->decorations->vcsMarks, 'and it took the stale marks with it');
     }
 
     public function testShowingTheChangeMarkGutterIsTheDefaultAndIsIdempotent(): void
@@ -574,8 +574,8 @@ final class PluginApiTest extends TestCase
         $this->editor->decorations->setVcsMarks([0 => ChangeMarkKind::Added]);
         $api->showChangeMarkGutter(true);
 
-        $this->assertTrue(Probe::get($this->editor, 'display')->vcsGutter());
-        $this->assertSame([0 => ChangeMarkKind::Added], $this->editor->decorations->vcsMarks(), 'turning on what is already on clears nothing');
+        $this->assertTrue($this->editor->display->vcsGutter);
+        $this->assertSame([0 => ChangeMarkKind::Added], $this->editor->decorations->vcsMarks, 'turning on what is already on clears nothing');
     }
 
     public function testSetLineAnnotationsReachesTheEditorAndClearsWithAnEmptyMap(): void
@@ -585,12 +585,12 @@ final class PluginApiTest extends TestCase
         $api->setLineAnnotations([0 => 'abc123 alice 2026-01-01']);
         $this->assertSame(
             [0 => 'abc123 alice 2026-01-01'],
-            $this->editor->decorations->lineAnnotations(),
+            $this->editor->decorations->lineAnnotations,
             'the annotations reached the active editor',
         );
 
         $api->setLineAnnotations([]);
-        $this->assertSame([], $this->editor->decorations->lineAnnotations(), 'an empty map clears them');
+        $this->assertSame([], $this->editor->decorations->lineAnnotations, 'an empty map clears them');
     }
 
     public function testSetDiagnosticsNormalizesIntoTheByLineShape(): void

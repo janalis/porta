@@ -291,7 +291,7 @@ final class SettingsControllerTest extends TestCase
 
         $controller->changeSetting('lineNumbers', 'relative');
 
-        $this->assertSame(LineNumberMode::Relative, $editor->display->lineNumbers(), 'applied to the editor');
+        $this->assertSame(LineNumberMode::Relative, $editor->display->lineNumbers, 'applied to the editor');
         $this->assertSame('relative', IdeConfig::load($project->dir)->settings['lineNumbers'], 'persisted');
         $this->assertStringContainsString('Line numbers relative', $this->flashText($status));
         $this->assertStringNotContainsString('restart', $this->flashText($status), 'live change is immediate');
@@ -304,7 +304,7 @@ final class SettingsControllerTest extends TestCase
         $controller = $this->controller($project->dir, $editor, new StatusBarWidget());
 
         $controller->changeSetting('lineNumbers', 'off');
-        $this->assertSame(LineNumberMode::Off, $editor->display->lineNumbers());
+        $this->assertSame(LineNumberMode::Off, $editor->display->lineNumbers);
         $this->assertSame('off', IdeConfig::load($project->dir)->settings['lineNumbers']);
     }
 
@@ -316,11 +316,11 @@ final class SettingsControllerTest extends TestCase
 
         // Default absolute → relative → off → absolute.
         $controller->cycleLineNumbers();
-        $this->assertSame(LineNumberMode::Relative, $editor->display->lineNumbers());
+        $this->assertSame(LineNumberMode::Relative, $editor->display->lineNumbers);
         $controller->cycleLineNumbers();
-        $this->assertSame(LineNumberMode::Off, $editor->display->lineNumbers());
+        $this->assertSame(LineNumberMode::Off, $editor->display->lineNumbers);
         $controller->cycleLineNumbers();
-        $this->assertSame(LineNumberMode::Absolute, $editor->display->lineNumbers());
+        $this->assertSame(LineNumberMode::Absolute, $editor->display->lineNumbers);
     }
 
     public function testChangingTheNewInterfaceBoolsAppliesToTheEditorAndBreadcrumbs(): void
@@ -331,9 +331,9 @@ final class SettingsControllerTest extends TestCase
         $controller = $this->controller($project->dir, $editor, new StatusBarWidget(), breadcrumbs: $breadcrumbs);
 
         $controller->changeSetting('stickyScroll', false);
-        $this->assertFalse($editor->display->stickyScroll());
+        $this->assertFalse($editor->display->stickyScroll);
         $controller->changeSetting('indentGuides', false);
-        $this->assertFalse($editor->display->indentGuides());
+        $this->assertFalse($editor->display->indentGuides);
         $controller->changeSetting('breadcrumbs', false);
         $this->assertFalse($breadcrumbs->isVisible());
 
@@ -341,18 +341,18 @@ final class SettingsControllerTest extends TestCase
         // whose `apply` names the wrong setter is a wire nothing else checks,
         // and both of these render nothing until the option is on.
         $controller->changeSetting('methodSeparators', true);
-        $this->assertTrue($editor->display->methodSeparators());
+        $this->assertTrue($editor->display->methodSeparators);
         $controller->changeSetting('showWhitespace', true);
-        $this->assertTrue($editor->display->showWhitespace());
+        $this->assertTrue($editor->display->showWhitespace);
 
         $controller->changeSetting('stickyScroll', true);
-        $this->assertTrue($editor->display->stickyScroll());
+        $this->assertTrue($editor->display->stickyScroll);
         $controller->changeSetting('breadcrumbs', true);
         $this->assertTrue($breadcrumbs->isVisible());
         $controller->changeSetting('methodSeparators', false);
-        $this->assertFalse($editor->display->methodSeparators());
+        $this->assertFalse($editor->display->methodSeparators);
         $controller->changeSetting('showWhitespace', false);
-        $this->assertFalse($editor->display->showWhitespace());
+        $this->assertFalse($editor->display->showWhitespace);
     }
 
     /**
@@ -368,16 +368,16 @@ final class SettingsControllerTest extends TestCase
         $controller = $this->controller($project->dir, $editor, new StatusBarWidget());
 
         $controller->changeSetting('inlineDiagnostics', false);
-        $this->assertFalse($editor->display->inlineDiagnostics());
+        $this->assertFalse($editor->display->inlineDiagnostics);
         $controller->changeSetting('autoPairs', false);
-        $this->assertFalse($editor->display->autoPairs());
+        $this->assertFalse($editor->display->autoPairs);
         $controller->changeSetting('formatOnSave', true);
         $this->assertTrue($this->formatOnSave->isEnabled());
 
         $controller->changeSetting('inlineDiagnostics', true);
-        $this->assertTrue($editor->display->inlineDiagnostics());
+        $this->assertTrue($editor->display->inlineDiagnostics);
         $controller->changeSetting('autoPairs', true);
-        $this->assertTrue($editor->display->autoPairs());
+        $this->assertTrue($editor->display->autoPairs);
         $controller->changeSetting('formatOnSave', false);
         $this->assertFalse($this->formatOnSave->isEnabled());
     }
@@ -468,7 +468,7 @@ final class SettingsControllerTest extends TestCase
         $controller = $this->controller($project->dir, $editor, new StatusBarWidget(), ['lineNumbers' => 'relative', 'theme' => 'light']);
 
         $controller->applyAll(); // every descriptor applies live now
-        $this->assertSame(LineNumberMode::Relative, $editor->display->lineNumbers());
+        $this->assertSame(LineNumberMode::Relative, $editor->display->lineNumbers);
         $this->assertSame(['light'], $this->themeChanges, 'the theme hook applies at boot too');
         $this->assertSame([CursorShape::Bar], $this->cursorShapeChanges, 'the cursor-shape hook applies at boot too');
         $this->assertSame(['top'], $this->tabBarPositionChanges, 'the tab-bar-position hook applies at boot too');

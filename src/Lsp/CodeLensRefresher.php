@@ -55,7 +55,7 @@ final readonly class CodeLensRefresher
 
     private function refresh(): void
     {
-        if ($this->display->codeLenses()) {
+        if ($this->display->codeLenses) {
             $this->lenses->requestCodeLenses();
         }
     }

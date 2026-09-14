@@ -534,7 +534,7 @@ final class CodeEditorWidget extends AbstractWidget implements
     #[\Override]
     public function autoPairsEnabled(): bool
     {
-        return $this->display->autoPairs();
+        return $this->display->autoPairs;
     }
 
     /** Install the coordinator's outbound hooks (see {@see EditorCallbacks}). */
@@ -791,7 +791,7 @@ final class CodeEditorWidget extends AbstractWidget implements
     /** @return array{errors: int, warnings: int} */
     public function getDiagnosticCounts(): array
     {
-        return $this->decorations->diagnosticCounts();
+        return $this->decorations->diagnosticCounts;
     }
 
     /**
@@ -895,7 +895,7 @@ final class CodeEditorWidget extends AbstractWidget implements
     {
         $width = $this->scroll->contentWidth;
 
-        return $this->display->softWrap() && $width > 0 ? $width : null;
+        return $this->display->softWrap && $width > 0 ? $width : null;
     }
 
     /**
@@ -1101,7 +1101,7 @@ final class CodeEditorWidget extends AbstractWidget implements
      */
     private function stickyHeadersAt(int $vScroll, int $rows): array
     {
-        if (!$this->display->stickyScroll()) {
+        if (!$this->display->stickyScroll) {
             return [];
         }
         $top = $this->foldModel->docLineAtRow($vScroll, 0) ?? 0;
@@ -1198,7 +1198,7 @@ final class CodeEditorWidget extends AbstractWidget implements
             // them afterwards left the clamp a frame behind — the caret could
             // sit off screen for one paint after every Down.
             $this->scroll->setContentWidth($geo->contentWidth);
-            $wrapLayout = $this->display->softWrap() ? new WrapLayout($doc) : null;
+            $wrapLayout = $this->display->softWrap ? new WrapLayout($doc) : null;
             $this->scroll->rowsForLine = null === $wrapLayout && !$this->decorations->hasCodeLenses()
                 ? null // one row per line, and the old arithmetic exactly
                 : fn (int $line): int => \count($this->decorations->codeLensesAt($line)) + ($wrapLayout?->rowsFor($line, $geo->contentWidth) ?? 1);
@@ -1228,17 +1228,17 @@ final class CodeEditorWidget extends AbstractWidget implements
             // overview of diagnostics, breakpoints, change marks and search hits plus
             // a faint viewport thumb. Appended to every produced row so each reaches
             // the full terminal width.
-            $marks = StripeMarks::from($this->decorations, $this->display->vcsGutter());
+            $marks = StripeMarks::from($this->decorations, $this->display->vcsGutter);
             $stripe = ErrorStripe::cells($marks, $rows, $lineCount, $vScroll, $lastVisibleDocLine, $this->styles);
 
             $assembler = new EditorRowAssembler(
                 $doc,
                 $this->foldModel,
                 $this->decorations,
-                $this->display->lineNumbers(),
-                $this->display->indentGuides(),
-                $this->display->vcsGutter(),
-                $this->display->inlineDiagnostics(),
+                $this->display->lineNumbers,
+                $this->display->indentGuides,
+                $this->display->vcsGutter,
+                $this->display->inlineDiagnostics,
                 $this->focused,
                 $this->focused && !$this->findModal->isOpen() && !$this->overlayHost->anyOpen(), // an open modal owns the caret
                 $this->styles,
@@ -1258,8 +1258,8 @@ final class CodeEditorWidget extends AbstractWidget implements
                 // sticky band read, so the rule appears in every language they
                 // work in. Passed in rather than pushed into the decoration
                 // store: a store write invalidates, and this runs in render.
-                $this->display->methodSeparators() ? MemberSeparators::linesFor($this->scopes()) : [],
-                $this->display->showWhitespace(),
+                $this->display->methodSeparators ? MemberSeparators::linesFor($this->scopes()) : [],
+                $this->display->showWhitespace,
             );
             $result = $assembler->assemble(
                 $geo,
@@ -1271,7 +1271,7 @@ final class CodeEditorWidget extends AbstractWidget implements
                 $vScroll,
                 $cursorLine,
                 $cursorDisplayCol,
-                $this->display->softWrap() ? 0 : $hScroll,
+                $this->display->softWrap ? 0 : $hScroll,
                 $this->scroll->vScrollSegment,
             );
 
@@ -1311,10 +1311,10 @@ final class CodeEditorWidget extends AbstractWidget implements
 
     private function computeGeometry(int $columns, int $lineCount): EditorGeometry
     {
-        $numberWidth = LineNumberMode::Off === $this->display->lineNumbers() ? 0 : \max(3, \strlen((string) $lineCount));
+        $numberWidth = LineNumberMode::Off === $this->display->lineNumbers ? 0 : \max(3, \strlen((string) $lineCount));
         // git strip + number + marker + fold + a trailing space, which is what
         // `EditorRowAssembler::gutterCell()` actually emits.
-        $natural = ($this->display->vcsGutter() ? 1 : 0) + $numberWidth + 3;
+        $natural = ($this->display->vcsGutter ? 1 : 0) + $numberWidth + 3;
 
         // ALL or NOTHING. The gutter is a fixed structure of single-column
         // cells, so a partial one would have to be cut through a marker; and a

@@ -205,22 +205,22 @@ final class ViewCommandsTest extends TestCase
             $editor = Services::resolve($ide, CodeEditorWidget::class);
             $display = $editor->display;
 
-            $this->assertFalse($display->softWrap(), 'both are off by default');
-            $this->assertFalse($display->codeLenses());
+            $this->assertFalse($display->softWrap, 'both are off by default');
+            $this->assertFalse($display->codeLenses);
 
             $commands->run('toggle_soft_wrap');
-            $this->assertTrue($display->softWrap());
+            $this->assertTrue($display->softWrap);
             $commands->run('toggle_soft_wrap');
-            $this->assertFalse($display->softWrap(), 'and the same key turns it back off');
+            $this->assertFalse($display->softWrap, 'and the same key turns it back off');
 
             // Lenses on with no language server: the option flips, the request
             // is simply never sent, and nothing is painted.
             $editor->decorations->setCodeLenses([1 => [['title' => '3 usages', 'command' => 'x', 'arguments' => []]]]);
             $commands->run('toggle_code_lenses');
-            $this->assertTrue($display->codeLenses());
+            $this->assertTrue($display->codeLenses);
 
             $commands->run('toggle_code_lenses');
-            $this->assertFalse($display->codeLenses());
+            $this->assertFalse($display->codeLenses);
             $this->assertSame([], $editor->decorations->codeLensesAt(1), 'turning it off took the rows with it');
         } finally {
             $this->closeIde($ide);

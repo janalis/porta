@@ -442,7 +442,7 @@ final class IdeAppMenuTest extends TestCase
                 },
                 600 => function (Tui $tui, VirtualTerminal $terminal) use ($project): void {
                     $this->awaitPainted($tui, $terminal, 'Line numbers relative');
-                    $this->assertSame(LineNumberMode::Relative, $tui->getById('editor')->display->lineNumbers());
+                    $this->assertSame(LineNumberMode::Relative, $tui->getById('editor')->display->lineNumbers);
                     // Persisted into .porta.json.
                     $config = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true);
                     $this->assertSame('relative', $config['settings']['lineNumbers']);

@@ -86,7 +86,7 @@ final class InlineValuesTest extends TestCase
     private function painted(): array
     {
         /** @var array<int, string> */
-        return $this->editor->decorations->debugValues();
+        return $this->editor->decorations->debugValues;
     }
 
     public function testAVariableIsShownAgainstTheLineThatAssignsIt(): void

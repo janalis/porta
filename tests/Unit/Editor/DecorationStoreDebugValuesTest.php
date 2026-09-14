@@ -31,7 +31,7 @@ final class DecorationStoreDebugValuesTest extends TestCase
         $store->setDebugValues([1 => '$count = 41']);
 
         $this->assertSame(1, $repaints);
-        $this->assertSame([1 => '$count = 41'], $store->debugValues());
+        $this->assertSame([1 => '$count = 41'], $store->debugValues);
     }
 
     public function testANewBufferBringsNoneOfThePreviousFilesValues(): void
@@ -43,6 +43,6 @@ final class DecorationStoreDebugValuesTest extends TestCase
 
         $store->resetForBuffer([]);
 
-        $this->assertSame([], $store->debugValues());
+        $this->assertSame([], $store->debugValues);
     }
 }

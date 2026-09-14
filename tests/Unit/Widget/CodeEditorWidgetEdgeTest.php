@@ -759,23 +759,23 @@ final class CodeEditorWidgetEdgeTest extends TestCase
 
         // lineNumbers defaults to absolute: change to relative, set relative again (no-op), then absolute, then off.
         $editor->display->setLineNumbers(LineNumberMode::Relative);
-        $this->assertSame(LineNumberMode::Relative, $editor->display->lineNumbers());
+        $this->assertSame(LineNumberMode::Relative, $editor->display->lineNumbers);
         $editor->display->setLineNumbers(LineNumberMode::Relative); // same → guard skips
-        $this->assertSame(LineNumberMode::Relative, $editor->display->lineNumbers());
+        $this->assertSame(LineNumberMode::Relative, $editor->display->lineNumbers);
         $editor->display->setLineNumbers(LineNumberMode::Off);
-        $this->assertSame(LineNumberMode::Off, $editor->display->lineNumbers());
+        $this->assertSame(LineNumberMode::Off, $editor->display->lineNumbers);
 
         // Sticky scroll and indent guides default on: disable (set), disable again (skip), enable (set), enable again (skip).
         foreach ([
             [
                 static fn (): bool => $editor->display->setStickyScroll(false),
                 static fn (): bool => $editor->display->setStickyScroll(true),
-                $editor->display->stickyScroll(...),
+                static fn (): bool => $editor->display->stickyScroll,
             ],
             [
                 static fn (): bool => $editor->display->setIndentGuides(false),
                 static fn (): bool => $editor->display->setIndentGuides(true),
-                $editor->display->indentGuides(...),
+                static fn (): bool => $editor->display->indentGuides,
             ],
         ] as [$off, $on, $has]) {
             $off();
@@ -989,13 +989,13 @@ final class CodeEditorWidgetEdgeTest extends TestCase
     public function testEnableVcsGutterTurnsItOn(): void
     {
         $editor = $this->editor();
-        $display = Probe::get($editor, 'display');
+        $display = $editor->display;
         $editor->setVcsGutter(false);
-        $this->assertFalse($display->vcsGutter(), 'sanity: off after disabling');
+        $this->assertFalse($display->vcsGutter, 'sanity: off after disabling');
 
         $editor->setVcsGutter(true);
 
-        $this->assertTrue($display->vcsGutter());
+        $this->assertTrue($display->vcsGutter);
     }
 
     public function testSetLanguageIndentsInvalidates(): void

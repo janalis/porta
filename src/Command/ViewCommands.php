@@ -70,7 +70,7 @@ final readonly class ViewCommands implements CommandProvider
                 // `open_as_text` is gated on the tab being a viewer.
                 when: fn (): bool => null !== $this->dock->visiblePanel(),
             )
-            ->add('toggle_soft_wrap', fn (): bool => $this->display->setSoftWrap(!$this->display->softWrap()), keyBound: KeyDispatch::Bound)
+            ->add('toggle_soft_wrap', fn (): bool => $this->display->setSoftWrap(!$this->display->softWrap), keyBound: KeyDispatch::Bound)
             ->add('toggle_code_lenses', $this->toggleCodeLenses(...), keyBound: KeyDispatch::Bound)
             ->add(
                 'ide_project_tree',
@@ -154,7 +154,7 @@ final readonly class ViewCommands implements CommandProvider
      */
     private function toggleCodeLenses(): void
     {
-        $on = !$this->display->codeLenses();
+        $on = !$this->display->codeLenses;
         $this->display->setCodeLenses($on);
         $on ? $this->lenses->requestCodeLenses() : $this->decorations->setCodeLenses([]);
     }

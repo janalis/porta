@@ -738,17 +738,17 @@ final class IdeHelpersTest extends TestCase
 
         // Cycle line numbers (absolute → relative) and toggle a bool setting.
         $editor = $tui->getById('editor');
-        $before = $editor->display->lineNumbers();
+        $before = $editor->display->lineNumbers;
         $byLabel['Cycle Line Numbers']();
-        $this->assertNotSame($before, $editor->display->lineNumbers());
+        $this->assertNotSame($before, $editor->display->lineNumbers);
 
         $byLabel['Toggle Inline Diagnostics']();
         // Toggling back and forth is a no-op-free round trip.
         $byLabel['Toggle Inline Diagnostics']();
 
-        $autoBefore = $editor->display->autoPairs();
+        $autoBefore = $editor->display->autoPairs;
         $byLabel['Toggle Auto-Pairs']();
-        $this->assertNotSame($autoBefore, $editor->display->autoPairs());
+        $this->assertNotSame($autoBefore, $editor->display->autoPairs);
 
         // Save-family and reformat commands are safe no-ops without a file/LSP.
         $byLabel['Save File']();

@@ -401,7 +401,7 @@ final class DebugControllerTest extends TestCase
             'range' => ['start' => ['line' => 2, 'character' => 0], 'end' => ['line' => 2, 'character' => 2]],
             'variableName' => '$x',
         ]]);
-        $this->assertSame([2 => '$x = 42'], $this->editor->decorations->debugValues());
+        $this->assertSame([2 => '$x = 42'], $this->editor->decorations->debugValues);
     }
 
     public function testCONTINUINGTakesTheInlineValuesOffTheScreen(): void
@@ -413,7 +413,7 @@ final class DebugControllerTest extends TestCase
 
         $controller->onContinued();
 
-        $this->assertSame([], $this->editor->decorations->debugValues());
+        $this->assertSame([], $this->editor->decorations->debugValues);
     }
 
     public function testTERMINATINGTakesThemTooEvenWithoutAContinue(): void
@@ -423,7 +423,7 @@ final class DebugControllerTest extends TestCase
 
         $controller->onTerminated();
 
-        $this->assertSame([], $this->editor->decorations->debugValues());
+        $this->assertSame([], $this->editor->decorations->debugValues);
     }
 
     public function testStoppedMarshalsEditorPanelStatusAndFrameJumps(): void

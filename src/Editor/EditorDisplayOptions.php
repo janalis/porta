@@ -22,50 +22,40 @@ namespace Porta\Editor;
  */
 final class EditorDisplayOptions
 {
-    private bool $inlineDiagnostics = true;
-    private LineNumberMode $lineNumbers = LineNumberMode::Absolute;
-    private bool $vcsGutter = true;
-    private bool $stickyScroll = true;
+    public private(set) bool $inlineDiagnostics = true;
+    public private(set) LineNumberMode $lineNumbers = LineNumberMode::Absolute;
+    public private(set) bool $vcsGutter = true;
+    public private(set) bool $stickyScroll = true;
 
     /**
      * PhpStorm's method separators, off by default: a rule between members is
      * a matter of taste, and a terminal already has fewer pixels to spend on
      * chrome than a graphical editor.
      */
-    private bool $methodSeparators = false;
+    public private(set) bool $methodSeparators = false;
 
     /**
      * PhpStorm's Show Whitespaces, off by default: it answers a question you
      * only sometimes have, and a terminal has one intensity to say it with.
      */
-    private bool $showWhitespace = false;
-    private bool $indentGuides = true;
+    public private(set) bool $showWhitespace = false;
+    public private(set) bool $indentGuides = true;
 
     /** Off by default: horizontal scroll is the long-line behaviour this editor has always had. */
-    private bool $softWrap = false;
+    public private(set) bool $softWrap = false;
 
     /** Off by default: a lens costs a round trip per save and a row per declaration. */
-    private bool $codeLenses = false;
-    private bool $autoPairs = true;
+    public private(set) bool $codeLenses = false;
+    public private(set) bool $autoPairs = true;
 
     /** @param \Closure(): void $invalidate drops the widget's memoised render lines */
     public function __construct(
         private readonly \Closure $invalidate,
     ) {}
 
-    public function inlineDiagnostics(): bool
-    {
-        return $this->inlineDiagnostics;
-    }
-
     public function setInlineDiagnostics(bool $on): bool
     {
         return $this->apply($this->inlineDiagnostics, $on);
-    }
-
-    public function lineNumbers(): LineNumberMode
-    {
-        return $this->lineNumbers;
     }
 
     public function setLineNumbers(LineNumberMode $mode): bool
@@ -79,29 +69,9 @@ final class EditorDisplayOptions
         return true;
     }
 
-    public function vcsGutter(): bool
-    {
-        return $this->vcsGutter;
-    }
-
     public function setVcsGutter(bool $on): bool
     {
         return $this->apply($this->vcsGutter, $on);
-    }
-
-    public function stickyScroll(): bool
-    {
-        return $this->stickyScroll;
-    }
-
-    public function methodSeparators(): bool
-    {
-        return $this->methodSeparators;
-    }
-
-    public function showWhitespace(): bool
-    {
-        return $this->showWhitespace;
     }
 
     public function setStickyScroll(bool $on): bool
@@ -119,19 +89,9 @@ final class EditorDisplayOptions
         return $this->apply($this->showWhitespace, $on);
     }
 
-    public function indentGuides(): bool
-    {
-        return $this->indentGuides;
-    }
-
     public function setIndentGuides(bool $on): bool
     {
         return $this->apply($this->indentGuides, $on);
-    }
-
-    public function codeLenses(): bool
-    {
-        return $this->codeLenses;
     }
 
     public function setCodeLenses(bool $on): bool
@@ -139,19 +99,9 @@ final class EditorDisplayOptions
         return $this->apply($this->codeLenses, $on);
     }
 
-    public function softWrap(): bool
-    {
-        return $this->softWrap;
-    }
-
     public function setSoftWrap(bool $on): bool
     {
         return $this->apply($this->softWrap, $on);
-    }
-
-    public function autoPairs(): bool
-    {
-        return $this->autoPairs;
     }
 
     public function setAutoPairs(bool $on): bool

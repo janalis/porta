@@ -1585,7 +1585,7 @@ final class CodeEditorWidgetTest extends TestCase
 
         $this->assertSame(
             [1 => ChangeMarkKind::Modified, 2 => ChangeMarkKind::Added, 4 => ChangeMarkKind::Modified],
-            $widget->decorations->vcsMarks(),
+            $widget->decorations->vcsMarks,
             'the split line is Modified, the line it made is Added, and the mark below moved down one',
         );
     }
@@ -1610,7 +1610,7 @@ final class CodeEditorWidgetTest extends TestCase
 
         $this->assertSame(
             [0 => ChangeMarkKind::Modified, 2 => ChangeMarkKind::Added],
-            $widget->decorations->vcsMarks(),
+            $widget->decorations->vcsMarks,
             'the 37-line difference between the two buffers is not an edit',
         );
     }

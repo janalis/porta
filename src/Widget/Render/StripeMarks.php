@@ -44,7 +44,7 @@ final readonly class StripeMarks
     public static function from(DecorationStore $store, bool $vcsGutter): self
     {
         $severity = [];
-        foreach ($store->diagnostics() as $line => $diagnostics) {
+        foreach ($store->diagnostics as $line => $diagnostics) {
             if ([] === $diagnostics) {
                 continue;
             }
@@ -52,7 +52,7 @@ final readonly class StripeMarks
         }
 
         $search = [];
-        foreach ($store->searchMatches() as $line => $matches) {
+        foreach ($store->searchMatches as $line => $matches) {
             if ([] === $matches) {
                 continue;
             }
@@ -61,9 +61,9 @@ final readonly class StripeMarks
 
         return new self(
             $severity,
-            $vcsGutter ? $store->vcsMarks() : [],
+            $vcsGutter ? $store->vcsMarks : [],
             $search,
-            $store->breakpointLines(),
+            $store->breakpointLines,
         );
     }
 }
