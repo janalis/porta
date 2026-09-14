@@ -21,7 +21,7 @@ final readonly class ResolvedEditorConfig
         public ?bool $usesTabs,
         public ?int $indentSize,
         public ?int $tabWidth,
-        public ?string $eol,
+        public ?LineEnding $eol,
         public ?bool $trimTrailingWhitespace,
         public ?bool $insertFinalNewline,
         public ?string $charset,
@@ -77,11 +77,9 @@ final readonly class ResolvedEditorConfig
         };
     }
 
-    private static function eol(?string $value): ?string
+    private static function eol(?string $value): ?LineEnding
     {
-        $eol = null === $value ? null : \strtolower(\trim($value));
-
-        return \in_array($eol, ['lf', 'crlf', 'cr'], strict: true) ? $eol : null;
+        return null === $value ? null : LineEnding::tryFrom(\strtolower(\trim($value)));
     }
 
     private static function charset(?string $value): ?string

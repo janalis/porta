@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Config\EditorConfig;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\EditorConfig\LineEnding;
 use Porta\Config\EditorConfig\ResolvedEditorConfig;
 
 final class ResolvedEditorConfigTest extends TestCase
@@ -77,9 +78,9 @@ final class ResolvedEditorConfigTest extends TestCase
 
     public function testEndOfLine(): void
     {
-        $this->assertSame('lf', ResolvedEditorConfig::fromProps(['end_of_line' => 'LF'])->eol);
-        $this->assertSame('crlf', ResolvedEditorConfig::fromProps(['end_of_line' => 'crlf'])->eol);
-        $this->assertSame('cr', ResolvedEditorConfig::fromProps(['end_of_line' => 'cr'])->eol);
+        $this->assertSame(LineEnding::Lf, ResolvedEditorConfig::fromProps(['end_of_line' => 'LF'])->eol);
+        $this->assertSame(LineEnding::CrLf, ResolvedEditorConfig::fromProps(['end_of_line' => 'crlf'])->eol);
+        $this->assertSame(LineEnding::Cr, ResolvedEditorConfig::fromProps(['end_of_line' => 'cr'])->eol);
         $this->assertNull(ResolvedEditorConfig::fromProps(['end_of_line' => 'nel'])->eol);
     }
 
@@ -113,7 +114,7 @@ final class ResolvedEditorConfigTest extends TestCase
 
         $this->assertSame(8, $c->indentSize, '"indent_size = tab" keyword, case- and whitespace-insensitive');
         $this->assertTrue($c->usesTabs);
-        $this->assertSame('lf', $c->eol);
+        $this->assertSame(LineEnding::Lf, $c->eol);
         $this->assertSame('utf-8', $c->charset);
         $this->assertTrue($c->trimTrailingWhitespace);
     }
