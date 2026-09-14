@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\EditorConfig\ResolvedEditorConfig;
+use Porta\Config\IndentStyle;
 use Porta\Config\LanguageIndent;
 use Porta\Editor\Document;
 use Porta\Editor\IndentKind;
@@ -43,7 +44,7 @@ final class CodeEditorIndentStyleTest extends TestCase
 
     public function testExplicitStyleAndSizeWinForTheLanguage(): void
     {
-        $editor = $this->editor(['php' => new LanguageIndent('tabs', 4)]);
+        $editor = $this->editor(['php' => new LanguageIndent(IndentStyle::Tabs, 4)]);
         $editor->openFile('x.php', "    four spaces\n"); // content would detect spaces
         $this->assertTrue($editor->getDocument()->usesTabs(), 'explicit tabs win');
         $this->assertSame(4, $editor->getDocument()->indentSize());
@@ -78,7 +79,7 @@ final class CodeEditorIndentStyleTest extends TestCase
 
     public function testAutoTakesEditorConfigValues(): void
     {
-        $editor = $this->editor(['php' => new LanguageIndent('auto', 'auto')]);
+        $editor = $this->editor(['php' => new LanguageIndent(IndentStyle::Auto, 'auto')]);
         $config = ResolvedEditorConfig::fromProps(['indent_style' => 'tab', 'indent_size' => '8']);
         $editor->showDocument('x.php', new Document("code\n"), editorConfig: $config);
         $this->assertTrue($editor->getDocument()->usesTabs(), 'auto uses .editorconfig indent_style');
@@ -88,7 +89,7 @@ final class CodeEditorIndentStyleTest extends TestCase
     public function testExplicitSizeWithAutoStyleAndAConfig(): void
     {
         // Explicit size 4 wins over the config's 8; auto style takes the config's tabs.
-        $editor = $this->editor(['php' => new LanguageIndent('auto', 4)]);
+        $editor = $this->editor(['php' => new LanguageIndent(IndentStyle::Auto, 4)]);
         $config = ResolvedEditorConfig::fromProps(['indent_style' => 'tab', 'indent_size' => '8']);
         $editor->showDocument('x.php', new Document("code\n"), editorConfig: $config);
         $this->assertTrue($editor->getDocument()->usesTabs());
@@ -98,8 +99,8 @@ final class CodeEditorIndentStyleTest extends TestCase
     public function testConfigIsPerLanguageAndReAppliesAcrossBufferSwitches(): void
     {
         $editor = $this->editor([
-            'php' => new LanguageIndent('tabs', 4),
-            'css' => new LanguageIndent('spaces', 2),
+            'php' => new LanguageIndent(IndentStyle::Tabs, 4),
+            'css' => new LanguageIndent(IndentStyle::Spaces, 2),
         ]);
         $editor->openFile('a.php', "x\n");
         $this->assertTrue($editor->getDocument()->usesTabs());
@@ -112,7 +113,7 @@ final class CodeEditorIndentStyleTest extends TestCase
     public function testALanguageAbsentFromTheMapKeepsTheDocumentDefault(): void
     {
         // No entry for python → the editor leaves the document's own detection.
-        $editor = $this->editor(['php' => new LanguageIndent('spaces', 2)]);
+        $editor = $this->editor(['php' => new LanguageIndent(IndentStyle::Spaces, 2)]);
         $editor->openFile('x.py', "\ttabbed\n");
         $this->assertTrue($editor->getDocument()->usesTabs(), 'unconfigured language keeps auto-detection');
     }
@@ -123,7 +124,7 @@ final class CodeEditorIndentStyleTest extends TestCase
         $editor->openFile('x.php', "x\n");
         $this->assertFalse($editor->getDocument()->usesTabs());
 
-        $editor->setLanguageIndents(['php' => new LanguageIndent('tabs', 4)]);
+        $editor->setLanguageIndents(['php' => new LanguageIndent(IndentStyle::Tabs, 4)]);
         $this->assertTrue($editor->getDocument()->usesTabs(), 'a live config change re-applies');
     }
 }

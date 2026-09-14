@@ -122,7 +122,6 @@ final readonly class IdeConfig
     private const array NO_HIGHLIGHT = ['default' => '', 'languages' => []];
 
     /** The per-language indent override keys and their allowed values. */
-    private const array INDENT_STYLES = ['auto', 'spaces', 'tabs'];
 
     /**
      * @param array<string, list<string>>                                                                                                    $keymap
@@ -674,7 +673,7 @@ final readonly class IdeConfig
 
     private static function indentStyleValue(mixed $value): ?string
     {
-        return \is_string($value) ? FieldNode::enum(self::INDENT_STYLES, $value) : null;
+        return \is_string($value) ? FieldNode::enum(IndentStyle::values(), $value) : null;
     }
 
     private static function indentSizeValue(mixed $value): int|string|null

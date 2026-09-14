@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\EditorConfig\ResolvedEditorConfig;
+use Porta\Config\IndentStyle;
 use Porta\Config\LanguageIndent;
 use Porta\Editor\ChangeMarkKind;
 use Porta\Editor\CompletionItem;
@@ -1016,7 +1017,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
 
         // If the 'spaces' arm were removed, this would fall through to the
         // default arm and pick up the .editorconfig's usesTabs=true instead.
-        $editor->setLanguageIndents(['php' => new LanguageIndent(indentStyle: 'spaces', indentSize: 2)]);
+        $editor->setLanguageIndents(['php' => new LanguageIndent(indentStyle: IndentStyle::Spaces, indentSize: 2)]);
 
         $this->assertNotSame("\t", $editor->getDocument()->indentUnit(), 'explicit spaces must win over an editorconfig that says tabs');
     }
@@ -1027,7 +1028,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         // LanguageIndent's own type is int|string; the widget must (int) cast
         // a string value before handing it to Document::setIndent(int $size),
         // which is a hard int type under strict_types.
-        $editor->setLanguageIndents(['php' => new LanguageIndent(indentStyle: 'spaces', indentSize: '5')]);
+        $editor->setLanguageIndents(['php' => new LanguageIndent(indentStyle: IndentStyle::Spaces, indentSize: '5')]);
 
         $this->assertSame(5, $editor->getDocument()->indentSize());
     }

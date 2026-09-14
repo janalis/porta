@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Settings;
 
 use Porta\Config\IdeConfig;
+use Porta\Config\IndentStyle;
 use Porta\Config\LanguageCatalog;
 use Porta\Config\LanguageIndent;
 use Porta\Config\PortaJsonWriter;
@@ -26,7 +27,6 @@ final class SettingsLanguageController
     /** Both indent rows default to following the file / editor rather than forcing a value. */
     private const string AUTO = 'auto';
 
-    private const array STYLE_OPTIONS = ['auto', 'spaces', 'tabs'];
     private const array SIZE_OPTIONS = ['auto', '1', '2', '3', '4', '5', '6', '7', '8'];
 
     /** @var array<string, LanguageIndent> every catalog language, defaults filled */
@@ -50,7 +50,7 @@ final class SettingsLanguageController
     ) {
         foreach (LanguageCatalog::ids() as $id) {
             $entry = $overrides[$id] ?? [];
-            $this->config[$id] = new LanguageIndent($entry['indentStyle'] ?? 'auto', $entry['indentSize'] ?? 'auto');
+            $this->config[$id] = new LanguageIndent(IndentStyle::tryFrom($entry['indentStyle'] ?? '') ?? IndentStyle::Auto, $entry['indentSize'] ?? 'auto');
             $this->runCommand[$id] = $entry['runCommand'] ?? '';
         }
     }
@@ -76,9 +76,9 @@ final class SettingsLanguageController
                 key: 'indentStyle',
                 label: $this->translator->trans('Indent style'),
                 kind: SettingsRowKind::Choice,
-                value: $entry->indentStyle,
+                value: $entry->indentStyle->value,
                 restart: false,
-                options: self::STYLE_OPTIONS,
+                options: IndentStyle::values(),
                 default: self::AUTO,
                 origin: $this->provenance->originOf(['languages', $language, 'indentStyle']),
                 shadowed: $this->provenance->shadowsGlobal(['languages', $language, 'indentStyle']),
@@ -129,7 +129,7 @@ final class SettingsLanguageController
 
         $stored = 'indentSize' === $key && 'auto' !== $value && \is_numeric((string) $value) ? (int) $value : (string) $value;
         $this->config[$language] = 'indentStyle' === $key
-            ? new LanguageIndent((string) $stored, $current->indentSize)
+            ? new LanguageIndent(IndentStyle::tryFrom((string) $stored) ?? IndentStyle::Auto, $current->indentSize)
             : new LanguageIndent($current->indentStyle, $stored);
 
         $persisted = $this->writer->persistLanguageSetting($this->scope->current(), $language, $key, $stored);

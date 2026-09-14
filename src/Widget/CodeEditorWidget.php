@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Widget;
 
 use Porta\Config\EditorConfig\ResolvedEditorConfig;
+use Porta\Config\IndentStyle;
 use Porta\Config\LanguageIndent;
 use Porta\Container\AsIdeService;
 use Porta\Container\AsWidget;
@@ -465,9 +466,9 @@ final class CodeEditorWidget extends AbstractWidget implements
         // four-space PHP file with no .editorconfig drew an indent guide every
         // two columns and inserted half an indent on Tab.
         $usesTabs = match ($config->indentStyle) {
-            'spaces' => false,
-            'tabs' => true,
-            default => $this->currentEditorConfig->usesTabs ?? $this->document->usesTabs(),
+            IndentStyle::Spaces => false,
+            IndentStyle::Tabs => true,
+            IndentStyle::Auto => $this->currentEditorConfig->usesTabs ?? $this->document->usesTabs(),
         };
         $size = 'auto' === $config->indentSize
             ? $this->currentEditorConfig->indentSize ?? $this->document->indentSize()
