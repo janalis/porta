@@ -104,8 +104,8 @@ final class FindInFilesModal
     private int $selected = 0;
     /** first visible display-row index; sticky so hover-selection never scrolls the list */
     private int $windowStart = 0;
-    /** 'query' | 'replace' | 'mask' — which field typing edits (Tab cycles) */
-    private string $activeField = 'query';
+    /** Which field typing edits (Tab cycles) */
+    private FindModalField $activeField = FindModalField::Query;
     private bool $searching = false;
     /** @var list<string> recent queries, most-recent-first (Alt+↑/↓ recall on the query field) */
     private array $history = [];
@@ -195,7 +195,7 @@ final class FindInFilesModal
         $this->query->clear();
         $this->replace->clear();
         $this->mask->clear();
-        $this->activeField = 'query';
+        $this->activeField = FindModalField::Query;
         $this->results = [];
         $this->displayRows = [];
         $this->excluded = [];
@@ -292,12 +292,12 @@ final class FindInFilesModal
     {
         $kb = new Keybindings(self::KEYS, $editorKb->getParser());
 
-        if ('query' === $this->activeField && $kb->matches($data, 'history_prev')) {
+        if (FindModalField::Query === $this->activeField && $kb->matches($data, 'history_prev')) {
             $this->recallHistory(1);
 
             return;
         }
-        if ('query' === $this->activeField && $kb->matches($data, 'history_next')) {
+        if (FindModalField::Query === $this->activeField && $kb->matches($data, 'history_next')) {
             $this->recallHistory(-1);
 
             return;
@@ -332,11 +332,7 @@ final class FindInFilesModal
             'cursor_up' => static fn (self $modal) => $modal->step(-1),
             'cursor_down' => static fn (self $modal) => $modal->step(1),
             'switch_field' => static function (self $modal): void {
-                $modal->activeField = match ($modal->activeField) {
-                    'query' => 'replace',
-                    'replace' => 'mask',
-                    default => 'query',
-                };
+                $modal->activeField = $modal->activeField->next();
                 ($modal->invalidate)();
             },
             'replace_all' => static function (self $modal): void {
@@ -386,9 +382,9 @@ final class FindInFilesModal
     private function activeTextField(): TextField
     {
         return match ($this->activeField) {
-            'replace' => $this->replace,
-            'mask' => $this->mask,
-            default => $this->query,
+            FindModalField::Query => $this->query,
+            FindModalField::Replace => $this->replace,
+            FindModalField::Mask => $this->mask,
         };
     }
 
@@ -406,7 +402,7 @@ final class FindInFilesModal
     }
 
     /** Focus a field (a click on its row) and re-render. */
-    private function setActiveField(string $field): void
+    private function setActiveField(FindModalField $field): void
     {
         $this->activeField = $field;
         ($this->invalidate)();
@@ -414,10 +410,10 @@ final class FindInFilesModal
 
     private function notifyField(): void
     {
-        if ('mask' === $this->activeField && null !== $this->callbacks->onMaskChanged) {
+        if (FindModalField::Mask === $this->activeField && null !== $this->callbacks->onMaskChanged) {
             ($this->callbacks->onMaskChanged)($this->mask->value());
         }
-        if ('query' === $this->activeField) {
+        if (FindModalField::Query === $this->activeField) {
             $this->historyCursor = -1; // typing leaves history-browsing
             if (null !== $this->callbacks->onQuery) {
                 ($this->callbacks->onQuery)($this->query->value());
@@ -664,14 +660,14 @@ final class FindInFilesModal
             $this->fieldRow(
                 $this->translator->trans('Find'),
                 $this->query,
-                CaretVisibility::Shown === $focused && 'query' === $this->activeField ? CaretVisibility::Shown : CaretVisibility::Hidden,
+                CaretVisibility::Shown === $focused && FindModalField::Query === $this->activeField ? CaretVisibility::Shown : CaretVisibility::Hidden,
                 '',
                 $width,
             ),
             $this->fieldRow(
                 $this->translator->trans('Replace'),
                 $this->replace,
-                CaretVisibility::Shown === $focused && 'replace' === $this->activeField ? CaretVisibility::Shown : CaretVisibility::Hidden,
+                CaretVisibility::Shown === $focused && FindModalField::Replace === $this->activeField ? CaretVisibility::Shown : CaretVisibility::Hidden,
                 $replaceHint,
                 $width,
             ),
@@ -679,7 +675,7 @@ final class FindInFilesModal
             $this->fieldRow(
                 $this->translator->trans('Mask'),
                 $this->mask,
-                CaretVisibility::Shown === $focused && 'mask' === $this->activeField ? CaretVisibility::Shown : CaretVisibility::Hidden,
+                CaretVisibility::Shown === $focused && FindModalField::Mask === $this->activeField ? CaretVisibility::Shown : CaretVisibility::Hidden,
                 '  '.$this->translator->trans('(Tab)'),
                 $width,
             ),
@@ -908,17 +904,17 @@ final class FindInFilesModal
         }
         $innerCol = $box->innerCol($relCol);
         if ($relRow === ($box->optionsRow - 2)) {
-            $this->setActiveField('query');
+            $this->setActiveField(FindModalField::Query);
 
             return true;
         }
         if ($relRow === ($box->optionsRow - 1)) {
-            $this->setActiveField('replace');
+            $this->setActiveField(FindModalField::Replace);
 
             return true;
         }
         if ($relRow === ($box->optionsRow + 1)) {
-            $this->setActiveField('mask');
+            $this->setActiveField(FindModalField::Mask);
 
             return true;
         }
