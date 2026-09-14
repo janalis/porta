@@ -37,8 +37,8 @@ final class AutoPairService
             return true;
         }
 
-        $line = $doc->getLine($doc->getCursorLine());
-        $nextChar = $line[$doc->getCursorCol()] ?? '';
+        $line = $doc->getLine($doc->cursorLine);
+        $nextChar = $line[$doc->cursorCol] ?? '';
 
         // Type over an existing closer/quote instead of inserting a new one.
         if ($keys === $nextChar && \in_array($keys, self::PAIRS, strict: true)) {
@@ -55,7 +55,7 @@ final class AutoPairService
         // or when the same quote already sits under the cursor.
         $close = self::PAIRS[$keys];
         if ($keys === $close) {
-            $prevChar = $doc->getCursorCol() > 0 ? $line[$doc->getCursorCol() - 1] ?? '' : '';
+            $prevChar = $doc->cursorCol > 0 ? $line[$doc->cursorCol - 1] ?? '' : '';
             if (1 === \preg_match('/[\w]/', $prevChar)) {
                 return false;
             }
@@ -96,8 +96,8 @@ final class AutoPairService
     /** True when the cursor sits between an empty auto-pair, e.g. "(|)". */
     public function isBetweenEmptyPair(Document $doc): bool
     {
-        $line = $doc->getLine($doc->getCursorLine());
-        $col = $doc->getCursorCol();
+        $line = $doc->getLine($doc->cursorLine);
+        $col = $doc->cursorCol;
         if (0 === $col || $col >= \strlen($line)) {
             return false;
         }

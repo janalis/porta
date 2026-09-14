@@ -40,7 +40,7 @@ final readonly class BookmarkActions
         if (null === $buffer || $buffer->isViewer()) {
             return;
         }
-        $line = $buffer->document->getCursorLine();
+        $line = $buffer->document->cursorLine;
         $this->bookmarks->toggle($buffer->path, $line);
         // Through the same applier a buffer switch uses, so the gutter can
         // only ever be painted one way.

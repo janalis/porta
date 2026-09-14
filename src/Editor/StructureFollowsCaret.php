@@ -57,7 +57,7 @@ final class StructureFollowsCaret
     public function caretMoved(): void
     {
         $path = $this->editor->getFilePath();
-        $line = $this->editor->getDocument()->getCursorLine();
+        $line = $this->editor->getDocument()->cursorLine;
         if (null === $path || $path === $this->lastPath && $line === $this->lastLine) {
             return;
         }

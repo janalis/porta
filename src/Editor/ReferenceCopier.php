@@ -54,7 +54,7 @@ final readonly class ReferenceCopier
             return;
         }
 
-        $line = $this->editor->getDocument()->getCursorLine();
+        $line = $this->editor->getDocument()->cursorLine;
         $symbol = self::symbolAt($this->editor->scopes(), $line, ProjectPaths::languageId($path));
 
         // 1-based, because a line number is for a human to read — and for the

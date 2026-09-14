@@ -48,7 +48,7 @@ final class IdeMousePrimitivesTest extends TestCase
                     // through handleEditorClick and moves the caret.
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + 8, $rect->row + 3));
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $rect->col + 8, $rect->row + 3));
-                    $this->assertSame(2, $tui->getById('editor')->getDocument()->getCursorLine(), 'an in-editor click places the caret');
+                    $this->assertSame(2, $tui->getById('editor')->getDocument()->cursorLine, 'an in-editor click places the caret');
 
                     // A left press one row below the editor's last row (the status
                     // band) still reaches handleEditorClick, whose guard rejects the
@@ -59,7 +59,7 @@ final class IdeMousePrimitivesTest extends TestCase
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $rect->col + 8, $row));
                 },
                 300 => function ($tui): void {
-                    $this->assertSame(2, $tui->getById('editor')->getDocument()->getCursorLine(), 'the click below the editor did not move the caret');
+                    $this->assertSame(2, $tui->getById('editor')->getDocument()->cursorLine, 'the click below the editor did not move the caret');
                 },
             ],
         );
@@ -126,13 +126,13 @@ final class IdeMousePrimitivesTest extends TestCase
                 400 => function ($tui): void {
                     $editor = $tui->getById('editor');
                     $this->assertSame('editor', $tui->getFocus()?->getId());
-                    $this->assertSame(2, $editor->getDocument()->getCursorLine(), 'click moved cursor');
+                    $this->assertSame(2, $editor->getDocument()->cursorLine, 'click moved cursor');
                     // Horizontal wheel over the editor slides the view without
                     // moving the caret; shift+wheel-up brings it back.
                     $tui->handleInput("\x1b[<67;45;6M");
                     $scroll = EditorState::scroll($editor);
                     $this->assertSame(6, $scroll->hScroll, 'wheel-right scrolled the editor sideways');
-                    $this->assertSame(2, $editor->getDocument()->getCursorLine(), 'the caret stayed put');
+                    $this->assertSame(2, $editor->getDocument()->cursorLine, 'the caret stayed put');
                     $tui->handleInput("\x1b[<68;45;6M");
                     $this->assertSame(0, $scroll->hScroll, 'shift+wheel-up scrolled back');
                     // Wheel down over the editor scrolls the viewport.
@@ -146,7 +146,7 @@ final class IdeMousePrimitivesTest extends TestCase
                     $rendered = $editor->render(new RenderContext(69, 20));
                     $topLineNumber = (int) \trim(AnsiUtils::stripAnsiCodes($rendered[0]));
                     $this->assertGreaterThan(1, $topLineNumber, 'wheel scrolled the viewport down');
-                    $this->assertSame(2, $editor->getDocument()->getCursorLine(), 'wheel scroll left the caret behind');
+                    $this->assertSame(2, $editor->getDocument()->cursorLine, 'wheel scroll left the caret behind');
                     // A caret move snaps the detached viewport back to the caret.
                     $tui->handleInput("\x1b[B"); // down arrow -> caret line 3
                     $scroll = EditorState::scroll($editor);
@@ -197,7 +197,7 @@ final class IdeMousePrimitivesTest extends TestCase
             [
                 300 => function ($tui): void {
                     $tui->tick();
-                    $before = $tui->getById('editor')->getDocument()->getCursorLine();
+                    $before = $tui->getById('editor')->getDocument()->cursorLine;
                     // Right-click in the 1-col gap between the tree and editor pane
                     // (SGR col 31 = the gap), drag-motion, release, and a wheel over
                     // empty space are all no-ops (no context menu, no caret move).
@@ -205,7 +205,7 @@ final class IdeMousePrimitivesTest extends TestCase
                     $tui->handleInput("\x1b[<32;45;4M"); // motion
                     $tui->handleInput("\x1b[<0;45;4m"); // release
                     $tui->handleInput("\x1b[<64;1;24M"); // wheel over the status bar
-                    $this->assertSame($before, $tui->getById('editor')->getDocument()->getCursorLine());
+                    $this->assertSame($before, $tui->getById('editor')->getDocument()->cursorLine);
                     $this->assertFalse($tui->getById('context-menu')->isOpen());
                 },
             ],

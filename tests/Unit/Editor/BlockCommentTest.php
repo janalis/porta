@@ -32,7 +32,7 @@ final class BlockCommentTest extends TestCase
         $doc->setCursor(1, 7, SelectionMode::Keep);
         $doc->toggleComment(CommentSyntax::blockOnly('{#', '#}'));
 
-        $this->assertSame(['{# {{ a }} #}', '{# {{ b }} #}', ''], $doc->getLines());
+        $this->assertSame(['{# {{ a }} #}', '{# {{ b }} #}', ''], $doc->lines);
     }
 
     public function testAndUnwrapsThemAgain(): void
@@ -43,7 +43,7 @@ final class BlockCommentTest extends TestCase
         $doc->setCursor(1, 13, SelectionMode::Keep);
         $doc->toggleComment(CommentSyntax::blockOnly('{#', '#}'));
 
-        $this->assertSame(['{{ a }}', '{{ b }}', ''], $doc->getLines());
+        $this->assertSame(['{{ a }}', '{{ b }}', ''], $doc->lines);
     }
 
     /**
@@ -91,7 +91,7 @@ final class BlockCommentTest extends TestCase
         $doc->setCursor(1, 1, SelectionMode::Keep);
         $doc->toggleComment(CommentSyntax::blockOnly('{#', '#}'));
 
-        $this->assertSame(['{# {# a #} #}', '{# b #}', ''], $doc->getLines());
+        $this->assertSame(['{# {# a #} #}', '{# b #}', ''], $doc->lines);
     }
 
     public function testBlankLinesAreLeftAloneJustAsTheyAreForTheLineForm(): void
@@ -102,7 +102,7 @@ final class BlockCommentTest extends TestCase
         $doc->setCursor(2, 1, SelectionMode::Keep);
         $doc->toggleComment(CommentSyntax::blockOnly('<!--', '-->'));
 
-        $this->assertSame(['<!-- a -->', '', '<!-- b -->', ''], $doc->getLines());
+        $this->assertSame(['<!-- a -->', '', '<!-- b -->', ''], $doc->lines);
     }
 
     /**
@@ -164,7 +164,7 @@ final class BlockCommentTest extends TestCase
         $doc->toggleBlockComment(CommentSyntax::both('//', '/*', '*/'));
 
         $this->assertSame('    /* return 1; */', $doc->getLine(0));
-        $this->assertSame(19, $doc->getCursorCol(), 'the caret follows the insert; only an EMPTY comment pulls it back inside');
+        $this->assertSame(19, $doc->cursorCol, 'the caret follows the insert; only an EMPTY comment pulls it back inside');
     }
 
     /**
@@ -196,7 +196,7 @@ final class BlockCommentTest extends TestCase
         $doc->toggleBlockComment(CommentSyntax::both('//', '/*', '*/'));
 
         $this->assertSame('    /*  */', $doc->getLine(0));
-        $this->assertSame(7, $doc->getCursorCol(), 'the caret sits between the delimiters, not at a fixed column');
+        $this->assertSame(7, $doc->cursorCol, 'the caret sits between the delimiters, not at a fixed column');
     }
 
     /**
@@ -222,7 +222,7 @@ final class BlockCommentTest extends TestCase
         $doc->setCursor(2, 1, SelectionMode::Keep);
         $doc->toggleBlockComment(CommentSyntax::both('//', '/*', '*/'));
 
-        $this->assertSame(['/* a', 'b', 'c */', ''], $doc->getLines());
+        $this->assertSame(['/* a', 'b', 'c */', ''], $doc->lines);
     }
 
     /**
@@ -238,7 +238,7 @@ final class BlockCommentTest extends TestCase
         $doc->toggleBlockComment(CommentSyntax::both('//', '/*', '*/'));
 
         $this->assertSame('/*  */', $doc->getLine(0));
-        $this->assertSame(3, $doc->getCursorCol());
+        $this->assertSame(3, $doc->cursorCol);
 
         $doc->insert('why');
         $this->assertSame('/* why */', $doc->getLine(0));

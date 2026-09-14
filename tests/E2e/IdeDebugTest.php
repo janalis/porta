@@ -173,9 +173,9 @@ final class IdeDebugTest extends TestCase
             [
                 200 => function ($tui, $terminal): void {
                     // F7 while idle falls through to the editor's next_conflict.
-                    $this->assertSame(0, $tui->getById('editor')->getDocument()->getCursorLine());
+                    $this->assertSame(0, $tui->getById('editor')->getDocument()->cursorLine);
                     $tui->handleInput("\x1b[18~");
-                    $this->assertGreaterThan(0, $tui->getById('editor')->getDocument()->getCursorLine(), 'F7 reached next_conflict while no session runs');
+                    $this->assertGreaterThan(0, $tui->getById('editor')->getDocument()->cursorLine, 'F7 reached next_conflict while no session runs');
 
                     $tui->handleInput("\x1b[20;2~"); // shift+f9 with no adapter configured
                     $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'No debug adapter configured for php'), what: 'the adapterless-launch flash');
@@ -226,7 +226,7 @@ final class IdeDebugTest extends TestCase
                     // the stopped line (2), so reaching 0 is a real transition.
                     $editor = $tui->getById('editor');
                     $this->await(
-                        static fn (): bool => 0 === $editor->getDocument()->getCursorLine(),
+                        static fn (): bool => 0 === $editor->getDocument()->cursorLine,
                         what: 'the frame #1 click to jump to its line',
                     );
                     $this->assertSame('debug', $tui->getFocus()?->getId(), 'the click focused the panel');

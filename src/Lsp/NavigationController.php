@@ -272,7 +272,7 @@ final class NavigationController extends AbstractLspController implements Editor
             return;
         }
         $doc = $this->editor->getDocument();
-        $this->history->push($from, $doc->getCursorLine(), $doc->getCursorCol());
+        $this->history->push($from, $doc->cursorLine, $doc->cursorCol);
     }
 
     #[\Override]

@@ -249,7 +249,7 @@ final class ClipboardHistoryTest extends TestCase
                 $editor->handleInput($key);
             }
 
-            $lines = $editor->getDocument()->getLines();
+            $lines = $editor->getDocument()->lines;
             $expected ??= $lines;
             $this->assertSame($expected, $lines, "{$how} paste");
         }

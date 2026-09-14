@@ -58,7 +58,7 @@ final class FoldModel
     /** Whether a foldable region starts at $line. */
     private function startsRegion(int $line): bool
     {
-        if (null !== $this->regions && $this->regionsVersion === $this->document->getVersion()) {
+        if (null !== $this->regions && $this->regionsVersion === $this->document->version) {
             return ($this->regionStarts()[$line] ?? null) !== null;
         }
 
@@ -187,7 +187,7 @@ final class FoldModel
     /** Auto-expand any fold whose interior contains the caret so it stays visible. */
     public function revealCaretLine(): void
     {
-        $caret = $this->document->getCursorLine();
+        $caret = $this->document->cursorLine;
         foreach ($this->folds as $start => $end) {
             if ($start >= $caret || $caret > $end) {
                 continue;
@@ -216,8 +216,8 @@ final class FoldModel
         foreach ($this->foldRegions() as [$start, $end]) {
             $this->folds[$start] = $end;
         }
-        $line = $this->snapVisible($this->document->getCursorLine());
-        $this->document->setCursor($line, \min($this->document->getCursorCol(), \strlen($this->document->getLine($line))));
+        $line = $this->snapVisible($this->document->cursorLine);
+        $this->document->setCursor($line, \min($this->document->cursorCol, \strlen($this->document->getLine($line))));
     }
 
     public function unfoldAll(): void
@@ -228,7 +228,7 @@ final class FoldModel
     /** Collapse the block at the caret, or expand it if the caret is on a fold start. */
     public function toggle(): void
     {
-        $line = $this->document->getCursorLine();
+        $line = $this->document->cursorLine;
         if (\array_key_exists($line, $this->folds)) {
             unset($this->folds[$line]);
 
@@ -237,7 +237,7 @@ final class FoldModel
         if (null !== ($region = $this->foldableRegionAt($line))) {
             $this->folds[$region[0]] = $region[1];
             // Keep the caret on the (visible) fold-start line.
-            $this->document->setCursor($region[0], \min($this->document->getCursorCol(), \strlen($this->document->getLine($region[0]))));
+            $this->document->setCursor($region[0], \min($this->document->cursorCol, \strlen($this->document->getLine($region[0]))));
         }
     }
 
@@ -268,7 +268,7 @@ final class FoldModel
      */
     private function foldRegions(): array
     {
-        if (null !== $this->regions && $this->regionsVersion === $this->document->getVersion()) {
+        if (null !== $this->regions && $this->regionsVersion === $this->document->version) {
             return $this->regions;
         }
 
@@ -286,7 +286,7 @@ final class FoldModel
         $stack = [];
         /** @var list<array{0: int, 1: int}> $regions */
         $regions = [];
-        foreach ($this->document->getLines() as $lineIndex => $text) {
+        foreach ($this->document->lines as $lineIndex => $text) {
             $len = \strlen($text);
             for ($c = 0; $c < $len; ++$c) {
                 if ('{' === $text[$c]) {

@@ -99,6 +99,6 @@ final class WrapAndLensesTogetherTest extends TestCase
     {
         $document = $this->editor->getDocument();
 
-        return [$document->getCursorLine(), $document->getCursorDisplayCol()];
+        return [$document->cursorLine, $document->getCursorDisplayCol()];
     }
 }

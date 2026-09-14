@@ -105,7 +105,7 @@ final class IdeEditingTest extends TestCase
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + 8, $rect->row + 1));
                 },
                 360 => function ($tui): void {
-                    $this->assertSame(4, $tui->getById('editor')->getDocument()->getCursorLine(), 'clicking the pinned header jumped to the class declaration');
+                    $this->assertSame(4, $tui->getById('editor')->getDocument()->cursorLine, 'clicking the pinned header jumped to the class declaration');
                 },
             ],
         );
@@ -145,7 +145,7 @@ final class IdeEditingTest extends TestCase
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + 8 + 1, $rect->row + 1));
                 },
                 420 => function ($tui): void {
-                    $this->assertSame(4, $tui->getById('editor')->getDocument()->getCursorLine(), 'clicking the Service crumb jumped to the class declaration');
+                    $this->assertSame(4, $tui->getById('editor')->getDocument()->cursorLine, 'clicking the Service crumb jumped to the class declaration');
                 },
             ],
         );
@@ -379,7 +379,7 @@ final class IdeEditingTest extends TestCase
                 550 => function ($tui): void {
                     $editor = $tui->getById('editor');
                     $this->assertStringEndsWith('A.php', (string) $editor->getFilePath());
-                    $this->assertSame(30, $editor->getDocument()->getCursorLine());
+                    $this->assertSame(30, $editor->getDocument()->cursorLine);
                     // Now edit B.php and delete it. Walking back to a file that
                     // has gone must not move the caret in the file still on
                     // screen — that line number belongs to another file.
@@ -410,7 +410,7 @@ final class IdeEditingTest extends TestCase
 
                     $tui->handleInput("\x1b[127;6u"); // walk back into the deleted file
                     $this->assertStringEndsWith('A.php', (string) $editor->getFilePath(), 'still here');
-                    $this->assertSame(20, $editor->getDocument()->getCursorLine(), 'and the caret did not jump');
+                    $this->assertSame(20, $editor->getDocument()->cursorLine, 'and the caret did not jump');
                 },
             ],
         );

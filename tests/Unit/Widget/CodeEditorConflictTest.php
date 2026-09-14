@@ -29,10 +29,10 @@ final class CodeEditorConflictTest extends TestCase
         $editor->getDocument()->setCursor(0, 0);
 
         $editor->handleInput("\x1b[18~"); // F7 -> next region (start 6)
-        $this->assertSame(6, $editor->getDocument()->getCursorLine());
+        $this->assertSame(6, $editor->getDocument()->cursorLine);
 
         $editor->handleInput("\x1b[18~"); // F7 -> wraps to first (start 0)
-        $this->assertSame(0, $editor->getDocument()->getCursorLine());
+        $this->assertSame(0, $editor->getDocument()->cursorLine);
     }
 
     public function testPrevConflictNavigatesAndWraps(): void
@@ -41,10 +41,10 @@ final class CodeEditorConflictTest extends TestCase
         $editor->getDocument()->setCursor(6, 0);
 
         $editor->handleInput("\x1b[18;2~"); // Shift+F7 -> previous region (start 0)
-        $this->assertSame(0, $editor->getDocument()->getCursorLine());
+        $this->assertSame(0, $editor->getDocument()->cursorLine);
 
         $editor->handleInput("\x1b[18;2~"); // Shift+F7 -> wraps to last (start 6)
-        $this->assertSame(6, $editor->getDocument()->getCursorLine());
+        $this->assertSame(6, $editor->getDocument()->cursorLine);
     }
 
     public function testConflictNavigationNoopWithoutConflicts(): void
@@ -52,7 +52,7 @@ final class CodeEditorConflictTest extends TestCase
         $editor = $this->editor("just\nplain\ntext");
         $editor->getDocument()->setCursor(1, 0);
         $editor->handleInput("\x1b[18~");
-        $this->assertSame(1, $editor->getDocument()->getCursorLine(), 'no conflicts: caret unmoved');
+        $this->assertSame(1, $editor->getDocument()->cursorLine, 'no conflicts: caret unmoved');
     }
 
     public function testResolveKeepOurs(): void
@@ -123,13 +123,13 @@ final class CodeEditorConflictTest extends TestCase
         $editor->getDocument()->setCursor(0, 0);
 
         $editor->handleInput("\x1b[18~");
-        $this->assertSame(1, $editor->getDocument()->getCursorLine());
+        $this->assertSame(1, $editor->getDocument()->cursorLine);
         $editor->handleInput("\x1b[18~");
-        $this->assertSame(7, $editor->getDocument()->getCursorLine(), 'skips past the current region to the next one');
+        $this->assertSame(7, $editor->getDocument()->cursorLine, 'skips past the current region to the next one');
         $editor->handleInput("\x1b[18~");
-        $this->assertSame(13, $editor->getDocument()->getCursorLine());
+        $this->assertSame(13, $editor->getDocument()->cursorLine);
         $editor->handleInput("\x1b[18~"); // past the last region: wraps
-        $this->assertSame(1, $editor->getDocument()->getCursorLine());
+        $this->assertSame(1, $editor->getDocument()->cursorLine);
     }
 
     public function testNextConflictLandsAtColumnZero(): void
@@ -139,7 +139,7 @@ final class CodeEditorConflictTest extends TestCase
 
         $editor->handleInput("\x1b[18~");
 
-        $this->assertSame(0, $editor->getDocument()->getCursorCol());
+        $this->assertSame(0, $editor->getDocument()->cursorCol);
     }
 
     public function testPrevConflictJumpsToTheClosestRegionBeforeTheCaretNotTheFirstOne(): void
@@ -151,13 +151,13 @@ final class CodeEditorConflictTest extends TestCase
         $editor->getDocument()->setCursor(18, 0); // "after", past every region
 
         $editor->handleInput("\x1b[18;2~");
-        $this->assertSame(13, $editor->getDocument()->getCursorLine());
+        $this->assertSame(13, $editor->getDocument()->cursorLine);
         $editor->handleInput("\x1b[18;2~");
-        $this->assertSame(7, $editor->getDocument()->getCursorLine());
+        $this->assertSame(7, $editor->getDocument()->cursorLine);
         $editor->handleInput("\x1b[18;2~");
-        $this->assertSame(1, $editor->getDocument()->getCursorLine());
+        $this->assertSame(1, $editor->getDocument()->cursorLine);
         $editor->handleInput("\x1b[18;2~"); // before every region: wraps to the last
-        $this->assertSame(13, $editor->getDocument()->getCursorLine());
+        $this->assertSame(13, $editor->getDocument()->cursorLine);
     }
 
     public function testGotoConflictClearsAnyExistingSelection(): void

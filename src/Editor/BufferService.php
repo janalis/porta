@@ -230,7 +230,7 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
             $path,
             $buffer->document->getText(),
             ProjectPaths::languageId($path),
-            $buffer->document->getVersion(),
+            $buffer->document->version,
         );
 
         $this->showBuffer($buffer);
@@ -725,7 +725,7 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
         // width arithmetic counts and the terminal does not; putting it back
         // here is what keeps a file that arrived with one from quietly losing
         // it. Outside this line nothing else should ever see it.
-        if ($buffer->document->hasByteOrderMark()) {
+        if ($buffer->document->hasByteOrderMark) {
             $bytes = Document::BOM.$bytes;
         }
         if (!$this->overwriteConfirmed($buffer)) {
@@ -811,7 +811,7 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
     public function reopenAllInLsp(): void
     {
         foreach ($this->buffers->all() as $buffer) {
-            $this->lsp->notifyDidOpen($buffer->path, $buffer->document->getText(), ProjectPaths::languageId($buffer->path), $buffer->document->getVersion());
+            $this->lsp->notifyDidOpen($buffer->path, $buffer->document->getText(), ProjectPaths::languageId($buffer->path), $buffer->document->version);
         }
     }
 

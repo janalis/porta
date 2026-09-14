@@ -26,6 +26,6 @@ final readonly class BreadcrumbTrailProvider
         // `scopes()` chooses the source — the offline PHP scan or the language
         // server's symbols — so the trail and the sticky band above it can
         // never disagree about what encloses the caret.
-        return BreadcrumbScanner::select($this->editor->scopes(), $this->editor->getDocument()->getCursorLine());
+        return BreadcrumbScanner::select($this->editor->scopes(), $this->editor->getDocument()->cursorLine);
     }
 }

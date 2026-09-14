@@ -152,7 +152,7 @@ final class IdeTabsBuffersTest extends TestCase
                     $editor = $tui->getById('editor');
 
                     $this->assertStringEndsWith('Base.php', (string) $editor->getFilePath(), 'the parent file is open');
-                    $this->assertSame(4, $editor->getDocument()->getCursorLine(), 'on its declaration');
+                    $this->assertSame(4, $editor->getDocument()->cursorLine, 'on its declaration');
                     $this->assertStringContainsString(
                         'Super method: Base::handle',
                         AnsiUtils::stripAnsiCodes($terminal->getOutput()),
@@ -294,7 +294,7 @@ final class IdeTabsBuffersTest extends TestCase
                     // Switching back must render a.php's highlight from the
                     // buffer-owned cache (same version, no re-parse).
                     $editorBefore = $tui->getById('editor');
-                    $versionBefore = $editorBefore->getDocument()->getVersion();
+                    $versionBefore = $editorBefore->getDocument()->version;
                     $tui->handleInput("\x1b[1;5C"); // ctrl+right -> a.php
                     $tui->tick();
                     $this->assertStringEndsWith('a.php', (string) $tui->getById('editor')->getFilePath());

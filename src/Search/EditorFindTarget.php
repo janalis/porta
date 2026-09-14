@@ -22,25 +22,25 @@ final readonly class EditorFindTarget implements FindTarget
     #[\Override]
     public function findLines(): array
     {
-        return \array_values($this->document->getLines());
+        return \array_values($this->document->lines);
     }
 
     #[\Override]
     public function findVersion(): int
     {
-        return $this->document->getVersion();
+        return $this->document->version;
     }
 
     #[\Override]
     public function findCaretLine(): int
     {
-        return $this->document->getCursorLine();
+        return $this->document->cursorLine;
     }
 
     #[\Override]
     public function findCaretCol(): int
     {
-        return $this->document->getCursorCol();
+        return $this->document->cursorCol;
     }
 
     #[\Override]

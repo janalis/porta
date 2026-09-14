@@ -42,7 +42,7 @@ final readonly class FoldingController
         }
 
         $token = $this->round->start();
-        $version = $doc->getVersion();
+        $version = $doc->version;
         $timer = $this->scheduler->delay(2.0, function () use ($token): void {
             if (!$this->round->supersede($token)) {
                 return;
@@ -58,7 +58,7 @@ final readonly class FoldingController
                     return; // superseded by the timeout or a newer command
                 }
                 $this->scheduler->cancel($timer);
-                $regions = null === $error && $doc->getVersion() === $version ? self::regions($result) : [];
+                $regions = null === $error && $doc->version === $version ? self::regions($result) : [];
                 if ([] !== $regions) {
                     $this->editor->setFoldRegions($regions);
                 }

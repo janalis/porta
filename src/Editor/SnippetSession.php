@@ -77,7 +77,7 @@ final class SnippetSession
         }
         if ($kb->matches($keys, 'select_cancel')) {
             // Collapse any placeholder selection and leave the caret in place.
-            $this->document->setCursor($this->document->getCursorLine(), $this->document->getCursorCol());
+            $this->document->setCursor($this->document->cursorLine, $this->document->cursorCol);
             $this->session = null;
             ($this->onInvalidate)();
 
@@ -87,7 +87,7 @@ final class SnippetSession
         $printable = $isInsertable($keys);
         $isBackspace = $kb->matches($keys, 'delete_char_backward');
         if (($printable || $isBackspace) && !\str_contains($keys, "\n")) {
-            $line = $this->document->getCursorLine();
+            $line = $this->document->cursorLine;
             /** @var array{stops: list<array{line: int, start: int, end: int}>, index: int} $session */
             $session = $this->session;
             $index = $session['index'];

@@ -117,12 +117,12 @@ final class CodeEditorWidgetTest extends TestCase
         $editor->render(new RenderContext(60, 12)); // pins class@line4, handle@line6
 
         $editor->clickAt(0, 10); // click the pinned class header
-        $this->assertSame(4, $editor->getDocument()->getCursorLine(), 'jumped to the class declaration');
+        $this->assertSame(4, $editor->getDocument()->cursorLine, 'jumped to the class declaration');
 
         $editor->getDocument()->setCursor(24, 8);
         $editor->render(new RenderContext(60, 12));
         $editor->clickAt(1, 10); // click the pinned method header
-        $this->assertSame(6, $editor->getDocument()->getCursorLine(), 'jumped to the method declaration');
+        $this->assertSame(6, $editor->getDocument()->cursorLine, 'jumped to the method declaration');
     }
 
     public function testClickOnContentRowResolvesTheScrolledLine(): void
@@ -132,7 +132,7 @@ final class CodeEditorWidgetTest extends TestCase
         $editor->render(new RenderContext(60, 12)); // 2 sticky rows; content starts at row 2
 
         $editor->clickAt(2, 10); // first content row, below the pinned band
-        $this->assertGreaterThan(6, $editor->getDocument()->getCursorLine(), 'a content-row click resolves a scrolled line, not a header');
+        $this->assertGreaterThan(6, $editor->getDocument()->cursorLine, 'a content-row click resolves a scrolled line, not a header');
     }
 
     public function testDisablingStickyScrollRemovesThePinnedBand(): void
@@ -453,7 +453,7 @@ final class CodeEditorWidgetTest extends TestCase
         $editor = $this->editor();
         $editor->handleInput("\x1b[B"); // down
 
-        $this->assertSame(1, $editor->getDocument()->getCursorLine());
+        $this->assertSame(1, $editor->getDocument()->cursorLine);
     }
 
     public function testCompletionPopupLifecycle(): void
@@ -588,7 +588,7 @@ final class CodeEditorWidgetTest extends TestCase
         $doc = $editor->getDocument();
         $doc->setCursor(1, 3);
 
-        $occurrences->publish('demo.php', $doc->getVersion(), 1, $doc->getCursorColUtf16(), [
+        $occurrences->publish('demo.php', $doc->version, 1, $doc->getCursorColUtf16(), [
             [1, 0, 6, true], // the assignment: a write
             [2, 5, 11, false], // the use: a read
         ]);
@@ -612,7 +612,7 @@ final class CodeEditorWidgetTest extends TestCase
         $doc->setCursor(1, 3);
 
         // Stamped for a caret that is NOT where the caret is now.
-        $occurrences->publish('demo.php', $doc->getVersion(), 2, 6, [[1, 0, 6, true]]);
+        $occurrences->publish('demo.php', $doc->version, 2, 6, [[1, 0, 6, true]]);
         $rendered = $editor->render(new RenderContext(80, 10));
 
         $this->assertStringNotContainsString("\x1b[48;5;52m", $rendered[1], 'a stale answer is dropped, not painted');
@@ -627,7 +627,7 @@ final class CodeEditorWidgetTest extends TestCase
         $doc = $editor->getDocument();
         $doc->setCursor(1, 3);
 
-        $occurrences->publish('demo.php', $doc->getVersion() - 1, 1, $doc->getCursorColUtf16(), [[1, 0, 6, true]]);
+        $occurrences->publish('demo.php', $doc->version - 1, 1, $doc->getCursorColUtf16(), [[1, 0, 6, true]]);
         $rendered = $editor->render(new RenderContext(80, 10));
 
         $this->assertStringNotContainsString("\x1b[48;5;52m", $rendered[1]);
@@ -645,7 +645,7 @@ final class CodeEditorWidgetTest extends TestCase
         $doc = $editor->getDocument();
         $doc->setCursor(1, 3);
 
-        $occurrences->publish('demo.php', $doc->getVersion(), 1, $doc->getCursorColUtf16(), []);
+        $occurrences->publish('demo.php', $doc->version, 1, $doc->getCursorColUtf16(), []);
         $rendered = $editor->render(new RenderContext(80, 10));
 
         $this->assertStringNotContainsString("\x1b[48;5;23m", $rendered[2], 'the scan must not override the server saying "no other occurrences"');
@@ -1102,11 +1102,11 @@ final class CodeEditorWidgetTest extends TestCase
 
         // Clicking low in the stripe jumps deep into the file (near the warning).
         $editor->clickAt(18, 79);
-        $this->assertGreaterThan(40, $editor->getDocument()->getCursorLine(), 'stripe click jumps to a proportional file line');
+        $this->assertGreaterThan(40, $editor->getDocument()->cursorLine, 'stripe click jumps to a proportional file line');
 
         // A press (drag start) in the stripe also jumps instead of starting a selection.
         $editor->beginSelectionAt(1, 79);
-        $this->assertLessThan(10, $editor->getDocument()->getCursorLine(), 'stripe press near the top jumps up');
+        $this->assertLessThan(10, $editor->getDocument()->cursorLine, 'stripe press near the top jumps up');
         $this->assertFalse($editor->getDocument()->hasSelection(), 'no selection started from a stripe press');
     }
 
@@ -1127,7 +1127,7 @@ final class CodeEditorWidgetTest extends TestCase
         $editor->handleInput('3');
         $editor->handleInput("\r");
 
-        $this->assertSame(2, $editor->getDocument()->getCursorLine());
+        $this->assertSame(2, $editor->getDocument()->cursorLine);
     }
 
     public function testSignatureHintRenderingAndClearing(): void
@@ -1203,8 +1203,8 @@ final class CodeEditorWidgetTest extends TestCase
         $editor = $this->editor($lines);
         $editor->jumpTo(50, 3);
 
-        $this->assertSame(50, $editor->getDocument()->getCursorLine());
-        $this->assertSame(3, $editor->getDocument()->getCursorCol());
+        $this->assertSame(50, $editor->getDocument()->cursorLine);
+        $this->assertSame(3, $editor->getDocument()->cursorCol);
 
         $rendered = $editor->render(new RenderContext(80, 20));
         $plain = AnsiUtils::stripAnsiCodes(\implode("\n", $rendered));

@@ -356,7 +356,7 @@ final readonly class WorkspaceEditor
 
                 return;
             }
-            $this->undo->recordBuffer($buffer->path, $buffer->document->getVersion());
+            $this->undo->recordBuffer($buffer->path, $buffer->document->version);
             if ($buffer === $this->buffers->active()) {
                 $this->editor->invalidate();
             }

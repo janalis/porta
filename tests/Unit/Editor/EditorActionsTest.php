@@ -154,7 +154,7 @@ final class EditorActionsTest extends TestCase
         $actions = $this->actions("  a\n");
 
         $actions->run('insert_line_below');
-        $this->assertSame(['  a', '  ', ''], $this->doc->getLines());
+        $this->assertSame(['  a', '  ', ''], $this->doc->lines);
         $this->assertSame(1, $this->count_('notifyChange'));
 
         $actions->run('insert_line_above');
@@ -343,7 +343,7 @@ final class EditorActionsTest extends TestCase
         $this->doc->setCursor(1, 0);
         $actions->run('add_caret_below');
         $this->assertTrue($this->multiCaret->hasMultiple());
-        $this->assertSame(2, $this->doc->getCursorLine(), 'the new caret is exactly one line below');
+        $this->assertSame(2, $this->doc->cursorLine, 'the new caret is exactly one line below');
 
         $actions = $this->actions("one\ntwo\nthree\n");
         $this->doc->setCursor(1, 0);
@@ -467,7 +467,7 @@ final class EditorActionsTest extends TestCase
 
         $actions = $this->actions("ab\n");
         $actions->handleKey("\x1b[C", $kb);
-        $this->assertSame(1, $this->doc->getCursorCol());
+        $this->assertSame(1, $this->doc->cursorCol);
         $this->assertFalse($this->doc->hasSelection());
 
         $actions->handleKey("\x1b[1;2C", $kb);
@@ -487,7 +487,7 @@ final class EditorActionsTest extends TestCase
         $kb = new Keybindings(['page_down' => ['page_down']]);
         $actions = $this->actions(\str_repeat("line\n", times: 20));
         $actions->handleKey("\x1b[6~", $kb);
-        $this->assertSame(5, $this->doc->getCursorLine(), 'contentRows closure supplies the page size');
+        $this->assertSame(5, $this->doc->cursorLine, 'contentRows closure supplies the page size');
     }
 
     public function testIndentWithSelectionIndentsTheBlockOtherwiseInsertsTheUnit(): void
@@ -582,7 +582,7 @@ final class EditorActionsTest extends TestCase
         $actions->run('fold_all');
         $this->assertSame(4, $this->foldModel->foldEndAt(0), 'the outer block folded');
         $this->assertSame(3, $this->foldModel->foldEndAt(1), 'the inner block folded');
-        $this->assertSame(0, $this->doc->getCursorLine(), 'the caret snapped to a visible fold start');
+        $this->assertSame(0, $this->doc->cursorLine, 'the caret snapped to a visible fold start');
         $this->assertSame(1, $this->count_('invalidate'));
 
         $actions->run('unfold_all');
@@ -594,7 +594,7 @@ final class EditorActionsTest extends TestCase
     public function testExternalFoldRegionsWinUntilTheDocumentChanges(): void
     {
         $actions = $this->actions("a\nb\nc\nd {\n}\n");
-        $this->foldModel->setRegions([[0, 2]], $this->doc->getVersion());
+        $this->foldModel->setRegions([[0, 2]], $this->doc->version);
 
         $actions->run('fold_all');
         $this->assertSame(2, $this->foldModel->foldEndAt(0), 'the LSP region folded');
@@ -612,15 +612,15 @@ final class EditorActionsTest extends TestCase
         $this->doc->setCursor(0, 2); // on the opening paren
 
         $actions->run('goto_matching_bracket');
-        $this->assertSame([0, 9], [$this->doc->getCursorLine(), $this->doc->getCursorCol()], 'jumped to the closing paren');
+        $this->assertSame([0, 9], [$this->doc->cursorLine, $this->doc->cursorCol], 'jumped to the closing paren');
         $this->assertSame(1, $this->count_('invalidate'));
 
         $actions->run('goto_matching_bracket');
-        $this->assertSame([0, 2], [$this->doc->getCursorLine(), $this->doc->getCursorCol()], 'jumped back to the opener');
+        $this->assertSame([0, 2], [$this->doc->cursorLine, $this->doc->cursorCol], 'jumped back to the opener');
 
         $this->doc->setCursor(1, 0); // no bracket anywhere near
         $actions->run('goto_matching_bracket');
-        $this->assertSame([1, 0], [$this->doc->getCursorLine(), $this->doc->getCursorCol()], 'no bracket → no move');
+        $this->assertSame([1, 0], [$this->doc->cursorLine, $this->doc->cursorCol], 'no bracket → no move');
         $this->assertSame(2, $this->count_('invalidate'), 'no invalidate on the no-op');
     }
 
@@ -685,7 +685,7 @@ final class EditorActionsTest extends TestCase
         $kb = new Keybindings(['cursor_right' => ['q']]);
         $actions->handleKey('q', $kb);
 
-        $this->assertSame(1, $this->doc->getCursorCol(), 'the multi-caret handler alone must move the caret exactly once');
+        $this->assertSame(1, $this->doc->cursorCol, 'the multi-caret handler alone must move the caret exactly once');
     }
 
     public function testMoveStatementUpMovesTheStatementUpward(): void
@@ -729,7 +729,7 @@ final class EditorActionsTest extends TestCase
         $actions = $this->actions($text);
         $actions->handleKey('q', $kb);
 
-        $this->assertSame(1, $this->doc->getCursorLine(), 'jumped to the conflict start');
+        $this->assertSame(1, $this->doc->cursorLine, 'jumped to the conflict start');
         $this->assertSame($text, $this->doc->getText(), 'no fallthrough insert of the bound letter');
     }
 
@@ -749,7 +749,7 @@ final class EditorActionsTest extends TestCase
         $this->doc->setSelectionRange(0, 0, 0, 3);
         $actions->handleKey('q', $kb);
 
-        $this->assertSame(4, $this->doc->getCursorCol(), 'moved right exactly once from the selection end');
+        $this->assertSame(4, $this->doc->cursorCol, 'moved right exactly once from the selection end');
         $this->assertFalse($this->doc->hasSelection(), 'the pre-existing selection was cleared');
         $this->assertSame(1, $this->count_('invalidate'));
         $this->assertSame("abcdef\n", $this->doc->getText(), 'no fallthrough insert of the bound letter');
@@ -773,10 +773,10 @@ final class EditorActionsTest extends TestCase
         $this->doc->setSelectionRange(0, 0, 0, 2);
         $actions->handleKey('q', $kb);
 
-        $this->assertSame(5, $this->doc->getCursorLine());
+        $this->assertSame(5, $this->doc->cursorLine);
         $this->assertFalse($this->doc->hasSelection());
         $this->assertSame(1, $this->count_('invalidate'));
-        $this->assertSame('line', $this->doc->getLine($this->doc->getCursorLine()), 'no fallthrough insert of the bound letter');
+        $this->assertSame('line', $this->doc->getLine($this->doc->cursorLine), 'no fallthrough insert of the bound letter');
     }
 
     public function testIndentWithSelectionNotifiesAndStopsTheCascade(): void
@@ -967,8 +967,8 @@ final class EditorActionsTest extends TestCase
         $actions->handleKey('q', $kb);
 
         $this->assertFalse($this->doc->hasSelection(), 'the selection was cleared');
-        $this->assertSame(0, $this->doc->getCursorLine(), 'jumped to the document start');
-        $this->assertSame(0, $this->doc->getCursorCol());
+        $this->assertSame(0, $this->doc->cursorLine, 'jumped to the document start');
+        $this->assertSame(0, $this->doc->cursorCol);
         $this->assertSame(1, $this->count_('invalidate'));
         $this->assertSame("alpha beta\ngamma\n", $this->doc->getText(), 'no fallthrough insert of the bound letter');
     }
@@ -981,7 +981,7 @@ final class EditorActionsTest extends TestCase
         $actions->handleKey('q', $kb);
 
         $this->assertFalse($this->doc->hasSelection(), 'the selection was cleared');
-        $this->assertSame(2, $this->doc->getCursorLine(), 'jumped to the document end');
+        $this->assertSame(2, $this->doc->cursorLine, 'jumped to the document end');
         $this->assertSame(1, $this->count_('invalidate'));
         $this->assertSame("alpha beta\ngamma\n", $this->doc->getText(), 'no fallthrough insert of the bound letter');
     }

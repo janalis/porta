@@ -155,7 +155,7 @@ final class SearchUiWiringTest extends TestCase
         $wiring->onRowActivated(new ResultRowActivated('a.php', 2));
 
         $this->assertSame([$project->dir.'/a.php'], $this->opened, 'core opened the file itself');
-        $this->assertSame(2, $this->editor->getDocument()->getCursorLine());
+        $this->assertSame(2, $this->editor->getDocument()->cursorLine);
     }
 
     public function testRowActivatedOnACoreLogTabIsInert(): void
@@ -182,7 +182,7 @@ final class SearchUiWiringTest extends TestCase
         $wiring->onRowActivated(new ResultRowActivated('a.php', 1));
 
         $this->assertSame([$project->dir.'/a.php'], $this->opened);
-        $this->assertSame(1, $this->editor->getDocument()->getCursorLine());
+        $this->assertSame(1, $this->editor->getDocument()->cursorLine);
     }
 
     public function testRerunRequestedWithAContributedRerunHandlerDelegatesToIt(): void

@@ -21,14 +21,14 @@ final class EditorFindTargetTest extends TestCase
         $lines = $target->findLines();
         $this->assertContains('alpha', $lines);
         $this->assertContains('beta', $lines);
-        $this->assertSame($doc->getVersion(), $target->findVersion());
-        $this->assertSame($doc->getCursorLine(), $target->findCaretLine());
-        $this->assertSame($doc->getCursorCol(), $target->findCaretCol());
+        $this->assertSame($doc->version, $target->findVersion());
+        $this->assertSame($doc->cursorLine, $target->findCaretLine());
+        $this->assertSame($doc->cursorCol, $target->findCaretCol());
 
         // Revealing a match moves the document caret (the editor scrolls it in).
         $target->revealMatch(1, startByte: 0, endByte: 4);
-        $this->assertSame(1, $doc->getCursorLine());
-        $this->assertSame(0, $doc->getCursorCol());
+        $this->assertSame(1, $doc->cursorLine);
+        $this->assertSame(0, $doc->cursorCol);
 
         // Mirroring reaches the editor's actual highlight, not just a no-throw call.
         $target->showSearchMatches([1 => [['start' => 0, 'end' => 4, 'current' => true]]]);

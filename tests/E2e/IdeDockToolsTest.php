@@ -717,7 +717,7 @@ final class IdeDockToolsTest extends TestCase
                     $tui->tick();
 
                     $this->assertStringEndsWith('/a.php', (string) $tui->getById('editor')->getFilePath(), 'the row jumped back to the bookmarked file');
-                    $this->assertSame(1, $tui->getById('editor')->getDocument()->getCursorLine(), 'and to its line');
+                    $this->assertSame(1, $tui->getById('editor')->getDocument()->cursorLine, 'and to its line');
                 },
                 420 => function ($tui, $terminal, Ide $ide) use ($project): void {
                     // The mark outlives the session: teardown writes it, and a
@@ -766,7 +766,7 @@ final class IdeDockToolsTest extends TestCase
                     $tui->tick();
 
                     $this->assertStringEndsWith('/a.php', (string) $tui->getById('editor')->getFilePath(), 'the row returned to the file left behind');
-                    $this->assertSame(1, $tui->getById('editor')->getDocument()->getCursorLine());
+                    $this->assertSame(1, $tui->getById('editor')->getDocument()->cursorLine);
                 },
             ],
         );
@@ -839,13 +839,13 @@ final class IdeDockToolsTest extends TestCase
                     $this->frame($tui);
 
                     $tui->handleInput("\x1bOQ"); // F2
-                    $this->assertSame(2, $tui->getById('editor')->getDocument()->getCursorLine(), 'jumped to the first problem');
+                    $this->assertSame(2, $tui->getById('editor')->getDocument()->cursorLine, 'jumped to the first problem');
 
                     $tui->handleInput("\x1bOQ");
-                    $this->assertSame(5, $tui->getById('editor')->getDocument()->getCursorLine(), 'then the second');
+                    $this->assertSame(5, $tui->getById('editor')->getDocument()->cursorLine, 'then the second');
 
                     $tui->handleInput("\x1bOQ");
-                    $this->assertSame(2, $tui->getById('editor')->getDocument()->getCursorLine(), 'and wrapped back to the first');
+                    $this->assertSame(2, $tui->getById('editor')->getDocument()->cursorLine, 'and wrapped back to the first');
                 },
             ],
         );

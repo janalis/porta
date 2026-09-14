@@ -40,7 +40,7 @@ final class WrapCaretMotionTest extends TestCase
     {
         $document = $this->editor->getDocument();
 
-        return [$document->getCursorLine(), $document->getCursorDisplayCol()];
+        return [$document->cursorLine, $document->getCursorDisplayCol()];
     }
 
     public function testDownStepsThroughAWrappedLineSegmentBySegment(): void
@@ -157,12 +157,12 @@ final class WrapCaretMotionTest extends TestCase
         $this->assertStringNotContainsString('C', $screen(), 'the third line starts off screen');
 
         // Down until the caret is on the third line, then it must be visible.
-        for ($i = 0; $i < 12 && 2 !== $editor->getDocument()->getCursorLine(); ++$i) {
+        for ($i = 0; $i < 12 && 2 !== $editor->getDocument()->cursorLine; ++$i) {
             $editor->handleInput(self::DOWN);
             $screen();
         }
 
-        $this->assertSame(2, $editor->getDocument()->getCursorLine(), 'the caret reached the third line');
+        $this->assertSame(2, $editor->getDocument()->cursorLine, 'the caret reached the third line');
         $this->assertStringContainsString('C', $screen(), 'and the viewport followed it there');
     }
 
@@ -181,7 +181,7 @@ final class WrapCaretMotionTest extends TestCase
         $screen();
 
         // Down to the wrapped line's last segment.
-        for ($i = 0; $i < 8 && 2 !== $editor->getDocument()->getCursorLine(); ++$i) {
+        for ($i = 0; $i < 8 && 2 !== $editor->getDocument()->cursorLine; ++$i) {
             $editor->handleInput(self::DOWN);
             $screen();
         }

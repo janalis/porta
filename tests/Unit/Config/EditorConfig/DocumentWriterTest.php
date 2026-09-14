@@ -62,7 +62,7 @@ final class DocumentWriterTest extends TestCase
     public function testLfEndOfLineOverridesACrlfFile(): void
     {
         $doc = new Document("a\r\nb\r\n");
-        $this->assertSame("\r\n", $doc->eol(), 'the document knows it loaded CRLF');
+        $this->assertSame("\r\n", $doc->eol, 'the document knows it loaded CRLF');
 
         $this->assertSame("a\nb\n", DocumentWriter::render($doc, $this->config(['end_of_line' => 'lf'])));
     }

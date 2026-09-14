@@ -70,7 +70,7 @@ final class FormatOnSave
 
         $token = $this->round->start();
         $doc = $buffer->document;
-        $version = $doc->getVersion();
+        $version = $doc->version;
         $options = ['tabSize' => $doc->usesTabs() ? $doc->tabWidth() : $doc->indentSize(), 'insertSpaces' => !$doc->usesTabs()];
 
         // Ctrl+S must never hang: after 2 s the save proceeds unformatted and
@@ -94,7 +94,7 @@ final class FormatOnSave
                 $this->scheduler->cancel($timer);
                 // Edits computed against stale text must never apply — the
                 // version guard skips them and the save keeps the user's text.
-                if (null === $error && \is_array($result) && [] !== $result && $buffer->document->getVersion() === $version) {
+                if (null === $error && \is_array($result) && [] !== $result && $buffer->document->version === $version) {
                     /** @var list<array{range: array{start: array{line?: int, character?: int}, end: array{line?: int, character?: int}}, newText: string}> $result */
                     // A refusal (overlapping edits) leaves the buffer exactly as
                     // the user wrote it and the save below still happens — which

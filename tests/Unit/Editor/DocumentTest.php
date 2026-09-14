@@ -56,7 +56,7 @@ final class DocumentTest extends TestCase
         $this->assertFalse($doc->usesTabs());
         $this->assertSame('    ', $doc->indentUnit());
         // No tabs -> visual lines are identical to raw lines.
-        $this->assertSame($doc->getLines(), $doc->getVisualLines());
+        $this->assertSame($doc->lines, $doc->getVisualLines());
     }
 
     public function testByteColForDisplayColHandlesTabs(): void
@@ -77,9 +77,9 @@ final class DocumentTest extends TestCase
         $doc = new Document("hello\n\tx");
         $doc->setCursor(0, 5); // display column 5 (end of "hello")
         $doc->moveDown();
-        $this->assertSame(1, $doc->getCursorLine());
+        $this->assertSame(1, $doc->cursorLine);
         // Display column 5 on "\tx" (tab=4 cells, then x at 4) -> byte col 2.
-        $this->assertSame(2, $doc->getCursorCol());
+        $this->assertSame(2, $doc->cursorCol);
     }
 
     public function testAutoIndentUsesTabForTabFile(): void
@@ -112,9 +112,9 @@ final class DocumentTest extends TestCase
         $doc->setCursor(0, 5);
         $doc->insert("A\nB\nC");
 
-        $this->assertSame(['startA', 'B', 'Cend'], $doc->getLines());
-        $this->assertSame(2, $doc->getCursorLine());
-        $this->assertSame(1, $doc->getCursorCol());
+        $this->assertSame(['startA', 'B', 'Cend'], $doc->lines);
+        $this->assertSame(2, $doc->cursorLine);
+        $this->assertSame(1, $doc->cursorCol);
     }
 
     public function testUndoRedo(): void
@@ -219,7 +219,7 @@ final class DocumentTest extends TestCase
 
         $doc->insert("alpha\r\nbeta\rgamma\n");
 
-        $this->assertSame(['first', 'alpha', 'beta', 'gamma', ''], $doc->getLines());
+        $this->assertSame(['first', 'alpha', 'beta', 'gamma', ''], $doc->lines);
         $this->assertStringNotContainsString("\r", $doc->getText(), 'no carriage return survived the paste');
     }
 
@@ -237,7 +237,7 @@ final class DocumentTest extends TestCase
 
         $doc->replaceAll("alpha\r\nbeta\r\n");
 
-        $this->assertSame(['alpha', 'beta', ''], $doc->getLines());
+        $this->assertSame(['alpha', 'beta', ''], $doc->lines);
         $this->assertStringNotContainsString("\r", $doc->getText(), 'no carriage return survived the reload');
     }
 
@@ -303,10 +303,10 @@ final class DocumentTest extends TestCase
         $doc->setCursor(0, 8); // inside "function"
 
         $doc->moveWordRight();
-        $this->assertGreaterThan(8, $doc->getCursorCol());
+        $this->assertGreaterThan(8, $doc->cursorCol);
 
         $doc->moveWordLeft();
-        $this->assertSame(9, $doc->getCursorCol(), 'lands at start of "hello"');
+        $this->assertSame(9, $doc->cursorCol, 'lands at start of "hello"');
     }
 
     public function testUtf16ColumnForAsciiEqualsByteLength(): void
@@ -324,7 +324,7 @@ final class DocumentTest extends TestCase
         $doc->moveRight();
         $doc->moveRight();
 
-        $this->assertSame(3, $doc->getCursorCol(), 'h (1 byte) + é (2 bytes)');
+        $this->assertSame(3, $doc->cursorCol, 'h (1 byte) + é (2 bytes)');
     }
 
     public function testUtf16ColToByteCol(): void
@@ -382,11 +382,11 @@ final class DocumentTest extends TestCase
         $doc->setCursor(1, 0);
 
         $doc->duplicateLines();
-        $this->assertSame(['one', 'two', 'two', 'three'], $doc->getLines());
-        $this->assertSame(2, $doc->getCursorLine(), 'cursor moves onto the duplicate');
+        $this->assertSame(['one', 'two', 'two', 'three'], $doc->lines);
+        $this->assertSame(2, $doc->cursorLine, 'cursor moves onto the duplicate');
 
         $this->assertTrue($doc->deleteLines());
-        $this->assertSame(['one', 'two', 'three'], $doc->getLines());
+        $this->assertSame(['one', 'two', 'three'], $doc->lines);
 
         $doc->setCursor(2, 0);
         $this->assertTrue($doc->moveLines(-1));
@@ -409,7 +409,7 @@ final class DocumentTest extends TestCase
         $doc->setCursor(2, 6, selection: SelectionMode::Keep); // lines 0-2
 
         $this->assertTrue($doc->sortLines());
-        $this->assertSame(['apple', 'banana', 'cherry', 'zzz'], $doc->getLines(), 'the trailing line is untouched');
+        $this->assertSame(['apple', 'banana', 'cherry', 'zzz'], $doc->lines, 'the trailing line is untouched');
     }
 
     public function testSortLinesNoOps(): void
@@ -429,7 +429,7 @@ final class DocumentTest extends TestCase
         $doc = new Document("foo\n    bar\nbaz");
         $doc->setCursor(0, 0); // no selection → join with the line below, trimming
         $this->assertTrue($doc->joinLines());
-        $this->assertSame(['foo bar', 'baz'], $doc->getLines());
+        $this->assertSame(['foo bar', 'baz'], $doc->lines);
 
         $doc->setCursor(1, 0);
         $this->assertFalse($doc->joinLines(), 'the last line has nothing below to join');
@@ -439,7 +439,7 @@ final class DocumentTest extends TestCase
         $block->beginSelect();
         $block->setCursor(2, 1, selection: SelectionMode::Keep); // lines 0-2
         $this->assertTrue($block->joinLines());
-        $this->assertSame(['a b c', 'd'], $block->getLines());
+        $this->assertSame(['a b c', 'd'], $block->lines);
     }
 
     public function testToggleCaseLines(): void
@@ -450,7 +450,7 @@ final class DocumentTest extends TestCase
         $doc->setCursor(1, 5, selection: SelectionMode::Keep); // lines 0-1
 
         $this->assertTrue($doc->toggleCaseLines(), 'mixed case → upper');
-        $this->assertSame(['HELLO', 'WORLD'], $doc->getLines());
+        $this->assertSame(['HELLO', 'WORLD'], $doc->lines);
 
         // The selection cleared; the caret line alone flips back down.
         $this->assertTrue($doc->toggleCaseLines(), 'all upper → lower');
@@ -483,7 +483,7 @@ final class DocumentTest extends TestCase
         $doc->setCursor(3, 1, selection: SelectionMode::Keep); // selection spans lines 0..3
 
         $doc->indentSelection();
-        $this->assertSame(['    a', '    b', '', '    c', ''], $doc->getLines(), 'each non-blank line gains one level; blank line untouched');
+        $this->assertSame(['    a', '    b', '', '    c', ''], $doc->lines, 'each non-blank line gains one level; blank line untouched');
 
         // The selection still spans the same lines, columns shifted by the indent width.
         $range = $doc->getSelectionRange();
@@ -519,12 +519,12 @@ final class DocumentTest extends TestCase
         $doc->setCursor(2, 4, selection: SelectionMode::Keep);
 
         $doc->dedentSelection();
-        $this->assertSame(['    deep', 'shallow', 'none', ''], $doc->getLines(), 'removes up to one level; a shallow line goes to the margin, none stays');
+        $this->assertSame(['    deep', 'shallow', 'none', ''], $doc->lines, 'removes up to one level; a shallow line goes to the margin, none stays');
 
         $doc->dedentSelection();
-        $this->assertSame(['deep', 'shallow', 'none', ''], $doc->getLines());
+        $this->assertSame(['deep', 'shallow', 'none', ''], $doc->lines);
         $doc->dedentSelection(); // already flush left
-        $this->assertSame(['deep', 'shallow', 'none', ''], $doc->getLines(), 'outdent stops at column 0');
+        $this->assertSame(['deep', 'shallow', 'none', ''], $doc->lines, 'outdent stops at column 0');
     }
 
     public function testIndentDedentUseTabsForTabFile(): void
@@ -536,9 +536,9 @@ final class DocumentTest extends TestCase
         $doc->setCursor(1, 2, selection: SelectionMode::Keep);
 
         $doc->indentSelection();
-        $this->assertSame(["\t\tx", "\t\ty", ''], $doc->getLines());
+        $this->assertSame(["\t\tx", "\t\ty", ''], $doc->lines);
         $doc->dedentSelection();
-        $this->assertSame(["\tx", "\ty", ''], $doc->getLines());
+        $this->assertSame(["\tx", "\ty", ''], $doc->lines);
     }
 
     public function testIndentSingleLineSelection(): void
@@ -610,10 +610,10 @@ final class DocumentTest extends TestCase
         $doc->moveToLineEnd();
 
         $doc->moveToLineStart();
-        $this->assertSame(4, $doc->getCursorCol(), 'first stop: first non-blank');
+        $this->assertSame(4, $doc->cursorCol, 'first stop: first non-blank');
 
         $doc->moveToLineStart();
-        $this->assertSame(0, $doc->getCursorCol(), 'second stop: column 0');
+        $this->assertSame(0, $doc->cursorCol, 'second stop: column 0');
     }
 
     public function testVerticalMovementKeepsGoalColumn(): void
@@ -622,10 +622,10 @@ final class DocumentTest extends TestCase
         $doc->setCursor(0, 10);
 
         $doc->moveDown();
-        $this->assertSame(2, $doc->getCursorCol(), 'clamped to short line');
+        $this->assertSame(2, $doc->cursorCol, 'clamped to short line');
 
         $doc->moveDown();
-        $this->assertSame(10, $doc->getCursorCol(), 'goal column restored');
+        $this->assertSame(10, $doc->cursorCol, 'goal column restored');
     }
 
     public function testReplaceBeforeCursor(): void
@@ -707,8 +707,8 @@ final class DocumentTest extends TestCase
         $doc = new Document("hello\nworld");
         $doc->setSelectionRange(0, 1, 1, 3);
         $this->assertSame('ello'."\n".'wor', $doc->getSelectedText());
-        $this->assertSame(1, $doc->getCursorLine());
-        $this->assertSame(3, $doc->getCursorCol());
+        $this->assertSame(1, $doc->cursorLine);
+        $this->assertSame(3, $doc->cursorCol);
 
         // Out-of-range caret coordinates clamp to valid positions.
         $doc->setSelectionRange(0, 0, 9, 99);
@@ -726,8 +726,8 @@ final class DocumentTest extends TestCase
         $this->assertSame('    foo() {', $doc->getLine(0));
         $this->assertSame('        ', $doc->getLine(1), 'blank caret line indented one level');
         $this->assertSame('    }', $doc->getLine(2), 'closer dropped to base indent');
-        $this->assertSame(1, $doc->getCursorLine());
-        $this->assertSame(8, $doc->getCursorCol());
+        $this->assertSame(1, $doc->cursorLine);
+        $this->assertSame(8, $doc->cursorCol);
     }
 
     public function testSmartEnterOnlyWhenCloserImmediatelyFollows(): void
@@ -746,7 +746,7 @@ final class DocumentTest extends TestCase
         $doc->setCursor(1, 0);
         $this->assertTrue($doc->moveStatement(-1));
         $this->assertSame("b\na\nc", $doc->getText());
-        $this->assertSame(0, $doc->getCursorLine());
+        $this->assertSame(0, $doc->cursorLine);
     }
 
     public function testMoveStatementHopsBlankGapDown(): void
@@ -756,7 +756,7 @@ final class DocumentTest extends TestCase
         $this->assertTrue($doc->moveStatement(1));
         // The statement jumps the two blank lines to sit above "target".
         $this->assertSame("\n\nstmt\ntarget", $doc->getText());
-        $this->assertSame(2, $doc->getCursorLine());
+        $this->assertSame(2, $doc->cursorLine);
     }
 
     public function testMoveStatementHopsBlankGapUp(): void
@@ -766,7 +766,7 @@ final class DocumentTest extends TestCase
         $this->assertTrue($doc->moveStatement(-1));
         // The statement jumps the blank gap to sit directly under "target".
         $this->assertSame("target\nstmt\n\n", $doc->getText());
-        $this->assertSame(1, $doc->getCursorLine());
+        $this->assertSame(1, $doc->cursorLine);
     }
 
     public function testMoveStatementMovesSelectedBlockAndAnchor(): void
@@ -825,8 +825,8 @@ final class DocumentTest extends TestCase
 
         $this->assertSame("<?php\nuse function foo;\n\nfoo();\n", $doc->getText());
         // Caret followed its line down by the one inserted line, column unchanged.
-        $this->assertSame(3, $doc->getCursorLine());
-        $this->assertSame(3, $doc->getCursorCol());
+        $this->assertSame(3, $doc->cursorLine);
+        $this->assertSame(3, $doc->cursorCol);
     }
 
     public function testApplyEditsKeepingCursorIsOneUndoStep(): void
@@ -856,8 +856,8 @@ final class DocumentTest extends TestCase
         $doc->setCursor(1, 1);
         $doc->applyEditsKeepingCursor([]);
         $this->assertSame("a\nb", $doc->getText());
-        $this->assertSame(1, $doc->getCursorLine());
-        $this->assertSame(1, $doc->getCursorCol());
+        $this->assertSame(1, $doc->cursorLine);
+        $this->assertSame(1, $doc->cursorCol);
         $this->assertFalse($doc->undo(), 'no-op leaves the undo stack untouched');
     }
 
@@ -871,8 +871,8 @@ final class DocumentTest extends TestCase
             'newText' => 'BOTTOM',
         ]]);
         $this->assertSame("top\nmid\nBOTTOM\n", $doc->getText());
-        $this->assertSame(0, $doc->getCursorLine());
-        $this->assertSame(1, $doc->getCursorCol());
+        $this->assertSame(0, $doc->cursorLine);
+        $this->assertSame(1, $doc->cursorCol);
     }
 
     public function testClampLineAndClampCol(): void
@@ -911,9 +911,9 @@ final class DocumentTest extends TestCase
     {
         $doc = new Document("one\ntwo\nthree\nfour\n");
         $bump = function (callable $op) use ($doc): void {
-            $before = $doc->getVersion();
+            $before = $doc->version;
             $op();
-            $this->assertGreaterThan($before, $doc->getVersion());
+            $this->assertGreaterThan($before, $doc->version);
         };
 
         $doc->setCursor(1, 0);
@@ -944,11 +944,11 @@ final class DocumentTest extends TestCase
     {
         $doc = new Document("a\nb\n");
         $doc->duplicateLines();
-        $afterFirst = $doc->getLines();
+        $afterFirst = $doc->lines;
 
         $doc->duplicateLines();
         $this->assertTrue($doc->undo());
-        $this->assertSame($afterFirst, $doc->getLines(), 'one undo reverts only the second duplication');
+        $this->assertSame($afterFirst, $doc->lines, 'one undo reverts only the second duplication');
     }
 
     public function testDuplicateLinesShiftsTheSelectionAnchorByTheDuplicatedSpan(): void
@@ -961,7 +961,7 @@ final class DocumentTest extends TestCase
         $doc->duplicateLines();
 
         // Exactly the 2-line block is duplicated (not the tail beyond it too).
-        $this->assertSame(['x', 'aa', 'bb', 'aa', 'bb', 'y', ''], $doc->getLines());
+        $this->assertSame(['x', 'aa', 'bb', 'aa', 'bb', 'y', ''], $doc->lines);
 
         // The duplicate is inserted at lines 3-4; the selection anchor (line 1)
         // must shift down by the 2-line span, not stay behind.
@@ -999,9 +999,9 @@ final class DocumentTest extends TestCase
         $doc = new Document("0123456789\nab\n0123456789");
         $doc->setCursor(0, 10);
         $doc->moveDown();
-        $this->assertSame(2, $doc->getCursorCol());
+        $this->assertSame(2, $doc->cursorCol);
         $doc->moveDown();
-        $this->assertSame(10, $doc->getCursorCol(), 'goal column of 10 was preserved across the short line');
+        $this->assertSame(10, $doc->cursorCol, 'goal column of 10 was preserved across the short line');
     }
 
     public function testWordMovementHandlesMultibyteCharacters(): void
@@ -1012,12 +1012,12 @@ final class DocumentTest extends TestCase
         $doc = new Document('bar café');
         $doc->moveToDocumentEnd();
         $doc->moveWordLeft();
-        $this->assertSame(\strlen('bar '), $doc->getCursorCol(), 'lands at the start of "café", not mid-character');
+        $this->assertSame(\strlen('bar '), $doc->cursorCol, 'lands at the start of "café", not mid-character');
 
         $doc = new Document('café bar');
         $doc->setCursor(0, 0);
         $doc->moveWordRight();
-        $this->assertSame(\strlen('café'), $doc->getCursorCol(), 'lands at the end of "café", not mid-character');
+        $this->assertSame(\strlen('café'), $doc->cursorCol, 'lands at the end of "café", not mid-character');
     }
 
     public function testGetWordBeforeCursorHandlesMultibyteCharacters(): void
@@ -1066,7 +1066,7 @@ final class DocumentTest extends TestCase
         $doc->setCursor(3, 6, selection: SelectionMode::Keep); // lines 1-3
 
         $this->assertTrue($doc->sortLines());
-        $this->assertSame(['z', 'apple', 'banana', 'cherry', 'aaa'], $doc->getLines(), 'only lines 1-3 sorted; line 0 and 4 untouched');
+        $this->assertSame(['z', 'apple', 'banana', 'cherry', 'aaa'], $doc->lines, 'only lines 1-3 sorted; line 0 and 4 untouched');
     }
 
     public function testJoinLinesUsesTheFullSelectedBlockNotJustFromLineZero(): void
@@ -1077,7 +1077,7 @@ final class DocumentTest extends TestCase
         $doc->setCursor(3, 1, selection: SelectionMode::Keep); // lines 1-3
 
         $this->assertTrue($doc->joinLines());
-        $this->assertSame(['z', 'a b c', 'tail'], $doc->getLines());
+        $this->assertSame(['z', 'a b c', 'tail'], $doc->lines);
     }
 
     public function testToggleCommentUsesTheFullSelectedBlockNotJustFromLineZero(): void
@@ -1088,7 +1088,7 @@ final class DocumentTest extends TestCase
         $doc->setCursor(3, 5, selection: SelectionMode::Keep); // lines 1-3
 
         $doc->toggleComment(CommentSyntax::lineOnly('//'));
-        $this->assertSame(['z', '// one', '// two', '// three', 'tail'], $doc->getLines());
+        $this->assertSame(['z', '// one', '// two', '// three', 'tail'], $doc->lines);
     }
 
     public function testMoveLinesUsesTheFullSelectedBlockNotJustFromLineZero(): void
@@ -1099,7 +1099,7 @@ final class DocumentTest extends TestCase
         $doc->setCursor(2, 1, selection: SelectionMode::Keep); // lines 1-2
 
         $this->assertTrue($doc->moveLines(1));
-        $this->assertSame(['z', 'tail', 'a', 'b'], $doc->getLines());
+        $this->assertSame(['z', 'tail', 'a', 'b'], $doc->lines);
     }
 
     public function testApplyEditsKeepingCursorAppliesBottomUpAcrossSameLineEdits(): void
@@ -1129,6 +1129,6 @@ final class DocumentTest extends TestCase
         ]]);
 
         $this->assertSame("use foo;\nold\nfoo();\n", $doc->getText());
-        $this->assertSame(2, $doc->getCursorLine(), 'the caret line shifted down by the inserted line');
+        $this->assertSame(2, $doc->cursorLine, 'the caret line shifted down by the inserted line');
     }
 }

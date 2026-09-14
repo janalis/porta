@@ -433,8 +433,8 @@ final class DebugControllerTest extends TestCase
 
         $this->pauseAtBreakpoint($controller, line: 2);
         $this->assertSame(['/p/prog.php'], $this->opened, 'stop opened the file through the choke point');
-        $this->assertSame(2, $this->editor->getDocument()->getCursorLine());
-        $this->assertSame(0, $this->editor->getDocument()->getCursorCol(), 'the stop jumps to the line start');
+        $this->assertSame(2, $this->editor->getDocument()->cursorLine);
+        $this->assertSame(0, $this->editor->getDocument()->cursorCol, 'the stop jumps to the line start');
         $this->assertStringContainsString('▶', \implode("\n", $this->editor->render(new RenderContext(80, 8))), 'the stopped-line decoration was applied');
         $this->assertTrue($controller->isPaused());
         $this->assertSame('⏸ prog.php:3', $controller->statusCells()[0]->text);
@@ -459,8 +459,8 @@ final class DebugControllerTest extends TestCase
             $this->panel->handleClick(2); // Frames + #0 → rel 2 is #1 (no header row)
         });
         $this->assertSame('/p/other.php', \end($this->opened));
-        $this->assertSame(0, $this->editor->getDocument()->getCursorLine());
-        $this->assertSame(0, $this->editor->getDocument()->getCursorCol(), 'the frame jump lands on the line start');
+        $this->assertSame(0, $this->editor->getDocument()->cursorLine);
+        $this->assertSame(0, $this->editor->getDocument()->cursorCol, 'the frame jump lands on the line start');
         $this->assertTrue($requested, 'a frame jump requests a render');
 
         // A stale frame row the controller no longer knows is inert.

@@ -265,7 +265,7 @@ final class LspSession
         $text = $document->getText();
         $this->syncedText[$path] = $text;
         $uri = Uri::fromPath($path);
-        $version = $document->getVersion();
+        $version = $document->version;
         $this->whenReady(fn () => $this->client?->notify('textDocument/didChange', [
             'textDocument' => ['uri' => $uri, 'version' => $version],
             'contentChanges' => [['text' => $text]],
@@ -289,7 +289,7 @@ final class LspSession
             : [['text' => $new]];
 
         $uri = Uri::fromPath($path);
-        $version = $document->getVersion();
+        $version = $document->version;
         $this->whenReady(fn () => $this->client?->notify('textDocument/didChange', [
             'textDocument' => ['uri' => $uri, 'version' => $version],
             'contentChanges' => $changes,

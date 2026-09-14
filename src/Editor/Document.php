@@ -25,10 +25,10 @@ final class Document
     public const int TAB_SIZE = 4;
 
     /** @var string[] */
-    private array $lines = [''];
-    private int $cursorLine = 0;
-    private int $cursorCol = 0;
-    private int $version = 1;
+    public private(set) array $lines = [''];
+    public private(set) int $cursorLine = 0;
+    public private(set) int $cursorCol = 0;
+    public private(set) int $version = 1;
     private bool $dirty = false;
 
     /** Tabs-vs-spaces, indent size and tab width for this file. */
@@ -84,8 +84,21 @@ final class Document
     private ?string $textMemo = null;
     private int $textMemoVersion = -1;
 
-    /** @var (\Closure(int): void)|null called per mutation; see {@see setEditHook()} */
-    private ?\Closure $onEdit = null;
+    /**
+     * A hook called once per MUTATION, with the caret's line as the document
+     * has it at that moment.
+     *
+     * On the same optional footing as {@see setCaretHooks()}, and for the same
+     * reason: a Document works standalone in tests, and the thing that wants
+     * this ({@see EditHistory}) knows the file's path, which a Document does
+     * not. Called from `touch()` because that is the one place every one of the
+     * twenty-odd mutating methods already funnels through — an edit that
+     * arrives from a command, a formatter or the language server counts the
+     * same as a keystroke.
+     *
+     * @var (\Closure(int): void)|null receives the 0-based caret line
+     */
+    public ?\Closure $onEdit = null;
 
     /**
      * Whether the text this document was loaded from began with a UTF-8 BOM.
@@ -100,7 +113,7 @@ final class Document
      * with one. Everything else — the digest, the LSP's copy, a search — sees
      * text without it, which is what they all want.
      */
-    private bool $hadBom = false;
+    public private(set) bool $hasByteOrderMark = false;
 
     /**
      * The line ending the loaded text used, for the save path to write back.
@@ -110,7 +123,7 @@ final class Document
      * Which shape the FILE used is a different question, and forgetting the
      * answer rewrote every line of a CRLF file the first time it was saved.
      */
-    private string $eol = "\n";
+    public private(set) string $eol = "\n";
 
     public function __construct(string $text = '')
     {
@@ -136,25 +149,6 @@ final class Document
     {
         $this->captureCarets = $capture;
         $this->restoreCarets = $restore;
-    }
-
-    /**
-     * Register a hook called once per MUTATION, with the caret's line as the
-     * document has it at that moment.
-     *
-     * On the same optional footing as {@see setCaretHooks()}, and for the same
-     * reason: a Document works standalone in tests, and the thing that wants
-     * this ({@see EditHistory}) knows the file's path, which a Document does
-     * not. Hung on `touch()` because that is the one place every one of the
-     * twenty-odd mutating methods already funnels through — an edit that
-     * arrives from a command, a formatter or the language server counts the
-     * same as a keystroke.
-     *
-     * @param (\Closure(int): void)|null $onEdit receives the 0-based caret line
-     */
-    public function setEditHook(?\Closure $onEdit): void
-    {
-        $this->onEdit = $onEdit;
     }
 
     public function usesTabs(): bool
@@ -210,12 +204,6 @@ final class Document
 
     // --- Accessors -------------------------------------------------------
 
-    /** @return string[] */
-    public function getLines(): array
-    {
-        return $this->lines;
-    }
-
     public function getLine(int $index): string
     {
         return $this->lines[$index] ?? '';
@@ -238,21 +226,6 @@ final class Document
 
         /** @var string */
         return $this->textMemo;
-    }
-
-    public function getCursorLine(): int
-    {
-        return $this->cursorLine;
-    }
-
-    public function getCursorCol(): int
-    {
-        return $this->cursorCol;
-    }
-
-    public function getVersion(): int
-    {
-        return $this->version;
     }
 
     public function isDirty(): bool
@@ -1385,11 +1358,6 @@ final class Document
      * Replace the entire buffer content as one undoable edit (used by
      * project-wide replace). The caret is clamped into the new text.
      */
-    /** Whether the loaded text began with a UTF-8 BOM; the save path re-emits it. */
-    public function hasByteOrderMark(): bool
-    {
-        return $this->hadBom;
-    }
 
     /**
      * Take incoming file text and make it this document's: remember the shape
@@ -1407,8 +1375,8 @@ final class Document
      */
     private function adopt(string $text): string
     {
-        $this->hadBom = \str_starts_with($text, self::BOM);
-        $text = $this->hadBom ? \substr($text, offset: \strlen(self::BOM)) : $text;
+        $this->hasByteOrderMark = \str_starts_with($text, self::BOM);
+        $text = $this->hasByteOrderMark ? \substr($text, offset: \strlen(self::BOM)) : $text;
         // The FIRST ending decides, because a mixed file has no majority worth
         // honouring and the one it opens with is the one a reader saw.
         $this->eol = match (true) {
@@ -1418,12 +1386,6 @@ final class Document
         };
 
         return \str_replace(["\r\n", "\r"], replace: "\n", subject: $text);
-    }
-
-    /** The line ending the loaded text used; the save path writes it back. */
-    public function eol(): string
-    {
-        return $this->eol;
     }
 
     public function replaceAll(string $text): void

@@ -65,7 +65,7 @@ final class HighlightController extends AbstractLspController
     public function caretMoved(): void
     {
         $document = $this->editor->getDocument();
-        if (!$this->occurrences->caretMovedTo($document->getVersion(), $document->getCursorLine(), $document->getCursorCol())) {
+        if (!$this->occurrences->caretMovedTo($document->version, $document->cursorLine, $document->cursorCol)) {
             return;
         }
         if (null === $this->scheduler) {
@@ -91,8 +91,8 @@ final class HighlightController extends AbstractLspController
             return;
         }
         $document = $this->editor->getDocument();
-        $line = $document->getCursorLine();
-        $version = $document->getVersion();
+        $line = $document->cursorLine;
+        $version = $document->version;
         $column = $document->getCursorColUtf16();
         if ($this->occurrences->isFresh($path, $version, $line, $column)) {
             return; // the caret is parked on a symbol we already have the answer for

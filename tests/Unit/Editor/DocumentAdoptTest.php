@@ -55,7 +55,7 @@ final class DocumentAdoptTest extends TestCase
         $bom = "\u{FEFF}";
         $doc = new Document($bom."<?php\n\necho 1;\n");
 
-        $this->assertTrue($doc->hasByteOrderMark(), 'the file had one');
+        $this->assertTrue($doc->hasByteOrderMark, 'the file had one');
         $this->assertSame('<?php', $doc->getLine(0), 'and the text no longer carries it');
         $this->assertStringNotContainsString($bom, $doc->getText());
     }
@@ -69,46 +69,46 @@ final class DocumentAdoptTest extends TestCase
         $doc->insert('X');
 
         $this->assertSame('X<?php', $doc->getLine(0));
-        $this->assertTrue($doc->hasByteOrderMark(), 'and it is still remembered for the save');
+        $this->assertTrue($doc->hasByteOrderMark, 'and it is still remembered for the save');
     }
 
     /** A reload through the other door is the same file, so it answers the same. */
     public function testAReloadedFileKeepsItsOwnAnswerAboutTheMark(): void
     {
         $doc = new Document("plain\n");
-        $this->assertFalse($doc->hasByteOrderMark());
+        $this->assertFalse($doc->hasByteOrderMark);
 
         $doc->replaceAll("\u{FEFF}marked\n");
-        $this->assertTrue($doc->hasByteOrderMark(), 'the reload brought one');
+        $this->assertTrue($doc->hasByteOrderMark, 'the reload brought one');
         $this->assertSame('marked', $doc->getLine(0));
 
         $doc->replaceAll("plain again\n");
-        $this->assertFalse($doc->hasByteOrderMark(), 'and a later reload without one clears it');
+        $this->assertFalse($doc->hasByteOrderMark, 'and a later reload without one clears it');
     }
 
     /** The line ending the file used is remembered, not just normalised away. */
     public function testTheLoadedLineEndingIsRemembered(): void
     {
-        $this->assertSame("\n", new Document("a\nb\n")->eol(), 'plain LF');
-        $this->assertSame("\r\n", new Document("a\r\nb\r\n")->eol(), 'CRLF');
-        $this->assertSame("\r", new Document("a\rb\r")->eol(), 'lone CR');
-        $this->assertSame("\n", new Document('no endings at all')->eol(), 'nothing to go on');
+        $this->assertSame("\n", new Document("a\nb\n")->eol, 'plain LF');
+        $this->assertSame("\r\n", new Document("a\r\nb\r\n")->eol, 'CRLF');
+        $this->assertSame("\r", new Document("a\rb\r")->eol, 'lone CR');
+        $this->assertSame("\n", new Document('no endings at all')->eol, 'nothing to go on');
     }
 
     /** A mixed file answers for the ending it OPENS with. */
     public function testAMixedFileAnswersForItsFirstEnding(): void
     {
-        $this->assertSame("\r\n", new Document("a\r\nb\nc\n")->eol());
+        $this->assertSame("\r\n", new Document("a\r\nb\nc\n")->eol);
     }
 
     /** A reload adopts the new text's ending rather than keeping the old answer. */
     public function testAReloadAdoptsTheNewEnding(): void
     {
         $doc = new Document("a\r\n");
-        $this->assertSame("\r\n", $doc->eol());
+        $this->assertSame("\r\n", $doc->eol);
 
         $doc->replaceAll("a\nb\n");
 
-        $this->assertSame("\n", $doc->eol(), 'the reload brought LF');
+        $this->assertSame("\n", $doc->eol, 'the reload brought LF');
     }
 }

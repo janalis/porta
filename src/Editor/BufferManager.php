@@ -76,9 +76,9 @@ final class BufferManager
         $document = new Document($content);
         $history = $this->editHistory;
         if (null !== $history) {
-            $document->setEditHook(static function (int $line) use ($history, $path): void {
+            $document->onEdit = static function (int $line) use ($history, $path): void {
                 $history->record($path, $line);
-            });
+            };
         }
 
         return $document;

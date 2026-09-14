@@ -88,7 +88,7 @@ final class EditorStructural
         $doc = $this->document;
         $range = $doc->getSelectionRange();
         if (null === $range) {
-            $off = $this->offsetOf($doc->getCursorLine(), $doc->getCursorCol());
+            $off = $this->offsetOf($doc->cursorLine, $doc->cursorCol);
 
             return [$off, $off];
         }
@@ -164,12 +164,12 @@ final class EditorStructural
     public function gotoConflict(int $dir): void
     {
         /** @var list<string> $lines */
-        $lines = $this->document->getLines();
+        $lines = $this->document->lines;
         $regions = ConflictMarkers::find($lines);
         if ([] === $regions) {
             return;
         }
-        $cursor = $this->document->getCursorLine();
+        $cursor = $this->document->cursorLine;
 
         $target = $this->conflictTarget($regions, $cursor, $dir);
 
@@ -211,8 +211,8 @@ final class EditorStructural
     public function openResolveConflictMenu(): void
     {
         /** @var list<string> $lines */
-        $lines = $this->document->getLines();
-        $region = ConflictMarkers::regionAt($lines, $this->document->getCursorLine());
+        $lines = $this->document->lines;
+        $region = ConflictMarkers::regionAt($lines, $this->document->cursorLine);
         if (null === $region) {
             return;
         }
@@ -235,7 +235,7 @@ final class EditorStructural
     {
         $doc = $this->document;
         /** @var list<string> $lines */
-        $lines = $doc->getLines();
+        $lines = $doc->lines;
         $replacement = \implode("\n", ConflictMarkers::resolution($lines, $region, $which));
 
         $doc->setCursor($region['start'], 0);

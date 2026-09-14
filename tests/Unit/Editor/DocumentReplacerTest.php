@@ -52,7 +52,7 @@ final class DocumentReplacerTest extends TestCase
 
         $this->assertTrue($replacer->replace($buffer, "new\n"));
         $this->assertSame("new\n", $buffer->document->getText());
-        $this->assertSame(1, $buffer->document->getCursorLine(), 'the caret is clamped into the shorter text, not dumped at the end');
+        $this->assertSame(1, $buffer->document->cursorLine, 'the caret is clamped into the shorter text, not dumped at the end');
 
         $buffer->document->undo();
         $this->assertSame("one\ntwo\nthree\n", $buffer->document->getText(), 'exactly one undo puts it all back');

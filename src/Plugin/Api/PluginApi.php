@@ -1156,7 +1156,7 @@ final class PluginApi
         }
         $document = $runtime->editor->getDocument();
 
-        return ['line' => $document->getCursorLine(), 'column' => $document->getCursorCol()];
+        return ['line' => $document->cursorLine, 'column' => $document->cursorCol];
     }
 
     /**

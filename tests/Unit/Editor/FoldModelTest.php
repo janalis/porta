@@ -24,7 +24,7 @@ final class FoldModelTest extends TestCase
     {
         $doc = new Document(\str_repeat("l\n", times: 10));
         $model = new FoldModel($doc);
-        $model->setRegions([[0, 5]], $doc->getVersion());
+        $model->setRegions([[0, 5]], $doc->version);
         $model->foldAll();
 
         // The fold's end line is still hidden/snapped (inclusive upper bound)...
@@ -48,7 +48,7 @@ final class FoldModelTest extends TestCase
         for ($j = $count - 1; $j >= 0; --$j) {
             $regions[] = [$j, $j + 1];
         }
-        $model->setRegions($regions, $doc->getVersion());
+        $model->setRegions($regions, $doc->version);
         $model->foldAll();
 
         $this->assertSame(1, $model->snapVisible($count));
@@ -58,7 +58,7 @@ final class FoldModelTest extends TestCase
     {
         $doc = new Document(\str_repeat("l\n", times: 10));
         $model = new FoldModel($doc);
-        $model->setRegions([[2, 5]], $doc->getVersion());
+        $model->setRegions([[2, 5]], $doc->version);
         $doc->setCursor(2, 0);
 
         $model->toggle();
@@ -73,7 +73,7 @@ final class FoldModelTest extends TestCase
     {
         $doc = new Document(\str_repeat("l\n", times: 10));
         $model = new FoldModel($doc);
-        $model->setRegions([], $doc->getVersion());
+        $model->setRegions([], $doc->version);
         $doc->setCursor(3, 0);
 
         $model->toggle();
@@ -88,14 +88,14 @@ final class FoldModelTest extends TestCase
         // actually used.
         $doc = new Document("0123456789{\n".\str_repeat('a', times: 20)."\n}\n");
         $model = new FoldModel($doc);
-        $model->setRegions([[0, 2]], $doc->getVersion());
+        $model->setRegions([[0, 2]], $doc->version);
         $doc->setCursor(1, 20);
 
         $model->toggle();
 
         $this->assertSame(2, $model->foldEndAt(0));
-        $this->assertSame(0, $doc->getCursorLine());
-        $this->assertSame(11, $doc->getCursorCol());
+        $this->assertSame(0, $doc->cursorLine);
+        $this->assertSame(11, $doc->cursorCol);
     }
 
     public function testFoldableRegionBoundariesAreInclusiveOnBothEnds(): void
@@ -103,13 +103,13 @@ final class FoldModelTest extends TestCase
         $doc = new Document(\str_repeat("l\n", times: 10));
 
         $atStart = new FoldModel($doc);
-        $atStart->setRegions([[3, 7]], $doc->getVersion());
+        $atStart->setRegions([[3, 7]], $doc->version);
         $doc->setCursor(3, 0);
         $atStart->toggle();
         $this->assertSame(7, $atStart->foldEndAt(3), 'the region start line must be foldable');
 
         $atEnd = new FoldModel($doc);
-        $atEnd->setRegions([[3, 7]], $doc->getVersion());
+        $atEnd->setRegions([[3, 7]], $doc->version);
         $doc->setCursor(7, 0);
         $atEnd->toggle();
         $this->assertSame(7, $atEnd->foldEndAt(3), 'the region end line must be foldable too');
@@ -119,7 +119,7 @@ final class FoldModelTest extends TestCase
     {
         $doc = new Document(\str_repeat("l\n", times: 30));
         $model = new FoldModel($doc);
-        $model->setRegions([[3, 7]], $doc->getVersion());
+        $model->setRegions([[3, 7]], $doc->version);
         $doc->setCursor(20, 0);
 
         $model->toggle();
@@ -132,7 +132,7 @@ final class FoldModelTest extends TestCase
         $doc = new Document(\str_repeat("l\n", times: 15));
         $model = new FoldModel($doc);
         // Two candidates share the same start: the first one encountered wins.
-        $model->setRegions([[0, 10], [0, 5]], $doc->getVersion());
+        $model->setRegions([[0, 10], [0, 5]], $doc->version);
         $doc->setCursor(3, 0);
 
         $model->toggle();
@@ -144,7 +144,7 @@ final class FoldModelTest extends TestCase
     {
         $doc = new Document(\str_repeat("l\n", times: 15));
         $model = new FoldModel($doc);
-        $model->setRegions([[0, 10], [2, 5]], $doc->getVersion());
+        $model->setRegions([[0, 10], [2, 5]], $doc->version);
         $doc->setCursor(3, 0);
 
         $model->toggle();
@@ -157,7 +157,7 @@ final class FoldModelTest extends TestCase
     {
         $doc = new Document(\str_repeat("l\n", times: 10));
         $model = new FoldModel($doc);
-        $model->setRegions([[0, 4]], $doc->getVersion());
+        $model->setRegions([[0, 4]], $doc->version);
         $doc->setCursor(2, 0);
 
         $model->toggle();
@@ -233,7 +233,7 @@ final class FoldModelTest extends TestCase
     {
         $doc = new Document("<?php\nfunction a()\n{\n    return 1;\n}\n");
         $model = new FoldModel($doc);
-        $model->setRegions([[1, 4]], $doc->getVersion());
+        $model->setRegions([[1, 4]], $doc->version);
 
         $this->assertFalse($model->foldMarkAt(1), 'the declaration is the start now');
         $this->assertNull($model->foldMarkAt(2), 'and the brace line is not');

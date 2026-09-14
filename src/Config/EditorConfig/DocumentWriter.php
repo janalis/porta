@@ -18,7 +18,7 @@ final class DocumentWriter
 {
     public static function render(Document $document, ResolvedEditorConfig $config): string
     {
-        $lines = $document->getLines();
+        $lines = $document->lines;
         if (true === $config->trimTrailingWhitespace) {
             $lines = \array_map(static fn (string $line): string => \rtrim($line, characters: " \t"), $lines);
         }
@@ -27,7 +27,7 @@ final class DocumentWriter
         // ending is written back. Defaulting to LF rewrote every line of a
         // CRLF file the first time it was saved — a whole-file diff nobody
         // asked for, on every Windows-authored file in a repository.
-        $eol = $config->eol?->bytes() ?? $document->eol();
+        $eol = $config->eol?->bytes() ?? $document->eol;
         $text = \implode($eol, $lines);
 
         if (true === $config->insertFinalNewline && !\str_ends_with($text, $eol)) {

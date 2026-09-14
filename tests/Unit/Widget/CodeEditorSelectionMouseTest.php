@@ -60,7 +60,7 @@ final class CodeEditorSelectionMouseTest extends TestCase
         $editor->extendSelectionTo(0, $g + 3); // released at the same cell
 
         $this->assertFalse($editor->getDocument()->hasSelection());
-        $this->assertSame(3, $editor->getDocument()->getCursorCol());
+        $this->assertSame(3, $editor->getDocument()->cursorCol);
     }
 
     public function testSelectWord(): void
@@ -192,7 +192,7 @@ final class CodeEditorSelectionMouseTest extends TestCase
 
         $editor->addOrRemoveCaretAt(0, $g + 2); // clicks the sole caret -> no-op
         $this->assertFalse(EditorState::multiCaret($editor)->hasMultiple());
-        $this->assertSame(2, $editor->getDocument()->getCursorCol());
+        $this->assertSame(2, $editor->getDocument()->cursorCol);
     }
 
     public function testColumnSelectionPastShortLinesShowsEndOfLineCarets(): void

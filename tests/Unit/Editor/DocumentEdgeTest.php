@@ -21,9 +21,9 @@ final class DocumentEdgeTest extends TestCase
         $this->assertFalse($doc->moveLeft(), 'left at (0,0)');
         $doc->setCursor(0, 2);
         $this->assertTrue($doc->moveRight(), 'right at EOL crosses to next line');
-        $this->assertSame([1, 0], [$doc->getCursorLine(), $doc->getCursorCol()]);
+        $this->assertSame([1, 0], [$doc->cursorLine, $doc->cursorCol]);
         $this->assertTrue($doc->moveLeft(), 'left at BOL crosses back');
-        $this->assertSame([0, 2], [$doc->getCursorLine(), $doc->getCursorCol()]);
+        $this->assertSame([0, 2], [$doc->cursorLine, $doc->cursorCol]);
 
         $doc->setCursor(1, 2);
         $this->assertFalse($doc->moveRight(), 'right at document end');
@@ -35,7 +35,7 @@ final class DocumentEdgeTest extends TestCase
         $doc->setCursor(0, 2);
 
         $this->assertTrue($doc->moveUp(), 'jumps to column 0');
-        $this->assertSame(0, $doc->getCursorCol());
+        $this->assertSame(0, $doc->cursorCol);
         $this->assertFalse($doc->moveUp(), 'already at (0,0)');
     }
 
@@ -45,7 +45,7 @@ final class DocumentEdgeTest extends TestCase
         $doc->setCursor(0, 1);
 
         $this->assertTrue($doc->moveDown(), 'jumps to line end');
-        $this->assertSame(3, $doc->getCursorCol());
+        $this->assertSame(3, $doc->cursorCol);
         $this->assertFalse($doc->moveDown(), 'already at end');
     }
 
@@ -54,19 +54,19 @@ final class DocumentEdgeTest extends TestCase
         $doc = new Document("  \nword");
         $doc->setCursor(0, 2); // end of whitespace-only line
         $this->assertTrue($doc->moveWordLeft(), 'whitespace-only prefix falls back to column 0');
-        $this->assertSame(0, $doc->getCursorCol());
+        $this->assertSame(0, $doc->cursorCol);
 
         $doc->setCursor(0, 0);
         $this->assertFalse($doc->moveWordLeft(), 'at col 0 delegates to moveLeft, false at document start');
 
         $doc->setCursor(0, 2);
         $this->assertTrue($doc->moveWordRight(), 'at EOL delegates to moveRight, crossing lines');
-        $this->assertSame(1, $doc->getCursorLine());
+        $this->assertSame(1, $doc->cursorLine);
 
         $punct = new Document('a +*/- b');
         $punct->setCursor(0, 2);
         $punct->moveWordRight();
-        $this->assertSame(6, $punct->getCursorCol(), 'punctuation run is one word');
+        $this->assertSame(6, $punct->cursorCol, 'punctuation run is one word');
     }
 
     public function testWordRightOnTrailingSpaces(): void
@@ -75,7 +75,7 @@ final class DocumentEdgeTest extends TestCase
         $doc->setCursor(0, 2);
 
         $this->assertTrue($doc->moveWordRight());
-        $this->assertSame(5, $doc->getCursorCol(), 'trailing spaces: jump to EOL');
+        $this->assertSame(5, $doc->cursorCol, 'trailing spaces: jump to EOL');
     }
 
     public function testLineEndAndStartNoOps(): void
@@ -87,7 +87,7 @@ final class DocumentEdgeTest extends TestCase
         $blank = new Document('    ');
         $blank->setCursor(0, 2);
         $blank->moveToLineStart();
-        $this->assertSame(0, $blank->getCursorCol(), 'all-blank line goes straight to 0');
+        $this->assertSame(0, $blank->cursorCol, 'all-blank line goes straight to 0');
     }
 
     public function testSelectionEdgeCases(): void
@@ -115,7 +115,7 @@ final class DocumentEdgeTest extends TestCase
         $doc->setCursor(1, 0, selection: SelectionMode::Keep); // selects line 0 + newline only
 
         $doc->duplicateLines();
-        $this->assertSame(['one', 'one', 'two', 'three'], $doc->getLines(), 'line "two" not part of the block');
+        $this->assertSame(['one', 'one', 'two', 'three'], $doc->lines, 'line "two" not part of the block');
     }
 
     public function testInsertReplacesSelection(): void
@@ -137,7 +137,7 @@ final class DocumentEdgeTest extends TestCase
         $doc->setCursor(0, 11, selection: SelectionMode::Keep);
 
         $doc->insertNewLine();
-        $this->assertSame(['hello', ''], $doc->getLines());
+        $this->assertSame(['hello', ''], $doc->lines);
     }
 
     public function testDeleteOperationsConsumeSelectionFirst(): void
@@ -156,9 +156,9 @@ final class DocumentEdgeTest extends TestCase
     public function testInsertEmptyStringIsNoOp(): void
     {
         $doc = new Document('a');
-        $version = $doc->getVersion();
+        $version = $doc->version;
         $doc->insert('');
-        $this->assertSame($version, $doc->getVersion());
+        $this->assertSame($version, $doc->version);
     }
 
     public function testDeleteToLineEndAtEolMergesLines(): void
@@ -185,7 +185,7 @@ final class DocumentEdgeTest extends TestCase
         $doc->selectAll();
 
         $this->assertTrue($doc->deleteLines());
-        $this->assertSame([''], $doc->getLines());
+        $this->assertSame([''], $doc->lines);
     }
 
     public function testMoveLinesUpAtTopFails(): void
@@ -204,7 +204,7 @@ final class DocumentEdgeTest extends TestCase
         $doc->setCursor(2, 1, selection: SelectionMode::Keep);
 
         $this->assertTrue($doc->moveLines(1));
-        $this->assertSame(['a', 'd', 'b', 'c'], $doc->getLines());
+        $this->assertSame(['a', 'd', 'b', 'c'], $doc->lines);
         $this->assertSame('b\nc', \str_replace("\n", replace: '\n', subject: $doc->getSelectedText()), 'selection follows the block');
     }
 
@@ -216,7 +216,7 @@ final class DocumentEdgeTest extends TestCase
         $doc->setCursor(1, 1, selection: SelectionMode::Keep);
 
         $doc->duplicateLines();
-        $this->assertSame(['a', 'b', 'a', 'b', 'c'], $doc->getLines());
+        $this->assertSame(['a', 'b', 'a', 'b', 'c'], $doc->lines);
     }
 
     public function testToggleCommentSkipsBlankLines(): void
@@ -227,10 +227,10 @@ final class DocumentEdgeTest extends TestCase
         $doc->setCursor(2, 4, selection: SelectionMode::Keep);
 
         $doc->toggleComment(CommentSyntax::lineOnly('//'));
-        $this->assertSame(['// code', '', '// more'], $doc->getLines());
+        $this->assertSame(['// code', '', '// more'], $doc->lines);
 
         $doc->toggleComment(CommentSyntax::lineOnly('//'));
-        $this->assertSame(['code', '', 'more'], $doc->getLines());
+        $this->assertSame(['code', '', 'more'], $doc->lines);
     }
 
     public function testCoalescingBreaksOnDifferentEditKinds(): void
@@ -299,9 +299,9 @@ final class DocumentEdgeTest extends TestCase
         $doc->setCursor(0, 9); // after 3 CJK chars = display col 6
 
         $doc->moveDown();
-        $this->assertSame(2, $doc->getCursorCol());
+        $this->assertSame(2, $doc->cursorCol);
         $doc->moveDown();
-        $this->assertSame(9, $doc->getCursorCol(), 'goal display column restored on unicode line');
+        $this->assertSame(9, $doc->cursorCol, 'goal display column restored on unicode line');
     }
 
     public function testMoveLeftWithinLineStepsOverUtf8(): void
@@ -310,9 +310,9 @@ final class DocumentEdgeTest extends TestCase
         $doc->setCursor(0, 3); // after "hé"
 
         $this->assertTrue($doc->moveLeft());
-        $this->assertSame(1, $doc->getCursorCol(), 'steps over the 2-byte é in one move');
+        $this->assertSame(1, $doc->cursorCol, 'steps over the 2-byte é in one move');
         $this->assertTrue($doc->moveLeft());
-        $this->assertSame(0, $doc->getCursorCol());
+        $this->assertSame(0, $doc->cursorCol);
     }
 
     public function testMoveUpFromSecondLine(): void
@@ -321,7 +321,7 @@ final class DocumentEdgeTest extends TestCase
         $doc->setCursor(1, 3);
 
         $this->assertTrue($doc->moveUp());
-        $this->assertSame([0, 3], [$doc->getCursorLine(), $doc->getCursorCol()]);
+        $this->assertSame([0, 3], [$doc->cursorLine, $doc->cursorCol]);
     }
 
     public function testMoveToLineStartNoOpAtColumnZero(): void
@@ -336,7 +336,7 @@ final class DocumentEdgeTest extends TestCase
         $doc->moveToDocumentEnd();
         $doc->moveToDocumentStart();
 
-        $this->assertSame([0, 0], [$doc->getCursorLine(), $doc->getCursorCol()]);
+        $this->assertSame([0, 0], [$doc->cursorLine, $doc->cursorCol]);
     }
 
     public function testDeleteForwardMidLine(): void

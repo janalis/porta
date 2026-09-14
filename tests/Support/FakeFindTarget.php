@@ -25,22 +25,22 @@ final class FakeFindTarget implements FindTarget
 
     public function findLines(): array
     {
-        return \array_values($this->document->getLines());
+        return \array_values($this->document->lines);
     }
 
     public function findVersion(): int
     {
-        return $this->document->getVersion();
+        return $this->document->version;
     }
 
     public function findCaretLine(): int
     {
-        return $this->document->getCursorLine();
+        return $this->document->cursorLine;
     }
 
     public function findCaretCol(): int
     {
-        return $this->document->getCursorCol();
+        return $this->document->cursorCol;
     }
 
     public function revealMatch(int $line, int $startByte, int $endByte): void

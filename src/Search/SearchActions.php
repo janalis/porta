@@ -104,7 +104,7 @@ final readonly class SearchActions
     {
         $document = $this->editor->getDocument();
         $path = $this->editor->getFilePath();
-        $target = null === $path ? null : $this->superMethods->locate($document->getText(), $document->getCursorLine());
+        $target = null === $path ? null : $this->superMethods->locate($document->getText(), $document->cursorLine);
         if (null === $target) {
             $this->notifier->flash($this->translator->trans('No super method — this one overrides nothing'));
 

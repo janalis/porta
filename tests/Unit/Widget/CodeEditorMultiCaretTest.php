@@ -165,7 +165,7 @@ final class CodeEditorMultiCaretTest extends TestCase
         $editor->handleInput("\x1b[1;7B"); // caret on line 1 too
         $editor->handleInput("\x1b[C"); // right: both carets move to col 1
 
-        $this->assertSame(1, $editor->getDocument()->getCursorCol());
+        $this->assertSame(1, $editor->getDocument()->cursorCol);
         $this->assertCount(1, EditorState::multiCaret($editor)->carets());
     }
 
@@ -546,7 +546,7 @@ final class CodeEditorMultiCaretTest extends TestCase
         $editor->handleInput("\x1bj"); // alt+j: the only remaining occurrence sits at the cursor itself
 
         $this->assertFalse(EditorState::multiCaret($editor)->hasMultiple(), 'an occurrence AT the cursor is not a new one to jump to');
-        $this->assertSame(4, $editor->getDocument()->getCursorCol());
+        $this->assertSame(4, $editor->getDocument()->cursorCol);
     }
 
     public function testAddNextOccurrenceDedupesAgainstAPreExistingExtraAtTheSameSpot(): void
@@ -595,7 +595,7 @@ final class CodeEditorMultiCaretTest extends TestCase
 
         $editor->handleInput("\x1b[C"); // right: each caret must move from ITS OWN position
 
-        $this->assertSame(5, $editor->getDocument()->getCursorCol(), 'the primary moved from column 4');
+        $this->assertSame(5, $editor->getDocument()->cursorCol, 'the primary moved from column 4');
         $carets = EditorState::multiCaret($editor)->carets();
         $this->assertCount(1, $carets);
         $this->assertSame(1, $carets[0]->line);
@@ -610,8 +610,8 @@ final class CodeEditorMultiCaretTest extends TestCase
 
         $editor->handleInput("\x1b[C"); // right: both move to column 1; the topmost must become the new primary
 
-        $this->assertSame(0, $editor->getDocument()->getCursorLine(), 'line 0 is the topmost result and must be the new primary');
-        $this->assertSame(1, $editor->getDocument()->getCursorCol());
+        $this->assertSame(0, $editor->getDocument()->cursorLine, 'line 0 is the topmost result and must be the new primary');
+        $this->assertSame(1, $editor->getDocument()->cursorCol);
         $carets = EditorState::multiCaret($editor)->carets();
         $this->assertCount(1, $carets);
         $this->assertSame(2, $carets[0]->line, 'line 2 is left as the sole extra');
@@ -636,8 +636,8 @@ final class CodeEditorMultiCaretTest extends TestCase
 
         EditorState::multiCaret($editor)->toggleCaretAt(0, 0); // click on the primary's own spot
 
-        $this->assertSame(1, $editor->getDocument()->getCursorLine(), 'the cursor moved to the promoted extra');
-        $this->assertSame(1, $editor->getDocument()->getCursorCol());
+        $this->assertSame(1, $editor->getDocument()->cursorLine, 'the cursor moved to the promoted extra');
+        $this->assertSame(1, $editor->getDocument()->cursorCol);
         $this->assertFalse(EditorState::multiCaret($editor)->hasMultiple(), 'the sole extra was promoted away, none left');
     }
 
@@ -692,8 +692,8 @@ final class CodeEditorMultiCaretTest extends TestCase
         $editor->handleInput("\x1bj"); // alt+j: must recognise the FULL word "foobar", not just "ob"
 
         $this->assertTrue(EditorState::multiCaret($editor)->hasMultiple());
-        $this->assertSame(0, $editor->getDocument()->getCursorLine());
-        $this->assertSame(18, $editor->getDocument()->getCursorCol(), 'landed after the second "foobar" (col 12 + 6), not a false match from a truncated word');
+        $this->assertSame(0, $editor->getDocument()->cursorLine);
+        $this->assertSame(18, $editor->getDocument()->cursorCol, 'landed after the second "foobar" (col 12 + 6), not a false match from a truncated word');
     }
 
     public function testRebuildFromRecordsDedupesCollidingRecordsEvenWhenTheirDigitsWouldConcatenateTheSame(): void
@@ -727,7 +727,7 @@ final class CodeEditorMultiCaretTest extends TestCase
 
         $editor->handleInput("\x1bj"); // alt+j: the word must be "foobar", not "barfoo"
 
-        $this->assertSame(0, $editor->getDocument()->getCursorLine());
-        $this->assertSame(24, $editor->getDocument()->getCursorCol(), 'landed after the second "foobar" (col 18 + 6), nowhere near "barfoo" at col 11');
+        $this->assertSame(0, $editor->getDocument()->cursorLine);
+        $this->assertSame(24, $editor->getDocument()->cursorCol, 'landed after the second "foobar" (col 18 + 6), nowhere near "barfoo" at col 11');
     }
 }

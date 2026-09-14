@@ -331,7 +331,7 @@ final class IdeContextMenusTest extends TestCase
                 },
                 300 => function ($tui): void {
                     $this->assertTrue($tui->getById('context-menu')->isOpen());
-                    $this->assertSame(1, $tui->getById('editor')->getDocument()->getCursorLine(), 'caret moved to the clicked line');
+                    $this->assertSame(1, $tui->getById('editor')->getDocument()->cursorLine, 'caret moved to the clicked line');
                     $tui->handleInput('z'); // an unbound key is swallowed while the menu is open
                     $this->assertTrue($tui->getById('context-menu')->isOpen(), 'stray keys neither run nor close');
                     $tui->handleInput("\x1b"); // Esc closes (modal routing)

@@ -80,7 +80,7 @@ final class EditorScroll
     /** Centre the viewport on the caret line (after a jump). */
     public function centerCursor(): void
     {
-        $this->centerOnLine($this->document->getCursorLine());
+        $this->centerOnLine($this->document->cursorLine);
     }
 
     /**
@@ -110,8 +110,8 @@ final class EditorScroll
     public function clampToCaret(int $rows, \Closure $stickyCountAt): void
     {
         $doc = $this->document;
-        $cursorLine = $doc->getCursorLine();
-        $caretUnmoved = $doc->getVersion() === $this->lastVersion && $cursorLine === $this->lastLine && $doc->getCursorCol() === $this->lastCol;
+        $cursorLine = $doc->cursorLine;
+        $caretUnmoved = $doc->version === $this->lastVersion && $cursorLine === $this->lastLine && $doc->cursorCol === $this->lastCol;
         if ($this->detached && $caretUnmoved) {
             // Wheel-detached and the caret has not moved: keep the viewport
             // where the user put it, only snapped off fold interiors (folding
@@ -123,9 +123,9 @@ final class EditorScroll
             return;
         }
         $this->detached = false;
-        $this->lastVersion = $doc->getVersion();
+        $this->lastVersion = $doc->version;
         $this->lastLine = $cursorLine;
-        $this->lastCol = $doc->getCursorCol();
+        $this->lastCol = $doc->cursorCol;
         $this->foldModel->revealCaretLine();
         $this->vScroll = $this->foldModel->snapVisible(IntMath::clamp($this->vScroll, 0, $this->document->getLineCount() - 1));
         for ($iter = 0; $iter <= self::MAX_STICKY_ROWS; ++$iter) {

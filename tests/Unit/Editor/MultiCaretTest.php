@@ -136,8 +136,8 @@ final class MultiCaretTest extends TestCase
 
         $mc->addNextOccurrence();
 
-        $this->assertSame(0, $doc->getCursorLine());
-        $this->assertSame(7, $doc->getCursorCol(), 'the occurrence at the cursor is not itself "next"; the scan advances past it');
+        $this->assertSame(0, $doc->cursorLine);
+        $this->assertSame(7, $doc->cursorCol, 'the occurrence at the cursor is not itself "next"; the scan advances past it');
     }
 
     public function testAddNextOccurrenceRequestsExactlyOneRedraw(): void

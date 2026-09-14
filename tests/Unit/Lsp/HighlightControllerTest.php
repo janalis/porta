@@ -91,7 +91,7 @@ final class HighlightControllerTest extends TestCase
         ], error: null);
 
         $this->assertTrue(
-            $this->occurrences->isFresh('/p/a.php', $this->editor->getDocument()->getVersion(), 1, 2),
+            $this->occurrences->isFresh('/p/a.php', $this->editor->getDocument()->version, 1, 2),
             'the answer is stamped with the file, version and caret it was asked about',
         );
     }
@@ -157,7 +157,7 @@ final class HighlightControllerTest extends TestCase
         $controller->requestHighlights();
         $this->highlightRequests()[0]['respond'](null, error: ['code' => -32_601, 'message' => 'unsupported']);
 
-        $this->assertFalse($this->occurrences->isFresh('/p/a.php', $this->editor->getDocument()->getVersion(), 1, 2));
+        $this->assertFalse($this->occurrences->isFresh('/p/a.php', $this->editor->getDocument()->version, 1, 2));
     }
 
     /**

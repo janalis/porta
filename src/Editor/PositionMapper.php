@@ -100,7 +100,7 @@ final class PositionMapper
      */
     public function visualLines(): array
     {
-        $version = $this->document->getVersion();
+        $version = $this->document->version;
         if ($this->visualLinesVersion === $version && null !== $this->visualLines) {
             return $this->visualLines;
         }
@@ -111,7 +111,7 @@ final class PositionMapper
         // keystroke; a file with tabs pays one engine-level copy plus the
         // expansion of exactly its tabbed lines.
         $tabWidth = $this->document->tabWidth();
-        $lines = $this->document->getLines();
+        $lines = $this->document->lines;
         /** @var list<string>|null $expanded only existing indexes are overwritten, so the list shape holds */
         $expanded = null;
         foreach ($lines as $i => $line) {

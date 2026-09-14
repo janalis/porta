@@ -22,8 +22,8 @@ final class CaretWord
     /** The identifier around the caret, or '' when it is not standing in one. */
     public static function at(Document $document): string
     {
-        $line = $document->getLine($document->getCursorLine());
-        $col = $document->getCursorCol();
+        $line = $document->getLine($document->cursorLine);
+        $col = $document->cursorCol;
         $matches = [];
 
         $left = 1 === \preg_match('/[\w$]+$/u', \substr($line, offset: 0, length: $col), $matches) ? $matches[0] : '';

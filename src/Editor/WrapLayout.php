@@ -81,7 +81,7 @@ final class WrapLayout
     /** Drop the memo when the width changed or the document moved on. */
     private function refresh(int $width): void
     {
-        $version = $this->document->getVersion();
+        $version = $this->document->version;
         if ($width === $this->width && $version === $this->version) {
             return;
         }

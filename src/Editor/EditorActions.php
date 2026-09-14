@@ -213,7 +213,7 @@ final readonly class EditorActions
         if ($this->column->isActive()) {
             $this->column->cancel();
         } else {
-            $this->column->begin($doc->getCursorLine(), $doc->displayColAt($doc->getCursorLine(), $doc->getCursorCol()));
+            $this->column->begin($doc->cursorLine, $doc->displayColAt($doc->cursorLine, $doc->cursorCol));
         }
         $this->host->invalidate();
     }
@@ -315,7 +315,7 @@ final readonly class EditorActions
             return;
         }
 
-        $line = $doc->getCursorLine();
+        $line = $doc->cursorLine;
         $column = $doc->getCursorDisplayCol();
         if ('cursor_down' === $action) {
             // Another segment below on this same line?
@@ -343,7 +343,7 @@ final readonly class EditorActions
     private function snapIntoFirstSegment(int $width): void
     {
         $doc = $this->document;
-        $line = $doc->getCursorLine();
+        $line = $doc->cursorLine;
         $column = $doc->getCursorDisplayCol();
         if ($column >= $width) {
             $doc->setCursor($line, $doc->byteColForDisplayCol($line, $column % $width));
@@ -354,7 +354,7 @@ final readonly class EditorActions
     private function snapIntoLastSegment(int $width): void
     {
         $doc = $this->document;
-        $line = $doc->getCursorLine();
+        $line = $doc->cursorLine;
         $column = $doc->getCursorDisplayCol();
         $lastStart = \intdiv(\max(0, $doc->lineDisplayWidth($line) - 1), $width) * $width;
         if ($lastStart > 0) {
@@ -414,7 +414,7 @@ final readonly class EditorActions
         if ($kb->matches($keys, 'page_up') || $kb->matches($keys, 'page_down')) {
             $delta = $kb->matches($keys, 'page_up') ? -$this->host->contentRows() : $this->host->contentRows();
             $doc->clearSelection();
-            $doc->setCursor($doc->getCursorLine() + $delta, $doc->getCursorCol());
+            $doc->setCursor($doc->cursorLine + $delta, $doc->cursorCol);
             $this->host->invalidate();
 
             return true;
@@ -578,7 +578,7 @@ final readonly class EditorActions
             'add_caret_below' => $this->multiCaret->addVertically(1),
             'add_next_occurrence' => $this->multiCaret->addNextOccurrence(),
             'trigger_completion' => $this->completion->requestCompletion(),
-            'parameter_info' => $this->host->fireSignatureHelp($this->document->getCursorLine(), $this->document->getCursorColUtf16()),
+            'parameter_info' => $this->host->fireSignatureHelp($this->document->cursorLine, $this->document->getCursorColUtf16()),
             'toggle_column_mode' => $this->toggleColumnMode(),
             'goto_line' => $this->promptGotoLine(),
             'rename_symbol' => $this->promptRename(),
@@ -762,20 +762,20 @@ final readonly class EditorActions
     private function promptRename(): void
     {
         $doc = $this->document;
-        $this->host->requestRename($doc->getCursorLine(), $doc->getCursorColUtf16(), \ltrim($doc->getWordBeforeCursor(), characters: '$'));
+        $this->host->requestRename($doc->cursorLine, $doc->getCursorColUtf16(), \ltrim($doc->getWordBeforeCursor(), characters: '$'));
     }
 
     private function maybeAutoTrigger(string $typed): void
     {
-        $line = $this->document->getLine($this->document->getCursorLine());
-        $prefix = \substr($line, offset: 0, length: $this->document->getCursorCol());
+        $line = $this->document->getLine($this->document->cursorLine);
+        $prefix = \substr($line, offset: 0, length: $this->document->cursorCol);
 
         if (\str_ends_with($prefix, '->') || \str_ends_with($prefix, '::')) {
             $this->completion->requestCompletion();
         }
 
         if ('(' === $typed || ',' === $typed) {
-            $this->host->fireSignatureHelp($this->document->getCursorLine(), $this->document->getCursorColUtf16());
+            $this->host->fireSignatureHelp($this->document->cursorLine, $this->document->getCursorColUtf16());
 
             return;
         }

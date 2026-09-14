@@ -121,16 +121,16 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         $this->assertTrue($editor->getDocument()->hasSelection());
 
         $editor->handleInput("\x1b[1;5H"); // ctrl+home
-        $this->assertSame(0, $editor->getDocument()->getCursorLine());
+        $this->assertSame(0, $editor->getDocument()->cursorLine);
         $this->assertFalse($editor->getDocument()->hasSelection());
 
         $editor->handleInput("\x1b[1;5F"); // ctrl+end
-        $this->assertSame(3, $editor->getDocument()->getCursorLine());
+        $this->assertSame(3, $editor->getDocument()->cursorLine);
 
         $editor->handleInput("\x1b[5~"); // page up
-        $this->assertSame(0, $editor->getDocument()->getCursorLine());
+        $this->assertSame(0, $editor->getDocument()->cursorLine);
         $editor->handleInput("\x1b[6~"); // page down
-        $this->assertGreaterThan(0, $editor->getDocument()->getCursorLine());
+        $this->assertGreaterThan(0, $editor->getDocument()->cursorLine);
     }
 
     public function testCutAndPasteReplacingSelection(): void
@@ -362,7 +362,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
 
         // Screen row 2 is the first line after the fold ("after();", doc line 5).
         $editor->clickAt(2, 20);
-        $this->assertSame(5, $editor->getDocument()->getCursorLine());
+        $this->assertSame(5, $editor->getDocument()->cursorLine);
     }
 
     public function testMovingIntoFoldedRegionAutoUnfolds(): void

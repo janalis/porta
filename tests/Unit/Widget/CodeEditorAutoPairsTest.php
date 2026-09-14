@@ -31,7 +31,7 @@ final class CodeEditorAutoPairsTest extends TestCase
         $editor->handleInput('(');
 
         $this->assertSame('()', $editor->getDocument()->getLine(0));
-        $this->assertSame(1, $editor->getDocument()->getCursorCol(), 'cursor between the pair');
+        $this->assertSame(1, $editor->getDocument()->cursorCol, 'cursor between the pair');
     }
 
     public function testAllBracketAndQuoteKinds(): void
@@ -52,7 +52,7 @@ final class CodeEditorAutoPairsTest extends TestCase
         $editor->handleInput(')'); // type over
 
         $this->assertSame('()', $editor->getDocument()->getLine(0), 'no doubled closer');
-        $this->assertSame(2, $editor->getDocument()->getCursorCol());
+        $this->assertSame(2, $editor->getDocument()->cursorCol);
     }
 
     public function testBackspaceRemovesEmptyPairAtomically(): void
@@ -186,6 +186,6 @@ final class CodeEditorAutoPairsTest extends TestCase
         $editor->handleInput('"'); // type over closing quote
 
         $this->assertSame('""', $editor->getDocument()->getLine(0));
-        $this->assertSame(2, $editor->getDocument()->getCursorCol());
+        $this->assertSame(2, $editor->getDocument()->cursorCol);
     }
 }

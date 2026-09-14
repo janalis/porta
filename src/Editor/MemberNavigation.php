@@ -61,7 +61,7 @@ final readonly class MemberNavigation
             // on "the next member past the caret".
             $members = \array_reverse($members);
         }
-        $caret = $this->editor->getDocument()->getCursorLine();
+        $caret = $this->editor->getDocument()->cursorLine;
         $target = null;
         foreach ($members as $member) {
             if (MemberStep::Next === $step ? $member['line'] <= $caret : $member['line'] >= $caret) {

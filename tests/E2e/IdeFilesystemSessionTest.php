@@ -407,7 +407,7 @@ final class IdeFilesystemSessionTest extends TestCase
 
         $timer = EventLoop::delay(0.2, function () use ($tui): void {
             $tui->tick();
-            $this->assertSame(3, $tui->getById('editor')->getDocument()->getCursorLine(), 'CLI line 4 → 0-based line 3');
+            $this->assertSame(3, $tui->getById('editor')->getDocument()->cursorLine, 'CLI line 4 → 0-based line 3');
             $tui->stop();
         });
         try {

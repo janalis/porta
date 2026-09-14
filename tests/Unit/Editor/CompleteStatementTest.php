@@ -59,8 +59,8 @@ final class CompleteStatementTest extends TestCase
         $doc->completeStatement(self::php());
 
         $this->assertSame('    $x = foo(1, bar(2));', $doc->getLine(0));
-        $this->assertSame(1, $doc->getCursorLine());
-        $this->assertSame(4, $doc->getCursorCol(), 'a fresh line at the same indent');
+        $this->assertSame(1, $doc->cursorLine);
+        $this->assertSame(4, $doc->cursorCol, 'a fresh line at the same indent');
     }
 
     // --- terminating -------------------------------------------------------
@@ -125,9 +125,9 @@ final class CompleteStatementTest extends TestCase
 
         $doc->completeStatement(self::php());
 
-        $this->assertSame(['    if ($x > 1) {', '        ', '    }', ''], $doc->getLines());
-        $this->assertSame(1, $doc->getCursorLine());
-        $this->assertSame(8, $doc->getCursorCol(), 'inside the block');
+        $this->assertSame(['    if ($x > 1) {', '        ', '    }', ''], $doc->lines);
+        $this->assertSame(1, $doc->cursorLine);
+        $this->assertSame(8, $doc->cursorCol, 'inside the block');
     }
 
     /**
@@ -145,7 +145,7 @@ final class CompleteStatementTest extends TestCase
 
         $doc->completeStatement($python);
 
-        $this->assertSame(['    if x > 1:', '        ', ''], $doc->getLines());
+        $this->assertSame(['    if x > 1:', '        ', ''], $doc->lines);
     }
 
     /**
@@ -185,7 +185,7 @@ final class CompleteStatementTest extends TestCase
         $editor->openFile('data.json', "  {\"a\": 1\n");
         $editor->getDocument()->setCursor(0, 4);
         $editor->handleInput("\x1b[13;6u");
-        $this->assertSame(['  {"a": 1', ''], $editor->getDocument()->getLines(), 'JSON has no statement to complete');
+        $this->assertSame(['  {"a": 1', ''], $editor->getDocument()->lines, 'JSON has no statement to complete');
     }
 
     public function testASelectionIsCollapsedAndNotDeleted(): void
@@ -207,10 +207,10 @@ final class CompleteStatementTest extends TestCase
         $doc->setCursor(0, 4);
 
         $doc->completeStatement(self::php());
-        $this->assertSame(['    if ($x) {', '        ', '    }', ''], $doc->getLines());
+        $this->assertSame(['    if ($x) {', '        ', '    }', ''], $doc->lines);
 
         $this->assertTrue($doc->undo());
-        $this->assertSame(['    if ($x', ''], $doc->getLines(), 'the brace, the two lines and the closer come back together');
+        $this->assertSame(['    if ($x', ''], $doc->lines, 'the brace, the two lines and the closer come back together');
     }
 
     /**
@@ -334,7 +334,7 @@ final class CompleteStatementTest extends TestCase
 
             $this->assertSame('', $doc->getLine(0), 'the blank line loses its trailing whitespace');
             $this->assertSame($indent, $doc->getLine(1), 'and the caret line keeps the indent');
-            $this->assertSame(\strlen($indent), $doc->getCursorCol());
+            $this->assertSame(\strlen($indent), $doc->cursorCol);
         }
     }
 

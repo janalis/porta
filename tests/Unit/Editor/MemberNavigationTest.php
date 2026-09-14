@@ -46,7 +46,7 @@ final class MemberNavigationTest extends TestCase
 
     private function caretLine(): int
     {
-        return $this->editor->getDocument()->getCursorLine();
+        return $this->editor->getDocument()->cursorLine;
     }
 
     private function lastToast(): string
@@ -95,7 +95,7 @@ final class MemberNavigationTest extends TestCase
         $this->assertSame('Svc', $this->lastToast());
         // Landing mid-line would put the caret wherever the previous column
         // happened to be, on a line whose text is unrelated to it.
-        $this->assertSame(0, $this->editor->getDocument()->getCursorCol());
+        $this->assertSame(0, $this->editor->getDocument()->cursorCol);
     }
 
     public function testPastTheLastDeclarationItWrapsAndSaysSo(): void

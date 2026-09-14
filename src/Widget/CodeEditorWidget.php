@@ -251,7 +251,7 @@ final class CodeEditorWidget extends AbstractWidget implements
         $this->actions = $this->newEditorActions($this->document, new ClipboardRing());
         $this->actionRouter = new EditorActionRouter(
             fn (): EditorCallbacks => $this->callbacks,
-            fn (): array => [$this->document->getCursorLine(), $this->document->getCursorColUtf16()],
+            fn (): array => [$this->document->cursorLine, $this->document->getCursorColUtf16()],
         );
     }
 
@@ -581,7 +581,7 @@ final class CodeEditorWidget extends AbstractWidget implements
             return $this->documentScopes->forPath($this->filePath);
         }
         $docId = \spl_object_id($this->document);
-        $key = $docId.':'.$this->document->getVersion();
+        $key = $docId.':'.$this->document->version;
         if ($key === $this->scopeKey) {
             return $this->scopeCache;
         }
@@ -613,7 +613,7 @@ final class CodeEditorWidget extends AbstractWidget implements
                     // Re-key from the live document — it may have moved on (or
                     // been swapped) since the edit that armed this timer.
                     $this->scopeCache = BreadcrumbScanner::scan($this->document->getText());
-                    $this->scopeKey = \spl_object_id($this->document).':'.$this->document->getVersion();
+                    $this->scopeKey = \spl_object_id($this->document).':'.$this->document->version;
                     $this->invalidate(); // the settled trail needs a frame to show
                 }),
                 $key,
@@ -647,7 +647,7 @@ final class CodeEditorWidget extends AbstractWidget implements
      */
     public function caretScreenCell(): array
     {
-        $row = \max(0, $this->foldModel->screenRowFor($this->scroll->vScroll, $this->document->getCursorLine())) + \count($this->stickyLines);
+        $row = \max(0, $this->foldModel->screenRowFor($this->scroll->vScroll, $this->document->cursorLine)) + \count($this->stickyLines);
         $col = \max($this->lastGutterWidth, $this->lastGutterWidth + $this->document->getCursorDisplayCol() - $this->scroll->hScroll);
 
         return ['row' => $row, 'col' => $col];
@@ -799,7 +799,7 @@ final class CodeEditorWidget extends AbstractWidget implements
      */
     public function getCursorDiagnostic(): ?string
     {
-        return $this->decorations->diagnosticMessageAt($this->document->getCursorLine());
+        return $this->decorations->diagnosticMessageAt($this->document->cursorLine);
     }
 
     /**
@@ -906,7 +906,7 @@ final class CodeEditorWidget extends AbstractWidget implements
      */
     public function setFoldRegions(array $regions): void
     {
-        $this->foldModel->setRegions($regions, $this->document->getVersion());
+        $this->foldModel->setRegions($regions, $this->document->version);
     }
 
     /** Whether keyboard column selection is on; the status bar shows it. */
@@ -1074,7 +1074,7 @@ final class CodeEditorWidget extends AbstractWidget implements
         // those they used to sit still while the lines under them moved. The
         // store works out where and by how much from these two numbers — see
         // {@see DecorationStore::remapVcsMarksForEdit()}.
-        $this->decorations->remapVcsMarksForEdit($this->document->getCursorLine(), $this->document->getLineCount());
+        $this->decorations->remapVcsMarksForEdit($this->document->cursorLine, $this->document->getLineCount());
         $this->invalidate();
         $this->callbacks->completion?->scheduleDidChange($this->document);
     }
@@ -1119,7 +1119,7 @@ final class CodeEditorWidget extends AbstractWidget implements
      */
     private function matchingBrackets(Document $doc): ?array
     {
-        $key = $doc->getVersion().':'.$doc->getCursorLine().':'.$doc->getCursorCol();
+        $key = $doc->version.':'.$doc->cursorLine.':'.$doc->cursorCol;
         if ($key !== $this->bracketsKey) {
             $this->bracketsKey = $key;
             $this->bracketsMemo = EditorRenderer::matchingBrackets($doc);
@@ -1205,7 +1205,7 @@ final class CodeEditorWidget extends AbstractWidget implements
 
             // Clamp scroll to cursor: the caret must stay visible below whatever
             // sticky-scroll band the settled scroll position pins at the top.
-            $cursorLine = $doc->getCursorLine();
+            $cursorLine = $doc->cursorLine;
             $this->scroll->clampToCaret($rows, fn (int $vScroll): int => \count($this->stickyHeadersAt($vScroll, $rows)));
             $vScroll = $this->scroll->vScroll;
 
@@ -1220,7 +1220,7 @@ final class CodeEditorWidget extends AbstractWidget implements
 
             // Highlight/render tab-expanded lines so widths line up with the
             // display-column math; the buffer keeps its raw tabs.
-            $highlighted = $this->highlighter->highlight($doc->getVisualLines(), $doc->getVersion());
+            $highlighted = $this->highlighter->highlight($doc->getVisualLines(), $doc->version);
             $lastVisibleDocLine = $this->foldModel->docLineAtRow($vScroll, $contentRows - 1) ?? ($lineCount - 1);
             $decorations = $this->collectDecorations($doc, $vScroll, $lastVisibleDocLine);
 
@@ -1340,8 +1340,8 @@ final class CodeEditorWidget extends AbstractWidget implements
     {
         $cursorDisplayCol = $doc->getCursorDisplayCol();
         $cursorDisplayCol += EditorRenderer::inlayShiftAt($doc, $cursorLine, $this->decorations->inlayHintsAt($cursorLine), $cursorDisplayCol);
-        $cursorMoved = [$cursorLine, $doc->getCursorCol()] !== $this->lastFollowedCursor;
-        $this->lastFollowedCursor = [$cursorLine, $doc->getCursorCol()];
+        $cursorMoved = [$cursorLine, $doc->cursorCol] !== $this->lastFollowedCursor;
+        $this->lastFollowedCursor = [$cursorLine, $doc->cursorCol];
         $this->scroll->followCursor($cursorDisplayCol, $contentWidth, $cursorMoved ? CaretMotion::Moved : CaretMotion::Parked);
 
         return $cursorDisplayCol;
@@ -1361,9 +1361,9 @@ final class CodeEditorWidget extends AbstractWidget implements
         // git mark triggers — only these inputs can change its outcome.
         $key = \sprintf(
             '%d:%d:%d:%d:%d:%d:%d',
-            $doc->getVersion(),
-            $doc->getCursorLine(),
-            $doc->getCursorCol(),
+            $doc->version,
+            $doc->cursorLine,
+            $doc->cursorCol,
             (int) $this->focused,
             (int) $doc->hasSelection(),
             $vScroll,
@@ -1380,7 +1380,7 @@ final class CodeEditorWidget extends AbstractWidget implements
             multiActive: $multiActive,
             selection: $doc->getSelectionRange(),
             carets: $multiActive ? $this->multiCaret->allCarets() : [],
-            occurrences: $this->occurrences->spansFor($this->filePath, $doc->getVersion(), $doc->getCursorLine(), $doc->getCursorColUtf16(), $this->occurrencesMemo['spans']),
+            occurrences: $this->occurrences->spansFor($this->filePath, $doc->version, $doc->cursorLine, $doc->getCursorColUtf16(), $this->occurrencesMemo['spans']),
             brackets: $this->focused ? $this->matchingBrackets($doc) : null,
         );
     }

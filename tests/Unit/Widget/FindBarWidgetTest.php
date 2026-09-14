@@ -248,14 +248,14 @@ final class FindBarWidgetTest extends TestCase
         $bar = new FindBarWidget(new Translator('en'));
         $bar->open(new FakeFindTarget($doc), mode: FindMode::Find, initialQuery: 'match');
 
-        $this->assertSame(1, $doc->getCursorLine(), 'nearest match at/after cursor');
+        $this->assertSame(1, $doc->cursorLine, 'nearest match at/after cursor');
 
         $bar->handleInput("\r"); // next
-        $this->assertSame(2, $doc->getCursorLine());
+        $this->assertSame(2, $doc->cursorLine);
         $bar->handleInput("\r"); // wraps
-        $this->assertSame(0, $doc->getCursorLine());
+        $this->assertSame(0, $doc->cursorLine);
         $bar->handleInput("\x1b[13;2~"); // shift+f3 prev, wraps back
-        $this->assertSame(2, $doc->getCursorLine());
+        $this->assertSame(2, $doc->cursorLine);
     }
 
     public function testBackspaceNarrowsAndEmptyQueryClearsMatches(): void
@@ -410,7 +410,7 @@ final class FindBarWidgetTest extends TestCase
         $bar = new FindBarWidget(new Translator('en'));
         $bar->open(new FakeFindTarget($doc), mode: FindMode::Find, initialQuery: 'match');
 
-        $this->assertSame(0, $doc->getCursorLine(), 'wrapped to the first match');
+        $this->assertSame(0, $doc->cursorLine, 'wrapped to the first match');
     }
 
     public function testMatchCap(): void
@@ -762,7 +762,7 @@ final class FindBarWidgetTest extends TestCase
         $doc->insert("match two\n"); // stale: recompute() resets currentIndex before find_next re-jumps
 
         $bar->handleInput("\r"); // find_next: refreshIfStale() then gotoMatch(currentIndex + 1)
-        $this->assertSame(0, $doc->getCursorLine(), 'lands on the first match, not the second');
+        $this->assertSame(0, $doc->cursorLine, 'lands on the first match, not the second');
     }
 
     public function testJumpToNearestLandsExactlyOnAMatchStartingAtTheCursor(): void
@@ -772,7 +772,7 @@ final class FindBarWidgetTest extends TestCase
         $bar = new FindBarWidget(new Translator('en'));
         $bar->open(new FakeFindTarget($doc), mode: FindMode::Find, initialQuery: 'match');
 
-        $this->assertSame(4, $doc->getCursorCol(), 'a match starting exactly at the cursor counts as "at/after", not skipped');
+        $this->assertSame(4, $doc->cursorCol, 'a match starting exactly at the cursor counts as "at/after", not skipped');
     }
 
     public function testJumpToNearestSkipsAnEarlierMatchOnTheSameLineAsTheCursor(): void
@@ -785,7 +785,7 @@ final class FindBarWidgetTest extends TestCase
         $bar = new FindBarWidget(new Translator('en'));
         $bar->open(new FakeFindTarget($doc), mode: FindMode::Find, initialQuery: 'match');
 
-        $this->assertSame(11, $doc->getCursorCol(), 'jumps to the match after the cursor, not the one before it');
+        $this->assertSame(11, $doc->cursorCol, 'jumps to the match after the cursor, not the one before it');
     }
 
     public function testReplaceCurrentRepositionsTheCursorRegardlessOfWhereItCurrentlyIs(): void

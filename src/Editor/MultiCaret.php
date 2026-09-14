@@ -110,7 +110,7 @@ final class MultiCaret
         // times a frame, and a column selection can be a thousand carets — the
         // filter is cheap per caret but not free, and a render must not pay for
         // it once per read.
-        $version = $this->document->getVersion();
+        $version = $this->document->version;
         if ($this->aliveVersion === $version && $this->aliveFor === $this->extraCarets) {
             return $this->aliveCache;
         }
@@ -175,14 +175,14 @@ final class MultiCaret
     {
         $doc = $this->document;
         $displayCol = $doc->getCursorDisplayCol();
-        $targetLine = $doc->getCursorLine() + $direction;
+        $targetLine = $doc->cursorLine + $direction;
         if ($targetLine < 0 || $targetLine >= $doc->getLineCount()) {
             return;
         }
         $col = $doc->byteColForDisplayCol($targetLine, $displayCol);
         // The newly added line becomes the primary; the old primary joins the
         // extras, so growing up/down keeps the "active" caret at the frontier.
-        $this->extraCarets[] = Caret::point($doc->getCursorLine(), $doc->getCursorCol());
+        $this->extraCarets[] = Caret::point($doc->cursorLine, $doc->cursorCol);
         $doc->setCursor($targetLine, $col);
         $this->dedupeCarets();
         ($this->onInvalidate)();
@@ -198,7 +198,7 @@ final class MultiCaret
             return;
         }
         $doc = $this->document;
-        $current = [$doc->getCursorLine(), $doc->getCursorCol()];
+        $current = [$doc->cursorLine, $doc->cursorCol];
 
         // Forward-only scan; the primary always advances, so occurrences never
         // repeat and no explicit dedupe against existing carets is needed.
@@ -206,7 +206,7 @@ final class MultiCaret
             if ([$line, $col] <= $current) {
                 continue;
             }
-            $this->extraCarets[] = Caret::point($doc->getCursorLine(), $doc->getCursorCol());
+            $this->extraCarets[] = Caret::point($doc->cursorLine, $doc->cursorCol);
             $doc->setCursor($line, $col + \strlen($word));
             $this->dedupeCarets();
             ($this->onInvalidate)();
@@ -376,7 +376,7 @@ final class MultiCaret
                 // point caret just moves the cursor.
                 $this->restore($record);
                 $op($doc, $index);
-                $results[] = [$doc->getCursorLine(), $doc->getCursorCol()];
+                $results[] = [$doc->cursorLine, $doc->cursorCol];
             }
         });
 
@@ -393,7 +393,7 @@ final class MultiCaret
         foreach ($this->caretPositions() as [$line, $col]) {
             $doc->setCursor($line, $col);
             $doc->{$method}();
-            $positions[] = [$doc->getCursorLine(), $doc->getCursorCol()];
+            $positions[] = [$doc->cursorLine, $doc->cursorCol];
         }
         $this->rebuildFromPositions($positions);
         ($this->onInvalidate)();
@@ -420,7 +420,7 @@ final class MultiCaret
     /** @return list<array{0: int, 1: int}> all caret [line, col] positions */
     private function caretPositions(): array
     {
-        $positions = [[$this->document->getCursorLine(), $this->document->getCursorCol()]];
+        $positions = [[$this->document->cursorLine, $this->document->cursorCol]];
         foreach ($this->extraCarets as $caret) {
             $positions[] = [$caret->line, $caret->col];
         }
@@ -435,8 +435,8 @@ final class MultiCaret
     private function primaryRecord(): Caret
     {
         $doc = $this->document;
-        $line = $doc->getCursorLine();
-        $col = $doc->getCursorCol();
+        $line = $doc->cursorLine;
+        $col = $doc->cursorCol;
         $range = $doc->getSelectionRange();
         if (null === $range) {
             return Caret::point($line, $col);
@@ -547,7 +547,7 @@ final class MultiCaret
     {
         $doc = $this->document;
 
-        if ($line === $doc->getCursorLine() && $col === $doc->getCursorCol()) {
+        if ($line === $doc->cursorLine && $col === $doc->cursorCol) {
             if ([] === $this->extraCarets) {
                 return; // never remove the only caret
             }
@@ -570,7 +570,7 @@ final class MultiCaret
         }
 
         // New caret: make the click the primary, push the old primary to extras.
-        $this->extraCarets[] = Caret::point($doc->getCursorLine(), $doc->getCursorCol());
+        $this->extraCarets[] = Caret::point($doc->cursorLine, $doc->cursorCol);
         $doc->setCursor($line, $col);
         $this->dedupeCarets();
         ($this->onInvalidate)();
@@ -601,7 +601,7 @@ final class MultiCaret
 
     private function dedupeCarets(): void
     {
-        $primary = [$this->document->getCursorLine(), $this->document->getCursorCol()];
+        $primary = [$this->document->cursorLine, $this->document->cursorCol];
         $seen = [$primary[0].':'.$primary[1] => true];
         $unique = [];
         foreach ($this->extraCarets as $caret) {
@@ -622,7 +622,7 @@ final class MultiCaret
     private function findOccurrences(string $word): array
     {
         $result = [];
-        foreach ($this->document->getLines() as $lineIndex => $line) {
+        foreach ($this->document->lines as $lineIndex => $line) {
             $offset = 0;
             while (false !== ($pos = \strpos($line, $word, $offset))) {
                 $result[] = [(int) $lineIndex, $pos];

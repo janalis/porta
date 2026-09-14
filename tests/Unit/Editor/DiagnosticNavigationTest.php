@@ -56,7 +56,7 @@ final class DiagnosticNavigationTest extends TestCase
 
     private function caretLine(): int
     {
-        return $this->editor->getDocument()->getCursorLine();
+        return $this->editor->getDocument()->cursorLine;
     }
 
     public function testNextWalksForwardFromTheCaretAndSaysWhatIsWrong(): void

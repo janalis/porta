@@ -193,7 +193,7 @@ final class EditorRowAssemblerTest extends TestCase
         $doc = new Document("a\nb\nc\nd\ne\n");
         [$assembler, $foldModel] = $this->assembler($doc);
         $doc->setCursor(1, 0);
-        $foldModel->setRegions([[1, 3]], $doc->getVersion()); // fold covering lines 1-3, 2 lines hidden past the start
+        $foldModel->setRegions([[1, 3]], $doc->version); // fold covering lines 1-3, 2 lines hidden past the start
         $foldModel->toggle(); // caret sits on line 1, collapses that region
         $geo = new EditorGeometry(numberWidth: 1, gutterWidth: 3, contentWidth: 20, stripeCol: 0);
 

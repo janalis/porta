@@ -629,7 +629,7 @@ final class RefactorControllerTest extends TestCase
         $this->assertStringContainsString('No refactoring to undo', $this->flashed(), 'nothing recorded yet');
 
         $buffer = $this->buffers->get('/tmp/proj/a.php');
-        $this->undo->recordBuffer($buffer->path, $buffer->document->getVersion());
+        $this->undo->recordBuffer($buffer->path, $buffer->document->version);
         $this->assertTrue(
             $this->requestedRenderSince($controller->undoLastRefactoring(...)),
             'a frame is asked for — through the flash, which already does it',
@@ -638,7 +638,7 @@ final class RefactorControllerTest extends TestCase
 
         // And with the buffer moved on since, it refuses and names the file
         // RELATIVE to the project, like every other path this UI shows.
-        $this->undo->recordBuffer($buffer->path, $buffer->document->getVersion() + 1);
+        $this->undo->recordBuffer($buffer->path, $buffer->document->version + 1);
         $controller->undoLastRefactoring();
         $this->assertStringContainsString('a.php changed since', $this->flashed());
     }

@@ -862,7 +862,7 @@ final class IdeLspFeaturesTest extends TestCase
                     // greet's selectionRange starts at line 4
                     $doc = $tui->getById('editor')->getDocument();
                     $this->await(
-                        static fn (): bool => 4 === $doc->getCursorLine(),
+                        static fn (): bool => 4 === $doc->cursorLine,
                         what: 'the structure pick to move the caret',
                     );
                 },
@@ -945,7 +945,7 @@ final class IdeLspFeaturesTest extends TestCase
                         static fn (): bool => \str_ends_with((string) $editor->getFilePath(), 'Target.php'),
                         what: 'the symbol pick to open its file',
                     );
-                    $this->assertSame(3, $editor->getDocument()->getCursorLine());
+                    $this->assertSame(3, $editor->getDocument()->cursorLine);
                 },
             ],
         );
@@ -1418,7 +1418,7 @@ final class IdeLspFeaturesTest extends TestCase
                         static fn (): bool => \str_ends_with((string) $editor->getFilePath(), 'Target.php'),
                         what: 'ctrl+click to jump to the declaration',
                     );
-                    $this->assertSame(3, $editor->getDocument()->getCursorLine());
+                    $this->assertSame(3, $editor->getDocument()->cursorLine);
                     $this->assertFalse($editor->getDocument()->hasSelection(), 'a ctrl+click is a navigation, not a selection start');
                     $this->assertSame('editor', $tui->getFocus()?->getId());
                 },
@@ -1700,9 +1700,9 @@ final class IdeLspFeaturesTest extends TestCase
                     $doc = $tui->getById('editor')->getDocument();
                     $doc->setCursor(2, (int) \strpos($doc->getLine(2), needle: '{'));
                     $tui->handleInput("\x1b[109;6u"); // ctrl+shift+m
-                    $this->assertSame(4, $doc->getCursorLine(), 'jumped to the closing brace line');
+                    $this->assertSame(4, $doc->cursorLine, 'jumped to the closing brace line');
                     $tui->handleInput("\x1b[109;6u"); // and back again
-                    $this->assertSame(2, $doc->getCursorLine(), 'jumped back to the opener');
+                    $this->assertSame(2, $doc->cursorLine, 'jumped back to the opener');
                 },
             ],
         );

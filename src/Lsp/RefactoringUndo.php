@@ -213,7 +213,7 @@ final class RefactoringUndo
             // or discarded by the close, and either way this class cannot undo
             // what it no longer holds. It is dropped from the walk above by the
             // same null check.
-            if (null !== $document && $document->getVersion() !== $version) {
+            if (null !== $document && $document->version !== $version) {
                 return $path;
             }
         }

@@ -146,7 +146,7 @@ final class DebugController implements DebugSessionObserver, StatusSegment
 
             return;
         }
-        $this->toggleBreakpoint($path, $this->editor->getDocument()->getCursorLine());
+        $this->toggleBreakpoint($path, $this->editor->getDocument()->cursorLine);
     }
 
     /** Toggle a breakpoint on a specific 0-based line of a file. */
@@ -165,7 +165,7 @@ final class DebugController implements DebugSessionObserver, StatusSegment
 
             return;
         }
-        $line = $this->editor->getDocument()->getCursorLine();
+        $line = $this->editor->getDocument()->cursorLine;
         $existing = $this->breakpoints->conditionAt($path, $line);
         // The prompt lives on the editor: focus it so it is drivable even
         // when a dock panel currently owns the focus.
@@ -372,7 +372,7 @@ final class DebugController implements DebugSessionObserver, StatusSegment
 
             return;
         }
-        $this->session?->runTo($path, $this->editor->getDocument()->getCursorLine());
+        $this->session?->runTo($path, $this->editor->getDocument()->cursorLine);
     }
 
     /**

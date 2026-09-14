@@ -77,8 +77,8 @@ final readonly class SessionRestorer
             }
             $buffers[] = [
                 'path' => $buffer->path,
-                'line' => $buffer->document->getCursorLine(),
-                'col' => $buffer->document->getCursorCol(),
+                'line' => $buffer->document->cursorLine,
+                'col' => $buffer->document->cursorCol,
                 'pinned' => $buffer->pinned,
             ];
         }

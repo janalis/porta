@@ -357,7 +357,7 @@ final readonly class EditorRowAssembler
         // the caret on non-caret lines in Relative mode (Vim "relativenumber").
         $numberLabel = LineNumberMode::Off === $this->lineNumbers ? '' : (string) ($lineIndex + 1);
         if (LineNumberMode::Relative === $this->lineNumbers && CaretLine::Other === $isCursorLine) {
-            $numberLabel = (string) \abs($lineIndex - $this->document->getCursorLine());
+            $numberLabel = (string) \abs($lineIndex - $this->document->cursorLine);
         }
 
         return $this->vcsCell($lineIndex).$numStyle->apply(\str_pad($numberLabel, $numberWidth, pad_string: ' ', pad_type: \STR_PAD_LEFT)).$marker.$this->foldCell($lineIndex).' ';

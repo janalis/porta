@@ -92,7 +92,7 @@ final class EditorCompletion
     /** Ask the IDE for completions at the caret (auto-trigger). */
     public function requestCompletion(): void
     {
-        ($this->requestCompletion)($this->document->getCursorLine(), $this->document->getCursorColUtf16());
+        ($this->requestCompletion)($this->document->cursorLine, $this->document->getCursorColUtf16());
     }
 
     /**
@@ -110,15 +110,15 @@ final class EditorCompletion
             return false;
         }
         $doc = $this->document;
-        $line = $doc->getCursorLine();
-        $found = TemplateExpander::at($doc->getLine($line), $doc->getCursorCol(), $templates);
+        $line = $doc->cursorLine;
+        $found = TemplateExpander::at($doc->getLine($line), $doc->cursorCol, $templates);
         if (null === $found) {
             return false;
         }
 
         $doc->replaceBeforeCursor($found['consume'], '');
-        $startLine = $doc->getCursorLine();
-        $startCol = $doc->getCursorCol();
+        $startLine = $doc->cursorLine;
+        $startCol = $doc->cursorCol;
         $parsed = SnippetParser::parse($found['snippet']);
         $doc->insert($parsed['text']);
         $doc->endCompound();
@@ -314,8 +314,8 @@ final class EditorCompletion
     {
         if (null !== $snippet && '' !== $snippet) {
             $doc->replaceBeforeCursor(\strlen($prefix), '');
-            $startLine = $doc->getCursorLine();
-            $startCol = $doc->getCursorCol();
+            $startLine = $doc->cursorLine;
+            $startCol = $doc->cursorCol;
             $parsed = SnippetParser::parse($snippet);
             $doc->insert($parsed['text']);
             $doc->endCompound();

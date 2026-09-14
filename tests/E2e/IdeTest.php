@@ -132,7 +132,7 @@ final class IdeTest extends TestCase
         $this->step(1.85, static fn () => $tui->handleInput("\x1b[24~")); // F12
         $this->step(2.0, function () use ($tui, $editor): void {
             $this->assertStringEndsWith('Target.php', (string) $editor()->getFilePath());
-            $this->assertSame(3, $editor()->getDocument()->getCursorLine());
+            $this->assertSame(3, $editor()->getDocument()->cursorLine);
             $tui->handleInput("\x1b[1;7D"); // ctrl+alt+left -> back
         });
         $this->step(2.1, function () use ($editor, $tui): void {
@@ -185,7 +185,7 @@ final class IdeTest extends TestCase
             $this->assertStringContainsString('Find: acme', $screen());
             $this->assertStringContainsString('[1/2]', $screen(), 'smart-case: lowercase query matches acme/demo and Acme\\');
             $doc = $editor()->getDocument();
-            $this->assertStringContainsString('acme', $doc->getLine($doc->getCursorLine()));
+            $this->assertStringContainsString('acme', $doc->getLine($doc->cursorLine));
             $tui->handleInput("\x1b"); // esc
         });
         $this->step(3.0, function () use ($screen, $tui): void {
@@ -232,7 +232,7 @@ final class IdeTest extends TestCase
         });
         $this->step(3.85, function () use ($editor, $tui): void {
             $this->assertStringEndsWith('Target.php', (string) $editor()->getFilePath());
-            $this->assertSame(3, $editor()->getDocument()->getCursorLine());
+            $this->assertSame(3, $editor()->getDocument()->cursorLine);
             $this->assertSame('editor', $tui->getFocus()?->getId());
         });
 
@@ -252,7 +252,7 @@ final class IdeTest extends TestCase
             $tui->handleInput("\r");
         });
         $this->step(4.3, function () use ($editor): void {
-            $this->assertSame(0, $editor()->getDocument()->getCursorLine());
+            $this->assertSame(0, $editor()->getDocument()->cursorLine);
         });
 
         // --- Rename via WorkspaceEdit ----------------------------------------------------------------
@@ -363,7 +363,7 @@ final class IdeTest extends TestCase
         });
         $this->step(1.85, function () use ($editor, $tui): void {
             $this->assertStringEndsWith('Target.php', (string) $editor()->getFilePath());
-            $this->assertSame(3, $editor()->getDocument()->getCursorLine(), 'jumped to the symbol line');
+            $this->assertSame(3, $editor()->getDocument()->cursorLine, 'jumped to the symbol line');
             $this->assertSame('editor', $tui->getFocus()?->getId(), 'editor refocused after the jump');
         });
 

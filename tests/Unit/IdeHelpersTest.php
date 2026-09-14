@@ -638,8 +638,8 @@ final class IdeHelpersTest extends TestCase
         Services::resolve($this->ide, SessionRestorer::class)->restore();
 
         $document = Services::resolve($this->ide, Tui::class)->getById('editor')->getDocument();
-        $this->assertSame(3, $document->getCursorLine());
-        $this->assertSame(5, $document->getCursorCol());
+        $this->assertSame(3, $document->cursorLine);
+        $this->assertSame(5, $document->cursorCol);
     }
 
     public function testRestoreWithNoRecordedActiveBufferDoesNotCrash(): void
@@ -924,7 +924,7 @@ final class IdeHelpersTest extends TestCase
         Services::resolve($this->ide, SearchActions::class)->goToSuperMethod();
 
         $this->assertStringEndsWith('ParentClass.php', (string) $editor->getFilePath(), 'the parent file is open — found by its class name, which in a PSR-4 project IS its file name');
-        $this->assertSame(4, $editor->getDocument()->getCursorLine(), 'and the caret is on its declaration');
+        $this->assertSame(4, $editor->getDocument()->cursorLine, 'and the caret is on its declaration');
         $this->assertStringContainsString('ParentClass::handle', Toasts::last($this->ide));
     }
 

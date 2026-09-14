@@ -588,7 +588,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
         if (!$this->regex) {
             return $replacement;
         }
-        $matched = \substr($doc->getLines()[$match['line']] ?? '', $match['start'], $match['end'] - $match['start']);
+        $matched = \substr($doc->lines[$match['line']] ?? '', $match['start'], $match['end'] - $match['start']);
         $pattern = SearchPattern::build(
             $this->query->value(),
             MatchMode::Regex,

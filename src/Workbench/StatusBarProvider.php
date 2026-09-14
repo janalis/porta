@@ -108,7 +108,7 @@ final readonly class StatusBarProvider
             $problems .= $this->styles->of(Role::StatusWarning)->apply(Glyphs::SEVERITY_WARNING." {$counts['warnings']}").' ';
         }
 
-        $location = \sprintf('%d:%d', $doc->getCursorLine() + 1, $doc->getCursorDisplayCol() + 1);
+        $location = \sprintf('%d:%d', $doc->cursorLine + 1, $doc->getCursorDisplayCol() + 1);
         // Two strings, not one, because only the FIRST of them is clickable.
         // As a single legend the `ide_lsp_log` span below covered the whole of
         // it, so clicking the words "Ctrl+S save" opened the LSP log — the key

@@ -168,7 +168,7 @@ final class NavigationControllerTest extends TestCase
         $controller->navigateBack();
 
         $this->assertSame([], $this->opened, 'already on that file — no re-open needed');
-        $this->assertSame(2, $this->editor->getDocument()->getCursorLine(), 'the cursor still jumps back');
+        $this->assertSame(2, $this->editor->getDocument()->cursorLine, 'the cursor still jumps back');
     }
 
     public function testRequestHoverGuardsOnAnUnreadySession(): void
@@ -404,8 +404,8 @@ final class NavigationControllerTest extends TestCase
         $this->assertStringContainsString('Foo', $picker);
 
         $this->editor->handleInput("\r"); // pick the only row
-        $this->assertSame(1, $this->editor->getDocument()->getCursorLine(), 'picking a row jumps to its position');
-        $this->assertSame(6, $this->editor->getDocument()->getCursorCol());
+        $this->assertSame(1, $this->editor->getDocument()->cursorLine, 'picking a row jumps to its position');
+        $this->assertSame(6, $this->editor->getDocument()->cursorCol);
     }
 
     public function testRequestFileStructureFlashesWhenTheFileHasNoSymbols(): void

@@ -164,7 +164,7 @@ final class LspSessionTest extends TestCase
         $this->assertSame('textDocument/didChange', $sent['method']);
         $this->assertSame([['text' => "<?php\necho 1;\n"]], $sent['params']['contentChanges']);
         $this->assertSame('file:///tmp/x.php', $sent['params']['textDocument']['uri']);
-        $this->assertSame($doc->getVersion(), $sent['params']['textDocument']['version']);
+        $this->assertSame($doc->version, $sent['params']['textDocument']['version']);
     }
 
     public function testNotifyDidCloseSendsTheDocumentIdentifier(): void

@@ -29,9 +29,9 @@ final class OpenLineTest extends TestCase
 
         $doc->openLine(LinePlacement::Below);
 
-        $this->assertSame(['    return one();', '    ', ''], $doc->getLines());
-        $this->assertSame(1, $doc->getCursorLine());
-        $this->assertSame(4, $doc->getCursorCol(), 'the caret lands past the copied indent');
+        $this->assertSame(['    return one();', '    ', ''], $doc->lines);
+        $this->assertSame(1, $doc->cursorLine);
+        $this->assertSame(4, $doc->cursorCol, 'the caret lands past the copied indent');
     }
 
     public function testAboveOpensALineWithoutSplittingThisOne(): void
@@ -41,9 +41,9 @@ final class OpenLineTest extends TestCase
 
         $doc->openLine(LinePlacement::Above);
 
-        $this->assertSame(['    ', '    return one();', ''], $doc->getLines());
-        $this->assertSame(0, $doc->getCursorLine());
-        $this->assertSame(4, $doc->getCursorCol());
+        $this->assertSame(['    ', '    return one();', ''], $doc->lines);
+        $this->assertSame(0, $doc->cursorLine);
+        $this->assertSame(4, $doc->cursorCol);
     }
 
     /**
@@ -58,8 +58,8 @@ final class OpenLineTest extends TestCase
 
         $doc->openLine(LinePlacement::Below);
 
-        $this->assertSame(['    if (x) {', '        ', '    }', ''], $doc->getLines());
-        $this->assertSame(8, $doc->getCursorCol());
+        $this->assertSame(['    if (x) {', '        ', '    }', ''], $doc->lines);
+        $this->assertSame(8, $doc->cursorCol);
     }
 
     /**
@@ -75,7 +75,7 @@ final class OpenLineTest extends TestCase
 
         $doc->openLine(LinePlacement::Above);
 
-        $this->assertSame(['    ', '    if (x) {', ''], $doc->getLines());
+        $this->assertSame(['    ', '    if (x) {', ''], $doc->lines);
     }
 
     /**
@@ -92,7 +92,7 @@ final class OpenLineTest extends TestCase
 
         $doc->openLine(LinePlacement::Below);
 
-        $this->assertSame(['alpha beta', '', ''], $doc->getLines(), 'the selected text survives');
+        $this->assertSame(['alpha beta', '', ''], $doc->lines, 'the selected text survives');
         $this->assertFalse($doc->hasSelection());
     }
 
@@ -112,10 +112,10 @@ final class OpenLineTest extends TestCase
         $doc->setCursor(1, 3);
 
         $doc->openLine(LinePlacement::Above);
-        $this->assertSame(['  a', '  ', '  b', ''], $doc->getLines());
+        $this->assertSame(['  a', '  ', '  b', ''], $doc->lines);
 
         $this->assertTrue($doc->undo());
-        $this->assertSame(['  a', '  b', ''], $doc->getLines());
+        $this->assertSame(['  a', '  b', ''], $doc->lines);
     }
 
     /**
@@ -135,8 +135,8 @@ final class OpenLineTest extends TestCase
         $this->assertSame('    ', $editor->getDocument()->getLine(1));
 
         $editor->handleInput("\x1b[13;7u"); // ctrl+alt+enter
-        $this->assertSame(['    return one();', '    ', '    ', ''], $editor->getDocument()->getLines());
-        $this->assertSame(1, $editor->getDocument()->getCursorLine());
+        $this->assertSame(['    return one();', '    ', '    ', ''], $editor->getDocument()->lines);
+        $this->assertSame(1, $editor->getDocument()->cursorLine);
 
         // The control: plain Enter still splits, so the rebinding took the
         // chord and not the behaviour.

@@ -38,7 +38,7 @@ final class EditorScrollTest extends TestCase
         $this->scroll->scrollBy(30);
 
         $this->assertSame(30, $this->scroll->vScroll);
-        $this->assertSame(0, $this->document->getCursorLine());
+        $this->assertSame(0, $this->document->cursorLine);
         $this->assertSame(1, $this->invalidations);
     }
 
@@ -95,13 +95,13 @@ final class EditorScrollTest extends TestCase
         $this->document->deleteForward();
         $this->settle();
 
-        $this->assertSame(0, $this->document->getCursorLine());
+        $this->assertSame(0, $this->document->cursorLine);
         $this->assertSame(0, $this->scroll->vScroll);
     }
 
     public function testADetachedViewportSnapsOffAFoldInteriorWithoutUnfoldingIt(): void
     {
-        $this->foldModel->setRegions([[10, 40]], $this->document->getVersion());
+        $this->foldModel->setRegions([[10, 40]], $this->document->version);
         $this->foldModel->foldAll();
         $this->settle();
 

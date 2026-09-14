@@ -64,7 +64,7 @@ final readonly class DiagnosticNavigation
             // on "the next line in $lines past the caret".
             $lines = \array_reverse($lines);
         }
-        $caret = $buffer->document->getCursorLine();
+        $caret = $buffer->document->cursorLine;
         $past = static fn (int $line): bool => ProblemStep::Next === $step ? $line > $caret : $line < $caret;
         $ahead = \array_values(\array_filter($lines, $past));
 

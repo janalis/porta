@@ -46,8 +46,8 @@ final class EditorRenderer
     public static function matchingBrackets(Document $doc): ?array
     {
         $pairs = ['(' => ')', '[' => ']', '{' => '}'];
-        $line = $doc->getCursorLine();
-        $col = $doc->getCursorCol();
+        $line = $doc->cursorLine;
+        $col = $doc->cursorCol;
         $text = $doc->getLine($line);
 
         // Bracket under the cursor, else just before it
@@ -71,7 +71,7 @@ final class EditorRenderer
         $scanned = 0;
         $l = $line;
         $c = $col;
-        $lines = $doc->getLines();
+        $lines = $doc->lines;
         $lineCount = \count($lines);
 
         while ($l >= 0 && $l < $lineCount && $scanned < 20_000) {
@@ -107,8 +107,8 @@ final class EditorRenderer
      */
     public static function identifierUnderCaret(Document $doc): ?string
     {
-        $line = $doc->getLine($doc->getCursorLine());
-        $col = $doc->getCursorCol();
+        $line = $doc->getLine($doc->cursorLine);
+        $col = $doc->cursorCol;
 
         $start = $col;
         while ($start > 0 && 1 === \preg_match('/[\w$]/', $line[$start - 1])) {

@@ -73,7 +73,7 @@ final class WrapClickMappingTest extends TestCase
     {
         $mouse->clickAt($row, $col, $this->viewport($wrapWidth));
 
-        return [$this->document->getCursorLine(), $this->document->getCursorDisplayCol()];
+        return [$this->document->cursorLine, $this->document->getCursorDisplayCol()];
     }
 
     public function testUnwrappedEveryRowIsItsOwnLine(): void
@@ -174,7 +174,7 @@ final class WrapClickMappingTest extends TestCase
         $this->clickAt($mouse, 2, 4, null);
         $this->assertSame(['1:0', '1:1'], $this->ran, 'and the second');
 
-        $this->assertSame(1, $this->document->getCursorLine(), 'the caret went to the line the lens describes');
+        $this->assertSame(1, $this->document->cursorLine, 'the caret went to the line the lens describes');
     }
 
     /** A click on ordinary code runs nothing. */
@@ -186,6 +186,6 @@ final class WrapClickMappingTest extends TestCase
         $this->clickAt($mouse, 2, 4, null); // line 1 itself, below its lens
 
         $this->assertSame([], $this->ran);
-        $this->assertSame(1, $this->document->getCursorLine());
+        $this->assertSame(1, $this->document->cursorLine);
     }
 }
