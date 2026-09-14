@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Editor;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\ConflictMarkers;
+use Porta\Editor\ConflictSide;
 
 final class ConflictMarkersTest extends TestCase
 {
@@ -89,17 +90,17 @@ final class ConflictMarkersTest extends TestCase
         $lines = $this->lines("<<<<<<< a\no1\no2\n=======\nt1\n>>>>>>> b");
         $region = ConflictMarkers::find($lines)[0];
 
-        $this->assertSame(['o1', 'o2'], ConflictMarkers::resolution($lines, $region, 'ours'));
-        $this->assertSame(['t1'], ConflictMarkers::resolution($lines, $region, 'theirs'));
-        $this->assertSame(['o1', 'o2', 't1'], ConflictMarkers::resolution($lines, $region, 'both'));
+        $this->assertSame(['o1', 'o2'], ConflictMarkers::resolution($lines, $region, ConflictSide::Ours));
+        $this->assertSame(['t1'], ConflictMarkers::resolution($lines, $region, ConflictSide::Theirs));
+        $this->assertSame(['o1', 'o2', 't1'], ConflictMarkers::resolution($lines, $region, ConflictSide::Both));
     }
 
     public function testResolutionWithEmptySide(): void
     {
         $lines = $this->lines("<<<<<<< a\n=======\nt1\n>>>>>>> b");
         $region = ConflictMarkers::find($lines)[0];
-        $this->assertSame([], ConflictMarkers::resolution($lines, $region, 'ours'));
-        $this->assertSame(['t1'], ConflictMarkers::resolution($lines, $region, 'both'));
+        $this->assertSame([], ConflictMarkers::resolution($lines, $region, ConflictSide::Ours));
+        $this->assertSame(['t1'], ConflictMarkers::resolution($lines, $region, ConflictSide::Both));
     }
 
     public function testResolutionWhenTheRegionDoesNotStartAtLineZero(): void
@@ -109,7 +110,7 @@ final class ConflictMarkersTest extends TestCase
         $lines = $this->lines("before1\nbefore2\n<<<<<<< a\no1\no2\n=======\nt1\n>>>>>>> b");
         $region = ConflictMarkers::find($lines)[0];
 
-        $this->assertSame(['o1', 'o2'], ConflictMarkers::resolution($lines, $region, 'ours'));
+        $this->assertSame(['o1', 'o2'], ConflictMarkers::resolution($lines, $region, ConflictSide::Ours));
     }
 
     public function testResolutionBothSpreadsEveryTheirsLineNotJustTheFirst(): void
@@ -117,6 +118,6 @@ final class ConflictMarkersTest extends TestCase
         $lines = $this->lines("<<<<<<< a\no1\n=======\nt1\nt2\nt3\n>>>>>>> b");
         $region = ConflictMarkers::find($lines)[0];
 
-        $this->assertSame(['o1', 't1', 't2', 't3'], ConflictMarkers::resolution($lines, $region, 'both'));
+        $this->assertSame(['o1', 't1', 't2', 't3'], ConflictMarkers::resolution($lines, $region, ConflictSide::Both));
     }
 }

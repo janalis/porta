@@ -217,12 +217,12 @@ final class EditorStructural
             return;
         }
         $items = [
-            ['label' => 'Keep Ours (current)', 'hint' => '', 'value' => 'ours'],
-            ['label' => 'Keep Theirs (incoming)', 'hint' => '', 'value' => 'theirs'],
-            ['label' => 'Keep Both', 'hint' => '', 'value' => 'both'],
+            ['label' => 'Keep Ours (current)', 'hint' => '', 'value' => ConflictSide::Ours->value],
+            ['label' => 'Keep Theirs (incoming)', 'hint' => '', 'value' => ConflictSide::Theirs->value],
+            ['label' => 'Keep Both', 'hint' => '', 'value' => ConflictSide::Both->value],
         ];
         ($this->openListOverlay)('Resolve Conflict', $items, function (string $which) use ($region): void {
-            $this->resolveConflict($region, $which);
+            $this->resolveConflict($region, ConflictSide::from($which));
         });
     }
 
@@ -231,12 +231,11 @@ final class EditorStructural
      *
      * @param array{start: int, sep: int, end: int} $region
      */
-    private function resolveConflict(array $region, string $which): void
+    private function resolveConflict(array $region, ConflictSide $which): void
     {
         $doc = $this->document;
         /** @var list<string> $lines */
         $lines = $doc->getLines();
-        /** @var 'ours'|'theirs'|'both' $which */
         $replacement = \implode("\n", ConflictMarkers::resolution($lines, $region, $which));
 
         $doc->setCursor($region['start'], 0);

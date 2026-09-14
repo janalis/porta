@@ -71,19 +71,18 @@ final class ConflictMarkers
      *
      * @param list<string>                            $lines
      * @param array{start: int, sep: int, end: int}   $region
-     * @param 'ours'|'theirs'|'both'                  $which
      *
      * @return list<string>
      */
-    public static function resolution(array $lines, array $region, string $which): array
+    public static function resolution(array $lines, array $region, ConflictSide $which): array
     {
         $ours = \array_slice($lines, $region['start'] + 1, $region['sep'] - $region['start'] - 1);
         $theirs = \array_slice($lines, $region['sep'] + 1, $region['end'] - $region['sep'] - 1);
 
         return match ($which) {
-            'ours' => $ours,
-            'theirs' => $theirs,
-            'both' => [...$ours, ...$theirs],
+            ConflictSide::Ours => $ours,
+            ConflictSide::Theirs => $theirs,
+            ConflictSide::Both => [...$ours, ...$theirs],
         };
     }
 }
