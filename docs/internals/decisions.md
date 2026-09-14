@@ -975,7 +975,7 @@ a decoration channel should split the sink, not the threshold."* Paid.
 eight setters to the `DecorationStore` it owns, so every new decoration was a
 method on the largest class in the codebase — three features running moved its
 `too-many-methods` pin. The store implements the interface itself now, the
-widget exposes one `decorations()` accessor, and a future decoration costs the
+widget exposes one `decorations` property (a getter until the 2026-09 accessor round), and a future decoration costs the
 widget **nothing**.
 
 **`setFoldRegions` was never a decoration.** It was on the interface, but its
@@ -9572,3 +9572,60 @@ adopted:** every nested chain in the tree starts at a multi-argument call
 (`\explode(',', $raw)`, `\substr($s, 0, $n)`), and without partial function
 application (not in 8.5) each stage becomes its own arrow function — longer
 than the nesting it replaces. Revisit when partial application ships.
+
+## Modern idioms: match, enums, property accessors (2026-09-14)
+
+**`match` was already the idiom.** 147 uses before the round and no
+if/elseif chains; one conversion landed (`EditorConfigGlob`). What stayed, and
+why, is the rule for the next one: `PatchBuilder`'s and `UseScanner`'s switches
+are state machines mutating several locals per case; a guard run that does
+nothing on an unknown value must not become a `match` without `default`, which
+throws `UnhandledMatchError` instead.
+
+**Ten enum conversions, one shape.** A pure enum when the value lives in
+memory; a backed one when it is an array key, stored, compared by a plugin, or
+round-trips through a string-valued widget (a list overlay, a settings row) —
+there it comes back through `from()`/`tryFrom()` at that boundary and nowhere
+else. Lookups move onto the enum (`StagedState::checkbox()`,
+`LineEnding::bytes()`, `DiagnosticSeverity::glyph()`), and every `match` over
+one is exhaustive, with no `default` to swallow a typo.
+
+`DiagnosticSeverity` is the one that departs from a neighbour, deliberately:
+`DiagnosticTag` keeps unknown wire values as ints because an unknown tag means
+"draw normally"; an unknown severity has always been drawn as a hint, so it is
+converted once at ingestion (`fromWire()`) and every reader stops re-deriving
+the clamp, the `min()` and the 0 sentinel.
+
+**Accessors became properties where the method only returned or assigned a
+field** — `public readonly` for collaborators, `public private(set)` for state
+the class alone mutates (mago reports an outside write as
+`invalid-property-write`; PHP refuses an indirect one), a plain public property
+for a setter that did nothing else, a `set` hook where it did one thing
+(`GitSettings::$refreshInterval`'s floor), and `{ get; }` interface properties
+for `LspClientInterface`, `FindTarget` and `SyntaxHighlightProvider::$id`.
+Symfony factories that named a getter share `Container\PropertyFactory::read()`.
+
+What stayed a method, each for a reason that will recur:
+
+- **Anything plugin-facing**: `ContributedView`, `PortaPlugin::name()`,
+  `PluginApi`, `PluginBuffer`, `ViewRegion` (reached through
+  `ViewServices::$region`), and vendor contracts.
+- **Setters that report or refer**: `EditorDisplayOptions` setters return
+  whether anything changed and write through a by-reference `apply()`; a hook
+  can do neither. `EditorDecorationSink`'s setters invalidate and two take
+  several arguments — a half-property interface reads worse than none.
+- **Registrars**: `onNotification()`, `onApplyEdit()`, `onClose()` take a key or
+  a `callable`, which no property can be typed as.
+- **Constants on readonly classes**: `SearchSource::category()` — four of five
+  implementations are readonly classes, which cannot carry a hook.
+- **A name used across unrelated classes**: `OverlayWidget::isOpen()` stays,
+  because seven other classes (the plugin-facing `ContributedView` among them)
+  keep `isOpen()`, and one concept spelled two ways is worse than a method.
+
+The call sites were rewritten by a throwaway, type-aware Rector rule (receivers
+typed as the owner only); anything it could not type — `getById()` in tests —
+was fixed by hand and caught by the suite as an undefined-method fatal. Where a
+name collides with a vendor method (`symfony/tui`'s `EditorDocument` also has
+`getLines()` / `getCursorLine()`), the hand pass matched the receiver, never the
+name. No mago metric floor moved.
+
