@@ -12,36 +12,37 @@ use Porta\Editor\EditorDecorationSink;
  * document caret (the editor scrolls it into view) and mirrored to the editor's
  * inline highlight. Pinned to the document captured when the find bar opened.
  */
-final readonly class EditorFindTarget implements FindTarget
+final class EditorFindTarget implements FindTarget
 {
+    #[\Override]
+    public array $findLines {
+        get => \array_values($this->document->lines);
+    }
+
+    #[\Override]
+    public int $findVersion {
+        get => $this->document->version;
+    }
+
+    #[\Override]
+    public int $findCaretLine {
+        get => $this->document->cursorLine;
+    }
+
+    #[\Override]
+    public int $findCaretCol {
+        get => $this->document->cursorCol;
+    }
+
+    #[\Override]
+    public ?Document $replaceDocument {
+        get => $this->document;
+    }
+
     public function __construct(
-        private Document $document,
-        private EditorDecorationSink $editor,
+        private readonly Document $document,
+        private readonly EditorDecorationSink $editor,
     ) {}
-
-    #[\Override]
-    public function findLines(): array
-    {
-        return \array_values($this->document->lines);
-    }
-
-    #[\Override]
-    public function findVersion(): int
-    {
-        return $this->document->version;
-    }
-
-    #[\Override]
-    public function findCaretLine(): int
-    {
-        return $this->document->cursorLine;
-    }
-
-    #[\Override]
-    public function findCaretCol(): int
-    {
-        return $this->document->cursorCol;
-    }
 
     #[\Override]
     public function revealMatch(int $line, int $startByte, int $endByte): void
@@ -53,11 +54,5 @@ final readonly class EditorFindTarget implements FindTarget
     public function showSearchMatches(array $byLine): void
     {
         $this->editor->setSearchMatches($byLine);
-    }
-
-    #[\Override]
-    public function replaceDocument(): ?Document
-    {
-        return $this->document;
     }
 }

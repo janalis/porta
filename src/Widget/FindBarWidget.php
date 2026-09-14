@@ -409,7 +409,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
 
     private function refreshIfStale(): void
     {
-        if (null !== $this->target && $this->target->findVersion() !== $this->lastDocVersion) {
+        if (null !== $this->target && $this->target->findVersion !== $this->lastDocVersion) {
             $this->recompute(jumpToNearest: MatchJump::None);
         }
     }
@@ -425,7 +425,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
             return;
         }
 
-        $this->lastDocVersion = $this->target->findVersion();
+        $this->lastDocVersion = $this->target->findVersion;
         $this->patternInvalid = false;
         $this->patternTooComplex = false;
         $query = $this->query->value();
@@ -447,7 +447,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
 
                 return;
             }
-            foreach ($this->target->findLines() as $lineIndex => $line) {
+            foreach ($this->target->findLines as $lineIndex => $line) {
                 $found = [];
                 if ('' === $line) {
                     continue;
@@ -479,7 +479,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
             $needle = $caseInsensitive ? \strtolower($query) : $query;
             $needleLen = \strlen($query);
 
-            foreach ($this->target->findLines() as $lineIndex => $line) {
+            foreach ($this->target->findLines as $lineIndex => $line) {
                 $haystack = $caseInsensitive ? \strtolower($line) : $line;
                 $offset = 0;
                 while (false !== ($pos = \strpos($haystack, $needle, $offset))) {
@@ -493,8 +493,8 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
         }
 
         if (MatchJump::ToNearest === $jumpToNearest && [] !== $this->matches) {
-            $cursorLine = $this->target->findCaretLine();
-            $cursorCol = $this->target->findCaretCol();
+            $cursorLine = $this->target->findCaretLine;
+            $cursorCol = $this->target->findCaretCol;
             foreach ($this->matches as $i => $match) {
                 if (!($match['line'] > $cursorLine || $match['line'] === $cursorLine && $match['start'] >= $cursorCol)) {
                     continue;
@@ -531,7 +531,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
     private function replaceCurrent(): void
     {
         // Replace is editor-only; a read-only target (docs) returns no document.
-        $doc = $this->target?->replaceDocument();
+        $doc = $this->target?->replaceDocument;
         if (!$this->withReplace || null === $doc || $this->currentIndex < 0 || !\array_key_exists($this->currentIndex, $this->matches)) {
             return;
         }
@@ -548,7 +548,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
 
     private function replaceAll(): void
     {
-        $doc = $this->target?->replaceDocument();
+        $doc = $this->target?->replaceDocument;
         if (!$this->withReplace || null === $doc || [] === $this->matches) {
             return;
         }

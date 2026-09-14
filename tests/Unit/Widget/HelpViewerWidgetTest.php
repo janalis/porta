@@ -449,16 +449,16 @@ final class HelpViewerWidgetTest extends TestCase
         $this->screen($viewer, cols: 60, rows: 40); // render so the doc (and its lines) exist
 
         // The searchable surface is the rendered page, stripped of styling.
-        $lines = $viewer->findLines();
+        $lines = $viewer->findLines;
         $this->assertContains('Paragraph 1.', $lines, 'findLines exposes the plain rendered text');
-        $this->assertNull($viewer->replaceDocument(), 'documentation is read-only');
-        $this->assertSame(0, $viewer->findCaretCol());
-        $this->assertSame(0, $viewer->findCaretLine(), 'the match anchor starts at the top');
+        $this->assertNull($viewer->replaceDocument, 'documentation is read-only');
+        $this->assertSame(0, $viewer->findCaretCol);
+        $this->assertSame(0, $viewer->findCaretLine, 'the match anchor starts at the top');
 
         // The version moves when the page changes (a re-search trigger).
-        $before = $viewer->findVersion();
+        $before = $viewer->findVersion;
         $viewer->refreshPage($this->docs->path('editor.md'), (string) \file_get_contents($this->docs->path('editor.md')));
-        $this->assertGreaterThan($before, $viewer->findVersion());
+        $this->assertGreaterThan($before, $viewer->findVersion);
     }
 
     public function testRevealMatchScrollsAnOffScreenMatchIntoView(): void
@@ -466,20 +466,20 @@ final class HelpViewerWidgetTest extends TestCase
         $viewer = $this->viewer();
         $this->screen($viewer, cols: 60, rows: 10);
 
-        $target = \array_search('Paragraph 30.', $viewer->findLines(), strict: true);
+        $target = \array_search('Paragraph 30.', $viewer->findLines, strict: true);
         $this->assertIsInt($target);
 
         $viewer->revealMatch($target, startByte: 0, endByte: 3);
-        $this->assertGreaterThan(0, $viewer->findCaretLine(), 'scrolled down to bring the match on screen');
+        $this->assertGreaterThan(0, $viewer->findCaretLine, 'scrolled down to bring the match on screen');
         $this->assertStringContainsString('Paragraph 30.', \implode("\n", $this->screen($viewer)), 'the match line is now visible');
 
         // Revealing an earlier match scrolls back up.
         $viewer->revealMatch(0, startByte: 0, endByte: 1);
-        $this->assertSame(0, $viewer->findCaretLine(), 'scrolled up to the earlier match');
+        $this->assertSame(0, $viewer->findCaretLine, 'scrolled up to the earlier match');
 
         // A match already on screen does not move the viewport.
         $viewer->revealMatch(0, startByte: 0, endByte: 1);
-        $this->assertSame(0, $viewer->findCaretLine());
+        $this->assertSame(0, $viewer->findCaretLine);
     }
 
     public function testShowSearchMatchesHighlightsTheMatchWithoutChangingText(): void
@@ -489,7 +489,7 @@ final class HelpViewerWidgetTest extends TestCase
 
         $lineNo = null;
         $col = 0;
-        foreach ($viewer->findLines() as $i => $line) {
+        foreach ($viewer->findLines as $i => $line) {
             $at = \strpos($line, needle: 'Paragraph 1.');
             if (false !== $at) {
                 $lineNo = $i;
@@ -531,11 +531,11 @@ final class HelpViewerWidgetTest extends TestCase
     {
         $viewer = $this->viewer();
         $this->screen($viewer);
-        $before = $viewer->findVersion();
+        $before = $viewer->findVersion;
 
         $viewer->clear();
 
-        $this->assertGreaterThan($before, $viewer->findVersion(), 'clear() must increment findVersion, not decrement it');
+        $this->assertGreaterThan($before, $viewer->findVersion, 'clear() must increment findVersion, not decrement it');
     }
 
     public function testClearResetsScrollTopToExactlyZero(): void
@@ -619,22 +619,22 @@ final class HelpViewerWidgetTest extends TestCase
     {
         $viewer = $this->viewer();
         $viewer->render(new RenderContext(60, 10));
-        $before = $viewer->findVersion();
+        $before = $viewer->findVersion;
 
         $viewer->render(new RenderContext(60, 10)); // identical width: must reuse the memoized doc
 
-        $this->assertSame($before, $viewer->findVersion(), 'findVersion only bumps on an actual re-wrap');
+        $this->assertSame($before, $viewer->findVersion, 'findVersion only bumps on an actual re-wrap');
     }
 
     public function testANarrowerWidthReRewrapsAndBumpsFindVersion(): void
     {
         $viewer = $this->viewer();
         $viewer->render(new RenderContext(60, 10));
-        $before = $viewer->findVersion();
+        $before = $viewer->findVersion;
 
         $viewer->render(new RenderContext(40, 10));
 
-        $this->assertGreaterThan($before, $viewer->findVersion(), 're-wrapping at a new width must bump findVersion forward');
+        $this->assertGreaterThan($before, $viewer->findVersion, 're-wrapping at a new width must bump findVersion forward');
     }
 
     public function testExactlyTheLastBodyRowIsRenderedNoMoreNoLess(): void
@@ -778,34 +778,34 @@ final class HelpViewerWidgetTest extends TestCase
         $this->screen($viewer, 60, 6); // small viewport so scroll differences are visible
 
         $viewer->handleInput("\x1b[B"); // Down
-        $afterDown = $viewer->findCaretLine();
+        $afterDown = $viewer->findCaretLine;
         $this->assertSame(1, $afterDown, 'help_scroll_down moved exactly one row');
 
         $viewer->handleInput("\x1b[A"); // Up
-        $this->assertSame(0, $viewer->findCaretLine(), 'help_scroll_up moved back exactly one row');
+        $this->assertSame(0, $viewer->findCaretLine, 'help_scroll_up moved back exactly one row');
 
         $viewer->handleInput("\x1b[6~"); // Page Down
-        $this->assertGreaterThan(0, $viewer->findCaretLine(), 'help_page_down moved by a body-rows page');
+        $this->assertGreaterThan(0, $viewer->findCaretLine, 'help_page_down moved by a body-rows page');
 
         $viewer->handleInput("\x1b[H"); // Home
-        $this->assertSame(0, $viewer->findCaretLine(), 'help_home returns to the top');
+        $this->assertSame(0, $viewer->findCaretLine, 'help_home returns to the top');
 
         $viewer->handleInput("\x1b[F"); // End
-        $this->assertGreaterThan(0, $viewer->findCaretLine(), 'help_end jumps to the bottom');
+        $this->assertGreaterThan(0, $viewer->findCaretLine, 'help_end jumps to the bottom');
 
         $viewer->handleInput("\x1b[5~"); // Page Up
-        $this->assertLessThan($viewer->findCaretLine() + 1, $viewer->findCaretLine(), 'help_page_up is wired (sanity: still a valid line)');
+        $this->assertLessThan($viewer->findCaretLine + 1, $viewer->findCaretLine, 'help_page_up is wired (sanity: still a valid line)');
     }
 
     public function testCycleLinkDoesNotScrollWhenTheFocusedLinkIsAlreadyOnScreen(): void
     {
         $viewer = $this->viewer();
         $this->screen($viewer);
-        $before = $viewer->findCaretLine();
+        $before = $viewer->findCaretLine;
 
         $viewer->handleInput("\t"); // "Editor" is on the very first screen already
 
-        $this->assertSame($before, $viewer->findCaretLine(), 'a link already in view must not move the viewport');
+        $this->assertSame($before, $viewer->findCaretLine, 'a link already in view must not move the viewport');
     }
 
     public function testHighlightSplicesTheSelectionStyleExactlyAroundTheLinkTextInOrder(): void
@@ -823,7 +823,7 @@ final class HelpViewerWidgetTest extends TestCase
     {
         $viewer = $this->viewer();
         $viewer->render(new RenderContext(60, 40));
-        $lineNo = \array_search('Paragraph 1.', $viewer->findLines(), strict: true);
+        $lineNo = \array_search('Paragraph 1.', $viewer->findLines, strict: true);
         $this->assertIsInt($lineNo);
 
         $viewer->showSearchMatches([$lineNo => [['start' => 0, 'end' => 9, 'current' => true]]]);
@@ -841,7 +841,7 @@ final class HelpViewerWidgetTest extends TestCase
     {
         $viewer = $this->viewer();
         $viewer->render(new RenderContext(60, 40));
-        $lineNo = \array_search('Paragraph 1.', $viewer->findLines(), strict: true);
+        $lineNo = \array_search('Paragraph 1.', $viewer->findLines, strict: true);
         $this->assertIsInt($lineNo);
 
         $viewer->showSearchMatches([$lineNo => [['start' => 0, 'end' => 9, 'current' => true]]]);
@@ -865,7 +865,7 @@ final class HelpViewerWidgetTest extends TestCase
         $viewer->refreshPage('/docs/x.md', "café society and more filler text to search\n");
         $viewer->render(new RenderContext(60, 10));
 
-        $lineNo = \array_search('café society and more filler text to search', $viewer->findLines(), strict: true);
+        $lineNo = \array_search('café society and more filler text to search', $viewer->findLines, strict: true);
         $this->assertIsInt($lineNo);
         // Highlight the word "society" (columns 5..11 of the plain text).
         $viewer->showSearchMatches([$lineNo => [['start' => 5, 'end' => 12, 'current' => true]]]);

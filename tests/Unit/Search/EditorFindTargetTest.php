@@ -18,12 +18,12 @@ final class EditorFindTargetTest extends TestCase
         $doc = $editor->getDocument();
         $target = new EditorFindTarget($doc, $editor->decorations);
 
-        $lines = $target->findLines();
+        $lines = $target->findLines;
         $this->assertContains('alpha', $lines);
         $this->assertContains('beta', $lines);
-        $this->assertSame($doc->version, $target->findVersion());
-        $this->assertSame($doc->cursorLine, $target->findCaretLine());
-        $this->assertSame($doc->cursorCol, $target->findCaretCol());
+        $this->assertSame($doc->version, $target->findVersion);
+        $this->assertSame($doc->cursorLine, $target->findCaretLine);
+        $this->assertSame($doc->cursorCol, $target->findCaretCol);
 
         // Revealing a match moves the document caret (the editor scrolls it in).
         $target->revealMatch(1, startByte: 0, endByte: 4);
@@ -39,6 +39,6 @@ final class EditorFindTargetTest extends TestCase
         );
 
         // The editor is editable, so replace targets its document.
-        $this->assertSame($doc, $target->replaceDocument());
+        $this->assertSame($doc, $target->replaceDocument);
     }
 }

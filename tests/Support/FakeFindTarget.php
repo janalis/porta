@@ -18,30 +18,30 @@ final class FakeFindTarget implements FindTarget
     /** @var array<int, list<array{start: int, end: int, current: bool}>> the last mirror */
     public array $lastMatches = [];
 
+    public array $findLines {
+        get => \array_values($this->document->lines);
+    }
+
+    public int $findVersion {
+        get => $this->document->version;
+    }
+
+    public int $findCaretLine {
+        get => $this->document->cursorLine;
+    }
+
+    public int $findCaretCol {
+        get => $this->document->cursorCol;
+    }
+
+    public ?Document $replaceDocument {
+        get => $this->readOnly ? null : $this->document;
+    }
+
     public function __construct(
         private readonly Document $document,
         private readonly bool $readOnly = false,
     ) {}
-
-    public function findLines(): array
-    {
-        return \array_values($this->document->lines);
-    }
-
-    public function findVersion(): int
-    {
-        return $this->document->version;
-    }
-
-    public function findCaretLine(): int
-    {
-        return $this->document->cursorLine;
-    }
-
-    public function findCaretCol(): int
-    {
-        return $this->document->cursorCol;
-    }
 
     public function revealMatch(int $line, int $startByte, int $endByte): void
     {
@@ -51,10 +51,5 @@ final class FakeFindTarget implements FindTarget
     public function showSearchMatches(array $byLine): void
     {
         $this->lastMatches = $byLine;
-    }
-
-    public function replaceDocument(): ?Document
-    {
-        return $this->readOnly ? null : $this->document;
     }
 }

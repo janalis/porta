@@ -44,7 +44,8 @@ final class HelpViewerWidget extends EditorPaneWidget implements FindTarget
     private int $renderedWidth = 0;
     private int $scrollTop = 0;
     /** Bumped whenever the searchable lines change (new page / re-wrap). */
-    private int $findVersion = 0;
+    #[\Override]
+    public private(set) int $findVersion = 0;
     /** @var array<int, list<array{start: int, end: int, current: bool}>> find-bar matches by line (byte cols into the stripped line) */
     private array $searchMatches = [];
     /** The Tab-focused link group, -1 = none. */
@@ -556,27 +557,23 @@ final class HelpViewerWidget extends EditorPaneWidget implements FindTarget
     // --- FindTarget: the in-file find bar searches the rendered page ---------
 
     #[\Override]
-    public function findLines(): array
-    {
-        return \array_map(AnsiUtils::stripAnsiCodes(...), $this->doc->lines ?? []);
+    public array $findLines {
+        get => \array_map(AnsiUtils::stripAnsiCodes(...), $this->doc->lines ?? []);
     }
 
     #[\Override]
-    public function findVersion(): int
-    {
-        return $this->findVersion;
+    public int $findCaretLine {
+        get => $this->scrollTop; // "nearest match" anchors to the top of the viewport
     }
 
     #[\Override]
-    public function findCaretLine(): int
-    {
-        return $this->scrollTop; // "nearest match" anchors to the top of the viewport
+    public int $findCaretCol {
+        get => 0;
     }
 
     #[\Override]
-    public function findCaretCol(): int
-    {
-        return 0;
+    public ?Document $replaceDocument {
+        get => null; // documentation is read-only
     }
 
     #[\Override]
@@ -597,12 +594,6 @@ final class HelpViewerWidget extends EditorPaneWidget implements FindTarget
     {
         $this->searchMatches = $byLine;
         $this->invalidate();
-    }
-
-    #[\Override]
-    public function replaceDocument(): ?Document
-    {
-        return null; // documentation is read-only
     }
 
     /**
