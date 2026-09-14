@@ -27,10 +27,10 @@ final class LspClient implements LspClientInterface
     /** @var array<string, callable(array): void> notification method => handler */
     private array $notificationHandlers = [];
 
-    private bool $initialized = false;
+    public private(set) bool $isInitialized = false;
 
     /** @var array<string, mixed> capabilities advertised by the server's initialize result */
-    private array $serverCapabilities = [];
+    public private(set) array $serverCapabilities = [];
 
     /** @var list<callable(): void> queued actions until initialize completes */
     private array $whenReady = [];
@@ -61,19 +61,6 @@ final class LspClient implements LspClientInterface
     public function isRunning(): bool
     {
         return $this->transport->isRunning();
-    }
-
-    #[\Override]
-    public function isInitialized(): bool
-    {
-        return $this->initialized;
-    }
-
-    /** @return array<string, mixed> the server's advertised capabilities (empty until initialized) */
-    #[\Override]
-    public function serverCapabilities(): array
-    {
-        return $this->serverCapabilities;
     }
 
     #[\Override]
@@ -116,10 +103,10 @@ final class LspClient implements LspClientInterface
                 // what makes reusing $onReady for both phases safe. stop()
                 // cancels the watcher first, so a deliberate shutdown never
                 // lands here, and the transport fires EOF at most once.
-                $this->log($this->initialized ? 'server exited' : 'server exited before initialize completed');
+                $this->log($this->isInitialized ? 'server exited' : 'server exited before initialize completed');
                 // Feature requests gate on this; a dead server must decline
                 // them like an unserved language, not swallow them silently.
-                $this->initialized = false;
+                $this->isInitialized = false;
                 $onReady(Outcome::Failed);
             },
         );
@@ -143,7 +130,7 @@ final class LspClient implements LspClientInterface
                 $capabilities = \is_array($result) && \is_array($result['capabilities'] ?? null) ? $result['capabilities'] : [];
                 $this->serverCapabilities = $capabilities;
                 $this->notify('initialized', new \stdClass());
-                $this->initialized = true;
+                $this->isInitialized = true;
                 foreach ($this->whenReady as $action) {
                     $action();
                 }
@@ -299,7 +286,7 @@ final class LspClient implements LspClientInterface
     #[\Override]
     public function whenReady(callable $action): void
     {
-        if ($this->initialized) {
+        if ($this->isInitialized) {
             $action();
 
             return;
@@ -334,7 +321,7 @@ final class LspClient implements LspClientInterface
         }
         $this->transport->stop();
 
-        $this->initialized = false;
+        $this->isInitialized = false;
         $this->serverCapabilities = [];
         $this->pending = [];
     }

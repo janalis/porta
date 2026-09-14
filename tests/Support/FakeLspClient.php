@@ -16,7 +16,7 @@ class FakeLspClient implements LspClientInterface
 {
     public bool $started = false;
     public bool $stopped = false;
-    private bool $initialized = false;
+    public private(set) bool $isInitialized = false;
 
     /** @var array<string, mixed> */
     public array $capabilities = [];
@@ -47,14 +47,8 @@ class FakeLspClient implements LspClientInterface
         return $this->started && !$this->stopped;
     }
 
-    public function isInitialized(): bool
-    {
-        return $this->initialized;
-    }
-
-    public function serverCapabilities(): array
-    {
-        return $this->capabilities;
+    public array $serverCapabilities {
+        get => $this->capabilities;
     }
 
     public function onNotification(string $method, callable $handler): void
@@ -82,7 +76,7 @@ class FakeLspClient implements LspClientInterface
 
             return;
         }
-        $this->initialized = true;
+        $this->isInitialized = true;
         foreach ($this->queued as $action) {
             $action();
         }
@@ -92,7 +86,7 @@ class FakeLspClient implements LspClientInterface
 
     public function whenReady(callable $action): void
     {
-        if ($this->initialized) {
+        if ($this->isInitialized) {
             $action();
 
             return;
@@ -113,6 +107,6 @@ class FakeLspClient implements LspClientInterface
     public function stop(): void
     {
         $this->stopped = true;
-        $this->initialized = false;
+        $this->isInitialized = false;
     }
 }

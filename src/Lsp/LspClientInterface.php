@@ -15,10 +15,10 @@ interface LspClientInterface
 {
     public function isRunning(): bool;
 
-    public function isInitialized(): bool;
+    public bool $isInitialized { get; }
 
-    /** @return array<string, mixed> the server's advertised capabilities (empty until initialized) */
-    public function serverCapabilities(): array;
+    /** @var array<string, mixed> the server's advertised capabilities (empty until initialized) */
+    public array $serverCapabilities { get; }
 
     public function onNotification(string $method, callable $handler): void;
 

@@ -121,7 +121,7 @@ final class LspSession
     /** The server is up and past initialize — safe to send feature requests. */
     public function isInitialized(): bool
     {
-        return null !== $this->client && $this->client->isInitialized();
+        return null !== $this->client && $this->client->isInitialized;
     }
 
     // --- requests -----------------------------------------------------------
@@ -299,14 +299,14 @@ final class LspSession
     /** A single advertised server capability, null while no server is up (or none advertised). */
     public function serverCapability(string $name): mixed
     {
-        return $this->client?->serverCapabilities()[$name] ?? null;
+        return $this->client?->serverCapabilities[$name] ?? null;
     }
 
     /** Whether the language server declared incremental (kind 2) document sync. */
     private function serverUsesIncrementalSync(): bool
     {
         /** @var int|array<array-key, mixed> $sync */
-        $sync = $this->client?->serverCapabilities()['textDocumentSync'] ?? 1;
+        $sync = $this->client?->serverCapabilities['textDocumentSync'] ?? 1;
         $kind = \is_array($sync) ? (int) ($sync['change'] ?? 0) : $sync;
 
         return 2 === $kind;

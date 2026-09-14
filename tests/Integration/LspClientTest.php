@@ -127,7 +127,7 @@ final class LspClientTest extends TestCase
             return null !== $diagnostics;
         });
         $this->assertTrue($initialized);
-        $this->assertTrue($client->isInitialized());
+        $this->assertTrue($client->isInitialized);
         $this->assertSame('Mock diagnostic', $diagnostics['diagnostics'][0]['message'] ?? null);
         $this->assertSame('file:///tmp/x.php', $diagnostics['uri'] ?? null);
 
@@ -239,7 +239,7 @@ final class LspClientTest extends TestCase
             what: 'the crash to surface as a start outcome',
         );
         $this->assertFalse($ready, 'EOF before initialize reports Failed — "starting…" forever was the old defect');
-        $this->assertFalse($client->isInitialized());
+        $this->assertFalse($client->isInitialized);
         $this->assertNotEmpty($logs, 'stderr and EOF are logged');
     }
 
@@ -258,7 +258,7 @@ final class LspClientTest extends TestCase
             return [] !== $outcomes;
         }, what: 'the handshake to complete');
         $this->assertSame([Outcome::Ok], $outcomes);
-        $this->assertTrue($client->isInitialized());
+        $this->assertTrue($client->isInitialized);
 
         $process = Probe::get(Probe::get($client, 'transport'), 'process');
         \assert(\is_resource($process), description: 'the transport holds a live process while the client is up');
@@ -268,7 +268,7 @@ final class LspClientTest extends TestCase
             return 2 === \count($outcomes);
         }, what: 'the mid-session death to surface');
         $this->assertSame([Outcome::Ok, Outcome::Failed], $outcomes);
-        $this->assertFalse($client->isInitialized(), 'a dead server is not an initialized one');
+        $this->assertFalse($client->isInitialized, 'a dead server is not an initialized one');
     }
 
     public function testAServerThatExitsSilentlyBeforeInitializeReportsFailed(): void
@@ -288,7 +288,7 @@ final class LspClientTest extends TestCase
             return null !== $outcome;
         }, what: 'the EOF-before-initialize failure to surface');
         $this->assertSame(Outcome::Failed, $outcome);
-        $this->assertFalse($client->isInitialized());
+        $this->assertFalse($client->isInitialized);
     }
 
     public function testGarbageOutputIsResynced(): void
@@ -349,7 +349,7 @@ final class LspClientTest extends TestCase
         });
 
         $this->assertFalse($ready);
-        $this->assertFalse($client->isInitialized());
+        $this->assertFalse($client->isInitialized);
     }
 
     public function testChunkedResponseFrameIsBuffered(): void
@@ -413,7 +413,7 @@ final class LspClientTest extends TestCase
         $client->stop();
 
         $this->assertFalse($client->isRunning());
-        $this->assertFalse($client->isInitialized());
+        $this->assertFalse($client->isInitialized);
     }
 
     public function testSendAfterStopIsSilentlyDropped(): void
