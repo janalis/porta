@@ -84,9 +84,8 @@ final class WelcomeStepsTest extends TestCase
             {
                 return [
                     new class implements SyntaxHighlightProvider {
-                        public function id(): string
-                        {
-                            return 'stub';
+                        public string $id {
+                            get => 'stub';
                         }
 
                         public function supports(string $language): bool

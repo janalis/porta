@@ -41,7 +41,7 @@ final class HighlightRegistryTest extends TestCase
     {
         $registry = $this->registry([]);
 
-        $this->assertSame('plain', $registry->providerFor('php')->id());
+        $this->assertSame('plain', $registry->providerFor('php')->id);
     }
 
     /** Nothing claims the empty language, so the plain fallback is the terminal case. */
@@ -49,14 +49,14 @@ final class HighlightRegistryTest extends TestCase
     {
         $registry = $this->registry([]);
 
-        $this->assertSame('plain', $registry->providerFor('')->id());
+        $this->assertSame('plain', $registry->providerFor('')->id);
     }
 
     public function testFirstPluginInLoadOrderWinsWithoutConfig(): void
     {
         $registry = $this->registry([$this->provider('alpha', ['php']), $this->provider('beta', ['php'])]);
 
-        $this->assertSame('alpha', $registry->providerFor('php')->id());
+        $this->assertSame('alpha', $registry->providerFor('php')->id);
     }
 
     public function testConfiguredIdBeatsLoadOrder(): void
@@ -66,14 +66,14 @@ final class HighlightRegistryTest extends TestCase
             new HighlightPreferences(languages: ['php' => 'beta']),
         );
 
-        $this->assertSame('beta', $registry->providerFor('php')->id());
+        $this->assertSame('beta', $registry->providerFor('php')->id);
     }
 
     public function testStarClaimsEveryLanguage(): void
     {
         $registry = $this->registry([$this->provider('everything', ['*'])]);
 
-        $this->assertSame('everything', $registry->providerFor('rust')->id());
+        $this->assertSame('everything', $registry->providerFor('rust')->id);
     }
 
     /** An id nobody provides is a user error: warn by falling through, don't uncolor the file. */
@@ -81,7 +81,7 @@ final class HighlightRegistryTest extends TestCase
     {
         $registry = $this->registry([$this->provider('alpha', ['php'])], new HighlightPreferences(default: 'nope'));
 
-        $this->assertSame('alpha', $registry->providerFor('php')->id());
+        $this->assertSame('alpha', $registry->providerFor('php')->id);
     }
 
     /** A configured backend that doesn't claim the language must not win it. */
@@ -92,7 +92,7 @@ final class HighlightRegistryTest extends TestCase
             new HighlightPreferences(default: 'rustonly'),
         );
 
-        $this->assertSame('plain', $registry->providerFor('php')->id());
+        $this->assertSame('plain', $registry->providerFor('php')->id);
     }
 
     public function testUnavailableProviderDeclines(): void
@@ -107,7 +107,7 @@ final class HighlightRegistryTest extends TestCase
         );
         $registry = $this->registry([$unavailable]);
 
-        $this->assertSame('plain', $registry->providerFor('php')->id());
+        $this->assertSame('plain', $registry->providerFor('php')->id);
     }
 
     /** Interrogating a provider must never propagate — a throw means "doesn't claim it". */
@@ -115,21 +115,21 @@ final class HighlightRegistryTest extends TestCase
     {
         $registry = $this->registry([$this->throwingProvider('boom')]);
 
-        $this->assertSame('plain', $registry->providerFor('php')->id());
+        $this->assertSame('plain', $registry->providerFor('php')->id);
     }
 
     public function testThrowingIdIsSurvivedDuringPreferenceMatching(): void
     {
         $registry = $this->registry([$this->throwingIdProvider()], new HighlightPreferences(default: 'anything'));
 
-        $this->assertSame('plain', $registry->providerFor('php')->id());
+        $this->assertSame('plain', $registry->providerFor('php')->id);
     }
 
     public function testAvailableListsEveryClaimingBackend(): void
     {
         $registry = $this->registry([$this->provider('alpha', ['php'])]);
 
-        $ids = \array_map(static fn (SyntaxHighlightProvider $p): string => $p->id(), $registry->available('php'));
+        $ids = \array_map(static fn (SyntaxHighlightProvider $p): string => $p->id, $registry->available('php'));
 
         $this->assertSame(['alpha', 'plain'], $ids);
     }
@@ -142,7 +142,7 @@ final class HighlightRegistryTest extends TestCase
     {
         $registry = $this->registry([$this->provider('alpha', ['php'])]);
 
-        $ids = \array_map(static fn (SyntaxHighlightProvider $p): string => $p->id(), $registry->available(''));
+        $ids = \array_map(static fn (SyntaxHighlightProvider $p): string => $p->id, $registry->available(''));
 
         $this->assertSame(['plain'], $ids);
     }
@@ -220,9 +220,8 @@ final class HighlightRegistryTest extends TestCase
     private function throwingIdProvider(): SyntaxHighlightProvider
     {
         return new class implements SyntaxHighlightProvider {
-            public function id(): string
-            {
-                throw new \RuntimeException('id exploded');
+            public string $id {
+                get => throw new \RuntimeException('id exploded');
             }
 
             public function supports(string $language): bool

@@ -368,9 +368,8 @@ final class CodeHighlighterIncrementalTest extends TestCase
     public function testPerLineParserFailureIgnoresAnythingAlreadyDelivered(): void
     {
         $provider = new class implements SyntaxHighlightProvider {
-            public function id(): string
-            {
-                return 'deliver-then-throw';
+            public string $id {
+                get => 'deliver-then-throw';
             }
 
             public function supports(string $language): bool

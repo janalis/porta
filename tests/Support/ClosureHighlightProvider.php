@@ -23,15 +23,10 @@ final class ClosureHighlightProvider implements SyntaxHighlightProvider
     /** @param \Closure(string, string): string $highlight (content, language) => markup */
     public function __construct(
         private readonly \Closure $highlight,
-        private readonly string $id = 'fake',
+        public readonly string $id = 'fake',
         private readonly bool $supports = true,
         private readonly bool $async = false,
     ) {}
-
-    public function id(): string
-    {
-        return $this->id;
-    }
 
     public function supports(string $language): bool
     {

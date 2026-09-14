@@ -197,7 +197,7 @@ final class SettingsHighlightController
         }
         $ids = [];
         foreach ($this->registry->available($language) as $provider) {
-            $ids[] = $provider->id();
+            $ids[] = $provider->id;
         }
 
         return $this->claims[$language] = $ids;

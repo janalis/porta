@@ -70,11 +70,11 @@ final class HighlightPreferencesTest extends TestCase
             $this->source([$this->provider('alpha', ['php']), $this->provider('beta', ['php'])]),
             $preferences,
         );
-        $this->assertSame('alpha', $registry->providerFor('php')->id());
+        $this->assertSame('alpha', $registry->providerFor('php')->id);
 
         $preferences->change('php', 'beta');
 
-        $this->assertSame('beta', $registry->providerFor('php')->id());
+        $this->assertSame('beta', $registry->providerFor('php')->id);
     }
 
     /** @param list<SyntaxHighlightProvider> $providers */

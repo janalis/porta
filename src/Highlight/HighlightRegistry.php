@@ -85,7 +85,7 @@ final readonly class HighlightRegistry
     private function idOf(SyntaxHighlightProvider $provider): ?string
     {
         try {
-            return $provider->id();
+            return $provider->id;
         } catch (\Throwable) {
             return null;
         }

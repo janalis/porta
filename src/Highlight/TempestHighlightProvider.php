@@ -30,9 +30,8 @@ final class TempestHighlightProvider implements ThemeAwareHighlightProvider
     }
 
     #[\Override]
-    public function id(): string
-    {
-        return 'tempest';
+    public string $id {
+        get => 'tempest';
     }
 
     #[\Override]

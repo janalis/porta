@@ -25,17 +25,11 @@ final readonly class CallableHighlightProvider implements SyntaxHighlightProvide
      * @param (\Closure(): bool)|null          $isAvailable null means always available
      */
     public function __construct(
-        private string $id,
+        public string $id,
         private \Closure $languages,
         private \Closure $highlight,
         private ?\Closure $isAvailable = null,
     ) {}
-
-    #[\Override]
-    public function id(): string
-    {
-        return $this->id;
-    }
 
     #[\Override]
     public function supports(string $language): bool

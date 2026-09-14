@@ -18,9 +18,8 @@ namespace Porta\Highlight;
 final class PlainTextHighlightProvider implements SyntaxHighlightProvider
 {
     #[\Override]
-    public function id(): string
-    {
-        return 'plain';
+    public string $id {
+        get => 'plain';
     }
 
     #[\Override]

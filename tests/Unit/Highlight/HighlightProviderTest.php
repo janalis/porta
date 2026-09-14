@@ -27,7 +27,7 @@ final class HighlightProviderTest extends TestCase
     {
         $provider = new PlainTextHighlightProvider();
 
-        $this->assertSame('plain', $provider->id());
+        $this->assertSame('plain', $provider->id);
         $this->assertSame("<?php\necho 1;", $this->markup($provider, "<?php\necho 1;"));
     }
 
@@ -45,7 +45,7 @@ final class HighlightProviderTest extends TestCase
     {
         $provider = new TempestHighlightProvider(new DarkTerminalTheme());
 
-        $this->assertSame('tempest', $provider->id());
+        $this->assertSame('tempest', $provider->id);
         $this->assertStringContainsString("\x1b[", $this->markup($provider, "<?php\nreturn 'x';"));
     }
 

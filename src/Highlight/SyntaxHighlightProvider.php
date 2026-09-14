@@ -39,7 +39,7 @@ namespace Porta\Highlight;
 interface SyntaxHighlightProvider
 {
     /** Stable id matching /^[a-z0-9][a-z0-9_-]*$/i; the value users name in config. */
-    public function id(): string;
+    public string $id { get; }
 
     /** Whether this backend colors $language (a {@see \Porta\Support\LanguageMap} grammar name). */
     public function supports(string $language): bool;
