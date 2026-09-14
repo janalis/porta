@@ -11,10 +11,12 @@ composer test:serial    # plain phpunit — ordering, races, leak reports
 composer analyze        # mago static analysis
 composer coverage:check # the suite with coverage, 100% enforced
 composer lint           # mago lint
+composer rector         # rector (apply) — follow with composer format
+composer rector:check   # rector dry run — fails on any change it would still make
 composer arch           # the architecture ratchet
 composer duplication    # phpcpd — zero copy-paste clones, tree-wide
-composer verify         # all seven, cheapest first, stopping at the first failure
-composer verify:quick   # the five fast ones (~3s) — the mid-work check
+composer verify         # all eight, cheapest first, stopping at the first failure
+composer verify:quick   # the six fast ones — the mid-work check
 composer flake:scan     # run the suite N times and name what failed at least once
 composer format         # mago format (apply)
 composer format:check   # mago format --check
@@ -118,7 +120,7 @@ composer analyze > /tmp/x.log 2>&1; echo "exit=$?"
 
 ## Definition of done
 
-`composer verify` runs all seven and stops at the first failure — cheapest
+`composer verify` runs all eight and stops at the first failure — cheapest
 first, `coverage:check` last, because it runs the whole suite and so subsumes
 `composer test`. Running `composer test` *and* `coverage:check` ran that suite
 twice; over one session that repetition was 31% of 233 minutes of test
@@ -196,6 +198,21 @@ disables nothing — every rule runs, calibrated to this codebase's maxima.
 `excludes` drops paths: the six mock LSP/DAP servers, which are procedural
 scripts by design. The threshold rationale, and which class pins each number,
 is in `mago.toml` itself.
+
+The linter also holds the tree to **Symfony's coding standard**, beyond what
+the formatter can: yoda comparisons, fully qualified native functions and
+constants (`\sprintf()`, `\PHP_EOL` — every one, since mago cannot restrict the
+rule to php-cs-fixer's `@compiler_optimized` list), and `$this->assert*()` in
+tests. Static closures and static methods keep `self::assert*()`; the rule
+knows the difference.
+
+**`composer rector:check`** — Rector's dry run reports **no pending change**.
+`rector.php` names the sets (PHP up to 8.5, code quality, dead code, type
+declarations, PHPUnit code quality) and, next to each skipped rule, why it is
+skipped. It runs after mago because it is slower, and it never imports names:
+that would undo the qualified calls the linter demands. After `composer rector`,
+run `composer format` and read the reprinted lines — Rector re-prints what it
+touches, and the formatter keeps whatever breaks it chose.
 
 **`mago lint --fix` is not safe to run unattended here.** Its "safe" fixes
 include `no-empty-loop`, which deleted the socket drain in `BidiTuiTest` —

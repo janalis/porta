@@ -44,6 +44,7 @@
         "carthage-software/mago": "1.47.*",
         "infection/infection": "^0.35.4",
         "phpunit/phpunit": "^13.2",
+        "rector/rector": "^2.6",
         "systemsdk/phpcpd": "^9.1"
     },
     "suggest": {
@@ -55,6 +56,8 @@
         "format:check": "mago format --check",
         "lint": "mago lint --minimum-fail-level=note",
         "analyze": "mago analyze --minimum-fail-level=note",
+        "rector": "rector process",
+        "rector:check": "rector process --dry-run --no-progress-bar",
         "test": "@php vendor/bin/paratest --processes=${PORTA_TEST_PROCESSES:-$(( ($(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4) + 1) / 2 ))} --functional",
         "test:serial": "@php vendor/bin/phpunit --order-by=default",
         "coverage": "@php -d pcov.enabled=1 -d pcov.directory=. -d pcov.exclude='#/(vendor|tests)/#' vendor/bin/paratest --processes=${PORTA_TEST_PROCESSES:-$(( ($(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4) + 1) / 2 ))} --functional --passthru-php=\"'-d' 'pcov.enabled=1' '-d' 'pcov.directory=.' '-d' 'pcov.exclude=#/(vendor|tests)/#'\" --coverage-clover coverage/clover.xml",
@@ -78,6 +81,7 @@
             "@format:check",
             "@lint",
             "@analyze",
+            "@rector:check",
             "@arch",
             "@duplication"
         ],

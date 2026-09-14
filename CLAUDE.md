@@ -12,8 +12,8 @@ routed below — read the page before working in that area, not after.
 ## Commands
 
 ```bash
-composer verify   composer verify:quick  composer dev   composer test  composer arch
-composer analyze  composer lint   composer format  composer format:check  composer container
+composer verify   composer verify:quick  composer dev   composer test  composer arch  composer container
+composer analyze  composer lint   composer format  composer format:check  composer rector  composer rector:check
 composer coverage:check   composer coverage:src   composer coverage:plugins   composer duplication
 ```
 
@@ -26,7 +26,7 @@ runners or another agent (CI sets `PORTA_TEST_PROCESSES: auto`). Turn it down wi
 
 ## Definition of done — `composer verify` green
 
-All seven, cheapest first, stopping at the first failure; `verify:quick` skips the tail.
+All eight, cheapest first, stopping at the first failure; `verify:quick` skips the tail.
 
 - `composer coverage:check` — **100% line coverage** over `src/` AND every plugin's own
   `src/`, by that plugin's OWN tests. It runs the suite, so `composer test` is not a gate.
@@ -37,7 +37,7 @@ All seven, cheapest first, stopping at the first failure; `verify:quick` skips t
   allowlist in the same commit; a vanished edge is removed from it.
 - `composer duplication` — **zero clones** tree-wide, no allowlist: share it, or say in
   the code why the copy is the honest shape.
-- `composer format:check` — clean.
+- `composer format:check` clean; `composer rector:check` **no pending change** — skip, with why.
 
 ## Hard rules
 
