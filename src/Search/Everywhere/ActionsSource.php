@@ -17,7 +17,7 @@ use Porta\Support\FuzzyMatcher;
  * said "the menu bar and the command palette" since before the palette showed
  * one).
  */
-final class ActionsSource implements SearchSource
+final readonly class ActionsSource implements SearchSource
 {
     /**
      * @param (\Closure(string): string)|null $shortcutOf action id => its formatted key, '' when unbound;
@@ -25,8 +25,8 @@ final class ActionsSource implements SearchSource
      *                                                    bare source outside a running IDE can honestly say
      */
     public function __construct(
-        private readonly CommandRegistry $commands,
-        private readonly ?\Closure $shortcutOf = null,
+        private CommandRegistry $commands,
+        private ?\Closure $shortcutOf = null,
     ) {}
 
     #[\Override]

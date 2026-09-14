@@ -22,20 +22,20 @@ use Porta\Workbench\Notifier;
  * Problems list and the class↔test jump.
  */
 #[AsIdeService]
-final class SearchActions
+final readonly class SearchActions
 {
     public function __construct(
-        private readonly BottomDock $panels,
-        private readonly ProjectSearchController $projectSearch,
-        private readonly TestNavigator $testNavigator,
-        private readonly ProblemRows $problemRows,
-        private readonly BufferService $bufferService,
-        private readonly Notifier $notifier,
-        private readonly Translator $translator,
-        private readonly ActiveDocumentProvider $editor,
-        private readonly ProjectPaths $paths,
-        private readonly SuperMethodNavigator $superMethods,
-        private readonly EditorTextAccess $jump,
+        private BottomDock $panels,
+        private ProjectSearchController $projectSearch,
+        private TestNavigator $testNavigator,
+        private ProblemRows $problemRows,
+        private BufferService $bufferService,
+        private Notifier $notifier,
+        private Translator $translator,
+        private ActiveDocumentProvider $editor,
+        private ProjectPaths $paths,
+        private SuperMethodNavigator $superMethods,
+        private EditorTextAccess $jump,
     ) {}
 
     public function openProjectSearch(): void

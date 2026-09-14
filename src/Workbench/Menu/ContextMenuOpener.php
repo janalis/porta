@@ -45,29 +45,29 @@ use Symfony\Component\Tui\Tui;
  * with a zero-length move, because the focused pane's target is already its
  * selection.
  */
-final class ContextMenuOpener
+final readonly class ContextMenuOpener
 {
     public function __construct(
-        private readonly Tui $tui,
-        private readonly Renderer $renderer,
-        private readonly ContextMenu $contextMenu,
-        private readonly MenuOverlayController $overlay,
-        private readonly ContextMenuBuilder $items,
-        private readonly TreeOperations $treeOps,
-        private readonly MenuBarWidget $menuBar,
+        private Tui $tui,
+        private Renderer $renderer,
+        private ContextMenu $contextMenu,
+        private MenuOverlayController $overlay,
+        private ContextMenuBuilder $items,
+        private TreeOperations $treeOps,
+        private MenuBarWidget $menuBar,
         // Deliberately concrete: caretScreenCell (the keyboard-invoked menu's
         // anchor) lives in no role interface — a one-consumer role is not worth one.
-        private readonly CodeEditorWidget $editor,
-        private readonly FileTreeWidget $tree,
-        private readonly TabBarWidget $tabBar,
-        private readonly BufferManager $buffers,
-        private readonly Notifier $notifier,
-        private readonly Translator $translator,
-        private readonly TerminalPanelWidget $terminalPanel,
-        private readonly DockTabsWidget $dockTabs,
-        private readonly TerminalSessions $sessions,
-        private readonly ViewMenuSources $viewMenus,
-        private readonly ViewRegistry $views,
+        private CodeEditorWidget $editor,
+        private FileTreeWidget $tree,
+        private TabBarWidget $tabBar,
+        private BufferManager $buffers,
+        private Notifier $notifier,
+        private Translator $translator,
+        private TerminalPanelWidget $terminalPanel,
+        private DockTabsWidget $dockTabs,
+        private TerminalSessions $sessions,
+        private ViewMenuSources $viewMenus,
+        private ViewRegistry $views,
     ) {}
 
     /** Open the focused pane's context menu, or flash when the pane has none. */

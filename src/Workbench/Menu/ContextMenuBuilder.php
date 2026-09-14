@@ -19,18 +19,18 @@ use Porta\Workbench\Dock\DockTab;
  * actions, dock strip tabs, git change rows), so the mouse router carries no
  * menu content of its own.
  */
-final class ContextMenuBuilder
+final readonly class ContextMenuBuilder
 {
     public function __construct(
-        private readonly CommandRegistry $commands,
-        private readonly EditorCommandTarget $editor,
-        private readonly LiveKeybindings $keybindings,
-        private readonly BufferService $bufferService,
-        private readonly Translator $translator,
-        private readonly BottomDock $dock,
-        private readonly RunController $run,
-        private readonly PluginManager $plugins,
-        private readonly MenuFileContext $fileContext,
+        private CommandRegistry $commands,
+        private EditorCommandTarget $editor,
+        private LiveKeybindings $keybindings,
+        private BufferService $bufferService,
+        private Translator $translator,
+        private BottomDock $dock,
+        private RunController $run,
+        private PluginManager $plugins,
+        private MenuFileContext $fileContext,
     ) {}
 
     /**

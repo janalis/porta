@@ -24,12 +24,12 @@ use Porta\Workbench\Dock\DockTab;
  * itself while a session runs — the strip reads it per frame.
  */
 #[AsIdeService]
-final class CoreDockPanels
+final readonly class CoreDockPanels
 {
     public function __construct(
-        private readonly DockPanels $panels,
-        private readonly DebugPanelWidget $debugPanel,
-        private readonly Translator $translator,
+        private DockPanels $panels,
+        private DebugPanelWidget $debugPanel,
+        private Translator $translator,
     ) {}
 
     public function register(): void

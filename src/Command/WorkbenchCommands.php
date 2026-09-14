@@ -24,23 +24,23 @@ use Symfony\Component\Tui\Tui;
 
 /** The key-bound-only workbench chords: quit, focus movement, global overlays. */
 #[AsTaggedItem(priority: 700)]
-final class WorkbenchCommands implements CommandProvider
+final readonly class WorkbenchCommands implements CommandProvider
 {
     public function __construct(
-        private readonly WorkbenchActions $workbench,
-        private readonly FocusCoordinator $focusCoordinator,
-        private readonly ContextMenuOpener $contextMenuOpener,
-        private readonly PaneResizer $paneResizer,
-        private readonly BufferService $bufferService,
-        private readonly SearchEverywhereController $searchEverywhere,
+        private WorkbenchActions $workbench,
+        private FocusCoordinator $focusCoordinator,
+        private ContextMenuOpener $contextMenuOpener,
+        private PaneResizer $paneResizer,
+        private BufferService $bufferService,
+        private SearchEverywhereController $searchEverywhere,
         #[Autowire(service: 'porta.command_palette')]
-        private readonly SearchEverywhereController $commandPalette,
-        private readonly RunController $run,
-        private readonly EditorArea $editorArea,
-        private readonly Tui $tui,
-        private readonly FileTreeWidget $tree,
-        private readonly MenuBarWidget $menuBar,
-        private readonly FindBarWidget $findBar,
+        private SearchEverywhereController $commandPalette,
+        private RunController $run,
+        private EditorArea $editorArea,
+        private Tui $tui,
+        private FileTreeWidget $tree,
+        private MenuBarWidget $menuBar,
+        private FindBarWidget $findBar,
     ) {}
 
     #[\Override]

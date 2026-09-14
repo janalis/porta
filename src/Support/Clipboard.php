@@ -7,10 +7,10 @@ namespace Porta\Support;
 use Symfony\Component\Tui\Tui;
 
 /** The system clipboard, written through the terminal via OSC 52. */
-final class Clipboard
+final readonly class Clipboard
 {
     public function __construct(
-        private readonly Tui $tui,
+        private Tui $tui,
     ) {}
 
     /** Copy $text to the system clipboard (skipping oversized payloads). */

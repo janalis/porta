@@ -40,7 +40,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
     use StylesDefault;
 
     /** Display columns of the vertical (left/right) tab list, when the pane can seat them. */
-    public const VERTICAL_WIDTH = 24;
+    public const int VERTICAL_WIDTH = 24;
 
     /**
      * Below this the strip has no room for a name beside its dirty dot and its

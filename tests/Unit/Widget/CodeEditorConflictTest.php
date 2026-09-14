@@ -19,7 +19,7 @@ final class CodeEditorConflictTest extends TestCase
         return $editor;
     }
 
-    private const TWO_REGIONS = "<<<<<<< a\nx\n=======\ny\n>>>>>>> b\nmid\n<<<<<<< c\nz\n=======\nw\n>>>>>>> d";
+    private const string TWO_REGIONS = "<<<<<<< a\nx\n=======\ny\n>>>>>>> b\nmid\n<<<<<<< c\nz\n=======\nw\n>>>>>>> d";
 
     public function testNextConflictNavigatesAndWraps(): void
     {
@@ -110,7 +110,7 @@ final class CodeEditorConflictTest extends TestCase
         $this->assertStringContainsString('<<<<<<< a', $editor->getDocument()->getText());
     }
 
-    private const THREE_REGIONS = "before\n<<<<<<< a\no1\n=======\nt1\n>>>>>>> b\nmid1\n<<<<<<< c\no2\n=======\nt2\n>>>>>>> d\nmid2\n<<<<<<< e\no3\n=======\nt3\n>>>>>>> f\nafter";
+    private const string THREE_REGIONS = "before\n<<<<<<< a\no1\n=======\nt1\n>>>>>>> b\nmid1\n<<<<<<< c\no2\n=======\nt2\n>>>>>>> d\nmid2\n<<<<<<< e\no3\n=======\nt3\n>>>>>>> f\nafter";
 
     public function testNextConflictSkipsPastTheCurrentRegionThenWrapsToTheFirst(): void
     {

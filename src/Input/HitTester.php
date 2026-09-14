@@ -17,10 +17,10 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
  * repeats for every pane, and for hit-testing the floating dropdown regions
  * that render outside any widget's rect.
  */
-final class HitTester
+final readonly class HitTester
 {
     public function __construct(
-        private readonly Renderer $renderer,
+        private Renderer $renderer,
     ) {}
 
     /** Whether $rect exists and the pointer is inside it — the wheel-scroll hit guard. */

@@ -20,14 +20,14 @@ use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
  * Default priority 0 — these run before the -100 ChromeRefreshListener sweep,
  * so the sweep repaints the already-rebuilt state.
  */
-final class MenuLayoutRefreshListener
+final readonly class MenuLayoutRefreshListener
 {
     public function __construct(
-        private readonly MenuRebuilder $menuRebuilder,
-        private readonly PaneLayout $paneLayout,
-        private readonly Translator $translator,
-        private readonly MenuBarWidget $menuBar,
-        private readonly ContextMenu $contextMenu,
+        private MenuRebuilder $menuRebuilder,
+        private PaneLayout $paneLayout,
+        private Translator $translator,
+        private MenuBarWidget $menuBar,
+        private ContextMenu $contextMenu,
     ) {}
 
     #[AsEventListener]

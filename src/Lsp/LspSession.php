@@ -26,7 +26,7 @@ final class LspSession
     private ?string $changeDebounce = null;
 
     /** @var \Closure(list<string>, string, \Closure(string): void, array<string, mixed>|null): LspClientInterface */
-    private \Closure $clientFactory;
+    private readonly \Closure $clientFactory;
 
     /**
      * @param (\Closure(list<string>, string, \Closure(string): void, array<string, mixed>|null): LspClientInterface)|null $clientFactory

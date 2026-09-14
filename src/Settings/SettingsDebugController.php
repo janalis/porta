@@ -16,15 +16,15 @@ use Porta\Workbench\Notifier;
  * into .porta.json's `languages.<id>.debug` block and update the live
  * {@see DebugAdapters} registry; they apply to the next debug session.
  */
-final class SettingsDebugController
+final readonly class SettingsDebugController
 {
     public function __construct(
-        private readonly DebugAdapters $adapters,
-        private readonly Notifier $notifier,
-        private readonly Translator $translator,
-        private readonly PortaJsonWriter $writer,
-        private readonly SettingsScope $scope,
-        private readonly SettingsProvenance $provenance,
+        private DebugAdapters $adapters,
+        private Notifier $notifier,
+        private Translator $translator,
+        private PortaJsonWriter $writer,
+        private SettingsScope $scope,
+        private SettingsProvenance $provenance,
     ) {}
 
     /** @return list<SettingsRow> */

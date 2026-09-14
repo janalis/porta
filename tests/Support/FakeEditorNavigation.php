@@ -6,19 +6,19 @@ namespace Porta\Tests\Support;
 
 use Porta\Widget\EditorNavigationHandler;
 
-final class FakeEditorNavigation implements EditorNavigationHandler
+final readonly class FakeEditorNavigation implements EditorNavigationHandler
 {
     public function __construct(
-        private readonly ?\Closure $requestDefinition = null,
-        private readonly ?\Closure $requestImplementation = null,
-        private readonly ?\Closure $requestTypeDefinition = null,
-        private readonly ?\Closure $navigateBack = null,
-        private readonly ?\Closure $requestHover = null,
-        private readonly ?\Closure $requestReferences = null,
-        private readonly ?\Closure $requestFileStructure = null,
-        private readonly ?\Closure $requestPeek = null,
-        private readonly ?\Closure $requestCallHierarchy = null,
-        private readonly ?\Closure $requestOutgoingCalls = null,
+        private ?\Closure $requestDefinition = null,
+        private ?\Closure $requestImplementation = null,
+        private ?\Closure $requestTypeDefinition = null,
+        private ?\Closure $navigateBack = null,
+        private ?\Closure $requestHover = null,
+        private ?\Closure $requestReferences = null,
+        private ?\Closure $requestFileStructure = null,
+        private ?\Closure $requestPeek = null,
+        private ?\Closure $requestCallHierarchy = null,
+        private ?\Closure $requestOutgoingCalls = null,
     ) {}
 
     public function requestDefinition(int $line, int $utf16Col): void

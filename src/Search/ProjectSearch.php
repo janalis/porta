@@ -347,13 +347,7 @@ final class ProjectSearch
      */
     private static function matchesAnyGlob(string $name, array $globs): bool
     {
-        foreach ($globs as $glob) {
-            if (\fnmatch($glob, $name)) {
-                return true;
-            }
-        }
-
-        return false;
+        return \array_any($globs, static fn (string $glob): bool => \fnmatch($glob, $name));
     }
 
     /**
@@ -436,14 +430,14 @@ final class ProjectSearch
                 \restore_error_handler();
             }
 
-            return null === $result ? $content : $result;
+            return $result ?? $content;
         }
         $repl = $options->regex ? $replacement : (string) \preg_replace('/[\\\\$]/', replacement: '\\\\$0', subject: $replacement);
         \set_error_handler(static fn (): bool => true);
         $result = \preg_replace($pattern, $repl, $content);
         \restore_error_handler();
 
-        return null === $result ? $content : $result;
+        return $result ?? $content;
     }
 
     /**

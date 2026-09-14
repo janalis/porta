@@ -20,10 +20,10 @@ use Symfony\Component\Filesystem\Filesystem;
  * There is deliberately no custom install-path plugin in play (see the class
  * doc on `PluginInstaller` for why) — this file is the entire mechanism.
  */
-final class PluginComposerProject
+final readonly class PluginComposerProject
 {
     public function __construct(
-        private readonly Filesystem $fs = new Filesystem(),
+        private Filesystem $fs = new Filesystem(),
     ) {}
 
     /**

@@ -10,11 +10,11 @@ use Porta\Workbench\View\ViewRegistry;
  * F6/Ctrl+F6 focus cycling: an open view owns its own ring; otherwise the
  * editor layout's focus ring cycles.
  */
-final class FocusCoordinator
+final readonly class FocusCoordinator
 {
     public function __construct(
-        private readonly FocusRing $ring,
-        private readonly ViewRegistry $views,
+        private FocusRing $ring,
+        private ViewRegistry $views,
     ) {}
 
     public function cycle(int $direction): void

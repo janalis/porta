@@ -25,18 +25,18 @@ use Tempest\Highlight\TerminalTheme;
  * should be handed. Fragments therefore always use the built-in backend, never
  * a plugin's.
  */
-final class CodeHighlighterFactory
+final readonly class CodeHighlighterFactory
 {
-    private readonly HighlightRegistry $registry;
-    private readonly TerminalTheme $syntaxTheme;
+    private HighlightRegistry $registry;
+    private TerminalTheme $syntaxTheme;
 
     public function __construct(
         ?HighlightRegistry $registry = null,
         ?TerminalTheme $syntaxTheme = null,
-        private readonly ?Tui $tui = null,
-        private readonly ?EditorInvalidator $editor = null,
-        private readonly ?Scheduler $scheduler = null,
-        private readonly ?PerfCollector $perf = null,
+        private ?Tui $tui = null,
+        private ?EditorInvalidator $editor = null,
+        private ?Scheduler $scheduler = null,
+        private ?PerfCollector $perf = null,
     ) {
         $this->syntaxTheme = $syntaxTheme ?? new DarkTerminalTheme();
         $this->registry = $registry ?? new HighlightRegistry(new NoHighlightPlugins(), new HighlightPreferences());

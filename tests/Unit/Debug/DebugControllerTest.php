@@ -133,9 +133,9 @@ final class DebugControllerTest extends TestCase
                     $this->opened[] = $path;
                 }
             },
-            new class($this->client) implements DapClientFactory {
+            new readonly class($this->client) implements DapClientFactory {
                 public function __construct(
-                    private readonly FakeDapClient $client,
+                    private FakeDapClient $client,
                 ) {}
 
                 public function create(array $argv): DapClientInterface
@@ -599,7 +599,7 @@ final class DebugControllerTest extends TestCase
             static fn (array $r): bool => 'variables' === $r['command'],
         );
         $this->assertCount(1, $variableRequests, 'only the ref>0 scope requested its variables');
-        $this->assertSame(1000, $variableRequests[\array_key_first($variableRequests)]['arguments']['variablesReference']);
+        $this->assertSame(1000, \array_first($variableRequests)['arguments']['variablesReference']);
     }
 
     public function testBreakpointTogglesSyncTheLiveSessionAndOtherFiles(): void

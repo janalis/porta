@@ -20,7 +20,7 @@ use Porta\Support\JsonFile;
  * Keymap entries override the built-in defaults for the given action;
  * unknown actions are collected in warnings so the UI can surface them.
  */
-final class IdeConfig
+final readonly class IdeConfig
 {
     /**
      * Editor/UI settings with their defaults. The `settings` block of
@@ -28,7 +28,7 @@ final class IdeConfig
      *
      * @var array<string, int|bool|string>
      */
-    public const DEFAULT_SETTINGS = [
+    public const array DEFAULT_SETTINGS = [
         'language' => 'en',
         'theme' => 'dark',
         'inlineDiagnostics' => true,
@@ -122,7 +122,7 @@ final class IdeConfig
     private const array NO_HIGHLIGHT = ['default' => '', 'languages' => []];
 
     /** The per-language indent override keys and their allowed values. */
-    private const INDENT_STYLES = ['auto', 'spaces', 'tabs'];
+    private const array INDENT_STYLES = ['auto', 'spaces', 'tabs'];
 
     /**
      * @param array<string, list<string>>                                                                                                    $keymap
@@ -136,15 +136,15 @@ final class IdeConfig
      * @param list<ConfigWarning>                                                                                                            $warnings
      */
     private function __construct(
-        public readonly array $keymap,
-        public readonly array $settings,
-        public readonly array $languages,
-        public readonly array $lspServers,
-        public readonly array $plugins,
-        public readonly array $disabledPlugins,
-        public readonly array $enabledPlugins,
-        public readonly array $highlight,
-        public readonly array $warnings,
+        public array $keymap,
+        public array $settings,
+        public array $languages,
+        public array $lspServers,
+        public array $plugins,
+        public array $disabledPlugins,
+        public array $enabledPlugins,
+        public array $highlight,
+        public array $warnings,
     ) {}
 
     /**
@@ -353,7 +353,7 @@ final class IdeConfig
                 $warnings[] = new ConfigWarning('Keymap action "%action%" in %file% must map to a key or list of keys', ['%action%' => $action, '%file%' => $label]);
                 continue;
             }
-            $keymap[$action] = \array_values(\array_map('strval', $keys));
+            $keymap[$action] = \array_values(\array_map(strval(...), $keys));
         }
 
         return $keymap;

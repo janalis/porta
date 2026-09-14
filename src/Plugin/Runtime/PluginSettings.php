@@ -7,7 +7,6 @@ namespace Porta\Plugin\Runtime;
 use Porta\Config\ConfigFiles;
 use Porta\Config\IdeConfig;
 use Porta\Config\PortaJsonWriter;
-use Porta\Plugin\Api\PluginApi;
 use Porta\Settings\SettingsProvenance;
 use Porta\Settings\SettingsRow;
 use Porta\Settings\SettingsRowKind;

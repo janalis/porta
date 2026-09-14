@@ -22,27 +22,27 @@ use Symfony\Component\Tui\Input\Keybindings;
  * backspace before the generic delete match. Rebuilt per document alongside
  * the other editor helpers; the clipboard is handed over on rebuild.
  */
-final class EditorActions
+final readonly class EditorActions
 {
     public function __construct(
-        private readonly Document $document,
-        private readonly MultiCaret $multiCaret,
-        private readonly EditorCompletion $completion,
-        private readonly EditorStructural $structural,
-        private readonly FoldModel $foldModel,
-        private readonly AutoPairService $autoPair,
-        private readonly EditorHost $host,
-        private readonly ClipboardRing $clipboard = new ClipboardRing(),
+        private Document $document,
+        private MultiCaret $multiCaret,
+        private EditorCompletion $completion,
+        private EditorStructural $structural,
+        private FoldModel $foldModel,
+        private AutoPairService $autoPair,
+        private EditorHost $host,
+        private ClipboardRing $clipboard = new ClipboardRing(),
         // Defaulted exactly as {@see \Porta\Widget\CodeEditorWidget}'s is, and
         // for the same reason: the widget-tree tests need not thread one, and
         // the one string this class shows the user is a modal TITLE, which
         // every other overlay in `src/` translates at its call site.
-        private readonly Translator $translator = new Translator('en'),
+        private Translator $translator = new Translator('en'),
         // The other thing this class occasionally has to say: that a verb had
         // nothing to act on. Optional for the same reason the translator is —
         // the widget-tree tests thread neither — and typed as the Support role
         // rather than the Ui service, so `Editor` keeps holding no Ui.
-        private readonly ?FlashSink $flash = null,
+        private ?FlashSink $flash = null,
     ) {
         $this->column = new ColumnSelection();
     }

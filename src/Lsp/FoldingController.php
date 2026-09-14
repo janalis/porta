@@ -17,14 +17,14 @@ use Symfony\Component\Tui\Tui;
  * error, or a timeout all fall back to the brace scan silently — the command
  * must never hang or fail just because the server is slow.
  */
-final class FoldingController
+final readonly class FoldingController
 {
     public function __construct(
-        private readonly LspSessionPool $lsp,
-        private readonly CodeEditorWidget $editor,
-        private readonly Scheduler $scheduler,
-        private readonly Tui $tui,
-        private readonly RequestRound $round = new RequestRound(),
+        private LspSessionPool $lsp,
+        private CodeEditorWidget $editor,
+        private Scheduler $scheduler,
+        private Tui $tui,
+        private RequestRound $round = new RequestRound(),
     ) {}
 
     public function foldAll(): void

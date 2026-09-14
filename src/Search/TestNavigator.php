@@ -9,10 +9,10 @@ namespace Porta\Search;
  * file name (`Foo.php` ↔ `FooTest.php`, extension-agnostic) and finds it anywhere
  * in the project via the shared {@see FileIndex}, skipping vendored code.
  */
-final class TestNavigator
+final readonly class TestNavigator
 {
     public function __construct(
-        private readonly FileIndex $files,
+        private FileIndex $files,
     ) {}
 
     /** Whether the file names a test: its basename (minus extension) ends with `Test`. */

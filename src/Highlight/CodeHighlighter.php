@@ -39,7 +39,7 @@ final class CodeHighlighter implements HighlightSink
      * Full "repair" parse after this many incremental updates, restoring
      * multi-line token fidelity (docblocks, heredocs) around past edits.
      */
-    private const REPAIR_EVERY = 25;
+    private const int REPAIR_EVERY = 25;
 
     /** Consecutive backend faults before this buffer falls back to plain text. */
     private const int MAX_STRIKES = 3;

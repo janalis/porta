@@ -8,18 +8,18 @@ use Porta\Editor\Document;
 use Porta\Editor\TemplateCatalog;
 use Porta\Widget\EditorCompletionHandler;
 
-final class FakeEditorCompletion implements EditorCompletionHandler
+final readonly class FakeEditorCompletion implements EditorCompletionHandler
 {
     public function __construct(
-        private readonly ?\Closure $requestCompletion = null,
-        private readonly ?\Closure $resolveCompletion = null,
+        private ?\Closure $requestCompletion = null,
+        private ?\Closure $resolveCompletion = null,
         /** Called as ($rawItem, $onDetail); a scenario answers by invoking $onDetail. */
-        private readonly ?\Closure $resolveCompletionDetail = null,
-        private readonly ?\Closure $requestSignatureHelp = null,
-        private readonly ?\Closure $scheduleDidChange = null,
-        private readonly ?\Closure $viewportScrolled = null,
+        private ?\Closure $resolveCompletionDetail = null,
+        private ?\Closure $requestSignatureHelp = null,
+        private ?\Closure $scheduleDidChange = null,
+        private ?\Closure $viewportScrolled = null,
         /** Overrides the built-in templates a scenario would otherwise get. */
-        private readonly ?\Closure $templatesFor = null,
+        private ?\Closure $templatesFor = null,
     ) {}
 
     /** @return array<string, string> */

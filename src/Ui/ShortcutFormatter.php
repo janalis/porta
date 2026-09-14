@@ -38,7 +38,8 @@ namespace Porta\Ui;
  */
 final class ShortcutFormatter
 {
-    private const MODIFIERS = [
+    /** @var array<string, string> */
+    private const array MODIFIERS = [
         'ctrl' => 'Ctrl',
         'alt' => 'Alt',
         'shift' => 'Shift',
@@ -47,7 +48,8 @@ final class ShortcutFormatter
         'super' => 'Cmd',
     ];
 
-    private const KEYS = [
+    /** @var array<string, string> */
+    private const array KEYS = [
         'up' => '↑',
         'down' => '↓',
         'left' => '←',

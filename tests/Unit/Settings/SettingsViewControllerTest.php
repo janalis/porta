@@ -58,7 +58,6 @@ use Porta\Settings\SettingsProvenance;
 use Porta\Settings\SettingsRow;
 use Porta\Settings\SettingsScope;
 use Porta\Settings\SettingsScopeRow;
-use Porta\Settings\SettingsSection;
 use Porta\Settings\SettingsViewController;
 use Porta\Settings\ShadowedWriteWarning;
 use Porta\Tests\Support\AttachedStyles;
@@ -315,9 +314,9 @@ final class SettingsViewControllerTest extends TestCase
             $this->host = new ViewHost(
                 $this->main,
                 $menuBar,
-                new class($editWidget) implements EditorAreaPanes {
+                new readonly class($editWidget) implements EditorAreaPanes {
                     public function __construct(
-                        private readonly ContainerWidget $editWidget,
+                        private ContainerWidget $editWidget,
                     ) {}
 
                     public function orderedEditorPanes(): array

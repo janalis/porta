@@ -263,9 +263,9 @@ final class PaneSegmenterTest extends TestCase
         // slides the pane's whole row sideways.
         $root = new ContainerWidget();
         $region = new DropdownRegion(0, 2, 3, 2);
-        $segmenter = new PaneSegmenter(new Renderer(new StyleSheet()), new class($region) implements \Porta\Overlay\Region\FloatingRegions {
+        $segmenter = new PaneSegmenter(new Renderer(new StyleSheet()), new readonly class($region) implements \Porta\Overlay\Region\FloatingRegions {
             public function __construct(
-                private readonly DropdownRegion $region,
+                private DropdownRegion $region,
             ) {}
 
             public function regions(): array

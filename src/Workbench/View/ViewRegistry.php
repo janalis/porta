@@ -87,13 +87,7 @@ final class ViewRegistry
      */
     public function isAnyOpen(): bool
     {
-        foreach ($this->views as $view) {
-            if ($view->ownsMainArea() && $view->isOpen()) {
-                return true;
-            }
-        }
-
-        return false;
+        return \array_any($this->views, static fn (ContributedView $view): bool => $view->ownsMainArea() && $view->isOpen());
     }
 
     /**

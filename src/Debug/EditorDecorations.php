@@ -13,12 +13,12 @@ use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
  * stopped-line band — to the editor. The buffer service calls this on every
  * buffer switch; the debug controller calls it when the debuggee stops.
  */
-final class EditorDecorations
+final readonly class EditorDecorations
 {
     public function __construct(
-        private readonly BreakpointStore $breakpoints,
-        private readonly DebugSessionState $state,
-        private readonly EditorDecorationSink $editor,
+        private BreakpointStore $breakpoints,
+        private DebugSessionState $state,
+        private EditorDecorationSink $editor,
     ) {}
 
     public function apply(string $path): void

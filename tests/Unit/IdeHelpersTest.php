@@ -691,7 +691,7 @@ final class IdeHelpersTest extends TestCase
         // and the View group's last entry is the tail. The git half of the
         // contract needs a repo fixture and is asserted in IdeGitFlowsTest.
         $this->assertSame('Debug Current File', $labels[0], 'the debug group has always led the palette');
-        $this->assertSame('Documentation', $labels[\array_key_last($labels)], 'view is the last group that registers here');
+        $this->assertSame('Documentation', \array_last($labels), 'view is the last group that registers here');
         $this->assertLessThan(\array_search('Show Problems', $labels, strict: true), \array_search('Save All', $labels, strict: true), 'file group precedes the search group');
         $this->assertNotContains('Git: Stage Current File', $labels, 'and git registers nothing outside a repository');
     }

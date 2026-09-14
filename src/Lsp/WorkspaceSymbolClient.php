@@ -19,11 +19,11 @@ use Porta\Support\ProjectPaths;
  * dead data that LOOKS like display data does. It cost a wrong diagnosis: a
  * mutation of it left the go-to-symbol E2e green, and the test was blamed.
  */
-final class WorkspaceSymbolClient
+final readonly class WorkspaceSymbolClient
 {
     public function __construct(
-        private readonly LspSessionPool $lsp,
-        private readonly ProjectPaths $paths,
+        private LspSessionPool $lsp,
+        private ProjectPaths $paths,
     ) {}
 
     /**

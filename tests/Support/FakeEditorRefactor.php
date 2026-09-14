@@ -6,15 +6,15 @@ namespace Porta\Tests\Support;
 
 use Porta\Widget\EditorRefactorHandler;
 
-final class FakeEditorRefactor implements EditorRefactorHandler
+final readonly class FakeEditorRefactor implements EditorRefactorHandler
 {
     public function __construct(
-        private readonly ?\Closure $requestPrepareRename = null,
-        private readonly ?\Closure $requestCodeActions = null,
-        private readonly ?\Closure $requestReformat = null,
-        private readonly ?\Closure $requestRefactorings = null,
-        private readonly ?\Closure $requestInline = null,
-        private readonly ?\Closure $requestOrganizeImports = null,
+        private ?\Closure $requestPrepareRename = null,
+        private ?\Closure $requestCodeActions = null,
+        private ?\Closure $requestReformat = null,
+        private ?\Closure $requestRefactorings = null,
+        private ?\Closure $requestInline = null,
+        private ?\Closure $requestOrganizeImports = null,
     ) {}
 
     public function requestPrepareRename(int $line, int $col, string $word): void

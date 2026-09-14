@@ -99,7 +99,7 @@ final class SearchUiWiringTest extends TestCase
             /** @param list<string> $opened */
             public function __construct(
                 private array &$opened,
-                private CodeEditorWidget $editor,
+                private readonly CodeEditorWidget $editor,
             ) {}
 
             public function openFile(string $path, OpenFocus $focus = OpenFocus::Keep): void

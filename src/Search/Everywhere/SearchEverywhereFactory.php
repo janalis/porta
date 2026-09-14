@@ -32,34 +32,34 @@ use Symfony\Component\Tui\Tui;
  * (both resolve to the same widget): the overlay surface the controllers
  * drive, and the text seam the jump hooks close over.
  */
-final class SearchEverywhereFactory
+final readonly class SearchEverywhereFactory
 {
     public function __construct(
-        private readonly SearchOverlay $overlay,
-        private readonly EditorTextAccess $editorText,
-        private readonly CommandRegistry $commands,
-        private readonly BufferManager $buffers,
-        private readonly FileOpener $bufferService,
-        private readonly LspSessionPool $lsp,
-        private readonly Tui $tui,
-        private readonly Scheduler $scheduler,
-        private readonly ProjectPaths $paths,
-        private readonly RecentFilesStore $recentFiles,
-        private readonly Translator $translator,
+        private SearchOverlay $overlay,
+        private EditorTextAccess $editorText,
+        private CommandRegistry $commands,
+        private BufferManager $buffers,
+        private FileOpener $bufferService,
+        private LspSessionPool $lsp,
+        private Tui $tui,
+        private Scheduler $scheduler,
+        private ProjectPaths $paths,
+        private RecentFilesStore $recentFiles,
+        private Translator $translator,
         // The one shared index: both pickers and the container's TestNavigator
         // consumer used to build their own, tripling the walk and the memory.
-        private readonly FileIndex $files,
+        private FileIndex $files,
         // Typed by the interface and named by id in config/services.php, not
         // by its class: the settings source lives in `Settings`, which already
         // imports this namespace. Importing it back would make the pair
         // mutually dependent for the sake of one constructor line.
         #[Autowire(service: 'porta.settings_search_source')]
-        private readonly SearchSource $settings,
+        private SearchSource $settings,
         // The two keymaps a palette hint has to consult, in the menu bar's own
         // order: an editor action is bound on the editor, an ide_* one on the
         // application map.
-        private readonly EditorCommandTarget $editor,
-        private readonly Keybindings $ideKeys,
+        private EditorCommandTarget $editor,
+        private Keybindings $ideKeys,
     ) {}
 
     /** An action's primary key, formatted as everywhere else, or '' when it has none. */

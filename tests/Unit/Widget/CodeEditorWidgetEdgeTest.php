@@ -313,7 +313,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         $this->assertStringContainsString('    ', $doc->getLine(1));
     }
 
-    private const CTRL_DOT = "\x1b[46;5u"; // toggle_fold
+    private const string CTRL_DOT = "\x1b[46;5u"; // toggle_fold
 
     private function foldFixture(): CodeEditorWidget
     {

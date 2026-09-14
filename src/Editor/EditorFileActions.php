@@ -12,17 +12,17 @@ use Porta\Widget\FindBarWidget;
 use Symfony\Component\Tui\Tui;
 
 /** The IDE-side implementation of the editor's file-level hooks. */
-final class EditorFileActions implements EditorFileActionHandler
+final readonly class EditorFileActions implements EditorFileActionHandler
 {
     public function __construct(
-        private readonly BufferService $bufferService,
-        private readonly BufferNavigator $navigator,
-        private readonly Clipboard $clipboard,
-        private readonly FindBarWidget $findBar,
+        private BufferService $bufferService,
+        private BufferNavigator $navigator,
+        private Clipboard $clipboard,
+        private FindBarWidget $findBar,
         // Concrete on purpose: it reads the document *and* hands the widget to
         // EditorFindTarget as the decoration sink for match highlighting.
-        private readonly CodeEditorWidget $editor,
-        private readonly Tui $tui,
+        private CodeEditorWidget $editor,
+        private Tui $tui,
     ) {}
 
     #[\Override]

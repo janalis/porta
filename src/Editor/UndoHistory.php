@@ -19,7 +19,7 @@ use Symfony\Component\Clock\NativeClock;
  */
 final class UndoHistory
 {
-    private const MAX_UNDO = 200;
+    private const int MAX_UNDO = 200;
 
     /**
      * Cumulative undo-stack budget, counted in retained lines: each snapshot
@@ -29,7 +29,7 @@ final class UndoHistory
      * Two million line-slots is ~72MB worst case; a small file never reaches
      * it (the step cap governs first), a huge one keeps the newest steps.
      */
-    private const MAX_RETAINED_LINES = 2_000_000;
+    private const int MAX_RETAINED_LINES = 2_000_000;
 
     /** @var list<Snapshot> */
     private array $undoStack = [];

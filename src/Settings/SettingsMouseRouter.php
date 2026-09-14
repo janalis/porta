@@ -24,16 +24,16 @@ use Symfony\Component\Tui\Tui;
  * swapped into the main area, so its hit tests miss otherwise. It carries no
  * cross-event drag state (settings has none).
  */
-final class SettingsMouseRouter implements ViewPointer
+final readonly class SettingsMouseRouter implements ViewPointer
 {
-    private readonly SeparatorWidget $separator;
+    private SeparatorWidget $separator;
 
     public function __construct(
-        private readonly HitTester $hit,
-        private readonly Tui $tui,
-        private readonly SettingsNavWidget $nav,
-        private readonly SettingsFormWidget $form,
-        private readonly KeybindingsListWidget $keys,
+        private HitTester $hit,
+        private Tui $tui,
+        private SettingsNavWidget $nav,
+        private SettingsFormWidget $form,
+        private KeybindingsListWidget $keys,
         ViewRegions $regions,
     ) {
         // Held for the divider hover tint only — the RECTS are core's now: it

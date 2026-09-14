@@ -22,7 +22,7 @@ use Porta\Support\SingleSlotProcess;
  * others, and the tool says so on stderr — which is what the pane's banner
  * shows.
  */
-final class PlantUmlEngine implements DiagramEngine
+final readonly class PlantUmlEngine implements DiagramEngine
 {
     /**
      * @param null|(\Closure(): ?string)|string $toolPath the "PlantUML" setting: a launcher, a .jar, or ''
@@ -30,9 +30,9 @@ final class PlantUmlEngine implements DiagramEngine
      *                                                    Settings edit applies without a restart
      */
     public function __construct(
-        private readonly string $rootDir,
-        private readonly \Closure|string|null $toolPath = null,
-        private readonly SingleSlotProcess $slot = new SingleSlotProcess(),
+        private string $rootDir,
+        private \Closure|string|null $toolPath = null,
+        private SingleSlotProcess $slot = new SingleSlotProcess(),
     ) {}
 
     public function baseDpi(): int

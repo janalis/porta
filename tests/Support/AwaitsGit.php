@@ -39,15 +39,7 @@ trait AwaitsGit
     private function awaitLanes(array $lanes, float $timeout = 5.0): void
     {
         $this->await(
-            static function () use ($lanes): bool {
-                foreach ($lanes as $lane) {
-                    if (0 !== $lane->inFlight()) {
-                        return false;
-                    }
-                }
-
-                return true;
-            },
+            static fn (): bool => \array_all($lanes, static fn (ProcessLane $lane): bool => 0 === $lane->inFlight()),
             $timeout,
             'git to finish',
         );

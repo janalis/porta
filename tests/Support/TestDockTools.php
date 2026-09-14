@@ -55,10 +55,10 @@ final class TestDockTools
     /** @param list<array{plugin: string, id: string, title: string, rerun: (\Closure(): void)|null, activate: (\Closure(string, int): void)|null}> $tools */
     public static function source(array $tools): DockToolSource
     {
-        return new class($tools) implements DockToolSource {
+        return new readonly class($tools) implements DockToolSource {
             /** @param list<array{plugin: string, id: string, title: string, rerun: (\Closure(): void)|null, activate: (\Closure(string, int): void)|null}> $tools */
             public function __construct(
-                private readonly array $tools,
+                private array $tools,
             ) {}
 
             public function listTools(): array

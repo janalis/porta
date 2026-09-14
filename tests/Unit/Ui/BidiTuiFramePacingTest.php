@@ -92,7 +92,7 @@ final class BidiTuiFramePacingTest extends TestCase
         $this->assertStringNotContainsString('line 1', $this->terminal->getOutput(), 'the frame inside the window was not generated');
         $this->assertTrue((bool) Probe::get($tui, 'renderRequested'), 'the request stays pending');
         $this->assertCount(1, $this->scheduler->delays, 'one trailing wakeup armed');
-        $this->assertEqualsWithDelta(BidiTui::MIN_FRAME_INTERVAL - 0.005, $this->scheduler->delays[\array_key_first($this->scheduler->delays)], 0.0005, 'armed for the remainder of the window');
+        $this->assertEqualsWithDelta(BidiTui::MIN_FRAME_INTERVAL - 0.005, \array_first($this->scheduler->delays), 0.0005, 'armed for the remainder of the window');
         $tui->stop();
     }
 
@@ -302,9 +302,9 @@ final class BidiTuiFramePacingTest extends TestCase
         $clock = $this->clock;
         // The regions are asked for INSIDE the reorder stage, so a sleep here is
         // time genuinely spent between the widget tree and the terminal.
-        $tui->setPaneReorder(new PaneSegmenter($this->renderer, new class($clock) implements \Porta\Overlay\Region\FloatingRegions {
+        $tui->setPaneReorder(new PaneSegmenter($this->renderer, new readonly class($clock) implements \Porta\Overlay\Region\FloatingRegions {
             public function __construct(
-                private readonly MockClock $clock,
+                private MockClock $clock,
             ) {}
 
             public function regions(): array

@@ -44,7 +44,7 @@ final class MarkdownRendererTest extends TestCase
         $this->assertSame('═════', $plain[1], 'an H1 carries a double rule as wide as its title');
         $this->assertSame('───────', $plain[\array_search('Section', $plain, strict: true) + 1], 'an H2 carries a single rule');
         $this->assertContains('Sub', $plain);
-        $this->assertSame('Sub', $plain[\array_key_last($plain)], 'H3+ has no trailing rule');
+        $this->assertSame('Sub', \array_last($plain), 'H3+ has no trailing rule');
         $this->assertNotContains('# Title', $plain);
     }
 

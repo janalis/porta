@@ -18,12 +18,12 @@ use Symfony\Component\Tui\Tui;
  * a frame. Priority -100: the sweep must postdate the menu rebuild / RTL
  * re-mirror listeners so their re-baked output isn't cached stale.
  */
-final class ChromeRefreshListener
+final readonly class ChromeRefreshListener
 {
     public function __construct(
-        private readonly ChromeInvalidator $chrome,
-        private readonly WelcomeModalController $welcomeModal,
-        private readonly Tui $tui,
+        private ChromeInvalidator $chrome,
+        private WelcomeModalController $welcomeModal,
+        private Tui $tui,
     ) {}
 
     #[AsEventListener(priority: ListenerPriority::CHROME_SWEEP)]

@@ -26,10 +26,10 @@ use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
  * is there to stop.
  */
 #[AsTaggedItem(priority: 100)]
-final class PluginStatusSegments implements StatusSegment
+final readonly class PluginStatusSegments implements StatusSegment
 {
     public function __construct(
-        private readonly StatusSegmentSource $plugins,
+        private StatusSegmentSource $plugins,
     ) {}
 
     /** @return list<StatusCell> */

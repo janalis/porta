@@ -18,15 +18,15 @@ use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
 
 /** File-level palette commands: saving, LSP reformat, and the viewer escape hatch. */
 #[AsTaggedItem(priority: 400)]
-final class FileCommands implements CommandProvider
+final readonly class FileCommands implements CommandProvider
 {
     public function __construct(
-        private readonly BufferService $bufferService,
-        private readonly RefactorController $refactor,
-        private readonly BufferManager $buffers,
-        private readonly ScratchFiles $scratches,
-        private readonly ReferenceCopier $references,
-        private readonly ProjectSwitcher $projects,
+        private BufferService $bufferService,
+        private RefactorController $refactor,
+        private BufferManager $buffers,
+        private ScratchFiles $scratches,
+        private ReferenceCopier $references,
+        private ProjectSwitcher $projects,
     ) {}
 
     #[\Override]

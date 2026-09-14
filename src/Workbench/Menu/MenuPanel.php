@@ -21,16 +21,16 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
 final class MenuPanel
 {
     /** Never narrower than this, so short menus still read as a box. */
-    private const MIN_WIDTH = 8;
+    private const int MIN_WIDTH = 8;
 
     /** Columns an item row spends beside its text: the edge spaces plus the label↔shortcut breathing room. */
-    private const ITEM_CHROME = 4;
+    private const int ITEM_CHROME = 4;
 
     /** One edge space each side of the row (`⎵label…shortcut⎵`). */
-    private const EDGE_COLS = 2;
+    private const int EDGE_COLS = 2;
 
     /** Minimum gap between a label and its right-aligned shortcut. */
-    private const SHORTCUT_GAP = 2;
+    private const int SHORTCUT_GAP = 2;
 
     /**
      * Natural width of the panel (unclamped; the caller clamps it to fit the

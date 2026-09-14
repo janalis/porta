@@ -23,7 +23,7 @@ use Symfony\Component\Tui\Render\RenderContext;
  */
 final class EditorRenderGoldenTest extends TestCase
 {
-    private const GOLDEN = __DIR__.'/../../../Support/golden/editor-render.json';
+    private const string GOLDEN = __DIR__.'/../../../Support/golden/editor-render.json';
 
     public function testRenderOutputMatchesGolden(): void
     {

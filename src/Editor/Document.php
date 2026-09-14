@@ -22,7 +22,7 @@ final class Document
     /** The UTF-8 byte-order mark, stripped on load and re-emitted on save. */
     public const string BOM = "\u{FEFF}";
 
-    public const TAB_SIZE = 4;
+    public const int TAB_SIZE = 4;
 
     /** @var string[] */
     private array $lines = [''];

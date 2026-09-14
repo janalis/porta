@@ -23,20 +23,20 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
  * dimensions+zoom, or server activity + problems + caret + LSP legend, on the
  * right.
  */
-final class StatusBarProvider
+final readonly class StatusBarProvider
 {
     public function __construct(
-        private readonly BufferManager $buffers,
-        private readonly CodeEditorWidget $editor,
-        private readonly EditorPanes $panes,
+        private BufferManager $buffers,
+        private CodeEditorWidget $editor,
+        private EditorPanes $panes,
         /** @var iterable<StatusSegment> ambient-state contributors, core's first (see StatusSegment) */
         #[AutowireIterator('porta.status_segment')]
-        private readonly iterable $segmentSources,
-        private readonly LspSessionPool $lsp,
-        private readonly ServerProgress $progress,
-        private readonly Styles $styles,
-        private readonly Translator $translator,
-        private readonly ProjectPaths $paths,
+        private iterable $segmentSources,
+        private LspSessionPool $lsp,
+        private ServerProgress $progress,
+        private Styles $styles,
+        private Translator $translator,
+        private ProjectPaths $paths,
     ) {}
 
     /**

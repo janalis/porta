@@ -26,10 +26,10 @@ namespace Porta\Config;
  * {@see KeybindingsFactory}, where the map is actually built. An unknown id is
  * reported there, through the same boot-warning channel a failed plugin uses.
  */
-final class ActionRegistry
+final readonly class ActionRegistry
 {
     public function __construct(
-        private readonly RebindableActionSource $plugins,
+        private RebindableActionSource $plugins,
     ) {}
 
     /**

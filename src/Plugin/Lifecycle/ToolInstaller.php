@@ -26,7 +26,7 @@ final class ToolInstaller
      *
      * @var array<string, array{before: list<string>, after: list<string>}>
      */
-    private const MANAGERS = [
+    private const array MANAGERS = [
         'composer' => ['before' => ['require', '--dev'], 'after' => []],
         'brew' => ['before' => ['install'], 'after' => []],
         'cargo' => ['before' => ['install'], 'after' => ['--locked']],

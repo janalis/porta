@@ -19,21 +19,21 @@ use Porta\Workbench\Notifier;
  * first didOpen.
  */
 #[AsIdeService]
-final class LspBootstrapper
+final readonly class LspBootstrapper
 {
     public function __construct(
-        private readonly LspSessionPool $lsp,
-        private readonly LspLog $log,
-        private readonly WorkspaceEditor $workspaceEditor,
-        private readonly DiagnosticsSink $bufferService,
-        private readonly Notifier $notifier,
-        private readonly Translator $translator,
-        private readonly LanguageServerProvider $pluginServers,
-        private readonly ServerMessageReporter $messages,
-        private readonly ServerProgress $progress,
-        private readonly string $rootDir,
-        private readonly ?string $lspCommand,
-        private readonly bool $lspDisabled,
+        private LspSessionPool $lsp,
+        private LspLog $log,
+        private WorkspaceEditor $workspaceEditor,
+        private DiagnosticsSink $bufferService,
+        private Notifier $notifier,
+        private Translator $translator,
+        private LanguageServerProvider $pluginServers,
+        private ServerMessageReporter $messages,
+        private ServerProgress $progress,
+        private string $rootDir,
+        private ?string $lspCommand,
+        private bool $lspDisabled,
     ) {}
 
     public function start(): void

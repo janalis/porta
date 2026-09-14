@@ -9,7 +9,7 @@ namespace Porta\Overlay\Region;
  * one geometry the mouse router hit-tests and the RTL segmenter treats as its
  * own pane, previously threaded around as a four-key array shape.
  */
-final class DropdownRegion
+final readonly class DropdownRegion
 {
     /**
      * @param bool $ltr    whether the box's content is left-to-right verbatim
@@ -19,12 +19,12 @@ final class DropdownRegion
      *                     its outermost row/column ring is border, not items
      */
     public function __construct(
-        public readonly int $top,
-        public readonly int $col,
-        public readonly int $width,
-        public readonly int $count,
-        public readonly bool $ltr = false,
-        public readonly bool $framed = false,
+        public int $top,
+        public int $col,
+        public int $width,
+        public int $count,
+        public bool $ltr = false,
+        public bool $framed = false,
     ) {}
 
     /**

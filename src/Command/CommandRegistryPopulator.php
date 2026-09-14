@@ -16,13 +16,13 @@ use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
  * #[AsTaggedItem] priority.
  */
 #[AsIdeService]
-final class CommandRegistryPopulator
+final readonly class CommandRegistryPopulator
 {
     /** @param iterable<CommandProvider> $providers */
     public function __construct(
         #[AutowireIterator('porta.command_provider')]
-        private readonly iterable $providers,
-        private readonly CommandRegistry $commands,
+        private iterable $providers,
+        private CommandRegistry $commands,
     ) {}
 
     public function populate(): void

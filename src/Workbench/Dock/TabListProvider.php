@@ -10,11 +10,11 @@ use Porta\I18n\Translator;
 use Porta\Ui\Glyphs;
 
 /** The tab strip's rows, pulled at render time from the buffer list. */
-final class TabListProvider
+final readonly class TabListProvider
 {
     public function __construct(
-        private readonly BufferManager $buffers,
-        private readonly Translator $translator,
+        private BufferManager $buffers,
+        private Translator $translator,
     ) {}
 
     /** @return list<array{name: string, dirty: bool, active: bool}> */

@@ -49,10 +49,10 @@ final class SettingsHighlightControllerTest extends TestCase
             $this->project->write('.porta.json', $config);
         }
 
-        $source = new class($providers) implements SyntaxHighlightProviderSource {
+        $source = new readonly class($providers) implements SyntaxHighlightProviderSource {
             /** @param list<SyntaxHighlightProvider> $providers */
             public function __construct(
-                private readonly array $providers,
+                private array $providers,
             ) {}
 
             public function highlightProviders(): array

@@ -452,7 +452,7 @@ final class IdeRtlLocaleTest extends TestCase
                     $this->assertSame(120, $terminal->getColumns());
                     $lines = \array_values($renderer->render($root, 120, $terminal->getRows()));
                     $runs = $segmenter->segment($root, 120, $terminal->getRows());
-                    $last = $runs[0][\array_key_last($runs[0])];
+                    $last = \array_last($runs[0]);
                     $this->assertSame(120, $last['start'] + $last['width'], 'the pane segmentation spans the new width');
                     foreach ($lines as $row => $line) {
                         $this->assertSame(120, AnsiUtils::visibleWidth($reorder->reorderRow($line, $runs[$row])), "row {$row} kept the new width");

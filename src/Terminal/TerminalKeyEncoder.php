@@ -17,17 +17,17 @@ use Symfony\Component\Tui\Tui;
  * each key as its legacy byte sequence. When the protocol is inactive (the common
  * case) input already is legacy and is forwarded untouched.
  */
-final class TerminalKeyEncoder
+final readonly class TerminalKeyEncoder
 {
     /** @var array<string, string> arrow / home / end → final CSI letter */
-    private const CSI_LETTER = ['up' => 'A', 'down' => 'B', 'right' => 'C', 'left' => 'D', 'home' => 'H', 'end' => 'F'];
+    private const array CSI_LETTER = ['up' => 'A', 'down' => 'B', 'right' => 'C', 'left' => 'D', 'home' => 'H', 'end' => 'F'];
 
     /** @var array<string, int> editing keys → CSI "~" number */
-    private const CSI_TILDE = ['insert' => 2, 'delete' => 3, 'page_up' => 5, 'page_down' => 6];
+    private const array CSI_TILDE = ['insert' => 2, 'delete' => 3, 'page_up' => 5, 'page_down' => 6];
 
     public function __construct(
-        private readonly Tui $tui,
-        private readonly KeyParser $parser = new KeyParser(),
+        private Tui $tui,
+        private KeyParser $parser = new KeyParser(),
     ) {
         $this->parser->setKittyProtocolActive(true);
     }
@@ -106,7 +106,7 @@ final class TerminalKeyEncoder
     {
         $upper = \strtoupper($char);
         if ($upper >= 'A' && $upper <= 'Z') {
-            return \chr(\ord($upper) - 64);
+            return \chr(\ord($upper[0]) - 64);
         }
 
         return match ($char) {

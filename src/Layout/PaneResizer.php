@@ -13,14 +13,14 @@ use Symfony\Component\Tui\Tui;
  * focus. Sidebars move 2 columns per press, bottom panels 1 row; a
  * non-resizable focus answers false so the chord falls through to the widget.
  */
-final class PaneResizer
+final readonly class PaneResizer
 {
     public function __construct(
-        private readonly Tui $tui,
-        private readonly LayoutController $layout,
-        private readonly FileTreeWidget $tree,
-        private readonly BottomDock $dock,
-        private readonly ViewRegions $regions,
+        private Tui $tui,
+        private LayoutController $layout,
+        private FileTreeWidget $tree,
+        private BottomDock $dock,
+        private ViewRegions $regions,
     ) {}
 
     public function canResize(): bool

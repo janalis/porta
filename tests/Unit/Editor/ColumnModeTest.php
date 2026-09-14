@@ -135,7 +135,7 @@ final class ColumnModeTest extends TestCase
 
         $selections = $this->selections();
         $this->assertSame('e', $selections[0]);
-        $this->assertSame('e', $selections[\array_key_last($selections)], 'the last row is as wide as the first');
+        $this->assertSame('e', \array_last($selections), 'the last row is as wide as the first');
     }
 
     public function testPlainSelectionIsUntouchedWhileTheModeIsOff(): void

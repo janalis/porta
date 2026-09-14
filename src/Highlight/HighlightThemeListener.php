@@ -23,10 +23,10 @@ use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
  * engine. This is why the -100 chrome sweep is no longer globally last — it is
  * still after every rebuild listener, which is what that contract is about.
  */
-final class HighlightThemeListener
+final readonly class HighlightThemeListener
 {
     public function __construct(
-        private readonly BufferManager $buffers,
+        private BufferManager $buffers,
     ) {}
 
     #[AsEventListener(priority: ListenerPriority::CACHE_DROP)]

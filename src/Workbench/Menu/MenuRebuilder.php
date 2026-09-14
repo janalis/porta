@@ -18,17 +18,17 @@ use Porta\Workbench\View\ViewRegistry;
  * them (locale, theme, plugin set) re-runs this.
  */
 #[AsIdeService]
-final class MenuRebuilder
+final readonly class MenuRebuilder
 {
     public function __construct(
-        private readonly MenuBarWidget $menuBar,
-        private readonly CommandRegistry $commands,
-        private readonly EditorCommandTarget $editor,
-        private readonly LiveKeybindings $keybindings,
-        private readonly Translator $translator,
-        private readonly ViewRegistry $views,
-        private readonly PluginManager $plugins,
-        private readonly MenuContributions $contributions,
+        private MenuBarWidget $menuBar,
+        private CommandRegistry $commands,
+        private EditorCommandTarget $editor,
+        private LiveKeybindings $keybindings,
+        private Translator $translator,
+        private ViewRegistry $views,
+        private PluginManager $plugins,
+        private MenuContributions $contributions,
     ) {}
 
     public function rebuild(): void

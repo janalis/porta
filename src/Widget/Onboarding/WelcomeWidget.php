@@ -226,7 +226,7 @@ final class WelcomeWidget extends AbstractWidget implements FocusableInterface, 
         foreach ($this->steps as $index => $step) {
             $cards[] = $this->card($step, $index, $width, $content, $margin);
         }
-        $heights = \array_map(static fn (array $card): int => \count($card), $cards);
+        $heights = \array_map(\count(...), $cards);
         $budget = \max(1, $rows - $chrome);
         $scroll = $this->list->followHeights($heights, $budget);
         // How many cards FIT from here — which is what a page IS. This list is

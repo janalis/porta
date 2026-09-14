@@ -25,21 +25,21 @@ use Symfony\Component\Tui\Tui;
  * before falling through to the focused widget's own bindings.
  */
 #[AsIdeService]
-final class InputDispatcher
+final readonly class InputDispatcher
 {
     public function __construct(
-        private readonly Tui $tui,
-        private readonly MouseRouter $mouseRouter,
-        private readonly ContextMenu $contextMenu,
-        private readonly MenuBarWidget $menuBar,
-        private readonly WelcomeModalController $welcomeModal,
-        private readonly CodeEditorWidget $editor,
-        private readonly CommandRegistry $commands,
-        private readonly LiveKeybindings $keybindings,
-        private readonly OverlayHost $overlays,
-        private readonly TreeDragRouter $treeDrag,
-        private readonly Notifier $notifier,
-        private readonly Translator $translator,
+        private Tui $tui,
+        private MouseRouter $mouseRouter,
+        private ContextMenu $contextMenu,
+        private MenuBarWidget $menuBar,
+        private WelcomeModalController $welcomeModal,
+        private CodeEditorWidget $editor,
+        private CommandRegistry $commands,
+        private LiveKeybindings $keybindings,
+        private OverlayHost $overlays,
+        private TreeDragRouter $treeDrag,
+        private Notifier $notifier,
+        private Translator $translator,
     ) {}
 
     public function dispatch(InputEvent $event): void

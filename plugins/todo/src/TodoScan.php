@@ -25,13 +25,13 @@ use Porta\Workbench\Dock\ToolRun;
  * engines means a TODO scan and a find now run concurrently — better for the
  * user, and worth saying out loud because the old behaviour was deliberate.
  */
-final class TodoScan
+final readonly class TodoScan
 {
     public const string TOOL = 'todo';
 
     public function __construct(
-        private readonly PluginApi $api,
-        private readonly ProjectSearch $engine,
+        private PluginApi $api,
+        private ProjectSearch $engine,
     ) {}
 
     /** Open (or F5-refresh) the TODO tab and kick off the scan. */

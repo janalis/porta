@@ -69,13 +69,7 @@ trait ReadsSettingsForm
      */
     private function hasSettingRow(array $lines, string $label): bool
     {
-        foreach ($lines as $line) {
-            if (\str_contains(AnsiUtils::stripAnsiCodes($line), $label)) {
-                return true;
-            }
-        }
-
-        return false;
+        return \array_any($lines, static fn (string $line): bool => \str_contains(AnsiUtils::stripAnsiCodes($line), $label));
     }
 
     /**

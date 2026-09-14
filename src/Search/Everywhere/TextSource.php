@@ -13,17 +13,17 @@ use Porta\Support\ProjectPaths;
  * self-cancelling on a new query). Activating a hit opens the file and jumps to
  * the matching line.
  */
-final class TextSource implements SearchSource
+final readonly class TextSource implements SearchSource
 {
     /**
      * @param \Closure(string, OpenFocus): void $openFile fn(absolutePath, focus)
      * @param \Closure(int, int): void     $jumpTo   fn(line, col)
      */
     public function __construct(
-        private readonly ProjectSearch $search,
-        private readonly ProjectPaths $paths,
-        private readonly \Closure $openFile,
-        private readonly \Closure $jumpTo,
+        private ProjectSearch $search,
+        private ProjectPaths $paths,
+        private \Closure $openFile,
+        private \Closure $jumpTo,
     ) {}
 
     #[\Override]

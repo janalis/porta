@@ -51,10 +51,10 @@ final class StatusBarProviderTest extends TestCase
         $this->translator = new Translator('en');
 
         $sources = \array_map(
-            static fn (array $cells): StatusSegment => new class($cells) implements StatusSegment {
+            static fn (array $cells): StatusSegment => new readonly class($cells) implements StatusSegment {
                 /** @param list<StatusCell> $cells */
                 public function __construct(
-                    private readonly array $cells,
+                    private array $cells,
                 ) {}
 
                 public function statusCells(): array

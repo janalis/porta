@@ -26,15 +26,15 @@ use Porta\Widget\ViewerTabHandler;
  * when no pane answers an id at all.
  */
 #[AsIdeService]
-final class PaneRegistrar
+final readonly class PaneRegistrar
 {
     public function __construct(
-        private readonly EditorPaneSource $source,
-        private readonly EditorPanes $panes,
-        private readonly Styles $styles,
-        private readonly Translator $translator,
-        private readonly Scheduler $scheduler,
-        private readonly ViewerTabHandler $tabs,
+        private EditorPaneSource $source,
+        private EditorPanes $panes,
+        private Styles $styles,
+        private Translator $translator,
+        private Scheduler $scheduler,
+        private ViewerTabHandler $tabs,
     ) {}
 
     /**

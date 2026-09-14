@@ -19,14 +19,14 @@ use Symfony\Component\DependencyInjection\Attribute\AsAlias;
  * the overlapping cells).
  */
 #[AsAlias(FloatingRegions::class)] // the seam has fakes in tests, so the loader derives nothing
-final class CompositeFloatingRegions implements FloatingRegions
+final readonly class CompositeFloatingRegions implements FloatingRegions
 {
     public function __construct(
-        private readonly WelcomeModalController $welcomeModal,
-        private readonly FindModalPresenter $findModal,
-        private readonly PickerModalPresenter $pickers,
-        private readonly ToastPresenter $toasts,
-        private readonly MenuOverlayController $menus,
+        private WelcomeModalController $welcomeModal,
+        private FindModalPresenter $findModal,
+        private PickerModalPresenter $pickers,
+        private ToastPresenter $toasts,
+        private MenuOverlayController $menus,
     ) {}
 
     #[\Override]

@@ -14,11 +14,11 @@ use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
  * — it must precede showBuffer so the inlay request is ordered after the
  * server knows the file.)
  */
-final class LspBufferListener
+final readonly class LspBufferListener
 {
     public function __construct(
-        private readonly LspSessionPool $lsp,
-        private readonly CompletionController $completion,
+        private LspSessionPool $lsp,
+        private CompletionController $completion,
     ) {}
 
     #[AsEventListener]

@@ -57,7 +57,7 @@ final class SettingsPagesGoldenTest extends TestCase
     use RunsIde;
     use ScreenReads;
 
-    private const GOLDEN = __DIR__.'/../Support/golden/settings-pages.json';
+    private const string GOLDEN = __DIR__.'/../Support/golden/settings-pages.json';
 
     /** Every page a controller composes rows for. */
     private const array PAGES = ['general', 'interface', 'highlighting', 'lang:php', 'plugins'];

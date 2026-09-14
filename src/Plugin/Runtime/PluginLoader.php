@@ -24,7 +24,7 @@ use Tempest\Highlight\TerminalTheme;
  * beside its entry file ({@see PluginManifest}); those namespaces are
  * registered with {@see PluginAutoloader} before anything is required.
  */
-final class PluginLoader
+final readonly class PluginLoader
 {
     public const string NAME_PATTERN = '/^[a-z0-9][a-z0-9_-]*$/i';
 
@@ -33,13 +33,13 @@ final class PluginLoader
      * @param list<string> $enabled  bundled (embedded) plugin names opted in (.porta.json `enabledPlugins`); embedded plugins are off unless listed
      */
     public function __construct(
-        private readonly string $rootDir,
-        private readonly ?string $globalBase,
-        private readonly PluginSettings $settings,
-        private readonly ?string $embeddedDir = null,
-        private readonly array $disabled = [],
-        private readonly array $enabled = [],
-        private readonly ?TerminalTheme $syntaxTheme = null,
+        private string $rootDir,
+        private ?string $globalBase,
+        private PluginSettings $settings,
+        private ?string $embeddedDir = null,
+        private array $disabled = [],
+        private array $enabled = [],
+        private ?TerminalTheme $syntaxTheme = null,
     ) {}
 
     /**

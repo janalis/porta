@@ -11,12 +11,12 @@ use Porta\I18n\Translator;
  * go-to-declaration). Without an opener on PATH, flashes the URL itself —
  * most terminals auto-link it.
  */
-final class DocsUrlOpener
+final readonly class DocsUrlOpener
 {
     public function __construct(
-        private readonly FlashSink $notifier,
-        private readonly Translator $translator,
-        private readonly string $rootDir,
+        private FlashSink $notifier,
+        private Translator $translator,
+        private string $rootDir,
     ) {}
 
     public function open(string $url): void

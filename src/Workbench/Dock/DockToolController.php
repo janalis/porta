@@ -22,12 +22,12 @@ use Porta\Support\ProjectPaths;
  * @phpstan-import-type ResultRow from \Porta\Support\ResultRowShape
  */
 #[AsIdeService]
-final class DockToolController
+final readonly class DockToolController
 {
     public function __construct(
-        private readonly DockToolSource $source,
-        private readonly BottomDock $dock,
-        private readonly ProjectPaths $paths,
+        private DockToolSource $source,
+        private BottomDock $dock,
+        private ProjectPaths $paths,
     ) {}
 
     /**

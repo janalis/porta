@@ -22,15 +22,15 @@ use Porta\Plugin\Lifecycle\PluginEnablement;
  * Steps are rebuilt on each open, so a project that is already configured shows
  * them all done rather than prompting again.
  */
-final class WelcomeSteps
+final readonly class WelcomeSteps
 {
     public function __construct(
-        private readonly Translator $translator,
-        private readonly SyntaxHighlightProviderSource $highlighters,
-        private readonly PluginEnablement $lifecycle,
-        private readonly CommandRegistry $commands,
-        private readonly MagoDetector $mago,
-        private readonly SymfonyDetector $symfony,
+        private Translator $translator,
+        private SyntaxHighlightProviderSource $highlighters,
+        private PluginEnablement $lifecycle,
+        private CommandRegistry $commands,
+        private MagoDetector $mago,
+        private SymfonyDetector $symfony,
     ) {}
 
     /** @return list<WelcomeStep> */

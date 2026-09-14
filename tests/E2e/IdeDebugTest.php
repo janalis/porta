@@ -432,8 +432,8 @@ final class IdeDebugTest extends TestCase
         );
 
         $saved = \json_decode((string) \file_get_contents($project->path('.porta/debug.json')), associative: true);
-        $this->assertSame('$x > 1', \array_values($saved['breakpoints'])[0][0]['condition'], 'the condition persisted');
-        $this->assertSame(4, \array_values($saved['breakpoints'])[0][0]['line']);
+        $this->assertSame('$x > 1', \array_first($saved['breakpoints'])[0]['condition'], 'the condition persisted');
+        $this->assertSame(4, \array_first($saved['breakpoints'])[0]['line']);
         $this->assertSame(['$x'], $saved['watches']);
 
         // Second boot on the same project: the gutter shows the restored

@@ -7,11 +7,11 @@ namespace Porta\Tests\Support;
 use Porta\Debug\DebugSessionObserver;
 
 /** Feeds every session event to the recorder as one "name:detail" string. */
-final class RecordingDebugObserver implements DebugSessionObserver
+final readonly class RecordingDebugObserver implements DebugSessionObserver
 {
     /** @param \Closure(string): void $recorder */
     public function __construct(
-        private readonly \Closure $recorder,
+        private \Closure $recorder,
     ) {}
 
     public function onStopped(string $reason): void

@@ -29,22 +29,22 @@ use Symfony\Component\Tui\Tui;
  * {@see WheelRouter} out. The ordered walk below is the same precedence the
  * router's own spine uses: the topmost surface under the pointer wins.
  */
-final class ContextMenuRouter
+final readonly class ContextMenuRouter
 {
     public function __construct(
-        private readonly HitTester $hit,
-        private readonly Tui $tui,
-        private readonly EditorLayoutPanes $panes,
-        private readonly MenuBarWidget $menuBar,
-        private readonly DockTabsWidget $dockTabs,
-        private readonly BufferManager $buffers,
-        private readonly TreeOperations $treeOps,
-        private readonly ContextMenuBuilder $contextItems,
-        private readonly ViewMenuSources $viewMenus,
-        private readonly ViewRegistry $views,
-        private readonly ContextMenuOpener $opener,
-        private readonly HoverRouter $hover,
-        private readonly StatusBarWidget $statusBar,
+        private HitTester $hit,
+        private Tui $tui,
+        private EditorLayoutPanes $panes,
+        private MenuBarWidget $menuBar,
+        private DockTabsWidget $dockTabs,
+        private BufferManager $buffers,
+        private TreeOperations $treeOps,
+        private ContextMenuBuilder $contextItems,
+        private ViewMenuSources $viewMenus,
+        private ViewRegistry $views,
+        private ContextMenuOpener $opener,
+        private HoverRouter $hover,
+        private StatusBarWidget $statusBar,
     ) {}
 
     public function route(MouseEvent $mouse, ?WidgetRect $treeRect, ?WidgetRect $tabsRect, ?WidgetRect $editorRect): void

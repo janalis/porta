@@ -25,7 +25,7 @@ use Symfony\Component\Filesystem\Filesystem;
  * which is a worse experience than remembering, not a broken one.
  */
 #[AsIdeService]
-final class RecentProjectsStore
+final readonly class RecentProjectsStore
 {
     /**
      * Shorter than the recent-FILES cap on purpose. Files accumulate by the
@@ -35,7 +35,7 @@ final class RecentProjectsStore
     private const int MAX = 16;
 
     public function __construct(
-        private readonly Filesystem $fs = new Filesystem(),
+        private Filesystem $fs = new Filesystem(),
     ) {}
 
     /** @return list<string> absolute project roots, most-recent-first */

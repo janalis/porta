@@ -14,11 +14,11 @@ use Porta\Support\ProjectPaths;
  * is loaded, else from disk. The match line itself is omitted — it is already
  * shown as the result row.
  */
-final class ResultContextProvider
+final readonly class ResultContextProvider
 {
     public function __construct(
-        private readonly BufferManager $buffers,
-        private readonly ProjectPaths $paths,
+        private BufferManager $buffers,
+        private ProjectPaths $paths,
     ) {}
 
     /** @return list<array{line: int, text: string}> */

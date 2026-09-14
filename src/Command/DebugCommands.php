@@ -15,10 +15,10 @@ use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
  * state and falls through to the focused widget when not debugging.
  */
 #[AsTaggedItem(priority: 600)]
-final class DebugCommands implements CommandProvider
+final readonly class DebugCommands implements CommandProvider
 {
     public function __construct(
-        private readonly DebugController $debug,
+        private DebugController $debug,
     ) {}
 
     #[\Override]

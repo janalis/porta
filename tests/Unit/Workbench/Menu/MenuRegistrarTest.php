@@ -29,10 +29,10 @@ final class MenuRegistrarTest extends TestCase
     /** @param list<array{plugin: string, contribution: MenuContribution}> $menus */
     private function source(array $menus): ContributedMenuSource
     {
-        return new class($menus) implements ContributedMenuSource {
+        return new readonly class($menus) implements ContributedMenuSource {
             /** @param list<array{plugin: string, contribution: MenuContribution}> $menus */
             public function __construct(
-                private readonly array $menus,
+                private array $menus,
             ) {}
 
             public function contributedMenus(): array

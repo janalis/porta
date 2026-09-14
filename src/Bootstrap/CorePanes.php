@@ -29,13 +29,13 @@ use Porta\Widget\TextPreviewWidget;
  * gets to say "not this file" after its claim already said "mine".
  */
 #[AsIdeService]
-final class CorePanes
+final readonly class CorePanes
 {
     public function __construct(
-        private readonly EditorPanes $panes,
-        private readonly HelpViewerWidget $helpViewer,
-        private readonly TextPreviewWidget $textPreview,
-        private readonly Translator $translator,
+        private EditorPanes $panes,
+        private HelpViewerWidget $helpViewer,
+        private TextPreviewWidget $textPreview,
+        private Translator $translator,
     ) {}
 
     public function register(): void

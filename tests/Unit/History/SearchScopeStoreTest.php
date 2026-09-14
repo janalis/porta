@@ -92,7 +92,7 @@ final class SearchScopeStoreTest extends TestCase
 
         // A pin sticks even when the same label is later recorded as recent.
         $store->addRecent('lib', ['lib']);
-        $lib = \array_values(\array_filter($store->all(), static fn (array $s): bool => 'lib' === $s['label']))[0];
+        $lib = \array_first(\array_filter($store->all(), static fn (array $s): bool => 'lib' === $s['label']));
         $this->assertTrue($lib['pinned']);
     }
 

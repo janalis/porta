@@ -12,11 +12,11 @@ use Porta\Editor\EditorDecorationSink;
  * document caret (the editor scrolls it into view) and mirrored to the editor's
  * inline highlight. Pinned to the document captured when the find bar opened.
  */
-final class EditorFindTarget implements FindTarget
+final readonly class EditorFindTarget implements FindTarget
 {
     public function __construct(
-        private readonly Document $document,
-        private readonly EditorDecorationSink $editor,
+        private Document $document,
+        private EditorDecorationSink $editor,
     ) {}
 
     #[\Override]

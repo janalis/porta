@@ -14,12 +14,12 @@ use Symfony\Component\Finder\Finder;
  * per composer root. Nodes and edges are sorted so an unchanged project
  * produces byte-identical output (stable hash ⇒ no spurious re-layout).
  */
-final class NamespaceGraphScanner
+final readonly class NamespaceGraphScanner
 {
     private const array SKIP_DIRS = ['vendor', 'node_modules'];
 
     public function __construct(
-        private readonly string $rootDir,
+        private string $rootDir,
     ) {}
 
     public function scan(): string

@@ -17,14 +17,14 @@ use Symfony\Component\Tui\Tui;
  * skipped on save — a restored help path would reopen as editable source.
  */
 #[AsIdeService]
-final class SessionRestorer
+final readonly class SessionRestorer
 {
     public function __construct(
-        private readonly SessionStore $store,
-        private readonly BufferManager $buffers,
-        private readonly BufferService $bufferService,
-        private readonly EditorArea $editorArea,
-        private readonly Tui $tui,
+        private SessionStore $store,
+        private BufferManager $buffers,
+        private BufferService $bufferService,
+        private EditorArea $editorArea,
+        private Tui $tui,
     ) {}
 
     /**

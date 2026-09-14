@@ -23,7 +23,7 @@ use Symfony\Component\Process\ExecutableFinder;
  * viewer refuses DOT documents over {@see DotFiles::MAX_BYTES} — and by PHP's
  * own memory limit, so no separate output cap is imposed here.
  */
-final class DotLayoutEngine implements LayoutEngine
+final readonly class DotLayoutEngine implements LayoutEngine
 {
     /**
      * @param null|(\Closure(): ?string)|string $dotPath the "Graphviz dot path" setting; '' resolves to
@@ -32,11 +32,11 @@ final class DotLayoutEngine implements LayoutEngine
      *                                                   AbstractToolPlugin::binary() idiom
      */
     public function __construct(
-        private readonly string $rootDir,
-        private readonly \Closure|string|null $dotPath = null,
-        private readonly SingleSlotProcess $layoutSlot = new SingleSlotProcess(),
-        private readonly SingleSlotProcess $renderSlot = new SingleSlotProcess(),
-        private readonly SingleSlotProcess $exportSlot = new SingleSlotProcess(),
+        private string $rootDir,
+        private \Closure|string|null $dotPath = null,
+        private SingleSlotProcess $layoutSlot = new SingleSlotProcess(),
+        private SingleSlotProcess $renderSlot = new SingleSlotProcess(),
+        private SingleSlotProcess $exportSlot = new SingleSlotProcess(),
     ) {}
 
     public function baseDpi(): int

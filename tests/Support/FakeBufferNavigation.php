@@ -6,12 +6,12 @@ namespace Porta\Tests\Support;
 
 use Porta\Widget\BufferNavigationHandler;
 
-final class FakeBufferNavigation implements BufferNavigationHandler
+final readonly class FakeBufferNavigation implements BufferNavigationHandler
 {
     public function __construct(
-        private readonly ?\Closure $cycleBuffer = null,
-        private readonly ?\Closure $openRecentFiles = null,
-        private readonly ?\Closure $closeBuffer = null,
+        private ?\Closure $cycleBuffer = null,
+        private ?\Closure $openRecentFiles = null,
+        private ?\Closure $closeBuffer = null,
     ) {}
 
     public function cycleBuffer(int $offset): void

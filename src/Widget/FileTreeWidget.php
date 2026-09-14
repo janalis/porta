@@ -61,7 +61,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
 
     // '.porta' is the IDE's own session/history metadata dir; '.porta.json' (the
     // project config file) is not matched by the exact-name check and still shows.
-    private const IGNORED = ['.git', '.porta', 'node_modules', '.idea', '.vscode', '.DS_Store'];
+    private const array IGNORED = ['.git', '.porta', 'node_modules', '.idea', '.vscode', '.DS_Store'];
 
     /** @var array<string, bool> expanded state by path */
     private array $expanded = [];

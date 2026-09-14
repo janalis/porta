@@ -34,29 +34,29 @@ use Symfony\Component\Tui\Tui;
  * One wire() call from Ide, once every target service exists.
  */
 #[AsIdeService]
-final class WidgetHooks
+final readonly class WidgetHooks
 {
     public function __construct(
-        private readonly Tui $tui,
-        private readonly CodeEditorWidget $editor,
-        private readonly EditorCallbacks $editorCallbacks,
-        private readonly HelpViewerWidget $helpViewer,
-        private readonly HelpViewerActions $helpViewerActions,
-        private readonly TabBarWidget $tabBar,
-        private readonly TabListProvider $tabs,
-        private readonly BreadcrumbsWidget $breadcrumbs,
-        private readonly BreadcrumbTrailProvider $trail,
-        private readonly StatusBarWidget $statusBar,
-        private readonly StatusBarProvider $statusSegments,
-        private readonly TerminalPanelWidget $terminalPanel,
-        private readonly RunController $run,
-        private readonly BottomDock $panels,
-        private readonly MenuBarWidget $menuBar,
-        private readonly ContextMenu $contextMenu,
-        private readonly MenuOverlayController $overlay,
-        private readonly ViewRegistry $views,
-        private readonly EditorArea $editorArea,
-        private readonly string $docsDir,
+        private Tui $tui,
+        private CodeEditorWidget $editor,
+        private EditorCallbacks $editorCallbacks,
+        private HelpViewerWidget $helpViewer,
+        private HelpViewerActions $helpViewerActions,
+        private TabBarWidget $tabBar,
+        private TabListProvider $tabs,
+        private BreadcrumbsWidget $breadcrumbs,
+        private BreadcrumbTrailProvider $trail,
+        private StatusBarWidget $statusBar,
+        private StatusBarProvider $statusSegments,
+        private TerminalPanelWidget $terminalPanel,
+        private RunController $run,
+        private BottomDock $panels,
+        private MenuBarWidget $menuBar,
+        private ContextMenu $contextMenu,
+        private MenuOverlayController $overlay,
+        private ViewRegistry $views,
+        private EditorArea $editorArea,
+        private string $docsDir,
     ) {}
 
     public function wire(): void

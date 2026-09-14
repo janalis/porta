@@ -17,16 +17,16 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /** Project-wide search/navigation palette commands. */
 #[AsTaggedItem(priority: 300)]
-final class SearchCommands implements CommandProvider
+final readonly class SearchCommands implements CommandProvider
 {
     public function __construct(
-        private readonly SearchActions $searchActions,
-        private readonly DiagnosticNavigation $diagnostics,
-        private readonly MemberNavigation $members,
+        private SearchActions $searchActions,
+        private DiagnosticNavigation $diagnostics,
+        private MemberNavigation $members,
         #[Autowire(service: 'porta.go_to_symbol')]
-        private readonly SearchEverywhereController $goToSymbol,
-        private readonly BufferService $bufferService,
-        private readonly NavigationController $navigation,
+        private SearchEverywhereController $goToSymbol,
+        private BufferService $bufferService,
+        private NavigationController $navigation,
     ) {}
 
     #[\Override]

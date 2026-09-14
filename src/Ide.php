@@ -77,8 +77,8 @@ final class Ide
 {
     public const string VERSION = '0.1.0';
 
-    private Tui $tui;
-    private BidiTui $bidiTui;
+    private readonly Tui $tui;
+    private readonly BidiTui $bidiTui;
 
     /** @var list<string> the last frame composed, written to .porta/frame.txt at shutdown */
     private array $lastFrame = [];
@@ -86,13 +86,13 @@ final class Ide
     private CodeEditorWidget $editor;
     private Notifier $notifier;
     private FreezeWatchdog $watchdog;
-    private PerfCollector $perf;
-    private EditorArea $editorArea;
-    private TerminalStateRefresher $terminalRefresher;
-    private RunController $run;
-    private DebugController $debug;
+    private readonly PerfCollector $perf;
+    private readonly EditorArea $editorArea;
+    private readonly TerminalStateRefresher $terminalRefresher;
+    private readonly RunController $run;
+    private readonly DebugController $debug;
 
-    private PluginLifecycle $pluginLifecycle;
+    private readonly PluginLifecycle $pluginLifecycle;
     private readonly string $docsDir;
     private readonly ContainerInterface $container;
 
@@ -100,20 +100,20 @@ final class Ide
     private readonly ServiceLocator $locator;
     private WorkspaceLayout $workspaceLayout;
     private PaneLayout $paneLayout;
-    private LayoutController $layout;
+    private readonly LayoutController $layout;
 
     private LspSessionPool $lsp;
-    private LspBootstrapper $lspBootstrapper;
-    private SessionRestorer $sessionRestorer;
-    private DebugStatePersistence $debugState;
-    private BookmarkPersistence $bookmarkState;
+    private readonly LspBootstrapper $lspBootstrapper;
+    private readonly SessionRestorer $sessionRestorer;
+    private readonly DebugStatePersistence $debugState;
+    private readonly BookmarkPersistence $bookmarkState;
 
-    private Renderer $renderer;
-    private MenuRebuilder $menuRebuilder;
+    private readonly Renderer $renderer;
+    private readonly MenuRebuilder $menuRebuilder;
 
-    private SettingsController $settings;
-    private SettingsLanguageController $settingsLanguages;
-    private BufferService $bufferService;
+    private readonly SettingsController $settings;
+    private readonly SettingsLanguageController $settingsLanguages;
+    private readonly BufferService $bufferService;
 
     public function __construct(
         private readonly string $rootDir,

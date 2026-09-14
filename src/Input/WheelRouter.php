@@ -27,23 +27,23 @@ use Symfony\Component\Tui\Tui;
  * router's own spine — the pointer can be over several surfaces at once and the
  * topmost must win.
  */
-final class WheelRouter
+final readonly class WheelRouter
 {
     /** Ctrl+wheel burst detection — newed, not injected, like MouseRouter's ClickCounter. */
-    private readonly ZoomGesture $zoom;
+    private ZoomGesture $zoom;
 
     public function __construct(
-        private readonly HitTester $hit,
-        private readonly Tui $tui,
-        private readonly EditorLayoutPanes $panes,
-        private readonly ViewPointers $pointers,
-        private readonly ViewRegistry $views,
-        private readonly BottomDock $dock,
-        private readonly MenuBarWidget $menuBar,
-        private readonly ContextMenu $contextMenu,
-        private readonly MenuOverlayController $overlay,
-        private readonly BidiTui $bidi,
-        private readonly HoverRouter $hover,
+        private HitTester $hit,
+        private Tui $tui,
+        private EditorLayoutPanes $panes,
+        private ViewPointers $pointers,
+        private ViewRegistry $views,
+        private BottomDock $dock,
+        private MenuBarWidget $menuBar,
+        private ContextMenu $contextMenu,
+        private MenuOverlayController $overlay,
+        private BidiTui $bidi,
+        private HoverRouter $hover,
     ) {
         $this->zoom = new ZoomGesture();
     }

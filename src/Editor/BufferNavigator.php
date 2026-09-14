@@ -31,20 +31,20 @@ use Symfony\Component\Tui\Tui;
 // general answer: HelpViewerActions is the help pane's own superset, reached
 // by that widget alone.
 #[AsAlias(ViewerTabHandler::class)]
-final class BufferNavigator implements BufferNavigationHandler, ViewerTabHandler
+final readonly class BufferNavigator implements BufferNavigationHandler, ViewerTabHandler
 {
     public function __construct(
-        private readonly BufferManager $buffers,
-        private readonly BufferService $bufferService,
+        private BufferManager $buffers,
+        private BufferService $bufferService,
         #[Autowire(service: 'porta.go_to_file')]
-        private readonly SearchEverywhereController $goToFile,
-        private readonly ModalHost $editor,
-        private readonly StatusBarWidget $statusBar,
-        private readonly Tui $tui,
-        private readonly ProjectPaths $paths,
-        private readonly RecentFilesStore $recentFiles,
-        private readonly Translator $translator,
-        private readonly Notifier $notifier,
+        private SearchEverywhereController $goToFile,
+        private ModalHost $editor,
+        private StatusBarWidget $statusBar,
+        private Tui $tui,
+        private ProjectPaths $paths,
+        private RecentFilesStore $recentFiles,
+        private Translator $translator,
+        private Notifier $notifier,
     ) {}
 
     /** Switch to the previous/next tab (+1 / -1) and focus its content. */

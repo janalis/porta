@@ -15,15 +15,15 @@ use Symfony\Component\Tui\Input\Keybindings;
  * same tables drive key dispatch ({@see dispatchKey}) and menu dispatch
  * ({@see run}) so a menu item fires exactly the same logic as pressing its key.
  */
-final class EditorActionRouter
+final readonly class EditorActionRouter
 {
     /**
      * @param \Closure(): EditorCallbacks $callbacks the current (swappable) hook set
      * @param \Closure(): array{int, int} $caret     the caret as [line, utf16 col]
      */
     public function __construct(
-        private readonly \Closure $callbacks,
-        private readonly \Closure $caret,
+        private \Closure $callbacks,
+        private \Closure $caret,
     ) {}
 
     /** Dispatch a keypress to an editor-level action. Returns true when it consumed the key. */

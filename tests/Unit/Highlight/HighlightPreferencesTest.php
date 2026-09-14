@@ -80,10 +80,10 @@ final class HighlightPreferencesTest extends TestCase
     /** @param list<SyntaxHighlightProvider> $providers */
     private function source(array $providers): SyntaxHighlightProviderSource
     {
-        return new class($providers) implements SyntaxHighlightProviderSource {
+        return new readonly class($providers) implements SyntaxHighlightProviderSource {
             /** @param list<SyntaxHighlightProvider> $providers */
             public function __construct(
-                private readonly array $providers,
+                private array $providers,
             ) {}
 
             public function highlightProviders(): array

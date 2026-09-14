@@ -12,12 +12,12 @@ use Porta\Widget\CodeEditorWidget;
  * the cached scopes; other languages select from the language server's own
  * symbols ({@see \Porta\Lsp\DocumentScopes}), which reach the same shape.
  */
-final class BreadcrumbTrailProvider
+final readonly class BreadcrumbTrailProvider
 {
     public function __construct(
         // Deliberately concrete: scopes() lives in no role interface, and
         // widening ActiveDocumentProvider for one consumer is not worth it.
-        private readonly CodeEditorWidget $editor,
+        private CodeEditorWidget $editor,
     ) {}
 
     /** @return list<array{label: string, line: int}> */

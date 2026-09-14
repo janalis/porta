@@ -24,21 +24,21 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
  * layout's separators and the view registry — the pane lists and view-open
  * closures a dumped container definition cannot express directly.
  */
-final class MenuOverlayPanesFactory
+final readonly class MenuOverlayPanesFactory
 {
     public function __construct(
-        private readonly FileTreeWidget $tree,
-        private readonly WorkspaceLayout $layout,
-        private readonly ViewRegions $regions,
-        private readonly TabBarWidget $tabBar,
-        private readonly CodeEditorWidget $editor,
-        private readonly EditorPanes $panes,
-        private readonly BreadcrumbsWidget $breadcrumbs,
-        private readonly DockTabsWidget $dockTabs,
-        private readonly ResultsPanelWidget $resultsPanel,
-        private readonly TerminalPanelWidget $terminalPanel,
-        private readonly DebugPanelWidget $debugPanel,
-        private readonly ViewRegistry $views,
+        private FileTreeWidget $tree,
+        private WorkspaceLayout $layout,
+        private ViewRegions $regions,
+        private TabBarWidget $tabBar,
+        private CodeEditorWidget $editor,
+        private EditorPanes $panes,
+        private BreadcrumbsWidget $breadcrumbs,
+        private DockTabsWidget $dockTabs,
+        private ResultsPanelWidget $resultsPanel,
+        private TerminalPanelWidget $terminalPanel,
+        private DebugPanelWidget $debugPanel,
+        private ViewRegistry $views,
     ) {}
 
     /**

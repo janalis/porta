@@ -79,11 +79,11 @@ final class SettingsPagesTest extends TestCase
     /** @param array<string, string> $pages id => label */
     private function section(array $pages, string $claims): SettingsSection
     {
-        return new class($pages, $claims) implements SettingsSection {
+        return new readonly class($pages, $claims) implements SettingsSection {
             /** @param array<string, string> $pages */
             public function __construct(
-                private readonly array $pages,
-                private readonly string $claims,
+                private array $pages,
+                private string $claims,
             ) {}
 
             public function handles(string $section): bool

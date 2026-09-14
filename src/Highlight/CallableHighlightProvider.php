@@ -17,7 +17,7 @@ namespace Porta\Highlight;
  * backend whose binary is missing declines, so the language falls through to
  * the next provider instead of rendering as an error.
  */
-final class CallableHighlightProvider implements SyntaxHighlightProvider
+final readonly class CallableHighlightProvider implements SyntaxHighlightProvider
 {
     /**
      * @param \Closure(): list<string>        $languages   resolved per query; `['*']` claims everything
@@ -25,10 +25,10 @@ final class CallableHighlightProvider implements SyntaxHighlightProvider
      * @param (\Closure(): bool)|null          $isAvailable null means always available
      */
     public function __construct(
-        private readonly string $id,
-        private readonly \Closure $languages,
-        private readonly \Closure $highlight,
-        private readonly ?\Closure $isAvailable = null,
+        private string $id,
+        private \Closure $languages,
+        private \Closure $highlight,
+        private ?\Closure $isAvailable = null,
     ) {}
 
     #[\Override]

@@ -25,11 +25,11 @@ use Symfony\Component\Tui\Widget\ContainerWidget;
  * @phpstan-type Leaf array{rect: WidgetRect, ltr: bool}
  */
 #[AsIdeService]
-final class PaneSegmenter
+final readonly class PaneSegmenter
 {
     public function __construct(
-        private readonly Renderer $renderer,
-        private readonly FloatingRegions $dropdowns,
+        private Renderer $renderer,
+        private FloatingRegions $dropdowns,
     ) {}
 
     /**

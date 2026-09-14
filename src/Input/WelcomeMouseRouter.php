@@ -21,11 +21,11 @@ use Symfony\Component\Tui\Tui;
  * reachable), and an outside click is swallowed without dismissing — the ×
  * and Esc are the ways out.
  */
-final class WelcomeMouseRouter implements ViewPointer
+final readonly class WelcomeMouseRouter implements ViewPointer
 {
     public function __construct(
-        private readonly WelcomeModalController $modal,
-        private readonly Tui $tui,
+        private WelcomeModalController $modal,
+        private Tui $tui,
     ) {}
 
     /** Whether the modal is open — the router's swallow-everything gate. */

@@ -17,17 +17,17 @@ use Symfony\Component\Tui\Tui;
  * unsaved-changes double-press guard), the app menu, the command palette,
  * the notification log, and keyboard tab reordering.
  */
-final class WorkbenchActions
+final readonly class WorkbenchActions
 {
     public function __construct(
-        private readonly BufferManager $buffers,
-        private readonly Translator $translator,
-        private readonly Tui $tui,
-        private readonly MenuBarWidget $menuBar,
-        private readonly BottomDock $panels,
-        private readonly NotificationLog $notificationLog,
-        private readonly LspLog $lspLog,
-        private readonly UnsavedChangesGuard $guard,
+        private BufferManager $buffers,
+        private Translator $translator,
+        private Tui $tui,
+        private MenuBarWidget $menuBar,
+        private BottomDock $panels,
+        private NotificationLog $notificationLog,
+        private LspLog $lspLog,
+        private UnsavedChangesGuard $guard,
     ) {}
 
     /** Ctrl+Q: quit, unless dirty buffers need a confirming second press within 3s. */

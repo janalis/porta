@@ -205,7 +205,7 @@ final class SearchEverywhereControllerTest extends TestCase
 
         $labels = $this->labels($overlay->rows);
         $this->assertSame(SearchEverywhereController::SOLO_CAP, \count($labels) - 1);
-        $this->assertSame('80 more results', $labels[\array_key_last($labels)]);
+        $this->assertSame('80 more results', \array_last($labels));
     }
 
     public function testACappedCategoryOffersARowThatGrowsIt(): void
@@ -234,7 +234,7 @@ final class SearchEverywhereControllerTest extends TestCase
 
         // Picked the way any row is picked — the overlay does not know this one
         // is different.
-        ($overlay->onPick)($overlay->rows[\array_key_last($overlay->rows)]->hit);
+        ($overlay->onPick)(\array_last($overlay->rows)->hit);
 
         $this->assertSame(['f0', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7'], $this->labels($overlay->rows));
         $this->assertSame(0, $overlay->closes, 'a row that grows the list must not close it');
@@ -251,11 +251,11 @@ final class SearchEverywhereControllerTest extends TestCase
         ($overlay->onQuery)('f');
         $files->emits[0](self::hits(SearchCategory::Files, 100));
 
-        ($overlay->onPick)($overlay->rows[\array_key_last($overlay->rows)]->hit);
+        ($overlay->onPick)(\array_last($overlay->rows)->hit);
 
         $labels = $this->labels($overlay->rows);
         $this->assertSame(25, \count($labels) - 1, 'five, then one step of twenty');
-        $this->assertSame('75 more results', $labels[\array_key_last($labels)], 'and it can be grown again');
+        $this->assertSame('75 more results', \array_last($labels), 'and it can be grown again');
     }
 
     public function testASingleHiddenResultIsCountedInTheSingular(): void
@@ -294,7 +294,7 @@ final class SearchEverywhereControllerTest extends TestCase
         $controller->open();
         ($overlay->onQuery)('f');
         $files->emits[0](self::hits(SearchCategory::Files, 8));
-        ($overlay->onPick)($overlay->rows[\array_key_last($overlay->rows)]->hit);
+        ($overlay->onPick)(\array_last($overlay->rows)->hit);
 
         ($overlay->onQuery)('g');
         $files->emits[1](self::hits(SearchCategory::Files, 8));

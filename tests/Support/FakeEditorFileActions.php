@@ -8,14 +8,14 @@ use Porta\Editor\FindMode;
 use Porta\Widget\EditorFileActionHandler;
 
 /** Per-method closure fakes so tests wire only the hooks a scenario needs. */
-final class FakeEditorFileActions implements EditorFileActionHandler
+final readonly class FakeEditorFileActions implements EditorFileActionHandler
 {
     public function __construct(
-        private readonly ?\Closure $save = null,
-        private readonly ?\Closure $saveAll = null,
-        private readonly ?\Closure $copy = null,
-        private readonly ?\Closure $openFind = null,
-        private readonly ?\Closure $openGotoFile = null,
+        private ?\Closure $save = null,
+        private ?\Closure $saveAll = null,
+        private ?\Closure $copy = null,
+        private ?\Closure $openFind = null,
+        private ?\Closure $openGotoFile = null,
     ) {}
 
     public function save(): void

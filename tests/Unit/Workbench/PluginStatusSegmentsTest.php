@@ -16,10 +16,10 @@ final class PluginStatusSegmentsTest extends TestCase
     /** @param list<string|StatusCell> $segments */
     private function slot(array $segments): PluginStatusSegments
     {
-        return new PluginStatusSegments(new class($segments) implements StatusSegmentSource {
+        return new PluginStatusSegments(new readonly class($segments) implements StatusSegmentSource {
             /** @param list<string|StatusCell> $segments */
             public function __construct(
-                private readonly array $segments,
+                private array $segments,
             ) {}
 
             public function statusSegments(): array

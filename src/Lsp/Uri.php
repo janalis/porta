@@ -18,7 +18,7 @@ final class Uri
         $resolved = \realpath($path);
         $real = $resolved ? $resolved : $path;
 
-        return 'file://'.\implode(separator: '/', array: \array_map('rawurlencode', \explode(separator: '/', string: \str_replace(\DIRECTORY_SEPARATOR, replace: '/', subject: $real))));
+        return 'file://'.\implode(separator: '/', array: \array_map(rawurlencode(...), \explode(separator: '/', string: \str_replace(\DIRECTORY_SEPARATOR, replace: '/', subject: $real))));
     }
 
     /**

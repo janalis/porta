@@ -32,21 +32,21 @@ use Psr\EventDispatcher\EventDispatcherInterface;
  * menu rebuild and RTL re-mirror listen at priority 0, and the chrome
  * cache sweep listens last (-100), preserving the old method-tail order.
  */
-final class LiveSettingsApplier
+final readonly class LiveSettingsApplier
 {
     public function __construct(
-        private readonly Styles $styles,
-        private readonly StyleSheetThemer $sheetThemer,
-        private readonly SwitchableTerminalTheme $syntaxTheme,
-        private readonly CursorStyle $cursorStyle,
-        private readonly Translator $translator,
-        private readonly ViewRegions $regions,
-        private readonly EditorPanes $panes,
-        private readonly TabBarWidget $tabBar,
-        private readonly WorkspaceLayout $workspaceLayout,
-        private readonly EventDispatcherInterface $dispatcher,
-        private readonly FormatOnSave $formatOnSave,
-        private readonly bool $ansi,
+        private Styles $styles,
+        private StyleSheetThemer $sheetThemer,
+        private SwitchableTerminalTheme $syntaxTheme,
+        private CursorStyle $cursorStyle,
+        private Translator $translator,
+        private ViewRegions $regions,
+        private EditorPanes $panes,
+        private TabBarWidget $tabBar,
+        private WorkspaceLayout $workspaceLayout,
+        private EventDispatcherInterface $dispatcher,
+        private FormatOnSave $formatOnSave,
+        private bool $ansi,
     ) {}
 
     /**

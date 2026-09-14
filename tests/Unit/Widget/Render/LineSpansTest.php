@@ -114,7 +114,7 @@ final class LineSpansTest extends TestCase
             new Styles(DarkTheme::definition()),
         );
 
-        $bracketSpan = \array_values(\array_filter($result['spans'], static fn (array $s) => LineDecorator::BRACKET_SGR === $s[2]))[0];
+        $bracketSpan = \array_first(\array_filter($result['spans'], static fn (array $s) => LineDecorator::BRACKET_SGR === $s[2]));
         $this->assertSame(3, $bracketSpan[0]);
         $this->assertSame(4, $bracketSpan[1], 'a bracket cell is exactly one column wide');
     }

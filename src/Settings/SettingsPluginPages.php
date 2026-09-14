@@ -13,10 +13,10 @@ use Porta\Widget\Settings\SettingsNavWidget;
  * "plugin page" is a sidebar row, which is what keeps the plugin lifecycle
  * out of `Widget/`.
  */
-final class SettingsPluginPages implements PluginPagesSync
+final readonly class SettingsPluginPages implements PluginPagesSync
 {
     public function __construct(
-        private readonly SettingsNavWidget $nav,
+        private SettingsNavWidget $nav,
     ) {}
 
     #[\Override]

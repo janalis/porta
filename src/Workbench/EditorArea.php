@@ -18,13 +18,13 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
  * session restore all reach it through this one method.
  */
 #[AsIdeService]
-final class EditorArea
+final readonly class EditorArea
 {
     public function __construct(
-        private readonly BufferManager $buffers,
-        private readonly CodeEditorWidget $editor,
-        private readonly EditorPanes $panes,
-        private readonly Tui $tui,
+        private BufferManager $buffers,
+        private CodeEditorWidget $editor,
+        private EditorPanes $panes,
+        private Tui $tui,
     ) {}
 
     /** The editor-pane's focusable content: the active tab's viewer, else the editor. */

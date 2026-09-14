@@ -13,12 +13,12 @@ use Porta\Ui\ScopeKind;
  * Resolves a search scope kind to the grep path(s) it means right now,
  * against the current editor file and the open buffers.
  */
-final class SearchScopeResolver
+final readonly class SearchScopeResolver
 {
     public function __construct(
-        private readonly BufferManager $buffers,
-        private readonly ActiveFileProvider $editor,
-        private readonly ProjectPaths $paths,
+        private BufferManager $buffers,
+        private ActiveFileProvider $editor,
+        private ProjectPaths $paths,
     ) {}
 
     /** @return list<string> */

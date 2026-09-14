@@ -437,7 +437,7 @@ final class PluginApi
         if (\is_array($claims)) {
             /** @var list<string> $list */
             $list = \array_values($claims);
-            $extensions = \array_map(static fn (string $extension): string => \strtolower($extension), $list);
+            $extensions = \array_map(\strtolower(...), $list);
             $claims = static fn (string $path): bool => ProjectPaths::hasExtension($path, $extensions);
         }
         $this->viewers->add([

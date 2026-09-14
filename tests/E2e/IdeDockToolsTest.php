@@ -11,7 +11,6 @@ use Porta\Editor\ChangeMarkKind;
 use Porta\Editor\OpenFocus;
 use Porta\History\BookmarkPersistence;
 use Porta\History\BookmarkStore;
-use Porta\Ide;
 use Porta\Lsp\NavigationController;
 use Porta\Lsp\Uri;
 use Porta\Tests\Support\PreservesPath;

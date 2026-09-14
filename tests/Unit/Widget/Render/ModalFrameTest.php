@@ -149,7 +149,7 @@ final class ModalFrameTest extends TestCase
         $rows = \array_map(AnsiUtils::stripAnsiCodes(...), ModalFrame::wrapSections([['a'], ['b']], -3, Styles::dark()));
 
         $this->assertSame('├┤', $rows[2], 'the tee row still closes at a negative inner width');
-        $this->assertSame('╰╯', $rows[\array_key_last($rows)], 'the bottom border still closes at a negative inner width');
+        $this->assertSame('╰╯', \array_last($rows), 'the bottom border still closes at a negative inner width');
     }
 
     /** innerWidth + CHROME_COLS-worth-of-fill == 0: no horizontal filler on either the tee row or the bottom border. */
@@ -158,7 +158,7 @@ final class ModalFrameTest extends TestCase
         $rows = \array_map(AnsiUtils::stripAnsiCodes(...), ModalFrame::wrapSections([['a'], ['b']], -2, Styles::dark()));
 
         $this->assertSame('├┤', $rows[2]);
-        $this->assertSame('╰╯', $rows[\array_key_last($rows)]);
+        $this->assertSame('╰╯', \array_last($rows));
     }
 
     /** The chrome constants match what wrap() actually emits — consumers derive from them. */

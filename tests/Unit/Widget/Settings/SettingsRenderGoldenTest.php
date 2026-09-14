@@ -32,7 +32,7 @@ use Symfony\Component\Tui\Render\RenderContext;
  */
 final class SettingsRenderGoldenTest extends TestCase
 {
-    private const GOLDEN = __DIR__.'/../../../Support/golden/settings-render.json';
+    private const string GOLDEN = __DIR__.'/../../../Support/golden/settings-render.json';
 
     public function testRenderOutputMatchesGolden(): void
     {

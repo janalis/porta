@@ -17,18 +17,18 @@ use Porta\Workbench\Notifier;
 use Symfony\Component\Tui\Tui;
 
 /** The IDE-side implementation of the help viewer's link and tab hooks. */
-final class HelpViewerActions implements HelpViewerHandler
+final readonly class HelpViewerActions implements HelpViewerHandler
 {
     public function __construct(
-        private readonly BufferService $bufferService,
-        private readonly BufferNavigator $navigator,
-        private readonly DocsUrlOpener $docsUrls,
-        private readonly Notifier $notifier,
-        private readonly Translator $translator,
-        private readonly FindBarWidget $findBar,
-        private readonly HelpViewerWidget $helpViewer,
-        private readonly Tui $tui,
-        private readonly string $docsDir,
+        private BufferService $bufferService,
+        private BufferNavigator $navigator,
+        private DocsUrlOpener $docsUrls,
+        private Notifier $notifier,
+        private Translator $translator,
+        private FindBarWidget $findBar,
+        private HelpViewerWidget $helpViewer,
+        private Tui $tui,
+        private string $docsDir,
     ) {}
 
     /** Open the find bar on the docs page (the viewer is its own FindTarget). */

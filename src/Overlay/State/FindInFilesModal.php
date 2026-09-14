@@ -634,7 +634,7 @@ final class FindInFilesModal
         $width = \max(\mb_strwidth($this->title) + \mb_strwidth($status) + 10, \mb_strwidth($this->query->value()) + 9, PopupMetrics::FIND_MIN_WIDTH); // + 10: the frame's title-bar chrome
         $width = \max($width, $this->optionsRowWidth(), $this->footerRowWidth());
         foreach ($visible as $row) {
-            $text = null !== $row->filePath ? $row->filePath : $this->results[$row->matchIndex]['text'] ?? '';
+            $text = $row->filePath ?? $this->results[$row->matchIndex]['text'] ?? '';
             $width = \max($width, \mb_strwidth($text) + 8);
         }
 

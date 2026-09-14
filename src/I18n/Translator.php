@@ -22,7 +22,7 @@ use Symfony\Component\Translation\Translator as SymfonyTranslator;
  * hand-rolled parser had: malformed file → English, stubbed entry → English.
  */
 #[AsIdeService]
-final class Translator
+final readonly class Translator
 {
     /** The supported UI locales, in menu order (English first). */
     public const array LOCALES = ['en', 'fr', 'de', 'es', 'it', 'ja', 'he'];
@@ -41,7 +41,7 @@ final class Translator
     /** Locales written right-to-left. */
     private const array RTL = ['he'];
 
-    private readonly SymfonyTranslator $translator;
+    private SymfonyTranslator $translator;
 
     /**
      * @param string|null $translationCacheDir where parsed catalogs are dumped

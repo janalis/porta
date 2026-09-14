@@ -25,13 +25,13 @@ use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
  * context — was the recorded v1 trade-off). Location-less rows (the logs)
  * still re-select the newest line on purpose.
  */
-final class DockLiveRefreshListener
+final readonly class DockLiveRefreshListener
 {
     public function __construct(
-        private readonly BottomDock $dock,
-        private readonly ProblemRows $problemRows,
-        private readonly LspLog $lspLog,
-        private readonly NotificationLog $notificationLog,
+        private BottomDock $dock,
+        private ProblemRows $problemRows,
+        private LspLog $lspLog,
+        private NotificationLog $notificationLog,
     ) {}
 
     #[AsEventListener]

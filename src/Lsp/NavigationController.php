@@ -555,7 +555,7 @@ final class NavigationController extends AbstractLspController implements Editor
                 /** @var list<array<array-key, mixed>> $result */
                 LspMapper::flattenSymbols($result, 0, $items);
                 $this->editor->openListOverlay($this->trans('File Structure'), $items, function (string $pos): void {
-                    [$line, $character] = \array_map('intval', \explode(':', $pos));
+                    [$line, $character] = \array_map(intval(...), \explode(':', $pos));
                     $this->editor->jumpTo($line, $character);
                 });
                 $this->tui->requestRender();
@@ -644,7 +644,7 @@ final class NavigationController extends AbstractLspController implements Editor
         $relative = null === $path ? '' : $this->paths->relative($path);
         $rows = [];
         foreach ($items as $item) {
-            [$line] = \array_map('intval', \explode(':', $item['value']));
+            [$line] = \array_map(intval(...), \explode(':', $item['value']));
             $hint = '' === $item['hint'] ? '' : '  '.$item['hint'];
             $rows[] = ['path' => $relative, 'line' => $line, 'text' => $item['label'].$hint];
         }

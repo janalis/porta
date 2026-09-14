@@ -29,29 +29,29 @@ use Symfony\Component\Tui\Tui;
 
 /** View/window palette commands: tabs, overlays, panels and the full views. */
 #[AsTaggedItem(priority: 200)]
-final class ViewCommands implements CommandProvider
+final readonly class ViewCommands implements CommandProvider
 {
     public function __construct(
-        private readonly WorkbenchActions $workbench,
-        private readonly BufferManager $buffers,
+        private WorkbenchActions $workbench,
+        private BufferManager $buffers,
         #[Autowire(service: 'porta.go_to_file')]
-        private readonly SearchEverywhereController $goToFile,
-        private readonly SettingsController $settings,
-        private readonly RunController $run,
-        private readonly BottomDock $dock,
-        private readonly LayoutController $layout,
-        private readonly ViewRegistry $views,
-        private readonly BufferService $bufferService,
-        private readonly FoldingController $folding,
-        private readonly BookmarkActions $bookmarks,
-        private readonly EditorDisplayOptions $display,
-        private readonly CodeLensController $lenses,
-        private readonly EditorDecorationSink $decorations,
-        private readonly RecentLocationActions $recentLocations,
-        private readonly LastEditNavigator $lastEdit,
-        private readonly FileTreeWidget $tree,
-        private readonly Tui $tui,
-        private readonly string $docsDir,
+        private SearchEverywhereController $goToFile,
+        private SettingsController $settings,
+        private RunController $run,
+        private BottomDock $dock,
+        private LayoutController $layout,
+        private ViewRegistry $views,
+        private BufferService $bufferService,
+        private FoldingController $folding,
+        private BookmarkActions $bookmarks,
+        private EditorDisplayOptions $display,
+        private CodeLensController $lenses,
+        private EditorDecorationSink $decorations,
+        private RecentLocationActions $recentLocations,
+        private LastEditNavigator $lastEdit,
+        private FileTreeWidget $tree,
+        private Tui $tui,
+        private string $docsDir,
     ) {}
 
     #[\Override]

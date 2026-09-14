@@ -19,11 +19,11 @@ use Tempest\Highlight\Highlighter;
  * Highlighter and a PHP docblock or a `tsconfig.json` classified differently
  * here than it rendered in the editor.
  */
-final class TokenClassifier
+final readonly class TokenClassifier
 {
-    private readonly Highlighter $highlighter;
+    private Highlighter $highlighter;
     /** @var \Closure(string, string): string */
-    private readonly \Closure $parser;
+    private \Closure $parser;
 
     /**
      * @param (\Closure(string, string): string)|null $parser  (content, language) => marked output;
@@ -32,10 +32,10 @@ final class TokenClassifier
      */
     public function __construct(
         ?\Closure $parser = null,
-        private readonly ?TokenSpanProvider $plugins = null,
+        private ?TokenSpanProvider $plugins = null,
     ) {
         $this->highlighter = TempestBackend::newHighlighter(new CommentStringTheme());
-        $this->parser = $parser ?? fn (string $content, string $language): string => $this->highlighter->parse($content, $language);
+        $this->parser = $parser ?? $this->highlighter->parse(...);
     }
 
     /**

@@ -85,7 +85,7 @@ final class DapClientTest extends TestCase
         $this->await(static function () use (&$events): bool {
             return \in_array('stopped', \array_column($events, 0), strict: true);
         });
-        $stopped = \array_values(\array_filter($events, static fn (array $e): bool => 'stopped' === $e[0]))[0][1];
+        $stopped = \array_first(\array_filter($events, static fn (array $e): bool => 'stopped' === $e[0]))[1];
         $this->assertSame('breakpoint', $stopped['reason']);
         $this->assertSame([['verified' => true, 'line' => 5]], $verified);
         $this->assertContains('output', \array_column($events, 0), 'debuggee stdout arrived as an output event');

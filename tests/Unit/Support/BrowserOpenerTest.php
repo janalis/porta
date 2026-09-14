@@ -62,6 +62,6 @@ final class BrowserOpenerTest extends TestCase
             return;
         }
 
-        $this->assertSame('https://x.test', $command[\array_key_last($command)]);
+        $this->assertSame('https://x.test', \array_last($command));
     }
 }

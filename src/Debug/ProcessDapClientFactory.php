@@ -7,12 +7,12 @@ namespace Porta\Debug;
 use Porta\Support\DiagnosticLog;
 
 /** The production transport: a debug-adapter child process speaking DAP over stdio. */
-final class ProcessDapClientFactory implements DapClientFactory
+final readonly class ProcessDapClientFactory implements DapClientFactory
 {
-    private readonly DiagnosticLog $log;
+    private DiagnosticLog $log;
 
     public function __construct(
-        private readonly string $rootDir,
+        private string $rootDir,
     ) {
         $this->log = DiagnosticLog::forRoot($this->rootDir, 'dap');
     }

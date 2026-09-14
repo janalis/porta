@@ -95,9 +95,9 @@ final class ViewRegistrarTest extends TestCase
             new ViewHost(
                 $this->main,
                 new MenuBarWidget(),
-                new class($editorPane) implements EditorAreaPanes {
+                new readonly class($editorPane) implements EditorAreaPanes {
                     public function __construct(
-                        private readonly CodeEditorWidget $pane,
+                        private CodeEditorWidget $pane,
                     ) {}
 
                     public function orderedEditorPanes(): array

@@ -30,9 +30,9 @@ final class BufferManagerTest extends TestCase
                 $deliver("\x1b[31m".$text."\x1b[39m");
             },
         );
-        $source = new class($provider) implements SyntaxHighlightProviderSource {
+        $source = new readonly class($provider) implements SyntaxHighlightProviderSource {
             public function __construct(
-                private readonly SyntaxHighlightProvider $provider,
+                private SyntaxHighlightProvider $provider,
             ) {}
 
             public function highlightProviders(): array

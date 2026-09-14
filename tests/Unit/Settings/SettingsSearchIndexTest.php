@@ -143,12 +143,12 @@ final class SettingsSearchIndexTest extends TestCase
     /** @param array<string, string> $rows key => label */
     private function section(string $id, string $label, array $rows): SettingsSection
     {
-        return new class($id, $label, $rows) implements SettingsSection {
+        return new readonly class($id, $label, $rows) implements SettingsSection {
             /** @param array<string, string> $rows */
             public function __construct(
-                private readonly string $id,
-                private readonly string $label,
-                private readonly array $rows,
+                private string $id,
+                private string $label,
+                private array $rows,
             ) {}
 
             public function handles(string $section): bool

@@ -15,10 +15,10 @@ use Symfony\Component\Tui\Render\Renderer;
  * of the previous theme. Widget render caches are swept separately, by the
  * ThemeChanged chrome listener.
  */
-final class StyleSheetThemer
+final readonly class StyleSheetThemer
 {
     public function __construct(
-        private readonly Renderer $renderer,
+        private Renderer $renderer,
     ) {}
 
     public function apply(ThemeDefinition $definition): void

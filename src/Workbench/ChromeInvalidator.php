@@ -19,12 +19,12 @@ use Symfony\Component\Tui\Widget\ContainerWidget;
  * only clears caches).
  */
 #[AsIdeService]
-final class ChromeInvalidator
+final readonly class ChromeInvalidator
 {
     /** @param iterable<AbstractWidget> $roots the `porta.chrome_root`-tagged chrome widgets */
     public function __construct(
         #[AutowireIterator('porta.chrome_root')]
-        private readonly iterable $roots = [],
+        private iterable $roots = [],
     ) {}
 
     /** Clear every chrome root's cache tree and everything below. */

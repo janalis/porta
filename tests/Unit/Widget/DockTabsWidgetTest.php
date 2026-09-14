@@ -147,7 +147,7 @@ final class DockTabsWidgetTest extends TestCase
         $bar = self::strip($tabs);
 
         $bar->render(new RenderContext(40, 1));
-        $plain = AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(40, 1))[0], $events);
+        $plain = AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(40, 1))[0]);
         $this->assertStringContainsString('search-06', $plain, 'the active tab is always on the strip');
         $this->assertStringNotContainsString('search-00', $plain, 'leading tabs drop first');
         // The hit map follows the window: clicking column 2 hits the first VISIBLE tab.

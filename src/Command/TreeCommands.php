@@ -29,13 +29,13 @@ use Symfony\Component\Tui\Tui;
  * gate here leaves the editor's own binding untouched.
  */
 #[AsTaggedItem(priority: 150)]
-final class TreeCommands implements CommandProvider
+final readonly class TreeCommands implements CommandProvider
 {
     public function __construct(
-        private readonly TreeOperations $operations,
-        private readonly FileTreeWidget $tree,
-        private readonly Tui $tui,
-        private readonly TreePathClipboard $clipboard,
+        private TreeOperations $operations,
+        private FileTreeWidget $tree,
+        private Tui $tui,
+        private TreePathClipboard $clipboard,
     ) {}
 
     /**

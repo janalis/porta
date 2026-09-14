@@ -13,10 +13,10 @@ use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
  * (core wins when a plugin default key collides), before the palette groups.
  */
 #[AsTaggedItem(priority: 500)]
-final class PluginCommandProvider implements CommandProvider
+final readonly class PluginCommandProvider implements CommandProvider
 {
     public function __construct(
-        private readonly PluginManager $plugins,
+        private PluginManager $plugins,
     ) {}
 
     #[\Override]

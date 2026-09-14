@@ -12,15 +12,15 @@ use Porta\Support\ProjectPaths;
  * Files source: fuzzy project-file paths via the shared {@see FileIndex},
  * already ranked best-first. Activating a hit opens the file focused.
  */
-final class FilesSource implements SearchSource
+final readonly class FilesSource implements SearchSource
 {
     private const int LIMIT = 20;
 
     /** @param \Closure(string, OpenFocus): void $openFile fn(absolutePath, focus) */
     public function __construct(
-        private readonly FileIndex $index,
-        private readonly ProjectPaths $paths,
-        private readonly \Closure $openFile,
+        private FileIndex $index,
+        private ProjectPaths $paths,
+        private \Closure $openFile,
     ) {}
 
     #[\Override]

@@ -14,10 +14,10 @@ final class ActionRegistryTest extends TestCase
 {
     private function registry(array $plugin): ActionRegistry
     {
-        return new ActionRegistry(new class($plugin) implements RebindableActionSource {
+        return new ActionRegistry(new readonly class($plugin) implements RebindableActionSource {
             /** @param array<string, string> $actions */
             public function __construct(
-                private readonly array $actions,
+                private array $actions,
             ) {}
 
             public function rebindableActions(): array

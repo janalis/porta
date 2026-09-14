@@ -30,13 +30,13 @@ namespace Porta\Highlight;
  * as not claiming the language; one that throws while *highlighting* is caught
  * by {@see CodeHighlighter}, which falls back to plain text.
  */
-final class HighlightRegistry
+final readonly class HighlightRegistry
 {
-    private readonly PlainTextHighlightProvider $plain;
+    private PlainTextHighlightProvider $plain;
 
     public function __construct(
-        private readonly SyntaxHighlightProviderSource $plugins,
-        private readonly HighlightPreferences $preferences,
+        private SyntaxHighlightProviderSource $plugins,
+        private HighlightPreferences $preferences,
     ) {
         $this->plain = new PlainTextHighlightProvider();
     }

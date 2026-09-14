@@ -340,7 +340,7 @@ final class SettingsPluginsControllerTest extends TestCase
 
         $this->declareInstaller('demo', 'phpstan', available: false);
         $rows = $controller->pluginRows('demo');
-        $install = $rows[\array_key_last($rows)];
+        $install = \array_last($rows);
         $this->assertSame('pluginInstallBinary', $install->key);
         $this->assertSame(SettingsRowKind::Action, $install->kind);
         $this->assertSame('Install phpstan', $install->label);

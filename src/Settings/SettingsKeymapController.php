@@ -31,21 +31,21 @@ use Symfony\Component\Tui\Input\KeyParser;
  * IDE-level dispatch and labels are what go live here — and a rebind that lands
  * on that side of the line says "applies on restart" rather than pretending.)
  */
-final class SettingsKeymapController
+final readonly class SettingsKeymapController
 {
     public function __construct(
-        private readonly ActionRegistry $actions,
-        private readonly CommandRegistry $commands,
-        private readonly EditorKeymapProvider $editor,
-        private readonly EditorPanes $panes,
-        private readonly LiveKeybindings $ideKeys,
-        private readonly MenuRebuilder $menuRebuilder,
-        private readonly Notifier $notifier,
-        private readonly Translator $translator,
-        private readonly PortaJsonWriter $writer,
-        private readonly SettingsScope $scope,
-        private readonly ConfigFiles $files,
-        private readonly KeyParser $parser = new KeyParser(),
+        private ActionRegistry $actions,
+        private CommandRegistry $commands,
+        private EditorKeymapProvider $editor,
+        private EditorPanes $panes,
+        private LiveKeybindings $ideKeys,
+        private MenuRebuilder $menuRebuilder,
+        private Notifier $notifier,
+        private Translator $translator,
+        private PortaJsonWriter $writer,
+        private SettingsScope $scope,
+        private ConfigFiles $files,
+        private KeyParser $parser = new KeyParser(),
     ) {}
 
     /**

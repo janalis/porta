@@ -103,7 +103,7 @@ final class TerminalBuffer
                 continue;
             }
 
-            if (\ord($ch) < 0x20) {
+            if (\ord($ch[0]) < 0x20) {
                 match ($ch) {
                     "\n" => $this->newline(),
                     "\r" => $this->col = 0,

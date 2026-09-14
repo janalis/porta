@@ -16,10 +16,10 @@ namespace Porta\Onboarding;
  * one Settings → Plugins toggle away, and the mago plugin's own runtime
  * binary lookup still falls back to PATH.
  */
-final class MagoDetector
+final readonly class MagoDetector
 {
     public function __construct(
-        private readonly string $rootDir,
+        private string $rootDir,
     ) {}
 
     public function installed(): bool

@@ -15,12 +15,12 @@ use Porta\Support\ProjectPaths;
  * every result line's match occurrences are then placed against those spans. A
  * file whose language is unknown (or which can't be read) is left untouched.
  */
-final class LanguageFilter
+final readonly class LanguageFilter
 {
     public function __construct(
-        private readonly TokenClassifier $classifier,
-        private readonly ProjectSearch $projectSearch,
-        private readonly ProjectPaths $paths,
+        private TokenClassifier $classifier,
+        private ProjectSearch $projectSearch,
+        private ProjectPaths $paths,
     ) {}
 
     /**
@@ -156,13 +156,7 @@ final class LanguageFilter
     /** @param list<array{start: int, end: int}> $spans */
     private function inAnySpan(int $offset, array $spans): bool
     {
-        foreach ($spans as $span) {
-            if ($offset >= $span['start'] && $offset < $span['end']) {
-                return true;
-            }
-        }
-
-        return false;
+        return \array_any($spans, static fn (array $span): bool => $offset >= $span['start'] && $offset < $span['end']);
     }
 
     /**

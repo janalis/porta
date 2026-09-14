@@ -30,14 +30,14 @@ use Porta\Support\ProjectPaths;
  * vendored parents are reachable at all is the shared index's scope, which the
  * "Search vendor/ files" setting owns.
  */
-final class SuperMethodNavigator
+final readonly class SuperMethodNavigator
 {
     /** Deep enough for any hierarchy anyone reads by hand; a cycle would stop here anyway. */
     private const int MAX_DEPTH = 8;
 
     public function __construct(
-        private readonly FileIndex $files,
-        private readonly ProjectPaths $paths,
+        private FileIndex $files,
+        private ProjectPaths $paths,
     ) {}
 
     /**

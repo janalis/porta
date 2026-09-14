@@ -556,7 +556,7 @@ final class DebugController implements DebugSessionObserver, StatusSegment
                 return;
             }
             $this->session->evaluate($expression, $this->currentFrameId, 'repl', function (array $result) use ($expression): void {
-                $this->notifier->flash($expression.' = '.(null !== $result['error'] ? $result['error'] : $result['result']), 5.0);
+                $this->notifier->flash($expression.' = '.($result['error'] ?? $result['result']), 5.0);
             });
         });
     }

@@ -15,11 +15,11 @@ use Symfony\Component\Tui\Tui;
  * pulled from providers at render time and cached, so a source change only
  * needs to invalidate the cache and schedule a frame.
  */
-final class StatusBarRefreshListener
+final readonly class StatusBarRefreshListener
 {
     public function __construct(
-        private readonly StatusBarWidget $statusBar,
-        private readonly Tui $tui,
+        private StatusBarWidget $statusBar,
+        private Tui $tui,
     ) {}
 
     #[AsEventListener]

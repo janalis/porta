@@ -19,7 +19,7 @@ use Symfony\Component\DependencyInjection\ServiceLocator;
 
 final class IdeContainerFactoryTest extends TestCase
 {
-    private const ENV_KEYS = ['PORTA_CACHE_DIR', 'PORTA_CONTAINER_CACHE', 'XDG_CACHE_HOME', 'HOME'];
+    private const array ENV_KEYS = ['PORTA_CACHE_DIR', 'PORTA_CONTAINER_CACHE', 'XDG_CACHE_HOME', 'HOME'];
 
     /** @var array<string, string|false> */
     private array $savedEnv = [];

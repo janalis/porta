@@ -59,24 +59,15 @@ final class MultilineInput
      */
     public function handleKey(string $keys): bool
     {
-        switch ($keys) {
-            case "\r":
-            case "\n":
-                return $this->splitLineAtCaret();
-            case "\x7f":
-            case "\x08":
-                return $this->deleteBackward();
-            case "\x1b[A":
-                return $this->moveUp();
-            case "\x1b[B":
-                return $this->moveDown();
-            case "\x1b[D":
-                return $this->moveLeft();
-            case "\x1b[C":
-                return $this->moveRight();
-        }
-
-        return TextInput::isPrintable($keys) && $this->insertPrintable($keys);
+        return match ($keys) {
+            "\r", "\n" => $this->splitLineAtCaret(),
+            "\x7f", "\x08" => $this->deleteBackward(),
+            "\x1b[A" => $this->moveUp(),
+            "\x1b[B" => $this->moveDown(),
+            "\x1b[D" => $this->moveLeft(),
+            "\x1b[C" => $this->moveRight(),
+            default => TextInput::isPrintable($keys) && $this->insertPrintable($keys),
+        };
     }
 
     // --- Editing ------------------------------------------------------------

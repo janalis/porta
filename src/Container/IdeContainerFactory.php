@@ -39,7 +39,7 @@ use Symfony\Component\Filesystem\Exception\IOException;
  * PORTA_CONTAINER_CACHE=debug forces source tracking on a packaged install,
  * and deleting the cache dir is always safe.
  */
-final class IdeContainerFactory
+final readonly class IdeContainerFactory
 {
     /**
      * @param bool|null $trackSources whether the ConfigCache tracks source freshness (debug mode);
@@ -48,7 +48,7 @@ final class IdeContainerFactory
      *                                trusts the cache key alone
      */
     public function __construct(
-        private readonly ?bool $trackSources = null,
+        private ?bool $trackSources = null,
     ) {}
 
     public function build(string $rootDir, IdeConfig $config, Ansi $ansi, ?string $lspCommand = null, LspMode $lsp = LspMode::Enabled, string $docsDir = ''): ContainerInterface

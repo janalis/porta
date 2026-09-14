@@ -18,10 +18,10 @@ use Porta\Support\JsonFile;
  * framework. Re-read on every Welcome open (steps are rebuilt each time), so
  * a `composer require` mid-session is picked up by the next open.
  */
-final class SymfonyDetector
+final readonly class SymfonyDetector
 {
     public function __construct(
-        private readonly string $rootDir,
+        private string $rootDir,
     ) {}
 
     public function isSymfonyProject(): bool

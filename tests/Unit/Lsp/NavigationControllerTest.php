@@ -276,7 +276,7 @@ final class NavigationControllerTest extends TestCase
         $items = $this->overlayItems();
         // One line before the target, then thirty after it.
         $this->assertSame('1', $items[0]['hint']);
-        $this->assertSame((string) (1 + 30 + 1), $items[\array_key_last($items)]['hint']);
+        $this->assertSame((string) (1 + 30 + 1), \array_last($items)['hint']);
     }
 
     public function testTheWindowOpensExACTLYOneLineBeforeTheTarget(): void
@@ -307,7 +307,7 @@ final class NavigationControllerTest extends TestCase
         $this->peekAt(2, "\n\n\n\n");
 
         $items = $this->overlayItems();
-        $this->assertSame(Glyphs::NAV_CURRENT, \trim($items[\array_key_last($items)]['label']));
+        $this->assertSame(Glyphs::NAV_CURRENT, \trim(\array_last($items)['label']));
         $this->assertStringContainsString('Peek: a.php:3', $this->pickerText());
     }
 

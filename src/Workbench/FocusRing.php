@@ -16,13 +16,13 @@ use Symfony\Component\Tui\Tui;
  * detached widget. The git and settings views own their pane cycling; the
  * coordinator delegates to them instead of this ring while they are open.
  */
-final class FocusRing
+final readonly class FocusRing
 {
     public function __construct(
-        private readonly Tui $tui,
-        private readonly FileTreeWidget $tree,
-        private readonly BottomDock $dock,
-        private readonly EditorArea $editorArea,
+        private Tui $tui,
+        private FileTreeWidget $tree,
+        private BottomDock $dock,
+        private EditorArea $editorArea,
     ) {}
 
     /** Move focus to the next (+1) or previous (-1) ring member, wrapping around. */

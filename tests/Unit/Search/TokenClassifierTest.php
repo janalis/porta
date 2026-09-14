@@ -45,15 +45,7 @@ final class TokenClassifierTest extends TestCase
         $src = "<?php\n\$needle = 1; // needle\n\$s = 'needle';\nfunction needle() {}\n";
         $spans = $classifier->commentStringSpans($src, 'php');
 
-        $inside = static function (int $offset) use ($spans): bool {
-            foreach ($spans as $span) {
-                if ($offset >= $span['start'] && $offset < $span['end']) {
-                    return true;
-                }
-            }
-
-            return false;
-        };
+        $inside = static fn (int $offset): bool => \array_any($spans, static fn (array $span): bool => $offset >= $span['start'] && $offset < $span['end']);
 
         // The four occurrences of "needle": variable (code), comment, string, function name (code).
         $offsets = [];
