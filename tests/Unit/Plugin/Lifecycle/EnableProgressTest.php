@@ -36,6 +36,12 @@ final class EnableProgressTest extends TestCase
         $this->assertFalse($progress->reported, 'unrelated to the reported flag');
     }
 
+    public function testWithActivationKeepsBothEndsOfTheTruthTable(): void
+    {
+        $this->assertFalse(new EnableProgress()->withActivation(false)->activated, 'nothing loaded, nothing activated');
+        $this->assertTrue(new EnableProgress(activated: true)->withActivation(true)->activated, 'loaded again is still activated');
+    }
+
     public function testWithFailureSetsReportedWithoutTouchingActivated(): void
     {
         $progress = new EnableProgress(activated: true);

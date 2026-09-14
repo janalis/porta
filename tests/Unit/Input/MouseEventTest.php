@@ -200,6 +200,18 @@ final class MouseEventTest extends TestCase
         $this->assertSame(-1, $up?->button);
     }
 
+    public function testWithColumnMovesTheColumnAndNothingElse(): void
+    {
+        $e = MouseEvent::parse("\x1b[<16;5;7M");
+        $moved = $e?->withColumn(40);
+
+        $this->assertSame(40, $moved?->col);
+        $this->assertSame(4, $e?->col, 'a copy: the original keeps its column');
+        $this->assertSame($e?->row, $moved?->row);
+        $this->assertSame($e?->button, $moved?->button);
+        $this->assertTrue($moved?->ctrl, 'the modifiers ride along');
+    }
+
     public function testMiddlePressWithNoModifierBitsSetsNoneOfThem(): void
     {
         // Code 1 = middle button, all higher bits (motion/shift/alt/ctrl) clear.

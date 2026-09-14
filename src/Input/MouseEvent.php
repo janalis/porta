@@ -71,19 +71,7 @@ final readonly class MouseEvent
     /** A copy at a different screen column (visual→logical remap under RTL). */
     public function withColumn(int $col): self
     {
-        return new self(
-            $this->button,
-            $col,
-            $this->row,
-            $this->pressed,
-            $this->motion,
-            $this->wheel,
-            $this->wheelDelta,
-            $this->wheelHDelta,
-            $this->shift,
-            $this->alt,
-            $this->ctrl,
-        );
+        return clone($this, ['col' => $col]);
     }
 
     public function isLeftPress(): bool

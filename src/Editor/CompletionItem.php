@@ -39,12 +39,12 @@ final readonly class CompletionItem
      */
     public function withDetail(string $detail): self
     {
-        return new self($this->label, $this->insertText, $this->kind, $detail, $this->additionalTextEdits, $this->snippet, $this->raw, $this->documentation);
+        return clone($this, ['detail' => $detail]);
     }
 
     /** The same item with the docblock the server sent — like {@see withDetail()}, usually only on resolve. */
     public function withDocumentation(string $documentation): self
     {
-        return new self($this->label, $this->insertText, $this->kind, $this->detail, $this->additionalTextEdits, $this->snippet, $this->raw, $documentation);
+        return clone($this, ['documentation' => $documentation]);
     }
 }

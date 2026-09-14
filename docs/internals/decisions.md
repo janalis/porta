@@ -9561,3 +9561,14 @@ already changes; importing functions would undo the qualified calls.
 
 **One metric floor moved:** cyclomatic-complexity 147 → 145 (`mago.toml` has
 the note). The pin had already drifted to 146 on `main`.
+
+**PHP 8.5 idioms adopted by hand, and one not.** `clone($this, [...])` replaced
+the hand-rebuilt withers (`MouseEvent::withColumn` re-listed eleven constructor
+arguments to change one), still refused from outside the class by the readonly
+properties' implicit `protected(set)`. The key is a string, so a typo is a
+runtime Error and not a mago finding — each wither is guarded by a test that
+checks the changed field AND an untouched one. **The pipe operator was not
+adopted:** every nested chain in the tree starts at a multi-argument call
+(`\explode(',', $raw)`, `\substr($s, 0, $n)`), and without partial function
+application (not in 8.5) each stage becomes its own arrow function — longer
+than the nesting it replaces. Revisit when partial application ships.

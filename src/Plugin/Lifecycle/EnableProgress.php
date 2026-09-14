@@ -25,11 +25,11 @@ final readonly class EnableProgress
 
     public function withActivation(bool $loaded): self
     {
-        return new self($this->activated || $loaded, $this->reported);
+        return clone($this, ['activated' => $this->activated || $loaded]);
     }
 
     public function withFailure(): self
     {
-        return new self($this->activated, reported: true);
+        return clone($this, ['reported' => true]);
     }
 }
