@@ -21,12 +21,34 @@ git flows and git context menus moved there for exactly that reason. The `too-ma
 carries the calibration note.
 
 E2e tests boot a real `Ide` against a `VirtualTerminal` and a `TempProject`
-through `tests/Support/RunsIde`. Steps are `ms => fn($tui, $terminal, $ide)` and
-run **sequentially chained** — each schedules the next by key delta *after* it
-completes, so a step may `await()` a subprocess or async effect without a later
-step firing underneath it. Without an explicit `$duration` the loop stops ~80ms
-after the last step; pass one only when effects land after the final step, and
-prefer awaiting them inside the step.
+through `tests/Support/RunsIde`. Steps are `key => fn($tui, $terminal, $ide)` and
+run **sequentially chained** — each schedules the next *after* it completes, so
+a step may `await()` a subprocess or async effect without a later step firing
+underneath it. **The keys order the steps; they are not waits.** The gap between
+steps is capped at `PORTA_E2E_STEP_GAP` ms, default **0**, and every step starts
+behind one forced frame (a user's input always lands after a paint). Without an
+explicit `$duration` the loop stops right after the last step, behind a final
+forced frame; pass one only when effects land after the final step, and prefer
+awaiting them inside the step.
+
+A step that needs something to have HAPPENED awaits it (`awaitPainted`,
+`awaitGit`, `awaitSearch`, `awaitLspReady`). A step that needs TIME to pass says
+so with `pump()`: `ClickCounter`'s 0.4s double-click window, `ZoomGesture`'s
+0.1s burst window and `LspSession`'s 0.3s document-sync debounce are the known
+ones; the last two are pumped in a test today. `PORTA_E2E_STEP_GAP=100000` replays the keys as real gaps — a test
+that passes only that way is leaning on a gap.
+
+The gaps were ~57% of E2e time (the keys summed to 194s over 456 scenarios) and
+were removed on 2026-09-15. Dropping them exposed 53 tests with a hidden
+fixed-gap dependency, all deterministic: 21 were a bare `tick()` before a rect or
+screen read (inside the 60fps cap it paints nothing), cured in the harness by the
+per-step frame; the rest were awaits that were missing (search results, git
+lanes, LSP answers, a debug session), a count of repaints read as a count of
+warnings, and the two clock waits above. Measured, alternated, `composer
+test` at 8 processes: **109 / 116s with the gaps, 86 / 89s without**; the E2e
+suite alone 34s → 13–17s. Graded after: 3 serial passes of E2e and Plugins at
+load 8–85, and 4 serial passes of each of the 16 changed files under 16 burners
+(load 48–167) — 0 red.
 
 When a constructor gains a dependency, fix the direct construction sites here
 too.

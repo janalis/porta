@@ -241,12 +241,12 @@ final class IdeFindInProjectTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                600 => static function ($tui): void {
-                    $tui->tick();
+                600 => function ($tui, $terminal, Ide $ide): void {
+                    $this->awaitSearch($ide);
                     $tui->handleInput("\x1bs"); // alt+s → Directory, but no file → whole project
                 },
-                800 => function ($tui) use ($panelText): void {
-                    $tui->tick();
+                800 => function ($tui, $terminal, Ide $ide) use ($panelText): void {
+                    $this->awaitSearch($ide);
                     $panel = $panelText($tui);
                     $this->assertStringContainsString('Scope: Directory', $panel);
                     $this->assertStringContainsString('src/A.php', $panel);
@@ -273,8 +273,8 @@ final class IdeFindInProjectTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                600 => function ($tui) use ($panelText): void {
-                    $tui->tick();
+                600 => function ($tui, $terminal, Ide $ide) use ($panelText): void {
+                    $this->awaitSearch($ide);
                     $panel = $panelText($tui);
                     $this->assertStringContainsString('$needle = 1;', $panel, 'the code occurrence matches first');
                     $this->assertStringContainsString('// needle here', $panel);
@@ -382,8 +382,8 @@ final class IdeFindInProjectTest extends TestCase
                     $tui->handleInput("\x1b[13;2u"); // shift+enter → newline in the query
                     $tui->handleInput('{');
                 },
-                600 => function ($tui) use ($panelText): void {
-                    $tui->tick();
+                600 => function ($tui, $terminal, Ide $ide) use ($panelText): void {
+                    $this->awaitSearch($ide);
                     $panel = $panelText($tui);
                     $this->assertStringContainsString('foo()⏎{', $panel, 'the multiline query renders the newline as ⏎');
                     $this->assertStringContainsString('2 results', $panel, 'the pattern matches across the line break in both files');
@@ -460,8 +460,8 @@ final class IdeFindInProjectTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                600 => static function ($tui): void {
-                    $tui->tick();
+                600 => function ($tui, $terminal, Ide $ide): void {
+                    $this->awaitSearch($ide);
                     // In the modal: Tab query → replace → Mask, then restrict to PHP.
                     $tui->handleInput("\t");
                     $tui->handleInput("\t");
@@ -469,8 +469,8 @@ final class IdeFindInProjectTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                1050 => function (Tui $tui): void {
-                    $tui->tick();
+                1050 => function (Tui $tui, $terminal, Ide $ide): void {
+                    $this->awaitSearch($ide);
                     $modal = $this->modalText($tui);
                     $this->assertStringContainsString('A.php', $modal, 'the PHP file still matches in the modal preview');
                     $this->assertStringNotContainsString('B.js', $modal, 'the *.php mask excludes the JS file');
@@ -498,8 +498,8 @@ final class IdeFindInProjectTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                600 => function (Tui $tui): void {
-                    $tui->tick();
+                600 => function (Tui $tui, $terminal, Ide $ide): void {
+                    $this->awaitSearch($ide);
                     // Replace directly in the modal (no promote): the preview flips to old → new.
                     $this->assertStringContainsString('$foo = 1;', $this->modalText($tui), 'the modal previews the matches');
                     $tui->handleInput("\t"); // query → replace
@@ -605,8 +605,8 @@ final class IdeFindInProjectTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                500 => static function ($tui): void {
-                    $tui->tick();
+                500 => function ($tui, $terminal, Ide $ide): void {
+                    $this->awaitSearch($ide);
                     $tui->handleInput("\t"); // query → replace
                     $tui->handleInput("\t"); // replace → mask
                     foreach (\str_split('*.php') as $ch) {
@@ -614,8 +614,8 @@ final class IdeFindInProjectTest extends TestCase
                     }
                     $tui->handleInput("\x1bs"); // alt+s → Directory scope
                 },
-                800 => static function ($tui): void {
-                    $tui->tick();
+                800 => function ($tui, $terminal, Ide $ide): void {
+                    $this->awaitSearch($ide);
                     $tui->handleInput("\x1b"); // esc → close (persists scope + mask)
                 },
                 1000 => static function ($tui): void {
@@ -648,15 +648,15 @@ final class IdeFindInProjectTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                600 => function (Tui $tui) use ($project): void {
-                    $tui->tick();
+                600 => function (Tui $tui, $terminal, Ide $ide) use ($project): void {
+                    $this->awaitSearch($ide);
                     $this->promote($tui); // modal → results pane (F5 rerun lives on the pane)
                     $this->assertStringContainsString('1 result', $tui->getById('results')->statusText());
                     $project->write('src/B.php', "// tok added later\n"); // a new match on disk
                     $tui->handleInput("\x1b[15~"); // F5 → rerun
                 },
-                900 => function ($tui) use ($panelText): void {
-                    $tui->tick();
+                900 => function ($tui, $terminal, Ide $ide) use ($panelText): void {
+                    $this->awaitSearch($ide);
                     $panel = $panelText($tui);
                     $this->assertStringContainsString('2 results', $tui->getById('results')->statusText(), 'rerun sees the new file');
                     $this->assertStringContainsString('src/B.php', $panel);
@@ -721,8 +721,8 @@ final class IdeFindInProjectTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                500 => static function ($tui): void {
-                    $tui->tick();
+                500 => function ($tui, $terminal, Ide $ide): void {
+                    $this->awaitSearch($ide);
                     $tui->handleInput("\x1b"); // esc → close (records "tok" in history)
                 },
                 700 => static function ($tui): void {

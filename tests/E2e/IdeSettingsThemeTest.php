@@ -219,7 +219,11 @@ final class IdeSettingsThemeTest extends TestCase
                     // The POSITIVE is the barrier — without a frame the cleared
                     // buffer is empty and "dark gone" passes for the wrong reason.
                     $this->awaitPaintedRaw($tui, $terminal, "\x1b[38;5;91m");
-                    $out = $terminal->getOutput(); // only post-switch frames (cleared at step 300)
+                    // A frame painted before the async re-highlight landed still
+                    // carries the old keyword colour; judge the settled frame.
+                    $terminal->clearOutput();
+                    $this->frame($tui);
+                    $out = $terminal->getOutput();
                     $this->assertStringNotContainsString("\x1b[38;5;176m", $out, 'no dark syntax remains');
                     // Chrome recolored: light header bar in, dark gone.
                     $this->assertStringContainsString("\x1b[48;5;253m", $out, 'light header bar present');

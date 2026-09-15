@@ -101,7 +101,7 @@ final class ContextMenuParityTest extends TestCase
                     // go-to-file popup used to be the example; it is a modal
                     // picker now, which owns input outright).
                     $tui->handleInput("\x06"); // ctrl+f → open the find bar
-                    $tui->tick();
+                    $this->frame($tui); // the bar's rect is read below: a bare tick is not a frame
                     $this->assertSame('find-bar', $tui->getFocus()?->getId());
 
                     $tui->handleInput(self::CTRL_F10);

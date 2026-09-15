@@ -118,8 +118,8 @@ final class IdeLayoutFocusTest extends TestCase
                             ['path' => 'b.php', 'line' => 0, 'text' => 'one'],
                             ['path' => 'c.php', 'line' => 0, 'text' => 'two'],
                         ]);
-                    $tui->requestRender();
-                    $tui->tick(); // force a frame so the pane gets a positioned rect
+                    $tui->requestRender(force: true);
+                    $tui->processRender(); // force a frame so the pane gets a positioned rect
                     $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($results);
                     $expected = $rect->rows + 4;
@@ -155,8 +155,8 @@ final class IdeLayoutFocusTest extends TestCase
                     // dock had no rect to grab. It now reserves its full height.
                     Services::resolve($ide, BottomDock::class)
                         ->showList(ResultsPanelMode::Search, 'Find in Project', []);
-                    $tui->requestRender();
-                    $tui->tick();
+                    $tui->requestRender(force: true);
+                    $tui->processRender();
                     $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('results'));
                     $expected = $rect->rows + 4;
@@ -312,8 +312,8 @@ final class IdeLayoutFocusTest extends TestCase
             [
                 200 => function ($tui, $terminal, Ide $ide): void {
                     Services::resolve($ide, CommandRegistry::class)->run('ide_recent_locations');
-                    $tui->requestRender();
-                    $tui->tick();
+                    $tui->requestRender(force: true);
+                    $tui->processRender();
 
                     $panel = Services::resolve($ide, BottomDock::class)->visiblePanel();
                     $this->assertInstanceOf(DockPanelWidget::class, $panel);
@@ -376,8 +376,8 @@ final class IdeLayoutFocusTest extends TestCase
             [
                 200 => function ($tui, $terminal, Ide $ide): void {
                     Services::resolve($ide, CommandRegistry::class)->run('ide_recent_locations');
-                    $tui->requestRender();
-                    $tui->tick();
+                    $tui->requestRender(force: true);
+                    $tui->processRender();
 
                     $panel = Services::resolve($ide, BottomDock::class)->visiblePanel();
                     $this->assertInstanceOf(DockPanelWidget::class, $panel, 'the results panel is showing');

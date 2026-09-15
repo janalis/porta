@@ -388,7 +388,8 @@ final class IdeDebugTest extends TestCase
                     $tui->handleInput("\x1b[19;5~"); // a breakpoint keeps the session paused
                     $tui->handleInput("\x1b[20;2~"); // shift+f9 debug
                 },
-                600 => function ($tui, $terminal) use ($palette): void {
+                600 => function (Tui $tui, VirtualTerminal $terminal) use ($palette): void {
+                    $this->awaitPainted($tui, $terminal, 'paused at prog.php:3'); // the debug session exists
                     $tui->handleInput("\x1b[96;5u"); // ctrl+` → the adapter echo lives in the debug terminal session
                     // The defaults go out during the adapter handshake — a
                     // whole php subprocess spawn; await, never a fixed gap.

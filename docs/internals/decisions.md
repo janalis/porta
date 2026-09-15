@@ -1819,6 +1819,10 @@ obvious version cannot work.
 - **E2e has no slow tests, it has a floor.** Median case 0.53s, the 15 slowest
   are 11% of the total; ~0.4s per test is `RunsIde`/`TempProject` setup, so
   ~144s of serial CPU sits in the boot path rather than in any test.
+  **Corrected 2026-09-15: the floor was the SCHEDULE, not setup.** The step
+  keys summed to 194s over 456 scenarios (mean last key 426ms), and steps chain
+  by key delta, so every gap was wall time. Capped to 0: `composer test` 109 /
+  116s → 86 / 89s, alternated. testing.md has the 53 tests it exposed.
 - **Unit is the mirror image**: 157 cases (2.9%) are 67% of its time, clustered
   in ~10 classes that really sleep — 70 `sleep`/`usleep` call sites.
 - ~~**`opcache.enable_cli` is Off**, and contributing.md measures 4.7× on

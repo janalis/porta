@@ -20,11 +20,10 @@ use Symfony\Component\Tui\Tui;
  * synthetic-input steps on the live Revolt loop, stop, return the terminal
  * for output assertions.
  *
- * Without an explicit $duration the loop stops shortly after the LAST step
- * ran (a short grace + a final tick to flush the render) instead of sleeping
- * a fixed tail — pass $duration only when effects genuinely land after the
- * final step (debounces, subprocess output), or better, make the last step
- * await() the effect explicitly.
+ * Without an explicit $duration the loop stops right after the LAST step
+ * ran (a final forced frame flushes what it painted) — pass $duration only
+ * when effects genuinely land after the final step (debounces, subprocess
+ * output), or better, make the last step await() the effect explicitly.
  */
 trait RunsIde
 {
@@ -143,15 +142,39 @@ trait RunsIde
         $this->pinSettingsScope($ide);
         $tui = Services::resolve($ide, Tui::class);
 
-        // Steps chain sequentially: each schedules the next with the key
-        // DELTA after it completes. A step may await() (suspending on the
-        // loop) without a later step's timer firing underneath it.
+        // Steps chain sequentially: each schedules the next after it completes.
+        // A step may await() (suspending on the loop) without a later step's
+        // timer firing underneath it.
+        //
+        // The keys ORDER the steps; they are not waits. The gap between two
+        // steps is capped at PORTA_E2E_STEP_GAP ms (default 0): a step that
+        // needs something to have happened awaits it, and one that needs time
+        // to pass (a double-click window, a gesture burst) pumps it. Set the
+        // variable high to replay the keys as real gaps when chasing a flake.
         $timers = [];
         \ksort($steps);
         $keys = \array_keys($steps);
-        $schedule = static function (int $index, int $previousKey) use (&$schedule, &$timers, $steps, $keys, $tui, $terminal, $ide, $duration): void {
+        $gap = \getenv('PORTA_E2E_STEP_GAP');
+        $cap = \is_numeric($gap) ? (float) $gap : 0.0;
+        $schedule = static function (int $index, int $previousKey) use (&$schedule, &$timers, $steps, $keys, $tui, $terminal, $ide, $duration, $cap): void {
             $key = $keys[$index];
-            $timers[] = EventLoop::delay(($key - $previousKey) / 1000, static function () use ($index, $key, $steps, $keys, $tui, $terminal, $ide, $duration, $schedule, &$timers): void {
+            $timers[] = EventLoop::delay(\min($key - $previousKey, $cap) / 1000, static function () use (
+                $index,
+                $key,
+                $steps,
+                $keys,
+                $tui,
+                $terminal,
+                $ide,
+                $duration,
+                $schedule,
+                &$timers,
+                $cap,
+            ): void {
+                // A user's input always lands after a paint, so every step does:
+                // with no gap, a bare tick() inside the 60fps cap paints nothing.
+                $tui->requestRender(force: true);
+                $tui->processRender();
                 $steps[$key]($tui, $terminal, $ide);
                 if (\array_key_exists($index + 1, $keys)) {
                     $schedule($index + 1, $key);
@@ -162,8 +185,12 @@ trait RunsIde
                     // Tracked in $timers: when a step already stopped the Tui,
                     // this terminator would otherwise survive into the next
                     // test in the worker and tick the dead Ide there.
-                    $timers[] = EventLoop::delay(0.08, static function () use ($tui): void {
+                    $timers[] = EventLoop::delay(\min(80, $cap) / 1000, static function () use ($tui): void {
                         $tui->tick();
+                        // A bare tick() is not a frame: force one, or what the last
+                        // step flashed is on screen only if the frame cap allowed it.
+                        $tui->requestRender(force: true);
+                        $tui->processRender();
                         $tui->stop();
                     });
                 }

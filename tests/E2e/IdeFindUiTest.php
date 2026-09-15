@@ -268,8 +268,8 @@ final class IdeFindUiTest extends TestCase
                     // fails for the wrong reason.
                     $tui->getById('editor')->getDocument()->setCursor(2, 1); // inside `echo`
                     $tui->handleInput("\x06");
-                    $tui->requestRender();
-                    $tui->tick();
+                    $tui->requestRender(force: true);
+                    $tui->processRender();
 
                     $this->assertStringContainsString('Find: echo', $this->findBarRow($tui));
                 },
@@ -287,8 +287,8 @@ final class IdeFindUiTest extends TestCase
                     $tui->handleInput("\x1b"); // esc
                     $tui->getById('editor')->getDocument()->setCursor(2, 12); // on the `+`
                     $tui->handleInput("\x06");
-                    $tui->requestRender();
-                    $tui->tick();
+                    $tui->requestRender(force: true);
+                    $tui->processRender();
 
                     $this->assertStringContainsString(
                         'Find: echo',
@@ -427,8 +427,8 @@ final class IdeFindUiTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                700 => static function ($tui): void {
-                    $tui->tick();
+                700 => function ($tui, $terminal, Ide $ide): void {
+                    $this->awaitSearch($ide);
                     $tui->handleInput("\t"); // modal: query → replace
                     foreach (\str_split('baz') as $ch) {
                         $tui->handleInput($ch);
@@ -516,15 +516,14 @@ final class IdeFindUiTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => static function ($tui, $terminal, Ide $ide): void {
+                200 => function (Tui $tui, $terminal, Ide $ide): void {
                     $results = $tui->getById('results');
                     $results->open('Usages', ResultsPanelFields::resultsOnly());
                     $results->setResults([
                         ['path' => 'b.php', 'line' => 0, 'text' => 'one'],
                         ['path' => 'c.php', 'line' => 0, 'text' => 'two'],
                     ]);
-                    $tui->requestRender();
-                    $tui->tick(); // force a frame so the panel gets a positioned rect
+                    $this->frame($tui); // a bare tick() is not a frame: the panel's rect needs a real one
                     $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($results);
                     // A list tool has no header row; the second result is at relative row 1.

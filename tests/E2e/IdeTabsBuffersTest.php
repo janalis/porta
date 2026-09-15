@@ -53,8 +53,8 @@ final class IdeTabsBuffersTest extends TestCase
                     // Open the deep file as a background tab (does not reveal it).
                     Services::resolve($ide, BufferService::class)
                         ->openFile($project->path('src/deep/Target.php'), OpenFocus::Keep);
-                    $tui->requestRender();
-                    $tui->tick();
+                    $tui->requestRender(force: true);
+                    $tui->processRender();
 
                     $tree = $tui->getById('tree');
                     $this->assertNotSame('Target.php', $tree->selectedNode()?->name, 'opening a file does not reveal it in the tree');
@@ -633,10 +633,19 @@ final class IdeTabsBuffersTest extends TestCase
                     $terminal->clearOutput(); // capture only the frames after the reorder
                     $tui->handleInput("\x1b[<32;45;2M"); // drag A over tab B
                     $tui->handleInput("\x1b[<0;45;2m"); // release
-                    // tick(), NOT awaitPainted: the claim under test is that the
+                    // Ticks, NOT awaitPainted: the claim under test is that the
                     // strip repaints WITHOUT further input, and forcing a frame
-                    // would produce the very repaint being asserted.
-                    $tui->tick();
+                    // would produce the very repaint being asserted. Awaited,
+                    // because a tick inside the frame cap renders nothing yet.
+                    $this->await(
+                        static function () use ($tui, $terminal): bool {
+                            $tui->tick();
+
+                            return 1 === \preg_match('/B\.php.*A\.php/', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                        },
+                        timeout: 1.0,
+                        what: 'the reordered strip to repaint on a tick',
+                    );
                     $this->assertSame(['B.php', 'A.php'], $this->tabNames($tui));
                     // A pure reorder mutates no widget, so the strip must be
                     // invalidated explicitly for this frame to repaint it.

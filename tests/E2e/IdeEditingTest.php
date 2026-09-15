@@ -136,8 +136,8 @@ final class IdeEditingTest extends TestCase
                     $this->assertStringContainsString('App › Service › handle', $plain, 'the scope path is shown');
                 },
                 340 => static function ($tui, $terminal, Ide $ide): void {
-                    $tui->requestRender();
-                    $tui->tick();
+                    $tui->requestRender(force: true);
+                    $tui->processRender();
                     $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('breadcrumbs'));
                     // ' App'(1..3) › 'Service'(7..13) › 'handle'. Click 'Service' (col 8) →
@@ -166,8 +166,8 @@ final class IdeEditingTest extends TestCase
                     // A long expiry: the toast dismissing mid-step is a REAL
                     // repaint and would fail the quiescence assert under load.
                     Services::resolve($ide, Notifier::class)->flash('quiesce check', seconds: 60.0);
-                    $tui->tick(); // paint the toast
-                    $tui->tick(); // settle: the hook re-delivers identical spans
+                    $this->frame($tui); // paint the toast (a tick inside the frame cap paints nothing)
+                    $this->frame($tui); // settle: the hook re-delivers identical spans
                     $this->assertSame('quiesce check', Toasts::last($ide), 'the toast is up');
 
                     Probe::set($tui, 'renderRequested', false);
@@ -367,8 +367,8 @@ final class IdeEditingTest extends TestCase
                 400 => function ($tui, $terminal, Ide $ide) use ($project): void {
                     Services::resolve($ide, BufferService::class)
                         ->openFile($project->path('B.php'), OpenFocus::Editor);
-                    $tui->requestRender();
-                    $tui->tick();
+                    $tui->requestRender(force: true);
+                    $tui->processRender();
                     $this->assertStringEndsWith('B.php', (string) $tui->getById('editor')->getFilePath());
 
                     // Ctrl+Shift+Backspace: back to A.php, on the edited line.
@@ -393,16 +393,16 @@ final class IdeEditingTest extends TestCase
                 650 => static function ($tui, $terminal, Ide $ide) use ($project): void {
                     Services::resolve($ide, BufferService::class)
                         ->openFile($project->path('B.php'), OpenFocus::Editor);
-                    $tui->requestRender();
-                    $tui->tick();
+                    $tui->requestRender(force: true);
+                    $tui->processRender();
                     $tui->getById('editor')->getDocument()->setCursor(1, 0);
                     $tui->handleInput('Q'); // an edit in B.php, the newest one
                 },
                 750 => function ($tui, $terminal, Ide $ide) use ($project): void {
                     Services::resolve($ide, BufferService::class)->closeActiveBuffer(CloseMode::Force);
                     \unlink($project->path('B.php'));
-                    $tui->requestRender();
-                    $tui->tick();
+                    $tui->requestRender(force: true);
+                    $tui->processRender();
 
                     $editor = $tui->getById('editor');
                     $this->assertStringEndsWith('A.php', (string) $editor->getFilePath());

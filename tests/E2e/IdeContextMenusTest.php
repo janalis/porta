@@ -1146,7 +1146,7 @@ final class IdeContextMenusTest extends TestCase
                 },
                 500 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     Services::resolve($ide, CommandRegistry::class)->run('ide_help');
-                    $tui->tick();
+                    $this->frame($tui);
                     $terminal->clearOutput();
                     $tui->handleInput("\x1b[21;5~"); // Ctrl+F10 on the help viewer: the tab menu
                     $this->awaitPainted($tui, $terminal, 'Close Others');

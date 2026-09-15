@@ -564,8 +564,8 @@ final class IdeMousePrimitivesTest extends TestCase
                     $this->assertTrue($editor->isCompletionOpen());
                 },
                 320 => static function ($tui, $terminal, Ide $ide): void {
-                    $tui->requestRender();
-                    $tui->tick(); // paint the popup so its box geometry is recorded
+                    $tui->requestRender(force: true);
+                    $tui->processRender(); // paint the popup so its box geometry is recorded
                     $editor = $tui->getById('editor');
                     $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($editor);

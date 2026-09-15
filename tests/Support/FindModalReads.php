@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Support;
 
+use Porta\Ide;
+use Porta\Search\ProjectSearch;
+use Porta\Search\SearchUiWiring;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Tui;
@@ -18,6 +21,24 @@ trait FindModalReads
 {
     /** Satisfied by {@see ScreenReads::frame()} on the composing class. */
     abstract private function frame(Tui $tui): void;
+
+    /** Satisfied by {@see PumpsLoop::await()} on the composing class. */
+    abstract private function await(callable $done, float $timeout = 10.0, string $what = 'condition'): void;
+
+    /**
+     * The project-search barrier: no query debounce armed and no grep in
+     * flight. Typing arms a 0.25s debounce and the search it fires is a
+     * subprocess, so a result assertion behind anything less is a fixed gap.
+     */
+    private function awaitSearch(Ide $ide): void
+    {
+        $wiring = Services::resolve($ide, SearchUiWiring::class);
+        // The controller is inlined into the wiring, so it is reached through it.
+        $search = Probe::object($wiring, 'projectSearch', 'projectSearch');
+        \assert($search instanceof ProjectSearch, description: 'the wiring\'s controller holds the search engine');
+        // Re-evaluates: it reads the objects' live state, it captures no scalar.
+        $this->await(static fn (): bool => null === Probe::get($wiring, 'searchDebounce') && null === Probe::get($search, 'process'), what: 'the project search to settle');
+    }
 
     /**
      * Promote the open Find-in-Files modal to the results pane (Alt+Enter =

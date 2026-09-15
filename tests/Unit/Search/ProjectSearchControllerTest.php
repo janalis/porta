@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit\Search;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
 use Porta\Editor\Document;
@@ -539,17 +540,30 @@ final class ProjectSearchControllerTest extends TestCase
         $this->assertStringContainsString('$found = 1;', (string) \file_get_contents($project->path('src/A.php')));
     }
 
-    public function testReplaceAllFlashesNothingToReplaceWhenTheResultSetIsEmpty(): void
+    /**
+     * A multiline query replaces through its own whole-file path, which has
+     * its own empty-result guard. Only a racing E2e once reached it — a
+     * replace-all pressed before the search landed — so it is pinned here.
+     */
+    #[DataProvider('emptyQueries')]
+    public function testReplaceAllFlashesNothingToReplaceWhenTheResultSetIsEmpty(string $query): void
     {
         $project = new TempProject(['src/A.php' => "<?php\n"]);
         $controller = $this->controller($project->dir);
         $controller->open();
-        $controller->search('nomatch');
+        $controller->search($query);
         $this->await(fn (): bool => \str_contains($this->modal(), '0 results'), what: 'the empty search to complete');
 
         $controller->replaceAll('anything');
 
         $this->assertStringContainsString('Nothing to replace', $this->flashed());
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function emptyQueries(): iterable
+    {
+        yield 'single-line' => ['nomatch'];
+        yield 'multiline' => ["no\nmatch"];
     }
 
     public function testReplaceAllMultilineRewritesTheWholeFile(): void

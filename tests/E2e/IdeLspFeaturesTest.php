@@ -633,8 +633,8 @@ final class IdeLspFeaturesTest extends TestCase
                     $crumbs = $tui->getById('breadcrumbs');
                     $this->await(
                         static function () use ($tui, $crumbs): bool {
-                            $tui->requestRender();
-                            $tui->tick();
+                            $tui->requestRender(force: true);
+                            $tui->processRender();
                             $rows = $crumbs->render(new RenderContext(120, 1));
 
                             return \str_contains(AnsiUtils::stripAnsiCodes($rows[0] ?? ''), 'Demo');
@@ -1360,8 +1360,10 @@ final class IdeLspFeaturesTest extends TestCase
                 // barrier that would replace this has to be per-SESSION, and
                 // no test-visible signal for it exists today.
                 //
-                // The assertions are awaited; only the sync waits on the clock.
-                400 => static function ($tui): void {
+                // The assertions are awaited; only the sync waits on the clock,
+                // and it says so with pump() rather than riding a step gap.
+                400 => function ($tui): void {
+                    $this->pump(0.4);
                     $tui->getById('editor')->getDocument()->setCursor(1, 2); // on greet
                     $tui->handleInput("\x1b[24~"); // php server resolves Target.php
                 },
@@ -1372,7 +1374,8 @@ final class IdeLspFeaturesTest extends TestCase
                     $this->await(static fn (): bool => \str_ends_with((string) $tui->getById('editor')->getFilePath(), 'Target.php'), timeout: 8.0, what: 'the php-routed definition jump');
                     Services::resolve($ide, BufferService::class)->openFile($project->path('src/app.js'), OpenFocus::Keep);
                 },
-                1100 => static function ($tui): void {
+                1100 => function ($tui): void {
+                    $this->pump(0.4);
                     $tui->getById('editor')->getDocument()->setCursor(0, 2); // on doWork
                     $tui->handleInput("\x1b[24~"); // js server resolves Target.php too
                 },
@@ -1460,11 +1463,12 @@ final class IdeLspFeaturesTest extends TestCase
                     $this->assertStringEndsWith('Tall.php', (string) $editor->getFilePath(), 'on the declaration: no jump');
                     $tui->handleInput("\x1b"); // close the usages panel
                 },
-                300 => static function ($tui): void {
+                300 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $tui->tick();
                     // Lines 88-89: on the declaration, but zero usages.
                     $tui->getById('editor')->getDocument()->setCursor(88, 2);
                     $tui->handleInput("\x1b[24~");
+                    $this->awaitPainted($tui, $terminal, 'No usages found'); // the server's answer is async
                 },
             ],
         );
@@ -1517,8 +1521,9 @@ final class IdeLspFeaturesTest extends TestCase
                     $tui->handleInput('a');
                     $tui->handleInput('b'); // two rapid changes: second one cancels the first debounce
                 },
-                400 => static function ($tui): void {
+                400 => function ($tui): void {
                     $tui->handleInput("\x1b[24~"); // definition jump (fills jumpStack once)
+                    $this->await(static fn (): bool => \str_ends_with((string) $tui->getById('editor')->getFilePath(), 'Target.php'), what: 'the definition jump');
                 },
                 650 => static function ($tui): void {
                     $tui->handleInput("\x1b[1;7D"); // back again

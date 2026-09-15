@@ -45,12 +45,14 @@ PORTA_TEST_PROCESSES=4 nice -n 10 composer test   # busier than usual
 PORTA_TEST_PROCESSES=auto composer test           # the box is yours
 ```
 
-Measured on the 16-core machine, one run at a time, alternated:
+Measured on the 16-core machine, one run at a time, alternated. The rows
+predate the 2026-09-15 step-gap removal, which re-measured only the default
+row: `composer test` at 8 went 109 / 116s → 86 / 89s (see testing.md).
 
 | processes | full suite | `composer coverage` |
 | --- | --- | --- |
 | 4 | 170s | |
-| 8 (the default) | ~90s | 137s |
+| 8 (the default: half of 16) | ~90s | 137s |
 | 12 | 62s | |
 | `auto` (16, what CI sets) | 52s | 76s |
 | 24 | 39.5s | **64–72s** |
@@ -68,7 +70,8 @@ it is worth adding even at full parallelism.
 the full suite burns 182s of CPU over 51.7s of wall clock — **3.5 of 16 cores**.
 Under coverage at 8 it is 3.3. The suite is **wait-bound, not CPU-bound**: the
 Revolt loop runs in real time, ~70 `sleep`/`usleep` sites sit in ~10 Unit
-classes, and E2e pays a ~0.4s boot floor per test. Four fifths of the box is
+classes, and E2e paid ~0.4s of scheduled step gaps per test (removed
+2026-09-15 — see testing.md). Four fifths of the box is
 idle while a gate runs, which is why oversubscribing it works — at 32 processes
 utilisation reaches 6.7 cores and the suite is 34s.
 

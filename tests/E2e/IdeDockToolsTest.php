@@ -424,10 +424,10 @@ final class IdeDockToolsTest extends TestCase
             $project,
             $project->path('src/Main.php'),
             [
-                200 => function ($tui, $terminal, Ide $ide) use ($dock): void {
+                200 => function (Tui $tui, $terminal, Ide $ide) use ($dock): void {
                     $tui->handleInput("\x1b6"); // alt+6 → Problems
                     Services::resolve($ide, CommandRegistry::class)->run('ide_notifications'); // a second tool joins
-                    $tui->tick();
+                    $this->frame($tui); // the strip's rect below needs a real frame
                     $labels = static fn (): array => \array_column($dock($ide)->aliveTabs(), 'label');
                     $this->assertSame(['Problems', 'Notifications'], $labels());
 
@@ -465,9 +465,9 @@ final class IdeDockToolsTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, Ide $ide) use ($dock): void {
+                200 => function (Tui $tui, $terminal, Ide $ide) use ($dock): void {
                     $tui->handleInput("\x1b6"); // alt+6 → Problems
-                    $tui->tick();
+                    $this->frame($tui); // the strip's rect below needs a real frame
                     $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
                     $strip = AnsiUtils::stripAnsiCodes($tui->getById('dock-tabs')->render(new RenderContext($rect->columns, 1))[0]);
@@ -484,10 +484,10 @@ final class IdeDockToolsTest extends TestCase
                     $this->assertSame([], $dock($ide)->aliveTabs(), 'the menu Close really closed the tool');
                     $this->assertFalse($tui->getById('results')->isOpen());
                 },
-                500 => function ($tui, $terminal, Ide $ide): void {
+                500 => function (Tui $tui, $terminal, Ide $ide): void {
                     // The strip's empty tail stays menu-less.
                     $tui->handleInput("\x1b6");
-                    $tui->tick();
+                    $this->frame($tui); // the strip's rect below needs a real frame
                     $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
                     $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + $rect->columns - 2, $rect->row + 1));
@@ -509,10 +509,10 @@ final class IdeDockToolsTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide) use ($project): void {
+                200 => function (Tui $tui, $terminal, $ide) use ($project): void {
                     self::bufferService($ide)->openFile($project->path('b.php'), OpenFocus::Keep);
                     $tui->handleInput("\x1b6"); // alt+6 → a dock tool tab exists
-                    $tui->tick();
+                    $this->frame($tui); // the strips' rects below need a real frame
                     $renderer = Services::resolve($ide, Renderer::class);
 
                     // Editor tab strip: hover the inactive b.php tab.
@@ -608,11 +608,11 @@ final class IdeDockToolsTest extends TestCase
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings'); // back out
                     $tui->tick();
                 },
-                600 => function ($tui, $terminal, Ide $ide) use ($wheel): void {
+                600 => function (Tui $tui, $terminal, Ide $ide) use ($wheel): void {
                     // Dock strip: the wheel cycles the tool tabs.
                     $tui->handleInput("\x1b6"); // Problems
                     Services::resolve($ide, CommandRegistry::class)->run('ide_notifications'); // a second tab joins
-                    $tui->tick();
+                    $this->frame($tui); // the strip's rect below needs a real frame
                     $renderer = Services::resolve($ide, Renderer::class);
                     $stripRect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
                     $this->assertSame('Notifications', $tui->getById('results')->getTitle());

@@ -11,10 +11,13 @@ use Porta\Ide;
 use Porta\Onboarding\OnboardingState;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\PreservesPath;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Porta\Workbench\NotificationLog;
+use Porta\Workbench\Notifier;
 use Revolt\EventLoop;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
@@ -515,15 +518,22 @@ final class IdeFilesystemSessionTest extends TestCase
                     $ide->pollFilesystem();
                     $ide->pollFilesystem(); // second poll must not re-flash
                 },
-                300 => function ($tui): void {
+                300 => function ($tui, $terminal, Ide $ide): void {
                     $this->assertStringContainsString('keep me', $tui->getById('editor')->getDocument()->getText(), 'buffer retained');
+                    // Counted in the log, not the screen: the output accumulates
+                    // every repaint, so a screen count measures frames, not warnings.
+                    $log = Probe::object(Services::resolve($ide, Notifier::class), 'log'); // inlined into the notifier
+                    $this->assertInstanceOf(NotificationLog::class, $log, 'the notifier holds the log');
+                    $warnings = \array_filter(
+                        $log->entries(),
+                        static fn (array $entry): bool => \str_contains($entry['text'], 'deleted on disk'),
+                    );
+                    $this->assertCount(1, $warnings, 'warns exactly once');
                 },
             ],
         );
 
-        $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
-        $this->assertStringContainsString('A.php deleted on disk', $screen);
-        $this->assertSame(1, \substr_count($screen, needle: 'deleted on disk'), 'warns exactly once');
+        $this->assertStringContainsString('A.php deleted on disk', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
     }
 
     public function testOwnSaveDoesNotTriggerReload(): void
