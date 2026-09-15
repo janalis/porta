@@ -73,6 +73,7 @@ Roughly 700 duplicated lines once collapsed onto these.
 | `TestOverlayPane`, `RendersRoot` | the presenter rigs |
 | `TestTui::create(cols, rows)` | the three-arg Tui rig |
 | `lsp-stub.php` | `sendMessage` / `readFrames` for stub servers |
+| `DrainsPeer` | `drainPeer()`: read a socket pair's far end from a loop watcher — polling it inside `await()` moves one 8 KB macOS socket buffer per turn |
 
 `awaitPainted` exists because 91 E2e sites did action → `tick()` → assert the
 message is on screen. A bare tick is not a frame, so whether the status bar had

@@ -436,13 +436,15 @@ final class FileTreeWidgetTest extends TestCase
         // went unnoticed. Here the writer is a separate process: another tool,
         // a git checkout, a formatter.
         $project = new TempProject(['a.php' => '']);
+        // Past the grace window, so the mtime shortcut is the path under test:
+        // backdated rather than slept past, which also keeps the external
+        // write below from landing in the scan's own (1s-resolution) mtime.
+        \touch($project->dir, \time() - 10);
         $tree = new FileTreeWidget($project->dir);
         $tree->setFocused(true);
         $tree->render(new RenderContext(30, 10));
         $this->assertFalse($tree->refreshIfChanged(), 'nothing changed yet');
 
-        // Past the grace window, so the mtime shortcut is the path under test.
-        \sleep(3);
         $proc = \proc_open(['/bin/sh', '-c', 'printf "" > '.\escapeshellarg($project->dir.'/c.php')], [], $pipes);
         \assert(\is_resource($proc), description: 'the external writer started');
         \proc_close($proc);

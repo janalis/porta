@@ -6,12 +6,14 @@ namespace Porta\Tests\Unit\Support;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Support\NonBlockingWriter;
+use Porta\Tests\Support\DrainsPeer;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
 use Revolt\EventLoop;
 
 final class NonBlockingWriterTest extends TestCase
 {
+    use DrainsPeer;
     use PumpsLoop;
 
     /** @var list<string> */
@@ -69,16 +71,8 @@ final class NonBlockingWriterTest extends TestCase
         $this->assertGreaterThan(0, $writer->pendingBytes(), 'the overflow is queued, not lost');
 
         // Drain the peer while the loop runs the onWritable watcher.
-        $received = '';
         $expected = \strlen($first) + \strlen($second);
-        $this->await(static function () use (&$received, $read, $expected): bool {
-            $chunk = \fread($read, length: 65_536);
-            if (\is_string($chunk)) {
-                $received .= $chunk;
-            }
-
-            return \strlen($received) >= $expected;
-        });
+        $received = $this->drainPeer($read, static fn (string $received): bool => \strlen($received) >= $expected);
 
         $this->assertSame($first.$second, $received, 'bytes arrive intact and in order');
         $this->assertSame(0, $writer->pendingBytes());
@@ -257,11 +251,7 @@ final class NonBlockingWriterTest extends TestCase
 
         $writer->write(\str_repeat('a', times: 524_288)); // past the socket buffer → watcher armed
         $this->assertGreaterThan(0, $writer->pendingBytes());
-        $this->await(static function () use ($read, $writer): bool {
-            \fread($read, length: 65_536);
-
-            return 0 === $writer->pendingBytes();
-        });
+        $this->drainPeer($read, static fn (): bool => 0 === $writer->pendingBytes());
         $this->assertSame(1, $drains, 'the hook fired exactly once for the backlog');
 
         $writer->write('small');
@@ -269,11 +259,7 @@ final class NonBlockingWriterTest extends TestCase
         $this->assertSame(1, $drains, 'an immediately-accepted write never fires the hook');
 
         $writer->write(\str_repeat('b', times: 524_288));
-        $this->await(static function () use ($read, $writer): bool {
-            \fread($read, length: 65_536);
-
-            return 0 === $writer->pendingBytes();
-        });
+        $this->drainPeer($read, static fn (): bool => 0 === $writer->pendingBytes());
         $this->assertSame(2, $drains, 'each backlog drain fires once');
         $this->assertSame([], $this->errors);
         $writer->close();
@@ -291,11 +277,7 @@ final class NonBlockingWriterTest extends TestCase
         $writer->onDrain(null);
 
         $writer->write(\str_repeat('a', times: 524_288));
-        $this->await(static function () use ($read, $writer): bool {
-            \fread($read, length: 65_536);
-
-            return 0 === $writer->pendingBytes();
-        });
+        $this->drainPeer($read, static fn (): bool => 0 === $writer->pendingBytes());
 
         $this->assertSame(0, $drains, 'a cleared hook stays silent');
         $writer->close();

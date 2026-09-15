@@ -12,7 +12,7 @@ routed below — read the page before working in that area, not after.
 ## Commands
 
 ```bash
-composer verify   composer verify:quick  composer dev   composer test  composer arch  composer container
+composer verify   composer verify:quick  composer dev   composer test[:unit|:e2e|:plugins]  composer arch  composer container
 composer analyze  composer lint   composer format  composer format:check  composer rector  composer rector:check
 composer coverage:check   composer coverage:src   composer coverage:plugins   composer duplication
 ```

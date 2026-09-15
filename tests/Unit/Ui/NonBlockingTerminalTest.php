@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Ui;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Tests\Support\DrainsPeer;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Ui\NonBlockingTerminal;
 use Symfony\Component\Tui\Terminal\TerminalInterface;
 
 final class NonBlockingTerminalTest extends TestCase
 {
+    use DrainsPeer;
     use PumpsLoop;
 
     /** @return array{0: resource, 1: resource} [decoratorStream, peerReadSide] */
@@ -270,16 +272,8 @@ final class NonBlockingTerminalTest extends TestCase
         $terminal->write($second);
         $this->assertLessThan(0.1, \microtime(true) - $start, 'a stalled terminal cannot park the loop in a write');
 
-        $drained = '';
         $expected = \strlen($first) + \strlen($second);
-        $this->await(static function () use (&$drained, $peer, $expected): bool {
-            $chunk = \fread($peer, length: 65_536);
-            if (\is_string($chunk)) {
-                $drained .= $chunk;
-            }
-
-            return \strlen($drained) >= $expected;
-        });
+        $drained = $this->drainPeer($peer, static fn (string $received): bool => \strlen($received) >= $expected);
 
         $this->assertSame($first.$second, $drained, 'frames arrive intact and in order once the terminal drains');
         $terminal->stop();
@@ -335,15 +329,7 @@ final class NonBlockingTerminalTest extends TestCase
         $terminal->write(\str_repeat('x', times: 524_288)); // past the socket buffer
         $this->assertGreaterThan(0, $terminal->pendingBytes(), 'the undelivered tail is visible');
 
-        $drained = '';
-        $this->await(static function () use (&$drained, $peer, $terminal): bool {
-            $chunk = \fread($peer, length: 65_536);
-            if (\is_string($chunk)) {
-                $drained .= $chunk;
-            }
-
-            return 0 === $terminal->pendingBytes();
-        });
+        $this->drainPeer($peer, static fn (): bool => 0 === $terminal->pendingBytes());
         $this->assertSame(0, $terminal->pendingBytes(), 'zero once the peer drained everything');
 
         $terminal->stop();
@@ -391,11 +377,7 @@ final class NonBlockingTerminalTest extends TestCase
 
         $terminal->write(\str_repeat('#', times: 524_288)); // past the socket buffer → backlog
         $this->assertGreaterThan(0, $terminal->pendingBytes());
-        $this->await(static function () use ($peer, $terminal): bool {
-            \fread($peer, length: 65_536);
-
-            return 0 === $terminal->pendingBytes();
-        });
+        $this->drainPeer($peer, static fn (): bool => 0 === $terminal->pendingBytes());
 
         $this->assertSame(1, $drains, 'the pre-start hook was forwarded to the writer at start');
         $terminal->stop();
@@ -419,11 +401,7 @@ final class NonBlockingTerminalTest extends TestCase
 
         $terminal->write(\str_repeat('#', times: 524_288));
         $this->assertGreaterThan(0, $terminal->pendingBytes());
-        $this->await(static function () use ($peer, $terminal): bool {
-            \fread($peer, length: 65_536);
-
-            return 0 === $terminal->pendingBytes();
-        });
+        $this->drainPeer($peer, static fn (): bool => 0 === $terminal->pendingBytes());
 
         $this->assertSame(1, $drains, 'the hook survived the restart');
         $terminal->stop();

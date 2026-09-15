@@ -59,6 +59,9 @@
         "rector": "rector process",
         "rector:check": "rector process --dry-run --no-progress-bar",
         "test": "@php vendor/bin/paratest --processes=${PORTA_TEST_PROCESSES:-$(( ($(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4) + 1) / 2 ))} --functional",
+        "test:unit": "@test --testsuite=Unit",
+        "test:e2e": "@test --testsuite=E2e",
+        "test:plugins": "@test --testsuite=Plugins",
         "test:serial": "@php vendor/bin/phpunit --order-by=default",
         "coverage": "@php -d pcov.enabled=1 -d pcov.directory=. -d pcov.exclude='#/(vendor|tests)/#' vendor/bin/paratest --processes=${PORTA_TEST_PROCESSES:-$(( ($(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4) + 1) / 2 ))} --functional --passthru-php=\"'-d' 'pcov.enabled=1' '-d' 'pcov.directory=.' '-d' 'pcov.exclude=#/(vendor|tests)/#'\" --coverage-clover coverage/clover.xml",
         "coverage:plugins": [

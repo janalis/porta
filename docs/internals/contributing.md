@@ -6,7 +6,8 @@ The commands, the gates every commit must pass, and the house conventions.
 
 ```bash
 composer dev            # run the IDE (bin/porta)
-composer test           # full suite, paratest, ~40s (every core — see throttling below)
+composer test           # full suite, paratest, ~90s at the default half of the cores (see throttling below)
+composer test:unit      # one suite through the same paratest line — also test:e2e, test:plugins
 composer test:serial    # plain phpunit — ordering, races, leak reports
 composer analyze        # mago static analysis
 composer coverage:check # the suite with coverage, 100% enforced
@@ -364,13 +365,13 @@ would otherwise fight over is given to them one each.
 edit. While work is in progress, two commands are the loop:
 
 ```bash
-vendor/bin/paratest --processes=24 --functional --testsuite Unit   # 20s
-composer verify:quick                                              # 4s
+PORTA_TEST_PROCESSES=24 composer test:unit   # 22s
+composer verify:quick                        # 4s
 ```
 
-The Unit suite is **5,508 of the 6,610 tests** and runs in **20s at 24
-processes, 23s at 16, 41s at 8** — a quarter of the full suite's wall clock for five
-sixths of its cases. What it does not run is the part that boots an IDE:
+The Unit suite is **6,225 of the 7,406 tests** and runs in **22–23s at 24
+processes, 49s at the default 8** (2026-09-15, on a box at load 8–13) — about
+five sixths of the cases for a quarter of the full suite's wall clock. What it does not run is the part that boots an IDE:
 Integration, E2e and the plugin suites. So it is the fast answer to "did I
 break the thing I just touched", and it is not an answer about wiring, focus,
 rendering or a plugin — those live in the suites it skips, and `composer
