@@ -280,16 +280,27 @@ and the await is for ANY `sync:` diagnostic followed by an assertSame, so "the
 server said full" fails in milliseconds naming both strings instead of timing
 out against the wrong problem. **1/10 → 0/14 under 24 burners at load 163.**
 
+The per-language routing scenario is fixed too, and by deleting a claim rather
+than a clock. Its two `pump(0.4)`s were annotated "the barrier that would
+replace this has to be per-SESSION, and no test-visible signal for it exists
+today". One does: **`LspSessionPool::isInitialized()`** resolves the session
+from the ACTIVE file, so it follows a mid-run language switch — which is exactly
+why the status bar cannot serve here, both languages in that config pointing at
+the same binary. It is also the precondition production checks, since `ready()`
+returns null before initialize and the feature request is then never sent.
+`awaitLspSession($ide)` in `RunsIde` is the barrier; 0.8s of clock gone, 0/14
+under 24 burners at load 155.
+
+That barrier resolves its session from the active file, so the test now ASSERTS
+app.js is current before using it: if `OpenFocus::Keep` ever stopped making the
+opened buffer current, the barrier would answer for the php session, pass
+instantly and quietly stop being a barrier.
+
 Still open, and still only at pathological load:
 `testQuickFixUsesDiagnosticRangeAndHandlesNoOpAction` (a screen assertion; it
-already holds `awaitLspReady`, so its cause is something else) and the
-`php-routed definition jump` barrier in the per-language routing scenario. The
-latter has a lead rather than a diagnosis: its `pump(0.4)` covers `LspSession`'s
-0.3s `changeDebounce`, which is a 0.1s margin, and the comment above it says the
-barrier that would replace a clock there has to be per-SESSION and has no
-test-visible signal today — `awaitSearch()`'s Probe-the-debounce-field trick is
-the shape to copy if someone builds it. Do not write either cause down until it
-is instrumented; this page already carries one story that fit and was wrong.
+already holds `awaitLspReady`, so its cause is something else). Do not write a
+cause down until it is instrumented; this page already carries one story that
+fit and was wrong.
 
 **Both git argv paths pass `--no-optional-locks`** (`GitProcessRunner` and
 `TempProject::git()`). Porcelain readers must never take the opportunistic index

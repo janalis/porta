@@ -7,6 +7,7 @@ namespace Porta\Tests\Support;
 use Porta\Config\ConfigScope;
 use Porta\GitPlugin\Process\ProcessLane;
 use Porta\Ide;
+use Porta\Lsp\LspSessionPool;
 use Porta\Onboarding\OnboardingState;
 use Porta\Settings\SettingsScope;
 use Porta\Workbench\View\ViewRegistry;
@@ -111,6 +112,29 @@ trait RunsIde
     private function awaitLspReady(Tui $tui, VirtualTerminal $terminal, string $server = 'mock-lsp-server'): void
     {
         $this->awaitPainted($tui, $terminal, 'LSP:'.$server);
+    }
+
+    /**
+     * Wait until the ACTIVE file's language server is past initialize.
+     *
+     * {@see awaitLspReady()} reads the status bar, which names the server
+     * BINARY — so it cannot tell two sessions apart when a config points two
+     * languages at the same executable, and it is the wrong barrier for a
+     * scenario that switches language mid-run. This one asks the pool, which
+     * resolves the session from the active file, so it follows the switch.
+     *
+     * It is also the exact precondition the production path checks:
+     * `LspSessionPool::ready()` returns null when the session is not
+     * initialised, and a feature request is then never made at all — which is
+     * the silent drop that leaves the next barrier waiting on an answer to a
+     * question nobody asked.
+     */
+    private function awaitLspSession(Ide $ide): void
+    {
+        $lsp = Services::resolve($ide, LspSessionPool::class);
+        // First-class callable, so it re-reads the pool on every turn — the
+        // object is captured, never its answer.
+        $this->await($lsp->isInitialized(...), what: "the active file's language server to initialise");
     }
 
     /** Set by {@see allowFirstRunWelcome()} for the tests that want the real first boot. */

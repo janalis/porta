@@ -1383,19 +1383,19 @@ final class IdeLspFeaturesTest extends TestCase
             $project,
             $project->path('src/A.php'),
             [
-                // The 400 ms gaps in this scenario are NOT waste, and were
-                // measured as such: converting them to awaits made the
-                // js-routed jump time out every time. `LspSession` debounces
-                // document sync by 0.3 s (`changeDebounce`), so a definition
-                // request fired the instant the buffer becomes current reaches
-                // a server that has not been told about the document yet. The
-                // barrier that would replace this has to be per-SESSION, and
-                // no test-visible signal for it exists today.
+                // These two stages used to pump(0.4) and say a per-SESSION
+                // barrier had no test-visible signal. It does:
+                // LspSessionPool::isInitialized() resolves the session from the
+                // ACTIVE file, which is what makes it usable here where the
+                // status bar is not — both languages point at the same binary,
+                // so `LSP:mock-lsp-server` is already on screen from the php
+                // session when the js one is still starting.
                 //
-                // The assertions are awaited; only the sync waits on the clock,
-                // and it says so with pump() rather than riding a step gap.
-                400 => function ($tui): void {
-                    $this->pump(0.4);
+                // It is also the precondition the production path checks, so
+                // the clock was standing in for a fact: ready() returns null
+                // before initialize and the request is never sent at all.
+                400 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
+                    $this->awaitLspSession($ide);
                     $tui->getById('editor')->getDocument()->setCursor(1, 2); // on greet
                     $tui->handleInput("\x1b[24~"); // php server resolves Target.php
                 },
@@ -1406,8 +1406,18 @@ final class IdeLspFeaturesTest extends TestCase
                     $this->await(static fn (): bool => \str_ends_with((string) $tui->getById('editor')->getFilePath(), 'Target.php'), timeout: 8.0, what: 'the php-routed definition jump');
                     Services::resolve($ide, BufferService::class)->openFile($project->path('src/app.js'), OpenFocus::Keep);
                 },
-                1100 => function ($tui): void {
-                    $this->pump(0.4);
+                1100 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
+                    // The js session, which only exists because app.js was
+                    // opened above — a different session from the php one, and
+                    // the reason this barrier reads the pool and not the screen.
+                    //
+                    // Pinned, because the barrier below resolves its session
+                    // from the ACTIVE file: if OpenFocus::Keep ever stopped
+                    // making app.js current, awaitLspSession() would answer for
+                    // the php session, pass instantly, and quietly become no
+                    // barrier at all.
+                    $this->assertStringEndsWith('app.js', (string) $tui->getById('editor')->getFilePath(), 'the js buffer is the active one');
+                    $this->awaitLspSession($ide);
                     $tui->getById('editor')->getDocument()->setCursor(0, 2); // on doWork
                     $tui->handleInput("\x1b[24~"); // js server resolves Target.php too
                 },
