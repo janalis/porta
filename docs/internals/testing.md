@@ -296,11 +296,28 @@ app.js is current before using it: if `OpenFocus::Keep` ever stopped making the
 opened buffer current, the barrier would answer for the php session, pass
 instantly and quietly stop being a barrier.
 
-Still open, and still only at pathological load:
-`testQuickFixUsesDiagnosticRangeAndHandlesNoOpAction` (a screen assertion; it
-already holds `awaitLspReady`, so its cause is something else). Do not write a
-cause down until it is instrumented; this page already carries one story that
-fit and was wrong.
+The third, `testQuickFixUsesDiagnosticRangeAndHandlesNoOpAction`, was a bare
+`tick()` again — but in a shape the rect sweep does not catch, and worth
+recognising on its own:
+
+```php
+$this->await(fn () => pickerOpen($editor), what: '…'); // the STATE is up
+$tui->tick();                                          // meant to paint it
+$tui->handleInput("\x1b");                             // …and now it is gone
+// after the run: assertStringContainsString('Quick Fixes', $terminal->getOutput())
+```
+
+The assertion reads a title off the ACCUMULATED output, so it needs that title
+to have been painted during the window between those two lines. Inside the 60fps
+cap the tick paints nothing, Esc closes the picker, and the terminator's forced
+frame renders the closed state — the title never reaching the buffer at all.
+`awaitPainted()` is the barrier. **A bare tick before a `getWidgetRect` is the
+well-known version of this; a bare tick used to paint a TRANSIENT state that the
+next line destroys is the same bug and looks nothing like it.** A mechanical
+sweep cannot find these — 69 bare ticks are followed by an input and nearly all
+are benign — so it takes reading what the assertion needs to have been on screen.
+
+The file is 0/14 under 24 burners at load 155-160 with all three fixed.
 
 **Both git argv paths pass `--no-optional-locks`** (`GitProcessRunner` and
 `TempProject::git()`). Porcelain readers must never take the opportunistic index

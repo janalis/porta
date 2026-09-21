@@ -821,14 +821,21 @@ final class IdeLspFeaturesTest extends TestCase
                     $tui->getById('editor')->getDocument()->setCursor(0, 0);
                     $tui->handleInput("\x1b\r");
                 },
-                200 => function ($tui): void {
+                200 => function (Tui $tui, VirtualTerminal $terminal): void {
                     // The picker opens on the codeAction response.
                     $editor = $tui->getById('editor');
                     $this->await(
                         static fn (): bool => EditorState::pickerOpen($editor),
                         what: 'the quick-fix picker to open',
                     );
-                    $tui->tick();
+                    // The assertion after the run reads the picker's TITLE off
+                    // the accumulated output, so it has to have been painted
+                    // while the picker was open. A bare tick() here was not
+                    // that: inside the 60fps cap it paints nothing, Esc closes
+                    // the picker on the next line, and the terminator's forced
+                    // frame then renders the closed state — the title never
+                    // reaching the output at all.
+                    $this->awaitPainted($tui, $terminal, 'Quick Fixes');
                     $tui->handleInput("\x1b"); // close without applying
                 },
             ],
