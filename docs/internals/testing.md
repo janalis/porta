@@ -78,6 +78,17 @@ Roughly 700 duplicated lines once collapsed onto these.
 | `lsp-stub.php` | `sendMessage` / `readFrames` for stub servers |
 | `DrainsPeer` | `drainPeer()`: read a socket pair's far end from a loop watcher — polling it inside `await()` moves one 8 KB macOS socket buffer per turn |
 
+`await()`'s budget is real seconds, measured with `hrtime()`. It used to add
+0.02 per turn and call that elapsed time, so "timed out after 10.0s" could be a
+30s wait — and a barrier that burns its FULL budget is the signature of a LOST
+effect rather than a race, which only reads if the number is the number
+enforced. Measuring tightens every deadline, so a coverage run gets an explicit
+×3 (the `pcov.enabled` sniff bootstrap.php uses); graded green over three
+serial passes of E2e and Plugins under 16 CPU burners, load to 207. `pump()` is
+measured for a sharper reason: it stands in for a real clock, so `pump(0.4)` has
+to be 0.4s. The 0.02s turn itself stays — a backoff was measured and bought
+nothing (decisions.md has the four alternated runs).
+
 `awaitPainted` exists because 91 E2e sites did action → `tick()` → assert the
 message is on screen. A bare tick is not a frame, so whether the status bar had
 painted was a timing accident — invisible under `composer test`, fatal under the

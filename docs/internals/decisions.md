@@ -1825,6 +1825,34 @@ obvious version cannot work.
   116s → 86 / 89s, alternated. testing.md has the 53 tests it exposed.
 - **Unit is the mirror image**: 157 cases (2.9%) are 67% of its time, clustered
   in ~10 classes that really sleep — 70 `sleep`/`usleep` call sites.
+- **Re-checking `await()` on a backoff instead of a flat 0.02s turn** — measured
+  and turned down. The reasoning that motivated it was sound and the arithmetic
+  was not: 912 await sites × one wasted 20ms turn looked like ~18s of suite
+  time, but `await()` checks its condition BEFORE its first turn, so the common
+  case already costs zero turns, and a call that does wait is waiting on a
+  subprocess spawn or a language-server round trip whose latency dwarfs 20ms.
+  Four alternated serial runs of a (0, 1, 2, 5, 10, 20ms) backoff:
+  `tests/Unit/Support` 22.8 / 22.3s → 22.1 / 22.3s, `IdeLspFeaturesTest`
+  11.3 / 10.9s → 10.7 / 10.5s, `IdeTest` inside its own noise. At six processes
+  it was WORSE, one E2e run 13.7s → 24.9s: `awaitPainted`'s condition forces a
+  full synchronous render, so a tight re-check converts the spare wall time this
+  suite has (3.5 of 16 cores) into CPU contention it does not. What DID land
+  from the round is the honest budget — see the turn-counting row below.
+  Re-opens if a profile shows a barrier whose condition is cheap dominating a
+  suite, and then it is that barrier's floor, not the primitive.
+- **`await()`'s budget was counted, not measured** — `$elapsed += 0.02` per turn,
+  so under load, where a turn takes longer than its delay, "timed out after
+  10.0s" could be a 30s wait. That is not a rounding error, it is the loss of
+  the one diagnosis worth trusting: a test that burns its FULL budget lost an
+  effect, it did not race, and a number that is not the number enforced cannot
+  support that reading. Now `hrtime()`-measured. Measuring TIGHTENS every
+  deadline in the suite, because the old count silently absorbed slow turns —
+  most of all under pcov, where 500 turns of 40ms were 20s and not the 10 the
+  message claimed — so the coverage allowance is stated (×3, on the
+  `pcov.enabled` sniff bootstrap.php already uses) rather than inherited by
+  accident. `pump()` is measured for a sharper reason: it stands in for a real
+  clock (a double-click window, a debounce), so `pump(0.4)` must be 0.4s of wall
+  time and not twenty turns of unknown length.
 - ~~**`opcache.enable_cli` is Off**, and contributing.md measures 4.7× on
   compilation.~~ Measured and closed — see below. It is 1.5×, it does not reach
   the suite, and under pcov it inflates the percentage rather than deflating it.

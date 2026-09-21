@@ -12,6 +12,17 @@ use Revolt\EventLoop;
  * subprocesses, LSP/DAP clients, async processes, PTYs — stop hand-rolling
  * divergent copies. The divergence was the risk: sixteen copies silently fell
  * through on timeout, so their assertions ran against pre-op state.
+ *
+ * The 0.02s turn is NOT a gap that survived the step-key round. Re-checking on
+ * a backoff (0, 1, 2, 5, 10, 20ms) was measured over four alternated serial
+ * runs and bought nothing: `tests/Unit/Support` 22.8/22.3s → 22.1/22.3s,
+ * IdeLspFeaturesTest 11.3/10.9s → 10.7/10.5s, IdeTest inside the noise. An
+ * await's condition is checked BEFORE its first turn, so the common case
+ * already costs no turns at all, and the ones that do wait are waiting on a
+ * subprocess or a server whose latency dwarfs 20ms. At six processes it was
+ * actively worse — 13.7s → 24.9s for one E2e run — because `awaitPainted`
+ * forces a full render per check, and a tight re-check spends the spare WALL
+ * time this suite has on the CPU it does not. decisions.md carries the numbers.
  */
 trait PumpsLoop
 {
@@ -23,20 +34,26 @@ trait PumpsLoop
      * real condition; if you genuinely want to pump the loop for a fixed span
      * with no condition, use {@see pump()}.
      *
+     * The budget is MEASURED, not counted. It used to add 0.02 per turn and
+     * call the total elapsed seconds, so under parallel load — where a turn
+     * takes longer than its delay — "timed out after 10.0s" could be a 30s
+     * wait. That broke the one diagnosis worth trusting: a test that burns its
+     * FULL budget lost an effect, it did not race. A number that is not the
+     * number enforced cannot support that reading.
+     *
      * The default is generous on purpose: these poll real async effects (grep,
-     * git, LSP, render passes), and under the pcov coverage run (2-3x slower)
-     * plus heavy parallelism a tight budget times out before the effect lands —
-     * a genuinely stuck condition still throws, just a few seconds later.
+     * git, LSP, render passes), and a genuinely stuck condition still throws,
+     * just a few seconds later.
      */
     private function await(callable $done, float $timeout = 10.0, string $what = 'condition'): void
     {
-        $elapsed = 0.0;
+        $budget = $timeout * self::coverageSlowdown();
+        $deadline = \hrtime(as_number: true) + (int) ($budget * 1e9);
         while (!$done()) {
-            if ($elapsed >= $timeout) {
-                throw new \RuntimeException(\sprintf('timed out after %.1fs waiting for %s', $timeout, $what));
+            if (\hrtime(as_number: true) >= $deadline) {
+                throw new \RuntimeException(\sprintf('timed out after %.1fs waiting for %s', $budget, $what));
             }
             $this->turn();
-            $elapsed += 0.02;
         }
     }
 
@@ -46,13 +63,17 @@ trait PumpsLoop
      * await (e.g. proving a debounce has NOT yet fired, or draining output whose
      * arrival is the thing under test). Prefer await() whenever a real condition
      * exists.
+     *
+     * Measured too, and for a sharper reason: this one stands in for a real
+     * clock — a double-click window, a gesture burst, a document-sync debounce
+     * — so pump(0.4) has to be 0.4s of WALL time. Counting twenty turns of
+     * unknown length is the one thing it must not do.
      */
     private function pump(float $seconds): void
     {
-        $elapsed = 0.0;
-        while ($elapsed < $seconds) {
+        $deadline = \hrtime(as_number: true) + (int) ($seconds * 1e9);
+        while (\hrtime(as_number: true) < $deadline) {
             $this->turn();
-            $elapsed += 0.02;
         }
     }
 
@@ -71,5 +92,21 @@ trait PumpsLoop
         } finally {
             EventLoop::cancel($timer);
         }
+    }
+
+    /**
+     * How much longer a barrier may take under coverage.
+     *
+     * pcov is 2-3x slower, and the turn-counted budget absorbed that by
+     * accident: 500 turns that each took 40ms were 20 seconds, not the 10 the
+     * message claimed. Measuring real time removes that accident, so the
+     * allowance has to be stated instead — otherwise the same await that
+     * passes under `composer test:*` starts timing out under
+     * `composer coverage:check`, which is the gate. The sniff is the one
+     * tests/bootstrap.php already uses.
+     */
+    private static function coverageSlowdown(): float
+    {
+        return '1' === \ini_get('pcov.enabled') ? 3.0 : 1.0;
     }
 }
