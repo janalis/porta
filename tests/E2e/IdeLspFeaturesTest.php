@@ -367,12 +367,19 @@ final class IdeLspFeaturesTest extends TestCase
             $project,
             $project->path('src/Inc.php'),
             [
-                100 => function ($tui): void {
+                100 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $editor = $tui->getById('editor');
-                    $this->await(
-                        static fn (): bool => null !== $editor->getFilePath(),
-                        what: 'the editor to open its file',
-                    );
+
+                    // The file being open is NOT the precondition this test
+                    // needs. Whether a ranged delta may be sent at all is the
+                    // server's textDocumentSync capability, which arrives with
+                    // the initialize RESULT — so an edit typed before then is
+                    // synced as full text, correctly, and this test would be
+                    // asserting the incremental path against a client that had
+                    // no way to take it. Measured at 1 run in 10 under load:
+                    // `sync:full:<?php fooZ` came back, promptly, and the old
+                    // barrier sat waiting for a message nobody would send.
+                    $this->awaitLspReady($tui, $terminal, 'incremental-lsp-server');
 
                     $editor->getDocument()->setCursor(2, 3); // end of "foo"
                     $tui->handleInput('Z'); // insert one character
@@ -382,15 +389,21 @@ final class IdeLspFeaturesTest extends TestCase
                     // round trip to the server PROCESS — which is what the
                     // 600ms gap here used to bet on.
                     $editor->getDocument()->setCursor(0, 0);
+                    // Await ANY sync diagnostic, then assert which one. Awaiting
+                    // the exact string turns "the server said full" into a
+                    // ten-second timeout that names the wrong problem.
                     $this->await(
-                        static fn (): bool => 'sync:incremental:Z' === $editor->getCursorDiagnostic(),
-                        what: 'the incremental didChange to come back as a diagnostic',
+                        static fn (): bool => \str_starts_with((string) $editor->getCursorDiagnostic(), 'sync:'),
+                        what: 'the didChange to come back as a diagnostic',
+                    );
+                    $this->assertSame(
+                        'sync:incremental:Z',
+                        $editor->getCursorDiagnostic(),
+                        'a server advertising change kind 2 gets a ranged delta carrying only the typed text',
                     );
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testSnippetCompletionExpandsWithTabStops(): void

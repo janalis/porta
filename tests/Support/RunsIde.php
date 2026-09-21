@@ -99,10 +99,18 @@ trait RunsIde
      * never been sent. IdeTest's scripted session is the second caller: its
      * Ctrl+Space went out before `initialize` returned the moment its own
      * 0.4/0.5s boot gaps came off.
+     *
+     * A request sent too early does not always VANISH, which is the subtler
+     * half. An edit made before initialize returns is synced as FULL text,
+     * because the server's `textDocumentSync` capability — the thing that says
+     * a ranged delta is allowed — is not known yet. The answer then arrives,
+     * promptly and correct, and says something the test was not waiting for.
+     * $server is the status bar's name for it, which is the config's binary
+     * name and not `serverInfo.name`.
      */
-    private function awaitLspReady(Tui $tui, VirtualTerminal $terminal): void
+    private function awaitLspReady(Tui $tui, VirtualTerminal $terminal, string $server = 'mock-lsp-server'): void
     {
-        $this->awaitPainted($tui, $terminal, 'LSP:mock-lsp-server');
+        $this->awaitPainted($tui, $terminal, 'LSP:'.$server);
     }
 
     /** Set by {@see allowFirstRunWelcome()} for the tests that want the real first boot. */

@@ -251,30 +251,45 @@ said all along. Re-tested, both barriers were 0/30 and the failure never
 reproduced. Verify a mechanism, or write down that the cause is unknown; a wrong
 one in the record gets cited and stops the next person looking.
 
-**Known intermittent, unfixed: `IdeLspFeaturesTest` at pathological load.**
-Roughly **1 run in 6-8** when the box is at load ~200, always in that one file,
-and not always the same test — observed in
-`testIncrementalDidChangeSendsMinimalDelta` (barrier timeout),
-`testQuickFixUsesDiagnosticRangeAndHandlesNoOpAction` (screen assertion) and a
-`php-routed definition jump` barrier. Two things are measured, so start from
-them rather than re-deriving:
+**`IdeLspFeaturesTest` under load: one cause found, two still open.** The file
+failed roughly **1 run in 6-10** with the box at load ~200. It is worth reading
+how the one that was solved got solved, because two plausible stories were
+wrong first.
 
-- **It is a LOST effect, not a slow machine.** Raising the barrier from 10s to
-  30s changed nothing: same test, same 1-in-6, now burning the full 30s (the run
-  took 34s). A mock-LSP round trip does not take thirty seconds. Raising budgets
-  is therefore not the fix, and the raise was reverted — it only made each
-  failure three times slower to report.
-- **It is not new.** Probed 8 runs a side under 24 CPU burners: **1/8 on main at
-  load 202, 1/8 on `33f17866` at load 232** — the commit before the 2026-09-21
-  round. The `await()` it trips lives in a commit from 2026-08-30. What the
-  round changed is that the budget is now REAL seconds, where turn-counting used
-  to hand a loaded box 20-30s for a nominal 10 — so this was always here and is
-  merely visible now.
+*Not a slow machine.* Raising the barrier from 10s to 30s changed nothing: same
+test, same rate, now burning the full 30s (a 34s run). A mock-LSP round trip
+does not take thirty seconds, so the budget was never the problem and the raise
+was reverted — it only made each failure three times slower to report.
 
-Where to look when someone picks it up: the mock server's process scheduling
-under starvation, not the test's barriers. `PORTA_E2E_STEP_GAP` is the control —
-if replaying the old gaps makes it pass, the test is leaning on a gap; if it
-still fails, the request never went out or the answer never came back.
+*Not new either.* 8 runs a side under 24 burners: 1/8 on that round's HEAD at
+load 202, 1/8 on the commit it branched from at load 232.
+
+*And not a dropped request.* That was the third guess, and the instrumented run
+refuted it. Dumping state at the failure gave:
+
+    FAIL lspAtType=LSP:starting…  lspAtFail=LSP:incremental-lsp-server
+         diag='sync:full:<?php fooZ'
+
+The answer arrived, promptly, and said `sync:full` where the test awaited
+`sync:incremental`. Whether a ranged delta may be sent at all is the server's
+`textDocumentSync` capability, which arrives with the initialize RESULT — so an
+edit typed before then is synced as full text, correctly. The test asserted the
+incremental path without holding its precondition. `awaitLspReady()` (now taking
+the server's name, since this fixture is not `mock-lsp-server`) is the barrier,
+and the await is for ANY `sync:` diagnostic followed by an assertSame, so "the
+server said full" fails in milliseconds naming both strings instead of timing
+out against the wrong problem. **1/10 → 0/14 under 24 burners at load 163.**
+
+Still open, and still only at pathological load:
+`testQuickFixUsesDiagnosticRangeAndHandlesNoOpAction` (a screen assertion; it
+already holds `awaitLspReady`, so its cause is something else) and the
+`php-routed definition jump` barrier in the per-language routing scenario. The
+latter has a lead rather than a diagnosis: its `pump(0.4)` covers `LspSession`'s
+0.3s `changeDebounce`, which is a 0.1s margin, and the comment above it says the
+barrier that would replace a clock there has to be per-SESSION and has no
+test-visible signal today — `awaitSearch()`'s Probe-the-debounce-field trick is
+the shape to copy if someone builds it. Do not write either cause down until it
+is instrumented; this page already carries one story that fit and was wrong.
 
 **Both git argv paths pass `--no-optional-locks`** (`GitProcessRunner` and
 `TempProject::git()`). Porcelain readers must never take the opportunistic index
