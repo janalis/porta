@@ -289,19 +289,40 @@ delta over it. `composer test:serial` remains the way to read them inline, in a
 reproducible order; it needs no timeout raising, because `composer.json` sets
 `process-timeout: 0`.
 
-**What remains is expected pending state — but the count has drifted and nobody
-noticed, which is what the STDERR-only reporting cost.** Three numbers are on
-record and no two agree: the fallback commit says it went "from 2448 to 53",
-the paragraph below says "about seven", and a green serial run on 2026-08-30
-appended **87**. Treat the shape below as the explanation and the number as
-unmeasured until someone re-derives it from the log.
+**What remains is expected pending state.** Each line is a timer that was
+correct at the moment its test stopped the loop — `Support/DebouncedRequest`'s
+0.15s coalescing timer (a viewer pane that has just asked for a re-render),
+`Highlight/CodeHighlighter`'s 2s answer deadline (the backend died without
+delivering, and that timer is precisely how it gets dropped to plain). To
+diagnose one, reflect the driver's `callbacks` map for the leaked identifier's
+Revolt callback class and its closure's file:line.
 
-A full serial run reports lines that are each a timer correct at the moment the test stops
-the loop: `Support/DebouncedRequest`'s 0.15s coalescing timer (a viewer pane
-that has just asked for a re-render) and `Highlight/CodeHighlighter`'s 2s answer
-deadline (the backend died without delivering, and that timer is precisely how
-it gets dropped to plain). To diagnose one, reflect the driver's `callbacks` map
-for the leaked identifier's Revolt callback class and its closure's file:line.
+**Re-derived 2026-09-21**, because three numbers were on record and no two
+agreed (the fallback commit's "2448 to 53", an "about seven" that this page
+carried for months, and 87 from a green run on 2026-08-30). A full serial run, green, reports **483 lines — 481
+`[loop-leak]`, 2 `[env-leak]`**. Do not read that against the older figures: it
+is a different suite and, more to the point, the number MOVED with the step-gap
+removal, and understanding why is the whole value of the count.
+
+Graded E2e-only, serially, both sides — 403 identical tests, both green:
+
+| armed at stop | main | after the gaps came off |
+| --- | --- | --- |
+| `delay 0.150s HighlightController.php:79` | 39 | **346** |
+| `delay 0.150s CodeEditorWidget.php:611` | 10 | **54** |
+| `repeat 0.050s ProcessReaper.php:34` | 40 | 43 |
+| everything else | 7 | 8 |
+| **total** | **76** | **358** |
+
+Both movers are 0.15s debounces armed by the edit or open the test just made.
+A scenario used to sit through 300-500ms of scheduled gap before it ended, which
+was long enough for them to fire; now it awaits its effect and stops, and they
+are still pending. `LoopIsolationExtension` cancels them, so nothing reaches the
+next test — **the count went up because the suite got tighter, not leakier**.
+The shape that would matter is a NEW file:line, or a rise in
+`ProcessReaper`/`StreamReadableCallback` (a subprocess still being reaped, which
+is a test walking out on work rather than a debounce it never asked to wait
+for). Those two did not move.
 
 ## The paratest wedge
 
