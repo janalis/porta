@@ -178,6 +178,22 @@ execution. CI (`.github/workflows/ci.yml`) still calls the gates individually
 across its five jobs, deliberately: `testing.md`'s flake doctrine reads the
 divergence between the `tests` and `coverage` jobs as its machine-load tell.
 
+**One CI leg cannot be run here, and it guards more than `src/` suggests.** The
+matrix grades a `polyfill (no intl)` variant, and a Homebrew `php-zts` has intl
+compiled STATICALLY — `php -n -r 'var_dump(extension_loaded("intl"));'` is still
+true, so no ini trick reproduces it locally; it needs a PHP built without intl,
+i.e. a container.
+
+Grep `src/` for the surface and it looks trivial: `grapheme_str_split()` at
+`src/Widget/HelpViewerWidget.php:640` is the ONLY first-party call site, in
+`src/`, `plugins/` and `tests/` combined. That reading is wrong.
+**`symfony/tui` calls those functions 19 times across 9 files**, including
+`Render/CellBuffer`, `Widget/Editor/EditorDocument`, `EditorRenderer`,
+`Widget/Util/Line` and `WordNavigator` — the render and editing core every
+scenario drives. So the leg grades whether the whole TUI still splits graphemes
+correctly on `symfony/polyfill-intl-grapheme`, and it is worth keeping even
+though nothing in this repository names the functions.
+
 **`composer test`** — green. Two tests drive real git and opener subprocesses
 and were hardened against timing: the git plugin's
 `GitViewControllerTest::testLineStagingAndUnstagingThroughTheDiffPane`
