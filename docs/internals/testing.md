@@ -251,6 +251,31 @@ said all along. Re-tested, both barriers were 0/30 and the failure never
 reproduced. Verify a mechanism, or write down that the cause is unknown; a wrong
 one in the record gets cited and stops the next person looking.
 
+**Known intermittent, unfixed: `IdeLspFeaturesTest` at pathological load.**
+Roughly **1 run in 6-8** when the box is at load ~200, always in that one file,
+and not always the same test — observed in
+`testIncrementalDidChangeSendsMinimalDelta` (barrier timeout),
+`testQuickFixUsesDiagnosticRangeAndHandlesNoOpAction` (screen assertion) and a
+`php-routed definition jump` barrier. Two things are measured, so start from
+them rather than re-deriving:
+
+- **It is a LOST effect, not a slow machine.** Raising the barrier from 10s to
+  30s changed nothing: same test, same 1-in-6, now burning the full 30s (the run
+  took 34s). A mock-LSP round trip does not take thirty seconds. Raising budgets
+  is therefore not the fix, and the raise was reverted — it only made each
+  failure three times slower to report.
+- **It is not new.** Probed 8 runs a side under 24 CPU burners: **1/8 on main at
+  load 202, 1/8 on `33f17866` at load 232** — the commit before the 2026-09-21
+  round. The `await()` it trips lives in a commit from 2026-08-30. What the
+  round changed is that the budget is now REAL seconds, where turn-counting used
+  to hand a loaded box 20-30s for a nominal 10 — so this was always here and is
+  merely visible now.
+
+Where to look when someone picks it up: the mock server's process scheduling
+under starvation, not the test's barriers. `PORTA_E2E_STEP_GAP` is the control —
+if replaying the old gaps makes it pass, the test is leaning on a gap; if it
+still fails, the request never went out or the answer never came back.
+
 **Both git argv paths pass `--no-optional-locks`** (`GitProcessRunner` and
 `TempProject::git()`). Porcelain readers must never take the opportunistic index
 lock, which collides with a concurrent add or commit's mandatory one. Keep the
