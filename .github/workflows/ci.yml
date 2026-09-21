@@ -171,11 +171,25 @@ jobs:
           path: ~/.composer/cache
           key: composer-${{ hashFiles('composer.lock') }}
           restore-keys: composer-
+      # This is the ONE pass that sets PORTA_CONTAINER_CACHE=on (it is serial
+      # per shard, so tests/bootstrap.php lets it reuse the dump) — cold, it
+      # pays a container compile per shard instead of reading one.
+      - uses: actions/cache@v4
+        with:
+          path: .phpunit.cache
+          key: phpunit-coverage-plugins-${{ github.run_id }}
+          restore-keys: phpunit-coverage-plugins-
       - run: composer install --no-interaction --no-progress --classmap-authoritative
       # Each shard is its own serial phpunit run, so no merge happens inside
       # one — the property the serial pass existed for, kept while the shards
       # run several at a time.
       - name: Coverage gate, plugins (100% lines)
+        # A runner is ours alone, so take every core: the script defaults to
+        # three quarters, which is the shared-developer-box number. Sibling
+        # jobs say the same thing with PORTA_TEST_PROCESSES; this pass reads a
+        # different variable, which is exactly why it was left at the default.
+        env:
+          PORTA_SHARD_PROCESSES: 4
         run: composer coverage:plugins
       - name: Shard reports artifact
         if: always()

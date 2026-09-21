@@ -7,7 +7,8 @@ The commands, the gates every commit must pass, and the house conventions.
 ```bash
 composer dev            # run the IDE (bin/porta)
 composer test           # full suite, paratest, ~90s at the default half of the cores (see throttling below)
-composer test:unit      # one suite through the same paratest line — also test:e2e, test:plugins
+                        # per test: --default-time-limit=10, so a wedge fails BY NAME
+composer test:unit      # one suite through the same paratest line — also test:e2e, test:plugins, test:integration
 composer test:serial    # plain phpunit — ordering, races, leak reports
 composer analyze        # mago static analysis
 composer coverage:check # the suite with coverage, 100% enforced
@@ -26,16 +27,22 @@ composer container      # kernel-less debug:container
 
 ### Throttling on a shared machine
 
-`composer test`, `composer coverage:check` and `composer mutate` **default to
-half the cores**, not all of them. A development box is usually also running CI
-runners, containers or another agent, and one worker per core oversubscribes it
-badly — the E2e suites then fail for load rather than for cause, which is the
+`composer test`, `composer coverage:src` and `composer mutate` **default to
+half the cores**, not all of them — `coverage:check`'s plugins half is the one
+exception, at three quarters (see the shard note below). A development box is
+usually also running CI runners, containers or another agent, and one worker
+per core oversubscribes it badly — the E2e suites then fail for load rather than for cause, which is the
 flake class `testing.md` describes.
 
 | var | default | used by |
 | --- | --- | --- |
-| `PORTA_TEST_PROCESSES` | half the cores | `composer test`, `composer coverage:check` |
+| `PORTA_TEST_PROCESSES` | half the cores | `composer test` (and its per-suite variants), `composer coverage:src` |
+| `PORTA_SHARD_PROCESSES` | **three quarters** of the cores | `composer coverage:plugins` — so `coverage:check`'s second half |
 | `PORTA_MUTATE_THREADS` | half the cores | `composer mutate` |
+
+Throttling a shared box means setting the first TWO: `coverage:check` runs both
+passes, and `PORTA_TEST_PROCESSES=4` alone still fans out three-quarter-core
+plugin shards behind it.
 
 **CI sets `PORTA_TEST_PROCESSES: auto` explicitly** (`.github/workflows/ci.yml`),
 because a runner is ours alone. Take every core on a machine nobody else is
@@ -106,15 +113,54 @@ so on an idle box the safe split is free.
 `composer container` takes flags after `--`: `--loaded`, `--tag=<name>`,
 `--aliases`.
 
-Three of those — `arch`, `coverage:check`, `container` — are Symfony commands
-in `src/Console/`, run through the maintainer console `bin/porta-dev`. It is a
+Five of those — `arch`, `container`, `coverage:check`, `coverage:plugins` and
+`flake:scan` — are Symfony commands in `src/Console/`, run through the
+maintainer console `bin/porta-dev`. It is a
 separate binary because `bin/porta` is a single-command application, which is
 what lets `porta src/Foo.php:12` read its argument as a path. `porta-dev` is
 deliberately absent from composer's `bin`: it grades Porta's own tree, so it
 has no meaning in a user's project. **Always invoke the gates through the
 composer scripts.**
 
-Run a single test with `vendor/bin/phpunit --filter testName` or by path.
+Run one file or one test through the SAME script, because composer forwards
+whatever follows `--` to paratest — which keeps the process default, the
+configuration and the random order that `vendor/bin/phpunit` by hand does not:
+
+```bash
+composer test -- tests/Unit/Editor/BufferTest.php   # one path (paratest takes ONE)
+composer test:unit -- --filter theTestName          # one test, in its own suite
+```
+
+**"Is my new class covered?" does not cost the whole gate.** `composer coverage`
+takes the same trailing arguments, so a scoped run is seconds instead of
+minutes — and `coverage:check` already grades a scoped report through `--only=`:
+
+```bash
+composer coverage -- --coverage-filter=src/Editor tests/Unit/Editor   # 9s, not 137s
+php bin/porta-dev coverage:check coverage/clover.xml 100 --only=/src/Editor/
+```
+
+It is not a substitute for the gate: the 100% rule is about every test in the
+tree covering every line, and a filtered run can only tell you about the lines
+you filtered to. It also overwrites `coverage/clover.xml`, so re-run the real
+pass before reading that file as the whole picture.
+
+**A test may not take ten seconds.** `composer test` passes
+`--enforce-time-limit --default-time-limit=10`, and `failOnRisky` turns a breach
+into a failed run that NAMES the test and its line. Two reasons, and the second
+is the bigger one. Slow tests were found by reading a serial run by hand — the
+three fixed in the 2026-09-15 round burned 6.3s, 7.5s and 3.0s each, and nothing
+would have reported them. And a worker that wedges took the whole suite with it,
+where paratest reaches ~99% and hangs: a per-test limit turns that into one red
+test. The margin is deliberate. Measured after the 2026-09-21 round, the slowest
+case in the tree is 2.73s, five exceed 2s and none exceeds 3s, so ten is a 3.7x
+headroom — wide enough to survive a loaded box, narrow enough that the next
+six-second test is a failure rather than a discovery.
+
+It is on the SCRIPT, not in `phpunit.xml.dist`, on purpose: pcov is 2-3x
+slower, so the same limit in the config would fire on honest tests during
+`composer coverage:check` — the actual gate — and a guard that flakes gets
+turned off.
 
 **Capture gate output rather than paging it**, so the exit code survives:
 
@@ -213,8 +259,10 @@ knows the difference.
 **`composer rector:check`** — Rector's dry run reports **no pending change**.
 `rector.php` names the sets (PHP up to 8.5, code quality, dead code, type
 declarations, PHPUnit code quality) and, next to each skipped rule, why it is
-skipped. It runs after mago because it is slower, and it never imports names:
-that would undo the qualified calls the linter demands. After `composer rector`,
+skipped. It runs after mago because it is slower. It DOES import class
+names — deliberately, and only in a file it is already changing (`rector.php`
+says why): native functions stay `\sprintf()`, which is what mago's
+ambiguous-function-call rule demands, and docblocks are left alone. After `composer rector`,
 run `composer format` and read the reprinted lines — Rector re-prints what it
 touches, and the formatter keeps whatever breaks it chose.
 
@@ -276,15 +324,16 @@ ratios are trustworthy even where the absolutes are not:
 
 | | seconds |
 | --- | --- |
-| the five static gates together | **4.1** |
+| the six static gates together | **4.1** |
 | `composer test` | 170 |
 | `composer coverage` (the same suite, under pcov) | 241 |
-| `composer coverage:plugins` (serial) | 146 |
-| `composer coverage:check` end to end | **387** |
+| `composer coverage:plugins` (serial — retired, see the shard note) | 146 |
+| `composer coverage:plugins` (sharded, what it costs now) | 20 |
+| `composer coverage:check` end to end | **~260** |
 
 Three things follow, and they are why `composer verify` is shaped the way it is.
 
-**The static gates are free.** All five cost 4s — 1% of `coverage:check`.
+**The static gates are free.** All six cost 4s — 1% of `coverage:check`.
 Running them first costs nothing and stops a six-minute run that a missing
 newline would have failed anyway. Parallelising them would buy nothing and lose
 deterministic output.

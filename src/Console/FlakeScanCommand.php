@@ -37,7 +37,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
         Runs the test suite <info>--runs</info> times and reports every test that failed at
         least once, with the count, plus per-run wall time.
 
-          <info>flake:scan</info>                          5 runs at the composer default
+          <info>flake:scan</info>                          5 runs at <info>PORTA_TEST_PROCESSES</info> workers
           <info>flake:scan --runs=10 --processes=8</info>  10 runs, 8 paratest workers
           <info>flake:scan --testsuite=E2e --runs=6</info> only the E2e suite
 
@@ -78,7 +78,7 @@ final class FlakeScanCommand extends Command
         OutputInterface $output,
         #[Option('How many times to run the suite')]
         int $runs = 5,
-        #[Option('paratest worker count; omit to use the composer default')]
+        #[Option('paratest worker count; omit to read PORTA_TEST_PROCESSES, else paratest\'s own default')]
         ?int $processes = null,
         #[Option('Limit to one suite (Unit, Integration, E2e, Plugins)')]
         ?string $testsuite = null,
@@ -93,7 +93,14 @@ final class FlakeScanCommand extends Command
             return Command::INVALID;
         }
 
-        $io->title(\sprintf('Flake scan: %d runs%s', $runs, null !== $processes ? \sprintf(' at %d workers', $processes) : ''));
+        $processes = self::resolveProcesses($processes);
+        // The count is ALWAYS named, because a rate measured at a different one
+        // is not comparable and a header that omits it invites that mistake.
+        $io->title(\sprintf(
+            'Flake scan: %d runs at %s',
+            $runs,
+            null !== $processes ? \sprintf('%d workers', $processes) : "paratest's own default (every core)",
+        ));
 
         // Leak reports accumulate in one file across every worker, and no
         // worker can know whether it is the first — so the delta over a run is
@@ -159,6 +166,30 @@ final class FlakeScanCommand extends Command
         // to compare, and failing the command would make it unusable as the
         // "before" half of a before/after pair.
         return Command::SUCCESS;
+    }
+
+    /**
+     * The worker count a run will actually use.
+     *
+     * `--processes` first, then `PORTA_TEST_PROCESSES` — the variable every
+     * composer test script reads — and only then paratest's own default, which
+     * is `auto`, i.e. every core. Omitting the option used to fall straight
+     * through to that while the help text called it "the composer default",
+     * which is half the cores: a bare `flake:scan` ran at twice the
+     * parallelism it claimed, on a box the doctrine assumes is shared, and
+     * a rate is only comparable against another at the SAME count.
+     *
+     * A non-numeric value (`auto`) resolves to null on purpose: that is what
+     * the variable means, and it is what paratest does with no flag.
+     */
+    private static function resolveProcesses(?int $processes): ?int
+    {
+        if (null !== $processes) {
+            return $processes;
+        }
+        $env = \getenv('PORTA_TEST_PROCESSES');
+
+        return \is_numeric($env) ? (int) $env : null;
     }
 
     /**

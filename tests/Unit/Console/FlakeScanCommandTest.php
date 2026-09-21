@@ -503,4 +503,57 @@ final class FlakeScanCommandTest extends TestCase
 
         $this->assertStringContainsString('at 8 workers', $tester->getDisplay());
     }
+
+    /**
+     * Omitting --processes reads PORTA_TEST_PROCESSES, and the count REACHES
+     * the runner.
+     *
+     * Before this, omitting the option passed no --processes at all, so the run
+     * used paratest's own default — `auto`, every core — while the help text
+     * called it "the composer default", which is half of them. A bare scan ran
+     * at twice the parallelism it claimed, and rates are only comparable at the
+     * same count.
+     */
+    public function testOmittingTheWorkerCountFallsBackToThePortaTestProcessesVariable(): void
+    {
+        $received = -1;
+        \putenv('PORTA_TEST_PROCESSES=6');
+        $tester = new CommandTester(new FlakeScanCommand(
+            static function (string $junit, ?int $processes, ?string $testsuite, int $timeout) use (&$received): int {
+                $received = $processes;
+                \file_put_contents($junit, data: '<?xml version="1.0"?><testsuites/>');
+
+                return 0;
+            },
+        ));
+
+        $tester->execute(['--runs' => 1]);
+
+        $this->assertSame(6, $received, 'the variable the composer scripts read reaches the runner');
+        $this->assertStringContainsString('at 6 workers', $tester->getDisplay());
+    }
+
+    /**
+     * `auto` is not a number, and it means what paratest does with no flag —
+     * so it resolves to no flag, and the header says so instead of naming a
+     * count that was never passed.
+     */
+    public function testAutoIsReportedAsParatestsOwnDefaultRatherThanACount(): void
+    {
+        $received = 99;
+        \putenv('PORTA_TEST_PROCESSES=auto');
+        $tester = new CommandTester(new FlakeScanCommand(
+            static function (string $junit, ?int $processes, ?string $testsuite, int $timeout) use (&$received): int {
+                $received = $processes;
+                \file_put_contents($junit, data: '<?xml version="1.0"?><testsuites/>');
+
+                return 0;
+            },
+        ));
+
+        $tester->execute(['--runs' => 1]);
+
+        $this->assertNull($received, 'no --processes flag is passed for auto');
+        $this->assertStringContainsString("paratest's own default", $tester->getDisplay());
+    }
 }

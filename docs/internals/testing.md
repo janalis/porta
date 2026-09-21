@@ -286,8 +286,8 @@ log. Both therefore go through `tests/Support/LeakLog`, which also appends to
 `.phpunit.cache/leaks.log` (override with `PORTA_LEAK_LOG`) — that file survives
 the parallel run, and `bin/porta-dev flake:scan` reports each run's count as the
 delta over it. `composer test:serial` remains the way to read them inline, in a
-reproducible order; raise `COMPOSER_PROCESS_TIMEOUT`, because the serial suite
-outruns the 300s default.
+reproducible order; it needs no timeout raising, because `composer.json` sets
+`process-timeout: 0`.
 
 **What remains is expected pending state — but the count has drifted and nobody
 noticed, which is what the STDERR-only reporting cost.** Three numbers are on

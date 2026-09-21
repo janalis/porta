@@ -6,7 +6,7 @@ IDE, or writing a plugin against its API, start at
 
 | Guide | Contents |
 | --- | --- |
-| [Working on Porta](contributing.md) | Commands, the seven gates, house conventions |
+| [Working on Porta](contributing.md) | Commands, the eight gates, house conventions |
 | [Where code lives](code-map.md) | Namespace membership, how to move a class |
 | [The container](container.md) | DI, the composition root, the porta attributes |
 | [Subsystems](subsystems.md) | Rendering, input, editor, dock, overlays, git, LSP |
