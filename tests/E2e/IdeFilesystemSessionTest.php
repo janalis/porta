@@ -39,7 +39,7 @@ final class IdeFilesystemSessionTest extends TestCase
     private TempProject $quitProject;
 
     /**
-     * Boot on a file, press Ctrl+Q a fifth of a second in, and run to a stop.
+     * Boot on a file, press Ctrl+Q, and run to a stop.
      *
      * The watchdog is the point of doing this in one place: a quit that does
      * NOT stop the app would otherwise hang the suite rather than fail it, so
@@ -56,13 +56,16 @@ final class IdeFilesystemSessionTest extends TestCase
         $ide = new Ide($this->quitProject->dir, $this->quitProject->path('a.php'), $terminal);
         $tui = Services::resolve($ide, Tui::class);
 
-        EventLoop::delay(0.2, static fn () => $tui->handleInput("\x11")); // Ctrl+Q
         $watchdog = EventLoop::delay(3.0, static function () use ($tui): never {
             $tui->stop();
             throw new \RuntimeException('quit did not stop the app');
         });
-        $ide->run();
-        EventLoop::cancel($watchdog);
+        try {
+            // Nothing here stops the Tui — Ctrl+Q has to, which is the claim.
+            $this->runSteps([0 => static fn () => $tui->handleInput("\x11")], $tui, $terminal, $ide);
+        } finally {
+            EventLoop::cancel($watchdog);
+        }
 
         return $tui;
     }
@@ -91,7 +94,11 @@ final class IdeFilesystemSessionTest extends TestCase
             'a.php' => "<?php\n",
         ]);
 
-        $terminal = $this->runIde($project, $project->path('a.php'), [], 0.6);
+        $terminal = $this->runIde($project, $project->path('a.php'), [
+            0 => function (Tui $tui, VirtualTerminal $terminal): void {
+                $this->awaitPainted($tui, $terminal, 'not_a_real_action');
+            },
+        ]);
 
         $this->assertStringContainsString('not_a_real_action', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
     }
@@ -204,21 +211,36 @@ final class IdeFilesystemSessionTest extends TestCase
         new OnboardingState($project->dir)->markWelcomeSeen();
         $ide = new Ide($project->dir, $project->path('A.php'), $terminal);
         $tui = Services::resolve($ide, Tui::class);
-        EventLoop::delay(0.3, static function () use ($tui): void {
-            $tui->handleInput("\x14"); // tree
-            $tui->handleInput("\x1b[B"); // B.php
-            $tui->handleInput("\r"); // open B.php
-        });
-        EventLoop::delay(0.5, static function () use ($tui): void {
-            $tui->getById('editor')->getDocument()->setCursor(0, 2);
-            $tui->handleInput("\x11"); // ctrl+q (clean buffers -> quits)
-        });
         $watchdog = EventLoop::delay(3.0, static function () use ($tui): never {
             $tui->stop();
             throw new \RuntimeException('did not quit');
         });
-        $ide->run();
-        EventLoop::cancel($watchdog);
+        try {
+            $this->runSteps(
+                [
+                    300 => static function (Tui $tui): void {
+                        $tui->handleInput("\x14"); // tree
+                        $tui->handleInput("\x1b[B"); // B.php
+                        $tui->handleInput("\r"); // open B.php
+                    },
+                    500 => function (Tui $tui): void {
+                        // The cursor has to be set in the buffer the session
+                        // will record, so B.php being open is the barrier.
+                        $this->await(
+                            static fn (): bool => \str_ends_with((string) $tui->getById('editor')->getFilePath(), 'B.php'),
+                            what: 'B.php to open from the tree',
+                        );
+                        $tui->getById('editor')->getDocument()->setCursor(0, 2);
+                        $tui->handleInput("\x11"); // ctrl+q (clean buffers -> quits)
+                    },
+                ],
+                $tui,
+                $terminal,
+                $ide,
+            );
+        } finally {
+            EventLoop::cancel($watchdog);
+        }
 
         $this->assertFileExists($project->path('.porta/session.json'));
 
@@ -227,13 +249,24 @@ final class IdeFilesystemSessionTest extends TestCase
         new OnboardingState($project->dir)->markWelcomeSeen();
         $ide2 = new Ide($project->dir, null, $terminal2);
         $tui2 = Services::resolve($ide2, Tui::class);
-        EventLoop::delay(0.3, function () use ($tui2): void {
-            $editor = $tui2->getById('editor');
-            $this->assertNotNull($editor->getFilePath(), 'a buffer was restored');
-            $this->assertSame('editor', $tui2->getFocus()?->getId());
-            $tui2->stop();
-        });
-        $ide2->run();
+        $this->runSteps(
+            [
+                300 => function (Tui $tui2): void {
+                    // Session restore reads disk at boot, so the reopened
+                    // buffer is the barrier, not a gap after run() started.
+                    $this->await(
+                        static fn (): bool => null !== $tui2->getById('editor')->getFilePath(),
+                        what: 'the session buffer to be restored',
+                    );
+                    $this->assertNotNull($tui2->getById('editor')->getFilePath(), 'a buffer was restored');
+                    $this->assertSame('editor', $tui2->getFocus()?->getId());
+                    $tui2->stop();
+                },
+            ],
+            $tui2,
+            $terminal2,
+            $ide2,
+        );
 
         $this->addToAssertionCount(1);
     }
@@ -381,15 +414,25 @@ final class IdeFilesystemSessionTest extends TestCase
 
         // An outside kill, not an in-process call: the real delivery path.
         // `kill` is a shell builtin, so the poisoned PATH above cannot hide it.
-        EventLoop::delay(0.2, static function (): void {
-            \exec('kill -s TERM '.\getmypid());
-        });
         $watchdog = EventLoop::delay(5.0, static function () use ($tui): never {
             $tui->stop();
             throw new \RuntimeException('SIGTERM did not stop the app');
         });
-        $ide->run();
-        EventLoop::cancel($watchdog);
+        try {
+            // Nothing here stops the Tui — the signal has to, which is the claim.
+            $this->runSteps(
+                [
+                    0 => static function (): void {
+                        \exec('kill -s TERM '.\getmypid());
+                    },
+                ],
+                $tui,
+                $terminal,
+                $ide,
+            );
+        } finally {
+            EventLoop::cancel($watchdog);
+        }
 
         $out = $terminal->getOutput();
         // The signal unwound through the ordinary teardown: alternate screen
@@ -408,18 +451,23 @@ final class IdeFilesystemSessionTest extends TestCase
         $ide = new Ide($project->dir, $project->path('A.php'), $terminal, null, initialLine: 4);
         $tui = Services::resolve($ide, Tui::class);
 
-        $timer = EventLoop::delay(0.2, function () use ($tui): void {
-            $tui->tick();
-            $this->assertSame(3, $tui->getById('editor')->getDocument()->cursorLine, 'CLI line 4 → 0-based line 3');
-            $tui->stop();
-        });
-        try {
-            $ide->run();
-        } finally {
-            EventLoop::cancel($timer);
-        }
-
-        $this->addToAssertionCount(1);
+        $this->runSteps(
+            [
+                200 => function (Tui $tui): void {
+                    // The caret is placed while the file opens, so await it
+                    // rather than reading it out of a gap behind a bare tick.
+                    $this->await(
+                        static fn (): bool => 3 === $tui->getById('editor')->getDocument()->cursorLine,
+                        what: 'the boot line to move the caret',
+                    );
+                    $this->assertSame(3, $tui->getById('editor')->getDocument()->cursorLine, 'CLI line 4 → 0-based line 3');
+                    $tui->stop();
+                },
+            ],
+            $tui,
+            $terminal,
+            $ide,
+        );
     }
 
     public function testExternalChangeReloadsCleanBuffer(): void

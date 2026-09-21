@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Ide;
 use Porta\Onboarding\OnboardingState;
 use Porta\Tests\Support\EditorState;
+use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Revolt\EventLoop;
@@ -17,14 +18,26 @@ use Symfony\Component\Tui\Tui;
 
 /**
  * Boots the full IDE against a VirtualTerminal inside a scratch project
- * wired to the mock LSP server, simulates keystrokes on a timeline and
- * asserts on the rendered screen.
+ * wired to the mock LSP server, simulates keystrokes and asserts on the
+ * rendered screen.
+ *
+ * The steps run on {@see RunsIde::runSteps()}, the same chained scheduler the
+ * rest of the suite uses: the keys ORDER the stages, they are not waits, and a
+ * stage that needs an LSP round trip, a subprocess or a paint awaits it. This
+ * file booted the Ide itself before that scheduler existed and kept a second
+ * copy on absolute `EventLoop::delay()` keys, where a suspended stage did not
+ * push the next one out — a later stage could fire underneath it.
+ *
+ * It stays ONE continuous session on purpose (mago.toml carries the volume
+ * pin): the later stages assert on state the earlier ones created.
  *
  * Assertions inside step closures throw through Ide::run() and fail the
  * test naturally; the TUI's finally-block still restores state.
  */
 final class IdeTest extends TestCase
 {
+    use RunsIde;
+
     private TempProject $project;
     private VirtualTerminal $terminal;
     private Ide $ide;
@@ -68,19 +81,48 @@ final class IdeTest extends TestCase
 
     private function screen(): string
     {
-        // Force a frame before reading: a bare tick inside the 60fps cap
-        // window paints nothing, and assertions must not depend on the
-        // adaptive ticker or the trailing wakeup having fired between steps.
-        $tui = Services::resolve($this->ide, Tui::class);
-        $tui->requestRender(force: true);
-        $tui->tick();
+        // Force a frame before reading, through the shared idiom: a bare tick
+        // inside the 60fps cap window paints nothing, and assertions must not
+        // depend on the adaptive ticker having fired between steps.
+        $this->frame(Services::resolve($this->ide, Tui::class));
 
         return AnsiUtils::stripAnsiCodes($this->terminal->getOutput());
     }
 
-    private function step(float $at, callable $fn): void
+    /**
+     * The barrier AND the claim for a screen needle: await it onto the screen,
+     * then assert it is there. Seventeen stages below need exactly this pair,
+     * and awaiting an effect is not asserting it.
+     */
+    private function painted(Tui $tui, string $needle, string $because = ''): void
     {
-        EventLoop::delay($at, $fn);
+        $this->awaitPainted($tui, $this->terminal, $needle);
+        $this->assertStringContainsString($needle, $this->screen(), $because);
+    }
+
+    /**
+     * Run the scripted session, guarded: nothing here stops the Tui, the app's
+     * own Ctrl+Q does, so a quit that never happens has to be caught.
+     *
+     * @param array<int, callable> $steps
+     */
+    private function runScenario(array $steps, Tui $tui): void
+    {
+        // Longer than any barrier inside a step (await defaults to 10s), so a
+        // stage that loses its effect fails with the barrier's NAME rather than
+        // with this generic message.
+        $watchdog = EventLoop::delay(20.0, static function () use ($tui): never {
+            $tui->stop();
+
+            throw new \RuntimeException('watchdog: IDE did not quit before timeout');
+        });
+        try {
+            $this->runSteps($steps, $tui, $this->terminal, $this->ide);
+        } finally {
+            EventLoop::cancel($watchdog);
+        }
+
+        $this->assertFalse($tui->isRunning(), 'run() returned after ctrl+q');
     }
 
     public function testFullScenario(): void
@@ -88,229 +130,251 @@ final class IdeTest extends TestCase
         $tui = Services::resolve($this->ide, Tui::class);
         $screen = $this->screen(...);
         $editor = static fn () => $tui->getById('editor');
+        $path = static fn (): string => (string) $editor()->getFilePath();
+        // The barrier AND the claim: awaiting an effect does not assert it, and
+        // a stage that only waits has stopped testing anything.
+        $opened = function (string $suffix, string $what) use ($path): void {
+            $this->await(static fn (): bool => \str_ends_with($path(), $suffix), what: $what);
+            $this->assertStringEndsWith($suffix, $path());
+        };
 
-        // --- Startup ---------------------------------------------------------
-        $this->step(0.4, function () use ($screen, $tui): void {
-            $s = $screen();
-            $this->assertStringContainsString('src/', $s, 'file tree shows project dirs');
-            $this->assertStringContainsString('composer.json', $s);
-            $this->assertStringContainsString('class Demo', $s, 'editor shows the opened file');
-            $this->assertStringContainsString('src/Demo.php', $s, 'status bar shows the path');
-            $this->assertStringContainsString('LSP:', $s);
-            $this->assertStringContainsString("\x1b[", $tui->getTerminal()->getOutput(), 'ANSI output emitted');
-        });
+        $this->runScenario(
+            [
+                // --- Startup -----------------------------------------------------
+                400 => function () use ($screen, $tui): void {
+                    // Not just 'LSP:' — `LSP:starting…` matches that, and the very
+                    // next stage sends Ctrl+Space, which a session that has not
+                    // initialised drops in silence.
+                    $this->awaitLspReady($tui, $this->terminal);
+                    $s = $screen();
+                    $this->assertStringContainsString('src/', $s, 'file tree shows project dirs');
+                    $this->assertStringContainsString('composer.json', $s);
+                    $this->assertStringContainsString('class Demo', $s, 'editor shows the opened file');
+                    $this->assertStringContainsString('src/Demo.php', $s, 'status bar shows the path');
+                    $this->assertStringContainsString('LSP:', $s);
+                    $this->assertStringContainsString("\x1b[", $tui->getTerminal()->getOutput(), 'ANSI output emitted');
+                },
 
-        // --- Completion (mock server) ---------------------------------------
-        $this->step(0.5, static function () use ($tui): void {
-            $tui->handleInput("\x1b[B");
-            $tui->handleInput("\x1b[B");
-            $tui->handleInput("\x00"); // ctrl+space
-        });
-        $this->step(1.0, function () use ($screen, $editor): void {
-            $this->assertTrue($editor()->isCompletionOpen());
-            $this->assertStringContainsString('strlen', $screen());
-            $this->assertStringContainsString('str_replace', $screen());
-        });
-        $this->step(1.1, static fn () => $tui->handleInput("\r") /* accept */);
-        $this->step(1.4, function () use ($screen, $editor): void {
-            $doc = $editor()->getDocument();
-            $this->assertStringContainsString('strlen(', $doc->getText());
-            // Deferred auto-import fetched via completionItem/resolve landed above.
-            $this->assertStringContainsString('use function strlen;', $doc->getText());
-            $this->assertFalse($editor()->isCompletionOpen());
-            $this->assertStringContainsString('✗ 1', $screen(), 'diagnostic from mock server in status bar');
-        });
+                // --- Completion (mock server) ------------------------------------
+                500 => static function () use ($tui): void {
+                    $tui->handleInput("\x1b[B");
+                    $tui->handleInput("\x1b[B");
+                    $tui->handleInput("\x00"); // ctrl+space
+                },
+                1000 => function () use ($screen, $editor, $tui): void {
+                    // The popup opens on the server's answer, not on the keystroke.
+                    $this->await(static fn (): bool => $editor()->isCompletionOpen(), what: 'the completion popup to open');
+                    $this->assertTrue($editor()->isCompletionOpen());
+                    $this->painted($tui, 'strlen');
+                    $this->assertStringContainsString('str_replace', $screen());
+                },
+                1100 => static fn () => $tui->handleInput("\r") /* accept */,
+                1400 => function () use ($editor, $tui): void {
+                    // Deferred auto-import fetched via completionItem/resolve lands
+                    // LAST, so it is the barrier for the whole acceptance.
+                    $this->await(
+                        static fn (): bool => \str_contains($editor()->getDocument()->getText(), 'use function strlen;'),
+                        what: 'the deferred auto-import to land',
+                    );
+                    $doc = $editor()->getDocument();
+                    $this->assertStringContainsString('strlen(', $doc->getText());
+                    $this->assertStringContainsString('use function strlen;', $doc->getText());
+                    $this->assertFalse($editor()->isCompletionOpen());
+                    $this->painted($tui, '✗ 1', because: 'diagnostic from mock server in status bar');
+                },
 
-        // --- Save -------------------------------------------------------------
-        $this->step(1.5, static fn () => $tui->handleInput("\x13"));
-        $this->step(1.8, function () use ($screen): void {
-            $this->assertStringContainsString('Saved src/Demo.php', $screen());
-            $this->assertStringContainsString('strlen(', (string) \file_get_contents($this->project->path('src/Demo.php')));
-        });
+                // --- Save ---------------------------------------------------------
+                1500 => static fn () => $tui->handleInput("\x13"),
+                1800 => function () use ($tui): void {
+                    $file = $this->project->path('src/Demo.php');
+                    // The flash and the bytes are two effects: await the SLOWER one.
+                    $this->await(
+                        static fn (): bool => \str_contains((string) \file_get_contents($file), 'strlen('),
+                        what: 'the save to reach disk',
+                    );
+                    $this->painted($tui, 'Saved src/Demo.php');
+                    $this->assertStringContainsString('strlen(', (string) \file_get_contents($file));
+                },
 
-        // --- Definition jump + back-nav ---------------------------------------
-        $this->step(1.85, static fn () => $tui->handleInput("\x1b[24~")); // F12
-        $this->step(2.0, function () use ($tui, $editor): void {
-            $this->assertStringEndsWith('Target.php', (string) $editor()->getFilePath());
-            $this->assertSame(3, $editor()->getDocument()->cursorLine);
-            $tui->handleInput("\x1b[1;7D"); // ctrl+alt+left -> back
-        });
-        $this->step(2.1, function () use ($editor, $tui): void {
-            $this->assertStringEndsWith('Demo.php', (string) $editor()->getFilePath());
-            $tui->handleInput("\x14"); // ctrl+t -> tree
-        });
+                // --- Definition jump + back-nav -----------------------------------
+                1850 => static fn () => $tui->handleInput("\x1b[24~"), // F12
+                2000 => function () use ($tui, $editor, $opened): void {
+                    $opened('Target.php', what: 'the definition jump to open Target.php');
+                    $this->assertSame(3, $editor()->getDocument()->cursorLine);
+                    $tui->handleInput("\x1b[1;7D"); // ctrl+alt+left -> back
+                },
+                2100 => static function () use ($tui, $opened): void {
+                    $opened('Demo.php', what: 'back-nav to reopen Demo.php');
+                    $tui->handleInput("\x14"); // ctrl+t -> tree
+                },
 
-        // --- Tree navigation ----------------------------------------------------
-        $this->step(2.2, function () use ($tui): void {
-            $this->assertSame('tree', $tui->getFocus()?->getId());
-            $tui->handleInput("\x1b[B"); // .porta.json
-            $tui->handleInput("\x1b[B"); // composer.json
-            $tui->handleInput("\r");
-        });
-        $this->step(2.4, function () use ($tui, $editor, $screen): void {
-            $this->assertStringEndsWith('composer.json', (string) $editor()->getFilePath());
-            $this->assertSame('editor', $tui->getFocus()?->getId());
-            $this->assertStringContainsString('acme/demo', $screen());
-        });
+                // --- Tree navigation ------------------------------------------------
+                2200 => function () use ($tui): void {
+                    $this->assertSame('tree', $tui->getFocus()?->getId());
+                    $tui->handleInput("\x1b[B"); // .porta.json
+                    $tui->handleInput("\x1b[B"); // composer.json
+                    $tui->handleInput("\r");
+                },
+                2400 => function () use ($tui, $opened): void {
+                    $opened('composer.json', what: 'the tree to open composer.json');
+                    $this->assertSame('editor', $tui->getFocus()?->getId());
+                    $this->painted($tui, 'acme/demo');
+                },
 
-        // --- Buffers: tab bar, cycling, recent files ----------------------------
-        $this->step(2.45, function () use ($screen, $tui): void {
-            $s = $screen();
-            $this->assertStringContainsString('Demo.php', $s);
-            $this->assertStringContainsString('Target.php', $s);
-            $tui->handleInput("\x1b[1;5C"); // ctrl+right wraps to Demo.php
-        });
-        $this->step(2.55, function () use ($editor, $tui): void {
-            $this->assertStringEndsWith('Demo.php', (string) $editor()->getFilePath());
-            $tui->handleInput("\x05"); // ctrl+e
-        });
-        $this->step(2.65, function () use ($editor, $screen, $tui): void {
-            $this->assertTrue(EditorState::pickerOpen($editor()));
-            $this->assertStringContainsString('Recent Files', $screen());
-            $tui->handleInput("\r"); // pick previous (composer.json)
-        });
-        $this->step(2.75, function () use ($editor): void {
-            $this->assertStringEndsWith('composer.json', (string) $editor()->getFilePath());
-        });
+                // --- Buffers: tab bar, cycling, recent files ------------------------
+                2450 => function () use ($screen, $tui): void {
+                    $s = $screen();
+                    $this->assertStringContainsString('Demo.php', $s);
+                    $this->assertStringContainsString('Target.php', $s);
+                    $tui->handleInput("\x1b[1;5C"); // ctrl+right wraps to Demo.php
+                },
+                2550 => static function () use ($tui, $opened): void {
+                    $opened('Demo.php', what: 'ctrl+right to wrap back to Demo.php');
+                    $tui->handleInput("\x05"); // ctrl+e
+                },
+                2650 => function () use ($editor, $tui): void {
+                    $this->painted($tui, 'Recent Files');
+                    $this->assertTrue(EditorState::pickerOpen($editor()));
+                    $tui->handleInput("\r"); // pick previous (composer.json)
+                },
+                2750 => static function () use ($opened): void {
+                    $opened('composer.json', what: 'the recent-files pick to reopen composer.json');
+                },
 
-        // --- Find bar --------------------------------------------------------------
-        $this->step(2.8, function () use ($tui): void {
-            $tui->handleInput("\x06"); // ctrl+f
-            $this->assertSame('find-bar', $tui->getFocus()?->getId());
-            foreach (\str_split('acme') as $ch) {
-                $tui->handleInput($ch);
-            }
-        });
-        $this->step(2.9, function () use ($screen, $editor, $tui): void {
-            $this->assertStringContainsString('Find: acme', $screen());
-            $this->assertStringContainsString('[1/2]', $screen(), 'smart-case: lowercase query matches acme/demo and Acme\\');
-            $doc = $editor()->getDocument();
-            $this->assertStringContainsString('acme', $doc->getLine($doc->cursorLine));
-            $tui->handleInput("\x1b"); // esc
-        });
-        $this->step(3.0, function () use ($screen, $tui): void {
-            $this->assertSame('editor', $tui->getFocus()?->getId(), 'editor refocused after find close');
-            // Ctrl+R opens the find bar with the replace field (openFindReplace).
-            $tui->handleInput("\x12"); // ctrl+r
-            $this->assertSame('find-bar', $tui->getFocus()?->getId());
-            $this->assertStringContainsString('Replace:', $screen());
-            $tui->handleInput("\x1b"); // esc
-        });
+                // --- Find bar ---------------------------------------------------------
+                2800 => function () use ($tui): void {
+                    $tui->handleInput("\x06"); // ctrl+f
+                    $this->assertSame('find-bar', $tui->getFocus()?->getId());
+                    foreach (\str_split('acme') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                },
+                2900 => function () use ($screen, $editor, $tui): void {
+                    $this->painted($tui, '[1/2]', because: 'smart-case: lowercase query matches acme/demo and Acme\\');
+                    $this->assertStringContainsString('Find: acme', $screen());
+                    $doc = $editor()->getDocument();
+                    $this->assertStringContainsString('acme', $doc->getLine($doc->cursorLine));
+                    $tui->handleInput("\x1b"); // esc
+                },
+                3000 => function () use ($tui): void {
+                    $this->assertSame('editor', $tui->getFocus()?->getId(), 'editor refocused after find close');
+                    // Ctrl+R opens the find bar with the replace field (openFindReplace).
+                    $tui->handleInput("\x12"); // ctrl+r
+                    $this->assertSame('find-bar', $tui->getFocus()?->getId());
+                    $this->painted($tui, 'Replace:');
+                    $tui->handleInput("\x1b"); // esc
+                },
 
-        // --- Go to file palette (a files-only Search Everywhere, centered) -----------
-        $this->step(3.05, function () use ($tui, $editor, $screen): void {
-            $tui->handleInput("\x10"); // ctrl+p
-            $this->assertTrue($editor()->isSearchOverlayOpen(), 'Ctrl+P opens the centered go-to-file picker');
-            $this->assertStringContainsString('Go to File', $screen(), 'the picker title');
-            foreach (\str_split('target') as $ch) {
-                $tui->handleInput($ch);
-            }
-        });
-        $this->step(3.15, function () use ($screen, $tui): void {
-            $this->assertStringContainsString('Target.php', $screen());
-            $tui->handleInput("\r");
-        });
-        $this->step(3.25, function () use ($editor, $tui): void {
-            $this->assertStringEndsWith('Target.php', (string) $editor()->getFilePath());
-            $tui->handleInput("\x05"); // back to composer.json
-            $tui->handleInput("\r");
-        });
+                // --- Go to file palette (a files-only Search Everywhere, centered) -----
+                3050 => function () use ($tui, $editor): void {
+                    $tui->handleInput("\x10"); // ctrl+p
+                    $this->assertTrue($editor()->isSearchOverlayOpen(), 'Ctrl+P opens the centered go-to-file picker');
+                    $this->painted($tui, 'Go to File', because: 'the picker title');
+                    foreach (\str_split('target') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                },
+                3150 => function () use ($tui): void {
+                    $this->painted($tui, 'Target.php');
+                    $tui->handleInput("\r");
+                },
+                3250 => static function () use ($tui, $opened): void {
+                    $opened('Target.php', what: 'the go-to-file pick to open Target.php');
+                    $tui->handleInput("\x05"); // back to composer.json
+                    $tui->handleInput("\r");
+                },
 
-        // --- Project search --------------------------------------------------------------
-        $this->step(3.35, function () use ($editor, $tui): void {
-            $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f → the Find-in-Files modal
-            $this->assertTrue($editor()->isFindModalOpen(), 'the find modal opened');
-            foreach (\str_split('class Target') as $ch) {
-                $tui->handleInput($ch);
-            }
-        });
-        $this->step(3.75, function () use ($screen, $tui): void {
-            // The modal's live preview groups matches under a file header.
-            $this->assertStringContainsString('src/Target.php', $screen(), 'grouped under its file header');
-            $this->assertStringContainsString('1 result', $screen());
-            $tui->handleInput("\r"); // the first match is pre-selected → jump
-        });
-        $this->step(3.85, function () use ($editor, $tui): void {
-            $this->assertStringEndsWith('Target.php', (string) $editor()->getFilePath());
-            $this->assertSame(3, $editor()->getDocument()->cursorLine);
-            $this->assertSame('editor', $tui->getFocus()?->getId());
-        });
+                // --- Project search ------------------------------------------------------
+                3350 => function () use ($editor, $tui): void {
+                    $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f → the Find-in-Files modal
+                    $this->assertTrue($editor()->isFindModalOpen(), 'the find modal opened');
+                    foreach (\str_split('class Target') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                },
+                3750 => function () use ($screen, $tui): void {
+                    // The modal's live preview groups matches under a file header,
+                    // behind a debounce and a search subprocess.
+                    $this->painted($tui, '1 result');
+                    $this->assertStringContainsString('src/Target.php', $screen(), 'grouped under its file header');
+                    $tui->handleInput("\r"); // the first match is pre-selected → jump
+                },
+                3850 => function () use ($editor, $tui, $opened): void {
+                    $opened('Target.php', what: 'the search hit to open Target.php');
+                    $this->assertSame(3, $editor()->getDocument()->cursorLine);
+                    $this->assertSame('editor', $tui->getFocus()?->getId());
+                },
 
-        // --- Hover quick-doc ----------------------------------------------------------------
-        $this->step(3.95, static fn () => $tui->handleInput("\x1b[1;2P")); // F1
-        $this->step(4.05, function () use ($editor, $screen, $tui): void {
-            $this->assertTrue(EditorState::pickerOpen($editor()));
-            $this->assertStringContainsString('greet(): string', $screen());
-            $tui->handleInput("\x1b");
-        });
+                // --- Hover quick-doc --------------------------------------------------------
+                3950 => static fn () => $tui->handleInput("\x1b[1;2P"), // F1
+                4050 => function () use ($editor, $tui): void {
+                    $this->painted($tui, 'greet(): string');
+                    $this->assertTrue(EditorState::pickerOpen($editor()));
+                    $tui->handleInput("\x1b");
+                },
 
-        // --- Go to line -------------------------------------------------------------------------
-        $this->step(4.15, static fn () => $tui->handleInput("\x07")); // ctrl+g
-        $this->step(4.22, function () use ($screen, $tui): void {
-            $this->assertStringContainsString('Go to line', $screen());
-            $tui->handleInput('1');
-            $tui->handleInput("\r");
-        });
-        $this->step(4.3, function () use ($editor): void {
-            $this->assertSame(0, $editor()->getDocument()->cursorLine);
-        });
+                // --- Go to line ---------------------------------------------------------------
+                4150 => static fn () => $tui->handleInput("\x07"), // ctrl+g
+                4220 => function () use ($tui): void {
+                    $this->painted($tui, 'Go to line');
+                    $tui->handleInput('1');
+                    $tui->handleInput("\r");
+                },
+                4300 => function () use ($editor): void {
+                    $this->assertSame(0, $editor()->getDocument()->cursorLine);
+                },
 
-        // --- Rename via WorkspaceEdit ----------------------------------------------------------------
-        $this->step(4.35, static function () use ($tui): void {
-            $tui->handleInput("\x1b[17;2~"); // shift+f6 -> prepareRename validates, then the prompt opens
-        });
-        $this->step(4.42, static function () use ($tui): void {
-            foreach (\str_split('Renamed') as $ch) {
-                $tui->handleInput($ch);
-            }
-            $tui->handleInput("\r");
-        });
-        $this->step(4.5, function () use ($editor, $screen, $tui): void {
-            $this->assertSame('class Renamed', $editor()->getDocument()->getLine(3));
-            $this->assertStringContainsString('Renamed in 1 file', $screen());
-            $tui->handleInput("\x1b[18;3~"); // alt+f7 usages
-        });
+                // --- Rename via WorkspaceEdit --------------------------------------------------
+                4350 => static function () use ($tui): void {
+                    $tui->handleInput("\x1b[17;2~"); // shift+f6 -> prepareRename validates, then the prompt opens
+                },
+                4420 => function () use ($tui): void {
+                    // prepareRename is a round trip: the prompt is not up on the keystroke.
+                    $this->awaitPainted($tui, $this->terminal, 'Rename to');
+                    foreach (\str_split('Renamed') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                    $tui->handleInput("\r");
+                },
+                4500 => function () use ($editor, $tui): void {
+                    $this->painted($tui, 'Renamed in 1 file');
+                    $this->assertSame('class Renamed', $editor()->getDocument()->getLine(3));
+                    $tui->handleInput("\x1b[18;3~"); // alt+f7 usages
+                },
 
-        // --- Find usages ------------------------------------------------------------------------------
-        $this->step(4.65, function () use ($screen, $tui): void {
-            $this->assertSame('results', $tui->getFocus()?->getId());
-            $this->assertStringContainsString('Usages', $screen());
-            $this->assertStringContainsString('2 results', $screen());
-            $tui->handleInput("\x1b");
-        });
+                // --- Find usages ----------------------------------------------------------------
+                4650 => function () use ($screen, $tui): void {
+                    $this->painted($tui, '2 results');
+                    $this->assertSame('results', $tui->getFocus()?->getId());
+                    $this->assertStringContainsString('Usages', $screen());
+                    $tui->handleInput("\x1b");
+                },
 
-        // --- Signature help --------------------------------------------------------------------------------
-        $this->step(4.75, static fn () => $tui->handleInput('('));
-        $this->step(4.85, function () use ($screen, $tui): void {
-            $this->assertStringContainsString('greet(string $name): string', $screen());
-            $tui->handleInput("\x05"); // back to composer.json
-            $tui->handleInput("\r");
-        });
+                // --- Signature help ----------------------------------------------------------------
+                4750 => static fn () => $tui->handleInput('('),
+                4850 => function () use ($tui): void {
+                    $this->painted($tui, 'greet(string $name): string');
+                    $tui->handleInput("\x05"); // back to composer.json
+                    $tui->handleInput("\r");
+                },
 
-        // --- Keymap override from .porta.json ------------------------------------------------------------------
-        $this->step(4.95, function () use ($editor, $tui): void {
-            $editor()->getDocument()->setCursor(0, 0);
-            $tui->handleInput("\x1b[19~"); // F8, rebound to duplicate_line
-            $doc = $editor()->getDocument();
-            $this->assertSame($doc->getLine(0), $doc->getLine(1), 'config-rebound key duplicates line');
-        });
+                // --- Keymap override from .porta.json ----------------------------------------------
+                4950 => function () use ($editor, $tui): void {
+                    $editor()->getDocument()->setCursor(0, 0);
+                    $tui->handleInput("\x1b[19~"); // F8, rebound to duplicate_line
+                    $doc = $editor()->getDocument();
+                    $this->assertSame($doc->getLine(0), $doc->getLine(1), 'config-rebound key duplicates line');
+                },
 
-        // --- Quit: dirty warning, then confirm ----------------------------------------------------------------------
-        $this->step(5.05, static fn () => $tui->handleInput("\x11"));
-        $this->step(5.15, function () use ($screen, $tui): void {
-            $this->assertStringContainsString('Unsaved changes', $screen());
-            $tui->handleInput("\x11");
-        });
-
-        $watchdog = EventLoop::delay(9.0, static function () use ($tui): never {
-            $tui->stop();
-            throw new \RuntimeException('watchdog: IDE did not quit before timeout');
-        });
-
-        $this->ide->run();
-        EventLoop::cancel($watchdog);
-
-        $this->assertFalse($tui->isRunning(), 'run() returned after ctrl+q');
+                // --- Quit: dirty warning, then confirm -----------------------------------------------
+                5050 => static fn () => $tui->handleInput("\x11"),
+                5150 => function () use ($tui): void {
+                    $this->painted($tui, 'Unsaved changes');
+                    $tui->handleInput("\x11");
+                },
+            ],
+            $tui,
+        );
     }
 
     /**
@@ -325,69 +389,79 @@ final class IdeTest extends TestCase
         $screen = $this->screen(...);
         $editor = static fn () => $tui->getById('editor');
 
-        // Ctrl+Shift+E → modal opens; the empty query seeds recent files.
-        $this->step(0.5, function () use ($screen, $tui, $editor): void {
-            $tui->handleInput("\x1b[101;6u"); // ctrl+shift+e
-            $this->assertTrue($editor()->isSearchOverlayOpen());
-            $s = $screen();
-            $this->assertStringContainsString('Search Everywhere', $s, 'the modal title');
-            $this->assertStringContainsString('Demo.php', $s, 'empty query shows recent files');
-        });
+        $this->runScenario(
+            [
+                // Ctrl+Shift+E → modal opens; the empty query seeds recent files.
+                500 => function () use ($screen, $tui, $editor): void {
+                    $tui->handleInput("\x1b[101;6u"); // ctrl+shift+e
+                    $this->assertTrue($editor()->isSearchOverlayOpen());
+                    $this->awaitPainted($tui, $this->terminal, 'Search Everywhere');
+                    $s = $screen();
+                    $this->assertStringContainsString('Search Everywhere', $s, 'the modal title');
+                    $this->assertStringContainsString('Demo.php', $s, 'empty query shows recent files');
+                },
 
-        // Type a filename → the Files source lists it (synchronously); Enter opens it.
-        $this->step(0.7, static function () use ($tui): void {
-            foreach (\str_split('Target') as $ch) {
-                $tui->handleInput($ch);
-            }
-        });
-        $this->step(0.9, function () use ($screen, $tui): void {
-            $this->assertStringContainsString('Target.php', $screen(), 'Files result for the typed name');
-            $tui->handleInput("\r"); // pick → opens the file
-        });
-        $this->step(1.0, function () use ($editor): void {
-            $this->assertStringEndsWith('Target.php', (string) $editor()->getFilePath(), 'picking a file opens it');
-            $this->assertFalse($editor()->isSearchOverlayOpen(), 'picking closes the modal');
-        });
+                // Type a filename → the Files source lists it (synchronously); Enter opens it.
+                700 => static function () use ($tui): void {
+                    foreach (\str_split('Target') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                },
+                900 => function () use ($tui): void {
+                    $this->painted($tui, 'Target.php', because: 'Files result for the typed name');
+                    $tui->handleInput("\r"); // pick → opens the file
+                },
+                1000 => function () use ($editor): void {
+                    $this->await(
+                        static fn (): bool => \str_ends_with((string) $editor()->getFilePath(), 'Target.php'),
+                        what: 'the picked file to open',
+                    );
+                    $this->assertStringEndsWith('Target.php', (string) $editor()->getFilePath(), 'picking a file opens it');
+                    $this->assertFalse($editor()->isSearchOverlayOpen(), 'picking closes the modal');
+                },
 
-        // Reopen; a class name drives the async LSP workspace/symbol source.
-        $this->step(1.1, static function () use ($tui): void {
-            $tui->handleInput("\x1b[101;6u");
-            foreach (\str_split('Greeter') as $ch) {
-                $tui->handleInput($ch);
-            }
-        });
-        $this->step(1.7, function () use ($screen, $tui): void {
-            // after the 0.25s debounce and the mock-LSP round-trip
-            $this->assertStringContainsString('Greeter', $screen(), 'Classes/Symbols results from the mock LSP');
-            $tui->handleInput("\r"); // jump to the symbol
-        });
-        $this->step(1.85, function () use ($editor, $tui): void {
-            $this->assertStringEndsWith('Target.php', (string) $editor()->getFilePath());
-            $this->assertSame(3, $editor()->getDocument()->cursorLine, 'jumped to the symbol line');
-            $this->assertSame('editor', $tui->getFocus()?->getId(), 'editor refocused after the jump');
-        });
+                // Reopen; a class name drives the async LSP workspace/symbol source.
+                1100 => static function () use ($tui): void {
+                    $tui->handleInput("\x1b[101;6u");
+                    foreach (\str_split('Greeter') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                },
+                1700 => function () use ($screen, $tui): void {
+                    // Past the 0.25s debounce and the mock-LSP round trip — awaited,
+                    // not slept through. The barrier is the GROUP HEADER, not the
+                    // symbol name: 'Greeter' is also the query echoed in the input
+                    // field, so it is on screen the instant it is typed and proves
+                    // nothing about the answer having arrived.
+                    $this->awaitPainted($tui, $this->terminal, 'Classes');
+                    $s = $screen();
+                    $this->assertStringContainsString('Classes', $s, 'the async LSP category has hits');
+                    $this->assertStringContainsString('Greeter', $s, 'Classes/Symbols results from the mock LSP');
+                    $tui->handleInput("\r"); // jump to the symbol
+                },
+                1850 => function () use ($editor, $tui): void {
+                    $this->await(
+                        static fn (): bool => 3 === $editor()->getDocument()->cursorLine,
+                        what: 'the symbol jump to move the caret',
+                    );
+                    $this->assertStringEndsWith('Target.php', (string) $editor()->getFilePath());
+                    $this->assertSame(3, $editor()->getDocument()->cursorLine, 'jumped to the symbol line');
+                    $this->assertSame('editor', $tui->getFocus()?->getId(), 'editor refocused after the jump');
+                },
 
-        // Reopen, type (which schedules an async debounce), then Esc before it
-        // fires → close cancels the pending debounce and the modal disappears.
-        $this->step(1.95, function () use ($tui, $editor): void {
-            $tui->handleInput("\x1b[101;6u");
-            $tui->handleInput('z'); // schedules the async debounce
-            $tui->handleInput("\x1b"); // esc → close (cancels the debounce)
-            $this->assertFalse($editor()->isSearchOverlayOpen(), 'Esc closes the modal');
-            $this->assertSame('editor', $tui->getFocus()?->getId());
-        });
+                // Reopen, type (which schedules an async debounce), then Esc before it
+                // fires → close cancels the pending debounce and the modal disappears.
+                1950 => function () use ($tui, $editor): void {
+                    $tui->handleInput("\x1b[101;6u");
+                    $tui->handleInput('z'); // schedules the async debounce
+                    $tui->handleInput("\x1b"); // esc → close (cancels the debounce)
+                    $this->assertFalse($editor()->isSearchOverlayOpen(), 'Esc closes the modal');
+                    $this->assertSame('editor', $tui->getFocus()?->getId());
+                },
 
-        $this->step(2.1, static fn () => $tui->handleInput("\x11")); // ctrl+q
-
-        $watchdog = EventLoop::delay(9.0, static function () use ($tui): never {
-            $tui->stop();
-
-            throw new \RuntimeException('watchdog: IDE did not quit before timeout');
-        });
-
-        $this->ide->run();
-        EventLoop::cancel($watchdog);
-
-        $this->assertFalse($tui->isRunning(), 'run() returned after ctrl+q');
+                2100 => static fn () => $tui->handleInput("\x11"), // ctrl+q
+            ],
+            $tui,
+        );
     }
 }

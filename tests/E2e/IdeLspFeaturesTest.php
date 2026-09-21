@@ -235,7 +235,11 @@ final class IdeLspFeaturesTest extends TestCase
             'a.php' => "<?php\n",
         ]);
 
-        $terminal = $this->runIde($project, $project->path('a.php'), [], 0.5);
+        $terminal = $this->runIde($project, $project->path('a.php'), [
+            0 => function (Tui $tui, VirtualTerminal $terminal): void {
+                $this->awaitPainted($tui, $terminal, 'LSP:failed');
+            },
+        ]);
 
         $this->assertStringContainsString('LSP:failed', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
     }
@@ -1146,21 +1150,25 @@ final class IdeLspFeaturesTest extends TestCase
             $history->push($project->path('src/Demo.php'), 0, 0);
         }
 
-        EventLoop::delay(0.4, static fn () => $tui->handleInput("\x1b[24~")); // F12
-        // The jump is an LSP round trip: poll for it landing instead of a
-        // fixed delay, which races the mock server under pcov + machine load.
-        $poll = EventLoop::repeat(0.02, static function (string $watcherId) use ($tui, &$safety): void {
-            if (\str_ends_with((string) $tui->getById('editor')->getFilePath(), 'Target.php')) {
-                EventLoop::cancel($watcherId);
-                EventLoop::cancel($safety);
-                $tui->stop();
-            }
-        });
-        $safety = EventLoop::delay(10.0, static function () use ($poll, $tui): void {
-            EventLoop::cancel($poll);
-            $tui->stop(); // the jump never landed; stop so the assertion below fails cleanly
-        });
-        $ide->run();
+        $this->runSteps(
+            [
+                0 => function (Tui $tui, VirtualTerminal $terminal): void {
+                    // F12 went out behind a 0.4s gap, which is not a barrier: a
+                    // request to a session that has not initialised is dropped
+                    // in silence, and then nothing ever lands to poll for.
+                    $this->awaitLspReady($tui, $terminal);
+                    $tui->handleInput("\x1b[24~"); // F12
+                    $this->await(
+                        static fn (): bool => \str_ends_with((string) $tui->getById('editor')->getFilePath(), 'Target.php'),
+                        what: 'the definition jump to open Target.php',
+                    );
+                    $tui->stop();
+                },
+            ],
+            $tui,
+            $terminal,
+            $ide,
+        );
 
         $this->assertCount(50, $history->entries(), 'the jump the IDE actually made evicted the oldest at the cap');
         $this->assertStringEndsWith('Target.php', (string) $tui->getById('editor')->getFilePath());
@@ -1173,8 +1181,13 @@ final class IdeLspFeaturesTest extends TestCase
             'a.php' => "<?php\n",
         ]);
 
-        // The crash surfaces via stderr logging; initialize never completes.
-        $terminal = $this->runIde($project, $project->path('a.php'), [], 1.0);
+        // The crash surfaces via stderr logging; initialize never completes, so
+        // the status bar is the barrier: it reaches "starting" and stops there.
+        $terminal = $this->runIde($project, $project->path('a.php'), [
+            0 => function (Tui $tui, VirtualTerminal $terminal): void {
+                $this->awaitPainted($tui, $terminal, 'LSP:starting…');
+            },
+        ]);
 
         $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
         $this->assertStringContainsString('LSP:starting…', $screen);
@@ -1190,7 +1203,13 @@ final class IdeLspFeaturesTest extends TestCase
         // The demanding server fires an empty workspace/applyEdit after init
         // (applied: false path) and a real one against the opened file after
         // didOpen (applied: true path, flashed to the status bar).
-        $terminal = $this->runIde($project, $project->path('a.php'), [], 1.0);
+        $terminal = $this->runIde($project, $project->path('a.php'), [
+            0 => function (Tui $tui, VirtualTerminal $terminal): void {
+                // The flash is the LAST of the two effects, so awaiting it
+                // covers the ready status the next assertion reads too.
+                $this->awaitPainted($tui, $terminal, 'Applied server edit to 1 file');
+            },
+        ]);
 
         $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
         $this->assertStringContainsString('LSP:demanding-lsp-server', $screen);
@@ -1713,27 +1732,6 @@ final class IdeLspFeaturesTest extends TestCase
         );
     }
 
-    /**
-     * Wait until the mock language server is actually UP, not merely configured.
-     *
-     * An LSP request fired at a session that has not initialised is dropped in
-     * silence: no request goes out, so no response and no flash ever arrive,
-     * and whatever barrier follows burns its entire budget. The editor having
-     * a file path does NOT imply this — the file opens first and the session
-     * starts behind it, which is what the old 300-400 ms boot gaps were really
-     * covering. The status bar naming the server is the signal that it is up.
-     *
-     * Measured, not assumed: with the boot gap at 100 ms and no barrier,
-     * testCompletionResolveWithoutImportsLeavesFileUntouched and
-     * testGoToImplementationWithNoResultFlashes each failed 6 runs in 30 under
-     * 16 CPU burners, both timing out on the effect of a request that had
-     * never been sent.
-     */
-    private function awaitLspReady(Tui $tui, VirtualTerminal $terminal): void
-    {
-        $this->awaitPainted($tui, $terminal, 'LSP:mock-lsp-server');
-    }
-
     private function mockLspConfig(): string
     {
         return \json_encode(['lsp' => \PHP_BINARY.' '.__DIR__.'/../Support/mock-lsp-server.php']);
@@ -1778,7 +1776,6 @@ final class IdeLspFeaturesTest extends TestCase
                     $text = $tui->getById('editor')->getDocument()->getText();
                 },
             ],
-            2.0,
         );
 
         $this->assertStringContainsString('use Acme\\Organized;', (string) $text, 'the organizeImports edit was applied without a picker');

@@ -20,10 +20,10 @@ use Symfony\Component\Tui\Tui;
  * synthetic-input steps on the live Revolt loop, stop, return the terminal
  * for output assertions.
  *
- * Without an explicit $duration the loop stops right after the LAST step
- * ran (a final forced frame flushes what it painted) — pass $duration only
- * when effects genuinely land after the final step (debounces, subprocess
- * output), or better, make the last step await() the effect explicitly.
+ * The loop stops right after the LAST step ran, behind a final forced frame
+ * that flushes what it painted. Effects that land after the final step are
+ * awaited IN that step — there is no duration to pass, because a clock is not
+ * a barrier.
  */
 trait RunsIde
 {
@@ -82,6 +82,29 @@ trait RunsIde
         );
     }
 
+    /**
+     * Wait until the mock language server is actually UP, not merely configured.
+     *
+     * An LSP request fired at a session that has not initialised is dropped in
+     * silence: no request goes out, so no response and no flash ever arrive,
+     * and whatever barrier follows burns its entire budget. The editor having
+     * a file path does NOT imply this — the file opens first and the session
+     * starts behind it, which is what the old 300-400 ms boot gaps were really
+     * covering. The status bar naming the server is the signal that it is up.
+     *
+     * Measured, not assumed: with the boot gap at 100 ms and no barrier,
+     * testCompletionResolveWithoutImportsLeavesFileUntouched and
+     * testGoToImplementationWithNoResultFlashes each failed 6 runs in 30 under
+     * 16 CPU burners, both timing out on the effect of a request that had
+     * never been sent. IdeTest's scripted session is the second caller: its
+     * Ctrl+Space went out before `initialize` returned the moment its own
+     * 0.4/0.5s boot gaps came off.
+     */
+    private function awaitLspReady(Tui $tui, VirtualTerminal $terminal): void
+    {
+        $this->awaitPainted($tui, $terminal, 'LSP:mock-lsp-server');
+    }
+
     /** Set by {@see allowFirstRunWelcome()} for the tests that want the real first boot. */
     private bool $allowFirstRunWelcome = false;
 
@@ -134,7 +157,7 @@ trait RunsIde
      *                                    enough that nothing scrolls, so a test
      *                                    about scrolling has to ask for less
      */
-    private function runIde(TempProject $project, ?string $file, array $steps, ?float $duration = null, ?string $docsDir = null, int $columns = 160, int $rows = 24): VirtualTerminal
+    private function runIde(TempProject $project, ?string $file, array $steps, ?string $docsDir = null, int $columns = 160, int $rows = 24): VirtualTerminal
     {
         $terminal = new VirtualTerminal(columns: $columns, rows: $rows);
         $this->suppressFirstRunWelcome($project);
@@ -142,35 +165,56 @@ trait RunsIde
         $this->pinSettingsScope($ide);
         $tui = Services::resolve($ide, Tui::class);
 
-        // Steps chain sequentially: each schedules the next after it completes.
-        // A step may await() (suspending on the loop) without a later step's
-        // timer firing underneath it.
-        //
-        // The keys ORDER the steps; they are not waits. The gap between two
-        // steps is capped at PORTA_E2E_STEP_GAP ms (default 0): a step that
-        // needs something to have happened awaits it, and one that needs time
-        // to pass (a double-click window, a gesture burst) pumps it. Set the
-        // variable high to replay the keys as real gaps when chasing a flake.
+        // Stopping is a STEP, not a branch in the scheduler: it chains behind
+        // the last step the same way every other step does, so a step that
+        // awaits cannot have the terminator fire underneath it. Its key is 80ms
+        // past the last one, which only costs anything when the gaps are being
+        // replayed on purpose.
+        $steps[([] === $steps ? 0 : \max(\array_keys($steps))) + 80] = static function (Tui $tui): void {
+            $tui->tick();
+            // A bare tick() is not a frame: force one, or what the last step
+            // flashed is on screen only if the frame cap allowed it.
+            $tui->requestRender(force: true);
+            $tui->processRender();
+            $tui->stop();
+        };
+
+        $this->runSteps($steps, $tui, $terminal, $ide);
+
+        return $terminal;
+    }
+
+    /**
+     * Chain $steps onto the live loop, run the Ide, cancel every timer.
+     *
+     * Steps run **sequentially chained** — each schedules the next after it
+     * completes, so a step may await() a subprocess or async effect without a
+     * later step firing underneath it.
+     *
+     * **The keys ORDER the steps; they are not waits.** The gap between two
+     * steps is capped at PORTA_E2E_STEP_GAP ms, default 0, and every step
+     * starts behind one forced frame (a user's input always lands after a
+     * paint). A step that needs something to have HAPPENED awaits it; one that
+     * needs TIME to pass says so with pump(). Set the variable high to replay
+     * the keys as real gaps when chasing a flake — a test that only passes that
+     * way is leaning on a gap.
+     *
+     * Timers are cancelled in FINALLY: when a step already stopped the Tui, a
+     * surviving terminator would tick the dead Ide in the next test to run in
+     * this worker.
+     *
+     * @param array<int, callable> $steps ms => step($tui, $terminal, $ide)
+     */
+    private function runSteps(array $steps, Tui $tui, VirtualTerminal $terminal, Ide $ide): void
+    {
         $timers = [];
         \ksort($steps);
         $keys = \array_keys($steps);
         $gap = \getenv('PORTA_E2E_STEP_GAP');
         $cap = \is_numeric($gap) ? (float) $gap : 0.0;
-        $schedule = static function (int $index, int $previousKey) use (&$schedule, &$timers, $steps, $keys, $tui, $terminal, $ide, $duration, $cap): void {
+        $schedule = static function (int $index, int $previousKey) use (&$schedule, &$timers, $steps, $keys, $tui, $terminal, $ide, $cap): void {
             $key = $keys[$index];
-            $timers[] = EventLoop::delay(\min($key - $previousKey, $cap) / 1000, static function () use (
-                $index,
-                $key,
-                $steps,
-                $keys,
-                $tui,
-                $terminal,
-                $ide,
-                $duration,
-                $schedule,
-                &$timers,
-                $cap,
-            ): void {
+            $timers[] = EventLoop::delay(\min($key - $previousKey, $cap) / 1000, static function () use ($index, $key, $steps, $keys, $tui, $terminal, $ide, $schedule): void {
                 // A user's input always lands after a paint, so every step does:
                 // with no gap, a bare tick() inside the 60fps cap paints nothing.
                 $tui->requestRender(force: true);
@@ -178,29 +222,11 @@ trait RunsIde
                 $steps[$key]($tui, $terminal, $ide);
                 if (\array_key_exists($index + 1, $keys)) {
                     $schedule($index + 1, $key);
-
-                    return;
-                }
-                if (null === $duration) {
-                    // Tracked in $timers: when a step already stopped the Tui,
-                    // this terminator would otherwise survive into the next
-                    // test in the worker and tick the dead Ide there.
-                    $timers[] = EventLoop::delay(\min(80, $cap) / 1000, static function () use ($tui): void {
-                        $tui->tick();
-                        // A bare tick() is not a frame: force one, or what the last
-                        // step flashed is on screen only if the frame cap allowed it.
-                        $tui->requestRender(force: true);
-                        $tui->processRender();
-                        $tui->stop();
-                    });
                 }
             });
         };
         if ([] !== $keys) {
             $schedule(index: 0, previousKey: 0);
-        }
-        if (null !== $duration || [] === $keys) {
-            $timers[] = EventLoop::delay($duration ?? 0.7, $tui->stop(...));
         }
 
         try {
@@ -210,8 +236,6 @@ trait RunsIde
                 EventLoop::cancel($timer);
             }
         }
-
-        return $terminal;
     }
 
     /**

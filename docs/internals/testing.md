@@ -26,10 +26,13 @@ run **sequentially chained** — each schedules the next *after* it completes, s
 a step may `await()` a subprocess or async effect without a later step firing
 underneath it. **The keys order the steps; they are not waits.** The gap between
 steps is capped at `PORTA_E2E_STEP_GAP` ms, default **0**, and every step starts
-behind one forced frame (a user's input always lands after a paint). Without an
-explicit `$duration` the loop stops right after the last step, behind a final
-forced frame; pass one only when effects land after the final step, and prefer
-awaiting them inside the step.
+behind one forced frame (a user's input always lands after a paint). The loop
+stops right after the last step, behind a final forced frame — stopping is
+itself a chained step, so it cannot fire underneath a step that is awaiting.
+There is no duration to pass: effects that land after the final step are awaited
+IN it, because a clock is not a barrier. `runSteps()` is the same scheduler
+driven against an `Ide` the test booted itself, which is what
+`IdeTest`'s one continuous session uses.
 
 A step that needs something to have HAPPENED awaits it (`awaitPainted`,
 `awaitGit`, `awaitSearch`, `awaitLspReady`). A step that needs TIME to pass says
