@@ -31,12 +31,14 @@ final class NonBlockingTerminalTest extends TestCase
 
         $first = "\x1b[?2026h".\str_repeat('a', times: 262_144)."\x1b[?2026l"; // an oversized "frame"
         $second = "\x1b[?2026h".\str_repeat('b', times: 262_144)."\x1b[?2026l";
-        $start = \microtime(true);
         $terminal->write($first);
         $terminal->hideCursor();
         $terminal->write($second);
         $terminal->showCursor();
-        $this->assertLessThan(0.5, \microtime(true) - $start, 'frame writes return immediately, bytes queue');
+        // No wall-clock assertion: on the vendor blocking path these writes
+        // never return, so reaching this line is the proof, and the timer below
+        // is what states it. A clock budget added only a way to fail on a GC
+        // pause under sixteen workers.
 
         // The loop stays live: this timer never fires on the vendor blocking path.
         $ticked = false;

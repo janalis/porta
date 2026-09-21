@@ -120,8 +120,8 @@ final class IdeMousePrimitivesTest extends TestCase
             $project->path('A.php'),
             [
                 // Editor click: place the cursor on a lower line.
-                300 => static function ($tui): void {
-                    $tui->tick(); // ensure a frame rendered so widget rects exist
+                300 => function (Tui $tui): void {
+                    $this->frame($tui); // a real frame, so widget rects exist
                     // Menu bar owns row 0, tab bar row 1, so the editor content
                     // starts at screen row 2; a click at screen row 4 lands on
                     // document line 2 (col 45 -> past the gutter).

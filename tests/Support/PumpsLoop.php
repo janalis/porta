@@ -26,6 +26,9 @@ use Revolt\EventLoop;
  */
 trait PumpsLoop
 {
+    /** The default $what: replaced by the call site when a barrier times out. */
+    private const string UNNAMED = "\0unnamed";
+
     /**
      * Pump the live loop until $done() or timeout, then return. Usable inside a
      * step — steps run on the loop, so suspending here lets subprocess output
@@ -45,16 +48,52 @@ trait PumpsLoop
      * git, LSP, render passes), and a genuinely stuck condition still throws,
      * just a few seconds later.
      */
-    private function await(callable $done, float $timeout = 10.0, string $what = 'condition'): void
+    private function await(callable $done, float $timeout = 10.0, string $what = self::UNNAMED): void
     {
         $budget = $timeout * self::coverageSlowdown();
         $deadline = \hrtime(as_number: true) + (int) ($budget * 1e9);
         while (!$done()) {
             if (\hrtime(as_number: true) >= $deadline) {
-                throw new \RuntimeException(\sprintf('timed out after %.1fs waiting for %s', $budget, $what));
+                throw new \RuntimeException(\sprintf(
+                    'timed out after %.1fs waiting for %s',
+                    $budget,
+                    self::UNNAMED === $what ? self::callerLabel() : $what,
+                ));
             }
             $this->turn();
         }
+    }
+
+    /**
+     * What the default $what reports: the call site, not the word "condition".
+     *
+     * 284 of the suite's await() calls pass no label, and a bare "timed out
+     * waiting for condition" cannot say what was lost — which is the whole
+     * value of the throw. Labelling 284 sites by hand invites 284 labels that
+     * describe nothing, so the default names itself instead. Built only on the
+     * timeout path, so it costs nothing in the passing case. A `what:` that
+     * says what the EFFECT was is still better, and still worth adding at the
+     * sites that get one.
+     */
+    private static function callerLabel(): string
+    {
+        /** @var list<array{file?: string, line?: int}> $frames */
+        $frames = \debug_backtrace(\DEBUG_BACKTRACE_IGNORE_ARGS);
+        foreach ($frames as $frame) {
+            $file = $frame['file'] ?? null;
+            $line = $frame['line'] ?? null;
+            if (!\is_string($file) || !\is_int($line)) {
+                continue; // an internal frame carries neither
+            }
+            // Past this trait and the barrier helpers composed beside it —
+            // awaitPainted, awaitLanes, awaitSearch all live in tests/Support,
+            // and naming one of them would point at the harness, not the test.
+            if (!\str_contains($file, '/tests/Support/')) {
+                return \sprintf('an unnamed condition at %s:%d', \basename($file), $line);
+            }
+        }
+
+        return 'an unnamed condition';
     }
 
     /**

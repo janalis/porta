@@ -422,9 +422,9 @@ final class IdeLayoutFocusTest extends TestCase
                     $tui->handleInput("\x1b[23;2~"); // Shift+F11 shrinks it back
                     $this->assertSame(30, $tui->getById('tree')->width());
                 },
-                350 => function ($tui, $terminal, Ide $ide): void {
+                350 => function (Tui $tui, $terminal, Ide $ide): void {
                     Services::resolve($ide, CommandRegistry::class)->run('ide_terminal');
-                    $tui->tick(); // render a frame so the panel has a rect to resize from
+                    $this->frame($tui); // a real frame, so the panel has a rect to resize from
                     $rows = Probe::get($tui->getById('terminal'), 'visibleRows');
                     $tui->handleInput("\x1b[24;2~"); // grow the focused bottom panel
                     $this->assertSame($rows + 1, Probe::get($tui->getById('terminal'), 'visibleRows'));

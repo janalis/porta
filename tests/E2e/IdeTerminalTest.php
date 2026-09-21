@@ -19,6 +19,7 @@ use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Render\Renderer;
+use Symfony\Component\Tui\Tui;
 
 /**
  * Terminal multiplexing end-to-end against a real shell: multiple sessions,
@@ -215,8 +216,8 @@ final class IdeTerminalTest extends TestCase
                 300 => static function ($tui): void {
                     $tui->handleInput("\x1b[96;5u"); // shell 1
                 },
-                600 => function ($tui, $terminal, Ide $ide): void {
-                    $tui->tick();
+                600 => function (Tui $tui, $terminal, Ide $ide): void {
+                    $this->frame($tui);
                     $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
                     $strip = AnsiUtils::stripAnsiCodes($tui->getById('dock-tabs')->render(new RenderContext($rect->columns, 1))[0]);

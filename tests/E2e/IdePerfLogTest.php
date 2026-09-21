@@ -14,6 +14,7 @@ use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Symfony\Component\Tui\Tui;
 
 /**
  * The perf collector on a live session: input and render evidence lands in
@@ -35,12 +36,12 @@ final class IdePerfLogTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, Ide $ide) use ($project): void {
+                200 => function (Tui $tui, $terminal, Ide $ide) use ($project): void {
                     $watchdog = Services::resolve($ide, FreezeWatchdog::class);
                     $this->assertSame(0.25, Probe::get($watchdog, 'interval'), 'the container tightened the heartbeat');
                     $this->assertSame(0.5, Probe::get($watchdog, 'driftThreshold'), 'the container tightened the drift threshold');
 
-                    $tui->tick(); // a frame, so widget rects exist for the wheel hit-test
+                    $this->frame($tui); // a real frame, so widget rects exist for the wheel hit-test
                     $tui->handleInput("\x1b[<65;45;6M"); // wheel down over the editor
                     $tui->handleInput('j'); // a keystroke
 

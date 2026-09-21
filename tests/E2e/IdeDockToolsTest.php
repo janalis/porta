@@ -567,7 +567,7 @@ final class IdeDockToolsTest extends TestCase
                     foreach (\str_split('php') as $ch) {
                         $tui->handleInput($ch);
                     }
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertTrue($tui->getById('editor')->isSearchOverlayOpen());
                     $gotoRect = $renderer->getWidgetRect($tui->getById('editor'));
                     $wheel($tui, $gotoRect->col + 3, $gotoRect->row + 3);
@@ -582,7 +582,7 @@ final class IdeDockToolsTest extends TestCase
                     $wheel($tui, col: 3, row: 3);
                     $tui->tick();
                     $tui->handleInput("\x1b"); // close the menu
-                    $tui->tick();
+                    $this->frame($tui);
 
                     // Context menu: right-click the editor, wheel inside the dropdown.
                     $editorRect = $renderer->getWidgetRect($tui->getById('editor'));

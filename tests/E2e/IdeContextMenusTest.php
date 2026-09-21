@@ -448,8 +448,8 @@ final class IdeContextMenusTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                250 => function ($tui, $terminal, Ide $ide): void {
-                    $tui->tick();
+                250 => function (Tui $tui, $terminal, Ide $ide): void {
+                    $this->frame($tui);
                     $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($tui->getById('tree'));
                     $this->assertInstanceOf(WidgetRect::class, $rect, 'the tree is laid out');
                     $tree = $tui->getById('tree');

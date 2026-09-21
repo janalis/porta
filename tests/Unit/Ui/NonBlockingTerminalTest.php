@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Ui;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Tests\Support\DrainsPeer;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Ui\NonBlockingTerminal;
 use Symfony\Component\Tui\Terminal\TerminalInterface;
@@ -267,10 +268,13 @@ final class NonBlockingTerminalTest extends TestCase
         $first = \str_repeat('a', times: 524_288);
         $second = \str_repeat('b', times: 524_288);
 
-        $start = \microtime(true);
+        // A queue-depth claim, not a clock one: nothing is reading this
+        // socketpair, so a write that had parked until the peer drained would
+        // leave nothing pending. A wall-clock assertLessThan(0.1) could only
+        // ever fail from a scheduler hiccup.
         $terminal->write($first);
         $terminal->write($second);
-        $this->assertLessThan(0.1, \microtime(true) - $start, 'a stalled terminal cannot park the loop in a write');
+        $this->assertGreaterThan(\strlen($first), $terminal->pendingBytes(), 'a stalled terminal cannot park the loop in a write');
 
         $expected = \strlen($first) + \strlen($second);
         $drained = $this->drainPeer($peer, static fn (string $received): bool => \strlen($received) >= $expected);
@@ -346,14 +350,18 @@ final class NonBlockingTerminalTest extends TestCase
         $this->start($terminal, $received);
         \fclose($peer);
 
-        // Write until the broken pipe surfaces and kills the queueing layer.
+        // Write until the broken pipe surfaces and NULLS the writer — which is
+        // the death this test is about, and is observable, so it is the
+        // barrier. The condition used to `return true` unconditionally: one
+        // loop turn wearing await()'s clothes, on a 0.1s budget that could not
+        // fail and told the reader nothing about what was being waited for.
         $this->await(
             static function () use ($terminal): bool {
                 $terminal->write(\str_repeat('x', times: 65_536));
 
-                return true; // one pass is enough on a closed socketpair; loop tick lets the watcher fire
+                return null === Probe::get($terminal, 'writer');
             },
-            0.1,
+            what: 'the broken pipe to kill the queueing layer',
         );
         $terminal->write('after-death');
         $terminal->write('again');

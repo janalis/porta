@@ -54,8 +54,8 @@ final class IdeEditingTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                300 => function ($tui, $terminal, Ide $ide): void {
-                    $tui->tick();
+                300 => function (Tui $tui, $terminal, Ide $ide): void {
+                    $this->frame($tui);
                     $editor = $tui->getById('editor');
                     $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($editor);
                     $screen = static fn (): string => AnsiUtils::stripAnsiCodes(\implode("\n", $editor->render(new RenderContext(120, 20))));

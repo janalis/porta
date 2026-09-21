@@ -54,8 +54,8 @@ final class IdeTerminalRunTest extends TestCase
                     $tui->handleInput("\x1b[<0;40;3M");
                     $this->assertSame('editor', $tui->getFocus()?->getId(), 'clicking the editor moved focus off the terminal');
                 },
-                360 => function ($tui, $terminal, Ide $ide): void {
-                    $tui->tick();
+                360 => function (Tui $tui, $terminal, Ide $ide): void {
+                    $this->frame($tui);
                     // Click the centre of the terminal pane → focus returns to it.
                     $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('terminal'));

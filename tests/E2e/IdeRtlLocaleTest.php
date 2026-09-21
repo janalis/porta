@@ -493,7 +493,7 @@ final class IdeRtlLocaleTest extends TestCase
             $project->path('A.php'),
             [
                 300 => function (object $tui): void {
-                    $tui->tick();
+                    $this->frame($tui);
                     $renderer = Probe::get($tui, 'renderer');
                     $rect = $renderer->getWidgetRect($tui->getById('tree'));
                     $this->assertNotNull($rect);
@@ -537,7 +537,7 @@ final class IdeRtlLocaleTest extends TestCase
             $project->path('move.php'),
             [
                 300 => function (object $tui): void {
-                    $tui->tick();
+                    $this->frame($tui);
                     $renderer = Probe::get($tui, 'renderer');
                     $rect = $renderer->getWidgetRect($tui->getById('tree'));
                     $this->assertNotNull($rect);

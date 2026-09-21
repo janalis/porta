@@ -158,10 +158,11 @@ final class PtyProcessTest extends TestCase
 
         $countAfterStop = $buffer->lineCount();
         // Give any leaked watcher a chance to fire before asserting silence.
-        $deadline = \microtime(as_float: true) + 0.15;
-        while (\microtime(as_float: true) < $deadline) {
-            EventLoop::run();
-        }
+        // pump(), not a tight `while (…) { EventLoop::run(); }`: that spun a
+        // whole core for the 0.15s, and this is a genuine negative — the child
+        // is still echoing every 0.02s, so the span has to be real time and
+        // there is nothing to await.
+        $this->pump(0.15);
         $this->assertSame($countAfterStop, $buffer->lineCount(), 'no output may arrive after stop()');
     }
 

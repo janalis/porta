@@ -19,19 +19,28 @@ final class JsonRpcTransportTest extends TestCase
     public function testStopReapsAStragglerWithoutLeavingAZombie(): void
     {
         $project = new TempProject();
-        $transport = new JsonRpcTransport([\PHP_BINARY, __DIR__.'/../../Support/stubborn-lsp-server.php'], $project->dir, 'stubborn peer');
+        $log = '';
+        $transport = new JsonRpcTransport([\PHP_BINARY, __DIR__.'/../../Support/stubborn-lsp-server.php'], $project->dir, 'stubborn peer', static function (string $line) use (&$log): void {
+            $log .= $line;
+        });
         $this->assertTrue($transport->start(static function (): void {}));
 
         $process = Probe::get($transport, 'process');
         \assert(\is_resource($process), description: 'the transport holds the spawned process');
         $pid = \proc_get_status($process)['pid'];
 
-        // Give the child's interpreter time to install its SIGTERM-ignore
-        // handler before terminating it — otherwise the default disposition
-        // (die on SIGTERM) can still be in effect and the child never
-        // actually lingers, which would exercise the trivial "already dead"
-        // branch of the reaper instead of the poll-until-dead one.
-        \usleep(300_000);
+        // The child says when its SIGTERM-ignore handler is installed, and that
+        // is awaited: before this line the default disposition (die on SIGTERM)
+        // is still in effect, so terminating the child here would exercise the
+        // trivial "already dead" branch of the reaper instead of the
+        // poll-until-dead one. A 0.3s usleep() stood in for this, which cost
+        // 0.3s every run and — by its own comment — still exercised the wrong
+        // branch whenever a loaded machine was slower than the guess.
+        // By REFERENCE: an arrow fn would capture $log's value at creation and
+        // never see the line arrive.
+        $this->await(static function () use (&$log): bool {
+            return \str_contains($log, 'sigterm-ignored');
+        }, what: 'the child to ignore SIGTERM');
         $transport->stop();
 
         // The child ignores SIGTERM and only exits after its 1s sleep: give

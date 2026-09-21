@@ -374,8 +374,8 @@ final class IdeTabsBuffersTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, Ide $ide): void {
-                    $tui->tick();
+                200 => function (Tui $tui, $terminal, Ide $ide): void {
+                    $this->frame($tui);
                     $renderer = Services::resolve($ide, Renderer::class);
                     $tabs = $renderer->getWidgetRect($tui->getById('tabs'));
                     $editor = $renderer->getWidgetRect($tui->getById('editor'));

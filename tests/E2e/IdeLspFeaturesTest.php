@@ -1427,7 +1427,7 @@ final class IdeLspFeaturesTest extends TestCase
                 100 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitLspReady($tui, $terminal);
 
-                    $tui->tick(); // ensure a frame rendered so widget rects exist
+                    $this->frame($tui); // a real frame, so widget rects exist
                     // Ctrl (SGR bit 16) + left click at screen row 5 → editor
                     // content row 2 (menu row 0, tab bar row 1) → document line 2.
                     $tui->handleInput("\x1b[<16;45;5M");

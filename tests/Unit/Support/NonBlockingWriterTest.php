@@ -64,11 +64,14 @@ final class NonBlockingWriterTest extends TestCase
         $first = \str_repeat('a', times: 262_144);
         $second = \str_repeat('b', times: 262_144);
 
-        $start = \microtime(true);
+        // "never blocks" is a QUEUE-DEPTH fact, not a clock one. Nothing is
+        // reading this socketpair and its buffer is a few KB, so a write that
+        // had waited for delivery would leave nothing pending — while a
+        // wall-clock assertLessThan(0.1) could only ever fail from a GC pause
+        // or a scheduling gap under sixteen workers.
         $writer->write($first);
         $writer->write($second);
-        $this->assertLessThan(0.1, \microtime(true) - $start, 'write() never blocks, even past the socket buffer');
-        $this->assertGreaterThan(0, $writer->pendingBytes(), 'the overflow is queued, not lost');
+        $this->assertGreaterThan(\strlen($first), $writer->pendingBytes(), 'write() never blocks, even past the socket buffer: the tail is still queued');
 
         // Drain the peer while the loop runs the onWritable watcher.
         $expected = \strlen($first) + \strlen($second);

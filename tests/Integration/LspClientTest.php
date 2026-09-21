@@ -441,10 +441,12 @@ final class LspClientTest extends TestCase
         $client = $this->client('deaf-lsp-server.php');
         $client->start(static function (): void {});
 
-        $start = \microtime(true);
         $client->notify('porta/blob', ['data' => \str_repeat('a', times: 262_144)]);
         $client->notify('porta/blob', ['data' => \str_repeat('b', times: 262_144)]);
-        $this->assertLessThan(0.5, \microtime(true) - $start, 'sends return immediately, bytes queue instead of blocking');
+        // No wall-clock assertion here. On the blocking path these notify()
+        // calls never return at all — the deaf server never drains its stdin —
+        // so reaching the next line is already the proof, and the timer below
+        // is what states it. A clock budget added nothing but a failure mode.
 
         // The loop stays live: this timer would never fire on the blocking code.
         $ticked = false;
@@ -465,14 +467,33 @@ final class LspClientTest extends TestCase
         // The freeze regression: JsonRpcTransport::stop() used to proc_close()
         // the child, which blocks until it actually exits — so a server that
         // shrugs off SIGTERM parked the whole IDE for its remaining lifetime.
-        // The server never speaks the protocol, so this never awaits readiness.
-        $client = $this->client('stubborn-lsp-server.php');
+        $log = '';
+        $client = $this->client('stubborn-lsp-server.php', static function (string $line) use (&$log): void {
+            $log .= $line;
+        });
         $client->start(static function (): void {});
         $this->assertTrue($client->isRunning(), 'the child is up before stop() is exercised');
 
-        $before = \microtime(true);
+        // The server never speaks the protocol, so protocol readiness cannot be
+        // awaited — but it does say when its SIGTERM-ignore handler is in
+        // place, and that is the state this test needs. Terminating it before
+        // then kills it outright, which exercises the trivial "already dead"
+        // branch and would also make the liveness assertion below a coin toss.
+        $this->await(static function () use (&$log): bool {
+            return \str_contains($log, 'sigterm-ignored');
+        }, what: 'the child to ignore SIGTERM');
+
+        $process = Probe::get(Probe::object($client, 'transport'), 'process');
+        \assert(\is_resource($process), description: 'the transport holds the spawned process');
+        $pid = \proc_get_status($process)['pid'];
+
         $client->stop();
-        $this->assertLessThan(0.5, \microtime(true) - $before, 'stop() returns immediately, the reap happens in the background');
+
+        // "Returns immediately" as a fact rather than a stopwatch: the child
+        // ignores SIGTERM and only exits after its own sleep, so it is STILL
+        // RUNNING here — which is exactly what a proc_close() could not have
+        // left behind, since that returns only once the child is dead.
+        $this->assertTrue(\posix_kill($pid, signal: 0), 'stop() returned while the child was still alive: the reap is in the background');
         $this->assertFalse($client->isRunning());
     }
 

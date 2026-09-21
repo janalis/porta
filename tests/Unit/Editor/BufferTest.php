@@ -96,17 +96,16 @@ final class BufferTest extends TestCase
         $before = $buffer->diskStampNow();
         $this->assertNotNull($before);
 
-        $proc = \proc_open(['/bin/sh', '-c', 'sleep 1; printf "changed-externally\n" > '.\escapeshellarg($path)], [], $pipes);
+        // proc_close() is the barrier: it waits for the child, so the write has
+        // landed before the stamp below is read. The child used to `sleep 1`
+        // first and this used to poll it for up to 3s, which bought nothing —
+        // the stamp is `mtime:size`, and "changed-externally" is not four bytes,
+        // so it differs without waiting out the 1s mtime resolution.
+        $proc = \proc_open(['/bin/sh', '-c', 'printf "changed-externally\n" > '.\escapeshellarg($path)], [], $pipes);
         \assert(\is_resource($proc), description: 'the external writer started');
-        try {
-            $after = $before;
-            for ($i = 0; $i < 30 && $after === $before; ++$i) {
-                \usleep(100_000);
-                $after = $buffer->diskStampNow();
-            }
-        } finally {
-            \proc_close($proc);
-        }
+        \proc_close($proc);
+
+        $after = $buffer->diskStampNow();
 
         $this->assertNotSame($before, $after, 'an edit by another process is never noticed');
     }

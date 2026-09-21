@@ -76,9 +76,9 @@ final class IdeDebugTest extends TestCase
                     $tui->handleInput("\x1b[19;5~"); // ctrl+f8 again → clear
                     $this->assertStringNotContainsString('●', $editorScreen());
                 },
-                480 => function ($tui, $terminal, Ide $ide): void {
+                480 => function (Tui $tui, $terminal, Ide $ide): void {
                     // A plain click in the gutter toggles a breakpoint on that line.
-                    $tui->tick();
+                    $this->frame($tui);
                     $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('editor'));
                     $editorScreen = static fn (): string => \implode("\n", $tui->getById('editor')->render(new RenderContext(120, 20)));
@@ -220,7 +220,7 @@ final class IdeDebugTest extends TestCase
                     $tui->handleInput(\sprintf("\x1b[<0;5;%dM", $rect->row + 3)); // Frames,#0,#1 → rel 2 (no header row)
                     $tui->handleInput(\sprintf("\x1b[<0;5;%dm", $rect->row + 3));
                 },
-                300 => function ($tui, $terminal, Ide $ide): void {
+                300 => function (Tui $tui, $terminal, Ide $ide): void {
                     // The frame click above moves the caret; await that rather
                     // than betting 300 ms it already has. The caret starts on
                     // the stopped line (2), so reaching 0 is a real transition.
@@ -242,7 +242,7 @@ final class IdeDebugTest extends TestCase
                     $stripRow = static fn (): int => $renderer->getWidgetRect($tui->getById('dock-tabs'))->row + 1;
                     $tui->handleInput(\sprintf("\x1b[<0;4;%dM", $stripRow())); // the debug session's tab
                     $tui->handleInput(\sprintf("\x1b[<0;4;%dm", $stripRow()));
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertTrue($tui->getById('terminal')->isVisible(), 'clicking the session tab revealed the debug session output');
                     $debugCol = static function () use ($tui, $renderer): int {
                         $rect = $renderer->getWidgetRect($tui->getById('dock-tabs'));

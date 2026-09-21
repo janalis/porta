@@ -214,19 +214,22 @@ final class IdeDocsTest extends TestCase
                 300 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($captureFile): void {
                     $this->awaitPainted($tui, $terminal, 'Opened https://example.com/x');
                     $this->assertStringContainsString('Opened https://example.com/x', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
-                    // The shim runs as an independent OS process — poll for its
-                    // write instead of racing it at a fixed tick (blocking here
-                    // is fine: the shim needs no event-loop cooperation). The
-                    // budget matches PumpsLoop::await's 10s rather than being a
-                    // tighter number of its own: the flash above fires when the
-                    // shim is SPAWNED, so everything after it is a subprocess
-                    // waiting to be scheduled, and 3s was a race a loaded
-                    // machine lost.
+                    // The shim runs as an independent OS process, so its write
+                    // has to be awaited: the flash above fires when the shim is
+                    // SPAWNED, and everything after it is a subprocess waiting
+                    // to be scheduled — 3s was a race a loaded machine lost.
+                    //
+                    // Through await(), not a usleep() loop of its own. The loop
+                    // does not have to cooperate for the shim to run, but a
+                    // hand-rolled budget is the wrong currency: await() is the
+                    // one that grows under coverage and names itself on timeout,
+                    // and blocking the loop for ten seconds to wait on a
+                    // subprocess is not free for anything else armed on it.
                     $written = static fn (): string => \is_file($captureFile) ? (string) \file_get_contents($captureFile) : '';
-                    $deadline = \microtime(true) + 10.0;
-                    while (!\str_contains($written(), 'https://example.com/x') && \microtime(true) < $deadline) {
-                        \usleep(20_000);
-                    }
+                    $this->await(
+                        static fn (): bool => \str_contains($written(), 'https://example.com/x'),
+                        what: 'the opener shim to write the URL',
+                    );
                     $this->assertStringContainsString('https://example.com/x', $written(), 'the opener shim wrote the URL it was handed');
 
                     // Quit-time session excludes the help tab (asserted after the run).

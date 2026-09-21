@@ -37,7 +37,7 @@ final class IdeFramePacingTest extends TestCase
             $project->path('a.php'),
             [
                 200 => function (object $tui, $terminal, Ide $ide): void {
-                    $tui->tick(); // a frame, so widget rects exist for the hit-test
+                    $this->frame($tui); // a real frame, so widget rects exist for the hit-test
 
                     // Two wheel notches with an immediate tick each: the second
                     // tick lands microseconds after the first paint — with the
