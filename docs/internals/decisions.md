@@ -10038,3 +10038,52 @@ each, so the three fields' rails stand in two columns.
 default-colour reset** (`PanelRowStyle::shadeRow`): `Style::apply()` re-arms
 only a background, so the value after a field's rail drew in the terminal's
 default colour instead of the selection's.
+
+## Every control is boxed; the settings form pages by rendered rows (2026-09-23)
+
+The text-field round left settings text rows one row tall until a form "pages
+by rendered rows"; this round built exactly that, and put every control in the
+box: buttons (`FieldBox::button()`), selects with a real dropdown
+(`FieldBox::select()` + the context menu's listbox mode), steppers with
+clickable arrows, and `[✓]` / `[–]` checkboxes. Settings pages group their rows
+under fieldset legends (`SettingsRow::$fieldset`).
+
+**The dropdown is the context menu, not a new popup.** It already floats over
+every pane, routes keys modally, dismisses on an outside click, hovers, wheels,
+flips above a control near the bottom and lays out right-to-left. A popup drawn
+inside the host widget (`MenuOverlayHostTrait`) is clipped to its pane and
+would have needed all of that again. Re-open only if a list must stay open
+while the host keeps its keys. Under a right-to-left frame two mirrors meet:
+the control is reordered with its row (a left-to-right control inside a
+mirrored pane keeps its own order), while the floating list is its own run,
+mirrored across the whole row — so `ListboxOpener` finds where the control was
+DRAWN (`BidiTui::logicalColumn()` inverted) and mirrors that back. A Hebrew
+select value mirrors its whole box as one run, arrow at the left, as a
+right-to-left browser draws it; fencing the value with marks split the box,
+since `Bidi` has no isolates.
+
+**A label column beside the box, not a legend in its border, on settings.** One
+control column for every kind lines the page up; a legend would be cut by the
+box's 32-column cap in German and French; and the right-to-left marks are
+proven on this row shape. Checkboxes stay one row — `[✓]` aligns with the rail
+column, and a box per toggle would cost ten rows on Interface.
+
+**The side column in Find in Files** (Find window button, scope select) takes
+at most half the box: a long scope name elides inside its select, keeping its
+`▾`, rather than squeezing the query. Alt+S opens the scope list; with no host
+to show it — or before the modal is drawn — it steps, so the key never dies.
+
+**The Welcome card's button is one row.** A card is a row of a list; a three-row
+box on each would halve the steps the modal shows.
+
+**Disabled gained its callers** (the Built-in plugin entry, the commit button
+with nothing to commit) and uses the dashed set the text-field entry recorded.
+`Role::DangerBg` went: its two users are double-bordered `FieldState::Danger`
+now, and the enum cap is back to 61.
+
+Two right-to-left defects surfaced on the way and are fixed: an Int's `· 1-8`
+range joined the control's left-to-right run and was drawn between box and
+label, and a label ending in Latin plus punctuation lost its closing
+parenthesis to the far side. The heavy and double corners were missing from the
+L4 mirror table, so a focused box in a mirrored pane drew its corners facing
+out.

@@ -318,12 +318,13 @@ Open **Settings → Plugins** and use the form:
   actually installed the package. The directory name is the package's own
   `composer.json` — it must declare `"name": "vendor/name"` and
   `"type": "porta-plugin"`, or the install is refused.
-- Each installed plugin lists with a **[Remove]** button — press Enter twice
-  (a confirm flash arrives after the first press). A composer-managed entry
+- Each installed plugin lists with a **Remove** button — press Enter twice
+  (the first press arms it: its border turns double, and a confirm flash
+  arrives). A composer-managed entry
   runs `composer remove` in the driving project first, then unlinks the
   symlink — the real installed copy under `.porta/vendor/` is untouched by
   anything else that references it. Bundled plugins list as **(built-in)**
-  and cannot be removed.
+  beside a disabled (dashed) button, and cannot be removed.
 
 A successful install **activates the plugin immediately**: its commands
 appear in the command palette and the Plugins menu (between Code and Run)

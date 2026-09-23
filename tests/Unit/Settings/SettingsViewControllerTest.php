@@ -72,6 +72,7 @@ use Porta\Tests\Support\ReadsSettingsForm;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestTui;
 use Porta\Tests\Support\TestWorkspaceLayout;
+use Porta\Ui\BidiTui;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\Theme\Styles;
 use Porta\Ui\Theme\StyleSheetThemer;
@@ -190,7 +191,7 @@ final class SettingsViewControllerTest extends TestCase
 
         $renderer = new Renderer(new StyleSheet());
         $this->renderer = $renderer;
-        $this->tui = new Tui(terminal: new VirtualTerminal(columns: 100, rows: 24), keybindings: new Keybindings([]), renderer: $renderer);
+        $this->tui = new BidiTui(terminal: new VirtualTerminal(columns: 100, rows: 24), keybindings: new Keybindings([]), renderer: $renderer);
         $editor = new CodeEditorWidget();
         $status = new StatusBarWidget();
         $notifier = new Notifier($status, $this->tui);

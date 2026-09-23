@@ -19,6 +19,7 @@ use Porta\Tests\Support\Paint;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
+use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Ui\PaneSegmenter;
@@ -40,6 +41,7 @@ final class IdeRtlLocaleTest extends TestCase
     use NavigatesSettings;
     use PreservesPath;
     use RunsIde;
+    use ScreenReads;
 
     public function testSwitchingTheLocaleLiveRelabelsTheMenuAndMirrorsTheLayout(): void
     {
@@ -372,6 +374,70 @@ final class IdeRtlLocaleTest extends TestCase
                 },
             ],
         );
+    }
+
+    /**
+     * A select's list drops UNDER the select on a mirrored screen.
+     *
+     * Two mirrors meet here: the select was reordered with its row inside the
+     * form pane (beside the nav sidebar), and the floating list is its own
+     * run, mirrored across the whole row. Anchored at the select's logical
+     * column, the list landed on the far side of the pane.
+     */
+    public function testAMirroredSelectDropsItsListUnderItself(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $project = new TempProject([
+            '.porta.json' => \json_encode(['settings' => ['language' => 'he', 'theme' => 'dark']]),
+            'demo.php' => "<?php\n",
+        ]);
+
+        $this->runIde(
+            $project,
+            $project->path('demo.php'),
+            [
+                300 => function (Tui $tui, $terminal, Ide $ide): void {
+                    Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
+                    $this->selectSettingsSection($this->settingsNav($tui), 'interface');
+                },
+                500 => static function (object $tui): void {
+                    $tui->requestRender(force: true);
+                    $tui->processRender(); // a frame: the reorder the list is anchored against
+                    $form = $tui->getById('settings-form');
+                    $tui->setFocus($form);
+                    $form->handleInput("\x1b[B"); // Language
+                    $form->handleInput("\x1b[B"); // Theme
+                    $tui->requestRender(force: true);
+                    $tui->processRender();
+                    $form->handleInput("\r"); // drop its list
+                },
+                700 => function (object $tui, VirtualTerminal $terminal): void {
+                    $screen = $this->screenGrid($tui, $terminal); // the frame as painted, reorder and all
+                    $box = $this->rowWith($screen, 'dark ');
+                    $list = $this->rowWith($screen, 'high-contrast');
+                    $this->assertNotSame($box, $list, 'the list is open below the select');
+
+                    // The select's heavy left rail and the list's stand in one column.
+                    $this->assertSame(
+                        \mb_strpos($screen[$box - 1], needle: '┏'),
+                        \mb_strpos($screen[$list - 3], needle: '┏'),
+                        "the list hangs under its select:\n".\implode("\n", \array_slice($screen, $box - 1, length: 8)),
+                    );
+                },
+            ],
+        );
+    }
+
+    /** @param list<string> $screen */
+    private function rowWith(array $screen, string $needle): int
+    {
+        foreach ($screen as $row => $line) {
+            if (\str_contains($line, $needle)) {
+                return $row;
+            }
+        }
+
+        self::fail("no row shows {$needle}");
     }
 
     public function testRtlSettingsValuesKeepTheirBrackets(): void

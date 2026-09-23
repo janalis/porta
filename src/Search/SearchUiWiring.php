@@ -221,9 +221,18 @@ final class SearchUiWiring
                     foreach ($labels as $index => $label) {
                         $options[] = [(string) $index, $label];
                     }
-                    $this->listbox->openAt($row, $col, $above, $width, $options, (string) $current, function (string $index): void {
-                        $this->editor->findModal->chooseScope((int) $index);
-                    });
+                    $this->listbox->openAt(
+                        $row,
+                        $col,
+                        $above,
+                        $width,
+                        $options,
+                        (string) $current,
+                        function (string $index): void {
+                            $this->editor->findModal->chooseScope((int) $index);
+                        },
+                        drawnOn: $above,
+                    ); // the modal's rows may be mirrored
                 },
                 onToggleOption: function (SearchOption $option): void {
                     $this->projectSearch->toggleOption($option);

@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace Porta\Workbench\Menu;
 
 use Porta\Overlay\State\MenuOverlayController;
+use Porta\Ui\BidiTui;
 use Porta\Ui\Glyphs;
 use Porta\Widget\ContextMenu;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\Render\PopupFrame;
 use Symfony\Component\Tui\Render\Renderer;
-use Symfony\Component\Tui\Tui;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 
 /**
@@ -29,7 +29,7 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
 final readonly class ListboxOpener
 {
     public function __construct(
-        private Tui $tui,
+        private BidiTui $tui,
         private Renderer $renderer,
         private MenuBarWidget $menuBar,
         private MenuOverlayController $overlay,
@@ -54,18 +54,35 @@ final readonly class ListboxOpener
         if (null === $rect) {
             return; // not drawn, so nothing to hang from
         }
-        $this->openAt($rect->row + $relRow, $rect->col + $relCol, $rect->row + $relAbove, $width, $options, $current, $choose);
+        // Mirrored with its pane or not (a verbatim pane keeps its columns),
+        // the control is found where the frame DREW it.
+        $this->openAt($rect->row + $relRow, $rect->col + $relCol, $rect->row + $relAbove, $width, $options, $current, $choose, drawnOn: $rect->row + $relAbove);
     }
 
     /**
      * Open under a control at SCREEN coordinates — for a host that lays
      * itself out in screen space, as the floating modals do.
      *
+     * $drawnOn is a screen row the control occupies, when the frame may have
+     * reordered it right-to-left. Two mirrors are then in play, and neither is
+     * the other: the control was reordered with the row it sits in (a
+     * left-to-right control inside a mirrored pane keeps its own order, and
+     * lands wherever the row's runs put it), while the floating list is its
+     * own run, mirrored across the whole row (its shadow column is widened
+     * to the LEFT under right-to-left, so the mirror leaves the box's edge
+     * where it was). So the list is anchored where that second mirror carries it
+     * onto the first: at the leftmost screen column the control was DRAWN at
+     * ({@see BidiTui::logicalColumn()} inverted), mirrored back.
+     *
      * @param list<array{string, string}> $options value and label, in list order
      * @param \Closure(string): void       $choose  runs with the picked value
      */
-    public function openAt(int $row, int $col, int $above, int $width, array $options, string $current, \Closure $choose): void
+    public function openAt(int $row, int $col, int $above, int $width, array $options, string $current, \Closure $choose, ?int $drawnOn = null): void
     {
+        $drawn = null === $drawnOn || !$this->tui->isMirrored() ? null : $this->drawnColumn($drawnOn, $col, $width);
+        if (null !== $drawn) {
+            $col = $this->tui->getTerminal()->getColumns() - $drawn - $width;
+        }
         $items = [];
         $selected = 0;
         foreach ($options as $i => [$value, $label]) {
@@ -78,5 +95,18 @@ final readonly class ListboxOpener
         $this->overlay->setContextAnchor($row, $col, $above);
         $this->contextMenu->openListbox($items, $selected, $width - PopupFrame::CHROME_COLS);
         $this->tui->requestRender();
+    }
+
+    /** The leftmost screen column on $row that shows one of the logical columns [$col, $col + $width), or null when none does. */
+    private function drawnColumn(int $row, int $col, int $width): ?int
+    {
+        for ($visual = 0, $columns = $this->tui->getTerminal()->getColumns(); $visual < $columns; ++$visual) {
+            $logical = $this->tui->logicalColumn($row, $visual);
+            if ($logical >= $col && $logical < ($col + $width)) {
+                return $visual;
+            }
+        }
+
+        return null; // drawn nowhere on screen: there is nothing to meet
     }
 }

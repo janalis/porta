@@ -37,6 +37,7 @@ use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestBottomDock;
+use Porta\Ui\BidiTui;
 use Porta\Ui\CaretVisibility;
 use Porta\Ui\ScopeKind;
 use Porta\Widget\CodeEditorWidget;
@@ -57,7 +58,6 @@ use Porta\Workbench\Menu\ListboxOpener;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Style\StyleSheet;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
-use Symfony\Component\Tui\Tui;
 
 final class SearchUiWiringTest extends TestCase
 {
@@ -84,7 +84,7 @@ final class SearchUiWiringTest extends TestCase
     {
         $this->editor = new CodeEditorWidget();
         $this->panel = new ResultsPanelWidget();
-        $tui = new Tui(terminal: new VirtualTerminal(columns: 100, rows: 20));
+        $tui = new BidiTui(terminal: new VirtualTerminal(columns: 100, rows: 20));
         $this->dock = TestBottomDock::create($tui, new TerminalPanelWidget(), $this->panel, new DebugPanelWidget());
         $buffers = new BufferManager();
         $paths = new ProjectPaths($rootDir);

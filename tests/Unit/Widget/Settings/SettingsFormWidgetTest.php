@@ -1220,6 +1220,11 @@ final class SettingsFormWidgetTest extends TestCase
         // The CONTROL is what the mark protects; the detail beyond it is prose
         // and mirrors, separated by the space the spent mark leaves behind.
         yield 'choice' => [new SettingsRow('theme', 'ערכת נושא', SettingsRowKind::Choice, 'dark', false, ['dark', 'light']), '┃ dark   ▾ ┃'];
+        // A right-to-left VALUE runs on into the box's neutrals and mirrors
+        // the whole box as one: intact, its arrow at the left — where a
+        // right-to-left browser draws a select's arrow. (Fencing the value
+        // with marks split the box in two: this Bidi has no isolates.)
+        yield 'hebrew choice' => [new SettingsRow('language', 'שפה', SettingsRowKind::Choice, 'he', false, ['en', 'he'], optionLabels: ['en' => 'English', 'he' => 'עברית']), '┃ ▾   תירבע ┃'];
         yield 'bool' => [new SettingsRow('sticky', 'גלילה דביקה', SettingsRowKind::Bool, true, false), '[✓]'];
         yield 'action' => [new SettingsRow('rm', 'demo (project)', SettingsRowKind::Action, 'Remove', false), '┃  Remove  ┃'];
         // A Latin label ending in punctuation keeps its closing parenthesis:
