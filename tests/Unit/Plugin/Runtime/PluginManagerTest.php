@@ -442,6 +442,51 @@ final class PluginManagerTest extends TestCase
         $this->assertNull($manager->installOffer('linter'), 'a deactivated plugin drops its offer');
     }
 
+    /**
+     * The describer answers "what have I got?", so it is only asked while
+     * there IS something — and it is pulled on every settings render, which is
+     * the other half of why an absent tool must not reach it.
+     */
+    public function testTheDescriberIsOnlyAskedWhileTheToolIsAvailable(): void
+    {
+        $manager = $this->wiredManager(new EventDispatcher());
+        $available = false;
+        $asked = 0;
+        $plugin = new PluginApi('server', $manager, '/p', new PluginSettings('/p', []));
+        $plugin->registerCommand('install', 'Install Server', static function (): void {});
+        $plugin->registerInstaller(
+            'symfony-lsp',
+            static function () use (&$available): bool {
+                return $available;
+            },
+            [[PluginApi::INSTALL_SELF, 'install']],
+            static function () use (&$asked): string {
+                ++$asked;
+
+                return '0.21.0';
+            },
+        );
+        $manager->commit($plugin);
+
+        $this->assertSame('', $manager->installOffer('server')['describe'], 'nothing installed, nothing to describe');
+        $this->assertSame(0, $asked);
+
+        $available = true;
+        $this->assertSame('0.21.0', $manager->installOffer('server')['describe']);
+        $this->assertSame(1, $asked);
+    }
+
+    /** A plugin that declared no describer says nothing, rather than crashing. */
+    public function testAnOfferWithoutADescriberDescribesNothing(): void
+    {
+        $manager = $this->wiredManager(new EventDispatcher());
+        $plugin = new PluginApi('linter', $manager, '/p', new PluginSettings('/p', []));
+        $plugin->registerInstaller('phpstan', static fn (): bool => true, [['composer', 'phpstan/phpstan']]);
+        $manager->commit($plugin);
+
+        $this->assertSame('', $manager->installOffer('linter')['describe']);
+    }
+
     public function testAThrowingMenuWhenClosureReadsDisabledAndReportsOnce(): void
     {
         $manager = $this->wiredManager(new EventDispatcher());

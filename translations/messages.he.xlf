@@ -2802,6 +2802,62 @@
         <source>symfony-lsp install failed: %why%</source>
         <target>התקנת symfony-lsp נכשלה: %why%</target>
       </trans-unit>
+      <trans-unit id="879">
+        <source>symfony-lsp: checking for a newer release…</source>
+        <target>symfony-lsp: מחפש גרסה חדשה יותר…</target>
+      </trans-unit>
+      <trans-unit id="880">
+        <source>symfony-lsp updated: %from% → %to%</source>
+        <target>symfony-lsp עודכן: %from% ← %to%</target>
+      </trans-unit>
+      <trans-unit id="881">
+        <source>symfony-lsp is already up to date (%version%)</source>
+        <target>symfony-lsp כבר מעודכן (%version%)</target>
+      </trans-unit>
+      <trans-unit id="882">
+        <source>symfony-lsp update failed: %why%</source>
+        <target>עדכון symfony-lsp נכשל: %why%</target>
+      </trans-unit>
+      <trans-unit id="883">
+        <source>symfony-lsp: resolving…</source>
+        <target>symfony-lsp: מאתר…</target>
+      </trans-unit>
+      <trans-unit id="884">
+        <source>symfony-lsp: downloading…</source>
+        <target>symfony-lsp: מוריד…</target>
+      </trans-unit>
+      <trans-unit id="885">
+        <source>symfony-lsp: downloading %percent%%</source>
+        <target>symfony-lsp: מוריד %percent%%</target>
+      </trans-unit>
+      <trans-unit id="886">
+        <source>symfony-lsp: verifying…</source>
+        <target>symfony-lsp: מאמת…</target>
+      </trans-unit>
+      <trans-unit id="887">
+        <source>symfony-lsp: extracting…</source>
+        <target>symfony-lsp: מחלץ…</target>
+      </trans-unit>
+      <trans-unit id="888">
+        <source>symfony-lsp: checking the binary…</source>
+        <target>symfony-lsp: בודק את הקובץ הבינרי…</target>
+      </trans-unit>
+      <trans-unit id="889">
+        <source>symfony-lsp %version% is available — run "Symfony LSP: Update Server"</source>
+        <target>symfony-lsp %version% זמין — הריצו את "Symfony LSP: Update Server"</target>
+      </trans-unit>
+      <trans-unit id="890">
+        <source>Check for a newer server once a day</source>
+        <target>לבדוק פעם ביום אם קיים שרת חדש יותר</target>
+      </trans-unit>
+      <trans-unit id="891">
+        <source>Update %tool%</source>
+        <target>עדכון %tool%</target>
+      </trans-unit>
+      <trans-unit id="892">
+        <source>Update</source>
+        <target>עדכון</target>
+      </trans-unit>
       <trans-unit id="665">
         <source>Symfony language tools</source>
         <target>כלי השפה של Symfony</target>

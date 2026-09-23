@@ -31,11 +31,20 @@ serving twig, yaml, xml, json and dotenv — and PHP when neither PHP server is
 enabled — with runtime indexing as an explicit opt-in setting; it ships only
 as a GitHub-Releases binary, so the plugin's "Symfony LSP: Install Server"
 command downloads, checksum-verifies and lands it in `~/.porta/bin` for every
-project to share — "Symfony LSP: Update Server" is the same action once a copy
-is there, and takes over the menu entry; both need `curl` and `tar` on the
-PATH, and honour `GITHUB_TOKEN`/`GH_TOKEN` if GitHub rate-limits the release
-lookup — and the Welcome screen offers it on projects that require
-`symfony/framework-bundle`), and `todo`,
+project to share, reporting each step — resolving, downloading with a
+percentage, verifying, extracting, checking the binary — in a status-bar cell
+that clears when it is done. "Symfony LSP: Update Server" takes over the menu
+entry once a copy is there and **compares before it downloads**: it resolves
+the latest tag, asks the installed binary its version, and says
+"already up to date" rather than fetching ~9MB again. The same two verbs sit on
+the plugin's settings page as one button, captioned Install or Update with the
+installed version beside it, and the Welcome card is not done until the server
+is actually there — pressing it enables the plugin *and* installs. With
+`check-updates` on (the default) one request a day offers a newer release when
+there is one, and says nothing at all when there is not or when it cannot
+reach GitHub. Everything here needs `curl` and `tar` on the PATH, and honours
+`GITHUB_TOKEN`/`GH_TOKEN` if GitHub rate-limits the release lookup), and
+`todo`,
 `local-history` and `git` (core features that moved out, keeping their ids by
 adoption). Every bundled plugin surfaces its commands in the Plugins menu and
 its knobs on its own settings page.
@@ -680,7 +689,7 @@ Registration (during `activate()`):
 | `onFileRewritten(\Closure $hook)` | `$hook(string $path, string $previousText)` when a refactoring rewrote a file that had NO open buffer. The payload is the text the write REPLACED: the new content is on disk already and the old exists nowhere else. Not a save — no `onFileSaved` fires for it |
 | `registerHighlighter(...)` | Provide a syntax-highlighting backend for one or more languages. `$isAvailable` declines a language when e.g. a binary is missing, so the next provider gets it; a backend that faults is dropped for that buffer after three consecutive failures, and the buffer renders as plain text rather than broken |
 | `registerTokenSpans(array\|\Closure $languages, \Closure $classify)` | Classify comment and string regions for project search's token-scope filter ("only in comments/strings", "except in …"). Deliberately separate from `registerHighlighter()`: this runs once per FILE over raw content, where highlighting runs per visible line |
-| `registerInstaller(string $tool, \Closure $isAvailable, array $via)` | Declare how to install this plugin's tool binary plus a predicate for whether it is there. When it is not, the plugin's settings page offers a one-click install that tries each `[manager, package]` pair in order, running the first whose manager is on the PATH. Omit it and no install is offered |
+| `registerInstaller(string $tool, \Closure $isAvailable, array $via, ?\Closure $describe = null)` | Declare how to install this plugin's tool binary plus a predicate for whether it is there. When it is not, the plugin's settings page offers a one-click install that tries each `[manager, package]` pair in order, running the first whose manager is on the PATH (`composer`, `brew`, `cargo`). A tool no package manager ships passes `[[PluginApi::INSTALL_SELF, '<your command id>']]` instead and the button runs **your** command — that row does not disappear once the tool is there, it re-reads `Update`, because the plugin that downloads its own tool is what replaces it. `$describe` says what is installed in a few words (a version); it is pulled on every settings render and only while the tool is available. Omit the whole call and no install is offered |
 
 Actions (from handlers/hooks):
 

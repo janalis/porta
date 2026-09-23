@@ -18,6 +18,7 @@ use Porta\Onboarding\SymfonyDetector;
 use Porta\Onboarding\WelcomeStep;
 use Porta\Onboarding\WelcomeSteps;
 use Porta\Tests\Support\FakePluginLifecycle;
+use Porta\Tests\Support\FakeToolInstallOffers;
 use Porta\Tests\Support\TempProject;
 
 /**
@@ -28,6 +29,7 @@ final class WelcomeStepsTest extends TestCase
 {
     private FakePluginLifecycle $lifecycle;
     private CommandRegistry $commands;
+    private FakeToolInstallOffers $offers;
 
     /** The project the detector probes — mago-less by default, so every pre-mago expectation holds unchanged. */
     private TempProject $project;
@@ -38,6 +40,7 @@ final class WelcomeStepsTest extends TestCase
     protected function setUp(): void
     {
         $this->lifecycle = new FakePluginLifecycle();
+        $this->offers = new FakeToolInstallOffers();
         $this->project = new TempProject();
         $this->commands = new CommandRegistry();
         $this->commands->add(
@@ -61,7 +64,7 @@ final class WelcomeStepsTest extends TestCase
 
     private function build(SyntaxHighlightProviderSource $source): WelcomeSteps
     {
-        return new WelcomeSteps(new Translator('en'), $source, $this->lifecycle, $this->commands, new MagoDetector($this->project->path()), new SymfonyDetector($this->project->path()));
+        return new WelcomeSteps(new Translator('en'), $source, $this->lifecycle, $this->commands, new MagoDetector($this->project->path()), new SymfonyDetector($this->project->path()), $this->offers);
     }
 
     /** Make the project a Symfony application, adding the symfony-lsp card. */
@@ -125,7 +128,88 @@ final class WelcomeStepsTest extends TestCase
         $this->assertSame([[RecommendedPlugins::SYMFONY_LANGUAGE_SERVER, true]], $this->lifecycle->toggled, 'the same enable call Settings → Plugins makes');
 
         $this->lifecycle->names[] = RecommendedPlugins::SYMFONY_LANGUAGE_SERVER;
-        $this->assertTrue($this->steps()->all()[2]->isDone(), 'done the moment the plugin is enabled');
+        $this->assertTrue($this->steps()->all()[2]->isDone(), 'no declared tool to wait for, so enabling IS the whole step');
+    }
+
+    /**
+     * Enabled is not done while the server binary is missing.
+     *
+     * symfony-lsp's server ships only as a GitHub release, so the card used to
+     * tick itself the moment the plugin switched on — leaving the user with a
+     * finished checklist and a status bar reading `LSP:none`. Every other card
+     * is done at enable because every other plugin brings its own code.
+     */
+    public function testTheSymfonyCardWaitsForTheServerBinaryNotJustThePlugin(): void
+    {
+        $this->withSymfony();
+        $this->lifecycle->names[] = RecommendedPlugins::SYMFONY_LANGUAGE_SERVER;
+        $this->offers->declare(RecommendedPlugins::SYMFONY_LANGUAGE_SERVER, 'symfony-lsp', available: false);
+
+        $this->assertFalse($this->steps()->all()[2]->isDone(), 'enabled, but there is no server to talk to');
+
+        $this->offers->declare(RecommendedPlugins::SYMFONY_LANGUAGE_SERVER, 'symfony-lsp', available: true);
+        $this->assertTrue($this->steps()->all()[2]->isDone());
+    }
+
+    /** Pressing the card enables the plugin AND downloads the server it needs. */
+    public function testRunningTheSymfonyCardAlsoInstallsTheServer(): void
+    {
+        $this->withSymfony();
+        $this->offers->declare(RecommendedPlugins::SYMFONY_LANGUAGE_SERVER, 'symfony-lsp', available: false, package: 'install');
+        $this->commands->add(
+            'symfony-lsp:install',
+            function (): void {
+                $this->commandsRun[] = 'symfony-lsp:install';
+            },
+            label: 'Symfony LSP: Install Server',
+        );
+
+        $this->steps()->all()[2]->run();
+
+        $this->assertSame([[RecommendedPlugins::SYMFONY_LANGUAGE_SERVER, true]], $this->lifecycle->toggled);
+        $this->assertSame(['symfony-lsp:install'], $this->commandsRun, 'the plugin\'s own installer, not a package manager');
+    }
+
+    /** A server already there is not downloaded again by an onboarding card. */
+    public function testRunningTheSymfonyCardDoesNotReinstallAServerThatIsThere(): void
+    {
+        $this->withSymfony();
+        $this->offers->declare(RecommendedPlugins::SYMFONY_LANGUAGE_SERVER, 'symfony-lsp', available: true);
+        $this->commands->add(
+            'symfony-lsp:install',
+            function (): void {
+                $this->commandsRun[] = 'symfony-lsp:install';
+            },
+            label: 'Symfony LSP: Install Server',
+        );
+
+        $this->steps()->all()[2]->run();
+
+        $this->assertSame([], $this->commandsRun);
+    }
+
+    /**
+     * A plugin whose tool comes from a package manager keeps the enable-only
+     * behaviour: its install lives on the settings page, where the manager can
+     * be named, and a welcome card must not run `composer require` behind a
+     * button that says "Enable".
+     */
+    public function testAPackageManagerOfferIsNotRunFromTheCard(): void
+    {
+        $this->withSymfony();
+        $this->offers->declare(RecommendedPlugins::SYMFONY_LANGUAGE_SERVER, 'symfony-lsp', available: false, manager: 'composer', package: 'acme/thing');
+        $this->commands->add(
+            'symfony-lsp:install',
+            function (): void {
+                $this->commandsRun[] = 'symfony-lsp:install';
+            },
+            label: 'Symfony LSP: Install Server',
+        );
+
+        $this->steps()->all()[2]->run();
+
+        $this->assertSame([[RecommendedPlugins::SYMFONY_LANGUAGE_SERVER, true]], $this->lifecycle->toggled, 'it still enables');
+        $this->assertSame([], $this->commandsRun);
     }
 
     /** With no backend loaded the highlighting step is the thing to do. */

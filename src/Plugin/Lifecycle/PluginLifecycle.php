@@ -606,6 +606,12 @@ final class PluginLifecycle implements PluginLifecycleOps
         if ($this->plugins->providesLanguageServer($name) && !$this->lspReconfigurer->isOverridden()) {
             $this->lspReconfigurer->relaunch();
         }
+        // A binary appearing (or being replaced) on disk is exactly when an
+        // install row stops saying "Install" and starts saying "Update", and
+        // when what it reports as installed changes. The install lands
+        // asynchronously, long after the page rendered, so the page has to be
+        // told — the settings view ignores this unless it is open on a plugin.
+        $this->refreshView();
     }
 
     /**

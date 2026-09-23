@@ -2802,6 +2802,62 @@
         <source>symfony-lsp install failed: %why%</source>
         <target>symfony-lsp のインストールに失敗しました: %why%</target>
       </trans-unit>
+      <trans-unit id="879">
+        <source>symfony-lsp: checking for a newer release…</source>
+        <target>symfony-lsp: 新しいリリースを確認しています…</target>
+      </trans-unit>
+      <trans-unit id="880">
+        <source>symfony-lsp updated: %from% → %to%</source>
+        <target>symfony-lsp を更新しました: %from% → %to%</target>
+      </trans-unit>
+      <trans-unit id="881">
+        <source>symfony-lsp is already up to date (%version%)</source>
+        <target>symfony-lsp は最新です (%version%)</target>
+      </trans-unit>
+      <trans-unit id="882">
+        <source>symfony-lsp update failed: %why%</source>
+        <target>symfony-lsp の更新に失敗しました: %why%</target>
+      </trans-unit>
+      <trans-unit id="883">
+        <source>symfony-lsp: resolving…</source>
+        <target>symfony-lsp: 解決中…</target>
+      </trans-unit>
+      <trans-unit id="884">
+        <source>symfony-lsp: downloading…</source>
+        <target>symfony-lsp: ダウンロード中…</target>
+      </trans-unit>
+      <trans-unit id="885">
+        <source>symfony-lsp: downloading %percent%%</source>
+        <target>symfony-lsp: ダウンロード中 %percent%%</target>
+      </trans-unit>
+      <trans-unit id="886">
+        <source>symfony-lsp: verifying…</source>
+        <target>symfony-lsp: 検証中…</target>
+      </trans-unit>
+      <trans-unit id="887">
+        <source>symfony-lsp: extracting…</source>
+        <target>symfony-lsp: 展開中…</target>
+      </trans-unit>
+      <trans-unit id="888">
+        <source>symfony-lsp: checking the binary…</source>
+        <target>symfony-lsp: バイナリを確認中…</target>
+      </trans-unit>
+      <trans-unit id="889">
+        <source>symfony-lsp %version% is available — run "Symfony LSP: Update Server"</source>
+        <target>symfony-lsp %version% が利用可能です —「Symfony LSP: Update Server」を実行してください</target>
+      </trans-unit>
+      <trans-unit id="890">
+        <source>Check for a newer server once a day</source>
+        <target>新しいサーバーを 1 日 1 回確認する</target>
+      </trans-unit>
+      <trans-unit id="891">
+        <source>Update %tool%</source>
+        <target>%tool% を更新</target>
+      </trans-unit>
+      <trans-unit id="892">
+        <source>Update</source>
+        <target>更新</target>
+      </trans-unit>
       <trans-unit id="665">
         <source>Symfony language tools</source>
         <target>Symfony 言語ツール</target>

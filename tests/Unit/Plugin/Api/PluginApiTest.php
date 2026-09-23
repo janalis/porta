@@ -314,12 +314,18 @@ final class PluginApiTest extends TestCase
             $buffered[0]['via'],
         );
         $this->assertTrue($buffered[0]['available']());
+        $this->assertNull($buffered[0]['describe'], 'a describer is optional');
 
         foreach ([
             ['   ', [['composer', 'x/y']], 'non-empty tool name'],
             ['t', [], 'at least one'],
             ['t', [['pip', 'x']], 'Unknown install manager'],
             ['t', [['composer', '  ']], 'non-empty package name'],
+            // A self-install candidate names one of the plugin's OWN
+            // commands. Checked here rather than at press time, because
+            // CommandRegistry::run() is a no-op for an unknown id — a typo
+            // would otherwise ship a button that silently does nothing.
+            ['t', [[PluginApi::INSTALL_SELF, 'nope']], 'not a command this plugin registered'],
         ] as [$tool, $via, $needle]) {
             try {
                 $api->registerInstaller($tool, static fn (): bool => true, $via);
@@ -328,6 +334,30 @@ final class PluginApiTest extends TestCase
                 $this->assertStringContainsString($needle, $e->getMessage());
             }
         }
+    }
+
+    /**
+     * A tool no package manager ships installs itself: the candidate names one
+     * of the plugin's own commands, and the settings button runs that.
+     *
+     * symfony-lsp is the case the kind exists for — its server is a GitHub
+     * release, so before this the one plugin that most needed a Settings
+     * button was the only one that could not have one.
+     */
+    public function testAnInstallerCanNameThePluginsOwnCommandAndDescribeWhatIsInstalled(): void
+    {
+        $api = $this->api(wired: Presence::Without);
+        $api->registerCommand('install', 'Install Server', static function (): void {});
+        $api->registerInstaller(
+            'symfony-lsp',
+            static fn (): bool => true,
+            [[PluginApi::INSTALL_SELF, 'install']],
+            static fn (): string => '0.21.0',
+        );
+
+        $buffered = $api->bufferedInstallers();
+        $this->assertSame([['self', 'install']], $buffered[0]['via']);
+        $this->assertSame('0.21.0', $buffered[0]['describe']());
     }
 
     public function testRegisterSettingValidatesAndSettingReadsSeededConfig(): void

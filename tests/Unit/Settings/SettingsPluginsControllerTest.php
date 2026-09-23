@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Settings;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\CommandRegistry;
 use Porta\Config\ConfigFiles;
 use Porta\Config\ConfigScope;
 use Porta\I18n\Translator;
@@ -47,6 +48,9 @@ final class SettingsPluginsControllerTest extends TestCase
     private PluginSettings $pluginSettings;
     private PluginManager $plugins;
     private ToolInstaller $installerTool;
+    private CommandRegistry $commands;
+    /** @var list<string> plugin command ids the self-install button ran */
+    private array $commandsRun = [];
 
     private function controller(): SettingsPluginsController
     {
@@ -67,6 +71,8 @@ final class SettingsPluginsControllerTest extends TestCase
         $this->pluginSettings = new PluginSettings($this->project->dir, [], null, $scope);
         $this->plugins = new PluginManager(new EventDispatcher(), $this->pluginSettings);
         $this->installerTool = new ToolInstaller($this->project->dir, $this->managerBinaries);
+        $this->commands = new CommandRegistry();
+        $this->commandsRun = [];
 
         return new SettingsPluginsController(
             new PluginInstaller($this->project->dir, $this->global->dir, new Translator('en'), null, $this->embeddedDir, $this->composerBinary),
@@ -79,6 +85,7 @@ final class SettingsPluginsControllerTest extends TestCase
             new SettingsScopeRow($scope, $files, new Translator('en')),
             $scope,
             new SettingsProvenance($files),
+            $this->commands,
         );
     }
 
@@ -87,11 +94,20 @@ final class SettingsPluginsControllerTest extends TestCase
      *
      * @param list<array{0: string, 1: string}> $via
      */
-    private function declareInstaller(string $name, string $tool, bool $available, array $via = [['composer', 'phpstan/phpstan']]): void
+    private function declareInstaller(string $name, string $tool, bool $available, array $via = [['composer', 'phpstan/phpstan']], string $describe = ''): void
     {
         $api = new PluginApi($name, $this->plugins, $this->project->dir, $this->pluginSettings);
-        $api->registerInstaller($tool, static fn (): bool => $available, $via);
+        // A self-install candidate names one of the plugin's OWN commands, and
+        // registerInstaller() checks that it exists — so the command has to be
+        // registered on the same api first.
+        if (null !== \array_find($via, static fn (array $candidate): bool => PluginApi::INSTALL_SELF === $candidate[0])) {
+            $api->registerCommand('install', 'Install it', function () use ($name): void {
+                $this->commandsRun[] = $name.':install';
+            });
+        }
+        $api->registerInstaller($tool, static fn (): bool => $available, $via, '' === $describe ? null : static fn (): string => $describe);
         $this->plugins->commit($api);
+        $this->plugins->registerCommands($this->commands);
     }
 
     private function seedPlugin(TempProject $base, string $name): void
@@ -367,6 +383,62 @@ final class SettingsPluginsControllerTest extends TestCase
 
         $this->declareInstaller('demo', 'phpstan', available: true);
         $this->assertSame(['pluginEnabled'], \array_column($controller->pluginRows('demo'), 'key'), 'an available binary offers no install');
+    }
+
+    /**
+     * A SELF-installer keeps its row once the tool is there, captioned
+     * "Update".
+     *
+     * `composer require` is not an upgrade path, so a package-manager row
+     * still disappears on success — but the plugin that downloads its own tool
+     * is the same thing that replaces it, and a row that vanished would take
+     * the update affordance with it. That is the exact complaint symfony-lsp's
+     * menu entry was added to answer, one surface over.
+     */
+    public function testASelfInstallerKeepsItsRowAsAnUpdateButton(): void
+    {
+        $controller = $this->controller();
+        $this->lifecycle->names = ['demo'];
+
+        $this->declareInstaller('demo', 'symfony-lsp', available: true, via: [[PluginApi::INSTALL_SELF, 'install']], describe: '0.21.0');
+
+        $row = \array_last($controller->pluginRows('demo'));
+        $this->assertSame('pluginInstallBinary', $row->key);
+        $this->assertSame('Update symfony-lsp', $row->label);
+        $this->assertSame('Update', $row->value, 'an Action row\'s value IS its button caption');
+        $this->assertSame('0.21.0', $row->hint, 'what is installed, beside the button');
+    }
+
+    /** Before the tool is there the same row says Install, and has nothing to describe. */
+    public function testASelfInstallerOffersInstallBeforeTheToolIsThere(): void
+    {
+        $controller = $this->controller();
+        $this->lifecycle->names = ['demo'];
+
+        $this->declareInstaller('demo', 'symfony-lsp', available: false, via: [[PluginApi::INSTALL_SELF, 'install']], describe: '0.21.0');
+
+        $row = \array_last($controller->pluginRows('demo'));
+        $this->assertSame('Install symfony-lsp', $row->label);
+        $this->assertSame('Install', $row->value);
+        $this->assertNull($row->hint, 'a describer answers "what have I got?" — with nothing there, it is not asked');
+    }
+
+    /**
+     * The button runs the PLUGIN's command, not a package manager.
+     *
+     * ToolInstaller has no manager to hand a GitHub release to, and the plugin
+     * reports, relaunches and sweeps on its own terms.
+     */
+    public function testPressingASelfInstallRowRunsThePluginsOwnCommand(): void
+    {
+        $controller = $this->controller();
+        $this->lifecycle->names = ['demo'];
+        $this->declareInstaller('demo', 'symfony-lsp', available: false, via: [[PluginApi::INSTALL_SELF, 'install']]);
+
+        $controller->changePlugin('demo', 'pluginInstallBinary', 'Install');
+
+        $this->assertSame(['demo:install'], $this->commandsRun);
+        $this->assertSame('', \trim($this->statusRow($this->status, 120)), 'no flash from here — the plugin does its own reporting');
     }
 
     public function testInstallingTheBinaryRunsTheManagerAndReconfiguresOnSuccess(): void

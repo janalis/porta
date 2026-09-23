@@ -56,6 +56,7 @@ final class PluginManager implements
     RebindableActionSource,
     StatusSegmentSource,
     SyntaxHighlightProviderSource,
+    ToolInstallOffers,
     TokenSpanProvider,
     ViewerProviderSource
 {
@@ -67,7 +68,7 @@ final class PluginManager implements
     private array $menuSpecs = [];
     /** @var list<array{plugin: string, languageId: string, name: string, resolve: \Closure(): (list<string>|null), initOptions: (\Closure(): array<string, mixed>)|null}> committed LSP providers, in load order */
     private array $languageServers = [];
-    /** @var list<array{plugin: string, tool: string, available: \Closure(): bool, via: list<array{0: string, 1: string}>}> committed install offers */
+    /** @var list<array{plugin: string, tool: string, available: \Closure(): bool, via: list<array{0: string, 1: string}>, describe: (\Closure(): string)|null}> committed install offers */
     private array $installers = [];
     /** @var list<array{plugin: string, id: string, label: string, languages: \Closure(): list<string>, highlight: \Closure(string, string, \Closure(string): void): void, available: (\Closure(): bool)|null}> committed highlighting backends, in load order */
     private array $highlighters = [];
@@ -239,18 +240,37 @@ final class PluginManager implements
 
     /**
      * The install offer $plugin declared for its tool binary — the tool name,
-     * whether that binary is available now, and the ordered [manager, package]
-     * candidates — or null when the plugin declared none. The Settings page
-     * offers to install while the binary is unavailable.
+     * whether that binary is available now, the ordered [manager, package]
+     * candidates, and what is installed right now in a few words — or null
+     * when the plugin declared none. The Settings page offers to install while
+     * the binary is unavailable, and for a self-installer
+     * ({@see PluginApi::INSTALL_SELF}) it offers to UPDATE once it is there,
+     * because a plugin that installs its own tool is also what updates it.
      *
-     * @return array{tool: string, available: bool, via: list<array{0: string, 1: string}>}|null
+     * `describe` is only meaningful while `available` holds, and is '' when
+     * the plugin declared no describer or has nothing to say.
+     *
+     * @return array{tool: string, available: bool, via: list<array{0: string, 1: string}>, describe: string}|null
      */
+    #[\Override]
     public function installOffer(string $plugin): ?array
     {
         foreach ($this->installers as $installer) {
-            if ($plugin === $installer['plugin']) {
-                return ['tool' => $installer['tool'], 'available' => $installer['available'](), 'via' => $installer['via']];
+            if ($plugin !== $installer['plugin']) {
+                continue;
             }
+            $available = $installer['available']();
+            $describe = $installer['describe'];
+
+            return [
+                'tool' => $installer['tool'],
+                'available' => $available,
+                'via' => $installer['via'],
+                // Not asked while the tool is absent: a describer written for
+                // "what have I got?" has nothing to answer, and this is pulled
+                // on every settings render.
+                'describe' => $available && null !== $describe ? $describe() : '',
+            ];
         }
 
         return null;

@@ -24,6 +24,7 @@ use Porta\Overlay\Presenter\WelcomeModalController;
 use Porta\Overlay\Region\DropdownRegion;
 use Porta\Overlay\State\MenuOverlayPanes;
 use Porta\Tests\Support\FakePluginLifecycle;
+use Porta\Tests\Support\FakeToolInstallOffers;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RendersRoot;
 use Porta\Tests\Support\TempProject;
@@ -94,7 +95,15 @@ final class WelcomeModalControllerTest extends TestCase
         return new WelcomeModalController(
             new OverlayDelivery($this->renderer, new MenuOverlayPanes([$this->pane], static fn (): array => []), $this->tui),
             $this->welcome,
-            new WelcomeSteps(new Translator('en'), $source ?? new NoHighlightPlugins(), $lifecycle, new CommandRegistry(), new MagoDetector('/nonexistent'), new SymfonyDetector('/nonexistent')),
+            new WelcomeSteps(
+                new Translator('en'),
+                $source ?? new NoHighlightPlugins(),
+                $lifecycle,
+                new CommandRegistry(),
+                new MagoDetector('/nonexistent'),
+                new SymfonyDetector('/nonexistent'),
+                new FakeToolInstallOffers(),
+            ),
             $this->menuBar,
             $this->editArea,
             $this->tui,
@@ -553,7 +562,15 @@ final class WelcomeModalControllerTest extends TestCase
         new WelcomeModalController(
             new OverlayDelivery($this->renderer, new MenuOverlayPanes([$this->pane], static fn (): array => []), $this->tui),
             $this->welcome,
-            new WelcomeSteps(new Translator('en'), new NoHighlightPlugins(), new FakePluginLifecycle(), new CommandRegistry(), new MagoDetector('/nonexistent'), new SymfonyDetector('/nonexistent')),
+            new WelcomeSteps(
+                new Translator('en'),
+                new NoHighlightPlugins(),
+                new FakePluginLifecycle(),
+                new CommandRegistry(),
+                new MagoDetector('/nonexistent'),
+                new SymfonyDetector('/nonexistent'),
+                new FakeToolInstallOffers(),
+            ),
             new MenuBarWidget(),
             $editArea,
             $this->tui,
@@ -583,7 +600,15 @@ final class WelcomeModalControllerTest extends TestCase
         $controller = new WelcomeModalController(
             new OverlayDelivery($this->renderer, new MenuOverlayPanes([$this->pane], static fn (): array => []), $this->tui),
             $this->welcome,
-            new WelcomeSteps(new Translator('en'), new NoHighlightPlugins(), new FakePluginLifecycle(), new CommandRegistry(), new MagoDetector($project->dir), new SymfonyDetector($project->dir)),
+            new WelcomeSteps(
+                new Translator('en'),
+                new NoHighlightPlugins(),
+                new FakePluginLifecycle(),
+                new CommandRegistry(),
+                new MagoDetector($project->dir),
+                new SymfonyDetector($project->dir),
+                new FakeToolInstallOffers(),
+            ),
             new MenuBarWidget(),
             $editArea,
             $this->tui,

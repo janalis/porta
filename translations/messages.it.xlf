@@ -2802,6 +2802,62 @@
         <source>symfony-lsp install failed: %why%</source>
         <target>installazione di symfony-lsp non riuscita: %why%</target>
       </trans-unit>
+      <trans-unit id="879">
+        <source>symfony-lsp: checking for a newer release…</source>
+        <target>symfony-lsp: ricerca di una versione più recente…</target>
+      </trans-unit>
+      <trans-unit id="880">
+        <source>symfony-lsp updated: %from% → %to%</source>
+        <target>symfony-lsp aggiornato: %from% → %to%</target>
+      </trans-unit>
+      <trans-unit id="881">
+        <source>symfony-lsp is already up to date (%version%)</source>
+        <target>symfony-lsp è già aggiornato (%version%)</target>
+      </trans-unit>
+      <trans-unit id="882">
+        <source>symfony-lsp update failed: %why%</source>
+        <target>aggiornamento di symfony-lsp non riuscito: %why%</target>
+      </trans-unit>
+      <trans-unit id="883">
+        <source>symfony-lsp: resolving…</source>
+        <target>symfony-lsp: risoluzione…</target>
+      </trans-unit>
+      <trans-unit id="884">
+        <source>symfony-lsp: downloading…</source>
+        <target>symfony-lsp: download…</target>
+      </trans-unit>
+      <trans-unit id="885">
+        <source>symfony-lsp: downloading %percent%%</source>
+        <target>symfony-lsp: download %percent%%</target>
+      </trans-unit>
+      <trans-unit id="886">
+        <source>symfony-lsp: verifying…</source>
+        <target>symfony-lsp: verifica…</target>
+      </trans-unit>
+      <trans-unit id="887">
+        <source>symfony-lsp: extracting…</source>
+        <target>symfony-lsp: estrazione…</target>
+      </trans-unit>
+      <trans-unit id="888">
+        <source>symfony-lsp: checking the binary…</source>
+        <target>symfony-lsp: controllo del binario…</target>
+      </trans-unit>
+      <trans-unit id="889">
+        <source>symfony-lsp %version% is available — run "Symfony LSP: Update Server"</source>
+        <target>symfony-lsp %version% è disponibile — esegui «Symfony LSP: aggiorna server»</target>
+      </trans-unit>
+      <trans-unit id="890">
+        <source>Check for a newer server once a day</source>
+        <target>Cerca un server più recente una volta al giorno</target>
+      </trans-unit>
+      <trans-unit id="891">
+        <source>Update %tool%</source>
+        <target>Aggiorna %tool%</target>
+      </trans-unit>
+      <trans-unit id="892">
+        <source>Update</source>
+        <target>Aggiorna</target>
+      </trans-unit>
       <trans-unit id="665">
         <source>Symfony language tools</source>
         <target>Strumenti di linguaggio Symfony</target>

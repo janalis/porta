@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
+use Porta\Config\ConfigFiles;
 use Porta\Config\IdeConfig;
+use Porta\Config\KeybindingsFactory;
+use Porta\Container\AsWidget;
+use Porta\Container\PropertyFactory;
 use Porta\Editor\EditorDecorationSink;
 use Porta\Editor\EditorDisplayOptions;
 use Porta\Editor\LineAnnotationSink;
-use Porta\Widget\CodeEditorWidget;
-use Porta\Config\KeybindingsFactory;
-use Porta\Container\PropertyFactory;
-use Porta\Container\AsWidget;
 use Porta\Highlight\ColorMode;
 use Porta\Highlight\SwitchableTerminalTheme;
 use Porta\Highlight\TerminalThemeFactory;
@@ -20,15 +20,16 @@ use Porta\Plugin\Runtime\PluginHost;
 use Porta\Plugin\Runtime\PluginLoader;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginSettings;
-use Porta\Config\ConfigFiles;
-use Porta\Settings\SettingsSearchSource;
+use Porta\Plugin\Runtime\ToolInstallOffers;
 use Porta\Search\Everywhere\SearchEverywhereController;
 use Porta\Search\Everywhere\SearchEverywhereFactory;
+use Porta\Settings\SettingsSearchSource;
 use Porta\Support\BootTrace;
 use Porta\Support\FreezeWatchdog;
 use Porta\Ui\BidiTui;
 use Porta\Ui\Theme\Styles;
 use Porta\Ui\Theme\Themes;
+use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\SeparatorWidget;
 use Psr\Clock\ClockInterface;
 use Psr\EventDispatcher\EventDispatcherInterface as PsrEventDispatcherInterface;
@@ -173,7 +174,8 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     // Tighter than the constructor defaults: at 1s/3s the watchdog can only
     // see multi-second freezes — sub-second hitches are what make scrolling
     // feel laggy, and this is the instrument that has to catch them.
-    $services->set(FreezeWatchdog::class)
+    $services
+        ->set(FreezeWatchdog::class)
         ->arg('$interval', 0.25)
         ->arg('$driftThreshold', 0.5);
 
@@ -206,18 +208,21 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     // binding is a factory that hands back the widget's own store.
     $services
         ->set(EditorDecorationSink::class)
-        ->factory([PropertyFactory::class, 'read'])->args([service(CodeEditorWidget::class), 'decorations']);
+        ->factory([PropertyFactory::class, 'read'])
+        ->args([service(CodeEditorWidget::class), 'decorations']);
     // The plugin-facing slice of the same store, and the same reason.
     $services
         ->set(LineAnnotationSink::class)
-        ->factory([PropertyFactory::class, 'read'])->args([service(CodeEditorWidget::class), 'decorations']);
+        ->factory([PropertyFactory::class, 'read'])
+        ->args([service(CodeEditorWidget::class), 'decorations']);
 
     // The editor's view options, for the same reason and the same shape: the
     // widget builds its own with that widget's invalidate closure, so the
     // container must hand back THAT one rather than build a second.
     $services
         ->set(EditorDisplayOptions::class)
-        ->factory([PropertyFactory::class, 'read'])->args([service(CodeEditorWidget::class), 'display']);
+        ->factory([PropertyFactory::class, 'read'])
+        ->args([service(CodeEditorWidget::class), 'display']);
 
     // The IDE color scheme: the active theme's tui Styles per Role, one
     // swappable holder (built from the PORTA_ANSI/PORTA_THEME env placeholders) so
@@ -266,9 +271,22 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
 
     // The plugin subsystem triple is built by PluginHost (its scalar inputs
     // come from IdeConfig + the environment); expose the members as services.
-    $services->set(PluginManager::class)->factory([PropertyFactory::class, 'read'])->args([service(PluginHost::class), 'manager']);
-    $services->set(PluginLoader::class)->factory([PropertyFactory::class, 'read'])->args([service(PluginHost::class), 'loader']);
-    $services->set(PluginSettings::class)->factory([PropertyFactory::class, 'read'])->args([service(PluginHost::class), 'settings']);
+    $services
+        ->set(PluginManager::class)
+        ->factory([PropertyFactory::class, 'read'])
+        ->args([service(PluginHost::class), 'manager']);
+    // The offer slice the settings page and the welcome flow take, instead of
+    // the whole manager: it is built by a factory, so autoconfiguration never
+    // sees the interface to alias it.
+    $services->alias(ToolInstallOffers::class, PluginManager::class);
+    $services
+        ->set(PluginLoader::class)
+        ->factory([PropertyFactory::class, 'read'])
+        ->args([service(PluginHost::class), 'loader']);
+    $services
+        ->set(PluginSettings::class)
+        ->factory([PropertyFactory::class, 'read'])
+        ->args([service(PluginHost::class), 'settings']);
 
     // The installers resolve their plugin dirs and git binary from the
     // environment in a static named constructor, self-declared on each class
@@ -277,15 +295,22 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     // Duplicate-typed widgets from the composite tree: exposed per getter so
     // a consumer can name the one it wants at the parameter with
     // #[LayoutSlot('…')] (see the _defaults comment above — no central binds).
-    $services->set('porta.widget.editor_body', ContainerWidget::class)->factory([PropertyFactory::class, 'read'])->args([service(WorkspaceLayout::class), 'editorBody']);
+    $services
+        ->set('porta.widget.editor_body', ContainerWidget::class)
+        ->factory([PropertyFactory::class, 'read'])
+        ->args([service(WorkspaceLayout::class), 'editorBody']);
     // The main editor area is a chrome root too, but it is a getter service
     // (a bare ContainerWidget, not a class that can carry #[AsChromeRoot]), so
     // it is tagged here — the Keybindings/event_dispatcher exception pattern.
     $services
         ->set('porta.widget.main', ContainerWidget::class)
-        ->factory([PropertyFactory::class, 'read'])->args([service(WorkspaceLayout::class), 'main'])
+        ->factory([PropertyFactory::class, 'read'])
+        ->args([service(WorkspaceLayout::class), 'main'])
         ->tag('porta.chrome_root');
-    $services->set('porta.widget.separator', SeparatorWidget::class)->factory([PropertyFactory::class, 'read'])->args([service(WorkspaceLayout::class), 'separator']);
+    $services
+        ->set('porta.widget.separator', SeparatorWidget::class)
+        ->factory([PropertyFactory::class, 'read'])
+        ->args([service(WorkspaceLayout::class), 'separator']);
 
     // The mouse routers (and the hover router split out of the main one) share
     // the parameter name $separator with different instances; each names the one
@@ -314,7 +339,10 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     // ConfigFiles resolves the home base from the environment, which is a
     // static call rather than a constructor argument — IdeConfig::load() builds
     // one before the container exists and must get the same answer.
-    $services->set(ConfigFiles::class)->factory([ConfigFiles::class, 'for'])->args([env('PORTA_ROOT_DIR')]);
+    $services
+        ->set(ConfigFiles::class)
+        ->factory([ConfigFiles::class, 'for'])
+        ->args([env('PORTA_ROOT_DIR')]);
     // The settings source, under a name the factory can ask for by id. It is
     // the composition root's job to know that the SearchSource the aggregate
     // wants is a Settings class: `Settings` imports `Search`, and the factory

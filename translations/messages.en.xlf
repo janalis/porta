@@ -2802,6 +2802,62 @@
         <source>symfony-lsp install failed: %why%</source>
         <target>symfony-lsp install failed: %why%</target>
       </trans-unit>
+      <trans-unit id="879">
+        <source>symfony-lsp: checking for a newer release…</source>
+        <target>symfony-lsp: checking for a newer release…</target>
+      </trans-unit>
+      <trans-unit id="880">
+        <source>symfony-lsp updated: %from% → %to%</source>
+        <target>symfony-lsp updated: %from% → %to%</target>
+      </trans-unit>
+      <trans-unit id="881">
+        <source>symfony-lsp is already up to date (%version%)</source>
+        <target>symfony-lsp is already up to date (%version%)</target>
+      </trans-unit>
+      <trans-unit id="882">
+        <source>symfony-lsp update failed: %why%</source>
+        <target>symfony-lsp update failed: %why%</target>
+      </trans-unit>
+      <trans-unit id="883">
+        <source>symfony-lsp: resolving…</source>
+        <target>symfony-lsp: resolving…</target>
+      </trans-unit>
+      <trans-unit id="884">
+        <source>symfony-lsp: downloading…</source>
+        <target>symfony-lsp: downloading…</target>
+      </trans-unit>
+      <trans-unit id="885">
+        <source>symfony-lsp: downloading %percent%%</source>
+        <target>symfony-lsp: downloading %percent%%</target>
+      </trans-unit>
+      <trans-unit id="886">
+        <source>symfony-lsp: verifying…</source>
+        <target>symfony-lsp: verifying…</target>
+      </trans-unit>
+      <trans-unit id="887">
+        <source>symfony-lsp: extracting…</source>
+        <target>symfony-lsp: extracting…</target>
+      </trans-unit>
+      <trans-unit id="888">
+        <source>symfony-lsp: checking the binary…</source>
+        <target>symfony-lsp: checking the binary…</target>
+      </trans-unit>
+      <trans-unit id="889">
+        <source>symfony-lsp %version% is available — run "Symfony LSP: Update Server"</source>
+        <target>symfony-lsp %version% is available — run "Symfony LSP: Update Server"</target>
+      </trans-unit>
+      <trans-unit id="890">
+        <source>Check for a newer server once a day</source>
+        <target>Check for a newer server once a day</target>
+      </trans-unit>
+      <trans-unit id="891">
+        <source>Update %tool%</source>
+        <target>Update %tool%</target>
+      </trans-unit>
+      <trans-unit id="892">
+        <source>Update</source>
+        <target>Update</target>
+      </trans-unit>
       <trans-unit id="665">
         <source>Symfony language tools</source>
         <target>Symfony language tools</target>

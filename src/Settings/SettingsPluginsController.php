@@ -4,15 +4,17 @@ declare(strict_types=1);
 
 namespace Porta\Settings;
 
+use Porta\Config\CommandRegistry;
 use Porta\Config\ConfigScope;
 use Porta\I18n\Translator;
+use Porta\Plugin\Api\PluginApi;
 use Porta\Plugin\Lifecycle\InstallOutcome;
 use Porta\Plugin\Lifecycle\InstallScope;
 use Porta\Plugin\Lifecycle\PluginInstaller;
 use Porta\Plugin\Lifecycle\PluginLifecycleOps;
 use Porta\Plugin\Lifecycle\ToolInstaller;
-use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginSettings;
+use Porta\Plugin\Runtime\ToolInstallOffers;
 use Porta\Workbench\Notifier;
 
 /**
@@ -50,11 +52,15 @@ final class SettingsPluginsController
         private readonly Notifier $notifier,
         private readonly Translator $translator,
         private readonly PluginLifecycleOps $lifecycle,
-        private readonly PluginManager $plugins,
+        private readonly ToolInstallOffers $plugins,
         private readonly ToolInstaller $installerTool,
         private readonly SettingsScopeRow $scopeRow,
         private readonly SettingsScope $scope,
         private readonly SettingsProvenance $provenance,
+        // Trailing and nullable so the positional constructions in the
+        // settings tests stand; the container always autowires it. Only a
+        // SELF-installing plugin reaches for it.
+        private readonly ?CommandRegistry $commands = null,
     ) {}
 
     /** @return list<SettingsRow> */
@@ -162,17 +168,27 @@ final class SettingsPluginsController
 
         // When an enabled plugin's declared tool binary isn't installed, offer
         // a one-click install through its package manager(s).
+        //
+        // A SELF-installer keeps its row once the tool is there, captioned
+        // "Update": the plugin that downloads its own tool is the same thing
+        // that replaces it, and a row that vanished on success would take the
+        // update affordance with it. A package-manager offer still
+        // disappears — `composer require` is not an upgrade path, and
+        // pretending otherwise would run the wrong command.
         $offer = $this->plugins->installOffer($name);
-        if (null !== $offer && !$offer['available']) {
+        if (null !== $offer && (!$offer['available'] || self::isSelfInstalled($offer['via']))) {
             $rows[] = new SettingsRow(
                 key: 'pluginInstallBinary',
-                label: $this->translator->trans('Install %tool%', ['%tool%' => $offer['tool']]),
+                // The same wording either way, so a self-installer's row is
+                // not a special shape on a page full of ordinary ones.
+                label: $this->translator->trans($offer['available'] ? 'Update %tool%' : 'Install %tool%', ['%tool%' => $offer['tool']]),
                 kind: SettingsRowKind::Action,
                 // A caption, not `false`: an Action's value IS the text on its
                 // button, and false stringifies to '' — the row rendered as
                 // `Install phpstan  []`, a button with nothing written on it.
-                value: $this->translator->trans('Install'),
+                value: $this->translator->trans($offer['available'] ? 'Update' : 'Install'),
                 restart: false,
+                hint: '' === $offer['describe'] ? null : $offer['describe'],
             );
         }
 
@@ -232,11 +248,32 @@ final class SettingsPluginsController
         }
     }
 
+    /**
+     * Whether $via says the plugin installs (and updates) the tool itself.
+     *
+     * @param list<array{0: string, 1: string}> $via
+     */
+    private static function isSelfInstalled(array $via): bool
+    {
+        return null !== \array_find($via, static fn (array $candidate): bool => PluginApi::INSTALL_SELF === $candidate[0]);
+    }
+
     /** Install the (enabled) plugin's declared tool binary through its package manager(s). */
     private function installBinary(string $name): void
     {
         $offer = $this->plugins->installOffer($name);
         if (null === $offer) {
+            return;
+        }
+        // A self-installer runs its OWN command: it reports, relaunches and
+        // sweeps on its own terms, and ToolInstaller has no manager to hand it
+        // to. Nothing is refreshed from here because nothing has happened yet
+        // — the row re-derives when the binary actually lands, off
+        // onServerBinaryReplaced().
+        $self = \array_find($offer['via'], static fn (array $candidate): bool => PluginApi::INSTALL_SELF === $candidate[0]);
+        if (null !== $self) {
+            $this->commands?->run($name.':'.$self[1]);
+
             return;
         }
         $tool = $offer['tool'];

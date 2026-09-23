@@ -8,7 +8,9 @@ use Porta\Config\CommandRegistry;
 use Porta\Config\RecommendedPlugins;
 use Porta\Highlight\SyntaxHighlightProviderSource;
 use Porta\I18n\Translator;
+use Porta\Plugin\Api\PluginApi;
 use Porta\Plugin\Lifecycle\PluginEnablement;
+use Porta\Plugin\Runtime\ToolInstallOffers;
 
 /**
  * The setup steps the Welcome screen offers.
@@ -31,6 +33,7 @@ final readonly class WelcomeSteps
         private CommandRegistry $commands,
         private MagoDetector $mago,
         private SymfonyDetector $symfony,
+        private ToolInstallOffers $offers,
     ) {}
 
     /** @return list<WelcomeStep> */
@@ -77,9 +80,15 @@ final readonly class WelcomeSteps
                         $this->translator->trans('Symfony language tools'),
                         $this->translator->trans('Routes, services, Twig and config completion for this Symfony app'),
                         $this->translator->trans('Enable %name%', ['%name%' => RecommendedPlugins::SYMFONY_LANGUAGE_SERVER]),
-                        fn (): bool => $this->isEnabled(RecommendedPlugins::SYMFONY_LANGUAGE_SERVER),
+                        // Enabled is NOT done here, unlike every other card.
+                        // This server ships only as a GitHub release, so an
+                        // enabled plugin with no binary is a ticked step and a
+                        // status bar reading `LSP:none` — the card claiming
+                        // credit for something the user cannot yet use.
+                        fn (): bool => $this->isEnabled(RecommendedPlugins::SYMFONY_LANGUAGE_SERVER) && $this->toolReady(RecommendedPlugins::SYMFONY_LANGUAGE_SERVER),
                         function (): void {
                             $this->lifecycle->enable(RecommendedPlugins::SYMFONY_LANGUAGE_SERVER);
+                            $this->installServerFor(RecommendedPlugins::SYMFONY_LANGUAGE_SERVER);
                         },
                     )] : []
             ),
@@ -126,5 +135,43 @@ final readonly class WelcomeSteps
     private function isEnabled(string $plugin): bool
     {
         return \in_array($plugin, $this->lifecycle->listedNames(), strict: true) && !$this->lifecycle->isDisabled($plugin);
+    }
+
+    /**
+     * Whether $plugin's external tool is there.
+     *
+     * A disabled plugin has not loaded and declares no offer, which reads as
+     * "not ready" — correct, and the reason this is only ever ANDed with
+     * {@see isEnabled()} rather than replacing it. A plugin that declares no
+     * offer at all has no tool to wait for, so it is ready by default.
+     */
+    private function toolReady(string $plugin): bool
+    {
+        $offer = $this->offers->installOffer($plugin);
+
+        return null === $offer || $offer['available'];
+    }
+
+    /**
+     * Run $plugin's own install command, if it has one and its tool is not
+     * already there.
+     *
+     * Reached straight after `enable()`, which activates the plugin — and
+     * therefore registers its commands — synchronously, unless the plugin
+     * needs a composer install first. When it does, activation finishes later
+     * in a subprocess callback and there is no command to run yet; the card
+     * simply stays unticked, and pressing it again installs. Silently doing
+     * nothing is the right answer there, and guessing is not.
+     */
+    private function installServerFor(string $plugin): void
+    {
+        $offer = $this->offers->installOffer($plugin);
+        if (null === $offer || $offer['available']) {
+            return;
+        }
+        $self = \array_find($offer['via'], static fn (array $candidate): bool => PluginApi::INSTALL_SELF === $candidate[0]);
+        if (null !== $self) {
+            $this->commands->run($plugin.':'.$self[1]);
+        }
     }
 }

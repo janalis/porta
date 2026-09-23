@@ -4463,6 +4463,114 @@ Incidentally the new path is a fix, not just a change: `mb_strwidth()` scored
 that conjunct 3 columns, the grapheme walk scores it 2, and 2 is what a terminal
 draws.
 
+## symfony-lsp knows what it installed (2026-09-22)
+
+The 2026-09-09 round named the theme and only half-closed it:
+
+> the plugin could download a binary but had no notion of *state* — it never
+> asked what was installed, whether it ran, or whether it was being used.
+
+The smoke test answered "whether it ran". This round answers "what".
+
+**The Update entry never turned on.** Reported from real use: a binary sitting
+at `~/.porta/bin/symfony-lsp`, the plugin enabled, and the Plugins menu still
+offering **Install Server** with **Update Server** greyed — for good. The
+launcher resolved the binary through `ServerConfig` (setting → PATH → the
+installed copy), and the menu through `AbstractToolPlugin::binaryAvailable()`,
+which stops at the PATH. Nothing puts `~/.porta/bin` on the PATH, so the
+predicate was false on exactly the machines where the install had worked. The
+entry added in `3a55f8cb` to stop Install lying could therefore never appear.
+
+One resolver now serves both, because two expressions for one question is how
+they disagreed. The test that would have caught it asserts the menu items'
+`enabled()` flipping across an install, not that both command ids exist — which
+is all the original asserted, and why a 100% mutation score said nothing.
+**Registration is not enablement.** Reverting the fix turns the new test red
+with `installed → Install stops offering itself`.
+
+**`--version` was already being run, and thrown away.** The smoke test executes
+the staged binary before the irreversible rename; its stdout went nowhere. It
+is the whole of the version story: `Release::versionFrom()` parses it,
+`InstalledVersion` caches it in memory, and "Update Server" resolves the latest
+tag first (one redirect, no API budget) and says `already up to date (0.21.0)`
+instead of fetching ~9MB. Proven by the INODE in the E2e, not by the toast — a
+download that happened anyway would rename over the file whatever was printed.
+
+**No sidecar file, no setting, for the installed version.** Either would be a
+second source of truth that desyncs the moment someone swaps the binary by
+hand, and a setting would put a machine-global fact into a file that travels
+with the project — the argument that removed the `binary: ''` write in
+`27a63cd`. The binary answers for itself in ~50ms, once, off the render path.
+`Runner::PROBE_TIMEOUT` is 5s rather than the install's 300s **because the
+thing being asked is whatever `binary` points at**: a wrapper script that
+ignores `--version` and waits on stdin would otherwise hold a process for five
+minutes per window. The repo's own test stub was exactly such a script.
+
+**Progress is a status cell, not toasts.** Two curl calls, a sha256, a tar and
+a smoke test sat behind ONE four-second flash, after which the screen said
+nothing for the rest of the operation. There is no determinate-progress widget
+in this tree and this round did not build one: `registerStatusSegment()`
+already exists, a cell can stay for as long as the work does, and five toasts
+would be worse than one. The percentage is real — `curl --progress-bar
+--stderr -` puts its meter on stdout (the body is going to `-o`, so stdout is
+free) and `AsyncProcess::start()`'s long-unused `$onChunk` streams it. Verified
+against live curl, including the `#=#=#` warm-up chunks, which carry no figure
+and read as "downloading…" rather than as 0%.
+
+**The daily check is silent when it fails, and records that it LOOKED.** A
+background check nobody asked for must not toast "cannot reach github.com" at
+every launch on a plane. The note is written whatever the comparison says,
+because its job is "this machine looked today", not "this machine found
+something". A timestamp from the FUTURE counts as due: a clock that was wrong
+when the note was written would otherwise switch the feature off until it
+caught up, which for a badly set clock is never.
+
+**A test barrier has to cover the DECISION.** `testAMachineThatLookedTodayDoesNotLookAgain`
+first waited on `LSP:` and asserted the note was untouched — which passes
+vacuously while the check is still ahead of you, and the coverage run (slower
+than the plain one) proved it: the throttle's `return` showed uncovered while
+every suite was green. A decision not to act leaves nothing on screen and
+nothing on disk, so the barrier is the version probe answering, read through
+`Probe` — the check runs inside the probe's own callback, so once the version
+is set the check has already had its turn.
+
+**`registerInstaller` grew a fourth manager, `PluginApi::INSTALL_SELF`.** Its
+`via` allowlist was composer/brew/cargo, so the one plugin whose tool has no
+package at all was the one plugin whose settings page could not offer a button.
+A self-install candidate names one of the plugin's OWN command ids, checked at
+registration rather than at press time — `CommandRegistry::run()` is a no-op
+for an unknown id, so a typo would otherwise ship a button that silently does
+nothing. Such a row does NOT disappear once the tool is there, unlike a
+package-manager row: `composer require` is not an upgrade path, but the thing
+that downloads its own tool is the thing that replaces it, so it re-reads
+`Update`. It re-derives off `onServerBinaryReplaced()`, which now also
+refreshes the settings rows — a binary landing on disk is exactly when that
+caption changes, and the install lands long after the page rendered.
+
+**The Welcome card stopped claiming credit.** Every other card is done at
+enable, because every other plugin brings its own code. This one enabled a
+plugin whose server ships as a GitHub release and ticked itself, leaving a
+finished checklist and a status bar reading `LSP:none`. It is done when the
+plugin is enabled AND the tool is available, and pressing it does both. A
+plugin that declares no offer has no tool to wait for and is ready by default,
+which is why the predicate is an AND rather than a replacement.
+
+**`ToolInstallOffers` is the slice, not `PluginManager`.**
+`SettingsPluginsController` held the whole manager to call one method, and the
+welcome flow needs the same one. Two consumers, one method — the same split
+`PluginEnablement` already makes for the enable verb. It is aliased by hand in
+`services.php` because `PluginManager` is built by a factory, so
+autoconfiguration never sees the interface.
+
+**And one pre-existing flake, fixed because it was in the way.**
+`LspSessionTest` asserted `file:///tmp/x.php`, and `Uri::fromPath()` calls
+`realpath()` — which resolves `/tmp` to `/private/tmp` on macOS only when the
+file actually exists. The assertions were right exactly while nothing occupied
+those paths in the shared `/tmp`; the day another project left a file at
+`/tmp/x.php`, three tests failed with nothing in this repository changed. The
+file's paths live under a root that cannot exist now, and the reason is
+recorded on the class so nobody tidies them back.
+
 ## The symfony-lsp round: four symptoms, four causes (2026-09-09)
 
 Four things the user reported from real use, none of which shared a fix. Worth

@@ -51,6 +51,18 @@ final class PluginApi
      */
     public const int API_VERSION = 1;
 
+    /**
+     * The {@see registerInstaller()} "manager" that means *this plugin
+     * installs the tool itself* — the candidate's second element is one of the
+     * plugin's own command ids, not a package name.
+     *
+     * Not a package manager, and deliberately not spelled like one: a tool
+     * that exists only as a GitHub release has no `composer require` to offer,
+     * and before this the one plugin that most needed a Settings button was
+     * the only one that could not have one.
+     */
+    public const string INSTALL_SELF = 'self';
+
     private const string ID_PATTERN = '/^[a-z0-9][a-z0-9_-]*$/i';
     private const array SETTING_KINDS = ['bool', 'choice', 'text', 'int'];
 
@@ -86,7 +98,7 @@ final class PluginApi
     private array $settingDescriptors = [];
     /** @var PluginBuffer<array{plugin: string, languageId: string, name: string, resolve: \Closure(): (list<string>|null), initOptions: (\Closure(): array<string, mixed>)|null}> */
     private readonly PluginBuffer $languageServers;
-    /** @var PluginBuffer<array{plugin: string, tool: string, available: \Closure(): bool, via: list<array{0: string, 1: string}>}> */
+    /** @var PluginBuffer<array{plugin: string, tool: string, available: \Closure(): bool, via: list<array{0: string, 1: string}>, describe: (\Closure(): string)|null}> */
     private readonly PluginBuffer $installers;
     /** @var PluginBuffer<array{plugin: string, id: string, label: string, languages: \Closure(): list<string>, highlight: \Closure(string, string, \Closure(string): void): void, available: (\Closure(): bool)|null}> */
     private readonly PluginBuffer $highlighters;
@@ -710,15 +722,30 @@ final class PluginApi
      * candidate in order, running the first whose manager is on the PATH — e.g.
      * a composer tool passes `[['composer', 'vendor/name']]`; a native tool like
      * phpantom passes `[['brew', 'phpantom-lsp'], ['cargo', 'phpantom_lsp']]`.
-     * Supported managers: composer, brew, cargo. For a tool with no installable
-     * source, don't call this — no install is offered.
+     * Supported managers: composer, brew, cargo.
+     *
+     * A tool that no package manager ships passes {@see self::INSTALL_SELF}
+     * with one of the plugin's OWN command ids — `[[PluginApi::INSTALL_SELF,
+     * 'install']]` — and the button runs that command instead of a package
+     * manager. symfony-lsp is the case: its server exists only as a GitHub
+     * release, so the plugin downloads it itself, and without this the one
+     * plugin that most needs a Settings button was the one plugin that could
+     * not have one. Such a row does NOT disappear once the tool is there: a
+     * self-installer is also its own updater, so the button re-reads
+     * "Update".
+     *
+     * For a tool with no installable source at all, don't call this — no
+     * install is offered.
      *
      * @param \Closure(): bool                   $isAvailable
      * @param list<array{0: string, 1: string}> $via ordered [manager, package] candidates
+     * @param (\Closure(): string)|null          $describe what is installed right now, in a few
+     *        words (a version, say), shown beside the button. Only read while $isAvailable holds;
+     *        '' shows nothing. It is pulled on every settings render, so it must be cheap
      *
      * @throws PluginException
      */
-    public function registerInstaller(string $tool, \Closure $isAvailable, array $via): void
+    public function registerInstaller(string $tool, \Closure $isAvailable, array $via, ?\Closure $describe = null): void
     {
         if ('' === \trim($tool)) {
             throw new PluginException('An installer needs a non-empty tool name');
@@ -727,11 +754,18 @@ final class PluginApi
             throw new PluginException('An installer needs at least one [manager, package] candidate');
         }
         foreach ($via as [$manager, $package]) {
-            if (!\in_array($manager, ['composer', 'brew', 'cargo'], strict: true)) {
-                throw new PluginException(\sprintf('Unknown install manager "%s" (expected composer, brew or cargo)', $manager));
+            if (!\in_array($manager, ['composer', 'brew', 'cargo', self::INSTALL_SELF], strict: true)) {
+                throw new PluginException(\sprintf('Unknown install manager "%s" (expected composer, brew, cargo or %s)', $manager, self::INSTALL_SELF));
             }
             if ('' === \trim($package)) {
                 throw new PluginException('An installer candidate needs a non-empty package name');
+            }
+            // Checked here rather than at press time: a typo would otherwise
+            // ship a button that silently does nothing (CommandRegistry::run()
+            // is a no-op for an unknown id), and the plugin that owns the
+            // command is the one that can be told.
+            if (self::INSTALL_SELF === $manager && !\array_key_exists($package, $this->ids)) {
+                throw new PluginException(\sprintf('Self-install names "%s", which is not a command this plugin registered', $package));
             }
         }
         $this->installers->add([
@@ -739,6 +773,7 @@ final class PluginApi
             'tool' => $tool,
             'available' => $isAvailable,
             'via' => $via,
+            'describe' => $describe,
         ]);
     }
 
@@ -1464,7 +1499,7 @@ final class PluginApi
         return $this->languageServers->all();
     }
 
-    /** @return list<array{plugin: string, tool: string, available: \Closure(): bool, via: list<array{0: string, 1: string}>}> */
+    /** @return list<array{plugin: string, tool: string, available: \Closure(): bool, via: list<array{0: string, 1: string}>, describe: (\Closure(): string)|null}> */
     public function bufferedInstallers(): array
     {
         return $this->installers->all();
