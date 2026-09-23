@@ -105,8 +105,8 @@ final class WelcomeWidgetTest extends TestCase
     private function selectedStep(WelcomeWidget $widget): string
     {
         foreach ($this->rows($widget->render(new RenderContext(60, 40))) as $row) {
-            if (\str_contains($row, Glyphs::CARD_ACCENT)) {
-                return \trim(\str_replace(Glyphs::CARD_ACCENT, replace: '', subject: $row));
+            if (\str_contains($row, Glyphs::SELECTION_BAR)) {
+                return \trim(\str_replace(Glyphs::SELECTION_BAR, replace: '', subject: $row));
             }
         }
 
@@ -255,10 +255,10 @@ final class WelcomeWidgetTest extends TestCase
     {
         $lines = $this->rendered($this->widget($this->step('First'), $this->step('Second')));
 
-        $this->assertSame(0, \strpos($lines[self::FIRST_STEP_ROW], needle: Glyphs::CARD_ACCENT), 'the title row starts with the bar');
-        $this->assertSame(0, \strpos($lines[self::FIRST_STEP_ROW + 1], needle: Glyphs::CARD_ACCENT), 'so does the detail row');
-        $this->assertStringNotContainsString(Glyphs::CARD_ACCENT, $lines[self::FIRST_STEP_ROW + 2], 'the spacer stays clean');
-        $this->assertStringNotContainsString(Glyphs::CARD_ACCENT, $lines[self::FIRST_STEP_ROW + 3], 'the unselected card has no bar');
+        $this->assertSame(0, \strpos($lines[self::FIRST_STEP_ROW], needle: Glyphs::SELECTION_BAR), 'the title row starts with the bar');
+        $this->assertSame(0, \strpos($lines[self::FIRST_STEP_ROW + 1], needle: Glyphs::SELECTION_BAR), 'so does the detail row');
+        $this->assertStringNotContainsString(Glyphs::SELECTION_BAR, $lines[self::FIRST_STEP_ROW + 2], 'the spacer stays clean');
+        $this->assertStringNotContainsString(Glyphs::SELECTION_BAR, $lines[self::FIRST_STEP_ROW + 3], 'the unselected card has no bar');
     }
 
     /** The bar replaces margin columns, so the marker and title do not shift. */
@@ -277,8 +277,8 @@ final class WelcomeWidgetTest extends TestCase
         $widget->handleInput("\x1b[B");
         $lines = $this->rendered($widget);
 
-        $this->assertStringNotContainsString(Glyphs::CARD_ACCENT, $lines[self::FIRST_STEP_ROW]);
-        $this->assertSame(0, \strpos($lines[self::FIRST_STEP_ROW + 3], needle: Glyphs::CARD_ACCENT), 'the bar followed the selection');
+        $this->assertStringNotContainsString(Glyphs::SELECTION_BAR, $lines[self::FIRST_STEP_ROW]);
+        $this->assertSame(0, \strpos($lines[self::FIRST_STEP_ROW + 3], needle: Glyphs::SELECTION_BAR), 'the bar followed the selection');
     }
 
     /** The selected card's rows keep the exact pane width, wrapped details included. */
@@ -319,7 +319,7 @@ final class WelcomeWidgetTest extends TestCase
         $widget->setFocused(false);
         $title = $widget->render(new RenderContext(60, 12))[self::FIRST_STEP_ROW];
 
-        $this->assertStringContainsString(Glyphs::CARD_ACCENT, $title);
+        $this->assertStringContainsString(Glyphs::SELECTION_BAR, $title);
         $this->assertStringContainsString("\x1b[48;5;237m", $title, 'the unfocused .card tint');
         $this->assertStringNotContainsString("\x1b[48;5;238m", $title);
     }
@@ -809,7 +809,7 @@ final class WelcomeWidgetTest extends TestCase
         $widget->handleInput("\x1b[A"); // Key::UP
 
         $lines = $this->rendered($widget);
-        $this->assertSame(0, \strpos($lines[self::FIRST_STEP_ROW + 3], needle: Glyphs::CARD_ACCENT), 'selection moved back to step 1, not stuck at 2');
+        $this->assertSame(0, \strpos($lines[self::FIRST_STEP_ROW + 3], needle: Glyphs::SELECTION_BAR), 'selection moved back to step 1, not stuck at 2');
     }
 
     public function testAnInstalledInputHookSwallowsInput(): void

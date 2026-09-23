@@ -212,7 +212,7 @@ final class ResultsPanelWidgetTest extends TestCase
 
         $row = \rtrim(AnsiUtils::stripAnsiCodes($panel->render(new RenderContext(60, 4))[0]));
 
-        $this->assertSame(' src/A.php:5  the needle here', $row);
+        $this->assertSame('▌src/A.php:5  the needle here', $row);
     }
 
     /** A flat (ungrouped) row's search-range highlight must land at the exact `path:line  ` prefix width. */
@@ -242,7 +242,7 @@ final class ResultsPanelWidgetTest extends TestCase
 
         $row = \rtrim(AnsiUtils::stripAnsiCodes($panel->render(new RenderContext(60, 4))[0]));
 
-        $this->assertSame(' a diagnostic message', $row);
+        $this->assertSame('▌a diagnostic message', $row);
     }
 
     /** The location-less row's highlight prefix is exactly 1 (the leading space), not 0 or 2. */
@@ -1224,7 +1224,7 @@ final class ResultsPanelWidgetTest extends TestCase
         $this->assertStringStartsWith("\x1b[48;5;235m", $raw[3], 'the row background opens first, before any content');
         $this->assertStringEndsWith("\x1b[0m", $raw[3], 'and resets last, after all the content');
         $this->assertSame(' ▾ src/  (1)', $rows[3], 'directory header: no indent, arrow right after the leading space');
-        $this->assertSame('   ▾ A.php  (1)', $rows[4], 'nested file header: two-space indent, THEN the arrow');
+        $this->assertSame('▌  ▾ A.php  (1)', $rows[4], 'nested file header: two-space indent, THEN the arrow');
         $this->assertSame('      5  foo one', $rows[5], 'nested match row: six-space indent, THEN the label, THEN the gutter');
     }
 

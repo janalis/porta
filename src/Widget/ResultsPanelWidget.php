@@ -532,12 +532,14 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
         foreach (\array_slice($this->displayRows, $scroll, $this->visibleRows) as $i => $row) {
             // A raw SGR prefix, not a Style: the match highlighter closes each
             // span with the row bg so the tail keeps its colour.
-            $bg = $this->rowStyle($this->list->isSelected($scroll + $i), ($scroll + $i) === $this->hoveredIndex)->getAnsiRestore();
-            $lines[] = match (true) {
+            $selected = $this->list->isSelected($scroll + $i);
+            $bg = $this->rowStyle($selected, ($scroll + $i) === $this->hoveredIndex)->getAnsiRestore();
+            // The bar after the row's own prefix, so it stands on the row's shade.
+            $lines[] = $bg.$this->barred(match (true) {
                 null !== $row->filePath => $this->headerLine($row, $bg, $columns),
                 null !== $row->contextText => $this->contextRowLine($row->contextLine, $row->contextText, $bg, $columns),
                 default => $this->matchLine($this->results[$row->matchIndex], $bg, $columns),
-            };
+            }, $selected);
         }
 
         // Reserve the full configured height even with few/no rows, so the panel

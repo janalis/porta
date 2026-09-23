@@ -43,7 +43,7 @@ use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
  * text is silently lost to a narrow pane. The action label is protected: the
  * *title* truncates first, because `[ action ]` is the affordance and a card
  * whose button vanished reads as done. The selection is an accent bar
- * ({@see Glyphs::CARD_ACCENT}) down the selected card's left edge with the
+ * ({@see Glyphs::SELECTION_BAR}) down the selected card's left edge with the
  * title emphasised and a subtle `.card::selected(:focus)` tint behind — the
  * bar and the space after it replace the last two margin columns, so
  * selecting a card never changes any line's width or the card's height. The
@@ -337,7 +337,7 @@ final class WelcomeWidget extends AbstractWidget implements FocusableInterface, 
 
             return $index === $this->hoveredIndex ? $this->styles->of(Role::RowHighlightBg)->apply($text) : $text;
         }
-        $bar = $this->styles->of(Role::TabAccent)->withBold()->apply(Glyphs::CARD_ACCENT);
+        $bar = $this->styles->of(Role::TabAccent)->apply(Glyphs::SELECTION_BAR);
         $text = AnsiText::truncate(\substr($margin, offset: 0, length: -2).$bar.' '.$body, $width, pad: true);
 
         return $this->applyElement('selected', $text);

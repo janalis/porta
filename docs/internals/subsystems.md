@@ -332,6 +332,29 @@ are presentation and live in `FieldSpec`. A checkbox is a glyph (`[✓]`,
 - A box adds `FieldBox::ROWS - 1` rows to its host; every host derives its
   header rows and click bands from `FieldBox::ROWS`, never a literal.
 
+### Selection in lists: a bar in the first column
+
+A list row's first column is `Widget/Render/SelectionBar`: `▌` for the cursor
+in the list holding the keys, `▎` for the cursor in one that does not, `│` for a
+row marked without being the cursor (the tree's second pick), a space
+otherwise. The column is the space every row already started with, so no
+content moves. The bar is a bare glyph that the row's shading paints: a colour
+of its own would reset the foreground the rest of the row needs. Shading still
+repeats the state, but the shape is the state, so the monochrome theme and
+`--no-ansi` read it (`NavigationReadabilityTest`). Panels using `PanelRowStyle`
+call `barred()` before shading; the tree, git's history (two sub-lists, one
+focus) and the vertical tab strip call `SelectionBar::of()` directly. The
+settings form has none: column 0 is its modified marker, and its selection is
+the heavy control. The Welcome cards wear the full bar down every row of the
+selected card.
+
+The settings nav's headings are fieldset legends (`FieldBox::fieldsetLegend`,
+the form's own). Its `▲`/`▼` edges (`EdgeIndicator`, shared with the vertical
+tab strip) are controls: a click selects the first entry hidden past that edge.
+The breadcrumbs bar is laid out from the right: ancestors drop behind one
+`… › `, and the current scope is middle-elided only when it is alone and still
+too wide.
+
 ### Sizing one: measure every row you draw
 
 A floating box computes its width from its content, and the recurring defect is

@@ -73,7 +73,7 @@ final class SettingsNavWidgetTest extends TestCase
         $this->assertStringContainsString('General', $screen);
         $this->assertStringContainsString('Keybindings', $screen);
         $this->assertStringContainsString('Plugins', $screen);
-        $this->assertStringContainsString('Languages', $screen);
+        $this->assertMatchesRegularExpression('/^─ Languages ─+$/mu', $screen, 'a heading is a legend rule, the form\'s fieldset shape');
         $this->assertStringContainsString('PHP', $screen);
         $this->assertStringContainsString('TypeScript', $screen);
         $this->assertStringContainsString('Twig', $screen);
@@ -297,7 +297,33 @@ final class SettingsNavWidgetTest extends TestCase
 
         $this->assertSame('', \trim($rows[0]), 'nothing is clipped above yet, so the top edge stays blank');
         $this->assertStringContainsString(Glyphs::SCROLL_DOWN, \end($rows), 'and the bottom says there is more');
-        $this->assertContains(' General', $rows, 'the list itself still starts where it did');
+        $this->assertContains('▌General', $rows, 'the list itself still starts where it did');
+    }
+
+    /**
+     * A drawn edge is a control: ▼ selects the first entry hidden below it,
+     * ▲ the first hidden above, each exactly as the keys would — while an
+     * edge left blank is no target at all.
+     */
+    public function testAClickOnADrawnEdgeRevealsTheEntryPastIt(): void
+    {
+        $widget = $this->widget($selected);
+        $widget->setPluginEntries(['phpantom', 'mago', 'tempest', 'chroma', 'image-viewer', 'graph-viewer', 'local-history', 'git', 'symfony-lsp']);
+        $before = $this->navRows($widget, 22, rows: 22);
+
+        $widget->handleClick(0); // the blank top edge
+        $this->assertSame([], $selected, 'a blank edge does nothing');
+
+        $widget->handleClick(21); // ▼
+        $after = $this->navRows($widget, 22, rows: 22);
+        $this->assertCount(1, $selected, 'the entry it revealed was selected, and fired');
+        $this->assertStringContainsString(Glyphs::SCROLL_UP, $after[0], 'the window moved: the top is clipped now');
+        $this->assertStringStartsWith('▌', $after[20], 'and the revealed entry is the last one drawn');
+        $this->assertNotContains($after[20], $before, 'which was hidden before');
+
+        $widget->handleClick(0); // ▲
+        $this->navRows($widget, 22, rows: 22);
+        $this->assertSame('general', $widget->selectedId(), 'the one entry above the window');
     }
 
     /** Scrolled into the middle, both edges are clipped and both say so. */
@@ -329,7 +355,7 @@ final class SettingsNavWidgetTest extends TestCase
         $rows = $this->navRows($widget, 22, rows: $count);
 
         $this->assertStringNotContainsString(Glyphs::SCROLL_DOWN, \implode('', $rows));
-        $this->assertSame(' General', $rows[0]);
+        $this->assertSame('▌General', $rows[0]);
         $this->assertSame(' '.$this->lastEntryLabel($widget), \rtrim((string) \end($rows)), 'and the last entry is drawn, not traded for a marker');
     }
 
@@ -348,7 +374,7 @@ final class SettingsNavWidgetTest extends TestCase
 
         $rows = $this->navRows($widget, 22, rows: 40);
 
-        $this->assertSame(' General', $rows[0], 'the first entry is on the first row');
+        $this->assertSame('▌General', $rows[0], 'the first entry is on the first row');
         $this->assertStringNotContainsString(Glyphs::SCROLL_DOWN, \implode('', $rows));
         $this->assertStringNotContainsString(Glyphs::SCROLL_UP, \implode('', $rows));
     }
@@ -452,29 +478,28 @@ final class SettingsNavWidgetTest extends TestCase
     }
 
     /**
-     * Clicking the ▼ indicator selects NOTHING.
+     * Clicking the ▼ indicator is not a click on an entry.
      *
      * `indicatorRows` counts only the leading ▲, while an overflowing render
      * reserves the last row for ▼ as well — and `ListSelection::rowIndexAt()`
      * bounds by the total entry count rather than by what is visible. So the ▼
-     * row mapped to `scroll + budget`: the first entry BELOW the window, which
-     * is precisely the entry whose existence puts the ▼ there. Clicking "there
-     * is more below" navigated to a page you could not see.
-     *
-     * The sibling case above covers the LEADING indicator, which was fixed; the
-     * trailing one was never clicked by a test.
+     * row mapped to `scroll + budget` and selected it as though it were drawn
+     * there, leaving the window where it was. The ▼ is a control now: it
+     * selects that same entry on purpose, and the window follows it, so the
+     * selection is never on a row you cannot see.
      */
-    public function testClickingTheTrailingScrollIndicatorSelectsNothing(): void
+    public function testClickingTheTrailingScrollIndicatorScrollsToWhatItSelects(): void
     {
         $widget = $this->widget();
         $widget->setPluginEntries(['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta']);
         $rows = $widget->render(new RenderContext(24, 6));
         $this->assertStringContainsString(Glyphs::SCROLL_DOWN, \end($rows), 'the list overflows, so the ▼ is drawn');
-        $before = $widget->selectedId();
 
         $widget->handleClick(5); // the last row of a six-row pane: the ▼ itself
 
-        $this->assertSame($before, $widget->selectedId(), 'the indicator is not an entry');
+        $rows = $this->navRows($widget, 24, rows: 6);
+        $this->assertSame('plugins', $widget->selectedId(), 'the entry just past the window');
+        $this->assertSame('▌Plugins', $rows[4], 'drawn: the window followed it');
     }
 
     /** And hover takes the same path, so it was wrong in the same way. */

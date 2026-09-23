@@ -502,7 +502,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         $out = [];
         $legend = $layout->legends[$index] ?? null;
         if (null !== $legend) {
-            $out[] = [$this->legendRule($legend, $width), null];
+            $out[] = [FieldBox::fieldsetLegend($legend, $width, $this->styles), null];
         }
         $control = $this->control($row, $index, $layout);
         $middle = \intdiv(\count($control), num2: 2); // the label sits on the value row
@@ -537,19 +537,6 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         }
 
         return $out;
-    }
-
-    /** A fieldset's legend: `─ Editor ──────`, the rule in the field-border tint. */
-    private function legendRule(string $legend, int $width): string
-    {
-        $rule = $this->styles->of(Role::FieldBorder);
-        $text = AnsiText::truncate($legend, \max(0, $width - 4));
-
-        return AnsiText::padRight(
-            $rule->apply(Glyphs::FRAME_HORIZONTAL.' ').$this->styles->of(Role::Bright)->apply($text).' '
-                .$rule->apply(\str_repeat(Glyphs::FRAME_HORIZONTAL, \max(0, $width - 3 - AnsiUtils::visibleWidth($text)))),
-            $width,
-        );
     }
 
     /**

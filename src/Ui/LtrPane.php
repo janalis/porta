@@ -16,7 +16,9 @@ namespace Porta\Ui;
  * status lines as well as snippets, and those render in logical order — that
  * is, visually reversed — beside correctly mirrored chrome. Splitting a pane
  * into a verbatim content span inside mirrored chrome is the fix, and it is not
- * done. Do not read this interface as "no Hebrew reaches here".
+ * done. Do not read this interface as "no Hebrew reaches here". Their
+ * selection bar ({@see \Porta\Widget\Render\SelectionBar}) stays at the left
+ * edge with the rows it marks, where the tree beside them wears it at the right.
  *
  * The membership set is pinned by
  * {@see \Porta\Tests\Unit\Ui\PaneSegmenterTest::testTheVerbatimPaneSetIsExactlyThese()},

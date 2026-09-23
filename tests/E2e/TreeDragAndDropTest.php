@@ -826,7 +826,8 @@ final class TreeDragAndDropTest extends TestCase
     {
         $rows = [];
         foreach (Paint::lines($tui->getById('tree'), new RenderContext(30, 12)) as $line) {
-            $rows[] = \rtrim(AnsiUtils::stripAnsiCodes($line));
+            // Past column 0, the selection bar: these read names, not state.
+            $rows[] = \rtrim(\mb_substr(AnsiUtils::stripAnsiCodes($line), start: 1));
         }
 
         return $rows;

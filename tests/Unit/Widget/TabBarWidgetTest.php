@@ -389,7 +389,7 @@ final class TabBarWidgetTest extends TestCase
         // The row's shape, at a width that seats the whole name: a leading pad,
         // the name, then the dirty and close cells against the right edge.
         $wide = AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(24, 3))[0]);
-        $this->assertStringStartsWith(' Alpha.php', $wide, 'one leading pad, then the name');
+        $this->assertStringStartsWith('▌Alpha.php', $wide, 'the active tab\'s bar, then the name');
         $this->assertStringEndsWith(' ', $wide, 'and a trailing pad after the close glyph');
 
         $belowFloor = AnsiUtils::stripAnsiCodes(\implode('', $bar->render(new RenderContext(7, 3))));

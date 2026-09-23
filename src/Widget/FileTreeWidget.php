@@ -23,6 +23,7 @@ use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\HeaderRenderer;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
+use Porta\Widget\Render\SelectionBar;
 use Porta\Widget\Support\ArrowScrollTrait;
 use Porta\Widget\Support\FillsPaneTrait;
 use Porta\Widget\Support\HoverTrait;
@@ -748,7 +749,10 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
             // and their meaning is the shape, not the colour.
             $marks = $this->marksFor($node);
             $marks .= $this->dropTrailing($node, $width - AnsiUtils::visibleWidth($marks));
-            $text = AnsiText::blank($node->depth + 1).$icon.$node->name.($node->isDir ? '/' : '');
+            // The first column is the selection bar: the cursor, focused or
+            // not, and a row marked without it are three different shapes.
+            $bar = SelectionBar::of($index === $this->list->selected(), $this->isFocused(), $this->selection->has($node->path));
+            $text = $bar->value.AnsiText::blank($node->depth).$icon.$node->name.($node->isDir ? '/' : '');
             $text = AnsiText::truncate($text, \max(1, $width - AnsiUtils::visibleWidth($marks)), pad: true).$marks;
 
             // Subtle hover background beneath the pointer keeps the dir/file foreground.

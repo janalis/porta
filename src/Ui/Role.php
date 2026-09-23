@@ -35,7 +35,7 @@ enum Role
     // family, the Welcome screen's cards, joins `.card::selected(:focus)`
     // instead: those rules carry only a subtle background tint (plain in
     // monochrome) because the selection there is the accent bar the widget
-    // draws (Glyphs::CARD_ACCENT styled TabAccent+bold, title Bright+bold) —
+    // draws (Glyphs::SELECTION_BAR styled TabAccent, title Bright+bold) —
     // deliberately NOT bound to the SelectedRow roles. Pane/popup
     // titles are HeaderBar+bold; in-list section headers are Toolbar+Dim+bold;
     // hover over default rows is RowHighlightBg; hover over bar chrome (menu

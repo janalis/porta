@@ -9,8 +9,10 @@ use Porta\Support\AnsiText;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
+use Porta\Widget\Render\EdgeIndicator;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
+use Porta\Widget\Render\SelectionBar;
 use Porta\Widget\Render\StripWindow;
 use Porta\Widget\Render\TabCloseGlyph;
 use Porta\Widget\Render\TabState;
@@ -308,14 +310,18 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
             if ($overflow) {
                 $lines[] = $start > 0 ? $this->indicatorRow(Glyphs::SCROLL_UP, step: -3, row: 0, width: $width) : AnsiText::blank($width);
             }
-            // ' name…    ●× ': the dirty ● and the close × are right-aligned.
+            // '▌name…    ●× ': the dirty ● and the close × are right-aligned,
+            // and the active tab wears the lists' selection bar — a column
+            // list, read the way the tree beside it is.
             $nameWidth = $width - 5;
             foreach (\array_slice($tabs, $start, $budget, preserve_keys: true) as $index => $tab) {
                 $name = AnsiText::truncate($tab['name'], $nameWidth, pad: true);
                 $marker = $tab['dirty'] ? $this->styles->of(Role::Modified)->apply(Glyphs::DIRTY) : ' ';
                 $close = $tab['active'] ? TabCloseGlyph::active($this->styles) : TabCloseGlyph::inactive($this->styles);
                 $rowIndex = \count($lines);
-                $lines[] = TabStyle::of($this->styles, TabState::of($tab['active'], $this->isHoverCell($rowIndex, 0, $width)))->apply(' '.$name.' '.$marker.$close.' ');
+                $lines[] = TabStyle::of($this->styles, TabState::of($tab['active'], $this->isHoverCell($rowIndex, 0, $width)))->apply(
+                    SelectionBar::of($tab['active'], focused: true)->value.$name.' '.$marker.$close.' ',
+                );
                 $this->lastLayout[] = [
                     'index' => $index,
                     'row' => \count($lines) - 1,
@@ -352,9 +358,8 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
     private function indicatorRow(string $glyph, int $step, int $row, int $width): string
     {
         $this->indicatorZones[] = ['row' => $row, 'col' => 0, 'width' => $width, 'step' => $step];
-        $left = \str_repeat(' ', times: \max(0, \intdiv($width, num2: 2) - 1));
 
-        return $this->styles->of(Role::Faint)->apply(AnsiText::truncate($left.$glyph, $width, pad: true, ellipsis: ''));
+        return EdgeIndicator::row($glyph, $width, $this->styles);
     }
 
     /**

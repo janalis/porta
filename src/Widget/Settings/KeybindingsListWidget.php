@@ -12,6 +12,7 @@ use Porta\I18n\Translator;
 use Porta\Support\AnsiText;
 use Porta\Ui\CaretVisibility;
 use Porta\Ui\CursorStyle;
+use Porta\Ui\Glyphs;
 use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
 use Porta\Ui\Role;
@@ -33,6 +34,7 @@ use Porta\Widget\Support\InputHook;
 use Porta\Widget\Support\PanelRowStyle;
 use Porta\Widget\Support\WheelScrollable;
 use Psr\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -321,15 +323,15 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
             // An overridden row is showing a CHOICE, and until now looked
             // exactly like the 200 rows showing a default — so the one row
             // with something to reset was the one row you could not pick out.
-            // The mark is a colour rather than a glyph on purpose: this row
-            // budgets its width down to the column, and a marker column would
-            // come out of the label.
+            // The settings rows' `●` marks it, coloured as well: a colour
+            // alone was gone under the monochrome theme. Its two columns come
+            // out of the label, which truncates first anyway.
             $right = match (true) {
                 '' === $shortcut => $this->styles->of(Role::Dim)->apply('—'),
-                $entry->overridden => $this->styles->of(Role::Modified)->apply($shortcut),
+                $entry->overridden => $this->styles->of(Role::Modified)->apply(Glyphs::SETTING_MODIFIED.' '.$shortcut),
                 default => $shortcut,
             };
-            $rightWidth = '' === $shortcut ? 1 : \mb_strwidth($shortcut);
+            $rightWidth = AnsiUtils::visibleWidth($right);
             if ($index === $this->capturingIndex) {
                 $prompt = $this->translator->trans('Press a key… (Esc to cancel)');
                 $right = $this->styles->of(Role::Modified)->apply($prompt);
@@ -354,7 +356,8 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
             // mark for a space on the way out.
             $divide = $this->translator->isRtl() ? Bidi::RTL_MARK : ' ';
             $text = AnsiText::truncate($label.$divide.$right.' ', $width, pad: true, ellipsis: '');
-            $lines[] = $this->shadeRow($text, $index === $this->list->selected(), $index === $this->hoveredIndex);
+            $selected = $index === $this->list->selected();
+            $lines[] = $this->shadeRow($this->barred($text, $selected), $selected, $index === $this->hoveredIndex);
         }
 
         return $lines;

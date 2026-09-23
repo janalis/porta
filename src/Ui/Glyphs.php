@@ -260,11 +260,16 @@ final class Glyphs
     // disjoint surface (a step marker never appears beside a target list).
     public const string LINK_MARKER = '[→]';
 
-    // The 1-column left-half-block marking every row of the selected Welcome
-    // card. The glyph, not the tint behind it, is the selection — it is what
-    // survives --no-ansi and the monochrome theme. Distinct from VCS_ADDED
-    // (`▎`, editor gutter) and on a disjoint surface anyway.
-    public const string CARD_ACCENT = '▌';
+    // The selection bar down a list row's first column: the glyph, not the
+    // tint behind it, is the selection — it is what survives --no-ansi and the
+    // monochrome theme. Half a block where the list holds the keys, a quarter
+    // where it does not, a thin rule on a row that is marked (a multi-select's
+    // second pick) without being the cursor. Every row of the selected Welcome
+    // card wears the full bar. The quarter shares VCS_ADDED's `▎` (editor
+    // gutter) on a disjoint surface, and its mirror pair `▎`/`▕` already exists.
+    public const string SELECTION_BAR = '▌';
+    public const string SELECTION_BAR_UNFOCUSED = '▎';
+    public const string SELECTION_MARKED = '│'; // same value as SEPARATOR — disjoint surfaces (a list row's first column vs a tab strip)
 
     // The truncation mark. Sites that deliberately truncate WITHOUT a mark
     // (PTY output rows, fixed-width chrome fillers) pass '' and say why.

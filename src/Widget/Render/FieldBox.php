@@ -90,6 +90,22 @@ final class FieldBox
     }
 
     /** $text centred in exactly $room columns (cut when it does not fit), styled when a style is given. */
+    /**
+     * A fieldset's legend: `─ Editor ──────`, the rule in the field-border
+     * tint — a group's heading, which no key lands on.
+     */
+    public static function fieldsetLegend(string $legend, int $width, Styles $styles): string
+    {
+        $rule = $styles->of(Role::FieldBorder);
+        $text = AnsiText::truncate($legend, \max(0, $width - 4));
+
+        return AnsiText::padRight(
+            $rule->apply(Glyphs::FRAME_HORIZONTAL.' ').$styles->of(Role::Bright)->apply($text).' '
+                .$rule->apply(\str_repeat(Glyphs::FRAME_HORIZONTAL, \max(0, $width - 3 - AnsiUtils::visibleWidth($text)))),
+            $width,
+        );
+    }
+
     public static function centred(string $text, int $room, ?Style $style = null): string
     {
         $text = AnsiText::truncate($text, \max(0, $room));

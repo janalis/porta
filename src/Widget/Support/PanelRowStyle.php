@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace Porta\Widget\Support;
 
+use Porta\Support\AnsiText;
 use Porta\Ui\Role;
 use Porta\Ui\Sgr;
+use Porta\Widget\Render\SelectionBar;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Style\Style;
 
 /**
@@ -18,10 +21,21 @@ use Symfony\Component\Tui\Style\Style;
  * builders.
  *
  * @require-extends \Symfony\Component\Tui\Widget\AbstractWidget
+ * @require-implements \Symfony\Component\Tui\Widget\FocusableInterface
  */
 trait PanelRowStyle
 {
     use StylesDefault;
+
+    /**
+     * A built row with the {@see SelectionBar} in its first column — the space
+     * every panel row starts with, so nothing after it moves. Before the
+     * shading: the bar is a bare glyph the row's style then paints.
+     */
+    private function barred(string $text, bool $selected, bool $marked = false): string
+    {
+        return SelectionBar::of($selected, $this->isFocused(), $marked)->value.AnsiText::columnsFrom($text, 1, AnsiUtils::visibleWidth($text));
+    }
 
     /**
      * Shade a built row: the selection rule, else the hover tint, else the row

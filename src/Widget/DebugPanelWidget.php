@@ -246,8 +246,9 @@ final class DebugPanelWidget extends DockPanelWidget implements FocusableInterfa
 
         $scroll = $this->list->follow($this->visibleRows);
         foreach (\array_slice($this->rows, $scroll, $this->visibleRows) as $i => $row) {
-            $bg = $this->rowStyle($this->list->isSelected($scroll + $i), ($scroll + $i) === $this->hoveredIndex);
-            $lines[] = $bg->apply(AnsiText::truncate($this->rowText($row), $columns, pad: true));
+            $selected = $this->list->isSelected($scroll + $i);
+            $bg = $this->rowStyle($selected, ($scroll + $i) === $this->hoveredIndex);
+            $lines[] = $bg->apply($this->barred(AnsiText::truncate($this->rowText($row), $columns, pad: true), $selected));
         }
 
         return $lines;

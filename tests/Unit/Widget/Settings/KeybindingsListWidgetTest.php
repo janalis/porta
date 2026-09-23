@@ -14,6 +14,7 @@ use Porta\I18n\Translator;
 use Porta\Tests\Support\AttachedStyles;
 use Porta\Tests\Support\PagesThroughRows;
 use Porta\Tests\Support\Probe;
+use Porta\Tests\Support\RendersExactWidth;
 use Porta\Tests\Support\RendersWidget;
 use Porta\Widget\Settings\KeybindingsListWidget;
 use Symfony\Component\EventDispatcher\EventDispatcher;
@@ -23,6 +24,7 @@ use Symfony\Component\Tui\Render\RenderContext;
 final class KeybindingsListWidgetTest extends TestCase
 {
     use PagesThroughRows;
+    use RendersExactWidth;
     use RendersWidget;
 
     /** @return list<KeybindingRow> */
@@ -298,7 +300,7 @@ final class KeybindingsListWidgetTest extends TestCase
         // width=10: labelWidth = max(0, 10 - 1 - 2) = 7 → truncated label ' XXXXX…'.
         $line = AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(10, 4))[1]);
 
-        $this->assertSame(' XXXXX… — ', $line);
+        $this->assertSame('▎XXXXX… — ', $line);
     }
 
     public function testRowAssemblyConcatenatesLabelSpaceRightSpaceInOrder(): void
@@ -308,7 +310,7 @@ final class KeybindingsListWidgetTest extends TestCase
 
         $line = AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(30, 4))[1]);
 
-        $this->assertStringStartsWith(' Save', $line);
+        $this->assertStringStartsWith('▎Save', $line);
         $this->assertStringEndsWith('Ctrl+S ', $line);
     }
 
@@ -443,9 +445,8 @@ final class KeybindingsListWidgetTest extends TestCase
     /**
      * An overridden row is showing a CHOICE and looked exactly like the two
      * hundred rows showing a default, so the one row with something to reset
-     * was the one row you could not pick out. Marked with a colour rather than
-     * a glyph: this row budgets its width down to the column, and a marker
-     * column would come out of the label.
+     * was the one row you could not pick out. Marked with the settings rows'
+     * `●` as well as a colour, so it reads under the monochrome theme too.
      */
     public function testAnOverriddenRowIsMarkedAndADefaultOneIsNot(): void
     {
@@ -465,7 +466,9 @@ final class KeybindingsListWidgetTest extends TestCase
             $this->markup($plain, 'Ctrl+D'),
             'the two shortcuts are drawn differently',
         );
-        $this->assertStringContainsString('Ctrl+S', AnsiUtils::stripAnsiCodes($overridden), 'and the key itself still reads');
+        $this->assertStringContainsString('● Ctrl+S', AnsiUtils::stripAnsiCodes($overridden), 'marked by a shape, and the key itself still reads');
+        $this->assertStringNotContainsString('●', AnsiUtils::stripAnsiCodes($plain));
+        self::assertExactWidth($lines, 60);
     }
 
     /** @param list<string> $lines */

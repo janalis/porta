@@ -257,12 +257,54 @@ final class BreadcrumbsWidgetTest extends TestCase
 
         $line = $bar->render(new RenderContext(80, 1))[0];
 
-        // The current+hovered crumb gets Emphasis fg (255) + BarHoverBg (240) + bold,
-        // in that fixed order, applied together — not the shade on one crumb and the
-        // bold on another.
-        $this->assertStringContainsString("\x1b[38;5;255m\x1b[48;5;240m\x1b[1mrender", $line);
+        // The current+hovered crumb gets Emphasis fg (255) + BarHoverBg (240) + bold
+        // + the link underline, in that fixed order, applied together — not the
+        // shade on one crumb and the bold on another.
+        $this->assertStringContainsString("\x1b[38;5;255m\x1b[48;5;240m\x1b[1m\x1b[4mrender", $line);
         $this->assertStringNotContainsString("\x1b[48;5;240m\x1b[1mApp", $line, 'a non-current, non-hovered crumb must not pick up the hover+bold combo');
         $this->assertStringNotContainsString("\x1b[48;5;240m\x1b[1mWidget", $line, 'a non-current, non-hovered crumb must not pick up the hover+bold combo');
+    }
+
+    /**
+     * Too narrow for the trail, the bar drops ancestors from the ROOT end
+     * behind one `… › ` and keeps the scope the caret is in — it used to cut
+     * the right end, which is the one crumb that says where you are. Only
+     * the crumbs drawn can be clicked.
+     */
+    public function testANarrowBarKeepsTheCurrentScopeAndCutsTheRoot(): void
+    {
+        $bar = new BreadcrumbsWidget();
+        $bar->setProvider(self::trail(...)); // App › Widget › render
+
+        $line = AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(20, 1))[0]);
+
+        $this->assertSame(' … › Widget › render', $line);
+        $this->assertNull($bar->lineAtColumn(2), 'the … is no crumb');
+        $this->assertSame(self::trail()[1]['line'], $bar->lineAtColumn(5), 'Widget, where it is drawn now');
+    }
+
+    /** Wider by one column, the root fits and the lead goes: never `… ›` in front of nothing hidden. */
+    public function testTheLeadAppearsOnlyWhenAnAncestorIsHidden(): void
+    {
+        $bar = new BreadcrumbsWidget();
+        $bar->setProvider(self::trail(...));
+
+        $this->assertSame(' App › Widget › render', AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(22, 1))[0]));
+        $this->assertSame(' … › Widget › render ', AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(21, 1))[0]));
+        // Widget alone would fit at 18; with the lead App's absence needs, it does not.
+        $this->assertSame(' … › render       ', AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(18, 1))[0]));
+    }
+
+    /** Alone and still too wide, the current scope keeps both of its ends. */
+    public function testATooWideCurrentScopeIsElidedInTheMiddle(): void
+    {
+        $bar = new BreadcrumbsWidget();
+        $bar->setProvider(static fn (): array => [['label' => 'App', 'line' => 0], ['label' => 'handleIncomingRequest', 'line' => 9]]);
+
+        $line = AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(16, 1))[0]);
+
+        $this->assertSame(16, \mb_strwidth($line));
+        $this->assertMatchesRegularExpression('/^ … › handl.*….*uest$/u', $line);
     }
 
     public function testHoveringExactlyOnePastACrumbsWidthDoesNotHoverIt(): void

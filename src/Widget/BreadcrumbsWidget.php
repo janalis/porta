@@ -99,19 +99,28 @@ final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost
         }
 
         $columns = $context->getColumns();
+        [$first, $room] = self::window(\array_column($crumbs, 'label'), $columns - 1);
         $content = ' '; // a leading space; the bar background wraps the padded row
         $col = 1;
+        if ($first > 0) {
+            // The ancestors that did not fit, said once: the trail is cut at
+            // its root end, never at the scope the caret is in.
+            $content .= $this->styles->of(Role::Muted)->apply(Glyphs::ELLIPSIS).$this->separator();
+            $col += self::LEAD_WIDTH;
+        }
         $last = \count($crumbs) - 1;
-        foreach ($crumbs as $i => $crumb) {
-            if ($i > 0) {
+        foreach (\array_slice($crumbs, $first, preserve_keys: true) as $i => $crumb) {
+            if ($i > $first) {
                 $content .= $this->separator();
                 $col += 3;
             }
-            $label = $crumb['label'];
+            // Alone and still too wide, the current crumb keeps both ends.
+            $label = $i === $last ? AnsiText::elideMiddle($crumb['label'], $room) : $crumb['label'];
             $width = \mb_strwidth($label);
             $this->lastLayout[] = ['start' => $col, 'width' => $width, 'line' => $crumb['line']];
             // Bar chrome, so the pointer tints with BarHoverBg (not a list
-            // row's RowHighlightBg) under whichever foreground the crumb has.
+            // row's RowHighlightBg) under whichever foreground the crumb has,
+            // and underlines it: a crumb is a link.
             $hovered = null !== $this->hoverCol && $this->hoverCol >= $col && $this->hoverCol < ($col + $width);
             $content .= $this->crumbStyle($i === $last, $hovered)->apply($label);
             $col += $width;
@@ -122,17 +131,46 @@ final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost
         return [$bar];
     }
 
+    /** `… › `: what stands for the ancestors the bar had no room for. */
+    private const int LEAD_WIDTH = 4;
+
+    /**
+     * Which crumbs fit in $room columns, laid out from the right: the first
+     * one drawn, and the room left for the last. The current scope is always
+     * drawn; each ancestor joins only while it, its separator and — when
+     * ancestors remain beyond it — the `… › ` lead still fit.
+     *
+     * @param list<string> $labels
+     *
+     * @return array{int, int}
+     */
+    private static function window(array $labels, int $room): array
+    {
+        $first = \count($labels) - 1;
+        $used = \mb_strwidth($labels[$first]);
+        while ($first > 0) {
+            $next = $used + 3 + \mb_strwidth($labels[$first - 1]);
+            if (($next + ($first > 1 ? self::LEAD_WIDTH : 0)) > $room) {
+                break;
+            }
+            --$first;
+            $used = $next;
+        }
+
+        return [$first, \max(1, $room - ($first > 0 ? self::LEAD_WIDTH : 0))];
+    }
+
     /**
      * A crumb's shading: the current scope is bright and bold, the ancestors
      * muted, and the one under the pointer takes the bar-chrome hover shade
-     * under whichever of those foregrounds it already had.
+     * under whichever of those foregrounds it already had, underlined.
      */
     private function crumbStyle(bool $current, bool $hovered): Style
     {
         return match (true) {
-            $current && $hovered => $this->styles->merge(Role::BarHoverBg, Role::Emphasis)->withBold(),
+            $current && $hovered => $this->styles->merge(Role::BarHoverBg, Role::Emphasis)->withBold()->withUnderline(),
             $current => $this->styles->of(Role::Emphasis)->withBold(),
-            $hovered => $this->styles->merge(Role::BarHoverBg, Role::Muted),
+            $hovered => $this->styles->merge(Role::BarHoverBg, Role::Muted)->withUnderline(),
             default => $this->styles->of(Role::Muted),
         };
     }

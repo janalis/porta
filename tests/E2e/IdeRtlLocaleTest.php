@@ -651,8 +651,9 @@ final class IdeRtlLocaleTest extends TestCase
                     // first, so this fixture is 1 = src/, 2 = .porta.json,
                     // 3 = move.php. The menu bar sits above the tree, so a
                     // widget row N is SGR row N + 2.
+                    // Past column 0, the selection bar: these read names, not state.
                     $rows = \array_map(
-                        AnsiUtils::stripAnsiCodes(...),
+                        static fn (string $line): string => \mb_substr(AnsiUtils::stripAnsiCodes($line), start: 1),
                         Paint::lines($tui->getById('tree'), new RenderContext(30, 12)),
                     );
                     $this->assertSame('▸ src/', \trim($rows[1] ?? ''), 'src/ is widget row 1');

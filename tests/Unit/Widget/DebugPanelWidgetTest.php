@@ -468,7 +468,7 @@ final class DebugPanelWidgetTest extends TestCase
 
         $this->assertSame('   ▾ Locals', $lines[1], 'depth 1');
         $this->assertSame('     ▾ $arr = array(1)', $lines[2], 'depth 2');
-        $this->assertSame('       ▾ nested = 1', $lines[3], 'depth 3');
+        $this->assertSame('▎      ▾ nested = 1', $lines[3], 'depth 3');
         $this->assertSame('           deep = 2', $lines[4], 'depth 4');
     }
 
@@ -491,7 +491,7 @@ final class DebugPanelWidgetTest extends TestCase
 
         $lines = \array_map(static fn (string $l): string => \rtrim(AnsiUtils::stripAnsiCodes($l)), $panel->render(new RenderContext(60, 20)));
 
-        $this->assertSame('   ▾ $w = v', $lines[1]);
+        $this->assertSame('▎  ▾ $w = v', $lines[1]);
         $this->assertSame('       w0 = v', $lines[2], 'the watch child sits one level deeper than the watch itself');
     }
 

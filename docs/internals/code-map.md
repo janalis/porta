@@ -79,6 +79,9 @@ in `Widget/Support/`. `Widget/Render/` is the stateless render-algorithm tier.
 Every form control — text field, button, select, stepper — draws through
 `Widget/Render/FieldBox` (with `FieldSpec`, `FieldState`), never a hand-rolled
 ` Label: value` row; a select's list opens through `Workbench/Menu/ListboxOpener`.
+A list row's selection is `Widget/Render/SelectionBar` in its first column
+(`PanelRowStyle::barred()` for the panels); a scrolling column list's `▲`/`▼`
+row is `Widget/Render/EdgeIndicator`.
 
 The shared row traits live in `Widget/Support/`:
 

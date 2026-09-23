@@ -37,7 +37,9 @@ list. (PhpStorm binds this to `Ctrl+P`, which Go to File owns here.)
 ### Breadcrumbs
 
 The bar under the tabs names the scopes containing the caret —
-`Namespace › Class › method` — and each crumb is clickable.
+`Namespace › Class › method` — and each crumb is clickable. When the bar is too
+narrow for the whole trail it drops scopes from the outside in, behind a
+leading `… ›`, so the scope the caret is in is always shown.
 
 PHP is scanned offline, so it is instant and correct with no language server
 running at all. Other languages use the server's own `textDocument/documentSymbol`
@@ -508,6 +510,13 @@ plugin's own *gutter marks* setting: turn that off and they leave the stripe
 too.
 
 ## The file tree
+
+The row under the cursor wears a bar in its first column: `▌` while the tree
+has the keys, `▎` once focus moves elsewhere, so you can see where they will
+land when you come back. A second file picked with `Shift+↑/↓` or a modifier
+click shows a thin `│`. The same bar marks the selection in every list: the
+settings sections, the keybindings, the results and debug panels, and git's
+changes and history.
 
 File rows carry what is worth knowing about the file, right-aligned and in a
 fixed order: its version-control status (`▎` added / `┆` modified, the same

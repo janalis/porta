@@ -12,10 +12,11 @@ use Porta\Layout\ResizableSidebar;
 use Porta\Support\AnsiText;
 use Porta\Ui\Glyphs;
 use Porta\Ui\ListSelection;
-use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\HoverableList;
 use Porta\Widget\PaneNavigationCallbacks;
+use Porta\Widget\Render\EdgeIndicator;
+use Porta\Widget\Render\FieldBox;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Porta\Widget\Support\ArrowScrollTrait;
@@ -95,6 +96,9 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
 
     /** Entry rows the last render actually drew, so the trailing ▼ is not mistaken for one. */
     private int $bodyRows = 0;
+
+    /** @var array<int, int> the ▲/▼ rows the last render drew, and the entry a click on each selects */
+    private array $indicatorTargets = [];
     private readonly ListSelection $list;
 
     /** @var (callable(string): void)|null selection moved to this entry id */
@@ -276,9 +280,20 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
         }
     }
 
-    /** A click selects (and fires) the entry under the pointer; the header is inert. */
+    /**
+     * A click selects (and fires) the entry under the pointer; the header is
+     * inert. A drawn ▲/▼ selects the first entry hidden past its edge: the
+     * selection is the only viewport this list has, and a step of a few rows
+     * from a cursor mid-window would not have moved the window at all.
+     */
     public function handleClick(int $relRow): void
     {
+        $target = $this->indicatorTargets[$relRow] ?? null;
+        if (null !== $target) {
+            $this->moveTo($target);
+
+            return;
+        }
         $index = $this->rowIndexAt($relRow);
         if (null !== $index && NavEntryKind::Header !== $this->entries[$index]['kind']) {
             $this->moveTo($index);
@@ -365,11 +380,11 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
      * widget's own floor demands: the nav is drawn as narrow as
      * {@see minWidth()}, and a marker column would come straight out of a name.
      */
-    private function indicatorRow(string $glyph, int $width): string
+    private function indicatorRow(string $glyph, int $row, int $target, int $width): string
     {
-        $left = \str_repeat(' ', times: \max(0, \intdiv($width, num2: 2) - 1));
+        $this->indicatorTargets[$row] = $target;
 
-        return $this->styles->of(Role::Faint)->apply(AnsiText::padRight($left.$glyph, $width));
+        return EdgeIndicator::row($glyph, $width, $this->styles);
     }
 
     /**
@@ -418,10 +433,11 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
         $this->indicatorRows = $overflow ? 1 : 0;
         $budget = $overflow ? $rows - 2 : $rows;
         $this->bodyRows = $budget;
+        $this->indicatorTargets = [];
         $scroll = $this->list->follow($budget);
         $lines = [];
         if ($overflow) {
-            $lines[] = $scroll > 0 ? $this->indicatorRow(Glyphs::SCROLL_UP, $width) : AnsiText::blank($width);
+            $lines[] = $scroll > 0 ? $this->indicatorRow(Glyphs::SCROLL_UP, 0, $this->prevSelectable($scroll), $width) : AnsiText::blank($width);
         }
         for ($row = 0; $row < $budget; ++$row) {
             $index = $scroll + $row;
@@ -432,18 +448,21 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
             }
 
             if (NavEntryKind::Header === $entry['kind']) {
-                $lines[] = $this->styles
-                    ->merge(Role::Toolbar, Role::Dim)
-                    ->withBold()
-                    ->apply(AnsiText::truncate($this->rowText($entry), $width, pad: true));
+                // The form's fieldset legend: a heading reads as one by its
+                // shape, where dim bold was a shade the monochrome theme lost.
+                $lines[] = FieldBox::fieldsetLegend($this->translator->trans($entry['label']), $width, $this->styles);
                 continue;
             }
 
-            $text = AnsiText::truncate($this->rowText($entry), $width, pad: true);
-            $lines[] = $this->shadeRow($text, $index === $this->list->selected(), $index === $this->hoveredIndex);
+            // Focus in the form leaves the quarter bar on the page it shows.
+            $selected = $index === $this->list->selected();
+            $text = $this->barred(AnsiText::truncate($this->rowText($entry), $width, pad: true), $selected);
+            $lines[] = $this->shadeRow($text, $selected, $index === $this->hoveredIndex);
         }
         if ($overflow) {
-            $lines[] = ($scroll + $budget) < \count($this->entries) ? $this->indicatorRow(Glyphs::SCROLL_DOWN, $width) : AnsiText::blank($width);
+            $lines[] = ($scroll + $budget) < \count($this->entries)
+                ? $this->indicatorRow(Glyphs::SCROLL_DOWN, $rows - 1, $this->nextSelectable($scroll + $budget - 1), $width)
+                : AnsiText::blank($width);
         }
 
         return $this->memoLines = $lines;

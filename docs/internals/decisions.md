@@ -10099,3 +10099,25 @@ underline, so it read as hovered; it now keeps the popup's background and says
 disabled three ways — faint, dim, and a strikethrough on the label alone, the
 shortcut column untouched. The open title's `┃File┃` costs no column: the rails
 replace its padding, so opening a menu never shifts the titles after it.
+
+## Selection is a bar, not a shade (2026-09-23)
+
+The tree drew its unfocused cursor and its second pick with the same
+`SelectedRowUnfocused` shade, so a pair and a parked cursor were a guess. Every
+list now says its selection in its first column (`SelectionBar`). The unfocused
+cursor is `▎` rather than the planned `▏`: `▎`/`▕` is already a mirror pair,
+and `▏`→`▕` would have broken the table's involution. The bar has no colour of
+its own — `Style::apply()` re-arms only a background, so a coloured bar reset
+every later foreground in the row. The settings form keeps no bar (its column 0
+is the modified `●`; the heavy control is its selection).
+
+The keybindings list's overridden shortcut gained the settings rows' `●`. Its
+comment used to refuse a marker because the column "would come out of the
+label"; it does, and the label is what truncates first anyway, while the
+colour alone vanished under the monochrome theme.
+
+The settings nav's `▼` click used to be pinned as selecting nothing, the fix
+for a hit test that mistook it for an entry. It is a control now and selects
+the first hidden entry on purpose, and the window follows. A step of a few rows
+like the wheel's would not move the window from a cursor mid-list.
+
