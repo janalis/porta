@@ -11,7 +11,6 @@ use Porta\Search\Everywhere\SearchHit;
 use Porta\Search\Everywhere\SearchRow;
 use Porta\Ui\CaretVisibility;
 use Porta\Ui\CursorStyle;
-use Porta\Ui\Role;
 use Porta\Ui\TextField;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\PickerLayout;
@@ -98,8 +97,9 @@ final class OverlayHost
 
     /**
      * Open the single-line input prompt (go to line, rename symbol). A danger
-     * prompt (delete confirmation) wears {@see Role::DangerBg} on its field
-     * row, so a destructive question never reads like a rename.
+     * prompt (delete confirmation) boxes its field with the double danger
+     * border ({@see \Porta\Widget\Render\FieldState::Danger}), so a
+     * destructive question never reads like a rename, colour or not.
      */
     public function openPrompt(string $label, string $initial, callable $onSubmit, bool $danger = false): void
     {

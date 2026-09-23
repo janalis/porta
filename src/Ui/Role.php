@@ -66,7 +66,6 @@ enum Role
     case Toolbar;
     case TagOffBg;
     case Modified;
-    case DangerBg;
 
     // Text shades.
     case Dim;

@@ -36,7 +36,6 @@ final class DarkTheme
                 Role::Toolbar->selector() => new Style(background: 235),
                 Role::TagOffBg->selector() => new Style(background: 238),
                 Role::Modified->selector() => new Style(color: 179),
-                Role::DangerBg->selector() => new Style(background: 88),
                 Role::Dim->selector() => new Style(color: 245),
                 Role::Muted->selector() => new Style(color: 250),
                 Role::Bright->selector() => new Style(color: 231),

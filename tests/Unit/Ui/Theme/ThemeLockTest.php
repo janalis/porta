@@ -42,7 +42,6 @@ final class ThemeLockTest extends TestCase
         yield 'toolbar' => [Role::Toolbar, new Style(background: 235)];
         yield 'tag-off-bg' => [Role::TagOffBg, new Style(background: 238)];
         yield 'modified' => [Role::Modified, new Style(color: 179)];
-        yield 'danger-bg' => [Role::DangerBg, new Style(background: 88)];
         yield 'dim' => [Role::Dim, new Style(color: 245)];
         yield 'muted' => [Role::Muted, new Style(color: 250)];
         yield 'bright' => [Role::Bright, new Style(color: 231)];
@@ -111,7 +110,6 @@ final class ThemeLockTest extends TestCase
         yield 'toolbar' => [Role::Toolbar, new Style(background: 254)];
         yield 'tag-off-bg' => [Role::TagOffBg, new Style(background: 252)];
         yield 'modified' => [Role::Modified, new Style(color: 130)];
-        yield 'danger-bg' => [Role::DangerBg, new Style(background: 224)];
         yield 'dim' => [Role::Dim, new Style(color: 244)];
         yield 'muted' => [Role::Muted, new Style(color: 240)];
         yield 'bright' => [Role::Bright, new Style(color: 16)];

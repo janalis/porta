@@ -2,25 +2,9 @@
 <xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">
   <file source-language="en" target-language="de" datatype="plaintext" original="messages">
     <body>
-      <trans-unit id="1">
-        <source>  Amend last commit  </source>
-        <target>  Letzten Commit ändern  </target>
-      </trans-unit>
-      <trans-unit id="2">
-        <source>  Commit to branch  </source>
-        <target>  Auf Branch committen  </target>
-      </trans-unit>
       <trans-unit id="3">
         <source> %count% changed file| %count% changed files</source>
         <target> %count% geänderte Datei| %count% geänderte Dateien</target>
-      </trans-unit>
-      <trans-unit id="6">
-        <source> Commit  ·  Alt+M amend </source>
-        <target> Commit  ·  Alt+M ändern </target>
-      </trans-unit>
-      <trans-unit id="7">
-        <source> Discard changes? y = yes · any key = no</source>
-        <target> Änderungen verwerfen? y = ja · beliebige Taste = nein</target>
       </trans-unit>
       <trans-unit id="8">
         <source> Files (%count%)</source>
@@ -3241,6 +3225,30 @@
       <trans-unit id="903">
         <source>Installed</source>
         <target>Installiert</target>
+      </trans-unit>
+      <trans-unit id="904">
+        <source>Commit</source>
+        <target>Commit</target>
+      </trans-unit>
+      <trans-unit id="905">
+        <source>Amend last commit</source>
+        <target>Letzten Commit ändern</target>
+      </trans-unit>
+      <trans-unit id="906">
+        <source>Commit to branch</source>
+        <target>Auf Branch committen</target>
+      </trans-unit>
+      <trans-unit id="907">
+        <source>Discard changes to %path%?</source>
+        <target>Änderungen an %path% verwerfen?</target>
+      </trans-unit>
+      <trans-unit id="908">
+        <source>Discard (y)</source>
+        <target>Verwerfen (y)</target>
+      </trans-unit>
+      <trans-unit id="909">
+        <source>Keep</source>
+        <target>Behalten</target>
       </trans-unit>
     </body>
   </file>

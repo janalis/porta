@@ -35,7 +35,6 @@ final class HighContrastTheme
                 Role::Toolbar->selector() => new Style(background: 233),
                 Role::TagOffBg->selector() => new Style(background: 237),
                 Role::Modified->selector() => new Style(color: 226),
-                Role::DangerBg->selector() => new Style(background: 88),
                 Role::Dim->selector() => new Style(color: 250),
                 Role::Muted->selector() => new Style(color: 253),
                 Role::Bright->selector() => new Style(color: 231),

@@ -35,7 +35,6 @@ final class LightTheme
                 Role::Toolbar->selector() => new Style(background: 254),
                 Role::TagOffBg->selector() => new Style(background: 252),
                 Role::Modified->selector() => new Style(color: 130),
-                Role::DangerBg->selector() => new Style(background: 224),
                 Role::Dim->selector() => new Style(color: 244),
                 Role::Muted->selector() => new Style(color: 240),
                 Role::Bright->selector() => new Style(color: 16),
