@@ -106,15 +106,14 @@ is genuinely nothing to await, say so with `pump()`.
 
 ## The flake doctrine
 
-`await()` budgets are denominated in **loop turns**, not wall time: `$elapsed`
-advances by 0.02 per turn however long the turn really took, so a loaded machine
-gets *more* wall time than the nominal budget, not less. For a condition that
-resolves in-process, a timeout therefore means it never became true. Most flaky
-shapes are on the fixed-clock side, and each has a cure.
+`await()` budgets are real seconds (above), generous for anything that resolves
+in-process: a turn takes milliseconds even under load, so a condition that burns
+its whole budget almost always never became true — a lost effect, not a slow
+one. Most flaky shapes are on the fixed-clock side, and each has a cure.
 
 **The exception is an await on an EXTERNAL PROCESS**, and it is not rare. The
-subprocess competes for the same CPU the loop turns are spending, so all 500
-turns of a 10s budget can pass without it being scheduled to completion. These
+subprocess competes for the same CPU the loop is spending, so a 10s budget can
+run out before it is scheduled to completion. These
 fail from load and nothing else: the installer, analyzer-plugin and
 opener-shim tests all did so repeatedly at load 10–40, and every one passed in
 isolation. Diagnose in this order before touching the code — `uptime` first;

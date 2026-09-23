@@ -9249,6 +9249,8 @@ default process count, on the slow runs. `await()` counts TURNS (0.02s nominal
 each), not wall time, so a loaded box gets a longer budget rather than a shorter
 one — which argues against a plain timeout and for something lost. The next scan
 that catches it will say which, and that is the whole point of this commit.
+*(Since a7e899e3, 2026-09-21, the budget is measured in real seconds — see
+testing.md. Ten real seconds for an in-process answer still means lost.)*
 
 ## A failed spawn kept the slot it never used (2026-09-13)
 
@@ -9265,7 +9267,8 @@ timed out after 10.0s waiting for chroma keyword coloring to land
 
 `await()` counts TURNS (0.02s nominal each), not wall time, so a loaded box gets
 a LONGER budget, not a shorter one — ten seconds of loop time with nothing
-arriving means the answer was lost, not late. What failed to reproduce is as
+arriving means the answer was lost, not late. *(Since a7e899e3 the budget is real
+seconds — see testing.md; the conclusion stands.)* What failed to reproduce is as
 telling as what did: **24 serial runs under sixteen CPU burners, green. A whole
 E2e suite run serially in one process, green. Eight parallel suite runs, green.**
 Not load, not in-process contamination — concurrent PROCESSES.
@@ -9375,7 +9378,8 @@ Ruled out, each by measurement rather than argument:
 - **In-process contamination.** The whole E2e suite run serially in one process,
   randomised: green.
 - **A plain timeout.** `await()` counts TURNS at 0.02s nominal, so a busy box gets
-  a LONGER budget, not a shorter one. Ten seconds of loop time elapsed.
+  a LONGER budget, not a shorter one. Ten seconds of loop time elapsed. *(Since
+  a7e899e3 the budget is real seconds — see testing.md.)*
 - **The concurrency ceiling.** Real, fixed above, and not this: the E2e case makes
   a single dispatch.
 - **Fork starvation.** `ulimit -n` is 1,048,576 and `maxproc` 8,000 on this
