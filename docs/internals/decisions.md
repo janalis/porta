@@ -10253,4 +10253,9 @@ An audit of every checkbox against a browser `<input type=checkbox>` +
   typed a filter that matched every row, and `✓` matched the enabled ones. The
   box is a field of the item now (`checked`), drawn by the list, and outside
   what the filter reads. Space is the box's key.
+- **Menu toggles showed no state.** Soft-Wrap and its siblings sat in the View
+  menu with nothing to say whether they were on. A command can now declare its
+  state (`CommandRegistry::add(checked:)`), which the model carries to its menu
+  item and the panel draws as `✓`. That is the menu's checkbox item, not a
+  `[✓]` box, because a menu row is already the control.
 

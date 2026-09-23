@@ -8,6 +8,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Porta\I18n\BaseDirection;
 use Porta\I18n\Bidi;
+use Porta\Ui\Role;
 use Porta\Ui\Theme\DarkTheme;
 use Porta\Ui\Theme\MonochromeTheme;
 use Porta\Ui\Theme\Styles;
@@ -287,5 +288,41 @@ final class MenuPanelTest extends TestCase
         $this->assertMatchesRegularExpression('/\x1b\[4mק/u', $mirrored, 'the underline is still on its letter');
         $this->assertSame(1, \preg_match_all('/\x1b\[4m[^\x1b\s]/u', $mirrored), 'and on no other');
         $this->assertStringEndsWith("\x1b[48;5;236m \x1b[0m", $mirrored, 'the shade runs to the row\'s end');
+    }
+
+    /**
+     * A menu with a toggle is a menu of checkbox items: every row keeps a
+     * two-column gutter, a toggle that is on shows ✓ in it (tinted off the
+     * selection), and the panel grows by the gutter so no row is cut.
+     */
+    public function testAToggleShowsItsCheckInAGutterEveryRowKeeps(): void
+    {
+        $on = true;
+        $items = [
+            new MenuItem('Soft-Wrap', 'Alt+Z', null, isChecked: static function () use (&$on): bool {
+                return $on;
+            }),
+            new MenuItem('Structure', '', null),
+        ];
+        $width = MenuPanel::width($items);
+        $this->assertSame(MenuPanel::width([$items[1], new MenuItem('Soft-Wrap', 'Alt+Z', null)]) + 2, $width, 'the gutter widens the panel');
+
+        $rows = MenuPanel::segments($items, 1, $width, Styles::dark());
+        $plain = \array_map(static fn (array $row): string => AnsiUtils::stripAnsiCodes($row['segment']), $rows);
+
+        $this->assertStringStartsWith(' ✓ Soft-Wrap', $plain[0]);
+        $this->assertStringStartsWith('   Structure', $plain[1], 'the item that is no toggle keeps the gutter too');
+        $this->assertStringContainsString(Styles::dark()->of(Role::TabAccent)->apply('✓'), $rows[0]['segment'], 'tinted off the selection');
+        foreach ($rows as $row) {
+            $this->assertSame($width, AnsiUtils::visibleWidth($row['segment']));
+        }
+
+        $on = false;
+        $this->assertStringStartsWith('   Soft-Wrap', AnsiUtils::stripAnsiCodes(MenuPanel::segments($items, 1, $width, Styles::dark())[0]['segment']), 'off: the blank, nothing moves');
+        $this->assertStringStartsWith(' Structure', AnsiUtils::stripAnsiCodes(MenuPanel::segments([$items[1]], 0, 20, Styles::dark())[0]['segment']), 'a menu with no toggle has no gutter');
+
+        $on = true;
+        $selected = MenuPanel::segments($items, 0, $width, Styles::dark())[0]['segment'];
+        $this->assertStringNotContainsString(Styles::dark()->of(Role::TabAccent)->apply('✓'), $selected, 'the selected row keeps its own shade');
     }
 }

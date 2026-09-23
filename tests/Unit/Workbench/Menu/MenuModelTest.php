@@ -641,4 +641,25 @@ final class MenuModelTest extends TestCase
 
         $this->assertTrue($this->item($menus, 'Run', 'Step Over')->enabled(), 'no gate → enabled');
     }
+
+    /** A command registered with a state is a toggle all the way to its menu item, which reads the state live. */
+    public function testACommandsStateReachesItsMenuItem(): void
+    {
+        $on = false;
+        $commands = new CommandRegistry();
+        $commands->add('toggle_soft_wrap', static fn (): null => null, checked: static function () use (&$on): bool {
+            return $on;
+        });
+
+        $item = \array_find(
+            \array_merge(...\array_map(static fn (Menu $m): array => $m->items, $this->build($commands, new CodeEditorWidget()))),
+            static fn (MenuItem $i): bool => 'Soft-Wrap' === $i->label,
+        );
+
+        $this->assertInstanceOf(MenuItem::class, $item);
+        $this->assertFalse($item->checked());
+        $on = true;
+        $this->assertTrue($item->checked(), 'read live, not copied');
+        $this->assertNull(new MenuItem('Plain', '', null)->checked(), 'an item that is no toggle has no state');
+    }
 }

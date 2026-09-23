@@ -353,7 +353,7 @@ final class MenuModel
             $isEnabled = static fn (): bool => (null === $base || $base()) && $pluginWhen();
         }
 
-        return new MenuItem($label, $shortcut, $run, isEnabled: $isEnabled);
+        return new MenuItem($label, $shortcut, $run, isEnabled: $isEnabled, isChecked: 'i' === $scope ? $commands->checkedState($id) : null);
     }
 
     /**

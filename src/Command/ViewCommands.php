@@ -70,8 +70,8 @@ final readonly class ViewCommands implements CommandProvider
                 // `open_as_text` is gated on the tab being a viewer.
                 when: fn (): bool => null !== $this->dock->visiblePanel(),
             )
-            ->add('toggle_soft_wrap', fn (): bool => $this->display->setSoftWrap(!$this->display->softWrap), keyBound: KeyDispatch::Bound)
-            ->add('toggle_code_lenses', $this->toggleCodeLenses(...), keyBound: KeyDispatch::Bound)
+            ->add('toggle_soft_wrap', fn (): bool => $this->display->setSoftWrap(!$this->display->softWrap), keyBound: KeyDispatch::Bound, checked: fn (): bool => $this->display->softWrap)
+            ->add('toggle_code_lenses', $this->toggleCodeLenses(...), keyBound: KeyDispatch::Bound, checked: fn (): bool => $this->display->codeLenses)
             ->add(
                 'ide_project_tree',
                 function (): void {
@@ -115,10 +115,12 @@ final readonly class ViewCommands implements CommandProvider
             ->add('close_all_tabs', fn () => $this->bufferService->closeTabsExcept(null), label: 'Close All Tabs')
             ->add('ide_notifications', fn () => $this->workbench->showNotificationLog(), keyBound: KeyDispatch::Bound, label: 'Notification Log')
             ->add('ide_lsp_log', fn () => $this->workbench->showLspLog(), label: 'LSP: Show Server Log')
-            ->add('toggle_inline_diagnostics', fn () => $this->settings->toggle('inlineDiagnostics'), label: 'Toggle Inline Diagnostics')
+            ->add('toggle_inline_diagnostics', fn () => $this->settings->toggle('inlineDiagnostics'), label: 'Toggle Inline Diagnostics', checked: fn (): bool => $this->settings->isOn(
+                'inlineDiagnostics',
+            ))
             ->add('cycle_line_numbers', fn () => $this->settings->cycleLineNumbers(), keyBound: KeyDispatch::Bound)
-            ->add('toggle_auto_pairs', fn () => $this->settings->toggle('autoPairs'), label: 'Toggle Auto-Pairs')
-            ->add('toggle_format_on_save', fn () => $this->settings->toggle('formatOnSave'), label: 'Toggle Format on Save')
+            ->add('toggle_auto_pairs', fn () => $this->settings->toggle('autoPairs'), label: 'Toggle Auto-Pairs', checked: fn (): bool => $this->settings->isOn('autoPairs'))
+            ->add('toggle_format_on_save', fn () => $this->settings->toggle('formatOnSave'), label: 'Toggle Format on Save', checked: fn (): bool => $this->settings->isOn('formatOnSave'))
             ->add('fold_all', fn () => $this->folding->foldAll(), keyBound: KeyDispatch::Bound)
             ->add('unfold_all', fn () => $this->folding->unfoldAll(), keyBound: KeyDispatch::Bound)
             ->add('ide_terminal', fn () => $this->run->toggleTerminal(), keyBound: KeyDispatch::Bound)

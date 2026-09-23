@@ -263,6 +263,12 @@ final class SettingsController
         $this->changeSetting('lineNumbers', $next);
     }
 
+    /** Whether a boolean setting is on — the View menu's ✓ beside its toggle. */
+    public function isOn(string $key): bool
+    {
+        return (bool) ($this->settings[$key] ?? false);
+    }
+
     /**
      * Flip a boolean setting to its opposite. Kept for the View-menu toggle
      * commands; an unknown key flashes instead of touching anything else.

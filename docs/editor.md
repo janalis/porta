@@ -57,6 +57,9 @@ Save / Discard / Cancel prompt on unsaved changes), `Ctrl+E` opens the
 recent-files popup. Every buffer keeps its cursor, undo history and
 diagnostics. The open set is restored on the next launch.
 
+The View menu's toggles (Soft-Wrap, Code Vision, inline diagnostics,
+auto-pairs, format on save) show a `✓` while they are on.
+
 On a terminal 30 rows or taller the tabs are folder tabs, two rows each. The
 shown tab has a heavy lid (`┍━┑`); while its pane has the keys the whole tab is
 heavy (`┏━┓` over `┃ name ┃`). The dock and the git view's tabs work the same

@@ -322,7 +322,10 @@ run, not ticked, so they wear plain status marks (`✓` / `○` / `→`). A list
 overlay whose items carry `checked` is a checklist (the debugger's exception
 filters): `PickerLayout` draws the box before the label, the filter matches
 the label alone, and Space picks, which toggles, instead of typing into the
-filter. A checkbox acts on the first click, on its label as on its box. Where
+filter. A command registered with a `checked` state is a toggle, and its menu
+item is a checkbox item: `MenuPanel` gives every row of that menu a two-column
+gutter and draws `✓` in it while the state is on. The state is read live, so
+nothing moves as a toggle flips. A checkbox acts on the first click, on its label as on its box. Where
 the row's text is a link of its own (the git changes list, the Find preview)
 only the box and a column either side of it toggle.
 

@@ -17,10 +17,10 @@ use Porta\Container\AsIdeService;
 #[AsIdeService]
 final class CommandRegistry
 {
-    /** @var list<array{id: string, label: string, handler: \Closure(): void, keyBound: bool, inPalette: bool, when: (\Closure(): bool)|null}> */
+    /** @var list<array{id: string, label: string, handler: \Closure(): void, keyBound: bool, inPalette: bool, when: (\Closure(): bool)|null, checked: (\Closure(): bool)|null}> */
     private array $commands = [];
 
-    /** @var array<string, array{id: string, label: string, handler: \Closure(): void, keyBound: bool, inPalette: bool, when: (\Closure(): bool)|null}> first registration per id, for O(1) dispatch */
+    /** @var array<string, array{id: string, label: string, handler: \Closure(): void, keyBound: bool, inPalette: bool, when: (\Closure(): bool)|null, checked: (\Closure(): bool)|null}> first registration per id, for O(1) dispatch */
     private array $byId = [];
 
     /**
@@ -29,6 +29,8 @@ final class CommandRegistry
      *                                      grey out on it. The palette still runs the handler
      *                                      directly, so a gated handler must also refuse for
      *                                      itself — and must do so BEFORE it prompts, not after.
+     * @param (\Closure(): bool)|null $checked a toggle's state: the menu draws its item with a ✓
+     *                                         while this answers true, as a menu's checkbox item
      */
     public function add(
         string $id,
@@ -37,6 +39,7 @@ final class CommandRegistry
         PaletteVisibility $inPalette = PaletteVisibility::Listed,
         ?string $label = null,
         ?\Closure $when = null,
+        ?\Closure $checked = null,
     ): self {
         $command = [
             'id' => $id,
@@ -45,6 +48,7 @@ final class CommandRegistry
             'keyBound' => KeyDispatch::Bound === $keyBound,
             'inPalette' => PaletteVisibility::Listed === $inPalette,
             'when' => $when,
+            'checked' => $checked,
         ];
         $this->commands[] = $command;
         $this->byId[$id] ??= $command;
@@ -94,6 +98,12 @@ final class CommandRegistry
     public function has(string $id): bool
     {
         return \array_key_exists($id, $this->byId);
+    }
+
+    /** @return (\Closure(): bool)|null a toggle's state predicate, or null when $id is no toggle (or unknown) */
+    public function checkedState(string $id): ?\Closure
+    {
+        return $this->byId[$id]['checked'] ?? null;
     }
 
     /** The registered label for $id (including custom labels), or null when unknown. */

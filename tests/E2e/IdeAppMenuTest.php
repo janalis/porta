@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\CommandRegistry;
 use Porta\Editor\LineNumberMode;
 use Porta\Ide;
 use Porta\Onboarding\OnboardingState;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\Paint;
 use Porta\Tests\Support\PreservesPath;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\Services;
@@ -460,5 +462,43 @@ final class IdeAppMenuTest extends TestCase
         );
 
         $this->addToAssertionCount(1);
+    }
+
+    /**
+     * The View menu's toggles say whether they are on: each command's state
+     * reaches its row as a ✓, and follows it when the command runs.
+     */
+    public function testTheViewMenusTogglesShowTheirState(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function (Tui $tui, $terminal, Ide $ide): void {
+                    $commands = Services::resolve($ide, CommandRegistry::class);
+                    $row = static function (string $label) use ($tui): string {
+                        $bar = $tui->getById('menu');
+                        $bar->open(\array_search('View', \array_map(static fn ($m): string => $m->title, Probe::get($bar, 'menus')), strict: true));
+                        $found = \array_find($bar->dropdownSegments($bar->panelWidth()), static fn (array $r): bool => \str_contains(AnsiUtils::stripAnsiCodes($r['segment']), $label));
+                        $bar->close();
+
+                        return AnsiUtils::stripAnsiCodes($found['segment'] ?? '');
+                    };
+                    foreach ([
+                        'toggle_soft_wrap' => 'Soft-Wrap',
+                        'toggle_code_lenses' => 'Code Vision',
+                        'toggle_inline_diagnostics' => 'Inline Diagnostics',
+                        'toggle_auto_pairs' => 'Auto-Pairs',
+                    ] as $id => $label) {
+                        $before = \str_starts_with($row($label), ' ✓ ');
+                        $commands->run($id);
+                        $this->assertNotSame($before, \str_starts_with($row($label), ' ✓ '), "{$label}: the ✓ follows the toggle");
+                    }
+                },
+            ],
+        );
     }
 }

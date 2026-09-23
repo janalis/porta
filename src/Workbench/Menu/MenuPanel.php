@@ -42,14 +42,30 @@ final class MenuPanel
     public static function width(array $items): int
     {
         $width = self::MIN_WIDTH;
+        $gutter = self::hasToggles($items) ? self::GUTTER_WIDTH : 0;
         foreach ($items as $item) {
             if ($item->separator) {
                 continue;
             }
-            $width = \max($width, \mb_strwidth($item->label) + ('' !== $item->shortcut ? \mb_strwidth($item->shortcut) + self::SHORTCUT_GAP : 0) + self::ITEM_CHROME);
+            $width = \max($width, $gutter + \mb_strwidth($item->label) + ('' !== $item->shortcut ? \mb_strwidth($item->shortcut) + self::SHORTCUT_GAP : 0) + self::ITEM_CHROME);
         }
 
         return $width;
+    }
+
+    /** `✓ `: the check a toggle item wears while on, and the blank every item of its menu keeps in its place. */
+    private const int GUTTER_WIDTH = 2;
+
+    /**
+     * Whether any item is a toggle — a menu's checkbox item. Then every item
+     * of that menu keeps a gutter for the ✓, as a desktop menu does, so
+     * nothing moves as a toggle flips.
+     *
+     * @param list<MenuItem> $items
+     */
+    private static function hasToggles(array $items): bool
+    {
+        return \array_any($items, static fn (MenuItem $item): bool => null !== $item->isChecked);
     }
 
     /**
@@ -65,7 +81,14 @@ final class MenuPanel
     {
         $out = [];
         $letterAt = $letters ? self::letters($items) : [];
+        $toggles = self::hasToggles($items);
         foreach ($items as $index => $item) {
+            // The ✓ takes the accent off the selected row, like a checked box.
+            $gutter = match (true) {
+                !$toggles => '',
+                true === $item->checked() => ($index === $selected ? Glyphs::OPTION_CURRENT : $styles->of(Role::TabAccent)->apply(Glyphs::OPTION_CURRENT)).' ',
+                default => \str_repeat(' ', self::GUTTER_WIDTH),
+            };
             $out[] = [
                 'segment' => $item->separator
                     ? $styles->merge(Role::PopupRow, Role::Placeholder)->apply(\str_repeat(Glyphs::MENU_SEPARATOR, \max(0, $panelWidth)))
@@ -77,6 +100,7 @@ final class MenuPanel
                         $styles,
                         $direction,
                         $letterAt[$index] ?? null,
+                        $gutter,
                     ),
                 'separator' => $item->separator,
             ];
@@ -165,9 +189,17 @@ final class MenuPanel
         return !$item->separator && $item->enabled();
     }
 
-    private static function itemSegment(MenuItem $item, int $panelWidth, MenuSelection $selection, MenuAvailability $availability, Styles $styles, BaseDirection $direction, ?int $letter): string
-    {
-        $inner = \max(0, $panelWidth - self::EDGE_COLS);
+    private static function itemSegment(
+        MenuItem $item,
+        int $panelWidth,
+        MenuSelection $selection,
+        MenuAvailability $availability,
+        Styles $styles,
+        BaseDirection $direction,
+        ?int $letter,
+        string $gutter,
+    ): string {
+        $inner = \max(0, $panelWidth - self::EDGE_COLS - AnsiUtils::visibleWidth($gutter));
         $shortcut = $item->shortcut;
         $labelMax = \max(0, $inner - ('' !== $shortcut ? \mb_strwidth($shortcut) + self::SHORTCUT_GAP : 0));
         $label = AnsiText::truncate($item->label, $labelMax);
@@ -200,7 +232,7 @@ final class MenuPanel
             ? Bidi::RTL_MARK.\str_repeat(' ', $gap - 1)
             : \str_repeat(' ', $gap);
 
-        return $style->apply(' '.$label.$divide.$tail.' ');
+        return $style->apply(' '.$gutter.$label.$divide.$tail.' ');
     }
 
     /**
