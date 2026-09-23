@@ -40,6 +40,18 @@ final class TabStripRenderer
     /** The × cell plus its trailing space — the close zone's clickable width. */
     public const int CLOSE_WIDTH = 2;
 
+    /** A folder-tab strip's height: the lid, then the labels (mirrored at a bottom edge). */
+    public const int ROWS = 2;
+
+    /** Below this many terminal rows a strip is one row, the height it gives back to the code. */
+    public const int COMPACT_BELOW = 30;
+
+    /** @return positive-int the strip height a terminal of $terminalRows affords */
+    public static function rowsFor(int $terminalRows): int
+    {
+        return $terminalRows >= self::COMPACT_BELOW ? self::ROWS : 1;
+    }
+
     /**
      * The pointer arrives as a widget-relative column, not a per-tab flag: hover
      * never changes a cell's width, so the tab under the pointer is whichever
@@ -50,15 +62,38 @@ final class TabStripRenderer
      * The pointer on a tab's `×` lights the `×` alone, underlined: which of
      * the two a click would do is shown before it is done.
      *
+     * At {@see ROWS} rows each tab is a folder tab — its own rails, and a lid
+     * whose shape is its state: `╭─╮` for the rest, `┍━┑` for the active tab
+     * of a pane without focus, `┏━┓` and heavy rails for the active tab of the
+     * pane that has it. At a bottom edge the labels come first and the lid is
+     * the tab's bottom. One row is the compact strip, each cell closed by a
+     * divider. The caller pads the rows past `used`: the tail is its own (the
+     * dock's status and resize grab).
+     *
      * @param list<array{label: string, active: bool, family?: string, marker?: string, closable?: bool}> $tabs
      * @param ?int                                                                                         $hoverCol   widget-relative column under the pointer, or null when off the strip
      * @param int                                                                                          $scroll     the caller's stored scroll offset
      * @param ?int                                                                                         $lastActive the caller's stored last active index (null on the first frame)
+     * @param ?int                                                                                         $hoverRow   the pointer's row in the strip, or null for the label row — a `×` lights only where a click on it closes
      *
-     * @return array{line: string, used: int, hitMap: list<array{index: int, start: int, width: int, closeStart: int, closeWidth: int}>, indicatorZones: list<array{row: int, col: int, width: int, step: int}>, scroll: int, lastActive: int}
+     * @return array{lines: list<string>, labelRow: int, used: int, hitMap: list<array{index: int, start: int, width: int, closeStart: int, closeWidth: int}>, indicatorZones: list<array{row: int, col: int, width: int, step: int}>, scroll: int, lastActive: int}
      */
-    public static function render(array $tabs, int $columns, Styles $styles, ?int $hoverCol = null, int $scroll = 0, ?int $lastActive = null): array
-    {
+    public static function render(
+        array $tabs,
+        int $columns,
+        Styles $styles,
+        ?int $hoverCol = null,
+        int $scroll = 0,
+        ?int $lastActive = null,
+        int $rows = 1,
+        StripEdge $edge = StripEdge::Top,
+        bool $paneFocused = false,
+        ?int $hoverRow = null,
+    ): array {
+        $folder = $rows >= self::ROWS;
+        $labelRow = $folder && StripEdge::Top === $edge ? 1 : 0;
+        // A folder tab's two rails replace the compact cell's one divider.
+        $rails = $folder ? 2 : 1;
         /** @var list<array{tab: array{label: string, active: bool, family?: string, marker?: string, closable?: bool}, text: string, width: int, closeOffset: int|null, labelWidth: int}> $parts */
         $parts = [];
         $activeIndex = 0;
@@ -66,14 +101,18 @@ final class TabStripRenderer
             if ($tab['active']) {
                 $activeIndex = $i;
             }
-            $parts[] = ['tab' => $tab] + self::measureCell($tab['label'], $tab['marker'] ?? '', $tab['closable'] ?? true);
+            $cell = self::measureCell($tab['label'], $tab['marker'] ?? '', $tab['closable'] ?? true);
+            $cell['width'] += $rails - 1;
+            $parts[] = ['tab' => $tab] + $cell;
         }
 
         $window = StripWindow::of(\array_column($parts, 'width'), $columns, $scroll, $activeIndex, $lastActive);
         $overflow = $window['overflow'];
         $start = $window['start'];
+        $zoneRows = $folder ? \range(start: 0, end: self::ROWS - 1) : [0];
 
-        $line = '';
+        $label = '';
+        $lid = '';
         $used = 0;
         $last = $start;
         $hitMap = [];
@@ -82,10 +121,13 @@ final class TabStripRenderer
             // Reserve col 0 for ‹ (a page-left click) when there is anything to its left.
             $prev = ' ';
             if ($start > 0) {
-                $indicatorZones[] = ['row' => 0, 'col' => 0, 'width' => 1, 'step' => -1];
+                foreach ($zoneRows as $row) {
+                    $indicatorZones[] = ['row' => $row, 'col' => 0, 'width' => 1, 'step' => -1];
+                }
                 $prev = $styles->of(Role::Faint)->apply(Glyphs::SCROLL_PREV);
             }
-            $line .= $prev;
+            $label .= $prev;
+            $lid .= ' ';
             $used = 1;
         }
         foreach (\array_slice($parts, $start, preserve_keys: true) as $index => $part) {
@@ -93,30 +135,56 @@ final class TabStripRenderer
                 break;
             }
             $tab = $part['tab'];
+            $hovered = null !== $hoverCol && $hoverCol >= $used && $hoverCol < ($used + $part['width']);
+            $body = $used + ($folder ? 1 : 0); // past the tab's own left rail
+            $closeStart = $body + ($part['closeOffset'] ?? 0);
+            $closeWidth = null === $part['closeOffset'] ? 0 : self::CLOSE_WIDTH;
+            $onClose = $hovered && (null === $hoverRow || $labelRow === $hoverRow) && $hoverCol >= $closeStart && $hoverCol < ($closeStart + $closeWidth);
+            $state = TabState::of($tab['active'], $hovered);
+            $shape = TabShape::of($tab['active'], $paneFocused);
+            $outline = $styles->of($shape->role());
             $next = $parts[$index + 1]['tab'] ?? null;
             $crosses = null !== $next && ($tab['family'] ?? null) !== ($next['family'] ?? null);
-            $hovered = null !== $hoverCol && $hoverCol >= $used && $hoverCol < ($used + $part['width']);
-            $closeStart = $used + ($part['closeOffset'] ?? 0);
-            $closeWidth = null === $part['closeOffset'] ? 0 : self::CLOSE_WIDTH;
-            $onClose = $hovered && $hoverCol >= $closeStart && $hoverCol < ($closeStart + $closeWidth);
-            $line .= self::renderCell($part, $styles, TabState::of($tab['active'], $hovered), $crosses ? Glyphs::FAMILY_SEPARATOR : Glyphs::SEPARATOR, $onClose);
+            // A folder tab between its own rails, over its lid; a compact cell
+            // closed by its divider, heavier where a drag family ends.
+            $label .= $folder
+                ? $outline->apply($shape->rail()).self::renderBody($part, $styles, $state, $onClose).$outline->apply($shape->rail())
+                : self::renderCell($part, $styles, $state, $crosses ? Glyphs::FAMILY_SEPARATOR : Glyphs::SEPARATOR, $onClose);
+            $lid .= $outline->apply($shape->lid($part['width'], $edge));
             $hitMap[] = ['index' => $index, 'start' => $used, 'width' => $part['width'], 'closeStart' => $closeStart, 'closeWidth' => $closeWidth];
             $used += $part['width'];
             $last = $index;
         }
         if ($overflow) {
             // Pad to the last column and put › there (a page-right click) when tabs remain.
-            $line = AnsiText::padRight($line, $columns - 1);
+            $label = AnsiText::padRight($label, $columns - 1);
+            $lid = AnsiText::padRight($lid, $columns);
             $next = ' ';
             if ($last < (\count($parts) - 1)) {
-                $indicatorZones[] = ['row' => 0, 'col' => $columns - 1, 'width' => 1, 'step' => 1];
+                foreach ($zoneRows as $row) {
+                    $indicatorZones[] = ['row' => $row, 'col' => $columns - 1, 'width' => 1, 'step' => 1];
+                }
                 $next = $styles->of(Role::Faint)->apply(Glyphs::SCROLL_NEXT);
             }
-            $line .= $next;
+            $label .= $next;
             $used = $columns; // the strip is full: the caller adds no status/grab tail
         }
 
-        return ['line' => $line, 'used' => $used, 'hitMap' => $hitMap, 'indicatorZones' => $indicatorZones, 'scroll' => $window['scroll'], 'lastActive' => $window['lastActive']];
+        $lines = match (true) {
+            !$folder => [$label],
+            0 === $labelRow => [$label, $lid],
+            default => [$lid, $label],
+        };
+
+        return [
+            'lines' => $lines,
+            'labelRow' => $labelRow,
+            'used' => $used,
+            'hitMap' => $hitMap,
+            'indicatorZones' => $indicatorZones,
+            'scroll' => $window['scroll'],
+            'lastActive' => $window['lastActive'],
+        ];
     }
 
     /**
@@ -161,8 +229,19 @@ final class TabStripRenderer
      *
      * @param array{text: string, width: int, closeOffset: int|null, labelWidth: int, ...} $cell
      */
-    // @mago-expect lint:no-boolean-flag-parameter -- where the pointer rests on the cell is its hover state, not a second responsibility.
     public static function renderCell(array $cell, Styles $styles, TabState $state, string $divider = Glyphs::SEPARATOR, bool $onClose = false): string
+    {
+        return self::renderBody($cell, $styles, $state, $onClose).$styles->of(Role::Placeholder)->apply($divider);
+    }
+
+    /**
+     * The cell's shaded text, no divider — the compact cell's inside, and a
+     * folder tab's between its rails.
+     *
+     * @param array{text: string, width: int, closeOffset: int|null, labelWidth: int, ...} $cell
+     */
+    // @mago-expect lint:no-boolean-flag-parameter -- where the pointer rests on the cell is its hover state, not a second responsibility.
+    private static function renderBody(array $cell, Styles $styles, TabState $state, bool $onClose): string
     {
         $text = $cell['text'];
         $width = AnsiUtils::visibleWidth($text);
@@ -182,6 +261,6 @@ final class TabStripRenderer
             $body .= $close.AnsiUtils::sliceByColumn($text, $closeOffset + 1, $width - $closeOffset - 1);
         }
 
-        return TabStyle::of($styles, $state)->apply($body).$styles->of(Role::Placeholder)->apply($divider);
+        return TabStyle::of($styles, $state)->apply($body);
     }
 }

@@ -275,6 +275,13 @@ final class Glyphs
     public const string SELECTION_BAR_UNFOCUSED = '▎';
     public const string SELECTION_MARKED = '│'; // same value as SEPARATOR — disjoint surfaces (a list row's first column vs a tab strip)
 
+    // A folder tab's lid while its pane has no focus: heavy across, light down
+    // the sides — shown here, but not where the keys go (TabShape::Active).
+    public const string TAB_LID_TOP_LEFT = '┍';
+    public const string TAB_LID_TOP_RIGHT = '┑';
+    public const string TAB_LID_BOTTOM_LEFT = '┕';
+    public const string TAB_LID_BOTTOM_RIGHT = '┙';
+
     // The status bar: ` │ ` between the left's cells, `▾` after a cell that
     // opens a menu (the select's own arrow), and `◦` leading a flash so a
     // message never reads as the file path it replaced.

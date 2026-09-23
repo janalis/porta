@@ -164,7 +164,7 @@ final class LayoutControllerNudgeTest extends TestCase
         $chosen = $results->visibleRows();
 
         $layout->toggleBottomPanelMaximised();
-        $this->assertSame(30 - 6, $results->visibleRows(), 'so this maximises rather than restores');
+        $this->assertSame(30 - 6 - 2, $results->visibleRows(), 'so this maximises rather than restores (30 rows: folder-tab strips, a row more each)');
         $layout->toggleBottomPanelMaximised();
         $this->assertSame($chosen, $results->visibleRows(), 'and comes back to the hand-chosen height');
     }
@@ -230,12 +230,12 @@ final class LayoutControllerNudgeTest extends TestCase
         $dock->showList(ResultsPanelMode::RecentLocations, 'Recent Locations', []);
         $layout->nudgeBottomPanel(1); // persist a proportion, so applyLayout has one to restore
         $layout->toggleBottomPanelMaximised();
-        $this->assertSame(30 - 6, $results->visibleRows());
+        $this->assertSame(30 - 6 - 2, $results->visibleRows(), 'the frame, and a row more for each folder-tab strip');
 
         $this->tui->getTerminal()->simulateResize(columns: 100, rows: 40);
         $layout->applyLayout();
 
-        $this->assertSame(40 - 6, $results->visibleRows(), 'it took the bigger screen');
+        $this->assertSame(40 - 6 - 2, $results->visibleRows(), 'it took the bigger screen');
         $this->assertTrue($layout->isBottomPanelMaximised(), 'and is still maximised');
     }
 
@@ -366,5 +366,17 @@ final class LayoutControllerNudgeTest extends TestCase
         $layout->nudgeSidebar(-1_000_000);
 
         $this->assertSame(0, $this->layoutFile()['sidebarWidthPercent']);
+    }
+
+    /** Below the folder-tab threshold the strips are one row each, and the panel gets both rows back. */
+    public function testACompactTerminalGivesTheStripsRowsBackToThePanel(): void
+    {
+        [$layout, $results] = $this->withOpenPanel();
+        $this->tui->getTerminal()->simulateResize(columns: 100, rows: 29);
+        $layout->applyLayout();
+
+        $layout->toggleBottomPanelMaximised();
+
+        $this->assertSame(29 - 6, $results->visibleRows());
     }
 }

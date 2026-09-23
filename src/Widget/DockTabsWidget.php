@@ -19,6 +19,7 @@ use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Porta\Widget\Render\TabStripRenderer;
 use Porta\Widget\Support\ColumnHover;
+use Porta\Widget\Support\PaneFocusProbe;
 use Porta\Widget\Support\ProviderFingerprint;
 use Porta\Widget\Support\StripScroll;
 use Porta\Widget\Support\StylesDefault;
@@ -45,6 +46,7 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverla
 {
     use ColumnHover;
     use MenuOverlayHostTrait;
+    use PaneFocusProbe;
 
     /** @use ProviderFingerprint<list<array{tab: ?DockTab, key: string, label: string, active: bool, status: string}>> */
     use ProviderFingerprint;
@@ -65,6 +67,12 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverla
 
     /** The active index the strip window last followed, so a manual scroll survives parked frames. */
     private ?int $lastActive = null;
+
+    /** @var positive-int one row, or {@see TabStripRenderer::ROWS} for folder tabs */
+    private int $stripRows = 1;
+
+    /** The panel focus the last render drew, so a focus change repaints the lid. */
+    private bool $drawnFocus = false;
 
     public function __construct(
         ?Styles $styles = null,
@@ -88,6 +96,24 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverla
         }
         $tabs = \array_map(static fn (array $tab): array => [self::family($tab['tab'], $tab['key']), $tab['key'], $tab['label'], $tab['active'], $tab['status']], ($this->provider)());
         $this->refreshFingerprint($tabs);
+        if ($this->paneFocused() !== $this->drawnFocus) {
+            $this->invalidate(); // the active lid's weight follows the panel's focus
+        }
+    }
+
+    /** @param positive-int $rows the strip's height, from the terminal's ({@see TabStripRenderer::rowsFor()}) */
+    public function setStripRows(int $rows): void
+    {
+        if ($rows !== $this->stripRows) {
+            $this->stripRows = $rows;
+            $this->invalidate();
+        }
+    }
+
+    /** @return positive-int */
+    public function stripRows(): int
+    {
+        return $this->stripRows;
     }
 
     /**
@@ -295,6 +321,8 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverla
             $this->hoverCol,
             $this->scroll,
             $this->lastActive,
+            $this->stripRows,
+            paneFocused: $this->drawnFocus = $this->paneFocused(),
         );
         $this->scroll = $strip['scroll'];
         $this->lastActive = $strip['lastActive'];
@@ -312,26 +340,43 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverla
                 'closeWidth' => $zone['closeWidth'],
             ];
         }
-        $line = $strip['line'];
         $used = $strip['used'];
+        $folder = $this->stripRows > 1;
 
-        // The row doubles as the dock's height grab: under the pointer its empty
-        // tail heavy-rules so the drag-to-resize reads, at rest it stays plain.
-        // Both fills are one column, so no width moves.
-        $fill = $this->grabHovered ? Glyphs::PANEL_RESIZE_GRAB : ' ';
+        // The label row doubles as the dock's height grab: under the pointer
+        // its empty tail heavy-rules so the drag-to-resize reads. At rest it is
+        // the baseline folder tabs stand on, or blank on a compact strip. Every
+        // fill is one column, so no width moves.
+        $fill = match (true) {
+            $this->grabHovered => Glyphs::PANEL_RESIZE_GRAB,
+            $folder => Glyphs::FRAME_HORIZONTAL,
+            default => ' ',
+        };
+        $grab = $this->styles->of($folder && !$this->grabHovered ? Role::Placeholder : Role::Toolbar)->apply(\str_repeat($fill, \max(0, $columns - $used)));
 
-        // The tail fills the room the tabs leave; the active tool's status, when
-        // there is one, sits right-aligned on top of it.
-        $tail = \str_repeat($fill, \max(0, $columns - $used));
-        if ('' !== $status) {
-            $room = $columns - $used - 2;
-            $text = AnsiText::truncate($status, \max(0, $room), pad: false);
-            $pad = \max(0, $columns - $used - \mb_strwidth($text) - 1);
-            $tail = \str_repeat($fill, $pad).$this->styles->merge(Role::Toolbar, Role::Dim)->apply($text);
+        // The active tool's status sits right-aligned on the tail: the lid
+        // row's on a folder strip, which leaves the grab whole.
+        $status = '' === $status ? '' : $this->statusTail($status, $columns - $used, $folder ? ' ' : $fill);
+        $rows = [];
+        foreach ($strip['lines'] as $row => $line) {
+            $tail = match (true) {
+                $row !== $strip['labelRow'] => $status,
+                $folder || '' === $status => $grab,
+                default => $status,
+            };
+            // A Toolbar-background base under the whole row, then the styled tabs.
+            $rows[] = $this->styles->of(Role::Toolbar)->apply(AnsiText::padRight($line.$tail, $columns));
         }
-        $line .= $tail;
 
-        // A Toolbar-background base under the whole row, then the styled tabs.
-        return [$this->styles->of(Role::Toolbar)->apply(AnsiText::padRight($line, $columns))];
+        return $this->withMenuOverlay($rows, $columns);
+    }
+
+    /** The status, right-aligned in $room columns over $fill. */
+    private function statusTail(string $status, int $room, string $fill): string
+    {
+        $text = AnsiText::truncate($status, \max(0, $room - 2), pad: false);
+        $pad = \max(0, $room - \mb_strwidth($text) - 1);
+
+        return \str_repeat($fill, $pad).$this->styles->merge(Role::Toolbar, Role::Dim)->apply($text);
     }
 }

@@ -592,6 +592,76 @@ final class TabBarWidgetTest extends TestCase
         $this->assertStringContainsString("\x1b[4mb.php", $onName);
     }
 
+    /** A folder strip: the lid row, then the labels on a baseline — and the × on the label row alone. */
+    public function testAFolderStripIsTwoRowsWhoseCloseIsOnTheLabelRow(): void
+    {
+        $bar = new TabBarWidget();
+        $bar->setProvider(static fn (): array => [
+            ['name' => 'a.php', 'dirty' => false, 'active' => true],
+            ['name' => 'b.php', 'dirty' => false, 'active' => false],
+        ]);
+        $bar->setStripRows(2);
+        $bar->beforeRender();
+
+        $rows = \array_map(AnsiUtils::stripAnsiCodes(...), $bar->render(new RenderContext(30, 2)));
+
+        $this->assertSame(['┍━━━━━━━━━┑╭─────────╮        ', '│ a.php × ││ b.php × │────────'], $rows);
+        $this->assertSame(['row' => 1, 'col' => 0], $bar->tabAnchor(0), 'anchored on its label row');
+        $this->assertSame(0, $bar->closeIndexAt(1, 8));
+        $this->assertNull($bar->closeIndexAt(0, 8), 'the lid above the × is the tab');
+        $this->assertSame(0, $bar->tabIndexAt(0, 8));
+    }
+
+    /** At a bottom edge the labels come first, and the × is on row 0. */
+    public function testABottomFolderStripAnchorsOnItsFirstRow(): void
+    {
+        $bar = new TabBarWidget();
+        $bar->setPosition(TabBarPosition::Bottom);
+        $bar->setProvider(static fn (): array => [['name' => 'a.php', 'dirty' => false, 'active' => true]]);
+        $bar->setStripRows(2);
+        $bar->beforeRender();
+
+        $rows = \array_map(AnsiUtils::stripAnsiCodes(...), $bar->render(new RenderContext(20, 2)));
+
+        $this->assertStringStartsWith('┕━━━━━━━━━┙', $rows[1]);
+        $this->assertSame(['row' => 0, 'col' => 0], $bar->tabAnchor(0));
+        $this->assertSame(0, $bar->closeIndexAt(0, 8));
+    }
+
+    /**
+     * The shown tab's lid is heavy all round while its pane has the keys, and
+     * the strip repaints when that changes — nothing else about the strip did.
+     */
+    public function testTheActiveLidFollowsThePanesFocus(): void
+    {
+        $focused = false;
+        $bar = new TabBarWidget();
+        $bar->setProvider(static fn (): array => [['name' => 'a.php', 'dirty' => false, 'active' => true]]);
+        $bar->setFocusProbe(static function () use (&$focused): bool {
+            return $focused;
+        });
+        $bar->setStripRows(2);
+        $bar->beforeRender();
+        $this->assertStringStartsWith('┍', AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(20, 2))[0]));
+        $revision = $bar->getRenderRevision();
+
+        $focused = true;
+        $bar->beforeRender();
+
+        $this->assertNotSame($revision, $bar->getRenderRevision(), 'a focus change repaints');
+        $this->assertStringStartsWith('┏', AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(20, 2))[0]));
+    }
+
+    /** An empty folder strip keeps its height, so the code under it does not jump when the last tab closes. */
+    public function testAnEmptyFolderStripKeepsItsHeight(): void
+    {
+        $bar = new TabBarWidget();
+        $bar->setProvider(static fn (): array => []);
+        $bar->setStripRows(2);
+
+        $this->assertCount(2, $bar->render(new RenderContext(20, 2)));
+    }
+
     public function testVerticalMenuOverlayCompositesOverTheList(): void
     {
         $bar = $this->verticalBar([

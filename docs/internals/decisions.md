@@ -10168,3 +10168,26 @@ cells keep answering at their new columns. A cut right side keeps only the
 spans that end before its ellipsis; the old filter let a span include the
 ellipsis column.
 
+## Folder tabs, and where their height comes from (2026-09-23)
+
+A shown tab was told apart by colour alone, and no strip showed whether its
+pane had the keys. Folder tabs make both shapes: the lid, and heavy rails for
+focus. They cost a row per strip, so they switch on at 30 terminal rows: the
+24-row E2e rigs, and anyone on a short terminal, keep the one-row strip and
+every line of code. Each tab owns both rails, so a tab is one column wider than
+the compact cell's divider.
+
+The height is the TERMINAL's, not the strip's context: a non-flex child is
+handed its parent's rows, and the editor column shrinks whenever the dock
+opens, so a context-based rule would flip the strip with the dock. Core pushes
+the height from a frame hook. The git plugin cannot reach that service (a
+plugin class is never a container service), and its sidebar's height is the
+terminal's less the menu and status bars. That is the one strip whose rule is
+derived.
+
+Deviations from the plan: the lid row's tail on the dock is not a resize grab
+(only the label row, one row above the panel, arms one; lighting the lid row
+would promise a drag it does not start), and the chrome check is direct
+assertions rather than a golden, since the shapes are few and each is asserted
+with SGR stripped.
+

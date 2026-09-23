@@ -24,6 +24,7 @@ use Porta\Workbench\EditorArea;
 use Porta\Workbench\StatusBarProvider;
 use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\Tui\Tui;
+use Symfony\Component\Tui\Widget\FocusableInterface;
 
 /**
  * Registers the widgets' runtime hooks — the callables symfony/tui widgets
@@ -66,6 +67,12 @@ final readonly class WidgetHooks
         $this->helpViewer->setHandler($this->helpViewerActions);
 
         $this->tabBar->setProvider($this->tabs->tabs(...));
+        // The active tab's lid goes heavy while the pane it shows has the keys.
+        $this->tabBar->setFocusProbe(function (): bool {
+            $pane = $this->editorArea->widget();
+
+            return $pane instanceof FocusableInterface && $pane->isFocused();
+        });
         $this->breadcrumbs->setProvider($this->trail->trail(...));
         $this->statusBar->setProvider($this->statusSegments->segments(...));
 

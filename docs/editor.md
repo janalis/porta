@@ -57,6 +57,11 @@ Save / Discard / Cancel prompt on unsaved changes), `Ctrl+E` opens the
 recent-files popup. Every buffer keeps its cursor, undo history and
 diagnostics. The open set is restored on the next launch.
 
+On a terminal 30 rows or taller the tabs are folder tabs, two rows each. The
+shown tab has a heavy lid (`┍━┑`); while its pane has the keys the whole tab is
+heavy (`┏━┓` over `┃ name ┃`). The dock and the git view's tabs work the same
+way. Shorter terminals keep the one-row strip, so the code keeps the row.
+
 Two open files with the same name say which is which — `plugin.php (git)` and
 `plugin.php (symfony-lsp)` — and the qualifier grows a directory at a time
 until it distinguishes them, so two `GitSidebar.php` under `<plugin>/src/View/`

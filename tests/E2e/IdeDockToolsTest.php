@@ -64,6 +64,41 @@ final class IdeDockToolsTest extends TestCase
         self::fail("no results row contains '{$needle}'");
     }
 
+    /**
+     * On a 40-row terminal the dock strip is two rows of folder tabs, and only
+     * the label row's tail is the resize grab — the row a press arms, one
+     * above the panel. The lid row's tail, where the status sits, lights
+     * nothing: a grab that lit there would promise a drag it does not start.
+     */
+    public function testOnAFolderStripOnlyTheLabelRowIsTheGrab(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function (Tui $tui, $terminal, Ide $ide): void {
+                    $tui->handleInput("\x1b6"); // alt+6 → Show Problems
+                    $this->frame($tui);
+                    $strip = $tui->getById('dock-tabs');
+                    $this->assertSame(2, $strip->stripRows(), 'forty rows: folder tabs');
+                    $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($strip);
+                    $this->assertSame(2, $rect->rows);
+                    $col = $rect->col + $rect->columns - 20; // the tail, clear of the tab
+
+                    $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $col + 1, $rect->row + 1)); // the lid row
+                    $this->assertFalse(Probe::get($strip, 'grabHovered'), 'the lid row is no grab');
+
+                    $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $col + 1, $rect->row + 2)); // the label row
+                    $this->assertTrue(Probe::get($strip, 'grabHovered'), 'the label row is');
+                },
+            ],
+            rows: 40,
+        );
+    }
+
     public function testHoveringThePanelTintsARowAndLeavingItClearsTheTint(): void
     {
         \putenv('PATH=/nonexistent');

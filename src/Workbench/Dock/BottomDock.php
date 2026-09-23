@@ -117,6 +117,8 @@ final class BottomDock
             $entry['panel']->onDismiss($this->hide(...));
         }
         $this->dockTabs->setProvider($this->aliveTabs(...));
+        // The strip's active lid goes heavy while its panel holds the keys.
+        $this->dockTabs->setFocusProbe(fn (): bool => null !== $this->tui->getFocus() && $this->visiblePanel() === $this->tui->getFocus());
     }
 
     /**

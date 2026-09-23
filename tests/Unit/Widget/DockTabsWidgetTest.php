@@ -354,4 +354,48 @@ final class DockTabsWidgetTest extends TestCase
         $this->assertStringContainsString(Glyphs::PANEL_RESIZE_GRAB, $plain, 'the gap before the status heavy-rules');
         $this->assertStringContainsString('[+3]', $plain, 'the status still shows');
     }
+
+    /**
+     * A folder strip splits the tail: the status on the lid row, the grab on
+     * the label row — the row above the panel a press arms — where the tabs
+     * stand on a baseline that heavy-rules under the pointer.
+     */
+    public function testAFolderStripPutsTheStatusOnTheLidAndTheGrabUnderTheTabs(): void
+    {
+        $bar = self::strip([['tab' => DockTab::Results, 'label' => 'Problems', 'active' => true, 'key' => '7', 'status' => '3 results']]);
+        $bar->setStripRows(2);
+        $this->assertSame(2, $bar->stripRows());
+
+        $rows = \array_map(AnsiUtils::stripAnsiCodes(...), $bar->render(new RenderContext(40, 2)));
+
+        $this->assertStringStartsWith('┍'.\str_repeat('━', times: 12).'┑', $rows[0], 'the tab: ` Problems × ` between its rails');
+        $this->assertStringEndsWith('3 results ', $rows[0], 'the status, right-aligned on the lid row');
+        $this->assertStringEndsWith('│'.\str_repeat('─', times: 26), $rows[1], 'and the baseline under the tabs');
+
+        $bar->hoverGrab();
+        $this->assertStringEndsWith(\str_repeat('━', times: 26), AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(40, 2))[1]), 'the grab heavy-rules under the pointer');
+        foreach ($bar->render(new RenderContext(40, 2)) as $row) {
+            $this->assertSame(40, AnsiUtils::visibleWidth($row));
+        }
+    }
+
+    /** The active tool's lid is heavy all round while its panel has the keys. */
+    public function testTheActiveLidFollowsThePanelsFocus(): void
+    {
+        $focused = false;
+        $bar = self::strip([['tab' => DockTab::Results, 'label' => 'Problems', 'active' => true, 'key' => '7', 'status' => '']]);
+        $bar->setFocusProbe(static function () use (&$focused): bool {
+            return $focused;
+        });
+        $bar->setStripRows(2);
+        $bar->beforeRender();
+        $this->assertStringStartsWith('┍', AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(40, 2))[0]));
+        $revision = $bar->getRenderRevision();
+
+        $focused = true;
+        $bar->beforeRender();
+
+        $this->assertNotSame($revision, $bar->getRenderRevision());
+        $this->assertStringStartsWith('┏', AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(40, 2))[0]));
+    }
 }

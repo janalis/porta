@@ -531,7 +531,7 @@ final class MouseRouter
     private function tryDockTabClick(MouseEvent $mouse): bool
     {
         $rect = $this->hit->rect($this->dockTabs);
-        if (!$this->dock->stripVisible() || null === $rect || $mouse->row !== $rect->row || $mouse->col < $rect->col || $mouse->col >= ($rect->col + $rect->columns)) {
+        if (!$this->dock->stripVisible() || null === $rect || !$rect->contains($mouse->row, $mouse->col)) {
             return false;
         }
         $col = $mouse->col - $rect->col;

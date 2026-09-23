@@ -13,10 +13,13 @@ use Porta\Widget\Render\EdgeIndicator;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Porta\Widget\Render\SelectionBar;
+use Porta\Widget\Render\StripEdge;
 use Porta\Widget\Render\TabCloseGlyph;
 use Porta\Widget\Render\TabState;
 use Porta\Widget\Render\TabStripRenderer;
+use Porta\Widget\Render\TabStripTail;
 use Porta\Widget\Render\TabStyle;
+use Porta\Widget\Support\PaneFocusProbe;
 use Porta\Widget\Support\ProviderFingerprint;
 use Porta\Widget\Support\StripScroll;
 use Porta\Widget\Support\StylesDefault;
@@ -34,6 +37,7 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
 final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
 {
     use MenuOverlayHostTrait;
+    use PaneFocusProbe;
 
     /** @use ProviderFingerprint<list<array{name: string, dirty: bool, active: bool, closable?: bool}>> */
     use ProviderFingerprint;
@@ -59,6 +63,12 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
 
     /** @var list<array{index: int, row: int, start: int, width: int, closeStart: int, closeWidth: int}> layout from the last render */
     private array $lastLayout = [];
+
+    /** @var positive-int the horizontal strip's height: one row, or {@see TabStripRenderer::ROWS} for folder tabs */
+    private int $stripRows = 1;
+
+    /** The pane focus the last render drew, so a focus change repaints the lid. */
+    private bool $drawnFocus = false;
 
     /** The active index the window last followed, so a manual scroll survives parked frames. */
     private ?int $lastActive = null;
@@ -103,6 +113,16 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
         return $this->position;
     }
 
+    /** @param positive-int $rows the horizontal strip's height, from the terminal's ({@see TabStripRenderer::rowsFor()}) */
+    public function setStripRows(int $rows): void
+    {
+        if ($rows !== $this->stripRows) {
+            $this->stripRows = $rows;
+            $this->lastLayout = [];
+            $this->invalidate();
+        }
+    }
+
     #[\Override]
     public function beforeRender(): void
     {
@@ -114,6 +134,9 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
         // put, a stale one falls off whatever tab moved out from under the
         // pointer.
         $this->refreshFingerprint(($this->provider)());
+        if ($this->paneFocused() !== $this->drawnFocus) {
+            $this->invalidate(); // the active lid's weight follows the pane's focus
+        }
     }
 
     /**
@@ -166,16 +189,18 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
         $tabs = null !== $this->provider ? ($this->provider)() : [];
 
         if ([] === $tabs) {
-            // The empty strip keeps its Toolbar base: closing the last tab must
-            // not drop the bar to the terminal default for one frame-height row.
-            return [$this->styles->of(Role::Toolbar)->apply(AnsiText::blank($columns))];
+            // The empty strip keeps its Toolbar base and its height: closing
+            // the last tab must neither drop the bar to the terminal default
+            // nor move the code under it.
+            return $this->withMenuOverlay(\array_fill(start_index: 0, count: $this->stripRows, value: $this->styles->of(Role::Toolbar)->apply(AnsiText::blank($columns))), $columns);
         }
 
         // The shared strip: the overflow window (reserve ‹/› cells, clamp,
         // follow-active-on-change), the cells and their hit map, exactly as the
         // dock and the git view draw theirs. Each tab ends with a clickable ×
         // unless it is pinned; the dirty ● (when present) sits just before it.
-        $hover = null !== $this->hoverCell && 0 === $this->hoverCell['row'] ? $this->hoverCell['col'] : null;
+        $this->drawnFocus = $this->paneFocused();
+        $bottom = TabBarPosition::Bottom === $this->position;
         $strip = TabStripRenderer::render(
             \array_map(fn (array $tab): array => [
                 'label' => $tab['name'],
@@ -185,17 +210,23 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
             ], $tabs),
             $columns,
             $this->styles,
-            $hover,
+            $this->hoverCell['col'] ?? null,
             $this->scroll,
             $this->lastActive,
+            $this->stripRows,
+            $bottom ? StripEdge::Bottom : StripEdge::Top,
+            $this->drawnFocus,
+            $this->hoverCell['row'] ?? null,
         );
         $this->scroll = $strip['scroll'];
         $this->lastActive = $strip['lastActive'];
         $this->indicatorZones = $strip['indicatorZones'];
-        $this->lastLayout = \array_map(static fn (array $zone): array => ['row' => 0] + $zone, $strip['hitMap']);
+        $labelRow = $strip['labelRow'];
+        $this->lastLayout = \array_map(static fn (array $zone): array => ['row' => $labelRow] + $zone, $strip['hitMap']);
 
-        // A Toolbar-background base under the whole strip, matching the other tab strips.
-        return $this->withMenuOverlay([$this->styles->of(Role::Toolbar)->apply(AnsiText::padRight($strip['line'], $columns))], $columns);
+        // A Toolbar-background base under the whole strip, matching the other
+        // tab strips. Folder tabs stand on a baseline along the label row.
+        return $this->withMenuOverlay(TabStripTail::pad($strip, $columns, $this->stripRows > 1, $this->styles), $columns);
     }
 
     /**
@@ -323,8 +354,9 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
     /**
      * Which tab index (into the full provider list) sits at the given
      * widget-relative cell of the last-rendered strip, or null when the click
-     * missed every tab. The horizontal strip ignores the row (it is one row
-     * tall, and a reorder-drag may wander off it); the vertical list matches it.
+     * missed every tab. The horizontal strip ignores the row (a folder tab is
+     * the whole of its shape, and a reorder-drag may wander off the strip);
+     * the vertical list matches it.
      */
     public function tabIndexAt(int $row, int $col): ?int
     {
@@ -366,7 +398,9 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
     public function closeIndexAt(int $row, int $col): ?int
     {
         foreach ($this->lastLayout as $entry) {
-            if ($this->position->isSide() && $entry['row'] !== $row) {
+            // Every orientation: a folder tab's × is on its label row, and
+            // the lid above it is the tab's, not the ×'s.
+            if ($entry['row'] !== $row) {
                 continue;
             }
             if ($col >= $entry['closeStart'] && $col < ($entry['closeStart'] + $entry['closeWidth'])) {

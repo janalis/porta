@@ -103,7 +103,10 @@ The shared row traits live in `Widget/Support/`:
 Every horizontal tab strip (editor, dock, git mode tabs) is
 `Widget/Render/TabStripRenderer::render()`; the single cell is its
 `measureCell`/`renderCell`. Only the vertical editor strip lays out its own
-rows.
+rows. A folder tab's outline is `Widget/Render/TabShape` at a `StripEdge`;
+`TabStripTail` pads the rows. How tall the strips are is
+`Layout/TabStripHeight`, and a strip learns whether its pane has the keys
+through the `Widget/Support/PaneFocusProbe` trait.
 
 **`Widget/EditorPaneWidget`** and **`Widget/NavigablePaneWidget`** — the two
 abstract bases a pane extends. A pane *is* a widget rather than having one, for

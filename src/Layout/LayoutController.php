@@ -12,6 +12,7 @@ use Porta\Input\MouseEvent;
 use Porta\Support\IntMath;
 use Porta\Widget\DockPanelWidget;
 use Porta\Widget\FileTreeWidget;
+use Porta\Widget\Render\TabStripRenderer;
 use Porta\Workbench\Dock\BottomDock;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Render\WidgetRect;
@@ -301,7 +302,7 @@ final class LayoutController
      * just asked to take over. Six rows is what the frame itself needs — the
      * menu bar, the tab strip, the dock strip and the status bar — plus a
      * couple of editor rows, so you can still see which file you are coming
-     * back to.
+     * back to; and two more where the strips are folder tabs.
      *
      * A no-op when no panel is open: there is nothing to maximise, and
      * inventing a panel to fill the screen is not what the key asked for.
@@ -334,7 +335,18 @@ final class LayoutController
 
     private function maximisedRows(): int
     {
-        return \max(3, $this->tui->getTerminal()->getRows() - 6);
+        $rows = $this->tui->getTerminal()->getRows();
+
+        return \max(3, $rows - 6 - self::folderRows($rows));
+    }
+
+    /**
+     * The rows the two tab strips take beyond one each, on a terminal tall
+     * enough for folder tabs ({@see TabStripRenderer::rowsFor()}).
+     */
+    private static function folderRows(int $rows): int
+    {
+        return 2 * (TabStripRenderer::rowsFor($rows) - 1);
     }
 
     /** Shared keyboard-nudge path: clamp like the drags do, persist, repaint. */
@@ -400,7 +412,7 @@ final class LayoutController
     /** Clamp a bottom-panel height so the editor keeps room above it. */
     private function clampPanel(int $height, int $rows): int
     {
-        return IntMath::clamp($height, 3, $rows - 8);
+        return IntMath::clamp($height, 3, $rows - 8 - self::folderRows($rows));
     }
 
     /**

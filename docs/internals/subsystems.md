@@ -338,6 +338,32 @@ only the box and a column either side of it toggle.
 - A box adds `FieldBox::ROWS - 1` rows to its host; every host derives its
   header rows and click bands from `FieldBox::ROWS`, never a literal.
 
+### Tab strips: folder tabs from 30 rows
+
+Every horizontal strip is `TabStripRenderer::render()`. At
+`TabStripRenderer::ROWS` (2) rows each tab is a folder tab with its own rails:
+a lid row above the labels, or below them at a bottom edge (`StripEdge`). The
+lid's shape is the state (`TabShape`): `╭─╮` for the rest, `┍━┑` for the shown
+tab, `┏━┓` with heavy rails for the shown tab of the pane that has the keys.
+The tabs stand on a `─` baseline. Below `COMPACT_BELOW` (30) terminal rows a
+strip is one row, each cell closed by a divider.
+
+A strip's render context carries its parent's height, not the terminal's, so
+`Layout/TabStripHeight` (eager, a frame hook) reads the terminal's rows and
+pushes the height into the editor and dock strips. `LayoutController`'s frame
+arithmetic (`maximisedRows`, `clampPanel`) applies the same rule to the
+terminal rows it already has. The git mode tabs are a plugin widget: they add
+the menu and status rows back to their sidebar's height.
+
+Hit-testing: a tab is its whole shape (`tabIndexAt` ignores the row), and a
+`×` is on the label row alone (`closeIndexAt`, and the renderer lights a `×`
+only for a pointer on that row). `‹`/`›` page from either row. The dock's
+label-row tail is the resize grab (one row above the panel, which is what
+`armPanelResize` arms), and its status sits on the lid row. The strips' focus
+probes: the editor area's widget for the editor strip, the visible panel for
+the dock, the sidebar's lists and commit box for git. Each strip repaints in
+`beforeRender` when the probed focus differs from what it last drew.
+
 ### The status bar: cells, then the file
 
 `StatusBarProvider` returns the contributed cells (each styled by its tone, the
