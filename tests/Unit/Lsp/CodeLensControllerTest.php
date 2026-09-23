@@ -63,7 +63,7 @@ final class CodeLensControllerTest extends TestCase
     /** @param list<array<string, mixed>> $lenses */
     private function answer(array $lenses): void
     {
-        \end($this->client->requests)['respond']($lenses);
+        \end($this->client->requests)['respond']($lenses, error: null);
     }
 
     private static function lens(int $line, string $title): array
@@ -142,7 +142,7 @@ final class CodeLensControllerTest extends TestCase
         $this->answer([self::lens(1, 'first')]);
 
         $controller->requestCodeLenses();
-        \end($this->client->requests)['respond'](null);
+        \end($this->client->requests)['respond'](null, error: null);
 
         $this->assertSame(['first'], \array_column($this->editor->decorations->codeLensesAt(1), 'title'));
     }
@@ -269,5 +269,114 @@ final class CodeLensControllerTest extends TestCase
     private function flashed(): string
     {
         return AnsiUtils::stripAnsiCodes(\implode('', $this->status->render(new RenderContext(120, 1))));
+    }
+
+    /**
+     * A controller over TWO servers on php, each with its own fake client.
+     *
+     * @return array{0: CodeLensController, 1: list<FakeLspClient>}
+     */
+    private function twoServerController(): array
+    {
+        $this->editor = new CodeEditorWidget();
+        $tui = new Tui(terminal: new VirtualTerminal(columns: 100, rows: 20));
+        $built = [];
+        $pool = new LspSessionPool(
+            '/p',
+            $this->activeFile = new FixedActiveFile(),
+            new Translator('en'),
+            static function (array $command, string $rootDir, \Closure $onLog) use (&$built): FakeLspClient {
+                $client = new FakeLspClient(['codeLensProvider' => ['resolveProvider' => false]]);
+                $built[] = $client;
+
+                return $client;
+            },
+        );
+        $pool->configure(
+            [
+                'php' => [
+                    ['command' => ['php-ls'], 'name' => 'php-ls'],
+                    ['command' => ['sf-ls'], 'name' => 'sf-ls'],
+                ],
+            ],
+            static function (string $line): void {},
+            static function (array $params): void {},
+            static fn (array $edit): bool => false,
+        );
+        $controller = new CodeLensController($pool, $this->editor, $this->editor->decorations, $tui, new Notifier($this->status = new StatusBarWidget(), $tui), new Translator('en'));
+        $this->editor->showDocument('/p/a.php', new Document("<?php\nclass A {}\nfunction b() {}\n"));
+        $this->activeFile->set('/p/a.php');
+        $pool->notifyDidOpen('/p/a.php', "<?php\n", 'php', 1);
+
+        return [$controller, $built];
+    }
+
+    /**
+     * Both servers' lenses sit above the same line.
+     *
+     * A Symfony server's route lens belongs above the same method a PHP
+     * server counts usages on, and neither is the other's to replace.
+     */
+    public function testLensesFromEveryServerShareTheLine(): void
+    {
+        [$controller, $clients] = $this->twoServerController();
+
+        $controller->requestCodeLenses();
+        $clients[0]->requests[0]['respond']([self::lens(1, '3 usages')], error: null);
+        $this->assertSame(['3 usages'], \array_column($this->editor->decorations->codeLensesAt(1), 'title'), 'the first shows without waiting');
+
+        $clients[1]->requests[0]['respond']([self::lens(1, 'GET /home')], error: null);
+
+        $this->assertSame(['3 usages', 'GET /home'], \array_column($this->editor->decorations->codeLensesAt(1), 'title'));
+    }
+
+    /**
+     * The merged map stays in LINE order however the answers arrived.
+     *
+     * The store is walked by line to lay rows out above the code; a map whose
+     * keys ran 7, 2 because the second server answered about an earlier line
+     * would be a different walk for the same file.
+     */
+    public function testTheMergedLensesStayInLineOrder(): void
+    {
+        [$controller, $clients] = $this->twoServerController();
+
+        $controller->requestCodeLenses();
+        $clients[0]->requests[0]['respond']([self::lens(2, 'later line')], error: null);
+        $clients[1]->requests[0]['respond']([self::lens(1, 'earlier line')], error: null);
+
+        $this->assertSame([1, 2], \array_keys(Probe::get($this->editor->decorations, 'codeLenses')));
+    }
+
+    /**
+     * Running a lens executes its command on the server that published it.
+     *
+     * A command id means nothing to another server, which would at best
+     * answer "unknown command" and at worst run something of its own that
+     * happens to share the name.
+     */
+    public function testRunningALensGoesBackToTheServerThatPublishedIt(): void
+    {
+        [$controller, $clients] = $this->twoServerController();
+        $controller->requestCodeLenses();
+        $clients[0]->requests[0]['respond']([self::lens(1, 'mine')], error: null);
+        $clients[1]->requests[0]['respond']([self::lens(1, 'theirs')], error: null);
+
+        $controller->runCodeLens(1, 1); // the second lens, from the second server
+
+        $this->assertSame(['textDocument/codeLens'], \array_column($clients[0]->requests, 'method'), 'the other server was not asked');
+        $this->assertSame(['textDocument/codeLens', 'workspace/executeCommand'], \array_column($clients[1]->requests, 'method'));
+    }
+
+    /** A server that never claimed lenses is not asked for them. */
+    public function testOnlyServersThatAdvertiseLensesAreAsked(): void
+    {
+        [$controller, $clients] = $this->twoServerController();
+        Probe::set($clients[1], 'capabilities', []);
+
+        $controller->requestCodeLenses();
+
+        $this->assertCount(1, $clients[0]->requests);
+        $this->assertSame([], $clients[1]->requests);
     }
 }

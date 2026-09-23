@@ -519,6 +519,28 @@ document opened twice is not a harmless duplicate. `statusFor()` reads
 `own +beside`, and names a failed one rather than hiding it behind the
 survivor.
 
+**The verbs whose answers are LISTS are merged.** `requestAll()` asks every
+session for the active file whose OWN capabilities advertise the method, and
+calls back once per answer as answers arrive — deliberately incremental,
+because `request()` has no timeout and waiting for the last answer would let
+one silent server hold the verb forever. Completion items, code actions and
+code lenses merge that way; each carries the server that offered it
+(`Lsp/ServerOwner`, a key inside the payload, taken off again before the
+payload goes back on the wire), because `completionItem/resolve`,
+`codeAction/resolve` and `workspace/executeCommand` are all second round trips
+that have to reach the same server. `requestTo()` is that half; an empty owner
+means "whoever serves the active file", and a named-but-gone one is a silent
+no-op. Each merging controller holds a GENERATION, because several servers
+answer one keystroke at their own speeds and a late answer to a superseded
+request would put a list of the wrong things back on screen.
+
+Everything else stays single-winner, deliberately: hover, rename,
+prepareRename, formatting (two formatters' edits over one buffer overlap, and
+`WorkspaceEditor` refuses overlapping edits), documentSymbol (two trees for one
+file is a duplicated outline) and semantic tokens — whose legend is read out of
+the same server's capability that decodes its response, so a merged capability
+would decode with the wrong one.
+
 **Published diagnostics are keyed by OWNER.** `DiagnosticsSink::applyDiagnostics()`
 takes the server's name (bound per session, like the log and `showMessage`
 hooks) or the publishing plugin's, and `Buffer::$diagnostics` is a derived

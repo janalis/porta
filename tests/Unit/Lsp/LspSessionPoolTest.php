@@ -770,6 +770,37 @@ final class LspSessionPoolTest extends TestCase
     }
 
     /**
+     * A server without the capability is SKIPPED, and the ones after it are
+     * still asked.
+     *
+     * Bailing at the first one that cannot answer looks identical whenever
+     * that one is last, which is the easy fixture and the one that proves
+     * nothing.
+     */
+    public function testAServerWithoutTheCapabilityDoesNotHideTheOnesAfterIt(): void
+    {
+        $capabilities = [['codeLensProvider' => true], [], ['codeLensProvider' => true]];
+        $built = [];
+        $pool = $this->poolWithCapabilities(
+            [
+                'php' => [
+                    ['command' => ['one'], 'name' => 'one'],
+                    ['command' => ['two'], 'name' => 'two'],
+                    ['command' => ['three'], 'name' => 'three'],
+                ],
+            ],
+            $capabilities,
+            $built,
+        );
+        $pool->notifyDidOpen('/tmp/proj/a.php', '<?php', 'php', 1);
+        $this->activeFile->set('/tmp/proj/a.php');
+
+        $pool->requestAll('textDocument/codeLens', [], 'codeLensProvider', static function (mixed $r, ?array $e, string $o): void {});
+
+        $this->assertSame([1, 0, 1], \array_map(static fn (FakeLspClient $c): int => \count($c->requests), $built));
+    }
+
+    /**
      * `ready()` answers the language's OWN server, not whichever answered
      * last — it is the one a feature request will go to.
      */
@@ -784,5 +815,53 @@ final class LspSessionPoolTest extends TestCase
 
         $this->assertNull($pool->ready('/tmp/proj/a.php', new Document('<?php')), 'the language\'s own server is not ready, so nothing is');
         $this->assertTrue($this->clients[1]['client']->isInitialized, 'the other one IS, which is what makes this a real distinction');
+    }
+
+    /** A follow-up to a server that has since gone is a no-op, not a crash. */
+    public function testAFollowUpToAServerThatIsGoneIsANoOp(): void
+    {
+        $pool = $this->pool(self::TWO_ON_PHP);
+        $pool->notifyDidOpen('/tmp/proj/a.php', '<?php', 'php', 1);
+        $this->activeFile->set('/tmp/proj/a.php');
+        foreach ($this->clients as $built) {
+            $built['client']->requests = [];
+        }
+
+        $pool->requestTo('a server that never existed', 'completionItem/resolve', [], static function (mixed $r, ?array $e): void {});
+        $this->assertNull($pool->capabilityOf('a server that never existed', 'completionProvider'));
+
+        foreach ($this->clients as $built) {
+            $this->assertSame([], $built['client']->requests, 'nobody else was handed it either');
+        }
+    }
+
+    /**
+     * A pool whose clients declare DIFFERENT capabilities, in build order.
+     *
+     * @param array<string, non-empty-list<array{command: list<string>, name: string}>> $servers
+     * @param list<array<string, mixed>>                                                 $capabilities
+     * @param list<FakeLspClient>                                                        $built
+     */
+    private function poolWithCapabilities(array $servers, array $capabilities, array &$built): LspSessionPool
+    {
+        $pool = new LspSessionPool(
+            '/tmp/proj',
+            $this->activeFile = new FixedActiveFile(),
+            new Translator('en'),
+            static function (array $command, string $rootDir, \Closure $onLog) use ($capabilities, &$built): FakeLspClient {
+                $client = new FakeLspClient($capabilities[\count($built)] ?? []);
+                $built[] = $client;
+
+                return $client;
+            },
+        );
+        $pool->configure(
+            $servers,
+            static function (string $line): void {},
+            static function (array $params): void {},
+            static fn (array $edit): bool => false,
+        );
+
+        return $pool;
     }
 }

@@ -4463,6 +4463,79 @@ Incidentally the new path is a fix, not just a change: `mb_strwidth()` scored
 that conjunct 3 columns, the grapheme walk scores it 2, and 2 is what a terminal
 draws.
 
+## Merging what two servers answer (2026-09-23)
+
+Stage A put two servers on one language and fed both. They still answered
+nothing together: every feature request went to the first. This closes the
+half that makes a second server worth having — a Symfony server's route names
+in the same completion popup as a PHP server's methods.
+
+**`requestAll()` is incremental on purpose.** `request()` has no timeout, so a
+contract that waited for the last answer would let one server that never
+replies hold the whole verb forever. Each answer merges into what is in hand
+and re-renders; the popup grows as servers reply. Only servers whose OWN
+capabilities advertise the method are asked — a merged capability would be a
+claim no single server made, and a server that never offered the feature
+answers an error per request.
+
+**A second round trip has to reach the same server.**
+`completionItem/resolve`, `codeAction/resolve` and `workspace/executeCommand`
+are each about something one server offered, and sending them elsewhere is at
+best an error response and at worst another server acting on an id that means
+something different to it. `Lsp/ServerOwner` carries the answering server
+inside the payload, because that is what survives the trip through the UI: the
+popup hands the raw item back, the quick-fix list hands the raw action back,
+and neither has anywhere else to put a note. It is taken off again before the
+payload goes on the wire — the spec says an item is handed back to resolve
+unchanged, and a field of ours arriving at a server is at best ignored.
+
+**Every merging controller holds a generation.** Several servers answer one
+Ctrl+Space at their own speeds while the user keeps typing, and the slow answer
+to the request before last is not merely stale — it is a list of the wrong
+things. The completion guard is two statements rather than one `||` chain,
+because "it arrived too late" and "it says nothing useful" are different
+reasons to drop an answer, and folding them together made half the condition
+unkillable.
+
+**A per-answer message must look at what is in hand.** "No quick fixes here"
+used to be raised from the only answer there was. With several, a server with
+nothing to offer would blank a list another had already put up — so the flash
+asks the accumulator, not its own reply. The test for it asserts the flash
+BEFORE applying anything, because applying raises its own message over it.
+
+**Two capability gates had to stay single-server**, and they are the reason
+`capabilityOf()` exists rather than a merged view: `SemanticTokensController`
+reads the legend out of the same capability that decodes that server's
+response, and completion detail resolution reads `completionProvider` to
+decide whether asking is worth anything. One server resolving says nothing
+about another.
+
+**Behaviour change worth stating**: servers that do not advertise
+`completionProvider`, `codeActionProvider` or `codeLensProvider` are no longer
+asked for those. LSP requires advertising them, and asking anyway earns an
+error response per request — but a non-conformant server that answered without
+advertising would now go unasked.
+
+### The eight mutants left standing, and why
+
+Every one is equivalent, and the reason is at the site so the next round does
+not rediscover it:
+
+- three `Increment`s on `++$generation` — the counter is only ever compared for
+  equality, so decrementing it works exactly as well;
+- two `UnwrapArrayValues` — `array_values()` makes a declared `list` true
+  rather than assumed, and nothing downstream reads the keys;
+- two `CastString`s in `ServerLocator` — for the analyzer; PHP normalises a
+  numeric string array key to an int anyway, and removing them turns
+  `composer analyze` red;
+- one `ReturnRemoval` in `requestTo()` — no session is keyed `''`, so falling
+  through changes nothing today, and keeping the return is what stops that
+  being load-bearing.
+
+One survivor WAS a real gap and is now covered: an action arriving with its own
+`command` on a server that resolves used to be indistinguishable from one that
+needed resolving, so nothing proved it is run rather than round-tripped.
+
 ## Two servers on one language (2026-09-23)
 
 Porta routed one language server per languageId, and which plugin got `php`
@@ -4471,6 +4544,26 @@ language tools is *built* to run beside a general PHP server, and lost the
 claim because `symfony-lsp` sorts after `phpantom`. Renaming either plugin
 would have changed which one served PHP, which is the shape of an accident
 rather than a decision.
+
+**Diagnostics needed an owner first, and that half stands alone.**
+`Buffer::$diagnostics` was one slot. A language server publishes on every
+keystroke and an analyser plugin publishes on every save, both for the same
+file — so running phpstan beside a PHP server showed one set or the other
+depending on which had spoken last, flickering back on the next edit. Nobody
+had to enable anything new for this: `PluginApi::setDiagnostics()` and the LSP
+hook already shared the slot, and the docblock said so ("replace any previous
+set for that file").
+
+It cannot be fixed by ignoring empty publishes. LSP *requires* an empty
+`diagnostics` array to mean "I have cleared mine", so "nothing to say" and
+"nothing any more" are the same payload and only the owner tells them apart.
+`applyDiagnostics()` takes one now — the server's name, bound per session the
+way the log and `showMessage` hooks already were, or the publishing plugin's —
+and `$diagnostics` is a derived merge of `$diagnosticsByOwner`. The merge is
+ordered by owner name and then by line, because a server answering a keystroke
+and an analyser answering a save land in whichever order the loop gives them,
+and a Problems panel that reshuffled on that race would be unreadable while you
+are reading it.
 
 **`ServerRole` replaces load order.** The first `Primary` claim wins and later
 ones are dropped — two general servers for one language is double the processes
@@ -4533,31 +4626,6 @@ wrong one: both of its cases flash the same message, and `clearOutput()` does
 not clear a flash that is still live and repainting — so the await after it was
 satisfied by the FIRST flash coming back. The cases are the other way round
 now, and the second waits for the toast stack to empty before it looks.
-
-## Diagnostics belong to whoever published them (2026-09-23)
-
-`Buffer::$diagnostics` was ONE slot shared by every publisher. A language
-server publishes on every keystroke and an analyser plugin publishes on every
-save, both for the same file — so running phpstan beside a PHP server showed
-one set or the other depending on which had spoken last, flickering back on the
-next edit. Nobody had to enable anything for this: `PluginApi::setDiagnostics()`
-and the LSP hook already shared the slot, and the docblock said so ("replace
-any previous set for that file").
-
-It cannot be fixed by ignoring empty publishes. LSP *requires* an empty
-`diagnostics` array to mean "I have cleared mine", so "nothing to say" and
-"nothing any more" are the same payload and only the owner tells them apart.
-`applyDiagnostics()` takes one now — the server's name, bound per session the
-way the log and `showMessage` hooks already were, or the publishing plugin's —
-and `$diagnostics` is a derived merge of `$diagnosticsByOwner`.
-
-With several owners the merge is ordered by owner name and then by line,
-because a server answering a keystroke and an analyser answering a save land in
-whichever order the loop gives them, and a Problems panel that reshuffled on
-that race would be unreadable while you are reading it. ONE owner is handed
-back exactly as it came: the ordering only has to be decided where there is
-something to decide, and touching the common path would change what every
-single-server project has always rendered.
 
 ## symfony-lsp knows what it installed (2026-09-22)
 

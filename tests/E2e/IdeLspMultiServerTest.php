@@ -153,4 +153,96 @@ final class IdeLspMultiServerTest extends TestCase
 
         $this->addToAssertionCount(1);
     }
+
+    /**
+     * Two fixture plugins claiming php with servers that NAME their
+     * completion items after themselves.
+     */
+    private static function pluginsCompletingPhp(): TempProject
+    {
+        $server = \dirname(__DIR__).'/Support/labelled-lsp-server.php';
+        $php = \PHP_BINARY;
+
+        return new TempProject([
+            'zeta/plugin.php' => <<<PHP
+                <?php
+                use Porta\Plugin\Api\PluginApi;
+                use Porta\Plugin\Api\PortaPlugin;
+
+                return new class implements PortaPlugin {
+                    public function name(): string
+                    {
+                        return 'zeta';
+                    }
+
+                    public function activate(PluginApi \$api): void
+                    {
+                        \$api->registerLanguageServer('php', 'zeta-ls', static fn (): array => ['{$php}', '{$server}', 'zeta']);
+                    }
+                };
+                PHP,
+            'alpha/plugin.php' => <<<PHP
+                <?php
+                use Porta\Plugin\Api\PluginApi;
+                use Porta\Plugin\Api\PortaPlugin;
+                use Porta\Plugin\Api\ServerRole;
+
+                return new class implements PortaPlugin {
+                    public function name(): string
+                    {
+                        return 'alpha';
+                    }
+
+                    public function activate(PluginApi \$api): void
+                    {
+                        \$api->registerLanguageServer(
+                            'php',
+                            'alpha-ls',
+                            static fn (): array => ['{$php}', '{$server}', 'alpha'],
+                            null,
+                            ServerRole::Supplementary,
+                        );
+                    }
+                };
+                PHP,
+        ]);
+    }
+
+    /**
+     * One popup, both servers' items.
+     *
+     * This is what a second server on a language is FOR: a Symfony server's
+     * route names beside a PHP server's methods, in the list the user is
+     * already looking at.
+     */
+    public function testOnePopupCarriesItemsFromBothServers(): void
+    {
+        $plugins = self::pluginsCompletingPhp();
+        \putenv('PORTA_EMBEDDED_PLUGINS='.$plugins->dir);
+        $project = new TempProject([
+            'a.php' => "<?php\n\$x = st\n",
+            '.porta.json' => \json_encode(['enabledPlugins' => ['zeta', 'alpha']]),
+        ]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                400 => function (Tui $tui, VirtualTerminal $terminal): void {
+                    $this->awaitPainted($tui, $terminal, 'LSP:zeta-ls +alpha-ls');
+
+                    $tui->getById('editor')->getDocument()->setCursor(1, 7);
+                    $tui->handleInput("\x00"); // ctrl+space
+
+                    // Awaited, not asserted after a gap: the two answers land
+                    // independently, so the popup holds one item before it
+                    // holds both.
+                    $this->awaitPainted($tui, $terminal, 'alpha_item');
+                    $this->awaitPainted($tui, $terminal, 'zeta_item');
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
 }

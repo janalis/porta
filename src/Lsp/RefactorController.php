@@ -21,6 +21,16 @@ use Symfony\Component\Tui\Tui;
 #[AsIdeService]
 final class RefactorController extends AbstractLspController implements EditorRefactorHandler
 {
+    /** Which codeAction request the list on screen belongs to. */
+    private int $actionGeneration = 0;
+
+    /**
+     * The actions merged so far for {@see $actionGeneration}.
+     *
+     * @var list<array<string, mixed>>
+     */
+    private array $actions = [];
+
     /** CodeActionTriggerKind.Invoked — the user asked, rather than the editor polling as they type. */
     private const int TRIGGER_INVOKED = 1;
 
@@ -215,27 +225,37 @@ final class RefactorController extends AbstractLspController implements EditorRe
             $context['only'] = $only;
         }
 
-        $this->lsp->request(
+        $generation = ++$this->actionGeneration;
+        $this->actions = [];
+        $this->lsp->requestAll(
             'textDocument/codeAction',
             [
                 'textDocument' => ['uri' => $this->uri($path)],
                 'range' => $this->actionRange($line, $col, $diagnostics),
                 'context' => $context,
             ],
-            function (mixed $result, ?array $error) use ($present, $empty): void {
-                if (null !== $error || !\is_array($result) || [] === $result) {
+            'codeActionProvider',
+            function (mixed $result, ?array $error, string $owner) use ($present, $empty, $generation): void {
+                if ($generation !== $this->actionGeneration) {
+                    return; // a later request is what the user is waiting on
+                }
+                /** @var list<array<string, mixed>> $offered */
+                $offered = null === $error && \is_array($result)
+                    ? \array_values(\array_filter($result, static fn ($a): bool => \is_array($a) && '' !== (string) ($a['title'] ?? '')))
+                    : [];
+                foreach (ServerOwner::stampAll($offered, $owner) as $action) {
+                    $this->actions[] = $action;
+                }
+                // Said on EVERY answer, not only the last: a server with
+                // nothing to offer must not leave the screen silent while
+                // another is still thinking, and must not overwrite what that
+                // other one has already put up.
+                if ([] === $this->actions) {
                     $this->flash($this->trans($empty));
 
                     return;
                 }
-                /** @var list<array<string, mixed>> $actions */
-                $actions = \array_values(\array_filter($result, static fn ($a): bool => \is_array($a) && '' !== (string) ($a['title'] ?? '')));
-                if ([] === $actions) {
-                    $this->flash($this->trans($empty));
-
-                    return;
-                }
-                $present($this->preferredFirst($actions));
+                $present($this->preferredFirst($this->actions));
                 $this->tui->requestRender();
             },
         );
@@ -364,13 +384,14 @@ final class RefactorController extends AbstractLspController implements EditorRe
      */
     private function applyOrResolve(array $action): void
     {
-        if (($action['edit'] ?? null) !== null || ($action['command'] ?? null) !== null || !$this->supportsResolve()) {
+        if (($action['edit'] ?? null) !== null || ($action['command'] ?? null) !== null || !$this->supportsResolve($action)) {
             $this->applyCodeAction($action);
 
             return;
         }
 
-        $this->lsp->request('codeAction/resolve', $action, function (mixed $result, ?array $error) use ($action): void {
+        [$owner, $bare] = ServerOwner::take($action);
+        $this->lsp->requestTo($owner, 'codeAction/resolve', $bare, function (mixed $result, ?array $error) use ($action): void {
             // Falling back to the unresolved action is deliberate: it flashes
             // "nothing to apply", which is the truth when a resolve fails.
             /** @var array<string, mixed> $resolved */
@@ -379,10 +400,20 @@ final class RefactorController extends AbstractLspController implements EditorRe
         });
     }
 
-    private function supportsResolve(): bool
+    /**
+     * Whether the server that OFFERED $action resolves.
+     *
+     * Its own capability, not a merged one: one server resolving says nothing
+     * about another, and the point of the gate is to stop sending a resolve
+     * to a server that can only answer an error.
+     *
+     * @param array<string, mixed> $action
+     */
+    private function supportsResolve(array $action): bool
     {
+        [$owner] = ServerOwner::take($action);
         /** @var array<string, mixed>|bool|null $capability LSP: boolean or a CodeActionOptions object */
-        $capability = $this->lsp->serverCapability($this->editor->getFilePath(), 'codeActionProvider');
+        $capability = $this->lsp->capabilityOf($owner, 'codeActionProvider');
 
         return \is_array($capability) && true === ($capability['resolveProvider'] ?? null);
     }
@@ -430,7 +461,13 @@ final class RefactorController extends AbstractLspController implements EditorRe
         }
         if (\is_array($command) && ($command['command'] ?? null) !== null) {
             $title = (string) ($action['title'] ?? $command['title'] ?? 'command');
-            $this->lsp->request(
+            /** @var array<string, mixed> $owned */
+            $owned = $action;
+            [$owner] = ServerOwner::take($owned);
+            // The command id belongs to the server that offered it; another
+            // would at best answer "unknown command".
+            $this->lsp->requestTo(
+                $owner,
                 'workspace/executeCommand',
                 [
                     'command' => $command['command'],

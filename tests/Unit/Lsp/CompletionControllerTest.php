@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Lsp;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Editor\CompletionItem;
 use Porta\Editor\Document;
 use Porta\I18n\Translator;
 use Porta\Lsp\CompletionController;
@@ -53,6 +54,51 @@ final class CompletionControllerTest extends TestCase
     }
 
     /** Opens $path in the editor and the fake LSP session, ready to answer requests. */
+    /**
+     * A controller over TWO servers on php, each with its own fake client —
+     * a general server and one that runs beside it.
+     *
+     * @param array<string, mixed>|null $firstCapabilities what the FIRST server declares, when a
+     *        test needs the two to differ
+     *
+     * @return array{0: CompletionController, 1: list<FakeLspClient>}
+     */
+    private function twoServerController(?array $firstCapabilities = null): array
+    {
+        $this->editor = new CodeEditorWidget();
+        $this->tui = new Tui(terminal: new VirtualTerminal(columns: 100, rows: 20));
+        $built = [];
+        $pool = new LspSessionPool(
+            '/p',
+            $this->activeFile = new FixedActiveFile(),
+            new Translator('en'),
+            static function (array $command, string $rootDir, \Closure $onLog) use (&$built, $firstCapabilities): FakeLspClient {
+                $resolves = ['completionProvider' => ['resolveProvider' => true]];
+                $client = new FakeLspClient([] === $built && null !== $firstCapabilities ? $firstCapabilities : $resolves);
+                $built[] = $client;
+
+                return $client;
+            },
+        );
+        $pool->configure(
+            [
+                'php' => [
+                    ['command' => ['php-ls'], 'name' => 'php-ls'],
+                    ['command' => ['sf-ls'], 'name' => 'sf-ls'],
+                ],
+            ],
+            static function (string $line): void {},
+            static function (array $params): void {},
+            static fn (array $edit): bool => false,
+        );
+        $controller = new CompletionController($pool, $this->editor, $this->tui, new Notifier(new StatusBarWidget(), $this->tui), new Translator('en'));
+        $this->editor->showDocument('/p/a.php', new Document("<?php\n\$a->fo\n"));
+        $this->activeFile->set('/p/a.php');
+        $pool->notifyDidOpen('/p/a.php', "<?php\n", 'php', 1);
+
+        return [$controller, $built];
+    }
+
     private function readyOn(CompletionController $controller, string $path, string $text): void
     {
         $this->editor->showDocument($path, new Document($text));
@@ -215,7 +261,10 @@ final class CompletionControllerTest extends TestCase
 
     public function testRequestCompletionShowsMappedItems(): void
     {
-        $controller = $this->controller();
+        // The capability is not decoration: only servers that ADVERTISE
+        // completion are asked, so that a second server on the language which
+        // does not is not sent a request it can only answer with an error.
+        $controller = $this->controller(['completionProvider' => ['resolveProvider' => true]]);
         $this->readyOn($controller, '/p/a.php', "<?php\n\$a->fo\n");
 
         $controller->requestCompletion(1, 6);
@@ -393,5 +442,145 @@ final class CompletionControllerTest extends TestCase
         $action();
 
         return (bool) Probe::get($this->tui, 'renderRequested');
+    }
+
+    /** A server that never claimed completion is not asked for it. */
+    public function testAServerThatDoesNotAdvertiseCompletionIsNotAsked(): void
+    {
+        $controller = $this->controller(['inlayHintProvider' => true]);
+        $this->readyOn($controller, '/p/a.php', "<?php\n\$a->fo\n");
+
+        $controller->requestCompletion(1, 6);
+
+        $this->assertSame([], \array_column($this->client->requests, 'method'));
+    }
+
+    /**
+     * A late answer to a superseded request does not reinstate its list.
+     *
+     * Several servers answer one Ctrl+Space at their own speeds while the user
+     * keeps typing. Without a generation, the slow answer to the request
+     * before last would put a list of the wrong things back on screen.
+     */
+    public function testALateAnswerToASupersededRequestIsDropped(): void
+    {
+        $controller = $this->controller(['completionProvider' => true]);
+        $this->readyOn($controller, '/p/a.php', "<?php\n\$a->fo\n");
+
+        $controller->requestCompletion(1, 6);
+        $stale = $this->client->requests[0]['respond'];
+        $controller->requestCompletion(1, 7); // the user typed on
+        $this->client->requests[1]['respond'](['items' => [['label' => 'fresh']]], error: null);
+
+        $stale(['items' => [['label' => 'stale']]], error: null);
+
+        $screen = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->render(new RenderContext(80, 8))));
+        $this->assertStringContainsString('fresh', $screen);
+        $this->assertStringNotContainsString('stale', $screen);
+    }
+
+    /**
+     * Both servers' items end up in one popup, and the popup grows as they
+     * answer rather than waiting for the slow one.
+     *
+     * A Symfony server contributing route names beside a PHP server's methods
+     * is what a second server on one language is FOR.
+     */
+    public function testItemsFromEveryServerAreMergedIntoOnePopup(): void
+    {
+        [$controller, $clients] = $this->twoServerController();
+
+        $controller->requestCompletion(1, 6);
+        $clients[0]->requests[0]['respond'](['items' => [['label' => 'formatMessage']]], error: null);
+
+        $this->assertStringContainsString('formatMessage', $this->screen(), 'the first answer shows without waiting for the second');
+
+        $clients[1]->requests[0]['respond'](['items' => [['label' => 'app_home_route']]], error: null);
+
+        $screen = $this->screen();
+        $this->assertStringContainsString('formatMessage', $screen);
+        $this->assertStringContainsString('app_home_route', $screen);
+    }
+
+    /** One server failing does not cost the other its items. */
+    public function testAnErrorFromOneServerLeavesTheOthersItemsShowing(): void
+    {
+        [$controller, $clients] = $this->twoServerController();
+
+        $controller->requestCompletion(1, 6);
+        $clients[0]->requests[0]['respond'](['items' => [['label' => 'survivor']]], error: null);
+        $clients[1]->requests[0]['respond'](null, error: ['code' => -32_603, 'message' => 'boom']);
+
+        $this->assertStringContainsString('survivor', $this->screen());
+    }
+
+    /** The same label from two servers is one row, not two. */
+    public function testTheSameLabelFromTwoServersIsOneRow(): void
+    {
+        [$controller, $clients] = $this->twoServerController();
+
+        $controller->requestCompletion(1, 6);
+        $clients[0]->requests[0]['respond'](['items' => [['label' => 'shared', 'detail' => 'from the first']]], error: null);
+        $clients[1]->requests[0]['respond'](['items' => [['label' => 'shared', 'detail' => 'from the second']]], error: null);
+
+        $screen = $this->screen();
+        $this->assertSame(1, \substr_count($screen, needle: 'shared'));
+        $this->assertStringContainsString('from the first', $screen, 'the first answer wins the row');
+    }
+
+    /**
+     * Resolving an item goes back to the server that OFFERED it.
+     *
+     * Sending it anywhere else is at best an error response and at worst a
+     * server acting on an id that means something different to it.
+     */
+    public function testResolveGoesBackToTheServerThatOfferedTheItem(): void
+    {
+        [$controller, $clients] = $this->twoServerController();
+
+        $controller->requestCompletion(1, 6);
+        $clients[0]->requests[0]['respond'](['items' => [['label' => 'mine']]], error: null);
+        $clients[1]->requests[0]['respond'](['items' => [['label' => 'theirs']]], error: null);
+        $theirs = $this->itemNamed('theirs');
+
+        $controller->resolveCompletion($theirs->raw);
+
+        $this->assertSame(['textDocument/completion'], \array_column($clients[0]->requests, 'method'), 'the other server was not asked');
+        $this->assertSame(['textDocument/completion', 'completionItem/resolve'], \array_column($clients[1]->requests, 'method'));
+        $sent = $clients[1]->requests[1]['params'];
+        $this->assertSame(['label' => 'theirs'], $sent, 'the bookkeeping key does not travel back onto the wire');
+    }
+
+    /** The item's detail is resolved through its OWN server's capability. */
+    public function testDetailResolutionAsksTheOfferingServersCapability(): void
+    {
+        [$controller, $clients] = $this->twoServerController(['completionProvider' => ['resolveProvider' => false]]);
+
+        $controller->requestCompletion(1, 6);
+        $clients[0]->requests[0]['respond'](['items' => [['label' => 'no-resolve']]], error: null);
+        $clients[1]->requests[0]['respond'](['items' => [['label' => 'resolves']]], error: null);
+
+        $controller->resolveCompletionDetail($this->itemNamed('no-resolve')->raw, static function (string $d, string $doc): void {});
+        $this->assertSame(['textDocument/completion'], \array_column($clients[0]->requests, 'method'), 'it said it does not resolve, so it is not asked');
+
+        $controller->resolveCompletionDetail($this->itemNamed('resolves')->raw, static function (string $d, string $doc): void {});
+        $this->assertSame(['textDocument/completion', 'completionItem/resolve'], \array_column($clients[1]->requests, 'method'));
+    }
+
+    private function screen(): string
+    {
+        return \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->render(new RenderContext(columns: 80, rows: 10))));
+    }
+
+    /** The shown completion item with $label, for the raw payload behind it. */
+    private function itemNamed(string $label): CompletionItem
+    {
+        foreach (Probe::get(Probe::object($this->editor, 'completion'), 'items') as $item) {
+            if ($label === $item->label) {
+                return $item;
+            }
+        }
+
+        self::fail("no completion item labelled '{$label}'");
     }
 }

@@ -34,6 +34,9 @@ use Symfony\Component\Tui\Tui;
 final class RefactorControllerTest extends TestCase
 {
     private FakeLspClient $client;
+
+    /** Every fake client the pool built, oldest first. @var list<FakeLspClient> */
+    private array $clients = [];
     private CodeEditorWidget $editor;
     private BufferManager $buffers;
     private RefactoringUndo $undo;
@@ -96,16 +99,35 @@ final class RefactorControllerTest extends TestCase
      *
      * @return array{0: RefactorController, 1: LspSessionPool} a controller with an initialized session on a.php
      */
-    private function ready(array $capabilities = []): array
+    /**
+     * A ready controller over one server.
+     *
+     * The default advertises code actions because only servers that DO are
+     * asked for them — a second server on the language that does not must not
+     * be sent a request it can only answer with an error.
+     *
+     * @param array<string, mixed> $capabilities
+     * @param int                  $servers how many claim php — two is the case a merge exists for
+     */
+    private function ready(array $capabilities = ['codeActionProvider' => true], int $servers = 1): array
     {
         $pool = new LspSessionPool(
             '/tmp/proj',
             new FixedActiveFile('/tmp/proj/a.php'),
             new Translator('en'),
-            fn (array $command, string $rootDir, \Closure $onLog): FakeLspClient => $this->client = new FakeLspClient($capabilities),
+            function (array $command, string $rootDir, \Closure $onLog) use ($capabilities): FakeLspClient {
+                $client = new FakeLspClient($capabilities);
+                $this->clients[] = $client;
+
+                return $this->client = $client;
+            },
         );
         $pool->configure(
-            ['php' => [['command' => ['php-ls'], 'name' => 'php-ls']]],
+            [
+                'php' => 2 === $servers
+                    ? [['command' => ['php-ls'], 'name' => 'php-ls'], ['command' => ['sf-ls'], 'name' => 'sf-ls']]
+                    : [['command' => ['php-ls'], 'name' => 'php-ls']],
+            ],
             static function (string $line): void {},
             static function (array $params): void {},
             static fn (array $edit): bool => false,
@@ -922,5 +944,120 @@ final class RefactorControllerTest extends TestCase
         $flashed = $this->flashed();
         $this->assertStringContainsString('Nothing to organize', $flashed);
         $this->assertStringNotContainsString('No quick fixes here', $flashed);
+    }
+
+    /**
+     * Quick fixes from every server land in ONE list, in answer order.
+     *
+     * Read by choosing each position and seeing whose edit lands, because the
+     * list is what the user picks from — a Symfony server's fix sitting under
+     * a PHP server's is the whole point.
+     */
+    public function testActionsFromEveryServerAreMergedIntoOneList(): void
+    {
+        foreach ([0 => 'FIRST', 1 => 'SECOND'] as $index => $expected) {
+            $this->clients = [];
+            [$controller] = $this->ready(servers: 2);
+            $controller->requestCodeActions(0, 0);
+            $this->clients[0]->requests[0]['respond']([['title' => 'Import class', 'edit' => $this->editOf('FIRST')]], error: null);
+            $this->clients[1]->requests[0]['respond']([['title' => 'Add route attribute', 'edit' => $this->editOf('SECOND')]], error: null);
+
+            for ($i = 0; $i < $index; ++$i) {
+                $this->editor->handleInput("\x1b[B");
+            }
+            $this->editor->handleInput("\r");
+
+            $this->assertStringContainsString($expected, $this->text(), "position {$index} is the answer from server {$index}");
+        }
+    }
+
+    /**
+     * One server having nothing does not blank what the other offered.
+     *
+     * The "no quick fixes" flash is raised per ANSWER, so the empty one has to
+     * look at what is already in hand rather than at its own reply.
+     */
+    public function testAnEmptyAnswerDoesNotBlankAnotherServersActions(): void
+    {
+        $this->clients = [];
+        [$controller] = $this->ready(servers: 2);
+
+        $controller->requestCodeActions(0, 0);
+        $this->clients[0]->requests[0]['respond']([['title' => 'Import class', 'edit' => $this->editOf('KEPT')]], error: null);
+        $this->clients[1]->requests[0]['respond']([], error: null);
+
+        // Asserted HERE, before anything else flashes over it: applying below
+        // raises its own message, and reading the bar afterwards would pass
+        // whatever this answer had said.
+        $this->assertStringNotContainsString('No quick fixes', $this->flashed(), 'another server had something, so there ARE quick fixes here');
+
+        $this->editor->handleInput("\r");
+        $this->assertStringContainsString('KEPT', $this->text(), 'the empty answer left the picker alone');
+    }
+
+    /** Applying an action goes back to the server that OFFERED it. */
+    public function testApplyingAnActionGoesBackToTheOfferingServer(): void
+    {
+        $this->clients = [];
+        [$controller] = $this->ready(['codeActionProvider' => ['resolveProvider' => true]], servers: 2);
+
+        $controller->requestCodeActions(0, 0);
+        $this->clients[0]->requests[0]['respond']([['title' => 'Mine', 'data' => ['h' => 1]]], error: null);
+        $this->clients[1]->requests[0]['respond']([['title' => 'Theirs', 'data' => ['h' => 2]]], error: null);
+
+        $this->editor->handleInput("\x1b[B"); // down to the second
+        $this->editor->handleInput("\r");
+
+        $this->assertSame(['textDocument/codeAction'], \array_column($this->clients[0]->requests, 'method'), 'the other server was not asked');
+        $this->assertSame(['textDocument/codeAction', 'codeAction/resolve'], \array_column($this->clients[1]->requests, 'method'));
+        $this->assertSame(['title' => 'Theirs', 'data' => ['h' => 2]], $this->clients[1]->requests[1]['params'], 'the bookkeeping key does not travel back onto the wire');
+    }
+
+    /**
+     * A late answer to a superseded request does not open its picker.
+     *
+     * Several servers answer one Ctrl+. at their own speeds while the caret
+     * moves on. Without a generation the slow answer to the request before
+     * last would put up a list of fixes for a position the user has left.
+     */
+    public function testALateAnswerToASupersededRequestIsIgnored(): void
+    {
+        $this->clients = [];
+        [$controller] = $this->ready();
+
+        $controller->requestCodeActions(0, 0);
+        $stale = $this->clients[0]->requests[0]['respond'];
+        $controller->requestCodeActions(1, 0); // the caret moved
+
+        $stale([['title' => 'For where the caret WAS', 'edit' => $this->editOf('STALE')]], error: null);
+        $this->editor->handleInput("\r");
+
+        $this->assertStringNotContainsString('STALE', $this->text(), 'no picker was open to accept the Enter');
+    }
+
+    /**
+     * An action that already carries a COMMAND is run, not resolved — even on
+     * a server that resolves.
+     *
+     * Resolve exists to fetch what an action is missing. One that arrived with
+     * its verb is missing nothing, and a round trip for it is a round trip
+     * the user waits through for no answer.
+     */
+    public function testACommandOnlyActionIsRunWithoutAResolveRoundTrip(): void
+    {
+        $this->clients = [];
+        [$controller] = $this->ready(['codeActionProvider' => ['resolveProvider' => true]]);
+
+        $controller->requestCodeActions(0, 0);
+        $this->clients[0]->requests[0]['respond']([
+            ['title' => 'Run the fixer', 'command' => ['command' => 'porta.fix', 'arguments' => []]],
+        ], error: null);
+        $this->editor->handleInput("\r");
+
+        $this->assertSame(
+            ['textDocument/codeAction', 'workspace/executeCommand'],
+            \array_column($this->clients[0]->requests, 'method'),
+            'straight to the verb it came with',
+        );
     }
 }

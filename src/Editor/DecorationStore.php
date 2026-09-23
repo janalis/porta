@@ -36,7 +36,7 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
     /** @var list<int> 0-based lines with a breakpoint (● in the gutter) */
     public private(set) array $breakpointLines = [];
 
-    /** @var array<int, list<array{title: string, command: string, arguments: list<mixed>}>> 0-based line => the lenses shown ABOVE it */
+    /** @var array<int, list<array{title: string, command: string, arguments: list<mixed>, owner: string}>> 0-based line => the lenses shown ABOVE it */
     private array $codeLenses = [];
 
     /** @var array<int, list<array{col: int, endCol: int, type: string, modifiers: list<string>}>> 0-based line => semantic tokens (utf16 cols) */
@@ -292,7 +292,11 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
      * flows through {@see codeLensesAt()} to the walk rather than being painted
      * into an existing row.
      *
-     * @param array<int, list<array{title: string, command: string, arguments: list<mixed>}>> $byLine 0-based line => lenses; [] clears
+     * `owner` names the server that published the lens, so running it goes
+     * back to the one whose command id it is — several servers can lens one
+     * file, and a command means nothing to the others.
+     *
+     * @param array<int, list<array{title: string, command: string, arguments: list<mixed>, owner: string}>> $byLine 0-based line => lenses; [] clears
      */
     public function setCodeLenses(array $byLine): void
     {
@@ -306,7 +310,7 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
         return [] !== $this->codeLenses;
     }
 
-    /** @return list<array{title: string, command: string, arguments: list<mixed>}> the lenses above one line */
+    /** @return list<array{title: string, command: string, arguments: list<mixed>, owner: string}> the lenses above one line */
     public function codeLensesAt(int $line): array
     {
         return $this->codeLenses[$line] ?? [];

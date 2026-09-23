@@ -221,6 +221,88 @@ final class LspSessionPool
         $this->activeSession()?->request($method, $params, $onResult);
     }
 
+    /**
+     * Ask EVERY server that serves the active file, and call back once per
+     * answer as answers arrive.
+     *
+     * For the verbs whose answers are lists and therefore merge — completion
+     * items, code actions, code lenses. Most verbs are not: definition, rename
+     * and formatting each pick one, and asking two servers would mean
+     * inventing a tie-break for each, so they stay on {@see request()}.
+     *
+     * Deliberately incremental rather than collected: {@see request()} has no
+     * timeout, so a contract that waited for the last answer would let one
+     * server that never replies hold the whole verb forever. A caller merges
+     * what it has each time instead.
+     *
+     * Only servers whose OWN capabilities advertise $capability are asked — a
+     * merged capability would be a claim no single server made, and a server
+     * that never offered the feature answers an error per request.
+     *
+     * $owner identifies the answering session for a follow-up round trip
+     * ({@see requestTo()}); it is opaque and only meaningful to this pool.
+     *
+     * @param \Closure(mixed, ?array<array-key, mixed>, string): void $onResult result, error, owner
+     */
+    public function requestAll(string $method, mixed $params, string $capability, \Closure $onResult): void
+    {
+        foreach ($this->sessionsFor($this->activeFile->getFilePath()) as $signature => $session) {
+            // Asked once: `serverCapability()` reads the handshake's answer,
+            // and a capability is `true`, an options object, or absent.
+            /** @var mixed $declared */
+            $declared = $session->serverCapability($capability);
+            if (null === $declared || false === $declared) {
+                continue;
+            }
+            $session->request($method, $params, static function (mixed $result, ?array $error) use ($onResult, $signature): void {
+                $onResult($result, $error, $signature);
+            });
+        }
+    }
+
+    /**
+     * Ask the ONE server $owner names — the follow-up half of
+     * {@see requestAll()}.
+     *
+     * `completionItem/resolve`, `codeAction/resolve` and
+     * `workspace/executeCommand` are all second round trips about something a
+     * particular server offered, and sending them anywhere else is at best an
+     * error response and at worst another server acting on an id that means
+     * something different to it.
+     *
+     * An EMPTY owner is "whoever serves the active file" — what a caller that
+     * never asked {@see requestAll()} has, and the single-server behaviour
+     * this method replaced. A non-empty owner naming a server that has since
+     * gone (a failed relaunch, a reconfigure) is a silent no-op instead: the
+     * thing being resolved cannot exist any more either, and handing it to
+     * another server would be asking it about an id that means something else.
+     */
+    public function requestTo(string $owner, string $method, mixed $params, callable $onResult): void
+    {
+        if ('' === $owner) {
+            $this->request($method, $params, $onResult);
+
+            // Equivalent-mutant note: dropping this `return` changes nothing
+            // observable — no session is ever keyed '' — but falling through
+            // would mean the empty case relies on that, and the day a session
+            // key can be empty it would send the request twice.
+            return;
+        }
+        ($this->sessions[$owner] ?? null)?->request($method, $params, $onResult);
+    }
+
+    /**
+     * The named capability as $owner's own server declared it, or null when it
+     * is gone. An empty owner asks the active file's server, mirroring
+     * {@see requestTo()}.
+     */
+    public function capabilityOf(string $owner, string $name): mixed
+    {
+        return '' === $owner
+            ? $this->serverCapability($this->activeFile->getFilePath(), $name)
+            : ($this->sessions[$owner] ?? null)?->serverCapability($name);
+    }
+
     public function whenReady(callable $action): void
     {
         $this->activeSession()?->whenReady($action);
@@ -355,8 +437,8 @@ final class LspSessionPool
      * answers about text the user has moved on from — which is worse than
      * silence, because it looks like a wrong answer rather than no answer.
      *
-     * Keyed by launch signature, so a caller can tell one session's answer
-     * from another's.
+     * Keyed by launch signature, which is what {@see requestAll()} hands a
+     * caller as the owner of an answer and {@see requestTo()} takes back.
      *
      * @return array<string, LspSession>
      */

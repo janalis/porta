@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Lsp;
 
+use Porta\Editor\CompletionItem;
 use Porta\Editor\Document;
 use Porta\Editor\Templates;
 use Porta\Editor\TextMetrics;
@@ -36,6 +37,35 @@ final class CompletionController extends AbstractLspController implements Editor
 
     /** Pending settle timer; null when none is armed. */
     private ?string $settleTimer = null;
+
+    /**
+     * Which completion request the popup is currently showing.
+     *
+     * Several servers answer one Ctrl+Space, at their own speeds, and a user
+     * keeps typing while they do. Without a generation a late answer to the
+     * request before last would reinstate a list for a prefix that is no
+     * longer on screen — the list does not merely look stale, it is a list of
+     * the wrong things.
+     */
+    private int $completionGeneration = 0;
+
+    /**
+     * The items merged so far for {@see $completionGeneration}, by label so a
+     * server offering what another already offered does not double the row.
+     * First answer wins that row, which in practice is the language's own
+     * server — it is asked first and usually replies first.
+     *
+     * Each server's block keeps its OWN order and they are appended, rather
+     * than re-sorted together: `sortText` is server-relative, so one server's
+     * "1" and another's "aaa" say nothing about each other, and mixing them
+     * would invent a ranking neither server offered. The popup windows what it
+     * paints, so a longer list costs scrolling and not frames — but note that
+     * `LspMapper`'s 80-item cap is per ANSWER, so two servers can contribute
+     * 160 rows where one contributed 80.
+     *
+     * @var array<string, CompletionItem>
+     */
+    private array $completionItems = [];
 
     public function __construct(
         LspSessionPool $lsp,
@@ -81,16 +111,32 @@ final class CompletionController extends AbstractLspController implements Editor
             return;
         }
 
-        $this->lsp->request(
+        $generation = ++$this->completionGeneration;
+        $this->completionItems = [];
+        // Every server that says it completes is asked, and the popup grows as
+        // they answer: a Symfony server contributing route names beside a PHP
+        // server's methods is the whole point of a second server on one
+        // language. Answers arrive in any order and some never do, so each one
+        // re-renders what is in hand rather than waiting for the set.
+        $this->lsp->requestAll(
             'textDocument/completion',
             $this->positionParams($path, $line, $utf16Col),
-            function (mixed $result, ?array $error): void {
+            'completionProvider',
+            function (mixed $result, ?array $error, string $owner) use ($generation): void {
+                // Two different reasons to drop an answer, kept apart: one is
+                // about WHEN it arrived, the other about what it says.
+                if ($generation !== $this->completionGeneration) {
+                    return; // a later request is what the user is waiting on
+                }
                 if (null !== $error || null === $result) {
                     return;
                 }
                 /** @var list<array<string, mixed>> $items */
                 $items = $result['items'] ?? (\is_array($result) && \array_is_list($result) ? $result : []);
-                $this->editor->showCompletions(LspMapper::mapCompletionItems($items));
+                foreach (LspMapper::mapCompletionItems(ServerOwner::stampAll($items, $owner)) as $item) {
+                    $this->completionItems[$item->label] ??= $item;
+                }
+                $this->editor->showCompletions(\array_values($this->completionItems));
                 $this->tui->requestRender();
             },
         );
@@ -186,7 +232,11 @@ final class CompletionController extends AbstractLspController implements Editor
     {
         $path = (string) $this->editor->getFilePath();
         $document = $this->editor->getDocument();
-        $this->lsp->request('completionItem/resolve', $item, function (mixed $result) use ($path, $document): void {
+        // Back to whoever offered it. Sending a resolve to a server that never
+        // saw the item is at best an error response, and at worst a server
+        // acting on an id that means something else to it.
+        [$owner, $item] = ServerOwner::take($item);
+        $this->lsp->requestTo($owner, 'completionItem/resolve', $item, function (mixed $result) use ($path, $document): void {
             /** @var list<array{range: array{start: array{line: int, character: int}, end: array{line: int, character: int}}, newText: string}> $edits */
             $edits = \is_array($result) ? $result['additionalTextEdits'] ?? [] : [];
             if ([] === $edits) {
@@ -224,12 +274,17 @@ final class CompletionController extends AbstractLspController implements Editor
     #[\Override]
     public function resolveCompletionDetail(array $item, \Closure $onDetail): void
     {
+        [$owner, $item] = ServerOwner::take($item);
+        // Asked of THAT server's own capabilities, not of a merged claim: one
+        // server resolving details says nothing about another, and the whole
+        // point of the gate is to stop asking a server that will only answer
+        // an error.
         /** @var mixed $provider */
-        $provider = $this->lsp->serverCapability($this->editor->getFilePath(), 'completionProvider');
+        $provider = $this->lsp->capabilityOf($owner, 'completionProvider');
         if (!\is_array($provider) || true !== ($provider['resolveProvider'] ?? false)) {
             return;
         }
-        $this->lsp->request('completionItem/resolve', $item, function (mixed $result) use ($onDetail): void {
+        $this->lsp->requestTo($owner, 'completionItem/resolve', $item, function (mixed $result) use ($onDetail): void {
             /** @var mixed $detail */
             $detail = \is_array($result) ? $result['detail'] ?? null : null;
             $documentation = \is_array($result) ? LspMapper::documentationText($result['documentation'] ?? null) : null;

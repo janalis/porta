@@ -30,16 +30,32 @@ use Symfony\Component\Tui\Tui;
  * a title has nothing to show and is dropped rather than rendered blank.
  */
 #[AsIdeService]
-final readonly class CodeLensController implements EditorCodeLensHandler
+// Not readonly any more: merging several servers' answers means holding the
+// ones already in hand while the rest arrive.
+final class CodeLensController implements EditorCodeLensHandler
 {
     public function __construct(
-        private LspSessionPool $lsp,
-        private CodeEditorWidget $editor,
-        private EditorDecorationSink $decorations,
-        private Tui $tui,
-        private Notifier $notifier,
-        private Translator $translator,
+        private readonly LspSessionPool $lsp,
+        private readonly CodeEditorWidget $editor,
+        private readonly EditorDecorationSink $decorations,
+        private readonly Tui $tui,
+        private readonly Notifier $notifier,
+        private readonly Translator $translator,
     ) {}
+
+    /**
+     * Which codeLens request the gutter is currently showing — several servers
+     * answer one refresh, and an answer to the request before last describes
+     * a file the user may have left.
+     */
+    private int $generation = 0;
+
+    /**
+     * The lenses merged so far for {@see $generation}.
+     *
+     * @var array<int, list<array{title: string, command: string, arguments: list<mixed>, owner: string}>>
+     */
+    private array $lenses = [];
 
     public function requestCodeLenses(): void
     {
@@ -50,17 +66,30 @@ final readonly class CodeLensController implements EditorCodeLensHandler
             return;
         }
 
-        $this->lsp->request(
+        $generation = ++$this->generation;
+        $this->lenses = [];
+        // Every server that lenses is asked, and the gutter grows as they
+        // answer: a Symfony server's route lens sits above the same method a
+        // PHP server counts usages on.
+        $this->lsp->requestAll(
             'textDocument/codeLens',
             ['textDocument' => ['uri' => Uri::fromPath($path)]],
-            function (mixed $result) use ($path): void {
+            'codeLensProvider',
+            function (mixed $result, ?array $error, string $owner) use ($path, $generation): void {
                 // A stale answer after a buffer switch belongs to a file that is
                 // no longer on screen; painting it would label the wrong code.
-                if (!\is_array($result) || $path !== $this->editor->getFilePath()) {
+                if (!\is_array($result) || $path !== $this->editor->getFilePath() || $generation !== $this->generation) {
                     return;
                 }
-                /** @var list<array<string, mixed>> $result */
-                $this->decorations->setCodeLenses(self::byLine($result));
+                /** @var list<array<string, mixed>> $lensesFromServer */
+                $lensesFromServer = \array_values($result);
+                foreach (self::byLine($lensesFromServer, $owner) as $line => $lenses) {
+                    foreach ($lenses as $lens) {
+                        $this->lenses[$line][] = $lens;
+                    }
+                }
+                \ksort($this->lenses);
+                $this->decorations->setCodeLenses($this->lenses);
                 $this->tui->requestRender();
             },
         );
@@ -82,7 +111,11 @@ final readonly class CodeLensController implements EditorCodeLensHandler
         }
 
         $title = $lens['title'];
-        $this->lsp->request(
+        // To the server whose command id this is. Another server would at best
+        // answer "unknown command" and at worst run something of its own that
+        // happens to share the name.
+        $this->lsp->requestTo(
+            $lens['owner'],
             'workspace/executeCommand',
             ['command' => $lens['command'], 'arguments' => $lens['arguments']],
             function (mixed $result, ?array $error) use ($title): void {
@@ -104,9 +137,9 @@ final readonly class CodeLensController implements EditorCodeLensHandler
      *
      * @param list<array<string, mixed>> $lenses
      *
-     * @return array<int, list<array{title: string, command: string, arguments: list<mixed>}>>
+     * @return array<int, list<array{title: string, command: string, arguments: list<mixed>, owner: string}>>
      */
-    private static function byLine(array $lenses): array
+    private static function byLine(array $lenses, string $owner): array
     {
         $byLine = [];
         foreach ($lenses as $lens) {
@@ -127,6 +160,7 @@ final readonly class CodeLensController implements EditorCodeLensHandler
                 'title' => $title,
                 'command' => \is_string($command['command'] ?? null) ? $command['command'] : '',
                 'arguments' => $arguments,
+                'owner' => $owner,
             ];
         }
 
