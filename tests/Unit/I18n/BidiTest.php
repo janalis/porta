@@ -9,7 +9,13 @@ use PHPUnit\Framework\TestCase;
 use Porta\I18n\BaseDirection;
 use Porta\I18n\Bidi;
 use Porta\Tests\Support\Probe;
+use Porta\Ui\CaretVisibility;
 use Porta\Ui\Glyphs;
+use Porta\Ui\TextField;
+use Porta\Ui\Theme\Styles;
+use Porta\Widget\Render\FieldBox;
+use Porta\Widget\Render\FieldSpec;
+use Porta\Widget\Render\FieldState;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
@@ -278,6 +284,50 @@ final class BidiTest extends TestCase
         $bottom = self::strip(Bidi::reorder('└'.self::SHALOM, BaseDirection::Rtl));
         $this->assertStringContainsString('┘', $bottom);
         $this->assertStringNotContainsString('└', $bottom);
+    }
+
+    /**
+     * The text fields' focused (heavy) and danger (double) corners mirror too:
+     * a field's border shape IS its state, and a focused box in the mirrored
+     * git sidebar drew `┓━━┏` — two corners facing out — before these joined.
+     *
+     * @return iterable<string, array{string, string}>
+     */
+    public static function fieldCorners(): iterable
+    {
+        yield 'heavy top-left' => ['┏', '┓'];
+        yield 'heavy top-right' => ['┓', '┏'];
+        yield 'double top-left' => ['╔', '╗'];
+        yield 'double top-right' => ['╗', '╔'];
+        yield 'double bottom-left' => ['╚', '╝'];
+        yield 'double bottom-right' => ['╝', '╚'];
+    }
+
+    #[DataProvider('fieldCorners')]
+    public function testFieldCornersMirrorInsideARightToLeftRun(string $corner, string $mirrored): void
+    {
+        $out = self::strip(Bidi::reorder($corner.self::SHALOM, BaseDirection::Rtl));
+
+        $this->assertStringContainsString($mirrored, $out);
+        $this->assertStringNotContainsString($corner, $out);
+    }
+
+    /** A whole focused and a whole danger box, Hebrew inside, still read as boxes once the row is reordered. */
+    public function testABoxedFieldKeepsItsShapeUnderARightToLeftBase(): void
+    {
+        foreach ([FieldState::Focused, FieldState::Danger] as $state) {
+            $field = new TextField();
+            $field->setValue(self::SHALOM);
+            $rows = FieldBox::render(new FieldSpec(self::SHALOM), $field, $state, CaretVisibility::Hidden, 16, Styles::dark());
+            [$topLeft, $topRight, $bottomLeft, $bottomRight] = $state->glyphs();
+
+            $top = \trim(self::strip(Bidi::reorder($rows[0], BaseDirection::Rtl)));
+            $bottom = \trim(self::strip(Bidi::reorder($rows[2], BaseDirection::Rtl)));
+            $this->assertStringStartsWith($topLeft, $top, $state->name.': the top row opens on a left corner');
+            $this->assertStringEndsWith($topRight, $top, $state->name.': and closes on a right one');
+            $this->assertStringStartsWith($bottomLeft, $bottom, $state->name);
+            $this->assertStringEndsWith($bottomRight, $bottom, $state->name);
+        }
     }
 
     public function testNeutralsBetweenMatchingRunsJoinThatSide(): void

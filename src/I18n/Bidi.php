@@ -130,6 +130,15 @@ final class Bidi
         '┐' => '┌',
         '└' => '┘',
         '┘' => '└',
+        // The text fields' heavy (focused) and double (danger) families: the
+        // field's border SHAPE is its state, so a focused box in a mirrored
+        // pane must still close — ┛┗ are above, as the resize grabs.
+        '┏' => '┓',
+        '┓' => '┏',
+        '╔' => '╗',
+        '╗' => '╔',
+        '╚' => '╝',
+        '╝' => '╚',
     ];
 
     /**
