@@ -18,6 +18,7 @@ use Porta\Widget\Support\MenuNavigation;
 use Porta\Widget\Support\StylesDefault;
 use Porta\Workbench\Menu\Menu;
 use Porta\Workbench\Menu\MenuPanel;
+use Porta\Workbench\Menu\Mnemonics;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Style\Style;
@@ -74,6 +75,13 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
     private int $selected = 0;
     private ?int $hoveredIndex = null; // title hover-highlighted while no menu is open
 
+    /**
+     * Whether the open bar shows a dropdown. False is "armed" — F10's state,
+     * as on a desktop: the bar has the keys and a title is lit, and ↓, Enter,
+     * Space or a title's letter drops its menu.
+     */
+    private bool $dropped = true;
+
     /** @var list<array{index: int, start: int, width: int}> title strip layout from the last render */
     private array $titleLayout = [];
 
@@ -91,10 +99,29 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
         if ([] === $this->menus) {
             return;
         }
+        $this->dropped = true;
         $this->markOpen();
         $this->openIndex = IntMath::clamp($index, 0, \count($this->menus) - 1);
         $this->selected = $this->firstSelectable($this->openIndex);
         $this->afterNavigate();
+    }
+
+    /** Take the keys with title $index lit and no dropdown: F10's arming. */
+    public function arm(int $index = 0): void
+    {
+        if ([] === $this->menus) {
+            return;
+        }
+        $this->dropped = false;
+        $this->markOpen();
+        $this->openIndex = IntMath::clamp($index, 0, \count($this->menus) - 1);
+        $this->afterNavigate();
+    }
+
+    /** Whether a dropdown is showing — not merely the bar holding the keys. */
+    public function isDropdownShown(): bool
+    {
+        return $this->open && $this->dropped;
     }
 
     #[\Override]
@@ -102,6 +129,7 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
     {
         $this->selected = 0;
         $this->hoveredIndex = null;
+        $this->dropped = true;
     }
 
     /**
@@ -168,6 +196,7 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
         $line = '';
         $used = 0;
         $this->titleLayout = [];
+        $letters = Mnemonics::assign(\array_map(static fn (Menu $menu): string => $menu->title, $this->menus));
         foreach (\array_slice($this->menus, offset: 0, length: $shown, preserve_keys: true) as $i => $menu) {
             $label = ' '.$menu->title.' ';
             $active = $this->open && $i === $this->openIndex;
@@ -175,14 +204,26 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
             // Menu titles are chrome-bar items: open = active, else hovered, else
             // rest — shaded by the shared {@see BarChromeStyle} so a title reads
             // like a tab. Only the rest background differs: titles sit on the
-            // HeaderBar strip, not the tabs' Toolbar.
-            $line .= $this->title($menu->title, BarChromeStyle::of($this->styles, TabState::of($active, $hovered), Role::HeaderBar), $active, $hovered);
+            // HeaderBar strip, not the tabs' Toolbar. An armed title is lit but
+            // keeps its padding: the rails belong to a dropdown under it.
+            // Hovered, the whole title underlines: the letter's own closing
+            // SGR would cut that underline short after the letter.
+            $text = $hovered ? $menu->title : MenuPanel::underlineLetter($menu->title, $menu->title, $letters[$i]);
+            $line .= $this->title($text, BarChromeStyle::of($this->styles, TabState::of($active, $hovered), Role::HeaderBar), $active && $this->dropped, $hovered);
             $this->titleLayout[] = ['index' => $i, 'start' => $used, 'width' => \mb_strwidth($label)];
             $used += \mb_strwidth($label);
         }
         $pad = \max(0, $columns - $used - \mb_strwidth($mark));
+        if ('' !== $mark) {
+            // The mark is a title too, standing for the first menu it hides:
+            // a click drops that one under it, and it is lit while any hidden
+            // menu is — the arrows walk on into them from the last title.
+            $this->titleLayout[] = ['index' => $shown, 'start' => $used + $pad, 'width' => \mb_strwidth($mark)];
+            $state = TabState::of($this->open && $this->openIndex >= $shown, !$this->open && $shown === $this->hoveredIndex);
+            $mark = BarChromeStyle::of($this->styles, $state, Role::HeaderBar)->apply($mark);
+        }
 
-        return $line.$this->styles->of(Role::HeaderBar)->apply(\str_repeat(' ', $pad).$mark);
+        return $line.$this->styles->of(Role::HeaderBar)->apply(\str_repeat(' ', $pad)).$mark;
     }
 
     /**
@@ -222,7 +263,7 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
     /** Natural width of the open menu's dropdown panel (unclamped; caller clamps to fit). */
     public function panelWidth(): int
     {
-        if (!$this->open || [] === $this->menus) {
+        if (!$this->isDropdownShown() || [] === $this->menus) {
             return 0;
         }
 
@@ -249,7 +290,7 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
      */
     public function dropdownSegments(int $panelWidth): array
     {
-        if (!$this->open || [] === $this->menus) {
+        if (!$this->isDropdownShown() || [] === $this->menus) {
             return [];
         }
 
@@ -267,6 +308,19 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
 
         if ($kb->matches($data, 'menu_close')) {
             $this->close();
+
+            return;
+        }
+        if (!$this->dropped) {
+            $this->handleArmedInput($data);
+
+            return;
+        }
+        // A letter runs the item it is the access letter of.
+        $letter = MenuPanel::itemForKey($this->menus[$this->openIndex]->items, $data);
+        if (null !== $letter) {
+            $this->selected = $letter;
+            $this->runSelected();
 
             return;
         }
@@ -297,6 +351,36 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
         }
 
         // Any other key while open is swallowed (does not leak to the editor).
+    }
+
+    /**
+     * Armed: ←/→ move the lit title, ↓, Enter or Space drop its menu, a
+     * title's letter drops that one. Anything else is swallowed.
+     */
+    private function handleArmedInput(string $data): void
+    {
+        $kb = $this->getKeybindings();
+        $count = \count($this->menus);
+        $step = match (true) {
+            $kb->matches($data, 'menu_left') => -1,
+            $kb->matches($data, 'menu_right') => 1,
+            default => 0,
+        };
+        if (0 !== $step) {
+            $this->openIndex = ($this->openIndex + $step + $count) % $count;
+            $this->afterNavigate();
+
+            return;
+        }
+        if ($kb->matches($data, 'menu_down') || $kb->matches($data, 'menu_select')) {
+            $this->open($this->openIndex);
+
+            return;
+        }
+        $title = Mnemonics::pick(\array_map(static fn (Menu $menu): string => $menu->title, $this->menus), $data);
+        if (null !== $title) {
+            $this->open($title);
+        }
     }
 
     /** Which menu title sits at column $col of the title strip, or null. */
@@ -366,7 +450,7 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
             'menu_down' => [Key::DOWN],
             'menu_left' => [Key::LEFT],
             'menu_right' => [Key::RIGHT],
-            'menu_select' => [Key::ENTER],
+            'menu_select' => [Key::ENTER, Key::SPACE],
             'menu_close' => [Key::ESCAPE],
         ];
     }

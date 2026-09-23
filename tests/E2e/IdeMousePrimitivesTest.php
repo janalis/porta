@@ -246,7 +246,8 @@ final class IdeMousePrimitivesTest extends TestCase
                     $this->frame($tui);
 
                     // The application menu's dropdown.
-                    $tui->handleInput("\x1b[21~"); // F10
+                    $tui->handleInput("\x1b[21~"); // F10 arms the bar
+                    $tui->handleInput("\x1b[B"); // ↓ drops File
                     $this->frame($tui);
                     $bar = $tui->getById('menu');
                     $this->assertTrue($bar->isOpen(), 'F10 opened the menu dropdown');

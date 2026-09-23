@@ -13,6 +13,7 @@ use Porta\Widget\Support\MenuNavigation;
 use Porta\Widget\Support\StylesDefault;
 use Porta\Workbench\Menu\MenuItem;
 use Porta\Workbench\Menu\MenuPanel;
+use Porta\Workbench\Menu\Mnemonics;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\KeybindingsTrait;
@@ -131,7 +132,7 @@ final class ContextMenu extends OverlayWidget
      */
     public function segments(int $panelWidth): array
     {
-        return $this->open ? MenuPanel::segments($this->items, $this->selected, $panelWidth, $this->styles, $this->direction) : [];
+        return $this->open ? MenuPanel::segments($this->items, $this->selected, $panelWidth, $this->styles, $this->direction, letters: !$this->listbox) : [];
     }
 
     #[\Override]
@@ -165,6 +166,19 @@ final class ContextMenu extends OverlayWidget
         }
         if ($kb->matches($data, 'menu_select')) {
             $this->runSelected();
+
+            return;
+        }
+        // A select's list takes letters as type-ahead, as a browser's does; a
+        // menu runs the item a letter is the access letter of.
+        if ($this->listbox) {
+            $this->typeAhead($data);
+
+            return;
+        }
+        $letter = MenuPanel::itemForKey($this->items, $data);
+        if (null !== $letter) {
+            $this->runItem($letter);
         }
 
         // Any other key while open is swallowed (handled by the coordinator's modal routing).
@@ -207,6 +221,23 @@ final class ContextMenu extends OverlayWidget
         $this->afterNavigate();
 
         return true;
+    }
+
+    /** Move to the next option, after the current one and wrapping, whose label starts with the typed letter. */
+    private function typeAhead(string $data): void
+    {
+        $typed = Mnemonics::key($data);
+        $count = \count($this->items);
+        for ($n = 1; null !== $typed && $n <= $count; ++$n) {
+            $i = ($this->selected + $n) % $count;
+            $item = $this->items[$i];
+            if (!$item->separator && $item->enabled() && Mnemonics::key(\mb_substr(\ltrim($item->label), start: 0, length: 1)) === $typed) {
+                $this->selected = $i;
+                $this->afterNavigate();
+
+                return;
+            }
+        }
     }
 
     private function runSelected(): void

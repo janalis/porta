@@ -126,8 +126,9 @@ final class IdeDocsTest extends TestCase
                 },
                 1200 => function (Tui $tui, $terminal): void {
                     $this->frame($tui);
-                    // F10: the app-menu dropdown composites OVER the help viewer.
+                    // F10 then ↓: the app-menu dropdown composites OVER the help viewer.
                     $tui->handleInput("\x1b[21~");
+                    $tui->handleInput("\x1b[B");
                     $this->frame($tui);
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('Save File', $screen, 'the File dropdown is visible over the help pane');

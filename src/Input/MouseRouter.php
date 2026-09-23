@@ -440,7 +440,7 @@ final class MouseRouter
         // Menu bar: click a title to open (or switch) its dropdown.
         if (null !== ($rel = $this->hit->hit($this->menuBar, $mouse->row, $mouse->col))) {
             if (null !== ($title = $this->menuBar->titleAtColumn($rel['col']))) {
-                $closeOpenTitle = $this->menuBar->isOpen() && $this->menuBar->openIndex() === $title;
+                $closeOpenTitle = $this->menuBar->isDropdownShown() && $this->menuBar->openIndex() === $title;
                 if ($closeOpenTitle) {
                     $this->menuBar->close(); // second click on the open title → close
                 }

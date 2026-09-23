@@ -98,7 +98,8 @@ final class MenuOverlayController implements FloatingRegions
      */
     public function refreshMenu(): void
     {
-        if (!$this->menuBar->isOpen()) {
+        // An armed bar (F10, nothing dropped yet) has no dropdown to place.
+        if (!$this->menuBar->isDropdownShown()) {
             $this->menuDropdown = null;
             $this->menuShadowRegion = null;
             // Clear every mode's pane set: clearing a detached widget is harmless

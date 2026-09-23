@@ -220,7 +220,7 @@ final readonly class HoverRouter
      */
     private function handleMenuHover(MouseEvent $mouse): bool
     {
-        if ($this->menuBar->isOpen()) {
+        if ($this->menuBar->isDropdownShown()) {
             $region = $this->overlay->menuDropdown();
             if (null !== ($item = $this->hit->hitRegion($region, $mouse->row, $mouse->col))) {
                 if ($this->menuBar->hoverItem($item)) {

@@ -29,7 +29,8 @@ nothing.
 | `Alt+PageDown` / `Alt+PageUp` | Next / previous panel on the bottom dock |
 | `Alt+Z` | Toggle soft wrap (off by default; horizontal scroll is disabled while it is on) |
 | `Alt+V` | Toggle code vision — the server's "3 usages" lines above declarations (off by default) |
-| `F10` | Open the application menu |
+| `F10` | Arm the application menu: File is lit, `←`/`→` move along the titles, `↓`/`Enter`/`Space` or a title's underlined letter opens one; `F10` or `Esc` again lets go |
+| a menu's underlined letter | Run that item (in a select's list, a letter jumps to the next option starting with it) |
 | `F1` | Open the documentation browser (these guides, fully rendered; see the Help viewer table below) |
 | `Ctrl+Shift+A` | Find Action (command palette) |
 | `Ctrl+Shift+E` | Search Everywhere |

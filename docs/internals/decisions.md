@@ -10191,3 +10191,20 @@ would promise a drag it does not start), and the chrome check is direct
 assertions rather than a golden, since the shapes are few and each is asserted
 with SGR stripped.
 
+## Access letters are computed, and F10 arms (2026-09-23)
+
+Hand-kept `&File`-style markers in seven catalogues would drift with every
+translation. The letters are computed from the labels as rendered instead.
+Dealt greedily they ran out in the long Edit menus, where early items took
+letters a later one needed, so the deal is followed by a bipartite matching for
+whoever it left out. Italian's Edit menu has 21 items spelled with 20 distinct
+letters, so one item has none. `AccessLetterCoverageTest` allows exactly that
+pigeonhole shortfall.
+
+F10 used to open File's dropdown. It arms the bar now, as on a desktop, and
+presses a second time let it go. Global keys run before the focused widget, so
+the toggle lives in `WorkbenchActions::openMenu()`, not the bar. The `…` that
+marks cut titles used to be inert, pinned by a test ("not a click target"): it
+opens the first hidden menu now, which was otherwise reachable only by walking
+the arrows past the edge.
+

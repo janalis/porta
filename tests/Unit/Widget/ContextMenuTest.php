@@ -433,4 +433,51 @@ final class ContextMenuTest extends TestCase
         $menu->openListbox([], 0, 30);
         $this->assertFalse($menu->isListbox(), 'an empty list opens nothing');
     }
+
+    /** A menu item runs from its access letter: Cut takes C, so Copy takes o. */
+    public function testALetterRunsItsItem(): void
+    {
+        $menu = $this->menu();
+
+        $menu->handleInput('o');
+
+        $this->assertSame(['copy'], $this->ran);
+        $this->assertFalse($menu->isOpen());
+    }
+
+    public function testAKeyThatIsNoLetterOfTheMenuDoesNothing(): void
+    {
+        $menu = $this->menu();
+
+        $menu->handleInput('z');
+
+        $this->assertSame([], $this->ran);
+        $this->assertTrue($menu->isOpen());
+    }
+
+    /**
+     * A select's option list takes letters as type-ahead, the way a browser's
+     * does: the next option starting with the letter, wrapping — selected, not
+     * picked — and it draws no access letters.
+     */
+    public function testAListboxTakesLettersAsTypeAhead(): void
+    {
+        $picked = [];
+        $option = static function (string $label) use (&$picked): MenuItem {
+            return new MenuItem($label, '', static function () use (&$picked, $label): void {
+                $picked[] = $label;
+            });
+        };
+        $menu = new ContextMenu();
+        $menu->openListbox([$option('dark'), $option('light'), $option('dim')], 0, 10);
+
+        $menu->handleInput('d');
+        $this->assertSame(2, Probe::get($menu, 'selected'), 'dim, the next d after dark');
+        $menu->handleInput('D');
+        $this->assertSame(0, Probe::get($menu, 'selected'), 'wrapping, case-folded');
+        $menu->handleInput('x');
+        $this->assertSame(0, Probe::get($menu, 'selected'), 'no option starts with x');
+        $this->assertSame([], $picked, 'nothing was picked');
+        $this->assertStringNotContainsString("\x1b[4m", \implode('', \array_column($menu->segments(20), 'segment')), 'and no access letter is drawn');
+    }
 }

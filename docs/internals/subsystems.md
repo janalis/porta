@@ -285,7 +285,15 @@ wheel with both open moves the list.
 The menu dropdowns and the context menu wear the tighter `PopupFrame`
 border-only language, with item-run hit-testing where the border swallows and
 outside dismisses. The completion popup and signature hint stay
-editor-pane-composited and framed the same way. An open menu holds the keys, so
+editor-pane-composited and framed the same way. Every title and item has an access
+letter, worked out per render from the translated labels by
+`Workbench/Menu/Mnemonics` (word-initials dealt first, then a matching for
+whatever the deal left out) and underlined where it survived truncation. F10
+arms the bar (`MenuBarWidget::arm()`): `isOpen()` is "the bar has the keys",
+`isDropdownShown()` "a menu is showing", and the pointer routes and the
+overlay read the latter. Hidden titles are reached through the `…`, which is a
+title of its own. A select's list takes letters as type-ahead instead. An open
+menu holds the keys, so
 both menus wear the heavy frame, separators as `┣━┫` tees, and the open bar
 title swaps its padding for the frame's rails (`┃File┃`, same width). A
 disabled item is faint, dim and struck through on its label; neither it nor a

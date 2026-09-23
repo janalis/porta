@@ -53,7 +53,9 @@ buffers, cursor positions and the active tab.
 
 ## First steps
 
-- `F10` opens the **application menu** — every command with its shortcut.
+- `F10` arms the **application menu** — every command with its shortcut. `↓`
+  opens File, or type a title's underlined letter; in a menu, an item's
+  underlined letter runs it.
 - `Ctrl+Shift+A` opens the **command palette** ("Find Action") — every
   action by name, fuzzy-filtered.
 - `Ctrl+Shift+N` (or `Ctrl+P`) fuzzy-opens files; `Ctrl+E` lists recent ones.

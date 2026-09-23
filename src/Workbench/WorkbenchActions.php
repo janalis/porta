@@ -39,9 +39,20 @@ final readonly class WorkbenchActions
         $this->tui->stop();
     }
 
+    /**
+     * F10: arm the menu bar — it takes the keys with File lit and drops
+     * nothing yet — or, pressed again, let it go. Global keys run before the
+     * focused widget, so the bar never sees F10 itself.
+     */
     public function openMenu(): void
     {
-        $this->menuBar->open(0);
+        if ($this->menuBar->isOpen()) {
+            $this->menuBar->close();
+            $this->tui->requestRender();
+
+            return;
+        }
+        $this->menuBar->arm();
         $this->tui->setFocus($this->menuBar);
         $this->tui->requestRender();
     }

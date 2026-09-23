@@ -11,6 +11,7 @@ use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Style\Style;
 
 /**
  * Shared geometry + row rendering for a dropdown list of {@see MenuItem}s. Both
@@ -59,9 +60,11 @@ final class MenuPanel
      *
      * @return list<array{segment: string, separator: bool}>
      */
-    public static function segments(array $items, int $selected, int $panelWidth, Styles $styles, BaseDirection $direction = BaseDirection::Ltr): array
+    // @mago-expect lint:no-boolean-flag-parameter -- a select's option list draws no access letters; it is the one caller that says so.
+    public static function segments(array $items, int $selected, int $panelWidth, Styles $styles, BaseDirection $direction = BaseDirection::Ltr, bool $letters = true): array
     {
         $out = [];
+        $letterAt = $letters ? self::letters($items) : [];
         foreach ($items as $index => $item) {
             $out[] = [
                 'segment' => $item->separator
@@ -73,12 +76,51 @@ final class MenuPanel
                         $item->enabled() ? MenuAvailability::Enabled : MenuAvailability::Disabled,
                         $styles,
                         $direction,
+                        $letterAt[$index] ?? null,
                     ),
                 'separator' => $item->separator,
             ];
         }
 
         return $out;
+    }
+
+    /**
+     * Each item's access letter ({@see Mnemonics}), separators included as
+     * letterless. A disabled item keeps its letter — letters that moved as
+     * items enabled and disabled could not be learned — but it is not drawn,
+     * and it picks nothing.
+     *
+     * @param list<MenuItem> $items
+     *
+     * @return list<?int>
+     */
+    public static function letters(array $items): array
+    {
+        return Mnemonics::assign(self::labels($items));
+    }
+
+    /**
+     * @param list<MenuItem> $items
+     *
+     * @return list<string> the labels, a separator's empty — it has no letter to give
+     */
+    private static function labels(array $items): array
+    {
+        return \array_map(static fn (MenuItem $item): string => $item->separator ? '' : $item->label, $items);
+    }
+
+    /**
+     * The item a key press picks: the enabled one whose access letter it
+     * spells, or null.
+     *
+     * @param list<MenuItem> $items
+     */
+    public static function itemForKey(array $items, string $key): ?int
+    {
+        $i = Mnemonics::pick(self::labels($items), $key);
+
+        return null !== $i && self::selectable($items[$i]) ? $i : null;
     }
 
     /**
@@ -123,12 +165,15 @@ final class MenuPanel
         return !$item->separator && $item->enabled();
     }
 
-    private static function itemSegment(MenuItem $item, int $panelWidth, MenuSelection $selection, MenuAvailability $availability, Styles $styles, BaseDirection $direction): string
+    private static function itemSegment(MenuItem $item, int $panelWidth, MenuSelection $selection, MenuAvailability $availability, Styles $styles, BaseDirection $direction, ?int $letter): string
     {
         $inner = \max(0, $panelWidth - self::EDGE_COLS);
         $shortcut = $item->shortcut;
         $labelMax = \max(0, $inner - ('' !== $shortcut ? \mb_strwidth($shortcut) + self::SHORTCUT_GAP : 0));
         $label = AnsiText::truncate($item->label, $labelMax);
+        if (MenuAvailability::Enabled === $availability) {
+            $label = self::underlineLetter($label, $item->label, $letter);
+        }
         $gap = \max(1, $inner - AnsiUtils::visibleWidth($label) - \mb_strwidth($shortcut));
 
         // Disabled reads dim with its label struck through, and never shows
@@ -156,5 +201,19 @@ final class MenuPanel
             : \str_repeat(' ', $gap);
 
         return $style->apply(' '.$label.$divide.$tail.' ');
+    }
+
+    /**
+     * $shown with its access letter underlined — when the letter survived the
+     * cut: a label truncated past it keeps the letter as a key, but a mark
+     * under the ellipsis would point at a character that is not there.
+     */
+    public static function underlineLetter(string $shown, string $label, ?int $letter): string
+    {
+        if (null === $letter || \mb_substr($shown, start: 0, length: $letter + 1) !== \mb_substr($label, start: 0, length: $letter + 1)) {
+            return $shown;
+        }
+
+        return \mb_substr($shown, start: 0, length: $letter).new Style(underline: true)->apply(\mb_substr($shown, $letter, length: 1)).\mb_substr($shown, $letter + 1);
     }
 }

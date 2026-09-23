@@ -142,7 +142,9 @@ final class IdeAppMenuTest extends TestCase
                 300 => function ($tui): void {
                     $this->assertSame('menu', $tui->getFocus()?->getId(), 'F10 focused the menu');
                     $this->assertTrue($tui->getById('menu')->isOpen());
-                    $tui->handleInput("\x1b[C"); // right -> Edit
+                    $this->assertFalse($tui->getById('menu')->isDropdownShown(), 'armed: F10 drops nothing');
+                    $tui->handleInput("\x1b[C"); // right -> Edit, still armed
+                    $tui->handleInput("\r"); // enter drops Edit
                     $tui->handleInput("\r"); // enter -> Edit's first item (Undo)
                 },
                 400 => function ($tui): void {
@@ -153,6 +155,9 @@ final class IdeAppMenuTest extends TestCase
                 },
                 500 => function ($tui): void {
                     $this->assertTrue($tui->getById('menu')->isOpen());
+                    $tui->handleInput("\x1b[21~"); // F10 on an armed bar lets it go
+                    $this->assertFalse($tui->getById('menu')->isOpen(), 'F10 toggles');
+                    $tui->handleInput("\x1b[21~");
                     $tui->handleInput("\x1b"); // Esc closes
                 },
                 600 => function ($tui): void {
@@ -315,7 +320,8 @@ final class IdeAppMenuTest extends TestCase
                     $markerRow = $this->rowOf($before, 'echo 1;');
                     $this->assertNotNull($markerRow, 'editor content visible before the menu opens');
 
-                    $tui->handleInput("\x1b[21~"); // F10 opens the menu
+                    $tui->handleInput("\x1b[21~"); // F10 arms the menu
+                    $tui->handleInput("\x1b[B"); // ↓ drops File
 
                     $after = $this->screenGrid($tui, $terminal);
                     $this->assertTrue($tui->getById('menu')->isOpen(), 'F10 opened the menu');
@@ -349,8 +355,9 @@ final class IdeAppMenuTest extends TestCase
         // No frame has rendered yet, so every widget rect is null. Opening the
         // menu must not blow up placing the (impossible-to-place) overlay.
         $tui->handleInput("\x1b[21~"); // F10
+        $tui->handleInput("\x1b[B"); // ↓ drops File
 
-        $this->assertTrue($tui->getById('menu')->isOpen(), 'menu opened without a prior render');
+        $this->assertTrue($tui->getById('menu')->isDropdownShown(), 'menu opened without a prior render');
         $this->assertSame('', $terminal->consumeOutput(), 'nothing was drawn');
     }
 

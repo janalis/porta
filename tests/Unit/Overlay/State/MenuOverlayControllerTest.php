@@ -13,7 +13,9 @@ use Porta\Tests\Support\TestOverlayPane;
 use Porta\Ui\BidiTui;
 use Porta\Widget\ContextMenu;
 use Porta\Widget\MenuBarWidget;
+use Porta\Workbench\Menu\Menu;
 use Porta\Workbench\Menu\MenuItem;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Render\Renderer;
@@ -51,7 +53,8 @@ final class MenuOverlayControllerTest extends TestCase
 
         $this->assertInstanceOf(DropdownRegion::class, $controller->contextMenuDropdown());
         $rendered = \implode("\n", $pane->render(new RenderContext(100, 24)));
-        $this->assertStringContainsString('Copy', $rendered, 'the framed dropdown composited onto the pane');
+        // Stripped: the item's access letter is underlined, which splits the word.
+        $this->assertStringContainsString('Copy', AnsiUtils::stripAnsiCodes($rendered), 'the framed dropdown composited onto the pane');
     }
 
     /**
@@ -89,5 +92,27 @@ final class MenuOverlayControllerTest extends TestCase
         $controller->refreshContextMenu();
         $this->assertSame(20, $controller->contextMenuDropdown()?->top, 'a menu flips to end on its anchor row, as before');
         $this->assertStringContainsString('┏', \implode("\n", $pane->render(new RenderContext(100, 24))), 'a menu holds the keys too: heavy');
+    }
+
+    /** An armed bar (F10, nothing dropped) places no dropdown — not even an empty frame. */
+    public function testAnArmedBarPlacesNoDropdown(): void
+    {
+        $this->renderer = new Renderer(new StyleSheet());
+        $this->tui = new BidiTui(terminal: new VirtualTerminal(columns: 100, rows: 24), keybindings: new Keybindings([]), renderer: $this->renderer);
+        $pane = new TestOverlayPane();
+        $menuBar = new MenuBarWidget();
+        $menuBar->setMenus([new Menu('File', [new MenuItem('Save', '', null)])]);
+        $this->tui->add($menuBar);
+        $this->tui->add($pane);
+        $this->frame();
+        $controller = new MenuOverlayController($this->renderer, $menuBar, new ContextMenu(), new MenuOverlayPanes([$pane], static fn (): array => []));
+
+        $menuBar->arm();
+        $controller->refreshMenu();
+        $this->assertNull($controller->menuDropdown());
+
+        $menuBar->open(0);
+        $controller->refreshMenu();
+        $this->assertInstanceOf(DropdownRegion::class, $controller->menuDropdown(), 'the control: dropped, it is placed');
     }
 }

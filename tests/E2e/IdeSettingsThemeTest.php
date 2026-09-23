@@ -179,7 +179,8 @@ final class IdeSettingsThemeTest extends TestCase
                         $tui->handleInput($char);
                     }
                     $tui->handleInput("\r"); // commit → persists + reconfigures the LSP pool live
-                    $tui->handleInput("\x1b[21~"); // F10 opens the app menu OVER the settings view
+                    $tui->handleInput("\x1b[21~"); // F10 arms the app menu OVER the settings view
+                    $tui->handleInput("\x1b[B"); // ↓ drops File
                 },
                 700 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitPainted($tui, $terminal, 'Settings…');

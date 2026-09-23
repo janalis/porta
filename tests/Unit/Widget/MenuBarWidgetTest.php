@@ -112,7 +112,96 @@ final class MenuBarWidgetTest extends TestCase
         $this->assertStringContainsString('File', $plain);
         $this->assertStringNotContainsString('Edit', $plain, 'the second title paid for the mark');
         $this->assertStringEndsWith(Glyphs::ELLIPSIS, \rtrim($plain));
-        $this->assertNull($bar->titleAtColumn(11), 'and the mark is not a click target for the menu it stands for');
+        $this->assertSame(1, $bar->titleAtColumn(11), 'and the mark is a title: the first menu it hides');
+        $this->assertSame(11, $bar->titleStart(1), 'whose dropdown hangs under the mark');
+    }
+
+    /** The hidden menus are reached through the mark, which is lit while one of them is open. */
+    public function testTheMarkIsLitWhileAHiddenMenuIsOpen(): void
+    {
+        $bar = new MenuBarWidget(Styles::dark());
+        $bar->setMenus([new Menu('File', []), new Menu('Edit', []), new Menu('View', [])]);
+        $closed = $bar->render(new RenderContext(12, 1))[0];
+
+        $bar->open(2);
+
+        $this->assertNotSame($closed, $bar->render(new RenderContext(12, 1))[0]);
+        $this->assertStringEndsWith(Glyphs::ELLIPSIS, AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(12, 1))[0]));
+    }
+
+    /**
+     * F10 arms the bar, as on a desktop: it has the keys and a title is lit,
+     * but nothing drops until ↓, Enter, Space or a title's access letter.
+     */
+    public function testAnArmedBarDropsNothingUntilAsked(): void
+    {
+        $bar = $this->bar();
+        $bar->arm();
+
+        $this->assertTrue($bar->isOpen(), 'it has the keys');
+        $this->assertFalse($bar->isDropdownShown(), 'and shows no menu');
+        $this->assertSame([], $bar->dropdownSegments(40));
+        $this->assertSame(0, $bar->panelWidth());
+        $this->assertStringStartsWith(' File ', AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(40, 1))[0]), 'lit, but without the dropdown\'s rails');
+
+        $bar->handleInput("\x1b[C"); // →
+        $this->assertSame(1, $bar->openIndex());
+        $this->assertFalse($bar->isDropdownShown(), 'the arrows move the lit title only');
+
+        $bar->handleInput("\x1b[B"); // ↓
+        $this->assertTrue($bar->isDropdownShown());
+        $this->assertSame(1, $bar->openIndex(), 'Edit dropped');
+    }
+
+    /** A bar with no menus has nothing to arm, and does not take the keys for nothing. */
+    public function testAnEmptyBarDoesNotArm(): void
+    {
+        $bar = new MenuBarWidget();
+
+        $bar->arm();
+
+        $this->assertFalse($bar->isOpen());
+    }
+
+    /** Armed, a title's access letter drops that menu; Space drops the lit one. */
+    public function testAnArmedBarOpensAMenuByItsLetter(): void
+    {
+        $bar = $this->bar();
+        $bar->arm();
+        $bar->handleInput('e');
+        $this->assertTrue($bar->isDropdownShown());
+        $this->assertSame(1, $bar->openIndex());
+
+        $bar->close();
+        $bar->arm(1);
+        $bar->handleInput('z'); // no title's letter
+        $this->assertFalse($bar->isDropdownShown(), 'an unknown key drops nothing');
+        $bar->handleInput(' ');
+        $this->assertTrue($bar->isDropdownShown());
+        $this->assertSame(1, $bar->openIndex(), 'the lit one');
+    }
+
+    /** In an open menu, an item's access letter runs it. */
+    public function testALetterRunsItsItem(): void
+    {
+        $bar = $this->bar();
+        $bar->open(0); // File: Save, ─, Quit
+
+        $bar->handleInput('q');
+
+        $this->assertSame(['quit'], $this->ran);
+        $this->assertFalse($bar->isOpen(), 'and the menu closes, as a click would');
+    }
+
+    /** The letters are drawn: underlined in the titles, and in the items. */
+    public function testTheAccessLettersAreUnderlined(): void
+    {
+        $bar = new MenuBarWidget(Styles::dark());
+        $bar->setMenus([new Menu('File', [new MenuItem('Save', '', static fn (): null => null)])]);
+
+        $this->assertStringContainsString("\x1b[4mF\x1b[24mile", $bar->render(new RenderContext(20, 1))[0]);
+        $bar->open(0);
+        $this->assertStringContainsString("\x1b[4mS\x1b[24mave", $bar->dropdownSegments($bar->panelWidth())[0]['segment']);
     }
 
     /** Nothing dropped, nothing marked — and every title still hit-tests. */
