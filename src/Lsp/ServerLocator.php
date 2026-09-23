@@ -31,14 +31,20 @@ final class ServerLocator
      * registered by LSP-provider plugins (php now comes from here, not a
      * hardcoded default); they sit below the user's config in precedence.
      *
-     * @param array<string, array{command: list<string>, name: string, initializationOptions?: array<string, mixed>}> $pluginServers
+     * Each language maps to a LIST, its own server first. Only plugins
+     * contribute more than one: the config layers each name a single command,
+     * and a `{languageId: command}` entry REPLACES that language's list —
+     * naming a server by hand is a decision, and silently running someone
+     * else's beside it would not be honouring it.
      *
-     * @return array<string, array{command: list<string>, name: string, initializationOptions?: array<string, mixed>}>
+     * @param array<string, non-empty-list<array{command: list<string>, name: string, initializationOptions?: array<string, mixed>}>> $pluginServers
+     *
+     * @return array<string, non-empty-list<array{command: list<string>, name: string, initializationOptions?: array<string, mixed>}>>
      */
     public static function locateAll(string $rootDir, ?string $override = null, array $pluginServers = []): array
     {
         if (null !== $override && '' !== $override) {
-            return ['*' => self::server(self::split($override))];
+            return ['*' => [self::server(self::split($override))]];
         }
 
         /** @var array{lsp?: string|array<array-key, mixed>}|null $config */
@@ -49,14 +55,21 @@ final class ServerLocator
             // that language, but the rest keep their default (plugin or auto-detected)
             // — so configuring one language never silently unserves the others.
             $servers = self::effectiveDefaults($pluginServers);
+            // The `(string)` casts below are for the ANALYZER, not the
+            // runtime: a JSON object key like "0" arrives from json_decode as
+            // an int, and PHP normalises a numeric string array key back to
+            // an int anyway — so dropping the cast changes nothing that runs,
+            // and changes the inferred key type from string to array-key.
+            // Mutating them therefore produces equivalent mutants; they are
+            // not a coverage gap.
             /** @var mixed $command */
             foreach ($lsp as $language => $command) {
                 if (\is_string($command) && '' !== $command) {
-                    $servers[(string) $language] = self::server(self::split($command));
+                    $servers[(string) $language] = [self::server(self::split($command))];
                     continue;
                 }
                 if (\is_array($command) && [] !== $command) {
-                    $servers[(string) $language] = self::server(\array_values(\array_map(strval(...), $command)));
+                    $servers[(string) $language] = [self::server(\array_values(\array_map(strval(...), $command)))];
                 }
             }
 
@@ -66,7 +79,7 @@ final class ServerLocator
         // The historical single-server sources (config string/argv, env var)
         // keep their catch-all semantics: one server sees every file.
         if (null !== ($single = self::explicitSingle($rootDir))) {
-            return ['*' => $single];
+            return ['*' => [$single]];
         }
 
         return self::effectiveDefaults($pluginServers);
@@ -77,13 +90,21 @@ final class ServerLocator
      * overlaid with the plugin-provided servers (which win, and are the only
      * source of the PHP server now).
      *
-     * @param array<string, array{command: list<string>, name: string, initializationOptions?: array<string, mixed>}> $pluginServers
+     * @param array<string, non-empty-list<array{command: list<string>, name: string, initializationOptions?: array<string, mixed>}>> $pluginServers
      *
-     * @return array<string, array{command: list<string>, name: string, initializationOptions?: array<string, mixed>}>
+     * @return array<string, non-empty-list<array{command: list<string>, name: string, initializationOptions?: array<string, mixed>}>>
      */
     private static function effectiveDefaults(array $pluginServers): array
     {
-        return [...self::defaults(), ...$pluginServers];
+        $detected = [];
+        foreach (self::defaults() as $language => $server) {
+            $detected[$language] = [$server];
+        }
+
+        // A plugin claim REPLACES the auto-detected one rather than joining
+        // it: the detected server is a guess at what the machine has, and a
+        // plugin naming one for the same language has been told.
+        return [...$detected, ...$pluginServers];
     }
 
     /**

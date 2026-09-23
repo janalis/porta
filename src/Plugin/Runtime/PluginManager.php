@@ -21,6 +21,7 @@ use Porta\Plugin\Api\DisposablePlugin;
 use Porta\Plugin\Api\PluginApi;
 use Porta\Plugin\Api\PluginException;
 use Porta\Plugin\Api\PortaPlugin;
+use Porta\Plugin\Api\ServerRole;
 use Porta\Search\TokenSpanProvider;
 use Porta\Workbench\Dock\DockToolSource;
 use Porta\Workbench\Menu\ContributedMenuSource;
@@ -66,7 +67,7 @@ final class PluginManager implements
     public private(set) array $defaultKeys = [];
     /** @var list<PluginMenuSpec> Plugins-menu entries */
     private array $menuSpecs = [];
-    /** @var list<array{plugin: string, languageId: string, name: string, resolve: \Closure(): (list<string>|null), initOptions: (\Closure(): array<string, mixed>)|null}> committed LSP providers, in load order */
+    /** @var list<array{plugin: string, languageId: string, name: string, role: ServerRole, resolve: \Closure(): (list<string>|null), initOptions: (\Closure(): array<string, mixed>)|null}> committed LSP providers, in load order */
     private array $languageServers = [];
     /** @var list<array{plugin: string, tool: string, available: \Closure(): bool, via: list<array{0: string, 1: string}>, describe: (\Closure(): string)|null}> committed install offers */
     private array $installers = [];
@@ -278,50 +279,28 @@ final class PluginManager implements
 
     /**
      * The language servers provided by the loaded (enabled) plugins, resolved
-     * to launch commands: `languageId => {command, name}`. Each resolver runs
-     * now (reading the plugin's current `binary` setting), so this is the live
-     * server map. A resolver returning null (binary missing) leaves the
-     * language to the next available provider; the first available in load
-     * order wins. A throwing resolver is reported and treated as unavailable.
-     * The optional initializationOptions closure resolves here too — same
-     * laziness, same failure handling — so a plugin's settings reach the
-     * server relaunched by the next (re)configure.
+     * to launch commands: `languageId => [primary, …supplementary]`. Each
+     * resolver runs now (reading the plugin's current `binary` setting), so
+     * this is the live server map. A resolver returning null (binary missing)
+     * leaves the language to the next available provider. A throwing resolver
+     * is reported and treated as unavailable. The optional
+     * initializationOptions closure resolves here too — same laziness, same
+     * failure handling — so a plugin's settings reach the server relaunched by
+     * the next (re)configure.
      *
-     * @return array<string, array{command: list<string>, name: string, initializationOptions?: array<string, mixed>}>
+     * **The FIRST entry is the primary**, and which one that is comes from
+     * {@see ServerRole}, not from load order — see
+     * {@see PluginApi::registerLanguageServer()}. `debugAdapters()` and
+     * `HighlightRegistry` keep the plain first-wins convention; the divergence
+     * here is deliberate, because a language server is the one of the three a
+     * second provider can usefully sit beside.
+     *
+     * @return array<string, non-empty-list<array{command: list<string>, name: string, initializationOptions?: array<string, mixed>}>>
      */
     #[\Override]
     public function languageServers(): array
     {
-        $servers = [];
-        foreach ($this->languageServers as $server) {
-            if (\array_key_exists($server['languageId'], $servers)) {
-                continue; // an earlier provider already serves this language
-            }
-            try {
-                $command = $server['resolve']();
-                $options = null === $server['initOptions'] ? [] : $server['initOptions']();
-                // Validate encodability HERE, inside the per-plugin guard:
-                // the session pool json-encodes options into its session
-                // signature on the render path, where a NAN/INF/bad-UTF-8
-                // value from a plugin would otherwise become a recurring
-                // render fault instead of one reported plugin failure.
-                \json_encode($options, \JSON_THROW_ON_ERROR);
-            } catch (\Throwable $error) {
-                $this->reportFailure($server['plugin'], $error);
-
-                continue;
-            }
-            if (null === $command || [] === $command) {
-                continue; // the server's binary is not available
-            }
-            $entry = ['command' => \array_values($command), 'name' => $server['name']];
-            if ([] !== $options) {
-                $entry['initializationOptions'] = $options;
-            }
-            $servers[$server['languageId']] = $entry;
-        }
-
-        return $servers;
+        return new LanguageServerMap($this->reportFailure(...))->resolve($this->languageServers);
     }
 
     /**

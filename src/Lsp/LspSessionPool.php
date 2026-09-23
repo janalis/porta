@@ -29,7 +29,16 @@ use Psr\EventDispatcher\EventDispatcherInterface;
 #[AsIdeService]
 final class LspSessionPool
 {
-    /** @var array<string, array{command: list<string>, name: string, initializationOptions?: array<string, mixed>}> languageId ('*' = any) => server */
+    /**
+     * The servers for each language, ITS OWN FIRST.
+     *
+     * Only the first answers a feature request; the rest receive the whole
+     * document lifecycle and are asked for the verbs whose answers merge. A
+     * language with a second server is the exception, not the shape — see
+     * {@see \Porta\Plugin\Api\ServerRole}.
+     *
+     * @var array<string, non-empty-list<array{command: list<string>, name: string, initializationOptions?: array<string, mixed>}>> languageId ('*' = any) => servers
+     */
     private array $servers = [];
     /** @var array<string, LspSession> server signature => session */
     private array $sessions = [];
@@ -71,7 +80,7 @@ final class LspSessionPool
      * Declare the available servers and the shared inbound hooks. Sessions are
      * not started here — each launches on its language's first didOpen.
      *
-     * @param array<string, array{command: list<string>, name: string, initializationOptions?: array<string, mixed>}> $servers
+     * @param array<string, non-empty-list<array{command: list<string>, name: string, initializationOptions?: array<string, mixed>}>> $servers
      * @param \Closure(string): void        $onLog
      * @param \Closure(array, string): void $onDiagnostics params, and the name of the server that published them
      * @param \Closure(array): bool  $onApplyEdit
@@ -104,7 +113,7 @@ final class LspSessionPool
      * reconfigures on every setting of a provider plugin, and a toggle that
      * changes no command must not cost every language its running session.
      *
-     * @param array<string, array{command: list<string>, name: string, initializationOptions?: array<string, mixed>}> $servers
+     * @param array<string, non-empty-list<array{command: list<string>, name: string, initializationOptions?: array<string, mixed>}>> $servers
      *
      * @return bool whether the map changed (callers skip the buffer re-open when it did not)
      */
@@ -134,7 +143,7 @@ final class LspSessionPool
      * install changes it too: with no binary yet, the plugin resolves no
      * command at all and is absent from the map entirely.
      *
-     * @param array<string, array{command: list<string>, name: string, initializationOptions?: array<string, mixed>}> $servers
+     * @param array<string, non-empty-list<array{command: list<string>, name: string, initializationOptions?: array<string, mixed>}>> $servers
      */
     public function reload(array $servers): void
     {
@@ -167,9 +176,30 @@ final class LspSessionPool
             // disabled — point at Settings rather than naming one plugin.
             return null !== $path && 'php' === ProjectPaths::languageId($path) ? $this->translator->trans('none (enable a PHP server in Settings)') : $this->translator->trans('no server');
         }
-        $server = $this->servers[$key];
 
-        return $this->statuses[self::signature($server)] ?? $server['name'];
+        return self::describe($this->servers[$key], $this->statuses);
+    }
+
+    /**
+     * The status-bar text for a language's servers.
+     *
+     * One server reads as its own name (or what it is doing), which is every
+     * language most of the time. Two read as `primary +other` — enough to say
+     * that something else is also answering, without turning a status cell
+     * into a list. A FAILED one is named either way: collapsing it into the
+     * survivor's name is how "my second server is dead" becomes invisible.
+     *
+     * @param non-empty-list<array{command: list<string>, name: string, initializationOptions?: array<string, mixed>}> $servers
+     * @param array<string, string>                                                                                    $statuses
+     */
+    private static function describe(array $servers, array $statuses): string
+    {
+        $labels = [];
+        foreach ($servers as $server) {
+            $labels[] = $statuses[self::signature($server)] ?? $server['name'];
+        }
+
+        return \implode(' +', $labels);
     }
 
     // --- LspSession-compatible surface ---------------------------------------
@@ -196,20 +226,47 @@ final class LspSessionPool
         $this->activeSession()?->whenReady($action);
     }
 
+    /**
+     * The active file's path when its OWN server is ready, else null.
+     *
+     * Every session is asked, not just the first: `ready()` is also what
+     * flushes a pending didChange, and a supplementary server left holding an
+     * un-flushed edit would answer the next merged request about stale text.
+     * The verdict is still the primary's — it is the one a feature request
+     * goes to.
+     */
     public function ready(?string $path, Document $document, FlushMode $flush = FlushMode::Flush): ?string
     {
-        return $this->sessionFor($path)?->ready($path, $document, $flush);
+        $ready = null;
+        $first = true;
+        foreach ($this->sessionsFor($path) as $session) {
+            $answer = $session->ready($path, $document, $flush);
+            if ($first) {
+                $ready = $answer;
+                $first = false;
+            }
+        }
+
+        return $ready;
     }
 
-    /** Opening a document is what lazily launches its language's server. */
+    /**
+     * Opening a document is what lazily launches its language's servers — all
+     * of them, because a server that never saw the file has nothing to say
+     * about it.
+     */
     public function notifyDidOpen(string $path, string $text, string $languageId, int $version): void
     {
-        $this->sessionFor($path, StartMode::Start)?->notifyDidOpen($path, $text, $languageId, $version);
+        foreach ($this->sessionsFor($path, StartMode::Start) as $session) {
+            $session->notifyDidOpen($path, $text, $languageId, $version);
+        }
     }
 
     public function notifyDidClose(string $path): void
     {
-        $this->sessionFor($path)?->notifyDidClose($path);
+        foreach ($this->sessionsFor($path) as $session) {
+            $session->notifyDidClose($path);
+        }
     }
 
     /**
@@ -230,12 +287,16 @@ final class LspSessionPool
 
     public function notifyDidSave(string $path): void
     {
-        $this->sessionFor($path)?->notifyDidSave($path);
+        foreach ($this->sessionsFor($path) as $session) {
+            $session->notifyDidSave($path);
+        }
     }
 
     public function notifyFullChange(string $path, Document $document): void
     {
-        $this->sessionFor($path)?->notifyFullChange($path, $document);
+        foreach ($this->sessionsFor($path) as $session) {
+            $session->notifyFullChange($path, $document);
+        }
     }
 
     /**
@@ -244,12 +305,19 @@ final class LspSessionPool
      */
     public function scheduleDidChange(Document $doc, \Closure $resolvePath, \Closure $afterSync): void
     {
-        $this->sessionFor($resolvePath())?->scheduleDidChange($doc, $resolvePath, $afterSync);
+        // Each session debounces on its own timer and diffs against what IT
+        // was last told, which is the only baseline that can be right when
+        // one server does incremental sync and another does not.
+        foreach ($this->sessionsFor($resolvePath()) as $session) {
+            $session->scheduleDidChange($doc, $resolvePath, $afterSync);
+        }
     }
 
     public function flushPendingChange(?string $path, ?Document $document): void
     {
-        $this->sessionFor($path)?->flushPendingChange($path, $document);
+        foreach ($this->sessionsFor($path) as $session) {
+            $session->flushPendingChange($path, $document);
+        }
     }
 
     /** The named capability advertised by the server responsible for $path (null when none is up). */
@@ -271,30 +339,64 @@ final class LspSessionPool
         // is already running.
         $key = $this->fallbackKey();
 
-        return null === $key ? null : $this->sessions[self::signature($this->servers[$key])] ?? null;
+        return null === $key ? null : $this->sessions[self::signature($this->servers[$key][0])] ?? null;
     }
 
     private function sessionFor(?string $path, StartMode $start = StartMode::Reuse): ?LspSession
     {
+        return \array_first($this->sessionsFor($path, $start));
+    }
+
+    /**
+     * Every session serving $path, the language's own server first.
+     *
+     * The document lifecycle fans out over all of them: a server that never
+     * received a didOpen answers nothing, and one that missed a didChange
+     * answers about text the user has moved on from — which is worse than
+     * silence, because it looks like a wrong answer rather than no answer.
+     *
+     * Keyed by launch signature, so a caller can tell one session's answer
+     * from another's.
+     *
+     * @return array<string, LspSession>
+     */
+    private function sessionsFor(?string $path, StartMode $start = StartMode::Reuse): array
+    {
         if (null === $path || $this->disabled) {
-            return null;
+            return [];
         }
         $key = $this->serverKeyFor($path);
         if (null === $key) {
-            return null;
+            return [];
         }
-        $server = $this->servers[$key];
-        $signature = self::signature($server);
-        if (($this->sessions[$signature] ?? null) === null) {
-            if (StartMode::Reuse === $start) {
-                return null;
+        $sessions = [];
+        foreach ($this->servers[$key] as $server) {
+            $signature = self::signature($server);
+            // Two providers can resolve to one launch — the same binary under
+            // two names, or a plugin registering it twice. That is ONE
+            // process, and telling it a document opened twice is not a
+            // harmless duplicate: the server would hold two copies of a file
+            // it can only close once. Keying the result by signature is what
+            // makes that impossible rather than merely guarded.
+            if (\array_key_exists($signature, $sessions)) {
+                continue;
             }
-            $this->startSession($server, $signature);
+            if (($this->sessions[$signature] ?? null) === null) {
+                if (StartMode::Reuse === $start) {
+                    continue;
+                }
+                $this->startSession($server, $signature);
+            }
+            // A synchronously failing start (spawn refusal) evicts its own
+            // slot, so the entry may already be gone again: nothing to route
+            // to, and the others still stand.
+            $session = $this->sessions[$signature] ?? null;
+            if (null !== $session) {
+                $sessions[$signature] = $session;
+            }
         }
 
-        // A synchronously failing start (spawn refusal) evicts its own slot,
-        // so the entry may already be gone again: nothing to route to.
-        return $this->sessions[$signature] ?? null;
+        return $sessions;
     }
 
     /** The configured server key for $path: its exact languageId, else the catch-all. */

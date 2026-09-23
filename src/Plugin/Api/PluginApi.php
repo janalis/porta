@@ -96,7 +96,7 @@ final class PluginApi
      * @var array<string, array{key: string, label: string, kind: string, default: bool|int|string, options: list<string>|null, hint: string|null, min: int|null, max: int|null, step: int|null}> by key
      */
     private array $settingDescriptors = [];
-    /** @var PluginBuffer<array{plugin: string, languageId: string, name: string, resolve: \Closure(): (list<string>|null), initOptions: (\Closure(): array<string, mixed>)|null}> */
+    /** @var PluginBuffer<array{plugin: string, languageId: string, name: string, role: ServerRole, resolve: \Closure(): (list<string>|null), initOptions: (\Closure(): array<string, mixed>)|null}> */
     private readonly PluginBuffer $languageServers;
     /** @var PluginBuffer<array{plugin: string, tool: string, available: \Closure(): bool, via: list<array{0: string, 1: string}>, describe: (\Closure(): string)|null}> */
     private readonly PluginBuffer $installers;
@@ -335,20 +335,26 @@ final class PluginApi
      * lazily whenever the LSP layer (re)configures, so it can read the current
      * `binary` setting; keep it side-effect-free (settings + discovery only).
      * Plugin servers sit below the user's `.porta.json`/`$PORTA_LSP`/`--lsp`
-     * config in precedence; when several enabled plugins serve one language the
-     * first available (in load order) wins.
+     * config in precedence.
+     *
+     * When several enabled plugins claim one language, $role decides what
+     * happens rather than load order. The first {@see ServerRole::Primary}
+     * claim wins and later ones are dropped; a {@see ServerRole::Supplementary}
+     * claim runs BESIDE it — it receives the whole document lifecycle and its
+     * answers are merged into the mergeable verbs — and is promoted to primary
+     * when nothing else claims the language at all.
      *
      * $initializationOptions, when given, returns the LSP `initializationOptions`
      * sent in the server's initialize handshake. Like the command resolver it is
      * re-run on every (re)configure — read this plugin's settings in it and a
      * settings edit reaches the relaunched server. An empty array sends nothing.
      *
-     * @param \Closure(): (list<string>|null)            $resolveCommand
+     * @param \Closure(): (list<string>|null)         $resolveCommand
      * @param (\Closure(): array<string, mixed>)|null $initializationOptions
      *
      * @throws PluginException
      */
-    public function registerLanguageServer(string $languageId, string $name, \Closure $resolveCommand, ?\Closure $initializationOptions = null): void
+    public function registerLanguageServer(string $languageId, string $name, \Closure $resolveCommand, ?\Closure $initializationOptions = null, ServerRole $role = ServerRole::Primary): void
     {
         if (1 !== \preg_match(self::ID_PATTERN, $languageId)) {
             throw new PluginException(\sprintf('Invalid language id "%s" (expected /^[a-z0-9][a-z0-9_-]*$/i)', $languageId));
@@ -357,6 +363,7 @@ final class PluginApi
             'plugin' => $this->pluginName,
             'languageId' => $languageId,
             'name' => $name,
+            'role' => $role,
             'resolve' => $resolveCommand,
             'initOptions' => $initializationOptions,
         ]);
@@ -1496,7 +1503,7 @@ final class PluginApi
         return \array_values($this->settingDescriptors);
     }
 
-    /** @return list<array{plugin: string, languageId: string, name: string, resolve: \Closure(): (list<string>|null), initOptions: (\Closure(): array<string, mixed>)|null}> */
+    /** @return list<array{plugin: string, languageId: string, name: string, role: ServerRole, resolve: \Closure(): (list<string>|null), initOptions: (\Closure(): array<string, mixed>)|null}> */
     public function bufferedLanguageServers(): array
     {
         return $this->languageServers->all();

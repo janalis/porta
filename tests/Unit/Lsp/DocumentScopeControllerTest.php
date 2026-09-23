@@ -46,7 +46,7 @@ final class DocumentScopeControllerTest extends TestCase
             fn (array $command, string $rootDir, \Closure $onLog): FakeLspClient => $this->client = new FakeLspClient($capabilities),
         );
         $pool->configure(
-            ['*' => ['command' => ['ls'], 'name' => 'ls']],
+            ['*' => [['command' => ['ls'], 'name' => 'ls']]],
             static function (string $line): void {},
             static function (array $params): void {},
             static fn (array $edit): bool => false,

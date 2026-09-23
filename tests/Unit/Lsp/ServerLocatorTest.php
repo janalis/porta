@@ -17,7 +17,7 @@ final class ServerLocatorTest extends TestCase
     use PreservesPath;
 
     /** @var array<string, array{command: list<string>, name: string}> a phpantom plugin server, for the defaults layer */
-    private const array PHPANTOM = ['php' => ['command' => ['/opt/phpantom_lsp'], 'name' => 'phpantom']];
+    private const array PHPANTOM = ['php' => [['command' => ['/opt/phpantom_lsp'], 'name' => 'phpantom']]];
 
     public function testConfigStringCommandIsTheCatchAll(): void
     {
@@ -26,8 +26,8 @@ final class ServerLocatorTest extends TestCase
         $servers = ServerLocator::locateAll($project->dir);
 
         $this->assertSame(['*'], \array_keys($servers), 'a single command string serves every language');
-        $this->assertSame(['php', 'phpactor.phar', 'language-server'], $servers['*']['command']);
-        $this->assertSame('phpactor', $servers['*']['name'], 'interpreter token skipped, .phar stripped');
+        $this->assertSame(['php', 'phpactor.phar', 'language-server'], $servers['*'][0]['command']);
+        $this->assertSame('phpactor', $servers['*'][0]['name'], 'interpreter token skipped, .phar stripped');
     }
 
     public function testConfigArgvListIsTheCatchAll(): void
@@ -37,8 +37,8 @@ final class ServerLocatorTest extends TestCase
         $servers = ServerLocator::locateAll($project->dir);
 
         $this->assertSame(['*'], \array_keys($servers));
-        $this->assertSame(['node', '/x/intelephense.js', '--stdio'], $servers['*']['command']);
-        $this->assertSame('intelephense', $servers['*']['name']);
+        $this->assertSame(['node', '/x/intelephense.js', '--stdio'], $servers['*'][0]['command']);
+        $this->assertSame('intelephense', $servers['*'][0]['name']);
     }
 
     public function testOverrideWinsOverEverything(): void
@@ -48,7 +48,7 @@ final class ServerLocatorTest extends TestCase
         $servers = ServerLocator::locateAll($project->dir, 'my-ls --stdio', self::PHPANTOM);
 
         $this->assertSame(['*'], \array_keys($servers), 'the --lsp override beats a map config and plugin servers');
-        $this->assertSame(['my-ls', '--stdio'], $servers['*']['command']);
+        $this->assertSame(['my-ls', '--stdio'], $servers['*'][0]['command']);
     }
 
     public function testEmptyOverrideIsIgnored(): void
@@ -57,7 +57,7 @@ final class ServerLocatorTest extends TestCase
 
         $servers = ServerLocator::locateAll($project->dir, '');
 
-        $this->assertSame(['phpactor', 'language-server'], $servers['*']['command'], 'empty override falls through to config');
+        $this->assertSame(['phpactor', 'language-server'], $servers['*'][0]['command'], 'empty override falls through to config');
     }
 
     public function testEnvVariableIsTheCatchAll(): void
@@ -68,14 +68,14 @@ final class ServerLocatorTest extends TestCase
         $servers = ServerLocator::locateAll($project->dir);
 
         $this->assertSame(['*'], \array_keys($servers));
-        $this->assertSame('custom-ls', $servers['*']['name']);
+        $this->assertSame('custom-ls', $servers['*'][0]['name']);
     }
 
     public function testDisplayNameFallsBackWhenAllTokensAreInterpreters(): void
     {
         $project = new TempProject(['.porta.json' => \json_encode(['lsp' => 'php'])]);
 
-        $this->assertSame('php', ServerLocator::locateAll($project->dir)['*']['name']);
+        $this->assertSame('php', ServerLocator::locateAll($project->dir)['*'][0]['name']);
     }
 
     public function testDisplayNameRecognizesAnInterpreterRegardlessOfCase(): void
@@ -84,7 +84,7 @@ final class ServerLocatorTest extends TestCase
         // as an interpreter token, not mistaken for the server binary itself.
         $project = new TempProject(['.porta.json' => \json_encode(['lsp' => 'PHP phpactor.phar language-server'])]);
 
-        $this->assertSame('phpactor', ServerLocator::locateAll($project->dir)['*']['name']);
+        $this->assertSame('phpactor', ServerLocator::locateAll($project->dir)['*'][0]['name']);
     }
 
     public function testMapCommandValuesCastToStrings(): void
@@ -95,7 +95,7 @@ final class ServerLocatorTest extends TestCase
 
         $servers = ServerLocator::locateAll($project->dir);
 
-        $this->assertSame(['ls', '9229'], $servers['typescript']['command']);
+        $this->assertSame(['ls', '9229'], $servers['typescript'][0]['command']);
     }
 
     public function testMapCommandValuesAreReindexedIntoAPlainList(): void
@@ -107,14 +107,14 @@ final class ServerLocatorTest extends TestCase
 
         $servers = ServerLocator::locateAll($project->dir);
 
-        $this->assertSame(['ls', '--stdio'], $servers['typescript']['command']);
+        $this->assertSame(['ls', '--stdio'], $servers['typescript'][0]['command']);
     }
 
     public function testArgvListCommandValuesCastToStrings(): void
     {
         $project = new TempProject(['.porta.json' => \json_encode(['lsp' => ['ls', 9229]])]);
 
-        $this->assertSame(['ls', '9229'], ServerLocator::locateAll($project->dir)['*']['command']);
+        $this->assertSame(['ls', '9229'], ServerLocator::locateAll($project->dir)['*'][0]['command']);
     }
 
     public function testMissingOrMalformedConfigDoesNotCrash(): void
@@ -140,8 +140,8 @@ final class ServerLocatorTest extends TestCase
         $servers = ServerLocator::locateAll($project->dir, null, self::PHPANTOM);
 
         $this->assertSame(['php'], \array_keys($servers), 'PHP now comes from a plugin, not a hardcoded default');
-        $this->assertSame('phpantom', $servers['php']['name']);
-        $this->assertSame(['/opt/phpantom_lsp'], $servers['php']['command']);
+        $this->assertSame('phpantom', $servers['php'][0]['name']);
+        $this->assertSame(['/opt/phpantom_lsp'], $servers['php'][0]['command']);
     }
 
     public function testConfigMapOverridesAPluginServer(): void
@@ -151,26 +151,26 @@ final class ServerLocatorTest extends TestCase
 
         $servers = ServerLocator::locateAll($project->dir, null, self::PHPANTOM);
 
-        $this->assertSame(['phpactor', 'language-server'], $servers['php']['command'], 'the user config beats the plugin server');
-        $this->assertSame('phpactor', $servers['php']['name']);
+        $this->assertSame(['phpactor', 'language-server'], $servers['php'][0]['command'], 'the user config beats the plugin server');
+        $this->assertSame('phpactor', $servers['php'][0]['name']);
     }
 
     public function testPluginInitializationOptionsSurviveTheDefaultsMergeButNotAnOverride(): void
     {
         \putenv('PATH=/nonexistent');
         $plugins = [
-            'twig' => ['command' => ['/opt/sf-ls'], 'name' => 'sf-ls', 'initializationOptions' => ['workspaceTrust' => false]],
-            'yaml' => ['command' => ['/opt/sf-ls'], 'name' => 'sf-ls', 'initializationOptions' => ['workspaceTrust' => false]],
+            'twig' => [['command' => ['/opt/sf-ls'], 'name' => 'sf-ls', 'initializationOptions' => ['workspaceTrust' => false]]],
+            'yaml' => [['command' => ['/opt/sf-ls'], 'name' => 'sf-ls', 'initializationOptions' => ['workspaceTrust' => false]]],
         ];
 
         $plain = new TempProject();
         $servers = ServerLocator::locateAll($plain->dir, null, $plugins);
-        $this->assertSame(['workspaceTrust' => false], $servers['twig']['initializationOptions'] ?? null, 'the plugin entry passes through whole');
+        $this->assertSame(['workspaceTrust' => false], $servers['twig'][0]['initializationOptions'] ?? null, 'the plugin entry passes through whole');
 
         $project = new TempProject(['.porta.json' => \json_encode(['lsp' => ['twig' => 'my-twig-ls']])]);
         $overridden = ServerLocator::locateAll($project->dir, null, $plugins);
-        $this->assertArrayNotHasKey('initializationOptions', $overridden['twig'], 'a config override replaces the entry, options included');
-        $this->assertSame(['workspaceTrust' => false], $overridden['yaml']['initializationOptions'] ?? null, 'the untouched language keeps its options');
+        $this->assertArrayNotHasKey('initializationOptions', $overridden['twig'][0], 'a config override replaces the entry, options included');
+        $this->assertSame(['workspaceTrust' => false], $overridden['yaml'][0]['initializationOptions'] ?? null, 'the untouched language keeps its options');
     }
 
     public function testMapOverrideLeavesOtherLanguagesOnTheirDefaults(): void
@@ -182,9 +182,9 @@ final class ServerLocatorTest extends TestCase
         $servers = ServerLocator::locateAll($project->dir, null, self::PHPANTOM);
 
         $this->assertSame(['php', 'typescript', 'yaml'], \array_keys($servers));
-        $this->assertSame('phpantom', $servers['php']['name'], 'php keeps its plugin server');
-        $this->assertSame(['my-tsls', '--stdio'], $servers['typescript']['command'], 'the override applies');
-        $this->assertSame(['ls', '--stdio'], $servers['yaml']['command'], 'argv-list value form');
+        $this->assertSame('phpantom', $servers['php'][0]['name'], 'php keeps its plugin server');
+        $this->assertSame(['my-tsls', '--stdio'], $servers['typescript'][0]['command'], 'the override applies');
+        $this->assertSame(['ls', '--stdio'], $servers['yaml'][0]['command'], 'argv-list value form');
     }
 
     // --- Core auto-detect (JS/TS, Python — PHP is plugin-only now) ------------
@@ -212,11 +212,11 @@ final class ServerLocatorTest extends TestCase
 
         $servers = ServerLocator::locateAll($project->dir);
 
-        $this->assertSame('typescript-language-server', $servers['javascript']['name']);
+        $this->assertSame('typescript-language-server', $servers['javascript'][0]['name']);
         $this->assertSame($servers['javascript'], $servers['typescript'], 'JS and TS share one server');
-        $this->assertSame([$tools->path('typescript-language-server'), '--stdio'], $servers['javascript']['command']);
-        $this->assertSame('pyright', $servers['python']['name']);
-        $this->assertSame([$tools->path('pyright-langserver'), '--stdio'], $servers['python']['command']);
+        $this->assertSame([$tools->path('typescript-language-server'), '--stdio'], $servers['javascript'][0]['command']);
+        $this->assertSame('pyright', $servers['python'][0]['name']);
+        $this->assertSame([$tools->path('pyright-langserver'), '--stdio'], $servers['python'][0]['command']);
         $this->assertArrayNotHasKey('php', $servers);
     }
 
@@ -230,8 +230,8 @@ final class ServerLocatorTest extends TestCase
         $servers = ServerLocator::locateAll($project->dir);
 
         $this->assertSame(['python'], \array_keys($servers));
-        $this->assertSame('pylsp', $servers['python']['name']);
-        $this->assertSame([$tools->path('pylsp')], $servers['python']['command'], 'no --stdio arg for pylsp, unlike pyright');
+        $this->assertSame('pylsp', $servers['python'][0]['name']);
+        $this->assertSame([$tools->path('pylsp')], $servers['python'][0]['command'], 'no --stdio arg for pylsp, unlike pyright');
     }
 
     public function testNothingInstalledAndNoPluginIsEmpty(): void

@@ -4463,6 +4463,77 @@ Incidentally the new path is a fix, not just a change: `mb_strwidth()` scored
 that conjunct 3 columns, the grapheme walk scores it 2, and 2 is what a terminal
 draws.
 
+## Two servers on one language (2026-09-23)
+
+Porta routed one language server per languageId, and which plugin got `php`
+came down to load order — the directory glob, so alphabetical. Symfony's
+language tools is *built* to run beside a general PHP server, and lost the
+claim because `symfony-lsp` sorts after `phpantom`. Renaming either plugin
+would have changed which one served PHP, which is the shape of an accident
+rather than a decision.
+
+**`ServerRole` replaces load order.** The first `Primary` claim wins and later
+ones are dropped — two general servers for one language is double the processes
+for one answer, and neither is the right one to ask. A `Supplementary` claim
+runs beside it, and is PROMOTED when nothing else claims the language, which is
+what keeps symfony-lsp serving php on a project with no PHP server enabled: the
+behaviour the plugin already documented, minus the accident that produced it.
+`debugAdapters()` and `HighlightRegistry` keep the plain first-wins convention,
+and the divergence is commented at the site, because a language server is the
+one of the three a second provider can usefully sit beside.
+
+**The map is a list, and the whole lifecycle fans out.** `didOpen`,
+`didChange`, `didSave`, `didClose` and the flush inside `ready()` reach every
+session for the language. Half a lifecycle would be worse than none: a server
+still holding the text from three keystrokes ago answers about a document the
+user has moved on from, which reads as a wrong answer rather than as no answer.
+Feature requests still go to the first server only — most verbs pick a single
+answer, and asking two would mean inventing a tie-break for each. Merging the
+ones that *are* lists (completion, code actions, code lenses) is a separate
+seam, and needs `request()` to carry server identity first, because
+`completionItem/resolve` has to go back to whoever offered the item.
+
+**Duplicates collapse twice, and the second time is not belt-and-braces.**
+`PluginManager` drops entries with an identical launch signature, and the pool
+does it again when routing. Telling one process a document opened twice is not
+a harmless duplicate — the server would hold two copies of a file it can only
+close once. Two mutants proved the first version of that guard was written for
+the easy fixture: `continue` → `break` is invisible while the duplicate is
+LAST, and both the dedupe skip and the not-running skip needed a case with a
+distinct server behind the one being skipped.
+
+**`LanguageServerMap` is its own class** because `mago lint`'s kan-defect score
+said so, and it was right: deciding who serves a language is a policy with
+three rules that interact, and `PluginManager` is already where every other
+kind of registration lands.
+
+**Two equivalent mutants are recorded rather than chased.**
+`ServerLocator`'s `(string) $language` casts are for the analyzer: a JSON
+object key like `"0"` arrives from `json_decode` as an int, and PHP normalises
+a numeric string array key back to an int anyway, so dropping the cast changes
+nothing that runs and only widens the inferred key type. Removing them turns
+`composer analyze` red, which is the evidence that they are load-bearing
+somewhere other than at runtime. The reason is at the site, so the next reader
+does not spend the round rediscovering it.
+
+### Two pre-existing tests that passed without observing anything
+
+Both surfaced as coverage gaps under the (slower) coverage run while every
+suite was green, which is the shape of the trap: a test asserting an ABSENCE
+after a fixed gap cannot tell "it decided not to" from "it has not answered".
+
+`testCompletionWithNullResultIsIgnored` waited 300 ticks and asserted no popup.
+Its own comment defended the gap — "there is no positive to await here" — and
+the branch it existed to cover never ran. There is a positive: ask a SECOND
+completion that does answer. Responses come back in order over one stdio pipe,
+so the popup from the second is proof the first was handled.
+
+`testGoToImplementationWithNoResultFlashes` did have a barrier, and it was the
+wrong one: both of its cases flash the same message, and `clearOutput()` does
+not clear a flash that is still live and repainting — so the await after it was
+satisfied by the FIRST flash coming back. The cases are the other way round
+now, and the second waits for the toast stack to empty before it looks.
+
 ## Diagnostics belong to whoever published them (2026-09-23)
 
 `Buffer::$diagnostics` was ONE slot shared by every publisher. A language

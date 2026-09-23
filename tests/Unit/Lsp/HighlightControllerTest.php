@@ -43,7 +43,7 @@ final class HighlightControllerTest extends TestCase
             fn (array $command, string $rootDir, \Closure $onLog): FakeLspClient => $this->client = new FakeLspClient($capabilities),
         );
         $pool->configure(
-            ['php' => ['command' => ['php-ls'], 'name' => 'php-ls']],
+            ['php' => [['command' => ['php-ls'], 'name' => 'php-ls']]],
             static function (string $line): void {},
             static function (array $params): void {},
             static fn (array $edit): bool => false,

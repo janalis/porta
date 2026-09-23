@@ -13,6 +13,7 @@ use Porta\Support\Outcome;
 use Porta\Tests\Support\FakeLspClient;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\Presence;
+use Porta\Tests\Support\Probe;
 use Revolt\EventLoop;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 
@@ -60,9 +61,9 @@ final class LspSessionPoolTest extends TestCase
     }
 
     private const array SERVERS = [
-        'php' => ['command' => ['php-ls'], 'name' => 'php-ls'],
-        'javascript' => ['command' => ['ts-ls', '--stdio'], 'name' => 'ts-ls'],
-        'typescript' => ['command' => ['ts-ls', '--stdio'], 'name' => 'ts-ls'],
+        'php' => [['command' => ['php-ls'], 'name' => 'php-ls']],
+        'javascript' => [['command' => ['ts-ls', '--stdio'], 'name' => 'ts-ls']],
+        'typescript' => [['command' => ['ts-ls', '--stdio'], 'name' => 'ts-ls']],
     ];
 
     public function testLogLinesArePrefixedWithTheServerName(): void
@@ -235,16 +236,16 @@ final class LspSessionPoolTest extends TestCase
         $pool->notifyDidOpen('/tmp/proj/b.php', 'y', 'php', 1);
         $this->assertCount(1, $this->clients, 'and still serves didOpens');
 
-        $this->assertTrue($pool->reconfigure(['php' => ['command' => ['other-ls'], 'name' => 'other-ls']]), 'a changed map still applies');
+        $this->assertTrue($pool->reconfigure(['php' => [['command' => ['other-ls'], 'name' => 'other-ls']]]), 'a changed map still applies');
         $this->assertTrue($client->stopped, 'and tears the old session down');
     }
 
     public function testInitializationOptionsReachTheClientFactoryAndSplitSessions(): void
     {
         $pool = $this->pool([
-            'php' => ['command' => ['sf-ls'], 'name' => 'sf-ls', 'initializationOptions' => ['workspaceTrust' => false]],
-            'twig' => ['command' => ['sf-ls'], 'name' => 'sf-ls', 'initializationOptions' => ['workspaceTrust' => false]],
-            'yaml' => ['command' => ['sf-ls'], 'name' => 'sf-ls', 'initializationOptions' => ['workspaceTrust' => true]],
+            'php' => [['command' => ['sf-ls'], 'name' => 'sf-ls', 'initializationOptions' => ['workspaceTrust' => false]]],
+            'twig' => [['command' => ['sf-ls'], 'name' => 'sf-ls', 'initializationOptions' => ['workspaceTrust' => false]]],
+            'yaml' => [['command' => ['sf-ls'], 'name' => 'sf-ls', 'initializationOptions' => ['workspaceTrust' => true]]],
         ]);
         $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 1);
         $pool->notifyDidOpen('/tmp/proj/b.twig', 'y', 'twig', 1);
@@ -287,7 +288,7 @@ final class LspSessionPoolTest extends TestCase
 
     public function testCatchAllServesEveryLanguage(): void
     {
-        $pool = $this->pool(['*' => ['command' => ['any-ls'], 'name' => 'any-ls']]);
+        $pool = $this->pool(['*' => [['command' => ['any-ls'], 'name' => 'any-ls']]]);
         $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 1);
         $pool->notifyDidOpen('/tmp/proj/notes.md', 'y', 'markdown', 1);
 
@@ -298,8 +299,8 @@ final class LspSessionPoolTest extends TestCase
     public function testExactLanguageBeatsTheCatchAll(): void
     {
         $pool = $this->pool([
-            '*' => ['command' => ['any-ls'], 'name' => 'any-ls'],
-            'php' => ['command' => ['php-ls'], 'name' => 'php-ls'],
+            '*' => [['command' => ['any-ls'], 'name' => 'any-ls']],
+            'php' => [['command' => ['php-ls'], 'name' => 'php-ls']],
         ]);
         $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 1);
 
@@ -391,7 +392,7 @@ final class LspSessionPoolTest extends TestCase
     {
         // Only '*' is configured (no explicit 'php' entry): with no active
         // file, a workspace-level request must still reach it.
-        $pool = $this->pool(['*' => ['command' => ['any-ls'], 'name' => 'any-ls']]);
+        $pool = $this->pool(['*' => [['command' => ['any-ls'], 'name' => 'any-ls']]]);
         $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 1); // starts the catch-all session
         $this->activeFile->set(null);
 
@@ -569,7 +570,7 @@ final class LspSessionPoolTest extends TestCase
         $old = $this->clients[0]['client'];
         $this->assertFalse($old->stopped);
 
-        $pool->reconfigure(['php' => ['command' => ['new-php-ls'], 'name' => 'new-php-ls']]);
+        $pool->reconfigure(['php' => [['command' => ['new-php-ls'], 'name' => 'new-php-ls']]]);
         $this->assertTrue($old->stopped, 'the running session is stopped');
 
         // The next didOpen relaunches under the new command.
@@ -577,5 +578,211 @@ final class LspSessionPoolTest extends TestCase
         $this->assertCount(2, $this->clients);
         $this->assertSame(['new-php-ls'], $this->clients[1]['command']);
         $this->assertSame('new-php-ls', $pool->statusFor('/tmp/proj/a.php'));
+    }
+
+    /** php served by its own server AND one that runs beside it. */
+    private const array TWO_ON_PHP = [
+        'php' => [
+            ['command' => ['php-ls'], 'name' => 'php-ls'],
+            ['command' => ['sf-ls'], 'name' => 'sf-ls'],
+        ],
+    ];
+
+    /**
+     * Opening a file launches EVERY server for its language.
+     *
+     * A supplementary server that never received a didOpen has nothing to say
+     * about the file, which is the whole of what it is there for.
+     */
+    public function testDidOpenStartsEveryServerForTheLanguage(): void
+    {
+        $pool = $this->pool(self::TWO_ON_PHP);
+
+        $pool->notifyDidOpen('/tmp/proj/a.php', '<?php', 'php', 1);
+
+        $this->assertSame([['php-ls'], ['sf-ls']], \array_column($this->clients, 'command'));
+        foreach ($this->clients as $built) {
+            $this->assertSame(
+                ['textDocument/didOpen'],
+                \array_column($built['client']->notifications, 'method'),
+                'both were told the file is open',
+            );
+        }
+    }
+
+    /**
+     * And every later edit, save and close reaches both.
+     *
+     * Half a lifecycle is worse than none: a server still holding the text
+     * from three keystrokes ago answers about a document the user has moved
+     * on from, which reads as a wrong answer rather than as no answer.
+     */
+    public function testTheWholeDocumentLifecycleReachesEveryServer(): void
+    {
+        $pool = $this->pool(self::TWO_ON_PHP);
+        $pool->notifyDidOpen('/tmp/proj/a.php', '<?php', 'php', 1);
+        foreach ($this->clients as $built) {
+            $built['client']->notifications = [];
+        }
+
+        $pool->notifyFullChange('/tmp/proj/a.php', new Document("<?php\necho 1;\n"));
+        $pool->notifyDidSave('/tmp/proj/a.php');
+        $pool->notifyDidClose('/tmp/proj/a.php');
+
+        foreach ($this->clients as $built) {
+            $this->assertSame(
+                ['textDocument/didChange', 'textDocument/didSave', 'textDocument/didClose'],
+                \array_column($built['client']->notifications, 'method'),
+            );
+        }
+    }
+
+    /**
+     * A feature request still goes to ONE server — the language's own.
+     *
+     * Most verbs pick a single answer (definition, rename, formatting), and
+     * asking two servers would mean inventing a tie-break for each. The
+     * supplementary one is there for the answers that merge, which is a
+     * separate seam.
+     */
+    public function testAFeatureRequestGoesToTheLanguagesOwnServerOnly(): void
+    {
+        $pool = $this->pool(self::TWO_ON_PHP);
+        $pool->notifyDidOpen('/tmp/proj/a.php', '<?php', 'php', 1);
+        $this->activeFile->set('/tmp/proj/a.php');
+
+        $pool->request('textDocument/definition', [], static function (mixed $result, ?array $error): void {});
+
+        $this->assertSame(['textDocument/definition'], \array_column($this->clients[0]['client']->requests, 'method'));
+        $this->assertSame([], $this->clients[1]['client']->requests, 'the one beside it is not asked');
+    }
+
+    /**
+     * A second server that cannot start does not take the first with it.
+     *
+     * The failure budget is keyed by launch signature, not by language, so a
+     * crash-looping companion burns its own retries.
+     */
+    public function testAFailingSecondServerLeavesTheFirstServing(): void
+    {
+        $pool = $this->pool(self::TWO_ON_PHP);
+        $pool->notifyDidOpen('/tmp/proj/a.php', '<?php', 'php', 1);
+        // The companion dies mid-session: the same start callback fires again.
+        $died = $this->clients[1]['client']->lastOnReady;
+        $this->assertNotNull($died);
+        $died(Outcome::Failed);
+
+        $pool->notifyDidSave('/tmp/proj/a.php');
+
+        $this->assertSame(
+            ['textDocument/didOpen', 'textDocument/didSave'],
+            \array_column($this->clients[0]['client']->notifications, 'method'),
+            'the language still has a server',
+        );
+    }
+
+    /** The status cell names both, and does not hide one that failed. */
+    public function testStatusNamesEveryServerForTheLanguage(): void
+    {
+        $pool = $this->pool(self::TWO_ON_PHP);
+        $this->assertSame('php-ls +sf-ls', $pool->statusFor('/tmp/proj/a.php'), 'before either starts, their names');
+
+        $pool->notifyDidOpen('/tmp/proj/a.php', '<?php', 'php', 1);
+        $died = $this->clients[1]['client']->lastOnReady;
+        $this->assertNotNull($died);
+        $died(Outcome::Failed);
+
+        $this->assertSame('php-ls +failed', $pool->statusFor('/tmp/proj/a.php'), 'a dead companion is named, not collapsed away');
+    }
+
+    /**
+     * Two providers resolving to the SAME launch are one process, asked once.
+     *
+     * The pool already shares a session between languages with one signature;
+     * within a language a duplicate would otherwise be started, fed and asked
+     * twice over.
+     */
+    public function testTwoServersWithTheSameLaunchAreOneSession(): void
+    {
+        $pool = $this->pool([
+            'php' => [
+                ['command' => ['php-ls'], 'name' => 'one'],
+                ['command' => ['php-ls'], 'name' => 'two'],
+            ],
+        ]);
+
+        $pool->notifyDidOpen('/tmp/proj/a.php', '<?php', 'php', 1);
+
+        $this->assertCount(1, $this->clients);
+        $this->assertSame(['textDocument/didOpen'], \array_column($this->clients[0]['client']->notifications, 'method'), 'told once, not twice');
+    }
+
+    /**
+     * A duplicate in the middle of the list is SKIPPED, not a full stop: the
+     * distinct server after it still starts.
+     *
+     * Bailing out at the first duplicate looks identical whenever the
+     * duplicate is last, which is the easy fixture to write and the one that
+     * proves nothing.
+     */
+    public function testADuplicateDoesNotStopTheServersAfterIt(): void
+    {
+        $pool = $this->pool([
+            'php' => [
+                ['command' => ['php-ls'], 'name' => 'one'],
+                ['command' => ['php-ls'], 'name' => 'the-same-again'],
+                ['command' => ['sf-ls'], 'name' => 'three'],
+            ],
+        ]);
+
+        $pool->notifyDidOpen('/tmp/proj/a.php', '<?php', 'php', 1);
+
+        $this->assertSame([['php-ls'], ['sf-ls']], \array_column($this->clients, 'command'));
+        foreach ($this->clients as $built) {
+            $this->assertSame(['textDocument/didOpen'], \array_column($built['client']->notifications, 'method'));
+        }
+    }
+
+    /**
+     * A server that is not running is skipped, and the ones after it are
+     * still reached.
+     *
+     * The first server dies, which evicts its slot; a later notification must
+     * still find the second. Stopping at the gap would silently unsubscribe
+     * every server behind a dead one.
+     */
+    public function testANotRunningServerDoesNotHideTheOnesAfterIt(): void
+    {
+        $pool = $this->pool(self::TWO_ON_PHP);
+        $pool->notifyDidOpen('/tmp/proj/a.php', '<?php', 'php', 1);
+        $died = $this->clients[0]['client']->lastOnReady;
+        $this->assertNotNull($died);
+        $died(Outcome::Failed); // evicts the FIRST server's slot
+        $this->clients[1]['client']->notifications = [];
+
+        $pool->notifyDidSave('/tmp/proj/a.php');
+
+        $this->assertSame(
+            ['textDocument/didSave'],
+            \array_column($this->clients[1]['client']->notifications, 'method'),
+            'the survivor was still told',
+        );
+    }
+
+    /**
+     * `ready()` answers the language's OWN server, not whichever answered
+     * last — it is the one a feature request will go to.
+     */
+    public function testReadyAnswersTheFirstServerNotTheLast(): void
+    {
+        $pool = $this->pool(self::TWO_ON_PHP);
+        $pool->notifyDidOpen('/tmp/proj/a.php', '<?php', 'php', 1);
+        // Only the SECOND is past initialize, so "the last one that answered"
+        // and "the language's own server" give different answers. Written
+        // through Probe because a client's readiness is its own to set.
+        Probe::set($this->clients[0]['client'], 'isInitialized', false);
+
+        $this->assertNull($pool->ready('/tmp/proj/a.php', new Document('<?php')), 'the language\'s own server is not ready, so nothing is');
+        $this->assertTrue($this->clients[1]['client']->isInitialized, 'the other one IS, which is what makes this a real distinction');
     }
 }

@@ -831,7 +831,7 @@ final class IdeHelpersTest extends TestCase
         Probe::set($session, 'client', $client);
 
         $pool = Services::resolve($this->ide, LspSessionPool::class);
-        Probe::set($pool, 'servers', ['*' => ['command' => ['injected'], 'name' => 'injected']]);
+        Probe::set($pool, 'servers', ['*' => [['command' => ['injected'], 'name' => 'injected']]]);
         // The key mirrors LspSessionPool::signature(): command + "\0" + json of the (absent) options.
         Probe::set($pool, 'sessions', ["injected\0null" => $session]);
         Probe::set($pool, 'configured', true);

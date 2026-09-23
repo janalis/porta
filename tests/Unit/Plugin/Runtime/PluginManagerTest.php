@@ -20,6 +20,7 @@ use Porta\Plugin\Api\AbstractPlugin;
 use Porta\Plugin\Api\DisposablePlugin;
 use Porta\Plugin\Api\PluginApi;
 use Porta\Plugin\Api\PluginException;
+use Porta\Plugin\Api\ServerRole;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginMenuSpec;
 use Porta\Plugin\Runtime\PluginRuntime;
@@ -317,8 +318,8 @@ final class PluginManagerTest extends TestCase
 
         $this->assertSame(
             [
-                'php' => ['command' => ['/bin/two'], 'name' => 'two-ls'],
-                'typescript' => ['command' => ['/bin/ts', '--stdio'], 'name' => 'ts'],
+                'php' => [['command' => ['/bin/two'], 'name' => 'two-ls']],
+                'typescript' => [['command' => ['/bin/ts', '--stdio'], 'name' => 'ts']],
             ],
             $manager->languageServers(),
             'first available wins; a null resolver yields to the next provider',
@@ -343,8 +344,8 @@ final class PluginManagerTest extends TestCase
 
         $this->assertSame(
             [
-                'twig' => ['command' => ['/bin/sf'], 'name' => 'sf-ls', 'initializationOptions' => ['workspaceTrust' => false]],
-                'yaml' => ['command' => ['/bin/sf'], 'name' => 'sf-ls'],
+                'twig' => [['command' => ['/bin/sf'], 'name' => 'sf-ls', 'initializationOptions' => ['workspaceTrust' => false]]],
+                'yaml' => [['command' => ['/bin/sf'], 'name' => 'sf-ls']],
             ],
             $manager->languageServers(),
             'options land in the entry; an empty options array sends nothing',
@@ -353,7 +354,7 @@ final class PluginManagerTest extends TestCase
         $trust = true;
         $this->assertSame(
             ['workspaceTrust' => true],
-            $manager->languageServers()['twig']['initializationOptions'],
+            $manager->languageServers()['twig'][0]['initializationOptions'],
             'the closure re-resolves on every call, so a settings edit reaches the next reconfigure',
         );
     }
@@ -633,5 +634,136 @@ final class PluginManagerTest extends TestCase
         $events->dispatch(new ActiveBufferChanged('/a'));
 
         $this->assertSame('/a', $seen, 'the listener receives the event OBJECT, not a string');
+    }
+
+    /**
+     * Two plugins claiming one language as its OWN server: the first wins and
+     * the second is dropped, as before. Two general servers for one language
+     * is double the processes for one answer, and neither is the right one to
+     * ask.
+     */
+    public function testASecondPrimaryClaimIsStillDropped(): void
+    {
+        $manager = $this->wiredManager(new EventDispatcher());
+        $settings = new PluginSettings('/p', []);
+        foreach (['one' => '/bin/one', 'two' => '/bin/two'] as $plugin => $binary) {
+            $api = new PluginApi($plugin, $manager, '/p', $settings);
+            $api->registerLanguageServer('php', $plugin, static fn (): array => [$binary]);
+            $manager->commit($api);
+        }
+
+        $this->assertSame(
+            ['php' => [['command' => ['/bin/one'], 'name' => 'one']]],
+            $manager->languageServers(),
+        );
+    }
+
+    /**
+     * A supplementary claim runs BESIDE the language's own server, second in
+     * the list.
+     *
+     * Before this it was dropped outright, and which of the two survived came
+     * down to the directory glob being alphabetical — so symfony-lsp lost php
+     * to phpantom because of its name.
+     */
+    public function testASupplementaryClaimRunsBesideThePrimary(): void
+    {
+        $manager = $this->wiredManager(new EventDispatcher());
+        $settings = new PluginSettings('/p', []);
+        $beside = new PluginApi('symfony-lsp', $manager, '/p', $settings);
+        $beside->registerLanguageServer('php', 'symfony-lsp', static fn (): array => ['/bin/sf'], null, ServerRole::Supplementary);
+        $manager->commit($beside);
+        $own = new PluginApi('phpantom', $manager, '/p', $settings);
+        $own->registerLanguageServer('php', 'phpantom', static fn (): array => ['/bin/phpantom']);
+        $manager->commit($own);
+
+        $this->assertSame(
+            [
+                'php' => [
+                    ['command' => ['/bin/phpantom'], 'name' => 'phpantom'],
+                    ['command' => ['/bin/sf'], 'name' => 'symfony-lsp'],
+                ],
+            ],
+            $manager->languageServers(),
+            'the language\'s own server leads however the plugins were ordered',
+        );
+    }
+
+    /**
+     * A supplementary claim with nothing beside it IS the language's server.
+     *
+     * That is what keeps symfony-lsp serving php on a project with no PHP
+     * server enabled — the behaviour the plugin already documented, minus the
+     * accident that used to produce it.
+     */
+    public function testALoneSupplementaryClaimIsPromoted(): void
+    {
+        $manager = $this->wiredManager(new EventDispatcher());
+        $api = new PluginApi('symfony-lsp', $manager, '/p', new PluginSettings('/p', []));
+        $api->registerLanguageServer('php', 'symfony-lsp', static fn (): array => ['/bin/sf'], null, ServerRole::Supplementary);
+        $manager->commit($api);
+
+        $this->assertSame(
+            ['php' => [['command' => ['/bin/sf'], 'name' => 'symfony-lsp']]],
+            $manager->languageServers(),
+        );
+    }
+
+    /**
+     * A primary whose binary is missing lets a supplementary one lead, rather
+     * than leaving the language unserved beside a server that could have
+     * taken it.
+     */
+    public function testAnUnavailablePrimaryLetsTheSupplementaryOneLead(): void
+    {
+        $manager = $this->wiredManager(new EventDispatcher());
+        $settings = new PluginSettings('/p', []);
+        $own = new PluginApi('phpantom', $manager, '/p', $settings);
+        $own->registerLanguageServer('php', 'phpantom', static fn (): ?array => null);
+        $manager->commit($own);
+        $beside = new PluginApi('symfony-lsp', $manager, '/p', $settings);
+        $beside->registerLanguageServer('php', 'symfony-lsp', static fn (): array => ['/bin/sf'], null, ServerRole::Supplementary);
+        $manager->commit($beside);
+
+        $this->assertSame(
+            ['php' => [['command' => ['/bin/sf'], 'name' => 'symfony-lsp']]],
+            $manager->languageServers(),
+        );
+    }
+
+    /**
+     * Two providers resolving to one launch are one entry — otherwise the
+     * pool would start, feed and ask the same process twice.
+     */
+    public function testProvidersResolvingToTheSameLaunchCollapse(): void
+    {
+        $manager = $this->wiredManager(new EventDispatcher());
+        $settings = new PluginSettings('/p', []);
+        $own = new PluginApi('phpantom', $manager, '/p', $settings);
+        $own->registerLanguageServer('php', 'phpantom', static fn (): array => ['/bin/shared']);
+        $manager->commit($own);
+        $beside = new PluginApi('other', $manager, '/p', $settings);
+        $beside->registerLanguageServer('php', 'other', static fn (): array => ['/bin/shared'], null, ServerRole::Supplementary);
+        $manager->commit($beside);
+
+        $this->assertSame(
+            ['php' => [['command' => ['/bin/shared'], 'name' => 'phpantom']]],
+            $manager->languageServers(),
+        );
+    }
+
+    /** Same argv, different initializationOptions: two servers, not one. */
+    public function testTheSameArgvUnderDifferentOptionsStaysTwoServers(): void
+    {
+        $manager = $this->wiredManager(new EventDispatcher());
+        $settings = new PluginSettings('/p', []);
+        $own = new PluginApi('one', $manager, '/p', $settings);
+        $own->registerLanguageServer('php', 'one', static fn (): array => ['/bin/shared'], static fn (): array => ['trust' => true]);
+        $manager->commit($own);
+        $beside = new PluginApi('two', $manager, '/p', $settings);
+        $beside->registerLanguageServer('php', 'two', static fn (): array => ['/bin/shared'], static fn (): array => ['trust' => false], ServerRole::Supplementary);
+        $manager->commit($beside);
+
+        $this->assertCount(2, $manager->languageServers()['php']);
     }
 }

@@ -505,6 +505,20 @@ successful start resets the budget. `reconfigure()` no-ops on an identical
 resolved map, so a provider-plugin setting the servers never see does not cost
 every language its warm session.
 
+**A language can have more than one server.** The map is
+`languageId => [its own server, …the ones beside it]`, and which is which comes
+from `registerLanguageServer()`'s `ServerRole` rather than from load order —
+which was the directory glob, so alphabetical, which is how symfony-lsp lost
+`php` to `phpantom` by name. Every session for a language receives the whole
+document lifecycle (`didOpen`, `didChange`, `didSave`, `didClose`, and the
+flush inside `ready()`); a feature request still goes to the first one only,
+because most verbs pick a single answer and asking two would mean inventing a
+tie-break for each. Entries with an identical launch signature collapse to one
+session, both in `PluginManager` and again in the pool: telling one process a
+document opened twice is not a harmless duplicate. `statusFor()` reads
+`own +beside`, and names a failed one rather than hiding it behind the
+survivor.
+
 **Published diagnostics are keyed by OWNER.** `DiagnosticsSink::applyDiagnostics()`
 takes the server's name (bound per session, like the log and `showMessage`
 hooks) or the publishing plugin's, and `Buffer::$diagnostics` is a derived
