@@ -107,7 +107,7 @@ final class SettingsFormWidgetTest extends TestCase
         // Label first, control in the shared column — a Bool's checkbox used to
         // sit at column 1, ahead of its label and out of line with every other
         // kind's control.
-        $this->assertMatchesRegularExpression('/Inline diagnostics\s+\[✓\]/u', $screen);
+        $this->assertMatchesRegularExpression('/Inline diagnostics\s+┃✓┃/u', $screen, 'the selected one takes the keys: heavy rails');
         $this->assertMatchesRegularExpression('/Relative line numbers\s+\[ \]/', $screen);
         $this->assertMatchesRegularExpression('/Theme\s+│ dark\s+▾ │/u', $screen, 'a choice is a select');
         $this->assertMatchesRegularExpression('/Tab width\s+│ ◂\s+4\s+▸ │/u', $screen, 'a number is a stepper between two arrows');
@@ -322,22 +322,52 @@ final class SettingsFormWidgetTest extends TestCase
      * A click SELECTS; only a click on the already-selected row actuates.
      *
      * The first click used to mutate outright, so a stray click on this screen
-     * toggled a setting or armed a plugin removal. Pane row 0 is the title, so
-     * the first setting is at pane row 1.
+     * toggled a setting or armed a plugin removal. Pane row 0 is the title;
+     * Theme's label sits on its box's middle row, pane row 5.
      */
     public function testAFirstClickSelectsWithoutChangingAnything(): void
     {
         $widget = $this->widget($changes);
         $widget->render(new RenderContext(60, 12)); // a click lands on what was drawn
 
-        $widget->handleClick(2, 0); // pane row 2 = the second setting, a one-row checkbox
+        $widget->handleClick(5, 0); // Theme's label
 
-        $this->assertSame(1, Probe::object($widget, 'list')->selected(), 'the click moved the selection');
+        $this->assertSame(3, Probe::object($widget, 'list')->selected(), 'the click moved the selection');
         $this->assertSame([], $changes, 'and changed nothing');
 
-        $widget->handleClick(2, 0); // the same row, now selected
+        $widget->handleClick(5, 0); // the same row, now selected
 
-        $this->assertSame([['relativeLineNumbers', true]], $changes, 'the second click actuates');
+        $this->assertSame([['theme', 'light']], $changes, 'the second click actuates');
+    }
+
+    /**
+     * A checkbox is the exception, the way a browser's `<label>` is: its first
+     * click toggles, on the label as on the box. The rule above protects rows
+     * whose effect is not on screen to be undone; a toggle's is, and the next
+     * click takes it back.
+     */
+    public function testACheckboxTogglesOnItsFirstClick(): void
+    {
+        $widget = $this->widget($changes);
+        $widget->render(new RenderContext(60, 12));
+
+        $widget->handleClick(2, 0); // pane row 2 = the second setting, a checkbox — on its label
+
+        $this->assertSame(1, Probe::object($widget, 'list')->selected());
+        $this->assertSame([['relativeLineNumbers', true]], $changes, 'selected and toggled at once');
+    }
+
+    public function testADisabledCheckboxIgnoresEveryClick(): void
+    {
+        $widget = $this->widget($changes);
+        $widget->setRows([new SettingsRow('sticky', 'Sticky scroll', SettingsRowKind::Bool, false, false, disabled: true)], 'T');
+        $screen = \array_map(AnsiUtils::stripAnsiCodes(...), $widget->render(new RenderContext(60, 6)));
+
+        $widget->handleClick(1, 0);
+        $widget->handleClick(1, 0);
+
+        $this->assertSame([], $changes);
+        $this->assertMatchesRegularExpression('/Sticky scroll\s+┆ ┆/u', $screen[1], 'and says so: its rails are dashed');
     }
 
     public function testAClickOnTheTitleOrPastTheLastRowDoesNothing(): void
@@ -1122,7 +1152,7 @@ final class SettingsFormWidgetTest extends TestCase
             $widget->setRows([new SettingsRow('sticky', $label, SettingsRowKind::Bool, true, false)], 'T');
 
             $line = AnsiUtils::stripAnsiCodes($this->body($widget->render(new RenderContext(58, 4)))[0]);
-            $control = \mb_strpos($line, needle: '[✓]', encoding: 'UTF-8');
+            $control = \mb_strpos($line, needle: '✓', encoding: 'UTF-8');
             $this->assertNotFalse($control, 'the row drew its checkbox');
             $widths[$locale] = AnsiUtils::visibleWidth(\mb_substr($line, start: 0, length: $control, encoding: 'UTF-8'));
         }
@@ -1162,9 +1192,11 @@ final class SettingsFormWidgetTest extends TestCase
                 break;
             }
             $mirrored = AnsiUtils::stripAnsiCodes(Bidi::reorder($line, BaseDirection::Rtl));
-            $columns[$labels[$i]] = \mb_strpos($mirrored, needle: '[✓]', encoding: 'UTF-8');
+            $columns[$labels[$i]] = \mb_strpos($mirrored, needle: '✓', encoding: 'UTF-8');
         }
 
+        // Measured at the mark: the selected row's box is heavy, `┃✓┃`, so its
+        // rails are not `[`/`]`, and the mark stands in the same place in both.
         $this->assertCount(1, \array_unique($columns), 'every checkbox is in the same column: '.\json_encode($columns));
     }
 
@@ -1183,7 +1215,7 @@ final class SettingsFormWidgetTest extends TestCase
         // EVERY part of the label — including its Latin tail — must come after
         // the control. Before the fix the tail crossed over and the row read
         // `LSP  [✓]  תרש`, the control wedged into the middle of its own label.
-        $control = \mb_strpos($mirrored, needle: '[✓]', encoding: 'UTF-8');
+        $control = \mb_strpos($mirrored, needle: '✓', encoding: 'UTF-8');
         $tail = \mb_strpos($mirrored, needle: 'LSP', encoding: 'UTF-8');
         $this->assertNotFalse($control);
         $this->assertNotFalse($tail);
@@ -1225,7 +1257,8 @@ final class SettingsFormWidgetTest extends TestCase
         // right-to-left browser draws a select's arrow. (Fencing the value
         // with marks split the box in two: this Bidi has no isolates.)
         yield 'hebrew choice' => [new SettingsRow('language', 'שפה', SettingsRowKind::Choice, 'he', false, ['en', 'he'], optionLabels: ['en' => 'English', 'he' => 'עברית']), '┃ ▾   תירבע ┃'];
-        yield 'bool' => [new SettingsRow('sticky', 'גלילה דביקה', SettingsRowKind::Bool, true, false), '[✓]'];
+        // The one row is the selected one of a focused form: its box is heavy.
+        yield 'bool' => [new SettingsRow('sticky', 'גלילה דביקה', SettingsRowKind::Bool, true, false), '┃✓┃'];
         yield 'action' => [new SettingsRow('rm', 'demo (project)', SettingsRowKind::Action, 'Remove', false), '┃  Remove  ┃'];
         // A Latin label ending in punctuation keeps its closing parenthesis:
         // between Latin and the gap's right-to-left mark it used to mirror

@@ -41,6 +41,9 @@ final class OverlayHost
 
     /** @var array{title: string, items: list<array{label: string, hint: string, value: string}>, selected: int, hovered: int|null, filter: TextField, onPick: callable(string): void}|null */
     private ?array $overlay = null;
+
+    /** @var array{title: string, filter: TextField, value: string}|null the list a running pick closed, for a pick that reopens it */
+    private ?array $picked = null;
     /** last-rendered overlay box, for mouse hit-testing */
     private ?ModalBox $overlayBox = null;
     /** @var array{label: string, value: TextField, onSubmit: callable(string): void, danger: bool}|null single-line mini prompt */
@@ -85,7 +88,14 @@ final class OverlayHost
         if ([] === $items) {
             return;
         }
-        $this->overlay = ['title' => $title, 'items' => $items, 'selected' => 0, 'hovered' => null, 'filter' => new TextField(style: $this->cursorStyle), 'onPick' => $onPick];
+        // A pick that reopens its own list — a checklist toggling in place —
+        // gets the list back as it left it: the same filter, the picked row.
+        $again = null !== $this->picked && $this->picked['title'] === $title ? $this->picked : null;
+        $overlay = ['title' => $title, 'items' => $items, 'selected' => 0, 'hovered' => null, 'filter' => $again['filter'] ?? new TextField(style: $this->cursorStyle), 'onPick' => $onPick];
+        if (null !== $again) {
+            $overlay['selected'] = (int) \array_search($again['value'], \array_column($this->matching($overlay), column_key: 'value'), strict: true);
+        }
+        $this->overlay = $overlay;
         ($this->invalidate)();
     }
 
@@ -365,11 +375,7 @@ final class OverlayHost
             return;
         }
         if ($kb->matches($keys, 'accept_completion')) {
-            $item = $this->matching($overlay)[$overlay['selected']];
-            $onPick = $overlay['onPick'];
-            $this->overlay = null;
-            $onPick($item['value']);
-            ($this->invalidate)();
+            $this->pick($overlay, $this->matching($overlay)[$overlay['selected']]);
 
             return;
         }
@@ -451,6 +457,26 @@ final class OverlayHost
     }
 
     /**
+     * Close the list and run its pick, remembering what it closed for the
+     * length of the pick — the debugger's exception filters reopen their own
+     * list on every toggle, and used to come back unfiltered on the first row.
+     *
+     * @param array{title: string, items: list<array{label: string, hint: string, value: string}>, selected: int, hovered: int|null, filter: TextField, onPick: callable(string): void} $overlay
+     * @param array{label: string, hint: string, value: string}                                                                                                                             $item
+     */
+    private function pick(array $overlay, array $item): void
+    {
+        $this->overlay = null;
+        $this->picked = ['title' => $overlay['title'], 'filter' => $overlay['filter'], 'value' => $item['value']];
+        try {
+            $overlay['onPick']($item['value']);
+        } finally {
+            $this->picked = null;
+        }
+        ($this->invalidate)();
+    }
+
+    /**
      * A left-click while the list overlay is open (editor-pane-relative
      * coords): on an item it picks it, anywhere else it dismisses. Always
      * consumed; returns false when the overlay is not open.
@@ -473,10 +499,7 @@ final class OverlayHost
         // pointer is over is the row the box drew.
         $item = null === $index ? null : $this->matching($overlay)[$index] ?? null;
         if (null !== $item) {
-            $onPick = $overlay['onPick'];
-            $this->overlay = null;
-            ($this->invalidate)();
-            $onPick($item['value']);
+            $this->pick($overlay, $item);
 
             return true;
         }

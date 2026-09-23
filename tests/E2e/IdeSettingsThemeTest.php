@@ -108,12 +108,9 @@ final class IdeSettingsThemeTest extends TestCase
                     // that leads every page that writes a file (3-5), the
                     // Editing legend (6), then this checkbox.
                     //
-                    // Twice, because a click on a row that is not already
-                    // selected only selects it — the first click used to
-                    // actuate only because Inline diagnostics happened to be
-                    // the row the page opens on, and it no longer is.
-                    $tui->handleInput("\x1b[<0;40;7M");
-                    $tui->handleInput("\x1b[<0;40;7m");
+                    // Once: a checkbox toggles on the click that selects it,
+                    // as a label does — every other kind of row waits for a
+                    // second.
                     $tui->handleInput("\x1b[<0;40;7M");
                     $tui->handleInput("\x1b[<0;40;7m");
                     // Hover the nav sidebar (a tint).

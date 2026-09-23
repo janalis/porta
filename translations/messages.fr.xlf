@@ -3246,6 +3246,14 @@
         <source>Keep</source>
         <target>Conserver</target>
       </trans-unit>
+      <trans-unit id="910">
+        <source>(excluded)</source>
+        <target>(exclu)</target>
+      </trans-unit>
+      <trans-unit id="911">
+        <source>No commit to amend</source>
+        <target>Aucun commit à modifier</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

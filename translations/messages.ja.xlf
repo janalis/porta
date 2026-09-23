@@ -3246,6 +3246,14 @@
         <source>Keep</source>
         <target>保持</target>
       </trans-unit>
+      <trans-unit id="910">
+        <source>(excluded)</source>
+        <target>(除外)</target>
+      </trans-unit>
+      <trans-unit id="911">
+        <source>No commit to amend</source>
+        <target>修正するコミットがありません</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

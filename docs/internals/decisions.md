@@ -10121,3 +10121,25 @@ for a hit test that mistook it for an entry. It is a control now and selects
 the first hidden entry on purpose, and the window follows. A step of a few rows
 like the wheel's would not move the window from a cursor mid-list.
 
+## A checkbox acts on the first click (2026-09-23)
+
+The settings form's rule is that a first click selects and only a second
+actuates. It was written because a stray click toggled a setting or armed a
+plugin removal. A settings Bool is now exempt, on its label as on its box, the
+way a browser's `<label>` is. A toggle's whole effect is on screen and the next
+click undoes it, while the rows the rule protects open an editor or arm
+something irreversible. Waiting for a second click made the checkbox read as
+dead. Selects and steppers already answered the first click, for the same kind
+of reason.
+
+The commit box's amend checkbox became a Tab stop, the third after summary and
+description. Space toggles it, and it is disabled (dashed, inert, skipped by
+Tab) on a branch with no commit. `GitInfo::hasHead()` runs on each eager refresh
+only, not on the poll: a branch gains its first commit through a commit, and a
+commit refreshes eagerly.
+
+The debugger's exception filters toggled by reopening their own list and lost
+the filter and the row each time. `OverlayHost` remembers, for the duration of
+a pick, the list it closed. A pick that reopens a list with the same title gets
+the filter back and the picked value selected.
+

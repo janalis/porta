@@ -88,25 +88,24 @@ final class FindModalRows
     }
 
     /**
-     * A match row in replace-preview mode: a {@see Glyphs} checkbox, the line
-     * number, and either the original line (when excluded) or `old → new`.
-     * $replacement is resolved by the caller — the modal's preview closure is
-     * never invoked for an excluded row, so `''` arrives here and is ignored.
+     * A match row in replace-preview mode: a checkbox, the line number, and
+     * either `old → new` or, for an excluded row — a null $replacement, since
+     * the modal's preview closure is never invoked for one — the original line
+     * and $excludedNote, the translated `(excluded)`.
      *
      * @param ResultRow $result
      */
-    // @mago-expect lint:no-boolean-flag-parameter -- the bool IS the domain here, not a hidden second responsibility.
-    public static function previewMatch(array $result, RowSelection $selected, bool $excluded, string $replacement, int $width, Styles $styles): string
+    public static function previewMatch(array $result, RowSelection $selected, ?string $replacement, string $excludedNote, int $width, Styles $styles): string
     {
         $bg = $styles->of(ModalRowStyle::role($selected))->getAnsiRestore();
         $label = (string) ($result['line'] + 1);
         $old = $result['text'];
-        $checkbox = '  '.($excluded ? Glyphs::CHECKBOX_OFF : Glyphs::CHECKBOX_ON).' ';
+        $checkbox = '  '.FieldBox::checkbox(null !== $replacement).' ';
         $prefixWidth = \mb_strwidth($checkbox) + \mb_strwidth($label) + 2;
         $head = $checkbox.$styles->of(Role::TabAccent)->apply($label).'  ';
 
-        $text = $excluded
-            ? $head.$old.$styles->of(Role::Dim)->apply('   (excluded)')
+        $text = null === $replacement
+            ? $head.$old.$styles->of(Role::Dim)->apply('   '.$excludedNote)
             : $head.$old.'  '.Glyphs::REPLACE_ARROW.'  '.$styles->of(Role::Added)->apply($replacement);
 
         $searchStyle = $styles->of(Role::SearchBg);

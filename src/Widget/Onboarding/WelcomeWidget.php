@@ -287,8 +287,7 @@ final class WelcomeWidget extends AbstractWidget implements FocusableInterface, 
     {
         $marker = match (true) {
             !$step->isCheckable() => Glyphs::LINK_MARKER,
-            $step->isDone() => Glyphs::CHECKBOX_ON,
-            default => Glyphs::CHECKBOX_OFF,
+            default => FieldBox::checkbox($step->isDone()),
         };
         $prefix = $marker.'  ';
         $selected = $this->list->isSelected($index);

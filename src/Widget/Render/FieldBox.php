@@ -34,6 +34,8 @@ final class FieldBox
 {
     public const int ROWS = 3;
 
+    public const int CHECKBOX_WIDTH = 3;
+
     /** Rail + pad on each side of the value. */
     public const int CHROME_COLS = 4;
 
@@ -90,6 +92,26 @@ final class FieldBox
     }
 
     /** $text centred in exactly $room columns (cut when it does not fit), styled when a style is given. */
+    /**
+     * A checkbox, {@see CHECKBOX_WIDTH} columns in every state so nothing
+     * beside it moves: `[✓]` / `[ ]`, and `[–]` for null, the partial state.
+     * Its rails are the state ({@see FieldState::checkboxRails()}). Bare
+     * glyphs: the row it sits in shades it.
+     */
+    public static function checkbox(?bool $checked, FieldState $state = FieldState::Idle): string
+    {
+        [$left, $right] = $state->checkboxRails();
+
+        return (
+            $left.match ($checked) {
+                true => Glyphs::CHECKBOX_MARK_ON,
+                null => Glyphs::CHECKBOX_MARK_PARTIAL,
+                false => Glyphs::CHECKBOX_MARK_OFF,
+            }
+            .$right
+        );
+    }
+
     /**
      * A fieldset's legend: `─ Editor ──────`, the rule in the field-border
      * tint — a group's heading, which no key lands on.

@@ -300,8 +300,14 @@ counterpart looks — a text field (`render()`, the legend in the top border:
 (`select()`, the value then `▾`), and any other content through `control()`.
 Each comes boxed (`FieldBox::ROWS`) or in the one-row form (`Find ┃ foo
 ┃`). `TextField` stays the value-and-caret model; label, placeholder and hint
-are presentation and live in `FieldSpec`. A checkbox is a glyph (`[✓]`,
-`[ ]`, `[–]`) whose focus and hover are its row's shading.
+are presentation and live in `FieldSpec`. A checkbox is `FieldBox::checkbox()`,
+three columns in every state: `[✓]` / `[ ]` / `[–]` at rest, and the state's own
+rails otherwise (`FieldState::checkboxRails()`): heavy `┃✓┃` where it is the
+control taking the keys (a settings Bool row, the commit box's amend Tab stop),
+dashed `┆ ┆` disabled. In a list row its focus is the row's selection bar
+instead. A checkbox acts on the first click, on its label as on its box. Where
+the row's text is a link of its own (the git changes list, the Find preview)
+only the box and a column either side of it toggle.
 
 - **The shape is the state** (`FieldState`): rounded idle, heavy while it takes
   the keys, double for a destructive answer, dashed (`╭┄╮`) disabled. Colour

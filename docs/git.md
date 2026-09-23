@@ -65,7 +65,9 @@ Unified (dual gutters) or side-by-side.
 
 `Ctrl+Enter` commits the staged changes (the button enables only when
 something is staged); `Alt+M` toggles **amend**, prefilling the last
-commit's message.
+commit's message. `Tab` walks the summary, the description and the amend
+checkbox, where `Space` toggles it. On a branch with no commit yet the
+checkbox is dashed and says *No commit to amend*, and `Tab` passes it by.
 
 ### History
 

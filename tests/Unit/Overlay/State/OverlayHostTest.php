@@ -287,6 +287,62 @@ final class OverlayHostTest extends TestCase
         $this->assertTrue($this->repainted(), 'accept_completion requests a render');
     }
 
+    /**
+     * A checklist toggles by reopening itself from its pick — the debugger's
+     * exception filters do — and used to come back unfiltered on its first row
+     * every time. It comes back as it left: the filter, and the row picked.
+     * Another list opened from a pick starts fresh.
+     */
+    public function testAPickThatReopensItsListKeepsTheFilterAndTheRow(): void
+    {
+        $host = $this->host();
+        $items = [
+            ['label' => 'caught', 'hint' => '', 'value' => 'c'],
+            ['label' => 'uncaught', 'hint' => '', 'value' => 'u'],
+            ['label' => 'user-unhandled', 'hint' => '', 'value' => 'x'],
+        ];
+        $reopen = null;
+        $reopen = static function () use ($host, $items, &$reopen): void {
+            $host->openList('Filters', $items, static function () use (&$reopen): void {
+                $reopen();
+            });
+        };
+        $reopen();
+        $kb = $this->keybindings();
+        $host->handleInput('u', $kb);
+        $host->handleInput('n', $kb); // `un`: uncaught, user-unhandled
+        $host->handleInput("\x1b[B", $kb); // the second of those
+
+        $host->handleInput("\r", $kb);
+
+        $overlay = Probe::get($host, 'overlay');
+        $this->assertSame('un', $overlay['filter']->value(), 'the filter survived the toggle');
+        $this->assertSame(1, $overlay['selected'], 'and so did the row: user-unhandled, second of the two');
+
+        $host->openList('Filters', $items, static fn (): null => null);
+        $this->assertSame('', Probe::get($host, 'overlay')['filter']->value(), 'outside a pick, even the same list opens fresh');
+    }
+
+    /** Only a list with the SAME title is the one reopening: a pick that opens a different one starts it fresh. */
+    public function testAPickThatOpensAnotherListStartsItFresh(): void
+    {
+        $host = $this->host();
+        $items = [['label' => 'a', 'hint' => '', 'value' => 'A'], ['label' => 'ab', 'hint' => '', 'value' => 'B']];
+        $host->openList('First', $items, static function () use ($host, $items): void {
+            $host->openList('Second', $items, static fn (): null => null);
+        });
+        $kb = $this->keybindings();
+        $host->handleInput('a', $kb);
+        $host->handleInput("\x1b[B", $kb);
+
+        $host->handleInput("\r", $kb);
+
+        $overlay = Probe::get($host, 'overlay');
+        $this->assertSame('Second', $overlay['title']);
+        $this->assertSame('', $overlay['filter']->value());
+        $this->assertSame(0, $overlay['selected']);
+    }
+
     public function testPromptSubmitAndInsertRequestRendersOnlyWhenSomethingChanged(): void
     {
         $host = $this->host();

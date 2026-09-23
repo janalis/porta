@@ -718,10 +718,9 @@ final class SettingsViewControllerTest extends TestCase
 
         // Pane rows 1-3 are the boxed "Save changes to" lead and row 4 the
         // Editing legend, so General's first own row, the Inline diagnostics
-        // checkbox, is pane row 5 — click once to select it, once to actuate
-        // (default true → false).
+        // checkbox, is pane row 5 — one click selects and toggles it, as a
+        // label does (default true → false).
         $this->form->render(new RenderContext(80, 24));
-        $this->form->handleClick(5, 0);
         $this->form->handleClick(5, 0);
         $this->assertFalse(IdeConfig::load($this->project->dir)->settings['inlineDiagnostics']);
     }

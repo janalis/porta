@@ -76,6 +76,23 @@ enum FieldState
         };
     }
 
+    /**
+     * A checkbox's two rails: the brackets at rest, and the border's own
+     * vertical otherwise — heavy `┃✓┃` where it takes the keys, dashed `┆✓┆`
+     * where it will not act.
+     *
+     * @return array{string, string}
+     */
+    public function checkboxRails(): array
+    {
+        if (self::Idle === $this) {
+            return [Glyphs::CHECKBOX_LEFT, Glyphs::CHECKBOX_RIGHT];
+        }
+        $rail = $this->glyphs()[5];
+
+        return [$rail, $rail];
+    }
+
     /** The border's tint — secondary to the shape, never the only cue. */
     public function borderRole(): Role
     {

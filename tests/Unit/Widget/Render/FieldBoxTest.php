@@ -236,4 +236,26 @@ final class FieldBoxTest extends TestCase
             self::assertExactWidth([FieldBox::compact($spec, $field, $state, $caret, $width, Styles::dark())], $width, "compact, caret at {$caretAt}");
         }
     }
+
+    /** @return iterable<string, array{bool|null, FieldState, string}> */
+    public static function checkboxes(): iterable
+    {
+        yield 'checked, at rest' => [true, FieldState::Idle, '[✓]'];
+        yield 'unchecked, at rest' => [false, FieldState::Idle, '[ ]'];
+        yield 'partial, at rest' => [null, FieldState::Idle, '[–]'];
+        yield 'taking the keys' => [true, FieldState::Focused, '┃✓┃'];
+        yield 'disabled' => [false, FieldState::Disabled, '┆ ┆'];
+        yield 'danger, should one ever be' => [true, FieldState::Danger, '║✓║'];
+    }
+
+    /**
+     * A checkbox's state is its rails, the mark between them its value — and
+     * three columns in every state, so nothing beside it moves on focus.
+     */
+    #[DataProvider('checkboxes')]
+    public function testACheckboxIsItsRailsAndItsMark(?bool $checked, FieldState $state, string $expected): void
+    {
+        $this->assertSame($expected, FieldBox::checkbox($checked, $state));
+        $this->assertSame(FieldBox::CHECKBOX_WIDTH, \mb_strwidth($expected));
+    }
 }

@@ -166,14 +166,18 @@ final class Glyphs
     public const string VCS_MODIFIED = '┆';
     public const string VCS_DELETED = '▁';
 
-    // Toggles — bracketed so on/off reads without color, the brackets being
-    // the box a browser draws. ✓ and – are neutral, not Latin letters: inside
-    // a mirrored row the control's own direction marks hold them together
-    // (SettingsFormWidget::gap()). ✓ is the same value as BRANCH_CURRENT —
-    // disjoint surfaces (a checkbox is always bracketed).
-    public const string CHECKBOX_ON = '[✓]';
-    public const string CHECKBOX_PARTIAL = '[–]';
-    public const string CHECKBOX_OFF = '[ ]';
+    // Toggles — the mark between two rails, drawn by FieldBox::checkbox():
+    // brackets at rest, the box a browser draws, and the field border's
+    // vertical in every other state (FieldState::checkboxRails()), so on/off
+    // and focus/disabled read without color. ✓ and – are neutral, not Latin
+    // letters: inside a mirrored row the control's own direction marks hold
+    // them together (SettingsFormWidget::gap()). ✓ is the same value as
+    // BRANCH_CURRENT — disjoint surfaces (a checkbox is always railed).
+    public const string CHECKBOX_LEFT = '[';
+    public const string CHECKBOX_RIGHT = ']';
+    public const string CHECKBOX_MARK_ON = '✓';
+    public const string CHECKBOX_MARK_PARTIAL = '–';
+    public const string CHECKBOX_MARK_OFF = ' ';
 
     // The floating modals' frame: the rounded family, deliberately distinct
     // from the image pane's square FRAME_* focus frame — a modal is a separate

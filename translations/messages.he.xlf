@@ -3246,6 +3246,14 @@
         <source>Keep</source>
         <target>השאר</target>
       </trans-unit>
+      <trans-unit id="910">
+        <source>(excluded)</source>
+        <target>(לא נכלל)</target>
+      </trans-unit>
+      <trans-unit id="911">
+        <source>No commit to amend</source>
+        <target>אין קומיט לתיקון</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

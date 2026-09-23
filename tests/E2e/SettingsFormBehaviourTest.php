@@ -132,7 +132,9 @@ final class SettingsFormBehaviourTest extends TestCase
      * A click on a row that is not selected selects it and nothing else.
      *
      * `handleClick()` used to be select-then-actuate, so one stray click
-     * toggled whatever it landed on — including arming a plugin removal.
+     * toggled whatever it landed on — including arming a plugin removal. A
+     * checkbox is the one exception (it toggles on its first click, as a
+     * `<label>` does), so the click lands on a select's label.
      */
     public function testAStrayClickSelectsWithoutChangingAnything(): void
     {
@@ -149,7 +151,7 @@ final class SettingsFormBehaviourTest extends TestCase
                 },
                 500 => function (Tui $tui, VirtualTerminal $terminal) use ($project): void {
                     $grid = $this->screenGrid($tui, $terminal);
-                    $row = $this->rowOf($grid, 'Inline diagnostics');
+                    $row = $this->rowOf($grid, 'Save changes to');
                     $this->assertNotNull($row, 'the General page shows the row we are about to click');
 
                     // One press+release on it. SGR coordinates are 1-based.
@@ -159,7 +161,7 @@ final class SettingsFormBehaviourTest extends TestCase
 
                     $form = $this->settingsForm($tui);
                     $this->assertStringContainsString(
-                        'Inline diagnostics',
+                        'Save changes to',
                         $this->selectedSettingRow($form),
                         'the click moved the selection',
                     );

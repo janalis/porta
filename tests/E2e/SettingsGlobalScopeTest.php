@@ -194,11 +194,11 @@ final class SettingsGlobalScopeTest extends TestCase
                     // is composited INTO the form's own render — the form hosts
                     // floating surfaces — so a label-addressed read can land on
                     // the notification instead of the setting. The checkbox is
-                    // what tells them apart.
+                    // what tells them apart, in whichever rails its state draws.
                     $form = $this->settingsForm($tui);
                     $rows = \array_values(\array_filter(
                         Paint::lines($form, new RenderContext(110, 22)),
-                        static fn (string $line): bool => \str_contains(AnsiUtils::stripAnsiCodes($line), '['),
+                        static fn (string $line): bool => 1 === \preg_match('/[\[┃┆][✓ –][\]┃┆]/u', AnsiUtils::stripAnsiCodes($line)),
                     ));
                     $this->assertStringContainsString(
                         'overrides global',

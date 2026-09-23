@@ -273,6 +273,11 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
      * Two controls answer the first click, because it writes nothing: a
      * select opens its list (a pick is still a separate click), and a
      * selected stepper steps down or up by the arrow half it was clicked in.
+     * A checkbox answers it too, on its label as on its box, though it does
+     * write: its whole effect is shown in place and the next click undoes it,
+     * where the rows the rule protects arm a removal or open an editor. A
+     * browser's `<label>` toggles on the first click; making it wait read as
+     * a dead control.
      *
      * Rows the render drew nothing on — the title, a legend, the padding, the
      * footer — are nobody's: {@see $rowOwner} is what was drawn, not the list
@@ -296,7 +301,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
 
             return;
         }
-        if (!$selected) {
+        if (!$selected && SettingsRowKind::Bool !== $kind) {
             return;
         }
         // @mago-expect lint:literal-named-argument -- intdiv's parameter is called `num2`; halving the control needs no name
@@ -509,7 +514,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         $this->controls[$index] = [
             'row' => $top + \count($out),
             'col' => SettingsRowLayout::LABEL_CHROME + $layout->label,
-            'width' => SettingsRowKind::Bool === $row->kind ? \mb_strwidth(Glyphs::CHECKBOX_ON) : $layout->control,
+            'width' => SettingsRowKind::Bool === $row->kind ? FieldBox::CHECKBOX_WIDTH : $layout->control,
             'height' => \count($control),
         ];
         // A button whose caption fell back to its own label leaves the label
@@ -659,7 +664,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         $width = $layout->control;
 
         return match ($row->kind) {
-            SettingsRowKind::Bool => [(bool) $row->value ? Glyphs::CHECKBOX_ON : Glyphs::CHECKBOX_OFF],
+            SettingsRowKind::Bool => [FieldBox::checkbox((bool) $row->value, $state)],
             SettingsRowKind::Text => $this->textControl($row, $index, $state, $width, $rows),
             SettingsRowKind::Action => FieldBox::button($this->actionCaption($row), $state, $index === $this->hoveredIndex, $width, $rows, $this->styles),
             SettingsRowKind::Int => FieldBox::control(new FieldSpec(''), static fn (int $room): string => self::stepper((string) $row->value, $room), $state, $width, $rows, $this->styles),

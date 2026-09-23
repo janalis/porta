@@ -599,7 +599,14 @@ final class FindInFilesModal
             $result = $this->results[$row->matchIndex];
             if ($this->inPreview()) {
                 $excluded = $this->excluded[$row->matchIndex] ?? false;
-                $previewRows[] = FindModalRows::previewMatch($result, $selected, $excluded, $excluded ? '' : $this->replacementFor($result['text']), $width, $this->styles);
+                $previewRows[] = FindModalRows::previewMatch(
+                    $result,
+                    $selected,
+                    $excluded ? null : $this->replacementFor($result['text']),
+                    $this->translator->trans('(excluded)'),
+                    $width,
+                    $this->styles,
+                );
 
                 continue;
             }
