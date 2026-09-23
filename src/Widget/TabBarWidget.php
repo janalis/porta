@@ -181,6 +181,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
     public function render(RenderContext $context): array
     {
         $this->indicatorZones = [];
+        $this->drawnFocus = $this->paneFocused();
         if ($this->position->isSide()) {
             return $this->renderVertical($context);
         }
@@ -199,7 +200,6 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
         // follow-active-on-change), the cells and their hit map, exactly as the
         // dock and the git view draw theirs. Each tab ends with a clickable ×
         // unless it is pinned; the dirty ● (when present) sits just before it.
-        $this->drawnFocus = $this->paneFocused();
         $bottom = TabBarPosition::Bottom === $this->position;
         $strip = TabStripRenderer::render(
             \array_map(fn (array $tab): array => [
@@ -297,7 +297,8 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
             }
             // '▌name…    ●× ': the dirty ● and the close × are right-aligned,
             // and the active tab wears the lists' selection bar — a column
-            // list, read the way the tree beside it is.
+            // list, read the way the tree beside it is: `▌` while its pane has
+            // the keys, `▎` while it does not.
             $nameWidth = $width - 5;
             foreach (\array_slice($tabs, $start, $budget, preserve_keys: true) as $index => $tab) {
                 $name = AnsiText::truncate($tab['name'], $nameWidth, pad: true);
@@ -309,7 +310,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
                 };
                 $rowIndex = \count($lines);
                 $lines[] = TabStyle::of($this->styles, TabState::of($tab['active'], $this->isHoverCell($rowIndex, 0, $width)))->apply(
-                    SelectionBar::of($tab['active'], focused: true)->value.$name.' '.$marker.$close.' ',
+                    SelectionBar::of($tab['active'], $this->drawnFocus)->value.$name.' '.$marker.$close.' ',
                 );
                 $this->lastLayout[] = [
                     'index' => $index,

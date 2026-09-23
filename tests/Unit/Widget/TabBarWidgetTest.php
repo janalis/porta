@@ -389,7 +389,7 @@ final class TabBarWidgetTest extends TestCase
         // The row's shape, at a width that seats the whole name: a leading pad,
         // the name, then the dirty and close cells against the right edge.
         $wide = AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(24, 3))[0]);
-        $this->assertStringStartsWith('▌Alpha.php', $wide, 'the active tab\'s bar, then the name');
+        $this->assertStringStartsWith('▎Alpha.php', $wide, 'the active tab\'s bar (no probe: its pane is not known to have the keys), then the name');
         $this->assertStringEndsWith(' ', $wide, 'and a trailing pad after the close glyph');
 
         $belowFloor = AnsiUtils::stripAnsiCodes(\implode('', $bar->render(new RenderContext(7, 3))));
@@ -660,6 +660,23 @@ final class TabBarWidgetTest extends TestCase
         $bar->setStripRows(2);
 
         $this->assertCount(2, $bar->render(new RenderContext(20, 2)));
+    }
+
+    /** The vertical list's bar says whether its pane has the keys, like every other list's — and repaints when that changes. */
+    public function testTheVerticalBarFollowsThePanesFocus(): void
+    {
+        $focused = true;
+        $bar = $this->verticalBar([['name' => 'a.php', 'dirty' => false, 'active' => true]]);
+        $bar->setFocusProbe(static function () use (&$focused): bool {
+            return $focused;
+        });
+        $bar->beforeRender();
+        $this->assertStringStartsWith('▌a.php', AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(80, 3))[0]));
+
+        $focused = false;
+        $bar->beforeRender();
+
+        $this->assertStringStartsWith('▎a.php', AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(80, 3))[0]), 'the memo did not keep the focused bar');
     }
 
     public function testVerticalMenuOverlayCompositesOverTheList(): void

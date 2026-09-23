@@ -272,4 +272,20 @@ final class MenuPanelTest extends TestCase
         }
         $this->assertStringContainsString("\x1b[9m", $segments[0]['segment'], 'the disabled label is struck through');
     }
+
+    /**
+     * A Hebrew item's access letter keeps its underline through the
+     * right-to-left reorder, on that letter alone, and the row's shade is
+     * re-armed around it rather than dropped.
+     */
+    public function testAnAccessLetterSurvivesTheMirroredReorder(): void
+    {
+        $row = "\x1b[48;5;236m ".MenuPanel::underlineLetter('קובץ חדש', 'קובץ חדש', 0).' Ctrl+N '."\x1b[49m";
+
+        $mirrored = Bidi::reorder($row, BaseDirection::Rtl);
+
+        $this->assertMatchesRegularExpression('/\x1b\[4mק/u', $mirrored, 'the underline is still on its letter');
+        $this->assertSame(1, \preg_match_all('/\x1b\[4m[^\x1b\s]/u', $mirrored), 'and on no other');
+        $this->assertStringEndsWith("\x1b[48;5;236m \x1b[0m", $mirrored, 'the shade runs to the row\'s end');
+    }
 }

@@ -10208,3 +10208,19 @@ marks cut titles used to be inert, pinned by a test ("not a click target"): it
 opens the first hidden menu now, which was otherwise reachable only by walking
 the arrows past the edge.
 
+### Post-round joins (2026-09-23)
+
+A combinations pass after the chrome round, per the practice that the defects
+live in the middle. Three joins had no test, and one hid a defect:
+
+- **A dock drag jumped by the filter box.** A panel is sized by its content
+  rows while the drag measured its whole rect, so once the results panel's
+  filter became a three-row box, the first motion of any drag grew the panel
+  by three. `armPanelResize` now records the panel's chrome rows and the drag
+  subtracts them. Found by driving a drag on a folder-tab strip at 40 rows.
+- **The vertical tab strip always drew the focused bar.** It now reads the
+  same pane-focus probe as the folder lids.
+- **Access letters through the RTL reorder** keep their underline on the one
+  letter, and the row's shade is re-armed around it (pinned in
+  `MenuPanelTest`).
+

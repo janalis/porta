@@ -7,6 +7,7 @@ namespace Porta\Tests\E2e;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Config\IdeConfig;
+use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Editor\OpenFocus;
 use Porta\Ide;
@@ -747,5 +748,45 @@ final class IdeTabsBuffersTest extends TestCase
         $provider = Probe::get($tabBar, 'provider');
 
         return \array_column($provider(), 'name');
+    }
+
+    /**
+     * Folder tabs, wired end to end on a 40-row terminal: the lid above a ×
+     * is the tab, so a click there selects it, and only the × on the label
+     * row closes — the geometry the unit tests pin, through the real router.
+     */
+    public function testAFolderTabsLidSelectsAndItsLabelRowCloses(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n", 'b.php' => "<?php\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function (Tui $tui, $terminal, Ide $ide) use ($project): void {
+                    Services::resolve($ide, BufferService::class)->openFile($project->path('b.php'), OpenFocus::Keep);
+                    $this->frame($tui);
+                    $tabs = $tui->getById('tabs');
+                    $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($tabs);
+                    $this->assertSame(2, $rect->rows, 'forty rows: folder tabs');
+                    $zone = Probe::get($tabs, 'lastLayout')[0]; // a.php, the tab not shown
+                    $this->assertSame(1, $zone['row'], 'its label row is the second');
+                    $col = $rect->col + $zone['closeStart'] + 1;
+
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $col, $rect->row + 1)); // the lid above its ×
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $col, $rect->row + 1));
+                    $this->frame($tui);
+                    $this->assertStringEndsWith('a.php', (string) $tui->getById('editor')->getFilePath(), 'the lid selected the tab');
+                    $this->assertCount(2, Services::resolve($ide, BufferManager::class)->all(), 'and closed nothing');
+
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $col, $rect->row + 2)); // the × itself
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $col, $rect->row + 2));
+                    $this->frame($tui);
+                    $this->assertCount(1, Services::resolve($ide, BufferManager::class)->all(), 'the × on the label row closed it');
+                },
+            ],
+            rows: 40,
+        );
     }
 }

@@ -93,6 +93,16 @@ final class IdeDockToolsTest extends TestCase
 
                     $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $col + 1, $rect->row + 2)); // the label row
                     $this->assertTrue(Probe::get($strip, 'grabHovered'), 'the label row is');
+
+                    // And it is what a press arms: dragged up three rows, the
+                    // panel is three rows taller.
+                    $results = $tui->getById('results');
+                    $before = $results->visibleRows();
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $col + 1, $rect->row + 2));
+                    $tui->handleInput(\sprintf("\x1b[<32;%d;%dM", $col + 1, $rect->row - 1));
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $col + 1, $rect->row - 1));
+                    $this->frame($tui);
+                    $this->assertSame($before + 3, $results->visibleRows(), 'the label row dragged the dock');
                 },
             ],
             rows: 40,

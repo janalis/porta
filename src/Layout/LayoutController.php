@@ -47,6 +47,14 @@ final class LayoutController
 
     /** The armed grab row relative to the panel top (-1 when the dock strip is the grab). */
     private int $panelResizeGrabOffset = 0;
+
+    /**
+     * The armed panel's rows that are not its content — the results panel's
+     * boxed filter — since a panel is sized by its content rows while the
+     * drag measures its whole rect. Without it the first motion of a drag
+     * grew the panel by the filter box's three rows.
+     */
+    private int $panelResizeChrome = 0;
     private ?int $bottomPanelHeightPercent = null;
 
     /**
@@ -147,7 +155,7 @@ final class LayoutController
         // Bottom-panel resize: dragging a panel's top edge sets the bottom-panel height.
         if ($this->panelResizing && ($mouse->isLeftDrag() || $mouse->isLeftRelease())) {
             $rows = $this->tui->getTerminal()->getRows();
-            $height = $this->clampPanel($this->panelResizeBottom - $mouse->row + $this->panelResizeGrabOffset, $rows);
+            $height = $this->clampPanel($this->panelResizeBottom - $mouse->row + $this->panelResizeGrabOffset - $this->panelResizeChrome, $rows);
             $this->forgetMaximised();
             $this->resizeBottomPanels($height);
             $this->tui->requestRender();
@@ -246,7 +254,8 @@ final class LayoutController
             return false;
         }
         $this->panelResizeBottom = $rect->row + $rect->rows;
-        $this->panelResizeStartHeight = $rect->rows;
+        $this->panelResizeStartHeight = $panel->visibleRows();
+        $this->panelResizeChrome = $rect->rows - $panel->visibleRows();
         $this->panelResizeGrabOffset = $grabRowOffset;
         $this->panelResizing = true;
         $this->tui->setFocus($panel);
