@@ -480,4 +480,15 @@ final class ContextMenuTest extends TestCase
         $this->assertSame([], $picked, 'nothing was picked');
         $this->assertStringNotContainsString("\x1b[4m", \implode('', \array_column($menu->segments(20), 'segment')), 'and no access letter is drawn');
     }
+
+    /** Space picks the highlighted option, as it does in a browser's open select — and runs a menu's item alike. */
+    public function testSpacePicksLikeEnter(): void
+    {
+        $menu = $this->menu();
+
+        $menu->handleInput(' ');
+
+        $this->assertSame(['cut'], $this->ran);
+        $this->assertFalse($menu->isOpen());
+    }
 }

@@ -258,7 +258,7 @@ final class ContextMenu extends OverlayWidget
         return [
             'menu_up' => [Key::UP],
             'menu_down' => [Key::DOWN],
-            'menu_select' => [Key::ENTER],
+            'menu_select' => [Key::ENTER, Key::SPACE], // Space picks, as in a browser's open select
             'menu_close' => [Key::ESCAPE],
         ];
     }
