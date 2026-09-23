@@ -10056,8 +10056,10 @@ would have needed all of that again. Re-open only if a list must stay open
 while the host keeps its keys. Under a right-to-left frame two mirrors meet:
 the control is reordered with its row (a left-to-right control inside a
 mirrored pane keeps its own order), while the floating list is its own run,
-mirrored across the whole row — so `ListboxOpener` finds where the control was
-DRAWN (`BidiTui::logicalColumn()` inverted) and mirrors that back. A Hebrew
+mirrored across the whole row — so the list is anchored where the control was
+DRAWN (`BidiTui::floatingColumn()`: `logicalColumn()` inverted, mirrored back).
+Right-click menus had the same defect from before this round — a click on the
+tree at the right edge opened the menu at the left — and share the fix. A Hebrew
 select value mirrors its whole box as one run, arrow at the left, as a
 right-to-left browser draws it; fencing the value with marks split the box,
 since `Bidi` has no isolates.

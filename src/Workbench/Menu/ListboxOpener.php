@@ -63,25 +63,17 @@ final readonly class ListboxOpener
      * Open under a control at SCREEN coordinates — for a host that lays
      * itself out in screen space, as the floating modals do.
      *
-     * $drawnOn is a screen row the control occupies, when the frame may have
-     * reordered it right-to-left. Two mirrors are then in play, and neither is
-     * the other: the control was reordered with the row it sits in (a
-     * left-to-right control inside a mirrored pane keeps its own order, and
-     * lands wherever the row's runs put it), while the floating list is its
-     * own run, mirrored across the whole row (its shadow column is widened
-     * to the LEFT under right-to-left, so the mirror leaves the box's edge
-     * where it was). So the list is anchored where that second mirror carries it
-     * onto the first: at the leftmost screen column the control was DRAWN at
-     * ({@see BidiTui::logicalColumn()} inverted), mirrored back.
+     * $drawnOn is a screen row the control occupies: under a right-to-left
+     * frame the list is anchored where the control was DRAWN on it
+     * ({@see BidiTui::floatingColumn()}), not where it was laid out.
      *
      * @param list<array{string, string}> $options value and label, in list order
      * @param \Closure(string): void       $choose  runs with the picked value
      */
     public function openAt(int $row, int $col, int $above, int $width, array $options, string $current, \Closure $choose, ?int $drawnOn = null): void
     {
-        $drawn = null === $drawnOn || !$this->tui->isMirrored() ? null : $this->drawnColumn($drawnOn, $col, $width);
-        if (null !== $drawn) {
-            $col = $this->tui->getTerminal()->getColumns() - $drawn - $width;
+        if (null !== $drawnOn) {
+            $col = $this->tui->floatingColumn($drawnOn, $col, $width, $width);
         }
         $items = [];
         $selected = 0;
@@ -95,18 +87,5 @@ final readonly class ListboxOpener
         $this->overlay->setContextAnchor($row, $col, $above);
         $this->contextMenu->openListbox($items, $selected, $width - PopupFrame::CHROME_COLS);
         $this->tui->requestRender();
-    }
-
-    /** The leftmost screen column on $row that shows one of the logical columns [$col, $col + $width), or null when none does. */
-    private function drawnColumn(int $row, int $col, int $width): ?int
-    {
-        for ($visual = 0, $columns = $this->tui->getTerminal()->getColumns(); $visual < $columns; ++$visual) {
-            $logical = $this->tui->logicalColumn($row, $visual);
-            if ($logical >= $col && $logical < ($col + $width)) {
-                return $visual;
-            }
-        }
-
-        return null; // drawn nowhere on screen: there is nothing to meet
     }
 }

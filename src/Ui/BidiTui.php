@@ -273,6 +273,35 @@ final class BidiTui extends Tui implements FrameHooks
     }
 
     /**
+     * Where to anchor a floating box — in the columns the overlay compositor
+     * places it by — so its left edge lands where the frame DREW logical
+     * columns [$col, $col + $span) on $row. Identity with no reorder active.
+     *
+     * Two mirrors meet under a right-to-left frame, and they are not the same
+     * one: what the box hangs from was reordered with the row it sits in (a
+     * pane's runs, a left-to-right control inside a mirrored pane keeping its
+     * own order), while the floating box is its own run, mirrored across the
+     * whole row. So the drawn column is found ({@see logicalColumn()}
+     * inverted) and mirrored back across the row for a box $width wide.
+     * Nothing drawn there — off the frame — keeps $col.
+     */
+    public function floatingColumn(int $row, int $col, int $span, int $width): int
+    {
+        if (null === $this->reorder) {
+            return $col;
+        }
+        $columns = $this->getTerminal()->getColumns();
+        for ($visual = 0; $visual < $columns; ++$visual) {
+            $logical = $this->logicalColumn($row, $visual);
+            if ($logical >= $col && $logical < ($col + \max(1, $span))) {
+                return $columns - $visual - $width;
+            }
+        }
+
+        return $col;
+    }
+
+    /**
      * The vendor's requestRender only raises a flag for the adaptive ticker,
      * whose repeat timer is torn down after every idle frame — so each
      * input-driven frame waited out a fresh ~10ms EventLoop::repeat before

@@ -428,6 +428,44 @@ final class IdeRtlLocaleTest extends TestCase
         );
     }
 
+    /**
+     * A right-click menu opens at the pointer on a mirrored screen.
+     *
+     * The router maps the pointer back to the logical cell it hit, and the
+     * menu was anchored there; but the menu is its own run, mirrored across
+     * the whole row, so a click on the tree at the right edge opened it at
+     * the LEFT edge, across the screen from the pointer.
+     */
+    public function testAMirroredRightClickOpensItsMenuAtThePointer(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $project = new TempProject([
+            '.porta.json' => \json_encode(['settings' => ['language' => 'he']]),
+            'demo.php' => "<?php\n",
+        ]);
+
+        $this->runIde(
+            $project,
+            $project->path('demo.php'),
+            [
+                300 => static function (Tui $tui): void {
+                    $tui->requestRender(force: true);
+                    $tui->processRender(); // the reorder the click is mapped through
+                    $tui->handleInput("\x1b[<2;150;3M"); // right-click the tree, near the right edge
+                    $tui->handleInput("\x1b[<2;150;3m");
+                },
+                500 => function (Tui $tui, VirtualTerminal $terminal): void {
+                    $screen = $this->screenGrid($tui, $terminal);
+                    $top = \array_find($screen, static fn (string $line): bool => 1 === \preg_match('/╭─+╮/u', $line));
+                    $this->assertNotNull($top, 'the menu opened');
+                    $left = (int) \mb_strpos($top, needle: '╭');
+                    $right = (int) \mb_strpos($top, needle: '╮');
+                    $this->assertTrue($left <= 149 && 149 <= $right, "the menu spans the pointer's column 149, not {$left}-{$right}");
+                },
+            ],
+        );
+    }
+
     /** @param list<string> $screen */
     private function rowWith(array $screen, string $needle): int
     {

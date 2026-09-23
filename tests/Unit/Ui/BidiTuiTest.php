@@ -394,6 +394,27 @@ final class BidiTuiTest extends TestCase
         $this->assertSame(0, $tui->logicalColumn(0, 3));
     }
 
+    /**
+     * A floating box anchors where what it hangs from was DRAWN, mirrored
+     * back across the row — the box is its own run, reordered as a whole.
+     */
+    public function testAFloatingBoxAnchorsWhereItsTargetWasDrawn(): void
+    {
+        $terminal = new VirtualTerminal(columns: 20, rows: 2);
+        $tui = $this->tuiWith($terminal);
+        $this->assertSame(5, $tui->floatingColumn(0, 5, 1, 4), 'no reorder: the logical column is the screen column');
+
+        $this->enableRtl($tui);
+        $tui->requestRender();
+        $tui->processRender();
+
+        // Logical column 0 (the word's first letter) is drawn at screen 3; a
+        // 4-wide box mirrored across 20 columns starts there when anchored at 13.
+        $this->assertSame(13, $tui->floatingColumn(0, 0, 1, 4));
+        $this->assertSame(16, $tui->floatingColumn(0, 0, 4, 4), 'a span meets its leftmost drawn column: the whole word starts at screen 0');
+        $this->assertSame(50, $tui->floatingColumn(0, 50, 1, 4), 'drawn nowhere on screen: the anchor stands');
+    }
+
     public function testLogicalColumnIsIdentityWithoutAReorder(): void
     {
         $terminal = new VirtualTerminal(columns: 20, rows: 2);

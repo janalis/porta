@@ -9,12 +9,14 @@ use Porta\I18n\Translator;
 use Porta\Overlay\State\MenuOverlayController;
 use Porta\Terminal\TerminalSessions;
 use Porta\Tree\TreeOperations;
+use Porta\Ui\BidiTui;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ContextMenu;
 use Porta\Widget\DockTabsWidget;
 use Porta\Widget\EditorPaneWidget;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\MenuBarWidget;
+use Porta\Widget\Render\PopupFrame;
 use Porta\Widget\Support\TabBarPosition;
 use Porta\Widget\TabBarWidget;
 use Porta\Widget\TerminalPanelWidget;
@@ -22,7 +24,6 @@ use Porta\Workbench\Dock\DockTab;
 use Porta\Workbench\Notifier;
 use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\Tui\Render\Renderer;
-use Symfony\Component\Tui\Tui;
 
 /**
  * Opens the context menu from the keyboard (Ctrl+F10) for whatever holds the
@@ -48,7 +49,7 @@ use Symfony\Component\Tui\Tui;
 final readonly class ContextMenuOpener
 {
     public function __construct(
-        private Tui $tui,
+        private BidiTui $tui,
         private Renderer $renderer,
         private ContextMenu $contextMenu,
         private MenuOverlayController $overlay,
@@ -156,7 +157,11 @@ final readonly class ContextMenuOpener
     public function openAt(array $items, int $row, int $col): void
     {
         $this->menuBar->close();
-        $this->overlay->setContextAnchor($row, $col);
+        // The anchor is a LOGICAL cell (the router maps the pointer back);
+        // under a right-to-left frame the menu, mirrored as a whole, must be
+        // anchored where that cell was DRAWN — it opened across the screen
+        // from the pointer, at the far edge.
+        $this->overlay->setContextAnchor($row, $this->tui->floatingColumn($row, $col, 1, MenuPanel::width($items) + PopupFrame::CHROME_COLS));
         $this->contextMenu->open($items);
         $this->tui->requestRender();
     }
