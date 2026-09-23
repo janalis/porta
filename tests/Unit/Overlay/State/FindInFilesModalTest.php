@@ -732,6 +732,31 @@ final class FindInFilesModalTest extends TestCase
         $this->assertSame(['z'], $queries);
     }
 
+    /**
+     * The preview's box is its own target — a click there toggles, anywhere
+     * else on the row jumps — so it answers the pointer on its own: over the
+     * box it underlines, over the rest of the row it does not.
+     */
+    public function testThePreviewBoxAnswersThePointer(): void
+    {
+        $modal = $this->modal();
+        $modal->setCallbacks(new FindModalCallbacks(previewReplacement: static fn (string $old, string $repl): string => \str_replace('foo', $repl, $old)));
+        $modal->open('Find in Files');
+        $modal->setPreview($this->results());
+        $modal->handleInput("\t", $this->kb); // query → replace
+        $modal->handleInput('b', $this->kb);
+        $this->screen($modal);
+        $box = $modal->lastBox();
+        $this->assertInstanceOf(ModalBox::class, $box);
+        $row = $box->windowTop() + 1;
+        $drawn = fn (): string => \implode("\n", $this->compose($modal));
+
+        $this->assertTrue($modal->hoverAt($row, $box->col + 4), 'onto the box');
+        $this->assertStringContainsString("\x1b[4m[✓]", $drawn());
+        $this->assertTrue($modal->hoverAt($row, $box->col + 12), 'along the row: the box drops its hover');
+        $this->assertStringNotContainsString("\x1b[4m[✓]", $drawn());
+    }
+
     public function testMouseClickTogglesExcludeCheckbox(): void
     {
         $modal = $this->modal();

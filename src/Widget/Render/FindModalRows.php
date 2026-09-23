@@ -13,6 +13,7 @@ use Porta\Widget\MatchRowDecorator;
 use Porta\Widget\Support\OptionTagState;
 use Porta\Widget\Support\RowSelection;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Style\Style;
 
 /**
  * The Find-in-Files modal's leaf rows: one option tag, one file header, one
@@ -96,14 +97,18 @@ final class FindModalRows
      *
      * @param ResultRow $result
      */
-    public static function previewMatch(array $result, RowSelection $selected, ?string $replacement, string $excludedNote, int $width, Styles $styles): string
+    // @mago-expect lint:no-boolean-flag-parameter -- whether the pointer is on the box is the box's hover state, not a second responsibility.
+    public static function previewMatch(array $result, RowSelection $selected, ?string $replacement, string $excludedNote, int $width, Styles $styles, bool $boxHovered = false): string
     {
         $bg = $styles->of(ModalRowStyle::role($selected))->getAnsiRestore();
         $label = (string) ($result['line'] + 1);
         $old = $result['text'];
         // Tinted off the selection only; measured by visible width, since the
         // tint's codes are no columns.
-        $checkbox = '  '.FieldBox::checkbox(null !== $replacement, tint: RowSelection::Selected === $selected ? null : $styles).' ';
+        // Under the pointer the box underlines, untinted — the underline's
+        // close would cut the tint.
+        $box = FieldBox::checkbox(null !== $replacement, tint: RowSelection::Selected === $selected || $boxHovered ? null : $styles);
+        $checkbox = '  '.($boxHovered ? new Style(underline: true)->apply($box) : $box).' ';
         $prefixWidth = AnsiUtils::visibleWidth($checkbox) + \mb_strwidth($label) + 2;
         $head = $checkbox.$styles->of(Role::TabAccent)->apply($label).'  ';
 

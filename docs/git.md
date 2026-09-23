@@ -39,11 +39,14 @@ Status re-reads on every action and polls every 2 s while open. Two tabs:
 
 ### Changes
 
-Each row is `[✓] M path` — the checkbox mirrors the staged state.
+Each row is `[✓] M path` — the checkbox mirrors the staged state, and the
+header's own box stands for them all: `[✓]` every change staged, `[ ]` none,
+`[–]` a mix.
 
 | Key | Action |
 | --- | --- |
 | `Space` | Stage / unstage the selected file |
+| `a` (or click the header's box) | Stage every change — or, when all are staged, unstage them all |
 | `d` / `Delete` | Discard the file's changes (inline confirm) |
 | Click the checkbox | Toggle staging with the mouse |
 | Right-click a row (or `Ctrl+F10`) | Stage/Unstage · Discard… · File History menu |
@@ -57,8 +60,8 @@ Unified (dual gutters) or side-by-side.
 | `v`, then `Space` | Select a line range, then stage just those lines |
 | `Space` | Stage the hunk/selection |
 | `c` | Cycle diff context (git default → ±10 lines → whole file) |
-| `s` | Toggle unified / side-by-side (persisted) |
-| `w` | Toggle hide-whitespace (`-w`, persisted) |
+| `s` | Toggle unified / side-by-side (persisted); the `[S split]` tag is bracketed while on |
+| `w` | Toggle hide-whitespace (`-w`, persisted); `[W hide-ws]` while on |
 | `Ctrl+C` | Copy the selected code lines |
 
 ### Commit box
@@ -66,7 +69,7 @@ Unified (dual gutters) or side-by-side.
 `Ctrl+Enter` commits the staged changes (the button enables only when
 something is staged); `Alt+M` toggles **amend**, prefilling the last
 commit's message. `Tab` walks the summary, the description and the amend
-checkbox, where `Space` toggles it. On a branch with no commit yet the
+checkbox, where `Space` toggles it; `Shift+Tab` walks back. On a branch with no commit yet the
 checkbox is dashed and says *No commit to amend*, and `Tab` passes it by.
 
 ### History

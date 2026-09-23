@@ -10258,4 +10258,17 @@ An audit of every checkbox against a browser `<input type=checkbox>` +
   state (`CommandRegistry::add(checked:)`), which the model carries to its menu
   item and the panel draws as `✓`. That is the menu's checkbox item, not a
   `[✓]` box, because a menu row is already the control.
+- **Stage all.** The changes list gained the select-all box a browser's
+  checkbox table has. A mix stages everything and only a full box unstages, as
+  an indeterminate box checks. `git reset --quiet` covers the unborn branch too
+  (it empties the index), so the `rm --cached` fallback first written for it
+  was dead and went.
+- **A box that is its own target answers the pointer.** In the git list and
+  the Find-in-Files preview a click on the box toggles, and anywhere else on
+  the row selects or jumps, but only the row tinted. The box now underlines,
+  the form controls' hover. It gets no Bright, because a foreground reset
+  inside a shaded row would cut the row's colour.
+- **Diff toggles.** `split` and `hide-ws` said "on" by the selection shade
+  alone. On, their padding becomes brackets, the find bar's chip shape, in the
+  same width, so no click zone moved.
 

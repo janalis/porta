@@ -606,6 +606,7 @@ final class FindInFilesModal
                     $this->translator->trans('(excluded)'),
                     $width,
                     $this->styles,
+                    self::BOX_ZONE === $this->hovered && ($windowStart + $i) === $this->hoveredRow,
                 );
 
                 continue;
@@ -1138,10 +1139,14 @@ final class FindInFilesModal
         if (null !== $box && FindModalField::Query === $this->fieldAt($box, $relRow - $box->optionsRow) && null !== $this->sideZones->at($box->innerCol($relCol))) {
             return $this->hoverZone('find_window') || $closeChanged; // the button under the pointer
         }
-        $cleared = $this->hoverZone(null); // moving off the tags and the button drops their hover
         $index = $this->previewIndexAt($relRow);
         // File headers aren't pickable, so they don't light up.
         $row = null !== $index && null === $this->displayRows[$index]->filePath ? $index : null;
+        // The box, where a click toggles rather than jumps (the click's own
+        // columns), answers the pointer on its own: one more hover zone,
+        // on the hovered row. Anywhere else drops the tags' and button's.
+        $onBox = null !== $row && null !== $box && $this->inPreview() && $box->innerCol($relCol) >= 2 && $box->innerCol($relCol) < 5;
+        $cleared = $this->hoverZone($onBox ? self::BOX_ZONE : null);
         if ($row !== $this->hoveredRow) {
             $this->hoveredRow = $row;
             ($this->invalidate)();
@@ -1153,6 +1158,9 @@ final class FindInFilesModal
     }
 
     /** Set the hovered zone; no-op returning false when unchanged, else re-renders. */
+    /** The hover zone of the hovered preview row's box. */
+    private const string BOX_ZONE = 'exclude_box';
+
     private function hoverZone(?string $name): bool
     {
         if ($name === $this->hovered) {

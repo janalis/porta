@@ -325,7 +325,10 @@ the label alone, and Space picks, which toggles, instead of typing into the
 filter. A command registered with a `checked` state is a toggle, and its menu
 item is a checkbox item: `MenuPanel` gives every row of that menu a two-column
 gutter and draws `✓` in it while the state is on. The state is read live, so
-nothing moves as a toggle flips. A checkbox acts on the first click, on its label as on its box. Where
+nothing moves as a toggle flips. Where a box is its own click target apart from
+its row (git staging, the Find-in-Files preview), it underlines under the
+pointer. The git changes list heads its rows with a select-all box whose mixed
+state stages (`GitStageAllRequested`). A checkbox acts on the first click, on its label as on its box. Where
 the row's text is a link of its own (the git changes list, the Find preview)
 only the box and a column either side of it toggle.
 
