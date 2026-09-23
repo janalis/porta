@@ -20,6 +20,7 @@ use Porta\Workbench\Menu\Menu;
 use Porta\Workbench\Menu\MenuPanel;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
+use Symfony\Component\Tui\Style\Style;
 use Symfony\Component\Tui\Widget\FocusableInterface;
 use Symfony\Component\Tui\Widget\FocusableTrait;
 use Symfony\Component\Tui\Widget\KeybindingsTrait;
@@ -175,13 +176,31 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
             // rest — shaded by the shared {@see BarChromeStyle} so a title reads
             // like a tab. Only the rest background differs: titles sit on the
             // HeaderBar strip, not the tabs' Toolbar.
-            $line .= BarChromeStyle::of($this->styles, TabState::of($active, $hovered), Role::HeaderBar)->apply($label);
+            $line .= $this->title($menu->title, BarChromeStyle::of($this->styles, TabState::of($active, $hovered), Role::HeaderBar), $active, $hovered);
             $this->titleLayout[] = ['index' => $i, 'start' => $used, 'width' => \mb_strwidth($label)];
             $used += \mb_strwidth($label);
         }
         $pad = \max(0, $columns - $used - \mb_strwidth($mark));
 
         return $line.$this->styles->of(Role::HeaderBar)->apply(\str_repeat(' ', $pad).$mark);
+    }
+
+    /**
+     * One title, ` Title ` wide in every state. The open one swaps its padding
+     * for the heavy rails of the dropdown hanging under it — `┃File┃` — so the
+     * title and its menu read as one shape, colour or not; the pointer
+     * underlines the text alone, the form controls' hover.
+     */
+    // @mago-expect lint:no-boolean-flag-parameter -- open and hovered are the title's state, not a second responsibility.
+    private function title(string $title, Style $style, bool $open, bool $hovered): string
+    {
+        if ($open) {
+            $rail = $style->withBold(false)->apply(Glyphs::FIELD_FOCUS_VERTICAL);
+
+            return $rail.$style->apply($title).$rail;
+        }
+
+        return $style->apply(' '.($hovered ? $style->withUnderline()->apply($title).$style->getAnsiRestore() : $title).' ');
     }
 
     /** How many titles fit in $columns, in order. */

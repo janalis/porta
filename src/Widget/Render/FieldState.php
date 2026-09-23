@@ -67,6 +67,15 @@ enum FieldState
         };
     }
 
+    /** @return array{string, string} the left and right tees joining a separator to this state's frame */
+    public function tees(): array
+    {
+        return match ($this) {
+            self::Focused => [Glyphs::FIELD_FOCUS_TEE_LEFT, Glyphs::FIELD_FOCUS_TEE_RIGHT],
+            default => [Glyphs::MODAL_TEE_LEFT, Glyphs::MODAL_TEE_RIGHT],
+        };
+    }
+
     /** The border's tint — secondary to the shape, never the only cue. */
     public function borderRole(): Role
     {

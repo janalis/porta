@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Porta\Widget\Render;
 
 use Porta\Support\AnsiText;
-use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 
@@ -49,10 +48,16 @@ final class PopupFrame
         return $styles->of(Role::TabAccent)->apply($left.\str_repeat($rule, \max(0, $innerWidth)).$right);
     }
 
-    /** A section separator: `├──┤` — the tee row {@see ModalFrame::wrapSections} draws between zones. */
-    public static function tee(int $innerWidth, Styles $styles): string
+    /**
+     * A section separator: `├──┤` — the tee row {@see ModalFrame::wrapSections}
+     * draws between zones — or `┣━━┫` in a heavy frame, so the separator
+     * joins the frame it cuts across.
+     */
+    public static function tee(int $innerWidth, Styles $styles, FieldState $state = FieldState::Idle): string
     {
-        return $styles->of(Role::TabAccent)->apply(Glyphs::MODAL_TEE_LEFT.\str_repeat(Glyphs::FRAME_HORIZONTAL, \max(0, $innerWidth)).Glyphs::MODAL_TEE_RIGHT);
+        [$left, $right] = $state->tees();
+
+        return $styles->of(Role::TabAccent)->apply($left.\str_repeat($state->glyphs()[4], \max(0, $innerWidth)).$right);
     }
 
     /**
@@ -80,7 +85,7 @@ final class PopupFrame
     {
         $out = [self::top($innerWidth, $styles, $state)];
         foreach ($rows as $row) {
-            $out[] = $row['separator'] ? self::tee($innerWidth, $styles) : self::rail($row['segment'], $innerWidth, $styles, $state);
+            $out[] = $row['separator'] ? self::tee($innerWidth, $styles, $state) : self::rail($row['segment'], $innerWidth, $styles, $state);
         }
         $out[] = self::bottom($innerWidth, $styles, $state);
 

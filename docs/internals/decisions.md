@@ -10089,3 +10089,13 @@ label, and a label ending in Latin plus punctuation lost its closing
 parenthesis to the far side. The heavy and double corners were missing from the
 L4 mirror table, so a focused box in a mirrored pane drew its corners facing
 out.
+
+## Menus: the frame holds the keys, a disabled item is struck (2026-09-23)
+
+The app dropdown wore the idle frame while it took every key; it and the
+context menu are heavy now, the listbox rule applied to both. A disabled item
+was drawn with `RowHighlightBg`, which the monochrome theme renders as an
+underline, so it read as hovered; it now keeps the popup's background and says
+disabled three ways — faint, dim, and a strikethrough on the label alone, the
+shortcut column untouched. The open title's `┃File┃` costs no column: the rails
+replace its padding, so opening a menu never shifts the titles after it.

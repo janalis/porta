@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Widget\Render;
 use PHPUnit\Framework\TestCase;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Theme\Styles;
+use Porta\Widget\Render\FieldState;
 use Porta\Widget\Render\PopupFrame;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
@@ -87,5 +88,14 @@ final class PopupFrameTest extends TestCase
     public function testZeroInnerWidthAddsNoFillerToTheBottomBorder(): void
     {
         $this->assertSame('╰╯', AnsiUtils::stripAnsiCodes(PopupFrame::bottom(0, Styles::dark())));
+    }
+
+    /** A heavy frame's separators are heavy tees, joining the frame they cut across. */
+    public function testAHeavyFramesSeparatorIsAHeavyTee(): void
+    {
+        $rows = PopupFrame::wrapMenu([['segment' => 'a', 'separator' => false], ['segment' => '', 'separator' => true]], 3, Styles::dark(), FieldState::Focused);
+
+        $this->assertSame('┣━━━┫', AnsiUtils::stripAnsiCodes($rows[2]));
+        $this->assertSame('├───┤', AnsiUtils::stripAnsiCodes(PopupFrame::tee(3, Styles::dark())), 'the idle frame keeps light tees');
     }
 }

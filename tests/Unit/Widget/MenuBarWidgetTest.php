@@ -10,6 +10,7 @@ use Porta\Tests\Support\AttachedStyles;
 use Porta\Tests\Support\RendersExactWidth;
 use Porta\Tests\Support\RendersWidget;
 use Porta\Ui\Glyphs;
+use Porta\Ui\Theme\Styles;
 use Porta\Widget\MenuBarWidget;
 use Porta\Workbench\Menu\Menu;
 use Porta\Workbench\Menu\MenuItem;
@@ -451,5 +452,28 @@ final class MenuBarWidgetTest extends TestCase
         $widget->setTextDirection(BaseDirection::Rtl);
 
         $this->assertNotSame($before, $widget->getRenderRevision());
+    }
+
+    /**
+     * The open title reads as open with no colour at all: its padding becomes
+     * the heavy rails of the dropdown under it, in the same width, and a
+     * hovered title underlines its text, never its padding.
+     */
+    public function testTheOpenTitleIsAShapeAndTheHoveredOneAnUnderline(): void
+    {
+        $bar = $this->bar();
+        $closed = AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(80, 1))[0]);
+        $bar->open(0);
+        $open = AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(80, 1))[0]);
+
+        $this->assertStringStartsWith(' File ', $closed);
+        $this->assertStringStartsWith('┃File┃', $open, 'the open title wears the dropdown\'s rails');
+        $this->assertSame(\mb_strlen($closed), \mb_strlen($open), 'in the same width');
+
+        $styled = new MenuBarWidget(Styles::dark());
+        $styled->setMenus([new Menu('File', [])]);
+        $styled->hoverTitle(0);
+        $hovered = $styled->render(new RenderContext(80, 1))[0];
+        $this->assertMatchesRegularExpression('/ (?:\x1b\[[0-9;]*m)*\x1b\[4mFile\x1b\[24m/', $hovered, 'the pointer underlines the title, not its padding');
     }
 }

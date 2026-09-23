@@ -301,6 +301,8 @@ final class BidiTest extends TestCase
         yield 'double top-right' => ['╗', '╔'];
         yield 'double bottom-left' => ['╚', '╝'];
         yield 'double bottom-right' => ['╝', '╚'];
+        yield 'heavy left tee' => ['┣', '┫'];
+        yield 'heavy right tee' => ['┫', '┣'];
     }
 
     #[DataProvider('fieldCorners')]

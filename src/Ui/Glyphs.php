@@ -206,6 +206,11 @@ final class Glyphs
     public const string FIELD_DANGER_BOTTOM_RIGHT = '╝';
     public const string FIELD_DANGER_HORIZONTAL = '═';
     public const string FIELD_DANGER_VERTICAL = '║';
+    // The heavy frame's tees: a menu that holds the keys is heavy-framed
+    // (FieldState::Focused), and its separators must join that frame rather
+    // than the light one.
+    public const string FIELD_FOCUS_TEE_LEFT = '┣';
+    public const string FIELD_FOCUS_TEE_RIGHT = '┫';
     // Disabled: the rounded corners with a dashed rule, the way a browser
     // greys an input — a shape of its own, so "not available" never passes for
     // "at rest" without colour. ┆ is the same value as VCS_MODIFIED — disjoint

@@ -456,10 +456,10 @@ final class IdeRtlLocaleTest extends TestCase
                 },
                 500 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $screen = $this->screenGrid($tui, $terminal);
-                    $top = \array_find($screen, static fn (string $line): bool => 1 === \preg_match('/╭─+╮/u', $line));
-                    $this->assertNotNull($top, 'the menu opened');
-                    $left = (int) \mb_strpos($top, needle: '╭');
-                    $right = (int) \mb_strpos($top, needle: '╮');
+                    $top = \array_find($screen, static fn (string $line): bool => 1 === \preg_match('/┏━+┓/u', $line));
+                    $this->assertNotNull($top, 'the menu opened, heavy: it holds the keys');
+                    $left = (int) \mb_strpos($top, needle: '┏');
+                    $right = (int) \mb_strpos($top, needle: '┓');
                     $this->assertTrue($left <= 149 && 149 <= $right, "the menu spans the pointer's column 149, not {$left}-{$right}");
                 },
             ],

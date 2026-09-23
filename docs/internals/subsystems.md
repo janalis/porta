@@ -285,7 +285,12 @@ wheel with both open moves the list.
 The menu dropdowns and the context menu wear the tighter `PopupFrame`
 border-only language, with item-run hit-testing where the border swallows and
 outside dismisses. The completion popup and signature hint stay
-editor-pane-composited and framed the same way.
+editor-pane-composited and framed the same way. An open menu holds the keys, so
+both menus wear the heavy frame, separators as `┣━┫` tees, and the open bar
+title swaps its padding for the frame's rails (`┃File┃`, same width). A
+disabled item is faint, dim and struck through on its label; neither it nor a
+separator takes the row highlight, which is an underline under monochrome and
+made a disabled item look hovered.
 
 ### Form controls: one renderer, the state in the border's shape
 

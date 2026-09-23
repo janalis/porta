@@ -9,6 +9,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\I18n\BaseDirection;
 use Porta\I18n\Bidi;
 use Porta\Ui\Theme\DarkTheme;
+use Porta\Ui\Theme\MonochromeTheme;
 use Porta\Ui\Theme\Styles;
 use Porta\Workbench\Menu\MenuItem;
 use Porta\Workbench\Menu\MenuPanel;
@@ -45,8 +46,9 @@ final class MenuPanelTest extends TestCase
         $items = [new MenuItem('Save', 'Ctrl+S', static fn (): null => null, false, static fn (): bool => false)];
         $segment = MenuPanel::segments($items, 0, 20, new Styles(DarkTheme::definition()))[0]['segment']; // selected index 0, yet disabled
 
-        $this->assertStringContainsString("\x1b[38;5;240m", $segment, 'disabled item uses the dim foreground');
+        $this->assertStringContainsString("\x1b[38;5;242m", $segment, 'disabled item uses the faint foreground');
         $this->assertStringContainsString("\x1b[2m", $segment, 'SGR dim attribute keeps the state visible without color');
+        $this->assertStringContainsString("\x1b[9mSave\x1b[29m", $segment, 'and its label is struck through: "not available", not "dimmer"');
         $this->assertStringNotContainsString("\x1b[48;5;31m", $segment, 'disabled item is not highlighted even when selected');
     }
 
@@ -253,5 +255,21 @@ final class MenuPanelTest extends TestCase
         $segment = MenuPanel::segments($items, 0, 30, new Styles(DarkTheme::definition()))[0]['segment'];
 
         $this->assertStringNotContainsString(Bidi::RTL_MARK, $segment, 'nothing to pin when nothing mirrors');
+    }
+
+    /**
+     * Without colour, a disabled item and a separator must not look hovered.
+     * Both borrowed the row-hover shade, which monochrome draws as an
+     * underline — the mark it gives the row under the pointer.
+     */
+    public function testInMonochromeNeitherADisabledItemNorASeparatorLooksHovered(): void
+    {
+        $items = [new MenuItem('Save All', '', static fn (): null => null, false, static fn (): bool => false), MenuItem::separator()];
+        $segments = MenuPanel::segments($items, 1, 20, new Styles(MonochromeTheme::definition()));
+
+        foreach ($segments as $i => $segment) {
+            $this->assertStringNotContainsString("\x1b[4m", $segment['segment'], "row {$i} is not underlined");
+        }
+        $this->assertStringContainsString("\x1b[9m", $segments[0]['segment'], 'the disabled label is struck through');
     }
 }

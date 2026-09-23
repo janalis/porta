@@ -88,6 +88,6 @@ final class MenuOverlayControllerTest extends TestCase
         $controller->setContextAnchor(23, 10); // a right-click: no control to clear
         $controller->refreshContextMenu();
         $this->assertSame(20, $controller->contextMenuDropdown()?->top, 'a menu flips to end on its anchor row, as before');
-        $this->assertStringNotContainsString('┏', \implode("\n", $pane->render(new RenderContext(100, 24))), 'and keeps the rounded frame');
+        $this->assertStringContainsString('┏', \implode("\n", $pane->render(new RenderContext(100, 24))), 'a menu holds the keys too: heavy');
     }
 }

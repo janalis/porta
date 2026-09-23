@@ -65,7 +65,7 @@ final class MenuPanel
         foreach ($items as $index => $item) {
             $out[] = [
                 'segment' => $item->separator
-                    ? $styles->merge(Role::RowHighlightBg, Role::Placeholder)->apply(\str_repeat(Glyphs::MENU_SEPARATOR, \max(0, $panelWidth)))
+                    ? $styles->merge(Role::PopupRow, Role::Placeholder)->apply(\str_repeat(Glyphs::MENU_SEPARATOR, \max(0, $panelWidth)))
                     : self::itemSegment(
                         $item,
                         $panelWidth,
@@ -131,13 +131,18 @@ final class MenuPanel
         $label = AnsiText::truncate($item->label, $labelMax);
         $gap = \max(1, $inner - AnsiUtils::visibleWidth($label) - \mb_strwidth($shortcut));
 
-        // Disabled always reads dim and never shows the selected highlight; the
-        // SGR dim attribute keeps the state visible without color (monochrome).
+        // Disabled reads dim with its label struck through, and never shows
+        // the selected highlight. It used to borrow the row-hover shade, which
+        // monochrome draws as an underline — a disabled item looked hovered.
+        // Strikethrough and dim are attributes, so they survive --no-ansi.
         $style = match (true) {
-            MenuAvailability::Disabled === $availability => $styles->merge(Role::RowHighlightBg, Role::Gutter)->withDim(),
+            MenuAvailability::Disabled === $availability => $styles->merge(Role::PopupRow, Role::Faint)->withDim(),
             MenuSelection::Selected === $selection => $styles->of(Role::SelectedRow),
             default => $styles->of(Role::PopupRow),
         };
+        if (MenuAvailability::Disabled === $availability) {
+            $label = $style->withStrikethrough()->apply($label).$style->getAnsiRestore();
+        }
         $tail = '' !== $shortcut ? $styles->of(Role::CompletionHint)->apply($shortcut) : \str_repeat(' ', \max(0, \mb_strwidth($shortcut)));
 
         // A mirrored menu spends one gap column on a mark that ENDS the label's

@@ -100,9 +100,10 @@ final class IdeAppMenuTest extends TestCase
                 280 => function ($tui): void {
                     $menu = $tui->getById('menu');
                     $this->assertTrue($menu->isOpen());
-                    // Undo is item 0; with no file open it renders dim and is not highlighted.
+                    // Undo is item 0; with no file open it renders faint and struck through, not highlighted.
                     $undo = $menu->dropdownSegments($menu->panelWidth())[0]['segment'];
-                    $this->assertStringContainsString("\x1b[38;5;240m", $undo, 'Undo greyed while no file is open');
+                    $this->assertStringContainsString("\x1b[38;5;242m", $undo, 'Undo greyed while no file is open');
+                    $this->assertStringContainsString("\x1b[9mUndo", $undo, 'and struck through');
                     $this->assertStringNotContainsString("\x1b[48;5;31m", $undo, 'disabled item not highlighted');
                     $menu->close();
                 },
@@ -114,7 +115,7 @@ final class IdeAppMenuTest extends TestCase
                 440 => function ($tui): void {
                     $menu = $tui->getById('menu');
                     $undo = $menu->dropdownSegments($menu->panelWidth())[0]['segment'];
-                    $this->assertStringNotContainsString("\x1b[38;5;240m", $undo, 'Undo enabled once a file is open');
+                    $this->assertStringNotContainsString("\x1b[38;5;242m", $undo, 'Undo enabled once a file is open');
                 },
             ],
         );

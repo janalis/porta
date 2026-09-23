@@ -124,7 +124,8 @@ final class MenuOverlayController implements FloatingRegions
             \min($menuRect->col + $this->menuBar->titleStart($this->menuBar->openIndex()), $menuRect->col + $menuRect->columns - $width),
         );
         $top = $menuRect->row + $menuRect->rows;
-        $rows = PopupFrame::wrapMenu($this->menuBar->dropdownSegments($width - PopupFrame::CHROME_COLS), $width - PopupFrame::CHROME_COLS, $this->styles);
+        // An open menu holds the keys: the heavy frame, the form controls' focus.
+        $rows = PopupFrame::wrapMenu($this->menuBar->dropdownSegments($width - PopupFrame::CHROME_COLS), $width - PopupFrame::CHROME_COLS, $this->styles, FieldState::Focused);
 
         $this->menuDropdown = new DropdownRegion($top, $anchor, $width, \count($rows), framed: true);
         $this->menuShadowRegion = $this->shadowWidened($top, $anchor, $width, \count($rows));
@@ -156,9 +157,8 @@ final class MenuOverlayController implements FloatingRegions
         [, , $screenBottom, $screenRight] = PaneBounds::union($this->panes->current(), $this->renderer) ?? [0, 0, 0, 0];
         $width = \min($this->contextMenu->panelWidth() + PopupFrame::CHROME_COLS, $screenRight);
         $col = IntMath::clamp($this->contextAnchorCol, 0, $screenRight - $width);
-        // A select's open list wears the focused frame: it holds the keys.
-        $state = $this->contextMenu->isListbox() ? FieldState::Focused : FieldState::Idle;
-        $rows = PopupFrame::wrapMenu($this->contextMenu->segments($width - PopupFrame::CHROME_COLS), $width - PopupFrame::CHROME_COLS, $this->styles, $state);
+        // An open menu — or a select's open list — holds the keys: the heavy frame.
+        $rows = PopupFrame::wrapMenu($this->contextMenu->segments($width - PopupFrame::CHROME_COLS), $width - PopupFrame::CHROME_COLS, $this->styles, FieldState::Focused);
         $top = ($this->contextAnchorRow + \count($rows)) > $screenBottom
             ? \max(0, ($this->contextAnchorAbove ?? $this->contextAnchorRow) - \count($rows))
             : $this->contextAnchorRow;
