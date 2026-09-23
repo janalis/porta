@@ -410,10 +410,11 @@ final class BidiTest extends TestCase
      * glyphs is wrong the first time someone adds one and nothing says so. The
      * next arrow added to that class fails this the moment it appears.
      *
-     * Two exemptions, both principled. ASCII letters and digits ARE strong
-     * Latin — `CHECKBOX_ON` is `[x]`. And U+E0A0, the branch icon, is a Private
-     * Use codepoint, which Unicode assigns to `L`; it always sits beside its
-     * Latin branch name, so following the standard costs nothing here.
+     * One exemption, principled: U+E0A0, the branch icon, is a Private Use
+     * codepoint, which Unicode assigns to `L`; it always sits beside its Latin
+     * branch name, so following the standard costs nothing here. (ASCII
+     * letters were exempt too while `CHECKBOX_ON` was `[x]`; it is `[✓]` now
+     * and no glyph spells a letter, so a new one that does fails here.)
      */
     public function testNoGlyphTheInterfaceDrawsIsStrongLatinText(): void
     {
@@ -422,10 +423,9 @@ final class BidiTest extends TestCase
             $chars = \preg_split('//u', (string) $value, flags: \PREG_SPLIT_NO_EMPTY);
             foreach (false === $chars ? [] : $chars as $char) {
                 $codepoint = \mb_ord($char, encoding: 'UTF-8');
-                // ASCII letters and digits ARE strong Latin (CHECKBOX_ON is
-                // "[x]"), and U+E000-F8FF is Private Use, which Unicode assigns
-                // to L — the branch icon there sits beside its Latin name.
-                $exempt = 1 === \preg_match('/[A-Za-z0-9]/', $char) || $codepoint >= 0xE000 && $codepoint <= 0xF8FF;
+                // U+E000-F8FF is Private Use, which Unicode assigns to L — the
+                // branch icon there sits beside its Latin name.
+                $exempt = $codepoint >= 0xE000 && $codepoint <= 0xF8FF;
                 if ($exempt || 'L' !== Probe::invokeStatic(Bidi::class, 'classify', $char)) {
                     continue;
                 }

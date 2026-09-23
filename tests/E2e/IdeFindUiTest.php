@@ -492,7 +492,7 @@ final class IdeFindUiTest extends TestCase
                     }
                     $panel = $panelText($tui);
                     $this->assertStringContainsString('→', $panel, 'preview shows old → new');
-                    $this->assertStringContainsString('[x]', $panel, 'kept matches are checked');
+                    $this->assertStringContainsString('[✓]', $panel, 'kept matches are checked');
                     // Select the second match (Down past the first) and exclude it.
                     $tui->handleInput("\x1b[B"); // down → second match
                     $tui->handleInput("\x1b[3~"); // delete → exclude this line

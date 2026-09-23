@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget\Render;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\FindModalRows;
 use Porta\Widget\Support\OptionTagState;
@@ -17,6 +18,18 @@ final class FindModalRowsTest extends TestCase
     {
         $tag = AnsiUtils::stripAnsiCodes(FindModalRows::optionTag('C', OptionTagState::On, Styles::dark()));
         $this->assertSame('[C]', $tag);
+    }
+
+    /** A lit tag under the pointer keeps its brackets and its selection, and underlines. */
+    public function testOptionTagOnHoveredUnderlinesTheBracketedGlyph(): void
+    {
+        $styles = Styles::dark();
+        $tag = FindModalRows::optionTag('C', OptionTagState::OnHovered, $styles);
+
+        $this->assertSame('[C]', AnsiUtils::stripAnsiCodes($tag));
+        $this->assertSame($styles->of(Role::SelectedRow)->withUnderline()->apply('[C]'), $tag);
+        $this->assertSame(OptionTagState::OnHovered, OptionTagState::of(on: true, hovered: true), 'on AND hovered is its own state');
+        $this->assertSame(OptionTagState::On, OptionTagState::of(on: true, hovered: false));
     }
 
     public function testOptionTagHoveredPadsTheGlyphOnBothSides(): void

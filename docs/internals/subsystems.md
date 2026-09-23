@@ -661,7 +661,7 @@ group whose delimiters sit between opposite directions still needs a mark.
 Where a run needs pinning, the **directional marks work**: U+200E and U+200F are
 classified strong, and `Bidi` spends each one for a space on the way out, so a
 row stays exactly as wide as every measurer thinks it is. The settings form puts
-one either side of a row's CONTROL — `< dark >`, `[x]`, `[Remove]` are machine
+one either side of a row's CONTROL — `< dark >`, `[✓]`, `[Remove]` are machine
 data and would otherwise lose a delimiter to the paragraph direction. The detail
 clause past the control is deliberately left OUTSIDE the marks: it is translated
 prose and belongs mirrored, and wrapping it is what broke the scope row.

@@ -396,7 +396,7 @@ final class DebugController implements DebugSessionObserver, StatusSegment
         }
         $enabled = $this->exceptionFilters->enabledFor($filters);
         $items = \array_map(static fn (array $filter): array => [
-            'label' => (\in_array($filter['filter'], $enabled, strict: true) ? '[x] ' : '[ ] ').$filter['label'],
+            'label' => (\in_array($filter['filter'], $enabled, strict: true) ? Glyphs::CHECKBOX_ON : Glyphs::CHECKBOX_OFF).' '.$filter['label'],
             'hint' => $filter['filter'],
             'value' => $filter['filter'],
         ], $filters);

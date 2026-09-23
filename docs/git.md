@@ -39,7 +39,7 @@ Status re-reads on every action and polls every 2 s while open. Two tabs:
 
 ### Changes
 
-Each row is `[x] M path` — the checkbox mirrors the staged state.
+Each row is `[✓] M path` — the checkbox mirrors the staged state.
 
 | Key | Action |
 | --- | --- |

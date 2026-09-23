@@ -36,7 +36,7 @@ use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
  * {@see \Porta\Overlay\Presenter\WelcomeModalController} renders it off-tree and wraps
  * it in the shared modal frame, whose title bar carries {@see title()}.
  *
- * A step is a marker-and-title line — `[x] title  [ action ]` — with its detail
+ * A step is a marker-and-title line — `[✓] title  [ action ]` — with its detail
  * word-wrapped beneath at the marker's indent, so cards vary in height and no
  * text is silently lost to a narrow pane. The action label is protected: the
  * *title* truncates first, because `[ action ]` is the affordance and a card
@@ -49,7 +49,7 @@ use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
  * pane rows, where steps need the space.
  *
  * Done, pending and link steps are marked with bracketed glyphs
- * (`[x]`/`[ ]`/`[→]`) rather than colour. That is the house accessibility
+ * (`[✓]`/`[ ]`/`[→]`) rather than colour. That is the house accessibility
  * rule: under `--no-ansi` and the high-contrast theme no meaning may rest on
  * colour alone, and the brackets are precisely what survives.
  *
@@ -215,7 +215,7 @@ final class WelcomeWidget extends AbstractWidget implements FocusableInterface, 
         }
         $checkable = \array_filter($this->steps, static fn (WelcomeStep $step): bool => $step->isCheckable());
         if ([] !== $checkable && [] === \array_filter($checkable, static fn (WelcomeStep $step): bool => !$step->isDone())) {
-            // A banner, not a replacement: the cards — their [x]s, and any link
+            // A banner, not a replacement: the cards — their [✓]s, and any link
             // step — stay visible and navigable beneath it.
             $body[] = $this->message($this->translator->trans('All set. Reopen this any time from Help.'), $width, $margin);
             $body[] = [AnsiText::blank($width), null];

@@ -297,7 +297,7 @@ final class FindInFilesModalTest extends TestCase
         }
         $screen = $this->screen($modal);
         $this->assertStringContainsString('→', $screen, 'preview shows old → new');
-        $this->assertStringContainsString('[x]', $screen, 'kept matches are checked');
+        $this->assertStringContainsString('[✓]', $screen, 'kept matches are checked');
         $this->assertStringContainsString('bar one', $screen, 'the replacement is previewed');
 
         // Exclude the first match (Del on the selected row).
@@ -814,7 +814,7 @@ final class FindInFilesModalTest extends TestCase
         $box = $modal->lastBox();
         $this->assertInstanceOf(ModalBox::class, $box);
 
-        // Click the [x] checkbox on the first match row (inner cols 2-4,
+        // Click the [✓] checkbox on the first match row (inner cols 2-4,
         // past the rail and padding) → exclude it, and ONLY exclude it — not
         // also jump (toggleExcludeSelected returns early; falling through
         // would additionally call jumpSelected()).

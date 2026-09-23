@@ -231,7 +231,7 @@ final class WelcomeWidgetTest extends TestCase
     {
         $lines = $this->rendered($this->widget($this->doneStep('Finished'), $this->step('Pending'), $this->linkStep('Guide')));
 
-        $this->assertStringContainsString('[x]', $lines[self::FIRST_STEP_ROW]);
+        $this->assertStringContainsString('[✓]', $lines[self::FIRST_STEP_ROW]);
         $this->assertStringContainsString('[ ]', $lines[self::FIRST_STEP_ROW + 3]);
         $this->assertStringContainsString('[→]', $lines[self::FIRST_STEP_ROW + 6]);
     }
@@ -594,7 +594,7 @@ final class WelcomeWidgetTest extends TestCase
 
         $this->assertStringContainsString('All set', $lines[self::FIRST_STEP_ROW]);
         $this->assertStringContainsString('Help', $lines[self::FIRST_STEP_ROW], 'and how to get back');
-        $this->assertStringContainsString('[x]', $lines[self::FIRST_STEP_ROW + 2], 'the done card is still shown');
+        $this->assertStringContainsString('[✓]', $lines[self::FIRST_STEP_ROW + 2], 'the done card is still shown');
         $this->assertStringContainsString('Guide', $lines[self::FIRST_STEP_ROW + 5], 'the link step stays reachable');
     }
 

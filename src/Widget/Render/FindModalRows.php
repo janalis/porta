@@ -40,6 +40,12 @@ final class FindModalRows
     {
         return match ($state) {
             OptionTagState::On => $styles->of(Role::SelectedRow)->apply('['.$glyph.']'),
+            // Lit already, so the pointer underlines rather than re-tints —
+            // the one mark that reads over the selection, in colour or not.
+            OptionTagState::OnHovered => $styles
+                ->of(Role::SelectedRow)
+                ->withUnderline()
+                ->apply('['.$glyph.']'),
             OptionTagState::Hovered => $styles->of(Role::RowHighlightBg)->apply(' '.$glyph.' '),
             OptionTagState::Off => $styles->of(Role::Faint)->apply(' '.$glyph.' '),
         };

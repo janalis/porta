@@ -1082,7 +1082,7 @@ final class DebugControllerTest extends TestCase
         $this->assertSame($this->editor, $this->tui->getFocus(), 'drivable from a focused dock panel too');
         $screen = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->layoutPickers([0, 0, 20, 100])[0]['rows']));
         $this->assertStringContainsString('[ ] Warnings', $screen);
-        $this->assertStringContainsString('[x] Uncaught Exceptions', $screen, 'the default-on filter renders checked');
+        $this->assertStringContainsString('[✓] Uncaught Exceptions', $screen, 'the default-on filter renders checked');
 
         // Focus is already on the editor from the open above, so the re-open's
         // own setFocus() is a no-op — this isolates its trailing requestRender().
@@ -1092,7 +1092,7 @@ final class DebugControllerTest extends TestCase
         $this->assertTrue($requested, 're-opening the overlay after a toggle requests a render');
         $this->assertSame(['filters' => ['exception', 'warning']], $this->client->argumentsOf('setExceptionBreakpoints'));
         $screen = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->layoutPickers([0, 0, 20, 100])[0]['rows']));
-        $this->assertStringContainsString('[x] Warnings', $screen, 'the overlay re-opened with the new state');
+        $this->assertStringContainsString('[✓] Warnings', $screen, 'the overlay re-opened with the new state');
 
         $this->editor->handleInput("\x1b[B");
         $this->editor->handleInput("\r"); // toggle Uncaught Exceptions off

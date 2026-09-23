@@ -50,7 +50,7 @@ final readonly class WelcomeSteps
                 $this->translator->trans('Syntax highlighting'),
                 // What the feature IS, never whether it is on: the checkbox
                 // beside it already says that, and a description claiming "off
-                // until enabled" contradicts its own [x] the moment the step is
+                // until enabled" contradicts its own [✓] the moment the step is
                 // done — which is the first line a returning user reads.
                 $this->translator->trans('Colours your code'),
                 $this->translator->trans('Enable %name%', ['%name%' => RecommendedPlugins::HIGHLIGHTER]),

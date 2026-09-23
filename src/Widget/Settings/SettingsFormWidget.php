@@ -492,7 +492,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
      * The two columns between a label and its control — one of them spent on a
      * left-to-right mark when the interface is mirrored.
      *
-     * A control is machine data: `< dark >`, `[x]`, `[Remove]`. Sat between a
+     * A control is machine data: `< dark >`, `[✓]`, `[Remove]`. Sat between a
      * Hebrew label and a Latin value, its opening delimiter has strong
      * right-to-left on one side and strong left-to-right on the other, so with
      * nothing to bind it it takes the paragraph direction, leaves for the far
@@ -523,7 +523,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
      * The closing half of the pair {@see gap()} opens.
      *
      * One mark is not enough, and the checkbox is what proves it: with a mark
-     * only in front, `[x]`'s opening bracket binds left-to-right while its
+     * only in front, `[✓]`'s opening bracket binds left-to-right while its
      * closing one still has the row's padding on its right, takes the paragraph
      * direction and leaves — so a row that used to be correct starts showing
      * `[ [x`. Fixing the stepper this way traded one broken row for another.

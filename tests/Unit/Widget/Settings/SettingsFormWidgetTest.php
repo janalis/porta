@@ -101,7 +101,7 @@ final class SettingsFormWidgetTest extends TestCase
         // Label first, control in the shared column — a Bool's checkbox used to
         // sit at column 1, ahead of its label and out of line with every other
         // kind's control.
-        $this->assertMatchesRegularExpression('/Inline diagnostics\s+\[x\]/', $screen);
+        $this->assertMatchesRegularExpression('/Inline diagnostics\s+\[✓\]/u', $screen);
         $this->assertMatchesRegularExpression('/Relative line numbers\s+\[ \]/', $screen);
         $this->assertMatchesRegularExpression('/Theme\s+< dark >/', $screen);
         $this->assertMatchesRegularExpression('/Tab width\s+< 4 >/', $screen);
@@ -1104,7 +1104,7 @@ final class SettingsFormWidgetTest extends TestCase
             $widget->setRows([new SettingsRow('sticky', $label, SettingsRowKind::Bool, true, false)], 'T');
 
             $line = AnsiUtils::stripAnsiCodes($this->body($widget->render(new RenderContext(58, 4)))[0]);
-            $control = \mb_strpos($line, needle: '[x]', encoding: 'UTF-8');
+            $control = \mb_strpos($line, needle: '[✓]', encoding: 'UTF-8');
             $this->assertNotFalse($control, 'the row drew its checkbox');
             $widths[$locale] = AnsiUtils::visibleWidth(\mb_substr($line, start: 0, length: $control, encoding: 'UTF-8'));
         }
@@ -1144,7 +1144,7 @@ final class SettingsFormWidgetTest extends TestCase
                 break;
             }
             $mirrored = AnsiUtils::stripAnsiCodes(Bidi::reorder($line, BaseDirection::Rtl));
-            $columns[$labels[$i]] = \mb_strpos($mirrored, needle: '[x]', encoding: 'UTF-8');
+            $columns[$labels[$i]] = \mb_strpos($mirrored, needle: '[✓]', encoding: 'UTF-8');
         }
 
         $this->assertCount(1, \array_unique($columns), 'every checkbox is in the same column: '.\json_encode($columns));
@@ -1164,8 +1164,8 @@ final class SettingsFormWidgetTest extends TestCase
         // Under RTL the label sits at the right and the control to its left, so
         // EVERY part of the label — including its Latin tail — must come after
         // the control. Before the fix the tail crossed over and the row read
-        // `LSP  [x]  תרש`, the control wedged into the middle of its own label.
-        $control = \mb_strpos($mirrored, needle: '[x]', encoding: 'UTF-8');
+        // `LSP  [✓]  תרש`, the control wedged into the middle of its own label.
+        $control = \mb_strpos($mirrored, needle: '[✓]', encoding: 'UTF-8');
         $tail = \mb_strpos($mirrored, needle: 'LSP', encoding: 'UTF-8');
         $this->assertNotFalse($control);
         $this->assertNotFalse($tail);
@@ -1190,7 +1190,7 @@ final class SettingsFormWidgetTest extends TestCase
      * Every shape a value takes, because fixing one broke another.
      *
      * A mark in FRONT of the control alone binds the stepper and breaks the
-     * checkbox: `[x]`'s opening bracket goes left-to-right while its closing one
+     * checkbox: `[✓]`'s opening bracket goes left-to-right while its closing one
      * still has the row's padding on its right, takes the paragraph direction
      * and leaves, so a row that rendered correctly starts showing `[ [x`. Only
      * bracketing the whole value region holds all four.
@@ -1202,7 +1202,7 @@ final class SettingsFormWidgetTest extends TestCase
         // The CONTROL is what the mark protects; the detail beyond it is prose
         // and mirrors, separated by the space the spent mark leaves behind.
         yield 'choice' => [new SettingsRow('theme', 'ערכת נושא', SettingsRowKind::Choice, 'dark', false, ['dark', 'light']), '< dark >'];
-        yield 'bool' => [new SettingsRow('sticky', 'גלילה דביקה', SettingsRowKind::Bool, true, false), '[x]'];
+        yield 'bool' => [new SettingsRow('sticky', 'גלילה דביקה', SettingsRowKind::Bool, true, false), '[✓]'];
         yield 'action' => [new SettingsRow('rm', 'demo (project)', SettingsRowKind::Action, 'Remove', false), '[Remove]'];
         yield 'int' => [new SettingsRow('indent', 'גודל הזחה', SettingsRowKind::Int, 4, false, null, 1, 8), '< 4 >'];
         yield 'int range' => [new SettingsRow('indent', 'גודל הזחה', SettingsRowKind::Int, 4, false, null, 1, 8), '1-8'];
