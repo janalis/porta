@@ -13,9 +13,10 @@ namespace Porta\Widget\Render;
  * indicators are needed, and the clamped scroll offset (which follows the active
  * tab only when it *changes*, so a user's manual scroll survives parked frames).
  *
- * This is the one piece the two strips must not let drift apart: they window the
- * same way or a tab visible on one is hidden on the other. The cell shading is
- * already shared ({@see TabStyle}, {@see TabCell}); this is the windowing.
+ * This is the one piece the strips must not let drift apart: they window the
+ * same way or a tab visible on one is hidden on the other. The cell is shared
+ * too ({@see TabStyle}, {@see TabStripRenderer::renderCell()}); this is the
+ * windowing.
  */
 final class StripWindow
 {

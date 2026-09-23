@@ -31,12 +31,15 @@ use Symfony\Component\Tui\Widget\KeybindingsTrait;
  * of the editor pane that opens a dropdown of {@see \Porta\Workbench\Menu\MenuItem}s. Sitting
  * inside the pane means every title shares the editor's columns, so each dropdown
  * anchors directly under its title. This widget **only ever renders its single
- * title row** so opening a menu never reflows the layout; the base
- * {@see OverlayWidget} `$open` flag means a dropdown is showing. The dropdown's
+ * title row** so opening a menu never reflows the layout. The base
+ * {@see OverlayWidget} `$open` flag means the bar holds the keys — armed by
+ * F10 with a title lit, or with its dropdown showing
+ * ({@see isDropdownShown()}). The dropdown's
  * styled rows are exposed via {@see dropdownSegments()} and composited over the
  * tab bar/editor by the coordinator, so the dropdown floats over the content
  * instead of pushing it down. Titles that would overflow a narrow pane are
- * dropped from the strip (they stay reachable via F10 + arrow keys).
+ * dropped from the strip behind a `…`, itself a title that opens the first of
+ * them (and the arrow keys still walk into them).
  */
 #[AsChromeRoot]
 #[AsIdeService]

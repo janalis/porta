@@ -11,9 +11,9 @@ use Porta\Ui\Theme\Styles;
 /**
  * The tab strip's close `×`, dimmed (bright on the active tab) so it reads as
  * an affordance. Two named variants rather than one shade(bool) — the pick is
- * the caller's, and {@see TabCell} is now the only place that makes it for the
- * strips that carry a close affordance: the editor tab bar (horizontal and
- * vertical) and the bottom dock's strip.
+ * the caller's: {@see TabStripRenderer} makes it for every horizontal strip,
+ * and the editor's vertical list for its rows. A strip whose tab cannot close
+ * (`closable: false`) draws no `×` at all.
  */
 final class TabCloseGlyph
 {
