@@ -219,8 +219,9 @@ final class WelcomeWidgetTest extends TestCase
     {
         $lines = $this->rendered($this->widget($this->step('Pending'), $this->doneStep('Finished')));
 
-        $this->assertStringContainsString('[Do it]', $lines[self::FIRST_STEP_ROW]);
-        $this->assertStringNotContainsString('[Do it]', $lines[self::FIRST_STEP_ROW + 3]);
+        $this->assertMatchesRegularExpression('/[┃│]\s+Do it\s+[┃│]/u', $lines[self::FIRST_STEP_ROW]);
+        $this->assertStringNotContainsString('Do it', $lines[self::FIRST_STEP_ROW + 3]);
+        $this->assertStringNotContainsString('│', $lines[self::FIRST_STEP_ROW + 3], 'a done step has no button at all: its [✓] is the answer');
     }
 
     /**
@@ -362,7 +363,7 @@ final class WelcomeWidgetTest extends TestCase
     {
         $lines = $this->rendered($this->widget($this->step('A very long step title indeed')), rows: 8, columns: 30);
 
-        $this->assertStringContainsString('[Do it]', $lines[0]);
+        $this->assertMatchesRegularExpression('/┃\s+Do it\s+┃/u', $lines[0], 'the button whole, heavy: the selected card\'s Enter presses it');
         $this->assertStringContainsString('…', $lines[0], 'the title took the cut');
     }
 
@@ -822,5 +823,23 @@ final class WelcomeWidgetTest extends TestCase
         $widget->handleInput("\r");
 
         $this->assertSame(0, $ran);
+    }
+
+    /**
+     * An unselected card's button rests rounded and underlines its caption
+     * under the pointer; a pane too narrow for the button and a readable
+     * title drops the button — Enter still runs the step.
+     */
+    public function testTheActionButtonRestsHoversAndGivesWayInATinyPane(): void
+    {
+        $widget = $this->widget($this->step('First'), $this->step('Second'));
+        $lines = $this->rendered($widget);
+        $this->assertMatchesRegularExpression('/│\s+Do it\s+│/u', $lines[self::FIRST_STEP_ROW + 3], 'the unselected card\'s button is at rest');
+
+        $widget->hoverRow(self::FIRST_STEP_ROW + 3);
+        $raw = $widget->render(new RenderContext(60, 12))[self::FIRST_STEP_ROW + 3];
+        $this->assertStringContainsString("\x1b[4m", $raw, 'hovered, its caption underlines');
+
+        $this->assertStringNotContainsString('Do it', \implode("\n", $this->rendered($widget, rows: 12, columns: 20)), 'no room: no button, and no half of one');
     }
 }

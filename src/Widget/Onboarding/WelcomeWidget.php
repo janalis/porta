@@ -15,6 +15,8 @@ use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\HoverableList;
 use Porta\Widget\PaneNavigationCallbacks;
+use Porta\Widget\Render\FieldBox;
+use Porta\Widget\Render\FieldState;
 use Porta\Widget\Support\ArrowScrollTrait;
 use Porta\Widget\Support\FillsPaneTrait;
 use Porta\Widget\Support\HoverTrait;
@@ -269,9 +271,15 @@ final class WelcomeWidget extends AbstractWidget implements FocusableInterface, 
     }
 
     /**
-     * One step's rows: the marker-and-title line, the wrapped detail lines,
-     * then a spacer. Every text row carries the step's index so a click lands
-     * anywhere on the card.
+     * One step's rows: the marker-and-title line with the step's action as a
+     * button at its end — heavy while the card is selected, since Enter
+     * presses it — then the wrapped detail lines and a spacer. A done step has
+     * no button: its `[✓]` is the answer. Every text row carries the step's
+     * index so a click lands anywhere on the card.
+     *
+     * The button is the one-row form of the form controls' button: a card is
+     * a row of a list, and a three-row box on each would halve how many steps
+     * the modal can show.
      *
      * @return non-empty-list<array{0: string, 1: int|null}>
      */
@@ -283,22 +291,32 @@ final class WelcomeWidget extends AbstractWidget implements FocusableInterface, 
             default => Glyphs::CHECKBOX_OFF,
         };
         $prefix = $marker.'  ';
-        $suffix = $step->isDone() ? '' : '  ['.$step->actionLabel.']';
+        $selected = $this->list->isSelected($index);
+        $button = [];
+        if (!$step->isDone()) {
+            // The button is protected: it takes its room first and the text
+            // wraps into what remains — unless the pane cannot hold both, when
+            // it goes and Enter is still the way to run the step.
+            $buttonWidth = FieldBox::controlWidth($step->actionLabel);
+            $button =
+                ($content - $buttonWidth - 1) >= (AnsiUtils::visibleWidth($prefix) + 8)
+                    ? FieldBox::button($step->actionLabel, FieldState::of($selected), $index === $this->hoveredIndex, $buttonWidth, 1, $this->styles)
+                    : [];
+        }
+        $text = $content - ([] === $button ? 0 : AnsiUtils::visibleWidth($button[0]) + 1);
 
-        // The action label is protected: give it its room first and truncate
-        // the title into what remains, falling back to whole-line truncation
-        // only when the pane cannot even hold the marker and the action.
-        $room = $content - AnsiUtils::visibleWidth($prefix) - AnsiUtils::visibleWidth($suffix);
-        $title = $room > 0
-            ? $prefix.AnsiText::truncate($step->title, $room).$suffix
-            : AnsiText::truncate($prefix.$step->title.$suffix, $content);
-
-        $rows = [[$this->paint($margin, $title, $index, $width, isTitle: true), $index]];
-
-        $indent = \str_repeat(' ', \max(0, AnsiUtils::visibleWidth($prefix)));
+        $title = AnsiText::truncate($step->title, \max(0, $text - AnsiUtils::visibleWidth($prefix)));
+        $lines = [$prefix.($selected ? $this->styles->of(Role::Bright)->withBold()->apply($title) : $title)];
+        $indent = AnsiText::blank(AnsiUtils::visibleWidth($prefix));
         $dim = $this->styles->of(Role::Dim);
-        foreach (AnsiText::wrap($step->detail, \max(1, $content - AnsiUtils::visibleWidth($prefix))) as $chunk) {
-            $rows[] = [$this->paint($margin, $indent.$dim->apply($chunk), $index, $width), $index];
+        foreach (AnsiText::wrap($step->detail, \max(1, $text - AnsiUtils::visibleWidth($prefix))) as $chunk) {
+            $lines[] = $indent.$dim->apply($chunk);
+        }
+
+        $rows = [];
+        foreach ($lines as $i => $line) {
+            $beside = \array_key_exists($i, $button) ? ' '.$button[$i] : '';
+            $rows[] = [$this->paint($margin, AnsiText::padRight($line, $text).$beside, $index, $width), $index];
         }
         $rows[] = [AnsiText::blank($width), null];
 
@@ -312,16 +330,12 @@ final class WelcomeWidget extends AbstractWidget implements FocusableInterface, 
      * width, the wrap widths and the card heights never depend on which card
      * is selected. Selection outranks hover, as everywhere.
      */
-    // @mago-expect lint:no-boolean-flag-parameter -- the bool IS the domain here, not a hidden second responsibility.
-    private function paint(string $margin, string $body, int $index, int $width, bool $isTitle = false): string
+    private function paint(string $margin, string $body, int $index, int $width): string
     {
         if (!$this->list->isSelected($index)) {
             $text = AnsiText::truncate($margin.$body, $width, pad: true);
 
             return $index === $this->hoveredIndex ? $this->styles->of(Role::RowHighlightBg)->apply($text) : $text;
-        }
-        if ($isTitle) {
-            $body = $this->styles->of(Role::Bright)->withBold()->apply($body);
         }
         $bar = $this->styles->of(Role::TabAccent)->withBold()->apply(Glyphs::CARD_ACCENT);
         $text = AnsiText::truncate(\substr($margin, offset: 0, length: -2).$bar.' '.$body, $width, pad: true);
