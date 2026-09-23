@@ -10230,3 +10230,23 @@ live in the middle. Three joins had no test, and one hid a defect:
   proportion, and fixed at the press for a drag. A mid-drag measurement read a
   drawn rect that lagged the content rows, and came out negative.
 
+## Checkboxes, round two (2026-09-24)
+
+An audit of every checkbox against a browser `<input type=checkbox>` +
+`<label>`:
+
+- **Colour.** A checked mark takes the accent now. The tint goes on the mark, not
+  the rails, because the heavy rails already mean focus and a coloured rail would
+  blur the two. It is never used on the selected row, where accent on the
+  selection shade (Dark 110 on 31, Light 25 on 111) is too faint to read. Under
+  the monochrome theme the accent is
+  plain, so the shape is still the whole state.
+- **Settings keys.** `←`/`→`/`[`/`]` flipped a checkbox, since `actuate()` toggles
+  regardless of direction. They are inert on a checkbox now, and Space and Enter
+  toggle, as in a browser. Enter stays because the form has no submit it could
+  shadow. The footer names Space on a checkbox row.
+- **Welcome.** Its `[ ]` read as a box to click, but a step is run, not ticked.
+  The marks are plain now: `✓` done (tinted `Added` off the selection), `○` to
+  do, `→` a link. They are centred in the three columns the box took, so no wrap
+  width moved.
+

@@ -3254,6 +3254,10 @@
         <source>No commit to amend</source>
         <target>אין קומיט לתיקון</target>
       </trans-unit>
+      <trans-unit id="912">
+        <source>Space toggle · r reset · Ctrl+F find · Tab panes · 2 keybindings</source>
+        <target>רווח החלפה · r איפוס · Ctrl+F חיפוש · Tab חלוניות · 2 קיצורי מקשים</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

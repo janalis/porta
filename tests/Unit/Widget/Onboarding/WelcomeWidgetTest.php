@@ -11,6 +11,8 @@ use Porta\Tests\Support\AttachedStyles;
 use Porta\Tests\Support\PagesThroughRows;
 use Porta\Tests\Support\RendersWidget;
 use Porta\Ui\Glyphs;
+use Porta\Ui\Role;
+use Porta\Ui\Theme\Styles;
 use Porta\Widget\Onboarding\WelcomeWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -232,9 +234,29 @@ final class WelcomeWidgetTest extends TestCase
     {
         $lines = $this->rendered($this->widget($this->doneStep('Finished'), $this->step('Pending'), $this->linkStep('Guide')));
 
-        $this->assertStringContainsString('[✓]', $lines[self::FIRST_STEP_ROW]);
-        $this->assertStringContainsString('[ ]', $lines[self::FIRST_STEP_ROW + 3]);
-        $this->assertStringContainsString('[→]', $lines[self::FIRST_STEP_ROW + 6]);
+        // Unbracketed: a step is run, not ticked, so its mark must not read as
+        // a checkbox to click.
+        $this->assertStringContainsString(' '.Glyphs::STEP_DONE.'   Finished', $lines[self::FIRST_STEP_ROW]);
+        $this->assertStringContainsString(' '.Glyphs::STEP_TODO.'   Pending', $lines[self::FIRST_STEP_ROW + 3]);
+        $this->assertStringContainsString(' '.Glyphs::STEP_LINK.'   Guide', $lines[self::FIRST_STEP_ROW + 6]);
+        $this->assertStringNotContainsString('[', \implode('', $lines), 'and no bracket anywhere');
+    }
+
+    /**
+     * A done mark takes the Added tint off the selected card — never on it,
+     * where it would fight the card's own shade — and a to-do mark none.
+     */
+    public function testTheDoneMarkIsTintedOffTheSelection(): void
+    {
+        $added = Styles::dark()->of(Role::Added)->apply(Glyphs::STEP_DONE);
+        $raw = $this->widget($this->step('First'), $this->doneStep('Second'), $this->doneStep('Third'))->render(new RenderContext(60, 16));
+
+        $this->assertStringContainsString($added, $raw[self::FIRST_STEP_ROW + 3], 'an unselected done card');
+        $this->assertStringNotContainsString($added, $raw[self::FIRST_STEP_ROW], 'the selected to-do card has no ✓ to tint');
+
+        $selected = $this->widget($this->doneStep('Done'), $this->step('Pending'))->render(new RenderContext(60, 12));
+        $this->assertStringContainsString(Glyphs::STEP_DONE, AnsiUtils::stripAnsiCodes($selected[self::FIRST_STEP_ROW]), 'the selected card is the done one');
+        $this->assertStringNotContainsString($added, $selected[self::FIRST_STEP_ROW], 'and its mark is not tinted');
     }
 
     /** The detail aligns under the title text, not under the marker. */
@@ -245,9 +267,9 @@ final class WelcomeWidgetTest extends TestCase
         // visible columns stay put — the bar tests pin that geometry.
         $lines = $this->rendered($this->widget($this->step('First'), $this->step('Second', detail: 'more prose')));
 
-        // Margin (2) plus '[ ]  ' (5): both texts start at column 7.
-        $this->assertSame(7, \strpos($lines[self::FIRST_STEP_ROW + 3], needle: 'Second'));
-        $this->assertSame(7, \strpos($lines[self::FIRST_STEP_ROW + 4], needle: 'more prose'));
+        // Margin (2) plus ' ○   ' (5): both texts start at column 7.
+        $this->assertSame(7, \mb_strpos($lines[self::FIRST_STEP_ROW + 3], needle: 'Second'));
+        $this->assertSame(7, \mb_strpos($lines[self::FIRST_STEP_ROW + 4], needle: 'more prose'));
     }
 
     /** The bar marks every row of the selected card — and only that card. */
@@ -266,9 +288,9 @@ final class WelcomeWidgetTest extends TestCase
     {
         $lines = $this->rendered($this->widget($this->step('First'), $this->step('Second')));
 
-        // Same visible columns as an unselected card: marker at 2, title at 7.
-        $this->assertSame(2, AnsiUtils::visibleWidth(\substr($lines[self::FIRST_STEP_ROW], offset: 0, length: (int) \strpos($lines[self::FIRST_STEP_ROW], needle: '['))));
-        $this->assertSame(2, \strpos($lines[self::FIRST_STEP_ROW + 3], needle: '['), 'the unselected card for comparison');
+        // Same visible columns as an unselected card: mark at 3, title at 7.
+        $this->assertSame(3, \mb_strpos($lines[self::FIRST_STEP_ROW], needle: Glyphs::STEP_TODO));
+        $this->assertSame(3, \mb_strpos($lines[self::FIRST_STEP_ROW + 3], needle: Glyphs::STEP_TODO), 'the unselected card for comparison');
     }
 
     public function testMovingTheSelectionMovesTheBar(): void
@@ -372,7 +394,7 @@ final class WelcomeWidgetTest extends TestCase
     {
         $lines = $this->rendered($this->widget($this->step('A very long step title indeed')), rows: 8, columns: 12);
 
-        $this->assertStringContainsString('[ ]', $lines[0]);
+        $this->assertStringContainsString(Glyphs::STEP_TODO, $lines[0]);
         $this->assertStringNotContainsString('[Do it]', $lines[0]);
         $this->assertStringContainsString('…', $lines[0]);
     }
@@ -595,7 +617,7 @@ final class WelcomeWidgetTest extends TestCase
 
         $this->assertStringContainsString('All set', $lines[self::FIRST_STEP_ROW]);
         $this->assertStringContainsString('Help', $lines[self::FIRST_STEP_ROW], 'and how to get back');
-        $this->assertStringContainsString('[✓]', $lines[self::FIRST_STEP_ROW + 2], 'the done card is still shown');
+        $this->assertStringContainsString(Glyphs::STEP_DONE, $lines[self::FIRST_STEP_ROW + 2], 'the done card is still shown');
         $this->assertStringContainsString('Guide', $lines[self::FIRST_STEP_ROW + 5], 'the link step stays reachable');
     }
 
@@ -756,7 +778,7 @@ final class WelcomeWidgetTest extends TestCase
         // is a multi-byte glyph that would shift a byte-based strpos.
         $lines = $this->rendered($this->widget($this->step('First'), $this->step('Second')), columns: 90);
 
-        $this->assertSame(9, \strpos($lines[self::FIRST_STEP_ROW + 3], needle: '['), 'the card margin is 9, not the H_MARGIN floor');
+        $this->assertSame(9 + 1, \mb_strpos($lines[self::FIRST_STEP_ROW + 3], needle: Glyphs::STEP_TODO), 'the card margin is 9, not the H_MARGIN floor (the mark sits one column in)');
     }
 
     public function testAnExtremelyNarrowPaneStillProducesAtLeastOneContentColumn(): void
@@ -794,10 +816,10 @@ final class WelcomeWidgetTest extends TestCase
         $lines = $this->rendered($this->widget($this->step('ABCDEFGHIJ')), rows: 8, columns: 12);
 
         $screen = AnsiUtils::stripAnsiCodes($lines[0]);
-        // Prefix ('[ ]  ') must come before the title text, which must come
+        // Prefix (' ○   ') must come before the title text, which must come
         // before the '[Do it]' suffix would — even though truncation clips
         // it — the relative ORDER of what survives must be prefix-then-title.
-        $this->assertMatchesRegularExpression('/\[ \].*AB/', $screen);
+        $this->assertMatchesRegularExpression('/○.*AB/u', $screen);
     }
 
     public function testMoveUpKeybindingMovesTheSelectionUp(): void

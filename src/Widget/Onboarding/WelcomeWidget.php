@@ -285,12 +285,17 @@ final class WelcomeWidget extends AbstractWidget implements FocusableInterface, 
      */
     private function card(WelcomeStep $step, int $index, int $width, int $content, string $margin): array
     {
-        $marker = match (true) {
-            !$step->isCheckable() => Glyphs::LINK_MARKER,
-            default => FieldBox::checkbox($step->isDone()),
-        };
-        $prefix = $marker.'  ';
         $selected = $this->list->isSelected($index);
+        // A status, not a control: centred in the three columns a checkbox
+        // took, so no wrap width moves. Done takes the accent off the
+        // selected card, whose own shade it would fight.
+        $marker = match (true) {
+            !$step->isCheckable() => Glyphs::STEP_LINK,
+            !$step->isDone() => Glyphs::STEP_TODO,
+            $selected => Glyphs::STEP_DONE,
+            default => $this->styles->of(Role::Added)->apply(Glyphs::STEP_DONE),
+        };
+        $prefix = ' '.$marker.'   ';
         $button = [];
         if (!$step->isDone()) {
             // The button is protected: it takes its room first and the text

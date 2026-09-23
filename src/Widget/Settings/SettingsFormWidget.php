@@ -238,6 +238,19 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
 
             return;
         }
+        // A checkbox takes Space and Enter, as in a browser — the arrows and
+        // brackets step a select or a number, and on a checkbox they used to
+        // flip it, which no browser does.
+        if (SettingsRowKind::Bool === ($this->rows[$this->list->selected()] ?? null)?->kind) {
+            if ($kb->matches($data, 'toggle')) {
+                $this->actuate(1);
+
+                return;
+            }
+            if ($kb->matches($data, 'increment') || $kb->matches($data, 'decrement')) {
+                return;
+            }
+        }
         if ($kb->matches($data, 'increment')) {
             $this->actuate(1);
 
@@ -664,7 +677,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         $width = $layout->control;
 
         return match ($row->kind) {
-            SettingsRowKind::Bool => [FieldBox::checkbox((bool) $row->value, $state)],
+            SettingsRowKind::Bool => [FieldBox::checkbox((bool) $row->value, $state, $this->list->isSelected($index) ? null : $this->styles)],
             SettingsRowKind::Text => $this->textControl($row, $index, $state, $width, $rows),
             SettingsRowKind::Action => FieldBox::button($this->actionCaption($row), $state, $index === $this->hoveredIndex, $width, $rows, $this->styles),
             SettingsRowKind::Int => FieldBox::control(new FieldSpec(''), static fn (int $room): string => self::stepper((string) $row->value, $room), $state, $width, $rows, $this->styles),
@@ -721,9 +734,11 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
      */
     private function footer(int $width): string
     {
-        $hint = null !== $this->editing
-            ? $this->translator->trans('⏎ save · Esc cancel')
-            : $this->translator->trans('⏎ edit · ←/→ change · r reset · Ctrl+F find · Tab panes · 2 keybindings');
+        $hint = match (true) {
+            null !== $this->editing => $this->translator->trans('⏎ save · Esc cancel'),
+            SettingsRowKind::Bool === ($this->rows[$this->list->selected()] ?? null)?->kind => $this->translator->trans('Space toggle · r reset · Ctrl+F find · Tab panes · 2 keybindings'),
+            default => $this->translator->trans('⏎ edit · ←/→ change · r reset · Ctrl+F find · Tab panes · 2 keybindings'),
+        };
 
         return $this->styles->merge(Role::Toolbar, Role::Dim)->apply(AnsiText::truncate(' '.$hint, $width, pad: true));
     }
@@ -767,6 +782,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
             // A select opens its list on the keys a browser's does; ←/→ still
             // step it without opening, like every other control here.
             'open_list' => [Key::ENTER, Key::SPACE],
+            'toggle' => [Key::SPACE, Key::ENTER],
             'increment' => [Key::SPACE, Key::ENTER, Key::RIGHT, ']'],
             'decrement' => [Key::LEFT, '['],
             'confirm' => [Key::ENTER],

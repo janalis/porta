@@ -3254,6 +3254,10 @@
         <source>No commit to amend</source>
         <target>修正するコミットがありません</target>
       </trans-unit>
+      <trans-unit id="912">
+        <source>Space toggle · r reset · Ctrl+F find · Tab panes · 2 keybindings</source>
+        <target>Space 切替 · r 既定に戻す · Ctrl+F 検索 · Tab ペイン · 2 キー割当</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

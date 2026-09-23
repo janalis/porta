@@ -258,4 +258,21 @@ final class FieldBoxTest extends TestCase
         $this->assertSame($expected, FieldBox::checkbox($checked, $state));
         $this->assertSame(FieldBox::CHECKBOX_WIDTH, \mb_strwidth($expected));
     }
+
+    /**
+     * Tinted, the mark takes the accent — ✓ and –, never the blank — and the
+     * rails stay bare; untinted, nothing but glyphs. The monochrome theme
+     * keeps the accent plain, so the tint is a repeat of the shape, never
+     * the only cue.
+     */
+    public function testATintColoursTheMarkAlone(): void
+    {
+        $accent = Styles::dark()->of(Role::TabAccent);
+
+        $this->assertSame('['.$accent->apply('✓').']', FieldBox::checkbox(true, tint: Styles::dark()));
+        $this->assertSame('['.$accent->apply('–').']', FieldBox::checkbox(null, tint: Styles::dark()));
+        $this->assertSame('[ ]', FieldBox::checkbox(false, tint: Styles::dark()));
+        $this->assertSame('┃'.$accent->apply('✓').'┃', FieldBox::checkbox(true, FieldState::Focused, Styles::dark()));
+        $this->assertSame('[✓]', FieldBox::checkbox(true, tint: new Styles(MonochromeTheme::definition())));
+    }
 }

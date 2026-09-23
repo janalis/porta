@@ -97,19 +97,22 @@ final class FieldBox
      * beside it moves: `[✓]` / `[ ]`, and `[–]` for null, the partial state.
      * Its rails are the state ({@see FieldState::checkboxRails()}). Bare
      * glyphs: the row it sits in shades it.
+     *
+     * With $tint the mark takes the accent, a browser's filled checked box —
+     * colour repeating the shape, gone under the monochrome theme. Callers
+     * pass it only off the selected row: accent on the selection's shade is
+     * the one pairing too faint to read.
      */
-    public static function checkbox(?bool $checked, FieldState $state = FieldState::Idle): string
+    public static function checkbox(?bool $checked, FieldState $state = FieldState::Idle, ?Styles $tint = null): string
     {
         [$left, $right] = $state->checkboxRails();
+        $mark = match ($checked) {
+            true => Glyphs::CHECKBOX_MARK_ON,
+            null => Glyphs::CHECKBOX_MARK_PARTIAL,
+            false => Glyphs::CHECKBOX_MARK_OFF,
+        };
 
-        return (
-            $left.match ($checked) {
-                true => Glyphs::CHECKBOX_MARK_ON,
-                null => Glyphs::CHECKBOX_MARK_PARTIAL,
-                false => Glyphs::CHECKBOX_MARK_OFF,
-            }
-            .$right
-        );
+        return $left.(false !== $checked && null !== $tint ? $tint->of(Role::TabAccent)->apply($mark) : $mark).$right;
     }
 
     /**

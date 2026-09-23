@@ -12,6 +12,7 @@ use Porta\Ui\Theme\Styles;
 use Porta\Widget\MatchRowDecorator;
 use Porta\Widget\Support\OptionTagState;
 use Porta\Widget\Support\RowSelection;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
  * The Find-in-Files modal's leaf rows: one option tag, one file header, one
@@ -100,8 +101,10 @@ final class FindModalRows
         $bg = $styles->of(ModalRowStyle::role($selected))->getAnsiRestore();
         $label = (string) ($result['line'] + 1);
         $old = $result['text'];
-        $checkbox = '  '.FieldBox::checkbox(null !== $replacement).' ';
-        $prefixWidth = \mb_strwidth($checkbox) + \mb_strwidth($label) + 2;
+        // Tinted off the selection only; measured by visible width, since the
+        // tint's codes are no columns.
+        $checkbox = '  '.FieldBox::checkbox(null !== $replacement, tint: RowSelection::Selected === $selected ? null : $styles).' ';
+        $prefixWidth = AnsiUtils::visibleWidth($checkbox) + \mb_strwidth($label) + 2;
         $head = $checkbox.$styles->of(Role::TabAccent)->apply($label).'  ';
 
         $text = null === $replacement

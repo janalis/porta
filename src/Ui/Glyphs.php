@@ -258,11 +258,14 @@ final class Glyphs
     public const string TOAST_INFO = '◦';
     public const string TOAST_SUCCESS = '✓';
 
-    // The Welcome screen's link-step marker: bracketed like the checkboxes so
-    // it reads as the same control family, but visibly not a checkbox — a link
-    // step has no done state to tick. Same → value as NAV_CURRENT on a
-    // disjoint surface (a step marker never appears beside a target list).
-    public const string LINK_MARKER = '[→]';
+    // The Welcome steps' status marks: done, still to do, and a link step
+    // with no done state. Unbracketed on purpose — a bracketed `[ ]` read as
+    // a checkbox to click, and a step is not toggled, it is run. Each shares
+    // its value with a glyph on a disjoint surface: OPTION_CURRENT's ✓,
+    // SESSION_STOPPED's ○, NAV_CURRENT's → (mirrored with the locale).
+    public const string STEP_DONE = '✓';
+    public const string STEP_TODO = '○';
+    public const string STEP_LINK = '→';
 
     // The selection bar down a list row's first column: the glyph, not the
     // tint behind it, is the selection — it is what survives --no-ansi and the

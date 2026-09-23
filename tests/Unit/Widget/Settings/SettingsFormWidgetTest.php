@@ -238,6 +238,26 @@ final class SettingsFormWidgetTest extends TestCase
         $this->assertSame([['inlineDiagnostics', false]], $changes);
     }
 
+    /**
+     * A checkbox takes Space and Enter, as a browser's does; the arrows and
+     * brackets step selects and numbers, and on a checkbox they are inert —
+     * they used to flip it, which no browser does.
+     */
+    public function testOnlySpaceAndEnterToggleACheckbox(): void
+    {
+        $widget = $this->widget($changes); // opens on Inline diagnostics, a checkbox
+
+        foreach (["\x1b[C", "\x1b[D", '[', ']'] as $key) {
+            $widget->handleInput($key);
+        }
+        $this->assertSame([], $changes, 'no arrow or bracket toggles it');
+        $this->assertSame(0, Probe::object($widget, 'list')->selected(), 'nor moves anywhere');
+
+        $widget->handleInput("\r");
+        $this->assertSame([['inlineDiagnostics', false]], $changes, 'Enter does');
+        $this->assertStringContainsString('Space toggle', $this->plain($widget->render(new RenderContext(80, 14))), 'and the footer names Space');
+    }
+
     public function testChoiceCyclesForwardWithWrapAndBackward(): void
     {
         $widget = $this->widget($changes);

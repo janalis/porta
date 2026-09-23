@@ -81,4 +81,14 @@ final class FindModalRowsTest extends TestCase
         $this->assertStringNotContainsString('48;5;58', AnsiUtils::sliceByColumn($out, 6, 1, strict: true), 'column 6 (the gutter) is not tinted');
         $this->assertStringContainsString('48;5;58', AnsiUtils::sliceByColumn($out, 7, 1, strict: true), 'column 7 ("n" of needle) is tinted');
     }
+
+    /** The kept match's mark takes the accent off the selected row only. */
+    public function testThePreviewMarkIsTintedOffTheSelection(): void
+    {
+        $result = ['path' => 'a.php', 'line' => 0, 'text' => 'foo', 'ranges' => []];
+        $accent = Styles::dark()->of(Role::TabAccent)->apply('✓');
+
+        $this->assertStringContainsString($accent, FindModalRows::previewMatch($result, RowSelection::Unselected, 'bar', '(excluded)', 40, Styles::dark()));
+        $this->assertStringNotContainsString($accent, FindModalRows::previewMatch($result, RowSelection::Selected, 'bar', '(excluded)', 40, Styles::dark()));
+    }
 }

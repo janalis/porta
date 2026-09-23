@@ -3254,6 +3254,10 @@
         <source>No commit to amend</source>
         <target>Nessun commit da modificare</target>
       </trans-unit>
+      <trans-unit id="912">
+        <source>Space toggle · r reset · Ctrl+F find · Tab panes · 2 keybindings</source>
+        <target>Spazio attiva/disattiva · r ripristina · Ctrl+F cerca · Tab riquadri · 2 scorciatoie</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
