@@ -17,16 +17,19 @@ use Porta\Ui\CursorStyle;
 use Porta\Ui\Role;
 use Porta\Ui\TextField;
 use Porta\Ui\Theme\Styles;
+use Porta\Widget\Render\FieldBox;
+use Porta\Widget\Render\FieldSpec;
+use Porta\Widget\Render\FieldState;
 use Porta\Widget\Render\FindModalRows;
 use Porta\Widget\Render\ModalFrame;
 use Porta\Widget\Render\PopupMetrics;
 use Porta\Widget\ResultsView;
-use Porta\Widget\SearchFieldRenderer;
 use Porta\Widget\Support\OptionTagState;
 use Porta\Widget\Support\ResultGrouping;
 use Porta\Widget\Support\ResultLayout;
 use Porta\Widget\Support\RowSelection;
 use Porta\Widget\Support\StylesDefault;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Input\Keybindings;
 
@@ -149,6 +152,15 @@ final class FindInFilesModal
     private ?int $userRow = null;
 
     private ?int $userCol = null;
+
+    /**
+     * Below this many rows the three boxed fields would eat the preview: each
+     * field takes its one-row compact form instead of a three-row
+     * {@see FieldBox}. Hit-testing recovers the height the layout drew with
+     * from the box's own geometry ({@see fieldHeight()}).
+     */
+    private const int BOXED_MIN_ROWS = 30;
+
     /** display-row index tinted under the pointer; visual only, never the selection — you type into the query field while it rests. */
     private ?int $hoveredRow = null;
 
@@ -535,17 +547,20 @@ final class FindInFilesModal
         $columns = $boundRight - $boundLeft;
         $rows = $boundBottom - $boundTop;
 
-        $maxPreview = \max(1, \min(\count($this->displayRows), $rows - 13, $this->userRows ?? 10));
+        $fieldRows = $rows >= self::BOXED_MIN_ROWS ? FieldBox::ROWS : 1;
+        // Everything but the preview: the frame and its tees (8), the footer
+        // (1), the options row (1) and the three fields.
+        $maxPreview = \max(1, \min(\count($this->displayRows), $rows - 10 - (3 * $fieldRows), $this->userRows ?? 10));
         $windowStart = $this->windowStart($maxPreview);
         $visible = \array_slice($this->displayRows, $windowStart, $maxPreview);
 
         $width = $this->boxWidth($columns, $visible);
         $col = $boundLeft + \max(0, \intdiv($columns - $width - ModalFrame::CHROME_COLS, num2: 2));
 
-        $fields = $this->headerRows($width, $focused);
-        // Box rows: title bar(0), pad(1), find(2), replace(3), options(4),
-        // mask(5), tee(6), preview from 7 — the sectioned-frame layout.
-        $optionsIndex = ModalFrame::CHROME_ROWS_TOP + 2;
+        $fields = $this->headerRows($width, $focused, $fieldRows);
+        // Box rows: title bar, pad, find, replace, options, mask, tee, then
+        // the preview — each field $fieldRows tall (the sectioned-frame layout).
+        $optionsIndex = ModalFrame::CHROME_ROWS_TOP + (2 * $fieldRows);
         $previewRows = [];
         foreach ($visible as $i => $row) {
             $selected = match ($windowStart + $i) {
@@ -628,8 +643,11 @@ final class FindInFilesModal
     private function boxWidth(int $columns, array $visible): int
     {
         $status = $this->statusText();
-        $width = \max(\mb_strwidth($this->title) + \mb_strwidth($status) + 10, \mb_strwidth($this->query->value()) + 9, PopupMetrics::FIND_MIN_WIDTH); // + 10: the frame's title-bar chrome
-        $width = \max($width, $this->optionsRowWidth(), $this->footerRowWidth());
+        $width = \max(\mb_strwidth($this->title) + \mb_strwidth($status) + 10, \mb_strwidth($this->query->value()) + 9 + FieldBox::CHROME_COLS, PopupMetrics::FIND_MIN_WIDTH); // + 10: the frame's title-bar chrome
+        // Room for the Replace hint beside a usable compact value: it carries
+        // the replace count, so the box grows to seat it rather than drop it.
+        $label = \max(\array_map(AnsiUtils::visibleWidth(...), $this->labels(1)));
+        $width = \max($width, $this->optionsRowWidth(), $this->footerRowWidth(), $label + 1 + FieldBox::MIN_BOXED + 1 + AnsiUtils::visibleWidth($this->replaceHint()));
         foreach ($visible as $row) {
             $text = $row->filePath ?? $this->results[$row->matchIndex]['text'] ?? '';
             $width = \max($width, \mb_strwidth($text) + 8);
@@ -646,47 +664,115 @@ final class FindInFilesModal
     }
 
     /**
-     * The fixed header rows below the frame's title bar: query, replace,
-     * options+scope, mask.
+     * The fixed header rows below the frame's title bar: the query, replace,
+     * options+scope and mask rows — each field boxed or compact per
+     * $fieldRows.
      *
      * @return list<string>
      */
-    private function headerRows(int $width, CaretVisibility $focused): array
+    private function headerRows(int $width, CaretVisibility $focused, int $fieldRows): array
     {
-        $replaceHint = $this->inPreview()
-            ? '  '.$this->translator->trans('(Del exclude · Alt+A replace %count%)', ['%count%' => $this->keptCount()])
-            : '  '.$this->translator->trans('(Tab · Alt+A)');
+        [$find, $replace, $mask] = $this->labels($fieldRows);
+        [$findHint, $replaceHint, $maskHint] = $this->hints($fieldRows);
 
         return [
-            $this->fieldRow(
-                $this->translator->trans('Find'),
-                $this->query,
-                CaretVisibility::Shown === $focused && FindModalField::Query === $this->activeField ? CaretVisibility::Shown : CaretVisibility::Hidden,
-                '',
-                $width,
-            ),
-            $this->fieldRow(
-                $this->translator->trans('Replace'),
-                $this->replace,
-                CaretVisibility::Shown === $focused && FindModalField::Replace === $this->activeField ? CaretVisibility::Shown : CaretVisibility::Hidden,
-                $replaceHint,
-                $width,
-            ),
+            ...$this->fieldRows(new FieldSpec($find, trailing: $findHint, surface: Role::Toolbar), $this->query, FindModalField::Query, $focused, $width, $fieldRows),
+            ...$this->fieldRows(new FieldSpec($replace, trailing: $replaceHint, surface: Role::Toolbar), $this->replace, FindModalField::Replace, $focused, $width, $fieldRows),
             $this->optionsRowLine($width),
-            $this->fieldRow(
-                $this->translator->trans('Mask'),
-                $this->mask,
-                CaretVisibility::Shown === $focused && FindModalField::Mask === $this->activeField ? CaretVisibility::Shown : CaretVisibility::Hidden,
-                '  '.$this->translator->trans('(Tab)'),
-                $width,
-            ),
+            ...$this->fieldRows(new FieldSpec($mask, trailing: $maskHint, surface: Role::Toolbar), $this->mask, FindModalField::Mask, $focused, $width, $fieldRows),
         ];
     }
 
-    /** A labelled input row (`Find:`/`Replace:`/`Mask:` + field), scrolled to keep the caret visible. */
-    private function fieldRow(string $label, TextField $field, CaretVisibility $shown, string $hint, int $width): string
+    /**
+     * The three fields' hints (Find has none). Compact, a hint follows its
+     * field's closing rail, so they are padded to one width: every value gets
+     * the same room, the rails line up in a column and the hints in another
+     * — unpadded, each rail stopped where its own hint began. Boxed, each
+     * hint sits in its own border and is left as it is.
+     *
+     * @return array{string, string, string}
+     */
+    private function hints(int $fieldRows): array
     {
-        return SearchFieldRenderer::row($label, $field, $shown, $hint, $width, Role::Toolbar, $this->styles);
+        $hints = ['', $this->replaceHint(), $this->translator->trans('(Tab)')];
+
+        return FieldBox::ROWS === $fieldRows ? $hints : self::toOneWidth($hints);
+    }
+
+    /** The Replace field's hint: what Alt+A will do, and to how many matches once previewing. */
+    private function replaceHint(): string
+    {
+        return (
+            $this->inPreview()
+                ? $this->translator->trans('(Del exclude · Alt+A replace %count%)', ['%count%' => $this->keptCount()])
+                : $this->translator->trans('(Tab · Alt+A)')
+        );
+    }
+
+    /**
+     * The three field labels. Compact, they sit on the rows beside their
+     * values, so they are padded to one width and the rails line up in a
+     * column, as a form's inputs do; boxed, each is its own box's legend.
+     *
+     * @return array{string, string, string}
+     */
+    private function labels(int $fieldRows): array
+    {
+        $labels = [$this->translator->trans('Find'), $this->translator->trans('Replace'), $this->translator->trans('Mask')];
+
+        return FieldBox::ROWS === $fieldRows ? $labels : self::toOneWidth($labels);
+    }
+
+    /**
+     * @param array{string, string, string} $texts
+     *
+     * @return array{string, string, string} each right-padded to the widest
+     */
+    private static function toOneWidth(array $texts): array
+    {
+        $width = \max(\array_map(AnsiUtils::visibleWidth(...), $texts));
+
+        return [AnsiText::padRight($texts[0], $width), AnsiText::padRight($texts[1], $width), AnsiText::padRight($texts[2], $width)];
+    }
+
+    /**
+     * One field's rows: it takes the keys when the modal is focused and it is
+     * the active field — the one caret this frame carries.
+     *
+     * @return list<string>
+     */
+    private function fieldRows(FieldSpec $spec, TextField $field, FindModalField $which, CaretVisibility $focused, int $width, int $height): array
+    {
+        $active = CaretVisibility::Shown === $focused && $which === $this->activeField;
+        $caret = $active ? CaretVisibility::Shown : CaretVisibility::Hidden;
+
+        return (
+            FieldBox::ROWS === $height
+                ? FieldBox::render($spec, $field, FieldState::of($active), $caret, $width, $this->styles)
+                : [FieldBox::compact($spec, $field, FieldState::of($active), $caret, $width, $this->styles)]
+        );
+    }
+
+    /**
+     * The field whose band holds a row $offset from the options row: Find
+     * and Replace stacked above it, Mask below, each {@see fieldHeight()} tall.
+     */
+    private function fieldAt(ModalBox $box, int $offset): ?FindModalField
+    {
+        $height = self::fieldHeight($box);
+
+        return match (true) {
+            $offset >= (-2 * $height) && $offset < -$height => FindModalField::Query,
+            $offset >= -$height && $offset < 0 => FindModalField::Replace,
+            $offset > 0 && $offset <= $height => FindModalField::Mask,
+            default => null,
+        };
+    }
+
+    /** One field's height as laid out: Find and Replace fill the rows between the frame's top chrome and the options row. */
+    private static function fieldHeight(ModalBox $box): int
+    {
+        return \intdiv($box->optionsRow - $box->startRow - ModalFrame::CHROME_ROWS_TOP, num2: 2);
     }
 
     /** How many matches would be replaced (all minus the excluded). */
@@ -904,18 +990,9 @@ final class FindInFilesModal
             return true;
         }
         $innerCol = $box->innerCol($relCol);
-        if ($relRow === ($box->optionsRow - 2)) {
-            $this->setActiveField(FindModalField::Query);
-
-            return true;
-        }
-        if ($relRow === ($box->optionsRow - 1)) {
-            $this->setActiveField(FindModalField::Replace);
-
-            return true;
-        }
-        if ($relRow === ($box->optionsRow + 1)) {
-            $this->setActiveField(FindModalField::Mask);
+        $field = $this->fieldAt($box, $relRow - $box->optionsRow);
+        if (null !== $field) {
+            $this->setActiveField($field);
 
             return true;
         }

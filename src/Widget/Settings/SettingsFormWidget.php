@@ -23,6 +23,9 @@ use Porta\Ui\TextField;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\HoverableList;
 use Porta\Widget\PaneNavigationCallbacks;
+use Porta\Widget\Render\FieldBox;
+use Porta\Widget\Render\FieldSpec;
+use Porta\Widget\Render\FieldState;
 use Porta\Widget\Render\HeaderRenderer;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
@@ -33,6 +36,7 @@ use Porta\Widget\Support\InputHook;
 use Porta\Widget\Support\PanelRowStyle;
 use Porta\Widget\Support\WheelScrollable;
 use Psr\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -426,7 +430,8 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
                 continue;
             }
 
-            $control = $this->control($row, $i);
+            // What is left for the control after the marker, the label and the gap.
+            $control = $this->control($row, $i, $width - 4 - $layout->label);
             // The armed destructive row (the two-press remove confirm) tints
             // its CONTROL, not the whole line: wearing DangerBg over the row
             // beat both the selection bar and the hover tint, so the one row
@@ -549,11 +554,11 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
      * `Bool` used to put its checkbox at column 1, ahead of its label, while
      * the others put theirs after.
      */
-    private function control(SettingsRow $row, int $index): string
+    private function control(SettingsRow $row, int $index, int $room): string
     {
         return match ($row->kind) {
             SettingsRowKind::Bool => (bool) $row->value ? Glyphs::CHECKBOX_ON : Glyphs::CHECKBOX_OFF,
-            SettingsRowKind::Text => $this->textValue($row, $index),
+            SettingsRowKind::Text => $this->textValue($row, $index, $room),
             SettingsRowKind::Action => '['.$this->actionCaption($row).']',
             SettingsRowKind::Int => '< '.(string) $row->value.' >',
             default => '< '.$this->choiceLabel($row).' >',
@@ -597,22 +602,29 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
     }
 
     /**
-     * The rendered value of a text row: the live editor (with a cursor) while
-     * editing, else the value.
+     * A text row's control: its value in a one-row field, `│ value │` at rest
+     * and `┃ value| ┃` while the live editor holds the keys — so which row
+     * is being typed into reads by shape, colour or not. One row, not a box:
+     * every item on this page is one row, and the selection, the paging and
+     * the pointer hit-test all count on it.
      *
      * The hint used to stand in for an empty value here, which is why it never
      * reached any other kind and why it read as a placeholder rather than a
      * description. It lives in the detail column now, for every kind and
      * whether or not the row has a value.
      */
-    private function textValue(SettingsRow $row, int $index): string
+    private function textValue(SettingsRow $row, int $index, int $room): string
     {
-        if ($index === $this->editing && null !== $this->editField) {
-            return $this->editField->render(cursor: $this->focused ? CaretVisibility::Shown : CaretVisibility::Hidden);
-        }
+        $editing = $index === $this->editing && null !== $this->editField;
+        $field = $editing ? $this->editField : new TextField((string) $row->value);
+        $typing = $editing && $this->focused;
+        $width = \min(\max(0, $room), \max(self::TEXT_FIELD_MIN, AnsiUtils::visibleWidth($field->value()) + 2) + FieldBox::CHROME_COLS);
 
-        return (string) $row->value;
+        return FieldBox::compact(new FieldSpec(''), $field, FieldState::of($typing), $typing ? CaretVisibility::Shown : CaretVisibility::Hidden, $width, $this->styles);
     }
+
+    /** A text field's value width at rest — a browser input's size, so short values still read as fields. */
+    private const int TEXT_FIELD_MIN = 16;
 
     /** @return array<string, string[]> */
     protected static function getDefaultKeybindings(): array

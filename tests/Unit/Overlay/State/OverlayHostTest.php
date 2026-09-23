@@ -186,9 +186,10 @@ final class OverlayHostTest extends TestCase
         $this->assertNull(Probe::get($host, 'overlay'));
         // The prompt still swallows and edits input.
         $this->assertTrue($host->handleInput('4', $this->keybindings()));
-        $lines = $this->canvas($host, 40, 5);
+        $lines = $this->canvas($host, 40, 7);
         $this->assertStringContainsString('Go to line', AnsiUtils::stripAnsiCodes($lines[0]), 'the label is the frame title');
-        $this->assertStringContainsString('4', AnsiUtils::stripAnsiCodes($lines[2]), 'the value on the field row, below the padding');
+        $this->assertMatchesRegularExpression('/┏━+┓/u', AnsiUtils::stripAnsiCodes($lines[2]), 'the field box below the padding, heavy: it takes the keys');
+        $this->assertMatchesRegularExpression('/┃ 4 +┃/u', AnsiUtils::stripAnsiCodes($lines[3]), 'the value inside it');
     }
 
     public function testPromptBackspaceAndCancel(): void
@@ -320,14 +321,16 @@ final class OverlayHostTest extends TestCase
     {
         $host = $this->host();
         $host->openPrompt('Go to line', '', static fn (): null => null);
-        $host->layout([0, 0, 2, 40]); // framed box: rows 0-4, inner width 30 at col 3
+        $host->layout([0, 0, 2, 40]); // framed box: rows 0-6, inner width 30 at col 3
 
         $this->assertTrue($host->promptClickAt(0, 5), 'a click on the frame title bar is consumed');
         $this->assertNotNull(Probe::get($host, 'prompt'), 'and does not dismiss it — the caret stays');
-        $this->assertTrue($host->promptClickAt(2, 5), 'a click on the field row is consumed');
+        $this->assertTrue($host->promptClickAt(3, 5), 'a click on the field is consumed');
         $this->assertNotNull(Probe::get($host, 'prompt'));
 
-        $this->assertTrue($host->promptClickAt(5, 5), 'a click below the box is consumed');
+        $this->assertTrue($host->promptClickAt(6, 5), 'a click on the bottom border is still the box');
+        $this->assertNotNull(Probe::get($host, 'prompt'));
+        $this->assertTrue($host->promptClickAt(7, 5), 'a click below the box is consumed');
         $this->assertNull(Probe::get($host, 'prompt'), 'and dismisses it, like every sibling overlay');
     }
 
@@ -1249,7 +1252,7 @@ final class OverlayHostTest extends TestCase
         $host->setSearchRows([]);
 
         [$box] = $host->layout([0, 0, 20, 80]);
-        $this->assertCount(5, $box['rows'], 'title bar + query row + 3 frame chrome rows, no filler');
+        $this->assertCount(7, $box['rows'], 'title bar + the three-row query box + 3 frame chrome rows, no filler');
     }
 
     /** @return int how many of the 20 distinct "itemN" labels are visible on the canvas */

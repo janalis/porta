@@ -115,10 +115,10 @@ final class PickerLayoutTest extends TestCase
         // characters rather than a fixed count that would pin the width.
         $this->assertStringContainsString(\mb_substr($typed, start: -6), $row, 'the end of the filter, where the caret is');
         $this->assertStringNotContainsString('feature/', $row, 'not the start, which is what an end-truncate keeps');
-        $this->assertStringContainsString('≡', $row, 'and the glyph identifying the row does not scroll away');
+        $this->assertMatchesRegularExpression('/┃ .+ ┃/u', $row, 'and the box around it does not scroll away');
     }
 
-    /** A filter that fits is drawn exactly as before — the scroll only engages past the width. */
+    /** A filter that fits is drawn from its start — the scroll only engages past the width. */
     public function testAFilterThatFitsIsUnchanged(): void
     {
         $filter = new TextField();
@@ -126,7 +126,7 @@ final class PickerLayoutTest extends TestCase
             $filter->insert($character);
         }
 
-        $this->assertStringContainsString('≡ dev', $this->filterRow($filter));
+        $this->assertMatchesRegularExpression('/┃ dev +┃/u', $this->filterRow($filter));
     }
 
     /**
@@ -161,10 +161,10 @@ final class PickerLayoutTest extends TestCase
     {
         $out = $this->layout($filter);
 
-        foreach ($out['rows'] as $row) {
-            $plain = AnsiUtils::stripAnsiCodes($row);
-            if (\str_contains($plain, '≡')) {
-                return $plain;
+        // The glyph is the box's legend; the typed text is on the row below.
+        foreach ($out['rows'] as $i => $row) {
+            if (\str_contains(AnsiUtils::stripAnsiCodes($row), '≡')) {
+                return AnsiUtils::stripAnsiCodes($out['rows'][$i + 1]);
             }
         }
 

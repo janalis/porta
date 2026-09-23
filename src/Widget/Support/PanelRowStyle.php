@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Widget\Support;
 
 use Porta\Ui\Role;
+use Porta\Ui\Sgr;
 use Symfony\Component\Tui\Style\Style;
 
 /**
@@ -22,11 +23,20 @@ trait PanelRowStyle
 {
     use StylesDefault;
 
-    /** Shade a built row: the selection rule, else the hover tint, else the row as built. */
+    /**
+     * Shade a built row: the selection rule, else the hover tint, else the row
+     * as built.
+     *
+     * The selection's foreground is re-armed after every inner default-colour
+     * reset. {@see Style::apply()} re-arms only a background, so a span tinted
+     * inside the row — a field's rail, a dimmed detail — used to hand what
+     * followed it the terminal's default colour instead of the selection's:
+     * the value after a text field's rail lost its bright-on-blue.
+     */
     private function shadeRow(string $text, bool $selected, bool $hovered): string
     {
         return match (true) {
-            $selected => $this->applyElement('selected', $text),
+            $selected => self::withForeground($this->resolveElement('selected'), $text),
             $hovered => $this->styles->of(Role::RowHighlightBg)->apply($text),
             default => $text,
         };
@@ -40,5 +50,12 @@ trait PanelRowStyle
             $hovered => $this->styles->of(Role::RowHighlightBg),
             default => $this->styles->of(Role::Toolbar),
         };
+    }
+
+    private static function withForeground(Style $style, string $text): string
+    {
+        $foreground = $style->getColor()?->toForegroundCode();
+
+        return $style->apply(null === $foreground ? $text : \str_replace(Sgr::DEFAULT_FG, Sgr::DEFAULT_FG.$foreground, $text));
     }
 }

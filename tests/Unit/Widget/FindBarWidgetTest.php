@@ -30,19 +30,20 @@ final class FindBarWidgetTest extends TestCase
     /**
      * The query as the BAR DRAWS IT.
      *
-     * Not a public accessor added for the test — `Find: …` is what the user
+     * Not a public accessor added for the test — the Find box is what the user
      * reads, and asserting it keeps the recall's whole wire (field, repaint,
      * render) in the assertion rather than only the field.
      */
     private function shownQuery(FindBarWidget $bar): string
     {
-        $plain = AnsiUtils::stripAnsiCodes(\implode('', $bar->render(new RenderContext(120, 1))));
-        // Up to the `[n/m]` counter, not `\S+`: an EMPTY query leaves the field
-        // blank and the counter is the next non-space thing on the row, so a
-        // greedy match reports `[0/0]` as the query and every assertion about
-        // clearing the field passes against it.
+        $rows = \array_map(AnsiUtils::stripAnsiCodes(...), $bar->render(new RenderContext(120, 3)));
+        // Between the Find box's rails on its value row, not `\S+`: an EMPTY
+        // query leaves the box blank, and a greedy match would report the
+        // next thing on the row as the query — every assertion about clearing
+        // the field would pass against it.
         $m = [];
-        $this->assertSame(1, \preg_match('/Find:([^\[]*)/', $plain, $m), 'the bar draws a Find field');
+        $this->assertMatchesRegularExpression('/^[┏╭] Find /u', $rows[0] ?? '', 'the bar draws a Find field');
+        $this->assertSame(1, \preg_match('/^[┃│]([^┃│]*)[┃│]/u', $rows[1], $m), 'with its value between the rails');
 
         return \trim($m[1]);
     }
@@ -361,14 +362,19 @@ final class FindBarWidgetTest extends TestCase
         $bar->setFocused(true);
         $bar->open(new FakeFindTarget($doc), mode: FindMode::Replace, initialQuery: 'needle');
 
-        $line = $bar->render(new RenderContext(120, 1))[0];
-        $plain = AnsiUtils::stripAnsiCodes($line);
+        $rows = $bar->render(new RenderContext(120, 3));
+        $plain = \array_map(AnsiUtils::stripAnsiCodes(...), $rows);
 
-        $this->assertSame(120, AnsiUtils::visibleWidth($line));
-        $this->assertStringContainsString('Find: needle', $plain);
-        $this->assertStringContainsString('[1/1]', $plain);
-        $this->assertStringContainsString('Replace:', $plain);
-        $this->assertStringContainsString('Alt+R replace', $plain);
+        $this->assertCount(3, $rows, 'two boxed fields side by side, three rows tall');
+        foreach ($rows as $row) {
+            $this->assertSame(120, AnsiUtils::visibleWidth($row));
+        }
+        $this->assertStringStartsWith('┏ Find ━', $plain[0], 'the focused field is heavy-bordered, its label a legend');
+        $this->assertStringContainsString('╭ Replace ─', $plain[0], 'the other field rests rounded');
+        $this->assertStringStartsWith('┃ needle ', $plain[1]);
+        $this->assertStringContainsString('━ [1/1] ━┛', $plain[2], 'the match position rides the bottom border of the Find box');
+        $this->assertStringContainsString('Alt+R replace', $plain[0], 'the hints pack whole into the strip beside the boxes');
+        $this->assertStringContainsString('Esc', $plain[2], 'and carry on below the tags');
     }
 
     public function testCloseNotifiesAndClearsMatches(): void
@@ -428,13 +434,13 @@ final class FindBarWidgetTest extends TestCase
         $bar = new FindBarWidget(new Translator('en'));
         $bar->setFocused(true);
         $bar->open(new FakeFindTarget(new Document("x\n")), mode: FindMode::Find);
-        $this->type($bar, \str_repeat('q', times: 100)); // overflow the 80-column bar
+        $this->type($bar, \str_repeat('q', times: 100)); // overflow the 32-column box
 
-        $line = $bar->render(new RenderContext(80, 1))[0];
+        $line = $bar->render(new RenderContext(80, 3))[1];
         $marker = AnsiUtils::cursorMarker(CursorShape::Bar);
 
         $this->assertSame(1, \substr_count($line, $marker), 'the caret scrolls into view');
-        $this->assertSame(80, AnsiUtils::visibleWidth($line), 'the bar stays the terminal width');
+        $this->assertSame(80, AnsiUtils::visibleWidth($line), 'the value row stays the terminal width');
     }
 
     public function testRegexToggleMatchesPatterns(): void
@@ -632,20 +638,63 @@ final class FindBarWidgetTest extends TestCase
         $bar->render(new RenderContext(80, 1)); // the zones come from the last render
         $this->assertCount(3, \array_merge(...\array_values($bar->getMatchesByLine())));
 
-        // The tags are right-aligned: at 80 columns [.*] spans 72-75, [\b] 76-79.
-        $bar->handleClick(77);
+        // The tags follow the 32-column box and its gutter: [.*] spans 33-36, [\b] 37-40.
+        $bar->handleClick(1, 38);
         $this->assertCount(2, \array_merge(...\array_values($bar->getMatchesByLine())), 'the click re-ran the search, exactly as Alt+W does');
 
-        $bar->handleClick(10); // the query field is not a tag
+        $bar->handleClick(1, 10); // the query box is not a tag
         $this->assertCount(2, \array_merge(...\array_values($bar->getMatchesByLine())), 'a click off the tags is inert');
 
-        $bar->handleClick(77);
+        $bar->handleClick(1, 38);
         $this->assertCount(3, \array_merge(...\array_values($bar->getMatchesByLine())), 'and it toggles back off');
 
         // The other tag, on its own zone: regex mode makes the query a pattern.
-        $bar->handleClick(73);
+        $bar->handleClick(1, 34);
         $this->type($bar, '+');
         $this->assertCount(3, \array_merge(...\array_values($bar->getMatchesByLine())), 'foo+ is a regex now, not a literal');
+    }
+
+    /**
+     * A click anywhere in a box — its border rows included, as a browser's
+     * input takes a click on its edge — makes it the field typing edits, and
+     * the heavy border follows. A click beside the boxes changes nothing.
+     */
+    public function testClickingAFieldBoxMakesItTheFieldTypingEdits(): void
+    {
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->setFocused(true);
+        $bar->open(new FakeFindTarget(new Document("x\n")), mode: FindMode::Replace, initialQuery: 'x');
+        $bar->render(new RenderContext(80, 3)); // Find 0-31, gutter, Replace 33-64
+
+        $bar->handleClick(0, 40); // the Replace box's top border
+        $this->type($bar, 'z');
+        $rows = \array_map(AnsiUtils::stripAnsiCodes(...), $bar->render(new RenderContext(80, 3)));
+        $this->assertStringContainsString('┃ z ', $rows[1], 'the typing landed in Replace');
+        $this->assertStringStartsWith('╭ Find', $rows[0], 'and Find gave up the heavy border');
+
+        $bar->handleClick(2, 5); // the Find box's bottom border
+        $this->type($bar, 'y');
+        $this->assertSame('xy', $this->shownQuery($bar), 'back in Find');
+
+        $bar->handleClick(1, 78); // beside the boxes, past the tags
+        $this->type($bar, 'w');
+        $this->assertSame('xyw', $this->shownQuery($bar), 'a click on no zone leaves the field as it was');
+    }
+
+    /**
+     * A pane just wide enough for the box and its tags still says where you
+     * are: the position used to trail the tags on the value row, so it was
+     * the first thing a narrow pane cut — the tags stayed, the count went.
+     */
+    public function testANarrowBarStillShowsTheMatchPosition(): void
+    {
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->open(new FakeFindTarget(new Document("foo foo\n")), mode: FindMode::Find, initialQuery: 'foo');
+
+        $rows = \array_map(AnsiUtils::stripAnsiCodes(...), $bar->render(new RenderContext(40, 3)));
+
+        $this->assertStringContainsString('[1/2]', $rows[2]);
+        $this->assertStringEndsWith(' .*  \\b ', $rows[1], 'beside the tags, which still fit');
     }
 
     public function testHoverTintsTheTagUnderThePointer(): void
@@ -654,17 +703,17 @@ final class FindBarWidgetTest extends TestCase
         $bar->open(new FakeFindTarget(new Document("foo\n")), mode: FindMode::Find);
         $bar->render(new RenderContext(80, 1));
 
-        $this->assertTrue($bar->hoverAt(73), 'the pointer landed on the regex tag');
-        $this->assertFalse($bar->hoverAt(74), 'still the same tag → no change');
-        $this->assertTrue($bar->hoverAt(77), 'moved onto the whole-word tag');
-        $this->assertTrue($bar->hoverAt(10), 'the query field is not a tag: the tint clears');
-        $this->assertFalse($bar->hoverAt(10), 'still no tag → no change');
-        $this->assertTrue($bar->hoverAt(73), 'back onto a tag');
+        $this->assertTrue($bar->hoverAt(1, 34), 'the pointer landed on the regex tag');
+        $this->assertFalse($bar->hoverAt(1, 35), 'still the same tag → no change');
+        $this->assertTrue($bar->hoverAt(1, 38), 'moved onto the whole-word tag');
+        $this->assertTrue($bar->hoverAt(1, 10), 'the query field is not a tag: the tint clears');
+        $this->assertFalse($bar->hoverAt(1, 10), 'still no tag → no change');
+        $this->assertTrue($bar->hoverAt(1, 34), 'back onto a tag');
         $this->assertTrue($bar->clearHover(), 'the pointer left the bar');
         $this->assertFalse($bar->clearHover(), 'nothing left to clear');
 
-        $bar->hoverAt(73);
-        $line = $bar->render(new RenderContext(80, 1))[0];
+        $bar->hoverAt(1, 34);
+        $line = $bar->render(new RenderContext(80, 3))[1];
         $this->assertStringContainsString("\x1b[48;5;236m", $line, 'the hovered tag tints');
         $this->assertSame(80, AnsiUtils::visibleWidth($line), 'the tint does not change the bar width');
     }
@@ -709,15 +758,15 @@ final class FindBarWidgetTest extends TestCase
         $bar->open(new FakeFindTarget($doc), mode: FindMode::Replace, initialQuery: 'x');
         $marker = AnsiUtils::cursorMarker(CursorShape::Bar);
 
-        $line = $bar->render(new RenderContext(120, 1))[0];
+        $line = \implode('', $bar->render(new RenderContext(120, 3)));
         $this->assertSame(1, \substr_count($line, $marker), 'find field shows the caret');
 
         $bar->handleInput("\t"); // → replace field
-        $line = $bar->render(new RenderContext(120, 1))[0];
+        $line = \implode('', $bar->render(new RenderContext(120, 3)));
         $this->assertSame(1, \substr_count($line, $marker), 'replace field shows the caret');
 
         $bar->handleInput("\t"); // → back to find field
-        $line = $bar->render(new RenderContext(120, 1))[0];
+        $line = \implode('', $bar->render(new RenderContext(120, 3)));
         $this->assertSame(1, \substr_count($line, $marker), 'back on the find field');
     }
 
@@ -741,15 +790,17 @@ final class FindBarWidgetTest extends TestCase
         $bar->open(new FakeFindTarget(new Document("x\n")), mode: FindMode::Find);
         $bar->render(new RenderContext(80, 1));
 
-        // [.*] is 2 glyph cols + 2 padding = 4 wide; same for [\b]. Right-aligned
-        // into an 8-wide strip: regex spans 72-75, word spans 76-79.
-        $this->assertFalse($bar->hoverAt(71), 'just before the regex zone: no tag');
-        $this->assertTrue($bar->hoverAt(72), 'the regex zone starts at 72');
-        $this->assertFalse($bar->hoverAt(75), 'still the regex zone (72-75): no change');
-        $this->assertTrue($bar->hoverAt(76), 'the word zone starts right after, at 76');
-        $this->assertFalse($bar->hoverAt(79), 'still the word zone (76-79): no change');
+        // [.*] is 2 glyph cols + 2 padding = 4 wide; same for [\b]. They follow
+        // the 32-column box and its gutter: regex spans 33-36, word 37-40.
+        $this->assertFalse($bar->hoverAt(1, 32), 'the gutter before the regex zone: no tag');
+        $this->assertTrue($bar->hoverAt(1, 33), 'the regex zone starts at 33');
+        $this->assertFalse($bar->hoverAt(1, 36), 'still the regex zone (33-36): no change');
+        $this->assertTrue($bar->hoverAt(1, 37), 'the word zone starts right after, at 37');
+        $this->assertFalse($bar->hoverAt(1, 40), 'still the word zone (37-40): no change');
         $bar->clearHover();
-        $this->assertFalse($bar->hoverAt(80), 'past the last column: no tag, no change from already-cleared');
+        $this->assertFalse($bar->hoverAt(1, 41), 'past the last tag: no tag, no change from already-cleared');
+        $this->assertFalse($bar->hoverAt(0, 34), 'the tags live on the value row only');
+        $this->assertFalse($bar->hoverAt(2, 34), 'not the row below it either');
     }
 
     public function testFindNextAfterAStaleRefreshJumpsToTheFirstMatchNotTheSecond(): void
@@ -846,20 +897,20 @@ final class FindBarWidgetTest extends TestCase
         $bar->render(new RenderContext(3, 1)); // narrower than the 8-column tag strip
 
         foreach ([-1, 0, 1, 2] as $column) {
-            $this->assertFalse($bar->hoverAt($column), 'no tag is on screen at column '.$column);
+            $this->assertFalse($bar->hoverAt(1, $column), 'no tag is on screen at column '.$column);
         }
     }
 
-    /** And where they DO fit, the strip is right-aligned and its first zone starts there. */
+    /** And where they DO fit, the box shrinks to seat them and their first zone starts after it. */
     public function testTheTagZonesSitWhereTheStripIsDrawn(): void
     {
         $bar = new FindBarWidget(new Translator('en'));
         $bar->open(new FakeFindTarget(new Document("x\n")), mode: FindMode::Find);
         $bar->render(new RenderContext(40, 1));
 
-        $this->assertFalse($bar->hoverAt(31), 'one column before the strip');
-        $this->assertTrue($bar->hoverAt(32), 'the strip is the last eight columns of forty');
-        $this->assertTrue($bar->hoverAt(39), 'through to the final column');
+        $this->assertFalse($bar->hoverAt(1, 31), 'the gutter after the 31-column box');
+        $this->assertTrue($bar->hoverAt(1, 32), 'the tags fill the last eight columns of forty');
+        $this->assertTrue($bar->hoverAt(1, 39), 'through to the final column');
     }
 
     public function testHoveringOneTagDoesNotTintTheOtherTag(): void
@@ -868,11 +919,10 @@ final class FindBarWidgetTest extends TestCase
         $bar->open(new FakeFindTarget(new Document("x\n")), mode: FindMode::Find);
         $bar->render(new RenderContext(80, 1));
 
-        $bar->hoverAt(73); // the regex tag's column
-        $line = $bar->render(new RenderContext(80, 1))[0];
-        // The hints text also mentions ".*" and "\b" literally, earlier in the
-        // line; the tags strip is appended last, so its own occurrences are
-        // the *last* ones in the string.
+        $bar->hoverAt(1, 34); // the regex tag's column
+        $line = $bar->render(new RenderContext(80, 3))[1];
+        // The value row carries the tags; the hints (which mention ".*" and
+        // "\b" too) sit on the rows above and below it.
         $tint = \strrpos($line, needle: "\x1b[48;5;236m");
         $star = \strrpos($line, needle: '.*');
         $backslashB = \strrpos($line, needle: '\b');
@@ -956,10 +1006,10 @@ final class FindBarWidgetTest extends TestCase
     }
 
     /**
-     * The reason the tags are right-aligned rather than sitting after the
-     * counter: the rest of the bar scrolls to follow the caret, so a growing
-     * query used to carry the tags' columns with it — and a click zone that
-     * moves as you type points at whatever the query pushed under it.
+     * The tags sit after a FIXED-width box, never after the typed text: the
+     * old one-row bar scrolled to follow the caret, so a growing query carried
+     * the tags' columns with it — and a click zone that moves as you type
+     * points at whatever the query pushed under it.
      */
     public function testTheTagZonesDoNotMoveAsTheQueryGrows(): void
     {
@@ -970,12 +1020,13 @@ final class FindBarWidgetTest extends TestCase
         $zones = null;
         foreach (['', 'foo', \str_repeat('long-query-', times: 8)] as $query) {
             $this->type($bar, $query);
-            $line = $bar->render(new RenderContext(80, 1))[0];
-            $this->assertSame(80, AnsiUtils::visibleWidth($line), 'the bar always fills its row');
+            foreach ($bar->render(new RenderContext(80, 3)) as $line) {
+                $this->assertSame(80, AnsiUtils::visibleWidth($line), 'the bar always fills its rows');
+            }
 
             $hit = [];
             for ($col = 0; $col < 80; ++$col) {
-                if ($bar->hoverAt($col)) {
+                if ($bar->hoverAt(1, $col)) {
                     $hit[] = $col;
                 }
                 $bar->clearHover();

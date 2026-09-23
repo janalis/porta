@@ -230,25 +230,27 @@ final class ListOverlayFilterTest extends TestCase
         $this->type($host, 'hyd');
 
         $rows = $this->canvas($host);
-        $filterRow = null;
-        foreach ($rows as $row) {
+        $legend = null;
+        foreach ($rows as $i => $row) {
             if (!\str_contains($row, '≡')) {
                 continue;
             }
-            $filterRow = $row;
+            $legend = $i;
         }
-        $this->assertNotNull($filterRow, 'the filter row is drawn');
-        // The frame contributes `│ `, the row itself ` ≡ hyd` — so TWO spaces
-        // before the glyph, one after it, then padding to the box width. The
-        // exact count is the point: it is what the eight concat mutants move.
-        $this->assertMatchesRegularExpression('/^ *│  ≡ hyd +│ *$/u', $filterRow);
+        $this->assertNotNull($legend, 'the filter box is drawn');
+        // The glyph is the box's legend; the value row below it is the frame's
+        // `│ `, the field's heavy rail and a space, the text, padding, and the
+        // closing rail — it takes the keys, so its border is the focused one.
+        // The exact count is the point: it is what the concat mutants move.
+        $this->assertMatchesRegularExpression('/^ *│ ┏ ≡ ━+┓ │ *$/u', $rows[$legend]);
+        $this->assertMatchesRegularExpression('/^ *│ ┃ hyd +┃ │ *$/u', $rows[$legend + 1]);
 
         // And the highlight reaches the far side. `pad: true` pads the text
         // before the style wraps it, so without it the toolbar bar stops after
         // `hyd` — a half-drawn row that the stripped text above reads as
         // perfect.
         $this->assertMatchesRegularExpression(
-            '/≡ hyd {2,}\x1b\[49m/u',
+            '/hyd +(?:\x1b\[[0-9;]*m)*┃(?:\x1b\[[0-9;]*m)*\x1b\[49m/u',
             \implode("\n", $this->rawCanvas($host)),
             'the filter row is highlighted across the box, not just under its text',
         );

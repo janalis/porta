@@ -53,10 +53,13 @@ enum Role
     // and the hover's underline, because a drag can rest on a row that is
     // already both.
     case DropTargetRow;
-    // The background of a labelled single-line input row (the results panel's
-    // filter). A token distinct from RowHighlightBg so a field's background and
-    // the row-hover tint can diverge — today they resolve to the same shade.
-    case FieldFocusBg;
+    // A text field's idle border and legend (FieldBox). Only a tint: the
+    // border SHAPE (rounded idle, heavy focused, double danger) is the state
+    // cue, so monochrome leaves it plain and still reads.
+    case FieldBorder;
+    // An empty field's placeholder: grey AND italic, so it never passes for a
+    // typed value — monochrome keeps the italic (plus dim) where Dim is plain.
+    case FieldPlaceholder;
 
     // Git chrome: header/toolbar bars, file-status markers, tag buttons.
     case HeaderBar;

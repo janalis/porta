@@ -188,7 +188,7 @@ integrations = ["symfony", "phpunit"]
 #                                with no correction note; re-probed
 #                                2026-09-09, the pin is right and the prose
 #                                was wrong — at 30 both classes fire.
-#   too-many-enum-cases      61  Ui/Role (the theme role vocabulary; 58 until
+#   too-many-enum-cases      62  Ui/Role (the theme role vocabulary; 58 until
 #                                OccurrenceWriteBg joined it — a read and a write
 #                                occurrence cannot share one role — and 60 with
 #                                DebugValue: an inlay hint is what the code
@@ -201,7 +201,11 @@ integrations = ["symfony", "phpunit"]
 #                                here". Monochrome is why it cannot be a merge
 #                                of existing roles — there it has to be a mark
 #                                distinct from both the hover's underline and
-#                                the selection's reverse)
+#                                the selection's reverse). 62 with the boxed
+#                                text fields: FieldBorder + FieldPlaceholder
+#                                replaced FieldFocusBg — a placeholder needs a
+#                                mark of its own where Dim is plain (monochrome)
+#                                or it passes for a typed value)
 #   excessive-parameter-list 24  Input/MouseRouter' constructor, which took
 #                                TreeDragRouter for the tree drag. 23 before.
 #                                Bootstrap/WidgetHooks is 22 — near-
@@ -301,7 +305,7 @@ integrations = ["symfony", "phpunit"]
 cyclomatic-complexity = { threshold = 145 }
 too-many-methods = { threshold = 86 }
 too-many-properties = { threshold = 31 }
-too-many-enum-cases = { threshold = 61 }
+too-many-enum-cases = { threshold = 62 }
 excessive-parameter-list = { threshold = 24 }
 kan-defect = { threshold = 8 }
 halstead = { effort-threshold = 21435, difficulty-threshold = 30, volume-threshold = 3236 }

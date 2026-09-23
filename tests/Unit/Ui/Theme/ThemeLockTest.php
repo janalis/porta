@@ -35,7 +35,8 @@ final class ThemeLockTest extends TestCase
         yield 'selected-row-unfocused' => [Role::SelectedRowUnfocused, new Style(background: 237)];
         yield 'row-highlight-bg' => [Role::RowHighlightBg, new Style(background: 236)];
         yield 'drop-target-row' => [Role::DropTargetRow, new Style(background: 22, color: 231, bold: true)];
-        yield 'field-focus-bg' => [Role::FieldFocusBg, new Style(background: 236)];
+        yield 'field-border' => [Role::FieldBorder, new Style(color: 245)];
+        yield 'field-placeholder' => [Role::FieldPlaceholder, new Style(color: 243, italic: true)];
         yield 'popup-row' => [Role::PopupRow, new Style(background: 236, color: 250)];
         yield 'header-bar' => [Role::HeaderBar, new Style(background: 237)];
         yield 'toolbar' => [Role::Toolbar, new Style(background: 235)];
@@ -103,7 +104,8 @@ final class ThemeLockTest extends TestCase
         yield 'selected-row-unfocused' => [Role::SelectedRowUnfocused, new Style(background: 253)];
         yield 'row-highlight-bg' => [Role::RowHighlightBg, new Style(background: 253)];
         yield 'drop-target-row' => [Role::DropTargetRow, new Style(background: 151, color: 16, bold: true)];
-        yield 'field-focus-bg' => [Role::FieldFocusBg, new Style(background: 253)];
+        yield 'field-border' => [Role::FieldBorder, new Style(color: 243)];
+        yield 'field-placeholder' => [Role::FieldPlaceholder, new Style(color: 245, italic: true)];
         yield 'popup-row' => [Role::PopupRow, new Style(background: 253, color: 240)];
         yield 'header-bar' => [Role::HeaderBar, new Style(background: 253)];
         yield 'toolbar' => [Role::Toolbar, new Style(background: 254)];
@@ -255,7 +257,7 @@ final class ThemeLockTest extends TestCase
             Role::TabActiveBg,
             Role::RowHighlightBg,
             Role::DropTargetRow,
-            Role::FieldFocusBg,
+            Role::FieldPlaceholder,
             Role::BarHoverBg,
             Role::SelectionBg,
             Role::SearchBg,
@@ -270,6 +272,13 @@ final class ThemeLockTest extends TestCase
             $this->assertTrue($mono->of($role)->isPlain(), $role->name.' must stay plain');
             $this->assertSame('', $mono->underline($role), $role->name.' must have no underline color');
         }
+    }
+
+    public function testMonochromePlaceholderNeverReadsAsAValue(): void
+    {
+        // Dim is plain under monochrome, so a placeholder styled Dim would be
+        // indistinguishable from typed text; its own role keeps a mark.
+        $this->assertEquals(new Style(dim: true, italic: true), MonochromeTheme::definition()->of(Role::FieldPlaceholder));
     }
 
     public function testMonochromeSelectionUsesReverseVideo(): void
@@ -299,7 +308,6 @@ final class ThemeLockTest extends TestCase
         // row is not ambiguous — render precedence keeps the reverse).
         $mono = MonochromeTheme::definition();
         $this->assertEquals(new Style(underline: true), $mono->of(Role::RowHighlightBg));
-        $this->assertEquals(new Style(underline: true), $mono->of(Role::FieldFocusBg), 'the field background reads like its hover-tint twin without colour');
         $this->assertEquals(new Style(underline: true), $mono->of(Role::BarHoverBg));
         $this->assertEquals(
             new Style(reverse: true, bold: true),

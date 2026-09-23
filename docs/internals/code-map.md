@@ -76,6 +76,8 @@ and command catalogs. Settings **widgets** stay in `Widget/Settings/`.
 **`Widget/`** — classes that render, either carrying `#[AsWidget]` or producing
 `string[]`. Non-rendering widget-internal helpers (row DTOs, enums, traits) go
 in `Widget/Support/`. `Widget/Render/` is the stateless render-algorithm tier.
+Every text field draws through `Widget/Render/FieldBox` (with `FieldSpec`,
+`FieldState`) — never a hand-rolled ` Label: value` row.
 
 The shared row traits live in `Widget/Support/`:
 

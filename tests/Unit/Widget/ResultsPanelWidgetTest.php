@@ -281,7 +281,7 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->handleInput('Z'); // consumed by the hook, never reaches the filter
         $panel->handleInput('a'); // the filter takes this
         $plain = \implode('', \array_map(AnsiUtils::stripAnsiCodes(...), $panel->render(new RenderContext(60, 12))));
-        $this->assertStringContainsString('Filter: a', $plain, 'the filter took the un-hooked key');
+        $this->assertStringContainsString('┃ a ', $plain, 'the filter took the un-hooked key');
         $this->assertStringNotContainsString('Z', $plain, 'the hooked key never reached the filter');
     }
 
@@ -609,7 +609,7 @@ final class ResultsPanelWidgetTest extends TestCase
         }
 
         $plain = AnsiUtils::stripAnsiCodes(\implode("\n", $panel->render(new RenderContext(90, 16))));
-        $this->assertStringContainsString('Filter: Api', $plain);
+        $this->assertMatchesRegularExpression('/┏ Filter ━.*\n┃ Api /u', $plain, 'the focused filter box holds the typed text');
         $this->assertStringContainsString('· 1 shown', $panel->statusText(), 'the filtered count rides the dock-strip status');
         $this->assertStringContainsString('src/Api.php', $plain);
         $this->assertStringNotContainsString('src/Web.php', $plain, 'the non-matching file is hidden');
@@ -663,9 +663,9 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->setResults($this->groupedResults());
         $panel->render(new RenderContext(80, 12));
 
-        // Row 0 is the filter (the tool title lives on the dock strip) →
-        // grouped rows begin at row 1 (the src/A.php header).
-        $panel->handleClick(1);
+        // Rows 0-2 are the boxed filter (the tool title lives on the dock
+        // strip) → grouped rows begin at row 3 (the src/A.php header).
+        $panel->handleClick(3);
         $collapsed = AnsiUtils::stripAnsiCodes(\implode("\n", $panel->render(new RenderContext(80, 12))));
         $this->assertStringContainsString('▸ src/A.php  (2)', $collapsed, 'collapsed arrow');
         $this->assertStringNotContainsString('match zero', $collapsed, "A's matches are hidden");
@@ -673,7 +673,7 @@ final class ResultsPanelWidgetTest extends TestCase
         $this->assertStringContainsString('match two', $collapsed, 'B stays expanded');
 
         // Click again → expand.
-        $panel->handleClick(1);
+        $panel->handleClick(3);
         $expanded = AnsiUtils::stripAnsiCodes(\implode("\n", $panel->render(new RenderContext(80, 12))));
         $this->assertStringContainsString('▾ src/A.php', $expanded);
         $this->assertStringContainsString('match zero', $expanded);
@@ -952,12 +952,12 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->handleInput("\x1bm"); // alt+m expand
 
         $raw = $panel->render(new RenderContext(60, 6));
-        // row 0 = filter, row 1 = header, row 2 = match, row 3 = the context row.
-        $this->assertSame(60, AnsiUtils::visibleWidth($raw[3]), 'padded to the full column width, not left short');
-        $this->assertStringStartsWith("\x1b[48;5;235m", $raw[3], 'the row background opens first');
-        $this->assertStringEndsWith("\x1b[0m", $raw[3], 'and resets last, after all the content');
+        // rows 0-2 = the filter box, 3 = header, 4 = match, 5 = the context row.
+        $this->assertSame(60, AnsiUtils::visibleWidth($raw[5]), 'padded to the full column width, not left short');
+        $this->assertStringStartsWith("\x1b[48;5;235m", $raw[5], 'the row background opens first');
+        $this->assertStringEndsWith("\x1b[0m", $raw[5], 'and resets last, after all the content');
 
-        $plain = \rtrim(AnsiUtils::stripAnsiCodes($raw[3]));
+        $plain = \rtrim(AnsiUtils::stripAnsiCodes($raw[5]));
         $this->assertSame('      4  above line', $plain, 'indent(4) + gap(2) + (line+1) + gap(2) + text, in that exact order');
     }
 
@@ -1218,14 +1218,14 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->handleInput("\x1bg"); // → Directory
         $panel->handleInput("\x1bg"); // → Nested
 
-        $raw = $panel->render(new RenderContext(30, 4));
+        $raw = $panel->render(new RenderContext(30, 6)); // below the three-row filter box
         $rows = \array_map(static fn (string $r): string => \rtrim(AnsiUtils::stripAnsiCodes($r)), $raw);
 
-        $this->assertStringStartsWith("\x1b[48;5;235m", $raw[1], 'the row background opens first, before any content');
-        $this->assertStringEndsWith("\x1b[0m", $raw[1], 'and resets last, after all the content');
-        $this->assertSame(' ▾ src/  (1)', $rows[1], 'directory header: no indent, arrow right after the leading space');
-        $this->assertSame('   ▾ A.php  (1)', $rows[2], 'nested file header: two-space indent, THEN the arrow');
-        $this->assertSame('      5  foo one', $rows[3], 'nested match row: six-space indent, THEN the label, THEN the gutter');
+        $this->assertStringStartsWith("\x1b[48;5;235m", $raw[3], 'the row background opens first, before any content');
+        $this->assertStringEndsWith("\x1b[0m", $raw[3], 'and resets last, after all the content');
+        $this->assertSame(' ▾ src/  (1)', $rows[3], 'directory header: no indent, arrow right after the leading space');
+        $this->assertSame('   ▾ A.php  (1)', $rows[4], 'nested file header: two-space indent, THEN the arrow');
+        $this->assertSame('      5  foo one', $rows[5], 'nested match row: six-space indent, THEN the label, THEN the gutter');
     }
 
     /** A grouped match row's search-range highlight must land on the prefix's exact width, not one column off. */
@@ -1238,21 +1238,21 @@ final class ResultsPanelWidgetTest extends TestCase
             ['path' => 'src/A.php', 'line' => 4, 'text' => 'needle here', 'ranges' => [['start' => 0, 'length' => 6]]],
         ]);
 
-        $raw = $panel->render(new RenderContext(30, 4))[2]; // the match row, under the file header
+        $raw = $panel->render(new RenderContext(30, 6))[4]; // the match row, under the filter box and the file header
 
         // prefixWidth = 4 (matchIndent) + 1 (label "5") + 2 (gutter) = 7.
         $this->assertStringNotContainsString('48;5;58', AnsiUtils::sliceByColumn($raw, 6, 1, strict: true), 'column 6 (the gutter) is not tinted');
         $this->assertStringContainsString('48;5;58', AnsiUtils::sliceByColumn($raw, 7, 1, strict: true), 'column 7 ("n" of needle) is tinted');
     }
 
-    /** The filter hint's exact text and its leading two-space gap after the field, not reordered or dropped. */
+    /** The filter's legend and hint, exactly worded and where the box puts them, not reordered or dropped. */
     public function testFilterHintTextHasTheExactLeadingGapAndWording(): void
     {
         $panel = new ResultsPanelWidget();
         $panel->open('X', ResultsPanelFields::searchResults());
 
         $plain = AnsiUtils::stripAnsiCodes(\implode("\n", $panel->render(new RenderContext(90, 12))));
-        $this->assertStringContainsString('Filter:   (narrows the results below)', $plain);
+        $this->assertMatchesRegularExpression('/^╭ Filter ─+╮\n│ +│\n╰─+ \(narrows the results below\) ─╯$/mu', $plain, 'the legend on top, the hint set into the bottom border');
     }
 
     /** Reopening rebuilds the DISPLAY rows, not just the results array — a stale render must not leak through. */

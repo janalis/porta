@@ -251,7 +251,7 @@ final class IdeTest extends TestCase
                 },
                 2900 => function () use ($screen, $editor, $tui): void {
                     $this->painted($tui, '[1/2]', because: 'smart-case: lowercase query matches acme/demo and Acme\\');
-                    $this->assertStringContainsString('Find: acme', $screen());
+                    $this->assertStringContainsString('┃ acme ', $screen());
                     $doc = $editor()->getDocument();
                     $this->assertStringContainsString('acme', $doc->getLine($doc->cursorLine));
                     $tui->handleInput("\x1b"); // esc
@@ -261,7 +261,7 @@ final class IdeTest extends TestCase
                     // Ctrl+R opens the find bar with the replace field (openFindReplace).
                     $tui->handleInput("\x12"); // ctrl+r
                     $this->assertSame('find-bar', $tui->getFocus()?->getId());
-                    $this->painted($tui, 'Replace:');
+                    $this->painted($tui, '╭ Replace ');
                     $tui->handleInput("\x1b"); // esc
                 },
 

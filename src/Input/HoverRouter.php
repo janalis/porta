@@ -173,7 +173,7 @@ final readonly class HoverRouter
         // the hit-test rather than a null rect.
         $findRect = $this->panes->findBar->isOpen() ? $this->hit->rect($this->panes->findBar) : null;
         $findRel = null !== $findRect && $findRect->contains($mouse->row, $mouse->col) ? $findRect->toRelative($mouse->row, $mouse->col) : null;
-        $findChanged = null !== $findRel ? $this->panes->findBar->hoverAt($findRel['col']) : $this->panes->findBar->clearHover();
+        $findChanged = null !== $findRel ? $this->panes->findBar->hoverAt($findRel['row'], $findRel['col']) : $this->panes->findBar->clearHover();
 
         if ($tabsChanged || $dockChanged || $crumbsChanged || $findChanged) {
             $this->tui->requestRender();

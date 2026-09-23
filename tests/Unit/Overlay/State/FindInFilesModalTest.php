@@ -17,6 +17,7 @@ use Porta\Ui\CursorStyle;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
+use Porta\Widget\Render\FieldBox;
 use Porta\Widget\Render\FindModalRows;
 use Porta\Widget\Render\ModalFrame;
 use Porta\Widget\Render\PopupMetrics;
@@ -121,9 +122,11 @@ final class FindInFilesModalTest extends TestCase
         $screen = $this->screen($modal);
         $this->assertStringContainsString('Find in Files', $screen);
         $this->assertStringContainsString('3 results', $screen);
-        $this->assertStringContainsString('Find:', $screen, 'the query field is labelled');
-        $this->assertStringContainsString('Replace:', $screen, 'the replace field is labelled');
-        $this->assertStringContainsString('Mask:', $screen, 'the mask field is labelled');
+        // 24 rows is too short for three boxes: the one-row compact fields,
+        // labels padded so the rails line up; the focused one heavy-railed.
+        $this->assertMatchesRegularExpression('/Find    ┃/u', $screen, 'the query field is labelled, and takes the keys');
+        $this->assertMatchesRegularExpression('/Replace │/u', $screen, 'the replace field is labelled');
+        $this->assertMatchesRegularExpression('/Mask    │/u', $screen, 'the mask field is labelled');
         $this->assertStringContainsString('(Tab)', $screen, 'the mask field carries its hint, translated');
         $this->assertStringContainsString('Scope: Whole Project', $screen);
         $this->assertStringContainsString('Aa', $screen, 'option tags render');
@@ -332,7 +335,7 @@ final class FindInFilesModalTest extends TestCase
         $this->assertTrue($modal->isOpen());
         $this->assertFalse($modal->hoverAt(0, 0), 'hover before the first composite (no box yet)');
         $modal->setMaskValue('*.php');
-        $this->assertStringContainsString('Mask: *.php', $this->screen($modal));
+        $this->assertMatchesRegularExpression('/Mask +│ \*\.php/u', $this->screen($modal));
 
         $modal->close();
         $this->assertFalse($modal->isOpen());
@@ -717,7 +720,7 @@ final class FindInFilesModalTest extends TestCase
         // Click the Replace row (optionsRow - 1) → focus it; typing has no callback, observe via render.
         $this->assertTrue($modal->clickAt($optionsRow - 1, $box->col + 3));
         $modal->handleInput('X', $this->kb);
-        $this->assertStringContainsString('Replace: X', $this->screen($modal), 'the replace field took the keystroke');
+        $this->assertMatchesRegularExpression('/Replace ┃ X/u', $this->screen($modal), 'the replace field took the keystroke, and the focus');
 
         // Click the Mask row (optionsRow + 1) → focus it; typing fires onMaskChanged.
         $this->assertTrue($modal->clickAt($optionsRow + 1, $box->col + 3));
@@ -1130,7 +1133,7 @@ final class FindInFilesModalTest extends TestCase
 
         $modal->handleInput("\x1bp", $this->kb); // alt+up again → should recall history[0] = 'recent'
 
-        $this->assertStringContainsString('Find: recent', $this->screen($modal), 'typing left history-browsing at exactly -1, so the next alt+up recalls the newest entry');
+        $this->assertMatchesRegularExpression('/Find +┃ recent/u', $this->screen($modal), 'typing left history-browsing at exactly -1, so the next alt+up recalls the newest entry');
     }
 
     public function testExcludedIndicesCollectsEveryExcludedMatchNotJustTheFirst(): void
@@ -1419,7 +1422,7 @@ final class FindInFilesModalTest extends TestCase
         $this->screen($modal);
         $box = $modal->lastBox();
         $this->assertInstanceOf(ModalBox::class, $box);
-        $this->assertSame(\mb_strwidth($query) + 9, $box->width - ModalFrame::CHROME_COLS, 'a long query widens the box by query_w + 9');
+        $this->assertSame(\mb_strwidth($query) + 9 + FieldBox::CHROME_COLS, $box->width - ModalFrame::CHROME_COLS, 'a long query widens the box by query_w + 9, plus the field\'s rails and padding');
     }
 
     public function testBoxWidthIncorporatesTheWidestVisibleRowTextExactly(): void
@@ -1483,13 +1486,13 @@ final class FindInFilesModalTest extends TestCase
         $modal->setPreview($this->results()); // 3 matches, none excluded
 
         $notInPreview = $this->screen($modal);
-        $this->assertStringContainsString('  (Tab · Alt+A)', $notInPreview, 'the non-preview hint, with its leading gap');
+        $this->assertStringContainsString('│ (Tab · Alt+A)', $notInPreview, 'the non-preview hint, one column past the rail');
         $this->assertStringNotContainsString('(Del exclude', $notInPreview);
 
         $modal->handleInput("\t", $this->kb);
         $modal->handleInput('x', $this->kb);
         $inPreview = $this->screen($modal);
-        $this->assertStringContainsString('  (Del exclude · Alt+A replace 3)', $inPreview, 'the preview hint, with its leading gap and the substituted count');
+        $this->assertStringContainsString('┃ (Del exclude · Alt+A replace 3)', $inPreview, 'the preview hint, past the focused rail, with the substituted count');
         $this->assertStringNotContainsString('(Tab · Alt+A)', $inPreview);
     }
 
@@ -1528,7 +1531,7 @@ final class FindInFilesModalTest extends TestCase
         $modal = $this->modal();
         $modal->open('Find in Files');
 
-        $this->assertStringContainsString('  (Tab)', $this->screen($modal), 'the mask hint keeps its leading two-space gap');
+        $this->assertStringContainsString('│ (Tab)', $this->screen($modal), 'the mask hint sits one column past its rail');
     }
 
     public function testKeptCountReflectsExclusionsExactly(): void

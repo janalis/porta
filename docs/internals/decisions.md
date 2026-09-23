@@ -9997,3 +9997,44 @@ overrides nearly all of it.
 *Re-opens on:* a chosen per-pane action list, which turns the bar into a
 translation-and-layout task.
 
+## Text fields are boxed, and the box's shape is its state (2026-09-23)
+
+Every input used to be ` Label: value` on one row, each site picking its own
+background, with focus shown only by the caret — and under `--no-ansi` an idle
+field and a focused one were identical. `FieldBox` now draws them all.
+
+**The label is a legend in the top border, not a row above the box.** A label
+row makes a field four rows; the find bar and Find in Files could not afford
+it, and a legend keeps the label on screen at all times, so the placeholder
+never has to stand in for it. Re-open if a surface needs a label longer than
+its box.
+
+**Heavy for focus, double for danger, rounded at rest.** The glyph is the cue,
+so the monochrome theme maps no border role at all (`FieldBorder` is a tint
+only); `FieldPlaceholder` is the one new role monochrome styles — dim + italic,
+because `Dim` is plain there and a placeholder must not read as a typed value.
+`FieldFocusBg` went with `SearchFieldRenderer`, its only consumer; net +1
+`Role` case (mago's cap 61 → 62).
+
+**Settings text rows stay one row** (`compact()`): the form's selection, paging
+and pointer hit-test all assume one row per item, and a three-row box for the
+edited row only would put the row→index mapping on every one of them. Re-open
+with a form that pages by rendered rows.
+
+**Find in Files goes compact below 30 terminal rows**: three boxes cost six
+preview rows, and at 24 rows that left five. **No `Disabled` state yet**: no
+input is read-only today; the dashed set (`╭┄╮ ┆ ╰┄╯`) is the recorded choice
+for the first field that is, not a case with no caller.
+
+**The find bar's hints pack whole into the strip beside the boxes**, above and
+below the tags — a cut hint names half a key, so what does not fit is left to
+the keybindings page. The match position rides the Find box's bottom border,
+so it lasts as long as the box — beside the tags it was the first thing a
+narrow pane cut. Boxes cap at 32 columns, a browser input's size rather than
+the pane's. Compact, Find in Files pads its labels and its hints to one width
+each, so the three fields' rails stand in two columns.
+
+**A selected panel row re-arms its foreground after every inner
+default-colour reset** (`PanelRowStyle::shadeRow`): `Style::apply()` re-arms
+only a background, so the value after a field's rail drew in the terminal's
+default colour instead of the selection's.

@@ -287,6 +287,31 @@ border-only language, with item-run hit-testing where the border swallows and
 outside dismisses. The completion popup and signature hint stay
 editor-pane-composited and framed the same way.
 
+### Text fields: one renderer, the state in the border's shape
+
+Every single-line input — the find bar, Find in Files, the results filter, the
+keybindings filter, the pickers' query and filter, the prompt, the commit
+message, and the settings text rows — is drawn by `Widget/Render/FieldBox`,
+boxed like a browser input with its label as a legend in the top border
+(`╭ Find ───╮`). `TextField` stays the value-and-caret model; the placeholder,
+the legend and the trailing hint are presentation and live in `FieldSpec`.
+
+- **The shape is the state** (`FieldState`): rounded idle, heavy while it takes
+  the keys, double for a destructive prompt. Colour only repeats it, so focus
+  reads under the monochrome theme and `--no-ansi`. Borders are never bold — a
+  bold rail's SGR 22 would unbold the selected row a compact field sits in.
+- **One focused field = one caret marker.** A field with the caret shown must
+  be Focused or Danger; `FieldBox` throws on an idle one, so a second marker in
+  a frame fails loudly instead of mangling ScreenWriter's cursor conversion.
+  The list filter is the one Focused field drawn without a caret (the search
+  modal owns it); a focused caret-less value keeps its tail in view.
+- **`compact()` is the one-row form** (`Find ┃ foo ┃`) for a site with no rows
+  to spare: the settings form (one row per item is what its selection, paging
+  and hit-test count on), Find in Files below 30 terminal rows, and the find bar
+  when its pane is too narrow for a box per field.
+- A box adds `FieldBox::ROWS - 1` rows to its host; every host derives its
+  header rows and click bands from `FieldBox::ROWS`, never a literal.
+
 ### Sizing one: measure every row you draw
 
 A floating box computes its width from its content, and the recurring defect is

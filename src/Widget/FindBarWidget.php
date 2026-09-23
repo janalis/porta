@@ -25,6 +25,9 @@ use Porta\Ui\CursorStyle;
 use Porta\Ui\Role;
 use Porta\Ui\TextField;
 use Porta\Ui\Theme\Styles;
+use Porta\Widget\Render\FieldBox;
+use Porta\Widget\Render\FieldSpec;
+use Porta\Widget\Render\FieldState;
 use Porta\Widget\Render\FindModalRows;
 use Porta\Widget\Support\InputHook;
 use Porta\Widget\Support\MatchJump;
@@ -111,6 +114,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
         $this->query = new TextField(style: $cursorStyle);
         $this->replacement = new TextField(style: $cursorStyle);
         $this->optionZones = new ClickZones();
+        $this->fieldZones = new ClickZones();
     }
 
     public function open(FindTarget $target, FindMode $mode, string $initialQuery = ''): void
@@ -294,21 +298,24 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
     }
 
     /**
-     * The option tags' click zones (widget-relative columns) from the last
-     * render. Right-aligned into a fixed strip, so unlike the rest of the bar
-     * they do not move as the query grows — see {@see render()}.
+     * The option tags' click zones (widget-relative columns, middle row) from
+     * the last render. Seated right after the fixed-width field boxes, so they
+     * do not move as the query grows — see {@see render()}.
      */
     private readonly ClickZones $optionZones;
+
+    /** The field boxes' click zones ('find'|'replace'), spanning all three rows. */
+    private readonly ClickZones $fieldZones;
     /** The option tag under the pointer ('regex'|'word'), or null. Visual only. */
     private ?string $hoveredTag = null;
 
     /**
-     * Tint the option tag under the pointer (widget-relative column); returns
+     * Tint the option tag under the pointer (widget-relative cell); returns
      * whether it changed.
      */
-    public function hoverAt(int $col): bool
+    public function hoverAt(int $row, int $col): bool
     {
-        $hovered = $this->zoneAt($col);
+        $hovered = $this->zoneAt($row, $col);
         if ($hovered === $this->hoveredTag) {
             return false;
         }
@@ -321,23 +328,29 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
     /** The pointer left the bar: drop the tag tint. Returns whether it changed. */
     public function clearHover(): bool
     {
-        return $this->hoverAt(-1);
+        return $this->hoverAt(-1, -1);
     }
 
-    /** A click on an option tag toggles it, exactly as its Alt+X / Alt+W key does. */
-    public function handleClick(int $col): void
+    /**
+     * A click on an option tag toggles it, exactly as its Alt+X / Alt+W key
+     * does; a click in a field box makes it the field typing edits.
+     */
+    public function handleClick(int $row, int $col): void
     {
-        match ($this->zoneAt($col)) {
+        match ($this->zoneAt($row, $col) ?? $this->fieldZones->at($col)) {
             'regex' => $this->toggleRegex(),
             'word' => $this->toggleWholeWord(),
+            'find' => $this->activeField = 0,
+            'replace' => $this->activeField = 1,
             default => null,
         };
+        $this->invalidate();
     }
 
-    /** The option-tag zone covering $col in the last render, or null. */
-    private function zoneAt(int $col): ?string
+    /** The option-tag zone covering the cell in the last render, or null — the tags sit on the middle row. */
+    private function zoneAt(int $row, int $col): ?string
     {
-        return $this->optionZones->at($col);
+        return self::TAG_ROW === $row ? $this->optionZones->at($col) : null;
     }
 
     #[\Override]
@@ -358,51 +371,58 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
             default => '0/0',
         };
 
-        $findField = ' '.$this->translator->trans('Find:').' '.$this->query->render(cursor: $this->focused && 0 === $this->activeField ? CaretVisibility::Shown : CaretVisibility::Hidden).'  ';
-        $replaceField = $this->withReplace
-            ? $this->translator->trans('Replace:').' '.$this->replacement->render(cursor: $this->focused && 1 === $this->activeField ? CaretVisibility::Shown : CaretVisibility::Hidden).'  '
-            : '';
-
         $hints = $this->withReplace
             ? $this->translator->trans('⏎/F3 next  Shift+F3 prev  Tab field  Alt+R replace  Alt+A all  Alt+X .*  Alt+W \b  Esc')
             : $this->translator->trans('⏎/F3 next  Shift+F3 prev  Alt+X .*  Alt+W \b  Esc');
 
-        // The tags are click targets, so they are right-aligned into a fixed
-        // strip and left OUT of the scroll below: the rest of the bar slides to
-        // follow the caret, which would otherwise carry their columns off with
-        // it and leave the zones pointing at whatever the query pushed there.
-        // Same resolution the diff view's toolbar toggles already use.
-        $this->optionZones->clear();
-        $tags = '';
-        $col = $columns - self::tagsWidth();
-        if ($col < 1) {
-            // Too narrow to seat the tag strip AND a column of bar: the bar
-            // alone, clipped, and no zones recorded — a tag drawn past the edge
-            // is neither visible nor clickable. `max(0, …)` bounded the BODY
-            // and left the eight-column strip at full width, so the row came
-            // out at least eight columns however narrow the pane was, and a row
-            // wider than its pane throws RenderException out of the render loop.
-            //
-            // A column of bar, not zero: scrollLineToCaret() keeps the CARET
-            // visible, so a body asked for nothing still returns the one column
-            // the caret sits in — and the row came out nine.
-            $body = $findField.$replaceField.$this->styles->of(Role::Dim)->apply("[{$position}]").'  '.$this->styles->of(Role::Faint)->apply($hints);
-
-            return [$this->styles->of(Role::Toolbar)->apply(AnsiText::scrollLineToCaret($body, $columns))];
+        // The match position rides the Find box's bottom border, where it
+        // lasts as long as the box does: out in the strip it was the first
+        // thing a narrow pane cut, while the tags beside it survived.
+        $fields = [['find', new FieldSpec($this->translator->trans('Find'), trailing: "[{$position}]"), $this->query, 0]];
+        if ($this->withReplace) {
+            $fields[] = ['replace', new FieldSpec($this->translator->trans('Replace')), $this->replacement, 1];
         }
+        $this->optionZones->clear();
+        $this->fieldZones->clear();
+
+        // Browser-form layout: fixed-width boxes, then a strip beside them —
+        // the option tags on the value row, the key hints packed into the
+        // rows above and below it. Every click target
+        // sits at a column the typing cannot move.
+        // Each box is followed by a one-column gutter, as a form spaces its inputs.
+        $boxWidth = \min(self::BOX_MAX, \intdiv($columns - self::tagsWidth(), \count($fields)) - 1);
+        if ($boxWidth < FieldBox::MIN_BOXED) {
+            // Too narrow to seat a box per field and the tags: the field being
+            // typed in, one compact row, and no zones recorded — a tag drawn
+            // past the edge is neither visible nor clickable.
+            [, $spec, $field] = $fields[$this->withReplace ? $this->activeField : 0];
+            $caret = $this->focused ? CaretVisibility::Shown : CaretVisibility::Hidden;
+
+            return [$this->styles->of(Role::Toolbar)->apply(FieldBox::compact($spec, $field, FieldState::of($this->focused), $caret, $columns, $this->styles))];
+        }
+
+        $rows = ['', '', ''];
+        $col = 0;
+        foreach ($fields as [$name, $spec, $field, $index]) {
+            $active = $this->focused && $index === $this->activeField;
+            foreach (FieldBox::render($spec, $field, FieldState::of($active), $active ? CaretVisibility::Shown : CaretVisibility::Hidden, $boxWidth, $this->styles) as $i => $line) {
+                $rows[$i] .= $line.' ';
+            }
+            $this->fieldZones->add($name, $col, $col + $boxWidth);
+            $col += $boxWidth + 1;
+        }
+        $strip = $col;
         foreach ([['regex', '.*', $this->regex], ['word', '\b', $this->wholeWord]] as [$name, $glyph, $on]) {
-            $tags .= FindModalRows::optionTag($glyph, OptionTagState::of($on, $name === $this->hoveredTag), $this->styles);
+            $rows[self::TAG_ROW] .= FindModalRows::optionTag($glyph, OptionTagState::of($on, $name === $this->hoveredTag), $this->styles);
             $width = \mb_strwidth($glyph) + 2;
             $this->optionZones->add($name, $col, $col + $width);
             $col += $width;
         }
+        [$above, $below] = self::packHints($hints, $columns - $strip);
+        $rows[0] .= $this->styles->of(Role::Faint)->apply($above);
+        $rows[2] .= $this->styles->of(Role::Faint)->apply($below);
 
-        $body = $findField.$replaceField.$this->styles->of(Role::Dim)->apply("[{$position}]").'  '.$this->styles->of(Role::Faint)->apply($hints);
-        // Scroll the bar to the focused field's caret so a long query or
-        // replacement never clips its cursor off the right edge.
-        $line = AnsiText::scrollLineToCaret($body, $columns - self::tagsWidth()).$tags;
-
-        return [$this->styles->of(Role::Toolbar)->apply($line)];
+        return \array_map(fn (string $row): string => $this->styles->of(Role::Toolbar)->apply(AnsiText::padRight($row, $columns)), $rows);
     }
 
     // --- Search internals ---------------------------------------------------
@@ -612,6 +632,40 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
     }
 
     /** Display columns of the right-aligned option-tag strip (both tags are glyph + 2). */
+    /** The row of the three-row bar that seats the option tags: the boxes' value row. */
+    private const int TAG_ROW = 1;
+
+    /** A field box's width cap — a browser input's fixed size, not the pane's. */
+    private const int BOX_MAX = 32;
+
+    /**
+     * The hints (two-space separated) packed whole into two lines of $width:
+     * a hint is a key and what it does, and cutting one names half a key.
+     * What does not fit is left to the keybindings page.
+     *
+     * @return array{string, string}
+     */
+    private static function packHints(string $hints, int $width): array
+    {
+        $above = '';
+        $below = null; // null until the first line is full
+        foreach (\explode('  ', $hints) as $hint) {
+            $line = $below ?? $above;
+            $joined = '' === $line ? $hint : $line.'  '.$hint;
+            if (\mb_strwidth($joined) <= $width) {
+                null === $below ? ($above = $joined) : ($below = $joined);
+
+                continue;
+            }
+            if (null !== $below || '' === $above || \mb_strwidth($hint) > $width) {
+                break;
+            }
+            $below = $hint;
+        }
+
+        return [$above, $below ?? ''];
+    }
+
     private static function tagsWidth(): int
     {
         return \mb_strwidth('.*') + 2 + \mb_strwidth('\b') + 2;

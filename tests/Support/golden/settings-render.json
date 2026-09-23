@@ -4,7 +4,7 @@
         "\u001b[38;5;231m\u001b[48;5;31m\u001b[1m  Sticky scroll   [x]                                                   \u001b[22m\u001b[49m\u001b[39m",
         "  Theme           < dark >\u001b[38;5;245m · light/high-contrast\u001b[39m                        ",
         "  Tab width       < 4 >\u001b[38;5;245m · 1-8\u001b[39m                                           ",
-        "  LSP server      phpactor language-server                              ",
+        "  LSP server      \u001b[38;5;245m│\u001b[39m phpactor language-server   \u001b[38;5;245m│\u001b[39m                        ",
         "  demo (project)  [Remove]                                              ",
         "                                                                        ",
         "                                                                        ",
@@ -16,7 +16,7 @@
         "\u001b[48;5;237m  Sticky scroll   [x]                                                   \u001b[49m",
         "  Theme           < dark >\u001b[38;5;245m · light/high-contrast\u001b[39m                        ",
         "  Tab width       < 4 >\u001b[38;5;245m · 1-8\u001b[39m                                           ",
-        "  LSP server      phpactor language-server                              ",
+        "  LSP server      \u001b[38;5;245m│\u001b[39m phpactor language-server   \u001b[38;5;245m│\u001b[39m                        ",
         "  demo (project)  [Remove]                                              ",
         "                                                                        ",
         "                                                                        ",
@@ -27,8 +27,8 @@
         "\u001b[48;5;237m\u001b[1m Interface — 5 settings                                                 \u001b[22m\u001b[49m",
         "  Sticky scroll   [x]                                                   ",
         "  Theme           < dark >\u001b[38;5;245m · light/high-contrast\u001b[39m                        ",
-        "\u001b[38;5;231m\u001b[48;5;31m\u001b[1m  Tab width       < 4 >\u001b[38;5;245m · 1-8\u001b[39m                                           \u001b[22m\u001b[49m\u001b[39m",
-        "  LSP server      phpactor language-server                              ",
+        "\u001b[38;5;231m\u001b[48;5;31m\u001b[1m  Tab width       < 4 >\u001b[38;5;245m · 1-8\u001b[39m\u001b[38;5;231m                                           \u001b[22m\u001b[49m\u001b[39m",
+        "  LSP server      \u001b[38;5;245m│\u001b[39m phpactor language-server   \u001b[38;5;245m│\u001b[39m                        ",
         "  demo (project)  [Remove]                                              ",
         "                                                                        ",
         "                                                                        ",
@@ -40,7 +40,7 @@
         "\u001b[38;5;231m\u001b[48;5;31m\u001b[1m  Sticky scroll   [x]                                                   \u001b[22m\u001b[49m\u001b[39m",
         "  Theme           < dark >\u001b[38;5;245m · light/high-contrast\u001b[39m                        ",
         "\u001b[48;5;236m  Tab width       < 4 >\u001b[38;5;245m · 1-8\u001b[39m                                           \u001b[49m",
-        "  LSP server      phpactor language-server                              ",
+        "  LSP server      \u001b[38;5;245m│\u001b[39m phpactor language-server   \u001b[38;5;245m│\u001b[39m                        ",
         "  demo (project)  [Remove]                                              ",
         "                                                                        ",
         "                                                                        ",
@@ -49,7 +49,7 @@
     ],
     "danger-armed-and-selected": [
         "\u001b[48;5;237m\u001b[1m Plugins — 2 settings                                                   \u001b[22m\u001b[49m",
-        "\u001b[38;5;231m\u001b[48;5;31m\u001b[1m  demo (project)   \u001b[38;5;231m\u001b[48;5;88m[Remove]\u001b[49m\u001b[48;5;31m\u001b[39m                                             \u001b[22m\u001b[49m\u001b[39m",
+        "\u001b[38;5;231m\u001b[48;5;31m\u001b[1m  demo (project)   \u001b[38;5;231m\u001b[48;5;88m[Remove]\u001b[49m\u001b[48;5;31m\u001b[39m\u001b[38;5;231m                                             \u001b[22m\u001b[49m\u001b[39m",
         "  other (project)  [Remove]                                             ",
         "                                                                        ",
         "                                                                        ",
@@ -64,7 +64,7 @@
     ],
     "hints-across-kinds": [
         "\u001b[48;5;237m\u001b[1m image-viewer — 3 settings                                              \u001b[22m\u001b[49m",
-        "\u001b[38;5;231m\u001b[48;5;31m\u001b[1m  LSP server                       \u001b[38;5;245m  auto: phpactor\u001b[39m                     \u001b[22m\u001b[49m\u001b[39m",
+        "\u001b[38;5;231m\u001b[48;5;31m\u001b[1m  LSP server                       \u001b[38;5;245m│\u001b[39m\u001b[38;5;231m                  \u001b[38;5;245m│\u001b[39m\u001b[38;5;231m\u001b[38;5;245m · auto: phpactor\u001b[39m\u001b[38;5;231m\u001b[22m\u001b[49m\u001b[39m",
         "  Default highlighter              < auto (first available) >\u001b[38;5;245m · Used fo\u001b[0m…",
         "  Skip images larger than (bytes)  < 20971520 >\u001b[38;5;245m · routing only\u001b[39m          ",
         "                                                                        ",
@@ -73,7 +73,7 @@
     ],
     "ragged-value-column": [
         "\u001b[48;5;237m\u001b[1m General — 3 settings                                                   \u001b[22m\u001b[49m",
-        "\u001b[38;5;231m\u001b[48;5;31m\u001b[1m  Theme                            < dark >\u001b[38;5;245m · light\u001b[39m                     \u001b[22m\u001b[49m\u001b[39m",
+        "\u001b[38;5;231m\u001b[48;5;31m\u001b[1m  Theme                            < dark >\u001b[38;5;245m · light\u001b[39m\u001b[38;5;231m                     \u001b[22m\u001b[49m\u001b[39m",
         "  Sticky scroll                    [x]                                  ",
         "  Skip images larger than (bytes)  < 4 >                                ",
         "                                                                        ",
@@ -82,7 +82,7 @@
     ],
     "restart-note": [
         "\u001b[48;5;237m\u001b[1m PHP — 1 setting                                                        \u001b[22m\u001b[49m",
-        "\u001b[38;5;231m\u001b[48;5;31m\u001b[1m  Run/debug command  frankenphp php-cli\u001b[38;5;245m · applies on restart\u001b[39m            \u001b[22m\u001b[49m\u001b[39m",
+        "\u001b[38;5;231m\u001b[48;5;31m\u001b[1m  Run/debug command  \u001b[38;5;245m│\u001b[39m\u001b[38;5;231m frankenphp php-cli   \u001b[38;5;245m│\u001b[39m\u001b[38;5;231m\u001b[38;5;245m · applies on restart\u001b[39m\u001b[38;5;231m      \u001b[22m\u001b[49m\u001b[39m",
         "                                                                        ",
         "                                                                        ",
         "\u001b[38;5;245m\u001b[48;5;235m ⏎ edit · ←/→ change · r reset · Ctrl+F find · Tab panes · 2 keybindings\u001b[49m\u001b[39m"
@@ -96,7 +96,7 @@
     ],
     "editing-a-text-row": [
         "\u001b[48;5;237m\u001b[1m PHP — 1 setting                                                        \u001b[22m\u001b[49m",
-        "\u001b[38;5;231m\u001b[48;5;31m\u001b[1m  LSP server  my-ls\u001b_pi:c;5\u0007\u001b[38;5;245m · auto-detect\u001b[39m                                       \u001b[22m\u001b[49m\u001b[39m",
+        "\u001b[38;5;231m\u001b[48;5;31m\u001b[1m  LSP server  \u001b[38;5;110m┃\u001b[39m\u001b[38;5;231m my-ls\u001b_pi:c;5\u0007\u001b[38;5;110m\u001b[39m\u001b[38;5;231m            \u001b[38;5;110m┃\u001b[39m\u001b[38;5;231m\u001b[38;5;245m · auto-detect\u001b[39m\u001b[38;5;231m                        \u001b[22m\u001b[49m\u001b[39m",
         "                                                                        ",
         "                                                                        ",
         "\u001b[38;5;245m\u001b[48;5;235m ⏎ save · Esc cancel                                                    \u001b[49m\u001b[39m"

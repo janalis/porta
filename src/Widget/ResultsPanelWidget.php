@@ -22,6 +22,9 @@ use Porta\Ui\Role;
 use Porta\Ui\Sgr;
 use Porta\Ui\TextField;
 use Porta\Ui\Theme\Styles;
+use Porta\Widget\Render\FieldBox;
+use Porta\Widget\Render\FieldSpec;
+use Porta\Widget\Render\FieldState;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Porta\Widget\Support\DisplayRow;
@@ -499,10 +502,10 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
         return \count($this->displayRows);
     }
 
-    /** The filter row (when shown); list tools otherwise carry no header row. */
+    /** The boxed filter field (when shown); list tools otherwise carry no header row. */
     protected function headerRowCount(): int
     {
-        return $this->withFilter ? 1 : 0;
+        return $this->withFilter ? FieldBox::ROWS : 0;
     }
 
     #[\Override]
@@ -519,13 +522,9 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
         // the tool title (tab label) and the status (right side). The filter row
         // is the one exception (the Find tool window narrows its loaded results).
         if ($this->withFilter) {
-            $lines[] = $this->fieldRow(
-                $this->translator->trans('Filter'),
-                $this->filter,
-                $this->isFocused() ? CaretVisibility::Shown : CaretVisibility::Hidden,
-                '  '.$this->translator->trans('(narrows the results below)'),
-                $columns,
-            );
+            $focused = $this->isFocused();
+            $spec = new FieldSpec($this->translator->trans('Filter'), trailing: $this->translator->trans('(narrows the results below)'), surface: Role::Toolbar);
+            \array_push($lines, ...FieldBox::render($spec, $this->filter, FieldState::of($focused), $focused ? CaretVisibility::Shown : CaretVisibility::Hidden, $columns, $this->styles));
         }
 
         $scroll = $this->list->follow($this->visibleRows);
@@ -588,12 +587,6 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
         }
 
         return $status;
-    }
-
-    /** A labelled input header row (mask/replace), with a cursor when it is the active field. */
-    private function fieldRow(string $label, TextField $field, CaretVisibility $caret, string $hint, int $columns): string
-    {
-        return SearchFieldRenderer::row($label, $field, $caret, $hint, $columns, Role::FieldFocusBg, $this->styles);
     }
 
     /** The indent for grouped match rows — deeper in the nested view (below a dir + file header). */

@@ -11,6 +11,7 @@ use Porta\I18n\Bidi;
 use Porta\I18n\Translator;
 use Porta\Support\AnsiText;
 use Porta\Ui\CaretVisibility;
+use Porta\Ui\CursorStyle;
 use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
 use Porta\Ui\Role;
@@ -19,6 +20,9 @@ use Porta\Ui\TextField;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\HoverableList;
 use Porta\Widget\PaneNavigationCallbacks;
+use Porta\Widget\Render\FieldBox;
+use Porta\Widget\Render\FieldSpec;
+use Porta\Widget\Render\FieldState;
 use Porta\Widget\Render\HeaderRenderer;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
@@ -79,10 +83,11 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
     public function __construct(
         private readonly Translator $translator,
         ?Styles $styles = null,
+        ?CursorStyle $cursorStyle = null,
         private readonly ?EventDispatcherInterface $events = null,
     ) {
         $this->initStyles($styles);
-        $this->filter = new TextField();
+        $this->filter = new TextField(style: $cursorStyle);
         $this->list = new ListSelection();
         $this->addStyleClass('list'); // the theme's .list::selected(:focus) rules style the selection
     }
@@ -256,10 +261,10 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
         return false;
     }
 
-    /** The filter row is a header row while it is showing. */
+    /** The title, plus the boxed filter field while it is showing. */
     private function headerRows(): int
     {
-        return $this->filtering ? 2 : 1;
+        return $this->filtering ? 1 + FieldBox::ROWS : 1;
     }
 
     private function armCapture(): void
@@ -291,8 +296,15 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
             );
         $lines = [HeaderRenderer::title($title, $width, $this->styles)];
         if ($this->filtering) {
-            $caret = $this->isFocused() ? CaretVisibility::Shown : CaretVisibility::Hidden;
-            $lines[] = AnsiText::truncate(' '.$this->translator->trans('Filter').': '.$this->filter->render($caret), $width, pad: true);
+            $focused = $this->isFocused();
+            \array_push($lines, ...FieldBox::render(
+                new FieldSpec($this->translator->trans('Filter')),
+                $this->filter,
+                FieldState::of($focused),
+                $focused ? CaretVisibility::Shown : CaretVisibility::Hidden,
+                $width,
+                $this->styles,
+            ));
         }
 
         $headerRows = $this->headerRows();

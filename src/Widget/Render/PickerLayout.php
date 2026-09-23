@@ -89,23 +89,17 @@ final class PickerLayout
         // The filter row appears only once something is typed, so every list
         // that was fine without one looks exactly as it did — and the moment it
         // narrows, what narrowed it is on screen rather than being a mode the
-        // user has to remember entering. No caret: the search modal owns the
-        // one caret a frame may carry, and this is a filter, not a field.
-        // The typed text tail-scrolls, the glyph does not. Truncating the whole
-        // row put the ellipsis at the END, so past the box width the row stopped
-        // changing as you typed and showed the first few characters of a filter
-        // you could no longer read — an input that hides its own tail. The
-        // search overlay's query row has always scrolled ({@see
-        // AnsiText::scrollLineToCaret}); it can, because it carries a cursor
-        // marker to scroll to. This row deliberately carries none, so the
-        // window is taken at the end of the text instead.
-        $prefix = ' '.self::FILTER_GLYPH.' ';
-        $room = \max(1, $width - \mb_strwidth($prefix));
+        // user has to remember entering. It takes the keys, so its border is
+        // the focused one; but no caret: the search modal owns the one caret
+        // a frame may carry. The typed text tail-scrolls ({@see FieldBox} keeps
+        // the end of a caret-less focused value in view) — truncating put the
+        // ellipsis at the END, so past the box width the field stopped
+        // changing as you typed: an input that hides its own tail. The box
+        // appears three rows at once on the first keystroke, and the popup
+        // re-centres by a row; that is the cost of the field reading as one.
         $header = '' === $filter
             ? []
-            : [$styles->of(Role::Toolbar)->apply(
-                AnsiText::padRight($prefix.AnsiText::caretWindow($filter, AnsiUtils::visibleWidth($filter), $room, marker: ''), $width),
-            )];
+            : FieldBox::render(new FieldSpec(self::FILTER_GLYPH, surface: Role::Toolbar), $overlay['filter'], FieldState::Focused, CaretVisibility::Hidden, $width, $styles);
         $popup = [
             ModalFrame::titleBar($overlay['title'], $width + ModalFrame::CHROME_COLS, $styles, $closeHovered),
             ...ModalFrame::wrap([...$header, ...$content], $width, $styles),
@@ -136,7 +130,7 @@ final class PickerLayout
         $columns = $boundRight - $boundLeft;
         $rows = $boundBottom - $boundTop;
 
-        $maxRows = \max(1, \min(\count($search->rows), $rows - 6, 12));
+        $maxRows = \max(1, \min(\count($search->rows), $rows - 6 - (FieldBox::ROWS - 1), 12));
         $windowStart = IntMath::clamp($search->selected - $maxRows + 1, 0, \max(0, \count($search->rows) - $maxRows));
         $visible = \array_slice($search->rows, $windowStart, $maxRows);
 
@@ -146,7 +140,7 @@ final class PickerLayout
         // visibleWidth strips the field's zero-width caret marker, so the
         // width measures the query text alone.
         $queryField = $search->query->render($caret);
-        $width = \max(\mb_strwidth($search->title) + 8, AnsiUtils::visibleWidth($queryField) + 6, 24); // + 8: the frame's title-bar chrome
+        $width = \max(\mb_strwidth($search->title) + 8, AnsiUtils::visibleWidth($queryField) + 2 + FieldBox::CHROME_COLS, 24); // + 8: the frame's title-bar chrome
         foreach ($visible as $row) {
             $width = \max($width, \mb_strwidth($row->hit->label ?? '') + \mb_strwidth($row->hit->detail ?? '') + 6);
         }
@@ -156,9 +150,8 @@ final class PickerLayout
         $width = \max($width, \mb_strwidth($search->emptyMessage) + 2);
         $width = \min($width, $columns - PopupMetrics::CENTERED_MARGIN, PopupMetrics::CENTERED_MAX_INNER);
 
-        $popup = [
-            $styles->of(Role::Toolbar)->apply(AnsiText::scrollLineToCaret(' > '.$queryField, $width)),
-        ];
+        // No legend: the title bar already names what is being searched.
+        $popup = FieldBox::render(new FieldSpec('', surface: Role::Toolbar), $search->query, FieldState::of(CaretVisibility::Shown === $caret), $caret, $width, $styles);
         foreach ($visible as $i => $row) {
             if (null !== $row->header) {
                 $popup[] = $styles->merge(Role::PopupRow, Role::Dim)->apply(AnsiText::truncate(' '.$row->header, $width, pad: true));
@@ -187,7 +180,15 @@ final class PickerLayout
         ];
 
         [$top, $col] = self::centered($bounds, \count($framed), $width + ModalFrame::CHROME_COLS);
-        $box = new ModalBox($top, $col, $width + ModalFrame::CHROME_COLS, \count($framed), headerRows: 1 + ModalFrame::CHROME_ROWS_TOP, windowStart: $windowStart, count: \count($visible));
+        $box = new ModalBox(
+            $top,
+            $col,
+            $width + ModalFrame::CHROME_COLS,
+            \count($framed),
+            headerRows: FieldBox::ROWS + ModalFrame::CHROME_ROWS_TOP,
+            windowStart: $windowStart,
+            count: \count($visible),
+        );
 
         return ['rows' => $framed, 'top' => $top, 'col' => $col, 'width' => $width + ModalFrame::CHROME_COLS, 'box' => $box];
     }
@@ -204,20 +205,21 @@ final class PickerLayout
         $columns = $boundRight - $boundLeft;
 
         $text = ' '.$prompt['label'].': '.$prompt['value']->value();
-        $innerWidth = \min($columns - PopupMetrics::CENTERED_MARGIN, \max(30, \mb_strwidth($text) + 4));
-        $rendered = ' '.$prompt['value']->render(cursor: CaretVisibility::Shown);
-        // The prompt is a framed 3-row modal like its siblings: the frame's
-        // title bar carries the label, the Esc hint and the ×; the content
-        // row holds the field through scrollLineToCaret, which keeps the
-        // value's caret marker on screen instead of clipping the hardware
-        // cursor off it. Centered like the list/search overlays.
-        $field = $styles->merge($prompt['danger'] ? Role::DangerBg : Role::HeaderBar, Role::Bright)->apply(AnsiText::padRight(AnsiText::scrollLineToCaret($rendered, $innerWidth), $innerWidth));
+        $innerWidth = \min($columns - PopupMetrics::CENTERED_MARGIN, \max(30, \mb_strwidth($text) + 2 + FieldBox::CHROME_COLS));
+        // The prompt is a framed modal like its siblings: the frame's title
+        // bar carries the label, the Esc hint and the ×, so the boxed field
+        // needs no legend. It always takes the keys; a destructive prompt's
+        // border is the double one, so "this answer deletes" reads by shape
+        // under --no-ansi as well as by its red. Centered like the list and
+        // search overlays.
+        $state = $prompt['danger'] ? FieldState::Danger : FieldState::Focused;
+        $field = FieldBox::render(new FieldSpec(''), $prompt['value'], $state, CaretVisibility::Shown, $innerWidth, $styles);
         $framed = [
             ModalFrame::titleBar($prompt['label'], $innerWidth + ModalFrame::CHROME_COLS, $styles, closeHovered: $closeHovered),
-            ...ModalFrame::wrap([$field], $innerWidth, $styles),
+            ...ModalFrame::wrap($field, $innerWidth, $styles),
         ];
         [$top, $col] = self::centered($bounds, \count($framed), $innerWidth + ModalFrame::CHROME_COLS);
-        $box = new ModalBox($top, $col, $innerWidth + ModalFrame::CHROME_COLS, 1 + ModalFrame::CHROME_ROWS, headerRows: ModalFrame::CHROME_ROWS_TOP, windowStart: 0, count: 1);
+        $box = new ModalBox($top, $col, $innerWidth + ModalFrame::CHROME_COLS, FieldBox::ROWS + ModalFrame::CHROME_ROWS, headerRows: ModalFrame::CHROME_ROWS_TOP, windowStart: 0, count: 1);
 
         return ['rows' => $framed, 'top' => $top, 'col' => $col, 'width' => $innerWidth + ModalFrame::CHROME_COLS, 'box' => $box];
     }

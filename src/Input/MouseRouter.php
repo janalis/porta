@@ -644,7 +644,7 @@ final class MouseRouter
 
         // Find-bar click: the option tags toggle, exactly as their keys do.
         if ($this->panes->findBar->isOpen() && null !== ($rel = $this->hit->hit($this->panes->findBar, $mouse->row, $mouse->col))) {
-            $this->panes->findBar->handleClick($rel['col']);
+            $this->panes->findBar->handleClick($rel['row'], $rel['col']);
             $this->tui->requestRender();
 
             return true;

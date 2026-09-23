@@ -37,7 +37,9 @@ final class MonochromeTheme
                 // reverse-video selection ahead of the underline.
                 Role::RowHighlightBg->selector() => new Style(underline: true),
                 Role::DropTargetRow->selector() => new Style(reverse: true, bold: true),
-                Role::FieldFocusBg->selector() => new Style(underline: true),
+                // A placeholder must not read as a typed value; Dim is plain
+                // here, so the placeholder carries its own dim + italic.
+                Role::FieldPlaceholder->selector() => new Style(dim: true, italic: true),
                 Role::BarHoverBg->selector() => new Style(underline: true),
                 // Character selection is reverse (like the row selection); search
                 // and occurrence highlights are underline. Without these, selecting

@@ -421,9 +421,22 @@ final class SettingsFormWidgetTest extends TestCase
     public function testTextRowRendersItsValueAndItsHintAsADimmedDetail(): void
     {
         $rendered = $this->textWidget()->render(new RenderContext(60, 4));
-        $this->assertMatchesRegularExpression('/LSP server\s+phpactor/', AnsiUtils::stripAnsiCodes($this->body($rendered)[0]));
+        $this->assertMatchesRegularExpression('/LSP server\s+│ phpactor +│/u', AnsiUtils::stripAnsiCodes($this->body($rendered)[0]), 'the value sits in a field at rest');
         $this->assertStringContainsString('auto: none', AnsiUtils::stripAnsiCodes($this->body($rendered)[1]), 'the hint describes the row');
         $this->assertStringContainsString("\x1b[38;5;245m", $this->body($rendered)[1], 'and is dimmed');
+    }
+
+    /**
+     * The selected row's value keeps the selection's foreground past the
+     * field's rail: the rail's tint closes with a default-colour reset, and
+     * without re-arming the row's colour the value drew in the terminal's
+     * default instead of bright-on-blue.
+     */
+    public function testASelectedTextRowKeepsItsForegroundPastTheRail(): void
+    {
+        $row = $this->body($this->textWidget()->render(new RenderContext(60, 4)))[0];
+
+        $this->assertStringContainsString("\x1b[39m\x1b[38;5;231m phpactor", $row);
     }
 
     public function testEditingATextRowTypesAndCommits(): void

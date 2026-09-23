@@ -51,7 +51,7 @@ final class IdeFindUiTest extends TestCase
                     $this->assertSame(1, $this->caretMarkerCount($rows), 'exactly one caret while the modal is open');
                     $caretRow = $this->caretMarkerRow($rows);
                     $this->assertNotNull($caretRow);
-                    $this->assertStringContainsString('Find:', AnsiUtils::stripAnsiCodes($rows[$caretRow]), 'the caret sits in the Find field, not the editor');
+                    $this->assertMatchesRegularExpression('/Find +┃/u', AnsiUtils::stripAnsiCodes($rows[$caretRow]), 'the caret sits in the Find field, not the editor — its rail heavy');
 
                     // Tab to the Replace field and type — the caret follows the text
                     // (replace edits re-render the preview only; no project re-search).
@@ -61,7 +61,7 @@ final class IdeFindUiTest extends TestCase
                     $caretRow = $this->caretMarkerRow($rows);
                     $this->assertNotNull($caretRow);
                     $this->assertSame(1, $this->caretMarkerCount($rows), 'still a single caret');
-                    $this->assertStringContainsString('Replace: x', AnsiUtils::stripAnsiCodes($rows[$caretRow]), 'the caret moved to the Replace field');
+                    $this->assertMatchesRegularExpression('/Replace ┃ x/u', AnsiUtils::stripAnsiCodes($rows[$caretRow]), 'the caret moved to the Replace field');
                 },
             ],
         );
@@ -84,7 +84,7 @@ final class IdeFindUiTest extends TestCase
                     $this->assertSame(1, $this->caretMarkerCount($rows), 'the modal caret shows even though the editor pane is unfocused');
                     $caretRow = $this->caretMarkerRow($rows);
                     $this->assertNotNull($caretRow);
-                    $this->assertStringContainsString('Find:', AnsiUtils::stripAnsiCodes($rows[$caretRow]));
+                    $this->assertMatchesRegularExpression('/Find +┃/u', AnsiUtils::stripAnsiCodes($rows[$caretRow]));
                 },
             ],
         );
@@ -223,7 +223,7 @@ final class IdeFindUiTest extends TestCase
     private function findBarRow(Tui $tui): string
     {
         return AnsiUtils::stripAnsiCodes(
-            \implode('', Paint::lines($tui->getById('find-bar'), new RenderContext(120, 1))),
+            Paint::lines($tui->getById('find-bar'), new RenderContext(120, 3))[1], // the boxes' value row
         );
     }
 
@@ -245,7 +245,7 @@ final class IdeFindUiTest extends TestCase
 
                     // The sigil comes with it, and the count proves the field
                     // really ran the search rather than merely showing text.
-                    $this->awaitPainted($tui, $terminal, 'Find: $total');
+                    $this->awaitPainted($tui, $terminal, '┃ $total ');
 
                     // Three matches, because opening with a query SEARCHES —
                     // the prefill is not just text in a field. Which one is
@@ -272,7 +272,7 @@ final class IdeFindUiTest extends TestCase
                     $tui->requestRender(force: true);
                     $tui->processRender();
 
-                    $this->assertStringContainsString('Find: echo', $this->findBarRow($tui));
+                    $this->assertStringContainsString('┃ echo ', $this->findBarRow($tui));
                 },
                 420 => function (Tui $tui): void {
                     // A caret standing in NO word contributes nothing, so the
@@ -292,7 +292,7 @@ final class IdeFindUiTest extends TestCase
                     $tui->processRender();
 
                     $this->assertStringContainsString(
-                        'Find: echo',
+                        '┃ echo ',
                         $this->findBarRow($tui),
                         'the operator prefilled nothing, so the last query stands',
                     );
@@ -320,10 +320,12 @@ final class IdeFindUiTest extends TestCase
                     $this->awaitPainted($tui, $terminal, '[1/3]');
                     $this->assertStringContainsString('[1/3]', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'substring mode hits foobar too');
 
-                    // Click the right-aligned [\b] tag through the real router.
+                    // Click the [\b] tag through the real router: on the value
+                    // row, after the 32-column Find box, its gutter and [.*]
+                    // (zone 37-40 of the bar; the report is 1-based).
                     $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('find-bar'));
-                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + $rect->columns - 2, $rect->row + 1));
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + 38 + 1, $rect->row + 1 + 1));
                 },
                 300 => function (Tui $tui, VirtualTerminal $terminal): void {
                     // The re-run count is what the toggle produces; awaiting it

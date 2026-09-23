@@ -360,7 +360,7 @@ final class IdeDocsTest extends TestCase
                     }
                     $this->frame($tui);
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
-                    $this->assertStringContainsString('Find: manual', $screen);
+                    $this->assertStringContainsString('┃ manual ', $screen);
                     $this->assertStringContainsString('[1/1]', $screen, 'the query matched the rendered docs text');
 
                     $tui->handleInput("\x1b"); // esc closes the bar

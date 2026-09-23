@@ -186,6 +186,23 @@ final class Glyphs
     public const string MODAL_TEE_LEFT = '├';
     public const string MODAL_TEE_RIGHT = '┤';
 
+    // A text field's border (FieldBox): the SHAPE is the field's state, so
+    // focus reads with no colour — rounded idle (the MODAL_* corners and the
+    // FRAME_* rules), heavy while it takes keys, double for a destructive
+    // prompt. Same thin/heavy convention as PANE_DIVIDER → PANE_DIVIDER_ACTIVE.
+    public const string FIELD_FOCUS_TOP_LEFT = '┏';
+    public const string FIELD_FOCUS_TOP_RIGHT = '┓';
+    public const string FIELD_FOCUS_BOTTOM_LEFT = '┗';
+    public const string FIELD_FOCUS_BOTTOM_RIGHT = '┛'; // same value as MODAL_RESIZE_GRAB — disjoint surfaces (field vs modal corner)
+    public const string FIELD_FOCUS_HORIZONTAL = '━'; // same value as PANEL_RESIZE_GRAB — disjoint surfaces
+    public const string FIELD_FOCUS_VERTICAL = '┃'; // same value as PANE_DIVIDER_ACTIVE — disjoint surfaces
+    public const string FIELD_DANGER_TOP_LEFT = '╔';
+    public const string FIELD_DANGER_TOP_RIGHT = '╗';
+    public const string FIELD_DANGER_BOTTOM_LEFT = '╚';
+    public const string FIELD_DANGER_BOTTOM_RIGHT = '╝';
+    public const string FIELD_DANGER_HORIZONTAL = '═';
+    public const string FIELD_DANGER_VERTICAL = '║';
+
     // The resizable modals' corner grab: the bottom-right corner heavies under
     // the pointer (and while dragging), the PANE_DIVIDER → PANE_DIVIDER_ACTIVE
     // thin/heavy convention — the affordance is the GLYPH, surviving --no-ansi.

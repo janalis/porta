@@ -147,4 +147,58 @@ final class FindInFilesModalGeometryTest extends TestCase
         yield 'de, default scope' => ['de', 'Ganzes Projekt'];
         yield 'ja, short scope' => ['ja', 'src'];
     }
+
+    /**
+     * A terminal tall enough for three boxes gets them — legends in the
+     * borders, the focused one heavy — and a click anywhere in a box's three
+     * rows focuses that box. Below the threshold the fields are one row each
+     * (the rest of this suite runs at 24 rows).
+     */
+    public function testATallTerminalBoxesTheFieldsAndEachBandTakesItsClicks(): void
+    {
+        $modal = $this->modal();
+        $modal->open('Find in Files');
+        $modal->setPreview([['path' => 'src/A.php', 'line' => 4, 'text' => 'foo', 'ranges' => [['start' => 0, 'length' => 3]]]]);
+        $screen = \array_map(AnsiUtils::stripAnsiCodes(...), $this->compose($modal, rows: 34));
+        $box = $modal->lastBox();
+        \assert(null !== $box, description: 'the modal laid out a box');
+
+        $find = $box->startRow + 2; // below the title bar and the padding row
+        $this->assertMatchesRegularExpression('/┏ Find ━/u', $screen[$find], 'the focused query box, its label a legend');
+        $this->assertMatchesRegularExpression('/╭ Replace ─/u', $screen[$find + 3]);
+        $this->assertSame($find + 6, $box->optionsRow, 'the options row follows the two boxes');
+        $this->assertMatchesRegularExpression('/╭ Mask ─/u', $screen[$box->optionsRow + 1]);
+
+        // Each band is three rows: its border rows click the box as well.
+        foreach ([$find + 3 => 'Replace', $find + 5 => 'Replace', $box->optionsRow + 1 => 'Mask', $box->optionsRow + 3 => 'Mask', $find => 'Find', $find + 2 => 'Find'] as $row => $label) {
+            $this->assertTrue($modal->clickAt($row, $box->col + 3));
+            $this->assertMatchesRegularExpression('/┏ '.$label.' ━/u', \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $this->compose($modal, rows: 34))), "row {$row} focuses {$label}");
+        }
+    }
+
+    /**
+     * Compact, the three fields' rails stand in two columns, as a form's
+     * inputs do: labels padded to one width on the left, hints padded to one
+     * width on the right. Unpadded, each closing rail stopped where its own
+     * hint began, so Find, Replace and Mask ended at three different columns.
+     */
+    public function testCompactFieldsLineTheirRailsUp(): void
+    {
+        $modal = $this->modal();
+        $modal->open('Find in Files');
+        $screen = \array_map(AnsiUtils::stripAnsiCodes(...), $this->compose($modal));
+
+        $rails = [];
+        foreach ($screen as $row) {
+            if (1 !== \preg_match('/│ (Find|Replace|Mask) +([│┃])/u', $row, $m)) {
+                continue;
+            }
+            $inside = \mb_substr($row, start: 0, length: (int) \mb_strrpos($row, needle: '│')); // short of the modal's own right edge
+            $opening = (int) \mb_strpos($row, $m[0]) + \mb_strlen($m[0]) - 1; // the rail right after the label
+            $rails[$m[1]] = [$opening, \mb_strrpos($inside, $m[2])];
+        }
+
+        $this->assertCount(3, $rails, 'all three fields are drawn compact at 24 rows');
+        $this->assertCount(1, \array_unique(\array_map(\serialize(...), $rails)), 'and their opening and closing rails share two columns');
+    }
 }

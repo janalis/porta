@@ -626,7 +626,7 @@ final class IdeFindInProjectTest extends TestCase
                     $tui->tick();
                     $modal = $this->modalText($tui); // the reopened modal restores the config
                     $this->assertStringContainsString('Scope: Directory', $modal, 'the last scope is restored');
-                    $this->assertStringContainsString('Mask: *.php', $modal, 'the last mask is restored');
+                    $this->assertMatchesRegularExpression('/Mask +│ \*\.php/u', $modal, 'the last mask is restored');
                 },
             ],
         );

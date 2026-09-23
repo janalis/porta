@@ -701,7 +701,7 @@ final class NavigationControllerTest extends TestCase
         $panel = $this->panel();
         $this->assertStringContainsString('a.php', $panel, 'the file heads its group');
         $this->assertStringContainsString('2', $panel, 'and the call landed as a jumpable row under it');
-        $this->assertStringContainsString('Filter:', $panel, 'a hierarchy runs long enough to need narrowing');
+        $this->assertMatchesRegularExpression('/^[╭┏] Filter [─━]/mu', $panel, 'a hierarchy runs long enough to need narrowing: the filter box is drawn');
     }
 
     /**
