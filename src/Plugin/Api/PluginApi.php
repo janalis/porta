@@ -1262,8 +1262,9 @@ final class PluginApi
     /**
      * Publish diagnostics for an open file — they render exactly like LSP
      * diagnostics (inline messages, gutter/stripe colors, the Problems panel)
-     * and replace any previous set for that file, so an empty list clears
-     * them. A path with no open buffer is a silent no-op.
+     * and replace any previous set THIS PLUGIN published for that file, so an
+     * empty list clears them — another plugin's findings, and a language
+     * server's, are untouched. A path with no open buffer is a silent no-op.
      *
      * @param list<array{line: int, message: string, severity?: int, column?: int, code?: string}> $diagnostics 0-based line; severity is the LSP scale, 1 = error (default), 2 = warning, 3 = information, 4 = hint; `code` names the rule that fired
      */
@@ -1289,7 +1290,9 @@ final class PluginApi
             }
             $byLine[\max(0, $diagnostic['line'])][] = $row;
         }
-        $runtime->diagnostics->applyDiagnostics(Uri::fromPath($path), $byLine);
+        // Owned by the plugin, so a save-time analyser and a keystroke-time
+        // language server stop wiping each other's findings for the file.
+        $runtime->diagnostics->applyDiagnostics(Uri::fromPath($path), $byLine, $this->pluginName);
         $runtime->tui->requestRender();
     }
 

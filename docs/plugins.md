@@ -717,7 +717,7 @@ Actions (from handlers/hooks):
 | `insertAtCaret(string $text)` | Insert at the caret |
 | `openFile(string $path)` | Open a file in the editor |
 | `jumpTo(int $line, int $column = 0)` | Move the caret (0-based) |
-| `setDiagnostics(string $path, array $diagnostics)` | Publish editor diagnostics; each item is `['line' => int (0-based), 'message' => string, 'severity' => 1–4 (optional, 1 = error), 'column' => int (optional)]`. An empty list clears. |
+| `setDiagnostics(string $path, array $diagnostics)` | Publish editor diagnostics; each item is `['line' => int (0-based), 'message' => string, 'severity' => 1–4 (optional, 1 = error), 'column' => int (optional)]`. An empty list clears **this plugin's** findings for the file and leaves everyone else's — a language server publishing on every keystroke and an analyser publishing on every save no longer overwrite each other. |
 | `setFileStatuses(array $statuses)` | Publish the working tree's per-FILE version-control status for the file tree — `[absolute path => 'added'\|'modified'\|'deleted']`. The map REPLACES whole, so a file leaving it is how "back to unmodified" is said; an empty array clears every mark. |
 | `setLineAnnotations(array $byLine)` | Show a dim trailing note after lines of the ACTIVE document — `[0-based line => string]`. An empty array clears. Takes no path: the editor drops annotations on every document show, so re-publish from `onBufferSwitched` to keep them. |
 | `projectRoot(): string` | The project root (also safe during `activate()`) |

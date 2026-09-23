@@ -846,7 +846,7 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
     }
 
     #[\Override]
-    public function applyDiagnostics(string $uri, array $byLine): void
+    public function applyDiagnostics(string $uri, array $byLine, string $owner): void
     {
         $target = null;
         foreach ($this->buffers->all() as $buffer) {
@@ -861,12 +861,58 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
             return;
         }
 
-        $target->diagnostics = $byLine;
+        // An empty publish is this owner saying it has nothing (any more), so
+        // its slice goes rather than being kept as an empty one — otherwise
+        // every server and analyser that ever spoke about the file would stay
+        // in the map for the buffer's lifetime.
+        unset($target->diagnosticsByOwner[$owner]);
+        if ([] !== $byLine) {
+            $target->diagnosticsByOwner[$owner] = $byLine;
+        }
+        $target->diagnostics = self::mergeDiagnostics($target->diagnosticsByOwner);
         if ($target === $this->buffers->active()) {
-            $this->editor->decorations->setDiagnostics($byLine);
+            $this->editor->decorations->setDiagnostics($target->diagnostics);
         }
         // Announce the change so an open Problems tab refreshes live.
         $this->dispatcher->dispatch(new DiagnosticsChanged());
         $this->tui->requestRender();
+    }
+
+    /**
+     * Flatten every owner's findings into the one line-keyed view the stripe,
+     * the gutter and the Problems panel read.
+     *
+     * With SEVERAL owners they are walked in name order and the lines sorted,
+     * so the same set of publishes always produces the same map whatever order
+     * they arrived in — a server answering a keystroke and an analyser
+     * answering a save race routinely, and a panel that reshuffled itself on
+     * that race would be unreadable.
+     *
+     * One owner is handed back exactly as it came, which is every file in a
+     * single-server project: the ordering only has to be decided where there
+     * is something to decide, and touching the common path would change what
+     * a project with one server has always rendered.
+     *
+     * @param array<string, array<int, list<array{severity: DiagnosticSeverity, message: string, col: int, endCol?: int, code?: int|string, source?: string, tags?: list<int>}>>> $byOwner
+     *
+     * @return array<int, list<array{severity: DiagnosticSeverity, message: string, col: int, endCol?: int, code?: int|string, source?: string, tags?: list<int>}>>
+     */
+    private static function mergeDiagnostics(array $byOwner): array
+    {
+        if (1 === \count($byOwner)) {
+            return \array_first($byOwner); // the common case, untouched
+        }
+        \ksort($byOwner);
+        $merged = [];
+        foreach ($byOwner as $byLine) {
+            foreach ($byLine as $line => $diagnostics) {
+                foreach ($diagnostics as $diagnostic) {
+                    $merged[$line][] = $diagnostic;
+                }
+            }
+        }
+        \ksort($merged);
+
+        return $merged;
     }
 }

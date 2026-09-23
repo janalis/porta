@@ -46,9 +46,13 @@ final readonly class LspBootstrapper
         $this->lsp->configure(
             ServerLocator::locateAll($this->rootDir, $this->lspCommand, $this->pluginServers->languageServers()),
             fn (string $line) => $this->log->append($line),
-            function (array $params): void {
+            // The pool binds the server's name, the way it already does for
+            // log lines and `window/showMessage`: several servers can serve
+            // one file, and an unattributed publish would let whichever spoke
+            // last erase the rest.
+            function (array $params, string $server): void {
                 /** @var array{uri?: string, diagnostics?: list<array{severity?: int, message?: string, range: array{start: array{line?: int, character?: int}, end: array{line?: int, character?: int}}}>} $params */
-                $this->bufferService->applyDiagnostics($params['uri'] ?? '', LspMapper::diagnosticsByLine($params));
+                $this->bufferService->applyDiagnostics($params['uri'] ?? '', LspMapper::diagnosticsByLine($params), $server);
             },
             function (array $edit): bool {
                 /** @var array<string, mixed> $edit */

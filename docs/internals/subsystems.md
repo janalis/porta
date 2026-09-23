@@ -505,6 +505,16 @@ successful start resets the budget. `reconfigure()` no-ops on an identical
 resolved map, so a provider-plugin setting the servers never see does not cost
 every language its warm session.
 
+**Published diagnostics are keyed by OWNER.** `DiagnosticsSink::applyDiagnostics()`
+takes the server's name (bound per session, like the log and `showMessage`
+hooks) or the publishing plugin's, and `Buffer::$diagnostics` is a derived
+merge of every owner's slice. Before that it was one slot: a server publishing
+on every keystroke and an analyser plugin publishing on every save wiped each
+other, so phpstan beside a PHP server showed one set or the other depending on
+which had spoken last. It cannot be fixed by ignoring empty publishes, because
+LSP requires an empty list to mean "I have cleared mine" — only the owner tells
+"nothing to say" from "nothing any more".
+
 Feature controllers extend `Lsp/AbstractLspController`.
 `NavigationController`'s position-bound verbs ride one private scaffold —
 `requestAt` for ready-guard plus position params, `requestForDocument` for

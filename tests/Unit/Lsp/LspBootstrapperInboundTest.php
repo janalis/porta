@@ -72,7 +72,7 @@ final class LspBootstrapperInboundTest extends TestCase
         };
         $diagnostics = new class implements DiagnosticsSink {
             #[\Override]
-            public function applyDiagnostics(string $uri, array $byLine): void {}
+            public function applyDiagnostics(string $uri, array $byLine, string $owner): void {}
         };
         $plugins = new class implements LanguageServerProvider {
             #[\Override]

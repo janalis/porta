@@ -4463,6 +4463,31 @@ Incidentally the new path is a fix, not just a change: `mb_strwidth()` scored
 that conjunct 3 columns, the grapheme walk scores it 2, and 2 is what a terminal
 draws.
 
+## Diagnostics belong to whoever published them (2026-09-23)
+
+`Buffer::$diagnostics` was ONE slot shared by every publisher. A language
+server publishes on every keystroke and an analyser plugin publishes on every
+save, both for the same file — so running phpstan beside a PHP server showed
+one set or the other depending on which had spoken last, flickering back on the
+next edit. Nobody had to enable anything for this: `PluginApi::setDiagnostics()`
+and the LSP hook already shared the slot, and the docblock said so ("replace
+any previous set for that file").
+
+It cannot be fixed by ignoring empty publishes. LSP *requires* an empty
+`diagnostics` array to mean "I have cleared mine", so "nothing to say" and
+"nothing any more" are the same payload and only the owner tells them apart.
+`applyDiagnostics()` takes one now — the server's name, bound per session the
+way the log and `showMessage` hooks already were, or the publishing plugin's —
+and `$diagnostics` is a derived merge of `$diagnosticsByOwner`.
+
+With several owners the merge is ordered by owner name and then by line,
+because a server answering a keystroke and an analyser answering a save land in
+whichever order the loop gives them, and a Problems panel that reshuffled on
+that race would be unreadable while you are reading it. ONE owner is handed
+back exactly as it came: the ordering only has to be decided where there is
+something to decide, and touching the common path would change what every
+single-server project has always rendered.
+
 ## symfony-lsp knows what it installed (2026-09-22)
 
 The 2026-09-09 round named the theme and only half-closed it:

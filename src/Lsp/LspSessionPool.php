@@ -46,7 +46,7 @@ final class LspSessionPool
 
     /** @var (\Closure(string): void)|null */
     private ?\Closure $onLog = null;
-    /** @var (\Closure(array): void)|null */
+    /** @var (\Closure(array, string): void)|null */
     private ?\Closure $onDiagnostics = null;
     /** @var (\Closure(array): bool)|null */
     private ?\Closure $onApplyEdit = null;
@@ -72,8 +72,8 @@ final class LspSessionPool
      * not started here — each launches on its language's first didOpen.
      *
      * @param array<string, array{command: list<string>, name: string, initializationOptions?: array<string, mixed>}> $servers
-     * @param \Closure(string): void $onLog
-     * @param \Closure(array): void  $onDiagnostics
+     * @param \Closure(string): void        $onLog
+     * @param \Closure(array, string): void $onDiagnostics params, and the name of the server that published them
      * @param \Closure(array): bool  $onApplyEdit
      * @param \Closure(array): void|null $onShowMessage `window/showMessage` params, already server-prefixed
      * @param \Closure(array): void|null $onProgress    `$/progress` params
@@ -329,10 +329,16 @@ final class LspSessionPool
         $this->statuses[$signature] = $this->translator->trans('starting…');
         $onLog = $this->onLog;
         $onShowMessage = $this->onShowMessage;
+        $onDiagnostics = $this->onDiagnostics;
         $session->start(
             $server['command'],
             null === $onLog ? static function (string $line): void {} : static fn (string $line) => $onLog('['.$server['name'].'] '.$line),
-            $this->onDiagnostics ?? static function (array $params): void {},
+            // Name-bound, exactly as the log and showMessage hooks are: the
+            // sink keeps each publisher's findings apart, and an unattributed
+            // publish would make every server share one slot again.
+            null === $onDiagnostics
+                ? static function (array $params): void {}
+                : static fn (array $params) => $onDiagnostics($params, $server['name']),
             $this->onApplyEdit ?? static fn (array $edit): bool => false,
             function (Outcome $ok) use ($server, $signature): void {
                 // @mago-expect lint:no-else-clause -- the dispatch below runs in BOTH branches, so an early return would skip it and a guard would duplicate it

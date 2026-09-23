@@ -17,6 +17,7 @@ use Porta\Ide;
 use Porta\Lsp\NavigationController;
 use Porta\Lsp\Uri;
 use Porta\Tests\Support\PreservesPath;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
@@ -80,6 +81,7 @@ final class IdeDockToolsTest extends TestCase
                                 0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'first', 'col' => 0, 'endCol' => 3]],
                                 1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'second', 'col' => 0, 'endCol' => 3]],
                             ],
+                            'test',
                         );
                     $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), '✗ second'));
                     $tui->tick();
@@ -178,6 +180,7 @@ final class IdeDockToolsTest extends TestCase
                         ->applyDiagnostics(
                             Uri::fromPath($project->path('a.php')),
                             [1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'live boom', 'col' => 0, 'endCol' => 3]]],
+                            'test',
                         );
                     // The row and the strip count are two paints; the count
                     // follows, so it is the one to await.
@@ -198,6 +201,7 @@ final class IdeDockToolsTest extends TestCase
                                 0 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'warn zero', 'col' => 0, 'endCol' => 3]],
                                 1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'live boom', 'col' => 0, 'endCol' => 3]],
                             ],
+                            'test',
                         );
                     $tui->tick();
                     $this->assertSame(1, $results->captureViewState()->selectedLine, 'the selection stayed on the same diagnostic through the refresh');
@@ -214,6 +218,7 @@ final class IdeDockToolsTest extends TestCase
                                 0 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'warn one', 'col' => 0, 'endCol' => 3]],
                                 1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'live boom', 'col' => 0, 'endCol' => 3]],
                             ],
+                            'test',
                         );
                     $tui->tick();
                     $this->assertFalse($tui->getById('results')->isVisible(), 'the dock is hidden');
@@ -389,6 +394,7 @@ final class IdeDockToolsTest extends TestCase
                         ->applyDiagnostics(
                             Uri::fromPath($project->path('src/Main.php')),
                             [0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'background boom', 'col' => 0, 'endCol' => 3]]],
+                            'test',
                         );
                     $tui->tick();
                     $this->assertSame('LSP Server Log', $tui->getById('results')->getTitle(), 'the displayed tool is untouched');
@@ -834,6 +840,7 @@ final class IdeDockToolsTest extends TestCase
                                 2 => [['severity' => DiagnosticSeverity::Error, 'message' => 'first boom', 'col' => 0, 'endCol' => 3]],
                                 5 => [['severity' => DiagnosticSeverity::Error, 'message' => 'second boom', 'col' => 0, 'endCol' => 3]],
                             ],
+                            'test',
                         );
                     $tui->getById('editor')->getDocument()->setCursor(0, 0);
                     $this->frame($tui);
@@ -851,5 +858,116 @@ final class IdeDockToolsTest extends TestCase
         );
 
         $this->addToAssertionCount(1);
+    }
+
+    /**
+     * Two sources, one file, and neither erases the other.
+     *
+     * A language server publishes on every keystroke and an analyser plugin
+     * publishes on every save — and the buffer held ONE slot, so running
+     * phpstan beside a PHP server showed one set or the other depending on
+     * which had spoken last, flickering back on the next edit. It cannot be
+     * fixed by ignoring empty publishes either: LSP requires an empty list to
+     * mean "I have cleared mine", so only the owner tells "nothing to say"
+     * from "nothing any more".
+     */
+    public function testTwoSourcesOfDiagnosticsForOneFileDoNotEraseEachOther(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n// two\n// three\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function (Tui $tui, VirtualTerminal $terminal, $ide) use ($project): void {
+                    $tui->handleInput("\x1b6"); // alt+6 → Show Problems
+                    $uri = Uri::fromPath($project->path('a.php'));
+                    $buffers = self::bufferService($ide);
+
+                    $buffers->applyDiagnostics(
+                        $uri,
+                        [0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'from the server', 'col' => 0, 'endCol' => 3]]],
+                        'phpantom',
+                    );
+                    $buffers->applyDiagnostics(
+                        $uri,
+                        [1 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'from the analyser', 'col' => 0, 'endCol' => 3]]],
+                        'phpstan',
+                    );
+
+                    $this->awaitPainted($tui, $terminal, '2 results');
+                    $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+                    $this->assertStringContainsString('✗ from the server', $screen);
+                    $this->assertStringContainsString('▲ from the analyser', $screen, 'the second publisher did not wipe the first');
+
+                    // The analyser reports a clean file. That clears ITS
+                    // findings and nothing else — the old behaviour emptied
+                    // the panel.
+                    $terminal->clearOutput();
+                    $buffers->applyDiagnostics($uri, [], 'phpstan');
+                    $this->awaitPainted($tui, $terminal, '1 result');
+                    $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+                    $this->assertStringContainsString('✗ from the server', $screen, 'the server still has something to say');
+                    $this->assertStringNotContainsString('from the analyser', $screen);
+
+                    // And the last one leaving empties it.
+                    $terminal->clearOutput();
+                    $buffers->applyDiagnostics($uri, [], 'phpantom');
+                    $this->awaitPainted($tui, $terminal, '0 results');
+                },
+            ],
+        );
+    }
+
+    /**
+     * The merged view is ordered by owner name and then by line, so the panel
+     * does not reshuffle itself on a race.
+     *
+     * A server answering a keystroke and an analyser answering a save land in
+     * whichever order the loop gives them, and a list that reordered on that
+     * would be unreadable while you are trying to read it.
+     */
+    public function testTheMergedOrderDoesNotDependOnWhoPublishedFirst(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n// two\n// three\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function (Tui $tui, VirtualTerminal $terminal, $ide) use ($project): void {
+                    $tui->handleInput("\x1b6");
+                    $uri = Uri::fromPath($project->path('a.php'));
+                    $buffers = self::bufferService($ide);
+                    $late = [2 => [['severity' => DiagnosticSeverity::Error, 'message' => 'zzz owner', 'col' => 0, 'endCol' => 3]]];
+                    $early = [0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'aaa owner', 'col' => 0, 'endCol' => 3]]];
+
+                    $buffers->applyDiagnostics($uri, $late, 'zzz');
+                    $buffers->applyDiagnostics($uri, $early, 'aaa');
+                    $this->awaitPainted($tui, $terminal, '2 results');
+                    $lines = \array_keys(Probe::get(self::activeBuffer($ide), 'diagnostics'));
+
+                    // Republish in the other order; the merged view must not move.
+                    $buffers->applyDiagnostics($uri, [], 'zzz');
+                    $buffers->applyDiagnostics($uri, [], 'aaa');
+                    $buffers->applyDiagnostics($uri, $early, 'aaa');
+                    $buffers->applyDiagnostics($uri, $late, 'zzz');
+                    $this->awaitPainted($tui, $terminal, '2 results');
+
+                    $this->assertSame([0, 2], $lines);
+                    $this->assertSame($lines, \array_keys(Probe::get(self::activeBuffer($ide), 'diagnostics')));
+                },
+            ],
+        );
+    }
+
+    private static function activeBuffer(Ide $ide): object
+    {
+        $buffer = Probe::object(self::bufferService($ide), 'buffers')->active();
+        \assert(null !== $buffer, description: 'a file was opened, so a buffer is active');
+
+        return $buffer;
     }
 }

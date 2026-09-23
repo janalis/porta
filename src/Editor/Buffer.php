@@ -17,8 +17,26 @@ use Porta\Highlight\CodeHighlighter;
  */
 final class Buffer
 {
-    /** @var array<int, list<array{severity: DiagnosticSeverity, message: string, col: int, endCol?: int, code?: int|string, source?: string, tags?: list<int>}>> */
+    /**
+     * Every source's findings merged, 0-based line => diagnostics — what the
+     * stripe, the gutter, the inline messages and the Problems panel read.
+     *
+     * Derived: {@see BufferService::applyDiagnostics()} rebuilds it from
+     * {@see $diagnosticsByOwner} on every publish. Nothing else may write it,
+     * or one source's silence would erase another's findings.
+     *
+     * @var array<int, list<array{severity: DiagnosticSeverity, message: string, col: int, endCol?: int, code?: int|string, source?: string, tags?: list<int>}>>
+     */
     public array $diagnostics = [];
+
+    /**
+     * The same findings kept apart by who published them, so that a language
+     * server and an analyser plugin can both have something to say about this
+     * file without either erasing the other.
+     *
+     * @var array<string, array<int, list<array{severity: DiagnosticSeverity, message: string, col: int, endCol?: int, code?: int|string, source?: string, tags?: list<int>}>>> owner => line => diagnostics
+     */
+    public array $diagnosticsByOwner = [];
 
     /** The file's resolved `.editorconfig`, applied on open and reused on save. */
     public ?ResolvedEditorConfig $editorConfig = null;
