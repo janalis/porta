@@ -10223,4 +10223,10 @@ live in the middle. Three joins had no test, and one hid a defect:
 - **Access letters through the RTL reorder** keep their underline on the one
   letter, and the row's shade is re-armed around it (pinned in
   `MenuPanelTest`).
+- **The panel ceilings did not count the filter box either.** Maximising
+  Problems left the editor one row, not the two its docblock promises, and a
+  drag to the top did the same. Both ceilings now take the panel's chrome off:
+  measured from the last frame for a maximise, a nudge or a restored
+  proportion, and fixed at the press for a drag. A mid-drag measurement read a
+  drawn rect that lagged the content rows, and came out negative.
 

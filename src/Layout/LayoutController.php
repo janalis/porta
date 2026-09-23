@@ -124,7 +124,7 @@ final class LayoutController
             return;
         }
         if (null !== $this->bottomPanelHeightPercent) {
-            $this->resizeBottomPanels($this->clampPanel((int) \round(($this->bottomPanelHeightPercent * $rows) / 100), $rows));
+            $this->resizeBottomPanels($this->clampPanel((int) \round(($this->bottomPanelHeightPercent * $rows) / 100), $rows, $this->panelChrome()));
         }
     }
 
@@ -155,7 +155,9 @@ final class LayoutController
         // Bottom-panel resize: dragging a panel's top edge sets the bottom-panel height.
         if ($this->panelResizing && ($mouse->isLeftDrag() || $mouse->isLeftRelease())) {
             $rows = $this->tui->getTerminal()->getRows();
-            $height = $this->clampPanel($this->panelResizeBottom - $mouse->row + $this->panelResizeGrabOffset - $this->panelResizeChrome, $rows);
+            // The chrome measured at the press: mid-drag the panel's content
+            // rows have moved on and its drawn rect has not caught up.
+            $height = $this->clampPanel($this->panelResizeBottom - $mouse->row + $this->panelResizeGrabOffset - $this->panelResizeChrome, $rows, $this->panelResizeChrome);
             $this->forgetMaximised();
             $this->resizeBottomPanels($height);
             $this->tui->requestRender();
@@ -296,7 +298,7 @@ final class LayoutController
         // on a frame, so two presses inside one input burst both read the
         // pre-press height and the panel moved one row for two presses.
         $rows = $this->tui->getTerminal()->getRows();
-        $height = $this->clampPanel($panel->visibleRows() + $delta, $rows);
+        $height = $this->clampPanel($panel->visibleRows() + $delta, $rows, $this->panelChrome());
         $this->forgetMaximised();
         $this->resizeBottomPanels($height);
         $this->commitPercent($height, $rows, $this->bottomPanelHeightPercent);
@@ -346,7 +348,22 @@ final class LayoutController
     {
         $rows = $this->tui->getTerminal()->getRows();
 
-        return \max(3, $rows - 6 - self::folderRows($rows));
+        return \max(3, $rows - 6 - self::folderRows($rows) - $this->panelChrome());
+    }
+
+    /**
+     * The visible panel's rows that are not content — the Results panel's
+     * boxed filter. A panel is sized in content rows, so every ceiling that
+     * counts the frame's rows has to count these too: uncounted, a maximised
+     * Results panel took the editor rows its ceiling promised to leave. Read
+     * off the last frame, since the header is the panel's own business.
+     */
+    private function panelChrome(): int
+    {
+        $panel = $this->dock->visiblePanel();
+        $rect = null === $panel ? null : $this->renderer->getWidgetRect($panel);
+
+        return null === $panel || null === $rect ? 0 : \max(0, $rect->rows - $panel->visibleRows());
     }
 
     /**
@@ -419,9 +436,9 @@ final class LayoutController
     }
 
     /** Clamp a bottom-panel height so the editor keeps room above it. */
-    private function clampPanel(int $height, int $rows): int
+    private function clampPanel(int $height, int $rows, int $chrome): int
     {
-        return IntMath::clamp($height, 3, $rows - 8 - self::folderRows($rows));
+        return IntMath::clamp($height, 3, $rows - 8 - self::folderRows($rows) - $chrome);
     }
 
     /**

@@ -70,6 +70,71 @@ final class IdeDockToolsTest extends TestCase
      * above the panel. The lid row's tail, where the status sits, lights
      * nothing: a grab that lit there would promise a drag it does not start.
      */
+    /**
+     * Maximised, the panel leaves the frame its rows and a couple of editor
+     * rows besides — so you can still see which file you are coming back
+     * to. Counted in the panel's CONTENT rows, the Results panel's filter box
+     * went uncounted and took those rows.
+     */
+    public function testAMaximisedPanelLeavesTheEditorItsRows(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\necho 1;\n"]);
+
+        foreach ([24, 30] as $rows) {
+            $this->runIde(
+                $project,
+                $project->path('a.php'),
+                [
+                    200 => function (Tui $tui, $terminal, Ide $ide) use ($rows): void {
+                        $tui->handleInput("\x1b6"); // alt+6 → Show Problems
+                        $this->frame($tui);
+                        Services::resolve($ide, CommandRegistry::class)->run('ide_maximise_panel');
+                        $this->frame($tui);
+                        $editor = Services::resolve($ide, Renderer::class)->getWidgetRect($tui->getById('editor'));
+                        $this->assertInstanceOf(WidgetRect::class, $editor);
+                        $this->assertGreaterThanOrEqual(2, $editor->rows, "{$rows} rows: the editor keeps two rows under a maximised panel");
+                    },
+                ],
+                rows: $rows,
+            );
+        }
+    }
+
+    /**
+     * A drag's ceiling keeps the editor comfortable — more than maximising
+     * does — and it too is counted in content rows, so the filter box must
+     * come out of it. Dragged to the top of the screen, the editor keeps its
+     * rows.
+     */
+    public function testADragToTheTopLeavesTheEditorItsRows(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\necho 1;\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function (Tui $tui, $terminal, Ide $ide): void {
+                    $tui->handleInput("\x1b6"); // alt+6 → Show Problems
+                    $this->frame($tui);
+                    $renderer = Services::resolve($ide, Renderer::class);
+                    $strip = $renderer->getWidgetRect($tui->getById('dock-tabs'));
+                    $col = $strip->col + $strip->columns - 20; // the grab: the strip's empty tail
+
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $col + 1, $strip->row + 1));
+                    $tui->handleInput(\sprintf("\x1b[<32;%d;%dM", $col + 1, 1));
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $col + 1, 1));
+                    $this->frame($tui);
+
+                    $editor = $renderer->getWidgetRect($tui->getById('editor'));
+                    $this->assertGreaterThanOrEqual(4, $editor->rows, 'the drag stopped where the editor keeps its rows');
+                },
+            ],
+        );
+    }
+
     public function testOnAFolderStripOnlyTheLabelRowIsTheGrab(): void
     {
         \putenv('PATH=/nonexistent');
