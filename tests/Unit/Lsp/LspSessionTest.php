@@ -21,12 +21,23 @@ use Revolt\EventLoop;
  */
 final class LspSessionTest extends TestCase
 {
+    /**
+     * Paths live under a root that cannot exist, never under `/tmp`.
+     *
+     * `Uri::fromPath()` calls `realpath()`, which resolves a path only when
+     * the file is actually there — and on macOS `/tmp` is a symlink to
+     * `/private/tmp`. So `file:///tmp/x.php` was the right answer exactly
+     * while nothing happened to occupy `/tmp/x.php`; the day another project
+     * left a file there, three tests here started failing with
+     * `file:///private/tmp/x.php` and nothing in this repository had changed.
+     */
+
     use PumpsLoop;
 
     private function session(FakeLspClient $client): LspSession
     {
         return new LspSession(
-            '/tmp/project',
+            '/porta-no-such-root/project',
             static fn (array $command, string $rootDir, \Closure $onLog, ?array $options): LspClientInterface => $client,
         );
     }
@@ -41,7 +52,7 @@ final class LspSessionTest extends TestCase
     {
         $received = [];
         $session = new LspSession(
-            '/tmp/project',
+            '/porta-no-such-root/project',
             static function (array $command, string $rootDir, \Closure $onLog, ?array $options) use (&$received): LspClientInterface {
                 $received[] = $options;
 
@@ -142,12 +153,12 @@ final class LspSessionTest extends TestCase
         $session = $this->session($client);
         $this->start($session);
 
-        $session->notifyDidOpen('/tmp/a b.php', "<?php\n", 'php', 1);
+        $session->notifyDidOpen('/porta-no-such-root/a b.php', "<?php\n", 'php', 1);
 
         $this->assertCount(1, $client->notifications);
         $sent = $client->notifications[0];
         $this->assertSame('textDocument/didOpen', $sent['method']);
-        $this->assertSame('file:///tmp/a%20b.php', $sent['params']['textDocument']['uri']);
+        $this->assertSame('file:///porta-no-such-root/a%20b.php', $sent['params']['textDocument']['uri']);
         $this->assertSame("<?php\n", $sent['params']['textDocument']['text']);
     }
 
@@ -158,12 +169,12 @@ final class LspSessionTest extends TestCase
         $this->start($session);
 
         $doc = new Document("<?php\necho 1;\n");
-        $session->notifyFullChange('/tmp/x.php', $doc);
+        $session->notifyFullChange('/porta-no-such-root/x.php', $doc);
 
         $sent = $client->notifications[0];
         $this->assertSame('textDocument/didChange', $sent['method']);
         $this->assertSame([['text' => "<?php\necho 1;\n"]], $sent['params']['contentChanges']);
-        $this->assertSame('file:///tmp/x.php', $sent['params']['textDocument']['uri']);
+        $this->assertSame('file:///porta-no-such-root/x.php', $sent['params']['textDocument']['uri']);
         $this->assertSame($doc->version, $sent['params']['textDocument']['version']);
     }
 
@@ -173,11 +184,11 @@ final class LspSessionTest extends TestCase
         $session = $this->session($client);
         $this->start($session);
 
-        $session->notifyDidClose('/tmp/x.php');
+        $session->notifyDidClose('/porta-no-such-root/x.php');
 
         $sent = $client->notifications[0];
         $this->assertSame('textDocument/didClose', $sent['method']);
-        $this->assertSame(['textDocument' => ['uri' => 'file:///tmp/x.php']], $sent['params']);
+        $this->assertSame(['textDocument' => ['uri' => 'file:///porta-no-such-root/x.php']], $sent['params']);
     }
 
     /**
@@ -195,19 +206,19 @@ final class LspSessionTest extends TestCase
         // loop that stopped at the first miss instead of skipping it would
         // still close everything this asserts on. That mutant escaped a real
         // run of the first draft of this test.
-        $session->notifyDidOpen('/tmp/other/d.php', 'd', 'php', 1);
-        $session->notifyDidOpen('/tmp/old/a.php', 'a', 'php', 1);
+        $session->notifyDidOpen('/porta-no-such-root/other/d.php', 'd', 'php', 1);
+        $session->notifyDidOpen('/porta-no-such-root/old/a.php', 'a', 'php', 1);
         // A SIBLING whose path merely starts with the root's characters. The
         // boundary the naive str_starts_with() spelling gets wrong, and the
         // only reason this is a separate case from the one below.
-        $session->notifyDidOpen('/tmp/oldish/c.php', 'c', 'php', 1);
-        $session->notifyDidOpen('/tmp/old/deep/b.php', 'b', 'php', 1);
+        $session->notifyDidOpen('/porta-no-such-root/oldish/c.php', 'c', 'php', 1);
+        $session->notifyDidOpen('/porta-no-such-root/old/deep/b.php', 'b', 'php', 1);
         $client->notifications = [];
 
-        $session->closeUnder('/tmp/old');
+        $session->closeUnder('/porta-no-such-root/old');
 
         $this->assertSame(
-            ['file:///tmp/old/a.php', 'file:///tmp/old/deep/b.php'],
+            ['file:///porta-no-such-root/old/a.php', 'file:///porta-no-such-root/old/deep/b.php'],
             \array_map(static fn (array $sent): string => $sent['params']['textDocument']['uri'], $client->notifications),
         );
         $this->assertSame(
@@ -222,13 +233,13 @@ final class LspSessionTest extends TestCase
         $client = new FakeLspClient();
         $session = $this->session($client);
         $this->start($session);
-        $session->notifyDidOpen('/tmp/a.php', 'a', 'php', 1);
+        $session->notifyDidOpen('/porta-no-such-root/a.php', 'a', 'php', 1);
         $client->notifications = [];
 
-        $session->closeUnder('/tmp/a.php');
+        $session->closeUnder('/porta-no-such-root/a.php');
 
         $this->assertSame(
-            [['method' => 'textDocument/didClose', 'params' => ['textDocument' => ['uri' => 'file:///tmp/a.php']]]],
+            [['method' => 'textDocument/didClose', 'params' => ['textDocument' => ['uri' => 'file:///porta-no-such-root/a.php']]]],
             $client->notifications,
         );
     }
@@ -239,10 +250,10 @@ final class LspSessionTest extends TestCase
         $client = new FakeLspClient();
         $session = $this->session($client);
         $this->start($session);
-        $session->notifyDidOpen('/tmp/a.php', 'a', 'php', 1);
+        $session->notifyDidOpen('/porta-no-such-root/a.php', 'a', 'php', 1);
         $client->notifications = [];
 
-        $session->closeUnder('/tmp/never-opened.php');
+        $session->closeUnder('/porta-no-such-root/never-opened.php');
 
         $this->assertSame([], $client->notifications);
     }
@@ -253,11 +264,11 @@ final class LspSessionTest extends TestCase
         $session = $this->session($client);
         $this->start($session);
 
-        $session->notifyDidSave('/tmp/x.php');
+        $session->notifyDidSave('/porta-no-such-root/x.php');
 
         $sent = $client->notifications[0];
         $this->assertSame('textDocument/didSave', $sent['method']);
-        $this->assertSame(['textDocument' => ['uri' => 'file:///tmp/x.php']], $sent['params']);
+        $this->assertSame(['textDocument' => ['uri' => 'file:///porta-no-such-root/x.php']], $sent['params']);
     }
 
     public function testScheduleDidChangeWithoutAClientIsANoOp(): void
@@ -265,7 +276,7 @@ final class LspSessionTest extends TestCase
         $session = $this->session(new FakeLspClient());
         $before = \count(EventLoop::getIdentifiers());
         // Never started: no client, so nothing to debounce against.
-        $session->scheduleDidChange(new Document('x'), static fn (): ?string => '/tmp/project/a.php', static function (): void {});
+        $session->scheduleDidChange(new Document('x'), static fn (): ?string => '/porta-no-such-root/project/a.php', static function (): void {});
 
         $this->assertFalse($session->isActive());
         $this->assertCount($before, EventLoop::getIdentifiers(), 'no debounce timer is armed without a client');
@@ -282,10 +293,10 @@ final class LspSessionTest extends TestCase
         $session->stop();
         $session->request('textDocument/hover', [], static function (): void {});
         $session->whenReady(static function (): void {});
-        $session->notifyDidOpen('/tmp/x.php', 'text', 'php', 1);
-        $session->notifyDidClose('/tmp/x.php');
-        $session->notifyDidSave('/tmp/x.php');
-        $session->notifyFullChange('/tmp/x.php', new Document('x'));
+        $session->notifyDidOpen('/porta-no-such-root/x.php', 'text', 'php', 1);
+        $session->notifyDidClose('/porta-no-such-root/x.php');
+        $session->notifyDidSave('/porta-no-such-root/x.php');
+        $session->notifyFullChange('/porta-no-such-root/x.php', new Document('x'));
 
         $this->assertNull($session->serverCapability('inlayHintProvider'), 'no client yet — no capabilities to read');
         $this->assertFalse($session->isActive());
@@ -300,10 +311,10 @@ final class LspSessionTest extends TestCase
         $doc = new Document("<?php\n");
 
         // Not started yet: not initialized.
-        $this->assertNull($session->ready('/tmp/x.php', $doc));
+        $this->assertNull($session->ready('/porta-no-such-root/x.php', $doc));
 
         $this->start($session);
-        $this->assertSame('/tmp/x.php', $session->ready('/tmp/x.php', $doc));
+        $this->assertSame('/porta-no-such-root/x.php', $session->ready('/porta-no-such-root/x.php', $doc));
         $this->assertNull($session->ready(null, $doc), 'null path short-circuits');
     }
 
@@ -314,14 +325,14 @@ final class LspSessionTest extends TestCase
         $this->start($session);
         $doc = new Document('x');
 
-        $session->scheduleDidChange($doc, static fn (): ?string => '/tmp/project/a.php', static function (): void {});
+        $session->scheduleDidChange($doc, static fn (): ?string => '/porta-no-such-root/project/a.php', static function (): void {});
         $before = \count(EventLoop::getIdentifiers());
 
-        $session->ready('/tmp/project/a.php', $doc, FlushMode::Keep);
+        $session->ready('/porta-no-such-root/project/a.php', $doc, FlushMode::Keep);
         $this->assertCount($before, EventLoop::getIdentifiers(), 'Keep leaves the debounce armed');
         $this->assertSame([], \array_column($client->notifications, 'method'), 'and sends nothing yet');
 
-        $session->ready('/tmp/project/a.php', $doc, FlushMode::Flush);
+        $session->ready('/porta-no-such-root/project/a.php', $doc, FlushMode::Flush);
         $this->assertLessThan($before, \count(EventLoop::getIdentifiers()), 'Flush (the default) cancels the pending debounce');
         $this->assertSame(['textDocument/didChange'], \array_column($client->notifications, 'method'), 'and sends the pending edit immediately');
     }
@@ -366,12 +377,12 @@ final class LspSessionTest extends TestCase
         $this->start($session);
 
         $doc = new Document("<?php\necho 1;\n");
-        $session->notifyFullChange('/tmp/project/a.php', $doc); // baseline
+        $session->notifyFullChange('/porta-no-such-root/project/a.php', $doc); // baseline
         $doc->setCursor(1, 6);
         $doc->insert('2'); // "echo 12;"
 
-        $session->scheduleDidChange($doc, static fn (): ?string => '/tmp/project/a.php', static function (): void {});
-        $session->flushPendingChange('/tmp/project/a.php', $doc);
+        $session->scheduleDidChange($doc, static fn (): ?string => '/porta-no-such-root/project/a.php', static function (): void {});
+        $session->flushPendingChange('/porta-no-such-root/project/a.php', $doc);
 
         $sent = \end($client->notifications);
         $this->assertNotFalse($sent);
@@ -389,8 +400,8 @@ final class LspSessionTest extends TestCase
         $this->start($session);
 
         $doc = new Document("<?php\necho 1;\n");
-        $session->scheduleDidChange($doc, static fn (): ?string => '/tmp/project/a.php', static function (): void {});
-        $session->flushPendingChange('/tmp/project/a.php', $doc);
+        $session->scheduleDidChange($doc, static fn (): ?string => '/porta-no-such-root/project/a.php', static function (): void {});
+        $session->flushPendingChange('/porta-no-such-root/project/a.php', $doc);
 
         $sent = \end($client->notifications);
         $this->assertNotFalse($sent);
@@ -403,7 +414,7 @@ final class LspSessionTest extends TestCase
         $session = $this->session($client);
         $this->start($session);
 
-        $session->flushPendingChange('/tmp/x.php', new Document('x'));
+        $session->flushPendingChange('/porta-no-such-root/x.php', new Document('x'));
 
         $this->assertSame([], $client->notifications, 'nothing was scheduled — nothing to flush');
     }
@@ -415,7 +426,7 @@ final class LspSessionTest extends TestCase
         $this->start($session);
         $before = \count(EventLoop::getIdentifiers());
 
-        $session->scheduleDidChange(new Document('x'), static fn (): ?string => '/tmp/project/a.php', static function (): void {});
+        $session->scheduleDidChange(new Document('x'), static fn (): ?string => '/porta-no-such-root/project/a.php', static function (): void {});
         $this->assertGreaterThan($before, \count(EventLoop::getIdentifiers()), 'the 0.3s debounce is armed');
 
         $session->stop();
