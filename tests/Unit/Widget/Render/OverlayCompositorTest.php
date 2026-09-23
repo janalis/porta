@@ -21,6 +21,26 @@ final class OverlayCompositorTest extends TestCase
         $this->assertStringContainsString('[popup]', AnsiUtils::stripAnsiCodes($out));
     }
 
+    /**
+     * 中 at columns 5-6 of the row straddles the popup's right edge (col 6).
+     * Its visible half is a blank, and `gh` stays at columns 7-8 — a vendor
+     * slice from column 6 dropped the glyph and slid the tail one column left.
+     */
+    public function testATailGlyphHalfCoveredByThePopupDoesNotShiftTheTail(): void
+    {
+        $out = OverlayCompositor::into('abcde中gh', 2, 4, 10, '[pp]');
+
+        $this->assertSame('ab[pp] gh ', AnsiUtils::stripAnsiCodes($out));
+    }
+
+    /** The same glyph straddling the popup's LEFT edge: the head keeps its width too. */
+    public function testAHeadGlyphHalfCoveredByThePopupDoesNotShiftThePopup(): void
+    {
+        $out = OverlayCompositor::into('a中defgh', 2, 3, 9, '[p]');
+
+        $this->assertSame('a [p]fgh ', AnsiUtils::stripAnsiCodes($out));
+    }
+
     public function testClippedPopupBackgroundDoesNotBleedIntoTheTail(): void
     {
         // A popup slice whose own trailing reset was clipped off (as happens when

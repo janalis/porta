@@ -134,6 +134,57 @@ final class AnsiTextTest extends TestCase
         $this->assertLessThanOrEqual(3, AnsiUtils::visibleWidth($out));
     }
 
+    /** Plain text comes back exactly as the vendor slice would give it. */
+    public function testColumnsFromIsAPlainSliceWhenNothingStraddles(): void
+    {
+        $this->assertSame('cde', AnsiText::columnsFrom('abcdefg', 2, 3));
+        $this->assertSame('efg', AnsiText::columnsFrom('abcdefg', 4, 10), 'a tail past the end is not padded');
+        $this->assertSame('', AnsiText::columnsFrom('abc', 5, 3), 'starting past the end is empty, not a blank');
+        $this->assertSame('ab', AnsiText::columnsFrom('ab中', 0, 3), 'a prefix drops an end straddler too');
+    }
+
+    /**
+     * 中 occupies columns 1-2 of `a中b`. A vendor slice from column 2 drops it
+     * and returns `b` — which belongs at column 3, so everything composed
+     * after the cut shifts one column left. The half inside the range is a
+     * blank instead, and `b` stays where it was.
+     */
+    public function testColumnsFromKeepsAlignmentWhenAWideGlyphStraddlesTheStart(): void
+    {
+        $this->assertSame(' b', AnsiText::columnsFrom('a中b', 2, 5));
+        $this->assertSame(' ', AnsiText::columnsFrom('a中b', 2, 1));
+        $this->assertSame('', AnsiText::columnsFrom('a中b', 2, 0), 'no room, no blank: a popup flush with the right edge leaves a zero-width tail');
+        $this->assertSame(' bc', AnsiText::columnsFrom('a中bcd', 2, 3), 'the blank takes one column of the budget, not two');
+    }
+
+    /**
+     * A non-strict vendor slice from column 1 keeps a glyph that starts inside
+     * the range and ends past it: `("a中b", 1, 1)` is two columns wide, and an
+     * over-wide row throws in the renderer. The straddler is dropped instead.
+     */
+    public function testColumnsFromNeverExceedsTheAskedWidth(): void
+    {
+        $this->assertSame('', AnsiText::columnsFrom('a中b', 1, 1));
+        $this->assertSame('中', AnsiText::columnsFrom('a中b', 1, 2));
+        foreach (['中文字', 'a中文字b', '😀x😀', "\e[31m中\e[0m文字"] as $line) {
+            $total = AnsiUtils::visibleWidth($line);
+            for ($start = 0; $start < $total; ++$start) {
+                for ($length = 1; $length <= ($total - $start); ++$length) {
+                    $this->assertLessThanOrEqual($length, AnsiUtils::visibleWidth(AnsiText::columnsFrom($line, $start, $length)), \sprintf('%s @%d+%d', $line, $start, $length));
+                }
+            }
+        }
+    }
+
+    /** The active style at the cut survives: the vendor slice re-emits it. */
+    public function testColumnsFromCarriesTheStyleAcrossTheCut(): void
+    {
+        $out = AnsiText::columnsFrom("\e[31mab中cd\e[0m", 3, 3);
+
+        $this->assertSame(' cd', AnsiUtils::stripAnsiCodes($out));
+        $this->assertStringContainsString("\e[31m", $out);
+    }
+
     public function testScrollLineToCaretClipsAndPadsAMarkerlessLine(): void
     {
         $out = AnsiText::scrollLineToCaret('a short line', 20);

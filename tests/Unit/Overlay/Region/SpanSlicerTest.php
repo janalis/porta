@@ -137,4 +137,31 @@ final class SpanSlicerTest extends TestCase
 
         $this->assertSame([], SpanSlicer::localSpans(['AAAA'], $rect, top: 0, anchor: 20, panelWidth: 4));
     }
+
+    /**
+     * A popup crossing three panes: the middle pane's slice starts inside the
+     * panel AND ends inside it. With a CJK glyph straddling each seam, the
+     * vendor slice came back one column wider than the span it claims (the
+     * renderer throws on that row) or one narrower (the rest of the row shifts
+     * left). Every span is exactly as wide as it says, and the glyph straddling
+     * a seam leaves a blank on each side of it rather than a shift.
+     */
+    public function testASliceBetweenTwoSeamsIsExactlyItsWidthAcrossWideGlyphs(): void
+    {
+        // Panel [0, 10): `ab中cd中ef` — 中 at columns 2-3 and 6-7.
+        $segment = 'ab中cd中ef';
+        $panes = [
+            new WidgetRect(row: 0, col: 0, rows: 1, columns: 3), // seam at 3, inside the first 中
+            new WidgetRect(row: 0, col: 3, rows: 1, columns: 4), // [3, 7): seam at 7, inside the second 中
+            new WidgetRect(row: 0, col: 7, rows: 1, columns: 5),
+        ];
+
+        $segments = [];
+        foreach ($panes as $rect) {
+            $span = SpanSlicer::localSpans([$segment], $rect, top: 0, anchor: 0, panelWidth: 10)[0];
+            $this->assertSame($span['width'], AnsiUtils::visibleWidth($span['segment']), 'pane at col '.$rect->col);
+            $segments[] = $span['segment'];
+        }
+        $this->assertSame(['ab ', ' cd ', ' ef'], $segments);
+    }
 }

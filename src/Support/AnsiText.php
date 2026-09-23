@@ -175,6 +175,41 @@ final class AnsiText
      * or emoji character away from taking the session down. Strict drops the
      * straddling glyph instead, and the pad fills the column it leaves.
      */
+    /**
+     * The columns of $line from EXACTLY $startCol, at most $length wide — the
+     * slice a caller composing a row around a cut (an overlay's tail, a pane
+     * seam, an overwrite) actually means.
+     *
+     * `AnsiUtils::sliceByColumn` gets both edges wrong for a double-width
+     * glyph once $startCol > 0. Non-strict, it KEEPS a glyph straddling the end,
+     * so `("a中b", 1, 1)` is two columns wide and the renderer throws on the
+     * row. Strict or not, it DROPS a glyph straddling the start, so
+     * `("a中b", 2, 5)` is `b` — which belongs at column 3, and everything
+     * composed after it shifts one column left. (A $startCol of 0 takes the
+     * vendor's prefix path, which already drops an end straddler.)
+     *
+     * Here the end is strict — the {@see caretWindow()} reasoning — and the
+     * half of a start straddler that falls inside the range is a blank, so
+     * the first column returned is column $startCol.
+     */
+    public static function columnsFrom(string $line, int $startCol, int $length): string
+    {
+        $slice = AnsiUtils::sliceByColumn($line, $startCol, $length, strict: true);
+        if ($startCol <= 0 || $length <= 0) {
+            return $slice;
+        }
+        $before = AnsiUtils::visibleWidth(AnsiUtils::sliceByColumn($line, 0, $startCol));
+        if ($before >= $startCol || AnsiUtils::visibleWidth($line) <= $startCol) {
+            return $slice; // nothing straddles the start, or the line ends before it
+        }
+        // The prefix stopped at $before, short of $startCol only because the
+        // straddler did not fit: its inside half is the gap (one column, for a
+        // double-width glyph). max() proves the guard to the analyzer.
+        $lead = \max(1, $startCol - $before);
+
+        return \str_repeat(' ', $lead).AnsiUtils::sliceByColumn($line, $startCol + $lead, $length - $lead, strict: true);
+    }
+
     public static function caretWindow(string $text, int $caretCol, int $width, string $marker): string
     {
         $off = \max(0, $caretCol - $width + 1);

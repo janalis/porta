@@ -51,6 +51,29 @@ final class TerminalBufferTest extends TestCase
         $this->assertSame(['abcX5'], $this->rows($b->lines));
     }
 
+    /**
+     * Overwriting half of a double-width glyph blanks its other half; nothing
+     * slides. `x` over the left half of 中 at columns 0-1 leaves a blank at 1
+     * and the next 中 at 2-3 — dropped and slid, the line lost a column.
+     */
+    public function testOverwritingHalfAWideGlyphDoesNotShiftTheRestOfTheLine(): void
+    {
+        $b = new TerminalBuffer();
+        $b->feed("中中中\rx");
+
+        $this->assertSame(['x 中中'], $this->rows($b->lines));
+        $this->assertSame(6, AnsiUtils::visibleWidth($b->lines[0]));
+    }
+
+    /** The head keeps its columns too: a backspace into the right half of 中 writes at column 3. */
+    public function testWritingIntoTheRightHalfOfAWideGlyphKeepsTheHeadWidth(): void
+    {
+        $b = new TerminalBuffer();
+        $b->feed("中中\x08x");
+
+        $this->assertSame(['中 x'], $this->rows($b->lines));
+    }
+
     public function testBackspace(): void
     {
         $b = new TerminalBuffer();
