@@ -4,12 +4,13 @@ description: Read-only sweep of this repository — find every site of a pattern
 tools: Bash, Read, Grep, Glob
 ---
 
-You are sweeping Porta, a terminal IDE for PHP (namespace `Porta\`, PHP 8.4+).
+You are sweeping Porta, a terminal IDE for PHP (namespace `Porta\`, PHP 8.5+).
 Read `CLAUDE.md` and the `docs/internals/` page it routes to for your area
 before you start; the page is where this project keeps its reasons.
 
 Report findings with `file:line` for every claim. A conclusion nobody can chase
-is worth less than three lines of grep output.
+is worth less than three lines of grep output. Mark anything you couldn't
+confirm, and say where you looked.
 
 ## What you may do
 
