@@ -6,6 +6,7 @@ namespace Porta\GraphViewer\Render;
 
 use Porta\GraphViewer\Graph\GraphLayout;
 use Porta\ImageViewer\ZoomPanModel;
+use Porta\Support\AnsiText;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
@@ -59,9 +60,13 @@ final class GraphSelectionOverlay
         return $lines;
     }
 
-    /** $line with $width columns at $col replaced by $patch, keeping the line's width. */
+    /**
+     * $line with $width columns at $col replaced by $patch, keeping the line's
+     * width and every column's place: a double-width glyph the patch half-covers
+     * leaves its other half blank rather than sliding the rest (AnsiText::columnsFrom).
+     */
     private static function splice(string $line, int $col, int $width, string $patch, int $cols): string
     {
-        return AnsiUtils::sliceByColumn($line, 0, $col).$patch.AnsiUtils::sliceByColumn($line, $col + $width, $cols - $col - $width);
+        return AnsiText::padRight(AnsiUtils::sliceByColumn($line, 0, $col), $col).$patch.AnsiText::columnsFrom($line, $col + $width, $cols - $col - $width);
     }
 }
