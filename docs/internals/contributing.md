@@ -425,6 +425,25 @@ The sharded plugin pass is what parallelism inside a gate looks like when it is
 safe: each shard is a whole process with its own report, and the state they
 would otherwise fight over is given to them one each.
 
+## Working style for an agent's round
+
+- **Keep going** through any step that doesn't need the owner; put status notes in
+  the same message as the next action. Stop and ask only when you can't continue
+  without them, or before anything destructive: deleting data, force-pushing,
+  rewriting pushed history, or touching anything outside this repository.
+- **The finish line** is `composer verify` green with every finding carrying its
+  evidence. Stop early only for a gate failing for a reason you can't explain.
+- **A round of more than a handful of items** keeps its checklist in `TASKS.md`
+  (gitignored): tick each item when done, add what you find on the way.
+- **Fan read-only sweeps out to `porta-explorer`** (above), one area per agent, and
+  check each report's `file:line` evidence before accepting it — a claim argued in
+  prose is not a verified one.
+- **End every run with three headings: Blocked on me, Changed, Found.** Mark anything
+  you couldn't confirm, and say where you looked.
+
+This section once sat in CLAUDE.md and took it to 116 lines; `ClaudeMdBudgetTest`
+caught it. It is routed from there instead.
+
 ## The inner loop
 
 `composer verify` is the definition of done, not the thing to run after every
