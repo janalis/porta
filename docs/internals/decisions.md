@@ -10249,4 +10249,8 @@ An audit of every checkbox against a browser `<input type=checkbox>` +
   The marks are plain now: `✓` done (tinted `Added` off the selection), `○` to
   do, `→` a link. They are centred in the three columns the box took, so no wrap
   width moved.
+- **The debugger's checklist.** Its `[✓]` was baked into each label, so Space
+  typed a filter that matched every row, and `✓` matched the enabled ones. The
+  box is a field of the item now (`checked`), drawn by the list, and outside
+  what the filter reads. Space is the box's key.
 

@@ -15,6 +15,7 @@ use Porta\Search\Everywhere\SearchRow;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TestTui;
 use Porta\Ui\CursorStyle;
+use Porta\Ui\Role;
 use Porta\Ui\TextField;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\OverlayCompositor;
@@ -341,6 +342,83 @@ final class OverlayHostTest extends TestCase
         $this->assertSame('Second', $overlay['title']);
         $this->assertSame('', $overlay['filter']->value());
         $this->assertSame(0, $overlay['selected']);
+    }
+
+    /**
+     * A checklist — items that carry `checked` — draws a box before each
+     * label, takes Space as the box's key, and filters on the words alone:
+     * the box used to live inside the label, so Space typed a filter that
+     * matched every row and `✓` matched the enabled ones.
+     */
+    public function testAChecklistTakesSpaceAndFiltersOnWordsAlone(): void
+    {
+        $host = $this->host();
+        $picked = [];
+        $items = [
+            ['label' => 'Warnings', 'hint' => '', 'value' => 'w', 'checked' => false],
+            ['label' => 'Uncaught Exceptions', 'hint' => '', 'value' => 'u', 'checked' => true],
+        ];
+        $host->openList('Filters', $items, static function (string $v) use (&$picked): void {
+            $picked[] = $v;
+        });
+        $kb = $this->keybindings();
+
+        $host->handleInput(' ', $kb);
+        $this->assertSame(['w'], $picked, 'Space picked the selected row');
+
+        $host->openList('Filters', $items, static fn (): null => null);
+        $host->handleInput('✓', $kb);
+        $this->assertSame([], Probe::invoke($host, 'matching', Probe::get($host, 'overlay')), 'the box is not in the label');
+
+        $shown = $this->host();
+        $shown->openList('Filters', $items, static fn (): null => null);
+        $rows = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $this->canvas($shown, 60, 20)));
+        $this->assertStringContainsString('[ ] Warnings', $rows);
+        $this->assertStringContainsString('[✓] Uncaught Exceptions', $rows);
+    }
+
+    /**
+     * A checklist row is exactly as wide as the box that frames it, a long
+     * label cut to leave the checkbox its columns; and the mark takes the
+     * accent on every row but the selected one.
+     */
+    public function testAChecklistRowFitsItsBoxAndTintsOffTheSelection(): void
+    {
+        $host = $this->host();
+        $long = \str_repeat('Exception ', times: 20);
+        $host->openList(
+            'Filters',
+            [
+                ['label' => $long, 'hint' => 'hint', 'value' => 'a', 'checked' => true],
+                ['label' => 'Short', 'hint' => '', 'value' => 'b', 'checked' => true],
+            ],
+            static fn (): null => null,
+        );
+
+        $box = $host->layout([0, 0, 20, 60])[0];
+        $widths = \array_unique(\array_map(AnsiUtils::visibleWidth(...), $box['rows']));
+
+        $this->assertSame([$box['width']], \array_values($widths), 'every row the box\'s width');
+        $this->assertStringContainsString('hint ', AnsiUtils::stripAnsiCodes($box['rows'][2]), 'the long label was cut, not the hint after it (row 2: the title bar, the padding, then it)');
+        $accent = Styles::dark()->of(Role::TabAccent)->apply('✓');
+        $rows = \array_values(\array_filter($box['rows'], static fn (string $row): bool => \str_contains(AnsiUtils::stripAnsiCodes($row), '✓')));
+        $this->assertStringNotContainsString($accent, $rows[0], 'the selected row keeps its own shade');
+        $this->assertStringContainsString($accent, $rows[1]);
+    }
+
+    /** A list that is no checklist still types Space into its filter. */
+    public function testAnOrdinaryListStillFiltersOnSpace(): void
+    {
+        $host = $this->host();
+        $picked = [];
+        $host->openList('L', [['label' => 'a b', 'hint' => '', 'value' => 'A']], static function (string $v) use (&$picked): void {
+            $picked[] = $v;
+        });
+
+        $host->handleInput(' ', $this->keybindings());
+
+        $this->assertSame([], $picked);
+        $this->assertSame(' ', Probe::get($host, 'overlay')['filter']->value());
     }
 
     public function testPromptSubmitAndInsertRequestRendersOnlyWhenSomethingChanged(): void

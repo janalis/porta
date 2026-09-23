@@ -355,7 +355,7 @@ final class CodeEditorWidget extends AbstractWidget implements
     /**
      * Open a modal list overlay (recent files, later: hover docs etc.).
      *
-     * @param list<array{label: string, hint: string, value: string}> $items
+     * @param list<array{label: string, hint: string, value: string, checked?: bool}> $items
      * @param callable(string): void                                  $onPick receives the picked item's value
      */
     #[\Override]

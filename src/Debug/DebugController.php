@@ -17,7 +17,6 @@ use Porta\Ui\Glyphs;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\DebugPanelCallbacks;
 use Porta\Widget\DebugPanelWidget;
-use Porta\Widget\Render\FieldBox;
 use Porta\Widget\TerminalPanelWidget;
 use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\Dock\DockTab;
@@ -397,7 +396,8 @@ final class DebugController implements DebugSessionObserver, StatusSegment
         }
         $enabled = $this->exceptionFilters->enabledFor($filters);
         $items = \array_map(static fn (array $filter): array => [
-            'label' => FieldBox::checkbox(\in_array($filter['filter'], $enabled, strict: true)).' '.$filter['label'],
+            'label' => $filter['label'],
+            'checked' => \in_array($filter['filter'], $enabled, strict: true),
             'hint' => $filter['filter'],
             'value' => $filter['filter'],
         ], $filters);

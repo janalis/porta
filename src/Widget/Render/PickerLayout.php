@@ -37,7 +37,7 @@ final class PickerLayout
 
     /**
      * @param array{int, int, int, int}                                                                                                                             $bounds
-     * @param array{title: string, items: list<array{label: string, hint: string, value: string}>, selected: int, hovered: int|null, filter: TextField, onPick: callable(string): void} $overlay
+     * @param array{title: string, items: list<array{label: string, hint: string, value: string, checked?: bool}>, selected: int, hovered: int|null, filter: TextField, onPick: callable(string): void} $overlay
      *
      * @return array{rows: list<string>, top: int, col: int, width: int, box: ModalBox}
      */
@@ -60,7 +60,7 @@ final class PickerLayout
         // re-centres on every keystroke, walking out from under the eye reading
         // it. The width is a property of the list, not of this frame's slice.
         foreach ($overlay['items'] as $item) {
-            $width = \max($width, \mb_strwidth($item['label']) + \mb_strwidth($item['hint']) + 6);
+            $width = \max($width, self::boxWidth($item) + \mb_strwidth($item['label']) + \mb_strwidth($item['hint']) + 6);
         }
         // The filler row shown when nothing matches: measured ALWAYS, not only
         // when it is about to be drawn. Nothing else in this width measures it
@@ -78,10 +78,14 @@ final class PickerLayout
 
         $content = [];
         foreach ($visible as $i => $item) {
-            $style = $styles->of(ModalRowStyle::role(RowSelection::of(($windowStart + $i) === $selected, ($windowStart + $i) === $overlay['hovered'])));
+            $row = RowSelection::of(($windowStart + $i) === $selected, ($windowStart + $i) === $overlay['hovered']);
+            $style = $styles->of(ModalRowStyle::role($row));
             $hintWidth = \mb_strwidth($item['hint']);
-            $label = AnsiText::truncate($item['label'], $width - $hintWidth - 3, pad: true);
-            $content[] = $style->apply(' '.$label.' '.$styles->of(Role::CompletionHint)->apply($item['hint']).' ');
+            // A checklist's box leads its label, as a browser's does, and is
+            // not part of it: the filter matches the words alone.
+            $box = \array_key_exists('checked', $item) ? FieldBox::checkbox($item['checked'], tint: RowSelection::Selected === $row ? null : $styles).' ' : '';
+            $label = AnsiText::truncate($item['label'], $width - $hintWidth - 3 - self::boxWidth($item), pad: true);
+            $content[] = $style->apply(' '.$box.$label.' '.$styles->of(Role::CompletionHint)->apply($item['hint']).' ');
         }
         if ([] === $visible) {
             $content[] = $styles->merge(Role::PopupRow, Role::CompletionHint)->apply(AnsiText::truncate(' '.$emptyMessage, $width, pad: true, ellipsis: ''));
@@ -240,5 +244,15 @@ final class PickerLayout
             $boundTop + \max(0, \intdiv($boundBottom - $boundTop - $boxRows, num2: 3)),
             $boundLeft + \max(0, \intdiv($boundRight - $boundLeft - $boxWidth, num2: 2)),
         ];
+    }
+
+    /**
+     * The columns a checklist item's box and its gap take, 0 for any other item.
+     *
+     * @param array{label: string, hint: string, value: string, checked?: bool} $item
+     */
+    private static function boxWidth(array $item): int
+    {
+        return \array_key_exists('checked', $item) ? FieldBox::CHECKBOX_WIDTH + 1 : 0;
     }
 }

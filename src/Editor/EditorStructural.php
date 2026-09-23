@@ -28,7 +28,7 @@ final class EditorStructural
     /**
      * @param \Closure(): void $invalidate   request a redraw
      * @param \Closure(): void $notifyChange announce a buffer edit
-     * @param \Closure(string, list<array{label: string, hint: string, value: string}>, callable(string): void): void $openListOverlay open a modal list menu
+     * @param \Closure(string, list<array{label: string, hint: string, value: string, checked?: bool}>, callable(string): void): void $openListOverlay open a modal list menu
      */
     public function __construct(
         private readonly Document $document,

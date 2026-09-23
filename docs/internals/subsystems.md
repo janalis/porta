@@ -318,7 +318,11 @@ browser's filled box, but only off the selected row: accent on the selection's
 shade is too faint to read, so the callers pass the tint only there. A settings
 checkbox answers Space and Enter; the arrows and brackets that step its
 neighbours are inert on it. The Welcome steps are not checkboxes: they are
-run, not ticked, so they wear plain status marks (`✓` / `○` / `→`). A checkbox acts on the first click, on its label as on its box. Where
+run, not ticked, so they wear plain status marks (`✓` / `○` / `→`). A list
+overlay whose items carry `checked` is a checklist (the debugger's exception
+filters): `PickerLayout` draws the box before the label, the filter matches
+the label alone, and Space picks, which toggles, instead of typing into the
+filter. A checkbox acts on the first click, on its label as on its box. Where
 the row's text is a link of its own (the git changes list, the Find preview)
 only the box and a column either side of it toggle.
 

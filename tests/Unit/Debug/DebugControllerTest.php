@@ -1095,7 +1095,7 @@ final class DebugControllerTest extends TestCase
         $this->assertStringContainsString('[✓] Warnings', $screen, 'the overlay re-opened with the new state');
 
         $this->editor->handleInput("\x1b[B");
-        $this->editor->handleInput("\r"); // toggle Uncaught Exceptions off
+        $this->editor->handleInput(' '); // Space, a checkbox's key: toggle Uncaught Exceptions off
         $this->assertSame(['filters' => ['warning']], $this->client->argumentsOf('setExceptionBreakpoints'));
 
         $this->editor->handleInput("\x1b"); // Escape leaves the loop
