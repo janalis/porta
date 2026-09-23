@@ -53,4 +53,41 @@ final class MenuOverlayControllerTest extends TestCase
         $rendered = \implode("\n", $pane->render(new RenderContext(100, 24)));
         $this->assertStringContainsString('Copy', $rendered, 'the framed dropdown composited onto the pane');
     }
+
+    /**
+     * A select's list wears the heavy, focused frame — it holds the keys —
+     * and a list that must flip up because the select sits near the bottom
+     * ends above the select's top border instead of covering the select.
+     */
+    public function testAListboxIsHeavyFramedAndFlipsAboveItsControl(): void
+    {
+        $this->renderer = new Renderer(new StyleSheet());
+        $this->tui = new BidiTui(
+            terminal: new VirtualTerminal(columns: 100, rows: 24),
+            keybindings: new Keybindings([]),
+            renderer: $this->renderer,
+        );
+        $pane = new TestOverlayPane();
+        $this->tui->add($pane);
+        $this->frame();
+        $contextMenu = new ContextMenu();
+        $controller = new MenuOverlayController($this->renderer, new MenuBarWidget(), $contextMenu, new MenuOverlayPanes([$pane], static fn (): array => []));
+
+        $contextMenu->openListbox([new MenuItem('dark', '', null), new MenuItem('light', '', null), new MenuItem('high', '', null)], 0, 20);
+        $controller->setContextAnchor(23, 10, above: 20); // the select occupies rows 20-22
+        $controller->refreshContextMenu();
+
+        $region = $controller->contextMenuDropdown();
+        $this->assertInstanceOf(DropdownRegion::class, $region);
+        $this->assertSame(15, $region->top, 'five framed rows ending on row 19, just above the select');
+        $rendered = \implode("\n", $pane->render(new RenderContext(100, 24)));
+        $this->assertStringContainsString('┏', $rendered, 'the heavy frame');
+        $this->assertStringContainsString('┃', $rendered);
+
+        $contextMenu->open([new MenuItem('Copy', '', null)]);
+        $controller->setContextAnchor(23, 10); // a right-click: no control to clear
+        $controller->refreshContextMenu();
+        $this->assertSame(20, $controller->contextMenuDropdown()?->top, 'a menu flips to end on its anchor row, as before');
+        $this->assertStringNotContainsString('┏', \implode("\n", $pane->render(new RenderContext(100, 24))), 'and keeps the rounded frame');
+    }
 }

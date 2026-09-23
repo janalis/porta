@@ -95,6 +95,7 @@ final class SettingsHighlightController
                 hint: $this->translator->trans('Used for any language without its own choice below'),
                 origin: $this->provenance->originOf(['highlight', 'default']),
                 shadowed: $this->provenance->shadowsGlobal(['highlight', 'default']),
+                fieldset: $this->translator->trans('Default'),
             ),
         ];
 
@@ -111,6 +112,7 @@ final class SettingsHighlightController
                 optionLabels: [self::AUTO => $this->translator->trans('default')],
                 origin: $this->provenance->originOf(['highlight', 'languages', $language]),
                 shadowed: $this->provenance->shadowsGlobal(['highlight', 'languages', $language]),
+                fieldset: $this->translator->trans('Per language'),
             );
         }
 

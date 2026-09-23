@@ -26,10 +26,13 @@ final class SettingsFormWidgetTest extends TestCase
     use ReadsSettingsForm;
 
     /**
-     * The setting rows only: the form renders a title above them and a key
-     * legend below, and neither is addressable by a row index. Tests that
-     * genuinely assert ORDER slice through here; tests that assert one named
-     * row's content use {@see ReadsSettingsForm::settingRow()} instead.
+     * One line per setting: the row that carries its label and value. The
+     * form renders a title above and a key legend below, fieldset legends
+     * between groups, and boxed controls three rows tall — none of which is
+     * addressable by an item index — so this keeps each item's label row and
+     * any padding below the last one. Tests that genuinely assert ORDER slice
+     * through here; tests that assert one named row's content use
+     * {@see ReadsSettingsForm::settingRow()} instead.
      *
      * @param list<string> $rendered
      *
@@ -37,7 +40,10 @@ final class SettingsFormWidgetTest extends TestCase
      */
     private function body(array $rendered): array
     {
-        return \array_values(\array_slice($rendered, offset: 1, length: -1));
+        return \array_values(\array_filter(
+            \array_slice($rendered, offset: 1, length: -1),
+            static fn (string $line): bool => 1 !== \preg_match('/^\s*─ |[╭╮╰╯┏┓┗┛╔╗╚╝]/u', AnsiUtils::stripAnsiCodes($line)),
+        ));
     }
 
     use RendersWidget;
@@ -96,19 +102,19 @@ final class SettingsFormWidgetTest extends TestCase
 
     public function testRendersCheckboxesSteppersAndRestartNote(): void
     {
-        $screen = $this->plain($this->widget()->render(new RenderContext(60, 8)));
+        $screen = $this->plain($this->widget()->render(new RenderContext(60, 12)));
 
         // Label first, control in the shared column — a Bool's checkbox used to
         // sit at column 1, ahead of its label and out of line with every other
         // kind's control.
         $this->assertMatchesRegularExpression('/Inline diagnostics\s+\[✓\]/u', $screen);
         $this->assertMatchesRegularExpression('/Relative line numbers\s+\[ \]/', $screen);
-        $this->assertMatchesRegularExpression('/Theme\s+< dark >/', $screen);
-        $this->assertMatchesRegularExpression('/Tab width\s+< 4 >/', $screen);
+        $this->assertMatchesRegularExpression('/Theme\s+│ dark\s+▾ │/u', $screen, 'a choice is a select');
+        $this->assertMatchesRegularExpression('/Tab width\s+│ ◂\s+4\s+▸ │/u', $screen, 'a number is a stepper between two arrows');
         $this->assertStringContainsString('· applies on restart', $screen, 'restart rows are annotated');
     }
 
-    public function testActionRowRendersABracketedButtonAndActuatesForwardOnly(): void
+    public function testActionRowRendersABoxedButtonAndActuatesForwardOnly(): void
     {
         $changes = [];
         $widget = new SettingsFormWidget(new Translator('en'));
@@ -118,8 +124,8 @@ final class SettingsFormWidgetTest extends TestCase
             new SettingsRow(key: 'pluginRemove:project:demo', label: 'demo (project)', kind: SettingsRowKind::Action, value: 'Remove', restart: false),
         ]);
 
-        $screen = $this->plain($widget->render(new RenderContext(60, 4)));
-        $this->assertStringContainsString('demo (project)  [Remove]', $screen);
+        $screen = $this->plain($widget->render(new RenderContext(60, 5)));
+        $this->assertMatchesRegularExpression('/demo \(project\)\s+┃\s+Remove\s+┃/u', $screen, 'a boxed button, heavy while it has the keys');
 
         $widget->handleInput("\x1b[D"); // ← is a no-op on a button, even without onChange
         $widget->onChange(static function (string $key, bool|int|string $value) use (&$changes): bool {
@@ -131,7 +137,7 @@ final class SettingsFormWidgetTest extends TestCase
         $this->assertSame([], $changes, 'a button has no value to step back');
 
         $widget->handleInput("\r"); // Enter actuates
-        $widget->handleClick(1); // so does a click on the selected row
+        $widget->handleClick(2, 0); // so does a click on the selected item
         $this->assertSame(
             [
                 ['pluginRemove:project:demo', 'Remove'],
@@ -142,7 +148,7 @@ final class SettingsFormWidgetTest extends TestCase
     }
 
     /** The armed half of a two-press destructive confirm wears the danger shade. */
-    public function testAnArmedDangerRowWearsTheDangerShade(): void
+    public function testAnArmedDangerRowWearsTheDoubleBorder(): void
     {
         $widget = new SettingsFormWidget(new Translator('en'));
         AttachedStyles::attach($widget);
@@ -153,12 +159,16 @@ final class SettingsFormWidgetTest extends TestCase
         ];
 
         $widget->setRows($row(false));
-        $calm = $widget->render(new RenderContext(60, 2))[1];
+        $calm = $this->plain($widget->render(new RenderContext(60, 5)));
         $widget->setRows($row(true));
-        $armed = $widget->render(new RenderContext(60, 2))[1];
+        $armed = $this->plain($widget->render(new RenderContext(60, 5)));
 
-        $this->assertNotSame($calm, $armed, 'arming restyles the row');
-        $this->assertSame($this->plain([$calm]), $this->plain([$armed]), 'same text, different shade');
+        // The armed button is double-bordered, so "this press destroys" reads
+        // by shape — the DangerBg tint it used to wear was plain without colour.
+        $this->assertStringContainsString('┃ ', $calm, 'at rest it is the focused item: heavy');
+        $this->assertStringContainsString('╔═', $armed, 'armed, it is double');
+        $this->assertStringContainsString('║ ', $armed);
+        $this->assertStringContainsString('Remove', $armed, 'the caption stays');
     }
 
     public function testChoiceRowRendersOptionLabelInsteadOfValue(): void
@@ -172,8 +182,8 @@ final class SettingsFormWidgetTest extends TestCase
 
         $screen = $this->plain($widget->render(new RenderContext(60, 8)));
 
-        $this->assertStringContainsString('Language  < Français >', $screen, 'shows the language name');
-        $this->assertStringNotContainsString('< fr >', $screen, 'not the language code');
+        $this->assertMatchesRegularExpression('/Language\s+┃ Français\s+▾ ┃/u', $screen, 'shows the language name in the select');
+        $this->assertStringNotContainsString('┃ fr ', $screen, 'not the language code');
     }
 
     public function testCyclingALabelledChoiceStillEmitsTheCodeValue(): void
@@ -318,13 +328,14 @@ final class SettingsFormWidgetTest extends TestCase
     public function testAFirstClickSelectsWithoutChangingAnything(): void
     {
         $widget = $this->widget($changes);
+        $widget->render(new RenderContext(60, 12)); // a click lands on what was drawn
 
-        $widget->handleClick(2); // pane row 2 = the second setting
+        $widget->handleClick(2, 0); // pane row 2 = the second setting, a one-row checkbox
 
         $this->assertSame(1, Probe::object($widget, 'list')->selected(), 'the click moved the selection');
         $this->assertSame([], $changes, 'and changed nothing');
 
-        $widget->handleClick(2); // the same row, now selected
+        $widget->handleClick(2, 0); // the same row, now selected
 
         $this->assertSame([['relativeLineNumbers', true]], $changes, 'the second click actuates');
     }
@@ -333,8 +344,8 @@ final class SettingsFormWidgetTest extends TestCase
     {
         $widget = $this->widget($changes);
 
-        $widget->handleClick(0); // the title row
-        $widget->handleClick(99); // past the last row
+        $widget->handleClick(0, 0); // the title row
+        $widget->handleClick(99, 0); // past the last row
 
         $this->assertSame(0, Probe::object($widget, 'list')->selected());
         $this->assertSame([], $changes);
@@ -420,8 +431,12 @@ final class SettingsFormWidgetTest extends TestCase
 
     public function testTextRowRendersItsValueAndItsHintAsADimmedDetail(): void
     {
-        $rendered = $this->textWidget()->render(new RenderContext(60, 4));
-        $this->assertMatchesRegularExpression('/LSP server\s+│ phpactor +│/u', AnsiUtils::stripAnsiCodes($this->body($rendered)[0]), 'the value sits in a field at rest');
+        $rendered = $this->textWidget()->render(new RenderContext(60, 8));
+        $this->assertMatchesRegularExpression(
+            '/LSP server\s+┃ phpactor +┃/u',
+            AnsiUtils::stripAnsiCodes($this->body($rendered)[0]),
+            'the value sits in a field — heavy, the focused form\'s selected item',
+        );
         $this->assertStringContainsString('auto: none', AnsiUtils::stripAnsiCodes($this->body($rendered)[1]), 'the hint describes the row');
         $this->assertStringContainsString("\x1b[38;5;245m", $this->body($rendered)[1], 'and is dimmed');
     }
@@ -447,7 +462,7 @@ final class SettingsFormWidgetTest extends TestCase
 
         $widget->handleInput('-');
         $widget->handleInput('x');
-        $this->assertStringContainsString('phpactor-x', AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(60, 4))[1]));
+        $this->assertStringContainsString('phpactor-x', AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(60, 6))[2]));
 
         $widget->handleInput("\x7f"); // backspace
         $widget->handleInput("\r"); // Enter commits
@@ -506,9 +521,10 @@ final class SettingsFormWidgetTest extends TestCase
     public function testClickStartsTextEditingAndNavIsSuppressedWhileEditing(): void
     {
         $widget = $this->textWidget($changes);
-        $widget->handleClick(2); // pane row 2 = the empty text row: selects it
+        $widget->render(new RenderContext(60, 10));
+        $widget->handleClick(5, 0); // pane row 5 = the empty text row's value row (each box is three): selects it
         $this->assertNull(Probe::get($widget, 'editing'), 'the first click only selects');
-        $widget->handleClick(2); // the second opens the editor
+        $widget->handleClick(4, 30); // the second, on its box's top border, opens the editor
         $this->assertNotNull(Probe::get($widget, 'editing'));
         $this->assertSame(1, Probe::object($widget, 'list')->selected());
 
@@ -601,7 +617,7 @@ final class SettingsFormWidgetTest extends TestCase
     public function testStaleTextFieldAfterSetRowsDoesNotLeakIntoAnUneditedRow(): void
     {
         // Same divergent-state class as above, but exercised through
-        // textValue()'s own (separate) editing/editField guard.
+        // textControl()'s own (separate) editing/editField guard.
         $widget = $this->textWidget();
         $widget->handleInput("\r"); // start editing row 0
         $widget->handleInput('Z'); // mutate the (soon-to-be-stale) TextField
@@ -609,7 +625,7 @@ final class SettingsFormWidgetTest extends TestCase
             new SettingsRow(key: 'lspServer', label: 'LSP server', kind: SettingsRowKind::Text, value: 'phpactor', restart: false),
         ]);
 
-        $screen = AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(60, 4))[1]);
+        $screen = AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(60, 5))[2]);
 
         $this->assertStringContainsString('phpactor', $screen);
         $this->assertStringNotContainsString('Z', $screen, 'the stale editor from before setRows() must not render');
@@ -666,8 +682,8 @@ final class SettingsFormWidgetTest extends TestCase
         $widget->setRows($rows);
         $widget->render(new RenderContext(60, 6)); // 1 title + 4 settings + the legend
 
-        $widget->handleClick(5); // the legend
-        $widget->handleClick(5); // again — on an already-selected row this ACTUATES
+        $widget->handleClick(5, 0); // the legend
+        $widget->handleClick(5, 0); // again — on an already-selected row this ACTUATES
 
         $this->assertSame(0, Probe::object($widget, 'list')->selected(), 'the legend is not a setting');
         $this->assertSame([], $changes, 'and clicking it writes no config');
@@ -679,7 +695,8 @@ final class SettingsFormWidgetTest extends TestCase
         $widget = $this->widget($changes);
         $widget->setRows([new SettingsRow(key: 'theme', label: 'Theme', kind: SettingsRowKind::Choice, value: 'dark', restart: false, options: ['dark', 'mid', 'light'])]);
 
-        $widget->handleClick(1); // the selected row: a click actuates it
+        $widget->render(new RenderContext(60, 8)); // the clicks land on what was drawn
+        $widget->handleClick(2, 0); // the selected item's label row, left of the select: a click actuates it
 
         $this->assertSame([['theme', 'mid']], $changes, 'a click steps by exactly one option, not two');
     }
@@ -813,10 +830,10 @@ final class SettingsFormWidgetTest extends TestCase
 
     public function testBlankPaddingRowsContinueRatherThanStoppingTheLoop(): void
     {
-        $lines = $this->widget()->render(new RenderContext(60, 8)); // 5 real rows + 3 blank
+        $lines = $this->widget()->render(new RenderContext(60, 14)); // 3 checkboxes + 2 boxes (6 rows) + 3 blank
 
         $this->assertStringContainsString('Inline diagnostics', AnsiUtils::stripAnsiCodes($this->body($lines)[0]), 'the first real row still renders after the loop keeps going past index bounds');
-        $this->assertCount(8, $lines);
+        $this->assertCount(14, $lines);
         $this->assertStringContainsString('Tab width', AnsiUtils::stripAnsiCodes($this->body($lines)[4]), 'the last real row (index 4) is reached — a break at row 0 would prevent this');
     }
 
@@ -833,12 +850,12 @@ final class SettingsFormWidgetTest extends TestCase
             new SettingsRow(key: 'c', label: 'Sticky', kind: SettingsRowKind::Bool, value: true, restart: false),
         ]);
 
-        $rendered = $widget->render(new RenderContext(60, 6));
+        $rendered = $widget->render(new RenderContext(60, 10));
 
         foreach ([0, 1, 2] as $i) {
             $this->assertStringStartsWith('  ', AnsiUtils::stripAnsiCodes($this->body($rendered)[$i]), 'an unmarked row leaves the marker column blank');
         }
-        $this->assertMatchesRegularExpression('/^  Remove\s+\[Go\]/', AnsiUtils::stripAnsiCodes($this->body($rendered)[0]));
+        $this->assertMatchesRegularExpression('/^  Remove\s+│\s+Go\s+│/u', AnsiUtils::stripAnsiCodes($this->body($rendered)[0]), 'the label, then the button in the control column');
     }
 
     public function testRResetsTheSelectedRowButIsInertOnARowWithNoDefault(): void
@@ -946,7 +963,7 @@ final class SettingsFormWidgetTest extends TestCase
             new SettingsRow(key: 'c', label: 'Defaultless', kind: SettingsRowKind::Action, value: 'Go', restart: false),
         ]);
 
-        $rendered = \array_map(AnsiUtils::stripAnsiCodes(...), $this->body($widget->render(new RenderContext(60, 6))));
+        $rendered = \array_map(AnsiUtils::stripAnsiCodes(...), $this->body($widget->render(new RenderContext(60, 12))));
 
         $this->assertStringStartsWith('  Stock', $rendered[0], 'a row at its default is not marked');
         $this->assertStringStartsWith('● Changed', $rendered[1], 'a row that differs is');
@@ -1007,7 +1024,7 @@ final class SettingsFormWidgetTest extends TestCase
         $widget = new SettingsFormWidget(new Translator('en'));
         $widget->setRows([new SettingsRow(key: 'k', label: 'K', kind: SettingsRowKind::Text, value: 'set', restart: false, hint: 'auto: none')]);
 
-        $screen = AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(60, 4))[1]);
+        $screen = AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(60, 5))[2]);
 
         $this->assertStringContainsString('set', $screen);
         $this->assertStringContainsString('auto: none', $screen, 'the hint survives a row that has a value');
@@ -1025,7 +1042,7 @@ final class SettingsFormWidgetTest extends TestCase
             new SettingsRow(key: 'e', label: 'Action', kind: SettingsRowKind::Action, value: 'Go', restart: false, hint: 'action hint'),
         ]);
 
-        $screen = AnsiUtils::stripAnsiCodes(\implode("\n", $widget->render(new RenderContext(80, 8))));
+        $screen = AnsiUtils::stripAnsiCodes(\implode("\n", $widget->render(new RenderContext(80, 16))));
 
         foreach (['bool hint', 'choice hint', 'int hint', 'text hint', 'action hint'] as $hint) {
             $this->assertStringContainsString($hint, $screen, $hint.' must reach the screen');
@@ -1058,10 +1075,11 @@ final class SettingsFormWidgetTest extends TestCase
     public function testHoverTintsARowVisualOnlyAndClears(): void
     {
         $widget = $this->widget(); // the selection starts on row 0
+        $widget->render(new RenderContext(60, 12)); // the pointer lands on what was drawn
 
         $this->assertTrue($widget->hoverRow(3), 'hovering another row tints it');
         $this->assertFalse($widget->hoverRow(3), 'same row: no change');
-        $lines = $widget->render(new RenderContext(60, 10));
+        $lines = $widget->render(new RenderContext(60, 12));
         $this->assertStringContainsString("\x1b[48;5;236m", $this->body($lines)[2], 'the hovered row sits on RowHighlightBg');
         $this->assertStringNotContainsString("\x1b[48;5;236m", $this->body($lines)[0], 'the selection keeps its own shade');
 
@@ -1069,7 +1087,7 @@ final class SettingsFormWidgetTest extends TestCase
         $this->assertFalse($widget->clearHover(), 'already clear');
         $widget->hoverRow(1);
         $this->assertTrue($widget->clearHover());
-        $this->assertStringNotContainsString("\x1b[48;5;236m", \implode('', $widget->render(new RenderContext(60, 10))));
+        $this->assertStringNotContainsString("\x1b[48;5;236m", \implode('', $widget->render(new RenderContext(60, 12))));
     }
 
     /**
@@ -1201,17 +1219,21 @@ final class SettingsFormWidgetTest extends TestCase
     {
         // The CONTROL is what the mark protects; the detail beyond it is prose
         // and mirrors, separated by the space the spent mark leaves behind.
-        yield 'choice' => [new SettingsRow('theme', 'ערכת נושא', SettingsRowKind::Choice, 'dark', false, ['dark', 'light']), '< dark >'];
+        yield 'choice' => [new SettingsRow('theme', 'ערכת נושא', SettingsRowKind::Choice, 'dark', false, ['dark', 'light']), '┃ dark   ▾ ┃'];
         yield 'bool' => [new SettingsRow('sticky', 'גלילה דביקה', SettingsRowKind::Bool, true, false), '[✓]'];
-        yield 'action' => [new SettingsRow('rm', 'demo (project)', SettingsRowKind::Action, 'Remove', false), '[Remove]'];
-        yield 'int' => [new SettingsRow('indent', 'גודל הזחה', SettingsRowKind::Int, 4, false, null, 1, 8), '< 4 >'];
+        yield 'action' => [new SettingsRow('rm', 'demo (project)', SettingsRowKind::Action, 'Remove', false), '┃  Remove  ┃'];
+        // A Latin label ending in punctuation keeps its closing parenthesis:
+        // between Latin and the gap's right-to-left mark it used to mirror
+        // away, and the row read `(demo (project`.
+        yield 'latin label' => [new SettingsRow('rm', 'demo (project)', SettingsRowKind::Action, 'Remove', false), 'demo (project)'];
+        yield 'int' => [new SettingsRow('indent', 'גודל הזחה', SettingsRowKind::Int, 4, false, null, 1, 8), '┃ ◂  4   ▸ ┃'];
         yield 'int range' => [new SettingsRow('indent', 'גודל הזחה', SettingsRowKind::Int, 4, false, null, 1, 8), '1-8'];
         // A detail clause in HEBREW, which the theme row's Latin option name
         // does not exercise: wrapping the detail along with the control reads
         // as the same fix and breaks this row, because prose belongs mirrored.
         yield 'choice with a hebrew detail' => [
             new SettingsRow('scope', 'שמירת שינויים אל', SettingsRowKind::Choice, '.porta.json', false, ['.porta.json'], hint: 'להפעלה זו'),
-            '< .porta.json >',
+            '┃ .porta.json ▾ ┃',
         ];
     }
 

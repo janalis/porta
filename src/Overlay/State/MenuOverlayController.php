@@ -14,6 +14,7 @@ use Porta\Support\IntMath;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\ContextMenu;
 use Porta\Widget\MenuBarWidget;
+use Porta\Widget\Render\FieldState;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\ModalShadow;
 use Porta\Widget\Render\PopupFrame;
@@ -45,6 +46,8 @@ final class MenuOverlayController implements FloatingRegions
     private ?DropdownRegion $contextShadowRegion = null;
     private int $contextAnchorRow = 0;
     private int $contextAnchorCol = 0;
+    /** Where a panel that has to flip up ends: the row above it (a select's own top row), or the anchor row. */
+    private ?int $contextAnchorAbove = null;
 
     public function __construct(
         private readonly Renderer $renderer,
@@ -75,11 +78,17 @@ final class MenuOverlayController implements FloatingRegions
         return \array_values(\array_filter([$this->menuShadowRegion, $this->contextShadowRegion]));
     }
 
-    /** Remember the right-click point the context menu anchors at. */
-    public function setContextAnchor(int $row, int $col): void
+    /**
+     * Remember the point the context menu anchors at: the right-click cell, or
+     * the row below a select's box. $above is where a panel that must flip up
+     * ends instead — a select's top border, so an upward list never covers
+     * the control it belongs to.
+     */
+    public function setContextAnchor(int $row, int $col, ?int $above = null): void
     {
         $this->contextAnchorRow = $row;
         $this->contextAnchorCol = $col;
+        $this->contextAnchorAbove = $above;
     }
 
     /**
@@ -147,9 +156,11 @@ final class MenuOverlayController implements FloatingRegions
         [, , $screenBottom, $screenRight] = PaneBounds::union($this->panes->current(), $this->renderer) ?? [0, 0, 0, 0];
         $width = \min($this->contextMenu->panelWidth() + PopupFrame::CHROME_COLS, $screenRight);
         $col = IntMath::clamp($this->contextAnchorCol, 0, $screenRight - $width);
-        $rows = PopupFrame::wrapMenu($this->contextMenu->segments($width - PopupFrame::CHROME_COLS), $width - PopupFrame::CHROME_COLS, $this->styles);
+        // A select's open list wears the focused frame: it holds the keys.
+        $state = $this->contextMenu->isListbox() ? FieldState::Focused : FieldState::Idle;
+        $rows = PopupFrame::wrapMenu($this->contextMenu->segments($width - PopupFrame::CHROME_COLS), $width - PopupFrame::CHROME_COLS, $this->styles, $state);
         $top = ($this->contextAnchorRow + \count($rows)) > $screenBottom
-            ? \max(0, $this->contextAnchorRow - \count($rows))
+            ? \max(0, ($this->contextAnchorAbove ?? $this->contextAnchorRow) - \count($rows))
             : $this->contextAnchorRow;
 
         $this->contextMenuDropdown = new DropdownRegion($top, $col, $width, \count($rows), framed: true);

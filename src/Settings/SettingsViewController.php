@@ -12,6 +12,7 @@ use Porta\Layout\ViewRegions;
 use Porta\Widget\Settings\KeybindingsListWidget;
 use Porta\Widget\Settings\SettingsFormWidget;
 use Porta\Widget\Settings\SettingsNavWidget;
+use Porta\Workbench\Menu\ListboxOpener;
 use Porta\Workbench\Menu\ViewMenuSource;
 use Porta\Workbench\View\ContributedView;
 use Porta\Workbench\View\ViewHost;
@@ -52,6 +53,7 @@ final class SettingsViewController implements ContributedView
         private readonly SettingsProvenance $provenance,
         private readonly ShadowedWriteWarning $shadowed,
         ViewRegistry $views,
+        private readonly ListboxOpener $listbox,
     ) {
         // Minted, like git's. The nav is this view's fixed half, so it goes
         // into the sidebar once here — it used to be handed to PaneLayout as a
@@ -71,6 +73,7 @@ final class SettingsViewController implements ContributedView
         $this->form
             ->onChange($this->changeSetting(...))
             ->onReset($this->resetSetting(...))
+            ->onOpenChoice($this->openChoice(...))
             ->onFocusNext($this->focusNav(...))
             ->onExit($exit);
         $this->keymapList
@@ -264,6 +267,21 @@ final class SettingsViewController implements ContributedView
      * text as typed — the rows are NOT re-pushed in that case, because doing
      * so is exactly what used to destroy it.
      */
+    /**
+     * Drop a choice row's option list under its control; picking an option is
+     * an ordinary {@see changeSetting()}, so a pick and a step are one write.
+     */
+    private function openChoice(SettingsRow $row, int $relRow, int $relCol, int $relAbove, int $width): void
+    {
+        $options = [];
+        foreach ($row->options ?? [] as $option) {
+            $options[] = [$option, $row->optionLabels[$option] ?? $option];
+        }
+        $this->listbox->openUnder($this->form, $relRow, $relCol, $relAbove, $width, $options, (string) $row->value, function (string $value) use ($row): void {
+            $this->changeSetting($row->key, $value);
+        });
+    }
+
     private function changeSetting(string $key, bool|int|string $value): bool
     {
         if (!$this->activeSection()->change($this->section, $key, $value)) {

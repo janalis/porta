@@ -104,17 +104,18 @@ final class IdeSettingsThemeTest extends TestCase
                     $this->assertStringContainsString('Languages', $screen);
                     $this->assertStringContainsString('Inline diagnostics', $screen, 'General content shown');
                     // Toggle Inline diagnostics in the content pane. Screen row
-                    // 4: a title row, then the "Save changes to" chooser that
-                    // leads every page that writes a file, then this one.
+                    // 7: the title row (2), the boxed "Save changes to" chooser
+                    // that leads every page that writes a file (3-5), the
+                    // Editing legend (6), then this checkbox.
                     //
                     // Twice, because a click on a row that is not already
                     // selected only selects it — the first click used to
                     // actuate only because Inline diagnostics happened to be
                     // the row the page opens on, and it no longer is.
-                    $tui->handleInput("\x1b[<0;40;4M");
-                    $tui->handleInput("\x1b[<0;40;4m");
-                    $tui->handleInput("\x1b[<0;40;4M");
-                    $tui->handleInput("\x1b[<0;40;4m");
+                    $tui->handleInput("\x1b[<0;40;7M");
+                    $tui->handleInput("\x1b[<0;40;7m");
+                    $tui->handleInput("\x1b[<0;40;7M");
+                    $tui->handleInput("\x1b[<0;40;7m");
                     // Hover the nav sidebar (a tint).
                     $tui->handleInput("\x1b[<35;5;3M");
                 },
@@ -154,26 +155,29 @@ final class IdeSettingsThemeTest extends TestCase
                     // Switching pages CLAMPS the selection rather than resetting
                     // it, so which row a language page opens on depends on where
                     // the previous page left it — and "click twice" then means
-                    // one step or two. Screen row 6 is Run/debug command, a Text
-                    // row that a single click only selects.
-                    $tui->handleInput("\x1b[<0;40;6M");
-                    $tui->handleInput("\x1b[<0;40;6m");
-                    // Now actuate indent style (auto → spaces). Screen row 4:
-                    // the page title, then the "Save changes to" chooser that
-                    // leads every page writing a file, then this. Two clicks:
-                    // select, then actuate.
-                    $tui->handleInput("\x1b[<0;40;4M");
-                    $tui->handleInput("\x1b[<0;40;4m");
-                    $tui->handleInput("\x1b[<0;40;4M");
-                    $tui->handleInput("\x1b[<0;40;4m");
-                    // Edit the LSP server row, one lower than it was for the
-                    // same reason. TWO clicks: the first selects, and only a
+                    // one step or two. Screen row 11 is Indent size's label: a
+                    // select, and a single click on its LABEL only selects (a
+                    // click on its box would drop its list).
+                    $tui->handleInput("\x1b[<0;40;11M");
+                    $tui->handleInput("\x1b[<0;40;11m");
+                    // Now step indent style (auto → spaces). Screen row 8: the
+                    // page title (2), the boxed "Save changes to" chooser that
+                    // leads every page writing a file (3-5), the Indentation
+                    // legend (6), then this box, its label on its middle row.
+                    // Two clicks on the label: select, then the forward step.
+                    $tui->handleInput("\x1b[<0;40;8M");
+                    $tui->handleInput("\x1b[<0;40;8m");
+                    $tui->handleInput("\x1b[<0;40;8M");
+                    $tui->handleInput("\x1b[<0;40;8m");
+                    // Edit the LSP server row: the label row of the box after
+                    // indent size (9-11) and the Language server legend (13),
+                    // screen row 15. TWO clicks: the first selects, and only a
                     // click on the already-selected row opens the editor — a
                     // single click no longer mutates whatever it lands on.
-                    $tui->handleInput("\x1b[<0;40;7M");
-                    $tui->handleInput("\x1b[<0;40;7m");
-                    $tui->handleInput("\x1b[<0;40;7M");
-                    $tui->handleInput("\x1b[<0;40;7m");
+                    $tui->handleInput("\x1b[<0;40;15M");
+                    $tui->handleInput("\x1b[<0;40;15m");
+                    $tui->handleInput("\x1b[<0;40;15M");
+                    $tui->handleInput("\x1b[<0;40;15m");
                     foreach (\str_split('my-ls --stdio') as $char) {
                         $tui->handleInput($char);
                     }

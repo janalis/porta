@@ -39,7 +39,7 @@ use Symfony\Component\Tui\Tui;
  * point assertion says "this reads as one thing rather than two".
  *
  * That is not hypothetical. The scope row shipped reading
- * `Save changes to < .porta.json > · for this session · ~/.porta/config.json`
+ * `Save changes to │ .porta.json ▾ │ · for this session · ~/.porta/config.json`
  * — two file paths joined by a middle dot, which parses as two destinations.
  * Every gate was green; the defect was found by looking at the screen. This
  * turns looking at the screen into something that happens on every commit.

@@ -3198,6 +3198,50 @@
         <source>Alt+A again to DELETE every match — the replacement is empty</source>
         <target>もう一度 Alt+A ですべての一致を削除します — 置換文字列が空です</target>
       </trans-unit>
+      <trans-unit id="893">
+        <source>Editing</source>
+        <target>編集</target>
+      </trans-unit>
+      <trans-unit id="894">
+        <source>Search</source>
+        <target>検索</target>
+      </trans-unit>
+      <trans-unit id="895">
+        <source>Display</source>
+        <target>表示</target>
+      </trans-unit>
+      <trans-unit id="896">
+        <source>Layout</source>
+        <target>レイアウト</target>
+      </trans-unit>
+      <trans-unit id="897">
+        <source>Editor</source>
+        <target>エディター</target>
+      </trans-unit>
+      <trans-unit id="898">
+        <source>Default</source>
+        <target>デフォルト</target>
+      </trans-unit>
+      <trans-unit id="899">
+        <source>Per language</source>
+        <target>言語ごと</target>
+      </trans-unit>
+      <trans-unit id="900">
+        <source>Indentation</source>
+        <target>インデント</target>
+      </trans-unit>
+      <trans-unit id="901">
+        <source>Language server</source>
+        <target>言語サーバー</target>
+      </trans-unit>
+      <trans-unit id="902">
+        <source>Run &amp; debug</source>
+        <target>実行とデバッグ</target>
+      </trans-unit>
+      <trans-unit id="903">
+        <source>Installed</source>
+        <target>インストール済み</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

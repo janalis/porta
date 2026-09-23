@@ -43,6 +43,7 @@ final readonly class SettingsDebugController
                 hint: $this->translator->trans('not configured'),
                 origin: $this->provenance->originOf(['languages', $language, 'debug', 'adapter']),
                 shadowed: $this->provenance->shadowsGlobal(['languages', $language, 'debug', 'adapter']),
+                fieldset: $this->translator->trans('Run & debug'),
             ),
             new SettingsRow(
                 key: 'debugLaunch',
@@ -54,6 +55,7 @@ final readonly class SettingsDebugController
                 hint: $this->translator->trans('JSON merged into the DAP launch request'),
                 origin: $this->provenance->originOf(['languages', $language, 'debug', 'launch']),
                 shadowed: $this->provenance->shadowsGlobal(['languages', $language, 'debug', 'launch']),
+                fieldset: $this->translator->trans('Run & debug'),
             ),
         ];
     }

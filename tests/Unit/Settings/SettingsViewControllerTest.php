@@ -33,6 +33,8 @@ use Porta\Lsp\LspReconfigurer;
 use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\RefactoringUndo;
 use Porta\Lsp\WorkspaceEditor;
+use Porta\Overlay\State\MenuOverlayController;
+use Porta\Overlay\State\MenuOverlayPanes;
 use Porta\Plugin\Lifecycle\PluginInstaller;
 use Porta\Plugin\Lifecycle\ToolInstaller;
 use Porta\Plugin\Runtime\PluginHost;
@@ -76,6 +78,7 @@ use Porta\Ui\Theme\StyleSheetThemer;
 use Porta\Ui\Theme\Themes;
 use Porta\Widget\BreadcrumbsWidget;
 use Porta\Widget\CodeEditorWidget;
+use Porta\Widget\ContextMenu;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\Settings\KeybindingsListWidget;
 use Porta\Widget\Settings\SettingsFormWidget;
@@ -83,6 +86,7 @@ use Porta\Widget\Settings\SettingsNavWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Widget\TabBarWidget;
 use Porta\Workbench\EditorArea;
+use Porta\Workbench\Menu\ListboxOpener;
 use Porta\Workbench\Menu\MenuContributions;
 use Porta\Workbench\Menu\MenuRebuilder;
 use Porta\Workbench\Notifier;
@@ -117,6 +121,8 @@ final class SettingsViewControllerTest extends TestCase
     private PluginSettings $pluginSettings;
     private FakePluginLifecycle $lifecycle;
     private ViewRegions $regions;
+    private ContextMenu $contextMenu;
+    private Renderer $renderer;
 
     /** @param list<SettingsSection>|null $sections */
     /** The session scope the sections share; set by {@see controller()}. */
@@ -172,6 +178,7 @@ final class SettingsViewControllerTest extends TestCase
         $this->content = $regions->mint('settings')->content();
         $menuBar = new MenuBarWidget();
         $menuBar->setId('menu');
+        $this->contextMenu = new ContextMenu();
 
         $files = ConfigFiles::for($this->project->dir);
         // Pinned to Project so every persist below lands in the temp project;
@@ -182,6 +189,7 @@ final class SettingsViewControllerTest extends TestCase
         $scopeRow = new SettingsScopeRow($scope, $files, new Translator('en'));
 
         $renderer = new Renderer(new StyleSheet());
+        $this->renderer = $renderer;
         $this->tui = new Tui(terminal: new VirtualTerminal(columns: 100, rows: 24), keybindings: new Keybindings([]), renderer: $renderer);
         $editor = new CodeEditorWidget();
         $status = new StatusBarWidget();
@@ -365,6 +373,13 @@ final class SettingsViewControllerTest extends TestCase
             new SettingsProvenance(ConfigFiles::for($this->project->dir)),
             new ShadowedWriteWarning($scope, ConfigFiles::for($this->project->dir), new Translator('en'), $notifier),
             views: $views ?? new ViewRegistry(),
+            listbox: new ListboxOpener(
+                $this->tui,
+                $renderer,
+                $menuBar,
+                new MenuOverlayController($renderer, $menuBar, $this->contextMenu, new MenuOverlayPanes([$this->form], static fn (): array => [])),
+                $this->contextMenu,
+            ),
         );
         // Compiled from #[AsEventListener] in the container; wired by hand here.
         $this->sectionEvents->addListener(SettingsSectionRequested::class, $controller->onSectionRequested(...));
@@ -413,14 +428,40 @@ final class SettingsViewControllerTest extends TestCase
         $this->selectSettingsSection($this->nav, 'highlighting');
         $this->assertSame('highlighting', $this->nav->selectedId());
 
-        $screen = \implode("\n", $this->form->render(new RenderContext(80, 12)));
+        $screen = \implode("\n", $this->form->render(new RenderContext(80, 40)));
         $this->assertStringContainsString('Default highlighter', $screen);
 
         $this->form->handleInput("\x1b[B"); // past the "Save changes to" lead row
-        $this->form->handleInput("\r"); // cycle the default choice off "auto"
+        $this->form->handleInput("\x1b[C"); // → steps the default choice off "auto" (Enter would open its list)
         $config = \json_decode((string) \file_get_contents($this->project->path('.porta.json')), associative: true);
 
         $this->assertArrayHasKey('highlight', \is_array($config) ? $config : []);
+    }
+
+    /**
+     * Enter on a choice drops its option list under the select — the context
+     * menu in its listbox mode, on the option the setting holds — and a pick
+     * is an ordinary change: persisted like a step.
+     */
+    public function testEnterOnAChoiceDropsItsListAndAPickPersists(): void
+    {
+        $controller = $this->controller();
+        $controller->open();
+        $this->selectSettingsSection($this->nav, 'interface');
+        $this->form->render(new RenderContext(100, 22));
+        $this->form->handleInput("\x1b[B"); // Language
+
+        $this->form->handleInput("\r");
+        $this->assertFalse($this->contextMenu->isOpen(), 'a form never drawn on screen has nothing to hang a list from');
+
+        // Drawn (its content pane as the root), it has a screen rect to hang the list from.
+        $this->renderer->render($this->content, 100, 24);
+        $this->form->handleInput("\r");
+
+        $this->assertTrue($this->contextMenu->isListbox(), 'the list is open');
+        $this->contextMenu->handleInput("\x1b[B"); // from English, the current option, to Français
+        $this->contextMenu->handleInput("\r");
+        $this->assertSame('fr', IdeConfig::load($this->project->dir)->settings['language']);
     }
 
     public function testNavSelectingKeybindingsSwapsTheContent(): void
@@ -448,7 +489,7 @@ final class SettingsViewControllerTest extends TestCase
         // Tall enough for the whole page: the assertion below names its LAST
         // row, so a viewport that merely fits today's count would start failing
         // the next time the page gains one.
-        $screen = \implode("\n", $this->form->render(new RenderContext(80, 24)));
+        $screen = \implode("\n", $this->form->render(new RenderContext(80, 40)));
         $this->assertStringContainsString('Theme', $screen);
         $this->assertStringContainsString('Line numbers', $screen);
         $this->assertStringContainsString('Sticky scroll', $screen);
@@ -460,6 +501,7 @@ final class SettingsViewControllerTest extends TestCase
         $this->form->handleInput("\x1b[B"); // Theme
         $this->form->handleInput("\x1b[B"); // Cursor shape
         $this->form->handleInput("\x1b[B"); // Tab bar position
+        $this->form->handleInput("\x1b[B"); // Breadcrumbs bar (Layout, beside the tab bar)
         $this->form->handleInput("\x1b[B"); // Line numbers
         $this->form->handleInput("\x1b[B"); // Sticky scroll
         $this->form->handleInput(' ');
@@ -475,17 +517,18 @@ final class SettingsViewControllerTest extends TestCase
         $this->assertSame('lang:php', $this->nav->selectedId());
         $this->assertSame(['settings-form'], $this->ids($this->content));
 
-        $screen = \implode("\n", $this->form->render(new RenderContext(80, 8)));
+        $screen = \implode("\n", $this->form->render(new RenderContext(80, 40)));
         $this->assertStringContainsString('Indent style', $screen);
         $this->assertStringContainsString('Indent size', $screen);
         $this->assertStringContainsString('LSP server', $screen, 'the language section also shows its LSP server row');
 
         // Actuate the indent-style row (auto → spaces) → persists to the languages block.
-        // Pane row 0 is the title and pane row 1 is the "Save changes to" lead
-        // row SettingsScopeRow prepends, so Indent style sits at pane row 2:
-        // the first click moves the selection onto it, the second actuates it.
-        $this->form->handleClick(2);
-        $this->form->handleClick(2);
+        // Pane row 0 is the title, rows 1-3 the boxed "Save changes to" lead
+        // SettingsScopeRow prepends, row 4 the Indentation legend, so Indent
+        // style's label row is pane row 6: the first click on its label moves
+        // the selection onto it, the second steps it.
+        $this->form->handleClick(6, 0);
+        $this->form->handleClick(6, 0);
         $this->assertSame('spaces', IdeConfig::load($this->project->dir)->languages['php']['indentStyle']);
     }
 
@@ -495,9 +538,9 @@ final class SettingsViewControllerTest extends TestCase
         $controller->open();
         $this->selectSettingsSection($this->nav, 'lang:php');
 
-        // The LSP row is the fourth row of a language section (after indent + run command); edit it inline.
+        // The LSP row is the third row of a language section (after the two
+        // indent rows: it opens the Language server group); edit it inline.
         $this->form->handleInput("\x1b[B"); // past the "Save changes to" lead row
-        $this->form->handleInput("\x1b[B");
         $this->form->handleInput("\x1b[B");
         $this->form->handleInput("\x1b[B");
         $this->form->handleInput("\r"); // start editing
@@ -672,11 +715,13 @@ final class SettingsViewControllerTest extends TestCase
         $controller = $this->controller();
         $controller->open();
 
-        // Pane row 1 is the "Save changes to" lead row, so General's first own
-        // row, Inline diagnostics, is pane row 2 — click once to select it,
-        // once to actuate (default true → false).
-        $this->form->handleClick(2);
-        $this->form->handleClick(2);
+        // Pane rows 1-3 are the boxed "Save changes to" lead and row 4 the
+        // Editing legend, so General's first own row, the Inline diagnostics
+        // checkbox, is pane row 5 — click once to select it, once to actuate
+        // (default true → false).
+        $this->form->render(new RenderContext(80, 24));
+        $this->form->handleClick(5, 0);
+        $this->form->handleClick(5, 0);
         $this->assertFalse(IdeConfig::load($this->project->dir)->settings['inlineDiagnostics']);
     }
 
@@ -758,10 +803,10 @@ final class SettingsViewControllerTest extends TestCase
         $this->assertSame('plugins', $this->nav->selectedId());
         $this->assertSame(['settings-form'], $this->ids($this->content));
 
-        $screen = \implode("\n", $this->form->render(new RenderContext(80, 8)));
+        $screen = AnsiUtils::stripAnsiCodes(\implode("\n", $this->form->render(new RenderContext(80, 40))));
         $this->assertStringContainsString('Save changes to', $screen);
         $this->assertStringContainsString('Install plugin', $screen);
-        $this->assertMatchesRegularExpression('/demo \(project\)\s+\[Remove\]/', $screen);
+        $this->assertMatchesRegularExpression('/demo \(project\)\s+│\s+Remove\s+│/u', $screen);
 
         // Actuating the Remove row twice (two-press confirm) routes to the
         // plugins controller and the refreshed rows drop the plugin.
@@ -770,7 +815,7 @@ final class SettingsViewControllerTest extends TestCase
         $this->form->handleInput("\r");
         $this->form->handleInput("\r");
         $this->assertDirectoryDoesNotExist($this->project->dir.'/.porta/plugins/demo');
-        $screen = \implode("\n", $this->form->render(new RenderContext(80, 8)));
+        $screen = \implode("\n", $this->form->render(new RenderContext(80, 40)));
         $this->assertStringNotContainsString('demo (project)', $screen);
     }
 
@@ -788,8 +833,8 @@ final class SettingsViewControllerTest extends TestCase
         \mkdir($this->project->dir.'/.porta/plugins/late', permissions: 0o777, recursive: true);
         \file_put_contents($this->project->dir.'/.porta/plugins/late/plugin.php', data: "<?php\n");
         $controller->refresh(); // re-reads the rows: the late plugin appears
-        $screen = \implode("\n", $this->form->render(new RenderContext(80, 8)));
-        $this->assertMatchesRegularExpression('/late \(project\)\s+\[Remove\]/', $screen);
+        $screen = AnsiUtils::stripAnsiCodes(\implode("\n", $this->form->render(new RenderContext(80, 40))));
+        $this->assertMatchesRegularExpression('/late \(project\)\s+│\s+Remove\s+│/u', $screen);
     }
 
     public function testPluginPageRoutesRowsAndChangesAndFallsBackWhenRemoved(): void
@@ -805,7 +850,7 @@ final class SettingsViewControllerTest extends TestCase
         $this->nav->setPluginEntries(['demo']);
         $this->selectSettingsSection($this->nav, 'plugin:demo');
         $this->assertSame('plugin:demo', $this->nav->selectedId());
-        $screen = \implode("\n", $this->form->render(new RenderContext(80, 8)));
+        $screen = \implode("\n", $this->form->render(new RenderContext(80, 40)));
         $this->assertStringContainsString('Enabled', $screen);
         $this->assertStringContainsString('Binary path', $screen);
 
@@ -822,7 +867,7 @@ final class SettingsViewControllerTest extends TestCase
         $this->lifecycle->names = [];
         $controller->refresh();
         $this->assertSame('plugins', $this->nav->selectedId());
-        $screen = \implode("\n", $this->form->render(new RenderContext(80, 8)));
+        $screen = \implode("\n", $this->form->render(new RenderContext(80, 40)));
         $this->assertStringContainsString('Install plugin', $screen);
     }
 
@@ -1022,8 +1067,8 @@ final class SettingsViewControllerTest extends TestCase
         $controller->refresh();
 
         $this->assertTrue(Probe::get($this->tui, 'renderRequested'), 'refresh() on the plugins section must request a render');
-        $screen = \implode("\n", $this->form->render(new RenderContext(80, 8)));
-        $this->assertMatchesRegularExpression('/late \(project\)\s+\[Remove\]/', $screen);
+        $screen = AnsiUtils::stripAnsiCodes(\implode("\n", $this->form->render(new RenderContext(80, 40))));
+        $this->assertMatchesRegularExpression('/late \(project\)\s+│\s+Remove\s+│/u', $screen);
     }
 
     /**

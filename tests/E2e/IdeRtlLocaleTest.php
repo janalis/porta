@@ -409,7 +409,7 @@ final class IdeRtlLocaleTest extends TestCase
                         $screen .= AnsiUtils::stripAnsiCodes($reorder->reorderRow($line, $runs[$row]))."\n";
                     }
 
-                    $this->assertStringContainsString('< dark >', $screen, 'the theme value reads as one bracketed block');
+                    $this->assertMatchesRegularExpression('/[│┃] dark\s+▾ [│┃]/u', $screen, 'the theme value reads as one intact select');
                     $this->assertStringNotContainsString("\u{200E}", $screen, 'and no directional mark reached the terminal');
                 },
             ],

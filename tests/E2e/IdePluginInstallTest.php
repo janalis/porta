@@ -118,7 +118,7 @@ final class IdePluginInstallTest extends TestCase
                     // pcov run, which is 2-3x slower, and failed there.
                     $this->awaitPainted($tui, $terminal, 'Save changes to');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
-                    $this->assertMatchesRegularExpression('/Save changes to\s+< \.porta\.json >/', $screen);
+                    $this->assertMatchesRegularExpression('/Save changes to\s+[│┃] \.porta\.json\s+▾ [│┃]/u', $screen);
                     $this->assertStringContainsString('git URL, local path, or vendor/name package', $screen, 'the empty install field shows its hint');
 
                     $tui->handleInput("\x1b[B"); // → the install row
@@ -133,7 +133,7 @@ final class IdePluginInstallTest extends TestCase
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('Plugin installed', Toasts::last($ide));
                     $this->assertFileExists($project->path('.porta/plugins/installee/plugin.php'));
-                    $this->assertMatchesRegularExpression('/installee \(project\)\s+\[Remove\]/', $screen, 'the new plugin lists with a Remove button');
+                    $this->assertMatchesRegularExpression('/installee \(project\)\s+[│┃]\s+Remove\s+[│┃]/u', $screen, 'the new plugin lists with a Remove button');
 
                     // Live activation: the command is in the registry and the palette.
                     $commands = Services::resolve($ide, CommandRegistry::class);
@@ -284,7 +284,7 @@ final class IdePluginInstallTest extends TestCase
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('Plugin installed', Toasts::last($ide));
                     $this->assertFileExists($project->path('.porta/plugins/cloned/plugin.php'));
-                    $this->assertMatchesRegularExpression('/cloned \(project\)\s+\[Remove\]/', $screen, 'the async refresh re-listed the section');
+                    $this->assertMatchesRegularExpression('/cloned \(project\)\s+[│┃]\s+Remove\s+[│┃]/u', $screen, 'the async refresh re-listed the section');
 
                     $commands = Services::resolve($ide, CommandRegistry::class);
                     $commands->run('cloned:hi');
@@ -313,12 +313,12 @@ final class IdePluginInstallTest extends TestCase
             [
                 100 => function ($tui, VirtualTerminal $terminal, Ide $ide) use ($project, $home): void {
                     $this->openPluginsSection($tui, $ide);
-                    $tui->handleInput("\r"); // cycle the scope row: project → global
+                    $tui->handleInput("\x1b[C"); // step the scope select: project → global (Enter would drop its list)
                     // A substring that does not spell the gap: the value column is aligned
                     // per page, and a stale literal here is a ten-second timeout
                     // rather than a failure.
-                    $this->awaitPainted($tui, $terminal, '< ~/.porta/config.json >');
-                    $this->assertMatchesRegularExpression('/Save changes to\s+< ~\/\.porta\/config\.json >/', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    $this->awaitPainted($tui, $terminal, '~/.porta/config.json');
+                    $this->assertMatchesRegularExpression('/Save changes to\s+[│┃] ~\/\.porta\/config\.json\s+▾ [│┃]/u', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
 
                     $tui->handleInput("\x1b[B"); // install row
                     $tui->handleInput("\r");
@@ -329,7 +329,7 @@ final class IdePluginInstallTest extends TestCase
 
                     $this->assertFileExists($home->dir.'/.porta/plugins/worldwide/plugin.php');
                     $this->assertDirectoryDoesNotExist($project->path('.porta/plugins/worldwide'));
-                    $this->assertMatchesRegularExpression('/worldwide \(global\)\s+\[Remove\]/', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    $this->assertMatchesRegularExpression('/worldwide \(global\)\s+[│┃]\s+Remove\s+[│┃]/u', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
         );

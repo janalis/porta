@@ -15,9 +15,11 @@ use Porta\Settings\SettingsSection;
 use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
 
 /**
- * A `lang:<id>` page. One page, three controllers: the language's own indent
- * and formatting rows, then its language server, then its debug adapter — so
- * this section is the seam that keeps that composition out of the view.
+ * A `lang:<id>` page. One page, three controllers, three fieldsets: the
+ * language's indent rows, then its language server, then running and
+ * debugging — the language's run command followed by the debug adapter's
+ * rows, so the group a legend heads is contiguous. This section is the seam
+ * that keeps that composition out of the view.
  *
  * The edit is routed by key because the three controllers own disjoint keys of
  * a single flat form.
@@ -66,7 +68,7 @@ final readonly class LanguageSection implements SettingsSection
     {
         $language = $this->language($section);
 
-        return $this->scopeRow->lead([...$this->languages->rows($language), ...$this->lsp->rows($language), ...$this->debug->rows($language)]);
+        return $this->scopeRow->lead([...$this->languages->indentRows($language), ...$this->lsp->rows($language), ...$this->languages->runRows($language), ...$this->debug->rows($language)]);
     }
 
     #[\Override]

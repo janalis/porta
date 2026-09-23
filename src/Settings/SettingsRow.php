@@ -16,9 +16,9 @@ use Porta\Config\ConfigScope;
  * button (`value` is its caption, actuating fires onChange with it), or a stepped
  * integer (bounded by `min`/`max`).
  *
- * A 'choice' row cycles and persists the `options` values, but renders each via
- * `optionLabels` when present — e.g. the language picker stores `en` but shows
- * `English`.
+ * A 'choice' row persists one of the `options` values — picked from its
+ * dropdown or stepped — but renders each via `optionLabels` when present — e.g.
+ * the language picker stores `en` but shows `English`.
  */
 final readonly class SettingsRow
 {
@@ -53,16 +53,18 @@ final readonly class SettingsRow
         public ?ConfigScope $origin = null,
         public bool $shadowed = false,
         /**
-         * Whether the detail clause may list the options this row is NOT on.
-         *
-         * True for an ordinary choice, where `< dark > · light/high-contrast`
-         * tells you what the stepper can reach. False where the options are
-         * DESTINATIONS rather than modes: naming the file you are not saving
-         * to, after the one you are, reads as a second destination instead of
-         * an alternative — and it is the first thing a narrow row truncates,
-         * so it is noise even when it is understood.
+         * The fieldset this row belongs to — a translated legend the form
+         * draws as a rule above the first row of each run of equal legends,
+         * like HTML's <fieldset><legend>. Null for rows above every group
+         * (the scope row) and for pages that have no groups.
          */
-        public bool $listOptions = true,
+        public ?string $fieldset = null,
+        /**
+         * Shown but inert: drawn with the dashed disabled border and never
+         * actuated — the `Built-in` plugin entry, which names a plugin that
+         * cannot be removed.
+         */
+        public bool $disabled = false,
     ) {}
 
     /**

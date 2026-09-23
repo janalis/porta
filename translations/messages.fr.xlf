@@ -3198,6 +3198,50 @@
         <source>Alt+A again to DELETE every match — the replacement is empty</source>
         <target>Alt+A à nouveau pour SUPPRIMER toutes les correspondances — le remplacement est vide</target>
       </trans-unit>
+      <trans-unit id="893">
+        <source>Editing</source>
+        <target>Édition</target>
+      </trans-unit>
+      <trans-unit id="894">
+        <source>Search</source>
+        <target>Recherche</target>
+      </trans-unit>
+      <trans-unit id="895">
+        <source>Display</source>
+        <target>Affichage</target>
+      </trans-unit>
+      <trans-unit id="896">
+        <source>Layout</source>
+        <target>Disposition</target>
+      </trans-unit>
+      <trans-unit id="897">
+        <source>Editor</source>
+        <target>Éditeur</target>
+      </trans-unit>
+      <trans-unit id="898">
+        <source>Default</source>
+        <target>Par défaut</target>
+      </trans-unit>
+      <trans-unit id="899">
+        <source>Per language</source>
+        <target>Par langage</target>
+      </trans-unit>
+      <trans-unit id="900">
+        <source>Indentation</source>
+        <target>Indentation</target>
+      </trans-unit>
+      <trans-unit id="901">
+        <source>Language server</source>
+        <target>Serveur de langage</target>
+      </trans-unit>
+      <trans-unit id="902">
+        <source>Run &amp; debug</source>
+        <target>Exécution et débogage</target>
+      </trans-unit>
+      <trans-unit id="903">
+        <source>Installed</source>
+        <target>Installés</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

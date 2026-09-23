@@ -59,6 +59,10 @@ final class ContextMenu extends OverlayWidget
     /** @var list<MenuItem> */
     private array $items = [];
     private int $selected = 0;
+    /** Whether it is open as a select's option list rather than a menu of actions. */
+    private bool $listbox = false;
+    /** A listbox is at least as wide as the select it hangs from (panel columns, frame excluded). */
+    private int $minWidth = 0;
 
     /**
      * Open the menu with $items and select its first non-separator entry.
@@ -72,8 +76,37 @@ final class ContextMenu extends OverlayWidget
         }
         $this->items = $items;
         $this->markOpen();
+        $this->listbox = false;
+        $this->minWidth = 0;
         $this->selected = MenuPanel::firstSelectable($items);
         $this->afterNavigate();
+    }
+
+    /**
+     * Open as a select's option list — the browser's dropped-down `<select>`:
+     * the highlight starts on the $current option rather than the first, and
+     * the panel is at least $minWidth columns so it lines up under the box
+     * it drops from. Keys, clicks, hover and outside-dismiss are the menu's.
+     *
+     * @param list<MenuItem> $items
+     */
+    public function openListbox(array $items, int $current, int $minWidth): void
+    {
+        if ([] === $items) {
+            return;
+        }
+        $this->items = $items;
+        $this->markOpen();
+        $this->listbox = true;
+        $this->minWidth = $minWidth;
+        $this->selected = \array_key_exists($current, $items) ? $current : MenuPanel::firstSelectable($items);
+        $this->afterNavigate();
+    }
+
+    /** Whether the open panel is a select's option list (drawn with the focused, heavy frame). */
+    public function isListbox(): bool
+    {
+        return $this->open && $this->listbox;
     }
 
     #[\Override]
@@ -81,12 +114,14 @@ final class ContextMenu extends OverlayWidget
     {
         $this->items = [];
         $this->selected = 0;
+        $this->listbox = false;
+        $this->minWidth = 0;
     }
 
     /** Natural width of the panel (unclamped; the coordinator clamps it to fit). */
     public function panelWidth(): int
     {
-        return $this->open ? MenuPanel::width($this->items) : 0;
+        return $this->open ? \max(MenuPanel::width($this->items), $this->minWidth) : 0;
     }
 
     /**

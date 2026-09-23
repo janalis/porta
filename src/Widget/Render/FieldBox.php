@@ -6,6 +6,7 @@ namespace Porta\Widget\Render;
 
 use Porta\Support\AnsiText;
 use Porta\Ui\CaretVisibility;
+use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Porta\Ui\TextField;
 use Porta\Ui\Theme\Styles;
@@ -47,6 +48,94 @@ final class FieldBox
 
     public static function compact(FieldSpec $spec, TextField $field, FieldState $state, CaretVisibility $caret, int $width, Styles $styles): string
     {
+        return self::inline($spec, static fn (int $room): string => self::value($spec, $field, $state, $caret, $room, $styles), $state, $width, $styles);
+    }
+
+    /**
+     * Any control in either form: {@see ROWS} rows boxed, or the one-row
+     * `Label │ … │` when $rows is 1. $content draws the inside at the width it
+     * is handed, so a button can centre its caption and a select can seat its
+     * ▾ at the edge whichever form the site can afford.
+     *
+     * @param \Closure(int): string $content
+     *
+     * @return list<string>
+     */
+    public static function control(FieldSpec $spec, \Closure $content, FieldState $state, int $width, int $rows, Styles $styles): array
+    {
+        return (
+            self::ROWS === $rows
+                ? self::frame($spec, [$content(\max(0, $width - self::CHROME_COLS))], $state, $width, $styles)
+                : [self::inline($spec, $content, $state, $width, $styles)]
+        );
+    }
+
+    /**
+     * A push button: its caption centred in the box, the way a browser draws
+     * one. The pointer underlines the caption and never touches the border —
+     * the border is the button's state, and hovering is not a state change.
+     * Disabled greys the caption as well as dashing the border.
+     *
+     * @return list<string>
+     */
+    public static function button(string $caption, FieldState $state, bool $hovered, int $width, int $rows, Styles $styles, string $trailing = ''): array
+    {
+        $style = match (true) {
+            FieldState::Disabled === $state => $styles->of(Role::Faint),
+            $hovered => $styles->of(Role::Bright)->withUnderline(),
+            default => $styles->of(Role::Bright),
+        };
+
+        return self::control(new FieldSpec('', trailing: $trailing), static fn (int $room): string => self::centred($caption, $room, $style), $state, $width, $rows, $styles);
+    }
+
+    /** $text centred in exactly $room columns (cut when it does not fit), styled when a style is given. */
+    public static function centred(string $text, int $room, ?Style $style = null): string
+    {
+        $text = AnsiText::truncate($text, \max(0, $room));
+        $lead = AnsiText::blank(\intdiv(\max(0, $room - AnsiUtils::visibleWidth($text)), num2: 2));
+
+        return AnsiText::padRight($lead.(null === $style ? $text : $style->apply($text)), $room);
+    }
+
+    /**
+     * A closed select: the chosen option, then {@see Glyphs::SELECT_ARROW}
+     * against the right rail — the browser's `<select>`. Opening the list is
+     * the host's business; this is only the face it shows.
+     *
+     * @return list<string>
+     */
+    public static function select(FieldSpec $spec, string $value, FieldState $state, int $width, int $rows, Styles $styles): array
+    {
+        return self::control($spec, static fn (int $room): string => AnsiText::truncate($value, \max(0, $room - 2), pad: true).' '.Glyphs::SELECT_ARROW, $state, $width, $rows, $styles);
+    }
+
+    /** The width a control needs to show $content whole, with one column of air each side. */
+    public static function controlWidth(string $content): int
+    {
+        return AnsiUtils::visibleWidth($content) + 2 + self::CHROME_COLS;
+    }
+
+    /**
+     * A select's width: its widest option plus the ▾ — measured over every
+     * option, so the box never resizes as the value steps.
+     *
+     * @param list<string> $options
+     */
+    public static function selectWidth(array $options): int
+    {
+        return \max(0, ...\array_map(AnsiUtils::visibleWidth(...), $options)) + 2 + self::CHROME_COLS;
+    }
+
+    /**
+     * The one-row form: `Label │ content │ hint`. The label yields before the
+     * content does; the hint rides after the closing rail only while the
+     * content keeps a usable width, and goes whole, never cut.
+     *
+     * @param \Closure(int): string $content
+     */
+    private static function inline(FieldSpec $spec, \Closure $content, FieldState $state, int $width, Styles $styles): string
+    {
         $rail = self::border($state, $styles)->apply($state->glyphs()[5]);
         $label = '' === $spec->label ? '' : $spec->label.' ';
         $room = $width - AnsiUtils::visibleWidth($label) - self::CHROME_COLS;
@@ -55,8 +144,6 @@ final class FieldBox
             $room = $width - self::CHROME_COLS;
         }
         $legend = '' === $label ? '' : self::legend($state, $styles)->apply($label);
-        // The hint follows the closing rail while the value keeps a usable
-        // width; past that it goes whole, never cut.
         $hint = '';
         $hintWidth = AnsiUtils::visibleWidth($spec->trailing);
         if ('' !== $spec->trailing && ($room - $hintWidth - 1) >= (self::MIN_BOXED - self::CHROME_COLS)) {
@@ -64,7 +151,7 @@ final class FieldBox
             $room -= $hintWidth + 1;
         }
 
-        return self::fit($spec, $legend.$rail.' '.self::value($spec, $field, $state, $caret, $room, $styles).' '.$rail.$hint, $width, $styles);
+        return self::fit($spec, $legend.$rail.' '.AnsiText::padRight($content(\max(0, $room)), \max(0, $room)).' '.$rail.$hint, $width, $styles);
     }
 
     /**

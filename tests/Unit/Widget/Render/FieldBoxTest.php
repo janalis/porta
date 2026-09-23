@@ -168,6 +168,46 @@ final class FieldBoxTest extends TestCase
         $this->assertSame('│ two              │', $rows[2]);
     }
 
+    public function testADisabledControlIsDashedAndNeverTakesKeys(): void
+    {
+        $rows = self::plain(FieldBox::button('Built-in', FieldState::Disabled, false, 14, FieldBox::ROWS, new Styles(MonochromeTheme::definition())));
+
+        $this->assertSame(['╭┄┄┄┄┄┄┄┄┄┄┄┄╮', '┆  Built-in  ┆', '╰┄┄┄┄┄┄┄┄┄┄┄┄╯'], $rows, 'a dashed border reads "not available" without colour');
+        $this->assertFalse(FieldState::Disabled->takesKeys());
+        $this->assertSame(Role::Faint, FieldState::Disabled->borderRole());
+    }
+
+    public function testAButtonCentresItsCaptionAndHoverOnlyUnderlinesIt(): void
+    {
+        $styles = Styles::dark();
+        $rest = FieldBox::button('Go', FieldState::Idle, false, 12, FieldBox::ROWS, $styles, trailing: 'Enter');
+        $hover = FieldBox::button('Go', FieldState::Idle, true, 12, FieldBox::ROWS, $styles, trailing: 'Enter');
+
+        $this->assertSame('│    Go    │', AnsiUtils::stripAnsiCodes($rest[1]), 'centred, as a browser button draws it');
+        $this->assertStringContainsString('Enter', AnsiUtils::stripAnsiCodes($rest[2]), 'its key sits in the bottom border');
+        $this->assertStringContainsString($styles->of(Role::Bright)->withUnderline()->apply('Go'), $hover[1]);
+        $this->assertSame($rest[0], $hover[0], 'the border does not move on hover: hover is not a state');
+        $this->assertStringContainsString($styles->of(Role::Faint)->apply('Go'), FieldBox::button('Go', FieldState::Disabled, true, 10, 1, $styles)[0], 'a disabled caption greys, hovered or not');
+    }
+
+    public function testASelectShowsItsValueThenTheArrowAgainstTheRail(): void
+    {
+        $width = FieldBox::selectWidth(['dark', 'high-contrast']);
+        $rows = self::plain(FieldBox::select(new FieldSpec(''), 'dark', FieldState::Focused, $width, FieldBox::ROWS, Styles::dark()));
+
+        $this->assertSame(19, $width, 'the widest option, the arrow and the chrome');
+        $this->assertSame('┃ dark          ▾ ┃', $rows[1]);
+        $this->assertSame(['│ dark      ▾ │'], self::plain(FieldBox::select(new FieldSpec(''), 'dark', FieldState::Idle, 15, 1, Styles::dark())), 'the one-row form keeps the arrow');
+    }
+
+    public function testControlWidthAndCentringMeasureInColumns(): void
+    {
+        $this->assertSame(10, FieldBox::controlWidth('漢字'), 'two wide glyphs, a column of air each side, the chrome');
+        $this->assertSame('  ab  ', FieldBox::centred('ab', 6));
+        $this->assertSame('abc…', FieldBox::centred('abcdef', 4), 'cut when it does not fit');
+        $this->assertSame('', FieldBox::centred('ab', -3), 'no room is no text, not an error');
+    }
+
     /** @return iterable<string, array{FieldState, CaretVisibility, string, int}> */
     public static function shapes(): iterable
     {

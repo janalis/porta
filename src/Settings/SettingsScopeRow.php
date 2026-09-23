@@ -64,10 +64,6 @@ final readonly class SettingsScopeRow
             // The file names ARE the explanation, so the hint says the parts a
             // filename cannot: that this is a session choice rather than a
             // setting, and anything else this page's scope decides.
-            // The two options are the two FILES. The control already shows the
-            // chosen one and the footer documents ←/→; listing the other after
-            // a `·` reads as somewhere else this also saves to.
-            listOptions: false,
             hint: null === $also
                 ? $this->translator->trans('for this session')
                 : $this->translator->trans('for this session').' · '.$also,

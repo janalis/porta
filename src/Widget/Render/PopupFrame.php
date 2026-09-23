@@ -30,16 +30,23 @@ final class PopupFrame
     public const int CHROME_COLS = 2;
     public const int CHROME_ROWS = 2;
 
-    /** The top border: `╭──╮`, exactly $innerWidth + CHROME_COLS columns. */
-    public static function top(int $innerWidth, Styles $styles): string
+    /**
+     * The top border: `╭──╮`, exactly $innerWidth + CHROME_COLS columns — or
+     * the given field state's corners, a select's open list being `┏━━┓`.
+     */
+    public static function top(int $innerWidth, Styles $styles, FieldState $state = FieldState::Idle): string
     {
-        return $styles->of(Role::TabAccent)->apply(Glyphs::MODAL_TOP_LEFT.\str_repeat(Glyphs::FRAME_HORIZONTAL, \max(0, $innerWidth)).Glyphs::MODAL_TOP_RIGHT);
+        [$left, $right, , , $rule] = $state->glyphs();
+
+        return $styles->of(Role::TabAccent)->apply($left.\str_repeat($rule, \max(0, $innerWidth)).$right);
     }
 
-    /** The bottom border: `╰──╯`. */
-    public static function bottom(int $innerWidth, Styles $styles): string
+    /** The bottom border: `╰──╯`, or the given field state's. */
+    public static function bottom(int $innerWidth, Styles $styles, FieldState $state = FieldState::Idle): string
     {
-        return $styles->of(Role::TabAccent)->apply(Glyphs::MODAL_BOTTOM_LEFT.\str_repeat(Glyphs::FRAME_HORIZONTAL, \max(0, $innerWidth)).Glyphs::MODAL_BOTTOM_RIGHT);
+        [, , $left, $right, $rule] = $state->glyphs();
+
+        return $styles->of(Role::TabAccent)->apply($left.\str_repeat($rule, \max(0, $innerWidth)).$right);
     }
 
     /** A section separator: `├──┤` — the tee row {@see ModalFrame::wrapSections} draws between zones. */
@@ -52,9 +59,9 @@ final class PopupFrame
      * `│` + row + `│`, the row padded/clipped to exactly $innerWidth — the
      * single place the invariant is enforced for popup content.
      */
-    public static function rail(string $row, int $innerWidth, Styles $styles): string
+    public static function rail(string $row, int $innerWidth, Styles $styles, FieldState $state = FieldState::Idle): string
     {
-        $edge = $styles->of(Role::TabAccent)->apply(Glyphs::FRAME_VERTICAL);
+        $edge = $styles->of(Role::TabAccent)->apply($state->glyphs()[5]);
 
         return $edge.AnsiText::truncate($row, \max(0, $innerWidth), pad: true).$edge;
     }
@@ -69,13 +76,13 @@ final class PopupFrame
      *
      * @return list<string> each exactly $innerWidth + CHROME_COLS columns
      */
-    public static function wrapMenu(array $rows, int $innerWidth, Styles $styles): array
+    public static function wrapMenu(array $rows, int $innerWidth, Styles $styles, FieldState $state = FieldState::Idle): array
     {
-        $out = [self::top($innerWidth, $styles)];
+        $out = [self::top($innerWidth, $styles, $state)];
         foreach ($rows as $row) {
-            $out[] = $row['separator'] ? self::tee($innerWidth, $styles) : self::rail($row['segment'], $innerWidth, $styles);
+            $out[] = $row['separator'] ? self::tee($innerWidth, $styles) : self::rail($row['segment'], $innerWidth, $styles, $state);
         }
-        $out[] = self::bottom($innerWidth, $styles);
+        $out[] = self::bottom($innerWidth, $styles, $state);
 
         return $out;
     }

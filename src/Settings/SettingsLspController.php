@@ -73,6 +73,7 @@ final class SettingsLspController
             hint: null !== $auto ? $this->translator->trans('auto: %server%', ['%server%' => $auto]) : $this->translator->trans('auto-detect'),
             origin: $this->provenance->originOf(['lsp', $language]),
             shadowed: $this->provenance->shadowsGlobal(['lsp', $language]),
+            fieldset: $this->translator->trans('Language server'),
         )];
     }
 

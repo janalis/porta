@@ -57,8 +57,9 @@ final class SettingsLanguageControllerTest extends TestCase
             'runCommand' => 'frankenphp php-cli',
         ]]);
 
-        $php = $controller->rows('php');
+        $php = [...$controller->indentRows('php'), ...$controller->runRows('php')];
         $this->assertSame(['indentStyle', 'indentSize', 'runCommand'], \array_column($php, 'key'));
+        $this->assertSame(['Indentation', 'Indentation', 'Run & debug'], \array_column($php, 'fieldset'), 'indent and run land in different groups');
         $this->assertSame('tabs', $php[0]->value);
         $this->assertSame(['auto', 'spaces', 'tabs'], $php[0]->options);
         $this->assertSame('4', $php[1]->value, 'size rendered as a string for the choice');
@@ -67,7 +68,7 @@ final class SettingsLanguageControllerTest extends TestCase
         $this->assertSame('frankenphp php-cli', $php[2]->value, 'the configured run command shows');
         $this->assertTrue($php[2]->restart, 'the run command applies on restart');
 
-        $css = $controller->rows('css'); // unconfigured → auto/auto
+        $css = $controller->indentRows('css'); // unconfigured → auto/auto
         $this->assertSame('auto', $css[0]->value);
         $this->assertSame('auto', $css[1]->value);
     }
@@ -152,7 +153,7 @@ final class SettingsLanguageControllerTest extends TestCase
         // Clearing it shows the bundled-php default and the row reflects empty.
         $controller->changeLanguageSetting('php', 'runCommand', '  ');
         $this->assertStringContainsString('PHP run command: bundled php', $this->flashText($status));
-        $this->assertSame('', $controller->rows('php')[2]->value);
+        $this->assertSame('', $controller->runRows('php')[0]->value);
     }
 
     public function testUnknownLanguageOrKeyFlashes(): void

@@ -100,16 +100,24 @@ trait ReadsSettingsForm
      */
     private function selectedSettingRow(SettingsFormWidget $form, int $columns = 80, int $rows = 24): string
     {
+        // An item is several rows tall (a boxed control, its label on the
+        // middle row), and the selection shades every one of them: the item
+        // is the run of shaded rows, read as one.
         $lines = Paint::lines($form, new RenderContext($columns, $rows));
+        $item = [];
         foreach (\array_slice($lines, offset: 1, length: -1) as $line) {
-            if (\str_contains($line, "\x1b[48;5;")) {
-                return \rtrim(AnsiUtils::stripAnsiCodes($line));
+            if (!\str_contains($line, "\x1b[48;5;")) {
+                if ([] !== $item) {
+                    break;
+                }
+
+                continue;
             }
+            $item[] = \rtrim(AnsiUtils::stripAnsiCodes($line));
         }
 
-        return '';
+        return \implode("\n", $item);
     }
 
-    /** Generous bound: the longest settings page plus its chrome. */
     private const int MAX_FORM_ROWS = 64;
 }

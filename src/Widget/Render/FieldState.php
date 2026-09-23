@@ -15,6 +15,7 @@ use Porta\Ui\Role;
  *   Idle      ╭─╮ │ ╰─╯   rounded, the modal family
  *   Focused   ┏━┓ ┃ ┗━┛   heavy: this field takes the keys
  *   Danger    ╔═╗ ║ ╚═╝   double: it takes the keys and the answer destroys
+ *   Disabled  ╭┄╮ ┆ ╰┄╯   dashed: it is there, and it will not act
  *
  * Focused and Danger are the states that may carry the caret; an Idle field
  * never does, which is what keeps "one focused field" and "one caret marker
@@ -25,6 +26,7 @@ enum FieldState
     case Idle;
     case Focused;
     case Danger;
+    case Disabled;
 
     /** The state of a field that takes keys exactly when $focused. */
     // @mago-expect lint:no-boolean-flag-parameter -- the bool IS the domain: every caller already holds "does this field take the keys".
@@ -54,6 +56,14 @@ enum FieldState
                 Glyphs::FIELD_DANGER_HORIZONTAL,
                 Glyphs::FIELD_DANGER_VERTICAL,
             ],
+            self::Disabled => [
+                Glyphs::MODAL_TOP_LEFT,
+                Glyphs::MODAL_TOP_RIGHT,
+                Glyphs::MODAL_BOTTOM_LEFT,
+                Glyphs::MODAL_BOTTOM_RIGHT,
+                Glyphs::FIELD_DISABLED_HORIZONTAL,
+                Glyphs::FIELD_DISABLED_VERTICAL,
+            ],
         };
     }
 
@@ -64,11 +74,12 @@ enum FieldState
             self::Idle => Role::FieldBorder,
             self::Focused => Role::TabAccent,
             self::Danger => Role::DiagError,
+            self::Disabled => Role::Faint,
         };
     }
 
     public function takesKeys(): bool
     {
-        return self::Idle !== $this;
+        return self::Focused === $this || self::Danger === $this;
     }
 }

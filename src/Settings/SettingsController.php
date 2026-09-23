@@ -30,7 +30,7 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  * rows while it owned them, and are live there too: each engine resolves its
  * binary per spawn.)
  *
- * @phpstan-type Descriptor array{label: string, kind: SettingsRowKind, group: 'general'|'interface', restart: bool, apply: (\Closure(int|bool|string): void)|null, options?: list<string>, optionLabels?: array<string, string>, min?: int, max?: int}
+ * @phpstan-type Descriptor array{label: string, kind: SettingsRowKind, group: 'general'|'interface', fieldset: string, restart: bool, apply: (\Closure(int|bool|string): void)|null, options?: list<string>, optionLabels?: array<string, string>, min?: int, max?: int}
  */
 #[AsIdeService]
 final class SettingsController
@@ -60,6 +60,7 @@ final class SettingsController
                 'label' => 'Language',
                 'kind' => SettingsRowKind::Choice,
                 'group' => 'interface',
+                'fieldset' => 'Display',
                 'restart' => false,
                 'apply' => static fn (int|bool|string $v) => $applier->applyLocale((string) $v),
                 'options' => Translator::LOCALES,
@@ -69,6 +70,7 @@ final class SettingsController
                 'label' => 'Theme',
                 'kind' => SettingsRowKind::Choice,
                 'group' => 'interface',
+                'fieldset' => 'Display',
                 'restart' => false,
                 'apply' => static fn (int|bool|string $v) => $applier->applyTheme((string) $v),
                 'options' => Theme::ids(),
@@ -77,6 +79,7 @@ final class SettingsController
                 'label' => 'Cursor shape',
                 'kind' => SettingsRowKind::Choice,
                 'group' => 'interface',
+                'fieldset' => 'Display',
                 'restart' => false,
                 'apply' => static fn (int|bool|string $v) => $applier->applyCursorShape((string) $v),
                 'options' => ['bar', 'block', 'underline'],
@@ -85,14 +88,24 @@ final class SettingsController
                 'label' => 'Tab bar position',
                 'kind' => SettingsRowKind::Choice,
                 'group' => 'interface',
+                'fieldset' => 'Layout',
                 'restart' => false,
                 'apply' => static fn (int|bool|string $v) => $applier->applyTabBarPosition((string) $v),
                 'options' => ['top', 'bottom', 'left', 'right'],
+            ],
+            'breadcrumbs' => [
+                'label' => 'Breadcrumbs bar',
+                'kind' => SettingsRowKind::Bool,
+                'group' => 'interface',
+                'fieldset' => 'Layout',
+                'restart' => false,
+                'apply' => static fn (int|bool|string $v) => (bool) $v ? $breadcrumbs->show() : $breadcrumbs->hide(),
             ],
             'lineNumbers' => [
                 'label' => 'Line numbers',
                 'kind' => SettingsRowKind::Choice,
                 'group' => 'interface',
+                'fieldset' => 'Editor',
                 'restart' => false,
                 'apply' => static fn (int|bool|string $v): bool => $editor->setLineNumbers(LineNumberMode::tryFrom((string) $v) ?? LineNumberMode::Absolute),
                 'options' => ['off', 'absolute', 'relative'],
@@ -101,6 +114,7 @@ final class SettingsController
                 'label' => 'Sticky scroll',
                 'kind' => SettingsRowKind::Bool,
                 'group' => 'interface',
+                'fieldset' => 'Editor',
                 'restart' => false,
                 'apply' => static fn (int|bool|string $v): bool => $editor->setStickyScroll((bool) $v),
             ],
@@ -108,6 +122,7 @@ final class SettingsController
                 'label' => 'Indent guides',
                 'kind' => SettingsRowKind::Bool,
                 'group' => 'interface',
+                'fieldset' => 'Editor',
                 'restart' => false,
                 'apply' => static fn (int|bool|string $v): bool => $editor->setIndentGuides((bool) $v),
             ],
@@ -115,6 +130,7 @@ final class SettingsController
                 'label' => 'Show whitespace',
                 'kind' => SettingsRowKind::Bool,
                 'group' => 'interface',
+                'fieldset' => 'Editor',
                 'restart' => false,
                 'apply' => static fn (int|bool|string $v): bool => $editor->setShowWhitespace((bool) $v),
             ],
@@ -122,21 +138,16 @@ final class SettingsController
                 'label' => 'Method separators',
                 'kind' => SettingsRowKind::Bool,
                 'group' => 'interface',
+                'fieldset' => 'Editor',
                 'restart' => false,
                 'apply' => static fn (int|bool|string $v): bool => $editor->setMethodSeparators((bool) $v),
-            ],
-            'breadcrumbs' => [
-                'label' => 'Breadcrumbs bar',
-                'kind' => SettingsRowKind::Bool,
-                'group' => 'interface',
-                'restart' => false,
-                'apply' => static fn (int|bool|string $v) => (bool) $v ? $breadcrumbs->show() : $breadcrumbs->hide(),
             ],
             // --- General (editor behavior) ---
             'inlineDiagnostics' => [
                 'label' => 'Inline diagnostics',
                 'kind' => SettingsRowKind::Bool,
                 'group' => 'general',
+                'fieldset' => 'Editing',
                 'restart' => false,
                 'apply' => static fn (int|bool|string $v): bool => $editor->setInlineDiagnostics((bool) $v),
             ],
@@ -144,6 +155,7 @@ final class SettingsController
                 'label' => 'Auto-pairs',
                 'kind' => SettingsRowKind::Bool,
                 'group' => 'general',
+                'fieldset' => 'Editing',
                 'restart' => false,
                 'apply' => static fn (int|bool|string $v): bool => $editor->setAutoPairs((bool) $v),
             ],
@@ -151,6 +163,7 @@ final class SettingsController
                 'label' => 'Format on save (LSP)',
                 'kind' => SettingsRowKind::Bool,
                 'group' => 'general',
+                'fieldset' => 'Editing',
                 'restart' => false,
                 'apply' => static fn (int|bool|string $v) => (bool) $v ? $applier->enableFormatOnSave() : $applier->disableFormatOnSave(),
             ],
@@ -158,6 +171,7 @@ final class SettingsController
                 'label' => 'Search vendor/ files',
                 'kind' => SettingsRowKind::Bool,
                 'group' => 'general',
+                'fieldset' => 'Search',
                 'restart' => false,
                 'apply' => static fn (int|bool|string $v) => $files->setIncludeVendor((bool) $v),
             ],
@@ -225,6 +239,7 @@ final class SettingsController
                 default: self::coerce(IdeConfig::DEFAULT_SETTINGS[$key] ?? '', $descriptor['kind']),
                 origin: $this->provenance->originOf(['settings', $key]),
                 shadowed: $this->provenance->shadowsGlobal(['settings', $key]),
+                fieldset: $this->translator->trans($descriptor['fieldset']),
             );
         }
 

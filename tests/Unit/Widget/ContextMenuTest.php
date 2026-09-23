@@ -10,6 +10,7 @@ use Porta\Tests\Support\AttachedStyles;
 use Porta\Tests\Support\Probe;
 use Porta\Widget\ContextMenu;
 use Porta\Workbench\Menu\MenuItem;
+use Porta\Workbench\Menu\MenuPanel;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 
@@ -395,5 +396,41 @@ final class ContextMenuTest extends TestCase
         $widget->setTextDirection(BaseDirection::Rtl);
 
         $this->assertNotSame($before, $widget->getRenderRevision());
+    }
+
+    /**
+     * A select's list: the highlight starts on the option the select is set
+     * to, not the first; it is at least as wide as the box it drops from; and
+     * a plain open() afterwards is a menu again, not a stale listbox.
+     */
+    public function testAListboxOpensOnTheCurrentOptionAtTheSelectsWidth(): void
+    {
+        $picked = null;
+        $menu = new ContextMenu();
+        $options = [];
+        foreach (['dark', 'light', 'high-contrast'] as $value) {
+            $options[] = new MenuItem($value, '', static function () use (&$picked, $value): void {
+                $picked = $value;
+            });
+        }
+
+        $menu->openListbox($options, 1, 30);
+
+        $this->assertTrue($menu->isListbox());
+        $this->assertSame(30, $menu->panelWidth(), 'as wide as the select, not just its longest option');
+        $menu->handleInput("\r");
+        $this->assertSame('light', $picked, 'Enter picks the option it opened on');
+        $this->assertFalse($menu->isListbox(), 'picking closes it');
+
+        $menu->openListbox($options, 99, 0);
+        $menu->handleInput("\r");
+        $this->assertSame('dark', $picked, 'an out-of-range current falls back to the first option');
+
+        $menu->open($options);
+        $this->assertFalse($menu->isListbox(), 'a plain menu is not a listbox');
+        $this->assertSame(MenuPanel::width($options), $menu->panelWidth(), 'and keeps no minimum width');
+
+        $menu->openListbox([], 0, 30);
+        $this->assertFalse($menu->isListbox(), 'an empty list opens nothing');
     }
 }

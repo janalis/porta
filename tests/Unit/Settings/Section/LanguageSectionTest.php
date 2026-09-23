@@ -109,9 +109,10 @@ final class LanguageSectionTest extends TestCase
 
     public function testRowsConcatenateAllThreeControllersInFull(): void
     {
-        // languages->rows() returns 3 rows (indentStyle/indentSize/runCommand),
-        // lsp->rows() returns exactly 1, debug->rows() returns 2 — spreading
-        // "only the first" of any of them would silently drop rows.
+        // languages->indentRows() returns 2 rows, lsp->rows() exactly 1,
+        // languages->runRows() 1 and debug->rows() 2 — spreading "only the
+        // first" of any of them would silently drop rows. The order keeps each
+        // fieldset contiguous: Indentation, Language server, Run & debug.
         $tempProject = new TempProject();
         $rows = $this->section($tempProject->dir, new StatusBarWidget())->rows('lang:php');
 
@@ -120,7 +121,8 @@ final class LanguageSectionTest extends TestCase
         // about is the three controllers' own rows, not the page's lead.
         $this->assertSame(SettingsScopeRow::KEY, $rows[0]->key);
         $keys = \array_column(\array_slice($rows, offset: 1), 'key');
-        $this->assertSame(['indentStyle', 'indentSize', 'runCommand', 'lspServer', 'debugAdapter', 'debugLaunch'], $keys);
+        $this->assertSame(['indentStyle', 'indentSize', 'lspServer', 'runCommand', 'debugAdapter', 'debugLaunch'], $keys);
+        $this->assertSame(['Indentation', 'Indentation', 'Language server', 'Run & debug', 'Run & debug', 'Run & debug'], \array_column(\array_slice($rows, offset: 1), 'fieldset'));
     }
 
     public function testChangeLspServerRoutesOnlyToLspNotLanguages(): void

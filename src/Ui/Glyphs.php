@@ -206,6 +206,23 @@ final class Glyphs
     public const string FIELD_DANGER_BOTTOM_RIGHT = '╝';
     public const string FIELD_DANGER_HORIZONTAL = '═';
     public const string FIELD_DANGER_VERTICAL = '║';
+    // Disabled: the rounded corners with a dashed rule, the way a browser
+    // greys an input — a shape of its own, so "not available" never passes for
+    // "at rest" without colour. ┆ is the same value as VCS_MODIFIED — disjoint
+    // surfaces (a field rail vs the editor gutter).
+    public const string FIELD_DISABLED_HORIZONTAL = '┄';
+    public const string FIELD_DISABLED_VERTICAL = '┆';
+
+    // A select's closed-state marker (the browser's ▾), and an int stepper's
+    // two arrows. ◂ and ▸ are the same values as the tree's disclosure
+    // triangles — disjoint surfaces (a boxed control vs a tree row).
+    public const string SELECT_ARROW = '▾';
+    public const string STEPPER_DOWN = '◂';
+    public const string STEPPER_UP = '▸';
+    // The option a select's open list is currently set to, in the list's
+    // shortcut column — the browser's check beside the chosen <option>.
+    // Same value as BRANCH_CURRENT — disjoint surfaces.
+    public const string OPTION_CURRENT = '✓';
 
     // The resizable modals' corner grab: the bottom-right corner heavies under
     // the pointer (and while dragging), the PANE_DIVIDER → PANE_DIVIDER_ACTIVE

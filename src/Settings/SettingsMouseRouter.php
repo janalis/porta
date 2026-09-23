@@ -77,7 +77,7 @@ final readonly class SettingsMouseRouter implements ViewPointer
         }
         if (null !== ($rel = $this->hit->hit($this->form, $mouse->row, $mouse->col))) {
             $this->tui->setFocus($this->form);
-            $this->form->handleClick($rel['row']);
+            $this->form->handleClick($rel['row'], $rel['col']);
             $this->tui->requestRender();
 
             return true;

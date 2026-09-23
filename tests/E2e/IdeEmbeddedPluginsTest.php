@@ -101,7 +101,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     $tui->handleInput("\t"); // nav → form
                     $this->frame($tui);
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
-                    $this->assertStringContainsString('bundled (built-in)  [Built-in]', $screen, 'no Remove button for embedded plugins');
+                    $this->assertMatchesRegularExpression('/bundled \(built-in\)\s+┆\s+Built-in\s+┆/u', $screen, 'no Remove button for embedded plugins: a disabled, dashed Built-in one');
                     $tui->handleInput("\x1b[B");
                     $tui->handleInput("\x1b[B"); // the built-in row
                     $tui->handleInput("\r"); // inert

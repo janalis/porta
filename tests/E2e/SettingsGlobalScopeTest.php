@@ -425,7 +425,7 @@ final class SettingsGlobalScopeTest extends TestCase
                 },
                 500 => function (Tui $tui, $terminal): void {
                     $form = $this->settingsForm($tui);
-                    $rows = Paint::lines($form, new RenderContext(120, 22));
+                    $rows = Paint::lines($form, new RenderContext(120, 40)); // the whole page: its controls are boxes
 
                     $this->assertStringContainsString('from global', $this->settingRow($rows, 'LSP server'));
                     $this->assertStringContainsString('from global', $this->settingRow($rows, 'Debug adapter'));

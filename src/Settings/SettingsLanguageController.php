@@ -63,13 +63,14 @@ final class SettingsLanguageController
 
     /**
      * The indent rows for a language section: style and size, both choices with
-     * an 'auto' option.
+     * an 'auto' option — the page's Indentation group.
      *
      * @return list<SettingsRow>
      */
-    public function rows(string $language): array
+    public function indentRows(string $language): array
     {
         $entry = $this->config[$language] ?? new LanguageIndent();
+        $fieldset = $this->translator->trans('Indentation');
 
         return [
             new SettingsRow(
@@ -82,6 +83,7 @@ final class SettingsLanguageController
                 default: self::AUTO,
                 origin: $this->provenance->originOf(['languages', $language, 'indentStyle']),
                 shadowed: $this->provenance->shadowsGlobal(['languages', $language, 'indentStyle']),
+                fieldset: $fieldset,
             ),
             new SettingsRow(
                 key: 'indentSize',
@@ -93,7 +95,20 @@ final class SettingsLanguageController
                 default: self::AUTO,
                 origin: $this->provenance->originOf(['languages', $language, 'indentSize']),
                 shadowed: $this->provenance->shadowsGlobal(['languages', $language, 'indentSize']),
+                fieldset: $fieldset,
             ),
+        ];
+    }
+
+    /**
+     * The run command row — first of the page's Run & debug group, which the
+     * debug adapter's rows complete ({@see \Porta\Settings\Section\LanguageSection}).
+     *
+     * @return list<SettingsRow>
+     */
+    public function runRows(string $language): array
+    {
+        return [
             new SettingsRow(
                 key: 'runCommand',
                 label: $this->translator->trans('Run/debug command'),
@@ -104,6 +119,7 @@ final class SettingsLanguageController
                 default: '',
                 origin: $this->provenance->originOf(['languages', $language, 'runCommand']),
                 shadowed: $this->provenance->shadowsGlobal(['languages', $language, 'runCommand']),
+                fieldset: $this->translator->trans('Run & debug'),
             ),
         ];
     }

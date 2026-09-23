@@ -74,8 +74,10 @@ final class SettingsPluginsController
                 value: '',
                 restart: false,
                 hint: $this->translator->trans('git URL, local path, or vendor/name package'),
+                fieldset: $this->translator->trans('Install'),
             ),
         ]);
+        $installed = $this->translator->trans('Installed');
         foreach ($this->installer->installed() as $plugin) {
             $rows[] = InstallScope::Embedded === $plugin['scope']
                 ? new SettingsRow(
@@ -84,6 +86,10 @@ final class SettingsPluginsController
                     kind: SettingsRowKind::Action,
                     value: $this->translator->trans('Built-in'),
                     restart: false,
+                    fieldset: $installed,
+                    // A bundled plugin cannot be removed; the button says so
+                    // by its dashed border instead of doing nothing on press.
+                    disabled: true,
                 )
                 : new SettingsRow(
                     key: 'pluginRemove:'.$plugin['scope']->value.':'.$plugin['name'],
@@ -93,6 +99,7 @@ final class SettingsPluginsController
                     restart: false,
                     // The armed half of the two-press confirm reads as danger.
                     danger: $this->armed === 'pluginRemove:'.$plugin['scope']->value.':'.$plugin['name'],
+                    fieldset: $installed,
                 );
         }
 

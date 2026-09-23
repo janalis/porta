@@ -18,27 +18,6 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
 final class SettingsRowDetailTest extends TestCase
 {
     /**
-     * A row whose options are DESTINATIONS does not list the one it is not on.
-     * "Save changes to < .porta.json > · ~/.porta/config.json" reads as two
-     * places it saves to, and on a narrow row the second is what truncates.
-     */
-    public function testARowCanRefuseToListItsOtherOptions(): void
-    {
-        $row = new SettingsRow(
-            key: 'k',
-            label: 'L',
-            kind: SettingsRowKind::Choice,
-            value: 'a',
-            restart: false,
-            options: ['a', 'b'],
-            hint: 'for this session',
-            listOptions: false,
-        );
-
-        $this->assertSame('for this session', $this->detail($row), 'the option list is gone, the hint is not');
-    }
-
-    /**
      * Silent for the ordinary case — a value the project file sets and nothing
      * else. A tag on every row is a tag on no row.
      */
@@ -97,59 +76,21 @@ final class SettingsRowDetailTest extends TestCase
         $this->assertSame('≤ 99', $this->detail($this->row(SettingsRowKind::Int, 4, max: 99)));
     }
 
+    /**
+     * A choice names no options: its dropdown shows every one, the way a
+     * browser's `<select>` does, and a list after a `·` only crowded out the
+     * hint a narrow row could still have shown.
+     */
+    public function testAChoiceListsNoOptionsBecauseItsDropdownShowsThem(): void
+    {
+        $row = new SettingsRow(key: 'k', label: 'L', kind: SettingsRowKind::Choice, value: 'dark', restart: false, options: ['dark', 'light', 'high-contrast'], hint: 'for this session');
+
+        $this->assertSame('for this session', $this->detail($row));
+    }
+
     public function testAnUnboundedIntShowsNoRange(): void
     {
         $this->assertSame('', $this->detail($this->row(SettingsRowKind::Int, 4)));
-    }
-
-    /** The current value is already in the control; the list says what ELSE. */
-    public function testAChoiceListsTheOptionsItIsNotOn(): void
-    {
-        $row = new SettingsRow(key: 'k', label: 'L', kind: SettingsRowKind::Choice, value: 'dark', restart: false, options: ['dark', 'light', 'high-contrast']);
-
-        $this->assertSame('light/high-contrast', $this->detail($row));
-    }
-
-    public function testAChoiceUsesItsOptionLabels(): void
-    {
-        $row = new SettingsRow(key: 'k', label: 'L', kind: SettingsRowKind::Choice, value: 'a', restart: false, options: ['a', ''], optionLabels: ['' => 'auto']);
-
-        $this->assertSame('auto', $this->detail($row));
-    }
-
-    /** An option with neither a label nor a value of its own falls back to the raw value. */
-    public function testAnUnlabelledEmptyOptionFallsBackToItsValue(): void
-    {
-        $row = new SettingsRow(key: 'k', label: 'L', kind: SettingsRowKind::Choice, value: 'a', restart: false, options: ['a', ''], optionLabels: ['' => '']);
-
-        $this->assertSame('', $this->detail($row), 'an empty option with an empty label contributes an empty name');
-    }
-
-    public function testALongOptionListIsOmittedRatherThanCrowdingOutTheHint(): void
-    {
-        $row = new SettingsRow(
-            key: 'k',
-            label: 'L',
-            kind: SettingsRowKind::Choice,
-            value: 'a',
-            restart: false,
-            options: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'],
-            hint: 'the prose survives',
-        );
-
-        $this->assertSame('the prose survives', $this->detail($row), 'the stepper still walks them all');
-    }
-
-    public function testAChoiceOnItsOnlyOptionListsNothing(): void
-    {
-        $row = new SettingsRow(key: 'k', label: 'L', kind: SettingsRowKind::Choice, value: 'only', restart: false, options: ['only']);
-
-        $this->assertSame('', $this->detail($row));
-    }
-
-    public function testAChoiceWithoutOptionsListsNothing(): void
-    {
-        $this->assertSame('', $this->detail($this->row(SettingsRowKind::Choice, 'x')));
     }
 
     private function detail(SettingsRow $row): string

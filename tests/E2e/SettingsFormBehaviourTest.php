@@ -106,8 +106,8 @@ final class SettingsFormBehaviourTest extends TestCase
                     $tui->setFocus($form);
 
                     $grid = $this->screenGrid($tui, $terminal);
-                    $this->assertNotNull($this->rowOf($grid, 'Sticky scroll'), 'the page opens showing its early rows');
-                    $this->assertNull($this->rowOf($grid, 'Breadcrumbs'), 'and its last row is below the fold');
+                    $this->assertNotNull($this->rowOf($grid, 'Language'), 'the page opens showing its early rows');
+                    $this->assertNull($this->rowOf($grid, 'Method separators'), 'and its last row is below the fold');
 
                     // Walk to the end with real input, as a user would.
                     for ($i = 0; $i < self::MAX_FORM_ROWS; ++$i) {
@@ -116,9 +116,9 @@ final class SettingsFormBehaviourTest extends TestCase
                     $this->frame($tui);
 
                     $grid = $this->screenGrid($tui, $terminal);
-                    $this->assertNotNull($this->rowOf($grid, 'Breadcrumbs'), 'the last row scrolled into view');
+                    $this->assertNotNull($this->rowOf($grid, 'Method separators'), 'the last row scrolled into view');
                     $this->assertStringContainsString(
-                        'Breadcrumbs',
+                        'Method separators',
                         $this->selectedSettingRow($form),
                         'and the selection is ON it, not off the bottom of the pane',
                     );
@@ -247,14 +247,16 @@ final class SettingsFormBehaviourTest extends TestCase
                     // The FORM's own render, not the screen: a toast saying
                     // "Sticky scroll off" also carries the label, and the
                     // label-addressed helper would happily read that instead.
-                    $rows = Paint::lines($form, new RenderContext(100, 24));
+                    // Tall enough for the whole page: its boxed controls are
+                    // three rows each.
+                    $rows = Paint::lines($form, new RenderContext(100, 40));
                     $this->assertStringNotContainsString('●', $this->settingRow($rows, 'Sticky scroll'), 'a fresh project has changed nothing');
 
                     $this->selectSettingRow($form, 'Sticky scroll');
                     $tui->handleInput("\r"); // toggle it off its default
                     $this->frame($tui);
 
-                    $rows = Paint::lines($form, new RenderContext(100, 24));
+                    $rows = Paint::lines($form, new RenderContext(100, 40));
                     $this->assertStringContainsString('●', $this->settingRow($rows, 'Sticky scroll'), 'the changed row is marked');
                     $this->assertStringNotContainsString('●', $this->settingRow($rows, 'Indent guides'), 'and its neighbour is not');
                 },
