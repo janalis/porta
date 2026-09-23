@@ -12,6 +12,7 @@ use Porta\Widget\DockTabsWidget;
 use Porta\Widget\HoverableList;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\SeparatorWidget;
+use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\View\ViewPointers;
 use Porta\Workbench\View\ViewRegistry;
@@ -44,6 +45,7 @@ final readonly class HoverRouter
         #[LayoutSlot('separator')]
         private SeparatorWidget $separator,
         private ToastCenter $toasts,
+        private StatusBarWidget $statusBar,
     ) {}
 
     /**
@@ -101,6 +103,10 @@ final readonly class HoverRouter
 
             return;
         }
+
+        // The status bar rides along under every view, like the menu bar: a
+        // clickable cell under the pointer underlines.
+        $this->updateStatusHover($mouse);
 
         // An open view owns its hover targets exclusively; the tree/editor
         // targets are detached while it is swapped in. The menu bar rides along
@@ -176,6 +182,15 @@ final readonly class HoverRouter
         $findChanged = null !== $findRel ? $this->panes->findBar->hoverAt($findRel['row'], $findRel['col']) : $this->panes->findBar->clearHover();
 
         if ($tabsChanged || $dockChanged || $crumbsChanged || $findChanged) {
+            $this->tui->requestRender();
+        }
+    }
+
+    private function updateStatusHover(MouseEvent $mouse): void
+    {
+        $rect = $this->hit->rect($this->statusBar);
+        $col = null !== $rect && $rect->contains($mouse->row, $mouse->col) ? $rect->toRelative($mouse->row, $mouse->col)['col'] : null;
+        if ($this->statusBar->hoverAt($col)) {
             $this->tui->requestRender();
         }
     }

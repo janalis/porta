@@ -11,6 +11,7 @@ use Porta\Widget\MenuBarWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Menu\ContextMenuBuilder;
 use Porta\Workbench\Menu\ContextMenuOpener;
+use Porta\Workbench\Menu\MenuItem;
 use Porta\Workbench\Menu\ViewMenuSources;
 use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\Tui\Render\WidgetRect;
@@ -124,11 +125,7 @@ final readonly class ContextMenuRouter
         // branch menu; the cell carries its own menu now, so nothing here knows
         // which cell was clicked.
         if (!$handled && null === $items) {
-            $statusRect = $this->hit->rect($this->statusBar);
-            if (null !== $statusRect && $statusRect->contains($mouse->row, $mouse->col)) {
-                $menu = $this->statusBar->menuAt($statusRect->toRelative($mouse->row, $mouse->col)['col']);
-                $items = null === $menu ? null : $menu();
-            }
+            $items = $this->statusMenuItems($mouse);
         }
         if (null === $items) {
             $this->opener->flashNoMenu();
@@ -137,5 +134,34 @@ final readonly class ContextMenuRouter
         }
 
         $this->opener->openAt($items, $mouse->row, $mouse->col);
+    }
+
+    /**
+     * A LEFT click on a status cell that offers a menu opens it: the cell
+     * wears the select's `▾`, and a select opens on a click. True when the
+     * click was one; anywhere else is left to the other routers.
+     */
+    public function openStatusMenu(MouseEvent $mouse): bool
+    {
+        $items = $this->statusMenuItems($mouse);
+        if (null === $items) {
+            return false;
+        }
+        $this->menuBar->close();
+        $this->opener->openAt($items, $mouse->row, $mouse->col);
+
+        return true;
+    }
+
+    /** @return list<MenuItem>|null the menu of the status cell under the pointer */
+    private function statusMenuItems(MouseEvent $mouse): ?array
+    {
+        $statusRect = $this->hit->rect($this->statusBar);
+        if (null === $statusRect || !$statusRect->contains($mouse->row, $mouse->col)) {
+            return null;
+        }
+        $menu = $this->statusBar->menuAt($statusRect->toRelative($mouse->row, $mouse->col)['col']);
+
+        return null === $menu ? null : $menu();
     }
 }

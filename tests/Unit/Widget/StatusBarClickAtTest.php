@@ -31,7 +31,6 @@ final class StatusBarClickAtTest extends TestCase
         $status->setProvider(static fn (): array => [
             'left' => $left,
             'right' => $right,
-            'menus' => [],
             // 'AB' is cols [0,2) of the right segment; 'CD' is [3,5).
             'rightClicks' => [
                 new StatusClickSpan(0, 2, 'ide_problems'),
@@ -95,18 +94,35 @@ final class StatusBarClickAtTest extends TestCase
         $this->assertSame('ide_problems', $status->clickAt($wideCol));
     }
 
-    public function testAFlashRemovesEveryHitRegion(): void
+    /**
+     * A flash takes the LEFT; the right-hand cells are still drawn, so they
+     * still answer — at the columns they are drawn at now. They used to go
+     * dead for as long as any message showed.
+     */
+    public function testAFlashKeepsTheRightCellsItStillDraws(): void
     {
-        // The flash takes the row: the cells the spans describe are not on
-        // screen, so acting on a click there would run an unrelated action.
         $status = $this->bar();
-        $row = $status->render(new RenderContext(self::COLUMNS, 1))[0];
-        $col = self::columnOf($row, 'AB');
-
         $status->flash('Saved!', 5.0);
-        $status->render(new RenderContext(self::COLUMNS, 1));
 
-        $this->assertNull($status->clickAt($col));
+        $row = $status->render(new RenderContext(self::COLUMNS, 1))[0];
+
+        $this->assertSame('ide_problems', $status->clickAt(self::columnOf($row, 'AB')));
+        $this->assertSame('goto_line', $status->clickAt(self::columnOf($row, 'CD')));
+    }
+
+    /** A cut right side keeps only the cells that end before its ellipsis. */
+    public function testACutRightKeepsOnlyTheCellsDrawnWhole(): void
+    {
+        $status = $this->bar(left: \str_repeat('L', times: 30), right: 'AB CDXY');
+        $status->flash(\str_repeat('F', times: 10), 5.0); // `◦ FFFFFFFFFF`: 12 columns, leaving the right 5
+
+        $row = AnsiUtils::stripAnsiCodes($status->render(new RenderContext(20, 1))[0]);
+
+        // CD's span, [3,5), ends exactly at the cut right's width — but its
+        // last column is the ellipsis, so it is not drawn whole.
+        $this->assertStringContainsString('AB C…', $row);
+        $this->assertSame('ide_problems', $status->clickAt(self::columnOf($row, 'AB')));
+        $this->assertNull($status->clickAt(self::columnOf($row, 'AB') + 3), 'CD was cut: its half and the ellipsis are no target');
     }
 
     public function testAProviderWithNoClickSpansOffersNothing(): void

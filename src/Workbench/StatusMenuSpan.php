@@ -16,12 +16,6 @@ final readonly class StatusMenuSpan
         public \Closure $items,
     ) {}
 
-    /** The same span shifted right by the row's leading pad. */
-    public function shifted(int $by): self
-    {
-        return new self($this->from + $by, $this->to + $by, $this->items);
-    }
-
     public function contains(int $col): bool
     {
         return $col >= $this->from && $col < $this->to;

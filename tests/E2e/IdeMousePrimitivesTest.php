@@ -23,6 +23,7 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Render\WidgetRect;
+use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -545,6 +546,39 @@ final class IdeMousePrimitivesTest extends TestCase
         );
 
         $this->assertStringContainsString("\x1b[?1003h", $terminal->getOutput());
+    }
+
+    /**
+     * The status bar's clickable cells answer the pointer: hovering the LSP
+     * cell underlines it, and leaving takes the underline back — the router
+     * repaints on the change, not on every motion event.
+     */
+    public function testHoveringAStatusCellUnderlinesIt(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                300 => function (Tui $tui, VirtualTerminal $terminal): void {
+                    $grid = $this->screenGrid($tui, $terminal);
+                    $row = \count($grid) - 1;
+                    $col = \mb_strpos($grid[$row], needle: 'LSP:');
+                    $this->assertNotFalse($col, 'the LSP cell is on the status row');
+
+                    $terminal->consumeOutput();
+                    $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $col + 2, $row + 1));
+                    $this->frame($tui);
+                    $this->assertStringContainsString("\x1b[4mLSP:", $terminal->consumeOutput(), 'the hovered cell underlines');
+
+                    $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", 3, 3)); // back over the editor
+                    $this->frame($tui);
+                    $this->assertStringNotContainsString("\x1b[4mLSP:", $tui->getById('status')->render(new RenderContext(160, 1))[0], 'and un-underlines on leaving');
+                },
+            ],
+        );
     }
 
     public function testMouseClickThroughOpenCompletion(): void

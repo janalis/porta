@@ -275,6 +275,13 @@ final class Glyphs
     public const string SELECTION_BAR_UNFOCUSED = '▎';
     public const string SELECTION_MARKED = '│'; // same value as SEPARATOR — disjoint surfaces (a list row's first column vs a tab strip)
 
+    // The status bar: ` │ ` between the left's cells, `▾` after a cell that
+    // opens a menu (the select's own arrow), and `◦` leading a flash so a
+    // message never reads as the file path it replaced.
+    public const string STATUS_SEPARATOR = '│'; // same value as SEPARATOR — disjoint surfaces (status row vs tab strip)
+    public const string STATUS_MENU = '▾'; // same value as EXPANDED — disjoint surfaces
+    public const string FLASH_MARKER = '◦'; // same value as TOAST_INFO — the same kind of notice, on the other surface
+
     // The truncation mark. Sites that deliberately truncate WITHOUT a mark
     // (PTY output rows, fixed-width chrome fillers) pass '' and say why.
     public const string ELLIPSIS = '…';

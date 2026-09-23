@@ -46,7 +46,6 @@ final class StatusBarClickRouterTest extends TestCase
         $this->statusBar->setProvider(static fn (): array => [
             'left' => '',
             'right' => 'AB CD',
-            'menus' => [],
             'rightClicks' => [
                 new StatusClickSpan(0, 2, 'ide_problems'),
                 new StatusClickSpan(3, 5, 'goto_line'),
@@ -71,6 +70,17 @@ final class StatusBarClickRouterTest extends TestCase
         return new StatusBarClickRouter(new HitTester($renderer), $this->statusBar, $this->commands, $this->editor);
     }
 
+    /** @var list<int> the columns the right-click router was asked to open a menu at */
+    private array $menuAsked = [];
+
+    /** The right-click router's menu opener, as a spy: it opens nothing. */
+    private function menus(MouseEvent $mouse): bool
+    {
+        $this->menuAsked[] = $mouse->col;
+
+        return false;
+    }
+
     /** A left press at the 0-based screen column/row, as the terminal sends it. */
     private static function pressAt(int $col, int $row): MouseEvent
     {
@@ -93,7 +103,7 @@ final class StatusBarClickRouterTest extends TestCase
     {
         $router = $this->router();
 
-        $this->assertTrue($router->route($this->clickOn('AB')));
+        $this->assertTrue($router->route($this->clickOn('AB'), $this->menus(...)));
         $this->assertSame(['ide_problems'], $this->ran);
     }
 
@@ -104,7 +114,7 @@ final class StatusBarClickRouterTest extends TestCase
         // way that cell does anything.
         $router = $this->router();
 
-        $this->assertTrue($router->route($this->clickOn('CD')));
+        $this->assertTrue($router->route($this->clickOn('CD'), $this->menus(...)));
         $this->assertSame([], $this->ran, 'the registry must not have claimed an editor verb');
         // The EFFECT, not just the absence of the other branch: dropping the
         // runAction call leaves both of those assertions true.
@@ -126,7 +136,7 @@ final class StatusBarClickRouterTest extends TestCase
             label: 'Go to Line',
         );
 
-        $this->assertTrue($router->route($this->clickOn('CD')));
+        $this->assertTrue($router->route($this->clickOn('CD'), $this->menus(...)));
         $this->assertSame(['goto_line'], $this->ran);
         $this->assertFalse(EditorState::promptOpen($this->editor), 'the registry claimed it; the editor must not run it too');
     }
@@ -136,14 +146,14 @@ final class StatusBarClickRouterTest extends TestCase
         // It must fall through, or the panes below never see their clicks.
         $router = $this->router();
 
-        $this->assertFalse($router->route(self::pressAt(2, 0)));
+        $this->assertFalse($router->route(self::pressAt(2, 0), $this->menus(...)));
     }
 
     public function testAClickOutsideTheStatusRowIsNotConsumed(): void
     {
         $router = $this->router();
 
-        $this->assertFalse($router->route(self::pressAt(0, 5)));
+        $this->assertFalse($router->route(self::pressAt(0, 5), $this->menus(...)));
     }
 
     public function testAClickOnANEARBYRowAtACELLSCOLUMNIsStillNotConsumed(): void
@@ -155,7 +165,24 @@ final class StatusBarClickRouterTest extends TestCase
         $router = $this->router();
         $cellColumn = $this->clickOn('AB')->col;
 
-        $this->assertFalse($router->route(self::pressAt($cellColumn, 7)));
+        $this->assertFalse($router->route(self::pressAt($cellColumn, 7), $this->menus(...)));
         $this->assertSame([], $this->ran, 'nothing may run from a click off the status row');
+    }
+
+    /**
+     * A click on the row that runs no action is offered to the menu opener —
+     * the branch cell's menu is the right-click router's — and its answer is
+     * the router's: consumed only when a menu opened.
+     */
+    public function testAClickWithNoActionIsOfferedToTheMenuOpener(): void
+    {
+        $router = $this->router();
+
+        $this->assertFalse($router->route(self::pressAt(2, 0), $this->menus(...)), 'no menu opened: not consumed');
+        $this->assertSame([2], $this->menuAsked);
+        $this->assertTrue($router->route(self::pressAt(2, 0), static fn (): bool => true), 'a menu opened: consumed');
+
+        $router->route($this->clickOn('AB'), $this->menus(...));
+        $this->assertSame([2], $this->menuAsked, 'a cell with an action never asks');
     }
 }

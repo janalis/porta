@@ -17,7 +17,7 @@ Git support is silently disabled outside a git working tree.
   tree can actually have moved — a save, a commit, a stage or discard, a pull —
   and never on a buffer switch, which changes nothing on disk. A deleted file
   has no row to mark.
-- The **current branch** in the status bar.
+- The **current branch** in the status bar. Its `▾` says it opens a menu, on a left click as on a right one.
 - **Merge-conflict navigation and resolution** — see
   [editor.md](editor.md#merge-conflicts).
 

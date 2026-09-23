@@ -338,6 +338,20 @@ only the box and a column either side of it toggle.
 - A box adds `FieldBox::ROWS - 1` rows to its host; every host derives its
   header rows and click bands from `FieldBox::ROWS`, never a literal.
 
+### The status bar: cells, then the file
+
+`StatusBarProvider` returns the contributed cells (each styled by its tone, the
+Active tone bold, and a cell with a menu ending in `▾`), the file part as
+`left`, and the right segment with its click spans. `StatusBarWidget` lays the
+cells out itself, joined by ` │ `: only it knows which fit. It drops cells
+whole from the end and elides only the file part, so an elided path moves no
+cell, and every cell drawn whole keeps its span, even during a flash (which
+takes the left, marked `◦`). The clickable cell under the pointer underlines
+(`hoverAt`, from `HoverRouter`). A left click with no action on a cell that
+offers a menu opens it: `StatusBarClickRouter::route()` takes the right-click
+router's `openStatusMenu` as a callable, so no branch lands in `MouseRouter`,
+whose complexity pin is the lint threshold.
+
 ### Selection in lists: a bar in the first column
 
 A list row's first column is `Widget/Render/SelectionBar`: `▌` for the cursor

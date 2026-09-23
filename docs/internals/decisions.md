@@ -10156,3 +10156,15 @@ the name, or the `×` alone when the pointer is on it, so a click's effect shows
 before the click. The vertical strip stays hand-laid: it is a list of rows, and
 it wears the selection bar.
 
+## The status bar keeps its cells whole (2026-09-23)
+
+The left used to be one string: the cells baked into the path, and one middle
+elision over the whole. Any cut moved every span, so the widget dropped all
+click zones as soon as anything was elided, and a flash dropped the right
+side's zones too. The provider now hands over the cells as a list and the
+widget lays them out: cells are dropped whole, only the path elides, and a zone
+exists for exactly the cells drawn. A flash takes only the left, so the right
+cells keep answering at their new columns. A cut right side keeps only the
+spans that end before its ellipsis; the old filter let a span include the
+ellipsis column.
+

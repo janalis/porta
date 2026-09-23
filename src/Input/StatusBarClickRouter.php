@@ -33,8 +33,15 @@ final readonly class StatusBarClickRouter
         private CodeEditorWidget $editor,
     ) {}
 
-    /** True when the click landed on an actionable cell and was consumed. */
-    public function route(MouseEvent $mouse): bool
+    /**
+     * True when the click landed on an actionable cell and was consumed. A
+     * cell with no action may still offer a menu — the branch's `▾` — and
+     * $openMenu, the right-click router's, opens it: the menus are that
+     * router's, and a select opens on a left click.
+     *
+     * @param \Closure(MouseEvent): bool $openMenu
+     */
+    public function route(MouseEvent $mouse, \Closure $openMenu): bool
     {
         $rect = $this->hit->rect($this->statusBar);
         if (null === $rect || !$rect->contains($mouse->row, $mouse->col)) {
@@ -43,7 +50,7 @@ final readonly class StatusBarClickRouter
 
         $action = $this->statusBar->clickAt($rect->toRelative($mouse->row, $mouse->col)['col']);
         if (null === $action) {
-            return false;
+            return $openMenu($mouse);
         }
 
         // Registry commands (the tool windows) first; anything else is an

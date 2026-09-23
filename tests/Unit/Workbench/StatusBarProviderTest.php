@@ -166,56 +166,42 @@ final class StatusBarProviderTest extends TestCase
             new StatusCell('⎇ main', StatusTone::Accent, static fn (): array => []),
         ]]);
 
-        $segments = $provider->segments();
+        $cells = $provider->segments()['cells'];
 
-        $this->assertStringContainsString('main', $segments['left']);
-        $this->assertCount(1, $segments['menus'], 'the cell after the empty one still got its span recorded');
+        $this->assertCount(1, $cells, 'the empty cell is skipped, and only it');
+        $this->assertStringContainsString('main', $cells[0]['text']);
+        $this->assertNotNull($cells[0]['menu'], 'the cell after the empty one kept its menu');
     }
 
-    public function testAPrefixCellIsStyledTextThenATwoColumnGap(): void
+    /** A cell's text is styled by its tone, and a cell offering a menu ends in the select's `▾`. */
+    public function testACellIsStyledByItsToneAndAMenuCellSaysItOpensOne(): void
     {
-        $provider = $this->provider([[new StatusCell('AA', StatusTone::Accent)]]);
-        $styled = Styles::dark()->of(Role::StatusAccent)->apply('AA');
+        $provider = $this->provider([[new StatusCell('AA', StatusTone::Accent), new StatusCell('⎇ main', StatusTone::Accent, static fn (): array => [])]]);
 
-        $left = $provider->segments()['left'];
+        $cells = $provider->segments()['cells'];
 
-        $this->assertStringStartsWith($styled.'  ', $left, 'styled text first, then the two-space gap — not swapped, not dropped');
+        $this->assertSame(Styles::dark()->of(Role::StatusAccent)->apply('AA'), $cells[0]['text']);
+        $this->assertNull($cells[0]['menu']);
+        $this->assertSame('⎇ main '.Glyphs::STATUS_MENU, AnsiUtils::stripAnsiCodes($cells[1]['text']));
     }
 
-    public function testEachCellsTextAccumulatesIntoThePrefixRatherThanOverwritingThePrevious(): void
+    /** Active is the loudest tone, so it is bold as well as coloured: it must read with no colour at all. */
+    public function testTheActiveToneIsBold(): void
+    {
+        $cells = $this->provider([[new StatusCell('▶ debug', StatusTone::Active), new StatusCell('x')]])->segments()['cells'];
+
+        $this->assertStringContainsString("\x1b[1m", $cells[0]['text']);
+        $this->assertStringNotContainsString("\x1b[1m", $cells[1]['text'], 'a subtle cell is not');
+    }
+
+    public function testEveryCellIsKeptInOrderAndTheLeftIsTheFileAlone(): void
     {
         $provider = $this->provider([[new StatusCell('AA'), new StatusCell('BB')]]);
 
-        $left = $provider->segments()['left'];
-
-        $this->assertStringContainsString('AA', $left);
-        $this->assertStringContainsString('BB', $left);
-    }
-
-    public function testPrefixWidthAccumulatesAcrossEveryPrecedingCellNotJustTheLastOne(): void
-    {
-        $menu = static fn (): array => [];
-        $provider = $this->provider([[
-            new StatusCell('AAAA'), // width 4, no menu
-            new StatusCell('BB'), // width 2, no menu
-            new StatusCell('C', StatusTone::Accent, $menu),
-        ]]);
-
         $segments = $provider->segments();
 
-        $expectedFrom = AnsiUtils::visibleWidth('AAAA') + 2 + AnsiUtils::visibleWidth('BB') + 2;
-        $this->assertSame($expectedFrom, $segments['menus'][0]->from, 'an overwrite (vs accumulate) would drop the first cell\'s width');
-    }
-
-    public function testThePrefixIsPrependedToTheOriginalLeftNotAppendedOrDropped(): void
-    {
-        $provider = $this->provider([[new StatusCell('⎇ main', StatusTone::Accent)]]);
-        $originalLeft = $this->translator->trans('porta — open a file from the tree (Enter)');
-        $styledCell = Styles::dark()->of(Role::StatusAccent)->apply('⎇ main');
-
-        $left = $provider->segments()['left'];
-
-        $this->assertSame($styledCell.'  '.$originalLeft, $left);
+        $this->assertSame(['AA', 'BB'], \array_map(static fn (array $cell): string => AnsiUtils::stripAnsiCodes($cell['text']), $segments['cells']));
+        $this->assertSame($this->translator->trans('porta — open a file from the tree (Enter)'), $segments['left'], 'the cells are not baked into the left');
     }
 
     public function testANonEmptyPaneStatusSegmentShortCircuitsTheRightSide(): void

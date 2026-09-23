@@ -207,9 +207,10 @@ final class MouseRouter
         }
 
         // The status bar's own cells: problem counts, caret position, LSP
-        // status. Below the modals — an open dropdown may cover the row — and
-        // above the pane hit-tests, which do not reach the chrome anyway.
-        if ($this->statusClick->route($mouse)) {
+        // status, and a cell's menu (the branch). Below the modals — an open
+        // dropdown may cover the row — and above the pane hit-tests, which do
+        // not reach the chrome anyway.
+        if ($this->statusClick->route($mouse, $this->rightClick->openStatusMenu(...))) {
             return;
         }
 

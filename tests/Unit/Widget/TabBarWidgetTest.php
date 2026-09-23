@@ -557,7 +557,7 @@ final class TabBarWidgetTest extends TestCase
         $line = AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(80, 1))[0]);
 
         $this->assertStringStartsWith(' kept.php │ b.php × │', $line);
-        foreach (\range(0, 10) as $col) {
+        foreach (\range(start: 0, end: 10) as $col) {
             $this->assertNull($bar->closeIndexAt(0, $col), "column {$col} of the pinned tab closes nothing");
         }
         $this->assertSame(0, $bar->tabIndexAt(0, 9));

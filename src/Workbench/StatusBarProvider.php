@@ -14,8 +14,10 @@ use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\CodeEditorWidget;
+use Porta\Workbench\Menu\MenuItem;
 use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Style\Style;
 
 /**
  * The status bar's two segments, pulled at render time: the active file (with
@@ -40,12 +42,12 @@ final readonly class StatusBarProvider
     ) {}
 
     /**
-     * The two status segments plus, for every clickable cell, its column range
-     * within `left` and the menu it offers — so the router can hit-test a
-     * right-click without knowing which cell is which. Ranges shift right as
-     * earlier segments appear and disappear.
+     * The contributed cells, each with the menu it offers; the file part
+     * (`left`); and the right segment with its left-clickable spans. The
+     * widget lays the cells out — it alone knows which of them fit — so the
+     * router still hit-tests a click without knowing which cell is which.
      *
-     * @return array{left: string, right: string, menus: list<StatusMenuSpan>, rightClicks: list<StatusClickSpan>}
+     * @return array{cells: list<array{text: string, menu: (\Closure(): list<MenuItem>)|null}>, left: string, right: string, rightClicks: list<StatusClickSpan>}
      */
     public function segments(): array
     {
@@ -60,28 +62,20 @@ final readonly class StatusBarProvider
             default => $this->paths->relative($path).($doc->isDirty() ? ' '.Glyphs::DIRTY : ''),
         };
 
-        // Build the left prefix in visual order — [contributed segments] [branch]
-        // — so the branch's column offset already accounts for whatever precedes
-        // it (each part is independently exercised; their sum needs no third
-        // path). The debugger is one contributor among them now, which is what
-        // takes Porta\Debug out of this file.
-        $menus = [];
-        $prefix = '';
-        $prefixWidth = 0;
+        // The contributed cells in visual order — the debugger, the branch —
+        // styled by their tone, and a cell with a menu says so with `▾`: it
+        // is a control, which the row had no way to show. The debugger is one
+        // contributor among them, which is what keeps Porta\Debug out of here.
+        $cells = [];
         foreach ($this->segmentSources as $source) {
             foreach ($source->statusCells() as $cell) {
                 if ('' === $cell->text) {
                     continue;
                 }
-                $width = AnsiUtils::visibleWidth($cell->text);
-                if (null !== $cell->menu) {
-                    $menus[] = new StatusMenuSpan($prefixWidth, $prefixWidth + $width, $cell->menu);
-                }
-                $prefix .= $this->styles->of(self::role($cell->tone))->apply($cell->text).'  ';
-                $prefixWidth += $width + 2;
+                $text = null === $cell->menu ? $cell->text : $cell->text.' '.Glyphs::STATUS_MENU;
+                $cells[] = ['text' => $this->style($cell->tone)->apply($text), 'menu' => $cell->menu];
             }
         }
-        $left = $prefix.$left;
 
         // A pane answers for its own right-hand segment — extent, zoom and the
         // keys it binds. The two branches this replaced held one hint string per
@@ -92,7 +86,7 @@ final readonly class StatusBarProvider
         if (null !== $paneSegment && '' !== $paneSegment) {
             // A pane owns its whole right side, so core has nothing clickable
             // to offer there.
-            return ['left' => $left, 'right' => $paneSegment, 'menus' => $menus, 'rightClicks' => []];
+            return ['cells' => $cells, 'left' => $left, 'right' => $paneSegment, 'rightClicks' => []];
         }
 
         if (null !== ($diagnostic = $this->editor->getCursorDiagnostic())) {
@@ -147,10 +141,21 @@ final readonly class StatusBarProvider
         // not a control, and a click landing on one used to open the server log.
         $clicks[] = new StatusClickSpan($at, $at + AnsiUtils::visibleWidth($lspCell), 'ide_lsp_log');
 
-        return ['left' => $left, 'right' => $right, 'menus' => $menus, 'rightClicks' => $clicks];
+        return ['cells' => $cells, 'left' => $left, 'right' => $right, 'rightClicks' => $clicks];
     }
 
-    /** A contributor asks for prominence; core decides the colour, so the theme lock holds. */
+    /**
+     * A contributor asks for prominence; core decides the colour, so the theme
+     * lock holds. Active is bold as well: a running debugger reads as the
+     * loudest cell with no colour at all.
+     */
+    private function style(StatusTone $tone): Style
+    {
+        $style = $this->styles->of(self::role($tone));
+
+        return StatusTone::Active === $tone ? $style->withBold() : $style;
+    }
+
     private static function role(StatusTone $tone): Role
     {
         return match ($tone) {

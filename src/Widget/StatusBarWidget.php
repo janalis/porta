@@ -9,6 +9,7 @@ use Porta\Container\AsIdeService;
 use Porta\Container\AsWidget;
 use Porta\Support\AnsiText;
 use Porta\Support\Clocks;
+use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Support\StylesDefault;
@@ -19,6 +20,7 @@ use Psr\Clock\ClockInterface;
 use Symfony\Component\Clock\NativeClock;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
+use Symfony\Component\Tui\Style\Style;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 
 /**
@@ -32,7 +34,7 @@ final class StatusBarWidget extends AbstractWidget
 {
     use StylesDefault;
 
-    /** @var (callable(): array{left: string, right: string, menus?: list<StatusMenuSpan>, rightClicks?: list<StatusClickSpan>})|null */
+    /** @var (callable(): array{cells?: list<array{text: string, menu: (\Closure(): list<MenuItem>)|null}>, left: string, right: string, rightClicks?: list<StatusClickSpan>})|null */
     private $provider;
 
     /**
@@ -46,11 +48,14 @@ final class StatusBarWidget extends AbstractWidget
     private string $lastLeft = '';
     private string $lastRight = '';
     /**
-     * Clickable cells, as the provider reports them.
+     * The contributed cells, as the provider reports them.
      *
-     * @var list<StatusMenuSpan>
+     * @var list<array{text: string, menu: (\Closure(): list<MenuItem>)|null}>
      */
-    private array $cellMenus = [];
+    private array $cells = [];
+
+    /** The column under the pointer, or null: the clickable cell there underlines. */
+    private ?int $hoverCol = null;
 
     /**
      * Their on-screen spans from the last render.
@@ -86,7 +91,7 @@ final class StatusBarWidget extends AbstractWidget
     }
 
     /**
-     * @param callable(): array{left: string, right: string, menus?: list<StatusMenuSpan>, rightClicks?: list<StatusClickSpan>} $provider
+     * @param callable(): array{cells?: list<array{text: string, menu: (\Closure(): list<MenuItem>)|null}>, left: string, right: string, rightClicks?: list<StatusClickSpan>} $provider
      */
     public function setProvider(callable $provider): self
     {
@@ -129,6 +134,38 @@ final class StatusBarWidget extends AbstractWidget
         foreach ($this->renderedClicks as $span) {
             if ($span->contains($col)) {
                 return $span->action;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * The pointer over column $col (null: off the row). A clickable cell under
+     * it underlines — a link's hover, so what answers a click is visible
+     * before it is clicked. Returns whether that changed which cell is lit.
+     */
+    public function hoverAt(?int $col): bool
+    {
+        $before = $this->litSpan($this->hoverCol);
+        $this->hoverCol = $col;
+        if ($before === $this->litSpan($col)) {
+            return false;
+        }
+        $this->invalidate();
+
+        return true;
+    }
+
+    /** @return array{int, int}|null the drawn clickable span under $col, as `[from, to]` */
+    private function litSpan(?int $col): ?array
+    {
+        if (null === $col) {
+            return null;
+        }
+        foreach ([...$this->renderedMenus, ...$this->renderedClicks] as $span) {
+            if ($span->contains($col)) {
+                return [$span->from, $span->to];
             }
         }
 
@@ -181,9 +218,10 @@ final class StatusBarWidget extends AbstractWidget
         $segments = ($this->provider)();
         $left = $segments['left'];
         $right = $segments['right'];
-        $this->cellMenus = $segments['menus'] ?? [];
+        $cells = $segments['cells'] ?? [];
         $this->cellClicks = $segments['rightClicks'] ?? [];
-        if ($left !== $this->lastLeft || $right !== $this->lastRight) {
+        if ($left !== $this->lastLeft || $right !== $this->lastRight || \array_column($cells, 'text') !== \array_column($this->cells, 'text')) {
+            $this->cells = $cells;
             $this->lastLeft = $left;
             $this->lastRight = $right;
             $this->invalidate();
@@ -206,8 +244,12 @@ final class StatusBarWidget extends AbstractWidget
     public function render(RenderContext $context): array
     {
         $columns = $context->getColumns();
-        $left = null !== $this->flash ? $this->flash['text'] : $this->lastLeft;
+        // A flash takes the left, marked so it never reads as the path it
+        // replaced; the cells go with it.
+        $cells = null !== $this->flash ? [] : $this->cells;
+        $left = null !== $this->flash ? Glyphs::FLASH_MARKER.' '.$this->flash['text'] : $this->lastLeft;
         $right = $this->lastRight;
+        $whole = self::prefix(\array_column($cells, 'text')).$left;
 
         // A flash is transient information the user must read, so it wins the
         // width fight: the right side (whose tail is the static key legend)
@@ -224,8 +266,6 @@ final class StatusBarWidget extends AbstractWidget
         // the whole-row truncate below passes an EMPTY ellipsis, because by
         // then the row is meant to be exactly the width already, so an over-wide
         // legend used to come out chopped mid-word with nothing to mark it.
-        // Clipped click spans fall out of the map below on their own, since
-        // that filter reads the width computed from the truncated string.
         //
         // It yields to the left's floor FIRST, which it did not use to. Giving
         // it `columns - 3` and handing the left the remainder meant the file
@@ -233,46 +273,78 @@ final class StatusBarWidget extends AbstractWidget
         // the last: at 100 columns the name was gone in English, at 140 in
         // German. The right's tail IS that legend, so cutting it here spends
         // the difference on hints nobody needs twice.
-        $right = AnsiText::truncate($right, \max(0, $columns - 3 - $this->leftFloor($left, $columns)));
+        $right = AnsiText::truncate($right, \max(0, $columns - 3 - $this->leftFloor($whole, $columns)));
         $rightWidth = AnsiUtils::visibleWidth($right);
         $leftMax = \max(0, $columns - $rightWidth - 3);
-        // Elided in the MIDDLE, because the left ends with the file's name and
-        // begins with the contributed cells: a tail cut kept `src/Some…` and
-        // threw away the one word that says which file this is.
-        $whole = $left;
-        $left = AnsiText::elideMiddle($left, $leftMax);
-        $leftWidth = AnsiUtils::visibleWidth($left);
 
-        // Cells are offset by the one leading space in the row. Only offer a
-        // hit region when the whole label is on screen — not while a flash
-        // replaced `left`, and not once anything was elided out of it: the
-        // spans are offsets into the UNCUT string, and a middle cut moves
-        // every column after it while leaving the widths that filter would
-        // compare still plausible.
-        $this->renderedMenus =
-            null !== $this->flash || $left !== $whole
-                ? []
-                : \array_values(\array_map(
-                    static fn (StatusMenuSpan $span): StatusMenuSpan => $span->shifted(1),
-                    \array_filter($this->cellMenus, static fn (StatusMenuSpan $span): bool => $span->to <= $leftWidth),
-                ));
+        // The cells are controls, so they are dropped whole — from the end —
+        // never cut: a half-drawn branch name is a click target that lies.
+        // Only the file part is elided, in the MIDDLE, because it ends with the
+        // file's name: a tail cut kept `src/Some…` and threw away the one word
+        // that says which file this is.
+        $drawn = $cells;
+        while ([] !== $drawn && AnsiUtils::visibleWidth(self::prefix(\array_column($drawn, 'text'))) > $leftMax) {
+            \array_pop($drawn);
+        }
+        $prefix = self::prefix(\array_column($drawn, 'text'));
+        $file = AnsiText::elideMiddle($left, \max(0, $leftMax - AnsiUtils::visibleWidth($prefix)));
+
+        // Every cell drawn keeps its span — an elided path used to cost the
+        // branch its click, and a flash every right-hand cell its own.
+        $this->renderedMenus = [];
+        $at = 1; // the row's leading space
+        $parts = [];
+        foreach ($drawn as $cell) {
+            $width = AnsiUtils::visibleWidth($cell['text']);
+            $hovered = null !== $cell['menu'] && null !== $this->hoverCol && $this->hoverCol >= $at && $this->hoverCol < ($at + $width);
+            $parts[] = $hovered ? new Style(underline: true)->apply($cell['text']) : $cell['text'];
+            if (null !== $cell['menu']) {
+                $this->renderedMenus[] = new StatusMenuSpan($at, $at + $width, $cell['menu']);
+            }
+            $at += $width + self::SEPARATOR_WIDTH;
+        }
+        $leftText = ([] === $parts ? '' : \implode($this->separator(), $parts).$this->separator()).$file;
+        $leftWidth = AnsiUtils::visibleWidth($prefix.$file);
 
         $gap = \max(1, $columns - $leftWidth - $rightWidth - 2);
         // The right segment starts after the leading space, the left, and the
-        // gap — so its cells only get screen columns once the gap is known.
-        // A flash steals the row, and a truncated right side would put the
-        // spans in the wrong place, so neither offers a hit region.
+        // gap — so its cells only get screen columns once the gap is known. A
+        // cut right keeps the spans that end before its ellipsis.
         $rightStart = 1 + $leftWidth + $gap;
-        $this->renderedClicks = null !== $this->flash
-            ? []
-            : \array_values(\array_map(
-                static fn (StatusClickSpan $span): StatusClickSpan => $span->shifted($rightStart),
-                \array_filter($this->cellClicks, static fn (StatusClickSpan $span): bool => $span->to <= $rightWidth),
-            ));
-        $line = ' '.$left.\str_repeat(' ', $gap).$right.' ';
+        $room = $right === $this->lastRight ? $rightWidth : $rightWidth - 1; // a cut's last column is its ellipsis
+        $this->renderedClicks = \array_values(\array_map(
+            static fn (StatusClickSpan $span): StatusClickSpan => $span->shifted($rightStart),
+            \array_filter($this->cellClicks, static fn (StatusClickSpan $span): bool => $span->to <= $room),
+        ));
+        $lit = $this->litSpan($this->hoverCol);
+        if (null !== $lit && $lit[0] >= $rightStart) {
+            $right =
+                AnsiText::columnsFrom($right, 0, $lit[0] - $rightStart)
+                .new Style(underline: true)->apply(AnsiText::columnsFrom($right, $lit[0] - $rightStart, $lit[1] - $lit[0]))
+                .AnsiText::columnsFrom($right, $lit[1] - $rightStart, $rightWidth);
+        }
+        $line = ' '.$leftText.\str_repeat(' ', $gap).$right.' ';
         // '' ellipsis: chrome already gap-padded to the width — never mark it.
         $line = AnsiText::truncate($line, $columns, pad: true, ellipsis: '');
 
         return [$this->styles->merge(Role::HeaderBar, Role::CurrentLineNumber)->apply($line)];
+    }
+
+    /** ` │ `, the one column of rule between two cells and after the last. */
+    private const int SEPARATOR_WIDTH = 3;
+
+    private function separator(): string
+    {
+        return ' '.$this->styles->of(Role::Placeholder)->apply(Glyphs::STATUS_SEPARATOR).' ';
+    }
+
+    /**
+     * The cells' plain run and the separator after it, for measuring.
+     *
+     * @param list<string> $texts
+     */
+    private static function prefix(array $texts): string
+    {
+        return [] === $texts ? '' : \implode(' '.Glyphs::STATUS_SEPARATOR.' ', $texts).' '.Glyphs::STATUS_SEPARATOR.' ';
     }
 }

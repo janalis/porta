@@ -8,20 +8,20 @@ use PHPUnit\Framework\TestCase;
 use Porta\Ui\Glyphs;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Menu\MenuItem;
-use Porta\Workbench\StatusMenuSpan;
+use Porta\Workbench\StatusClickSpan;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 
 final class StatusBarWidgetTest extends TestCase
 {
-    /** A status row with one clickable cell spanning cols [0,6) of `left`. */
+    /** A status row with one six-column cell ahead of the file, clickable when $menus. */
     // @mago-expect lint:no-boolean-flag-parameter -- the bool IS the domain here, not a hidden second responsibility.
-    private static function provider(bool $menus, string $right = 'R'): callable
+    private static function provider(bool $menus, string $right = 'R', string $left = 'file.php'): callable
     {
-        $spans = $menus ? [new StatusMenuSpan(0, 6, static fn (): array => [new MenuItem('Switch', '', static fn (): null => null)])] : [];
+        $menu = $menus ? static fn (): array => [new MenuItem('Switch', '', static fn (): null => null)] : null;
 
-        return static fn (): array => ['left' => "\u{e0a0} main  file.php", 'right' => $right, 'menus' => $spans];
+        return static fn (): array => ['cells' => [['text' => "\u{e0a0} main", 'menu' => $menu]], 'left' => $left, 'right' => $right];
     }
 
     public function testRendersProviderContentAtExactWidth(): void
@@ -113,7 +113,7 @@ final class StatusBarWidgetTest extends TestCase
     public function testStatusCellMenuTracksTheBranchCellWithTheLeadingSpace(): void
     {
         $status = new StatusBarWidget();
-        // The cell occupies cols [0,6) in `left`; the row's one leading space shifts it to [1,7).
+        // The cell is six columns; the row's one leading space puts it at [1,7).
         $status->setProvider(self::provider(menus: true));
         $status->beforeRender();
         $status->render(new RenderContext(60, 1));
@@ -255,12 +255,12 @@ final class StatusBarWidgetTest extends TestCase
         $status = new StatusBarWidget($clock);
         $status->setProvider(static fn (): array => ['left' => 'x', 'right' => \str_repeat('R', times: 30)]);
         $status->beforeRender();
-        $status->flash('SAVED', 5.0); // visibleWidth 5, well under the columns-3 cap
+        $status->flash('SAVED', 5.0); // `◦ SAVED`: visibleWidth 7, well under the columns-3 cap
 
         $plain = AnsiUtils::stripAnsiCodes($status->render(new RenderContext(20, 1))[0]);
-        // rightMax = max(0, 20 - 5 - 3) = 12 → 11 'R's + the ellipsis.
-        $this->assertStringContainsString(\str_repeat('R', times: 11).'…', $plain);
-        $this->assertStringNotContainsString(\str_repeat('R', times: 12), $plain, 'one column more than rightMax must not fit');
+        // rightMax = max(0, 20 - 7 - 3) = 10 → 9 'R's + the ellipsis.
+        $this->assertStringContainsString(\str_repeat('R', times: 9).'…', $plain);
+        $this->assertStringNotContainsString(\str_repeat('R', times: 10), $plain, 'one column more than rightMax must not fit');
     }
 
     public function testLeftMaxLeavesExactlyThreeColumnsForThePadAndRightMargin(): void
@@ -339,33 +339,112 @@ final class StatusBarWidgetTest extends TestCase
     }
 
     /**
-     * A span is an offset into the UNCUT left, and a middle cut moves every
-     * column after it — while leaving the width the old filter compared still
-     * plausible, which is the shape of a hit region that answers for the wrong
-     * cell. None are offered once anything was elided.
+     * The cells are laid out ahead of the path, so eliding the path moves no
+     * cell: the branch stays clickable however long the file name. It used to
+     * lose its click as soon as anything was cut.
      */
-    public function testNoCellIsClickableOnceTheLeftWasElided(): void
+    public function testACellStaysClickableWhenThePathIsElided(): void
     {
         $status = new StatusBarWidget();
-        $span = new StatusMenuSpan(0, 6, static fn (): array => [new MenuItem('Switch', '', static fn (): null => null)]);
-        $status->setProvider(static fn (): array => ['left' => "\u{e0a0} main  src/Some/Deep/Namespace/ExampleClass.php", 'right' => \str_repeat('R', times: 40), 'menus' => [$span]]);
+        $status->setProvider(self::provider(menus: true, right: \str_repeat('R', times: 20), left: 'src/Some/Deep/Namespace/ExampleClass.php'));
         $status->beforeRender();
-        $status->render(new RenderContext(60, 1));
 
-        $this->assertNull($status->menuAt(1), 'the branch cell is not offered on a row it can no longer place');
+        $plain = AnsiUtils::stripAnsiCodes($status->render(new RenderContext(60, 1))[0]);
+
+        $this->assertStringContainsString(Glyphs::ELLIPSIS, $plain, 'the path was elided');
+        $this->assertStringStartsWith(" \u{e0a0} main │ ", $plain, 'the cell whole, then its separator');
+        $this->assertNotNull($status->menuAt(1));
+        $this->assertNotNull($status->menuAt(6));
+    }
+
+    /** A cell that does not fit is dropped whole, never cut: a half-drawn control lies about its target. */
+    public function testACellThatDoesNotFitIsDroppedWhole(): void
+    {
+        $status = new StatusBarWidget();
+        $status->setProvider(static fn (): array => [
+            'cells' => [['text' => 'aaaa', 'menu' => null], ['text' => 'bbbbbbbbbbbb', 'menu' => static fn (): array => []]],
+            'left' => 'f.php',
+            'right' => 'R',
+        ]);
+        $status->beforeRender();
+
+        $plain = AnsiUtils::stripAnsiCodes($status->render(new RenderContext(20, 1))[0]);
+
+        $this->assertStringStartsWith(' aaaa │ f', $plain);
+        $this->assertStringNotContainsString('b', $plain);
+        $this->assertNull($status->menuAt(8), 'and the dropped cell has no span');
     }
 
     public function testMenuSpanEndingExactlyAtTheLeftWidthBoundaryStillHitTests(): void
     {
         $status = new StatusBarWidget();
-        // 'abcde' is 5 columns; a span ending exactly at column 5 (the boundary,
-        // not past it) must still count as fully on-screen.
-        $span = new StatusMenuSpan(0, 5, static fn (): array => [new MenuItem('Item', '', static fn (): null => null)]);
-        $status->setProvider(static fn (): array => ['left' => 'abcde', 'right' => 'R', 'menus' => [$span]]);
+        // 'abcde' is 5 columns and the whole left: its span must end exactly
+        // at the boundary and still count as on screen.
+        $status->setProvider(static fn (): array => [
+            'cells' => [['text' => 'abcde', 'menu' => static fn (): array => [new MenuItem('Item', '', static fn (): null => null)]]],
+            'left' => '',
+            'right' => 'R',
+        ]);
         $status->beforeRender();
         $status->render(new RenderContext(40, 1));
 
-        $this->assertNotNull($status->menuAt(1), 'a span ending exactly at leftWidth is still fully visible');
+        $this->assertNotNull($status->menuAt(5), 'the last column of the cell');
+        $this->assertNull($status->menuAt(6));
+    }
+
+    /** The pointer underlines the clickable cell under it, and only a clickable one. */
+    public function testHoverUnderlinesTheClickableCellUnderThePointer(): void
+    {
+        $status = new StatusBarWidget();
+        $status->setProvider(self::provider(menus: true));
+        $status->beforeRender();
+        $status->render(new RenderContext(60, 1));
+
+        $this->assertTrue($status->hoverAt(3), 'onto the cell');
+        $this->assertFalse($status->hoverAt(4), 'another column of the same cell changes nothing');
+        $this->assertStringContainsString("\x1b[4m\u{e0a0} main", $status->render(new RenderContext(60, 1))[0]);
+
+        $this->assertTrue($status->hoverAt(12), 'onto the file name, which is no control');
+        $this->assertStringNotContainsString("\x1b[4m", $status->render(new RenderContext(60, 1))[0]);
+        $this->assertFalse($status->hoverAt(null), 'and off the row: already unlit');
+    }
+
+    /** A cell with no menu is no control, so the pointer on it lights nothing. */
+    public function testHoverLeavesACellWithNoMenuAlone(): void
+    {
+        $status = new StatusBarWidget();
+        $status->setProvider(self::provider(menus: false));
+        $status->beforeRender();
+        $status->render(new RenderContext(60, 1));
+
+        $this->assertFalse($status->hoverAt(3));
+        $this->assertStringNotContainsString("\x1b[4m", $status->render(new RenderContext(60, 1))[0]);
+    }
+
+    /** On the right, the lit cell is cut out of the prebuilt segment by column and underlined in place. */
+    public function testHoverUnderlinesARightHandCellInPlace(): void
+    {
+        $status = new StatusBarWidget();
+        $status->setProvider(static fn (): array => ['left' => 'f.php', 'right' => 'AB CD', 'rightClicks' => [new StatusClickSpan(3, 5, 'goto_line')]]);
+        $status->beforeRender();
+        $plain = AnsiUtils::stripAnsiCodes($status->render(new RenderContext(30, 1))[0]);
+        $col = (int) \mb_strpos($plain, needle: 'CD');
+
+        $status->hoverAt($col);
+        $line = $status->render(new RenderContext(30, 1))[0];
+
+        $this->assertStringContainsString("AB \x1b[4mCD\x1b[24m", AnsiUtils::stripAnsiCodes($line) === $plain ? $line : '', 'only CD, and the row reads the same');
+    }
+
+    /** A flash is marked, so a message never reads as the path it replaced. */
+    public function testAFlashIsMarked(): void
+    {
+        $status = new StatusBarWidget();
+        $status->setProvider(self::provider(menus: false));
+        $status->flash('Saved');
+        $status->beforeRender();
+
+        $this->assertStringStartsWith(' '.Glyphs::FLASH_MARKER.' Saved', AnsiUtils::stripAnsiCodes($status->render(new RenderContext(40, 1))[0]));
     }
 
     public function testGapFillsExactlyToTheRemainingWidth(): void
@@ -430,11 +509,13 @@ final class StatusBarWidgetTest extends TestCase
     public function testStatusCellMenuIsNullWhenTruncatedOff(): void
     {
         $status = new StatusBarWidget();
-        // A wide right side + narrow terminal truncates the branch off the left.
+        // A wide right side + narrow terminal leaves the left seven columns:
+        // not enough for the six-column cell and its separator.
         $status->setProvider(self::provider(menus: true, right: \str_repeat('R', times: 40)));
         $status->beforeRender();
-        $status->render(new RenderContext(20, 1));
+        $plain = AnsiUtils::stripAnsiCodes($status->render(new RenderContext(15, 1))[0]);
 
-        $this->assertNull($status->menuAt(1), 'a clipped cell offers no hit region');
+        $this->assertStringNotContainsString('main', $plain, 'the cell was dropped whole');
+        $this->assertNull($status->menuAt(1), 'and a dropped cell offers no hit region');
     }
 }
