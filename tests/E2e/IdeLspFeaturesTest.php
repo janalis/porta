@@ -286,14 +286,29 @@ final class IdeLspFeaturesTest extends TestCase
 
                     $tui->getById('editor')->getDocument()->setCursor(91, 0);
                     $tui->handleInput("\x00"); // ctrl+space -> mock replies null
+                    $this->assertFalse($tui->getById('editor')->isCompletionOpen(), 'nothing is open yet, which is also what the null must leave behind');
+
+                    // A null completion produces NOTHING — no popup, no flash,
+                    // no buffer change — so there is no positive to await, and
+                    // a gap would only be asserting the absence of an answer
+                    // that had not arrived. (It was one: under a coverage run,
+                    // slower than a plain one, the response landed after the
+                    // assertion and the handler never ran at all, while the
+                    // test went on passing.)
+                    //
+                    // So ask a SECOND question that does answer. Responses
+                    // come back in order over one stdio pipe, so the popup
+                    // from the second is proof the first was handled.
+                    $tui->getById('editor')->getDocument()->setCursor(1, 0);
+                    $tui->handleInput("\x00");
+                    $this->await(static fn (): bool => $tui->getById('editor')->isCompletionOpen(), what: 'the SECOND completion to answer, which it can only do after the first');
                 },
-                // This gap stays, and the reason is worth writing down: a
-                // null completion response produces NOTHING — no popup, no
-                // flash, no buffer change — so "the popup is closed" is equally
-                // true before the server has answered at all. There is no
-                // positive to await here, only the absence of one, and the
-                // gap is what makes the absence mean anything.
                 400 => function ($tui): void {
+                    // Back to the null one: still nothing, now that "still"
+                    // means something.
+                    $tui->getById('editor')->getDocument()->setCursor(91, 0);
+                    $tui->handleInput("\x1b"); // close the popup the second request opened
+                    $tui->handleInput("\x00");
                     $this->assertFalse($tui->getById('editor')->isCompletionOpen(), 'a null result opens no popup');
                 },
             ],
@@ -521,7 +536,7 @@ final class IdeLspFeaturesTest extends TestCase
             $project,
             $project->path('src/Big.php'),
             [
-                100 => function (Tui $tui, VirtualTerminal $terminal): void {
+                100 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $this->awaitLspReady($tui, $terminal);
 
                     $editor = $tui->getById('editor');
@@ -530,24 +545,30 @@ final class IdeLspFeaturesTest extends TestCase
                         what: 'the editor to open its file',
                     );
 
-                    $editor->getDocument()->setCursor(95, 0); // >= 90 -> null
-                    $tui->handleInput("\x1b\x02"); // ctrl+alt+b
-                    $this->awaitPainted($tui, $terminal, 'No implementation found');
-                    $this->assertStringContainsString('No implementation found', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
-
+                    // The many-candidates case goes FIRST, on a clean screen.
+                    // Both cases flash the SAME message, and the flash lingers
+                    // and repaints — so run the other way round, the await
+                    // after a clearOutput() is satisfied by the FIRST flash
+                    // coming back, before the second request has answered at
+                    // all. (It was: this branch showed uncovered under a
+                    // coverage run while the test went on passing.)
+                    //
                     // >= 80 returns several candidates, all outside the
                     // filesystem, so every one is dropped and the controller
-                    // flashes the SAME not-found message instead of opening a
-                    // chooser. That flash is the terminal state the negative
-                    // below hangs off: asserting "no chooser" after a bare gap
-                    // cannot tell "it decided not to" from "it has not answered
-                    // yet", which is the trap the doctrine names for negatives.
-                    $terminal->clearOutput();
+                    // flashes not-found instead of opening a chooser.
                     $editor->getDocument()->setCursor(85, 0);
-                    $tui->handleInput("\x1b\x02");
+                    $tui->handleInput("\x1b\x02"); // ctrl+alt+b
                     $this->awaitPainted($tui, $terminal, 'No implementation found');
-
                     $this->assertStringNotContainsString('Choose target', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'no chooser when every candidate is unresolvable');
+
+                    // And a null result flashes the same thing. Waiting for
+                    // that text to paint AGAIN would be satisfied by the one
+                    // already on screen, so wait for the live flash to expire
+                    // first and then for this request to raise its own.
+                    $this->await(static fn (): bool => [] === Toasts::all($ide), what: 'the first flash to expire, so the next one can only be this request\'s');
+                    $editor->getDocument()->setCursor(95, 0); // >= 90 -> null
+                    $tui->handleInput("\x1b\x02");
+                    $this->await(static fn (): bool => \str_contains(Toasts::last($ide), 'No implementation found'), what: 'the null result to raise its OWN not-found');
                 },
             ],
         );
