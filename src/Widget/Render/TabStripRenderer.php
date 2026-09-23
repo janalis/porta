@@ -9,12 +9,15 @@ use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Style\Style;
 
 /**
- * The bottom dock's one-row tab strip: cells laid left to right,
- * scrolling on overflow with clickable `‹`/`›` indicators, exactly like the
- * editor tab bar — the two share {@see StripWindow} so a tab visible on one is
- * visible on the other. Returns the styled run, the columns it used, the hit
+ * Every horizontal tab strip — the editor's, the bottom dock's and the git
+ * view's mode tabs: cells laid left to right, scrolling on overflow with
+ * clickable `‹`/`›` indicators, windowed by {@see StripWindow}. A tab may
+ * carry a `marker` (the dirty `●`) before its `×`, and a tab that cannot be
+ * closed (`closable: false` — a pinned editor tab, a git mode) draws no `×`
+ * and reports a close zone of width 0. Returns the styled run, the columns it used, the hit
  * map the caller feeds its click/close/hover zones from, the indicator zones
  * for `‹`/`›` clicks, and the clamped scroll/active state the caller stores.
  *
@@ -24,12 +27,9 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
  * was the same and then silently ignored half the drags.
  *
  * The single tab cell (` label ●× ` + divider) lives here too, as
- * {@see measureCell}/{@see renderCell}: the dock strip and the editor's
- * horizontal bar ({@see \Porta\Widget\TabBarWidget}) window the strip
- * differently on purpose — the dock drops leading tabs, the editor bar
- * carries a sticky scroll offset and reserves its ‹/› columns — but their
- * *cells* were byte-identical, measured and assembled twice; the cell is what
- * must not drift. The shading is {@see TabStyle}'s; the windowing is
+ * {@see measureCell}/{@see renderCell}. The strips used to assemble their
+ * cells two and three times over, and the git tabs measured theirs with
+ * `mb_strwidth` and kept a click zone for a tab the pane had cut off. The shading is {@see TabStyle}'s; the windowing is
  * {@see StripWindow}'s. Cell widths are display columns throughout: `width`
  * includes the divider, `closeOffset` is the ×'s column within the cell, and
  * both are consumed as click zones, so a line whose visible width disagrees
@@ -47,23 +47,26 @@ final class TabStripRenderer
      * what keeps the tint from going stale when the strip relabels or a tab
      * closes under a resting pointer — the caller stores only the column.
      *
-     * @param list<array{label: string, active: bool, family?: string}> $tabs
-     * @param ?int                                                       $hoverCol   widget-relative column under the pointer, or null when off the strip
-     * @param int                                                        $scroll     the caller's stored scroll offset
-     * @param ?int                                                       $lastActive the caller's stored last active index (null on the first frame)
+     * The pointer on a tab's `×` lights the `×` alone, underlined: which of
+     * the two a click would do is shown before it is done.
+     *
+     * @param list<array{label: string, active: bool, family?: string, marker?: string, closable?: bool}> $tabs
+     * @param ?int                                                                                         $hoverCol   widget-relative column under the pointer, or null when off the strip
+     * @param int                                                                                          $scroll     the caller's stored scroll offset
+     * @param ?int                                                                                         $lastActive the caller's stored last active index (null on the first frame)
      *
      * @return array{line: string, used: int, hitMap: list<array{index: int, start: int, width: int, closeStart: int, closeWidth: int}>, indicatorZones: list<array{row: int, col: int, width: int, step: int}>, scroll: int, lastActive: int}
      */
     public static function render(array $tabs, int $columns, Styles $styles, ?int $hoverCol = null, int $scroll = 0, ?int $lastActive = null): array
     {
-        /** @var list<array{tab: array{label: string, active: bool, family?: string}, text: string, width: int, closeOffset: int}> $parts */
+        /** @var list<array{tab: array{label: string, active: bool, family?: string, marker?: string, closable?: bool}, text: string, width: int, closeOffset: int|null, labelWidth: int}> $parts */
         $parts = [];
         $activeIndex = 0;
         foreach ($tabs as $i => $tab) {
             if ($tab['active']) {
                 $activeIndex = $i;
             }
-            $parts[] = ['tab' => $tab] + self::measureCell($tab['label']);
+            $parts[] = ['tab' => $tab] + self::measureCell($tab['label'], $tab['marker'] ?? '', $tab['closable'] ?? true);
         }
 
         $window = StripWindow::of(\array_column($parts, 'width'), $columns, $scroll, $activeIndex, $lastActive);
@@ -93,8 +96,11 @@ final class TabStripRenderer
             $next = $parts[$index + 1]['tab'] ?? null;
             $crosses = null !== $next && ($tab['family'] ?? null) !== ($next['family'] ?? null);
             $hovered = null !== $hoverCol && $hoverCol >= $used && $hoverCol < ($used + $part['width']);
-            $line .= self::renderCell($part['text'], $part['closeOffset'], $styles, TabState::of($tab['active'], $hovered), $crosses ? Glyphs::FAMILY_SEPARATOR : Glyphs::SEPARATOR);
-            $hitMap[] = ['index' => $index, 'start' => $used, 'width' => $part['width'], 'closeStart' => $used + $part['closeOffset'], 'closeWidth' => self::CLOSE_WIDTH];
+            $closeStart = $used + ($part['closeOffset'] ?? 0);
+            $closeWidth = null === $part['closeOffset'] ? 0 : self::CLOSE_WIDTH;
+            $onClose = $hovered && $hoverCol >= $closeStart && $hoverCol < ($closeStart + $closeWidth);
+            $line .= self::renderCell($part, $styles, TabState::of($tab['active'], $hovered), $crosses ? Glyphs::FAMILY_SEPARATOR : Glyphs::SEPARATOR, $onClose);
+            $hitMap[] = ['index' => $index, 'start' => $used, 'width' => $part['width'], 'closeStart' => $closeStart, 'closeWidth' => $closeWidth];
             $used += $part['width'];
             $last = $index;
         }
@@ -114,51 +120,68 @@ final class TabStripRenderer
     }
 
     /**
-     * Measure ` $label $marker× ` + its divider. $marker is the dirty ● (or the
-     * session ○ some callers bake into the label); pass '' for a bare tab.
+     * Measure ` $label $marker× ` + its divider — ` $label $marker` when the
+     * tab cannot be closed. $marker is the dirty ● (or the session ○ some
+     * callers bake into the label); pass '' for a bare tab.
      *
-     * @return array{text: string, width: int, closeOffset: int}
+     * @return array{text: string, width: int, closeOffset: int|null, labelWidth: int}
      */
-    public static function measureCell(string $label, string $marker = ''): array
+    // @mago-expect lint:no-boolean-flag-parameter -- whether the tab closes IS the cell's shape, not a second responsibility.
+    public static function measureCell(string $label, string $marker = '', bool $closable = true): array
     {
         $prefix = ' '.$label.' ';
-        $text = $prefix.$marker.Glyphs::CLOSE.' ';
+        $text = $closable ? $prefix.$marker.Glyphs::CLOSE.' ' : $prefix.$marker;
 
         // visibleWidth, not mb_strwidth: the dirty marker arrives pre-styled
         // (Role::Modified), and its SGR codes must not count as columns.
         return [
             'text' => $text,
             'width' => AnsiUtils::visibleWidth($text) + 1, // + the divider column
-            'closeOffset' => AnsiUtils::visibleWidth($prefix.$marker),
+            'closeOffset' => $closable ? AnsiUtils::visibleWidth($prefix.$marker) : null,
+            'labelWidth' => AnsiUtils::visibleWidth($label),
         ];
     }
 
     /**
-     * The styled cell + its divider, from the $text and $closeOffset that
-     * {@see measureCell()} built.
+     * The styled cell + its divider, from what {@see measureCell()} built.
      *
      * The × is measured as a bare glyph and only styled here, then spliced in
      * BY COLUMN: styling it earlier would leave measure() counting escape bytes
      * as display columns, and matching it by string would restyle a × that
-     * happens to sit in the label itself (a file `a×b.php`). $closeOffset is the
-     * real close glyph's column, so the splice lands on it alone. It is safe
-     * because {@see TabCloseGlyph} emits a foreground-only span (closed with
-     * `\e[39m`, never a full reset), so the tab's background runs underneath it
-     * uninterrupted.
+     * happens to sit in the label itself (a file `a×b.php`). The close offset
+     * is the real close glyph's column, so the splice lands on it alone. It is
+     * safe because {@see TabCloseGlyph} emits a foreground-only span, so the
+     * tab's background runs underneath it uninterrupted.
+     *
+     * Under the pointer the label underlines, a link's hover — or, with the
+     * pointer on the × ($onClose), the × alone does, bright.
      *
      * $divider closes the cell; every one is a single column, so which one a
      * strip picks cannot move its hit map.
+     *
+     * @param array{text: string, width: int, closeOffset: int|null, labelWidth: int, ...} $cell
      */
-    public static function renderCell(string $text, int $closeOffset, Styles $styles, TabState $state, string $divider = Glyphs::SEPARATOR): string
+    // @mago-expect lint:no-boolean-flag-parameter -- where the pointer rests on the cell is its hover state, not a second responsibility.
+    public static function renderCell(array $cell, Styles $styles, TabState $state, string $divider = Glyphs::SEPARATOR, bool $onClose = false): string
     {
-        $close = match ($state) {
-            TabState::Active => TabCloseGlyph::active($styles),
-            TabState::Hovered, TabState::Plain => TabCloseGlyph::inactive($styles),
-        };
+        $text = $cell['text'];
+        $width = AnsiUtils::visibleWidth($text);
+        $labelEnd = 1 + $cell['labelWidth'];
+        $label = AnsiUtils::sliceByColumn($text, 1, $cell['labelWidth']);
+        if (TabState::Hovered === $state && !$onClose) {
+            $label = new Style(underline: true)->apply($label);
+        }
+        $closeOffset = $cell['closeOffset'];
+        $body = ' '.$label.AnsiUtils::sliceByColumn($text, $labelEnd, ($closeOffset ?? $width) - $labelEnd);
+        if (null !== $closeOffset) {
+            $close = match (true) {
+                $onClose => $styles->of(Role::Bright)->withUnderline()->apply(Glyphs::CLOSE),
+                TabState::Active === $state => TabCloseGlyph::active($styles),
+                default => TabCloseGlyph::inactive($styles),
+            };
+            $body .= $close.AnsiUtils::sliceByColumn($text, $closeOffset + 1, $width - $closeOffset - 1);
+        }
 
-        $before = AnsiUtils::sliceByColumn($text, 0, $closeOffset);
-        $after = AnsiUtils::sliceByColumn($text, $closeOffset + 1, AnsiUtils::visibleWidth($text) - $closeOffset - 1);
-
-        return TabStyle::of($styles, $state)->apply($before.$close.$after).$styles->of(Role::Placeholder)->apply($divider);
+        return TabStyle::of($styles, $state)->apply($body).$styles->of(Role::Placeholder)->apply($divider);
     }
 }

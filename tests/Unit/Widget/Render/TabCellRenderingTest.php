@@ -51,7 +51,7 @@ final class TabCellRenderingTest extends TestCase
         foreach (['one', '日本', 'a-very-long-buffer-name.php'] as $label) {
             foreach (TabState::cases() as $state) {
                 $cell = TabStripRenderer::measureCell($label, Glyphs::DIRTY);
-                $rendered = TabStripRenderer::renderCell($cell['text'], $cell['closeOffset'], Styles::dark(), $state);
+                $rendered = TabStripRenderer::renderCell($cell, Styles::dark(), $state);
 
                 $this->assertSame($cell['width'], AnsiUtils::visibleWidth($rendered), $label);
             }
@@ -62,11 +62,11 @@ final class TabCellRenderingTest extends TestCase
     {
         $cell = TabStripRenderer::measureCell('one');
 
-        $active = TabStripRenderer::renderCell($cell['text'], $cell['closeOffset'], Styles::dark(), TabState::Active);
+        $active = TabStripRenderer::renderCell($cell, Styles::dark(), TabState::Active);
         $this->assertStringEndsWith(Glyphs::SEPARATOR, AnsiUtils::stripAnsiCodes($active), 'the divider closes the cell');
         $this->assertStringContainsString("\x1b[38;5;252m", $active, 'the active tab takes the bright × shade');
 
-        $inactive = TabStripRenderer::renderCell($cell['text'], $cell['closeOffset'], Styles::dark(), TabState::Plain);
+        $inactive = TabStripRenderer::renderCell($cell, Styles::dark(), TabState::Plain);
         $this->assertStringContainsString("\x1b[38;5;240m", $inactive, 'an inactive tab takes the dim × shade');
     }
 
@@ -75,7 +75,7 @@ final class TabCellRenderingTest extends TestCase
         // The × is a foreground-only span: it must not emit a full reset, which
         // would drop the tab's background for the rest of the cell.
         $cell = TabStripRenderer::measureCell('one');
-        $rendered = TabStripRenderer::renderCell($cell['text'], $cell['closeOffset'], Styles::dark(), TabState::Active);
+        $rendered = TabStripRenderer::renderCell($cell, Styles::dark(), TabState::Active);
 
         $body = \substr($rendered, offset: 0, length: (int) \strrpos($rendered, Glyphs::SEPARATOR));
         $this->assertStringNotContainsString("\x1b[0m", $body, 'no full reset inside the tab run');
@@ -87,12 +87,40 @@ final class TabCellRenderingTest extends TestCase
         // A file named a×b.php: the label's own × must stay plain, and only the
         // real close × at closeOffset gets the affordance shade.
         $cell = TabStripRenderer::measureCell('a×b.php');
-        $rendered = TabStripRenderer::renderCell($cell['text'], $cell['closeOffset'], Styles::dark(), TabState::Active);
+        $rendered = TabStripRenderer::renderCell($cell, Styles::dark(), TabState::Active);
 
         $plain = AnsiUtils::stripAnsiCodes($rendered);
         $this->assertSame(' a×b.php × '.Glyphs::SEPARATOR, $plain, 'both × survive as plain text');
         // Exactly one × carries the bright close shade; the label × does not.
         $this->assertSame(1, \substr_count($rendered, needle: "\x1b[38;5;252m×"), 'only the real close glyph is shaded');
         $this->assertSame($cell['width'], AnsiUtils::visibleWidth($rendered), 'the label × did not shift the width');
+    }
+
+    /**
+     * Under the pointer the label underlines, a link's hover — and with the
+     * pointer on the × the × alone does, so which of the two a click would do
+     * is shown before it is done.
+     */
+    public function testHoverUnderlinesTheLabelOrTheCloseButNeverBoth(): void
+    {
+        $cell = TabStripRenderer::measureCell('one');
+
+        $onLabel = TabStripRenderer::renderCell($cell, Styles::dark(), TabState::Hovered);
+        $onClose = TabStripRenderer::renderCell($cell, Styles::dark(), TabState::Hovered, onClose: true);
+
+        $this->assertStringContainsString("\x1b[4mone\x1b[24m", $onLabel);
+        $this->assertStringNotContainsString("\x1b[4m×", $onLabel);
+        $this->assertStringNotContainsString("\x1b[4mone", $onClose);
+        $this->assertMatchesRegularExpression('/\x1b\[4m(?:\x1b\[[0-9;]*m)*×/', $onClose);
+    }
+
+    /** A tab that cannot close draws no ×, claims no column for one, and says so to the hit map. */
+    public function testAnUncloseableTabHasNoClose(): void
+    {
+        $cell = TabStripRenderer::measureCell('History', closable: false);
+
+        $this->assertNull($cell['closeOffset']);
+        $this->assertSame(' History '.Glyphs::SEPARATOR, AnsiUtils::stripAnsiCodes(TabStripRenderer::renderCell($cell, Styles::dark(), TabState::Plain)));
+        $this->assertSame($cell['width'], AnsiUtils::visibleWidth(TabStripRenderer::renderCell($cell, Styles::dark(), TabState::Hovered)));
     }
 }

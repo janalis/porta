@@ -13,7 +13,6 @@ use Porta\Widget\Render\EdgeIndicator;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Porta\Widget\Render\SelectionBar;
-use Porta\Widget\Render\StripWindow;
 use Porta\Widget\Render\TabCloseGlyph;
 use Porta\Widget\Render\TabState;
 use Porta\Widget\Render\TabStripRenderer;
@@ -36,7 +35,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
 {
     use MenuOverlayHostTrait;
 
-    /** @use ProviderFingerprint<list<array{name: string, dirty: bool, active: bool}>> */
+    /** @use ProviderFingerprint<list<array{name: string, dirty: bool, active: bool, closable?: bool}>> */
     use ProviderFingerprint;
     use StripScroll;
     use StylesDefault;
@@ -172,76 +171,31 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
             return [$this->styles->of(Role::Toolbar)->apply(AnsiText::blank($columns))];
         }
 
-        // Make sure the active tab is visible: drop leading tabs if needed. Each
-        // tab ends with a clickable close ×; the dirty ● (when present) sits just
-        // before it. closeOffset is the ×'s display column within the label.
-        /** @var list<array{text: string, active: bool, width: int, closeOffset: int}> $parts */
-        $parts = [];
-        foreach ($tabs as $tab) {
-            $parts[] = ['active' => $tab['active']] + TabStripRenderer::measureCell($tab['name'], $tab['dirty'] ? $this->styles->of(Role::Modified)->apply(Glyphs::DIRTY) : '');
-        }
-
-        $activeIndex = 0;
-        foreach ($parts as $i => $candidate) {
-            if (!$candidate['active']) {
-                continue;
-            }
-
-            $activeIndex = $i;
-            // `continue` here is an EQUIVALENT mutant — carried by the loop-skip
-            // census as a gap. A tab is active by IDENTITY against the one active
-            // buffer (`$b === $this->buffers->active()` in TabListProvider), so
-            // two actives is not a reachable state and "first" and "last" name
-            // the same tab. The break is an early exit, not a tiebreak.
-            break;
-        }
-        // The overflow window (reserve ‹/› cells, clamp, follow-active-on-change)
-        // is shared with the dock strip so the two cannot drift apart.
-        $window = StripWindow::of(\array_column($parts, 'width'), $columns, $this->scroll, $activeIndex, $this->lastActive);
-        $this->scroll = $window['scroll'];
-        $this->lastActive = $window['lastActive'];
-        $overflow = $window['overflow'];
-        $start = $window['start'];
-
-        $line = '';
-        $used = 0;
-        $last = $start;
-        $this->lastLayout = [];
-        if ($overflow) {
-            $line .= $start > 0 ? $this->indicatorCell(Glyphs::SCROLL_PREV, step: -1, col: 0) : ' ';
-            $used = 1;
-        }
-        foreach (\array_slice($parts, $start, preserve_keys: true) as $index => $part) {
-            if (($used + $part['width']) > ($overflow ? $columns - 1 : $columns)) {
-                break;
-            }
-            $line .= TabStripRenderer::renderCell($part['text'], $part['closeOffset'], $this->styles, TabState::of($part['active'], $this->isHoverCell(0, $used, $part['width'])));
-            $this->lastLayout[] = [
-                'index' => $index,
-                'row' => 0,
-                'start' => $used,
-                'width' => $part['width'],
-                'closeStart' => $used + $part['closeOffset'],
-                'closeWidth' => TabStripRenderer::CLOSE_WIDTH,
-            ];
-            $used += $part['width'];
-            $last = $index;
-        }
-        if ($overflow) {
-            $line = AnsiText::padRight($line, $columns - 1);
-            $line .= $last < (\count($parts) - 1) ? $this->indicatorCell(Glyphs::SCROLL_NEXT, step: 1, col: $columns - 1) : ' ';
-        }
+        // The shared strip: the overflow window (reserve ‹/› cells, clamp,
+        // follow-active-on-change), the cells and their hit map, exactly as the
+        // dock and the git view draw theirs. Each tab ends with a clickable ×
+        // unless it is pinned; the dirty ● (when present) sits just before it.
+        $hover = null !== $this->hoverCell && 0 === $this->hoverCell['row'] ? $this->hoverCell['col'] : null;
+        $strip = TabStripRenderer::render(
+            \array_map(fn (array $tab): array => [
+                'label' => $tab['name'],
+                'active' => $tab['active'],
+                'marker' => $tab['dirty'] ? $this->styles->of(Role::Modified)->apply(Glyphs::DIRTY) : '',
+                'closable' => $tab['closable'] ?? true,
+            ], $tabs),
+            $columns,
+            $this->styles,
+            $hover,
+            $this->scroll,
+            $this->lastActive,
+        );
+        $this->scroll = $strip['scroll'];
+        $this->lastActive = $strip['lastActive'];
+        $this->indicatorZones = $strip['indicatorZones'];
+        $this->lastLayout = \array_map(static fn (array $zone): array => ['row' => 0] + $zone, $strip['hitMap']);
 
         // A Toolbar-background base under the whole strip, matching the other tab strips.
-        return [$this->styles->of(Role::Toolbar)->apply(AnsiText::padRight($line, $columns))];
-    }
-
-    /** One clickable 1-column ‹/› scroll cell of the horizontal strip. */
-    private function indicatorCell(string $glyph, int $step, int $col): string
-    {
-        $this->indicatorZones[] = ['row' => 0, 'col' => $col, 'width' => 1, 'step' => $step];
-
-        return $this->styles->of(Role::Faint)->apply($glyph);
+        return $this->withMenuOverlay([$this->styles->of(Role::Toolbar)->apply(AnsiText::padRight($strip['line'], $columns))], $columns);
     }
 
     /**
@@ -317,7 +271,11 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
             foreach (\array_slice($tabs, $start, $budget, preserve_keys: true) as $index => $tab) {
                 $name = AnsiText::truncate($tab['name'], $nameWidth, pad: true);
                 $marker = $tab['dirty'] ? $this->styles->of(Role::Modified)->apply(Glyphs::DIRTY) : ' ';
-                $close = $tab['active'] ? TabCloseGlyph::active($this->styles) : TabCloseGlyph::inactive($this->styles);
+                $close = match (true) {
+                    !($tab['closable'] ?? true) => ' ',
+                    $tab['active'] => TabCloseGlyph::active($this->styles),
+                    default => TabCloseGlyph::inactive($this->styles),
+                };
                 $rowIndex = \count($lines);
                 $lines[] = TabStyle::of($this->styles, TabState::of($tab['active'], $this->isHoverCell($rowIndex, 0, $width)))->apply(
                     SelectionBar::of($tab['active'], focused: true)->value.$name.' '.$marker.$close.' ',
@@ -328,7 +286,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
                     'start' => 0,
                     'width' => $width,
                     'closeStart' => $width - TabStripRenderer::CLOSE_WIDTH,
-                    'closeWidth' => TabStripRenderer::CLOSE_WIDTH,
+                    'closeWidth' => $tab['closable'] ?? true ? TabStripRenderer::CLOSE_WIDTH : 0,
                 ];
             }
             if ($overflow) {

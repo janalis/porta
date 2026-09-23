@@ -103,7 +103,8 @@ reload automatically within a second.
 - **Pinned tabs** (`Pin Tab` on the tab menu) carry a `⌾` and survive every
   bulk close — Close Others, Close All, and both close-to-the-side verbs. The
   pin is saved with the session, so a tab you deliberately kept is still there
-  next launch. Pinning does not reorder the strip.
+  next launch. Pinning does not reorder the strip. A pinned tab shows no `×`;
+  `Ctrl+W` or the tab menu still close it.
 - **Column selection** by mouse (`Alt+Shift+drag`) or keyboard: `Alt+C` toggles
   column mode — the status bar shows `COLUMN` — and `Shift`+arrows then build a
   rectangle instead of a linear selection. Passing over a short line does not

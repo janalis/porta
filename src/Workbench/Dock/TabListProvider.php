@@ -17,7 +17,7 @@ final readonly class TabListProvider
         private Translator $translator,
     ) {}
 
-    /** @return list<array{name: string, dirty: bool, active: bool}> */
+    /** @return list<array{name: string, dirty: bool, active: bool, closable: bool}> */
     public function tabs(): array
     {
         $buffers = $this->buffers->all();
@@ -31,6 +31,9 @@ final readonly class TabListProvider
                 'name' => ($b->pinned ? Glyphs::PINNED.' ' : '').$title,
                 'dirty' => $b->isDirty(),
                 'active' => $b === $this->buffers->active(),
+                // A pinned tab draws no ×: pinning is what keeps it open. Ctrl+W
+                // and its context menu still close it, deliberately.
+                'closable' => !$b->pinned,
             ],
             $buffers,
             $titles,

@@ -40,6 +40,17 @@ final class TabListProviderTest extends TestCase
         $this->assertSame([Glyphs::PINNED.' kept.php', 'other.php'], $names);
     }
 
+    /** Pinning is what keeps a tab open, so a pinned tab offers no ×. */
+    public function testAPinnedTabIsNotClosableFromItsStrip(): void
+    {
+        $buffers = new BufferManager();
+        $buffers->open('/p/kept.php', '<?php');
+        $buffers->open('/p/other.php', '<?php');
+        $buffers->get('/p/kept.php')->pinned = true;
+
+        $this->assertSame([false, true], \array_column(new TabListProvider($buffers, new Translator('en'))->tabs(), 'closable'));
+    }
+
     /**
      * Two open files with the same basename are two identical tabs, and this
      * project has fourteen `plugin.php`. Closing or editing the wrong one of a
@@ -155,8 +166,8 @@ final class TabListProviderTest extends TestCase
 
         $this->assertSame(
             [
-                ['name' => 'a.php', 'dirty' => true, 'active' => false],
-                ['name' => 'b.php', 'dirty' => false, 'active' => true],
+                ['name' => 'a.php', 'dirty' => true, 'active' => false, 'closable' => true],
+                ['name' => 'b.php', 'dirty' => false, 'active' => true, 'closable' => true],
             ],
             $tabs,
         );

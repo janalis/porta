@@ -10143,3 +10143,16 @@ the filter and the row each time. `OverlayHost` remembers, for the duration of
 a pick, the list it closed. A pick that reopens a list with the same title gets
 the filter back and the picked value selected.
 
+## One horizontal tab strip (2026-09-23)
+
+The editor bar, the dock and the git mode tabs each laid out their own strip.
+They share `TabStripRenderer::render()` now. A tab may say `closable: false`,
+which draws no `×` and yields a close zone of width 0. Git's modes use it, and
+so does a pinned editor tab: pinning is what keeps a tab open, while Ctrl+W and
+the tab menu still close it. The git strip had measured with `mb_strwidth` and
+truncated after layout, so a click past the pane's edge still switched to a tab
+nobody could see; hit zones now exist only for drawn cells. Hover underlines
+the name, or the `×` alone when the pointer is on it, so a click's effect shows
+before the click. The vertical strip stays hand-laid: it is a list of rows, and
+it wears the selection bar.
+

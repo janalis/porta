@@ -541,6 +541,57 @@ final class TabBarWidgetTest extends TestCase
         $this->assertSame(['row' => 1, 'col' => 0], $bar->tabAnchor(1), 'vertical anchors sit at the row start');
     }
 
+    /**
+     * A pinned tab draws no × on either strip and has no close zone: the
+     * column a × would take is the tab's body, and a click there selects.
+     */
+    public function testAnUncloseableTabHasNoCloseOnEitherStrip(): void
+    {
+        $tabs = [
+            ['name' => 'kept.php', 'dirty' => false, 'active' => true, 'closable' => false],
+            ['name' => 'b.php', 'dirty' => false, 'active' => false],
+        ];
+        $bar = new TabBarWidget();
+        $bar->setProvider(static fn (): array => $tabs);
+        $bar->beforeRender();
+        $line = AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(80, 1))[0]);
+
+        $this->assertStringStartsWith(' kept.php │ b.php × │', $line);
+        foreach (\range(0, 10) as $col) {
+            $this->assertNull($bar->closeIndexAt(0, $col), "column {$col} of the pinned tab closes nothing");
+        }
+        $this->assertSame(0, $bar->tabIndexAt(0, 9));
+        $this->assertSame(1, $bar->closeIndexAt(0, 18), 'the closable tab keeps its ×');
+
+        $vertical = $this->verticalBar($tabs);
+        $rows = \array_map(AnsiUtils::stripAnsiCodes(...), $vertical->render(new RenderContext(80, 3)));
+        $closeCol = TabBarWidget::VERTICAL_WIDTH - 2;
+        $this->assertStringNotContainsString('×', $rows[0]);
+        $this->assertNull($vertical->closeIndexAt(0, $closeCol));
+        $this->assertSame(1, $vertical->closeIndexAt(1, $closeCol));
+    }
+
+    /** The pointer on a × lights the × alone; on the name, the name. */
+    public function testHoveringTheCloseLightsTheCloseAlone(): void
+    {
+        $bar = new TabBarWidget();
+        $bar->setProvider(static fn (): array => [
+            ['name' => 'a.php', 'dirty' => false, 'active' => true],
+            ['name' => 'b.php', 'dirty' => false, 'active' => false],
+        ]);
+        $bar->beforeRender();
+        $bar->render(new RenderContext(80, 1));
+
+        $bar->hoverTab(0, 18); // b.php's ×: ` a.php × │` is ten columns, ` b.php ` seven more
+        $onClose = $bar->render(new RenderContext(80, 1))[0];
+        $bar->hoverTab(0, 12); // b.php's name
+        $onName = $bar->render(new RenderContext(80, 1))[0];
+
+        $this->assertMatchesRegularExpression('/\x1b\[4m(?:\x1b\[[0-9;]*m)*×/', $onClose);
+        $this->assertStringNotContainsString("\x1b[4mb.php", $onClose);
+        $this->assertStringContainsString("\x1b[4mb.php", $onName);
+    }
+
     public function testVerticalMenuOverlayCompositesOverTheList(): void
     {
         $bar = $this->verticalBar([
