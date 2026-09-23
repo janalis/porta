@@ -21,6 +21,7 @@ use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\Dock\DockTab;
 use Porta\Workbench\Dock\ResultsPanelMode;
 use Porta\Workbench\EditorArea;
+use Porta\Workbench\Menu\ListboxOpener;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\Tui\Tui;
 
@@ -48,6 +49,7 @@ final class SearchUiWiring
         private readonly FileOpener $bufferService,
         private readonly Scheduler $scheduler,
         private readonly ProjectPaths $paths,
+        private readonly ListboxOpener $listbox,
     ) {}
 
     public function wire(): void
@@ -209,8 +211,19 @@ final class SearchUiWiring
                         $this->projectSearch->setMask($mask);
                     });
                 },
-                onScopeCycle: function (int $index): void {
+                onScopeChosen: function (int $index): void {
                     $this->projectSearch->setScopeIndex($index);
+                },
+                // Alt+S or a click drops the scope select's list under it;
+                // the pick comes back as an ordinary scope choice.
+                onScopeMenu: function (array $labels, int $current, int $row, int $col, int $above, int $width): void {
+                    $options = [];
+                    foreach ($labels as $index => $label) {
+                        $options[] = [(string) $index, $label];
+                    }
+                    $this->listbox->openAt($row, $col, $above, $width, $options, (string) $current, function (string $index): void {
+                        $this->editor->findModal->chooseScope((int) $index);
+                    });
                 },
                 onToggleOption: function (SearchOption $option): void {
                     $this->projectSearch->toggleOption($option);

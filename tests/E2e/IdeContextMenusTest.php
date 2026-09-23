@@ -201,7 +201,7 @@ final class IdeContextMenusTest extends TestCase
                 340 => function (Tui $tui): void {
                     $tui->tick();
                     $this->assertTrue($tui->getById('editor')->isFindModalOpen(), 'the find modal opened, scoped to the folder');
-                    $this->assertStringContainsString('Scope: sub', $this->modalText($tui), 'the modal is scoped to the clicked folder');
+                    $this->assertMatchesRegularExpression('/│ sub[^│]*▾ │/u', $this->modalText($tui), 'the modal is scoped to the clicked folder');
                     foreach (\str_split('scopedMarker') as $ch) {
                         $tui->handleInput($ch);
                     }
@@ -260,7 +260,7 @@ final class IdeContextMenusTest extends TestCase
                 360 => function (Tui $tui): void {
                     $tui->tick();
                     $this->assertTrue($tui->getById('editor')->isFindModalOpen(), 'the find modal opened, scoped to the folder');
-                    $this->assertStringContainsString('Scope: sub', $this->modalText($tui), 'the modal is scoped to the clicked folder');
+                    $this->assertMatchesRegularExpression('/│ sub[^│]*▾ │/u', $this->modalText($tui), 'the modal is scoped to the clicked folder');
                     foreach (\str_split('token') as $ch) {
                         $tui->handleInput($ch); // the search term (query field)
                     }

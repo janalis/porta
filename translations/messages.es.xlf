@@ -1962,10 +1962,6 @@
         <source>Mask</source>
         <target>Máscara</target>
       </trans-unit>
-      <trans-unit id="459">
-        <source>Scope:</source>
-        <target>Ámbito:</target>
-      </trans-unit>
       <trans-unit id="460">
         <source>⏎ open</source>
         <target>⏎ abrir</target>

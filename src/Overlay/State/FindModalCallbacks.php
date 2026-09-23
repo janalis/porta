@@ -19,7 +19,8 @@ final readonly class FindModalCallbacks
     /**
      * @param (callable(string): void)|null            $onQuery            the query text changed
      * @param (callable(string): void)|null            $onMaskChanged      the file mask changed
-     * @param (callable(int): void)|null               $onScopeCycle       the scope choice index
+     * @param (callable(int): void)|null               $onScopeChosen      the scope choice index
+     * @param (callable(list<string>, int, int, int, int, int): void)|null $onScopeMenu drop the scope select's list: labels, current, then the screen row below the select, its column, its top row, its width
      * @param (callable(SearchOption): void)|null      $onToggleOption    the option to flip
      * @param (callable(string, int): void)|null       $onJump             path, line
      * @param (callable(): void)|null                  $onOpenInFindWindow promote the dialog to the results pane
@@ -30,12 +31,13 @@ final readonly class FindModalCallbacks
     public function __construct(
         public mixed $onQuery = null,
         public mixed $onMaskChanged = null,
-        public mixed $onScopeCycle = null,
+        public mixed $onScopeChosen = null,
         public mixed $onToggleOption = null,
         public mixed $onJump = null,
         public mixed $onOpenInFindWindow = null,
         public mixed $onReplaceAll = null,
         public mixed $previewReplacement = null,
         public mixed $onClose = null,
+        public mixed $onScopeMenu = null,
     ) {}
 }

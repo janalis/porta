@@ -15,7 +15,6 @@ use Porta\Tests\Support\Probe;
 use Porta\Ui\CaretVisibility;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\Glyphs;
-use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\FieldBox;
 use Porta\Widget\Render\FindModalRows;
@@ -128,12 +127,12 @@ final class FindInFilesModalTest extends TestCase
         $this->assertMatchesRegularExpression('/Replace │/u', $screen, 'the replace field is labelled');
         $this->assertMatchesRegularExpression('/Mask    │/u', $screen, 'the mask field is labelled');
         $this->assertStringContainsString('(Tab)', $screen, 'the mask field carries its hint, translated');
-        $this->assertStringContainsString('Scope: Whole Project', $screen);
+        $this->assertMatchesRegularExpression('/Mask +│[^│]*│ .*│ Whole Project\s+▾ │/u', $screen, 'the scope is a select beside the mask');
         $this->assertStringContainsString('Aa', $screen, 'option tags render');
         $this->assertStringContainsString('src/A.php', $screen, 'grouped file header');
         $this->assertStringContainsString('other/B.php', $screen);
         $this->assertStringContainsString('foo one', $screen, 'match rows render');
-        $this->assertStringContainsString('Find window (Alt+Enter) · Scope', $screen, 'footer actions, each naming its key');
+        $this->assertStringContainsString('Alt+Enter Find window · Alt+S Scope', $screen, 'the footer legend names the keys');
         $this->assertStringNotContainsString('Close', $screen, 'the Close word is retired — Esc/outside-click dismiss');
         $this->assertStringContainsString('Esc', $screen, 'the title carries the dismiss hint');
     }
@@ -232,7 +231,7 @@ final class FindInFilesModalTest extends TestCase
         $opened = false;
         $closed = false;
         $modal->setCallbacks(new FindModalCallbacks(
-            onScopeCycle: static function (int $i) use (&$scopeIdx): void {
+            onScopeChosen: static function (int $i) use (&$scopeIdx): void {
                 $scopeIdx[] = $i;
             },
             onToggleOption: static function (SearchOption $n) use (&$toggled): void {
@@ -251,7 +250,7 @@ final class FindInFilesModalTest extends TestCase
         $modal->open('Find in Files');
         $modal->setScopes(['Whole Project', 'Directory', 'Current File'], 0);
 
-        $modal->handleInput("\x1bs", $this->kb); // alt+s → scope index 1
+        $modal->handleInput("\x1bs", $this->kb); // alt+s with no list to show → steps to scope 1
         $modal->handleInput("\x1br", $this->kb); // alt+r regex
         $modal->handleInput("\x1bc", $this->kb); // alt+c case
         $modal->handleInput("\x1bw", $this->kb); // alt+w word
@@ -259,7 +258,7 @@ final class FindInFilesModalTest extends TestCase
         $modal->handleInput("\x1bt", $this->kb); // alt+t tokens
         $this->assertSame([1], $scopeIdx);
         $this->assertSame(SearchOption::cases(), $toggled);
-        $this->assertStringContainsString('Scope: Directory', $this->screen($modal), 'scope label advanced');
+        $this->assertMatchesRegularExpression('/│ Directory\s+▾ │/u', $this->screen($modal), 'the scope select shows it');
 
         $modal->handleInput("\t", $this->kb); // tab → replace field
         $modal->handleInput("\t", $this->kb); // tab → mask field
@@ -733,67 +732,6 @@ final class FindInFilesModalTest extends TestCase
         $this->assertSame(['z'], $queries);
     }
 
-    public function testMouseClickCyclesScope(): void
-    {
-        $modal = $this->modal();
-        $scopeIdx = [];
-        $modal->setCallbacks(new FindModalCallbacks(
-            onScopeCycle: static function (int $i) use (&$scopeIdx): void {
-                $scopeIdx[] = $i;
-            },
-        ));
-        $modal->setScopes(['Whole Project', 'Directory', 'Current File'], 0);
-        $modal->open('Find in Files');
-        $modal->setPreview($this->results());
-        $lines = $this->compose($modal);
-        $box = $modal->lastBox();
-        $this->assertInstanceOf(ModalBox::class, $box);
-        $optionsRow = $box->windowTop() - 3;
-        $optionsLine = AnsiUtils::stripAnsiCodes($lines[$optionsRow]);
-
-        // The two-space gap between the last tag and the scope label hits no zone.
-        $scopeCol = \mb_strpos($optionsLine, needle: 'Scope:');
-        $this->assertIsInt($scopeCol);
-        $this->assertTrue($modal->clickAt($optionsRow, $scopeCol - 1));
-        $this->assertSame([], $scopeIdx, 'the gap before the scope label is inert');
-
-        // Clicking the scope label cycles to the next scope.
-        $this->assertTrue($modal->clickAt($optionsRow, $scopeCol + 2));
-        $this->assertSame([1], $scopeIdx);
-        $this->assertStringContainsString('Scope: Directory', $this->screen($modal));
-    }
-
-    public function testMouseHoverHighlightsTagsAndScope(): void
-    {
-        $modal = $this->modal();
-        $modal->setScopes(['Whole Project', 'Directory'], 0);
-        $modal->open('Find in Files');
-        $modal->setPreview($this->results());
-        $lines = $this->compose($modal);
-        $box = $modal->lastBox();
-        $this->assertInstanceOf(ModalBox::class, $box);
-        $optionsRow = $box->windowTop() - 3;
-
-        // Hover the first option tag (inner col 1, past the rail and padding) →
-        // highlight changes; the same spot → no change.
-        $this->assertTrue($modal->hoverAt($optionsRow, $box->col + 3));
-        $this->assertFalse($modal->hoverAt($optionsRow, $box->col + 3));
-        $this->assertStringContainsString('.*', $this->screen($modal), 'the hovered tag still renders');
-
-        // A different tag → changes.
-        $this->assertTrue($modal->hoverAt($optionsRow, $box->col + 7));
-
-        // Hover the scope label → changes and still renders.
-        $optionsLine = AnsiUtils::stripAnsiCodes($lines[$optionsRow]);
-        $scopeCol = \mb_strpos($optionsLine, needle: 'Scope:');
-        $this->assertIsInt($scopeCol);
-        $this->assertTrue($modal->hoverAt($optionsRow, $scopeCol + 2));
-        $this->assertStringContainsString('Scope: Whole Project', $this->screen($modal));
-
-        // Moving off the options row (onto the Find field row) clears the hover.
-        $this->assertTrue($modal->hoverAt($optionsRow - 2, $box->col + 3));
-    }
-
     public function testMouseClickTogglesExcludeCheckbox(): void
     {
         $modal = $this->modal();
@@ -863,51 +801,6 @@ final class FindInFilesModalTest extends TestCase
         $this->assertSame(['src/A.php', 4], $jumped, 'innerCol 5 is one past the checkbox range and jumps instead of toggling');
     }
 
-    public function testMouseFooterActionsClickAndHover(): void
-    {
-        $modal = $this->modal();
-        $opened = false;
-        $closed = false;
-        $scopeIdx = [];
-        $modal->setCallbacks(new FindModalCallbacks(
-            onOpenInFindWindow: static function () use (&$opened): void {
-                $opened = true;
-            },
-            onScopeCycle: static function (int $i) use (&$scopeIdx): void {
-                $scopeIdx[] = $i;
-            },
-            onClose: static function () use (&$closed): void {
-                $closed = true;
-            },
-        ));
-        $modal->setScopes(['Whole Project', 'Directory'], 0);
-        $modal->open('Find in Files');
-        $modal->setPreview($this->results());
-        $lines = $this->compose($modal);
-        $footerRow = Probe::get($modal, 'box')->footerRow ?? -1;
-        $footerLine = AnsiUtils::stripAnsiCodes($lines[$footerRow]);
-
-        // Hover the "Find window" action → highlight changes and still renders.
-        $fwCol = \mb_strpos($footerLine, needle: 'Find window');
-        $this->assertIsInt($fwCol);
-        $this->assertTrue($modal->hoverAt($footerRow, $fwCol));
-        $this->assertStringContainsString('Find window', $this->screen($modal));
-
-        // Click each footer action.
-        $this->assertTrue($modal->clickAt($footerRow, $fwCol));
-        $this->assertTrue($opened, 'Find window promotes to the results pane');
-
-        $scopeCol = \mb_strpos($footerLine, needle: 'Scope');
-        $this->assertIsInt($scopeCol);
-        $this->assertTrue($modal->clickAt($footerRow, $scopeCol));
-        $this->assertSame([1], $scopeIdx, 'the footer Scope action cycles the scope');
-
-        // No footer Close word anymore: Esc dismisses instead.
-        $this->assertFalse(\mb_strpos($footerLine, needle: 'Close'), 'the footer carries no Close action');
-        $modal->handleInput("\x1b", new Keybindings([]));
-        $this->assertTrue($closed, 'Esc fires the close hook');
-    }
-
     /**
      * One result is not "1 results".
      *
@@ -931,21 +824,6 @@ final class FindInFilesModalTest extends TestCase
 
         $this->assertStringContainsString('1 result', $screen);
         $this->assertStringNotContainsString('1 results', $screen, 'the plural form is what it used to say');
-    }
-
-    /**
-     * Alt+Enter was the modal's one unreachable action.
-     *
-     * Its footer siblings both name their key — `⏎ open` is Enter, and `Scope`
-     * carries `(Alt+S)` on the options row — so "Find window" was the only
-     * thing here you could not learn from the screen.
-     */
-    public function testTheFooterNamesTheFindWindowKey(): void
-    {
-        $modal = $this->modal();
-        $modal->open('Find in Files');
-
-        $this->assertStringContainsString('Find window (Alt+Enter)', $this->screen($modal));
     }
 
     public function testCustomTranslatorIsUsedNotTheEnglishDefault(): void
@@ -1110,7 +988,7 @@ final class FindInFilesModalTest extends TestCase
         $modal = $this->modal();
         $scopeIdx = [];
         $modal->setCallbacks(new FindModalCallbacks(
-            onScopeCycle: static function (int $i) use (&$scopeIdx): void {
+            onScopeChosen: static function (int $i) use (&$scopeIdx): void {
                 $scopeIdx[] = $i;
             },
         ));
@@ -1549,35 +1427,6 @@ final class FindInFilesModalTest extends TestCase
         $this->assertStringContainsString('replace 2)', $this->screen($modal), 'one excluded: exactly 2 kept, not 0 or -2');
     }
 
-    public function testOptionZonesClearBetweenRendersSoAStaleWideZoneDoesNotLinger(): void
-    {
-        $modal = $this->modal();
-        $scopeIdx = [];
-        $modal->setCallbacks(new FindModalCallbacks(
-            onScopeCycle: static function (int $i) use (&$scopeIdx): void {
-                $scopeIdx[] = $i;
-            },
-        ));
-        $modal->setScopes(['Whole Project Extra Padding Text Here', 'A'], 0);
-        $modal->open('Find in Files');
-        $modal->setPreview([...$this->results(), ['path' => 'w.php', 'line' => 0, 'text' => \str_repeat('W', times: 80), 'ranges' => []]]);
-        $lines = $this->compose($modal);
-        $box = $modal->lastBox();
-        $this->assertInstanceOf(ModalBox::class, $box);
-        $optionsRow = $box->windowTop() - 3;
-        $optionsLine = AnsiUtils::stripAnsiCodes($lines[$optionsRow]);
-        $scopeCol = \mb_strpos($optionsLine, needle: 'Scope:');
-        $this->assertIsInt($scopeCol);
-        $farCol = $scopeCol + 30; // within the long label's old zone, past where 'A' now renders
-
-        $modal->clickAt($optionsRow, $farCol);
-        $this->assertSame([1], $scopeIdx, 'the long-label zone cycled to the short scope');
-
-        $this->compose($modal); // re-render with the now-short 'A' label
-        $modal->clickAt($optionsRow, $farCol);
-        $this->assertSame([1], $scopeIdx, 'clicking past the now-short label is inert once the zones are freshly cleared');
-    }
-
     public function testOptionTagStartsUnhoveredNotHovered(): void
     {
         $styles = Styles::dark();
@@ -1594,79 +1443,6 @@ final class FindInFilesModalTest extends TestCase
 
         $this->assertStringContainsString($offRegex, $lines[$optionsRow], 'the regex tag starts off, not hovered');
         $this->assertStringNotContainsString($hoveredRegex, $lines[$optionsRow]);
-    }
-
-    public function testScopeLabelStylingDirectionIsCorrect(): void
-    {
-        $styles = Styles::dark();
-        $label = 'Whole Project';
-        $normalLabel = $styles->of(Role::TabAccent)->apply($label);
-        $hoveredLabel = $styles->merge(Role::RowHighlightBg, Role::Bright)->apply($label);
-
-        $modal = $this->modal();
-        $modal->open('Find in Files');
-        $modal->setPreview($this->results());
-        $lines = $this->compose($modal);
-        $box = $modal->lastBox();
-        $this->assertInstanceOf(ModalBox::class, $box);
-        $optionsRow = $box->windowTop() - 3;
-
-        $this->assertStringContainsString($normalLabel, $lines[$optionsRow], 'the scope label starts in its plain accent styling');
-        $this->assertStringNotContainsString($hoveredLabel, $lines[$optionsRow]);
-    }
-
-    public function testScopeTextHasItsDocumentedGapAndHint(): void
-    {
-        $modal = $this->modal();
-        $modal->open('Find in Files');
-        $modal->setPreview([...$this->results(), ['path' => 'w.php', 'line' => 0, 'text' => \str_repeat('W', times: 80), 'ranges' => []]]);
-
-        $screen = $this->screen($modal);
-        $this->assertStringContainsString('  Scope: Whole Project', $screen, 'the scope block keeps its leading two-space gap');
-        $this->assertStringContainsString('(Alt+S)', $screen, 'the scope hint is not dropped');
-    }
-
-    public function testScopeClickZoneBoundariesMatchTheRenderedLabelExactly(): void
-    {
-        $modal = $this->modal();
-        $translator = new Translator('en');
-        $scopeIdx = [];
-        $modal->setCallbacks(new FindModalCallbacks(
-            onScopeCycle: static function (int $i) use (&$scopeIdx): void {
-                $scopeIdx[] = $i;
-            },
-        ));
-        $modal->setScopes(['Whole Project', 'Directory'], 0);
-        $modal->open('Find in Files');
-        // A wide box (via a long match line) so the zone's end is driven by
-        // the label's own width, not clamped short by the box's own $width.
-        $modal->setPreview([...$this->results(), ['path' => 'w.php', 'line' => 0, 'text' => \str_repeat('W', times: 150), 'ranges' => []]]);
-        $lines = $this->compose($modal, columns: 200);
-        $box = $modal->lastBox();
-        $this->assertInstanceOf(ModalBox::class, $box);
-        $optionsRow = $box->windowTop() - 3;
-        $optionsLine = AnsiUtils::stripAnsiCodes($lines[$optionsRow]);
-        $scopeCol = \mb_strpos($optionsLine, needle: 'Scope:');
-        $this->assertIsInt($scopeCol);
-
-        // Start boundary: exactly at "Scope:" cycles; one column before does not.
-        $modal->clickAt($optionsRow, $scopeCol - 1);
-        $this->assertSame([], $scopeIdx, 'one column before the label is inert');
-        $modal->clickAt($optionsRow, $scopeCol);
-        $this->assertSame([1], $scopeIdx, 'exactly at the label start cycles');
-
-        // End boundary: computed from whatever label is active NOW — re-render
-        // first, since the click above only updated state, not the zones. Check
-        // the non-firing side before the firing one, since firing changes the
-        // label (and so the zone) for any click after it.
-        $this->compose($modal, columns: 200);
-        $label = 'Directory';
-        $scopeText = $translator->trans('Scope:').' '.$label.' (Alt+S)';
-        $endCol = $scopeCol + \mb_strwidth($scopeText) - 1;
-        $modal->clickAt($optionsRow, $endCol + 1);
-        $this->assertSame([1], $scopeIdx, 'one column past the zone is inert');
-        $modal->clickAt($optionsRow, $endCol);
-        $this->assertSame([1, 0], $scopeIdx, 'the last column of the zone still cycles');
     }
 
     public function testOptionsRowLeadingGapAndFullWidthPadding(): void
@@ -1701,45 +1477,6 @@ final class FindInFilesModalTest extends TestCase
         // leading space regardless of the content — the content's OWN leading
         // space is the second one, right before "⏎".
         $this->assertStringContainsString('  ⏎ open · ', $this->screen($modal), 'the wrapper pad plus the hint\'s own leading space, then the translated hint and separator, in order');
-    }
-
-    public function testFooterActionHoverStylingDirectionIsCorrect(): void
-    {
-        $styles = Styles::dark();
-        $label = 'Find window';
-        // Only the OPENING of the highlighted variant is checked: the exact
-        // trailing restore sequence depends on the surrounding truncate/pad
-        // machinery, but "highlighted style opened, then the text" is a
-        // stable, unambiguous marker of the hovered rendering.
-        $hoveredOpening = $styles->merge(Role::RowHighlightBg, Role::Bright)->apply($label);
-        $hoveredOpening = \mb_substr($hoveredOpening, start: 0, length: \mb_strpos($hoveredOpening, $label) + \mb_strlen($label));
-
-        $modal = $this->modal();
-        $modal->setScopes(['Whole Project', 'Directory'], 0);
-        $modal->open('Find in Files');
-        $modal->setPreview($this->results());
-        $lines = $this->compose($modal);
-        $footerRow = Probe::get($modal, 'box')->footerRow ?? -1;
-        $footerLine = AnsiUtils::stripAnsiCodes($lines[$footerRow]);
-        $fwCol = \mb_strpos($footerLine, needle: 'Find window');
-        $this->assertIsInt($fwCol);
-
-        $before = $this->compose($modal)[$footerRow];
-        $this->assertStringNotContainsString($hoveredOpening, $before, 'the action starts plain, not highlighted');
-
-        $this->assertTrue($modal->hoverAt($footerRow, $fwCol));
-        $after = $this->compose($modal)[$footerRow];
-        $labelEnd = \mb_strpos($after, $label) + \mb_strlen($label);
-        $this->assertIsInt($labelEnd);
-        $scopeAt = \mb_strpos($after, needle: 'Scope', offset: $labelEnd);
-        $this->assertIsInt($scopeAt);
-        $gap = \mb_substr($after, $labelEnd, $scopeAt - $labelEnd);
-        $this->assertStringContainsString($hoveredOpening, $after, 'hovering the action highlights it');
-        $this->assertStringContainsString(
-            $styles->of(Role::Dim)->getAnsiRestore(),
-            $gap,
-            'the dim pen is re-opened somewhere after the label, before the next text',
-        );
     }
 
     public function testFooterRowPadsToTheFullBoxWidth(): void
@@ -1805,57 +1542,6 @@ final class FindInFilesModalTest extends TestCase
         $modal->close();
 
         $this->assertFalse($modal->hoverAt($box->startRow, $box->col + $box->width - 2), 'closed: the × hover-hotspot must not compute against a stale box');
-    }
-
-    public function testFooterHoverReturnValueTracksEitherSubExpression(): void
-    {
-        $modal = $this->modal();
-        $modal->open('Find in Files');
-        $modal->setPreview($this->results());
-        $lines = $this->compose($modal);
-        $box = $modal->lastBox();
-        $this->assertInstanceOf(ModalBox::class, $box);
-        $footerLine = AnsiUtils::stripAnsiCodes($lines[$box->footerRow]);
-        $fwCol = \mb_strpos($footerLine, needle: 'Find window');
-        $this->assertIsInt($fwCol);
-
-        // hoverZone(...) alone changes (true), closeChanged is false (never
-        // touched the × or corner) → the OR must still report true.
-        $this->assertTrue($modal->hoverAt($box->footerRow, $fwCol), 'a genuine zone change reports true even with closeChanged false');
-
-        // Same spot again: hoverZone(...) is now a no-op (false), closeChanged
-        // is still false → the OR must report false, not true.
-        $this->assertFalse($modal->hoverAt($box->footerRow, $fwCol), 'no zone change and no hotspot change reports false');
-    }
-
-    public function testScopeZoneCycleDoesNotAlsoFireAToggle(): void
-    {
-        $modal = $this->modal();
-        $scopeIdx = [];
-        $toggled = [];
-        $modal->setCallbacks(new FindModalCallbacks(
-            onScopeCycle: static function (int $i) use (&$scopeIdx): void {
-                $scopeIdx[] = $i;
-            },
-            onToggleOption: static function (SearchOption $n) use (&$toggled): void {
-                $toggled[] = $n;
-            },
-        ));
-        $modal->setScopes(['Whole Project', 'Directory'], 0);
-        $modal->open('Find in Files');
-        $modal->setPreview($this->results());
-        $lines = $this->compose($modal);
-        $box = $modal->lastBox();
-        $this->assertInstanceOf(ModalBox::class, $box);
-        $optionsRow = $box->windowTop() - 3;
-        $optionsLine = AnsiUtils::stripAnsiCodes($lines[$optionsRow]);
-        $scopeCol = \mb_strpos($optionsLine, needle: 'Scope:');
-        $this->assertIsInt($scopeCol);
-
-        $modal->clickAt($optionsRow, $scopeCol);
-
-        $this->assertSame([1], $scopeIdx);
-        $this->assertSame([], $toggled, 'cycling the scope must not also fire a bogus "scope" toggle');
     }
 
     public function testPreviewIndexAtOnePastTheLastVisibleRowIsInvalid(): void
@@ -1940,5 +1626,74 @@ final class FindInFilesModalTest extends TestCase
         Probe::set($modalC, 'windowStart', 15);
         $modalC->layout([0, 0, 24, 100], CaretVisibility::Shown);
         $this->assertSame(8, $modalC->lastBox()?->windowStart, 'false branch: top = selected - 0 = 8 wins the min()');
+    }
+
+    /**
+     * The side column beside the fields holds two controls, told apart by
+     * the band they sit in: the Find window button next to Find, the scope
+     * select next to Mask. Beside Replace it is blank and focuses Replace.
+     */
+    public function testTheSideControlsAnswerForTheirBands(): void
+    {
+        $modal = $this->modal();
+        $opened = 0;
+        $menus = [];
+        $modal->setCallbacks(new FindModalCallbacks(
+            onOpenInFindWindow: static function () use (&$opened): void {
+                ++$opened;
+            },
+            onScopeMenu: static function (array $labels, int $current, int $row, int $col, int $above, int $width) use (&$menus): void {
+                $menus[] = [$labels, $current, $row, $col, $above, $width];
+            },
+        ));
+        $modal->setScopes(['Whole Project', 'Directory'], 0);
+        $modal->open('Find in Files');
+        $lines = \array_map(AnsiUtils::stripAnsiCodes(...), $this->compose($modal));
+        $box = $modal->lastBox();
+        $this->assertInstanceOf(ModalBox::class, $box);
+        $find = $box->optionsRow - 2;
+        $mask = $box->optionsRow + 1;
+        $side = (int) \mb_strpos($lines[$find], needle: 'Find window');
+
+        $this->assertTrue($modal->hoverAt($find, $side), 'the button reacts under the pointer');
+        $this->assertFalse($modal->hoverAt($find, $side + 1), 'still the button');
+        $this->assertTrue($modal->hoverAt($box->optionsRow + 3, $side), 'off it, the hover clears');
+        $modal->clickAt($find, $side);
+        $this->assertSame(1, $opened, 'the button promotes the dialog to the Find window');
+
+        $modal->clickAt($mask, $side);
+        $this->assertCount(1, $menus, 'the select drops its list');
+        [$labels, $current, $row, $col, $above, $width] = $menus[0];
+        $this->assertSame(['Whole Project', 'Directory'], $labels);
+        $this->assertSame([0, $mask + 1, $mask], [$current, $row, $above], 'hung below the select, flipping above its top');
+        $this->assertSame('│', \mb_substr($lines[$mask], $col, length: 1), 'from the select\'s own left rail');
+        $this->assertSame('│', \mb_substr($lines[$mask], $col + $width - 1, length: 1), 'as wide as the select');
+
+        $modal->clickAt($box->optionsRow - 1, $side); // beside Replace: blank
+        $modal->handleInput('X', $this->kb);
+        $this->assertMatchesRegularExpression('/Replace ┃ X/u', $this->screen($modal), 'which focuses Replace');
+
+        $modal->clickAt($box->footerRow, $side);
+        $this->assertSame(1, $opened, 'the footer is a legend: nothing on it presses');
+        $this->assertStringContainsString('Alt+Enter Find window · Alt+S Scope', $lines[$box->footerRow], 'but it names both keys, which a compact button has no border to carry');
+    }
+
+    /** With no host to show a list, the select steps — Alt+S or a click still moves the scope. */
+    public function testTheScopeSelectStepsWhenNoListCanBeShown(): void
+    {
+        $modal = $this->modal();
+        $chosen = [];
+        $modal->setCallbacks(new FindModalCallbacks(onScopeChosen: static function (int $i) use (&$chosen): void {
+            $chosen[] = $i;
+        }));
+        $modal->setScopes(['Whole Project', 'Directory'], 1);
+        $modal->open('Find in Files');
+        $this->compose($modal);
+        $box = $modal->lastBox();
+        $this->assertInstanceOf(ModalBox::class, $box);
+
+        $modal->clickAt($box->optionsRow + 1, $box->col + $box->width - 5);
+
+        $this->assertSame([0], $chosen, 'the step wraps from the last scope to the first');
     }
 }

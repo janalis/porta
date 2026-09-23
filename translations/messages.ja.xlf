@@ -1962,10 +1962,6 @@
         <source>Mask</source>
         <target>マスク</target>
       </trans-unit>
-      <trans-unit id="459">
-        <source>Scope:</source>
-        <target>範囲:</target>
-      </trans-unit>
       <trans-unit id="460">
         <source>⏎ open</source>
         <target>⏎ で開く</target>

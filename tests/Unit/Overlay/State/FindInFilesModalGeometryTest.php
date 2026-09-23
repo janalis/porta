@@ -27,32 +27,23 @@ final class FindInFilesModalGeometryTest extends TestCase
     use ComposesFindModal;
 
     /**
-     * The box has to seat its own toolbar row.
-     *
-     * The width is a max over the title, the query and the visible result rows
-     * — everything that VARIES. The options row does not vary: five fixed tags,
-     * a translated caption, the scope label and the key hint. Left out of that
-     * max it was the one row guaranteed to overflow, and the row-wide truncate
-     * spends an overflow on the TAIL, so `(Alt+S)` rendered as `(Al…` — the
-     * modal eating the only thing that says how to change the scope.
+     * The scope select is as wide as its widest scope, so the box widens to
+     * seat it whole — a scope name is what tells one directory from another.
      */
-    public function testTheBoxWidensToSeatTheScopeRowsKeyHint(): void
+    public function testTheBoxWidensToSeatTheWidestScopeInItsSelect(): void
     {
         $modal = $this->modal();
         $modal->open('Find in Files');
-        $modal->setScopes(['A directory whose name runs long'], index: 0);
+        $modal->setScopes(['Whole Project', 'A directory whose name runs long'], index: 1);
 
-        $screen = $this->screen($modal);
-
-        $this->assertStringContainsString('Scope: A directory whose name runs long (Alt+S)', $screen, 'the whole row, key included');
+        $this->assertMatchesRegularExpression('/│ A directory whose name runs long ▾ │/u', $this->screen($modal));
     }
 
     /**
-     * And when the terminal genuinely cannot fit it, the LABEL gives way —
-     * never the key. The label is a value the results already show; the key is
-     * the only affordance for changing it.
+     * Where the terminal cannot widen the box, the scope's NAME gives way —
+     * never the ▾ that says it opens, and never the footer's key for it.
      */
-    public function testInATerminalTooNarrowToWidenTheLabelElidesAndTheKeySurvives(): void
+    public function testInATerminalTooNarrowTheScopeNameElidesAndItsAffordancesSurvive(): void
     {
         $modal = $this->modal();
         $modal->open('Find in Files');
@@ -60,35 +51,8 @@ final class FindInFilesModalGeometryTest extends TestCase
 
         $screen = AnsiUtils::stripAnsiCodes(\implode("\n", $this->compose($modal, columns: 56)));
 
-        $this->assertStringContainsString('(Alt+S)', $screen, 'the key is never what gets cut');
-        $this->assertStringNotContainsString('A directory whose name runs long', $screen, 'the label is');
-        $this->assertStringContainsString('Scope: A', $screen, 'and what is left of it still reads as the scope');
-    }
-
-    /**
-     * The footer is counted by the width too, and it is the options row's
-     * short-label case that needs it.
-     *
-     * With the default scope the options row is the wider of the two fixed
-     * rows in every locale we ship, so it alone sets the floor. A SHORT scope
-     * label shrinks it — and short is what a real project has: this repo's own
-     * `search-scopes.json` holds `src`, `docs`, `config`. Pick one of those in
-     * a locale whose labels are long and the footer becomes the widest row in
-     * the modal, with `(Alt+Enter)` at the end of it, first against the wall.
-     */
-    public function testAShortScopeLabelLeavesTheFooterAsTheWidestRow(): void
-    {
-        $modal = new FindInFilesModal(static fn (): null => null, translator: new Translator('fr'));
-        $modal->open('Find in Files');
-        $modal->setScopes(['src'], index: 0);
-
-        // Read the FOOTER row, not the screen: 'Portée' is also the options
-        // row's scope caption, so a screen-wide assertion passes on the wrong
-        // row while the footer is cut behind it.
-        $rows = \array_values(\array_filter(\explode("\n", $this->screen($modal)), static fn (string $r): bool => \str_contains($r, '(Alt+Enter)')));
-
-        $this->assertCount(1, $rows, 'the footer, and only the footer, names this key');
-        $this->assertStringContainsString('Portée', $rows[0], 'the action after the key is still on the row');
+        $this->assertStringNotContainsString('A directory whose name runs long', $screen, 'the name is cut');
+        $this->assertMatchesRegularExpression('/│ A dir[^│]*… ▾ │/u', $screen, 'from its end, the arrow kept');
     }
 
     // --- Mutation-sweep gap-closing tests below ------------------------
@@ -121,7 +85,9 @@ final class FindInFilesModalGeometryTest extends TestCase
         // mask a disagreement by clipping both to the same number.
         $wide = 200;
 
-        foreach (['optionsRowWidth' => 'optionsRowLine', 'footerRowWidth' => 'footerRow'] as $declared => $drawn) {
+        // The options row is five fixed tags, measured from optionTags() by
+        // both sides; the footer is the row whose sum can drift.
+        foreach (['footerRowWidth' => 'footerRow'] as $declared => $drawn) {
             $line = Probe::invoke($modal, $drawn, $wide);
             $this->assertIsString($line);
             $this->assertSame(
@@ -193,9 +159,10 @@ final class FindInFilesModalGeometryTest extends TestCase
             if (1 !== \preg_match('/│ (Find|Replace|Mask) +([│┃])/u', $row, $m)) {
                 continue;
             }
-            $inside = \mb_substr($row, start: 0, length: (int) \mb_strrpos($row, needle: '│')); // short of the modal's own right edge
             $opening = (int) \mb_strpos($row, $m[0]) + \mb_strlen($m[0]) - 1; // the rail right after the label
-            $rails[$m[1]] = [$opening, \mb_strrpos($inside, $m[2])];
+            // The field's closing rail is the next of its own after the opening
+            // one — the side column beyond carries rails of its own.
+            $rails[$m[1]] = [$opening, \mb_strpos($row, $m[2], $opening + 1)];
         }
 
         $this->assertCount(3, $rails, 'all three fields are drawn compact at 24 rows');

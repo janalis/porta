@@ -19,6 +19,8 @@ use Porta\History\SearchPrefsStore;
 use Porta\History\SearchScopeStore;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspSessionPool;
+use Porta\Overlay\State\MenuOverlayController;
+use Porta\Overlay\State\MenuOverlayPanes;
 use Porta\Search\LanguageFilter;
 use Porta\Search\ProjectSearch;
 use Porta\Search\ProjectSearchController;
@@ -35,11 +37,14 @@ use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestBottomDock;
+use Porta\Ui\CaretVisibility;
 use Porta\Ui\ScopeKind;
 use Porta\Widget\CodeEditorWidget;
+use Porta\Widget\ContextMenu;
 use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\DockPanelWidget;
 use Porta\Widget\FindBarWidget;
+use Porta\Widget\MenuBarWidget;
 use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Widget\Support\ResultsPanelFields;
@@ -48,6 +53,9 @@ use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\Dock\DockToolHandlers;
 use Porta\Workbench\Dock\ResultsPanelMode;
 use Porta\Workbench\EditorArea;
+use Porta\Workbench\Menu\ListboxOpener;
+use Symfony\Component\Tui\Render\Renderer;
+use Symfony\Component\Tui\Style\StyleSheet;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 
@@ -58,6 +66,9 @@ final class SearchUiWiringTest extends TestCase
     private CodeEditorWidget $editor;
     private BottomDock $dock;
     private ResultsPanelWidget $panel;
+    private ProjectSearchController $search;
+    /** The context menu the scope select's list opens in. */
+    private ContextMenu $scopeList;
     /** @var list<string> */
     private array $opened = [];
     private int $renders = 0;
@@ -79,7 +90,7 @@ final class SearchUiWiringTest extends TestCase
         $paths = new ProjectPaths($rootDir);
         $projectSearch = new ProjectSearch($rootDir);
 
-        $searchController = new ProjectSearchController(
+        $this->search = new ProjectSearchController(
             $projectSearch,
             $this->dock,
             $this->editor,
@@ -121,11 +132,18 @@ final class SearchUiWiringTest extends TestCase
             new EditorArea($buffers, $this->editor, new EditorPanes(), $tui),
             $tui,
             $this->dock,
-            $searchController,
+            $this->search,
             new ResultContextProvider($buffers, $paths),
             $opener,
             new FakeScheduler(),
             $paths,
+            new ListboxOpener(
+                $tui,
+                $renderer = new Renderer(new StyleSheet()),
+                $menuBar = new MenuBarWidget(),
+                new MenuOverlayController($renderer, $menuBar, $this->scopeList = new ContextMenu(), new MenuOverlayPanes([], static fn (): array => [])),
+                $this->scopeList,
+            ),
         );
     }
 
@@ -282,5 +300,26 @@ final class SearchUiWiringTest extends TestCase
 
         $this->assertSame([], $this->opened, 'nothing was written and nothing was opened');
         $this->assertInstanceOf(DockPanelWidget::class, $this->dock->visiblePanel(), 'and the panel being read is still there');
+    }
+
+    /**
+     * Alt+S drops the scope select's list — the context menu, as a listbox on
+     * the scope the modal is searching — and a pick is an ordinary scope
+     * choice, down to the search.
+     */
+    public function testAltSDropsTheScopeListAndAPickSetsTheScope(): void
+    {
+        $project = new TempProject();
+        $this->wiring($project->dir)->wire();
+        $modal = $this->editor->findModal;
+        $this->search->open(); // publishes the scopes, on Whole Project
+        $modal->layout([0, 0, 40, 120], CaretVisibility::Shown); // drawn: the select has a place to hang from
+
+        $modal->handleInput("\x1bs", $this->editor->getKeybindings());
+
+        $this->assertTrue($this->scopeList->isListbox(), 'the list is open');
+        $this->scopeList->handleInput("\x1b[B");
+        $this->scopeList->handleInput("\r");
+        $this->assertSame(1, Probe::get($this->search, 'scopeIndex'), 'the pick is the search\'s scope now');
     }
 }

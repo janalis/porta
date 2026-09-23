@@ -118,7 +118,7 @@ final class ProjectSearchControllerTest extends TestCase
 
         $modal = $this->modal();
         $this->assertStringContainsString('Find in Files', $modal);
-        $this->assertStringContainsString('Scope: Whole Project', $modal);
+        $this->assertMatchesRegularExpression('/│ Whole Project[^│]*▾ │/u', $modal);
     }
 
     /**
@@ -219,7 +219,7 @@ final class ProjectSearchControllerTest extends TestCase
         $project = new TempProject(['src/sub/A.php' => "<?php\n"]);
         $this->controller($project->dir)->openInFolder($project->dir.'/src/sub');
 
-        $this->assertStringContainsString('Scope: src/sub', $this->modal(), 'a folder search preselects (and saves) that folder as the scope');
+        $this->assertMatchesRegularExpression('/│ src\/sub[^│]*▾ │/u', $this->modal(), 'a folder search preselects (and saves) that folder as the scope');
     }
 
     public function testOpenInFolderOnTheRootFallsBackToTheWholeProject(): void
@@ -228,7 +228,7 @@ final class ProjectSearchControllerTest extends TestCase
         // The project root resolves to no relative sub-path → whole-project search.
         $this->controller($project->dir)->openInFolder($project->dir);
 
-        $this->assertStringContainsString('Scope: Whole Project', $this->modal());
+        $this->assertMatchesRegularExpression('/│ Whole Project[^│]*▾ │/u', $this->modal());
     }
 
     public function testTheCommittedQueryIsRecordedInHistoryOnClose(): void
@@ -660,7 +660,7 @@ final class ProjectSearchControllerTest extends TestCase
         for ($i = 0; $i < 5; ++$i) {
             $this->editor->handleFindModalInput("\x1bs");
         }
-        $this->assertStringContainsString('Scope: Whole Project', $this->modal(), 'no saved scope was added');
+        $this->assertMatchesRegularExpression('/│ Whole Project[^│]*▾ │/u', $this->modal(), 'no saved scope was added');
     }
 
     public function testReplaceLinesSkipsOutOfRangeIndices(): void
@@ -677,7 +677,7 @@ final class ProjectSearchControllerTest extends TestCase
         $project = new TempProject(['src/sub/A.php' => "<?php\n"]);
         $this->controller($project->dir)->replaceInFolder($project->dir.'/src/sub');
 
-        $this->assertStringContainsString('Scope: src/sub', $this->modal());
+        $this->assertMatchesRegularExpression('/│ src\/sub[^│]*▾ │/u', $this->modal());
     }
 
     public function testReplaceInFolderOnTheRootFallsBackToTheWholeProject(): void
@@ -685,7 +685,7 @@ final class ProjectSearchControllerTest extends TestCase
         $project = new TempProject(['src/A.php' => "<?php\n"]);
         $this->controller($project->dir)->replaceInFolder($project->dir);
 
-        $this->assertStringContainsString('Scope: Whole Project', $this->modal());
+        $this->assertMatchesRegularExpression('/│ Whole Project[^│]*▾ │/u', $this->modal());
     }
 
     public function testAdoptRehydratesATabsFrozenDefinition(): void

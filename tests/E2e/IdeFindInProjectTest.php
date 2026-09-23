@@ -54,7 +54,7 @@ final class IdeFindInProjectTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                200 => function ($tui) use ($panelText): void {
+                200 => function (object $tui) use ($panelText): void {
                     // Each scope change re-runs the grep subprocess, and a
                     // stale result set isn't cleared until the new one lands —
                     // so await the COMBINED presence/absence the new scope
@@ -64,52 +64,52 @@ final class IdeFindInProjectTest extends TestCase
                     $this->assertStringContainsString('src/A.php', $panel, 'whole project finds all three');
                     $this->assertStringContainsString('src/C.php', $panel);
                     $this->assertStringContainsString('other/B.php', $panel);
-                    $tui->handleInput("\x1bs"); // alt+s → Directory (src/)
+                    $this->nextScope($tui); // alt+s → Directory (src/)
                 },
-                300 => function ($tui) use ($panelText): void {
+                300 => function (object $tui) use ($panelText): void {
                     $this->await(static fn (): bool => \str_contains($panelText($tui), 'src/C.php') && !\str_contains($panelText($tui), 'other/B.php'), what: 'the directory-scoped search to land');
                     $panel = $panelText($tui);
-                    $this->assertStringContainsString('Scope: Directory', $panel);
+                    $this->assertMatchesRegularExpression('/│ Directory[^│]*▾ │/u', $panel);
                     $this->assertStringContainsString('src/A.php', $panel);
                     $this->assertStringContainsString('src/C.php', $panel);
                     $this->assertStringNotContainsString('other/B.php', $panel, 'directory scope drops the sibling folder');
-                    $tui->handleInput("\x1bs"); // alt+s → Current File (src/A.php)
+                    $this->nextScope($tui); // alt+s → Current File (src/A.php)
                 },
-                400 => function ($tui) use ($panelText): void {
+                400 => function (object $tui) use ($panelText): void {
                     $this->await(static fn (): bool => \str_contains($panelText($tui), 'src/A.php') && !\str_contains($panelText($tui), 'src/C.php'), what: 'the current-file-scoped search to land');
                     $panel = $panelText($tui);
-                    $this->assertStringContainsString('Scope: Current File', $panel);
+                    $this->assertMatchesRegularExpression('/│ Current File[^│]*▾ │/u', $panel);
                     $this->assertStringContainsString('src/A.php', $panel);
                     $this->assertStringNotContainsString('src/C.php', $panel, 'current-file scope keeps only the open file');
-                    $tui->handleInput("\x1bs"); // alt+s → Open Files (only src/A.php is open)
+                    $this->nextScope($tui); // alt+s → Open Files (only src/A.php is open)
                 },
-                500 => function ($tui) use ($panelText): void {
+                500 => function (object $tui) use ($panelText): void {
                     // Open Files and Current File list identical FILES here
                     // (only src/A.php is open either way), which is why this
                     // step used to settle for a bare tick. The scope LABEL is
                     // still a new observable, and it is the one thing the
                     // keypress has to produce — so await that.
                     $this->await(
-                        static fn (): bool => \str_contains($panelText($tui), 'Scope: Open Files'),
+                        static fn (): bool => 1 === \preg_match('/│ Open Files[^│]*▾ │/u', $panelText($tui)),
                         what: 'the open-files scope to take effect',
                     );
                     $panel = $panelText($tui);
                     $this->assertStringContainsString('src/A.php', $panel);
                     $this->assertStringNotContainsString('src/C.php', $panel, 'open-files scope keeps only the open buffers');
-                    $tui->handleInput("\x1bs"); // alt+s → Module (no composer.json → whole project)
+                    $this->nextScope($tui); // alt+s → Module (no composer.json → whole project)
                 },
-                600 => function ($tui) use ($panelText): void {
+                600 => function (object $tui) use ($panelText): void {
                     $this->await(static fn (): bool => \str_contains($panelText($tui), 'other/B.php'), what: 'the module-scoped (whole-project fallback) search to land');
                     $panel = $panelText($tui);
-                    $this->assertStringContainsString('Scope: Module', $panel);
+                    $this->assertMatchesRegularExpression('/│ Module[^│]*▾ │/u', $panel);
                     $this->assertStringContainsString('other/B.php', $panel, 'no package root → module falls back to the whole project');
-                    $tui->handleInput("\x1bs"); // alt+s → Whole Project (wraps)
+                    $this->nextScope($tui); // alt+s → Whole Project (wraps)
                 },
                 700 => function ($tui) use ($panelText): void {
                     // Same again: Module (fallback) and Whole Project list the
                     // same files, and the label is what changes.
                     $this->await(
-                        static fn (): bool => \str_contains($panelText($tui), 'Scope: Whole Project'),
+                        static fn (): bool => 1 === \preg_match('/│ Whole Project[^│]*▾ │/u', $panelText($tui)),
                         what: 'the whole-project scope to wrap back round',
                     );
                     $panel = $panelText($tui);
@@ -160,20 +160,20 @@ final class IdeFindInProjectTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                700 => function ($tui) use ($panelText): void {
+                700 => function (object $tui) use ($panelText): void {
                     // The grep is a subprocess: await its rows instead of
                     // asserting a fixed number of ms after the query was typed.
                     $this->await(static fn (): bool => \str_contains($panelText($tui), 'other/Outside.php'), what: 'the whole-project search to land');
                     $this->assertStringContainsString('other/Outside.php', $panelText($tui), 'whole project finds both first');
                     for ($i = 0; $i < 5; ++$i) {
-                        $tui->handleInput("\x1bs"); // cycle past the 5 built-ins to the saved lib scope
+                        $this->nextScope($tui); // cycle past the 5 built-ins to the saved lib scope
                     }
                 },
                 1000 => function ($tui) use ($panelText): void {
                     // Cycling the scope re-runs the search, so await the new rows.
                     $this->await(static fn (): bool => \str_contains($panelText($tui), 'lib/Inside.php'), what: 'the folder-scoped search to land');
                     $panel = $panelText($tui);
-                    $this->assertStringContainsString('Scope: lib', $panel, 'the saved scope is selectable in the Alt+S cycle');
+                    $this->assertMatchesRegularExpression('/│ lib[^│]*▾ │/u', $panel, 'the saved scope is selectable in the Alt+S cycle');
                     $this->assertStringContainsString('lib/Inside.php', $panel);
                     $this->assertStringNotContainsString('other/Outside.php', $panel, 'the saved scope narrows to its folder');
                 },
@@ -202,12 +202,12 @@ final class IdeFindInProjectTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                600 => static function ($tui): void {
+                600 => function (object $tui): void {
                     $tui->tick();
-                    $tui->handleInput("\x1bs"); // → Directory
-                    $tui->handleInput("\x1bs"); // → Current File
-                    $tui->handleInput("\x1bs"); // → Open Files
-                    $tui->handleInput("\x1bs"); // → Module
+                    $this->nextScope($tui); // → Directory
+                    $this->nextScope($tui); // → Current File
+                    $this->nextScope($tui); // → Open Files
+                    $this->nextScope($tui); // → Module
                 },
                 1000 => function ($tui) use ($panelText): void {
                     // Four rapid scope changes each cancel the previous grep
@@ -217,7 +217,7 @@ final class IdeFindInProjectTest extends TestCase
                     // empty result set can't satisfy the assertions below.
                     $this->await(static fn (): bool => \str_contains($panelText($tui), 'pkg/src/A.php') && !\str_contains($panelText($tui), 'other/B.php'), what: 'the module-scoped search to land');
                     $panel = $panelText($tui);
-                    $this->assertStringContainsString('Scope: Module', $panel);
+                    $this->assertMatchesRegularExpression('/│ Module[^│]*▾ │/u', $panel);
                     $this->assertStringContainsString('pkg/src/A.php', $panel, 'the module scope keeps the package');
                     $this->assertStringNotContainsString('other/B.php', $panel, 'files outside the package are excluded');
                 },
@@ -242,14 +242,14 @@ final class IdeFindInProjectTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                600 => function ($tui, $terminal, Ide $ide): void {
+                600 => function (object $tui, $terminal, Ide $ide): void {
                     $this->awaitSearch($ide);
-                    $tui->handleInput("\x1bs"); // alt+s → Directory, but no file → whole project
+                    $this->nextScope($tui); // alt+s → Directory, but no file → whole project
                 },
                 800 => function ($tui, $terminal, Ide $ide) use ($panelText): void {
                     $this->awaitSearch($ide);
                     $panel = $panelText($tui);
-                    $this->assertStringContainsString('Scope: Directory', $panel);
+                    $this->assertMatchesRegularExpression('/│ Directory[^│]*▾ │/u', $panel);
                     $this->assertStringContainsString('src/A.php', $panel);
                     $this->assertStringContainsString('other/B.php', $panel, 'no open file → the scope stays the whole project');
                 },
@@ -606,14 +606,14 @@ final class IdeFindInProjectTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                500 => function ($tui, $terminal, Ide $ide): void {
+                500 => function (object $tui, $terminal, Ide $ide): void {
                     $this->awaitSearch($ide);
                     $tui->handleInput("\t"); // query → replace
                     $tui->handleInput("\t"); // replace → mask
                     foreach (\str_split('*.php') as $ch) {
                         $tui->handleInput($ch);
                     }
-                    $tui->handleInput("\x1bs"); // alt+s → Directory scope
+                    $this->nextScope($tui); // alt+s → Directory scope
                 },
                 800 => function ($tui, $terminal, Ide $ide): void {
                     $this->awaitSearch($ide);
@@ -625,7 +625,7 @@ final class IdeFindInProjectTest extends TestCase
                 1200 => function (Tui $tui): void {
                     $tui->tick();
                     $modal = $this->modalText($tui); // the reopened modal restores the config
-                    $this->assertStringContainsString('Scope: Directory', $modal, 'the last scope is restored');
+                    $this->assertMatchesRegularExpression('/│ Directory[^│]*▾ │/u', $modal, 'the last scope is restored');
                     $this->assertMatchesRegularExpression('/Mask +│ \*\.php/u', $modal, 'the last mask is restored');
                 },
             ],
@@ -824,5 +824,16 @@ final class IdeFindInProjectTest extends TestCase
         ]);
 
         $this->addToAssertionCount(1);
+    }
+
+    /**
+     * Step to the next scope the way a user does now: Alt+S drops the scope
+     * select's list (on the current scope), ↓ moves to the next, Enter picks.
+     */
+    private function nextScope(object $tui): void
+    {
+        $tui->handleInput("\x1bs");
+        $tui->handleInput("\x1b[B");
+        $tui->handleInput("\r");
     }
 }

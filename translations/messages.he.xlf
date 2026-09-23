@@ -1962,10 +1962,6 @@
         <source>Mask</source>
         <target>מסכה</target>
       </trans-unit>
-      <trans-unit id="459">
-        <source>Scope:</source>
-        <target>טווח:</target>
-      </trans-unit>
       <trans-unit id="460">
         <source>⏎ open</source>
         <target>⏎ פתיחה</target>

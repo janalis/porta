@@ -51,7 +51,7 @@ final class FindInFilesModal
 
     /** @var array<string, list<string>> the modal's own action bindings (matched with the editor's parser) */
     /** The scope field's key hint — measured by the width and drawn by the row, so one spelling. */
-    private const string SCOPE_KEY = ' (Alt+S)';
+    private const string SCOPE_KEY = '(Alt+S)';
 
     /**
      * The footer's Find-window key hint.
@@ -61,7 +61,7 @@ final class FindInFilesModal
      * options row above — so it was the one action here you could only find by
      * reading the source.
      */
-    private const string FIND_WINDOW_KEY = ' (Alt+Enter)';
+    private const string FIND_WINDOW_KEY = '(Alt+Enter)';
 
     private const array KEYS = [
         'select_cancel' => [Key::ESCAPE],
@@ -118,11 +118,15 @@ final class FindInFilesModal
 
     /** last-rendered geometry, for hit-testing (`windowTop()` is the first preview row) */
     private ?ModalBox $box = null;
-    /** Option-tag + scope click zones (columns) on the options row. */
+    /** Option-tag click zones (columns) on the options row. */
     private readonly ClickZones $optionZones;
-    /** Clickable action zones (columns) on the footer row. */
-    private readonly ClickZones $footerZones;
-    /** hovered header/footer zone name ('regex'|'case'|'word'|'preserve'|'tokens'|'scope'|'find_window'|'footer_scope') or null */
+    /**
+     * The side column's zone (columns) beside the fields: the Find window
+     * button on the Find band, the scope select on the Mask band — which
+     * control is which, the band says.
+     */
+    private readonly ClickZones $sideZones;
+    /** hovered zone name ('regex'|'case'|'word'|'preserve'|'tokens'|'find_window') or null */
     private ?string $hovered = null;
 
     /** The frame affordance under the pointer (× brightens, the corner heavies), or null. */
@@ -178,7 +182,7 @@ final class FindInFilesModal
         $this->initStyles($styles);
         $this->translator = $translator ?? new Translator('en');
         $this->optionZones = new ClickZones();
-        $this->footerZones = new ClickZones();
+        $this->sideZones = new ClickZones();
         $this->callbacks = new FindModalCallbacks(); // a bare modal fires nothing
         $this->scopeLabels = [$this->translator->trans('Whole Project')];
         $this->query = new TextField(style: $cursorStyle);
@@ -362,7 +366,7 @@ final class FindInFilesModal
                 $modal->activeTextField()->insertNewline();
                 $modal->notifyField();
             },
-            'cycle_scope' => static fn (self $modal) => $modal->cycleScope(),
+            'cycle_scope' => static fn (self $modal) => $modal->openScopeMenu(),
             'toggle_regex' => static fn (self $modal) => $modal->fireToggle(SearchOption::Regex),
             'toggle_case' => static fn (self $modal) => $modal->fireToggle(SearchOption::CaseSensitive),
             'toggle_word' => static fn (self $modal) => $modal->fireToggle(SearchOption::WholeWord),
@@ -402,14 +406,33 @@ final class FindInFilesModal
     }
 
     /**
-     * Advance to the next search scope (Alt+S / a click on the scope label);
-     * the carousel wraps, and a no-op carousel of one is fine.
+     * Drop the scope select's list (Alt+S, or a click on the select) under
+     * the select, in screen space; the pick comes back through
+     * {@see chooseScope()}. With no host to show a list — or before the
+     * modal has been drawn — the scope steps to the next, so the key still
+     * moves it.
      */
-    private function cycleScope(): void
+    private function openScopeMenu(): void
     {
-        $this->scopeIndex = ($this->scopeIndex + 1) % \max(1, \count($this->scopeLabels));
-        if (null !== $this->callbacks->onScopeCycle) {
-            ($this->callbacks->onScopeCycle)($this->scopeIndex);
+        $box = $this->box;
+        $menu = $this->callbacks->onScopeMenu;
+        if (null === $box || null === $menu) {
+            $this->chooseScope(($this->scopeIndex + 1) % \max(1, \count($this->scopeLabels)));
+
+            return;
+        }
+        $top = $box->optionsRow + 1;
+        $side = $this->sideWidthFor($box->width - ModalFrame::CHROME_COLS);
+        $col = $box->col + $box->width - (ModalFrame::CHROME_COLS / 2) - $side;
+        $menu($this->scopeLabels, $this->scopeIndex, $top + self::fieldHeight($box), $col, $top, $side);
+    }
+
+    /** Search the scope at $index (a pick from the scope list, or a step). */
+    public function chooseScope(int $index): void
+    {
+        $this->scopeIndex = $index;
+        if (null !== $this->callbacks->onScopeChosen) {
+            ($this->callbacks->onScopeChosen)($this->scopeIndex);
         }
         ($this->invalidate)();
     }
@@ -647,7 +670,10 @@ final class FindInFilesModal
         // Room for the Replace hint beside a usable compact value: it carries
         // the replace count, so the box grows to seat it rather than drop it.
         $label = \max(\array_map(AnsiUtils::visibleWidth(...), $this->labels(1)));
-        $width = \max($width, $this->optionsRowWidth(), $this->footerRowWidth(), $label + 1 + FieldBox::MIN_BOXED + 1 + AnsiUtils::visibleWidth($this->replaceHint()));
+        // The side column (Find window, scope) sits beside every field band,
+        // and a query needs room to be read, not just to exist: twice a
+        // box's minimum, beside the padded hint column of the compact form.
+        $width = \max($width, $this->optionsRowWidth(), $this->footerRowWidth(), $label + 1 + (2 * FieldBox::MIN_BOXED) + 1 + AnsiUtils::visibleWidth($this->replaceHint()) + 1 + $this->sideWidth());
         foreach ($visible as $row) {
             $text = $row->filePath ?? $this->results[$row->matchIndex]['text'] ?? '';
             $width = \max($width, \mb_strwidth($text) + 8);
@@ -664,9 +690,11 @@ final class FindInFilesModal
     }
 
     /**
-     * The fixed header rows below the frame's title bar: the query, replace,
-     * options+scope and mask rows — each field boxed or compact per
-     * $fieldRows.
+     * The fixed header rows below the frame's title bar, laid out as a form:
+     * the query, replace, options and mask rows — each field boxed or compact
+     * per $fieldRows — with a side column beside the fields: the Find window
+     * button next to Find and the scope select next to Mask, a blank beside
+     * Replace so the fields' rails stand in one column.
      *
      * @return list<string>
      */
@@ -674,13 +702,67 @@ final class FindInFilesModal
     {
         [$find, $replace, $mask] = $this->labels($fieldRows);
         [$findHint, $replaceHint, $maskHint] = $this->hints($fieldRows);
+        $side = $this->sideWidthFor($width);
+        $fieldWidth = \max(0, $width - $side - 1);
+        $this->sideZones->clear();
+        $this->sideZones->add('side', $fieldWidth + 1, $width);
+        $toolbar = $this->styles->of(Role::Toolbar);
+        $boxed = FieldBox::ROWS === $fieldRows;
+
+        $findWindow = \array_map(
+            $toolbar->apply(...),
+            FieldBox::button($this->translator->trans('Find window'), FieldState::Idle, 'find_window' === $this->hovered, $side, $fieldRows, $this->styles, $boxed ? self::FIND_WINDOW_KEY : ''),
+        );
+        $scope = FieldBox::select(
+            new FieldSpec($boxed ? $this->translator->trans('Scope') : '', trailing: $boxed ? self::SCOPE_KEY : '', surface: Role::Toolbar),
+            $this->scopeLabel(),
+            FieldState::Idle,
+            $side,
+            $fieldRows,
+            $this->styles,
+        );
 
         return [
-            ...$this->fieldRows(new FieldSpec($find, trailing: $findHint, surface: Role::Toolbar), $this->query, FindModalField::Query, $focused, $width, $fieldRows),
-            ...$this->fieldRows(new FieldSpec($replace, trailing: $replaceHint, surface: Role::Toolbar), $this->replace, FindModalField::Replace, $focused, $width, $fieldRows),
+            ...$this->beside($this->fieldRows(new FieldSpec($find, trailing: $findHint, surface: Role::Toolbar), $this->query, FindModalField::Query, $focused, $fieldWidth, $fieldRows), $findWindow),
+            ...$this->beside(
+                $this->fieldRows(new FieldSpec($replace, trailing: $replaceHint, surface: Role::Toolbar), $this->replace, FindModalField::Replace, $focused, $fieldWidth, $fieldRows),
+                \array_fill(0, \max(1, $fieldRows), $toolbar->apply(AnsiText::blank($side))),
+            ),
             $this->optionsRowLine($width),
-            ...$this->fieldRows(new FieldSpec($mask, trailing: $maskHint, surface: Role::Toolbar), $this->mask, FindModalField::Mask, $focused, $width, $fieldRows),
+            ...$this->beside($this->fieldRows(new FieldSpec($mask, trailing: $maskHint, surface: Role::Toolbar), $this->mask, FindModalField::Mask, $focused, $fieldWidth, $fieldRows), $scope),
         ];
+    }
+
+    /**
+     * A field band's rows with its side control beside them, a gutter between.
+     *
+     * @param list<string> $field
+     * @param list<string> $side
+     *
+     * @return list<string>
+     */
+    private function beside(array $field, array $side): array
+    {
+        $gutter = $this->styles->of(Role::Toolbar)->apply(' ');
+
+        return \array_map(static fn (string $left, string $right): string => $left.$gutter.$right, $field, $side);
+    }
+
+    /** The side column's natural width: the wider of the Find window button and the scope select, over every scope. */
+    private function sideWidth(): int
+    {
+        return \max(FieldBox::controlWidth($this->translator->trans('Find window')), FieldBox::selectWidth($this->scopeLabels));
+    }
+
+    /**
+     * The side column's width in a box $width wide: natural where it fits, and
+     * never more than half the box beyond the button's own need — the
+     * fields keep their room, and a long scope name elides inside its select
+     * instead of squeezing the query to nothing.
+     */
+    private function sideWidthFor(int $width): int
+    {
+        return \min($this->sideWidth(), \max(FieldBox::controlWidth($this->translator->trans('Find window')), \intdiv($width, num2: 2)));
     }
 
     /**
@@ -810,8 +892,7 @@ final class FindInFilesModal
     }
 
     /**
-     * The options row's natural width: the five tags, the scope caption, the
-     * current scope label and the key hint.
+     * The options row's natural width: the five tags.
      *
      * {@see boxWidth()} counts it because this row is the only one in the modal
      * that cannot shrink — a preview row elides its text and the query field
@@ -828,13 +909,7 @@ final class FindInFilesModal
             $tags += \mb_strwidth($glyph) + 2;
         }
 
-        return 1 + $tags + 2 + \mb_strwidth($this->scopeCaption()) + \mb_strwidth($this->scopeLabel()) + \mb_strwidth(self::SCOPE_KEY);
-    }
-
-    /** The scope field's caption, translated — longer than English's in several locales. */
-    private function scopeCaption(): string
-    {
-        return $this->translator->trans('Scope:').' ';
+        return 1 + $tags;
     }
 
     /** The scope the modal is currently searching. */
@@ -843,7 +918,7 @@ final class FindInFilesModal
         return $this->scopeLabels[$this->scopeIndex] ?? $this->translator->trans('Whole Project');
     }
 
-    /** The option tags + scope label row; records the tag + scope click zones. */
+    /** The option tags row; records the tags' click zones. */
     private function optionsRowLine(int $width): string
     {
         $this->optionZones->clear();
@@ -857,27 +932,7 @@ final class FindInFilesModal
             $tags .= FindModalRows::optionTag($glyph, OptionTagState::of($on, $name === $this->hovered), $this->styles);
         }
 
-        $caption = $this->scopeCaption();
-        // The LABEL elides, never the key. This row is assembled from a fixed
-        // run of tags plus a translated caption, so at the default box width it
-        // came out one column too wide — and the row-wide truncate below spent
-        // that column on the tail, turning "(Alt+S)" into "(Al…". The key is the
-        // only thing here that teaches how to change the scope; the label is a
-        // value the user can already read off the results. So the label is
-        // given whatever the fixed parts leave and shortens itself, which also
-        // holds in the languages where the caption is longer than English's.
-        $label = AnsiText::truncate(
-            $this->scopeLabel(),
-            \max(1, $width - ($col + 2) - \mb_strwidth($caption) - \mb_strwidth(self::SCOPE_KEY)),
-        );
-        $labelPart = 'scope' === $this->hovered
-            ? $this->styles->merge(Role::RowHighlightBg, Role::Bright)->apply($label)
-            : $this->styles->of(Role::TabAccent)->apply($label);
-        $scope = '  '.$this->styles->of(Role::Dim)->apply($caption).$labelPart.$this->styles->of(Role::Dim)->apply(self::SCOPE_KEY);
-        // The scope zone starts past the two-space gap; clamp so a truncated box can't hit past the edge.
-        $this->optionZones->add('scope', $col + 2, \min($col + 2 + \mb_strwidth($caption.$label.self::SCOPE_KEY), $width));
-
-        return $this->styles->of(Role::Toolbar)->apply(AnsiText::truncate(' '.$tags.$scope, $width, pad: true));
+        return $this->styles->of(Role::Toolbar)->apply(AnsiText::truncate(' '.$tags, $width, pad: true));
     }
 
     /** The replacement column for a preview row (the raw text when no preview closure is wired). */
@@ -886,63 +941,29 @@ final class FindInFilesModal
         return null !== $this->callbacks->previewReplacement ? ($this->callbacks->previewReplacement)($old, $this->replace->value()) : $old;
     }
 
-    /** The footer hint row; the action words are clickable/hoverable zones. */
     /**
-     * The footer's actions in order, visible label => click-zone name.
-     *
-     * One list, read by the row that draws them and by the width that has to
-     * seat them — the same pairing {@see optionTags()} has, for the same
-     * reason.
-     *
-     * @return array<string, string>
+     * The footer: a key legend, not a row of buttons — the Find window and the
+     * scope are controls of their own now, beside the fields they belong to.
+     * It still names their keys: a compact button has no border to carry one.
      */
-    private function footerActions(): array
+    private function footerLegend(): string
     {
-        return [
-            $this->translator->trans('Find window').self::FIND_WINDOW_KEY => 'find_window',
-            $this->translator->trans('Scope') => 'footer_scope',
-        ];
+        return ' '.$this->translator->trans('⏎ open').' · Alt+Enter '.$this->translator->trans('Find window').' · Alt+S '.$this->translator->trans('Scope').' · Esc';
     }
 
     /**
      * The footer's natural width, counted by {@see boxWidth()} for the reason
-     * {@see optionsRowWidth()} is: it is a fixed row that cannot shrink, so
-     * left out of the width it is a row that silently truncates. It had not
-     * tipped over yet — English needs 29 of the 48-column minimum — but French
-     * already needed 41, and naming the key here costs twelve more.
+     * {@see optionsRowWidth()} is: a fixed row that cannot shrink is, left out
+     * of the width, a row that silently truncates.
      */
     private function footerRowWidth(): int
     {
-        $width = 1 + \mb_strwidth($this->translator->trans('⏎ open'));
-        foreach (\array_keys($this->footerActions()) as $label) {
-            $width += \mb_strwidth(' · ') + \mb_strwidth($label);
-        }
-
-        return $width;
+        return \mb_strwidth($this->footerLegend());
     }
 
     private function footerRow(int $width): string
     {
-        $this->footerZones->clear();
-        // A hovered label closes its own foreground, so the dim pen must be
-        // re-opened explicitly (the row wrap only re-applies the background).
-        $dim = $this->styles->of(Role::Dim)->getAnsiRestore();
-        $sep = ' · ';
-        $line = ' '.$this->translator->trans('⏎ open').$sep;
-        $col = \mb_strwidth($line);
-        foreach ($this->footerActions() as $label => $name) {
-            $this->footerZones->add($name, $col, $col + \mb_strwidth($label));
-            $line .= $name === $this->hovered
-                ? $this->styles->merge(Role::RowHighlightBg, Role::Bright)->apply($label).$dim
-                : $label;
-            $col += \mb_strwidth($label);
-            if ('footer_scope' !== $name) {
-                $line .= $sep;
-                $col += \mb_strwidth($sep);
-            }
-        }
-
-        return $this->styles->merge(Role::HeaderBar, Role::Dim)->apply(AnsiText::truncate($line, $width, pad: true));
+        return $this->styles->merge(Role::HeaderBar, Role::Dim)->apply(AnsiText::truncate($this->footerLegend(), $width, pad: true));
     }
 
     /**
@@ -992,17 +1013,12 @@ final class FindInFilesModal
         $innerCol = $box->innerCol($relCol);
         $field = $this->fieldAt($box, $relRow - $box->optionsRow);
         if (null !== $field) {
-            $this->setActiveField($field);
+            $this->clickBand($field, null !== $this->sideZones->at($innerCol));
 
             return true;
         }
         if ($relRow === $box->optionsRow) {
             $zone = $this->optionZones->at($innerCol);
-            if ('scope' === $zone) {
-                $this->cycleScope();
-
-                return true;
-            }
             $option = null === $zone ? null : SearchOption::tryFrom($zone);
             if (null !== $option) {
                 $this->fireToggle($option);
@@ -1011,9 +1027,7 @@ final class FindInFilesModal
             return true;
         }
         if ($relRow === $box->footerRow) {
-            $this->clickFooter($this->footerZones->at($innerCol));
-
-            return true;
+            return true; // a key legend: nothing on it to press
         }
         $index = $box->itemAt($relRow, $relCol);
         if (null !== $index) {
@@ -1075,17 +1089,19 @@ final class FindInFilesModal
         $this->moving = null;
     }
 
-    /** Fire the footer action under a click ('find_window' | 'footer_scope'). */
-    private function clickFooter(?string $name): void
+    /**
+     * A click in a field band: on the side column it presses that band's
+     * control — the Find window button, the scope select — elsewhere it
+     * focuses the band's field. Beside Replace the side column is blank, so
+     * the click focuses Replace.
+     */
+    private function clickBand(FindModalField $field, bool $side): void
     {
-        if ('find_window' === $name) {
-            $this->fireOpenInFindWindow();
-
-            return;
-        }
-        if ('footer_scope' === $name) {
-            $this->cycleScope();
-        }
+        match (true) {
+            $side && FindModalField::Query === $field => $this->fireOpenInFindWindow(),
+            $side && FindModalField::Mask === $field => $this->openScopeMenu(),
+            default => $this->setActiveField($field),
+        };
     }
 
     /**
@@ -1112,10 +1128,10 @@ final class FindInFilesModal
         if (null !== $box && $relRow === $box->optionsRow) {
             return $this->hoverZone($this->optionZones->at($box->innerCol($relCol))) || $closeChanged;
         }
-        if (null !== $box && $relRow === $box->footerRow) {
-            return $this->hoverZone($this->footerZones->at($box->innerCol($relCol))) || $closeChanged;
+        if (null !== $box && FindModalField::Query === $this->fieldAt($box, $relRow - $box->optionsRow) && null !== $this->sideZones->at($box->innerCol($relCol))) {
+            return $this->hoverZone('find_window') || $closeChanged; // the button under the pointer
         }
-        $cleared = $this->hoverZone(null); // moving off the header/footer drops any tag hover
+        $cleared = $this->hoverZone(null); // moving off the tags and the button drops their hover
         $index = $this->previewIndexAt($relRow);
         // File headers aren't pickable, so they don't light up.
         $row = null !== $index && null === $this->displayRows[$index]->filePath ? $index : null;

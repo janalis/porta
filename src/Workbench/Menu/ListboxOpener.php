@@ -54,6 +54,18 @@ final readonly class ListboxOpener
         if (null === $rect) {
             return; // not drawn, so nothing to hang from
         }
+        $this->openAt($rect->row + $relRow, $rect->col + $relCol, $rect->row + $relAbove, $width, $options, $current, $choose);
+    }
+
+    /**
+     * Open under a control at SCREEN coordinates — for a host that lays
+     * itself out in screen space, as the floating modals do.
+     *
+     * @param list<array{string, string}> $options value and label, in list order
+     * @param \Closure(string): void       $choose  runs with the picked value
+     */
+    public function openAt(int $row, int $col, int $above, int $width, array $options, string $current, \Closure $choose): void
+    {
         $items = [];
         $selected = 0;
         foreach ($options as $i => [$value, $label]) {
@@ -63,7 +75,7 @@ final readonly class ListboxOpener
             });
         }
         $this->menuBar->close();
-        $this->overlay->setContextAnchor($rect->row + $relRow, $rect->col + $relCol, $rect->row + $relAbove);
+        $this->overlay->setContextAnchor($row, $col, $above);
         $this->contextMenu->openListbox($items, $selected, $width - PopupFrame::CHROME_COLS);
         $this->tui->requestRender();
     }
