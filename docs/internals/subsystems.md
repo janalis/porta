@@ -320,8 +320,24 @@ A picker behaves like a dialog with a combobox:
 
 The menu dropdowns and the context menu wear the tighter `PopupFrame`
 border-only language, with item-run hit-testing where the border swallows and
-outside dismisses. The completion popup and signature hint stay
-editor-pane-composited and framed the same way. Every title and item has an access
+outside dismisses.
+
+The editor's caret popups are composited into the editor pane:
+- **Completion list** (`EditorRenderer::completionPopup`). Heavy-framed, since
+  it holds the keys. It returns a `CompletionBox` with its frame and docblock
+  rectangles, so a click there is swallowed.
+- **Signature hint, doc popup and completion note** (`CaretPopupRenderer`).
+  Their state is `CaretPopups`, one holder because the widget pins
+  `too-many-properties`, plus `EditorCompletion::note()`.
+
+The completion list and the doc popup share one placement rule: the side that
+fits, else the roomier side cut to its room, never the caret row.
+
+A gutter click goes through `Input/GutterClickRouter`: the fold column folds,
+and a change mark runs `git_show_change` when a plugin provides it. Anything
+else toggles a breakpoint.
+
+Every title and item has an access
 letter, worked out per render from the translated labels by
 `Workbench/Menu/Mnemonics` (word-initials dealt first, then a matching for
 whatever the deal left out) and underlined where it survived truncation. F10
