@@ -10556,4 +10556,8 @@ These were found by running the round's new pieces against each other:
   Only a real mark is underlined now.
 - **The signature hint under the completion list.** See phase 4a: the hint
   takes the side the other caret popups left free.
+- **A replaced toast under the pointer.** A slotted card replaced while the
+  pointer rested on it ("Fetching…" becoming "Fetched") got a running timer,
+  and no motion event would come to pause it again, so it could expire while
+  being read. It now stays held.
 

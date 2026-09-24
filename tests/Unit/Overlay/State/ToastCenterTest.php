@@ -236,4 +236,27 @@ final class ToastCenterTest extends TestCase
         $this->assertTrue($center->dismissNewest());
         $this->assertSame(['older'], \array_map(static fn (Toast $t): string => $t->message, $center->toasts()));
     }
+
+    /** A slotted card replaced under the resting pointer stays held, with the new card's full time once the pointer goes. */
+    public function testAReplacedCardUnderThePointerStaysHeld(): void
+    {
+        $clock = 0.0;
+        $this->scheduler = new FakeScheduler();
+        $this->tui = new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24));
+        $center = new ToastCenter($this->scheduler, $this->tui, static function () use (&$clock): float {
+            return $clock;
+        });
+        $center->push('Fetching…', ToastSeverity::Info, 600.0, 'git.remote');
+        $center->setBoxes([$this->box($center->toasts()[0]->id)]);
+        $center->hoverAt(2, 65);
+
+        $center->push('Fetched', ToastSeverity::Success, 3.0, 'git.remote');
+        $card = $center->toasts()[0];
+        $this->assertTrue($card->paused, 'still being read');
+        $this->assertSame([], $this->scheduler->scheduled, 'no timer runs under the pointer');
+
+        $clock = 50.0;
+        $center->hoverAt(20, 10);
+        $this->assertEqualsWithDelta(3.0, $this->scheduler->delays[$card->timerId], 0.001, 'its own three seconds, from when the pointer left');
+    }
 }

@@ -53,14 +53,25 @@ final class ToastCenter
     {
         $at = null === $slot ? null : \array_find_key($this->toasts, static fn (Toast $live): bool => $live->slot === $slot);
         $toast = new Toast(null === $at ? $this->nextId++ : $this->toasts[$at]->id, $message, $severity, slot: $slot);
-        $this->arm($toast, $seconds);
         if (null !== $at) {
             $this->scheduler->cancel($this->toasts[$at]->timerId);
+            // A card replaced under a resting pointer stays held: no motion
+            // event will come to pause the new one, and it is being read.
+            $held = $this->toasts[$at]->paused;
             $this->toasts[$at] = $toast;
+            if ($held) {
+                $toast->paused = true;
+                $toast->expiresAt = $seconds;
+                $this->tui->requestRender();
+
+                return;
+            }
+            $this->arm($toast, $seconds);
             $this->tui->requestRender();
 
             return;
         }
+        $this->arm($toast, $seconds);
         $this->toasts[] = $toast;
         while (\count($this->toasts) > self::MAX_TOASTS) {
             $evicted = \array_shift($this->toasts);
