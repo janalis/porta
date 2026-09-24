@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Porta\I18n;
 
 use Porta\Container\AsIdeService;
+use Porta\Ui\Markup\Markup;
+use Porta\Ui\Markup\MarkupParser;
 use Symfony\Component\Translation\Translator as SymfonyTranslator;
 
 /**
@@ -77,6 +79,18 @@ final readonly class Translator
     public function trans(string $id, array $params = []): string
     {
         return $this->translator->trans($id, $params);
+    }
+
+    /**
+     * {@see trans()} as {@see Markup}: the catalog string may carry tags
+     * (`Rebound %action% to <info>%key%</>`), and every param value is
+     * escaped first, so a file or key name is always shown as written.
+     *
+     * @param array<string, string|int> $params
+     */
+    public function markup(string $id, array $params = []): Markup
+    {
+        return Markup::of($this->trans($id, \array_map(static fn (string|int $value): string => MarkupParser::escape((string) $value), $params)));
     }
 
     public function setLocale(string $locale): void

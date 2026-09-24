@@ -8,6 +8,7 @@ use Porta\Container\AsIdeService;
 use Porta\Overlay\State\ToastCenter;
 use Porta\Overlay\State\ToastSeverity;
 use Porta\Support\FlashSink;
+use Porta\Ui\Markup\Markup;
 use Porta\Widget\StatusBarWidget;
 use Symfony\Component\Tui\Tui;
 
@@ -34,7 +35,7 @@ final readonly class Notifier implements FlashSink
 
     /** Notify at Info severity — the historic entry point, signature unchanged. */
     #[\Override]
-    public function flash(string $message, float $seconds = 2.5, ?string $slot = null): void
+    public function flash(string|Markup $message, float $seconds = 2.5, ?string $slot = null): void
     {
         $this->notify($message, ToastSeverity::Info, $seconds, $slot);
     }
@@ -44,31 +45,35 @@ final readonly class Notifier implements FlashSink
      * and log it. A $slot names the one message of its kind: a later notify in
      * the same slot replaces the card still showing, so a long-lived
      * "Fetching…" is answered in place by its outcome.
+     *
+     * A string is shown exactly as written; a {@see Markup} is styled in the
+     * toast, and read as plain text by the log and the status-bar fallback.
      */
-    public function notify(string $message, ToastSeverity $severity, float $seconds = 2.5, ?string $slot = null): void
+    public function notify(string|Markup $message, ToastSeverity $severity, float $seconds = 2.5, ?string $slot = null): void
     {
-        $this->log?->append($message, $severity);
+        $markup = Markup::from($message);
+        $this->log?->append($markup->plain(), $severity);
         // @mago-expect lint:no-else-clause -- genuine two-way choice with a shared tail below; an early return would duplicate it.
         if (null !== $this->toasts) {
-            $this->toasts->push($message, $severity, $seconds, $slot);
+            $this->toasts->push($markup, $severity, $seconds, $slot);
         } else {
-            $this->statusBar->flash($message, $seconds);
+            $this->statusBar->flash($markup->plain(), $seconds);
         }
         $this->tui->requestRender();
     }
 
-    public function success(string $message, float $seconds = 2.5, ?string $slot = null): void
+    public function success(string|Markup $message, float $seconds = 2.5, ?string $slot = null): void
     {
         $this->notify($message, ToastSeverity::Success, $seconds, $slot);
     }
 
-    public function warn(string $message, float $seconds = 4.0, ?string $slot = null): void
+    public function warn(string|Markup $message, float $seconds = 4.0, ?string $slot = null): void
     {
         $this->notify($message, ToastSeverity::Warn, $seconds, $slot);
     }
 
     /** Errors linger longer — reading time for a message that needs acting on. */
-    public function error(string $message, float $seconds = 5.0, ?string $slot = null): void
+    public function error(string|Markup $message, float $seconds = 5.0, ?string $slot = null): void
     {
         $this->notify($message, ToastSeverity::Error, $seconds, $slot);
     }

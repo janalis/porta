@@ -46,6 +46,7 @@ use Porta\Tests\Support\TestDockTools;
 use Porta\Tests\Support\TestTui;
 use Porta\Tree\FileStatuses;
 use Porta\Ui\ClickIntent;
+use Porta\Ui\Markup\Markup;
 use Porta\Ui\Theme\Theme;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\DebugPanelWidget;
@@ -1149,12 +1150,14 @@ final class PluginApiTest extends TestCase
         $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', [], null, self::projectScope('/p')));
         $api = $this->wiredApi($notifier, new MenuFileContext(), new BufferManager(), new CodeEditorWidget(), $manager);
 
-        $api->notify('careful', ToastSeverity::Warn);
+        $api->notify('careful <b>', ToastSeverity::Warn);
+        $api->flash(Markup::of('Pushed <info>main</>'));
 
         $pushed = $toasts->toasts();
-        $this->assertCount(1, $pushed);
-        $this->assertSame('careful', $pushed[0]->message);
-        $this->assertSame(ToastSeverity::Warn, $pushed[0]->severity, 'the given severity travels, not always Info');
+        $this->assertCount(2, $pushed);
+        $this->assertSame('careful <b>', $pushed[1]->message->plain(), 'a string is shown as written');
+        $this->assertSame(ToastSeverity::Warn, $pushed[1]->severity, 'the given severity travels, not always Info');
+        $this->assertSame('Pushed <info>main</>', $pushed[0]->message->source, 'a Markup reaches the toast as markup');
     }
 
     public function testOnRejectsAnEventClassThatIsNotPluginObservable(): void

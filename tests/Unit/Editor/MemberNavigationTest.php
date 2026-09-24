@@ -53,7 +53,7 @@ final class MemberNavigationTest extends TestCase
     {
         $toasts = $this->toasts->toasts();
 
-        return [] === $toasts ? '' : $toasts[0]->message;
+        return [] === $toasts ? '' : $toasts[0]->message->plain();
     }
 
     public function testNextStepsToTheClassThenEachMethodInTurn(): void

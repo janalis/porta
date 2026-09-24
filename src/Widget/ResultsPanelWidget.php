@@ -18,6 +18,7 @@ use Porta\Ui\Glyphs;
 use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
 use Porta\Ui\LtrPane;
+use Porta\Ui\Markup\MarkupParser;
 use Porta\Ui\Role;
 use Porta\Ui\Sgr;
 use Porta\Ui\TextField;
@@ -619,7 +620,7 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
             default => [$path, ''],
         };
         $arrow = $row->collapsed ? Glyphs::COLLAPSED : Glyphs::EXPANDED;
-        $text = $indent.' '.$arrow.' '.$this->styles->of(Role::TabAccent)->apply($display).$this->styles->of(Role::Dim)->apply('  ('.$row->count.')');
+        $text = $indent.' '.$arrow.' '.$this->styles->format('<tab-accent>'.MarkupParser::escape($display).'</><dim>  ('.$row->count.')</>');
 
         return $bg.AnsiText::truncate($text, $columns, pad: true).Sgr::RESET;
     }

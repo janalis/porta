@@ -52,13 +52,15 @@ final class ToastCard
 
         $rail = $accent->apply($side);
         $rows = [AnsiText::truncate($top, \max(0, $innerWidth + PopupFrame::CHROME_COLS), pad: true)];
-        $lines = AnsiText::wrap($toast->message, \max(1, $innerWidth - 2));
+        // Wrapped as markup, so a span a break falls inside is styled on both
+        // lines; the body's Bright is the span every message sits in.
+        $lines = $styles->formatLines('<bright>'.$toast->message->source.'</>', \max(1, $innerWidth - 2));
         if (\count($lines) > self::MAX_MESSAGE_ROWS) {
             $lines = \array_slice($lines, offset: 0, length: self::MAX_MESSAGE_ROWS);
             $lines[self::MAX_MESSAGE_ROWS - 1] = AnsiText::truncate($lines[self::MAX_MESSAGE_ROWS - 1].'…', \max(1, $innerWidth - 2));
         }
         foreach ($lines as $line) {
-            $body = $styles->of(Role::Bright)->apply(AnsiText::truncate(' '.$line, \max(0, $innerWidth), pad: true));
+            $body = AnsiText::truncate(' '.$line, \max(0, $innerWidth), pad: true);
             $rows[] = $rail.$body.$rail;
         }
         // The hint sits right in the border, `╰──── Alt+9 log ─╯`, when it fits.

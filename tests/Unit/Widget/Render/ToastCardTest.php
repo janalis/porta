@@ -7,6 +7,8 @@ namespace Porta\Tests\Unit\Widget\Render;
 use PHPUnit\Framework\TestCase;
 use Porta\Overlay\State\Toast;
 use Porta\Overlay\State\ToastSeverity;
+use Porta\Ui\Markup\Markup;
+use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\PopupFrame;
 use Porta\Widget\Render\ToastCard;
@@ -21,7 +23,7 @@ final class ToastCardTest extends TestCase
 {
     private function card(string $message, ToastSeverity $severity = ToastSeverity::Info, int $inner = 20, bool $closeHovered = false): array
     {
-        return ToastCard::render(new Toast(1, $message, $severity), $inner, Styles::dark(), $closeHovered);
+        return ToastCard::render(new Toast(1, Markup::literal($message), $severity), $inner, Styles::dark(), $closeHovered);
     }
 
     public function testEveryRowIsExactlyTheBoxWidth(): void
@@ -44,6 +46,31 @@ final class ToastCardTest extends TestCase
         $this->assertStringStartsWith('╚', $rows[\count($rows) - 1]);
     }
 
+    public function testAMarkupMessageIsStyledAndTheBodyIsBrightAroundIt(): void
+    {
+        $styles = Styles::dark();
+        $rows = ToastCard::render(new Toast(1, Markup::of('Saved <info>a.php</> now'), ToastSeverity::Info), 20, $styles);
+
+        $bright = $styles->of(Role::Bright);
+        $this->assertStringContainsString($bright->apply('Saved ').$styles->of(Role::Added)->apply('a.php').$bright->apply(' now'), $rows[1]);
+        $this->assertStringContainsString(' Saved a.php now ', AnsiUtils::stripAnsiCodes($rows[1]));
+    }
+
+    public function testALiteralMessageShowsItsTagsAsWritten(): void
+    {
+        $this->assertStringContainsString('<info>x</>', AnsiUtils::stripAnsiCodes($this->card('<info>x</>')[1]));
+    }
+
+    public function testAStyledSpanWrappedAcrossABreakIsStyledOnBothLines(): void
+    {
+        $styles = Styles::dark();
+        $rows = ToastCard::render(new Toast(1, Markup::of('<error>alpha beta</>'), ToastSeverity::Error), 8, $styles);
+
+        $error = $styles->of(Role::StatusError);
+        $this->assertStringContainsString($error->apply('alpha'), $rows[1]);
+        $this->assertStringContainsString($error->apply('beta'), $rows[2]);
+    }
+
     /** The frame says the severity by shape: double for an error, heavy for a warning, rounded for the rest. */
     public function testTheFrameShapeFollowsTheSeverity(): void
     {
@@ -55,13 +82,13 @@ final class ToastCardTest extends TestCase
     /** A hint is set into the bottom border when it fits, and left out when it does not; the × under the pointer underlines. */
     public function testTheBottomBorderCarriesAHintAndTheCloseUnderlines(): void
     {
-        $rows = ToastCard::render(new Toast(1, 'm', ToastSeverity::Error), 20, Styles::dark(), closeHovered: true, hint: 'Alt+9 log');
+        $rows = ToastCard::render(new Toast(1, Markup::literal('m'), ToastSeverity::Error), 20, Styles::dark(), closeHovered: true, hint: 'Alt+9 log');
 
         $this->assertMatchesRegularExpression('/^╚═+ Alt\+9 log ═╝$/u', AnsiUtils::stripAnsiCodes(\array_last($rows)));
         $this->assertSame(22, AnsiUtils::visibleWidth(\array_last($rows)));
         $this->assertMatchesRegularExpression('/\e\[4m(\e\[[0-9;]*m)*×/', $rows[0], 'the hovered × underlined');
 
-        $narrow = ToastCard::render(new Toast(1, 'm', ToastSeverity::Error), 8, Styles::dark(), hint: 'Alt+9 log');
+        $narrow = ToastCard::render(new Toast(1, Markup::literal('m'), ToastSeverity::Error), 8, Styles::dark(), hint: 'Alt+9 log');
         $this->assertSame('╚════════╝', AnsiUtils::stripAnsiCodes(\array_last($narrow)), 'no room: no hint');
     }
 

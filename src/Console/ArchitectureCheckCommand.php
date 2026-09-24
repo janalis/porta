@@ -235,6 +235,7 @@ final class ArchitectureCheckCommand extends Command
         'Plugin>Settings',
         'Plugin>Support',
         'Plugin>Tree',
+        'Plugin>Ui', // flash()/notify() take a Ui\Markup\Markup, the value a styled message travels as
         'Plugin>Widget',
         'Plugin>Workbench',
         'Run>Event',

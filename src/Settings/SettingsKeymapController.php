@@ -162,12 +162,14 @@ final readonly class SettingsKeymapController
 
             return;
         }
-        $this->notifier->flash($this->translator->trans('Rebound %action% to %key%', [
-            '%action%' => $this->translator->trans($this->actions->label($action)),
-            '%key%' => ShortcutFormatter::format($token),
-        ])
-        .$saved
-        .$note);
+        $this->notifier->flash(
+            $this->translator
+                ->markup('Rebound %action% to <info>%key%</>', [
+                    '%action%' => $this->translator->trans($this->actions->label($action)),
+                    '%key%' => ShortcutFormatter::format($token),
+                ])
+                ->append($saved.$note),
+        );
     }
 
     /**
@@ -216,11 +218,14 @@ final readonly class SettingsKeymapController
 
             return;
         }
-        $this->notifier->flash($this->translator->trans('Reset %action% to %key%', [
-            '%action%' => $this->translator->trans($this->actions->label($action)),
-            '%key%' => ShortcutFormatter::format(ActionCatalog::ACTIONS[$action]['keys'][0] ?? ''),
-        ])
-            .SettingsFlash::savedSuffix($this->translator, $removed));
+        $this->notifier->flash(
+            $this->translator
+                ->markup('Reset %action% to <info>%key%</>', [
+                    '%action%' => $this->translator->trans($this->actions->label($action)),
+                    '%key%' => ShortcutFormatter::format(ActionCatalog::ACTIONS[$action]['keys'][0] ?? ''),
+                ])
+                ->append(SettingsFlash::savedSuffix($this->translator, $removed)),
+        );
     }
 
     /**

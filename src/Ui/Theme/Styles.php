@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Ui\Theme;
 
+use Porta\Ui\Markup\MarkupParser;
+use Porta\Ui\Markup\MarkupRun;
 use Porta\Ui\Role;
 use Symfony\Component\Tui\Style\Style;
 
@@ -56,6 +58,28 @@ final class Styles
         return $this->mergeMemo[$key] ??= Style::mergeAll(\array_map($this->current->of(...), $roles));
     }
 
+    /**
+     * $markup ({@see MarkupParser}: `<info>`, `<diag-warn>`, `<fg=red;options=bold>`)
+     * rendered in the active theme. Nothing is cached, so the same markup
+     * recolors after {@see switchTo()} like every other role lookup.
+     */
+    public function format(string $markup): string
+    {
+        return $this->paint(MarkupParser::parse($markup)->runs());
+    }
+
+    /**
+     * $markup word-wrapped to $width columns, each line styled whole — for a
+     * body that wraps, where formatting first would leave a span open across
+     * a break.
+     *
+     * @return non-empty-list<string>
+     */
+    public function formatLines(string $markup, int $width): array
+    {
+        return \array_map($this->paint(...), MarkupParser::parse($markup)->lines($width));
+    }
+
     /** The SGR-58 underline-color sequence for $role ('' when the theme defines none). */
     public function underline(Role $role): string
     {
@@ -66,5 +90,23 @@ final class Styles
     public function hasColor(): bool
     {
         return $this->current->hasColor();
+    }
+
+    /** @param list<MarkupRun> $runs */
+    private function paint(array $runs): string
+    {
+        $painted = '';
+        foreach ($runs as $run) {
+            $styles = [];
+            $link = null;
+            foreach ($run->specs as $spec) {
+                $styles[] = $spec->style(null === $spec->role ? new Style() : $this->of($spec->role), $this->hasColor());
+                $link = $spec->href ?? $link; // the innermost link wins
+            }
+            $text = null === $link ? $run->text : "\x1b]8;;{$link}\x1b\\{$run->text}\x1b]8;;\x1b\\";
+            $painted .= [] === $styles ? $text : Style::mergeAll($styles)->apply($text);
+        }
+
+        return $painted;
     }
 }

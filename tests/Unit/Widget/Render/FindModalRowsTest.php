@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget\Render;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Support\AnsiText;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\FindModalRows;
@@ -14,6 +15,16 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 final class FindModalRowsTest extends TestCase
 {
+    public function testFileHeaderIsTheAccentedPathAndTheDimCountWhateverThePathHolds(): void
+    {
+        $styles = Styles::dark();
+
+        $this->assertSame(
+            $styles->of(Role::PopupRow)->apply(AnsiText::truncate(' '.$styles->of(Role::TabAccent)->apply('src/<info>.php').$styles->of(Role::Dim)->apply('  (3)'), 30, pad: true)),
+            FindModalRows::fileHeader('src/<info>.php', 3, 30, $styles),
+        );
+    }
+
     public function testOptionTagOnBracketsTheGlyph(): void
     {
         $tag = AnsiUtils::stripAnsiCodes(FindModalRows::optionTag('C', OptionTagState::On, Styles::dark()));

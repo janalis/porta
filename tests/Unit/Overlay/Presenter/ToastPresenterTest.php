@@ -15,6 +15,7 @@ use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RendersRoot;
 use Porta\Tests\Support\TestOverlayPane;
 use Porta\Ui\BidiTui;
+use Porta\Ui\Markup\Markup;
 use Porta\Widget\Render\MenuOverlayHost;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Keybindings;
@@ -72,12 +73,12 @@ final class ToastPresenterTest extends TestCase
     {
         $presenter = $this->presenter();
         $this->frame();
-        $this->toasts->push('disk full', ToastSeverity::Error);
+        $this->toasts->push(Markup::literal('disk full'), ToastSeverity::Error);
         $presenter->sync();
         $this->assertStringContainsString('Alt+9 log', $this->paintedText());
 
         foreach (\range(1, end: 4) as $n) {
-            $this->toasts->push("note {$n} ".\str_repeat('with more words ', times: 4), ToastSeverity::Info);
+            $this->toasts->push(Markup::literal("note {$n} ".\str_repeat('with more words ', times: 4)), ToastSeverity::Info);
         }
         $presenter->sync();
         $shown = \count($presenter->regions());
@@ -89,7 +90,7 @@ final class ToastPresenterTest extends TestCase
     {
         $presenter = $this->presenter();
         $this->frame();
-        $this->toasts->push('saved', ToastSeverity::Success);
+        $this->toasts->push(Markup::literal('saved'), ToastSeverity::Success);
 
         $presenter->sync();
 
@@ -106,8 +107,8 @@ final class ToastPresenterTest extends TestCase
     {
         $presenter = $this->presenter();
         $this->frame();
-        $this->toasts->push('older', ToastSeverity::Info);
-        $this->toasts->push('newer', ToastSeverity::Error);
+        $this->toasts->push(Markup::literal('older'), ToastSeverity::Info);
+        $this->toasts->push(Markup::literal('newer'), ToastSeverity::Error);
 
         $presenter->sync();
 
@@ -119,7 +120,7 @@ final class ToastPresenterTest extends TestCase
     public function testSyncBeforeAnyFrameRetriesWithoutPushing(): void
     {
         $presenter = $this->presenter();
-        $this->toasts->push('early', ToastSeverity::Info);
+        $this->toasts->push(Markup::literal('early'), ToastSeverity::Info);
 
         $presenter->sync();
 
@@ -131,7 +132,7 @@ final class ToastPresenterTest extends TestCase
     {
         $presenter = $this->presenter();
         $this->frame();
-        $this->toasts->push('bye', ToastSeverity::Info);
+        $this->toasts->push(Markup::literal('bye'), ToastSeverity::Info);
         $presenter->sync();
 
         $this->scheduler->fire(); // expiry
@@ -154,7 +155,7 @@ final class ToastPresenterTest extends TestCase
         // card showed up somewhere on the right".
         $presenter = $this->presenter();
         $this->frame();
-        $this->toasts->push('hi', ToastSeverity::Info);
+        $this->toasts->push(Markup::literal('hi'), ToastSeverity::Info);
 
         $presenter->sync();
 
@@ -169,7 +170,7 @@ final class ToastPresenterTest extends TestCase
     {
         $presenter = $this->presenter();
         $this->frame();
-        $this->toasts->push('hi', ToastSeverity::Info);
+        $this->toasts->push(Markup::literal('hi'), ToastSeverity::Info);
 
         $presenter->sync();
 
@@ -184,8 +185,8 @@ final class ToastPresenterTest extends TestCase
     {
         $presenter = $this->presenter();
         $this->frame();
-        $this->toasts->push('older', ToastSeverity::Info);
-        $this->toasts->push('newer', ToastSeverity::Info);
+        $this->toasts->push(Markup::literal('older'), ToastSeverity::Info);
+        $this->toasts->push(Markup::literal('newer'), ToastSeverity::Info);
         $presenter->sync();
 
         $before = $this->pane->toastSpans;
@@ -231,9 +232,9 @@ final class ToastPresenterTest extends TestCase
         // out-of-room guard.
         $presenter = $this->presenter();
         $this->frame(rows: 12);
-        $this->toasts->push('early-short', ToastSeverity::Info); // oldest: must never render
-        $this->toasts->push(\str_repeat('word ', times: 60), ToastSeverity::Info); // too tall to fit once reached
-        $this->toasts->push('filler', ToastSeverity::Info); // newest: consumes the room first
+        $this->toasts->push(Markup::literal('early-short'), ToastSeverity::Info); // oldest: must never render
+        $this->toasts->push(Markup::literal(\str_repeat('word ', times: 60)), ToastSeverity::Info); // too tall to fit once reached
+        $this->toasts->push(Markup::literal('filler'), ToastSeverity::Info); // newest: consumes the room first
 
         $presenter->sync();
 
@@ -256,7 +257,7 @@ final class ToastPresenterTest extends TestCase
         );
 
         $this->frame();
-        $toasts->push('hi', ToastSeverity::Info);
+        $toasts->push(Markup::literal('hi'), ToastSeverity::Info);
         $this->tui->processRender();
 
         $this->assertSame([], $this->pane->toastSpans, 'no frame-hook wiring — nothing auto-syncs');
@@ -269,7 +270,7 @@ final class ToastPresenterTest extends TestCase
         // automatic in the real app.
         $this->presenter();
         $this->frame();
-        $this->toasts->push('hi', ToastSeverity::Info);
+        $this->toasts->push(Markup::literal('hi'), ToastSeverity::Info);
 
         $this->tui->processRender(); // not $presenter->sync() — the frame hook must do it
 
@@ -281,7 +282,7 @@ final class ToastPresenterTest extends TestCase
         $presenter = $this->presenter();
         $this->frame();
         foreach (\range(1, end: 5) as $i) {
-            $this->toasts->push(\str_repeat("very long message {$i} ", times: 12), ToastSeverity::Info);
+            $this->toasts->push(Markup::literal(\str_repeat("very long message {$i} ", times: 12)), ToastSeverity::Info);
         }
 
         $presenter->sync();

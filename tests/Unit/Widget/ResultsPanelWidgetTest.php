@@ -10,6 +10,8 @@ use Porta\Event\ResultsExportRequested;
 use Porta\Event\ResultsRerunRequested;
 use Porta\Tests\Support\AttachedStyles;
 use Porta\Tests\Support\Probe;
+use Porta\Ui\Role;
+use Porta\Ui\Theme\Styles;
 use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\Support\ResultGrouping;
 use Porta\Widget\Support\ResultsPanelFields;
@@ -630,8 +632,11 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->open('Find in Project', ResultsPanelFields::searchResults());
         $panel->setResults($this->groupedResults());
 
-        $plain = AnsiUtils::stripAnsiCodes(\implode("\n", $panel->render(new RenderContext(80, 12))));
+        $raw = \implode("\n", $panel->render(new RenderContext(80, 12)));
+        $plain = AnsiUtils::stripAnsiCodes($raw);
         $this->assertStringContainsString('▾ src/A.php  (2)', $plain, 'file header with match count');
+        $styles = Styles::dark();
+        $this->assertStringContainsString($styles->of(Role::TabAccent)->apply('src/A.php').$styles->of(Role::Dim)->apply('  (2)'), $raw, 'the path accented, the count dim');
         $this->assertStringContainsString('▾ src/B.php  (1)', $plain);
         $this->assertStringContainsString('match zero', $plain);
         $this->assertStringNotContainsString('src/A.php:1', $plain, 'grouped match rows omit the per-line path');

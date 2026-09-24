@@ -125,7 +125,8 @@ final class CatalogCoverageTest extends TestCase
     }
 
     /**
-     * Every literal string in the FIRST argument of a ->trans() call in src/
+     * Every literal string in the FIRST argument of a ->trans() (or its
+     * markup twin, Translator::markup()) call in src/
      * and the bundled plugins' src/. Dynamic ids cannot be collected
      * statically; the two big dynamic-id tables are covered by
      * {@see labelLiterals()} and the enum labels by {@see enumLabelLiterals()}.
@@ -153,7 +154,7 @@ final class CatalogCoverageTest extends TestCase
             $count = \count($tokens);
             for ($i = 1; $i < $count; ++$i) {
                 $token = $tokens[$i];
-                if (!(\is_array($token) && \T_STRING === $token[0] && 'trans' === $token[1])) {
+                if (!(\is_array($token) && \T_STRING === $token[0] && \in_array($token[1], ['trans', 'markup'], strict: true))) {
                     continue;
                 }
                 $previous = $tokens[$i - 1];

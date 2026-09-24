@@ -110,7 +110,7 @@ final class LspBootstrapperInboundTest extends TestCase
 
         $toasts = $this->toasts->toasts();
         $this->assertCount(1, $toasts);
-        $this->assertSame('[php-ls] composer autoload missing', $toasts[0]->message);
+        $this->assertSame('[php-ls] composer autoload missing', $toasts[0]->message->plain());
     }
 
     public function testAnEmptyServerMessageIsNotTurnedIntoAToastOfTheServerName(): void

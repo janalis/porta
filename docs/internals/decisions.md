@@ -10588,3 +10588,45 @@ These were found by running the round's new pieces against each other:
   (`SearchRow::isSelectable()`), and the actions source lists runnable
   commands before greyed ones, score order within each group.
 
+
+## Styled text is Symfony Console markup (2026-09-24)
+
+`Styles::format()` reads Console's formatter markup against the live theme
+(`Ui/Markup`, see subsystems.md). What was decided, and what would re-open each
+decision:
+
+- **Flat runs, not nested applies.** Each run of text gets the merged style of
+  every tag around it, which is how Console paints. A single span is byte for
+  byte the old `$style->apply($text)`. `StylesFormatTest` pins that against raw
+  escapes, and it is what let the three migrated sites keep their bytes. The
+  nested form (`$outer->apply('a'.$inner->apply('b').'c')`) was tried first
+  and dropped. An inner span's `39m` resets the foreground to the terminal
+  default, not to the outer colour, so a `<info>` word inside the toast's
+  Bright body turned the rest of the sentence grey.
+  *Re-opens on:* tui's `Style::apply` restoring the parent foreground the way
+  it already restores the background.
+- **Nothing cached.** Parsing is one `preg_match_all` over a short string, and
+  a byte cache would have to be keyed by theme to survive `switchTo()`.
+  *Re-opens on:* a `perf.log` showing `format()` in a frame's cost.
+- **A bare string is literal.** `Notifier`, `PluginApi::flash/notify` and
+  `ToastCenter` take `string|Markup`, and a string is escaped. Reading every
+  message as markup would let a file name, a commit subject or a server message
+  open a tag. *Re-opens on:* never, short of every caller escaping by
+  construction.
+- **An unparseable tag prints; it does not throw.** Console throws on an
+  unknown colour or a stray close tag. A render path has nowhere to throw to,
+  and a toast body can come from a translator.
+- **`comment` is StatusWarning, not Muted.** Console's `comment` is yellow,
+  and it is used to point at a value, not to recede. `info`, `question` and
+  `error` map by the same rule, to Added, Emphasis and StatusError.
+- **Only multi-span sites migrated.** About 250 `->apply()` calls are single
+  spans around computed chrome, a `Style` passed in (a severity accent), or
+  byte-level seams (open-only diff runs, decorator open/close pairs, SGR-58).
+  Markup names roles, not `Style` objects, so it cannot express those. The
+  three sites that concatenated whole role spans were converted.
+  *Re-opens on:* a new site that concatenates two or more role spans. Write it
+  as markup.
+- **No `PluginApi::styled()`, no test helper.** Views and panes already
+  receive `Styles` (`ViewServices`, `PaneServices`), and a test writes
+  `Styles::dark()->format(…)`. Either wrapper would have been a second
+  spelling with no caller of its own.

@@ -351,8 +351,8 @@
         <target>「%title%」を実行しました</target>
       </trans-unit>
       <trans-unit id="101">
-        <source>Rebound %action% to %key%</source>
-        <target>%action% を %key% に再割り当てしました</target>
+        <source>Rebound %action% to &lt;info&gt;%key%&lt;/&gt;</source>
+        <target>%action% を &lt;info&gt;%key%&lt;/&gt; に再割り当てしました</target>
       </trans-unit>
       <trans-unit id="102">
         <source>Reformatted %file%</source>
@@ -3027,8 +3027,8 @@
         <target>通知ログ</target>
       </trans-unit>
       <trans-unit id="839">
-        <source>Reset %action% to %key%</source>
-        <target>%action% を %key% に戻しました</target>
+        <source>Reset %action% to &lt;info&gt;%key%&lt;/&gt;</source>
+        <target>%action% を &lt;info&gt;%key%&lt;/&gt; に戻しました</target>
       </trans-unit>
       <trans-unit id="840">
         <source>%action% is not bound in %file%</source>

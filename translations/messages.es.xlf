@@ -351,8 +351,8 @@
         <target>«%title%» ejecutado</target>
       </trans-unit>
       <trans-unit id="101">
-        <source>Rebound %action% to %key%</source>
-        <target>%action% reasignado a %key%</target>
+        <source>Rebound %action% to &lt;info&gt;%key%&lt;/&gt;</source>
+        <target>%action% reasignado a &lt;info&gt;%key%&lt;/&gt;</target>
       </trans-unit>
       <trans-unit id="102">
         <source>Reformatted %file%</source>
@@ -3027,8 +3027,8 @@
         <target>Registro de notificaciones</target>
       </trans-unit>
       <trans-unit id="839">
-        <source>Reset %action% to %key%</source>
-        <target>%action% restablecido a %key%</target>
+        <source>Reset %action% to &lt;info&gt;%key%&lt;/&gt;</source>
+        <target>%action% restablecido a &lt;info&gt;%key%&lt;/&gt;</target>
       </trans-unit>
       <trans-unit id="840">
         <source>%action% is not bound in %file%</source>

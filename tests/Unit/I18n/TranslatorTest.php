@@ -28,6 +28,17 @@ final class TranslatorTest extends TestCase
         return '<trans-unit id="x"><source>'.$source.'</source><target>'.$target.'</target></trans-unit>';
     }
 
+    public function testMarkupTranslatesTheTagsAndEscapesEveryParam(): void
+    {
+        $project = new TempProject(['messages.fr.xlf' => $this->xliff('fr', $this->unit('Saved &lt;info&gt;%file%&lt;/&gt;', '&lt;info&gt;%file%&lt;/&gt; enregistré'))]);
+        $translator = new Translator('fr', $project->dir);
+
+        $markup = $translator->markup('Saved <info>%file%</>', ['%file%' => '<b>.php', '%n%' => 3]);
+
+        $this->assertSame('<info>\\<b\\>.php</> enregistré', $markup->source, 'the catalog keeps its tags; the file name is escaped');
+        $this->assertSame('<b>.php enregistré', $markup->plain());
+    }
+
     public function testTranslatesTheActiveLocaleAndFallsBackToEnglish(): void
     {
         $project = new TempProject(['messages.fr.xlf' => $this->xliff('fr', $this->unit('Save File', 'Enregistrer le fichier'))]);

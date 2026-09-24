@@ -138,6 +138,29 @@ enum Role
      */
     public function selector(): string
     {
-        return '.role-'.\strtolower((string) \preg_replace('/(?<!^)[A-Z]/', replacement: '-$0', subject: $this->name));
+        return '.role-'.$this->tag();
+    }
+
+    /**
+     * The kebab-case name (`diag-warn` for `DiagWarn`) — the markup tag that
+     * names this role ({@see \Porta\Ui\Markup\StyleSpec}) and the tail of
+     * its {@see selector()}.
+     */
+    public function tag(): string
+    {
+        return \strtolower((string) \preg_replace('/(?<!^)[A-Z]/', replacement: '-$0', subject: $this->name));
+    }
+
+    /** The role {@see tag()} names, or null when no role has that tag. */
+    public static function fromTag(string $tag): ?self
+    {
+        $case = self::class.'::'.\str_replace(search: ' ', replace: '', subject: \ucwords(\str_replace(search: '-', replace: ' ', subject: $tag)));
+        if (!\defined($case)) {
+            return null;
+        }
+        /** @var self $role a constant named Role::<Case> is that case */
+        $role = \constant($case);
+
+        return $role->tag() === $tag ? $role : null;
     }
 }

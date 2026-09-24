@@ -25,6 +25,7 @@ use Porta\Plugin\Runtime\PluginMenuSpec;
 use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Settings\SettingsRowKind;
 use Porta\Support\ProjectPaths;
+use Porta\Ui\Markup\Markup;
 use Porta\Workbench\Dock\ToolRun;
 use Porta\Workbench\Menu\MenuContribution;
 use Porta\Workbench\Menu\MenuSurface;
@@ -1071,8 +1072,13 @@ final class PluginApi
         $runtime->modals->openPrompt($label, $initial, $onSubmit);
     }
 
-    /** Show a transient status-bar message. */
-    public function flash(string $message, float $seconds = 2.5): void
+    /**
+     * Show a transient message. A string is shown exactly as written; pass a
+     * {@see Markup} to style it — `Markup::of('Pushed <info>main</>')`, the
+     * tags of Symfony Console's formatter, resolved in the live theme. Escape
+     * what you splice in with {@see \Porta\Ui\Markup\MarkupParser::escape()}.
+     */
+    public function flash(string|Markup $message, float $seconds = 2.5): void
     {
         $runtime = $this->manager->runtime();
         $runtime->notifier->flash($message, $seconds);
@@ -1090,8 +1096,10 @@ final class PluginApi
      * A `$slot` makes the message replaceable: a later notify in the same slot
      * takes over the card still showing instead of stacking beside it — show
      * "Fetching…" for as long as it takes, then its outcome in the same place.
+     *
+     * $message reads as in {@see flash()}: literal as a string, styled as a Markup.
      */
-    public function notify(string $message, ToastSeverity $severity = ToastSeverity::Info, float $seconds = 2.5, ?string $slot = null): void
+    public function notify(string|Markup $message, ToastSeverity $severity = ToastSeverity::Info, float $seconds = 2.5, ?string $slot = null): void
     {
         $this->manager->runtime()->notifier->notify($message, $severity, $seconds, $slot);
     }

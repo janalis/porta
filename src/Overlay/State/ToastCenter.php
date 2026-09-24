@@ -6,6 +6,7 @@ namespace Porta\Overlay\State;
 
 use Porta\Overlay\Region\ModalBox;
 use Porta\Support\Scheduler;
+use Porta\Ui\Markup\Markup;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -49,7 +50,7 @@ final class ToastCenter
      * toast in a $slot that is still showing is replaced where it stands, with
      * a fresh timer, rather than stacked beside — progress becomes its outcome.
      */
-    public function push(string $message, ToastSeverity $severity, float $seconds = 2.5, ?string $slot = null): void
+    public function push(Markup $message, ToastSeverity $severity, float $seconds = 2.5, ?string $slot = null): void
     {
         $at = null === $slot ? null : \array_find_key($this->toasts, static fn (Toast $live): bool => $live->slot === $slot);
         $toast = new Toast(null === $at ? $this->nextId++ : $this->toasts[$at]->id, $message, $severity, slot: $slot);

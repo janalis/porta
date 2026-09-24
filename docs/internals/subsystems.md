@@ -48,6 +48,28 @@ over the raw line: spans go through `LineDecorator::applyAll`, insert/overlay
 loops slice the raw line once per gap. A single bounded splice per row
 (`OverlayCompositor::into`, `ModalShadow`) is fine.
 
+**Styled text as markup.** `Styles::format()` renders Symfony Console's formatter markup against the
+active theme. It lives in `Ui/Markup`: `MarkupParser` is Console's own tag
+grammar and escaping, and `StyleSpec` maps a tag onto a tui `Style`.
+- **Named tags.** Console's four named styles map to roles. Every `Role` is
+  also a tag under `Role::tag()`, which is the name its `.role-*` selector is
+  built from.
+- **Flat runs.** Output is painted the way Console paints it. Each run of text
+  gets the merged style of every tag around it. So a single span is byte for
+  byte `$style->apply($text)`, and a closed inner span gives back the
+  surrounding foreground, which a hand-nested `apply()` does not.
+- **No cache.** The tree is re-parsed each call, so a theme switch recolors
+  like any role lookup.
+- **Wrapping.** `formatLines()` wraps the plain text and then styles each line
+  whole. Use it when a body wraps, as the toast card does.
+- **When not to use it.** Markup is for assembling spans of whole roles. The
+  byte-level seams stay byte-level: splicing into a styled line, open-only
+  `getAnsiRestore()` runs, decorator open/close pairs, and SGR-58 underline
+  colours.
+- **`Markup` values.** A `Markup` value object carries markup through the
+  notifier. A bare string there is always literal, so nothing reaches a tag
+  without saying so. `Translator::markup()` escapes its params.
+
 Widgets cache their rendered output, and `invalidate()` only bubbles **up** — so
 a change that must relabel the whole tree, such as a live locale switch, has to
 clear render caches recursively. That is what the chrome-root sweep is for; see

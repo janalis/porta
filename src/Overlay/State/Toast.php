@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Overlay\State;
 
+use Porta\Ui\Markup\Markup;
+
 /**
  * One live corner notification: identity for dismissal (the auto-expiry timer
  * and the × both address the toast, not a position — the stack reorders as
@@ -15,7 +17,7 @@ final class Toast
 {
     public function __construct(
         public readonly int $id,
-        public readonly string $message,
+        public readonly Markup $message,
         public readonly ToastSeverity $severity,
         public string $timerId = '',
         public readonly ?string $slot = null,

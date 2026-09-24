@@ -696,8 +696,8 @@ Actions (from handlers/hooks):
 
 | Method | Purpose |
 | --- | --- |
-| `flash(string $message, float $seconds = 2.5)` | Status-bar notification |
-| `notify(string $message, ToastSeverity $severity = ToastSeverity::Info, float $seconds = 2.5, ?string $slot = null)` | The same toast, coloured for what happened: `Success`, `Warn`, `Error`. `flash()` is this at `Info`. A `$slot` makes the message replaceable: a later notify in the same slot takes over the card still showing — say "Fetching…" for as long as it takes, then the outcome in its place |
+| `flash(string\|Markup $message, float $seconds = 2.5)` | Status-bar notification. A string is shown exactly as written; a `Porta\Ui\Markup\Markup` is styled — see [Styled text](#styled-text) |
+| `notify(string\|Markup $message, ToastSeverity $severity = ToastSeverity::Info, float $seconds = 2.5, ?string $slot = null)` | The same toast, coloured for what happened: `Success`, `Warn`, `Error`. `flash()` is this at `Info`. A `$slot` makes the message replaceable: a later notify in the same slot takes over the card still showing — say "Fetching…" for as long as it takes, then the outcome in its place |
 | `refreshStatusSegments()` | Tell the status bar your segment changed; the bar caches its line, so a value that arrives asynchronously needs this |
 | `openView(string $id)` / `closeView(string $id)` | Open or close a registered full-screen view. Opening closes whatever other view owns the main area |
 | `toggleView(string $id)` | Flip it open or closed — what a keybinding on a view wants. "Is it open?" is the registry's to answer, so a plugin never holds its own controller to find out |
@@ -725,6 +725,41 @@ Actions (from handlers/hooks):
 | `setting(string $key): bool\|int\|string` | The current value of a setting this plugin registered — the user's value coerced to the declared kind, or the default. Safe during `activate()`, but `registerSetting()` must run first. |
 | `changeSetting(string $key, bool\|int\|string $value)` | Persist a new value for a setting this plugin registered — coerced, kept live and written to `.porta.json`, exactly like a Settings-page edit. An action method (throws during `activate()`). |
 | `relaunchLanguageServer()` | Say that this plugin just replaced its language server's BINARY on disk: the servers are re-resolved and the running sessions relaunched. For a plugin that installs its own server. Do NOT use `changeSetting()` for this — the LSP pool skips a reconfigure whose resolved map is unchanged (deliberately, or every setting toggle would tear down every server), and an UPGRADE lands at the same path with byte-identical argv, so the old process keeps answering while the install reports success. An action method (throws during `activate()`). |
+
+### Styled text
+
+Messages and view rows use Symfony Console's formatter markup. The styles come
+from the live theme, so a theme switch recolors them and monochrome stays
+monochrome:
+
+```php
+use Porta\Ui\Markup\Markup;
+use Porta\Ui\Markup\MarkupParser;
+
+$api->flash(Markup::of('Pushed <info>'.MarkupParser::escape($branch).'</>'));
+$row = $styles->format('<modified>'.MarkupParser::escape($sha).'</> '.MarkupParser::escape($subject));
+```
+
+**Tags.**
+- Console's four named styles: `<info>`, `<comment>`, `<question>` and `<error>`.
+- Every theme role by its kebab-case name: `<added>`, `<diag-warn>`, `<tab-accent>`, and so on.
+- Inline styles: `<fg=…;bg=…;options=…;href=…>`.
+
+**Closing and escaping.** `</>` closes the innermost tag, and `</name>` closes
+the named one. A `<` written as `\<` is text. A tag that does not parse is
+printed as written. Console would throw on it, but a render has nowhere to
+throw to.
+
+**Inline values.**
+- **Colors:** Console's names (`red` to `bright-white`, `gray`, `default`), `#hex`, or a 0–255 palette index.
+- **Options:** `bold`, `underscore` (or `underline`), `reverse`, `dim`, `italic` and `strikethrough`. `blink` and `conceal` are accepted and ignored.
+- **`href=`:** makes an OSC 8 link.
+
+**Escaping what you splice in.** Always pass interpolated text through
+`MarkupParser::escape()`, so a `<` in a file name is never read as a tag. A
+bare string passed to `flash`/`notify` is escaped for you. To build markup
+from a message, use `Markup::of()`. `Markup::literal()` and `->append()` keep
+plain text plain.
 
 Diagnostics published via `setDiagnostics` behave exactly like LSP
 diagnostics — inline end-of-line messages, the scroll-stripe, and the

@@ -10,6 +10,7 @@ use Porta\Overlay\State\ToastCenter;
 use Porta\Overlay\State\ToastSeverity;
 use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\Probe;
+use Porta\Ui\Markup\Markup;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\NotificationLog;
 use Porta\Workbench\Notifier;
@@ -30,6 +31,35 @@ final class NotifierTest extends TestCase
         $notifier->flash('saved a.php');
 
         $this->assertSame(['◦ saved a.php'], \array_column($log->entries(), 'text'), 'the flash was logged');
+    }
+
+    public function testAStringIsLiteralAndAMarkupIsStyledInTheToastAndPlainInTheLog(): void
+    {
+        $clock = new MockClock();
+        $tui = new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24));
+        $log = new NotificationLog($clock, new EventDispatcher());
+        $toasts = new ToastCenter(new FakeScheduler(), $tui);
+        $notifier = new Notifier(new StatusBarWidget(clock: $clock), $tui, $log, $toasts);
+
+        $notifier->flash('a <info>b</> c');
+        $notifier->success(Markup::of('saved <info>a.php</>'));
+
+        $this->assertSame(['◦ a <info>b</> c', '✓ saved a.php'], \array_column($log->entries(), 'text'));
+        $this->assertSame(
+            ['saved <info>a.php</>', 'a \\<info\\>b\\</\\> c'],
+            \array_map(static fn (Toast $toast): string => $toast->message->source, $toasts->toasts()),
+            'the Markup reaches the toast as markup; the string reaches it escaped',
+        );
+    }
+
+    public function testTheStatusBarFallbackShowsAMarkupAsPlainText(): void
+    {
+        $status = new StatusBarWidget();
+        $notifier = new Notifier($status, new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24)));
+
+        $notifier->warn(Markup::of('<comment>careful</>'));
+
+        $this->assertSame('careful', Probe::get($status, 'flash')['text'] ?? null);
     }
 
     public function testFlashWithoutALogStillWorks(): void

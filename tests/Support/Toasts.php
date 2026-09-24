@@ -32,6 +32,6 @@ final class Toasts
         $center = Probe::object($notifier, 'toasts'); // src carries no test-only getter
         \assert($center instanceof ToastCenter, description: 'the notifier holds the toast center');
 
-        return \array_map(static fn (Toast $t): string => $t->message, $center->toasts());
+        return \array_map(static fn (Toast $t): string => $t->message->plain(), $center->toasts());
     }
 }

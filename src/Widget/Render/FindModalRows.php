@@ -6,6 +6,7 @@ namespace Porta\Widget\Render;
 
 use Porta\Support\AnsiText;
 use Porta\Ui\Glyphs;
+use Porta\Ui\Markup\MarkupParser;
 use Porta\Ui\Role;
 use Porta\Ui\Sgr;
 use Porta\Ui\Theme\Styles;
@@ -56,7 +57,7 @@ final class FindModalRows
     /** A file's grouping header: path plus its match count. */
     public static function fileHeader(string $path, int $count, int $width, Styles $styles): string
     {
-        $text = ' '.$styles->of(Role::TabAccent)->apply($path).$styles->of(Role::Dim)->apply('  ('.$count.')');
+        $text = $styles->format(' <tab-accent>'.MarkupParser::escape($path).'</><dim>  ('.$count.')</>');
 
         return $styles->of(Role::PopupRow)->apply(AnsiText::truncate($text, $width, pad: true));
     }

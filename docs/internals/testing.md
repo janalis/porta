@@ -70,7 +70,7 @@ Roughly 700 duplicated lines once collapsed onto these.
 | `FindModalReads` | find-modal scraping |
 | `RendersWidget` | `plain()` / `rows()`, ANSI-stripped |
 | `StatusReads` | `flashText()` reads the model, `statusRow()` the rendered row |
-| `Toasts` | the same model-vs-render choice for toasts |
+| `Toasts` | the same model-vs-render choice for toasts (messages as plain text: `Markup::plain()`) |
 | `GitBinary` | `skipWithoutGit()` / `whichGit()` |
 | `TempProject` | `git()`, `initGit()`, `commitAll()` — hold it in a variable: an inline `new TempProject(...)->dir` is freed (dir deleted) before the enclosing call runs, and `composer arch` fails the line |
 | `TestOverlayPane`, `RendersRoot` | the presenter rigs |
@@ -103,6 +103,13 @@ observe an async callback's by-reference write. Sixty-four such conditions were
 once silently burning their full timeout as sleeps. Write
 `static function () use (&$x): bool { … }`, or read `$this->…` state. When there
 is genuinely nothing to await, say so with `pump()`.
+
+**Expected styled bytes are written as markup**, `Styles::dark()->format('<added>+</>')`.
+It produces the same bytes as the hand-written `->of(Role::Added)->apply('+')`
+for a flat span, and it reads as what the row shows. There is no rig for it
+because none is needed. Raw `\x1b[…m` literals stay where the code under test
+is byte-level (decorator open/close pairs, open-only diff runs). The anchor
+that pins markup to real bytes is `tests/Unit/Ui/Markup/StylesFormatTest.php`.
 
 ## The flake doctrine
 
