@@ -10485,9 +10485,12 @@ read without colour:
 - the stripe gains the stopped line `▶`, the current hit `━` and bookmarks `◈`;
 - the thumb draws `▐` on rows with no mark.
 
-**Deferred:** a matching bracket inside a selection. Both are reverse video,
-and resolving that means reworking how spans close and reopen, which is not a
-theme change.
+**Deferred, then done:** a matching bracket inside a selection. The span
+system needed no rework, because the selection already reopens itself after
+an inner close. Only the monochrome case was wrong: there the selection is
+reverse video, and the bracket's reverse over it left the pair distinguished
+by weight alone. A bracket inside the primary selection is now bold and
+underlined; outside a selection it is reversed as before.
 
 ## UI round, phase 6b: the find bar shows failure by shape (2026-09-24)
 

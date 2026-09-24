@@ -75,8 +75,10 @@ final class LineSpans
             $spans[] = [$startDisp, $endDisp, $token['open'], $token['close'], null];
         }
 
+        $selected = null;
         if (null !== $selection && $lineIndex >= $selection['startLine'] && $lineIndex <= $selection['endLine']) {
-            $spans[] = self::selectionSpan($doc, $lineIndex, $selection['startLine'], $selection['startCol'], $selection['endLine'], $selection['endCol'], $styles);
+            $selected = self::selectionSpan($doc, $lineIndex, $selection['startLine'], $selection['startCol'], $selection['endLine'], $selection['endCol'], $styles);
+            $spans[] = $selected;
         }
         foreach ($matches as $match) {
             // The current match is additionally bold, so it stands out from the
@@ -104,7 +106,14 @@ final class LineSpans
                     continue;
                 }
 
-                $spans[] = [$bDispCol, $bDispCol + 1, LineDecorator::BRACKET_SGR, "\x1b[22m\x1b[27m", null];
+                // Inside a selection the bracket is underlined rather than
+                // reversed: a selection is reverse video where there is no
+                // colour, and reverse over reverse left the pair told apart
+                // by weight alone.
+                $spans[] =
+                    null !== $selected && $bDispCol >= $selected[0] && $bDispCol < $selected[1]
+                        ? [$bDispCol, $bDispCol + 1, Sgr::BOLD.Sgr::UNDERLINE, "\x1b[22m".Sgr::NO_UNDERLINE, null]
+                        : [$bDispCol, $bDispCol + 1, LineDecorator::BRACKET_SGR, "\x1b[22m\x1b[27m", null];
             }
         }
         foreach ($diags as $diag) {

@@ -10,6 +10,7 @@ use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\Document;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\DarkTheme;
+use Porta\Ui\Theme\MonochromeTheme;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\EditorDecorations;
 use Porta\Widget\Render\LineDecorator;
@@ -40,7 +41,7 @@ final class LineSpansTest extends TestCase
         $this->assertSame($styles->of(Role::SelectionBg)->getAnsiRestore(), $opens[0], 'selection first');
         $this->assertSame($styles->of(Role::SearchCurrentBg)->getAnsiRestore()."\x1b[1m", $opens[1], 'current search match next, bold for a non-color cue');
         $this->assertSame($styles->of(Role::OccurrenceBg)->getAnsiRestore(), $opens[2]);
-        $this->assertSame(LineDecorator::BRACKET_SGR, $opens[3]);
+        $this->assertSame("\x1b[1m\x1b[4m", $opens[3], 'a bracket inside the selection: underlined, not reversed over reverse');
         $this->assertSame("\x1b[7m", $opens[\count($opens) - 1], 'caret cell layers last');
         $this->assertSame(4, $result['padTo'], 'caret at col 3 needs 4 cells');
     }
@@ -101,6 +102,36 @@ final class LineSpansTest extends TestCase
         $this->assertCount(1, $result['spans'], 'no selection span for a collapsed caret');
         $this->assertSame([2, 3, "\x1b[7m", "\x1b[27m", null], $result['spans'][0]);
         $this->assertSame(3, $result['padTo']);
+    }
+
+    /**
+     * A matched bracket is reversed where it stands alone and underlined
+     * inside a selection — which is reverse video without colour, so a
+     * reversed bracket there was told apart by weight alone.
+     */
+    public function testABracketInsideTheSelectionIsUnderlinedNotReversed(): void
+    {
+        $doc = new Document("f(a) (b)\n");
+        $result = LineSpans::forLine(
+            $doc,
+            0,
+            new EditorDecorations(
+                multiActive: false,
+                selection: ['startLine' => 0, 'startCol' => 1, 'endLine' => 0, 'endCol' => 4],
+                carets: [],
+                occurrences: [],
+                brackets: [[0, 1], [0, 3], [0, 4], [0, 5]],
+            ),
+            [],
+            [],
+            new Styles(MonochromeTheme::definition()),
+        );
+        $bracketAt = static fn (int $col): string => \array_first(\array_filter($result['spans'], static fn (array $s): bool => $col === $s[0] && 1 === ($s[1] - $s[0])))[2];
+
+        $this->assertSame("\x1b[1m\x1b[4m", $bracketAt(1), 'the first selected cell');
+        $this->assertSame("\x1b[1m\x1b[4m", $bracketAt(3), 'the last selected cell');
+        $this->assertSame(LineDecorator::BRACKET_SGR, $bracketAt(4), 'just past the selection: reversed as ever');
+        $this->assertSame(LineDecorator::BRACKET_SGR, $bracketAt(5));
     }
 
     public function testBracketSpanCoversExactlyOneCell(): void
