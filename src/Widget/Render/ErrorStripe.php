@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Widget\Render;
 
+use Porta\Editor\ChangeMarkKind;
 use Porta\Editor\DiagnosticSeverity;
 use Porta\Support\IntMath;
 use Porta\Ui\Glyphs;
@@ -34,46 +35,9 @@ final class ErrorStripe
     /**
      * @return list<string> exactly $rows cells
      */
-    public static function cells(StripeMarks $marks, int $rows, int $lineCount, int $vScroll, int $lastVisible, Styles $styles): array
+    public static function cells(StripeMarks $marks, int $rows, int $lineCount, int $vScroll, int $lastVisible, Styles $styles, ?int $hoveredRow = null): array
     {
-        $width = \max(0, $rows);
-
-        // Worst severity landing on each stripe row (null = none).
-        /** @var list<DiagnosticSeverity|null> $severity */
-        $severity = \array_fill(0, $width, value: null);
-        foreach ($marks->severityByLine as $line => $worst) {
-            $r = self::rowOf($line, $rows, $lineCount);
-            $severity[$r] = $severity[$r]?->worse($worst) ?? $worst;
-        }
-
-        $breakpoints = \array_fill(0, $width, value: false);
-        foreach ($marks->breakpointLines as $line) {
-            $breakpoints[self::rowOf($line, $rows, $lineCount)] = true;
-        }
-
-        // Several changed lines can share a row and they need not agree on the
-        // kind; the topmost one in the slice wins, so the mark does not depend
-        // on the order the producer happened to push its marks in.
-        $changes = \array_fill(0, $width, value: null);
-        $changeLine = \array_fill(0, $width, value: \PHP_INT_MAX);
-        foreach ($marks->vcsByLine as $line => $kind) {
-            $r = self::rowOf($line, $rows, $lineCount);
-            if ($line < $changeLine[$r]) {
-                $changeLine[$r] = $line;
-                $changes[$r] = $kind;
-            }
-        }
-
-        $hits = \array_fill(0, $width, value: false);
-        foreach ($marks->searchLines as $line) {
-            $hits[self::rowOf($line, $rows, $lineCount)] = true;
-        }
-        $bookmarks = \array_fill(0, $width, value: false);
-        foreach ($marks->bookmarkLines as $line) {
-            $bookmarks[self::rowOf($line, $rows, $lineCount)] = true;
-        }
-        $debugRow = null === $marks->debugLine ? null : self::rowOf($marks->debugLine, $rows, $lineCount);
-        $currentRow = null === $marks->currentSearchLine ? null : self::rowOf($marks->currentSearchLine, $rows, $lineCount);
+        $winners = self::winners($marks, $rows, $lineCount);
 
         // Viewport thumb: the stripe rows covering the visible doc-line range,
         // shown only when the file actually scrolls.
@@ -83,33 +47,100 @@ final class ErrorStripe
 
         $cells = [];
         for ($r = 0; $r < $rows; ++$r) {
-            $change = $changes[$r];
-            $changeMark = null === $change ? null : [$change->glyph(), $change->role()];
-
-            $lineSeverity = $severity[$r];
-            $mark = match (true) {
-                $r === $debugRow => [Glyphs::STOPPED_LINE, Role::Breakpoint],
-                null !== $lineSeverity => [$lineSeverity->mark(), $lineSeverity->role()],
-                $breakpoints[$r] => [Glyphs::BREAKPOINT, Role::Breakpoint],
-                $r === $currentRow => [Glyphs::STRIPE_SEARCH_CURRENT, Role::SearchCurrentBg],
-                null !== $changeMark => $changeMark,
-                $bookmarks[$r] => [Glyphs::BOOKMARK, Role::TabAccent],
-                $hits[$r] => [Glyphs::STRIPE_SEARCH, Role::SearchBg],
+            $mark = $winners[$r] ?? null;
+            // The leading reset shields the cell from whatever state the row
+            // content left open; the styles then close themselves. The mark
+            // under the pointer underlines, as every click target does.
+            $thumb = $showThumb && $r >= $thumbTop && $r <= $thumbBottom;
+            $style = match (true) {
+                null !== $mark && $thumb => $styles->merge(Role::RowHighlightBg, $mark['kind']->role($mark['severity'], $mark['change'])),
+                null !== $mark => $styles->of($mark['kind']->role($mark['severity'], $mark['change'])),
+                $thumb => $styles->merge(Role::RowHighlightBg, Role::Faint),
                 default => null,
             };
-
-            // The leading reset shields the cell from whatever state the row
-            // content left open; the styles then close themselves.
-            $thumb = $showThumb && $r >= $thumbTop && $r <= $thumbBottom;
-            $cells[] = match (true) {
-                null !== $mark && $thumb => Sgr::RESET.$styles->merge(Role::RowHighlightBg, $mark[1])->apply($mark[0]),
-                null !== $mark => Sgr::RESET.$styles->of($mark[1])->apply($mark[0]),
-                $thumb => Sgr::RESET.$styles->merge(Role::RowHighlightBg, Role::Faint)->apply(Glyphs::STRIPE_THUMB),
-                default => Sgr::RESET.' ',
+            $glyph = match (true) {
+                null !== $mark => $mark['kind']->glyph($mark['severity'], $mark['change']),
+                $thumb => Glyphs::STRIPE_THUMB,
+                default => ' ',
             };
+            if (null !== $mark && $r === $hoveredRow) {
+                $style = $style?->withUnderline();
+            }
+            $cells[] = Sgr::RESET.(null === $style ? $glyph : $style->apply($glyph));
         }
 
         return $cells;
+    }
+
+    /**
+     * The mark a stripe row shows — its kind and the first line of that kind
+     * in the row's slice of the file — or null for a row with none. What the
+     * pointer over the stripe is told, by the same precedence the cell drew.
+     *
+     * @return array{kind: StripeMark, line: int, severity: ?DiagnosticSeverity, change: ?ChangeMarkKind}|null
+     */
+    public static function markAt(StripeMarks $marks, int $row, int $rows, int $lineCount): ?array
+    {
+        return self::winners($marks, $rows, $lineCount)[$row] ?? null;
+    }
+
+    /**
+     * Each row's winning mark. The column is one cell wide, so several lines
+     * share a row and several kinds compete for it; the precedence is
+     * {@see StripeMark}'s case order, and within a kind the topmost line in the
+     * slice is the one kept, so the mark does not depend on the order the
+     * producer happened to push its marks in. A diagnostic keeps the WORST
+     * severity landing on its row.
+     *
+     * @return array<int, array{kind: StripeMark, line: int, severity: ?DiagnosticSeverity, change: ?ChangeMarkKind}>
+     */
+    private static function winners(StripeMarks $marks, int $rows, int $lineCount): array
+    {
+        /** @var array<int, array<string, array{kind: StripeMark, line: int, severity: ?DiagnosticSeverity, change: ?ChangeMarkKind}>> $byRow */
+        $byRow = [];
+        $offer = static function (StripeMark $kind, int $line, ?DiagnosticSeverity $severity = null, ?ChangeMarkKind $change = null) use (&$byRow, $rows, $lineCount): void {
+            $r = self::rowOf($line, $rows, $lineCount);
+            $held = $byRow[$r][$kind->name] ?? null;
+            $better = null === $held || null !== $severity && null !== $held['severity'] && $severity->outranks($held['severity']) || $severity === $held['severity'] && $line < $held['line'];
+            if ($better) {
+                $byRow[$r][$kind->name] = ['kind' => $kind, 'line' => $line, 'severity' => $severity, 'change' => $change];
+            }
+        };
+        if (null !== $marks->debugLine) {
+            $offer(StripeMark::Paused, $marks->debugLine);
+        }
+        foreach ($marks->severityByLine as $line => $worst) {
+            $offer(StripeMark::Diagnostic, $line, $worst);
+        }
+        foreach ($marks->breakpointLines as $line) {
+            $offer(StripeMark::Breakpoint, $line);
+        }
+        if (null !== $marks->currentSearchLine) {
+            $offer(StripeMark::CurrentHit, $marks->currentSearchLine);
+        }
+        foreach ($marks->vcsByLine as $line => $kind) {
+            $offer(StripeMark::Change, $line, change: $kind);
+        }
+        foreach ($marks->bookmarkLines as $line) {
+            $offer(StripeMark::Bookmark, $line);
+        }
+        foreach ($marks->searchLines as $line) {
+            $offer(StripeMark::Hit, $line);
+        }
+
+        $winners = [];
+        foreach ($byRow as $r => $kinds) {
+            foreach (StripeMark::cases() as $kind) {
+                if (!\array_key_exists($kind->name, $kinds)) {
+                    continue;
+                }
+                $winners[$r] = $kinds[$kind->name];
+
+                break;
+            }
+        }
+
+        return $winners;
     }
 
     /** The stripe row a document line lands on, proportionally over the whole file. */

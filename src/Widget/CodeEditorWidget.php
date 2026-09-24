@@ -527,6 +527,15 @@ final class CodeEditorWidget extends AbstractWidget implements
         $hint = null === $part || null === $docLine ? null : GutterHint::for($this->decorations, $docLine, $part, $clickShowsChange, $this->translator);
         $changed = $this->decorations->hoverGutter(null === $hint ? null : $docLine, $part ?? GutterPart::Marker);
 
+        // The marker stripe in the right margin: its mark says what it is and
+        // which line a click goes to.
+        $mark =
+            $relRow >= 0 && $relCol >= $this->lastStripeCol && $relRow < $this->lastRenderRows
+                ? ErrorStripe::markAt(StripeMarks::from($this->decorations, $this->display->vcsGutter), $relRow, $this->lastRenderRows, $this->document->getLineCount())
+                : null;
+        $changed = $this->decorations->hoverStripe(null === $mark ? null : $relRow) || $changed;
+        $hint ??= null === $mark ? null : $this->translator->trans('%what% · line %line%', ['%what%' => $this->translator->trans($mark['kind']->label()), '%line%' => $mark['line'] + 1]);
+
         return ['changed' => $changed, 'hint' => $hint];
     }
 
@@ -1373,7 +1382,7 @@ final class CodeEditorWidget extends AbstractWidget implements
             // a faint viewport thumb. Appended to every produced row so each reaches
             // the full terminal width.
             $marks = StripeMarks::from($this->decorations, $this->display->vcsGutter);
-            $stripe = ErrorStripe::cells($marks, $rows, $lineCount, $vScroll, $lastVisibleDocLine, $this->styles);
+            $stripe = ErrorStripe::cells($marks, $rows, $lineCount, $vScroll, $lastVisibleDocLine, $this->styles, $this->decorations->stripeHover);
 
             $assembler = new EditorRowAssembler(
                 $doc,

@@ -73,6 +73,16 @@ final class DecorationStoreTest extends TestCase
         $this->assertSame(3, $frames, 'a frame per change, none otherwise');
     }
 
+    public function testStripeHoverReportsOnlyAChange(): void
+    {
+        $store = new DecorationStore(static function (): void {});
+
+        $this->assertTrue($store->hoverStripe(4));
+        $this->assertFalse($store->hoverStripe(4));
+        $this->assertTrue($store->hoverStripe(null));
+        $this->assertFalse($store->hoverStripe(null));
+    }
+
     /**
      * Marks below an insertion move down by as many lines as it added, and the
      * lines it created are marked.

@@ -3374,6 +3374,30 @@
         <source>Previous Change</source>
         <target>Vorherige Änderung</target>
       </trans-unit>
+      <trans-unit id="944">
+        <source>%what% · line %line%</source>
+        <target>%what% · Zeile %line%</target>
+      </trans-unit>
+      <trans-unit id="945">
+        <source>Problem</source>
+        <target>Problem</target>
+      </trans-unit>
+      <trans-unit id="946">
+        <source>Breakpoint</source>
+        <target>Haltepunkt</target>
+      </trans-unit>
+      <trans-unit id="947">
+        <source>Current match</source>
+        <target>Aktueller Treffer</target>
+      </trans-unit>
+      <trans-unit id="948">
+        <source>Change</source>
+        <target>Änderung</target>
+      </trans-unit>
+      <trans-unit id="949">
+        <source>Match</source>
+        <target>Treffer</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

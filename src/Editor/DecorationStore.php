@@ -264,6 +264,21 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
         return true;
     }
 
+    /** The marker-stripe row whose mark is under the pointer, or null. */
+    public private(set) ?int $stripeHover = null;
+
+    /** Point at a stripe row's mark, or at none; returns whether that changed (and asks for a frame when it did). */
+    public function hoverStripe(?int $row): bool
+    {
+        if ($row === $this->stripeHover) {
+            return false;
+        }
+        $this->stripeHover = $row;
+        ($this->invalidate)();
+
+        return true;
+    }
+
     public function isBookmarked(int $line): bool
     {
         return ($this->bookmarkLines[$line] ?? null) !== null;

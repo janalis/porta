@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Editor\CompletionNote;
 use Porta\Search\Everywhere\SearchCategory;
 use Porta\Ui\ScopeKind;
+use Porta\Widget\Render\StripeMark;
 use Symfony\Component\Finder\Finder;
 
 /**
@@ -365,6 +366,7 @@ final class CatalogCoverageTest extends TestCase
             ...\array_map(static fn (SearchCategory $c): string => $c->title(), SearchCategory::cases()),
             ...\array_map(static fn (ScopeKind $k): string => $k->label(), ScopeKind::cases()),
             ...\array_map(static fn (CompletionNote $n): string => $n->text(), CompletionNote::cases()),
+            ...\array_map(static fn (StripeMark $m): string => $m->label(), StripeMark::cases()),
         ];
     }
 

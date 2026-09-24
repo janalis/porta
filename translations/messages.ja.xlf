@@ -3374,6 +3374,30 @@
         <source>Previous Change</source>
         <target>前の変更</target>
       </trans-unit>
+      <trans-unit id="944">
+        <source>%what% · line %line%</source>
+        <target>%what% · %line% 行</target>
+      </trans-unit>
+      <trans-unit id="945">
+        <source>Problem</source>
+        <target>問題</target>
+      </trans-unit>
+      <trans-unit id="946">
+        <source>Breakpoint</source>
+        <target>ブレークポイント</target>
+      </trans-unit>
+      <trans-unit id="947">
+        <source>Current match</source>
+        <target>現在の一致</target>
+      </trans-unit>
+      <trans-unit id="948">
+        <source>Change</source>
+        <target>変更</target>
+      </trans-unit>
+      <trans-unit id="949">
+        <source>Match</source>
+        <target>一致</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

@@ -10536,8 +10536,11 @@ precedence. The hover state lives in `DecorationStore::$gutterHover`, because
 the editor widget pins `too-many-properties`. The store reports a change only
 when the pointed mark changes, so motion events do not re-flash it.
 
-**Deferred:** hover on the marker stripe. A stripe cell stands for a slice of
-the file, not a line, and its hint needs its own wording.
+**Deferred, then done:** hover on the marker stripe. The row's winner is now
+computed once (`ErrorStripe::winners`, using `StripeMark`'s case order as the
+precedence). The cells draw it, and `markAt()` tells the pointer its kind and
+the first line of that kind in the row's slice: "Error · line 12". Only a
+mark underlines, not a blank row or the thumb.
 
 ## The combinations audit after the UI round (2026-09-24)
 

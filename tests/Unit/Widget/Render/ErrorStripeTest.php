@@ -15,6 +15,7 @@ use Porta\Ui\Sgr;
 use Porta\Ui\Theme\MonochromeTheme;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\ErrorStripe;
+use Porta\Widget\Render\StripeMark;
 use Porta\Widget\Render\StripeMarks;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
@@ -264,5 +265,24 @@ final class ErrorStripeTest extends TestCase
         $this->assertSame([4, 9], $marks->bookmarkLines);
         $this->assertSame(7, $marks->debugLine);
         $this->assertSame(5, $marks->currentSearchLine);
+    }
+
+    /** A row's mark is told as the cell draws it — the same precedence — with the first line of its kind; the hovered one underlines. */
+    public function testMarkAtTellsTheRowsWinnerAndTheHoveredCellUnderlines(): void
+    {
+        $marks = new StripeMarks([12 => DiagnosticSeverity::Warning, 15 => DiagnosticSeverity::Error], [], [11], [], bookmarkLines: [55]);
+
+        $this->assertSame(
+            ['kind' => StripeMark::Diagnostic, 'line' => 15, 'severity' => DiagnosticSeverity::Error, 'change' => null],
+            ErrorStripe::markAt($marks, 1, 10, 100),
+            'the worst on the row, over the search hit',
+        );
+        $this->assertSame(StripeMark::Bookmark, ErrorStripe::markAt($marks, 5, 10, 100)['kind'] ?? null);
+        $this->assertNull(ErrorStripe::markAt($marks, 3, 10, 100));
+
+        $cells = ErrorStripe::cells($marks, 10, 100, 0, 9, Styles::dark(), hoveredRow: 1);
+        $this->assertStringContainsString("\e[4m", $cells[1]);
+        $this->assertStringNotContainsString("\e[4m", $cells[5]);
+        $this->assertStringNotContainsString("\e[4m", ErrorStripe::cells($marks, 10, 100, 0, 9, Styles::dark(), hoveredRow: 3)[3], 'a blank row is not underlined');
     }
 }

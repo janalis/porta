@@ -3374,6 +3374,30 @@
         <source>Previous Change</source>
         <target>השינוי הקודם</target>
       </trans-unit>
+      <trans-unit id="944">
+        <source>%what% · line %line%</source>
+        <target>%what% · שורה %line%</target>
+      </trans-unit>
+      <trans-unit id="945">
+        <source>Problem</source>
+        <target>בעיה</target>
+      </trans-unit>
+      <trans-unit id="946">
+        <source>Breakpoint</source>
+        <target>נקודת עצירה</target>
+      </trans-unit>
+      <trans-unit id="947">
+        <source>Current match</source>
+        <target>ההתאמה הנוכחית</target>
+      </trans-unit>
+      <trans-unit id="948">
+        <source>Change</source>
+        <target>שינוי</target>
+      </trans-unit>
+      <trans-unit id="949">
+        <source>Match</source>
+        <target>התאמה</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

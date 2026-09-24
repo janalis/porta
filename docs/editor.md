@@ -561,6 +561,8 @@ the file, and the kinds resolve by strict precedence:
 A faint band behind the marks is the **viewport thumb**: the part of the file
 you are looking at, shown only when the file is taller than the pane. On rows
 with no mark the thumb draws its own `▐`, so it is visible without the band.
+Under the pointer a mark underlines, and the status bar says what it is and
+the line a click goes to: "Bookmark · line 41".
 Clicking a cell jumps there.
 
 Every mark is a distinct shape rather than a colour, so the stripe still reads

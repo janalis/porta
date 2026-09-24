@@ -761,4 +761,36 @@ final class IdeMousePrimitivesTest extends TestCase
             ],
         );
     }
+
+    /** A stripe mark under the pointer underlines and says what it is and which line a click goes to. */
+    public function testHoveringAStripeMarkNamesItAndItsLine(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $project = new TempProject(['A.php' => \str_repeat("line\n", times: 60)]);
+
+        $this->runIde(
+            $project,
+            $project->path('A.php'),
+            [
+                300 => static function ($tui): void {
+                    $tui->getById('editor')->decorations->setBookmarkLines([40]);
+                    $tui->tick();
+                },
+                400 => function ($tui): void {
+                    $editor = $tui->getById('editor');
+                    $rows = $editor->render(new RenderContext(129, 22));
+                    $row = \array_key_first(\array_filter($rows, static fn (string $r): bool => \str_ends_with(\rtrim(AnsiUtils::stripAnsiCodes($r)), '◈')));
+                    $this->assertNotNull($row, 'the bookmark is on the stripe');
+                    $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", 31 + 129, 3 + $row)); // the stripe's column, that row
+                },
+                500 => function ($tui): void {
+                    $editor = $tui->getById('editor');
+                    $this->assertNotNull($editor->decorations->stripeHover);
+                    $cell = $editor->render(new RenderContext(129, 22))[$editor->decorations->stripeHover];
+                    $this->assertMatchesRegularExpression('/\e\[[0-9;]*4[0-9;]*m[^\e]*(\e\[[0-9;]*m)*◈/u', $cell, 'the mark underlined');
+                    $this->assertStringContainsString('Bookmark · line 41', AnsiUtils::stripAnsiCodes(\implode('', $tui->getById('status')->render(new RenderContext(160, 1)))));
+                },
+            ],
+        );
+    }
 }
