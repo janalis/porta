@@ -38,6 +38,8 @@ use Porta\Editor\EditorTextAccess;
 use Porta\Editor\EditorViewOptions;
 use Porta\Editor\EditorViewport;
 use Porta\Editor\FoldModel;
+use Porta\Editor\GutterHint;
+use Porta\Editor\GutterPart;
 use Porta\Editor\IndentKind;
 use Porta\Editor\LineNumberMode;
 use Porta\Editor\MemberSeparators;
@@ -501,6 +503,30 @@ final class CodeEditorWidget extends AbstractWidget implements
     {
         $this->closeSiblingFloaters();
         $this->overlayHost->openPrompt($label, $initial, $onSubmit, $danger);
+    }
+
+    /**
+     * Point at the gutter (pane-relative cell): the change strip's mark or the
+     * marker column's under the pointer is underlined, and its meaning comes
+     * back in words for the status bar — null off any mark. Returns whether
+     * the pointed mark changed, with the hint.
+     *
+     * @return array{changed: bool, hint: ?string}
+     */
+    public function hoverGutter(int $relRow, int $relCol, bool $clickShowsChange): array
+    {
+        $docLine = $relRow >= 0 && $relCol >= 0 && $relCol < $this->lastGutterWidth ? $this->documentLineAt($relRow) : null;
+        $markerCol = $this->lastGutterWidth - 3; // then the fold column, then a space
+        $part = match (true) {
+            null === $docLine => null,
+            $this->changeMarkAt($relCol, $docLine) => GutterPart::Change,
+            $relCol === $markerCol => GutterPart::Marker,
+            default => null,
+        };
+        $hint = null === $part || null === $docLine ? null : GutterHint::for($this->decorations, $docLine, $part, $clickShowsChange, $this->translator);
+        $changed = $this->decorations->hoverGutter(null === $hint ? null : $docLine, $part ?? GutterPart::Marker);
+
+        return ['changed' => $changed, 'hint' => $hint];
     }
 
     /** Whether a gutter cell is a version-control change mark: the strip's column, on a line that has one. */

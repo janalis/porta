@@ -9,6 +9,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Editor\ChangeMarkKind;
 use Porta\Editor\CompletionBox;
 use Porta\Editor\CompletionItem;
+use Porta\Editor\GutterPart;
 use Porta\Ide;
 use Porta\Overlay\Region\DropdownRegion;
 use Porta\Overlay\State\MenuOverlayController;
@@ -711,6 +712,51 @@ final class IdeMousePrimitivesTest extends TestCase
                 },
                 400 => function ($tui): void {
                     $this->assertSame([1], $tui->getById('editor')->decorations->breakpointLines, 'no git plugin: a breakpoint');
+                },
+            ],
+        );
+    }
+
+    /** A gutter mark under the pointer underlines and says what it is on the status bar; leaving it takes the underline back. */
+    public function testHoveringAGutterMarkNamesIt(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $project = new TempProject(['A.php' => "one\ntwo\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('A.php'),
+            [
+                300 => static function ($tui): void {
+                    $editor = $tui->getById('editor');
+                    $editor->decorations->setBreakpointLines([1]);
+                    $editor->decorations->setVcsMarks([0 => ChangeMarkKind::Modified]);
+                    $tui->tick();
+                    $tui->handleInput("\x1b[<35;36;4M"); // the marker column, line 1
+                },
+                400 => function ($tui): void {
+                    $editor = $tui->getById('editor');
+                    $this->assertSame(1, $editor->decorations->gutterHover['line'] ?? null);
+                    $this->assertStringContainsString('Breakpoint · click to remove', AnsiUtils::stripAnsiCodes(\implode('', $tui->getById('status')->render(new RenderContext(160, 1)))));
+                    $this->assertStringContainsString("\x1b[4m", \implode("\n", $editor->render(new RenderContext(80, 10))), 'the mark underlined');
+                    $tui->handleInput("\x1b[<35;32;3M"); // the change strip, line 0
+                },
+                500 => function ($tui): void {
+                    $editor = $tui->getById('editor');
+                    $this->assertSame(['line' => 0, 'part' => GutterPart::Change], $editor->decorations->gutterHover);
+                    $this->assertStringContainsString(
+                        'Modified',
+                        AnsiUtils::stripAnsiCodes(\implode('', $tui->getById('status')->render(new RenderContext(160, 1)))),
+                        'no git plugin: no "click to see"',
+                    );
+                    $tui->handleInput("\x1b[<35;60;3M"); // the code
+                },
+                600 => function ($tui): void {
+                    $this->assertNull($tui->getById('editor')->decorations->gutterHover, 'off the marks: nothing pointed');
+                    $tui->handleInput("\x1b[<35;34;4M"); // the number column, line 1: no mark of its own
+                },
+                700 => function ($tui): void {
+                    $this->assertNull($tui->getById('editor')->decorations->gutterHover, 'a number is not a mark');
                 },
             ],
         );

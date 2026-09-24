@@ -9,6 +9,7 @@ use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\DiagnosticStyle;
 use Porta\Editor\Document;
 use Porta\Editor\FoldModel;
+use Porta\Editor\GutterPart;
 use Porta\Editor\LineNumberMode;
 use Porta\Editor\WhitespaceGlyphs;
 use Porta\Editor\WrapLayout;
@@ -411,7 +412,19 @@ final readonly class EditorRowAssembler
             $numberLabel = (string) \abs($lineIndex - $this->document->cursorLine);
         }
 
-        return $this->vcsCell($lineIndex).$numStyle->apply(\str_pad($numberLabel, $numberWidth, pad_string: ' ', pad_type: \STR_PAD_LEFT)).$marker.$this->foldCell($lineIndex).' ';
+        // The mark under the pointer underlines, as every clickable thing does.
+        $hover = $this->store->gutterHover;
+        $pointed = static fn (GutterPart $part, string $cell): string => null !== $hover && $hover['line'] === $lineIndex && $hover['part'] === $part
+            ? new Style(underline: true)->apply($cell)
+            : $cell;
+
+        return (
+            $pointed(GutterPart::Change, $this->vcsCell($lineIndex))
+            .$numStyle->apply(\str_pad($numberLabel, $numberWidth, pad_string: ' ', pad_type: \STR_PAD_LEFT))
+            .$pointed(GutterPart::Marker, $marker)
+            .$this->foldCell($lineIndex)
+            .' '
+        );
     }
 
     /**

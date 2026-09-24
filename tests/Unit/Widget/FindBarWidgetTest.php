@@ -676,7 +676,7 @@ final class FindBarWidgetTest extends TestCase
         $this->type($bar, 'y');
         $this->assertSame('xy', $this->shownQuery($bar), 'back in Find');
 
-        $bar->handleClick(1, 78); // beside the boxes, past the tags
+        $bar->handleClick(0, 79); // beside the boxes, above the tags and buttons
         $this->type($bar, 'w');
         $this->assertSame('xyw', $this->shownQuery($bar), 'a click on no zone leaves the field as it was');
     }

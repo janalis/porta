@@ -10520,3 +10520,15 @@ read. The revert is done in the buffer (one undo step, through
 the buffer still holds the added lines, because the hunks describe the file
 on disk.
 
+## UI round, phase 6d: a gutter mark says what it is (2026-09-24)
+
+The gutter's marks were glyphs and colour, and a click on them did different
+things by column. Now the mark under the pointer is underlined and flashes its
+meaning on the status bar (`GutterHint`), using the marker column's own
+precedence. The hover state lives in `DecorationStore::$gutterHover`, because
+the editor widget pins `too-many-properties`. The store reports a change only
+when the pointed mark changes, so motion events do not re-flash it.
+
+**Deferred:** hover on the marker stripe. A stripe cell stands for a slice of
+the file, not a line, and its hint needs its own wording.
+

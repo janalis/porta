@@ -242,6 +242,28 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
         return \array_keys($this->bookmarkLines);
     }
 
+    /**
+     * The gutter mark under the pointer — its line, and whether it is the
+     * change strip's or the marker column's — so the row assembler can
+     * underline it; null when the pointer is on no mark.
+     *
+     * @var array{line: int, part: GutterPart}|null
+     */
+    public private(set) ?array $gutterHover = null;
+
+    /** Point at a gutter mark, or at none; returns whether that changed (and asks for a frame when it did). */
+    public function hoverGutter(?int $line, GutterPart $part = GutterPart::Marker): bool
+    {
+        $next = null === $line ? null : ['line' => $line, 'part' => $part];
+        if ($next === $this->gutterHover) {
+            return false;
+        }
+        $this->gutterHover = $next;
+        ($this->invalidate)();
+
+        return true;
+    }
+
     public function isBookmarked(int $line): bool
     {
         return ($this->bookmarkLines[$line] ?? null) !== null;

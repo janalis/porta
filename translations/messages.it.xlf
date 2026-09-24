@@ -3338,6 +3338,42 @@
         <source>Git: Show Change</source>
         <target>Git: mostra modifica</target>
       </trans-unit>
+      <trans-unit id="933">
+        <source>Added</source>
+        <target>Aggiunto</target>
+      </trans-unit>
+      <trans-unit id="934">
+        <source>Modified</source>
+        <target>Modificato</target>
+      </trans-unit>
+      <trans-unit id="935">
+        <source>Deleted</source>
+        <target>Eliminato</target>
+      </trans-unit>
+      <trans-unit id="936">
+        <source>%change% · click to see the change</source>
+        <target>%change% · clic per vedere la modifica</target>
+      </trans-unit>
+      <trans-unit id="937">
+        <source>Paused here</source>
+        <target>In pausa qui</target>
+      </trans-unit>
+      <trans-unit id="938">
+        <source>Logpoint · click to remove</source>
+        <target>Logpoint · clic per rimuovere</target>
+      </trans-unit>
+      <trans-unit id="939">
+        <source>Conditional breakpoint · click to remove</source>
+        <target>Punto di interruzione condizionale · clic per rimuovere</target>
+      </trans-unit>
+      <trans-unit id="940">
+        <source>Breakpoint · click to remove</source>
+        <target>Punto di interruzione · clic per rimuovere</target>
+      </trans-unit>
+      <trans-unit id="941">
+        <source>Bookmark</source>
+        <target>Segnalibro</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

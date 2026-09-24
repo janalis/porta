@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Input;
 
+use Porta\Config\CommandRegistry;
 use Porta\Container\LayoutSlot;
 use Porta\Overlay\State\MenuOverlayController;
 use Porta\Overlay\State\ToastCenter;
@@ -46,6 +47,7 @@ final readonly class HoverRouter
         private SeparatorWidget $separator,
         private ToastCenter $toasts,
         private StatusBarWidget $statusBar,
+        private CommandRegistry $commands,
     ) {}
 
     /**
@@ -273,6 +275,17 @@ final readonly class HoverRouter
             }
 
             return;
+        }
+
+        // A gutter mark answers the pointer: underlined, and its meaning in
+        // words on the status bar — the one place a glyph's meaning is said.
+        $rel = null !== $editorRect && $editorRect->contains($mouse->row, $mouse->col) ? $editorRect->toRelative($mouse->row, $mouse->col) : ['row' => -1, 'col' => -1];
+        $gutter = $this->panes->editor->hoverGutter($rel['row'], $rel['col'], $this->commands->has(GutterClickRouter::SHOW_CHANGE));
+        if ($gutter['changed']) {
+            if (null !== $gutter['hint']) {
+                $this->statusBar->flash($gutter['hint'], 3.0);
+            }
+            $this->tui->requestRender();
         }
     }
 

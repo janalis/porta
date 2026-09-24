@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Editor\ChangeMarkKind;
 use Porta\Editor\DecorationStore;
 use Porta\Editor\DiagnosticSeverity;
+use Porta\Editor\GutterPart;
 
 final class DecorationStoreTest extends TestCase
 {
@@ -54,6 +55,22 @@ final class DecorationStoreTest extends TestCase
         $this->assertSame(['message' => 'boom', 'severity' => DiagnosticSeverity::Error], $store->diagnosticAt(2));
         $this->assertSame(['message' => 'first warning', 'severity' => DiagnosticSeverity::Warning], $store->diagnosticAt(4), 'the first of equals');
         $this->assertNull($store->diagnosticAt(3));
+    }
+
+    /** Pointing at the same mark again changes nothing — the status bar is not re-flashed on every motion event. */
+    public function testGutterHoverReportsOnlyAChange(): void
+    {
+        $frames = 0;
+        $store = new DecorationStore(static function () use (&$frames): void {
+            ++$frames;
+        });
+
+        $this->assertTrue($store->hoverGutter(3, GutterPart::Change));
+        $this->assertFalse($store->hoverGutter(3, GutterPart::Change), 'the same mark');
+        $this->assertTrue($store->hoverGutter(3), 'the same line, the other column');
+        $this->assertTrue($store->hoverGutter(null));
+        $this->assertFalse($store->hoverGutter(null));
+        $this->assertSame(3, $frames, 'a frame per change, none otherwise');
     }
 
     /**

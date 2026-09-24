@@ -264,6 +264,11 @@ underlined, so the finding still shows without colour. The last pinned
 sticky-scroll row is underlined there too, to separate the pinned headers from
 the code below them.
 
+Under the pointer, a gutter mark underlines and the status bar says what it
+is and what a click does: "Breakpoint · click to remove", "Bookmark", a
+diagnostic's message, or "Modified · click to see the change" on a git change
+mark.
+
 ## The completion popup
 
 Each row is the name, the server's **type** and the item's kind: a method's
