@@ -275,4 +275,47 @@ final class FieldBoxTest extends TestCase
         $this->assertSame('┃'.$accent->apply('✓').'┃', FieldBox::checkbox(true, FieldState::Focused, Styles::dark()));
         $this->assertSame('[✓]', FieldBox::checkbox(true, tint: new Styles(MonochromeTheme::definition())));
     }
+
+    /** @return iterable<string, array{bool|null, FieldState, list<string>}> */
+    public static function boxedCheckboxes(): iterable
+    {
+        yield 'checked, at rest' => [true, FieldState::Idle, ['╭─╮', '│✓│', '╰─╯']];
+        yield 'unchecked, at rest' => [false, FieldState::Idle, ['╭─╮', '│ │', '╰─╯']];
+        yield 'partial' => [null, FieldState::Idle, ['╭─╮', '│–│', '╰─╯']];
+        yield 'taking the keys' => [true, FieldState::Focused, ['┏━┓', '┃✓┃', '┗━┛']];
+        yield 'disabled' => [false, FieldState::Disabled, ['╭┄╮', '┆ ┆', '╰┄╯']];
+        yield 'danger' => [true, FieldState::Danger, ['╔═╗', '║✓║', '╚═╝']];
+    }
+
+    /**
+     * Boxed, a checkbox is the same family as the boxes beside it: the
+     * state's own corners and rails round the mark — rails even at rest,
+     * where the one-row form has brackets — three rows of its one width.
+     */
+    #[DataProvider('boxedCheckboxes')]
+    public function testABoxedCheckboxIsTheStatesFrameRoundTheMark(?bool $checked, FieldState $state, array $expected): void
+    {
+        $rows = FieldBox::checkboxBox($checked, $state, Styles::dark());
+
+        $this->assertSame($expected, \array_map(AnsiUtils::stripAnsiCodes(...), $rows));
+        $this->assertCount(FieldBox::ROWS, $rows);
+        foreach ($rows as $row) {
+            $this->assertSame(FieldBox::CHECKBOX_WIDTH, AnsiUtils::visibleWidth($row));
+        }
+    }
+
+    /** The frame takes the state's border tint; the mark the accent, unless the row is selected. */
+    public function testABoxedCheckboxTintsItsFrameAndOptionallyItsMark(): void
+    {
+        $accent = Styles::dark()->of(Role::TabAccent)->apply('✓');
+        $border = Styles::dark()->of(FieldState::Focused->borderRole());
+
+        $tinted = FieldBox::checkboxBox(true, FieldState::Focused, Styles::dark());
+        $plain = FieldBox::checkboxBox(true, FieldState::Focused, Styles::dark(), tintMark: false);
+
+        $this->assertSame($border->apply('┏━┓'), $tinted[0]);
+        $this->assertStringContainsString($accent, $tinted[1]);
+        $this->assertStringNotContainsString($accent, $plain[1]);
+        $this->assertSame(['╭─╮', '│✓│', '╰─╯'], FieldBox::checkboxBox(true, FieldState::Idle, new Styles(MonochromeTheme::definition())), 'monochrome: bare glyphs, the shape is the state');
+    }
 }

@@ -10272,3 +10272,20 @@ An audit of every checkbox against a browser `<input type=checkbox>` +
   alone. On, their padding becomes brackets, the find bar's chip shape, in the
   same width, so no click zone moved.
 
+## Checkboxes are boxes too (2026-09-24), reversing "checkboxes stay one row"
+
+The boxed-controls round kept checkboxes at one row, `[✓]`, on the grounds that
+"a box per toggle would cost ten rows on Interface". The user asked for them to
+be boxed like every other control, so the form reads as one family of boxes.
+Where the form is boxed, a checkbox is now `FieldBox::checkboxBox()`,
+`╭─╮ │✓│ ╰─╯`. It is three columns wide, the width `[✓]` had, so the control
+column still lines up. The settings pages and the commit box's amend use it.
+The cost is the one recorded before: two rows per toggle, which the drawn-row
+paging already absorbs. A narrow settings pane still falls back to `[✓]`, as
+every control falls back to one row. List rows (git staging, the Find-in-Files
+preview, the debugger checklist) keep `[✓]`, because a box per row would triple
+each list. At rest a boxed checkbox has rails (`│`) where the one-row form has
+brackets: the brackets were standing in for a box, and the box is drawn now.
+Hover underlines the amend label and no longer touches the box, the form
+controls' rule, so the mark keeps its accent under the pointer.
+

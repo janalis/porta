@@ -102,13 +102,14 @@ final class SettingsFormWidgetTest extends TestCase
 
     public function testRendersCheckboxesSteppersAndRestartNote(): void
     {
-        $screen = $this->plain($this->widget()->render(new RenderContext(60, 12)));
+        $screen = $this->plain($this->widget()->render(new RenderContext(60, 20)));
 
         // Label first, control in the shared column — a Bool's checkbox used to
         // sit at column 1, ahead of its label and out of line with every other
-        // kind's control.
-        $this->assertMatchesRegularExpression('/Inline diagnostics\s+┃✓┃/u', $screen, 'the selected one takes the keys: heavy rails');
-        $this->assertMatchesRegularExpression('/Relative line numbers\s+\[ \]/', $screen);
+        // kind's control. Boxed, it is a box of its own, the label on its
+        // middle row like every control's.
+        $this->assertMatchesRegularExpression('/┏━┓\s*\n  Inline diagnostics\s+┃✓┃\s*\n\s+┗━┛/u', $screen, 'the selected one takes the keys: the heavy box');
+        $this->assertMatchesRegularExpression('/Relative line numbers\s+│ │/u', $screen, 'at rest: rails, not the one-row form\'s brackets');
         $this->assertMatchesRegularExpression('/Theme\s+│ dark\s+▾ │/u', $screen, 'a choice is a select');
         $this->assertMatchesRegularExpression('/Tab width\s+│ ◂\s+4\s+▸ │/u', $screen, 'a number is a stepper between two arrows');
         $this->assertStringContainsString('· applies on restart', $screen, 'restart rows are annotated');
@@ -342,20 +343,21 @@ final class SettingsFormWidgetTest extends TestCase
      * A click SELECTS; only a click on the already-selected row actuates.
      *
      * The first click used to mutate outright, so a stray click on this screen
-     * toggled a setting or armed a plugin removal. Pane row 0 is the title;
-     * Theme's label sits on its box's middle row, pane row 5.
+     * toggled a setting or armed a plugin removal. Pane row 0 is the title,
+     * then three boxed checkboxes (rows 1-9); Theme's label sits on its box's
+     * middle row, pane row 11.
      */
     public function testAFirstClickSelectsWithoutChangingAnything(): void
     {
         $widget = $this->widget($changes);
-        $widget->render(new RenderContext(60, 12)); // a click lands on what was drawn
+        $widget->render(new RenderContext(60, 20)); // a click lands on what was drawn
 
-        $widget->handleClick(5, 0); // Theme's label
+        $widget->handleClick(11, 0); // Theme's label
 
         $this->assertSame(3, Probe::object($widget, 'list')->selected(), 'the click moved the selection');
         $this->assertSame([], $changes, 'and changed nothing');
 
-        $widget->handleClick(5, 0); // the same row, now selected
+        $widget->handleClick(11, 0); // the same row, now selected
 
         $this->assertSame([['theme', 'light']], $changes, 'the second click actuates');
     }
@@ -369,25 +371,29 @@ final class SettingsFormWidgetTest extends TestCase
     public function testACheckboxTogglesOnItsFirstClick(): void
     {
         $widget = $this->widget($changes);
-        $widget->render(new RenderContext(60, 12));
+        $widget->render(new RenderContext(60, 20));
 
-        $widget->handleClick(2, 0); // pane row 2 = the second setting, a checkbox — on its label
+        $widget->handleClick(5, 0); // pane row 5 = the second setting's label, a checkbox's middle row
 
         $this->assertSame(1, Probe::object($widget, 'list')->selected());
         $this->assertSame([['relativeLineNumbers', true]], $changes, 'selected and toggled at once');
+
+        $widget->handleClick(4, 25); // the box's own top border: every row of the box is its target
+        $this->assertCount(2, $changes);
     }
 
     public function testADisabledCheckboxIgnoresEveryClick(): void
     {
         $widget = $this->widget($changes);
         $widget->setRows([new SettingsRow('sticky', 'Sticky scroll', SettingsRowKind::Bool, false, false, disabled: true)], 'T');
-        $screen = \array_map(AnsiUtils::stripAnsiCodes(...), $widget->render(new RenderContext(60, 6)));
+        $screen = \array_map(AnsiUtils::stripAnsiCodes(...), $widget->render(new RenderContext(60, 8)));
 
-        $widget->handleClick(1, 0);
-        $widget->handleClick(1, 0);
+        $widget->handleClick(2, 0);
+        $widget->handleClick(2, 0);
 
         $this->assertSame([], $changes);
-        $this->assertMatchesRegularExpression('/Sticky scroll\s+┆ ┆/u', $screen[1], 'and says so: its rails are dashed');
+        $this->assertMatchesRegularExpression('/^\s+╭┄╮/u', $screen[1], 'and says so: its box is dashed');
+        $this->assertMatchesRegularExpression('/Sticky scroll\s+┆ ┆/u', $screen[2]);
     }
 
     public function testAClickOnTheTitleOrPastTheLastRowDoesNothing(): void
@@ -880,11 +886,11 @@ final class SettingsFormWidgetTest extends TestCase
 
     public function testBlankPaddingRowsContinueRatherThanStoppingTheLoop(): void
     {
-        $lines = $this->widget()->render(new RenderContext(60, 14)); // 3 checkboxes + 2 boxes (6 rows) + 3 blank
+        $lines = $this->widget()->render(new RenderContext(60, 20)); // 5 boxes (15 rows) + 3 blank
 
         $this->assertStringContainsString('Inline diagnostics', AnsiUtils::stripAnsiCodes($this->body($lines)[0]), 'the first real row still renders after the loop keeps going past index bounds');
-        $this->assertCount(14, $lines);
-        $this->assertStringContainsString('Tab width', AnsiUtils::stripAnsiCodes($this->body($lines)[4]), 'the last real row (index 4) is reached — a break at row 0 would prevent this');
+        $this->assertCount(20, $lines);
+        $this->assertStringContainsString('Tab width', AnsiUtils::stripAnsiCodes($this->body($lines)[4]), 'the last real item (index 4) is reached — a break at row 0 would prevent this');
     }
 
     /**
@@ -1124,13 +1130,13 @@ final class SettingsFormWidgetTest extends TestCase
 
     public function testHoverTintsARowVisualOnlyAndClears(): void
     {
-        $widget = $this->widget(); // the selection starts on row 0
-        $widget->render(new RenderContext(60, 12)); // the pointer lands on what was drawn
+        $widget = $this->widget(); // the selection starts on item 0
+        $widget->render(new RenderContext(60, 20)); // the pointer lands on what was drawn
 
-        $this->assertTrue($widget->hoverRow(3), 'hovering another row tints it');
-        $this->assertFalse($widget->hoverRow(3), 'same row: no change');
-        $lines = $widget->render(new RenderContext(60, 12));
-        $this->assertStringContainsString("\x1b[48;5;236m", $this->body($lines)[2], 'the hovered row sits on RowHighlightBg');
+        $this->assertTrue($widget->hoverRow(5), 'hovering another item tints it');
+        $this->assertFalse($widget->hoverRow(4), 'another row of the same item: no change');
+        $lines = $widget->render(new RenderContext(60, 20));
+        $this->assertStringContainsString("\x1b[48;5;236m", $this->body($lines)[1], 'the hovered item sits on RowHighlightBg (body() keeps one label row per item)');
         $this->assertStringNotContainsString("\x1b[48;5;236m", $this->body($lines)[0], 'the selection keeps its own shade');
 
         $this->assertTrue($widget->hoverRow(99), 'past the rows the tint clears (a change)');

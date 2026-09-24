@@ -50,7 +50,7 @@ use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
 /**
  * The editor-settings form, drawn like a browser form and fed as dumb data by
  * the controller: a label column, then one control column where every kind
- * renders the way its HTML counterpart does — a `[✓]` checkbox, a boxed text
+ * renders the way its HTML counterpart does — a boxed checkbox, a boxed text
  * field, a select (`│ dark  ▾│`) whose list opens on Enter/Space or a click,
  * a `◂ 4 ▸` stepper, a push button — grouped under fieldset legends. Each
  * change fires onChange with the new value; the controller persists it and
@@ -661,8 +661,9 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
 
     /**
      * A row's control: the part that shows the value and that actuating moves,
-     * as its rows — {@see FieldBox::ROWS} when the page is boxed, one when the
-     * pane is too narrow, and one for a checkbox always.
+     * as its rows — {@see FieldBox::ROWS} when the page is boxed, a checkbox
+     * too (its own box, `╭─╮ │✓│ ╰─╯`), and one when the pane is too narrow,
+     * where a checkbox is `[✓]`.
      *
      * Every kind renders it in the SAME column, which is the whole point —
      * `Bool` used to put its checkbox at column 1, ahead of its label, while
@@ -677,7 +678,9 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         $width = $layout->control;
 
         return match ($row->kind) {
-            SettingsRowKind::Bool => [FieldBox::checkbox((bool) $row->value, $state, $this->list->isSelected($index) ? null : $this->styles)],
+            SettingsRowKind::Bool => FieldBox::ROWS === $rows
+                ? FieldBox::checkboxBox((bool) $row->value, $state, $this->styles, tintMark: !$this->list->isSelected($index))
+                : [FieldBox::checkbox((bool) $row->value, $state, $this->list->isSelected($index) ? null : $this->styles)],
             SettingsRowKind::Text => $this->textControl($row, $index, $state, $width, $rows),
             SettingsRowKind::Action => FieldBox::button($this->actionCaption($row), $state, $index === $this->hoveredIndex, $width, $rows, $this->styles),
             SettingsRowKind::Int => FieldBox::control(new FieldSpec(''), static fn (int $room): string => self::stepper((string) $row->value, $room), $state, $width, $rows, $this->styles),

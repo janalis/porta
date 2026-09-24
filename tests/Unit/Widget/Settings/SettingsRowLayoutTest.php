@@ -72,7 +72,7 @@ final class SettingsRowLayoutTest extends TestCase
         ], 80);
 
         $this->assertTrue($layout->boxed);
-        $this->assertSame([3, 2, 3, 4, 3], $layout->heights);
+        $this->assertSame([3, 4, 3, 4, 3], $layout->heights, 'a checkbox is a box too: its legend and three rows');
         $this->assertSame([null, 'Editor', null, 'Server', null], $layout->legends);
         $this->assertSame(24, $layout->control, 'one width for the page: the text field\'s, the widest');
     }

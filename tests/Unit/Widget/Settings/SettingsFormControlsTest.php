@@ -68,11 +68,11 @@ final class SettingsFormControlsTest extends TestCase
 
     /**
      * Rows as drawn: 0 title · 1 `─ Display` · 2-4 Theme · 5 `─ Editor` ·
-     * 6 Sticky · 7-9 Tab width · 10 `─ Installed` · 11-13 Built-in · footer.
+     * 6-8 Sticky · 9-11 Tab width · 12 `─ Installed` · 13-15 Built-in · footer.
      *
      * @return list<string>
      */
-    private static function draw(SettingsFormWidget $form, int $rows = 16): array
+    private static function draw(SettingsFormWidget $form, int $rows = 18): array
     {
         return \array_map(AnsiUtils::stripAnsiCodes(...), $form->render(new RenderContext(60, $rows)));
     }
@@ -86,9 +86,12 @@ final class SettingsFormControlsTest extends TestCase
         $this->assertCount(1, \array_filter($screen, static fn (string $line): bool => \str_starts_with($line, '─ Editor')), 'a legend heads its group once, not every row in it');
         $this->assertStringContainsString('┏', $screen[2], 'the selected select is heavy-bordered');
         $this->assertMatchesRegularExpression('/Theme\s+┃ dark\s+▾ ┃/u', $screen[3], 'the label sits on the control\'s middle row');
-        $this->assertMatchesRegularExpression('/Sticky scroll\s+\[✓\]/u', $screen[6], 'a checkbox stays one row');
-        $this->assertMatchesRegularExpression('/Tab width\s+│ ◂\s+4\s+▸ │ · 1-8/u', $screen[8]);
-        $this->assertMatchesRegularExpression('/git \(built-in\)\s+┆\s+Built-in\s+┆/u', $screen[12], 'a disabled button is dashed');
+        $this->assertMatchesRegularExpression('/^\s+╭─╮/u', $screen[6], 'a checkbox is a box of its own, like its neighbours');
+        $this->assertMatchesRegularExpression('/Sticky scroll\s+│✓│/u', $screen[7], 'its label on its middle row');
+        $this->assertMatchesRegularExpression('/^\s+╰─╯/u', $screen[8]);
+        $this->assertSame(\mb_strpos($screen[2], needle: '┏'), \mb_strpos($screen[6], needle: '╭'), 'in the one control column');
+        $this->assertMatchesRegularExpression('/Tab width\s+│ ◂\s+4\s+▸ │ · 1-8/u', $screen[10]);
+        $this->assertMatchesRegularExpression('/git \(built-in\)\s+┆\s+Built-in\s+┆/u', $screen[14], 'a disabled button is dashed');
     }
 
     public function testEnterOnASelectOpensItsListUnderTheBoxAndArrowsStillStep(): void
@@ -140,13 +143,13 @@ final class SettingsFormControlsTest extends TestCase
         $form = $this->form();
         self::draw($form);
 
-        $form->handleClick(8, 20); // Tab width's left half — unselected, so it only selects
+        $form->handleClick(10, 20); // Tab width's left half — unselected, so it only selects
         $this->assertSame([], $this->changes);
 
         self::draw($form);
-        $form->handleClick(8, 20); // ◂ half
-        $form->handleClick(8, 40); // ▸ half
-        $form->handleClick(8, 3); // its label: the forward action
+        $form->handleClick(10, 20); // ◂ half
+        $form->handleClick(10, 40); // ▸ half
+        $form->handleClick(10, 3); // its label: the forward action
         $this->assertSame([['tab', 3], ['tab', 5], ['tab', 5]], $this->changes);
     }
 
@@ -155,8 +158,8 @@ final class SettingsFormControlsTest extends TestCase
         $form = $this->form();
         self::draw($form);
 
-        $form->handleClick(12, 3);
-        $form->handleClick(12, 3);
+        $form->handleClick(14, 3);
+        $form->handleClick(14, 3);
         $form->handleInput("\r");
         $form->handleInput("\x1b[C");
 
@@ -179,16 +182,16 @@ final class SettingsFormControlsTest extends TestCase
     {
         $form = $this->form();
         $form->handleInput("\x1b[B"); // Sticky scroll
-        self::draw($form, 20);
+        self::draw($form, 22);
 
         $form->handleClick(5, 3); // the Editor legend
         $form->handleClick(5, 3);
-        $form->handleClick(16, 3); // padding below the last item
+        $form->handleClick(18, 3); // padding below the last item
 
         $this->assertSame(1, Probe::object($form, 'list')->selected(), 'no click on a legend or padding moved the selection');
         $this->assertSame([], $this->changes);
-        $this->assertFalse($form->hoverRow(10), 'the Installed legend does not tint');
-        $this->assertTrue($form->hoverRow(12), 'the item below it does');
+        $this->assertFalse($form->hoverRow(12), 'the Installed legend does not tint');
+        $this->assertTrue($form->hoverRow(14), 'the item below it does');
     }
 
     public function testPageKeysMoveByTheItemsThatFit(): void
@@ -215,6 +218,7 @@ final class SettingsFormControlsTest extends TestCase
         $this->assertStringContainsString('┏', $screen[2], 'boxed where it fits');
         $this->assertStringNotContainsString('┏', \implode("\n", $narrow), 'no border rows when it does not');
         $this->assertMatchesRegularExpression('/Theme\s+┃ \S* *▾ ┃/u', $narrow[2], 'the select, on its label row');
+        $this->assertMatchesRegularExpression('/Sticky scroll\s+\[✓\]/u', $narrow[4], 'and a checkbox falls back to its one-row form, as every control does');
     }
 
     public function testEveryRowIsExactlyThePaneWide(): void
@@ -237,8 +241,9 @@ final class SettingsFormControlsTest extends TestCase
         $form = $this->form([
             new SettingsRow(key: 'theme', label: 'ערכת נושא', kind: SettingsRowKind::Choice, value: 'dark', restart: false, options: ['dark', 'light'], hint: 'עיצוב'),
             new SettingsRow(key: 'tab', label: 'רוחב טאב', kind: SettingsRowKind::Int, value: 4, restart: false, min: 1, max: 8),
+            new SettingsRow(key: 'sticky', label: 'גלילה דביקה', kind: SettingsRowKind::Bool, value: true, restart: false),
         ], locale: 'he');
-        $screen = \array_map(static fn (string $line): string => AnsiUtils::stripAnsiCodes(Bidi::reorder($line, BaseDirection::Rtl)), $form->render(new RenderContext(60, 10)));
+        $screen = \array_map(static fn (string $line): string => AnsiUtils::stripAnsiCodes(Bidi::reorder($line, BaseDirection::Rtl)), $form->render(new RenderContext(60, 13)));
 
         // The column of the first of $glyphs on a line, -1 when there is none.
         $column = static function (string $line, string $glyphs): int {
@@ -246,7 +251,7 @@ final class SettingsFormControlsTest extends TestCase
 
             return 1 === \preg_match('/['.$glyphs.']/u', $line, $match, \PREG_OFFSET_CAPTURE) ? \mb_strlen(\substr($line, offset: 0, length: $match[0][1])) : -1;
         };
-        foreach ([1, 4] as $top) {
+        foreach ([1, 4, 7] as $top) { // the select, the stepper, and the checkbox's own box
             $corner = $column($screen[$top], glyphs: '┏╭');
             $rail = $column($screen[$top + 1], glyphs: '┃│');
             $bottom = $column($screen[$top + 2], glyphs: '┗╰');

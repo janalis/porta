@@ -28,7 +28,7 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
  * inputs line up — sized for the widest control, capped at a browser input's
  * size rather than the pane's.
  *
- * Items are {@see FieldBox::ROWS} tall when boxed, a checkbox one row, and the
+ * Items are {@see FieldBox::ROWS} tall when boxed, a checkbox too, and the
  * first item of each fieldset carries its legend row too: scrolling to that
  * item scrolls its legend into view with it. When the pane cannot seat a
  * box beside the labels, the whole page falls back to one-row controls.
@@ -99,7 +99,7 @@ final readonly class SettingsRowLayout
             $legend = null !== $row->fieldset && $row->fieldset !== $previous ? $row->fieldset : null;
             $previous = $row->fieldset;
             $legends[] = $legend;
-            $heights[] = (null === $legend ? 0 : 1) + ($boxed && SettingsRowKind::Bool !== $row->kind ? FieldBox::ROWS : 1);
+            $heights[] = (null === $legend ? 0 : 1) + ($boxed ? FieldBox::ROWS : 1);
         }
 
         return new self($label, \min($needed, self::MAX_CONTROL, $room), $boxed, $heights, $legends);

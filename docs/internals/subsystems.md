@@ -308,11 +308,15 @@ counterpart looks — a text field (`render()`, the legend in the top border:
 (`select()`, the value then `▾`), and any other content through `control()`.
 Each comes boxed (`FieldBox::ROWS`) or in the one-row form (`Find ┃ foo
 ┃`). `TextField` stays the value-and-caret model; label, placeholder and hint
-are presentation and live in `FieldSpec`. A checkbox is `FieldBox::checkbox()`,
-three columns in every state: `[✓]` / `[ ]` / `[–]` at rest, and the state's own
-rails otherwise (`FieldState::checkboxRails()`): heavy `┃✓┃` where it is the
-control taking the keys (a settings Bool row, the commit box's amend Tab stop),
-dashed `┆ ┆` disabled. In a list row its focus is the row's selection bar
+are presentation and live in `FieldSpec`. A checkbox where the form is boxed
+(settings Bool rows, the commit box's amend) is `FieldBox::checkboxBox()`, a box
+of its own like its neighbours: `╭─╮ │✓│ ╰─╯`, three columns wide and
+`FieldBox::ROWS` tall, the state's frame (heavy while it takes the keys, dashed
+disabled), its label on the middle row. The one-row `FieldBox::checkbox()` is
+the fallback where the form is not boxed, and the form list rows use (git
+staging, the Find-in-Files preview, the debugger checklist): `[✓]` / `[ ]` /
+`[–]` at rest, the state's own rails otherwise (`FieldState::checkboxRails()`),
+heavy `┃✓┃` or dashed `┆ ┆`. In a list row its focus is the row's selection bar
 instead. A checked mark takes the accent (`$tint`, `Role::TabAccent`), a
 browser's filled box, but only off the selected row: accent on the selection's
 shade is too faint to read, so the callers pass the tint only there. A settings

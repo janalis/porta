@@ -106,13 +106,43 @@ final class FieldBox
     public static function checkbox(?bool $checked, FieldState $state = FieldState::Idle, ?Styles $tint = null): string
     {
         [$left, $right] = $state->checkboxRails();
+
+        return $left.self::mark($checked, $tint).$right;
+    }
+
+    /**
+     * A checkbox as a box of its own, {@see ROWS} tall and {@see
+     * CHECKBOX_WIDTH} wide — the same family as the boxed field, select and
+     * button beside it: `╭─╮ │✓│ ╰─╯` at rest, heavy while it takes the keys,
+     * dashed disabled. The frame takes the state's border tint like every
+     * box; the mark takes the accent only when $tintMark (off the selected
+     * row). The one-row {@see checkbox()} is its fallback.
+     *
+     * @return list<string>
+     */
+    // @mago-expect lint:no-boolean-flag-parameter -- whether the row is selected decides the mark's tint, the one thing the caller knows.
+    public static function checkboxBox(?bool $checked, FieldState $state, Styles $styles, bool $tintMark = true): array
+    {
+        [$topLeft, $topRight, $bottomLeft, $bottomRight, $horizontal, $vertical] = $state->glyphs();
+        $border = self::border($state, $styles);
+
+        return [
+            $border->apply($topLeft.$horizontal.$topRight),
+            $border->apply($vertical).self::mark($checked, $tintMark ? $styles : null).$border->apply($vertical),
+            $border->apply($bottomLeft.$horizontal.$bottomRight),
+        ];
+    }
+
+    /** ✓, – or the blank; the first two in the accent with $tint. */
+    private static function mark(?bool $checked, ?Styles $tint): string
+    {
         $mark = match ($checked) {
             true => Glyphs::CHECKBOX_MARK_ON,
             null => Glyphs::CHECKBOX_MARK_PARTIAL,
             false => Glyphs::CHECKBOX_MARK_OFF,
         };
 
-        return $left.(false !== $checked && null !== $tint ? $tint->of(Role::TabAccent)->apply($mark) : $mark).$right;
+        return false !== $checked && null !== $tint ? $tint->of(Role::TabAccent)->apply($mark) : $mark;
     }
 
     /**
