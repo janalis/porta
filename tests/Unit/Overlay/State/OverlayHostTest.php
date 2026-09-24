@@ -342,8 +342,8 @@ final class OverlayHostTest extends TestCase
         $this->assertSame([$box['width']], \array_values($widths), 'every row the box\'s width');
         $this->assertStringContainsString(
             'hint ',
-            AnsiUtils::stripAnsiCodes($box['rows'][5]),
-            'the long label was cut, not the hint after it (row 5: the title bar, the padding, the filter field, then it)',
+            AnsiUtils::stripAnsiCodes($box['rows'][6]),
+            'the long label was cut, not the hint after it (row 6: the title bar, the padding, the filter field, the tee, then it)',
         );
         $accent = Styles::dark()->of(Role::TabAccent)->apply('✓');
         $rows = \array_values(\array_filter($box['rows'], static fn (string $row): bool => \str_contains(AnsiUtils::stripAnsiCodes($row), '✓')));
@@ -1321,7 +1321,7 @@ final class OverlayHostTest extends TestCase
         $host->setSearchRows([]);
 
         [$box] = $host->layout([0, 0, 20, 80]);
-        $this->assertCount(7, $box['rows'], 'title bar + the three-row query box + 3 frame chrome rows, no filler');
+        $this->assertCount(8, $box['rows'], 'title bar + the three-row query box + its tee + 3 frame chrome rows, no filler');
     }
 
     /** @return int how many of the 20 distinct "itemN" labels are visible on the canvas */
@@ -1350,14 +1350,14 @@ final class OverlayHostTest extends TestCase
         $host = $this->host();
         $host->openList('L', $items, static fn (): null => null);
 
-        // rows=8: rows-5-3 (the filter field) = 0, so max(1, min(20, 0, 12))
-        // floors to exactly 1 item — a floor of 0 here would show none at all
-        // despite 20 real items.
-        $this->assertSame(1, $this->countVisibleListItems($host, rows: 8));
+        // rows=9: rows-6-3 (the frame and the filter's tee, the filter field)
+        // = 0, so max(1, min(20, 0, 12)) floors to exactly 1 item — a floor
+        // of 0 here would show none at all despite 20 real items.
+        $this->assertSame(1, $this->countVisibleListItems($host, rows: 9));
 
-        // rows=12: 12-5-3 = 4, distinct from both an off-by-one (3) and a sign
+        // rows=13: 13-6-3 = 4, distinct from both an off-by-one (3) and a sign
         // flip (capped at 12) — exactly 4 pins the real formula.
-        $this->assertSame(4, $this->countVisibleListItems($host, rows: 12));
+        $this->assertSame(4, $this->countVisibleListItems($host, rows: 13));
     }
 
     public function testListOverlayWidthGrowsToFitTheWidestLabelPlusHint(): void

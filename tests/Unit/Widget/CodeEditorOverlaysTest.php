@@ -234,11 +234,12 @@ final class CodeEditorOverlaysTest extends TestCase
     {
         $sink = new \ArrayObject(['picked' => null]);
         $editor = $this->overlayEditor($sink);
-        // Nine rows (title, padding, the three-row filter field, two items,
-        // padding, bottom) centred a third down → title row 3, items at 8 and 9.
+        // Ten rows (title, padding, the three-row filter field, its tee, two
+        // items, padding, bottom) centred a third down → title row 3, items at
+        // 9 and 10.
         $editor->layoutPickers([0, 0, 20, 80]);
 
-        $this->assertTrue($editor->handlePickerClick(9, 35), 'a click on an item is consumed');
+        $this->assertTrue($editor->handlePickerClick(10, 35), 'a click on an item is consumed');
         $this->assertSame('B', $sink['picked']);
         $this->assertFalse(EditorState::pickerOpen($editor));
     }

@@ -17,6 +17,7 @@ use Porta\Widget\HoverableList;
 use Porta\Widget\PaneNavigationCallbacks;
 use Porta\Widget\Render\FieldBox;
 use Porta\Widget\Render\FieldState;
+use Porta\Widget\Render\Rule;
 use Porta\Widget\Support\ArrowScrollTrait;
 use Porta\Widget\Support\FillsPaneTrait;
 use Porta\Widget\Support\HoverTrait;
@@ -273,7 +274,8 @@ final class WelcomeWidget extends AbstractWidget implements FocusableInterface, 
     /**
      * One step's rows: the marker-and-title line with the step's action as a
      * button at its end — heavy while the card is selected, since Enter
-     * presses it — then the wrapped detail lines and a spacer. A done step has
+     * presses it — then the wrapped detail lines, and a rule parting it from
+     * the next card (the last one's is blank: nothing follows). A done step has
      * no button: its `[✓]` is the answer. Every text row carries the step's
      * index so a click lands anywhere on the card.
      *
@@ -322,7 +324,10 @@ final class WelcomeWidget extends AbstractWidget implements FocusableInterface, 
             $beside = \array_key_exists($i, $button) ? ' '.$button[$i] : '';
             $rows[] = [$this->paint($margin, AnsiText::padRight($line, $text).$beside, $index, $width), $index];
         }
-        $rows[] = [AnsiText::blank($width), null];
+        $rows[] = [
+            \array_key_last($this->steps) === $index ? AnsiText::blank($width) : AnsiText::truncate($margin.Rule::horizontal($content, $this->styles), $width, pad: true),
+            null,
+        ];
 
         return $rows;
     }

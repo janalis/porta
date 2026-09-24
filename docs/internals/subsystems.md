@@ -325,7 +325,9 @@ A picker behaves like a dialog with a combobox:
   rows.
 - **Shapes.** Every state has a shape that survives monochrome:
   - the selected row's `▌` in column 0;
-  - a category as a `Rule` legend;
+  - a category as a legend set into the tee that opens its section,
+    `├─ Files ──┤` (`ModalFrame::wrapSections`' `$legends`): each takes the row
+    its header did, and one that opens the list names the query's own tee;
   - the query's matched characters bold and underlined (`MatchMarks` over
     `FuzzyMatcher::positions()`, computed at render time, so no source
     carries positions);
@@ -478,6 +480,10 @@ divider, the tab and dock baselines, a resting tab's outline, the status bar's
 (`─ Editor ────`). One tint, so a line reads as a line wherever it runs. A
 line that is a grab or a focus keeps its own face: the hovered divider's `┃`
 and the dock grab's `━` in the accent, a focused frame's heavy rails.
+
+A box with zones parts them with a tee (`ModalFrame::wrapSections`): Find in
+Files' fields and preview, a picker's filter or query and its list. The Welcome
+cards are parted by a rule, the last one by a blank.
 
 `Rule::horizontal($width, $styles, $legend, $tees)` is exactly `$width`
 columns. A legend sits after the first stroke only while a stroke still follows

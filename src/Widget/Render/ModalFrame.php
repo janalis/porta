@@ -76,6 +76,9 @@ final class ModalFrame
     public const int CHROME_ROWS = 4;
     public const int CHROME_ROWS_TOP = 2;
 
+    /** The tee row {@see wrapSections()} draws between two sections. */
+    public const int SECTION_ROWS = 1;
+
     /**
      * The rails, padding and bottom border around already-rendered content
      * rows — {@see wrapSections()} with a single section.
@@ -96,12 +99,16 @@ final class ModalFrame
      * $innerWidth once, here — the single place the invariant is enforced.
      * Total row width: $innerWidth + CHROME_COLS.
      *
+     * $legends[$i] names the section after the $i-th tee, set into it:
+     * `├─ Files ───┤`, a group's heading drawn as the line that parts it.
+     *
      * @param list<list<string>> $sections
+     * @param list<string>       $legends
      *
      * @return list<string>
      */
     // @mago-expect lint:no-boolean-flag-parameter -- the bool IS the domain here, not a hidden second responsibility.
-    public static function wrapSections(array $sections, int $innerWidth, Styles $styles, bool $resizeCornerHot = false, ?ListOverflow $overflow = null): array
+    public static function wrapSections(array $sections, int $innerWidth, Styles $styles, bool $resizeCornerHot = false, ?ListOverflow $overflow = null, array $legends = []): array
     {
         $accent = $styles->of(Role::TabAccent);
         $rail = $accent->apply(Glyphs::FRAME_VERTICAL);
@@ -115,7 +122,7 @@ final class ModalFrame
             if ($i > 0) {
                 // At least its two tees, like every edge of the frame: a degenerate
                 // width shuts the box rather than opening it.
-                $rows[] = Rule::horizontal(\max(2, $innerWidth + 4), $styles, tees: Role::TabAccent);
+                $rows[] = Rule::horizontal(\max(2, $innerWidth + 4), $styles, $legends[$i - 1] ?? '', Role::TabAccent);
             }
             foreach ($section as $line) {
                 $rows[] = $rail.' '.AnsiText::truncate($line, \max(0, $innerWidth), pad: true).' '.$rail;

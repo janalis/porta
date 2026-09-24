@@ -14,6 +14,7 @@ use Porta\Ui\CaretVisibility;
 use Porta\Ui\TextField;
 use Porta\Ui\Theme\DarkTheme;
 use Porta\Ui\Theme\Styles;
+use Porta\Widget\Render\FieldBox;
 use Porta\Widget\Render\ModalFrame;
 use Porta\Widget\Render\PickerLayout;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -154,6 +155,53 @@ final class PickerLayoutTest extends TestCase
             closeHovered: false,
             emptyMessage: $emptyMessage,
         );
+    }
+
+    /**
+     * The filter and the list are two zones of one box: a tee between them,
+     * and the list's click band starts below it — a click on the tee picks
+     * nothing.
+     */
+    public function testATeeSeparatesTheFilterFromTheList(): void
+    {
+        $out = $this->layout(new TextField());
+        $plain = \array_map(AnsiUtils::stripAnsiCodes(...), $out['rows']);
+        $tee = 1 + ModalFrame::CHROME_ROWS_TOP - 1 + FieldBox::ROWS; // title bar, padding, the filter field
+
+        $this->assertMatchesRegularExpression('/^├─+┤$/u', $plain[$tee]);
+        $this->assertStringContainsString('test', $plain[$tee + 1], 'the first item right under it');
+        $this->assertSame($tee + 1, $out['box']->headerRows, 'the list band starts past the tee');
+    }
+
+    public function testATeeSeparatesTheQueryFromTheResults(): void
+    {
+        $state = new SearchModalState('Go to File', new TextField(), static function (): void {}, static function (): void {}, static function (): void {}, 'none');
+        $out = PickerLayout::layoutSearch([0, 0, 24, 100], $state, $this->styles(), closeHovered: false, caret: CaretVisibility::Hidden, fieldRows: 1);
+        $plain = \array_map(AnsiUtils::stripAnsiCodes(...), $out['rows']);
+
+        $this->assertMatchesRegularExpression('/^├─+┤$/u', $plain[3], 'title bar, padding, the one-row query, then the tee');
+        $this->assertSame(4, $out['box']->headerRows);
+    }
+
+    /** A category past the first opens a section of its own: its tee takes the one row its header did. */
+    public function testALaterCategoryIsATeeOfItsOwnInTheHeadersRow(): void
+    {
+        $noop = static function (): void {};
+        $state = new SearchModalState('Search Everywhere', new TextField(), $noop, $noop, $noop, 'none');
+        $state->rows = [
+            SearchRow::header('Classes'),
+            SearchRow::hit(new SearchHit(SearchCategory::Classes, 'Greeter', '', $noop)),
+            SearchRow::header('Files'),
+            SearchRow::hit(new SearchHit(SearchCategory::Files, 'a.php', '', $noop)),
+        ];
+        $out = PickerLayout::layoutSearch([0, 0, 24, 100], $state, $this->styles(), closeHovered: false, caret: CaretVisibility::Hidden, fieldRows: 1);
+        $plain = \array_map(AnsiUtils::stripAnsiCodes(...), $out['rows']);
+
+        $this->assertMatchesRegularExpression('/^├─ Classes ─+┤$/u', $plain[3], 'title bar, padding, the query, then its tee, named');
+        $this->assertStringContainsString('Greeter', $plain[4]);
+        $this->assertMatchesRegularExpression('/^├─ Files ─+┤$/u', $plain[5]);
+        $this->assertStringContainsString('a.php', $plain[6]);
+        $this->assertSame(3, $out['box']->headerRows, 'the named tee is the first row of the list: row 4 maps to the second, the hit');
     }
 
     /** The list overlay's filter row, plain. */
@@ -377,7 +425,8 @@ final class PickerLayoutTest extends TestCase
         $plain = \array_map(AnsiUtils::stripAnsiCodes(...), $rows);
         $line = static fn (string $needle): int => \array_key_first(\array_filter($plain, static fn (string $r): bool => \str_contains($r, $needle)));
 
-        $this->assertMatchesRegularExpression('/│ ─ Classes ─+ │/u', $plain[$line('Classes')], 'the category is a legend rule');
+        $this->assertMatchesRegularExpression('/^├─ Classes ─+┤$/u', $plain[$line('Classes')], 'the category is a legend set into the tee that opens it');
+        $this->assertSame($line('Classes') + 1, $line('Greeter'), 'the list opening on it, it names the query\'s own tee');
         $this->assertStringStartsWith('│ ▌Greeter', $plain[$line('Greeter')], 'the selected row, barred');
         $this->assertStringStartsWith('│  Grey', $plain[$line('Grey')], 'the others, not');
         $this->assertStringContainsString("\e[1m\e[4mr\e[24m\e[22m\e[1m\e[4me", $rows[$line('Grey')], 'the matched characters marked');

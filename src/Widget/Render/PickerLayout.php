@@ -67,7 +67,7 @@ final class PickerLayout
         // Rows, like the width below, are a property of the whole list: the box
         // keeps its height while the filter narrows it, padding what the
         // filter took, so it never re-centres under the reader.
-        $boxRows = \max(1, \min(\count($overlay['items']), $rows - 5 - $fieldRows, 12));
+        $boxRows = \max(1, \min(\count($overlay['items']), $rows - 6 - $fieldRows, 12));
         $maxItems = \min($boxRows, \max(1, \count($items)));
         $windowStart = IntMath::clamp($selected - $maxItems + 1, 0, \count($items) - $maxItems);
         $visible = \array_slice($items, $windowStart, $maxItems);
@@ -139,7 +139,9 @@ final class PickerLayout
         );
         $popup = [
             ModalFrame::titleBar($overlay['title'], $width + ModalFrame::CHROME_COLS, $styles, $closeHovered),
-            ...ModalFrame::wrap([...$header, ...$content], $width, $styles, overflow: ListOverflow::of($windowStart, \count($visible), $selected, \count($items))),
+            // The filter and the list are two zones of one box, a tee between
+            // them, as Find in Files' fields and preview are.
+            ...ModalFrame::wrapSections([$header, $content], $width, $styles, overflow: ListOverflow::of($windowStart, \count($visible), $selected, \count($items))),
         ];
 
         [$top, $col] = self::centered($bounds, \count($popup) + $missing, $width + ModalFrame::CHROME_COLS);
@@ -148,7 +150,7 @@ final class PickerLayout
             $col,
             $width + ModalFrame::CHROME_COLS,
             \count($popup),
-            headerRows: \count($header) + ModalFrame::CHROME_ROWS_TOP,
+            headerRows: \count($header) + ModalFrame::CHROME_ROWS_TOP + ModalFrame::SECTION_ROWS,
             windowStart: $windowStart,
             count: \count($visible),
         );
@@ -178,7 +180,7 @@ final class PickerLayout
         // As tall as the most rows seen since it opened, like its width: a
         // narrowing query pads the rows it drops rather than shrinking the box
         // and re-centring it under the reader.
-        $boxRows = \max(0, \min(\max(\count($search->rows), $search->tallest), $rows - 6 - ($fieldRows - 1), 12));
+        $boxRows = \max(0, \min(\max(\count($search->rows), $search->tallest), $rows - 6 - $fieldRows, 12));
         $maxRows = \max(1, \min($boxRows, \count($search->rows)));
         $windowStart = IntMath::clamp($search->selected - $maxRows + 1, 0, \max(0, \count($search->rows) - $maxRows));
         $visible = \array_slice($search->rows, $windowStart, $maxRows);
@@ -200,7 +202,7 @@ final class PickerLayout
         $width = \min($width, $columns - PopupMetrics::CENTERED_MARGIN, PopupMetrics::CENTERED_MAX_INNER);
 
         // No legend: the title bar already names what is being searched.
-        $popup = FieldBox::field(
+        $query = FieldBox::field(
             new FieldSpec('', placeholder: $placeholder, surface: Role::Toolbar),
             $search->query,
             FieldState::of(CaretVisibility::Shown === $caret),
@@ -209,12 +211,23 @@ final class PickerLayout
             $fieldRows,
             $styles,
         );
+        // A category is a section of the box, its name set into the tee that
+        // opens it — `├─ Files ───┤`, a rule that groups by shape where a dim
+        // word needed its colour. Each takes the one row its header did, so
+        // the rows still map one to one; a category that opens the list names
+        // the query's own tee instead, one row fewer.
+        $sections = [$query];
+        $legends = [];
+        $popup = [];
+        $merged = null !== ($visible[0]->header ?? null);
         foreach ($visible as $i => $row) {
             $hit = $row->hit;
             if (null !== $row->header) {
-                // A category is a fieldset's legend, `─ Files ───`: a rule that
-                // groups by shape, where a dim word needed its colour.
-                $popup[] = $styles->of(Role::PopupRow)->apply(Rule::horizontal($width, $styles, $row->header));
+                if (0 !== $i) {
+                    $sections[] = $popup;
+                    $popup = [];
+                }
+                $legends[] = $row->header;
 
                 continue;
             }
@@ -234,13 +247,21 @@ final class PickerLayout
         if ([] === $search->rows && '' !== $search->emptyMessage) {
             $popup[] = $styles->merge(Role::PopupRow, Role::CompletionHint)->apply(AnsiText::truncate(' '.$search->emptyMessage, $width, pad: true, ellipsis: ''));
         }
-        // Not padded: placed as if it were — the top stays, the box shrinks
-        // from the bottom as the query narrows (see layoutList()).
-        $missing = \max(0, $fieldRows + $boxRows - \count($popup));
+        $sections[] = $popup;
+        // A legend for every tee: the query's is bare unless a category opens the list.
+        if (!$merged) {
+            \array_unshift($legends, '');
+        }
         $framed = [
             ModalFrame::titleBar($search->title, $width + ModalFrame::CHROME_COLS, $styles, $closeHovered),
-            ...ModalFrame::wrap($popup, $width, $styles, overflow: self::searchOverflow($search, $windowStart, \count($visible))),
+            ...ModalFrame::wrapSections($sections, $width, $styles, overflow: self::searchOverflow($search, $windowStart, \count($visible)), legends: $legends),
         ];
+        // Not padded: placed as if it were — the top stays, the box shrinks
+        // from the bottom as the query narrows (see layoutList()).
+        // Placed as the whole box would stand at its tallest: the frame, the
+        // query and its tee over $boxRows of list — a category naming the tee
+        // shortens what is drawn, never where it sits.
+        $missing = \max(0, ModalFrame::CHROME_ROWS + $fieldRows + ModalFrame::SECTION_ROWS + $boxRows - \count($framed));
 
         [$top, $col] = self::centered($bounds, \count($framed) + $missing, $width + ModalFrame::CHROME_COLS);
         $box = new ModalBox(
@@ -248,7 +269,8 @@ final class PickerLayout
             $col,
             $width + ModalFrame::CHROME_COLS,
             \count($framed),
-            headerRows: $fieldRows + ModalFrame::CHROME_ROWS_TOP,
+            // Past the query's tee — which is the first category's row when it names one.
+            headerRows: $fieldRows + ModalFrame::CHROME_ROWS_TOP + ModalFrame::SECTION_ROWS - ($merged ? 1 : 0),
             windowStart: $windowStart,
             count: \count($visible),
         );

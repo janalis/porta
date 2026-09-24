@@ -169,6 +169,15 @@ final class WelcomeWidgetTest extends TestCase
         $this->assertStringContainsString('Language server', $lines[self::FIRST_STEP_ROW + 3]);
     }
 
+    /** A rule parts two cards; the last card's spacer stays blank, since nothing follows it. */
+    public function testARuleSeparatesTheCardsAndNoneFollowsTheLast(): void
+    {
+        $lines = $this->rendered($this->widget($this->step('Syntax highlighting'), $this->step('Language server')));
+
+        $this->assertMatchesRegularExpression('/^ +─+ *$/u', $lines[self::FIRST_STEP_ROW + 2], 'between the cards');
+        $this->assertSame('', \trim($lines[self::FIRST_STEP_ROW + 5]), 'after the last');
+    }
+
     /** The hero is centred by construction: equal margins up to the odd column. */
     public function testTheHeroIsCentred(): void
     {
