@@ -10647,5 +10647,12 @@ decision:
   over the rule like over any pane. They take rows `main` had, so the pane
   union — the modals' bounds — did not move.
 
+- **Joins are a pass over the finished frame** (`FrameJoins`), not widgets
+  asking their neighbours: neither the edge rule nor a legend knows where the
+  divider stands, and a column pushed into them before the frame is one frame
+  stale during a sidebar drag. It reads plain glyphs, so a content `─` right
+  beside a divider would join too; no surface draws one there today.
+
 *Re-opens on:* a surface that needs a density of its own (a pane-local rule
-would bring back the disagreement above).
+would bring back the disagreement above), or a pane that draws `─` against a
+divider (then the join has to check the cell's tint as well).

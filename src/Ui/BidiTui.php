@@ -70,6 +70,9 @@ final class BidiTui extends Tui implements FrameHooks
     /** @var (\Closure(list<string>): void)|null handed every frame's final lines */
     private ?\Closure $frameSink = null;
 
+    /** @var (\Closure(list<string>): list<string>)|null the finished frame's last touch, {@see setFrameJoin()} */
+    private ?\Closure $frameJoin = null;
+
     /** The terminal reorders bidi text itself, so this one must not. */
     private bool $terminalBidi = false;
 
@@ -170,6 +173,20 @@ final class BidiTui extends Tui implements FrameHooks
     public function setFrameSink(?\Closure $sink): void
     {
         $this->frameSink = $sink;
+    }
+
+    /**
+     * Install (or clear, with null) the pass that draws the joins between the
+     * lines separate widgets drew — a divider meeting a rule. It sees the
+     * frame as painted: after the RTL reorder, so a mirrored `┤` is not
+     * mirrored again, and before the sink, so the sink records what the
+     * terminal gets.
+     *
+     * @param (\Closure(list<string>): list<string>)|null $join
+     */
+    public function setFrameJoin(?\Closure $join): void
+    {
+        $this->frameJoin = $join;
     }
 
     /**
@@ -506,6 +523,9 @@ final class BidiTui extends Tui implements FrameHooks
             }
             $this->arranged = $arranged;
             $lines = $out;
+        }
+        if (null !== $this->frameJoin) {
+            $lines = ($this->frameJoin)($lines);
         }
         // Before the frame sink, which belongs to neither stage and costs
         // 0.06ms at 226x67 (measured) — small enough to leave with the write

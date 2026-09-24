@@ -216,6 +216,14 @@ final class Glyphs
     public const string MODAL_TEE_LEFT = '├';
     public const string MODAL_TEE_RIGHT = '┤';
 
+    // Where a separating line meets a divider (Layout/FrameJoins): the rule
+    // above a divider's top turns down into it, the rule below its end up,
+    // and a rule crossing it both ways. A rule meeting it from one side is a
+    // tee, the MODAL_TEE_* pair.
+    public const string RULE_DOWN = '┬';
+    public const string RULE_UP = '┴';
+    public const string RULE_CROSS = '┼';
+
     // A text field's border (FieldBox): the SHAPE is the field's state, so
     // focus reads with no colour — rounded idle (the MODAL_* corners and the
     // FRAME_* rules), heavy while it takes keys, double for a destructive

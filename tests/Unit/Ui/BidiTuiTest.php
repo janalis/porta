@@ -604,6 +604,39 @@ final class BidiTuiTest extends TestCase
         $this->assertStringContainsString(self::SHALOM_VISUAL, \implode('', $seen), 'and it is the mirrored form, as written');
     }
 
+    /**
+     * The join sees the frame as painted — mirrored already, so a tee it
+     * draws is never mirrored again — and what it returns is what the sink
+     * records and the terminal gets.
+     */
+    public function testTheFrameJoinRewritesTheMirroredFrameBeforeTheSink(): void
+    {
+        $terminal = new VirtualTerminal(columns: 20, rows: 2);
+        $tui = $this->tuiWith($terminal);
+        $this->enableRtl($tui);
+        $joined = [];
+        $tui->setFrameJoin(static function (array $lines) use (&$joined): array {
+            $joined = $lines;
+
+            return \array_map(static fn (string $line): string => \str_replace(self::SHALOM_VISUAL, replace: '┤', subject: $line), $lines);
+        });
+        $seen = [];
+        $tui->setFrameSink(static function (array $lines) use (&$seen): void {
+            $seen = $lines;
+        });
+        $tui->requestRender();
+        $tui->processRender();
+
+        $this->assertStringContainsString(self::SHALOM_VISUAL, \implode('', $joined), 'handed the mirrored frame');
+        $this->assertStringContainsString('┤', \implode('', $seen), 'and its answer is the frame');
+        $this->assertStringContainsString('┤', $terminal->getOutput(), 'written as it answered');
+
+        $tui->setFrameJoin(null);
+        $tui->requestRender(force: true);
+        $tui->processRender();
+        $this->assertStringContainsString(self::SHALOM_VISUAL, \implode('', $seen), 'cleared, the frame is left as painted');
+    }
+
     public function testClearingTheFrameSinkStopsIt(): void
     {
         $terminal = new VirtualTerminal(columns: 20, rows: 2);

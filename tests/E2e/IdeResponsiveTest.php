@@ -100,8 +100,12 @@ final class IdeResponsiveTest extends TestCase
                 300 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($editorRows, &$roomy): void {
                     $this->frame($tui);
                     $grid = $this->screenGrid($tui, $terminal);
-                    $this->assertMatchesRegularExpression('/^─+┬?─*$/u', \rtrim($grid[1]), 'the rule under the menu bar');
-                    $this->assertMatchesRegularExpression('/^─+┴?─*$/u', \rtrim($grid[28]), 'and the one above the status bar');
+                    $divider = Services::resolve($ide, Renderer::class)->getWidgetRect($tui->getById('separator'))->col ?? -1;
+                    $this->assertMatchesRegularExpression('/^─+┬─+$/u', \rtrim($grid[1]), 'the rule under the menu bar, turning down into the divider');
+                    $this->assertSame('┬', \mb_substr($grid[1], $divider, length: 1), 'at the divider\'s own column');
+                    $this->assertSame('│', \mb_substr($grid[2], $divider, length: 1));
+                    $this->assertMatchesRegularExpression('/^─+┴─+$/u', \rtrim($grid[28]), 'and the one above the status bar, turning up into it');
+                    $this->assertSame('┴', \mb_substr($grid[28], $divider, length: 1));
                     $roomy = $editorRows($tui, $ide);
 
                     $terminal->simulateResize(100, 29);

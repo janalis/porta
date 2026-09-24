@@ -9,6 +9,7 @@ use Porta\Layout\ChromeHeight;
 use Porta\Layout\ResponsiveLayout;
 use Porta\Lsp\HighlightController;
 use Porta\Overlay\Presenter\FindModalPresenter;
+use Porta\Overlay\Presenter\FrameJoins;
 use Porta\Overlay\Presenter\PickerModalPresenter;
 use Porta\Overlay\Presenter\ToastPresenter;
 use Porta\Overlay\Presenter\WelcomeModalController;
@@ -66,6 +67,7 @@ final class AsEagerMembershipTest extends ContainerTestCase
             HighlightController::class, // watches the caret from the frame hook
             StructureFollowsCaret::class, // ditto: moves the Structure tab's selection
             ChromeHeight::class, // reads the terminal's rows from the frame hook
+            FrameJoins::class, // installs the frame's join pass on BidiTui
         ];
 
         $this->assertSame($ordered, \array_slice($actual, offset: 0, length: \count($ordered)), 'the contractual construction order');

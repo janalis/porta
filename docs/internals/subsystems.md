@@ -544,6 +544,15 @@ offers a menu opens it: `StatusBarClickRouter::route()` takes the right-click
 router's `openStatusMenu` as a callable, so no branch lands in `MouseRouter`,
 whose complexity pin is the lint threshold.
 
+Where a rule meets a sidebar's divider, the rule turns into it:
+`Overlay/Presenter/FrameJoins` runs over the finished frame (installed with
+`BidiTui::setFrameJoin()`, after the RTL reorder and before the frame sink) and
+turns a `─` above a divider's top into `┬`, one below its end into `┴`, and one
+beside it into `├` `┤`, or `┼` from both sides. That covers the edge rules, the
+settings groups' legends and the git history's Files heading. Only an idle `│`
+joins (the hovered `┃` is a grab), a cell under a floating surface is left
+alone, and a mirrored divider is found where it is drawn.
+
 ### Workspace edges: a rule under the menu, one above the status bar
 
 On a roomy screen `Widget/EdgeRuleWidget` rules the workspace off under the
