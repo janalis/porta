@@ -434,16 +434,25 @@ final class ListOverlayFilterTest extends TestCase
     }
 
     /**
-     * Nothing typed, nothing shown. Every list that was fine without a filter
-     * still opens looking exactly as it did — the row is feedback, not chrome.
+     * The filter field is there before anything is typed, a combobox's input,
+     * saying what typing does — so the box never grows three rows and
+     * re-centres on the first keystroke.
      */
-    public function testAnUnfilteredListLooksExactlyAsItDidBefore(): void
+    public function testAnUnfilteredListShowsItsFilterWithAPlaceholder(): void
     {
         $host = $this->host();
         $host->openList('L', self::symbols(), static fn (): null => null);
+        $host->layout([0, 0, 24, 100]);
+        $before = Probe::get($host, 'overlayBox');
 
         $rows = \array_values(\array_filter($this->canvas($host), static fn (string $l): bool => '' !== \trim($l)));
         $this->assertStringContainsString('L', $rows[0], 'the title bar');
-        $this->assertStringNotContainsString('≡', \implode("\n", $rows), 'no filter row until something is typed');
+        $this->assertStringContainsString('≡', $rows[2], 'the filter field, from the start');
+        $this->assertStringContainsString('Type to filter', $rows[3]);
+
+        $this->type($host, 'h');
+        $host->layout([0, 0, 24, 100]);
+        $this->assertInstanceOf(ModalBox::class, $before);
+        $this->assertSame($before->startRow, Probe::get($host, 'overlayBox')->startRow, 'the first keystroke moves nothing');
     }
 }

@@ -148,6 +148,9 @@ final readonly class SearchEverywhereFactory
             $this->translator,
             'Find Action',
             seedRecentFiles: false,
+            // One category, sharing the list with nobody: a page of commands,
+            // not the five Search Everywhere allows each of its six groups.
+            categoryCap: SearchEverywhereController::SOLO_CAP,
         );
     }
 
@@ -174,6 +177,7 @@ final readonly class SearchEverywhereFactory
             $this->translator,
             'Go to Symbol in Project',
             seedRecentFiles: false,
+            categoryCap: SearchEverywhereController::SOLO_CAP,
         );
     }
 

@@ -126,8 +126,11 @@ final class CommandRegistry
      * The id travels with the label because the palette prints each action's
      * KEY beside it — the way anyone learns a shortcut is seeing it next to the
      * thing they just searched for — and only the id can be asked for that.
+     * `enabled` is the same `when` the menus grey their items on, so the
+     * palette shows an unavailable command as unavailable rather than as a row
+     * that silently does nothing.
      *
-     * @return list<array{id: string, label: string, run: callable(): void}>
+     * @return list<array{id: string, label: string, run: callable(): void, enabled: bool}>
      */
     public function paletteCommands(): array
     {
@@ -137,7 +140,7 @@ final class CommandRegistry
                 continue;
             }
 
-            $out[] = ['id' => $command['id'], 'label' => $command['label'], 'run' => $command['handler']];
+            $out[] = ['id' => $command['id'], 'label' => $command['label'], 'run' => $command['handler'], 'enabled' => null === $command['when'] || $command['when']()];
         }
 
         return $out;

@@ -97,6 +97,18 @@ final readonly class BufferNavigator implements BufferNavigationHandler, ViewerT
         $this->closeActive();
     }
 
+    /**
+     * The hint beside a recent file: the directory it is in, relative, and ''
+     * at the root. The label already says the name, and repeating it in the
+     * path spent the columns that tell two `index.php` apart.
+     */
+    private function directoryOf(string $path): string
+    {
+        $dir = \dirname($this->paths->relative($path));
+
+        return '.' === $dir ? '' : $dir;
+    }
+
     /** The recent-files switcher in the editor's list overlay (Ctrl+E). */
     #[\Override]
     public function openRecentFiles(): void
@@ -104,7 +116,7 @@ final readonly class BufferNavigator implements BufferNavigationHandler, ViewerT
         $open = $this->buffers->recent();
         $items = \array_map(fn (Buffer $b): array => [
             'label' => \basename($b->path).($b->document->isDirty() ? ' '.Glyphs::DIRTY : ''),
-            'hint' => $this->paths->relative($b->path),
+            'hint' => $this->directoryOf($b->path),
             'value' => $b->path,
         ], $open);
 
@@ -118,7 +130,7 @@ final readonly class BufferNavigator implements BufferNavigationHandler, ViewerT
                 continue;
             }
 
-            $items[] = ['label' => \basename($path), 'hint' => $this->paths->relative($path), 'value' => $path];
+            $items[] = ['label' => \basename($path), 'hint' => $this->directoryOf($path), 'value' => $path];
         }
 
         if (\count($items) < 2) {

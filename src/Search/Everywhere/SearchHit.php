@@ -19,6 +19,9 @@ final readonly class SearchHit
      * @param bool             $keepsOpen a row that changes the LIST rather than leaving it
      *                                    (the "more results" row): activating it must not
      *                                    close the modal it is asking to grow
+     * @param bool             $enabled   false for a command whose context is absent: the row is
+     *                                    drawn dim and struck through, as its menu item is greyed,
+     *                                    and picking it does nothing
      */
     public function __construct(
         public SearchCategory $category,
@@ -26,5 +29,6 @@ final readonly class SearchHit
         public string $detail,
         public \Closure $activate,
         public bool $keepsOpen = false,
+        public bool $enabled = true,
     ) {}
 }

@@ -3266,6 +3266,18 @@
         <source>%count% line|%count% lines</source>
         <target>%count% Zeile|%count% Zeilen</target>
       </trans-unit>
+      <trans-unit id="915">
+        <source>Searching…</source>
+        <target>Suche läuft…</target>
+      </trans-unit>
+      <trans-unit id="916">
+        <source>Type to search…</source>
+        <target>Tippen zum Suchen…</target>
+      </trans-unit>
+      <trans-unit id="917">
+        <source>Type to filter</source>
+        <target>Tippen zum Filtern</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

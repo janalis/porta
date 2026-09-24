@@ -412,7 +412,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         // Caret movement, so a typo at the START of a value is fixable without
         // retyping the rest — a JSON debug launch config being the case that
         // made append-only editing untenable.
-        if ($this->moveCaret($data, $field)) {
+        if ($field->editKey($data)) {
             $this->invalidate();
 
             return;
@@ -420,26 +420,6 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         if ($field->insert($data)) {
             $this->invalidate();
         }
-    }
-
-    /**
-     * Run a caret gesture against the inline editor; false when $data is not one.
-     *
-     * Raw sequences rather than keybinding ids: these are the field's own
-     * editing keys, not rebindable IDE actions, and the editor widget and the
-     * commit box spell them the same way.
-     */
-    private function moveCaret(string $data, TextField $field): bool
-    {
-        return match ($data) {
-            "\x1b[D" => $field->moveLeft(),
-            "\x1b[C" => $field->moveRight(),
-            "\x1b[H", "\x1bOH", "\x1b[1~" => $field->moveHome(),
-            "\x1b[F", "\x1bOF", "\x1b[4~" => $field->moveEnd(),
-            "\x1b[3~" => $field->deleteForward(),
-            "\x17" => $field->deleteWordBackward(),
-            default => false,
-        };
     }
 
     private function cycleChoice(SettingsRow $row, int $delta): string

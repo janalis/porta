@@ -46,6 +46,11 @@ final class Glyphs
     // shape-distinct from every glyph that can share that column.
     public const string BOOKMARK = '◈';
 
+    // Work under way that has not answered yet: a picker category still
+    // searching, a completion still loading. An empty circle — the shape of
+    // "nothing yet", distinct from every severity and gutter mark.
+    public const string WORKING = '◌';
+
     // Diagnostic severity (gutter, inline message prefix, status-bar counts).
     public const string SEVERITY_ERROR = '✗';
     public const string SEVERITY_WARNING = '▲'; // also SCROLL_UP — disjoint surfaces (message row vs strip edge)

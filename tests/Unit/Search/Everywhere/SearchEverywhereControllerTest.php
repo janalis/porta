@@ -208,6 +208,60 @@ final class SearchEverywhereControllerTest extends TestCase
         $this->assertSame('80 more results', \array_last($labels));
     }
 
+    /**
+     * An async category asked and not yet answered shows "Searching…" under
+     * its header — a slow server reads as slow, not as nothing found — and
+     * its answer replaces the note; an answer of nothing drops the category.
+     */
+    public function testAPendingAsyncCategorySaysItIsSearching(): void
+    {
+        $overlay = $this->overlay();
+        $classes = $this->source(SearchCategory::Classes);
+        $text = $this->source(SearchCategory::Text);
+        $controller = $this->controller($overlay, [], [$classes, $text], new BufferManager());
+        $controller->open();
+
+        ($overlay->onQuery)('Gre');
+        $notes = static fn (): array => \array_values(\array_filter(\array_map(static fn (SearchRow $r): ?string => $r->header ?? $r->note, $overlay->rows)));
+        $this->assertSame(['Classes', '◌ Searching…', 'Text', '◌ Searching…'], $notes(), 'before the debounce even fires');
+
+        $this->scheduled[0](); // the debounce: both asked
+        $classes->emits[0]([$this->hit(SearchCategory::Classes, 'Greeter')]);
+        $this->assertSame(['Classes', 'Text', '◌ Searching…'], $notes());
+        $this->assertSame(['Greeter'], $this->labels($overlay->rows));
+
+        $text->emits[0]([]);
+        $this->assertSame(['Classes'], $notes(), 'answered with nothing: the category goes');
+
+        ($overlay->onQuery)('Greg'); // asked again, and cleared before it answers
+        ($overlay->onQuery)('');
+        $this->assertSame([], \array_filter($overlay->rows, static fn (SearchRow $r): bool => null !== $r->note), 'an empty query asks no async source, and forgets the ones still out');
+    }
+
+    /** A greyed command is there to be read, not run: picking it does nothing and leaves the palette open. */
+    public function testPickingADisabledHitDoesNothing(): void
+    {
+        $overlay = $this->overlay();
+        $controller = $this->controller($overlay, [], [], new BufferManager());
+        $controller->open();
+        $ran = false;
+
+        ($overlay->onPick)(
+            new SearchHit(
+                SearchCategory::Actions,
+                'Step Over',
+                '',
+                static function () use (&$ran): void {
+                    $ran = true;
+                },
+                enabled: false,
+            ),
+        );
+
+        $this->assertFalse($ran);
+        $this->assertSame(0, $overlay->closes);
+    }
+
     public function testACappedCategoryOffersARowThatGrowsIt(): void
     {
         // The cap used to be the end of the list: eight files, five shown, and

@@ -532,9 +532,9 @@ final class IdeMousePrimitivesTest extends TestCase
                     $box = Probe::get($host, 'overlayBox');
                     // Hover then click item index 1 ("Discard & Close"): the
                     // box is SCREEN-space now (the picker floats over the
-                    // workspace); the frame's title bar is row startRow, a
-                    // padding row follows, items start at startRow + 2.
-                    $row = $box->startRow + 3;
+                    // workspace); items start below its header rows — the
+                    // title bar, a padding row and the filter field.
+                    $row = $box->startRow + $box->headerRows + 1;
                     $col = $box->col + 3; // past the rail and padding column
                     $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $col + 1, $row + 1)); // hover
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $col + 1, $row + 1)); // click

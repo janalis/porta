@@ -283,9 +283,10 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
     {
         $worst = null;
         foreach ($this->diagnostics[$line] ?? [] as $d) {
-            if (null === $worst || $d['severity']->outranks($worst['severity'])) {
-                $worst = ['message' => $d['message'], 'severity' => $d['severity']];
+            if (null !== $worst && !$d['severity']->outranks($worst['severity'])) {
+                continue;
             }
+            $worst = ['message' => $d['message'], 'severity' => $d['severity']];
         }
 
         return $worst;

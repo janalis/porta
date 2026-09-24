@@ -23,6 +23,19 @@ final class SearchModalState
     public ?int $hovered = null;
 
     /**
+     * The widest row seen since the modal opened, in columns. The box is sized
+     * from it rather than from this frame's rows, so it never shrinks and
+     * re-centres under the reader as results stream in or the query narrows.
+     */
+    public int $widest = 0;
+
+    /** The most rows seen since the modal opened: the box keeps that height as the list shortens, as it keeps its width. */
+    public int $tallest = 0;
+
+    /** The query the current rows answer: rows for the SAME query keep the selected hit. */
+    public ?string $rowsFor = null;
+
+    /**
      * @param \Closure(string): void    $onQuery fired on each query edit
      * @param \Closure(SearchHit): void $onPick  fired when a hit is chosen
      * @param \Closure(): void          $onClose fired on Esc / dismiss

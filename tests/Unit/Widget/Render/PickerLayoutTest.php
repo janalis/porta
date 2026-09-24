@@ -307,4 +307,51 @@ final class PickerLayoutTest extends TestCase
             yield $columns.' columns' => [$columns];
         }
     }
+
+    /** @param list<SearchRow> $rows */
+    private function searchLayout(array $rows, int $columns = 100): array
+    {
+        $state = new SearchModalState('Find Action', new TextField(), static fn (): null => null, static fn (): null => null, static fn (): null => null);
+        $state->rows = $rows;
+        $state->widest = 200; // as wide as the bounds allow
+
+        return PickerLayout::layoutSearch([0, 0, 24, $columns], $state, $this->styles(), closeHovered: false, caret: CaretVisibility::Hidden, placeholder: 'Type to search…');
+    }
+
+    /**
+     * A command whose context is absent is drawn as its menu item is greyed:
+     * dim and struck through, attributes that survive --no-ansi. Its hint
+     * (the key) is left alone.
+     */
+    public function testADisabledHitIsDimAndStruckThrough(): void
+    {
+        $noop = static fn (): null => null;
+        $rows = $this->searchLayout([
+            SearchRow::header('Actions'),
+            SearchRow::hit(new SearchHit(SearchCategory::Actions, 'Step Over', 'F8', $noop, enabled: false)),
+            SearchRow::hit(new SearchHit(SearchCategory::Actions, 'Save', 'Ctrl+S', $noop)),
+        ])['rows'];
+        $row = static fn (string $label): string => \array_first(\array_filter($rows, static fn (string $r): bool => \str_contains(AnsiUtils::stripAnsiCodes($r), $label)));
+
+        $this->assertMatchesRegularExpression('/\e\[9m(\e\[[0-9;]*m)*Step Over/', $row('Step Over'), 'struck through');
+        $this->assertMatchesRegularExpression('/\e\[2m(\e\[[0-9;]*m)*Step Over/', $row('Step Over'), 'and dim');
+        $this->assertStringNotContainsString("\e[9m", $row('Save'));
+        $this->assertStringContainsString('Type to search…', AnsiUtils::stripAnsiCodes(\implode("\n", $rows)), 'the empty query says what typing does');
+    }
+
+    /**
+     * The label keeps at least half a narrow row; a long directory gives way
+     * first, cut in the middle so both of its ends still say where it is.
+     */
+    public function testALongDetailIsCutInTheMiddleAndTheLabelKeepsHalf(): void
+    {
+        $dir = 'src/Some/Deeply/Nested/Namespace/Of/Things';
+        $rows = $this->searchLayout([SearchRow::header('Files'), SearchRow::hit(new SearchHit(SearchCategory::Files, 'ExampleController.php', $dir, static fn (): null => null))], columns: 60)['rows'];
+        $plain = \array_first(\array_filter(\array_map(AnsiUtils::stripAnsiCodes(...), $rows), static fn (string $r): bool => \str_contains($r, 'Example')));
+
+        $this->assertStringContainsString('ExampleController.php', $plain, 'the label whole');
+        $this->assertStringContainsString('src/', $plain, 'the head of the path');
+        $this->assertStringContainsString('Things', $plain, 'and its tail');
+        $this->assertStringContainsString('…', $plain);
+    }
 }

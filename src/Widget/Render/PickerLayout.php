@@ -6,6 +6,7 @@ namespace Porta\Widget\Render;
 
 use Porta\Overlay\Region\ModalBox;
 use Porta\Overlay\State\SearchModalState;
+use Porta\Search\Everywhere\SearchHit;
 use Porta\Support\AnsiText;
 use Porta\Support\IntMath;
 use Porta\Ui\CaretVisibility;
@@ -15,6 +16,7 @@ use Porta\Ui\Theme\Styles;
 use Porta\Widget\Support\ListFilter;
 use Porta\Widget\Support\RowSelection;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Style\Style;
 
 /**
  * Lays the three centered picker surfaces out into framed, styled rows: the
@@ -41,7 +43,7 @@ final class PickerLayout
      *
      * @return array{rows: list<string>, top: int, col: int, width: int, box: ModalBox}
      */
-    public static function layoutList(array $bounds, array $overlay, Styles $styles, bool $closeHovered, string $emptyMessage = ''): array
+    public static function layoutList(array $bounds, array $overlay, Styles $styles, bool $closeHovered, string $emptyMessage = '', string $placeholder = ''): array
     {
         [$boundTop, $boundLeft, $boundBottom, $boundRight] = $bounds;
         $columns = $boundRight - $boundLeft;
@@ -50,7 +52,11 @@ final class PickerLayout
         $filter = $overlay['filter']->value();
         $items = ListFilter::matching($overlay['items'], $filter);
         $selected = $overlay['selected'];
-        $maxItems = \max(1, \min(\count($items), $rows - 5, 12));
+        // Rows, like the width below, are a property of the whole list: the box
+        // keeps its height while the filter narrows it, padding what the
+        // filter took, so it never re-centres under the reader.
+        $boxRows = \max(1, \min(\count($overlay['items']), $rows - 5 - FieldBox::ROWS, 12));
+        $maxItems = \min($boxRows, \max(1, \count($items)));
         $windowStart = IntMath::clamp($selected - $maxItems + 1, 0, \count($items) - $maxItems);
         $visible = \array_slice($items, $windowStart, $maxItems);
 
@@ -73,7 +79,7 @@ final class PickerLayout
         // and counting this one only when the filter stops matching puts that
         // resize straight back: measured at 15 columns, then 27 on the
         // keystroke that emptied the list.
-        $width = \max($width, \mb_strwidth($emptyMessage) + 2);
+        $width = \max($width, \mb_strwidth($emptyMessage) + 2, \mb_strwidth($placeholder) + 2 + FieldBox::CHROME_COLS + 2);
         $width = \min($width, $columns - PopupMetrics::CENTERED_MARGIN, PopupMetrics::CENTERED_MAX_INNER);
 
         $content = [];
@@ -90,20 +96,25 @@ final class PickerLayout
         if ([] === $visible) {
             $content[] = $styles->merge(Role::PopupRow, Role::CompletionHint)->apply(AnsiText::truncate(' '.$emptyMessage, $width, pad: true, ellipsis: ''));
         }
-        // The filter row appears only once something is typed, so every list
-        // that was fine without one looks exactly as it did — and the moment it
-        // narrows, what narrowed it is on screen rather than being a mode the
-        // user has to remember entering. It takes the keys, so its border is
-        // the focused one; but no caret: the search modal owns the one caret
-        // a frame may carry. The typed text tail-scrolls ({@see FieldBox} keeps
-        // the end of a caret-less focused value in view) — truncating put the
-        // ellipsis at the END, so past the box width the field stopped
-        // changing as you typed: an input that hides its own tail. The box
-        // appears three rows at once on the first keystroke, and the popup
-        // re-centres by a row; that is the cost of the field reading as one.
-        $header = '' === $filter
-            ? []
-            : FieldBox::render(new FieldSpec(self::FILTER_GLYPH, surface: Role::Toolbar), $overlay['filter'], FieldState::Focused, CaretVisibility::Hidden, $width, $styles);
+        while (\count($content) < $boxRows) {
+            $content[] = $styles->of(Role::PopupRow)->apply(\str_repeat(' ', \max(0, $width)));
+        }
+        // The filter field is there from the start, a combobox's input: a
+        // placeholder says typing narrows the list before the first key, and
+        // the box keeps one height instead of growing three rows and
+        // re-centring on the keystroke that summoned the field. It takes the
+        // keys, so its border is the focused one; but no caret: the search
+        // modal owns the one caret a frame may carry. The typed text
+        // tail-scrolls ({@see FieldBox} keeps the end of a caret-less focused
+        // value in view).
+        $header = FieldBox::render(
+            new FieldSpec(self::FILTER_GLYPH, placeholder: $placeholder, surface: Role::Toolbar),
+            $overlay['filter'],
+            FieldState::Focused,
+            CaretVisibility::Hidden,
+            $width,
+            $styles,
+        );
         $popup = [
             ModalFrame::titleBar($overlay['title'], $width + ModalFrame::CHROME_COLS, $styles, $closeHovered),
             ...ModalFrame::wrap([...$header, ...$content], $width, $styles),
@@ -128,13 +139,17 @@ final class PickerLayout
      *
      * @return array{rows: list<string>, top: int, col: int, width: int, box: ModalBox}
      */
-    public static function layoutSearch(array $bounds, SearchModalState $search, Styles $styles, bool $closeHovered, CaretVisibility $caret): array
+    public static function layoutSearch(array $bounds, SearchModalState $search, Styles $styles, bool $closeHovered, CaretVisibility $caret, string $placeholder = ''): array
     {
         [$boundTop, $boundLeft, $boundBottom, $boundRight] = $bounds;
         $columns = $boundRight - $boundLeft;
         $rows = $boundBottom - $boundTop;
 
-        $maxRows = \max(1, \min(\count($search->rows), $rows - 6 - (FieldBox::ROWS - 1), 12));
+        // As tall as the most rows seen since it opened, like its width: a
+        // narrowing query pads the rows it drops rather than shrinking the box
+        // and re-centring it under the reader.
+        $boxRows = \max(0, \min(\max(\count($search->rows), $search->tallest), $rows - 6 - (FieldBox::ROWS - 1), 12));
+        $maxRows = \max(1, \min($boxRows, \count($search->rows)));
         $windowStart = IntMath::clamp($search->selected - $maxRows + 1, 0, \max(0, \count($search->rows) - $maxRows));
         $visible = \array_slice($search->rows, $windowStart, $maxRows);
 
@@ -144,10 +159,10 @@ final class PickerLayout
         // visibleWidth strips the field's zero-width caret marker, so the
         // width measures the query text alone.
         $queryField = $search->query->render($caret);
-        $width = \max(\mb_strwidth($search->title) + 8, AnsiUtils::visibleWidth($queryField) + 2 + FieldBox::CHROME_COLS, 24); // + 8: the frame's title-bar chrome
-        foreach ($visible as $row) {
-            $width = \max($width, \mb_strwidth($row->hit->label ?? '') + \mb_strwidth($row->hit->detail ?? '') + 6);
-        }
+        $width = \max(\mb_strwidth($search->title) + 8, AnsiUtils::visibleWidth($queryField) + 2 + FieldBox::CHROME_COLS, \mb_strwidth($placeholder) + 3 + FieldBox::CHROME_COLS, 24); // + 8: the frame's title-bar chrome
+        // The widest row seen since the modal opened, not this frame's: the box
+        // holds its size while results stream in and the query narrows.
+        $width = \max($width, $search->widest);
         // Same rule as the list's filler, and unconditional for the same
         // reason. The 24-column floor happens to seat every translation of
         // "no results" today, which is luck rather than a guarantee.
@@ -155,28 +170,28 @@ final class PickerLayout
         $width = \min($width, $columns - PopupMetrics::CENTERED_MARGIN, PopupMetrics::CENTERED_MAX_INNER);
 
         // No legend: the title bar already names what is being searched.
-        $popup = FieldBox::render(new FieldSpec('', surface: Role::Toolbar), $search->query, FieldState::of(CaretVisibility::Shown === $caret), $caret, $width, $styles);
+        $popup = FieldBox::render(new FieldSpec('', placeholder: $placeholder, surface: Role::Toolbar), $search->query, FieldState::of(CaretVisibility::Shown === $caret), $caret, $width, $styles);
         foreach ($visible as $i => $row) {
-            if (null !== $row->header) {
-                $popup[] = $styles->merge(Role::PopupRow, Role::Dim)->apply(AnsiText::truncate(' '.$row->header, $width, pad: true));
+            $hit = $row->hit;
+            if (null === $hit) {
+                // A header, or a note under one ("Searching…") — neither is a result.
+                $popup[] = $styles
+                    ->merge(Role::PopupRow, null !== $row->header ? Role::Dim : Role::CompletionHint)
+                    ->apply(AnsiText::truncate(' '.($row->header ?? $row->note ?? ''), $width, pad: true));
 
                 continue;
             }
             $style = $styles->of(ModalRowStyle::role(RowSelection::of(($windowStart + $i) === $search->selected, ($windowStart + $i) === $search->hovered)));
-            // ` label · detail ` — three chrome columns (leading, gap, trailing).
-            // Bound the detail first (leaving ≥1 column for the label) so a long
-            // path can never push the row past $width and overflow the pane.
-            $avail = \max(1, $width - 3);
-            $detail = AnsiText::truncate($row->hit->detail ?? '', \max(0, $avail - 1), pad: false);
-            $detailWidth = AnsiUtils::visibleWidth($detail);
-            $label = AnsiText::truncate($row->hit->label ?? '', \max(1, $avail - $detailWidth), pad: true);
-            $popup[] = $style->apply(' '.$label.' '.$styles->of(Role::CompletionHint)->apply($detail).' ');
+            $popup[] = $style->apply(' '.self::hitCells($hit, \max(1, $width - 3), $style, $styles).' ');
         }
         // A no-hit query gets the same empty-state filler the find-in-files
         // modal ({@see FindInFilesModal}) shows: the popup's own base row
         // (PopupRow), never blank.
         if ([] === $search->rows && '' !== $search->emptyMessage) {
             $popup[] = $styles->merge(Role::PopupRow, Role::CompletionHint)->apply(AnsiText::truncate(' '.$search->emptyMessage, $width, pad: true, ellipsis: ''));
+        }
+        while (\count($popup) < (FieldBox::ROWS + $boxRows)) {
+            $popup[] = $styles->of(Role::PopupRow)->apply(\str_repeat(' ', \max(0, $width)));
         }
         $framed = [
             ModalFrame::titleBar($search->title, $width + ModalFrame::CHROME_COLS, $styles, $closeHovered),
@@ -226,6 +241,26 @@ final class PickerLayout
         $box = new ModalBox($top, $col, $innerWidth + ModalFrame::CHROME_COLS, FieldBox::ROWS + ModalFrame::CHROME_ROWS, headerRows: ModalFrame::CHROME_ROWS_TOP, windowStart: 0, count: 1);
 
         return ['rows' => $framed, 'top' => $top, 'col' => $col, 'width' => $innerWidth + ModalFrame::CHROME_COLS, 'box' => $box];
+    }
+
+    /**
+     * A hit's `label  detail` in exactly $avail columns. The label is the answer
+     * and keeps at least half the row when it needs it; the detail gives way
+     * first, cut in the MIDDLE, since a directory or a `file:line` is known by
+     * both ends. A disabled hit (a command whose context is absent) is dim
+     * and struck through, as its greyed menu item is: attributes, so the state
+     * survives --no-ansi.
+     */
+    private static function hitCells(SearchHit $hit, int $avail, Style $row, Styles $styles): string
+    {
+        $labelFloor = \min(\mb_strwidth($hit->label), \max(1, \intdiv($avail + 1, num2: 2)));
+        $detail = AnsiText::elideMiddle($hit->detail, \max(0, $avail - $labelFloor - 1));
+        $label = AnsiText::truncate($hit->label, \max(1, $avail - AnsiUtils::visibleWidth($detail)), pad: true);
+        if (!$hit->enabled) {
+            $label = $row->withDim()->withStrikethrough()->apply(\rtrim($label)).$row->getAnsiRestore().\str_repeat(' ', \max(0, \mb_strwidth($label) - \mb_strwidth(\rtrim($label))));
+        }
+
+        return $label.' '.$styles->of(Role::CompletionHint)->apply($detail);
     }
 
     /**

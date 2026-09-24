@@ -47,9 +47,18 @@ final readonly class ActionsSource implements SearchSource
             }
             $run = $command['run'];
             $hint = null === $this->shortcutOf ? '' : ($this->shortcutOf)($command['id']);
-            $scored[] = [$score, new SearchHit(SearchCategory::Actions, $command['label'], $hint, static function () use ($run): void {
-                    $run();
-                })];
+            $scored[] = [
+                $score,
+                new SearchHit(
+                    SearchCategory::Actions,
+                    $command['label'],
+                    $hint,
+                    static function () use ($run): void {
+                        $run();
+                    },
+                    enabled: $command['enabled'],
+                ),
+            ];
         }
         \usort($scored, static fn (array $a, array $b): int => $b[0] <=> $a[0]);
 

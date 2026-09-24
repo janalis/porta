@@ -233,11 +233,11 @@ final class CodeEditorOverlaysTest extends TestCase
     {
         $sink = new \ArrayObject(['picked' => null]);
         $editor = $this->overlayEditor($sink);
-        // width 20 (title 12+4 vs item 5+9+6=20) centred → col 30; popup height 3 →
-        // startRow intdiv(20-3,3)=5; title row 5, items at rows 6 and 7.
+        // Nine rows (title, padding, the three-row filter field, two items,
+        // padding, bottom) centred a third down → title row 3, items at 8 and 9.
         $editor->layoutPickers([0, 0, 20, 80]);
 
-        $this->assertTrue($editor->handlePickerClick(7, 35), 'a click on an item is consumed');
+        $this->assertTrue($editor->handlePickerClick(9, 35), 'a click on an item is consumed');
         $this->assertSame('B', $sink['picked']);
         $this->assertFalse(EditorState::pickerOpen($editor));
     }
@@ -281,13 +281,13 @@ final class CodeEditorOverlaysTest extends TestCase
         $editor = $this->overlayEditor(new \ArrayObject(['picked' => null]));
         $editor->layoutPickers([0, 0, 20, 80]);
 
-        $this->assertTrue($editor->handlePickerHover(7, 35), 'hover item 1 tints it');
-        $this->assertFalse($editor->handlePickerHover(7, 35), 'same row → no change');
-        $this->assertTrue($editor->handlePickerHover(5, 35), 'the title row is no item: the tint clears');
-        $this->assertFalse($editor->handlePickerHover(5, 35), 'still no item → no change');
+        $this->assertTrue($editor->handlePickerHover(9, 35), 'hover item 1 tints it');
+        $this->assertFalse($editor->handlePickerHover(9, 35), 'same row → no change');
+        $this->assertTrue($editor->handlePickerHover(3, 35), 'the title row is no item: the tint clears');
+        $this->assertFalse($editor->handlePickerHover(3, 35), 'still no item → no change');
 
         // Hover item 1; item 0 stays selected.
-        $editor->handlePickerHover(7, 35);
+        $editor->handlePickerHover(9, 35);
         $body = \implode("\n", $editor->layoutPickers([0, 0, 20, 80])[0]['rows']);
         $this->assertStringContainsString("\x1b[48;5;31m", $body, 'the selected item keeps its background');
         $this->assertStringContainsString("\x1b[48;5;236m", $body, 'the hovered item takes the hover tint');

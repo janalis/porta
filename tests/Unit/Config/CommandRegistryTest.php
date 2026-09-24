@@ -112,4 +112,19 @@ final class CommandRegistryTest extends TestCase
 
         $this->assertSame(['Listed'], \array_column($registry->paletteCommands(), 'label'), 'the Hidden command is excluded from the palette');
     }
+
+    /** The palette learns each command's availability from the same `when` the menus grey on. */
+    public function testPaletteCommandsCarryTheirAvailability(): void
+    {
+        $on = false;
+        $registry = new CommandRegistry()
+            ->add('always', static function (): void {}, label: 'Always')
+            ->add('gated', static function (): void {}, label: 'Gated', when: static function () use (&$on): bool {
+                return $on;
+            });
+
+        $this->assertSame(['Always' => true, 'Gated' => false], \array_column($registry->paletteCommands(), 'enabled', 'label'));
+        $on = true;
+        $this->assertSame(['Always' => true, 'Gated' => true], \array_column($registry->paletteCommands(), 'enabled', 'label'), 'asked afresh each time');
+    }
 }

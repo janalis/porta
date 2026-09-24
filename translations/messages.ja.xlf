@@ -3266,6 +3266,18 @@
         <source>%count% line|%count% lines</source>
         <target>%count% 行</target>
       </trans-unit>
+      <trans-unit id="915">
+        <source>Searching…</source>
+        <target>検索中…</target>
+      </trans-unit>
+      <trans-unit id="916">
+        <source>Type to search…</source>
+        <target>入力して検索…</target>
+      </trans-unit>
+      <trans-unit id="917">
+        <source>Type to filter</source>
+        <target>入力して絞り込み</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

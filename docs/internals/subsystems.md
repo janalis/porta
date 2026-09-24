@@ -282,6 +282,27 @@ draggable, and the open modal owns the caret. That precedence has one spelling:
 move dispatchers. `moveSelection` skips the prompt, which has no selection, so a
 wheel with both open moves the list.
 
+A picker behaves like a dialog with a combobox:
+- **Clicks.** A click inside the box that lands on no item (a header, the field,
+  the frame) is swallowed. Only the × and a click outside dismiss.
+- **Fields.** Every field and prompt takes `TextField::editKey()`: ←/→,
+  Home/End, Delete and Ctrl+W, the settings form's caret keys.
+- **Lists.** PgUp/PgDn move a box's worth of rows and stop at the ends, and Tab
+  and Shift+Tab walk Search Everywhere's categories.
+- **Filter.** The list overlay's filter field shows from the start, with a
+  placeholder.
+- **Size.** Both boxes are sized from the whole list, width and height
+  (`SearchModalState::$widest` and `$tallest`, the unfiltered items), so they
+  never re-centre as the query narrows.
+- **Streaming.** Rows for the query already answered keep the selected hit
+  wherever it moved (`rowsFor`), and a new query selects its best match.
+- **Pending sources.** An async category not yet answered shows its header over
+  a `◌ Searching…` note (`SearchRow::note`). Selection lands only on `isHit()`
+  rows.
+- **Disabled commands.** A palette command whose `when` is false comes through
+  `paletteCommands()` as `enabled: false`: it is drawn dim and struck through,
+  and picking it does nothing.
+
 The menu dropdowns and the context menu wear the tighter `PopupFrame`
 border-only language, with item-run hit-testing where the border swallows and
 outside dismisses. The completion popup and signature hint stay

@@ -3266,6 +3266,18 @@
         <source>%count% line|%count% lines</source>
         <target>%count% שורה|%count% שורות</target>
       </trans-unit>
+      <trans-unit id="915">
+        <source>Searching…</source>
+        <target>מחפש…</target>
+      </trans-unit>
+      <trans-unit id="916">
+        <source>Type to search…</source>
+        <target>הקלידו כדי לחפש…</target>
+      </trans-unit>
+      <trans-unit id="917">
+        <source>Type to filter</source>
+        <target>הקלידו כדי לסנן</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

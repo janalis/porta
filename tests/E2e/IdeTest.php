@@ -7,7 +7,11 @@ namespace Porta\Tests\E2e;
 use PHPUnit\Framework\TestCase;
 use Porta\Ide;
 use Porta\Onboarding\OnboardingState;
+use Porta\Overlay\State\OverlayHost;
+use Porta\Search\Everywhere\SearchCategory;
+use Porta\Search\Everywhere\SearchRow;
 use Porta\Tests\Support\EditorState;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
@@ -235,6 +239,7 @@ final class IdeTest extends TestCase
                 2650 => function () use ($editor, $tui): void {
                     $this->painted($tui, 'Recent Files');
                     $this->assertTrue(EditorState::pickerOpen($editor()));
+                    $this->assertRecentFilesHintTheirDirectory();
                     $tui->handleInput("\r"); // pick previous (composer.json)
                 },
                 2750 => static function () use ($opened): void {
@@ -377,6 +382,15 @@ final class IdeTest extends TestCase
         );
     }
 
+    /** The Recent Files hint is each file's directory — the label already names it — and nothing at the root. */
+    private function assertRecentFilesHintTheirDirectory(): void
+    {
+        $items = Probe::get(Services::resolve($this->ide, OverlayHost::class), 'overlay')['items'];
+        $hints = \array_column($items, column_key: 'hint', index_key: 'label');
+        $this->assertSame('src', $hints['Target.php'] ?? null, 'the hint is the directory, not the name again');
+        $this->assertSame('', $hints['composer.json'] ?? null, 'and nothing at the root');
+    }
+
     /**
      * Search Everywhere: Ctrl+Shift+E opens the centered modal; the empty query
      * seeds recent files; a filename finds a file (sync) and Enter opens it; a
@@ -429,11 +443,23 @@ final class IdeTest extends TestCase
                 },
                 1700 => function () use ($screen, $tui): void {
                     // Past the 0.25s debounce and the mock-LSP round trip — awaited,
-                    // not slept through. The barrier is the GROUP HEADER, not the
-                    // symbol name: 'Greeter' is also the query echoed in the input
-                    // field, so it is on screen the instant it is typed and proves
-                    // nothing about the answer having arrived.
-                    $this->awaitPainted($tui, $this->terminal, 'Classes');
+                    // not slept through. The barrier is every category ANSWERED:
+                    // not the symbol name, which is also the query echoed in the
+                    // input field, and not the 'Classes' header, which shows at
+                    // once over "Searching…" while the server is asked.
+                    $host = Services::resolve($this->ide, OverlayHost::class);
+                    $this->await(
+                        static function () use ($host): bool {
+                            $rows = Probe::get($host, 'search')->rows ?? [];
+
+                            return (
+                                \array_any($rows, static fn (SearchRow $row): bool => SearchCategory::Classes === $row->hit?->category)
+                                && !\array_any($rows, static fn (SearchRow $row): bool => null !== $row->note)
+                            );
+                        },
+                        what: 'every async category to answer',
+                    );
+                    $this->frame($tui);
                     $s = $screen();
                     $this->assertStringContainsString('Classes', $s, 'the async LSP category has hits');
                     $this->assertStringContainsString('Greeter', $s, 'Classes/Symbols results from the mock LSP');

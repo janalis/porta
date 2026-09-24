@@ -12,6 +12,7 @@ use Porta\History\RecentFilesStore;
 use Porta\I18n\Translator;
 use Porta\Support\ProjectPaths;
 use Porta\Support\Scheduler;
+use Porta\Ui\Glyphs;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -52,6 +53,14 @@ final class SearchEverywhereController
     private array $shown = [];
 
     /**
+     * @var array<int, SearchCategory> the async categories asked and not yet
+     *                                 answered for this query, by order — each
+     *                                 shows "Searching…" rather than nothing, so
+     *                                 a slow server reads as slow, not as empty
+     */
+    private array $pending = [];
+
+    /**
      * @param list<SearchSource> $syncSources  files, actions (run immediately)
      * @param list<SearchSource> $asyncSources classes, symbols, text (debounced)
      * @param ?int               $categoryCap  rows one category shows before a
@@ -84,6 +93,7 @@ final class SearchEverywhereController
         ++$this->generation;
         $this->hitsByCategory = [];
         $this->shown = [];
+        $this->pending = [];
         $this->overlay->openSearch(
             $this->translator->trans($this->title),
             $this->onQuery(...),
@@ -102,6 +112,7 @@ final class SearchEverywhereController
         // A new query is a new list; carrying an expansion over would show one
         // category swollen for a search that never asked for it.
         $this->shown = [];
+        $this->pending = [];
 
         if ('' === $text) {
             $this->seedEmpty();
@@ -112,6 +123,9 @@ final class SearchEverywhereController
 
         foreach ($this->syncSources as $source) {
             $source->query($text, $this->guard($generation, $source->category()));
+        }
+        foreach ($this->asyncSources as $source) {
+            $this->pending[$source->category()->order()] = $source->category();
         }
 
         $this->cancelDebounce();
@@ -137,12 +151,16 @@ final class SearchEverywhereController
             }
             /** @var list<SearchHit> $hits */
             $this->hitsByCategory[$category->order()] = $hits;
+            unset($this->pending[$category->order()]);
             $this->render();
         };
     }
 
     private function onPick(SearchHit $hit): void
     {
+        if (!$hit->enabled) {
+            return; // greyed like its menu item: there to be read, not run
+        }
         if ($hit->keepsOpen) {
             ($hit->activate)();
 
@@ -234,6 +252,12 @@ final class SearchEverywhereController
             $all = $this->hitsByCategory[$category->order()] ?? [];
             $limit = $this->shown[$category->order()] ?? $this->capFor($category);
             $hits = \array_slice($all, offset: 0, length: $limit);
+            if ([] === $hits && \array_key_exists($category->order(), $this->pending)) {
+                $rows[] = SearchRow::header($this->translator->trans($category->title()));
+                $rows[] = SearchRow::note(Glyphs::WORKING.' '.$this->translator->trans('Searching…'));
+
+                continue;
+            }
             if ([] === $hits) {
                 continue;
             }

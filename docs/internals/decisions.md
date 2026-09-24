@@ -10321,3 +10321,48 @@ caret readout now shows the worst diagnostic on the line, led by its glyph and
 coloured by its severity, where before it showed the first one in the error
 colour, whatever its severity.
 
+## UI round, phase 2: pickers behave like dialogs (2026-09-24)
+
+What the audit found:
+- **A click inside a picker closed it.** It closed on a header, on the query
+  field or on the frame, where only a click outside should.
+- **The fields had no caret keys.** They were append-and-backspace only, so a
+  rename's typo mid-word meant retyping the word.
+- **The command palette and Go to Symbol stopped at five rows.** They showed five
+  rows and a "more" row in a box that seats twelve.
+- **Go to File stopped at twenty.** It fetched twenty results, exactly its first
+  page, so its "more" row never appeared.
+- **A slow source moved the selection.** When its answer arrived, the selected
+  row index stayed while the rows moved under it, so Enter opened another row.
+- **A slow category showed nothing** until it answered.
+
+Changes:
+- **Keys.** `TextField::editKey()` holds the caret keys the settings form had
+  kept to itself, and every field and prompt now uses it. PgUp and PgDn page the
+  list, stopping at the ends. Tab walks the categories.
+- **Caps.** The single-category pickers take `SOLO_CAP`, and the file source
+  fetches 500 results.
+- **Selection.** It follows the hit, identified by its category, label and
+  detail, while the query stays the same.
+- **Pending state.** A pending category says `◌ Searching…`.
+- **Disabled commands.** The palette greys a command whose `when` is false, as
+  the menus do.
+- **Rows.** A row keeps at least half its width for the label, and the detail is
+  cut in the middle, so a path keeps both ends. Recent Files shows the directory
+  as its hint, instead of the file name a second time.
+
+**The list filter is shown from the start, which reverses "the filter row
+appears only once something is typed".** That rule kept unfiltered lists
+unchanged, but its cost was the one this round removes: on the first keystroke
+the box grew three rows and re-centred under the reader. A combobox shows its
+input, and the placeholder ("Type to filter") says what typing does. The box
+height is now a property of the whole list, like its width: narrowing pads the
+rows it hides rather than shrinking the box.
+
+**Home and End stay with the field** and do not jump the list. A combobox's
+input has the focus, and the caret needs them.
+
+**Deferred:** "No language server" in place of "no results" for Go to Symbol
+without a server. That needs the controller to ask the pool at open, which is
+one more constructor argument for one picker.
+

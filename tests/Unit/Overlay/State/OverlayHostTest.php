@@ -399,7 +399,11 @@ final class OverlayHostTest extends TestCase
         $widths = \array_unique(\array_map(AnsiUtils::visibleWidth(...), $box['rows']));
 
         $this->assertSame([$box['width']], \array_values($widths), 'every row the box\'s width');
-        $this->assertStringContainsString('hint ', AnsiUtils::stripAnsiCodes($box['rows'][2]), 'the long label was cut, not the hint after it (row 2: the title bar, the padding, then it)');
+        $this->assertStringContainsString(
+            'hint ',
+            AnsiUtils::stripAnsiCodes($box['rows'][5]),
+            'the long label was cut, not the hint after it (row 5: the title bar, the padding, the filter field, then it)',
+        );
         $accent = Styles::dark()->of(Role::TabAccent)->apply('✓');
         $rows = \array_values(\array_filter($box['rows'], static fn (string $row): bool => \str_contains(AnsiUtils::stripAnsiCodes($row), '✓')));
         $this->assertStringNotContainsString($accent, $rows[0], 'the selected row keeps its own shade');
@@ -644,6 +648,23 @@ final class OverlayHostTest extends TestCase
         $this->assertNull(Probe::get($host, 'overlay'));
         $this->assertNull($picked);
         $this->assertTrue($this->repainted());
+    }
+
+    /** Inside the list's box but on no item — its title bar — the click is swallowed and the list stays. */
+    public function testListOverlayClickInsideTheBoxOffAnItemKeepsItOpen(): void
+    {
+        $host = $this->host();
+        $picked = null;
+        $host->openList('Title', [['label' => 'a', 'hint' => '', 'value' => 'A']], static function (string $v) use (&$picked): void {
+            $picked = $v;
+        });
+        $host->layout([0, 0, 20, 80]);
+        $box = Probe::get($host, 'overlayBox');
+        Assert::assertInstanceOf(ModalBox::class, $box);
+
+        $this->assertTrue($host->clickAt($box->startRow, $box->col + 2), 'the title bar, left of the ×');
+        $this->assertNotNull(Probe::get($host, 'overlay'), 'still open');
+        $this->assertNull($picked);
     }
 
     public function testTheSearchModalCloseButtonCloses(): void
@@ -996,7 +1017,8 @@ final class OverlayHostTest extends TestCase
         $this->assertSame(2, $closed);
     }
 
-    public function testSearchClickOnAHeaderRowCloses(): void
+    /** A click inside the dialog that lands on no hit — a header, the query field — is swallowed; only outside closes. */
+    public function testSearchClickOnAHeaderRowIsSwallowedAndOutsideCloses(): void
     {
         $host = $this->host();
         $closed = 0;
@@ -1020,7 +1042,13 @@ final class OverlayHostTest extends TestCase
         }
         $this->assertGreaterThan(0, $topHitRow);
 
-        $host->searchClickAt($topHitRow - 1, 40); // click the category header → dismiss
+        $this->assertTrue($host->searchClickAt($topHitRow - 1, 40), 'the category header: consumed');
+        $this->assertSame(0, $closed, 'a click inside the dialog is no request to leave it');
+        $box = Probe::get($host, 'searchBox');
+        Assert::assertInstanceOf(ModalBox::class, $box);
+        $this->assertTrue($host->searchClickAt($box->startRow + 2, $box->col + 3), 'the query field: consumed');
+        $this->assertSame(0, $closed);
+        $this->assertTrue($host->searchClickAt(19, 79), 'outside the box');
         $this->assertSame(1, $closed);
     }
 
@@ -1415,13 +1443,14 @@ final class OverlayHostTest extends TestCase
         $host = $this->host();
         $host->openList('L', $items, static fn (): null => null);
 
-        // rows=5: rows-5=0, so max(1, min(20, 0, 12)) floors to exactly 1 item —
-        // a floor of 0 here would show none at all despite 20 real items.
-        $this->assertSame(1, $this->countVisibleListItems($host, rows: 5));
+        // rows=8: rows-5-3 (the filter field) = 0, so max(1, min(20, 0, 12))
+        // floors to exactly 1 item — a floor of 0 here would show none at all
+        // despite 20 real items.
+        $this->assertSame(1, $this->countVisibleListItems($host, rows: 8));
 
-        // rows=9: rows-5=4, distinct from both an off-by-one (3) and a sign
-        // flip (rows+5=14, capped at 12) — exactly 4 pins the real formula.
-        $this->assertSame(4, $this->countVisibleListItems($host, rows: 9));
+        // rows=12: 12-5-3 = 4, distinct from both an off-by-one (3) and a sign
+        // flip (capped at 12) — exactly 4 pins the real formula.
+        $this->assertSame(4, $this->countVisibleListItems($host, rows: 12));
     }
 
     public function testListOverlayWidthGrowsToFitTheWidestLabelPlusHint(): void
@@ -1444,5 +1473,211 @@ final class OverlayHostTest extends TestCase
 
         [$box] = $host->layout([0, 0, 20, 100]);
         $this->assertSame(50, $box['width'], '46 (label+detail+6) + 4 chrome columns');
+    }
+
+    /** The full editing keys every picker field and prompt share, bound as the IDE binds them. */
+    private function editingKeys(): Keybindings
+    {
+        return new Keybindings([
+            'select_cancel' => [Key::ESCAPE],
+            'accept_completion' => [Key::ENTER],
+            'cursor_up' => [Key::UP],
+            'cursor_down' => [Key::DOWN],
+            'page_up' => [Key::PAGE_UP],
+            'page_down' => [Key::PAGE_DOWN],
+            'delete_char_backward' => [Key::BACKSPACE],
+        ]);
+    }
+
+    /** A rename's typo mid-word is fixed where it is: the prompt's caret moves, and Delete and Ctrl+W edit at it. */
+    public function testThePromptCaretMovesAndEditsInPlace(): void
+    {
+        $host = $this->host();
+        $submitted = null;
+        $host->openPrompt('Rename', 'fooBar', static function (string $v) use (&$submitted): void {
+            $submitted = $v;
+        });
+        $kb = $this->editingKeys();
+
+        $host->handleInput("\x1b[H", $kb); // Home
+        $host->handleInput("\x1b[3~", $kb); // Delete: the f
+        $host->handleInput('g', $kb);
+        $this->clearRepaint();
+        $host->handleInput("\x1b[C", $kb); // →
+        $this->assertTrue($this->repainted(), 'a caret move repaints');
+        $host->handleInput("\x1b[F", $kb); // End
+        $host->handleInput("\x1b[D", $kb); // ←
+        $host->handleInput('x', $kb);
+        $host->handleInput("\r", $kb);
+
+        $this->assertSame('gooBaxr', $submitted);
+    }
+
+    /** The list filter takes the same caret keys; a Delete that changes the filter narrows afresh from the top. */
+    public function testTheListFilterCaretEditsAndRefilters(): void
+    {
+        $host = $this->host();
+        $picked = null;
+        $host->openList(
+            'T',
+            [['label' => 'alpha', 'hint' => '', 'value' => 'A'], ['label' => 'beta', 'hint' => '', 'value' => 'B'], ['label' => 'bet', 'hint' => '', 'value' => 'C']],
+            static function (string $v) use (&$picked): void {
+                $picked = $v;
+            },
+        );
+        $kb = $this->editingKeys();
+        foreach (['z', 'b', 'e'] as $key) {
+            $host->handleInput($key, $kb);
+        }
+        $this->assertStringContainsString('no matches', \implode("\n", $this->canvas($host, 80, 24)), 'zbe matches nothing');
+
+        $host->handleInput("\x1b[H", $kb); // Home — even with nothing matching, the caret moves
+        $host->handleInput("\x1b[3~", $kb); // Delete the z
+        $host->handleInput("\x1b[B", $kb); // ↓ to the second match
+        $host->handleInput("\r", $kb);
+
+        $this->assertSame('C', $picked, 'be matches beta and bet; the second was picked');
+    }
+
+    /** PgUp/PgDn move a box's worth of rows and stop at the ends, in the list and in the search modal. */
+    public function testPagingMovesABoxfulAndStopsAtTheEnds(): void
+    {
+        $host = $this->host();
+        $items = \array_map(static fn (int $i): array => ['label' => "item {$i}", 'hint' => '', 'value' => (string) $i], \range(0, end: 29));
+        $picked = null;
+        $host->openList('T', $items, static function (string $v) use (&$picked): void {
+            $picked = $v;
+        });
+        $host->layout([0, 0, 24, 80]);
+        $kb = $this->editingKeys();
+        $page = Probe::get($host, 'overlayBox')->count;
+        $this->assertGreaterThan(1, $page);
+
+        $host->handleInput("\x1b[6~", $kb);
+        $this->assertSame($page, Probe::get($host, 'overlay')['selected']);
+        foreach (\range(1, end: 5) as $_) {
+            $host->handleInput("\x1b[6~", $kb);
+        }
+        $this->assertSame(29, Probe::get($host, 'overlay')['selected'], 'stops on the last row, no wrap');
+        $host->handleInput("\x1b[5~", $kb);
+        $this->assertSame(29 - $page, Probe::get($host, 'overlay')['selected']);
+        $host->closeList();
+
+        $host->openSearch('S', static fn (): null => null, static fn (): null => null, static fn (): null => null);
+        $host->setSearchRows($this->searchRows(static fn (): null => null));
+        $host->layout([0, 0, 24, 80]);
+        $host->handleSearchInput("\x1b[6~", $kb);
+        $this->assertSame(4, Probe::get($host, 'search')->selected, 'past the Actions header to the last hit');
+        $host->handleSearchInput("\x1b[5~", $kb);
+        $this->assertSame(1, Probe::get($host, 'search')->selected, 'back to the first hit, never a header');
+    }
+
+    /** Tab and Shift+Tab land on the first hit of the next and previous category, wrapping. */
+    public function testTabWalksTheCategories(): void
+    {
+        $host = $this->host();
+        $host->openSearch('S', static fn (): null => null, static fn (): null => null, static fn (): null => null);
+        $host->setSearchRows($this->searchRows(static fn (): null => null));
+        $kb = $this->editingKeys();
+        $host->handleSearchInput("\x1b[B", $kb); // on b, still in Files
+
+        $host->handleSearchInput("\t", $kb);
+        $this->assertSame(4, Probe::get($host, 'search')->selected, 'Actions: c');
+        $host->handleSearchInput("\t", $kb);
+        $this->assertSame(1, Probe::get($host, 'search')->selected, 'wraps to Files: a');
+        $host->handleSearchInput("\x1b[Z", $kb);
+        $this->assertSame(4, Probe::get($host, 'search')->selected, 'Shift+Tab wraps back to Actions');
+        $host->handleSearchInput("\x1b[Z", $kb);
+        $this->assertSame(1, Probe::get($host, 'search')->selected);
+        $this->assertSame('', Probe::get($host, 'search')->query->value(), 'Tab typed nothing');
+
+        $host->setSearchRows($this->consecutiveHits(3)); // no categories to walk
+        $host->handleSearchInput("\x1b[B", $kb);
+        $host->handleSearchInput("\t", $kb);
+        $this->assertSame(1, Probe::get($host, 'search')->selected, 'Tab stays put');
+    }
+
+    /** The query's caret keys: a move repaints only; a Delete or Ctrl+W that changes the query asks again. */
+    public function testTheSearchQueryCaretKeysEditAndRequery(): void
+    {
+        $host = $this->host();
+        $queries = [];
+        $host->openSearch(
+            'S',
+            static function (string $q) use (&$queries): void {
+                $queries[] = $q;
+            },
+            static fn (): null => null,
+            static fn (): null => null,
+        );
+        $kb = $this->editingKeys();
+        foreach (['a', 'b', 'c'] as $key) {
+            $host->handleSearchInput($key, $kb);
+        }
+        $host->handleSearchInput("\x1b[H", $kb); // Home: no new query
+        $this->assertSame(['a', 'ab', 'abc'], $queries);
+
+        $host->handleSearchInput("\x1b[3~", $kb); // Delete the a
+        $host->handleSearchInput("\x1b[F", $kb);
+        $host->handleSearchInput("\x17", $kb); // Ctrl+W: the word before the caret
+
+        $this->assertSame(['a', 'ab', 'abc', 'bc', ''], $queries);
+    }
+
+    /**
+     * Rows for the query already answered keep the selected HIT where it moved
+     * to; rows for a new query select its best match. A slow source landing
+     * above the reader's choice used to leave Enter on a different row.
+     */
+    public function testStreamedRowsKeepTheChosenHitAndANewQueryResets(): void
+    {
+        $host = $this->host();
+        $host->openSearch('S', static fn (): null => null, static fn (): null => null, static fn (): null => null);
+        $noop = static fn (): null => null;
+        $host->setSearchRows([SearchRow::header('Files'), SearchRow::hit($this->hit(SearchCategory::Files, 'a', $noop)), SearchRow::hit($this->hit(SearchCategory::Files, 'b', $noop))]);
+        $host->handleSearchInput("\x1b[B", $this->editingKeys()); // b
+
+        $host->setSearchRows([
+            SearchRow::header('Classes'),
+            SearchRow::hit($this->hit(SearchCategory::Classes, 'K', $noop)),
+            SearchRow::header('Files'),
+            SearchRow::hit($this->hit(SearchCategory::Files, 'a', $noop)),
+            SearchRow::hit($this->hit(SearchCategory::Files, 'b', $noop)),
+        ]);
+        $this->assertSame(4, Probe::get($host, 'search')->selected, 'still b, three rows further down');
+
+        $host->handleSearchInput('x', $this->editingKeys()); // a new query
+        $host->setSearchRows([SearchRow::header('Files'), SearchRow::hit($this->hit(SearchCategory::Files, 'a', $noop)), SearchRow::hit($this->hit(SearchCategory::Files, 'b', $noop))]);
+        $this->assertSame(1, Probe::get($host, 'search')->selected, 'a new query starts on its best match');
+    }
+
+    /** The box is as wide as the widest row seen since it opened: narrower answers do not shrink it. */
+    public function testTheSearchBoxHoldsItsWidthAsTheQueryNarrows(): void
+    {
+        $host = $this->host();
+        $host->openSearch('S', static fn (): null => null, static fn (): null => null, static fn (): null => null);
+        $noop = static fn (): null => null;
+        $host->setSearchRows([SearchRow::header('Files'), SearchRow::hit(new SearchHit(SearchCategory::Files, \str_repeat('w', times: 40), 'dir', $noop))]);
+        $wide = $host->layout([0, 0, 24, 100])[0]['width'];
+
+        $host->setSearchRows([SearchRow::header('Files'), SearchRow::hit($this->hit(SearchCategory::Files, 'a', $noop))]);
+
+        $this->assertSame($wide, $host->layout([0, 0, 24, 100])[0]['width']);
+        $this->assertGreaterThan(40, $wide);
+    }
+
+    /** And as tall as the most rows seen: a query that finds less pads, rather than shrinking and re-centring the box. */
+    public function testTheSearchBoxHoldsItsHeightAsTheQueryNarrows(): void
+    {
+        $host = $this->host();
+        $host->openSearch('S', static fn (): null => null, static fn (): null => null, static fn (): null => null, 'no results');
+        $host->setSearchRows($this->searchRows(static fn (): null => null));
+        $tall = $host->layout([0, 0, 24, 100])[0];
+
+        $host->setSearchRows([]);
+        $short = $host->layout([0, 0, 24, 100])[0];
+
+        $this->assertSame([\count($tall['rows']), $tall['top']], [\count($short['rows']), $short['top']]);
+        $this->assertStringContainsString('no results', AnsiUtils::stripAnsiCodes(\implode("\n", $short['rows'])));
     }
 }

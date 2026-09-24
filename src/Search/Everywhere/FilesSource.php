@@ -14,7 +14,12 @@ use Porta\Support\ProjectPaths;
  */
 final readonly class FilesSource implements SearchSource
 {
-    private const int LIMIT = 20;
+    /**
+     * Well past a picker's first page ({@see SearchEverywhereController::SOLO_CAP}),
+     * so "N more results" appears and grows the list. At 20 it equalled the page,
+     * and a project with hundreds of matches showed twenty and no way on.
+     */
+    private const int LIMIT = 500;
 
     /** @param \Closure(string, OpenFocus): void $openFile fn(absolutePath, focus) */
     public function __construct(

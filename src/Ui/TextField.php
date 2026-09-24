@@ -161,6 +161,28 @@ final class TextField
         return $moved;
     }
 
+    /**
+     * Run one of the field's own caret keys — ←/→, Home/End, Delete, Ctrl+W —
+     * and return whether it changed anything (false for any other key, and for
+     * a key with nothing to do, such as ← at the start).
+     *
+     * Raw sequences rather than keybinding ids: these are the field's editing
+     * keys, not rebindable IDE actions, and every text field in the IDE spells
+     * them the same way — the settings form, the pickers' filters, the prompts.
+     */
+    public function editKey(string $data): bool
+    {
+        return match ($data) {
+            "\x1b[D" => $this->moveLeft(),
+            "\x1b[C" => $this->moveRight(),
+            "\x1b[H", "\x1bOH", "\x1b[1~" => $this->moveHome(),
+            "\x1b[F", "\x1bOF", "\x1b[4~" => $this->moveEnd(),
+            "\x1b[3~" => $this->deleteForward(),
+            "\x17" => $this->deleteWordBackward(),
+            default => false,
+        };
+    }
+
     /** Write $text at the caret and leave the caret after it. */
     private function write(string $text): void
     {

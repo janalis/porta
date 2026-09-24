@@ -161,7 +161,10 @@ final class OverlayHost
     }
 
     /**
-     * Replace the modal's rows, keeping selection on a hit row.
+     * Replace the modal's rows. Rows for the query already answered — a slow
+     * source arriving after the fast ones — keep the selected HIT, wherever it
+     * moved to, so Enter never opens a row the reader did not choose; rows for
+     * a new query select its best match, the first hit.
      *
      * @param list<SearchRow> $rows
      */
@@ -171,9 +174,21 @@ final class OverlayHost
         if (null === $search) {
             return;
         }
+        $was = $search->rowsFor === $search->query->value() ? $search->rows[$search->selected]->hit ?? null : null;
         $search->rows = $rows;
-        $search->selected = $this->firstHitAtOrAfter($rows, $search->selected);
+        $search->rowsFor = $search->query->value();
+        $kept = null === $was
+            ? null
+            : \array_find_key(
+                $rows,
+                static fn (SearchRow $row): bool => null !== $row->hit && $row->hit->category === $was->category && $row->hit->label === $was->label && $row->hit->detail === $was->detail,
+            );
+        $search->selected = $kept ?? $this->firstHitAtOrAfter($rows, 0);
         $search->hovered = null; // the rows moved under a still pointer
+        $search->tallest = \max($search->tallest, \count($rows));
+        foreach ($rows as $row) {
+            $search->widest = \max($search->widest, \mb_strwidth($row->header ?? $row->note ?? '') + 2, \mb_strwidth($row->hit->label ?? '') + \mb_strwidth($row->hit->detail ?? '') + 6);
+        }
         ($this->invalidate)();
     }
 
@@ -186,7 +201,9 @@ final class OverlayHost
     /**
      * Modal keyboard handling for the search box (driven by the global input
      * path): Esc closes, Up/Down move over hit rows only (headers skipped),
-     * Enter picks the selected hit, everything else edits the query.
+     * PgUp/PgDn a page of them, Tab/Shift+Tab to the next or previous
+     * category, Enter picks the selected hit; the query field takes its caret
+     * keys, and everything else edits the query.
      */
     public function handleSearchInput(string $keys, Keybindings $kb): void
     {
@@ -219,10 +236,29 @@ final class OverlayHost
 
             return;
         }
+        $jumped = $this->jumpHit($search, $keys, $kb);
+        if (null !== $jumped) {
+            $search->selected = $jumped;
+            ($this->invalidate)();
+
+            return;
+        }
         if ($kb->matches($keys, 'delete_char_backward')) {
             if ($search->query->backspace()) {
                 ($search->onQuery)($search->query->value());
             }
+
+            return;
+        }
+        $before = $search->query->value();
+        if ($search->query->editKey($keys)) {
+            // A caret move repaints; a Delete or Ctrl+W is a new query.
+            if ($before === $search->query->value()) {
+                ($this->invalidate)();
+
+                return;
+            }
+            ($search->onQuery)($search->query->value());
 
             return;
         }
@@ -233,7 +269,10 @@ final class OverlayHost
 
     /**
      * A left-click while the search modal is open: on a hit row it picks it,
-     * anywhere else it closes. Returns false when the modal is not open.
+     * on the × or outside the box it closes, and anywhere else inside the box
+     * (the query field, a header, the frame) it is swallowed — a click in a
+     * dialog is never a request to leave it. Returns false when the modal is
+     * not open.
      */
     public function searchClickAt(int $relRow, int $relCol): bool
     {
@@ -253,7 +292,9 @@ final class OverlayHost
 
             return true;
         }
-        ($search->onClose)();
+        if (null === $this->searchBox || !$this->searchBox->contains($relRow, $relCol)) {
+            ($search->onClose)();
+        }
 
         return true;
     }
@@ -267,7 +308,7 @@ final class OverlayHost
         }
         $closeChanged = $this->hoverClose(PickerSurface::Search, $this->searchBox, $relRow, $relCol);
         $index = $this->searchBox?->itemAt($relRow, $relCol);
-        $hovered = null !== $index && !$search->rows[$index]->isHeader() ? $index : null;
+        $hovered = null !== $index && $search->rows[$index]->isHit() ? $index : null;
         if ($hovered === $search->hovered) {
             return $closeChanged;
         }
@@ -324,7 +365,8 @@ final class OverlayHost
             return;
         }
 
-        if ($prompt['value']->insert($keys)) {
+        // The caret moves, so a rename's typo mid-word is fixed where it is.
+        if ($prompt['value']->editKey($keys) || $prompt['value']->insert($keys)) {
             ($this->invalidate)();
         }
     }
@@ -356,6 +398,13 @@ final class OverlayHost
 
             return;
         }
+        $before = $overlay['filter']->value();
+        if ($overlay['filter']->editKey($keys)) {
+            // A caret move repaints; a Delete or Ctrl+W narrows afresh.
+            $before === $overlay['filter']->value() ? ($this->invalidate)() : $this->refiltered($overlay);
+
+            return;
+        }
         // Nothing below can run against an empty list: every one of them steps
         // the selection modulo $count, and a filter that matches nothing makes
         // that a division by zero. The surface stays open showing why.
@@ -371,6 +420,14 @@ final class OverlayHost
         }
         if ($kb->matches($keys, 'cursor_down')) {
             $this->reselect($overlay, ($overlay['selected'] + 1) % $count);
+
+            return;
+        }
+        // A page is the rows the box shows; paging stops at the ends rather
+        // than wrapping, as a list box's does.
+        if ($kb->matches($keys, 'page_up') || $kb->matches($keys, 'page_down')) {
+            $page = \max(1, $this->overlayBox->count ?? 1) * ($kb->matches($keys, 'page_up') ? -1 : 1);
+            $this->reselect($overlay, \max(0, \min($count - 1, $overlay['selected'] + $page)));
 
             return;
         }
@@ -486,7 +543,8 @@ final class OverlayHost
 
     /**
      * A left-click while the list overlay is open (editor-pane-relative
-     * coords): on an item it picks it, anywhere else it dismisses. Always
+     * coords): on an item it picks it, on the × or outside the box it
+     * dismisses, and elsewhere inside the box it is swallowed. Always
      * consumed; returns false when the overlay is not open.
      */
     public function clickAt(int $relRow, int $relCol): bool
@@ -511,8 +569,10 @@ final class OverlayHost
 
             return true;
         }
-        $this->overlay = null;
-        ($this->invalidate)();
+        if (null === $this->overlayBox || !$this->overlayBox->contains($relRow, $relCol)) {
+            $this->overlay = null;
+            ($this->invalidate)();
+        }
 
         return true;
     }
@@ -578,11 +638,11 @@ final class OverlayHost
      */
     private function firstHitAtOrAfter(array $rows, int $from): int
     {
-        if (($rows[$from] ?? null) !== null && !$rows[$from]->isHeader()) {
+        if (($rows[$from] ?? null) !== null && $rows[$from]->isHit()) {
             return $from;
         }
         foreach ($rows as $i => $row) {
-            if (!$row->isHeader()) {
+            if ($row->isHit()) {
                 return $i;
             }
         }
@@ -622,12 +682,66 @@ final class OverlayHost
         $count = \count($search->rows);
         for ($step = 1; $step <= $count; ++$step) {
             $i = ((($search->selected + ($dir * $step)) % $count) + $count) % $count;
-            if (!$search->rows[$i]->isHeader()) {
+            if ($search->rows[$i]->isHit()) {
                 return $i;
             }
         }
 
         return $search->selected;
+    }
+
+    /**
+     * The row a paging or category key selects, or null when $keys is neither.
+     * PgUp/PgDn move a box's worth of hits and stop at the ends; Tab and
+     * Shift+Tab land on the first hit of the next or previous category,
+     * wrapping — the way a grouped list's sections are walked.
+     */
+    private function jumpHit(SearchModalState $search, string $keys, Keybindings $kb): ?int
+    {
+        if ([] === $search->rows) {
+            return null;
+        }
+        $dir = match (true) {
+            $kb->matches($keys, 'page_up') => -1,
+            $kb->matches($keys, 'page_down') => 1,
+            default => 0,
+        };
+        if (0 !== $dir) {
+            $at = $search->selected;
+            for ($moved = 0, $i = $at + $dir; $moved < \max(1, $this->searchBox->count ?? 1) && $i >= 0 && $i < \count($search->rows); $i += $dir) {
+                if (!$search->rows[$i]->isHit()) {
+                    continue;
+                }
+                $at = $i;
+                ++$moved;
+            }
+
+            return $at;
+        }
+        $step = match ($keys) {
+            "\t" => 1,
+            "\x1b[Z" => -1,
+            default => 0,
+        };
+        if (0 === $step) {
+            return null;
+        }
+        // Each category's first hit, in order; the one the selection is in is
+        // the last whose first hit it has reached.
+        $firsts = [];
+        foreach ($search->rows as $i => $row) {
+            if (!$row->isHeader() || !($search->rows[$i + 1] ?? $row)->isHit()) {
+                continue;
+            }
+            $firsts[] = $i + 1;
+        }
+        if ([] === $firsts) {
+            return null;
+        }
+        $current = \count(\array_filter($firsts, static fn (int $first): bool => $first <= $search->selected)) - 1;
+        $next = (((\max(0, $current) + $step) % \count($firsts)) + \count($firsts)) % \count($firsts);
+
+        return $firsts[$next];
     }
 
     /** Whether any picker surface (list, search, prompt) is open. */
@@ -740,7 +854,14 @@ final class OverlayHost
             // the unnarrowed list so it does not shrink and re-centre under
             // the reader on every keystroke.
             $placed[] = $this->place(
-                PickerLayout::layoutList($bounds, $this->overlay, $this->styles, PickerSurface::ListOverlay === $this->closeHovered, $this->translator->trans('no matches')),
+                PickerLayout::layoutList(
+                    $bounds,
+                    $this->overlay,
+                    $this->styles,
+                    PickerSurface::ListOverlay === $this->closeHovered,
+                    $this->translator->trans('no matches'),
+                    $this->translator->trans('Type to filter'),
+                ),
                 $this->overlayBox,
             );
         }
@@ -748,7 +869,10 @@ final class OverlayHost
             // Only the TOPMOST surface renders the caret (the prompt wins): two
             // markers in one frame mangle ScreenWriter's cursor conversion.
             $caret = null === $this->prompt ? CaretVisibility::Shown : CaretVisibility::Hidden;
-            $placed[] = $this->place(PickerLayout::layoutSearch($bounds, $this->search, $this->styles, PickerSurface::Search === $this->closeHovered, $caret), $this->searchBox);
+            $placed[] = $this->place(
+                PickerLayout::layoutSearch($bounds, $this->search, $this->styles, PickerSurface::Search === $this->closeHovered, $caret, $this->translator->trans('Type to search…')),
+                $this->searchBox,
+            );
         }
         if (null !== $this->prompt) {
             $placed[] = $this->place(PickerLayout::layoutPrompt($bounds, $this->prompt, $this->styles, PickerSurface::Prompt === $this->closeHovered), $this->promptBox);
