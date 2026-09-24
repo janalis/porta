@@ -732,4 +732,55 @@ final class IdeRtlLocaleTest extends TestCase
             ],
         );
     }
+
+    /**
+     * A picker mirrors with the locale: its title, and its rows' layout — the
+     * label where an RTL reader starts, on the right, its hint to the left of
+     * it, and a Latin label still readable left to right. A click on a row
+     * still picks that row.
+     */
+    public function testAPickerMirrorsItsRowsAndStillPicksWhatIsClicked(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $project = new TempProject([
+            '.porta.json' => \json_encode(['settings' => ['language' => 'he']]),
+            'a.php' => "<?php\n",
+        ]);
+        $picked = null;
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                300 => static function (Tui $tui) use (&$picked): void {
+                    $tui->getById('editor')->openListOverlay(
+                        'Pick',
+                        [
+                            ['label' => 'alpha', 'hint' => 'first', 'value' => 'A'],
+                            ['label' => 'beta', 'hint' => '', 'value' => 'B'],
+                        ],
+                        static function (string $value) use (&$picked): void {
+                            $picked = $value;
+                        },
+                    );
+                },
+                500 => function (Tui $tui, VirtualTerminal $terminal): void {
+                    $screen = $this->screenGrid($tui, $terminal);
+                    $alpha = $screen[$this->rowWith($screen, 'alpha')];
+                    $beta = $screen[$this->rowWith($screen, 'beta')];
+
+                    $this->assertLessThan(\mb_strpos($alpha, needle: 'alpha'), \mb_strpos($alpha, needle: 'first'), "the hint left of its label:\n{$alpha}");
+                    $this->assertSame(\mb_strpos($alpha, needle: 'alpha') + 5, \mb_strpos($beta, needle: 'beta') + 4, "the labels end in one column, on the right:\n{$alpha}\n{$beta}");
+                    $this->assertStringContainsString('▐', $alpha, 'the selection bar, mirrored to the leading edge');
+
+                    $row = $this->rowWith($screen, 'beta');
+                    $col = \mb_strpos($beta, needle: 'beta');
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $col + 2, $row + 1));
+                },
+                700 => function () use (&$picked): void {
+                    $this->assertSame('B', $picked, 'the click picked the row it landed on');
+                },
+            ],
+        );
+    }
 }

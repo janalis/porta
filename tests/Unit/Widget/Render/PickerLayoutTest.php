@@ -354,4 +354,83 @@ final class PickerLayoutTest extends TestCase
         $this->assertStringContainsString('Things', $plain, 'and its tail');
         $this->assertStringContainsString('…', $plain);
     }
+
+    /**
+     * The shapes a picker's rows carry without colour: the selected row's ▌
+     * in its first column, a category as a `─ Files ─` legend, the query's
+     * matched characters marked, and the grow row led by an ellipsis.
+     */
+    public function testSearchRowsCarryTheirStateAsShapes(): void
+    {
+        $noop = static fn (): null => null;
+        $state = new SearchModalState('Search', new TextField('re'), $noop, $noop, $noop);
+        $state->rows = [
+            SearchRow::header('Classes'),
+            SearchRow::hit(new SearchHit(SearchCategory::Classes, 'Greeter', 'src/Greeter.php:4', $noop)),
+            SearchRow::hit(new SearchHit(SearchCategory::Classes, 'Grey', '', $noop)),
+            SearchRow::hit(new SearchHit(SearchCategory::Classes, 'Restart', '', $noop, enabled: false)),
+            SearchRow::hit(new SearchHit(SearchCategory::Classes, '3 more results', '', $noop, keepsOpen: true)),
+        ];
+        $state->selected = 1;
+        $state->widest = 60;
+        $rows = PickerLayout::layoutSearch([0, 0, 24, 100], $state, $this->styles(), closeHovered: false, caret: CaretVisibility::Hidden)['rows'];
+        $plain = \array_map(AnsiUtils::stripAnsiCodes(...), $rows);
+        $line = static fn (string $needle): int => \array_key_first(\array_filter($plain, static fn (string $r): bool => \str_contains($r, $needle)));
+
+        $this->assertMatchesRegularExpression('/│ ─ Classes ─+ │/u', $plain[$line('Classes')], 'the category is a legend rule');
+        $this->assertStringStartsWith('│ ▌Greeter', $plain[$line('Greeter')], 'the selected row, barred');
+        $this->assertStringStartsWith('│  Grey', $plain[$line('Grey')], 'the others, not');
+        $this->assertStringContainsString("\e[1m\e[4mr\e[24m\e[22m\e[1m\e[4me", $rows[$line('Grey')], 'the matched characters marked');
+        $this->assertStringContainsString('… 3 more results', $plain[$line('more results')]);
+        $this->assertStringNotContainsString("\e[4m", $rows[$line('more results')], 'the grow row is an action, never a match');
+        $this->assertStringNotContainsString("\e[1m\e[4m", $rows[$line('Restart')], 'a greyed command is not offered as a match');
+    }
+
+    /** A clipped list says so: ▼ in the frame's bottom padding, and where the selection is in the bottom border. */
+    public function testAClippedListShowsItsCuesAndPosition(): void
+    {
+        $items = \array_map(static fn (int $i): array => ['label' => "item {$i}", 'hint' => '', 'value' => (string) $i], \range(0, end: 29));
+        $out = PickerLayout::layoutList(
+            [0, 0, 24, 100],
+            ['title' => 'Many', 'items' => $items, 'selected' => 0, 'hovered' => null, 'filter' => new TextField(), 'onPick' => static fn (): null => null],
+            $this->styles(),
+            closeHovered: false,
+        );
+        $plain = \array_map(AnsiUtils::stripAnsiCodes(...), $out['rows']);
+
+        $this->assertStringNotContainsString('▲', $plain[1], 'nothing above the first row');
+        $this->assertStringContainsString('▼', $plain[\count($plain) - 2], 'more below');
+        $this->assertMatchesRegularExpression('/╰─+ 1\/30 ─╯/u', \array_last($plain));
+
+        $out = PickerLayout::layoutList(
+            [0, 0, 24, 100],
+            ['title' => 'Many', 'items' => $items, 'selected' => 29, 'hovered' => null, 'filter' => new TextField(), 'onPick' => static fn (): null => null],
+            $this->styles(),
+            closeHovered: false,
+        );
+        $plain = \array_map(AnsiUtils::stripAnsiCodes(...), $out['rows']);
+        $this->assertStringContainsString('▲', $plain[1]);
+        $this->assertStringNotContainsString('▼', $plain[\count($plain) - 2]);
+        $this->assertMatchesRegularExpression('/╰─+ 30\/30 ─╯/u', \array_last($plain));
+
+        $few = PickerLayout::layoutList(
+            [0, 0, 24, 100],
+            ['title' => 'Few', 'items' => \array_slice($items, offset: 0, length: 3), 'selected' => 0, 'hovered' => null, 'filter' => new TextField(), 'onPick' => static fn (): null => null],
+            $this->styles(),
+            closeHovered: false,
+        );
+        $this->assertMatchesRegularExpression('/╰─+╯/u', AnsiUtils::stripAnsiCodes(\array_last($few['rows'])), 'a list that fits has no count');
+
+        $narrow = PickerLayout::layoutList(
+            [0, 0, 24, 9],
+            ['title' => 'M', 'items' => $items, 'selected' => 12, 'hovered' => null, 'filter' => new TextField(), 'onPick' => static fn (): null => null],
+            $this->styles(),
+            closeHovered: false,
+        );
+        $this->assertSame(
+            [$narrow['width']],
+            \array_values(\array_unique(\array_map(AnsiUtils::visibleWidth(...), $narrow['rows']))),
+            'a count that does not fit is left out, not drawn past the corner',
+        );
+    }
 }

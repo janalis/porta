@@ -84,9 +84,9 @@ final class ModalFrame
      *
      * @return list<string>
      */
-    public static function wrap(array $content, int $innerWidth, Styles $styles, bool $resizeCornerHot = false): array
+    public static function wrap(array $content, int $innerWidth, Styles $styles, bool $resizeCornerHot = false, ?ListOverflow $overflow = null): array
     {
-        return self::wrapSections([$content], $innerWidth, $styles, $resizeCornerHot);
+        return self::wrapSections([$content], $innerWidth, $styles, $resizeCornerHot, $overflow);
     }
 
     /**
@@ -101,13 +101,16 @@ final class ModalFrame
      * @return list<string>
      */
     // @mago-expect lint:no-boolean-flag-parameter -- the bool IS the domain here, not a hidden second responsibility.
-    public static function wrapSections(array $sections, int $innerWidth, Styles $styles, bool $resizeCornerHot = false): array
+    public static function wrapSections(array $sections, int $innerWidth, Styles $styles, bool $resizeCornerHot = false, ?ListOverflow $overflow = null): array
     {
         $accent = $styles->of(Role::TabAccent);
         $rail = $accent->apply(Glyphs::FRAME_VERTICAL);
         $pad = $rail.AnsiText::blank($innerWidth + 2).$rail;
+        // A clipped list says so in the padding it already has: ▲ above, ▼
+        // below, centred and faint, the tab strip's and settings nav's cue.
+        $cue = static fn (bool $more, string $glyph): string => $more ? $rail.' '.EdgeIndicator::row($glyph, $innerWidth, $styles).' '.$rail : $pad;
 
-        $rows = [$pad];
+        $rows = [$cue($overflow->above ?? false, Glyphs::SCROLL_UP)];
         foreach ($sections as $i => $section) {
             if ($i > 0) {
                 $rows[] = $accent->apply(Glyphs::MODAL_TEE_LEFT.\str_repeat(Glyphs::FRAME_HORIZONTAL, \max(0, $innerWidth + 2)).Glyphs::MODAL_TEE_RIGHT);
@@ -116,7 +119,7 @@ final class ModalFrame
                 $rows[] = $rail.' '.AnsiText::truncate($line, \max(0, $innerWidth), pad: true).' '.$rail;
             }
         }
-        $rows[] = $pad;
+        $rows[] = $cue($overflow->below ?? false, Glyphs::SCROLL_DOWN);
         // The bottom-right corner is the resizable modals' grab: thin rounded
         // at rest (identical to a non-resizable box — the hover reveals it,
         // the SeparatorWidget convention), heavy and bright while the pointer
@@ -124,7 +127,14 @@ final class ModalFrame
         $corner = $resizeCornerHot
             ? $styles->of(Role::Bright)->withBold()->apply(Glyphs::MODAL_RESIZE_GRAB)
             : $accent->apply(Glyphs::MODAL_BOTTOM_RIGHT);
-        $rows[] = $accent->apply(Glyphs::MODAL_BOTTOM_LEFT.\str_repeat(Glyphs::FRAME_HORIZONTAL, \max(0, $innerWidth + 2))).$corner;
+        // Where the reader is in a clipped list — `3/40` — set into the bottom
+        // border, as a trailing hint sits in a field's.
+        $position = null === $overflow || !$overflow->clipped() || (\mb_strwidth($overflow->position()) + 3) > ($innerWidth + 2) ? '' : ' '.$overflow->position().' ';
+        $fill = \max(0, $innerWidth + 2 - \mb_strwidth($position) - ('' === $position ? 0 : 1));
+        $rows[] =
+            $accent->apply(Glyphs::MODAL_BOTTOM_LEFT.\str_repeat(Glyphs::FRAME_HORIZONTAL, $fill))
+            .('' === $position ? '' : $styles->of(Role::Dim)->apply($position).$accent->apply(Glyphs::FRAME_HORIZONTAL))
+            .$corner;
 
         return $rows;
     }

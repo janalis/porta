@@ -51,9 +51,12 @@ final class PickerModalPresenter
     }
 
     /**
-     * The painted boxes (shadow bands included) as LTR floating regions: the
-     * pickers carry file paths and code, so under RTL they stay verbatim —
-     * their own runs, never mirrored with the prose panes beneath.
+     * The painted boxes (shadow bands included) as bidi floating regions, each
+     * its own run: under RTL the title, the legends, the notes and the rows'
+     * layout mirror with the locale, as the toasts and Welcome do. A path or a
+     * symbol is a Latin run inside its row, and the bidi algorithm keeps a
+     * Latin run in its own order — the label stays readable, only its place
+     * in the row moves to where an RTL reader starts.
      *
      * @return list<DropdownRegion>
      */
@@ -89,7 +92,7 @@ final class PickerModalPresenter
         $this->delivery->deliverModal($placed);
         $this->shown = true;
         $this->shadowRegions = \array_map(
-            static fn (array $box): DropdownRegion => DropdownRegion::shadowClamped($box['top'], $box['col'], $box['width'], \count($box['rows']), $bounds, ltr: true),
+            static fn (array $box): DropdownRegion => DropdownRegion::shadowClamped($box['top'], $box['col'], $box['width'], \count($box['rows']), $bounds),
             $placed,
         );
     }

@@ -76,4 +76,15 @@ final class FuzzyMatcherTest extends TestCase
         $this->assertGreaterThan($withoutHumps, $withHumps);
         $this->assertNull(FuzzyMatcher::scoreLowered('abc', 'xyz'), 'non-subsequence still null');
     }
+
+    /** The query as one run where it occurs whole; else the scored greedy subsequence; else nothing. */
+    public function testPositionsPreferAWholeRunThenTheSubsequence(): void
+    {
+        $this->assertSame([6, 7, 8], FuzzyMatcher::positions('Hello World', 'WOR'), 'a whole run, case-insensitively');
+        $this->assertSame([0, 7, 18], FuzzyMatcher::positions('ExampleController.php', 'ecp'), 'the first occurrence of each, in order');
+        $this->assertSame([], FuzzyMatcher::positions('abc', 'z'));
+        $this->assertSame([], FuzzyMatcher::positions('abc', 'ca'), 'out of order is no match');
+        $this->assertSame([], FuzzyMatcher::positions('abc', ''));
+        $this->assertSame([1, 2], FuzzyMatcher::positions('éÉè', 'éè'), 'by character, not by byte');
+    }
 }

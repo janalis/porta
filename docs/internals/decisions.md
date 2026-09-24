@@ -10366,3 +10366,28 @@ input has the focus, and the caret needs them.
 without a server. That needs the controller to ask the pool at open, which is
 one more constructor argument for one picker.
 
+## UI round, phase 3: pickers say it with shapes (2026-09-24)
+
+A picker's state used to be drawn in colour: the selected row's shade, a dim
+category word, and no sign that a list was clipped or why a row had matched.
+Each now has a shape, reusing the vocabulary the other lists already speak:
+- **The selected row** gets the `▌` bar.
+- **A category** is a fieldset legend.
+- **A clipped list** shows the tab strip's `▲`/`▼`. The cues sit in the frame's
+  existing padding rows, so the box does not grow, and a click on one pages.
+  The selected row's place (`3/40`) is set into the bottom border.
+- **Matched characters** are bold and underlined. They are computed where the
+  row is drawn: a whole-run match first, else the matcher's greedy subsequence.
+  That means no source had to start carrying positions. A Files hit that
+  matched in its directory rather than its name shows no marks, which is the
+  truth about its label.
+
+**The pickers mirror under RTL, which reverses "they stay verbatim".** That
+rule treated a picker as code, because it carries paths. But a path is a Latin
+run and keeps its order inside a mirrored row. What did not mirror was
+everything else: the title, the categories, the row layout. The one trap is a
+row that is all Latin (label, gap, key). It resolves into one left-to-right
+run and never mirrors. The fix is the settings form's: a right-to-left mark in
+the gap, spent for a space. The Hebrew E2e checks both the layout and that a
+click still picks the row it lands on.
+

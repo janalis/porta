@@ -4,12 +4,16 @@ declare(strict_types=1);
 
 namespace Porta\Widget\Render;
 
+use Porta\I18n\BaseDirection;
+use Porta\I18n\Bidi;
 use Porta\Overlay\Region\ModalBox;
 use Porta\Overlay\State\SearchModalState;
 use Porta\Search\Everywhere\SearchHit;
+use Porta\Search\Everywhere\SearchRow;
 use Porta\Support\AnsiText;
 use Porta\Support\IntMath;
 use Porta\Ui\CaretVisibility;
+use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Porta\Ui\TextField;
 use Porta\Ui\Theme\Styles;
@@ -43,8 +47,15 @@ final class PickerLayout
      *
      * @return array{rows: list<string>, top: int, col: int, width: int, box: ModalBox}
      */
-    public static function layoutList(array $bounds, array $overlay, Styles $styles, bool $closeHovered, string $emptyMessage = '', string $placeholder = ''): array
-    {
+    public static function layoutList(
+        array $bounds,
+        array $overlay,
+        Styles $styles,
+        bool $closeHovered,
+        string $emptyMessage = '',
+        string $placeholder = '',
+        BaseDirection $direction = BaseDirection::Ltr,
+    ): array {
         [$boundTop, $boundLeft, $boundBottom, $boundRight] = $bounds;
         $columns = $boundRight - $boundLeft;
         $rows = $boundBottom - $boundTop;
@@ -90,8 +101,11 @@ final class PickerLayout
             // A checklist's box leads its label, as a browser's does, and is
             // not part of it: the filter matches the words alone.
             $box = \array_key_exists('checked', $item) ? FieldBox::checkbox($item['checked'], tint: RowSelection::Selected === $row ? null : $styles).' ' : '';
-            $label = AnsiText::truncate($item['label'], $width - $hintWidth - 3 - self::boxWidth($item), pad: true);
-            $content[] = $style->apply(' '.$box.$label.' '.$styles->of(Role::CompletionHint)->apply($item['hint']).' ');
+            $selectedRow = RowSelection::Selected === $row;
+            $label = MatchMarks::apply(AnsiText::truncate($item['label'], $width - $hintWidth - 3 - self::boxWidth($item), pad: true), $item['label'], $filter, $selectedRow);
+            // The first column is the selection's shape, the ▌ every list in
+            // the IDE draws, so the row reads as chosen without its shade.
+            $content[] = $style->apply(SelectionBar::of($selectedRow, focused: true)->value.$box.$label.self::gap($direction).$styles->of(Role::CompletionHint)->apply($item['hint']).' ');
         }
         if ([] === $visible) {
             $content[] = $styles->merge(Role::PopupRow, Role::CompletionHint)->apply(AnsiText::truncate(' '.$emptyMessage, $width, pad: true, ellipsis: ''));
@@ -117,7 +131,7 @@ final class PickerLayout
         );
         $popup = [
             ModalFrame::titleBar($overlay['title'], $width + ModalFrame::CHROME_COLS, $styles, $closeHovered),
-            ...ModalFrame::wrap([...$header, ...$content], $width, $styles),
+            ...ModalFrame::wrap([...$header, ...$content], $width, $styles, overflow: ListOverflow::of($windowStart, \count($visible), $selected, \count($items))),
         ];
 
         [$top, $col] = self::centered($bounds, \count($popup), $width + ModalFrame::CHROME_COLS);
@@ -139,8 +153,15 @@ final class PickerLayout
      *
      * @return array{rows: list<string>, top: int, col: int, width: int, box: ModalBox}
      */
-    public static function layoutSearch(array $bounds, SearchModalState $search, Styles $styles, bool $closeHovered, CaretVisibility $caret, string $placeholder = ''): array
-    {
+    public static function layoutSearch(
+        array $bounds,
+        SearchModalState $search,
+        Styles $styles,
+        bool $closeHovered,
+        CaretVisibility $caret,
+        string $placeholder = '',
+        BaseDirection $direction = BaseDirection::Ltr,
+    ): array {
         [$boundTop, $boundLeft, $boundBottom, $boundRight] = $bounds;
         $columns = $boundRight - $boundLeft;
         $rows = $boundBottom - $boundTop;
@@ -173,16 +194,22 @@ final class PickerLayout
         $popup = FieldBox::render(new FieldSpec('', placeholder: $placeholder, surface: Role::Toolbar), $search->query, FieldState::of(CaretVisibility::Shown === $caret), $caret, $width, $styles);
         foreach ($visible as $i => $row) {
             $hit = $row->hit;
-            if (null === $hit) {
-                // A header, or a note under one ("Searching…") — neither is a result.
-                $popup[] = $styles
-                    ->merge(Role::PopupRow, null !== $row->header ? Role::Dim : Role::CompletionHint)
-                    ->apply(AnsiText::truncate(' '.($row->header ?? $row->note ?? ''), $width, pad: true));
+            if (null !== $row->header) {
+                // A category is a fieldset's legend, `─ Files ───`: a rule that
+                // groups by shape, where a dim word needed its colour.
+                $popup[] = $styles->of(Role::PopupRow)->apply(FieldBox::fieldsetLegend($row->header, $width, $styles));
 
                 continue;
             }
-            $style = $styles->of(ModalRowStyle::role(RowSelection::of(($windowStart + $i) === $search->selected, ($windowStart + $i) === $search->hovered)));
-            $popup[] = $style->apply(' '.self::hitCells($hit, \max(1, $width - 3), $style, $styles).' ');
+            if (null === $hit) {
+                // A note under a header ("Searching…") — no result.
+                $popup[] = $styles->merge(Role::PopupRow, Role::CompletionHint)->apply(AnsiText::truncate(' '.($row->note ?? ''), $width, pad: true));
+
+                continue;
+            }
+            $selected = ($windowStart + $i) === $search->selected;
+            $style = $styles->of(ModalRowStyle::role(RowSelection::of($selected, ($windowStart + $i) === $search->hovered)));
+            $popup[] = $style->apply(SelectionBar::of($selected, focused: true)->value.self::hitCells($hit, \max(1, $width - 3), $style, $styles, $search->query->value(), $selected, $direction).' ');
         }
         // A no-hit query gets the same empty-state filler the find-in-files
         // modal ({@see FindInFilesModal}) shows: the popup's own base row
@@ -195,7 +222,7 @@ final class PickerLayout
         }
         $framed = [
             ModalFrame::titleBar($search->title, $width + ModalFrame::CHROME_COLS, $styles, $closeHovered),
-            ...ModalFrame::wrap($popup, $width, $styles),
+            ...ModalFrame::wrap($popup, $width, $styles, overflow: self::searchOverflow($search, $windowStart, \count($visible))),
         ];
 
         [$top, $col] = self::centered($bounds, \count($framed), $width + ModalFrame::CHROME_COLS);
@@ -251,16 +278,47 @@ final class PickerLayout
      * and struck through, as its greyed menu item is: attributes, so the state
      * survives --no-ansi.
      */
-    private static function hitCells(SearchHit $hit, int $avail, Style $row, Styles $styles): string
+    private static function hitCells(SearchHit $hit, int $avail, Style $row, Styles $styles, string $query, bool $selected, BaseDirection $direction): string
     {
-        $labelFloor = \min(\mb_strwidth($hit->label), \max(1, \intdiv($avail + 1, num2: 2)));
+        // The row that grows the list reads as an action, not a result: led
+        // by an ellipsis, and never marked as matching the query.
+        $text = $hit->keepsOpen ? Glyphs::ELLIPSIS.' '.$hit->label : $hit->label;
+        $labelFloor = \min(\mb_strwidth($text), \max(1, \intdiv($avail + 1, num2: 2)));
         $detail = AnsiText::elideMiddle($hit->detail, \max(0, $avail - $labelFloor - 1));
-        $label = AnsiText::truncate($hit->label, \max(1, $avail - AnsiUtils::visibleWidth($detail)), pad: true);
+        $label = AnsiText::truncate($text, \max(1, $avail - AnsiUtils::visibleWidth($detail)), pad: true);
+        if ($hit->enabled && !$hit->keepsOpen) {
+            $label = MatchMarks::apply($label, $text, $query, $selected);
+        }
         if (!$hit->enabled) {
             $label = $row->withDim()->withStrikethrough()->apply(\rtrim($label)).$row->getAnsiRestore().\str_repeat(' ', \max(0, \mb_strwidth($label) - \mb_strwidth(\rtrim($label))));
         }
 
-        return $label.' '.$styles->of(Role::CompletionHint)->apply($detail);
+        return $label.self::gap($direction).$styles->of(Role::CompletionHint)->apply($detail);
+    }
+
+    /**
+     * The column between a row's label and its hint. Under RTL it is a
+     * right-to-left mark, spent for a space when the row is drawn: a Latin
+     * label, the spaces and a Latin hint would otherwise resolve into ONE
+     * left-to-right run and never mirror, so the label would stay left and a
+     * row with no hint would sit right — the mark ends the label's run, and
+     * every row puts its label where an RTL reader starts.
+     */
+    private static function gap(BaseDirection $direction): string
+    {
+        return BaseDirection::Rtl === $direction ? Bidi::RTL_MARK : ' ';
+    }
+
+    /**
+     * Where the search window sits: rows hidden above and below, and the
+     * selected hit's place among the HITS — a header is no place to be.
+     */
+    private static function searchOverflow(SearchModalState $search, int $windowStart, int $shown): ListOverflow
+    {
+        $hits = \array_keys(\array_filter($search->rows, static fn (SearchRow $row): bool => $row->isHit()));
+        $place = \array_search($search->selected, $hits, strict: true);
+
+        return new ListOverflow($windowStart > 0, ($windowStart + $shown) < \count($search->rows), false === $place ? 0 : $place + 1, \count($hits));
     }
 
     /**

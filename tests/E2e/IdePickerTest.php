@@ -11,6 +11,7 @@ use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\TempProject;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Tui;
 
@@ -59,7 +60,8 @@ final class IdePickerTest extends TestCase
                     // The eleventh row is the one the shared cap made
                     // unreachable without activating a grow row first.
                     $this->await(
-                        static fn (): bool => \str_contains(\implode("\n", Paint::lines($tui->getById('editor'), new RenderContext(120, 30))), 'Thing11.php'),
+                        // Stripped: the query's matched characters are marked.
+                        static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes(\implode("\n", Paint::lines($tui->getById('editor'), new RenderContext(120, 30)))), 'Thing11.php'),
                         what: 'the picker to fill its box',
                     );
 

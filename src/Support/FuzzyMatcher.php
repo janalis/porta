@@ -67,4 +67,42 @@ final class FuzzyMatcher
 
         return $score - \intdiv($length, num2: 10);
     }
+
+    /**
+     * Which characters of $haystack a reader should see matched by $query, as
+     * character offsets: the query as one run where it occurs whole (a grep
+     * hit, a filter's substring), else the same greedy first-occurrence
+     * subsequence {@see scoreLowered()} scores; [] when it matches neither.
+     *
+     * For display only — a picker marks these so the reader sees WHY a row
+     * matched. Case-insensitive, and multibyte-safe, since a label may be in
+     * any script.
+     *
+     * @return list<int>
+     */
+    public static function positions(string $haystack, string $query): array
+    {
+        $hay = \mb_str_split(\mb_strtolower($haystack));
+        $needle = \mb_str_split(\mb_strtolower($query));
+        if ([] === $needle || [] === $hay) {
+            return [];
+        }
+        $run = \mb_strpos(\implode('', $hay), \implode('', $needle));
+        if (false !== $run) {
+            return \range($run, $run + \count($needle) - 1);
+        }
+        $positions = [];
+        $at = 0;
+        foreach ($needle as $char) {
+            while ($at < \count($hay) && $hay[$at] !== $char) {
+                ++$at;
+            }
+            if (\count($hay) === $at) {
+                return [];
+            }
+            $positions[] = $at++;
+        }
+
+        return $positions;
+    }
 }

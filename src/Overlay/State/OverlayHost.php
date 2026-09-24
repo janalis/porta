@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Overlay\State;
 
 use Porta\Container\AsIdeService;
+use Porta\I18n\BaseDirection;
 use Porta\I18n\Translator;
 use Porta\Overlay\Region\ModalBox;
 use Porta\Search\Everywhere\SearchHit;
@@ -187,7 +188,7 @@ final class OverlayHost
         $search->hovered = null; // the rows moved under a still pointer
         $search->tallest = \max($search->tallest, \count($rows));
         foreach ($rows as $row) {
-            $search->widest = \max($search->widest, \mb_strwidth($row->header ?? $row->note ?? '') + 2, \mb_strwidth($row->hit->label ?? '') + \mb_strwidth($row->hit->detail ?? '') + 6);
+            $search->widest = \max($search->widest, \mb_strwidth($row->header ?? $row->note ?? '') + 4, \mb_strwidth($row->hit->label ?? '') + \mb_strwidth($row->hit->detail ?? '') + 6);
         }
         ($this->invalidate)();
     }
@@ -289,6 +290,13 @@ final class OverlayHost
         $hit = null === $index ? null : $search->rows[$index]->hit ?? null;
         if (null !== $hit) {
             ($search->onPick)($hit);
+
+            return true;
+        }
+        $cue = null === $this->searchBox ? 0 : self::edgeCue($this->searchBox, $relRow, \count($search->rows));
+        if (0 !== $cue) {
+            $search->selected = $this->pageHit($search, $cue);
+            ($this->invalidate)();
 
             return true;
         }
@@ -569,6 +577,14 @@ final class OverlayHost
 
             return true;
         }
+        $count = \count($this->matching($overlay));
+        $box = $this->overlayBox;
+        $cue = null === $box ? 0 : self::edgeCue($box, $relRow, $count);
+        if (null !== $box && 0 !== $cue) {
+            $this->reselect($overlay, \max(0, \min($count - 1, $overlay['selected'] + ($cue * $box->count))));
+
+            return true;
+        }
         if (null === $this->overlayBox || !$this->overlayBox->contains($relRow, $relCol)) {
             $this->overlay = null;
             ($this->invalidate)();
@@ -707,16 +723,7 @@ final class OverlayHost
             default => 0,
         };
         if (0 !== $dir) {
-            $at = $search->selected;
-            for ($moved = 0, $i = $at + $dir; $moved < \max(1, $this->searchBox->count ?? 1) && $i >= 0 && $i < \count($search->rows); $i += $dir) {
-                if (!$search->rows[$i]->isHit()) {
-                    continue;
-                }
-                $at = $i;
-                ++$moved;
-            }
-
-            return $at;
+            return $this->pageHit($search, $dir);
         }
         $step = match ($keys) {
             "\t" => 1,
@@ -742,6 +749,35 @@ final class OverlayHost
         $next = (((\max(0, $current) + $step) % \count($firsts)) + \count($firsts)) % \count($firsts);
 
         return $firsts[$next];
+    }
+
+    /** The hit a box's worth of hits away in $dir, stopping at the ends. */
+    private function pageHit(SearchModalState $search, int $dir): int
+    {
+        $at = $search->selected;
+        for ($moved = 0, $i = $at + $dir; $moved < \max(1, $this->searchBox->count ?? 1) && $i >= 0 && $i < \count($search->rows); $i += $dir) {
+            if (!$search->rows[$i]->isHit()) {
+                continue;
+            }
+            $at = $i;
+            ++$moved;
+        }
+
+        return $at;
+    }
+
+    /**
+     * -1 or 1 when ($relRow) is the ▲ or ▼ a clipped list draws in its frame's
+     * padding (the row under the title bar, the row over the bottom border),
+     * else 0 — the cue is a target, as the tab strip's is.
+     */
+    private static function edgeCue(ModalBox $box, int $relRow, int $total): int
+    {
+        return match (true) {
+            $relRow === ($box->startRow + 1) && $box->windowStart > 0 => -1,
+            $relRow === ($box->startRow + $box->rows - 2) && ($box->windowStart + $box->count) < $total => 1,
+            default => 0,
+        };
     }
 
     /** Whether any picker surface (list, search, prompt) is open. */
@@ -861,6 +897,7 @@ final class OverlayHost
                     PickerSurface::ListOverlay === $this->closeHovered,
                     $this->translator->trans('no matches'),
                     $this->translator->trans('Type to filter'),
+                    $this->direction(),
                 ),
                 $this->overlayBox,
             );
@@ -870,7 +907,15 @@ final class OverlayHost
             // markers in one frame mangle ScreenWriter's cursor conversion.
             $caret = null === $this->prompt ? CaretVisibility::Shown : CaretVisibility::Hidden;
             $placed[] = $this->place(
-                PickerLayout::layoutSearch($bounds, $this->search, $this->styles, PickerSurface::Search === $this->closeHovered, $caret, $this->translator->trans('Type to search…')),
+                PickerLayout::layoutSearch(
+                    $bounds,
+                    $this->search,
+                    $this->styles,
+                    PickerSurface::Search === $this->closeHovered,
+                    $caret,
+                    $this->translator->trans('Type to search…'),
+                    $this->direction(),
+                ),
                 $this->searchBox,
             );
         }
@@ -879,6 +924,12 @@ final class OverlayHost
         }
 
         return $placed;
+    }
+
+    /** The locale's direction, which a picker row's layout mirrors with. */
+    private function direction(): BaseDirection
+    {
+        return $this->translator->isRtl() ? BaseDirection::Rtl : BaseDirection::Ltr;
     }
 
     /**

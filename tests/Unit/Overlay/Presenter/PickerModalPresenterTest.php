@@ -77,7 +77,7 @@ final class PickerModalPresenterTest extends TestCase
         $this->assertTrue($this->pane->backdrop, 'the workspace dims beneath it');
         $regions = $presenter->regions();
         $this->assertCount(1, $regions, 'one region per painted box');
-        $this->assertTrue($regions[0]->ltr, 'paths/code content: LTR regions, never mirrored');
+        $this->assertFalse($regions[0]->ltr, 'a bidi region: its chrome and row layout mirror under RTL, a path keeping its own order inside');
     }
 
     public function testFrameHookWiringAutoSyncsOnTheNextFrame(): void

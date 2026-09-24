@@ -299,6 +299,21 @@ A picker behaves like a dialog with a combobox:
 - **Pending sources.** An async category not yet answered shows its header over
   a `◌ Searching…` note (`SearchRow::note`). Selection lands only on `isHit()`
   rows.
+- **Shapes.** Every state has a shape that survives monochrome:
+  - the selected row's `▌` in column 0;
+  - a category as a `FieldBox::fieldsetLegend` rule;
+  - the query's matched characters bold and underlined (`MatchMarks` over
+    `FuzzyMatcher::positions()`, computed at render time, so no source
+    carries positions);
+  - the grow row led by `…`.
+- **Clipped lists.** A clipped list shows `▲`/`▼` in its frame's padding rows,
+  and each cue pages the list when clicked (`OverlayHost::edgeCue`). The
+  selected row's place, `3/40`, sits in the bottom border (`ListOverflow`,
+  through `ModalFrame::wrap`).
+- **RTL.** The picker regions are bidi (`ltr: false`), so title, legends and row
+  layout mirror. Each row's label–hint gap is a right-to-left mark under RTL,
+  which ends the label's Latin run. Without it a Latin label, its spaces and its
+  hint resolve into one run that never mirrors.
 - **Disabled commands.** A palette command whose `when` is false comes through
   `paletteCommands()` as `enabled: false`: it is drawn dim and struck through,
   and picking it does nothing.
