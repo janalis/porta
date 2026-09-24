@@ -46,7 +46,9 @@ final class MonochromeTheme
                 // text or finding matches would show nothing under --no-ansi.
                 Role::SelectionBg->selector() => new Style(reverse: true),
                 Role::SearchBg->selector() => new Style(underline: true),
-                Role::SearchCurrentBg->selector() => new Style(underline: true),
+                // The current hit is reversed, as a selection is: the one Enter
+                // and F3 are about stands out from the underlined rest.
+                Role::SearchCurrentBg->selector() => new Style(reverse: true, bold: true),
                 Role::OccurrenceBg->selector() => new Style(underline: true),
                 Role::OccurrenceWriteBg->selector() => new Style(underline: true, bold: true),
                 // The :focus variant merges over the base rule, so it must

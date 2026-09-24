@@ -8,12 +8,14 @@ use PHPUnit\Framework\TestCase;
 use Porta\Editor\Caret;
 use Porta\Editor\ChangeMarkKind;
 use Porta\Editor\DecorationStore;
+use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\Document;
 use Porta\Editor\FoldModel;
 use Porta\Editor\LineNumberMode;
 use Porta\I18n\Translator;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Theme\LightTheme;
+use Porta\Ui\Theme\MonochromeTheme;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\EditorDecorations;
 use Porta\Widget\Render\EditorGeometry;
@@ -311,5 +313,82 @@ final class EditorRowAssemblerTest extends TestCase
         $straddling = new EditorDecorations(false, null, [], [[0, 8, 12, false]], null);
         $straddledRows = $assembler->assemble($geo, $straddling, sticky: [], highlighted: [$line], stripe: [''], contentRows: 1, vScroll: 0, cursorLine: -1, cursorDisplayCol: 0, hScroll: 10);
         $this->assertNotSame($plainRows[0], $straddledRows[0], 'a window-straddling span still decorates the visible part');
+    }
+
+    /**
+     * Without colour the caret line is marked in the gutter — `›` in the free
+     * marker column, the number bold — and the row itself is not underlined
+     * end to end; with colour, the band stays and the column stays free.
+     */
+    public function testWithoutColourTheGutterMarksTheCaretLine(): void
+    {
+        $doc = new Document("a\nb\n");
+        $doc->setCursor(1, 0);
+        $geo = new EditorGeometry(numberWidth: 1, gutterWidth: 3, contentWidth: 5, stripeCol: 0);
+        [$mono] = $this->assembler($doc, styles: new Styles(MonochromeTheme::definition()));
+        $rows = $mono->assemble($geo, $this->noSelection(), sticky: [], highlighted: ['a', 'b'], stripe: ['', ''], contentRows: 2, vScroll: 0, cursorLine: 1, cursorDisplayCol: 0, hScroll: 0);
+
+        $this->assertStringStartsWith('2'.Glyphs::CARET_LINE, AnsiUtils::stripAnsiCodes($rows[1]));
+        $this->assertStringStartsWith("\e[1m2", $rows[1], 'the number bold');
+        $this->assertStringNotContainsString("\e[4m", $rows[1], 'no underline across the line');
+        $this->assertStringNotContainsString(Glyphs::CARET_LINE, AnsiUtils::stripAnsiCodes($rows[0]));
+
+        [$colour] = $this->assembler($doc);
+        $rows = $colour->assemble($geo, $this->noSelection(), sticky: [], highlighted: ['a', 'b'], stripe: ['', ''], contentRows: 2, vScroll: 0, cursorLine: 1, cursorDisplayCol: 0, hScroll: 0);
+        $this->assertStringNotContainsString(Glyphs::CARET_LINE, AnsiUtils::stripAnsiCodes($rows[1]), 'the band says it');
+        $this->assertStringContainsString("\e[1m", AnsiUtils::sliceByColumn($rows[1], 0, 2), 'and the number is bold here too');
+    }
+
+    /** A breakpoint over a diagnostic's glyph leaves the number underlined, so the finding still shows. */
+    public function testAMarkerHidingADiagnosticUnderlinesTheNumber(): void
+    {
+        $doc = new Document("a\nb\n");
+        $store = new DecorationStore(static function (): void {});
+        $store->setDiagnostics([0 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'w', 'col' => 0]], 1 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'w', 'col' => 0]]]);
+        $store->setBreakpointLines([0]);
+        [$assembler] = $this->assembler($doc, styles: new Styles(MonochromeTheme::definition()), store: $store);
+        $geo = new EditorGeometry(numberWidth: 1, gutterWidth: 3, contentWidth: 5, stripeCol: 0);
+        $rows = $assembler->assemble($geo, $this->noSelection(), sticky: [], highlighted: ['a', 'b'], stripe: ['', ''], contentRows: 2, vScroll: 0, cursorLine: -1, cursorDisplayCol: 0, hScroll: 0);
+
+        $this->assertStringStartsWith("\e[4m1", $rows[0], 'hidden under the breakpoint: underlined');
+        $this->assertStringNotContainsString("\e[4m", AnsiUtils::sliceByColumn($rows[1], 0, 1), 'its glyph shown: no need');
+    }
+
+    /** Without colour the sticky band is ruled off from the code under it. */
+    public function testWithoutColourTheStickyBandsLastRowIsUnderlined(): void
+    {
+        $doc = new Document("class A\n{\n  x\n");
+        $geo = new EditorGeometry(numberWidth: 1, gutterWidth: 3, contentWidth: 10, stripeCol: 0);
+        [$mono] = $this->assembler($doc, styles: new Styles(MonochromeTheme::definition()));
+        $rows = $mono->assemble(
+            $geo,
+            $this->noSelection(),
+            sticky: [['label' => 'A', 'line' => 0], ['label' => '{', 'line' => 1]],
+            highlighted: ['class A', '{', '  x'],
+            stripe: ['', '', ''],
+            contentRows: 1,
+            vScroll: 2,
+            cursorLine: -1,
+            cursorDisplayCol: 0,
+            hScroll: 0,
+        );
+
+        $this->assertStringNotContainsString("\e[4m", $rows[0]);
+        $this->assertStringContainsString("\e[4m", $rows[1], 'the last pinned row');
+
+        [$colour] = $this->assembler($doc);
+        $rows = $colour->assemble(
+            $geo,
+            $this->noSelection(),
+            sticky: [['label' => 'A', 'line' => 0]],
+            highlighted: ['class A', '{', '  x'],
+            stripe: ['', '', ''],
+            contentRows: 1,
+            vScroll: 2,
+            cursorLine: -1,
+            cursorDisplayCol: 0,
+            hScroll: 0,
+        );
+        $this->assertStringNotContainsString("\e[4m", $rows[0], 'the band colour says it');
     }
 }

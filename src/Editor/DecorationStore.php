@@ -236,6 +236,12 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
         ($this->invalidate)();
     }
 
+    /** @return list<int> the bookmarked lines, for the stripe's overview */
+    public function bookmarkedLines(): array
+    {
+        return \array_keys($this->bookmarkLines);
+    }
+
     public function isBookmarked(int $line): bool
     {
         return ($this->bookmarkLines[$line] ?? null) !== null;

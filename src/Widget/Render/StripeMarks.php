@@ -25,12 +25,18 @@ final readonly class StripeMarks
      * @param array<int, ChangeMarkKind> $vcsByLine       0-based line => version-control change kind
      * @param list<int>                  $searchLines     0-based lines carrying at least one search match
      * @param list<int>                  $breakpointLines 0-based lines carrying a breakpoint
+     * @param list<int>                  $bookmarkLines   0-based bookmarked lines
+     * @param int|null                   $debugLine       the debugger's stopped line
+     * @param int|null                   $currentSearchLine the line of the hit F3 is on
      */
     public function __construct(
         public array $severityByLine,
         public array $vcsByLine,
         public array $searchLines,
         public array $breakpointLines,
+        public array $bookmarkLines = [],
+        public ?int $debugLine = null,
+        public ?int $currentSearchLine = null,
     ) {}
 
     /**
@@ -52,11 +58,13 @@ final readonly class StripeMarks
         }
 
         $search = [];
+        $current = null;
         foreach ($store->searchMatches as $line => $matches) {
             if ([] === $matches) {
                 continue;
             }
             $search[] = $line;
+            $current = \array_any($matches, static fn (array $match): bool => $match['current']) ? $line : $current;
         }
 
         return new self(
@@ -64,6 +72,9 @@ final readonly class StripeMarks
             $vcsGutter ? $store->vcsMarks : [],
             $search,
             $store->breakpointLines,
+            $store->bookmarkedLines(),
+            $store->debugLine,
+            $current,
         );
     }
 }

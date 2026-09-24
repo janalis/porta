@@ -23,10 +23,11 @@ use Porta\Ui\Theme\Styles;
  * this file", and a glyph that painted on every single frame would be noise.
  *
  * The column is one cell wide, so several lines share a row and several kinds
- * compete for it. They resolve by strict PRECEDENCE, worst-first: a diagnostic
- * outranks a breakpoint, which outranks a change mark, which outranks a search
- * hit. Every kind draws a distinct glyph, so the stripe still reads under
- * `--no-ansi` where the roles collapse to nothing.
+ * compete for it. They resolve by strict PRECEDENCE: the debugger's stopped
+ * line, then a diagnostic, a breakpoint, the current search hit, a change
+ * mark, a bookmark, any other search hit. Every kind draws a distinct glyph,
+ * and the thumb has its own on the rows no mark claims, so the stripe still
+ * reads under `--no-ansi` where the roles collapse to nothing.
  */
 final class ErrorStripe
 {
@@ -67,6 +68,12 @@ final class ErrorStripe
         foreach ($marks->searchLines as $line) {
             $hits[self::rowOf($line, $rows, $lineCount)] = true;
         }
+        $bookmarks = \array_fill(0, $width, value: false);
+        foreach ($marks->bookmarkLines as $line) {
+            $bookmarks[self::rowOf($line, $rows, $lineCount)] = true;
+        }
+        $debugRow = null === $marks->debugLine ? null : self::rowOf($marks->debugLine, $rows, $lineCount);
+        $currentRow = null === $marks->currentSearchLine ? null : self::rowOf($marks->currentSearchLine, $rows, $lineCount);
 
         // Viewport thumb: the stripe rows covering the visible doc-line range,
         // shown only when the file actually scrolls.
@@ -81,9 +88,12 @@ final class ErrorStripe
 
             $lineSeverity = $severity[$r];
             $mark = match (true) {
+                $r === $debugRow => [Glyphs::STOPPED_LINE, Role::Breakpoint],
                 null !== $lineSeverity => [$lineSeverity->mark(), $lineSeverity->role()],
                 $breakpoints[$r] => [Glyphs::BREAKPOINT, Role::Breakpoint],
+                $r === $currentRow => [Glyphs::STRIPE_SEARCH_CURRENT, Role::SearchCurrentBg],
                 null !== $changeMark => $changeMark,
+                $bookmarks[$r] => [Glyphs::BOOKMARK, Role::TabAccent],
                 $hits[$r] => [Glyphs::STRIPE_SEARCH, Role::SearchBg],
                 default => null,
             };
@@ -94,7 +104,7 @@ final class ErrorStripe
             $cells[] = match (true) {
                 null !== $mark && $thumb => Sgr::RESET.$styles->merge(Role::RowHighlightBg, $mark[1])->apply($mark[0]),
                 null !== $mark => Sgr::RESET.$styles->of($mark[1])->apply($mark[0]),
-                $thumb => Sgr::RESET.$styles->of(Role::RowHighlightBg)->apply(' '),
+                $thumb => Sgr::RESET.$styles->merge(Role::RowHighlightBg, Role::Faint)->apply(Glyphs::STRIPE_THUMB),
                 default => Sgr::RESET.' ',
             };
         }

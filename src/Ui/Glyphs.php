@@ -55,6 +55,10 @@ final class Glyphs
     // isPreferred — leading its label in the list.
     public const string PREFERRED = '★';
 
+    // The caret line, in the gutter's marker column when nothing else is
+    // there and there is no colour band to say it.
+    public const string CARET_LINE = '›';
+
     // Diagnostic severity (gutter, inline message prefix, status-bar counts).
     public const string SEVERITY_ERROR = '✗';
     public const string SEVERITY_WARNING = '▲'; // also SCROLL_UP — disjoint surfaces (message row vs strip edge)
@@ -75,6 +79,11 @@ final class Glyphs
     // bring onto this same column. The breakpoint mark reuses BREAKPOINT itself:
     // the same meaning on a disjoint surface (the stripe, not the marker column).
     public const string STRIPE_SEARCH = '┈';
+    // The hit F3 is on: the same line, heavy — one of the rest, told apart.
+    public const string STRIPE_SEARCH_CURRENT = '━';
+    // The viewport thumb's own shape on a row no mark claims, so where the
+    // view is reads without the thumb's shade.
+    public const string STRIPE_THUMB = '▐';
 
     // Debug status-bar segment (the two states are temporally exclusive).
     public const string DEBUG_RUNNING = '▶';

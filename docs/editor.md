@@ -255,6 +255,15 @@ breakpoint dots, fold triangles, indent guides, identifier-occurrence and matchi
 highlighting, and dimmed inline parameter-name/type **inlay hints** from
 the language server.
 
+The caret line's number is bold. With colour, a shaded band marks the whole
+caret line. In the monochrome theme (and under `--no-ansi`) there is no band;
+instead a `›` stands in the marker column beside the number, since underlining
+the whole line would mark every character you type. When a breakpoint or a
+bookmark takes the column a diagnostic's glyph would use, the line number stays
+underlined, so the finding still shows without colour. The last pinned
+sticky-scroll row is underlined there too, to separate the pinned headers from
+the code below them.
+
 ## The completion popup
 
 Each row is the name, the server's **type** and the item's kind: a method's
@@ -536,13 +545,17 @@ the file, and the kinds resolve by strict precedence:
 
 | Mark | Means |
 | --- | --- |
+| `▶` | the debugger's stopped line |
 | `█` `▓` `▒` `░` | a diagnostic — the block gets heavier with the severity |
 | `●` | a breakpoint |
+| `━` | the search hit `F3` is on |
 | `▎` `┆` `▁` | a git change — added / modified / deleted, the same marks the gutter draws |
-| `┈` | a search hit from the find bar |
+| `◈` | a bookmark |
+| `┈` | any other search hit from the find bar |
 
-A faint band behind the marks is the **viewport thumb** — the part of the file
-you are currently looking at, shown only when the file is taller than the pane.
+A faint band behind the marks is the **viewport thumb**: the part of the file
+you are looking at, shown only when the file is taller than the pane. On rows
+with no mark the thumb draws its own `▐`, so it is visible without the band.
 Clicking a cell jumps there.
 
 Every mark is a distinct shape rather than a colour, so the stripe still reads

@@ -294,7 +294,7 @@ final class ThemeLockTest extends TestCase
         // reads under --no-ansi (the current match adds bold at its call site).
         $mono = MonochromeTheme::definition();
         $this->assertEquals(new Style(underline: true), $mono->of(Role::SearchBg), 'search matches are visible');
-        $this->assertEquals(new Style(underline: true), $mono->of(Role::SearchCurrentBg));
+        $this->assertEquals(new Style(reverse: true, bold: true), $mono->of(Role::SearchCurrentBg), 'the current hit reversed, like a selection');
         $this->assertEquals(new Style(underline: true), $mono->of(Role::OccurrenceBg));
         $this->assertEquals(new Style(underline: true, bold: true), $mono->of(Role::OccurrenceWriteBg), 'a WRITE occurrence stays distinct from a read one without color');
     }

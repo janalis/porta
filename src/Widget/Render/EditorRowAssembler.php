@@ -20,6 +20,7 @@ use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Style\Style;
 use Tempest\Highlight\TerminalTheme;
 
 /**
@@ -101,12 +102,8 @@ final readonly class EditorRowAssembler
     ): array {
         $stickyCount = \count($sticky);
 
-        /** @var list<string> $result */
-        $result = [];
         // Pinned sticky-scroll headers occupy the top rows; content follows below.
-        foreach ($sticky as $i => $header) {
-            $result[] = $this->renderStickyRow($header['line'], $geo, $highlighted, $hScroll).$stripe[$i];
-        }
+        $result = $this->stickyRows($sticky, $geo, $highlighted, $stripe, $hScroll);
         // One walking cursor instead of docLineAtRow per row: that helper
         // re-walks from $vScroll on every call, making the loop O(rows²).
         // Same sequence — the row-th visible line at or after $vScroll.
@@ -199,14 +196,7 @@ final readonly class EditorRowAssembler
                 $this->cursorStyle->marker(),
             );
 
-            // The debugger's stopped line outranks the current-line background.
-            if ($lineIndex === $this->store->debugLine) {
-                $content = LineDecorator::applyFullWidth($content, $geo->contentWidth, $this->styles->of(Role::DebugLineBg));
-            }
-            // Current-line background (skip when a selection is being shown)
-            if ($lineIndex !== $this->store->debugLine && $isCursorLine && $this->focused && null === $decorations->selection) {
-                $content = LineDecorator::applyFullWidth($content, $geo->contentWidth, $this->styles->of(Role::RowHighlightBg));
-            }
+            $content = $this->lineBand($content, $lineIndex, $isCursorLine && $this->focused && null === $decorations->selection, $geo->contentWidth);
 
             // Inline diagnostic message in the trailing space (PhpStorm-style):
             // the worst-severity message on the line, colored by severity, with a
@@ -274,6 +264,51 @@ final readonly class EditorRowAssembler
     }
 
     /**
+     * A row's full-width background: the debugger's stopped line, which
+     * outranks the rest, else the caret line's band — skipped while a
+     * selection shows. A colour band only: without colour it would be an
+     * underline under every character of the line being typed, so there the
+     * gutter marks the caret line instead ({@see gutterCell()}).
+     */
+    // @mago-expect lint:no-boolean-flag-parameter -- whether this row is the focused caret line is the row's state, computed by the caller from four facts this method does not see.
+    private function lineBand(string $content, int $lineIndex, bool $caretBand, int $width): string
+    {
+        if ($lineIndex === $this->store->debugLine) {
+            return LineDecorator::applyFullWidth($content, $width, $this->styles->of(Role::DebugLineBg));
+        }
+        if ($caretBand && $this->styles->hasColor()) {
+            return LineDecorator::applyFullWidth($content, $width, $this->styles->of(Role::RowHighlightBg));
+        }
+
+        return $content;
+    }
+
+    /**
+     * The pinned sticky-scroll headers, each with its stripe cell. Without
+     * colour the band is the code's own shade, so its last row is ruled off by
+     * an underline: pinned headers above, the file below.
+     *
+     * @param list<array{label: string, line: int}> $sticky
+     * @param array<array-key, string>              $highlighted
+     * @param list<string>                          $stripe
+     *
+     * @return list<string>
+     */
+    private function stickyRows(array $sticky, EditorGeometry $geo, array $highlighted, array $stripe, int $hScroll): array
+    {
+        $rows = [];
+        foreach ($sticky as $i => $header) {
+            $row = $this->renderStickyRow($header['line'], $geo, $highlighted, $hScroll);
+            if ($i === (\count($sticky) - 1) && !$this->styles->hasColor()) {
+                $row = LineDecorator::applyFullWidth($row, $geo->gutterWidth + $geo->contentWidth, new Style(underline: true));
+            }
+            $rows[] = $row.$stripe[$i];
+        }
+
+        return $rows;
+    }
+
+    /**
      * One code-lens row: the server's own words, dim, where a line number
      * would be. PhpStorm indents these to the code they describe; the gutter
      * already provides that indent, so the text starts at the content column.
@@ -335,6 +370,11 @@ final readonly class EditorRowAssembler
             CaretLine::Current === $isCursorLine => $this->styles->of(Role::CurrentLineNumber),
             default => $this->styles->of(Role::Gutter),
         };
+        // The caret line's number is bold in every theme — its weight says
+        // "here" where its colour cannot.
+        if (CaretLine::Current === $isCursorLine) {
+            $numStyle = $numStyle->withBold();
+        }
         // The marker column, one glyph by priority: the debugger's stopped line,
         // then the breakpoint dot, then the BOOKMARK, then the worst
         // diagnostic's severity glyph — so each state also reads without color.
@@ -353,8 +393,16 @@ final readonly class EditorRowAssembler
             ($this->breakpointSet[$lineIndex] ?? null) !== null => $this->styles->of(Role::Breakpoint)->apply(Glyphs::BREAKPOINT),
             $this->store->isBookmarked($lineIndex) => $this->styles->of(Role::TabAccent)->apply(Glyphs::BOOKMARK),
             [] !== $lineDiags => $numStyle->apply(DiagnosticStyle::worst($lineDiags)->glyph()),
+            // Without colour the free column points at the caret line.
+            CaretLine::Current === $isCursorLine && !$this->styles->hasColor() => $numStyle->apply(Glyphs::CARET_LINE),
             default => ' ',
         };
+        // A breakpoint or a bookmark took the column a diagnostic's glyph
+        // would have had: the number it coloured is underlined as well, so
+        // the finding still reads where there is no colour.
+        if ([] !== $lineDiags && !\str_contains(AnsiUtils::stripAnsiCodes($marker), DiagnosticStyle::worst($lineDiags)->glyph())) {
+            $numStyle = $numStyle->withUnderline();
+        }
         // The number label: empty when hidden (so str_pad to the 0-width column
         // yields nothing, and the marker column survives); relative distance from
         // the caret on non-caret lines in Relative mode (Vim "relativenumber").

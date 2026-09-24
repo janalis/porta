@@ -13,6 +13,7 @@ use Porta\Editor\Document;
 use Porta\Event\BufferSwitched;
 use Porta\Ui\Glyphs;
 use Porta\Widget\CodeEditorWidget;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 
 final class BookmarkDecorationsTest extends TestCase
@@ -39,8 +40,11 @@ final class BookmarkDecorationsTest extends TestCase
         new BookmarkDecorations($bookmarks, $editor->decorations)->apply('/p/a.php');
 
         $lines = $editor->render(new RenderContext(40, 8));
-        $this->assertStringContainsString(Glyphs::BOOKMARK, $lines[1], 'the marked line carries the diamond');
-        $this->assertStringNotContainsString(Glyphs::BOOKMARK, $lines[2], 'its neighbour does not');
+        // The gutter alone: the stripe in the last column draws the diamond
+        // too, on whichever row the line lands on in the file's overview.
+        $gutter = static fn (string $row): string => AnsiUtils::stripAnsiCodes(AnsiUtils::sliceByColumn($row, 0, 8));
+        $this->assertStringContainsString(Glyphs::BOOKMARK, $gutter($lines[1]), 'the marked line carries the diamond');
+        $this->assertStringNotContainsString(Glyphs::BOOKMARK, $gutter($lines[2]), 'its neighbour does not');
     }
 
     public function testAMarkSURVIVESADiagnosticOnTheSameLine(): void

@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Widget\Render;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\ChangeMarkKind;
+use Porta\Editor\DecorationStore;
 use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\DiagnosticStyle;
 use Porta\Ui\Glyphs;
@@ -97,8 +98,8 @@ final class ErrorStripeTest extends TestCase
         $diagnostics = [55 => [['severity' => DiagnosticSeverity::Error, 'message' => 'e', 'col' => 0]]];
         $cells = $this->cells($diagnostics, rows: 10, lineCount: 100, vScroll: 50, lastVisible: 79);
 
-        $this->assertSame(' ', AnsiUtils::stripAnsiCodes($cells[6]), 'a plain thumb row: no mark');
-        $this->assertNotSame(Sgr::RESET.' ', $cells[6], 'but not blank — it wears the thumb background');
+        $this->assertSame(Glyphs::STRIPE_THUMB, AnsiUtils::stripAnsiCodes($cells[6]), 'a plain thumb row: the thumb\'s own shape, so it reads without its shade');
+        $this->assertNotSame(Sgr::RESET.Glyphs::STRIPE_THUMB, $cells[6], 'and it wears the thumb background');
         $this->assertSame(Sgr::RESET.' ', $cells[0], 'above the thumb stays blank');
         $this->assertSame(Sgr::RESET.' ', $cells[9], 'below the thumb stays blank');
         $marked = $cells[5];
@@ -206,7 +207,7 @@ final class ErrorStripeTest extends TestCase
 
         $this->assertSame(Glyphs::STRIPE_SEARCH, AnsiUtils::stripAnsiCodes($cells[5]));
         foreach ([0, 4, 6, 9] as $row) {
-            $this->assertSame(' ', AnsiUtils::stripAnsiCodes($cells[$row]), "row {$row} carries no mark");
+            $this->assertContains(AnsiUtils::stripAnsiCodes($cells[$row]), [' ', Glyphs::STRIPE_THUMB], "row {$row} carries no mark");
         }
     }
 
@@ -219,5 +220,49 @@ final class ErrorStripeTest extends TestCase
     public function testNegativeRowsPaintsNothingRatherThanCrashing(): void
     {
         $this->assertSame([], $this->cells([], rows: -1, lineCount: 5));
+    }
+
+    /**
+     * The newer marks and their places in the precedence: the stopped line
+     * over everything, the current hit over a change, a bookmark over an
+     * ordinary hit.
+     */
+    public function testTheDebugLineTheCurrentHitAndBookmarksTakeTheirPlaces(): void
+    {
+        $cells = $this->stripe(
+            new StripeMarks(
+                [10 => DiagnosticSeverity::Error],
+                [30 => ChangeMarkKind::Modified, 50 => ChangeMarkKind::Added],
+                [30, 60, 70],
+                [],
+                bookmarkLines: [50, 70],
+                debugLine: 10,
+                currentSearchLine: 30,
+            ),
+            rows: 10,
+            lineCount: 100,
+        );
+        $plain = \array_map(AnsiUtils::stripAnsiCodes(...), $cells);
+
+        $this->assertSame(Glyphs::STOPPED_LINE, $plain[1], 'the stopped line over the error on its row');
+        $this->assertSame(Glyphs::STRIPE_SEARCH_CURRENT, $plain[3], 'the current hit over the change');
+        $this->assertSame(Glyphs::VCS_ADDED, $plain[5], 'a change over a bookmark');
+        $this->assertSame(Glyphs::STRIPE_SEARCH, $plain[6]);
+        $this->assertSame(Glyphs::BOOKMARK, $plain[7], 'a bookmark over an ordinary hit');
+    }
+
+    /** The store's bookmarks, stopped line and current hit reach the marks. */
+    public function testTheMarksAreReadFromTheStore(): void
+    {
+        $store = new DecorationStore(static function (): void {});
+        $store->setBookmarkLines([4, 9]);
+        $store->setDebugLine(7);
+        $store->setSearchMatches([2 => [['start' => 0, 'end' => 1, 'current' => false]], 5 => [['start' => 0, 'end' => 1, 'current' => true]]]);
+
+        $marks = StripeMarks::from($store, vcsGutter: false);
+
+        $this->assertSame([4, 9], $marks->bookmarkLines);
+        $this->assertSame(7, $marks->debugLine);
+        $this->assertSame(5, $marks->currentSearchLine);
     }
 }

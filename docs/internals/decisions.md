@@ -10460,3 +10460,25 @@ border says so.
 A stack taller than the pane now says `+N more` on its last card, where before
 it dropped the rest in silence.
 
+## UI round, phase 6a: the editor without colour (2026-09-24)
+
+The monochrome theme used to underline the whole caret line. That gave every
+character being typed an underline and made the line read as a link or an
+error. The user chose to mark the caret line in the gutter instead:
+- The caret line's number is bold in every theme.
+- In monochrome, `›` stands in the free marker column. It is not `▸`, which the
+  fold column beside it already uses.
+- The shaded band is drawn only where there is colour (`Styles::hasColor()`).
+
+The current search hit is now reverse and bold in monochrome, like a selection,
+and stands out from the underlined other hits. Other changes that let state
+read without colour:
+- a number whose diagnostic glyph a breakpoint or bookmark hid is underlined;
+- the last sticky row is underlined;
+- the stripe gains the stopped line `▶`, the current hit `━` and bookmarks `◈`;
+- the thumb draws `▐` on rows with no mark.
+
+**Deferred:** a matching bracket inside a selection. Both are reverse video,
+and resolving that means reworking how spans close and reopen, which is not a
+theme change.
+
