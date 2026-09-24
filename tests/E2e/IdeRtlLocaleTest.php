@@ -425,6 +425,7 @@ final class IdeRtlLocaleTest extends TestCase
                     );
                 },
             ],
+            rows: 30, // the boxed select, whose top rail the list's lines up with
         );
     }
 

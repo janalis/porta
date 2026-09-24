@@ -193,6 +193,7 @@ final class SettingsPagesGoldenTest extends TestCase
                 },
             ],
             columns: 120,
+            rows: 30, // the boxed pages; SettingsRowLayoutTest pins the compact form
         );
 
         return $pages;

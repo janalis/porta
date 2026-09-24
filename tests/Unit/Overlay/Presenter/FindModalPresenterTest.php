@@ -12,6 +12,7 @@ use Porta\Overlay\State\MenuOverlayPanes;
 use Porta\Tests\Support\RendersRoot;
 use Porta\Tests\Support\TestOverlayPane;
 use Porta\Ui\BidiTui;
+use Porta\Ui\ScreenDensity;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\Render\MenuOverlayHost;
 use Symfony\Component\Tui\Input\Keybindings;
@@ -47,6 +48,7 @@ final class FindModalPresenterTest extends TestCase
         return new FindModalPresenter(
             new OverlayDelivery($this->renderer, new MenuOverlayPanes([$this->pane], static fn (): array => []), $this->tui),
             $this->editor,
+            new ScreenDensity(),
             frameHooks: $this->tui,
         );
     }

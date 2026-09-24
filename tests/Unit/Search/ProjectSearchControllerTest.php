@@ -29,6 +29,7 @@ use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestBottomDock;
 use Porta\Ui\CaretVisibility;
+use Porta\Ui\Density;
 use Porta\Ui\ScopeKind;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\DebugPanelWidget;
@@ -87,7 +88,7 @@ final class ProjectSearchControllerTest extends TestCase
     /** The modal's own panel text — it floats over the workspace now, not inside the editor's lines. */
     private function modal(): string
     {
-        $placed = $this->editor->findModal->layout([0, 0, 40, 100], CaretVisibility::Shown);
+        $placed = $this->editor->findModal->layout([0, 0, 40, 100], CaretVisibility::Shown, Density::Roomy);
 
         return null === $placed ? '' : AnsiUtils::stripAnsiCodes(\implode("\n", $placed['rows']));
     }

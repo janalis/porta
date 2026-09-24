@@ -6,6 +6,7 @@ namespace Porta\Widget\Render;
 
 use Porta\Support\AnsiText;
 use Porta\Ui\CaretVisibility;
+use Porta\Ui\Density;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Porta\Ui\TextField;
@@ -44,6 +45,30 @@ final class FieldBox
 
     /** Below this width a box is all border; a site renders {@see compact()} instead. */
     public const int MIN_BOXED = 12;
+
+    /**
+     * The one rule for a control's height: boxed where the screen is roomy and
+     * the box has room for more than its border, one row otherwise. Every host
+     * asks this instead of keeping a threshold of its own — sites that each
+     * picked one disagreed about the same terminal.
+     *
+     * @return positive-int {@see ROWS} or 1
+     */
+    public static function rowsFor(Density $density, int $width = \PHP_INT_MAX): int
+    {
+        return Density::Roomy === $density && $width >= self::MIN_BOXED ? self::ROWS : 1;
+    }
+
+    /**
+     * A text field at the height {@see rowsFor()} gave: boxed, or the
+     * one-row {@see compact()}.
+     *
+     * @return list<string>
+     */
+    public static function field(FieldSpec $spec, TextField $field, FieldState $state, CaretVisibility $caret, int $width, int $rows, Styles $styles): array
+    {
+        return self::ROWS === $rows ? self::render($spec, $field, $state, $caret, $width, $styles) : [self::compact($spec, $field, $state, $caret, $width, $styles)];
+    }
 
     /** @return list<string> exactly {@see ROWS} rows */
     public static function render(FieldSpec $spec, TextField $field, FieldState $state, CaretVisibility $caret, int $width, Styles $styles): array

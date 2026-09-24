@@ -17,6 +17,7 @@ use Porta\Search\Everywhere\SearchRow;
 use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\Probe;
 use Porta\Ui\CaretVisibility;
+use Porta\Ui\Density;
 use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -176,7 +177,7 @@ final class CodeEditorOverlaysTest extends TestCase
                 ['path' => 'src/A.php', 'line' => 4, 'text' => 'foo one', 'ranges' => []],
                 ['path' => 'src/A.php', 'line' => 9, 'text' => 'foo two', 'ranges' => []],
             ]);
-        $editor->findModal->layout([0, 0, 40, 100], CaretVisibility::Shown); // records the screen-space box
+        $editor->findModal->layout([0, 0, 40, 100], CaretVisibility::Shown, Density::Roomy); // records the screen-space box
 
         $box = $editor->findModal->lastBox();
         $this->assertInstanceOf(ModalBox::class, $box);

@@ -20,6 +20,7 @@ use Porta\Ui\Glyphs;
 use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
 use Porta\Ui\Role;
+use Porta\Ui\ScreenDensity;
 use Porta\Ui\TextField;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\HoverableList;
@@ -82,6 +83,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         private readonly Translator $translator,
         ?Styles $styles = null,
         private readonly CursorStyle $cursorStyle = new CursorStyle(),
+        private readonly ScreenDensity $density = new ScreenDensity(),
         private readonly ?EventDispatcherInterface $events = null,
     ) {
         $this->initStyles($styles);
@@ -462,7 +464,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         }
         // The window the items get: the pane less the title and the footer.
         $window = \max(1, $rows - 2);
-        $layout = SettingsRowLayout::measure($this->rows, $width, $this->direction());
+        $layout = SettingsRowLayout::measure($this->rows, $width, $this->density->current(), $this->direction());
         $scroll = $this->list->followHeights($layout->heights, $window);
         $this->lastPage = $this->list->countFitting($layout->heights, $scroll, $window);
 
@@ -746,11 +748,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
             $state = FieldState::of($typing);
             $caret = $typing ? CaretVisibility::Shown : CaretVisibility::Hidden;
 
-            return (
-                FieldBox::ROWS === $rows
-                    ? FieldBox::render(new FieldSpec(''), $this->editField, $state, $caret, $width, $this->styles)
-                    : [FieldBox::compact(new FieldSpec(''), $this->editField, $state, $caret, $width, $this->styles)]
-            );
+            return FieldBox::field(new FieldSpec(''), $this->editField, $state, $caret, $width, $rows, $this->styles);
         }
         $value = (string) $row->value;
 

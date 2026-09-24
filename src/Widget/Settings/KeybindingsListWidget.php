@@ -16,6 +16,7 @@ use Porta\Ui\Glyphs;
 use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
 use Porta\Ui\Role;
+use Porta\Ui\ScreenDensity;
 use Porta\Ui\ShortcutFormatter;
 use Porta\Ui\TextField;
 use Porta\Ui\Theme\Styles;
@@ -86,6 +87,7 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
         private readonly Translator $translator,
         ?Styles $styles = null,
         ?CursorStyle $cursorStyle = null,
+        private readonly ScreenDensity $density = new ScreenDensity(),
         private readonly ?EventDispatcherInterface $events = null,
     ) {
         $this->initStyles($styles);
@@ -266,7 +268,7 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
     /** The title, plus the boxed filter field while it is showing. */
     private function headerRows(): int
     {
-        return $this->filtering ? 1 + FieldBox::ROWS : 1;
+        return $this->filtering ? 1 + FieldBox::rowsFor($this->density->current()) : 1;
     }
 
     private function armCapture(): void
@@ -299,12 +301,13 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
         $lines = [HeaderRenderer::title($title, $width, $this->styles)];
         if ($this->filtering) {
             $focused = $this->isFocused();
-            \array_push($lines, ...FieldBox::render(
+            \array_push($lines, ...FieldBox::field(
                 new FieldSpec($this->translator->trans('Filter')),
                 $this->filter,
                 FieldState::of($focused),
                 $focused ? CaretVisibility::Shown : CaretVisibility::Hidden,
                 $width,
+                $this->headerRows() - 1,
                 $this->styles,
             ));
         }

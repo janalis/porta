@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\I18n\BaseDirection;
 use Porta\Settings\SettingsRow;
 use Porta\Settings\SettingsRowKind;
+use Porta\Ui\Density;
 use Porta\Widget\Settings\SettingsRowLayout;
 
 /** The label column every row on a page aligns its control against. */
@@ -15,11 +16,15 @@ final class SettingsRowLayoutTest extends TestCase
 {
     public function testTheColumnFitsThePagesLongestLabel(): void
     {
-        $layout = SettingsRowLayout::measure([
-            $this->row('Theme'),
-            $this->row('Skip images larger than'),
-            $this->row('Tab width'),
-        ], 80);
+        $layout = SettingsRowLayout::measure(
+            [
+                $this->row('Theme'),
+                $this->row('Skip images larger than'),
+                $this->row('Tab width'),
+            ],
+            80,
+            Density::Roomy,
+        );
 
         $this->assertSame(\mb_strwidth('Skip images larger than'), $layout->label);
     }
@@ -30,7 +35,7 @@ final class SettingsRowLayoutTest extends TestCase
      */
     public function testAPathologicalLabelIsCappedAtHalfThePane(): void
     {
-        $layout = SettingsRowLayout::measure([$this->row(\str_repeat('x', times: 200))], 60);
+        $layout = SettingsRowLayout::measure([$this->row(\str_repeat('x', times: 200))], 60, Density::Roomy);
 
         $this->assertSame(30, $layout->label);
     }
@@ -38,20 +43,20 @@ final class SettingsRowLayoutTest extends TestCase
     /** A narrow pane still leaves a usable column rather than collapsing to nothing. */
     public function testAVeryNarrowPaneKeepsAMinimumColumn(): void
     {
-        $layout = SettingsRowLayout::measure([$this->row(\str_repeat('x', times: 40))], 6);
+        $layout = SettingsRowLayout::measure([$this->row(\str_repeat('x', times: 40))], 6, Density::Roomy);
 
         $this->assertSame(8, $layout->label);
     }
 
     public function testAnEmptyPageMeasuresNothing(): void
     {
-        $this->assertSame(0, SettingsRowLayout::measure([], 80)->label);
+        $this->assertSame(0, SettingsRowLayout::measure([], 80, Density::Roomy)->label);
     }
 
     /** Wide characters count by display width, not by code point. */
     public function testWideCharactersMeasureByDisplayWidth(): void
     {
-        $layout = SettingsRowLayout::measure([$this->row('好好好')], 80);
+        $layout = SettingsRowLayout::measure([$this->row('好好好')], 80, Density::Roomy);
 
         $this->assertSame(6, $layout->label, 'three double-width glyphs occupy six columns');
     }
@@ -63,13 +68,17 @@ final class SettingsRowLayoutTest extends TestCase
      */
     public function testHeightsCountBoxesCheckboxesAndLegends(): void
     {
-        $layout = SettingsRowLayout::measure([
-            new SettingsRow('scope', 'Save to', SettingsRowKind::Choice, 'a', false, ['a']),
-            new SettingsRow('a', 'A', SettingsRowKind::Bool, true, false, fieldset: 'Editor'),
-            new SettingsRow('b', 'B', SettingsRowKind::Int, 4, false, max: 8, fieldset: 'Editor'),
-            new SettingsRow('c', 'C', SettingsRowKind::Text, '', false, fieldset: 'Server'),
-            new SettingsRow('d', 'D', SettingsRowKind::Action, 'Go', false),
-        ], 80);
+        $layout = SettingsRowLayout::measure(
+            [
+                new SettingsRow('scope', 'Save to', SettingsRowKind::Choice, 'a', false, ['a']),
+                new SettingsRow('a', 'A', SettingsRowKind::Bool, true, false, fieldset: 'Editor'),
+                new SettingsRow('b', 'B', SettingsRowKind::Int, 4, false, max: 8, fieldset: 'Editor'),
+                new SettingsRow('c', 'C', SettingsRowKind::Text, '', false, fieldset: 'Server'),
+                new SettingsRow('d', 'D', SettingsRowKind::Action, 'Go', false),
+            ],
+            80,
+            Density::Roomy,
+        );
 
         $this->assertTrue($layout->boxed);
         $this->assertSame([3, 4, 3, 4, 3], $layout->heights, 'a checkbox is a box too: its legend and three rows');
@@ -79,14 +88,34 @@ final class SettingsRowLayoutTest extends TestCase
 
     public function testAPaneTooNarrowForABoxDrawsEveryControlOnOneRow(): void
     {
-        $layout = SettingsRowLayout::measure([
-            new SettingsRow('a', 'A label', SettingsRowKind::Choice, 'x', false, ['x'], fieldset: 'G'),
-            new SettingsRow('b', 'B', SettingsRowKind::Bool, true, false, fieldset: 'G'),
-        ], 20);
+        $layout = SettingsRowLayout::measure(
+            [
+                new SettingsRow('a', 'A label', SettingsRowKind::Choice, 'x', false, ['x'], fieldset: 'G'),
+                new SettingsRow('b', 'B', SettingsRowKind::Bool, true, false, fieldset: 'G'),
+            ],
+            20,
+            Density::Roomy,
+        );
 
         $this->assertFalse($layout->boxed, '20 columns less the label leaves no room for a box');
         $this->assertSame([2, 1], $layout->heights, 'the legend still takes its row');
         $this->assertLessThanOrEqual(20 - SettingsRowLayout::LABEL_CHROME - $layout->label, $layout->control);
+    }
+
+    /** A compact screen takes every box back to one row, however wide the pane: one rule for every form. */
+    public function testACompactScreenDrawsEveryControlOnOneRow(): void
+    {
+        $layout = SettingsRowLayout::measure(
+            [
+                new SettingsRow('a', 'A', SettingsRowKind::Choice, 'x', false, ['x'], fieldset: 'G'),
+                new SettingsRow('b', 'B', SettingsRowKind::Bool, true, false, fieldset: 'G'),
+            ],
+            80,
+            Density::Compact,
+        );
+
+        $this->assertFalse($layout->boxed);
+        $this->assertSame([2, 1], $layout->heights);
     }
 
     /** Mirrored, only a label ending in punctuation takes a mark, and the column counts it. */
@@ -95,8 +124,8 @@ final class SettingsRowLayoutTest extends TestCase
         $this->assertSame('demo (project)'."\u{200E}", SettingsRowLayout::label('demo (project)', BaseDirection::Rtl));
         $this->assertSame('שרת LSP', SettingsRowLayout::label('שרת LSP', BaseDirection::Rtl), 'a letter closes its own run');
         $this->assertSame('demo (project)', SettingsRowLayout::label('demo (project)', BaseDirection::Ltr), 'unmirrored, never');
-        $this->assertSame(15, SettingsRowLayout::measure([$this->row('demo (project)')], 80, BaseDirection::Rtl)->label);
-        $this->assertSame(14, SettingsRowLayout::measure([$this->row('demo (project)')], 80)->label);
+        $this->assertSame(15, SettingsRowLayout::measure([$this->row('demo (project)')], 80, Density::Roomy, BaseDirection::Rtl)->label);
+        $this->assertSame(14, SettingsRowLayout::measure([$this->row('demo (project)')], 80, Density::Roomy)->label);
     }
 
     private function row(string $label): SettingsRow

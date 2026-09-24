@@ -8,6 +8,7 @@ use Porta\I18n\BaseDirection;
 use Porta\I18n\Bidi;
 use Porta\Settings\SettingsRow;
 use Porta\Settings\SettingsRowKind;
+use Porta\Ui\Density;
 use Porta\Ui\Glyphs;
 use Porta\Widget\Render\FieldBox;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -79,7 +80,7 @@ final readonly class SettingsRowLayout
     /**
      * @param list<SettingsRow> $rows
      */
-    public static function measure(array $rows, int $width, BaseDirection $direction = BaseDirection::Ltr): self
+    public static function measure(array $rows, int $width, Density $density, BaseDirection $direction = BaseDirection::Ltr): self
     {
         $longest = 0;
         $needed = FieldBox::MIN_BOXED;
@@ -90,7 +91,7 @@ final readonly class SettingsRowLayout
         // @mago-expect lint:literal-named-argument -- intdiv's parameter is called `num2`; `intdiv($width, num2: 2)` names the divisor after nothing anyone thinks in
         $label = \min($longest, \max(self::MIN_LABEL, \intdiv($width, 2)));
         $room = \max(0, $width - self::LABEL_CHROME - $label);
-        $boxed = $room >= FieldBox::MIN_BOXED;
+        $boxed = FieldBox::ROWS === FieldBox::rowsFor($density, $room);
 
         $heights = [];
         $legends = [];

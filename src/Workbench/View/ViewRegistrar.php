@@ -12,6 +12,7 @@ use Porta\Layout\ViewRegions;
 use Porta\Plugin\Api\PluginException;
 use Porta\Support\Scheduler;
 use Porta\Ui\CursorStyle;
+use Porta\Ui\ScreenDensity;
 use Porta\Ui\Theme\Styles;
 
 /**
@@ -48,6 +49,7 @@ final class ViewRegistrar
         private readonly Scheduler $scheduler,
         private readonly CursorStyle $cursorStyle,
         private readonly LayoutController $layout,
+        private readonly ScreenDensity $density,
     ) {}
 
     public function register(): void
@@ -131,6 +133,7 @@ final class ViewRegistrar
                 $this->regions->mint($entry['id']),
                 $this->host,
                 $this->hit,
+                $this->density,
             ));
             if (!$view instanceof ContributedView) {
                 // A plugin-contract violation, so it carries the type that

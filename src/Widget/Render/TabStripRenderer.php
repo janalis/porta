@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Widget\Render;
 
 use Porta\Support\AnsiText;
+use Porta\Ui\Density;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
@@ -43,13 +44,10 @@ final class TabStripRenderer
     /** A folder-tab strip's height: the lid, then the labels (mirrored at a bottom edge). */
     public const int ROWS = 2;
 
-    /** Below this many terminal rows a strip is one row, the height it gives back to the code. */
-    public const int COMPACT_BELOW = 30;
-
-    /** @return positive-int the strip height a terminal of $terminalRows affords */
-    public static function rowsFor(int $terminalRows): int
+    /** @return positive-int the strip height the screen affords: folder tabs, or one row where it is {@see Density::Compact} */
+    public static function rowsFor(Density $density): int
     {
-        return $terminalRows >= self::COMPACT_BELOW ? self::ROWS : 1;
+        return Density::Roomy === $density ? self::ROWS : 1;
     }
 
     /**

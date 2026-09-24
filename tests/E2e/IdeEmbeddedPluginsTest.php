@@ -278,7 +278,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     $tui->handleInput("\x1b[B"); // bundled sub-item
                     $this->frame($tui);
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
-                    $this->assertMatchesRegularExpression('/Enabled\s+│   │/u', $screen, 'listed and re-enableable: an unchecked box');
+                    $this->assertMatchesRegularExpression('/Enabled\s+\[ \]/u', $screen, 'listed and re-enableable: an unchecked box, one row on this compact screen');
                 },
             ],
         );

@@ -19,6 +19,7 @@ use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestBottomDock;
 use Porta\Tests\Support\TestTui;
 use Porta\Ui\CursorStyle;
+use Porta\Ui\ScreenDensity;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\DebugPanelWidget;
@@ -125,6 +126,7 @@ final class ViewRegistrarTest extends TestCase
                 $regions,
                 $translator,
             ),
+            new ScreenDensity(),
         );
     }
 

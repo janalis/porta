@@ -391,8 +391,8 @@ are presentation and live in `FieldSpec`. A checkbox where the form is boxed
 of its own like its neighbours: `╭───╮ │ ✓ │ ╰───╯`, its mark padded a column
 either side as every box pads its content, five columns wide
 (`FieldBox::CHECKBOX_BOX_WIDTH`) and `FieldBox::ROWS` tall, the state's frame (heavy while it takes the keys, dashed
-disabled), its label on the middle row. The commit box's amend falls back to one row
-below 30 terminal rows, Find in Files' rule, so the changes list keeps room. The one-row `FieldBox::checkbox()` is
+disabled), its label on the middle row. The commit box's amend follows the one
+rule below, with its summary and button, so the changes list keeps room. The one-row `FieldBox::checkbox()` is
 the fallback where the form is not boxed, and the form list rows use (git
 staging, the Find-in-Files preview, the debugger checklist): `[✓]` / `[ ]` /
 `[–]` at rest, the state's own rails otherwise (`FieldState::checkboxRails()`),
@@ -438,12 +438,20 @@ only the box and a column either side of it toggle.
   block) and the Welcome cards record which item each drawn row belongs to and
   page by `ListSelection::followHeights()` / `countFitting()`; every click,
   hover and page goes through that map, never list arithmetic.
-- **The one-row form is the fallback, not a style**: a settings page too narrow
-  to seat a box beside its labels, Find in Files below 30 terminal rows, the
-  find bar when its pane cannot hold a box per field — and the Welcome card's
-  button, because a card is a row of a list.
+- **The one-row form is the fallback, not a style, and it has one rule**:
+  `FieldBox::rowsFor($density, $width)` — boxed where the screen is
+  `Density::Roomy` (30 terminal rows and up, `Ui/Density`) and the box has
+  `FieldBox::MIN_BOXED` columns, one row otherwise. No host keeps a threshold
+  of its own: the settings form, Find in Files, the find bar (whose compact
+  form keeps Find and Replace side by side on its one row), the pickers'
+  fields, the Results and keybindings filters and the commit form all ask it.
+  The Welcome card's button stays one row, because a card is a row of a list.
+- The screen's density is the terminal's, never a pane's: `Ui/ScreenDensity`
+  is the live holder, updated before each frame by `Layout/ChromeHeight`, which
+  clears every chrome cache on a flip. A contributed view gets it through
+  `ViewServices::$density`, since its widgets see only their region's height.
 - A box adds `FieldBox::ROWS - 1` rows to its host; every host derives its
-  header rows and click bands from `FieldBox::ROWS`, never a literal.
+  header rows and click bands from the height it drew, never a literal.
 
 ### Toasts: severity by shape, held while read
 
@@ -484,15 +492,15 @@ Every horizontal strip is `TabStripRenderer::render()`. At
 a lid row above the labels, or below them at a bottom edge (`StripEdge`). The
 lid's shape is the state (`TabShape`): `╭─╮` for the rest, `┍━┑` for the shown
 tab, `┏━┓` with heavy rails for the shown tab of the pane that has the keys.
-The tabs stand on a `─` baseline. Below `COMPACT_BELOW` (30) terminal rows a
-strip is one row, each cell closed by a divider.
+The tabs stand on a `─` baseline. On a `Density::Compact` screen (below 30
+terminal rows) a strip is one row, each cell closed by a divider.
 
 A strip's render context carries its parent's height, not the terminal's, so
-`Layout/TabStripHeight` (eager, a frame hook) reads the terminal's rows and
-pushes the height into the editor and dock strips. `LayoutController`'s frame
-arithmetic (`maximisedRows`, `clampPanel`) applies the same rule to the
-terminal rows it already has. The git mode tabs are a plugin widget: they add
-the menu and status rows back to their sidebar's height.
+`Layout/ChromeHeight` (eager, a frame hook) reads the terminal's rows into the
+`ScreenDensity` and pushes the height into the editor and dock strips.
+`LayoutController`'s frame arithmetic (`maximisedRows`, `clampPanel`) applies
+the same rule to the terminal rows it already has. The git mode tabs are a
+plugin widget: they read the density `ViewServices` hands the view.
 
 Hit-testing: a tab is its whole shape (`tabIndexAt` ignores the row), and a
 `×` is on the label row alone (`closeIndexAt`, and the renderer lights a `×`

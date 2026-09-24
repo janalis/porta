@@ -39,6 +39,7 @@ use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestBottomDock;
 use Porta\Ui\BidiTui;
 use Porta\Ui\CaretVisibility;
+use Porta\Ui\Density;
 use Porta\Ui\ScopeKind;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ContextMenu;
@@ -314,7 +315,7 @@ final class SearchUiWiringTest extends TestCase
         $this->wiring($project->dir)->wire();
         $modal = $this->editor->findModal;
         $this->search->open(); // publishes the scopes, on Whole Project
-        $modal->layout([0, 0, 40, 120], CaretVisibility::Shown); // drawn: the select has a place to hang from
+        $modal->layout([0, 0, 40, 120], CaretVisibility::Shown, Density::Roomy); // drawn: the select has a place to hang from
 
         $modal->handleInput("\x1bs", $this->editor->getKeybindings());
 

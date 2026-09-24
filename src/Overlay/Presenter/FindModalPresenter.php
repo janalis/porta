@@ -8,6 +8,7 @@ use Porta\Container\AsEager;
 use Porta\Overlay\Region\DropdownRegion;
 use Porta\Ui\CaretVisibility;
 use Porta\Ui\FrameHooks;
+use Porta\Ui\ScreenDensity;
 use Porta\Widget\CodeEditorWidget;
 
 /**
@@ -40,6 +41,7 @@ final class FindModalPresenter
     public function __construct(
         private readonly OverlayDelivery $delivery,
         private readonly CodeEditorWidget $editor,
+        private readonly ScreenDensity $density,
         ?FrameHooks $frameHooks = null,
     ) {
         $frameHooks?->onBeforeFrame($this->sync(...));
@@ -77,7 +79,7 @@ final class FindModalPresenter
             return;
         }
         // The modal owns the caret while open, wherever pane focus sits.
-        $placed = $this->editor->findModal->layout($bounds, CaretVisibility::Shown);
+        $placed = $this->editor->findModal->layout($bounds, CaretVisibility::Shown, $this->density->current());
         \assert(null !== $placed, description: 'layout() is non-null while the modal is open — checked above');
         $width = $this->editor->findModal->lastBox()->width ?? 0;
 

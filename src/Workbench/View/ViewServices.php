@@ -9,6 +9,7 @@ use Porta\Input\HitTester;
 use Porta\Layout\ViewRegion;
 use Porta\Support\Scheduler;
 use Porta\Ui\CursorStyle;
+use Porta\Ui\ScreenDensity;
 use Porta\Ui\Theme\Styles;
 
 /**
@@ -20,11 +21,11 @@ use Porta\Ui\Theme\Styles;
  * hand-passed, and growing this DTO is how "my view needs one more thing from
  * core" becomes visible in review.
  *
- * Seven members, against the twelve a previous attempt measured and stopped at.
+ * Eight members, against the twelve a previous attempt measured and stopped at.
  * The difference is not restraint: a view that owns its REGION no longer needs
  * three layout slots, and a view whose main-area swap is core's job
  * ({@see ViewHost}) no longer needs the menu bar, the editor area or the pane
- * order. What is left is the four things its WIDGETS need plus the two handles
+ * order. What is left is the five things its WIDGETS need plus the two handles
  * and {@see $hit}.
  *
  * {@see $hit} is forced by {@see ContributedView::pointer()}: a view with panes
@@ -37,6 +38,12 @@ use Porta\Ui\Theme\Styles;
  * `TextField` and a `MultilineInput` from it, and it is a live holder the
  * cursor-shape setting swaps — omit it and that setting silently stops applying
  * there.
+ *
+ * {@see $density} is the same kind of live holder: a view's widgets see only
+ * their region's height, never the terminal's, so whether the screen affords
+ * boxed controls and folder tabs ({@see \Porta\Ui\Density}) has to be handed
+ * to them — derived from the region, it disagreed with core's by the menu and
+ * status rows.
  */
 final readonly class ViewServices
 {
@@ -48,5 +55,6 @@ final readonly class ViewServices
         public ViewRegion $region,
         public ViewHost $host,
         public HitTester $hit,
+        public ScreenDensity $density,
     ) {}
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget\Render;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Ui\Density;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\StripEdge;
@@ -212,7 +213,7 @@ final class TabStripRendererTest extends TestCase
     /** Folder tabs from 30 terminal rows; a compact strip below, where every row is a line of code. */
     public function testTheStripIsCompactBelowThirtyRows(): void
     {
-        $this->assertSame(1, TabStripRenderer::rowsFor(29));
-        $this->assertSame(2, TabStripRenderer::rowsFor(30));
+        $this->assertSame(1, TabStripRenderer::rowsFor(Density::Compact));
+        $this->assertSame(2, TabStripRenderer::rowsFor(Density::Roomy));
     }
 }

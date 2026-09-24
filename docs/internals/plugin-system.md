@@ -39,7 +39,7 @@ on the four synthetics.
 Everything a plugin's object needs is therefore hand-passed. That is what
 `Editor/PaneServices` is: a four-member DTO (the `Styles` holder, the
 `Translator`, the `Support/Scheduler`, the `ViewerTabHandler`) handed to a pane
-factory. `Workbench/View/ViewServices` is the same idea one size up — seven
+factory. `Workbench/View/ViewServices` is the same idea one size up — eight
 members for a whole full-screen view. **Growing either is how "my pane needs one
 more thing from core" becomes visible in review**, and both should stay hard to
 add to. The same argument governs `Plugin/Runtime/PluginRuntime`, the surface

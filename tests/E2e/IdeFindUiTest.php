@@ -219,12 +219,12 @@ final class IdeFindUiTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
-    /** The find bar's single row, as text. */
+    /** The find bar's value row, as text: its one row on this compact screen, the boxes' middle one on a roomy one. */
     private function findBarRow(Tui $tui): string
     {
-        return AnsiUtils::stripAnsiCodes(
-            Paint::lines($tui->getById('find-bar'), new RenderContext(120, 3))[1], // the boxes' value row
-        );
+        $rows = Paint::lines($tui->getById('find-bar'), new RenderContext(120, 3));
+
+        return AnsiUtils::stripAnsiCodes($rows[\intdiv(\count($rows), num2: 2)]);
     }
 
     public function testCtrlFPrefillsWithTheWordTheCaretIsIn(): void
@@ -320,12 +320,13 @@ final class IdeFindUiTest extends TestCase
                     $this->awaitPainted($tui, $terminal, '[1/3]');
                     $this->assertStringContainsString('[1/3]', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'substring mode hits foobar too');
 
-                    // Click the [\b] tag through the real router: on the value
-                    // row, after the 32-column Find box, its gutter and [.*]
-                    // (zone 37-40 of the bar; the report is 1-based).
+                    // Click the [\b] tag through the real router: on the bar's
+                    // one row (a compact screen), after the 32-column Find
+                    // field, its gutter and [.*] (zone 37-40 of the bar; the
+                    // report is 1-based).
                     $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('find-bar'));
-                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + 38 + 1, $rect->row + 1 + 1));
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + 38 + 1, $rect->row + 1));
                 },
                 300 => function (Tui $tui, VirtualTerminal $terminal): void {
                     // The re-run count is what the toggle produces; awaiting it

@@ -14,6 +14,7 @@ use Porta\Tests\Support\ComposesFindModal;
 use Porta\Tests\Support\Probe;
 use Porta\Ui\CaretVisibility;
 use Porta\Ui\CursorStyle;
+use Porta\Ui\Density;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\FieldBox;
@@ -98,7 +99,7 @@ final class FindInFilesModalTest extends TestCase
     private function composeWithFocus(FindInFilesModal $modal, CaretVisibility $focused, int $columns = 100, int $rows = 24): array
     {
         $lines = \array_fill(0, count: $rows, value: \str_repeat(' ', times: $columns));
-        $placed = $modal->layout([0, 0, $rows, $columns], $focused);
+        $placed = $modal->layout([0, 0, $rows, $columns], $focused, Density::of($rows));
         if (null === $placed) {
             return $lines;
         }
@@ -111,7 +112,7 @@ final class FindInFilesModalTest extends TestCase
     public function testRendersTitleQueryScopeOptionsAndGroupedPreview(): void
     {
         $modal = $this->modal();
-        $this->assertNull($modal->layout([0, 0, 24, 100], CaretVisibility::Shown), 'closed → no layout');
+        $this->assertNull($modal->layout([0, 0, 24, 100], CaretVisibility::Shown, Density::Compact), 'closed → no layout');
 
         $modal->open('Find in Files');
         $modal->setScopes(['Whole Project', 'Directory'], 0);
@@ -1111,19 +1112,19 @@ final class FindInFilesModalTest extends TestCase
         $modal = $this->modal();
         $modal->open('Find in Files'); // no setPreview: displayRows=[] keeps maxPreview content-invariant
 
-        $modal->layout([0, 10, 24, 100], CaretVisibility::Shown); // columns = 90
+        $modal->layout([0, 10, 24, 100], CaretVisibility::Shown, Density::Compact); // columns = 90
         $boxA = $modal->lastBox();
         $this->assertInstanceOf(ModalBox::class, $boxA);
-        $modal->layout([0, 20, 24, 110], CaretVisibility::Shown); // columns = 90 too
+        $modal->layout([0, 20, 24, 110], CaretVisibility::Shown, Density::Compact); // columns = 90 too
         $boxB = $modal->lastBox();
         $this->assertInstanceOf(ModalBox::class, $boxB);
         $this->assertSame($boxA->width, $boxB->width, 'width is driven by columns (right-left), independent of absolute position');
         $this->assertSame($boxA->col + 10, $boxB->col, 'the box shifted by exactly the pane-left delta');
 
-        $modal->layout([10, 0, 34, 100], CaretVisibility::Shown); // rows = 24
+        $modal->layout([10, 0, 34, 100], CaretVisibility::Shown, Density::Compact); // rows = 24
         $boxC = $modal->lastBox();
         $this->assertInstanceOf(ModalBox::class, $boxC);
-        $modal->layout([20, 0, 44, 100], CaretVisibility::Shown); // rows = 24 too
+        $modal->layout([20, 0, 44, 100], CaretVisibility::Shown, Density::Compact); // rows = 24 too
         $boxD = $modal->lastBox();
         $this->assertInstanceOf(ModalBox::class, $boxD);
         $this->assertSame($boxC->rows, $boxD->rows, 'popup row count is driven by rows (bottom-top), independent of absolute position');
@@ -1150,12 +1151,12 @@ final class FindInFilesModalTest extends TestCase
         $modal->open('Find in Files');
         $modal->setPreview($this->results()); // 5 display rows
 
-        $modal->layout([0, 0, 13, 100], CaretVisibility::Shown); // rows=13 → rows-13=0
+        $modal->layout([0, 0, 13, 100], CaretVisibility::Shown, Density::Compact); // rows=13 → rows-13=0
         $boxFloor = $modal->lastBox();
         $this->assertInstanceOf(ModalBox::class, $boxFloor);
         $this->assertSame(1, $boxFloor->count, 'the max(1, ...) floor kept exactly one preview row, not zero');
 
-        $modal->layout([0, 0, 14, 100], CaretVisibility::Shown); // rows=14 → rows-13=1
+        $modal->layout([0, 0, 14, 100], CaretVisibility::Shown, Density::Compact); // rows=14 → rows-13=1
         $boxOne = $modal->lastBox();
         $this->assertInstanceOf(ModalBox::class, $boxOne);
         $this->assertSame(1, $boxOne->count, 'the natural minimum of 1 stayed 1, not 2');
@@ -1165,7 +1166,7 @@ final class FindInFilesModalTest extends TestCase
     {
         $modal = $this->modal();
         $modal->open('Find in Files');
-        $placed = $modal->layout([0, 0, 24, 100], CaretVisibility::Shown);
+        $placed = $modal->layout([0, 0, 24, 100], CaretVisibility::Shown, Density::Compact);
         $this->assertNotNull($placed);
         $box = $modal->lastBox();
         $this->assertInstanceOf(ModalBox::class, $box);
@@ -1221,7 +1222,7 @@ final class FindInFilesModalTest extends TestCase
         $modal = $this->modal();
         $modal->open('Find in Files'); // no preview: content-invariant popup size
 
-        $modal->layout([0, 0, 24, 100], CaretVisibility::Shown);
+        $modal->layout([0, 0, 24, 100], CaretVisibility::Shown, Density::Compact);
         $box = $modal->lastBox();
         $this->assertInstanceOf(ModalBox::class, $box);
         $expectedStartRow = \max(0, \intdiv(24 - $box->rows, num2: 3));
@@ -1235,7 +1236,7 @@ final class FindInFilesModalTest extends TestCase
 
         // The popup needs well over 5 rows to render at all: rows - popupRows
         // is deeply negative here, so the max(0, ...) floor must bind.
-        $modal->layout([0, 0, 5, 100], CaretVisibility::Shown);
+        $modal->layout([0, 0, 5, 100], CaretVisibility::Shown, Density::Compact);
         $box = $modal->lastBox();
         $this->assertInstanceOf(ModalBox::class, $box);
         $this->assertGreaterThan(5, $box->rows, 'sanity: the popup genuinely does not fit in 5 rows');
@@ -1477,7 +1478,7 @@ final class FindInFilesModalTest extends TestCase
         // (short) natural content, so padding to $width is actually exercised.
         $modal->open(\str_repeat('T', times: 80));
         $modal->setPreview($this->results());
-        $placed = $modal->layout([0, 0, 24, 100], CaretVisibility::Shown);
+        $placed = $modal->layout([0, 0, 24, 100], CaretVisibility::Shown, Density::Compact);
         $this->assertNotNull($placed);
         $box = $modal->lastBox();
         $this->assertInstanceOf(ModalBox::class, $box);
@@ -1511,7 +1512,7 @@ final class FindInFilesModalTest extends TestCase
         // natural content, so padding to $width is actually exercised.
         $modal->open(\str_repeat('T', times: 80));
         $modal->setPreview($this->results());
-        $placed = $modal->layout([0, 0, 24, 100], CaretVisibility::Shown);
+        $placed = $modal->layout([0, 0, 24, 100], CaretVisibility::Shown, Density::Compact);
         $this->assertNotNull($placed);
         $box = $modal->lastBox();
         $this->assertInstanceOf(ModalBox::class, $box);
@@ -1628,7 +1629,7 @@ final class FindInFilesModalTest extends TestCase
         $modalA->setPreview($results);
         Probe::set($modalA, 'selected', 7);
         Probe::set($modalA, 'windowStart', 10);
-        $modalA->layout([0, 0, 24, 100], CaretVisibility::Shown);
+        $modalA->layout([0, 0, 24, 100], CaretVisibility::Shown, Density::Compact);
         $this->assertSame(6, $modalA->lastBox()?->windowStart, 'true branch: top = selected - 1 = 6');
 
         // Scenario B: selected is deep with no header immediately before it
@@ -1639,7 +1640,7 @@ final class FindInFilesModalTest extends TestCase
         $modalB->setPreview($results);
         Probe::set($modalB, 'selected', 20);
         Probe::set($modalB, 'windowStart', 999);
-        $modalB->layout([0, 0, 24, 100], CaretVisibility::Shown);
+        $modalB->layout([0, 0, 24, 100], CaretVisibility::Shown, Density::Compact);
         $this->assertSame(12, $modalB->lastBox()?->windowStart, 'count(22) - maxPreview(10) = 12 wins the min()');
 
         // Scenario C: same false branch, but with `top` deliberately the
@@ -1649,7 +1650,7 @@ final class FindInFilesModalTest extends TestCase
         $modalC->setPreview($results);
         Probe::set($modalC, 'selected', 8);
         Probe::set($modalC, 'windowStart', 15);
-        $modalC->layout([0, 0, 24, 100], CaretVisibility::Shown);
+        $modalC->layout([0, 0, 24, 100], CaretVisibility::Shown, Density::Compact);
         $this->assertSame(8, $modalC->lastBox()?->windowStart, 'false branch: top = selected - 0 = 8 wins the min()');
     }
 

@@ -8,6 +8,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Porta\Tests\Support\RendersExactWidth;
 use Porta\Ui\CaretVisibility;
+use Porta\Ui\Density;
 use Porta\Ui\Role;
 use Porta\Ui\TextField;
 use Porta\Ui\Theme\MonochromeTheme;
@@ -52,6 +53,29 @@ final class FieldBoxTest extends TestCase
             ],
             $rows,
             'the label is a legend in the top border, the hint set into the bottom one',
+        );
+    }
+
+    public function testAControlIsBoxedOnlyOnARoomyScreenWithRoomForTheBox(): void
+    {
+        $this->assertSame(FieldBox::ROWS, FieldBox::rowsFor(Density::Roomy));
+        $this->assertSame(FieldBox::ROWS, FieldBox::rowsFor(Density::Roomy, FieldBox::MIN_BOXED));
+        $this->assertSame(1, FieldBox::rowsFor(Density::Roomy, FieldBox::MIN_BOXED - 1), 'narrower, a box is all border');
+        $this->assertSame(1, FieldBox::rowsFor(Density::Compact), 'a compact screen takes every box back');
+    }
+
+    public function testAFieldTakesTheHeightItIsGiven(): void
+    {
+        $spec = new FieldSpec('Find');
+        $field = self::field('foo');
+
+        $this->assertSame(
+            FieldBox::render($spec, $field, FieldState::Idle, CaretVisibility::Hidden, 20, Styles::dark()),
+            FieldBox::field($spec, $field, FieldState::Idle, CaretVisibility::Hidden, 20, FieldBox::ROWS, Styles::dark()),
+        );
+        $this->assertSame(
+            [FieldBox::compact($spec, $field, FieldState::Idle, CaretVisibility::Hidden, 20, Styles::dark())],
+            FieldBox::field($spec, $field, FieldState::Idle, CaretVisibility::Hidden, 20, 1, Styles::dark()),
         );
     }
 

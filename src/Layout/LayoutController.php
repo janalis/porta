@@ -10,6 +10,7 @@ use Porta\Container\AsIdeService;
 use Porta\I18n\Translator;
 use Porta\Input\MouseEvent;
 use Porta\Support\IntMath;
+use Porta\Ui\Density;
 use Porta\Widget\DockPanelWidget;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\Render\TabStripRenderer;
@@ -372,7 +373,7 @@ final class LayoutController
      */
     private static function folderRows(int $rows): int
     {
-        return 2 * (TabStripRenderer::rowsFor($rows) - 1);
+        return 2 * (TabStripRenderer::rowsFor(Density::of($rows)) - 1);
     }
 
     /** Shared keyboard-nudge path: clamp like the drags do, persist, repaint. */

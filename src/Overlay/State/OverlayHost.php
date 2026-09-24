@@ -12,8 +12,10 @@ use Porta\Search\Everywhere\SearchHit;
 use Porta\Search\Everywhere\SearchRow;
 use Porta\Ui\CaretVisibility;
 use Porta\Ui\CursorStyle;
+use Porta\Ui\ScreenDensity;
 use Porta\Ui\TextField;
 use Porta\Ui\Theme\Styles;
+use Porta\Widget\Render\FieldBox;
 use Porta\Widget\Render\PickerLayout;
 use Porta\Widget\Support\ListFilter;
 use Porta\Widget\Support\StylesDefault;
@@ -60,6 +62,7 @@ final class OverlayHost
 
     private readonly CursorStyle $cursorStyle;
     private readonly Translator $translator;
+    private readonly ScreenDensity $density;
 
     /** Repaint request. A frame, not a widget invalidation — nothing below owns these boxes. */
     private readonly \Closure $invalidate;
@@ -69,10 +72,12 @@ final class OverlayHost
         ?Styles $styles = null,
         ?CursorStyle $cursorStyle = null,
         ?Translator $translator = null,
+        ?ScreenDensity $density = null,
     ) {
         $this->initStyles($styles);
         $this->cursorStyle = $cursorStyle ?? new CursorStyle();
         $this->translator = $translator ?? new Translator('en');
+        $this->density = $density ?? new ScreenDensity();
         $this->invalidate = static function () use ($tui): void {
             $tui?->requestRender();
         };
@@ -889,6 +894,9 @@ final class OverlayHost
         $this->overlayBox = null;
         $this->searchBox = null;
         $this->promptBox = null;
+        // The fields' height is the screen's, not the bounds': every boxed
+        // control on one screen follows the one rule.
+        $fieldRows = FieldBox::rowsFor($this->density->current());
         $placed = [];
         if (null !== $this->overlay) {
             // The FULL overlay, filter and all: layout narrows the rows with
@@ -904,6 +912,7 @@ final class OverlayHost
                     $this->translator->trans('no matches'),
                     $this->translator->trans('Type to filter'),
                     $this->direction(),
+                    $fieldRows,
                 ),
                 $this->overlayBox,
             );
@@ -921,12 +930,13 @@ final class OverlayHost
                     $caret,
                     $this->translator->trans('Type to search…'),
                     $this->direction(),
+                    $fieldRows,
                 ),
                 $this->searchBox,
             );
         }
         if (null !== $this->prompt) {
-            $placed[] = $this->place(PickerLayout::layoutPrompt($bounds, $this->prompt, $this->styles, PickerSurface::Prompt === $this->closeHovered), $this->promptBox);
+            $placed[] = $this->place(PickerLayout::layoutPrompt($bounds, $this->prompt, $this->styles, PickerSurface::Prompt === $this->closeHovered, $fieldRows), $this->promptBox);
         }
 
         return $placed;

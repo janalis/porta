@@ -6,6 +6,7 @@ namespace Porta\Tests\Support;
 
 use Porta\Overlay\State\FindInFilesModal;
 use Porta\Ui\CaretVisibility;
+use Porta\Ui\Density;
 use Porta\Widget\Render\OverlayCompositor;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
@@ -40,7 +41,7 @@ trait ComposesFindModal
     private function compose(FindInFilesModal $modal, int $columns = 100, int $rows = 24): array
     {
         $lines = \array_fill(0, count: $rows, value: \str_repeat(' ', times: $columns));
-        $placed = $modal->layout([0, 0, $rows, $columns], CaretVisibility::Shown);
+        $placed = $modal->layout([0, 0, $rows, $columns], CaretVisibility::Shown, Density::of($rows));
         if (null === $placed) {
             return $lines;
         }

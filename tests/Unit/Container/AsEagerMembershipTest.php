@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Container;
 
 use Porta\Editor\StructureFollowsCaret;
+use Porta\Layout\ChromeHeight;
 use Porta\Layout\ResponsiveLayout;
-use Porta\Layout\TabStripHeight;
 use Porta\Lsp\HighlightController;
 use Porta\Overlay\Presenter\FindModalPresenter;
 use Porta\Overlay\Presenter\PickerModalPresenter;
@@ -65,7 +65,7 @@ final class AsEagerMembershipTest extends ContainerTestCase
             PerfCollector::class, // registers its frame hook at construction
             HighlightController::class, // watches the caret from the frame hook
             StructureFollowsCaret::class, // ditto: moves the Structure tab's selection
-            TabStripHeight::class, // reads the terminal's rows from the frame hook
+            ChromeHeight::class, // reads the terminal's rows from the frame hook
         ];
 
         $this->assertSame($ordered, \array_slice($actual, offset: 0, length: \count($ordered)), 'the contractual construction order');

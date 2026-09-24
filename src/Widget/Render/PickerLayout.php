@@ -55,6 +55,7 @@ final class PickerLayout
         string $emptyMessage = '',
         string $placeholder = '',
         BaseDirection $direction = BaseDirection::Ltr,
+        int $fieldRows = FieldBox::ROWS,
     ): array {
         [$boundTop, $boundLeft, $boundBottom, $boundRight] = $bounds;
         $columns = $boundRight - $boundLeft;
@@ -66,7 +67,7 @@ final class PickerLayout
         // Rows, like the width below, are a property of the whole list: the box
         // keeps its height while the filter narrows it, padding what the
         // filter took, so it never re-centres under the reader.
-        $boxRows = \max(1, \min(\count($overlay['items']), $rows - 5 - FieldBox::ROWS, 12));
+        $boxRows = \max(1, \min(\count($overlay['items']), $rows - 5 - $fieldRows, 12));
         $maxItems = \min($boxRows, \max(1, \count($items)));
         $windowStart = IntMath::clamp($selected - $maxItems + 1, 0, \count($items) - $maxItems);
         $visible = \array_slice($items, $windowStart, $maxItems);
@@ -127,12 +128,13 @@ final class PickerLayout
         // modal owns the one caret a frame may carry. The typed text
         // tail-scrolls ({@see FieldBox} keeps the end of a caret-less focused
         // value in view).
-        $header = FieldBox::render(
+        $header = FieldBox::field(
             new FieldSpec(self::FILTER_GLYPH, placeholder: $placeholder, surface: Role::Toolbar),
             $overlay['filter'],
             FieldState::Focused,
             CaretVisibility::Hidden,
             $width,
+            $fieldRows,
             $styles,
         );
         $popup = [
@@ -167,6 +169,7 @@ final class PickerLayout
         CaretVisibility $caret,
         string $placeholder = '',
         BaseDirection $direction = BaseDirection::Ltr,
+        int $fieldRows = FieldBox::ROWS,
     ): array {
         [$boundTop, $boundLeft, $boundBottom, $boundRight] = $bounds;
         $columns = $boundRight - $boundLeft;
@@ -175,7 +178,7 @@ final class PickerLayout
         // As tall as the most rows seen since it opened, like its width: a
         // narrowing query pads the rows it drops rather than shrinking the box
         // and re-centring it under the reader.
-        $boxRows = \max(0, \min(\max(\count($search->rows), $search->tallest), $rows - 6 - (FieldBox::ROWS - 1), 12));
+        $boxRows = \max(0, \min(\max(\count($search->rows), $search->tallest), $rows - 6 - ($fieldRows - 1), 12));
         $maxRows = \max(1, \min($boxRows, \count($search->rows)));
         $windowStart = IntMath::clamp($search->selected - $maxRows + 1, 0, \max(0, \count($search->rows) - $maxRows));
         $visible = \array_slice($search->rows, $windowStart, $maxRows);
@@ -197,7 +200,15 @@ final class PickerLayout
         $width = \min($width, $columns - PopupMetrics::CENTERED_MARGIN, PopupMetrics::CENTERED_MAX_INNER);
 
         // No legend: the title bar already names what is being searched.
-        $popup = FieldBox::render(new FieldSpec('', placeholder: $placeholder, surface: Role::Toolbar), $search->query, FieldState::of(CaretVisibility::Shown === $caret), $caret, $width, $styles);
+        $popup = FieldBox::field(
+            new FieldSpec('', placeholder: $placeholder, surface: Role::Toolbar),
+            $search->query,
+            FieldState::of(CaretVisibility::Shown === $caret),
+            $caret,
+            $width,
+            $fieldRows,
+            $styles,
+        );
         foreach ($visible as $i => $row) {
             $hit = $row->hit;
             if (null !== $row->header) {
@@ -225,7 +236,7 @@ final class PickerLayout
         }
         // Not padded: placed as if it were — the top stays, the box shrinks
         // from the bottom as the query narrows (see layoutList()).
-        $missing = \max(0, FieldBox::ROWS + $boxRows - \count($popup));
+        $missing = \max(0, $fieldRows + $boxRows - \count($popup));
         $framed = [
             ModalFrame::titleBar($search->title, $width + ModalFrame::CHROME_COLS, $styles, $closeHovered),
             ...ModalFrame::wrap($popup, $width, $styles, overflow: self::searchOverflow($search, $windowStart, \count($visible))),
@@ -237,7 +248,7 @@ final class PickerLayout
             $col,
             $width + ModalFrame::CHROME_COLS,
             \count($framed),
-            headerRows: FieldBox::ROWS + ModalFrame::CHROME_ROWS_TOP,
+            headerRows: $fieldRows + ModalFrame::CHROME_ROWS_TOP,
             windowStart: $windowStart,
             count: \count($visible),
         );
@@ -251,7 +262,7 @@ final class PickerLayout
      *
      * @return array{rows: list<string>, top: int, col: int, width: int, box: ModalBox}
      */
-    public static function layoutPrompt(array $bounds, array $prompt, Styles $styles, bool $closeHovered): array
+    public static function layoutPrompt(array $bounds, array $prompt, Styles $styles, bool $closeHovered, int $fieldRows = FieldBox::ROWS): array
     {
         [, $boundLeft, , $boundRight] = $bounds;
         $columns = $boundRight - $boundLeft;
@@ -265,13 +276,13 @@ final class PickerLayout
         // under --no-ansi as well as by its red. Centered like the list and
         // search overlays.
         $state = $prompt['danger'] ? FieldState::Danger : FieldState::Focused;
-        $field = FieldBox::render(new FieldSpec(''), $prompt['value'], $state, CaretVisibility::Shown, $innerWidth, $styles);
+        $field = FieldBox::field(new FieldSpec(''), $prompt['value'], $state, CaretVisibility::Shown, $innerWidth, $fieldRows, $styles);
         $framed = [
             ModalFrame::titleBar($prompt['label'], $innerWidth + ModalFrame::CHROME_COLS, $styles, closeHovered: $closeHovered),
             ...ModalFrame::wrap($field, $innerWidth, $styles),
         ];
         [$top, $col] = self::centered($bounds, \count($framed), $innerWidth + ModalFrame::CHROME_COLS);
-        $box = new ModalBox($top, $col, $innerWidth + ModalFrame::CHROME_COLS, FieldBox::ROWS + ModalFrame::CHROME_ROWS, headerRows: ModalFrame::CHROME_ROWS_TOP, windowStart: 0, count: 1);
+        $box = new ModalBox($top, $col, $innerWidth + ModalFrame::CHROME_COLS, $fieldRows + ModalFrame::CHROME_ROWS, headerRows: ModalFrame::CHROME_ROWS_TOP, windowStart: 0, count: 1);
 
         return ['rows' => $framed, 'top' => $top, 'col' => $col, 'width' => $innerWidth + ModalFrame::CHROME_COLS, 'box' => $box];
     }

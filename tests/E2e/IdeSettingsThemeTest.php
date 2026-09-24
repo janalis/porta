@@ -190,6 +190,8 @@ final class IdeSettingsThemeTest extends TestCase
                     $this->assertStringContainsString('Save File', $screen);
                 },
             ],
+            // The screen rows above count the boxed controls: a roomy screen.
+            rows: 30,
         );
 
         $this->assertFalse(IdeConfig::load($project->dir)->settings['inlineDiagnostics'], 'the General toggle persisted');

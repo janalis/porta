@@ -14,6 +14,7 @@ use Porta\Support\IntMath;
 use Porta\Ui\CaretVisibility;
 use Porta\Ui\ClickZones;
 use Porta\Ui\CursorStyle;
+use Porta\Ui\Density;
 use Porta\Ui\Role;
 use Porta\Ui\TextField;
 use Porta\Ui\Theme\Styles;
@@ -156,14 +157,6 @@ final class FindInFilesModal
     private ?int $userRow = null;
 
     private ?int $userCol = null;
-
-    /**
-     * Below this many rows the three boxed fields would eat the preview: each
-     * field takes its one-row compact form instead of a three-row
-     * {@see FieldBox}. Hit-testing recovers the height the layout drew with
-     * from the box's own geometry ({@see fieldHeight()}).
-     */
-    private const int BOXED_MIN_ROWS = 30;
 
     /** display-row index tinted under the pointer; visual only, never the selection — you type into the query field while it rests. */
     private ?int $hoveredRow = null;
@@ -560,7 +553,7 @@ final class FindInFilesModal
      *
      * @return array{rows: list<string>, top: int, col: int}|null
      */
-    public function layout(array $bounds, CaretVisibility $focused): ?array
+    public function layout(array $bounds, CaretVisibility $focused, Density $density): ?array
     {
         $this->box = null;
         if (!$this->open) {
@@ -570,7 +563,11 @@ final class FindInFilesModal
         $columns = $boundRight - $boundLeft;
         $rows = $boundBottom - $boundTop;
 
-        $fieldRows = $rows >= self::BOXED_MIN_ROWS ? FieldBox::ROWS : 1;
+        // On a compact screen the three boxed fields would eat the preview:
+        // each takes its one-row form ({@see FieldBox::rowsFor()}). Hit-testing
+        // recovers the height drawn from the box's own geometry
+        // ({@see fieldHeight()}).
+        $fieldRows = FieldBox::rowsFor($density);
         // Everything but the preview: the frame and its tees (8), the footer
         // (1), the options row (1) and the three fields.
         $maxPreview = \max(1, \min(\count($this->displayRows), $rows - 10 - (3 * $fieldRows), $this->userRows ?? 10));
@@ -836,11 +833,7 @@ final class FindInFilesModal
         $active = CaretVisibility::Shown === $focused && $which === $this->activeField;
         $caret = $active ? CaretVisibility::Shown : CaretVisibility::Hidden;
 
-        return (
-            FieldBox::ROWS === $height
-                ? FieldBox::render($spec, $field, FieldState::of($active), $caret, $width, $this->styles)
-                : [FieldBox::compact($spec, $field, FieldState::of($active), $caret, $width, $this->styles)]
-        );
+        return FieldBox::field($spec, $field, FieldState::of($active), $caret, $width, $height, $this->styles);
     }
 
     /**

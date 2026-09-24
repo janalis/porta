@@ -198,12 +198,12 @@ final class IdeDockToolsTest extends TestCase
                     $tui->tick();
 
                     // Hover the second result row; the first stays selected.
-                    // The rect's first row is chrome, then the three-row filter
-                    // box and the file's group header, so the results begin at
-                    // +5 and the second one is +6.
+                    // The rect's first row is chrome, then the filter (one row
+                    // on this compact screen) and the file's group header, so
+                    // the results begin at +3 and the second one is +4.
                     $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('results'));
-                    $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $rect->col + 5, $rect->row + 6));
+                    $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $rect->col + 5, $rect->row + 4));
                 },
                 300 => function ($tui, $terminal, Ide $ide): void {
                     // Asserted on the hovered ROW, not the whole panel: the

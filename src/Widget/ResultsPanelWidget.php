@@ -20,6 +20,7 @@ use Porta\Ui\ListSelection;
 use Porta\Ui\LtrPane;
 use Porta\Ui\Markup\MarkupParser;
 use Porta\Ui\Role;
+use Porta\Ui\ScreenDensity;
 use Porta\Ui\Sgr;
 use Porta\Ui\TextField;
 use Porta\Ui\Theme\Styles;
@@ -97,6 +98,7 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
         ?Styles $styles = null,
         ?CursorStyle $cursorStyle = null,
         private readonly Translator $translator = new Translator('en'),
+        private readonly ScreenDensity $density = new ScreenDensity(),
         private readonly ?EventDispatcherInterface $events = null,
     ) {
         $this->initStyles($styles);
@@ -506,7 +508,7 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
     /** The boxed filter field (when shown); list tools otherwise carry no header row. */
     protected function headerRowCount(): int
     {
-        return $this->withFilter ? FieldBox::ROWS : 0;
+        return $this->withFilter ? FieldBox::rowsFor($this->density->current()) : 0;
     }
 
     #[\Override]
@@ -525,7 +527,15 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
         if ($this->withFilter) {
             $focused = $this->isFocused();
             $spec = new FieldSpec($this->translator->trans('Filter'), trailing: $this->translator->trans('(narrows the results below)'), surface: Role::Toolbar);
-            \array_push($lines, ...FieldBox::render($spec, $this->filter, FieldState::of($focused), $focused ? CaretVisibility::Shown : CaretVisibility::Hidden, $columns, $this->styles));
+            \array_push($lines, ...FieldBox::field(
+                $spec,
+                $this->filter,
+                FieldState::of($focused),
+                $focused ? CaretVisibility::Shown : CaretVisibility::Hidden,
+                $columns,
+                $this->headerRowCount(),
+                $this->styles,
+            ));
         }
 
         $scroll = $this->list->follow($this->visibleRows);

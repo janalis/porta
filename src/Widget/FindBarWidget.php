@@ -24,6 +24,7 @@ use Porta\Ui\ClickZones;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
+use Porta\Ui\ScreenDensity;
 use Porta\Ui\TextField;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\FieldBox;
@@ -110,10 +111,12 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
         private readonly Translator $translator,
         ?Styles $styles = null,
         ?CursorStyle $cursorStyle = null,
+        ?ScreenDensity $density = null,
         private readonly ?EventDispatcherInterface $events = null,
         private readonly ?SearchHistoryStore $history = null,
     ) {
         $this->initStyles($styles);
+        $this->density = $density ?? new ScreenDensity();
         $this->query = new TextField(style: $cursorStyle);
         $this->replacement = new TextField(style: $cursorStyle);
         $this->optionZones = new ClickZones();
@@ -318,6 +321,11 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
     /** The option tag under the pointer ('regex'|'word'), or null. Visual only. */
     private ?string $hoveredTag = null;
 
+    private readonly ScreenDensity $density;
+
+    /** The row the last render seated the tags on: the boxes' value row, or the one row of a compact bar. */
+    private int $tagRow = 1;
+
     /**
      * Tint the option tag under the pointer (widget-relative cell); returns
      * whether it changed.
@@ -369,10 +377,10 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
         $this->gotoMatch($this->currentIndex + $step);
     }
 
-    /** The option-tag zone covering the cell in the last render, or null — the tags sit on the middle row. */
+    /** The option-tag zone covering the cell in the last render, or null — the tags sit on the fields' value row. */
     private function zoneAt(int $row, int $col): ?string
     {
-        return self::TAG_ROW === $row ? $this->optionZones->at($col) : null;
+        return $this->tagRow === $row ? $this->optionZones->at($col) : null;
     }
 
     #[\Override]
@@ -431,12 +439,16 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
             return [$this->styles->of(Role::Toolbar)->apply(FieldBox::compact($spec, $field, $state, $caret, $columns, $this->styles))];
         }
 
-        $rows = ['', '', ''];
+        // Boxed on a roomy screen; on a compact one every field keeps its
+        // place on a single row, so Replace never hides behind Find.
+        $fieldRows = FieldBox::rowsFor($this->density->current());
+        $this->tagRow = \intdiv($fieldRows, num2: 2);
+        $rows = \array_fill(0, $fieldRows, value: '');
         $col = 0;
         foreach ($fields as [$name, $spec, $field, $index]) {
             $active = $this->focused && $index === $this->activeField;
             $state = 0 === $index && $failing ? FieldState::Danger : FieldState::of($active);
-            foreach (FieldBox::render($spec, $field, $state, $active ? CaretVisibility::Shown : CaretVisibility::Hidden, $boxWidth, $this->styles) as $i => $line) {
+            foreach (FieldBox::field($spec, $field, $state, $active ? CaretVisibility::Shown : CaretVisibility::Hidden, $boxWidth, $fieldRows, $this->styles) as $i => $line) {
                 $rows[$i] .= $line.' ';
             }
             $this->fieldZones->add($name, $col, $col + $boxWidth);
@@ -444,7 +456,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
         }
         $strip = $col;
         foreach ([['regex', '.*', $this->regex], ['word', '\b', $this->wholeWord], ['case', 'Aa', $this->matchCase]] as [$name, $glyph, $on]) {
-            $rows[self::TAG_ROW] .= FindModalRows::optionTag($glyph, OptionTagState::of($on, $name === $this->hoveredTag), $this->styles);
+            $rows[$this->tagRow] .= FindModalRows::optionTag($glyph, OptionTagState::of($on, $name === $this->hoveredTag), $this->styles);
             $width = \mb_strwidth($glyph) + 2;
             $this->optionZones->add($name, $col, $col + $width);
             $col += $width;
@@ -457,13 +469,17 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
             ['close', Glyphs::CLOSE],
         ] as [$name, $glyph]) {
             $style = $name === $this->hoveredTag ? $this->styles->of(Role::Bright)->withUnderline() : $this->styles->of(Role::Faint);
-            $rows[self::TAG_ROW] .= ' '.$style->apply($glyph).' ';
+            $rows[$this->tagRow] .= ' '.$style->apply($glyph).' ';
             $this->optionZones->add($name, $col, $col + 3);
             $col += 3;
         }
-        [$above, $below] = self::packHints($hints, $columns - $strip);
-        $rows[0] .= $this->styles->of(Role::Faint)->apply($above);
-        $rows[2] .= $this->styles->of(Role::Faint)->apply($below);
+        if (FieldBox::ROWS === $fieldRows) {
+            // The key hints fill the rows above and below the tags; a compact
+            // bar has none to spare, and leaves them to the keybindings page.
+            [$above, $below] = self::packHints($hints, $columns - $strip);
+            $rows[0] .= $this->styles->of(Role::Faint)->apply($above);
+            $rows[2] .= $this->styles->of(Role::Faint)->apply($below);
+        }
 
         return \array_map(fn (string $row): string => $this->styles->of(Role::Toolbar)->apply(AnsiText::padRight($row, $columns)), $rows);
     }
@@ -675,10 +691,6 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
         $this->events?->dispatch(new FindQueryUpdated());
     }
 
-    /** Display columns of the right-aligned option-tag strip (both tags are glyph + 2). */
-    /** The row of the three-row bar that seats the option tags: the boxes' value row. */
-    private const int TAG_ROW = 1;
-
     /** A field box's width cap — a browser input's fixed size, not the pane's. */
     private const int BOX_MAX = 32;
 
@@ -710,6 +722,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
         return [$above, $below ?? ''];
     }
 
+    /** Display columns of the option tags and the buttons beside them (each tag is glyph + 2, each button 3). */
     private static function tagsWidth(): int
     {
         return \mb_strwidth('.*') + 2 + \mb_strwidth('\b') + 2 + \mb_strwidth('Aa') + 2 + (3 * 3);

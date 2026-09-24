@@ -113,7 +113,7 @@ Every horizontal tab strip (editor, dock, git mode tabs) is
 `measureCell`/`renderCell`. Only the vertical editor strip lays out its own
 rows. A folder tab's outline is `Widget/Render/TabShape` at a `StripEdge`;
 `TabStripTail` pads the rows. How tall the strips are is
-`Layout/TabStripHeight`, and a strip learns whether its pane has the keys
+`Layout/ChromeHeight`, from the `Ui/ScreenDensity` it keeps, and a strip learns whether its pane has the keys
 through the `Widget/Support/PaneFocusProbe` trait.
 
 **`Widget/EditorPaneWidget`** and **`Widget/NavigablePaneWidget`** — the two
