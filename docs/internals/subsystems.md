@@ -448,6 +448,17 @@ only the box and a column either side of it toggle.
   form keeps Find and Replace side by side on its one row), the pickers'
   fields, the Results and keybindings filters and the commit form all ask it.
   The Welcome card's button stays one row, because a card is a row of a list.
+- **An option toggle is a control too** — `.*`, `Aa`, the diff's `S split`:
+  `FieldBox::toggle()` at the height the host drew its fields. Boxed, its
+  frame is always the idle one (a toggle never takes the keys; its shortcut
+  flips it) and the caption carries the state, on in the selection's shade and
+  off faint; one row, it is the tag, `[.*]` on and ` .* ` off. Either way it is
+  its whole box to the pointer: the find bar, Find in Files' options band and
+  the diff toolbar hit-test the band, not a row. The find bar's ↑ ↓ × are boxed
+  `FieldBox::button()`s beside boxed toggles; a pane too narrow for both keeps
+  boxed fields with one-row tags on their value row. The diff toolbar's title
+  rides the middle row of its boxed toggles, and every body row counts the
+  header's height.
 - The screen's density is the terminal's, never a pane's: `Ui/ScreenDensity`
   is the live holder, updated before each frame by `Layout/ChromeHeight`, which
   clears every chrome cache on a flip. A contributed view gets it through

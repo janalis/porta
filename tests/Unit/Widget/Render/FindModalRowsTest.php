@@ -9,7 +9,6 @@ use Porta\Support\AnsiText;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\FindModalRows;
-use Porta\Widget\Support\OptionTagState;
 use Porta\Widget\Support\RowSelection;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
@@ -23,36 +22,6 @@ final class FindModalRowsTest extends TestCase
             $styles->of(Role::PopupRow)->apply(AnsiText::truncate(' '.$styles->of(Role::TabAccent)->apply('src/<info>.php').$styles->of(Role::Dim)->apply('  (3)'), 30, pad: true)),
             FindModalRows::fileHeader('src/<info>.php', 3, 30, $styles),
         );
-    }
-
-    public function testOptionTagOnBracketsTheGlyph(): void
-    {
-        $tag = AnsiUtils::stripAnsiCodes(FindModalRows::optionTag('C', OptionTagState::On, Styles::dark()));
-        $this->assertSame('[C]', $tag);
-    }
-
-    /** A lit tag under the pointer keeps its brackets and its selection, and underlines. */
-    public function testOptionTagOnHoveredUnderlinesTheBracketedGlyph(): void
-    {
-        $styles = Styles::dark();
-        $tag = FindModalRows::optionTag('C', OptionTagState::OnHovered, $styles);
-
-        $this->assertSame('[C]', AnsiUtils::stripAnsiCodes($tag));
-        $this->assertSame($styles->of(Role::SelectedRow)->withUnderline()->apply('[C]'), $tag);
-        $this->assertSame(OptionTagState::OnHovered, OptionTagState::of(on: true, hovered: true), 'on AND hovered is its own state');
-        $this->assertSame(OptionTagState::On, OptionTagState::of(on: true, hovered: false));
-    }
-
-    public function testOptionTagHoveredPadsTheGlyphOnBothSides(): void
-    {
-        $tag = AnsiUtils::stripAnsiCodes(FindModalRows::optionTag('C', OptionTagState::Hovered, Styles::dark()));
-        $this->assertSame(' C ', $tag);
-    }
-
-    public function testOptionTagOffPadsTheGlyphOnBothSides(): void
-    {
-        $tag = AnsiUtils::stripAnsiCodes(FindModalRows::optionTag('C', OptionTagState::Off, Styles::dark()));
-        $this->assertSame(' C ', $tag);
     }
 
     public function testFileHeaderCarriesThePathThenTheCount(): void

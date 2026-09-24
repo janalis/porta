@@ -8,6 +8,8 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Porta\I18n\Translator;
 use Porta\Overlay\State\FindInFilesModal;
+use Porta\Overlay\State\FindModalCallbacks;
+use Porta\Search\SearchOption;
 use Porta\Tests\Support\ComposesFindModal;
 use Porta\Tests\Support\Probe;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -132,14 +134,27 @@ final class FindInFilesModalGeometryTest extends TestCase
         $find = $box->startRow + 2; // below the title bar and the padding row
         $this->assertMatchesRegularExpression('/┏ Find ━/u', $screen[$find], 'the focused query box, its label a legend');
         $this->assertMatchesRegularExpression('/╭ Replace ─/u', $screen[$find + 3]);
-        $this->assertSame($find + 6, $box->optionsRow, 'the options row follows the two boxes');
-        $this->assertMatchesRegularExpression('/╭ Mask ─/u', $screen[$box->optionsRow + 1]);
+        $this->assertSame($find + 6, $box->optionsRow, 'the options band follows the two boxes');
+        $this->assertMatchesRegularExpression('/│ \.\* │/u', $screen[$box->optionsRow + 1], 'its toggles boxed like the fields, their captions on the middle row');
+        $this->assertMatchesRegularExpression('/╭ Mask ─/u', $screen[$box->optionsRow + 3]);
 
         // Each band is three rows: its border rows click the box as well.
-        foreach ([$find + 3 => 'Replace', $find + 5 => 'Replace', $box->optionsRow + 1 => 'Mask', $box->optionsRow + 3 => 'Mask', $find => 'Find', $find + 2 => 'Find'] as $row => $label) {
+        foreach ([$find + 3 => 'Replace', $find + 5 => 'Replace', $box->optionsRow + 3 => 'Mask', $box->optionsRow + 5 => 'Mask', $find => 'Find', $find + 2 => 'Find'] as $row => $label) {
             $this->assertTrue($modal->clickAt($row, $box->col + 3));
             $this->assertMatchesRegularExpression('/┏ '.$label.' ━/u', \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $this->compose($modal, rows: 34))), "row {$row} focuses {$label}");
         }
+
+        // A toggle answers on every row of its box: the top and bottom
+        // borders of .* (inner columns 1-6, after the leading space).
+        $toggled = [];
+        $modal->setCallbacks(new FindModalCallbacks(onToggleOption: static function (SearchOption $option) use (&$toggled): void {
+            $toggled[] = $option;
+        }));
+        $this->assertTrue($modal->clickAt($box->optionsRow, $box->col + 2 + 3));
+        $this->assertTrue($modal->clickAt($box->optionsRow + 2, $box->col + 2 + 3));
+        $this->assertSame([SearchOption::Regex, SearchOption::Regex], $toggled);
+        $modal->clickAt($box->optionsRow + 3, $box->col + 2 + 3);
+        $this->assertCount(2, $toggled, 'the row below the band is the mask, not the toggle');
     }
 
     /**

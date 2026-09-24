@@ -18,7 +18,6 @@ use Porta\Ui\Density;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\FieldBox;
-use Porta\Widget\Render\FindModalRows;
 use Porta\Widget\Render\ModalFrame;
 use Porta\Widget\Render\PopupMetrics;
 use Porta\Widget\Render\TabCloseGlyph;
@@ -1456,8 +1455,8 @@ final class FindInFilesModalTest extends TestCase
     public function testOptionTagStartsUnhoveredNotHovered(): void
     {
         $styles = Styles::dark();
-        $offRegex = FindModalRows::optionTag('.*', OptionTagState::of(on: false, hovered: false), $styles);
-        $hoveredRegex = FindModalRows::optionTag('.*', OptionTagState::of(on: false, hovered: true), $styles);
+        $offRegex = FieldBox::toggle('.*', OptionTagState::of(on: false, hovered: false), 1, $styles)[0];
+        $hoveredRegex = FieldBox::toggle('.*', OptionTagState::of(on: false, hovered: true), 1, $styles)[0];
 
         $modal = $this->modal();
         $modal->open('Find in Files');

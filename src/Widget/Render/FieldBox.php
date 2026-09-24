@@ -11,6 +11,7 @@ use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Porta\Ui\TextField;
 use Porta\Ui\Theme\Styles;
+use Porta\Widget\Support\OptionTagState;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Style\Style;
 
@@ -161,6 +162,44 @@ final class FieldBox
             $border->apply($vertical).' '.self::mark($checked, $tintMark ? $styles : null).' '.$border->apply($vertical),
             $border->apply($bottomLeft.$rule.$bottomRight),
         ];
+    }
+
+    /**
+     * An option toggle — `.*`, `Aa`, a diff's `S split` — at the height the
+     * host drew its fields: {@see ROWS} as a box of its own, `╭────╮ │ .* │
+     * ╰────╯`, or the one-row tag, `[.*]` on and ` .* ` off.
+     *
+     * The state is the caption's: on is the selection's shade (reverse under
+     * monochrome), off is faint. A boxed toggle's frame is always the idle
+     * one — a toggle never takes the keys, its shortcut flips it — and the
+     * pointer underlines the caption, as it does a button's. A tag has no
+     * border to say "on" with, so its brackets do.
+     *
+     * @return list<string> each exactly {@see toggleWidth()} columns
+     */
+    public static function toggle(string $caption, OptionTagState $state, int $rows, Styles $styles): array
+    {
+        $boxed = self::ROWS === $rows;
+        $on = OptionTagState::On === $state || OptionTagState::OnHovered === $state;
+        $style = match ($state) {
+            OptionTagState::On => $styles->of(Role::SelectedRow),
+            // Lit already, so the pointer underlines rather than re-tints —
+            // the one mark that reads over the selection, in colour or not.
+            OptionTagState::OnHovered => $styles->of(Role::SelectedRow)->withUnderline(),
+            OptionTagState::Hovered => $boxed ? $styles->of(Role::Bright)->withUnderline() : $styles->of(Role::RowHighlightBg),
+            OptionTagState::Off => $styles->of(Role::Faint),
+        };
+        if (!$boxed) {
+            return [$style->apply($on ? '['.$caption.']' : ' '.$caption.' ')];
+        }
+
+        return self::control(new FieldSpec(''), static fn (int $room): string => self::centred($caption, $room, $style), FieldState::Idle, self::toggleWidth($caption, $rows), $rows, $styles);
+    }
+
+    /** A toggle's width: the caption and its brackets as a tag, its rails and padding as a box. */
+    public static function toggleWidth(string $caption, int $rows): int
+    {
+        return AnsiUtils::visibleWidth($caption) + (self::ROWS === $rows ? self::CHROME_COLS : 2);
     }
 
     /** ✓, – or the blank; the first two in the accent with $tint. */

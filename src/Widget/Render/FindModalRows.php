@@ -11,7 +11,6 @@ use Porta\Ui\Role;
 use Porta\Ui\Sgr;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\MatchRowDecorator;
-use Porta\Widget\Support\OptionTagState;
 use Porta\Widget\Support\RowSelection;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Style\Style;
@@ -33,27 +32,6 @@ use Symfony\Component\Tui\Style\Style;
  */
 final class FindModalRows
 {
-    /**
-     * One option toggle. Each tag self-closes; the row's Toolbar background
-     * re-applies itself after the close, so no explicit re-open is needed
-     * between tags. An enabled tag is bracketed (like every toggle) so it reads
-     * without color; all three states stay glyph-width + 2 for the click zones.
-     */
-    public static function optionTag(string $glyph, OptionTagState $state, Styles $styles): string
-    {
-        return match ($state) {
-            OptionTagState::On => $styles->of(Role::SelectedRow)->apply('['.$glyph.']'),
-            // Lit already, so the pointer underlines rather than re-tints —
-            // the one mark that reads over the selection, in colour or not.
-            OptionTagState::OnHovered => $styles
-                ->of(Role::SelectedRow)
-                ->withUnderline()
-                ->apply('['.$glyph.']'),
-            OptionTagState::Hovered => $styles->of(Role::RowHighlightBg)->apply(' '.$glyph.' '),
-            OptionTagState::Off => $styles->of(Role::Faint)->apply(' '.$glyph.' '),
-        };
-    }
-
     /** A file's grouping header: path plus its match count. */
     public static function fileHeader(string $path, int $count, int $width, Styles $styles): string
     {

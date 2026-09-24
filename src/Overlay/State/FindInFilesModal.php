@@ -414,7 +414,7 @@ final class FindInFilesModal
 
             return;
         }
-        $top = $box->optionsRow + 1;
+        $top = $box->optionsRow + self::fieldHeight($box); // the mask band, below the options'
         $side = $this->sideWidthFor($box->width - ModalFrame::CHROME_COLS);
         $col = $box->col + $box->width - (ModalFrame::CHROME_COLS / 2) - $side;
         $menu($this->scopeLabels, $this->scopeIndex, $top + self::fieldHeight($box), $col, $top, $side);
@@ -569,12 +569,12 @@ final class FindInFilesModal
         // ({@see fieldHeight()}).
         $fieldRows = FieldBox::rowsFor($density);
         // Everything but the preview: the frame and its tees (8), the footer
-        // (1), the options row (1) and the three fields.
-        $maxPreview = \max(1, \min(\count($this->displayRows), $rows - 10 - (3 * $fieldRows), $this->userRows ?? 10));
+        // (1), and the three fields and the options band, each $fieldRows.
+        $maxPreview = \max(1, \min(\count($this->displayRows), $rows - 9 - (4 * $fieldRows), $this->userRows ?? 10));
         $windowStart = $this->windowStart($maxPreview);
         $visible = \array_slice($this->displayRows, $windowStart, $maxPreview);
 
-        $width = $this->boxWidth($columns, $visible);
+        $width = $this->boxWidth($columns, $visible, $fieldRows);
         $col = $boundLeft + \max(0, \intdiv($columns - $width - ModalFrame::CHROME_COLS, num2: 2));
 
         $fields = $this->headerRows($width, $focused, $fieldRows);
@@ -668,7 +668,7 @@ final class FindInFilesModal
     /**
      * @param list<\Porta\Widget\Support\DisplayRow> $visible
      */
-    private function boxWidth(int $columns, array $visible): int
+    private function boxWidth(int $columns, array $visible, int $fieldRows): int
     {
         $status = $this->statusText();
         $width = \max(\mb_strwidth($this->title) + \mb_strwidth($status) + 10, \mb_strwidth($this->query->value()) + 9 + FieldBox::CHROME_COLS, PopupMetrics::FIND_MIN_WIDTH); // + 10: the frame's title-bar chrome
@@ -678,7 +678,12 @@ final class FindInFilesModal
         // The side column (Find window, scope) sits beside every field band,
         // and a query needs room to be read, not just to exist: twice a
         // box's minimum, beside the padded hint column of the compact form.
-        $width = \max($width, $this->optionsRowWidth(), $this->footerRowWidth(), $label + 1 + (2 * FieldBox::MIN_BOXED) + 1 + AnsiUtils::visibleWidth($this->replaceHint()) + 1 + $this->sideWidth());
+        $width = \max(
+            $width,
+            $this->optionsRowWidth($fieldRows),
+            $this->footerRowWidth(),
+            $label + 1 + (2 * FieldBox::MIN_BOXED) + 1 + AnsiUtils::visibleWidth($this->replaceHint()) + 1 + $this->sideWidth(),
+        );
         foreach ($visible as $row) {
             $text = $row->filePath ?? $this->results[$row->matchIndex]['text'] ?? '';
             $width = \max($width, \mb_strwidth($text) + 8);
@@ -700,6 +705,8 @@ final class FindInFilesModal
      * per $fieldRows — with a side column beside the fields: the Find window
      * button next to Find and the scope select next to Mask, a blank beside
      * Replace so the fields' rails stand in one column.
+     *
+     * @param positive-int $fieldRows
      *
      * @return list<string>
      */
@@ -733,7 +740,7 @@ final class FindInFilesModal
                 $this->fieldRows(new FieldSpec($replace, trailing: $replaceHint, surface: Role::Toolbar), $this->replace, FindModalField::Replace, $focused, $fieldWidth, $fieldRows),
                 \array_fill(0, \max(1, $fieldRows), $toolbar->apply(AnsiText::blank($side))),
             ),
-            $this->optionsRowLine($width),
+            ...$this->optionsRows($width, $fieldRows),
             ...$this->beside($this->fieldRows(new FieldSpec($mask, trailing: $maskHint, surface: Role::Toolbar), $this->mask, FindModalField::Mask, $focused, $fieldWidth, $fieldRows), $scope),
         ];
     }
@@ -847,12 +854,18 @@ final class FindInFilesModal
         return match (true) {
             $offset >= (-2 * $height) && $offset < -$height => FindModalField::Query,
             $offset >= -$height && $offset < 0 => FindModalField::Replace,
-            $offset > 0 && $offset <= $height => FindModalField::Mask,
+            $offset >= $height && $offset < (2 * $height) => FindModalField::Mask,
             default => null,
         };
     }
 
-    /** One field's height as laid out: Find and Replace fill the rows between the frame's top chrome and the options row. */
+    /** Whether $relRow falls in the options band, which is a field's height: a toggle answers on any of its rows. */
+    private static function onOptions(ModalBox $box, int $relRow): bool
+    {
+        return $relRow >= $box->optionsRow && $relRow < ($box->optionsRow + self::fieldHeight($box));
+    }
+
+    /** One field's height as laid out: Find and Replace fill the rows between the frame's top chrome and the options band. */
     private static function fieldHeight(ModalBox $box): int
     {
         return \intdiv($box->optionsRow - $box->startRow - ModalFrame::CHROME_ROWS_TOP, num2: 2);
@@ -903,11 +916,11 @@ final class FindInFilesModal
      * `(Alt+S)` rendered as `(Al…`, hiding the only thing that says how to
      * change the scope.
      */
-    private function optionsRowWidth(): int
+    private function optionsRowWidth(int $fieldRows): int
     {
         $tags = 0;
         foreach ($this->optionTags() as $glyph) {
-            $tags += \mb_strwidth($glyph) + 2;
+            $tags += FieldBox::toggleWidth($glyph, $fieldRows);
         }
 
         return 1 + $tags;
@@ -919,21 +932,30 @@ final class FindInFilesModal
         return $this->scopeLabels[$this->scopeIndex] ?? $this->translator->trans('Whole Project');
     }
 
-    /** The option tags row; records the tags' click zones. */
-    private function optionsRowLine(int $width): string
+    /**
+     * The option toggles' band, as tall as a field — boxed beside boxed
+     * fields — and records their click zones, which span the band.
+     *
+     * @param positive-int $fieldRows
+     *
+     * @return list<string>
+     */
+    private function optionsRows(int $width, int $fieldRows): array
     {
         $this->optionZones->clear();
         $col = 1; // leading space
-        $tags = '';
+        $rows = \array_fill(0, $fieldRows, value: ' ');
         foreach ($this->optionTags() as $name => $glyph) {
-            $w = \mb_strwidth($glyph) + 2;
+            $w = FieldBox::toggleWidth($glyph, $fieldRows);
             $this->optionZones->add($name, $col, $col + $w);
             $col += $w;
             $on = 'tokens' === $name ? 'any' !== $this->options['tokens'] : true === $this->options[$name];
-            $tags .= FindModalRows::optionTag($glyph, OptionTagState::of($on, $name === $this->hovered), $this->styles);
+            foreach (FieldBox::toggle($glyph, OptionTagState::of($on, $name === $this->hovered), $fieldRows, $this->styles) as $i => $line) {
+                $rows[$i] .= $line;
+            }
         }
 
-        return $this->styles->of(Role::Toolbar)->apply(AnsiText::truncate(' '.$tags, $width, pad: true));
+        return \array_map(fn (string $row): string => $this->styles->of(Role::Toolbar)->apply(AnsiText::truncate($row, $width, pad: true)), $rows);
     }
 
     /** The replacement column for a preview row (the raw text when no preview closure is wired). */
@@ -1018,7 +1040,7 @@ final class FindInFilesModal
 
             return true;
         }
-        if ($relRow === $box->optionsRow) {
+        if (self::onOptions($box, $relRow)) {
             $zone = $this->optionZones->at($innerCol);
             $option = null === $zone ? null : SearchOption::tryFrom($zone);
             if (null !== $option) {
@@ -1126,7 +1148,7 @@ final class FindInFilesModal
             $this->hotspot = $hotspot;
             ($this->invalidate)();
         }
-        if (null !== $box && $relRow === $box->optionsRow) {
+        if (null !== $box && self::onOptions($box, $relRow)) {
             return $this->hoverZone($this->optionZones->at($box->innerCol($relCol))) || $closeChanged;
         }
         if (null !== $box && FindModalField::Query === $this->fieldAt($box, $relRow - $box->optionsRow) && null !== $this->sideZones->at($box->innerCol($relCol))) {

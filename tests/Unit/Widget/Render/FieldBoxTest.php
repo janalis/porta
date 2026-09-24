@@ -16,6 +16,7 @@ use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\FieldBox;
 use Porta\Widget\Render\FieldSpec;
 use Porta\Widget\Render\FieldState;
+use Porta\Widget\Support\OptionTagState;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
@@ -76,6 +77,44 @@ final class FieldBoxTest extends TestCase
         $this->assertSame(
             [FieldBox::compact($spec, $field, FieldState::Idle, CaretVisibility::Hidden, 20, Styles::dark())],
             FieldBox::field($spec, $field, FieldState::Idle, CaretVisibility::Hidden, 20, 1, Styles::dark()),
+        );
+    }
+
+    /** The one-row toggle is a tag: bracketed on, padded off, both the glyph + 2 so no click zone moves. */
+    public function testATagBracketsTheCaptionWhileOn(): void
+    {
+        $styles = Styles::dark();
+
+        $this->assertSame([$styles->of(Role::SelectedRow)->apply('[C]')], FieldBox::toggle('C', OptionTagState::On, 1, $styles));
+        $this->assertSame([$styles->of(Role::SelectedRow)->withUnderline()->apply('[C]')], FieldBox::toggle('C', OptionTagState::OnHovered, 1, $styles), 'lit, the pointer underlines');
+        $this->assertSame([$styles->of(Role::RowHighlightBg)->apply(' C ')], FieldBox::toggle('C', OptionTagState::Hovered, 1, $styles));
+        $this->assertSame([$styles->of(Role::Faint)->apply(' C ')], FieldBox::toggle('C', OptionTagState::Off, 1, $styles));
+        $this->assertSame(3, FieldBox::toggleWidth('C', 1));
+        $this->assertSame(OptionTagState::OnHovered, OptionTagState::of(on: true, hovered: true), 'on AND hovered is its own state');
+    }
+
+    /** Boxed, the frame is always idle: the caption carries the state, and reads under monochrome. */
+    public function testABoxedToggleCarriesItsStateOnTheCaption(): void
+    {
+        $styles = Styles::dark();
+        $on = FieldBox::toggle('.*', OptionTagState::On, FieldBox::ROWS, $styles);
+
+        $this->assertSame(['╭────╮', '│ .* │', '╰────╯'], self::plain($on));
+        $this->assertStringContainsString($styles->of(Role::SelectedRow)->apply('.*'), $on[1]);
+        $this->assertStringContainsString(
+            $styles->of(Role::Bright)->withUnderline()->apply('.*'),
+            FieldBox::toggle('.*', OptionTagState::Hovered, FieldBox::ROWS, $styles)[1],
+            'hover underlines, the border stays',
+        );
+        $this->assertStringContainsString($styles->of(Role::Faint)->apply('.*'), FieldBox::toggle('.*', OptionTagState::Off, FieldBox::ROWS, $styles)[1]);
+        $this->assertSame(6, FieldBox::toggleWidth('.*', FieldBox::ROWS));
+        self::assertExactWidth(FieldBox::toggle('.*', OptionTagState::OnHovered, FieldBox::ROWS, $styles), 6);
+
+        $mono = new Styles(MonochromeTheme::definition());
+        $this->assertNotSame(
+            FieldBox::toggle('.*', OptionTagState::On, FieldBox::ROWS, $mono),
+            FieldBox::toggle('.*', OptionTagState::Off, FieldBox::ROWS, $mono),
+            'on and off stay apart without colour',
         );
     }
 

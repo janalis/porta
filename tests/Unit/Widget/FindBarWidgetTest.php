@@ -12,6 +12,7 @@ use Porta\History\SearchHistoryStore;
 use Porta\I18n\Translator;
 use Porta\Tests\Support\FakeFindTarget;
 use Porta\Tests\Support\TempProject;
+use Porta\Ui\ScreenDensity;
 use Porta\Widget\FindBarWidget;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -362,19 +363,20 @@ final class FindBarWidgetTest extends TestCase
         $bar->setFocused(true);
         $bar->open(new FakeFindTarget($doc), mode: FindMode::Replace, initialQuery: 'needle');
 
-        $rows = $bar->render(new RenderContext(120, 3));
+        $rows = $bar->render(new RenderContext(160, 3));
         $plain = \array_map(AnsiUtils::stripAnsiCodes(...), $rows);
 
         $this->assertCount(3, $rows, 'two boxed fields side by side, three rows tall');
         foreach ($rows as $row) {
-            $this->assertSame(120, AnsiUtils::visibleWidth($row));
+            $this->assertSame(160, AnsiUtils::visibleWidth($row));
         }
         $this->assertStringStartsWith('┏ Find ━', $plain[0], 'the focused field is heavy-bordered, its label a legend');
         $this->assertStringContainsString('╭ Replace ─', $plain[0], 'the other field rests rounded');
         $this->assertStringStartsWith('┃ needle ', $plain[1]);
         $this->assertStringContainsString('━ [1/1] ━┛', $plain[2], 'the match position rides the bottom border of the Find box');
-        $this->assertStringContainsString('Alt+R replace', $plain[0], 'the hints pack whole into the strip beside the boxes');
-        $this->assertStringContainsString('Esc', $plain[2], 'and carry on below the tags');
+        $this->assertStringContainsString('│ .* │', $plain[1], 'the toggles are boxes beside the fields');
+        $this->assertStringContainsString('Alt+R replace', $plain[0], 'the hints pack whole into the strip past the buttons');
+        $this->assertStringContainsString('Esc', $plain[2], 'and carry on along the bottom row');
     }
 
     public function testCloseNotifiesAndClearsMatches(): void
@@ -514,8 +516,12 @@ final class FindBarWidgetTest extends TestCase
         $this->assertCount(2, \array_merge(...\array_values($bar->getMatchesByLine())), 'foobar no longer matches');
 
         // Bracketed = enabled, so the tags read without colour (the toggle
-        // convention the find modal and the checkboxes already follow).
-        $screen = AnsiUtils::stripAnsiCodes(\implode('', $bar->render(new RenderContext(120, 1))));
+        // convention the find modal and the checkboxes already follow) —
+        // the one-row form, which has no box to say it with.
+        $compact = new FindBarWidget(new Translator('en'), density: self::compactScreen());
+        $compact->open(new FakeFindTarget($doc), mode: FindMode::Find);
+        $compact->handleInput("\x1bw");
+        $screen = AnsiUtils::stripAnsiCodes(\implode('', $compact->render(new RenderContext(120, 1))));
         $this->assertStringContainsString('[\b]', $screen, 'the enabled whole-word tag is bracketed');
         $this->assertStringNotContainsString('[.*]', $screen, 'the disabled regex tag is not');
         $this->assertStringContainsString(' .* ', $screen, 'but it still occupies its zone');
@@ -638,15 +644,18 @@ final class FindBarWidgetTest extends TestCase
         $bar->render(new RenderContext(80, 1)); // the zones come from the last render
         $this->assertCount(3, \array_merge(...\array_values($bar->getMatchesByLine())));
 
-        // The tags follow the 32-column box and its gutter: [.*] spans 33-36, [\b] 37-40.
-        $bar->handleClick(1, 38);
+        // The toggles follow the 32-column box and its gutter, six columns
+        // each boxed: .* spans 33-38, \b 39-44.
+        $bar->handleClick(1, 41);
         $this->assertCount(2, \array_merge(...\array_values($bar->getMatchesByLine())), 'the click re-ran the search, exactly as Alt+W does');
 
+        $bar->handleClick(1, 70); // past the buttons: no zone at all
+        $this->assertCount(2, \array_merge(...\array_values($bar->getMatchesByLine())), 'the empty tail is inert');
         $bar->handleClick(1, 10); // the query box is not a tag
         $this->assertCount(2, \array_merge(...\array_values($bar->getMatchesByLine())), 'a click off the tags is inert');
 
-        $bar->handleClick(1, 38);
-        $this->assertCount(3, \array_merge(...\array_values($bar->getMatchesByLine())), 'and it toggles back off');
+        $bar->handleClick(2, 41);
+        $this->assertCount(3, \array_merge(...\array_values($bar->getMatchesByLine())), 'and toggles back off from its bottom border: a box answers on every row');
 
         // The other tag, on its own zone: regex mode makes the query a pattern.
         $bar->handleClick(1, 34);
@@ -705,7 +714,7 @@ final class FindBarWidgetTest extends TestCase
 
         $this->assertTrue($bar->hoverAt(1, 34), 'the pointer landed on the regex tag');
         $this->assertFalse($bar->hoverAt(1, 35), 'still the same tag → no change');
-        $this->assertTrue($bar->hoverAt(1, 38), 'moved onto the whole-word tag');
+        $this->assertTrue($bar->hoverAt(1, 40), 'moved onto the whole-word tag');
         $this->assertTrue($bar->hoverAt(1, 10), 'the query field is not a tag: the tint clears');
         $this->assertFalse($bar->hoverAt(1, 10), 'still no tag → no change');
         $this->assertTrue($bar->hoverAt(1, 34), 'back onto a tag');
@@ -714,7 +723,7 @@ final class FindBarWidgetTest extends TestCase
 
         $bar->hoverAt(1, 34);
         $line = $bar->render(new RenderContext(80, 3))[1];
-        $this->assertStringContainsString("\x1b[48;5;236m", $line, 'the hovered tag tints');
+        $this->assertStringContainsString("\x1b[4m", $line, 'the hovered toggle underlines its caption, as a button does');
         $this->assertSame(80, AnsiUtils::visibleWidth($line), 'the tint does not change the bar width');
     }
 
@@ -784,27 +793,51 @@ final class FindBarWidgetTest extends TestCase
         $this->assertSame(1, $flat[0]['end'] - $flat[0]['start'], 'the query is "b" (1 char), not "b\x7f" or longer');
     }
 
-    public function testTagZoneColumnsAreExactlyGlyphPlusTwoWide(): void
+    public function testTheToggleZonesAreTheBoxesAndAnswerOnEveryRow(): void
     {
         $bar = new FindBarWidget(new Translator('en'));
         $bar->open(new FakeFindTarget(new Document("x\n")), mode: FindMode::Find);
-        $bar->render(new RenderContext(80, 1));
+        $bar->render(new RenderContext(80, 3));
 
-        // [.*] is 2 glyph cols + 2 padding = 4 wide; same for [\b] and [Aa].
-        // They follow the 32-column box and its gutter: regex spans 33-36,
-        // word 37-40, case 41-44; then the three 3-wide buttons to 53.
+        // A boxed toggle is its caption plus the rails and padding: six
+        // columns for .*, \b and Aa; a boxed button five. They follow the
+        // 32-column box and its gutter: regex 33-38, word 39-44, case 45-50,
+        // then ↑ 51-55, ↓ 56-60 and × 61-65.
         $this->assertFalse($bar->hoverAt(1, 32), 'the gutter before the regex zone: no tag');
         $this->assertTrue($bar->hoverAt(1, 33), 'the regex zone starts at 33');
-        $this->assertFalse($bar->hoverAt(1, 36), 'still the regex zone (33-36): no change');
-        $this->assertTrue($bar->hoverAt(1, 37), 'the word zone starts right after, at 37');
-        $this->assertFalse($bar->hoverAt(1, 40), 'still the word zone (37-40): no change');
-        $this->assertTrue($bar->hoverAt(1, 41), 'the case zone, 41-44');
-        $this->assertTrue($bar->hoverAt(1, 45), 'the ↑ button, 45-47');
-        $this->assertTrue($bar->hoverAt(1, 51), 'the × button, 51-53');
+        $this->assertFalse($bar->hoverAt(1, 38), 'still the regex zone (33-38): no change');
+        $this->assertTrue($bar->hoverAt(1, 39), 'the word zone starts right after, at 39');
+        $this->assertFalse($bar->hoverAt(1, 44), 'still the word zone (39-44): no change');
+        $this->assertTrue($bar->hoverAt(1, 45), 'the case zone, 45-50');
+        $this->assertTrue($bar->hoverAt(1, 51), 'the ↑ button, 51-55');
+        $this->assertTrue($bar->hoverAt(1, 61), 'the × button, 61-65');
         $bar->clearHover();
-        $this->assertFalse($bar->hoverAt(1, 54), 'past the last button: nothing, no change from already-cleared');
-        $this->assertFalse($bar->hoverAt(0, 34), 'the tags live on the value row only');
-        $this->assertFalse($bar->hoverAt(2, 34), 'not the row below it either');
+        $this->assertFalse($bar->hoverAt(1, 66), 'past the last button: nothing, no change from already-cleared');
+        $this->assertTrue($bar->hoverAt(0, 34), 'the top border is the toggle too');
+        $this->assertFalse($bar->hoverAt(2, 36), 'as is the bottom one: the same toggle, no change');
+        $this->assertTrue($bar->hoverAt(3, 34), 'below the bar is off it: the hover clears');
+    }
+
+    public function testOnACompactScreenTheTagsAreOneRow(): void
+    {
+        $bar = new FindBarWidget(new Translator('en'), density: self::compactScreen());
+        $bar->open(new FakeFindTarget(new Document("x\n")), mode: FindMode::Replace);
+        $rows = \array_map(AnsiUtils::stripAnsiCodes(...), $bar->render(new RenderContext(100, 3)));
+
+        $this->assertCount(1, $rows, 'Find and Replace side by side on the one row');
+        $this->assertStringContainsString('Replace ', $rows[0]);
+        $this->assertStringContainsString(' .*  \b  Aa  ↑  ↓  × ', $rows[0]);
+        $this->assertTrue($bar->hoverAt(0, 67), 'the regex tag, after two 32-column fields and their gutters: 66-69');
+        $this->assertTrue($bar->hoverAt(1, 67), 'below the one row is off it: the hover clears');
+        $this->assertFalse($bar->hoverAt(1, 67), 'and stays clear');
+    }
+
+    private static function compactScreen(): ScreenDensity
+    {
+        $density = new ScreenDensity();
+        $density->observe(24);
+
+        return $density;
     }
 
     public function testFindNextAfterAStaleRefreshJumpsToTheFirstMatchNotTheSecond(): void
@@ -925,9 +958,9 @@ final class FindBarWidgetTest extends TestCase
 
         $bar->hoverAt(1, 34); // the regex tag's column
         $line = $bar->render(new RenderContext(80, 3))[1];
-        // The value row carries the tags; the hints (which mention ".*" and
-        // "\b" too) sit on the rows above and below it.
-        $tint = \strrpos($line, needle: "\x1b[48;5;236m");
+        // The value row carries the captions; the hints (which mention ".*"
+        // and "\b" too) sit on the rows above and below it.
+        $tint = \strrpos($line, needle: "\x1b[4m");
         $star = \strrpos($line, needle: '.*');
         $backslashB = \strrpos($line, needle: '\b');
         $this->assertNotFalse($tint);
@@ -1127,7 +1160,7 @@ final class FindBarWidgetTest extends TestCase
         $bar->handleInput("\x1bc");
         $this->assertCount(1, $this->allMatches($bar), 'Aa on: only the exact case');
         $bar->render(new RenderContext(80, 3));
-        $bar->handleClick(1, 42); // the [Aa] tag
+        $bar->handleClick(1, 47); // the Aa toggle
         $this->assertCount(2, $this->allMatches($bar), 'clicked off again');
     }
 
@@ -1140,14 +1173,14 @@ final class FindBarWidgetTest extends TestCase
         $position = static fn (): string => AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(80, 3))[2]);
         $this->assertStringContainsString('[1/3]', $position());
 
-        $bar->handleClick(1, 49); // ↓
+        $bar->handleClick(1, 58); // ↓
         $this->assertStringContainsString('[2/3]', $position());
-        $bar->handleClick(1, 46); // ↑
-        $bar->handleClick(1, 46);
+        $bar->handleClick(1, 53); // ↑
+        $bar->handleClick(0, 53); // its top border: a button is its whole box
         $this->assertStringContainsString('[3/3]', $position(), 'wrapping');
-        $this->assertTrue($bar->hoverAt(1, 52));
+        $this->assertTrue($bar->hoverAt(1, 63));
         $this->assertStringContainsString("\e[4m", $bar->render(new RenderContext(80, 3))[1], 'the × under the pointer underlines');
-        $bar->handleClick(1, 52); // ×
+        $bar->handleClick(1, 63); // ×
         $this->assertFalse($bar->isOpen());
     }
 

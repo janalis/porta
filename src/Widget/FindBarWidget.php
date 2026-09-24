@@ -30,12 +30,12 @@ use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\FieldBox;
 use Porta\Widget\Render\FieldSpec;
 use Porta\Widget\Render\FieldState;
-use Porta\Widget\Render\FindModalRows;
 use Porta\Widget\Support\InputHook;
 use Porta\Widget\Support\MatchJump;
 use Porta\Widget\Support\OptionTagState;
 use Porta\Widget\Support\StylesDefault;
 use Psr\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\FocusableInterface;
@@ -323,8 +323,10 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
 
     private readonly ScreenDensity $density;
 
-    /** The row the last render seated the tags on: the boxes' value row, or the one row of a compact bar. */
-    private int $tagRow = 1;
+    /** The last render's toggles and buttons: their first row and their height, on any row of which each answers. */
+    private int $tagTop = 0;
+
+    private int $tagRows = FieldBox::ROWS;
 
     /**
      * Tint the option tag under the pointer (widget-relative cell); returns
@@ -377,10 +379,10 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
         $this->gotoMatch($this->currentIndex + $step);
     }
 
-    /** The option-tag zone covering the cell in the last render, or null — the tags sit on the fields' value row. */
+    /** The toggle or button zone covering the cell in the last render, or null — each is as tall as the bar. */
     private function zoneAt(int $row, int $col): ?string
     {
-        return $this->tagRow === $row ? $this->optionZones->at($col) : null;
+        return $row >= $this->tagTop && $row < ($this->tagTop + $this->tagRows) ? $this->optionZones->at($col) : null;
     }
 
     #[\Override]
@@ -418,18 +420,27 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
         $this->optionZones->clear();
         $this->fieldZones->clear();
 
-        // Browser-form layout: fixed-width boxes, then a strip beside them —
-        // the option tags on the value row, the key hints packed into the
-        // rows above and below it. Every click target
-        // sits at a column the typing cannot move.
-        // Each box is followed by a one-column gutter, as a form spaces its inputs.
-        // A query that cannot match — a bad pattern, one the engine gave up
-        // on, or no hit at all — draws the Find box double, the danger
-        // border: the state reads by shape, not only by its words.
+        // Browser-form layout: fixed-width boxes, then the option toggles and
+        // the buttons a browser's find bar has, then the key hints packed
+        // into what is left. Every click target sits at a column the typing
+        // cannot move. Each box is followed by a one-column gutter, as a form
+        // spaces its inputs. A query that cannot match — a bad pattern, one
+        // the engine gave up on, or no hit at all — draws the Find box double,
+        // the danger border: the state reads by shape, not only by its words.
         $failing = $this->patternInvalid || $this->patternTooComplex || 0 === $count && '' !== $this->query->value();
-        $boxWidth = \min(self::BOX_MAX, \intdiv($columns - self::tagsWidth(), \count($fields)) - 1);
+        // Boxed on a roomy screen, the toggles and buttons boxed beside the
+        // fields — or, in a pane too narrow for both, as one-row tags on the
+        // fields' value row. On a compact screen every field keeps its place
+        // on one row, so Replace never hides behind Find.
+        $fieldRows = FieldBox::rowsFor($this->density->current());
+        $tagRows = $fieldRows;
+        $boxWidth = self::boxWidth($columns, \count($fields), $tagRows);
+        if ($boxWidth < FieldBox::MIN_BOXED && FieldBox::ROWS === $tagRows) {
+            $tagRows = 1;
+            $boxWidth = self::boxWidth($columns, \count($fields), $tagRows);
+        }
         if ($boxWidth < FieldBox::MIN_BOXED) {
-            // Too narrow to seat a box per field and the tags: the field being
+            // Too narrow to seat a field each and the tags: the field being
             // typed in, one compact row, and no zones recorded — a tag drawn
             // past the edge is neither visible nor clickable.
             [, $spec, $field, $index] = $fields[$this->withReplace ? $this->activeField : 0];
@@ -439,10 +450,8 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
             return [$this->styles->of(Role::Toolbar)->apply(FieldBox::compact($spec, $field, $state, $caret, $columns, $this->styles))];
         }
 
-        // Boxed on a roomy screen; on a compact one every field keeps its
-        // place on a single row, so Replace never hides behind Find.
-        $fieldRows = FieldBox::rowsFor($this->density->current());
-        $this->tagRow = \intdiv($fieldRows, num2: 2);
+        $this->tagTop = \intdiv($fieldRows - $tagRows, num2: 2);
+        $this->tagRows = $tagRows;
         $rows = \array_fill(0, $fieldRows, value: '');
         $col = 0;
         foreach ($fields as [$name, $spec, $field, $index]) {
@@ -455,28 +464,38 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
             $col += $boxWidth + 1;
         }
         $strip = $col;
-        foreach ([['regex', '.*', $this->regex], ['word', '\b', $this->wholeWord], ['case', 'Aa', $this->matchCase]] as [$name, $glyph, $on]) {
-            $rows[$this->tagRow] .= FindModalRows::optionTag($glyph, OptionTagState::of($on, $name === $this->hoveredTag), $this->styles);
-            $width = \mb_strwidth($glyph) + 2;
-            $this->optionZones->add($name, $col, $col + $width);
-            $col += $width;
+        $tags = \array_fill(0, $tagRows, value: '');
+        foreach (self::TOGGLES as $name => $glyph) {
+            $on = match ($name) {
+                'regex' => $this->regex,
+                'word' => $this->wholeWord,
+                default => $this->matchCase,
+            };
+            $col = $this->place($tags, $col, $name, FieldBox::toggle($glyph, OptionTagState::of($on, $name === $this->hoveredTag), $tagRows, $this->styles));
         }
-        // The buttons a browser's find bar has: previous, next, close. Each
-        // underlines under the pointer.
-        foreach ([
-            ['prev',  Glyphs::FIND_PREV],
-            ['next',  Glyphs::FIND_NEXT],
-            ['close', Glyphs::CLOSE],
-        ] as [$name, $glyph]) {
-            $style = $name === $this->hoveredTag ? $this->styles->of(Role::Bright)->withUnderline() : $this->styles->of(Role::Faint);
-            $rows[$this->tagRow] .= ' '.$style->apply($glyph).' ';
-            $this->optionZones->add($name, $col, $col + 3);
-            $col += 3;
+        // Previous, next, close: boxed buttons beside boxed toggles, bare
+        // glyphs on a one-row bar. Each underlines under the pointer.
+        foreach (self::BUTTONS as $name => $glyph) {
+            $hovered = $name === $this->hoveredTag;
+            $col = $this->place(
+                $tags,
+                $col,
+                $name,
+                FieldBox::ROWS === $tagRows
+                    ? FieldBox::button($glyph, FieldState::Idle, $hovered, self::buttonWidth($tagRows), $tagRows, $this->styles)
+                    : [' '.($hovered ? $this->styles->of(Role::Bright)->withUnderline() : $this->styles->of(Role::Faint))->apply($glyph).' '],
+            );
+        }
+        foreach ($tags as $i => $line) {
+            $rows[$this->tagTop + $i] .= $line;
         }
         if (FieldBox::ROWS === $fieldRows) {
-            // The key hints fill the rows above and below the tags; a compact
-            // bar has none to spare, and leaves them to the keybindings page.
-            [$above, $below] = self::packHints($hints, $columns - $strip);
+            // The key hints fill the top and bottom rows past the controls on
+            // them — the boxed toggles, or none beside one-row tags; a compact
+            // bar has no rows to spare, and leaves them to the keybindings
+            // page.
+            $hintsAt = FieldBox::ROWS === $tagRows ? $col : $strip;
+            [$above, $below] = self::packHints($hints, $columns - $hintsAt);
             $rows[0] .= $this->styles->of(Role::Faint)->apply($above);
             $rows[2] .= $this->styles->of(Role::Faint)->apply($below);
         }
@@ -722,10 +741,51 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
         return [$above, $below ?? ''];
     }
 
-    /** Display columns of the option tags and the buttons beside them (each tag is glyph + 2, each button 3). */
-    private static function tagsWidth(): int
+    /** The option toggles, name => caption, in the order drawn. */
+    private const array TOGGLES = ['regex' => '.*', 'word' => '\\b', 'case' => 'Aa'];
+
+    /** The buttons after them, name => glyph. */
+    private const array BUTTONS = ['prev' => Glyphs::FIND_PREV, 'next' => Glyphs::FIND_NEXT, 'close' => Glyphs::CLOSE];
+
+    /** A field's width: what the toggles and buttons leave, shared, less each one's gutter, capped. */
+    private static function boxWidth(int $columns, int $fields, int $rows): int
     {
-        return \mb_strwidth('.*') + 2 + \mb_strwidth('\b') + 2 + \mb_strwidth('Aa') + 2 + (3 * 3);
+        return \min(self::BOX_MAX, \intdiv($columns - self::tagsWidth($rows), $fields) - 1);
+    }
+
+    /** Display columns of the option toggles and the buttons beside them, at $rows. */
+    private static function tagsWidth(int $rows): int
+    {
+        $width = \count(self::BUTTONS) * self::buttonWidth($rows);
+        foreach (self::TOGGLES as $caption) {
+            $width += FieldBox::toggleWidth($caption, $rows);
+        }
+
+        return $width;
+    }
+
+    /** A button's width: its glyph padded, boxed or bare. */
+    private static function buttonWidth(int $rows): int
+    {
+        return 1 + (FieldBox::ROWS === $rows ? FieldBox::CHROME_COLS : 2);
+    }
+
+    /**
+     * Append a control's rows to the bar's and record its click zone; the
+     * column after it.
+     *
+     * @param list<string> $rows
+     * @param list<string> $control as many rows as $rows
+     */
+    private function place(array &$rows, int $col, string $name, array $control): int
+    {
+        foreach ($control as $i => $line) {
+            $rows[$i] .= $line;
+        }
+        $width = AnsiUtils::visibleWidth($control[0]);
+        $this->optionZones->add($name, $col, $col + $width);
+
+        return $col + $width;
     }
 
     /** Flip regex matching and re-search (Alt+X, or a click on the [.*] tag). */
