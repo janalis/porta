@@ -59,6 +59,10 @@ final class Glyphs
     // there and there is no colour band to say it.
     public const string CARET_LINE = '›';
 
+    // The find bar's previous / next match buttons.
+    public const string FIND_PREV = '↑';
+    public const string FIND_NEXT = '↓';
+
     // Diagnostic severity (gutter, inline message prefix, status-bar counts).
     public const string SEVERITY_ERROR = '✗';
     public const string SEVERITY_WARNING = '▲'; // also SCROLL_UP — disjoint surfaces (message row vs strip edge)

@@ -10482,3 +10482,17 @@ read without colour:
 and resolving that means reworking how spans close and reopen, which is not a
 theme change.
 
+## UI round, phase 6b: the find bar shows failure by shape (2026-09-24)
+
+The find bar reported "bad regex", "pattern too complex" and "0/0" only as the
+counter's words in the box's border. The Find box now takes the double danger
+frame for all three. The bar has a browser find bar's buttons (↑ ↓ ×) and a
+match-case tag, `Aa` on `Alt+C` (the key Find in Files uses; column mode's
+`Alt+C` is an editor key, so the focused bar takes it first), which overrides
+smart case. The query field takes `TextField::editKey()`, like every other field.
+
+The key hints stay the catalogue's fixed strings with `Alt+C Aa` appended. The
+bar's keys are its own defaults, not a user-rebindable map, so the fixed text
+is accurate, and rebuilding the hints from the keymap would retire seven
+translations of each string for no change a user could see.
+

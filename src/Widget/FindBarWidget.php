@@ -22,6 +22,7 @@ use Porta\Support\AnsiText;
 use Porta\Ui\CaretVisibility;
 use Porta\Ui\ClickZones;
 use Porta\Ui\CursorStyle;
+use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Porta\Ui\TextField;
 use Porta\Ui\Theme\Styles;
@@ -73,6 +74,8 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
     /** Session-lifetime search options (survive close/reopen, like the modal's). */
     private bool $regex = false;
     private bool $wholeWord = false;
+    /** Match case exactly; off, the query matches case-insensitively while it is all lower case (smart case). */
+    private bool $matchCase = false;
     private bool $patternInvalid = false;
 
     /**
@@ -227,6 +230,12 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
             return;
         }
 
+        if ($kb->matches($data, 'toggle_case')) {
+            $this->toggleMatchCase();
+
+            return;
+        }
+
         if ($kb->matches($data, 'replace_one')) {
             $this->replaceCurrent();
 
@@ -245,11 +254,11 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
             return;
         }
 
-        // Plain text input. Typing leaves history-browsing, so the next
-        // Alt+Up starts from the top again rather than from wherever the
-        // cursor was left three searches ago.
+        // Plain text input, or the field's caret keys. Typing leaves
+        // history-browsing, so the next Alt+Up starts from the top again
+        // rather than from wherever the cursor was left three searches ago.
         $this->historyCursor = -1;
-        $this->editActiveField(static fn (TextField $field): bool => $field->insert($data));
+        $this->editActiveField(static fn (TextField $field): bool => $field->editKey($data) || $field->insert($data));
     }
 
     /**
@@ -332,19 +341,32 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
     }
 
     /**
-     * A click on an option tag toggles it, exactly as its Alt+X / Alt+W key
-     * does; a click in a field box makes it the field typing edits.
+     * A click on an option tag toggles it, exactly as its Alt+X / Alt+W /
+     * Alt+C key does; ↑ and ↓ step to the previous and next match as
+     * Shift+F3 and F3 do, × closes as Esc does; a click in a field box makes
+     * it the field typing edits.
      */
     public function handleClick(int $row, int $col): void
     {
         match ($this->zoneAt($row, $col) ?? $this->fieldZones->at($col)) {
             'regex' => $this->toggleRegex(),
             'word' => $this->toggleWholeWord(),
+            'case' => $this->toggleMatchCase(),
+            'prev' => $this->stepMatch(-1),
+            'next' => $this->stepMatch(1),
+            'close' => $this->close(),
             'find' => $this->activeField = 0,
             'replace' => $this->activeField = 1,
             default => null,
         };
         $this->invalidate();
+    }
+
+    /** The match $step away from the current one, wrapping — the ↑/↓ buttons. */
+    private function stepMatch(int $step): void
+    {
+        $this->refreshIfStale();
+        $this->gotoMatch($this->currentIndex + $step);
     }
 
     /** The option-tag zone covering the cell in the last render, or null — the tags sit on the middle row. */
@@ -371,9 +393,12 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
             default => '0/0',
         };
 
-        $hints = $this->withReplace
-            ? $this->translator->trans('⏎/F3 next  Shift+F3 prev  Tab field  Alt+R replace  Alt+A all  Alt+X .*  Alt+W \b  Esc')
-            : $this->translator->trans('⏎/F3 next  Shift+F3 prev  Alt+X .*  Alt+W \b  Esc');
+        $hints =
+            (
+                $this->withReplace
+                    ? $this->translator->trans('⏎/F3 next  Shift+F3 prev  Tab field  Alt+R replace  Alt+A all  Alt+X .*  Alt+W \b  Esc')
+                    : $this->translator->trans('⏎/F3 next  Shift+F3 prev  Alt+X .*  Alt+W \b  Esc')
+            ).'  Alt+C Aa';
 
         // The match position rides the Find box's bottom border, where it
         // lasts as long as the box does: out in the strip it was the first
@@ -403,20 +428,37 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
 
         $rows = ['', '', ''];
         $col = 0;
+        // A query that cannot match — a bad pattern, one the engine gave up
+        // on, or no hit at all — draws the Find box double, the danger
+        // border: the state reads by shape, not only by its words.
+        $failing = $this->patternInvalid || $this->patternTooComplex || 0 === $count && '' !== $this->query->value();
         foreach ($fields as [$name, $spec, $field, $index]) {
             $active = $this->focused && $index === $this->activeField;
-            foreach (FieldBox::render($spec, $field, FieldState::of($active), $active ? CaretVisibility::Shown : CaretVisibility::Hidden, $boxWidth, $this->styles) as $i => $line) {
+            $state = 0 === $index && $failing ? FieldState::Danger : FieldState::of($active);
+            foreach (FieldBox::render($spec, $field, $state, $active ? CaretVisibility::Shown : CaretVisibility::Hidden, $boxWidth, $this->styles) as $i => $line) {
                 $rows[$i] .= $line.' ';
             }
             $this->fieldZones->add($name, $col, $col + $boxWidth);
             $col += $boxWidth + 1;
         }
         $strip = $col;
-        foreach ([['regex', '.*', $this->regex], ['word', '\b', $this->wholeWord]] as [$name, $glyph, $on]) {
+        foreach ([['regex', '.*', $this->regex], ['word', '\b', $this->wholeWord], ['case', 'Aa', $this->matchCase]] as [$name, $glyph, $on]) {
             $rows[self::TAG_ROW] .= FindModalRows::optionTag($glyph, OptionTagState::of($on, $name === $this->hoveredTag), $this->styles);
             $width = \mb_strwidth($glyph) + 2;
             $this->optionZones->add($name, $col, $col + $width);
             $col += $width;
+        }
+        // The buttons a browser's find bar has: previous, next, close. Each
+        // underlines under the pointer.
+        foreach ([
+            ['prev',  Glyphs::FIND_PREV],
+            ['next',  Glyphs::FIND_NEXT],
+            ['close', Glyphs::CLOSE],
+        ] as [$name, $glyph]) {
+            $style = $name === $this->hoveredTag ? $this->styles->of(Role::Bright)->withUnderline() : $this->styles->of(Role::Faint);
+            $rows[self::TAG_ROW] .= ' '.$style->apply($glyph).' ';
+            $this->optionZones->add($name, $col, $col + 3);
+            $col += 3;
         }
         [$above, $below] = self::packHints($hints, $columns - $strip);
         $rows[0] .= $this->styles->of(Role::Faint)->apply($above);
@@ -449,7 +491,8 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
         $this->patternInvalid = false;
         $this->patternTooComplex = false;
         $query = $this->query->value();
-        $caseInsensitive = \strtolower($query) === $query; // smart-case carries into regex mode via the i flag
+        // Smart case unless Aa is on; it carries into regex mode via the i flag.
+        $caseInsensitive = !$this->matchCase && \strtolower($query) === $query;
 
         if ($this->regex || $this->wholeWord) {
             $pattern = SearchPattern::build(
@@ -668,13 +711,21 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
 
     private static function tagsWidth(): int
     {
-        return \mb_strwidth('.*') + 2 + \mb_strwidth('\b') + 2;
+        return \mb_strwidth('.*') + 2 + \mb_strwidth('\b') + 2 + \mb_strwidth('Aa') + 2 + (3 * 3);
     }
 
     /** Flip regex matching and re-search (Alt+X, or a click on the [.*] tag). */
     private function toggleRegex(): void
     {
         $this->regex = !$this->regex;
+        $this->recompute(jumpToNearest: MatchJump::ToNearest);
+        $this->invalidate();
+    }
+
+    /** Flip exact-case matching and re-search (Alt+C, or a click on the [Aa] tag). */
+    private function toggleMatchCase(): void
+    {
+        $this->matchCase = !$this->matchCase;
         $this->recompute(jumpToNearest: MatchJump::ToNearest);
         $this->invalidate();
     }
@@ -698,6 +749,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
             'replace_one' => ['alt+r'],
             'toggle_regex' => ['alt+x'],
             'toggle_word' => ['alt+w'],
+            'toggle_case' => ['alt+c'],
             'replace_all' => ['alt+a'],
             'delete_char_backward' => [Key::BACKSPACE],
             // The same chords the find-in-files modal recalls with, because it

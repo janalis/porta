@@ -146,7 +146,7 @@ nothing.
 
 | Key | Action |
 | --- | --- |
-| `Ctrl+F` / `Ctrl+R` | Find / find-and-replace in file (`F3`/`Shift+F3` cycle, `Tab` switches field, `Alt+X` regex, `Alt+W` whole word, `Alt+R` replace, `Alt+A` replace all, `Alt+↑`/`Alt+↓` recall an earlier query) |
+| `Ctrl+F` / `Ctrl+R` | Find / find-and-replace in file (`F3`/`Shift+F3` cycle, `Tab` switches field, `Alt+X` regex, `Alt+W` whole word, `Alt+C` match case, `Alt+R` replace, `Alt+A` replace all, `Alt+↑`/`Alt+↓` recall an earlier query) |
 | `Ctrl+Shift+F` | Find in Files — see the table below |
 | `Ctrl+G` | Go to line |
 | `Ctrl+Shift+T` | Go to test / go to tested class |

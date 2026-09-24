@@ -34,11 +34,20 @@ keystroke. A caret standing in no word contributes nothing and the field keeps
 what it had; a multi-line selection prefills nothing, because the field is one
 line. `F3`/`Shift+F3` cycle matches, `Tab` switches fields,
 `Alt+R` replaces the current match, `Alt+A` replaces all. `Alt+X` toggles
-regex mode and `Alt+W` whole-word (note: in this bar `Alt+R` means replace —
-the Find-in-Files modal uses `Alt+R` for its regex toggle instead). In regex
-mode the replacement is a preg replacement pattern: `$1` inserts the first
-captured group, `\$` a literal dollar. An invalid half-typed pattern shows
-`[bad regex]` in place of the match counter and matches nothing.
+regex mode, `Alt+W` whole-word and `Alt+C` match case (`Aa`). Without `Aa`,
+an all-lower-case query ignores case and one with a capital does not (smart
+case). Note that in this bar `Alt+R` means replace; the Find-in-Files modal
+uses `Alt+R` for its regex toggle instead. In regex mode the replacement is a
+preg replacement pattern: `$1` inserts the first captured group, `\$` a literal
+dollar. An invalid half-typed pattern shows `[bad regex]` in place of the match
+counter and matches nothing.
+
+A query that can find nothing draws the Find box with a **double** border: a bad
+pattern, one the engine gave up on, or no hit at all. The problem shows by
+shape as well as by the counter. `↑`, `↓` and `×` beside the tags step to the
+previous and next match and close the bar, like `Shift+F3`, `F3` and `Esc`.
+The query field takes the caret keys: `←`/`→`, `Home`/`End`, `Delete`,
+`Ctrl+W`.
 
 ## Find in Files (`Ctrl+Shift+F`)
 

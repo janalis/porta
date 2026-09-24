@@ -42,8 +42,8 @@ final class FindBarWidgetTest extends TestCase
         // next thing on the row as the query — every assertion about clearing
         // the field would pass against it.
         $m = [];
-        $this->assertMatchesRegularExpression('/^[┏╭] Find /u', $rows[0] ?? '', 'the bar draws a Find field');
-        $this->assertSame(1, \preg_match('/^[┃│]([^┃│]*)[┃│]/u', $rows[1], $m), 'with its value between the rails');
+        $this->assertMatchesRegularExpression('/^[┏╭╔] Find /u', $rows[0] ?? '', 'the bar draws a Find field');
+        $this->assertSame(1, \preg_match('/^[┃│║]([^┃│║]*)[┃│║]/u', $rows[1], $m), 'with its value between the rails');
 
         return \trim($m[1]);
     }
@@ -694,7 +694,7 @@ final class FindBarWidgetTest extends TestCase
         $rows = \array_map(AnsiUtils::stripAnsiCodes(...), $bar->render(new RenderContext(40, 3)));
 
         $this->assertStringContainsString('[1/2]', $rows[2]);
-        $this->assertStringEndsWith(' .*  \\b ', $rows[1], 'beside the tags, which still fit');
+        $this->assertStringEndsWith(' .*  \\b  Aa  ↑  ↓  × ', $rows[1], 'beside the tags and buttons, which still fit');
     }
 
     public function testHoverTintsTheTagUnderThePointer(): void
@@ -790,15 +790,19 @@ final class FindBarWidgetTest extends TestCase
         $bar->open(new FakeFindTarget(new Document("x\n")), mode: FindMode::Find);
         $bar->render(new RenderContext(80, 1));
 
-        // [.*] is 2 glyph cols + 2 padding = 4 wide; same for [\b]. They follow
-        // the 32-column box and its gutter: regex spans 33-36, word 37-40.
+        // [.*] is 2 glyph cols + 2 padding = 4 wide; same for [\b] and [Aa].
+        // They follow the 32-column box and its gutter: regex spans 33-36,
+        // word 37-40, case 41-44; then the three 3-wide buttons to 53.
         $this->assertFalse($bar->hoverAt(1, 32), 'the gutter before the regex zone: no tag');
         $this->assertTrue($bar->hoverAt(1, 33), 'the regex zone starts at 33');
         $this->assertFalse($bar->hoverAt(1, 36), 'still the regex zone (33-36): no change');
         $this->assertTrue($bar->hoverAt(1, 37), 'the word zone starts right after, at 37');
         $this->assertFalse($bar->hoverAt(1, 40), 'still the word zone (37-40): no change');
+        $this->assertTrue($bar->hoverAt(1, 41), 'the case zone, 41-44');
+        $this->assertTrue($bar->hoverAt(1, 45), 'the ↑ button, 45-47');
+        $this->assertTrue($bar->hoverAt(1, 51), 'the × button, 51-53');
         $bar->clearHover();
-        $this->assertFalse($bar->hoverAt(1, 41), 'past the last tag: no tag, no change from already-cleared');
+        $this->assertFalse($bar->hoverAt(1, 54), 'past the last button: nothing, no change from already-cleared');
         $this->assertFalse($bar->hoverAt(0, 34), 'the tags live on the value row only');
         $this->assertFalse($bar->hoverAt(2, 34), 'not the row below it either');
     }
@@ -908,8 +912,8 @@ final class FindBarWidgetTest extends TestCase
         $bar->open(new FakeFindTarget(new Document("x\n")), mode: FindMode::Find);
         $bar->render(new RenderContext(40, 1));
 
-        $this->assertFalse($bar->hoverAt(1, 31), 'the gutter after the 31-column box');
-        $this->assertTrue($bar->hoverAt(1, 32), 'the tags fill the last eight columns of forty');
+        $this->assertFalse($bar->hoverAt(1, 18), 'the gutter after the 18-column box');
+        $this->assertTrue($bar->hoverAt(1, 19), 'the tags and buttons fill the last 21 columns of forty');
         $this->assertTrue($bar->hoverAt(1, 39), 'through to the final column');
     }
 
@@ -1089,5 +1093,80 @@ final class FindBarWidgetTest extends TestCase
         $doc->undo();
 
         $this->assertSame($replaced, $doc->getText(), 'the typing undid on its own, without taking the replace with it');
+    }
+
+    /** A query that cannot match draws the Find box double — bad pattern or no hit — and a match clears it. */
+    public function testAFailingQueryDrawsTheFindBoxDouble(): void
+    {
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->open(new FakeFindTarget(new Document("foo\n")), mode: FindMode::Find, initialQuery: 'zzz');
+        $top = static fn (): string => AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(120, 3))[0]);
+
+        $this->assertStringStartsWith('╔ Find', $top(), 'no hit');
+        $bar->open(new FakeFindTarget(new Document("foo\n")), mode: FindMode::Replace, initialQuery: 'zzz');
+        $this->assertStringContainsString('╭ Replace', $top(), 'the Replace box is not what failed');
+        $bar->open(new FakeFindTarget(new Document("foo\n")), mode: FindMode::Find, initialQuery: 'zzz');
+        foreach (\str_split('zzz') as $_) {
+            $bar->handleInput("\x7f");
+        }
+        $bar->handleInput('f');
+        $this->assertStringStartsNotWith('╔', $top(), 'a hit: the ordinary frame');
+        $bar->handleInput("\x1bx"); // regex on
+        $bar->handleInput('(');
+        $this->assertStringStartsWith('╔ Find', $top(), 'a bad pattern');
+    }
+
+    /** Aa matches case exactly where smart case would not; Alt+C and a click both toggle it. */
+    public function testMatchCaseOverridesSmartCase(): void
+    {
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->open(new FakeFindTarget(new Document("foo Foo\n")), mode: FindMode::Find, initialQuery: 'foo');
+        $this->assertCount(2, $this->allMatches($bar), 'lower case: smart case matches both');
+
+        $bar->handleInput("\x1bc");
+        $this->assertCount(1, $this->allMatches($bar), 'Aa on: only the exact case');
+        $bar->render(new RenderContext(80, 3));
+        $bar->handleClick(1, 42); // the [Aa] tag
+        $this->assertCount(2, $this->allMatches($bar), 'clicked off again');
+    }
+
+    /** ↑ and ↓ step through the matches as Shift+F3 and F3 do; × closes as Esc does. */
+    public function testTheButtonsStepAndClose(): void
+    {
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->open(new FakeFindTarget(new Document("a a a\n")), mode: FindMode::Find, initialQuery: 'a');
+        $bar->render(new RenderContext(80, 3));
+        $position = static fn (): string => AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(80, 3))[2]);
+        $this->assertStringContainsString('[1/3]', $position());
+
+        $bar->handleClick(1, 49); // ↓
+        $this->assertStringContainsString('[2/3]', $position());
+        $bar->handleClick(1, 46); // ↑
+        $bar->handleClick(1, 46);
+        $this->assertStringContainsString('[3/3]', $position(), 'wrapping');
+        $this->assertTrue($bar->hoverAt(1, 52));
+        $this->assertStringContainsString("\e[4m", $bar->render(new RenderContext(80, 3))[1], 'the × under the pointer underlines');
+        $bar->handleClick(1, 52); // ×
+        $this->assertFalse($bar->isOpen());
+    }
+
+    /** The query's caret moves: a typo mid-word is fixed where it is. */
+    public function testTheQueryCaretMoves(): void
+    {
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->open(new FakeFindTarget(new Document("barbaz\n")), mode: FindMode::Find, initialQuery: 'bxz');
+        $bar->handleInput("\x1b[D");
+        $bar->handleInput("\x1b[D");
+        $bar->handleInput("\x1b[3~"); // delete the x
+        $bar->handleInput('a');
+
+        $this->assertSame('baz', $this->shownQuery($bar));
+        $this->assertCount(1, $this->allMatches($bar));
+    }
+
+    /** @return list<array{start: int, end: int, current: bool}> every match, lines flattened */
+    private function allMatches(FindBarWidget $bar): array
+    {
+        return \array_merge(...\array_values($bar->getMatchesByLine()));
     }
 }
