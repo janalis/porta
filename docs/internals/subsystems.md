@@ -403,6 +403,23 @@ only the box and a column either side of it toggle.
 - A box adds `FieldBox::ROWS - 1` rows to its host; every host derives its
   header rows and click bands from `FieldBox::ROWS`, never a literal.
 
+### Toasts: severity by shape, held while read
+
+A toast's frame says its severity by shape: double (`FieldState::Danger`) for
+an error, heavy for a warning, rounded for the rest, so a failure never looks
+like a success in monochrome. A hovered `×` is underlined as well as bright.
+
+Pointing at a card stops its timer (`ToastCenter::hoverAt`, measured on an
+injectable clock) and moving away restarts it with the time it had left, never
+less than a second. `Alt+D` (`ide_dismiss_toast`) removes the top card, as its
+`×` would.
+
+`ToastPresenter` writes hints into card borders using the live keymap:
+- an error card gets `Alt+9 log`;
+- when the stack does not fit, the last card that does gets `+N more · Alt+9`.
+
+Every entry in the notification log carries its glyph, Info's `◦` included.
+
 ### Tab strips: folder tabs from 30 rows
 
 Every horizontal strip is `TabStripRenderer::render()`. At

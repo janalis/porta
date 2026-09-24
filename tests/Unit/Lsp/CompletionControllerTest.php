@@ -20,6 +20,7 @@ use Porta\Widget\EditorCallbacks;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Notifier;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
@@ -375,6 +376,14 @@ final class CompletionControllerTest extends TestCase
         $this->editor->handleInput("\x1b[1;3A"); // alt+up
         $this->assertStringContainsString('2/2', $this->screen());
         $this->editor->handleInput("\x1b[1;3A");
+        $this->assertStringContainsString('1/2', $this->screen());
+
+        // A legacy terminal spells Alt+↑/↓ ESC p / ESC n, which only the
+        // keymap's declaration keys name.
+        $this->editor->setKeybindings(new Keybindings(['prev_member' => ['alt+up'], 'next_member' => ['alt+down']]));
+        $this->editor->handleInput("\x1bn");
+        $this->assertStringContainsString('2/2', $this->screen());
+        $this->editor->handleInput("\x1bp");
         $this->assertStringContainsString('1/2', $this->screen());
     }
 

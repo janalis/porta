@@ -43,6 +43,7 @@ nothing.
 | `Ctrl+X` / `Ctrl+C` / `Ctrl+V` | **In the file tree**: cut / copy / paste the selected files. The same chords move text in the editor — which you get depends on what has focus |
 | `Alt+6` | Problems panel |
 | `Alt+9` | Notification log — every flash the status bar showed and you missed |
+| `Alt+D` | Dismiss the newest notification (the top card) |
 | `Ctrl+Alt+H` | Local history |
 | `Ctrl+Alt+Z` | Undo the last multi-file refactoring, across every file it touched (`Ctrl+Z` is per file); refuses and names the file if anything changed since |
 

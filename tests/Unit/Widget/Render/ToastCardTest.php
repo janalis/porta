@@ -39,9 +39,30 @@ final class ToastCardTest extends TestCase
 
         $this->assertStringContainsString('✗', $rows[0], 'the severity glyph on the top border');
         $this->assertStringContainsString('×', $rows[0], 'the close affordance');
-        $this->assertStringStartsWith('╭', $rows[0]);
+        $this->assertStringStartsWith('╔', $rows[0], 'an error is double-framed');
         $this->assertStringContainsString('disk full', $rows[1]);
-        $this->assertStringStartsWith('╰', $rows[\count($rows) - 1]);
+        $this->assertStringStartsWith('╚', $rows[\count($rows) - 1]);
+    }
+
+    /** The frame says the severity by shape: double for an error, heavy for a warning, rounded for the rest. */
+    public function testTheFrameShapeFollowsTheSeverity(): void
+    {
+        $corners = fn (ToastSeverity $severity): string => \mb_substr(AnsiUtils::stripAnsiCodes($this->card('m', $severity)[0]), start: 0, length: 1);
+
+        $this->assertSame(['╔', '┏', '╭', '╭'], \array_map($corners, [ToastSeverity::Error, ToastSeverity::Warn, ToastSeverity::Info, ToastSeverity::Success]));
+    }
+
+    /** A hint is set into the bottom border when it fits, and left out when it does not; the × under the pointer underlines. */
+    public function testTheBottomBorderCarriesAHintAndTheCloseUnderlines(): void
+    {
+        $rows = ToastCard::render(new Toast(1, 'm', ToastSeverity::Error), 20, Styles::dark(), closeHovered: true, hint: 'Alt+9 log');
+
+        $this->assertMatchesRegularExpression('/^╚═+ Alt\+9 log ═╝$/u', AnsiUtils::stripAnsiCodes(\array_last($rows)));
+        $this->assertSame(22, AnsiUtils::visibleWidth(\array_last($rows)));
+        $this->assertMatchesRegularExpression('/\e\[4m(\e\[[0-9;]*m)*×/', $rows[0], 'the hovered × underlined');
+
+        $narrow = ToastCard::render(new Toast(1, 'm', ToastSeverity::Error), 8, Styles::dark(), hint: 'Alt+9 log');
+        $this->assertSame('╚════════╝', AnsiUtils::stripAnsiCodes(\array_last($narrow)), 'no room: no hint');
     }
 
     public function testAWideCharMessageKeepsTheWidth(): void

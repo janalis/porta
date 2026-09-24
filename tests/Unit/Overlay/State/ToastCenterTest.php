@@ -187,4 +187,53 @@ final class ToastCenterTest extends TestCase
         $this->assertSame(['c', 'a'], \array_map(static fn (Toast $t): string => $t->message, $center->toasts()), 'only the middle toast was removed');
         $this->assertContains((string) $idB, $this->scheduler->cancelled);
     }
+
+    /**
+     * The card under the pointer holds still: its timer stops, and resumes
+     * with the time it had left when the pointer goes — at least a second,
+     * so it does not vanish the moment it was being read.
+     */
+    public function testHoverPausesTheCardAndLeavingResumesIt(): void
+    {
+        $clock = 100.0;
+        $this->scheduler = new FakeScheduler();
+        $this->tui = new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24));
+        $center = new ToastCenter($this->scheduler, $this->tui, static function () use (&$clock): float {
+            return $clock;
+        });
+        $center->push('read me', ToastSeverity::Error, 5.0);
+        $center->push('other', ToastSeverity::Info, 5.0);
+        [$newer, $older] = $center->toasts();
+        $center->setBoxes([$this->box($newer->id), $this->box($older->id, top: 5)]);
+
+        $clock = 102.0;
+        $center->hoverAt(6, 65); // on the older card
+        $this->assertTrue($older->paused);
+        $this->assertFalse($newer->paused, 'only the card being read');
+        $this->assertContains($older->timerId, $this->scheduler->cancelled);
+        $center->hoverAt(6, 66);
+        $this->assertCount(1, $this->scheduler->cancelled, 'resting on it again changes nothing');
+
+        $clock = 150.0; // however long it is read
+        $center->hoverAt(20, 10); // gone
+        $this->assertFalse($older->paused);
+        $this->assertEqualsWithDelta(3.0, $this->scheduler->delays[$older->timerId], 0.001, 'the three seconds it had left');
+
+        $clock = 152.5; // half a second left when the pointer comes back
+        $center->hoverAt(6, 65);
+        $center->hoverAt(20, 10);
+        $this->assertEqualsWithDelta(1.0, $this->scheduler->delays[$older->timerId], 0.001, 'at least a second back');
+    }
+
+    /** Alt+D takes the top card — the newest — and says whether there was one. */
+    public function testDismissNewestTakesTheTopCard(): void
+    {
+        $center = $this->center();
+        $this->assertFalse($center->dismissNewest());
+        $center->push('older', ToastSeverity::Info);
+        $center->push('newer', ToastSeverity::Info);
+
+        $this->assertTrue($center->dismissNewest());
+        $this->assertSame(['older'], \array_map(static fn (Toast $t): string => $t->message, $center->toasts()));
+    }
 }

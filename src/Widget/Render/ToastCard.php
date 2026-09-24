@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Widget\Render;
 
 use Porta\Overlay\State\Toast;
+use Porta\Overlay\State\ToastSeverity;
 use Porta\Support\AnsiText;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
@@ -27,28 +28,29 @@ final class ToastCard
     public const int MAX_MESSAGE_ROWS = 6;
 
     /**
+     * The frame says the severity by shape as well as colour — an error's is
+     * double, a warning's heavy, the rest rounded — so a failure never reads
+     * like a "Saved" under the monochrome theme. The × under the pointer is
+     * underlined as well as brightened. $hint, when given, is set into the
+     * bottom border: the key to the notification log on an error, or how many
+     * more are waiting on the last card.
+     *
      * @return list<string> the framed card rows
      */
     // @mago-expect lint:no-boolean-flag-parameter -- the bool IS the domain here, not a hidden second responsibility.
-    public static function render(Toast $toast, int $innerWidth, Styles $styles, bool $closeHovered = false): array
+    public static function render(Toast $toast, int $innerWidth, Styles $styles, bool $closeHovered = false, string $hint = ''): array
     {
         $accent = $styles->of($toast->severity->role());
-        $close = $closeHovered ? TabCloseGlyph::active($styles) : TabCloseGlyph::inactive($styles);
+        $close = $closeHovered ? $styles->of(Role::CurrentLineNumber)->withUnderline()->apply(Glyphs::CLOSE) : TabCloseGlyph::inactive($styles);
+        [$topLeft, $topRight, $bottomLeft, $bottomRight, $rule, $side] = self::frame($toast->severity)->glyphs();
 
         // `╭ ✗ ──── ×╮`: glyph chrome is 4 columns (corner, spaces, glyph),
         // close chrome 3 (space, ×, corner) — the × lands at width − 2, the
         // exact cell ModalBox::closeHit answers for.
         $fill = \max(0, $innerWidth - 5);
-        $top =
-            $accent->apply(Glyphs::MODAL_TOP_LEFT.' ')
-            .$accent->withBold()->apply($toast->severity->glyph())
-            .' '
-            .$accent->apply(\str_repeat(Glyphs::FRAME_HORIZONTAL, $fill))
-            .' '
-            .$close
-            .$accent->apply(Glyphs::MODAL_TOP_RIGHT);
+        $top = $accent->apply($topLeft.' ').$accent->withBold()->apply($toast->severity->glyph()).' '.$accent->apply(\str_repeat($rule, $fill)).' '.$close.$accent->apply($topRight);
 
-        $rail = $accent->apply(Glyphs::FRAME_VERTICAL);
+        $rail = $accent->apply($side);
         $rows = [AnsiText::truncate($top, \max(0, $innerWidth + PopupFrame::CHROME_COLS), pad: true)];
         $lines = AnsiText::wrap($toast->message, \max(1, $innerWidth - 2));
         if (\count($lines) > self::MAX_MESSAGE_ROWS) {
@@ -59,8 +61,21 @@ final class ToastCard
             $body = $styles->of(Role::Bright)->apply(AnsiText::truncate(' '.$line, \max(0, $innerWidth), pad: true));
             $rows[] = $rail.$body.$rail;
         }
-        $rows[] = $accent->apply(Glyphs::MODAL_BOTTOM_LEFT.\str_repeat(Glyphs::FRAME_HORIZONTAL, \max(0, $innerWidth)).Glyphs::MODAL_BOTTOM_RIGHT);
+        // The hint sits right in the border, `╰──── Alt+9 log ─╯`, when it fits.
+        $hintText = '' === $hint || (\mb_strwidth($hint) + 3) > $innerWidth ? '' : ' '.$hint.' ';
+        $bottomFill = \max(0, $innerWidth - \mb_strwidth($hintText) - ('' === $hintText ? 0 : 1));
+        $rows[] = $accent->apply($bottomLeft.\str_repeat($rule, $bottomFill)).('' === $hintText ? '' : $styles->of(Role::Dim)->apply($hintText).$accent->apply($rule)).$accent->apply($bottomRight);
 
         return $rows;
+    }
+
+    /** An error is double-framed, a warning heavy, the rest rounded. */
+    private static function frame(ToastSeverity $severity): FieldState
+    {
+        return match ($severity) {
+            ToastSeverity::Error => FieldState::Danger,
+            ToastSeverity::Warn => FieldState::Focused,
+            ToastSeverity::Info, ToastSeverity::Success => FieldState::Idle,
+        };
     }
 }

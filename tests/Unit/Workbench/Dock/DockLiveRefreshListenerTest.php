@@ -104,7 +104,7 @@ final class DockLiveRefreshListenerTest extends TestCase
         $this->notificationLog->append('saved a.php');
         $listener->onNotificationLogged(new NotificationLogged());
 
-        $this->assertStringContainsString('11:00:00  saved a.php', $this->plainPanel(), 'the open tab picked up the new flash');
+        $this->assertStringContainsString('11:00:00  ◦ saved a.php', $this->plainPanel(), 'the open tab picked up the new flash');
     }
 
     public function testNoRefreshWhenThePanelServesAnotherToolOrIsClosed(): void

@@ -10440,3 +10440,23 @@ carries a `★`. An action with `disabled` (declared through `disabledSupport`)
 is greyed and struck through, with its reason as the hint. A list item gains
 `disabled?: bool` for this, and picking a disabled item leaves the list open.
 
+## UI round, phase 5: toasts you can read and dismiss (2026-09-24)
+
+Cards now differ by shape: double, heavy, then rounded. A card under the pointer
+holds still and resumes with the time it had left, so a message no longer
+vanishes mid-sentence. A key dismisses the newest card. It is **Alt+D, not
+Alt+N**: a terminal's ESC n is the legacy spelling of Alt+↓ (and ESC p, b, f
+of the other arrows), so Alt+N never arrives as a letter. For the same reason
+the signature hint's overload keys accept both the declaration keymap's
+Alt+↑/↓ and the modified-arrow CSI.
+
+The plan's clickable "Open log" link on error cards became a **hint in the
+card's border**, `Alt+9 log`, with the key read from the keymap. A clickable
+link needs either a new branch in `MouseRouter` (its cyclomatic complexity is
+the lint threshold) or a `ToastCenter` dependency on the workbench, which
+cycles back through `Notifier`. The log key already opens the log, and the
+border says so.
+
+A stack taller than the pane now says `+N more` on its last card, where before
+it dropped the rest in silence.
+

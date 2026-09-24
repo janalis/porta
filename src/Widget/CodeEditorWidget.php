@@ -888,10 +888,18 @@ final class CodeEditorWidget extends AbstractWidget implements
 
             return;
         }
-        // Alt+↑/↓ walk a function's overloads while its hint shows more than
-        // one — and are the declaration keys again the moment it does not.
-        if (true === $this->caretPopups->signature?->hasOverloads() && ("\x1b[1;3A" === $data || "\x1b[1;3B" === $data)) {
-            $this->caretPopups->signature = $this->caretPopups->signature->cycled("\x1b[1;3B" === $data ? 1 : -1);
+        // The declaration keys (Alt+↑/↓) walk a function's overloads while
+        // its hint shows more than one, and are the declaration keys again
+        // the moment it does not. Both spellings: the keymap's, which a legacy
+        // terminal sends as ESC p / ESC n, and the modified-arrow CSI, which
+        // the parser leaves unnamed.
+        $overload = match (true) {
+            "\x1b[1;3B" === $data || $kb->matches($data, 'next_member') => 1,
+            "\x1b[1;3A" === $data || $kb->matches($data, 'prev_member') => -1,
+            default => 0,
+        };
+        if (0 !== $overload && true === $this->caretPopups->signature?->hasOverloads()) {
+            $this->caretPopups->signature = $this->caretPopups->signature->cycled($overload);
             $this->invalidate();
 
             return;

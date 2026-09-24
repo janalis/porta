@@ -30,10 +30,19 @@ final class ToastCenter
     /** The toast whose × is under the pointer, or null. */
     private ?int $closeHoveredId = null;
 
+    /** @var \Closure(): float seconds, monotonic — the clock the hover pause measures against */
+    private readonly \Closure $now;
+
+    /**
+     * @param (\Closure(): float)|null $now seconds, monotonic; the system's by default, a test's own otherwise
+     */
     public function __construct(
         private readonly Scheduler $scheduler,
         private readonly Tui $tui,
-    ) {}
+        ?\Closure $now = null,
+    ) {
+        $this->now = $now ?? static fn (): float => \hrtime(true) / 1e9;
+    }
 
     /**
      * Show a toast for $seconds; the oldest is evicted beyond the stack cap. A
@@ -44,10 +53,7 @@ final class ToastCenter
     {
         $at = null === $slot ? null : \array_find_key($this->toasts, static fn (Toast $live): bool => $live->slot === $slot);
         $toast = new Toast(null === $at ? $this->nextId++ : $this->toasts[$at]->id, $message, $severity, slot: $slot);
-        $toast->timerId = $this->scheduler->delay($seconds, function () use ($toast): void {
-            $this->remove($toast->id);
-            $this->tui->requestRender();
-        });
+        $this->arm($toast, $seconds);
         if (null !== $at) {
             $this->scheduler->cancel($this->toasts[$at]->timerId);
             $this->toasts[$at] = $toast;
@@ -63,6 +69,17 @@ final class ToastCenter
             }
         }
         $this->tui->requestRender();
+    }
+
+    /** Start $toast's expiry $seconds from now. */
+    private function arm(Toast $toast, float $seconds): void
+    {
+        $toast->expiresAt = ($this->now)() + $seconds;
+        $toast->paused = false;
+        $toast->timerId = $this->scheduler->delay($seconds, function () use ($toast): void {
+            $this->remove($toast->id);
+            $this->tui->requestRender();
+        });
     }
 
     /** @return list<Toast> newest first — the render order, top card first */
@@ -121,18 +138,28 @@ final class ToastCenter
 
     /**
      * Track whether a toast's × is under the pointer (brightened like every
-     * close affordance); returns whether the pointer is over any card, so the
-     * hover never leaks to the pane beneath.
+     * close affordance), and hold still the card being read: its timer stops
+     * while the pointer is on it and resumes, with the time it had left, when
+     * the pointer goes — a message does not vanish from under the reader.
+     * Returns whether the pointer is over any card, so the hover never leaks
+     * to the pane beneath.
      */
     public function hoverAt(int $row, int $col): bool
     {
         $hovered = null;
         $over = false;
+        $under = null;
         foreach ($this->boxes as $entry) {
             if ($entry['box']->closeHit($row, $col)) {
                 $hovered = $entry['id'];
             }
-            $over = $over || $entry['box']->contains($row, $col);
+            if ($entry['box']->contains($row, $col)) {
+                $over = true;
+                $under = $entry['id'];
+            }
+        }
+        foreach ($this->toasts as $toast) {
+            $this->holdStill($toast, $toast->id === $under);
         }
         if ($hovered !== $this->closeHoveredId) {
             $this->closeHoveredId = $hovered;
@@ -140,6 +167,36 @@ final class ToastCenter
         }
 
         return $over;
+    }
+
+    /** Pause $toast's timer, keeping the time it had left — or resume it with that time. */
+    // @mago-expect lint:no-boolean-flag-parameter -- whether the pointer rests on the card IS the state being applied.
+    private function holdStill(Toast $toast, bool $under): void
+    {
+        if ($under && !$toast->paused) {
+            $this->scheduler->cancel($toast->timerId);
+            $toast->expiresAt = \max(0.0, $toast->expiresAt - ($this->now)());
+            $toast->paused = true;
+
+            return;
+        }
+        if (!$under && $toast->paused) {
+            // At least a second back: a card the pointer just left should not
+            // vanish in the same breath it was being read.
+            $this->arm($toast, \max(1.0, $toast->expiresAt));
+        }
+    }
+
+    /** Dismiss the newest toast — the one on top — from the keyboard; false when there is none. */
+    public function dismissNewest(): bool
+    {
+        $newest = \array_last($this->toasts);
+        if (null === $newest) {
+            return false;
+        }
+        $this->dismiss($newest->id);
+
+        return true;
     }
 
     /** The toast whose × should render brightened, or null. */

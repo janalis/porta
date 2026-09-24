@@ -5,15 +5,19 @@ declare(strict_types=1);
 namespace Porta\Overlay\Presenter;
 
 use Porta\Container\AsEager;
+use Porta\I18n\Translator;
 use Porta\Overlay\Region\DropdownRegion;
 use Porta\Overlay\Region\ModalBox;
 use Porta\Overlay\State\ToastCenter;
+use Porta\Overlay\State\ToastSeverity;
 use Porta\Ui\FrameHooks;
+use Porta\Ui\ShortcutFormatter;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\PopupFrame;
 use Porta\Widget\Render\PopupMetrics;
 use Porta\Widget\Render\ToastCard;
 use Porta\Widget\Support\StylesDefault;
+use Symfony\Component\Tui\Input\Keybindings;
 
 /**
  * Presents the toast stack over the workspace's top-right corner: cards
@@ -43,6 +47,10 @@ final class ToastPresenter
         private readonly ToastCenter $toasts,
         ?Styles $styles = null,
         ?FrameHooks $frameHooks = null,
+        // The notification log's live key and the words around it, for the
+        // hints an error card and a crowded stack carry in their borders.
+        private readonly Keybindings $ideKeys = new Keybindings([]),
+        private readonly Translator $translator = new Translator('en'),
     ) {
         $this->initStyles($styles);
         $frameHooks?->onBeforeFrame($this->sync(...));
@@ -96,10 +104,26 @@ final class ToastPresenter
         $cards = [];
         $boxes = [];
         $closeHovered = $this->toasts->closeHoveredId();
-        foreach ($this->toasts->toasts() as $toast) {
-            $rows = ToastCard::render($toast, $inner, $this->styles, $closeHovered === $toast->id);
+        $all = $this->toasts->toasts();
+        $logKey = ShortcutFormatter::format($this->ideKeys->getBindings('ide_notifications')[0] ?? '');
+        foreach ($all as $n => $toast) {
+            // An error points at the log that keeps it; the last card that
+            // fits says how many wait behind it, and where to read them.
+            $hint = ToastSeverity::Error === $toast->severity && '' !== $logKey ? $this->translator->trans('%key% log', ['%key%' => $logKey]) : '';
+            $rows = ToastCard::render($toast, $inner, $this->styles, $closeHovered === $toast->id, $hint);
             if (($top + \count($rows) + 1) > $boundBottom) {
                 break; // out of vertical room: the older tail stays queued, not clipped
+            }
+            $more = \count($all) - $n - 1;
+            $next = $all[$n + 1] ?? null;
+            if (null !== $next && ($top + \count($rows) + 1 + \count(ToastCard::render($next, $inner, $this->styles)) + 1) > $boundBottom) {
+                $rows = ToastCard::render(
+                    $toast,
+                    $inner,
+                    $this->styles,
+                    $closeHovered === $toast->id,
+                    $this->translator->trans('+%count% more', ['%count%' => $more]).('' === $logKey ? '' : ' · '.$logKey),
+                );
             }
             $cards[] = ['rows' => $rows, 'top' => $top, 'id' => $toast->id];
             $boxes[] = ['box' => new ModalBox($top, $col, $width, \count($rows), headerRows: 1, windowStart: 0, count: \count($rows) - 2), 'id' => $toast->id];

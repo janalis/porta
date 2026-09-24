@@ -197,6 +197,10 @@ final class ActionCatalog
         // panel with no default key and no Settings → Keymap line to give it
         // one — reachable only by someone who already knew it was there.
         'ide_notifications' => ['label' => 'Notification Log', 'keys' => ['alt+9']],
+        // D for dismiss: the keyboard's way to the top card's ×. Not Alt+N —
+        // a terminal's ESC n is the legacy spelling of Alt+↓, as ESC p, b
+        // and f are of the other arrows, so it never arrives as a letter.
+        'ide_dismiss_toast' => ['label' => 'Dismiss Notification', 'keys' => ['alt+d']],
         'ide_command_palette' => ['label' => 'Find Action', 'keys' => ['ctrl+shift+a']],
         'ide_search_everywhere' => ['label' => 'Search Everywhere', 'keys' => ['ctrl+shift+e']],
         'ide_local_history' => ['label' => 'Show Local History', 'keys' => ['ctrl+alt+h'], 'adoptable' => true], // implemented by the bundled local-history plugin

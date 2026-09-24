@@ -36,7 +36,7 @@ final class NotificationLogTest extends TestCase
         $log->append('second');
 
         $entries = $log->entries();
-        $this->assertSame(['first', 'second'], \array_column($entries, 'text'));
+        $this->assertSame(['◦ first', '◦ second'], \array_column($entries, 'text'));
         $this->assertSame('10:00:00', $entries[0]['time']->format('H:i:s'));
         $this->assertSame('10:00:05', $entries[1]['time']->format('H:i:s'));
     }
@@ -50,7 +50,7 @@ final class NotificationLogTest extends TestCase
 
         $entries = $log->entries();
         $this->assertCount(100, $entries);
-        $this->assertSame('msg 6', $entries[0]['text'], 'the oldest five were dropped');
-        $this->assertSame('msg 105', $entries[99]['text']);
+        $this->assertSame('◦ msg 6', $entries[0]['text'], 'the oldest five were dropped');
+        $this->assertSame('◦ msg 105', $entries[99]['text']);
     }
 }

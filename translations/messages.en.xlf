@@ -3290,6 +3290,18 @@
         <source>No language server</source>
         <target>No language server</target>
       </trans-unit>
+      <trans-unit id="921">
+        <source>%key% log</source>
+        <target>%key% log</target>
+      </trans-unit>
+      <trans-unit id="922">
+        <source>+%count% more</source>
+        <target>+%count% more</target>
+      </trans-unit>
+      <trans-unit id="923">
+        <source>Dismiss Notification</source>
+        <target>Dismiss Notification</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

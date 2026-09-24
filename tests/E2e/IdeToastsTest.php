@@ -77,6 +77,12 @@ final class IdeToastsTest extends TestCase
                     $this->awaitPainted($tui, $terminal, '✗');
                     $this->assertStringContainsString('✗', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the error glyph renders');
                     $this->await(static fn (): bool => [] === Toasts::all($ide));
+
+                    // Alt+D takes the top card from the keyboard, as its × does.
+                    $notifier->warn('first');
+                    $notifier->warn('second');
+                    $tui->handleInput("\x1bd");
+                    $this->assertSame(['first'], Toasts::all($ide), 'the newest went');
                 },
             ],
         );

@@ -19,5 +19,9 @@ final class Toast
         public readonly ToastSeverity $severity,
         public string $timerId = '',
         public readonly ?string $slot = null,
+        /** When it expires, on the center's clock; while paused, the time it has left. */
+        public float $expiresAt = 0.0,
+        /** Under the pointer: the timer is off and $expiresAt holds the time left. */
+        public bool $paused = false,
     ) {}
 }

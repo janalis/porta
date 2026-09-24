@@ -30,10 +30,11 @@ final class NotificationLog
 
     public function append(string $message, ToastSeverity $severity = ToastSeverity::Info): void
     {
-        // Non-info entries carry their severity glyph into the text, so the
-        // Notifications dock tool shows the rank with zero changes to the
-        // shared LogRows shape (and E2e greps still find the message).
-        $text = ToastSeverity::Info === $severity ? $message : $severity->glyph().' '.$message;
+        // Every entry carries its severity glyph into the text — Info's `◦`
+        // too, so the column of marks lines up and no rank is the one told by
+        // absence — and the Notifications dock tool shows it with zero changes
+        // to the shared LogRows shape (E2e greps still find the message).
+        $text = $severity->glyph().' '.$message;
         $this->entries[] = ['time' => $this->clock->now(), 'text' => $text];
         if (\count($this->entries) > self::MAX_ENTRIES) {
             \array_shift($this->entries);

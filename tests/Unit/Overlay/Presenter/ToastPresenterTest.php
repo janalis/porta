@@ -16,6 +16,7 @@ use Porta\Tests\Support\RendersRoot;
 use Porta\Tests\Support\TestOverlayPane;
 use Porta\Ui\BidiTui;
 use Porta\Widget\Render\MenuOverlayHost;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Style\StyleSheet;
@@ -52,7 +53,36 @@ final class ToastPresenterTest extends TestCase
             new OverlayDelivery($this->renderer, new MenuOverlayPanes([$this->pane], static fn (): array => []), $this->tui),
             $this->toasts,
             frameHooks: $this->tui,
+            ideKeys: new Keybindings(['ide_notifications' => ['alt+9']]),
         );
+    }
+
+    /** The painted rows of the pane's toast spans, plain, top to bottom. */
+    private function paintedText(): string
+    {
+        return \implode("\n", \array_map(static fn (array $span): string => AnsiUtils::stripAnsiCodes($span['segment']), $this->pane->toastSpans));
+    }
+
+    /**
+     * An error's card points at the log that keeps it, by the log's live key;
+     * a stack too tall for the pane says on its last card how many wait
+     * behind it.
+     */
+    public function testTheCardsCarryTheLogKeyAndHowManyMoreWait(): void
+    {
+        $presenter = $this->presenter();
+        $this->frame();
+        $this->toasts->push('disk full', ToastSeverity::Error);
+        $presenter->sync();
+        $this->assertStringContainsString('Alt+9 log', $this->paintedText());
+
+        foreach (\range(1, end: 4) as $n) {
+            $this->toasts->push("note {$n} ".\str_repeat('with more words ', times: 4), ToastSeverity::Info);
+        }
+        $presenter->sync();
+        $shown = \count($presenter->regions());
+        $this->assertLessThan(5, $shown, 'not all five fit in 24 rows');
+        $this->assertStringContainsString('+'.(5 - $shown).' more · Alt+9', $this->paintedText());
     }
 
     public function testSyncPushesCornerSpansAndRecordsBoxesWithoutDimming(): void

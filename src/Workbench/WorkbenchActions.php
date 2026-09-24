@@ -7,6 +7,7 @@ namespace Porta\Workbench;
 use Porta\Editor\BufferManager;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspLog;
+use Porta\Overlay\State\ToastCenter;
 use Porta\Widget\MenuBarWidget;
 use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\Dock\ResultsPanelMode;
@@ -28,6 +29,7 @@ final readonly class WorkbenchActions
         private NotificationLog $notificationLog,
         private LspLog $lspLog,
         private UnsavedChangesGuard $guard,
+        private ToastCenter $toasts,
     ) {}
 
     /** Ctrl+Q: quit, unless dirty buffers need a confirming second press within 3s. */
@@ -75,6 +77,15 @@ final readonly class WorkbenchActions
     public function showLspLog(): void
     {
         $this->panels->showList(ResultsPanelMode::LspLog, $this->translator->trans('LSP Server Log'), LogRows::build($this->lspLog->entries()));
+    }
+
+    /**
+     * Alt+D: dismiss the newest notification — the top card — from the
+     * keyboard, as its × does under the pointer. The log keeps it.
+     */
+    public function dismissToast(): void
+    {
+        $this->toasts->dismissNewest();
     }
 
     /** Move the active tab $offset positions in the strip (keyboard reordering). */
