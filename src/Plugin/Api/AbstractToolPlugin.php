@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Plugin\Api;
 
+use Porta\Overlay\State\ToastSeverity;
 use Porta\Support\AsyncProcess;
 use Symfony\Component\Process\ExecutableFinder;
 
@@ -176,7 +177,7 @@ abstract class AbstractToolPlugin extends AbstractPlugin
     protected function flashExit(PluginApi $api, int $code, string $success): void
     {
         if (0 === $code) {
-            $api->flash($success, 4.0);
+            $api->notify($success, ToastSeverity::Success, 4.0);
 
             return;
         }
@@ -216,7 +217,7 @@ abstract class AbstractToolPlugin extends AbstractPlugin
             // the tool would answer "already running" for the rest of the
             // session about a run that never started.
             $this->release();
-            $api->flash($api->trans('%tool% could not be started', ['%tool%' => $this->name()]));
+            $api->notify($api->trans('%tool% could not be started', ['%tool%' => $this->name()]), ToastSeverity::Error);
         }
     }
 
@@ -227,7 +228,7 @@ abstract class AbstractToolPlugin extends AbstractPlugin
      */
     protected function flashFailure(PluginApi $api, int $code): void
     {
-        $api->flash($api->trans('%tool%: exited with code %code%', ['%tool%' => $this->name(), '%code%' => $code]), 4.0);
+        $api->notify($api->trans('%tool%: exited with code %code%', ['%tool%' => $this->name(), '%code%' => $code]), ToastSeverity::Error, 5.0);
     }
 
     /**

@@ -3258,6 +3258,14 @@
         <source>Space toggle · r reset · Ctrl+F find · Tab panes · 2 keybindings</source>
         <target>Space 切替 · r 既定に戻す · Ctrl+F 検索 · Tab ペイン · 2 キー割当</target>
       </trans-unit>
+      <trans-unit id="913">
+        <source>%operation% needs a choice</source>
+        <target>%operation% には選択が必要です</target>
+      </trans-unit>
+      <trans-unit id="914">
+        <source>%count% line|%count% lines</source>
+        <target>%count% 行</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

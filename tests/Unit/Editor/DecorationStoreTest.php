@@ -34,6 +34,28 @@ final class DecorationStoreTest extends TestCase
         $this->assertSame(['errors' => 0, 'warnings' => 0], $store->diagnosticCounts, 'clearing recounts to zero');
     }
 
+    /** The caret readout is the line's WORST diagnostic — the first of equals — never merely the first sent. */
+    public function testTheCaretReadoutIsTheWorstDiagnosticOnTheLine(): void
+    {
+        $store = new DecorationStore(static function (): void {});
+        $store->setDiagnostics([
+            2 => [
+                ['severity' => DiagnosticSeverity::Hint, 'message' => 'hint', 'col' => 0],
+                ['severity' => DiagnosticSeverity::Warning, 'message' => 'first warning', 'col' => 1],
+                ['severity' => DiagnosticSeverity::Error, 'message' => 'boom', 'col' => 2],
+                ['severity' => DiagnosticSeverity::Error, 'message' => 'second boom', 'col' => 3],
+            ],
+            4 => [
+                ['severity' => DiagnosticSeverity::Warning, 'message' => 'first warning', 'col' => 0],
+                ['severity' => DiagnosticSeverity::Warning, 'message' => 'second warning', 'col' => 1],
+            ],
+        ]);
+
+        $this->assertSame(['message' => 'boom', 'severity' => DiagnosticSeverity::Error], $store->diagnosticAt(2));
+        $this->assertSame(['message' => 'first warning', 'severity' => DiagnosticSeverity::Warning], $store->diagnosticAt(4), 'the first of equals');
+        $this->assertNull($store->diagnosticAt(3));
+    }
+
     /**
      * Marks below an insertion move down by as many lines as it added, and the
      * lines it created are marked.

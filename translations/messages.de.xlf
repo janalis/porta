@@ -3258,6 +3258,14 @@
         <source>Space toggle · r reset · Ctrl+F find · Tab panes · 2 keybindings</source>
         <target>Leertaste umschalten · r zurücksetzen · Ctrl+F suchen · Tab Bereiche · 2 Tastenkürzel</target>
       </trans-unit>
+      <trans-unit id="913">
+        <source>%operation% needs a choice</source>
+        <target>%operation% erfordert eine Auswahl</target>
+      </trans-unit>
+      <trans-unit id="914">
+        <source>%count% line|%count% lines</source>
+        <target>%count% Zeile|%count% Zeilen</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

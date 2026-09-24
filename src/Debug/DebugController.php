@@ -84,7 +84,7 @@ final class DebugController implements DebugSessionObserver, StatusSegment
     private function editVariable(int $reference, string $name, string $currentValue): void
     {
         if (null === $this->session || !$this->session->supportsSetVariable()) {
-            $this->notifier->flash($this->translator->trans('This debug adapter cannot edit variables'));
+            $this->notifier->warn($this->translator->trans('This debug adapter cannot edit variables'));
 
             return;
         }
@@ -93,7 +93,7 @@ final class DebugController implements DebugSessionObserver, StatusSegment
         $this->editor->openPrompt($this->translator->trans('Set %name% to', ['%name%' => $name]), $currentValue, function (string $value) use ($reference, $name): void {
             $this->session?->setVariable($reference, $name, $value, function (string $newValue, ?string $error) use ($reference): void {
                 if (null !== $error) {
-                    $this->notifier->flash($error);
+                    $this->notifier->error($error);
 
                     return;
                 }
@@ -615,7 +615,7 @@ final class DebugController implements DebugSessionObserver, StatusSegment
     #[\Override]
     public function onError(string $message): void
     {
-        $this->notifier->flash($this->translator->trans('Could not start the debug adapter').' — '.$message, 5.0);
+        $this->notifier->error($this->translator->trans('Could not start the debug adapter').' — '.$message, 5.0);
         $this->onTerminated();
     }
 }

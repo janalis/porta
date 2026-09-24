@@ -186,7 +186,7 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
         }
 
         if (!\is_file($path) || !\is_readable($path)) {
-            $this->notifier->flash($this->translator->trans('Cannot read %file%', ['%file%' => $this->paths->relative($path)]));
+            $this->notifier->error($this->translator->trans('Cannot read %file%', ['%file%' => $this->paths->relative($path)]));
 
             return;
         }
@@ -214,7 +214,7 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
 
         $content = (string) \file_get_contents($path);
         if ('' !== $content && !\mb_check_encoding($content, encoding: 'UTF-8')) {
-            $this->notifier->flash($this->translator->trans('Not a UTF-8 text file'));
+            $this->notifier->warn($this->translator->trans('Not a UTF-8 text file'));
 
             return;
         }
@@ -288,12 +288,12 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
             /** @var mixed $payload */
             $payload = $this->panes->load($paneId, $path);
         } catch (\RuntimeException $refusal) {
-            $this->notifier->flash($refusal->getMessage());
+            $this->notifier->warn($refusal->getMessage());
 
             return;
         } catch (\Throwable $bug) {
             DiagnosticLog::forRoot($this->paths->root(), 'error')->append(\sprintf("%s: %s\n%s", $bug::class, $bug->getMessage(), $bug->getTraceAsString()));
-            $this->notifier->flash($this->translator->trans('Internal error — details in .porta/error.log'));
+            $this->notifier->error($this->translator->trans('Internal error — details in .porta/error.log'));
 
             return;
         }
@@ -334,7 +334,7 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
         }
 
         if (!\is_file($path) || !\is_readable($path)) {
-            $this->notifier->flash($this->translator->trans('Cannot read %file%', ['%file%' => $this->paths->relative($path)]));
+            $this->notifier->error($this->translator->trans('Cannot read %file%', ['%file%' => $this->paths->relative($path)]));
 
             return;
         }
@@ -353,7 +353,7 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
     {
         $path = ($resolved = \realpath($path)) ? $resolved : $path;
         if (!\is_file($path) || !\is_readable($path)) {
-            $this->notifier->flash($this->translator->trans('Cannot read %file%', ['%file%' => $this->paths->relative($path)]));
+            $this->notifier->error($this->translator->trans('Cannot read %file%', ['%file%' => $this->paths->relative($path)]));
 
             return;
         }
@@ -381,7 +381,7 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
         $buffer->document->applyEditorConfig($config);
         $buffer->editorConfig = $config;
         if (null !== $config->charset && !\in_array($config->charset, ['utf-8', 'utf-8-bom'], strict: true)) {
-            $this->notifier->flash($this->translator->trans('.editorconfig charset "%charset%" ignored (UTF-8 only)', ['%charset%' => $config->charset]), 5.0);
+            $this->notifier->warn($this->translator->trans('.editorconfig charset "%charset%" ignored (UTF-8 only)', ['%charset%' => $config->charset]), 5.0);
         }
     }
 

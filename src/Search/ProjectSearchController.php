@@ -14,11 +14,11 @@ use Porta\Support\Files;
 use Porta\Support\ProjectPaths;
 use Porta\Ui\ScopeKind;
 use Porta\Widget\CodeEditorWidget;
-use Porta\Widget\StatusBarWidget;
 use Porta\Widget\Support\ResultsPanelFields;
 use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\Dock\DockToolTab;
 use Porta\Workbench\Dock\ResultsPanelMode;
+use Porta\Workbench\Notifier;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Tui\Tui;
 
@@ -58,7 +58,7 @@ final class ProjectSearchController
         private readonly ProjectSearch $projectSearch,
         private readonly BottomDock $dock,
         private readonly CodeEditorWidget $editor,
-        private readonly StatusBarWidget $statusBar,
+        private readonly Notifier $notifier,
         private readonly Tui $tui,
         private readonly Translator $translator,
         private readonly BufferManager $buffers,
@@ -278,7 +278,7 @@ final class ProjectSearchController
             return;
         }
         $this->scopeStore->addPinned($relative, [$relative]);
-        $this->statusBar->flash($this->translator->trans('Added %dir% to search scopes', ['%dir%' => $relative]));
+        $this->notifier->flash($this->translator->trans('Added %dir% to search scopes', ['%dir%' => $relative]));
         $this->tui->requestRender();
     }
 
@@ -383,7 +383,7 @@ final class ProjectSearchController
         }
 
         if ('' === \trim($this->lastSearchQuery) || [] === $keptLinesByPath) {
-            $this->statusBar->flash($this->translator->trans('Nothing to replace'));
+            $this->notifier->flash($this->translator->trans('Nothing to replace'));
             $this->tui->requestRender();
 
             return;
@@ -403,7 +403,7 @@ final class ProjectSearchController
         // lives beside the code that deletes rather than in the modal that asks.
         if ('' === $replacement && !$this->armedEmptyReplace) {
             $this->armedEmptyReplace = true;
-            $this->statusBar->flash($this->translator->trans('Alt+A again to DELETE every match — the replacement is empty'));
+            $this->notifier->warn($this->translator->trans('Alt+A again to DELETE every match — the replacement is empty'));
             $this->tui->requestRender();
 
             return;
@@ -443,7 +443,7 @@ final class ProjectSearchController
     private function replaceAllMultiline(string $replacement): void
     {
         if ([] === $this->lastSearchResults) {
-            $this->statusBar->flash($this->translator->trans('Nothing to replace'));
+            $this->notifier->flash($this->translator->trans('Nothing to replace'));
             $this->tui->requestRender();
 
             return;
@@ -478,7 +478,7 @@ final class ProjectSearchController
     /** Flash the touched-file count, close whichever surface drove the replace, and refocus the editor. */
     private function finishReplace(int $touched): void
     {
-        $this->statusBar->flash($this->translator->trans('Replaced in %count% file|Replaced in %count% files', ['%count%' => $touched]));
+        $this->notifier->flash($this->translator->trans('Replaced in %count% file|Replaced in %count% files', ['%count%' => $touched]));
         $this->editor->findModal->close(); // replace runs from the modal
         $this->tui->setFocus($this->editor);
         $this->tui->requestRender();
@@ -546,7 +546,7 @@ final class ProjectSearchController
     public function exportResults(): string
     {
         if ([] === $this->lastSearchResults) {
-            $this->statusBar->flash($this->translator->trans('Nothing to export'));
+            $this->notifier->flash($this->translator->trans('Nothing to export'));
             $this->tui->requestRender();
 
             return '';
@@ -567,7 +567,7 @@ final class ProjectSearchController
 
         $abs = $this->paths->absolute('.porta/search-results.txt');
         $this->fs->dumpFile($abs, \implode("\n", $lines)."\n");
-        $this->statusBar->flash($this->translator->trans('Exported %count% result|Exported %count% results', ['%count%' => \count($this->lastSearchResults)]));
+        $this->notifier->flash($this->translator->trans('Exported %count% result|Exported %count% results', ['%count%' => \count($this->lastSearchResults)]));
 
         return $abs;
     }
@@ -589,7 +589,7 @@ final class ProjectSearchController
                 // answer, and a handful of skipped files among thousands is
                 // invisible.
                 if ($this->projectSearch->gaveUp()) {
-                    $this->statusBar->flash($this->translator->trans('pattern too complex'));
+                    $this->notifier->warn($this->translator->trans('pattern too complex'));
                 }
                 $modal = $this->editor->findModal;
                 if ($modal->isOpen()) {

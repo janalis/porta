@@ -35,14 +35,26 @@ final class ToastCenter
         private readonly Tui $tui,
     ) {}
 
-    /** Show a toast for $seconds; the oldest is evicted beyond the stack cap. */
-    public function push(string $message, ToastSeverity $severity, float $seconds = 2.5): void
+    /**
+     * Show a toast for $seconds; the oldest is evicted beyond the stack cap. A
+     * toast in a $slot that is still showing is replaced where it stands, with
+     * a fresh timer, rather than stacked beside — progress becomes its outcome.
+     */
+    public function push(string $message, ToastSeverity $severity, float $seconds = 2.5, ?string $slot = null): void
     {
-        $toast = new Toast($this->nextId++, $message, $severity);
+        $at = null === $slot ? null : \array_find_key($this->toasts, static fn (Toast $live): bool => $live->slot === $slot);
+        $toast = new Toast(null === $at ? $this->nextId++ : $this->toasts[$at]->id, $message, $severity, slot: $slot);
         $toast->timerId = $this->scheduler->delay($seconds, function () use ($toast): void {
             $this->remove($toast->id);
             $this->tui->requestRender();
         });
+        if (null !== $at) {
+            $this->scheduler->cancel($this->toasts[$at]->timerId);
+            $this->toasts[$at] = $toast;
+            $this->tui->requestRender();
+
+            return;
+        }
         $this->toasts[] = $toast;
         while (\count($this->toasts) > self::MAX_TOASTS) {
             $evicted = \array_shift($this->toasts);

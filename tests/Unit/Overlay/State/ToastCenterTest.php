@@ -65,6 +65,37 @@ final class ToastCenterTest extends TestCase
         $this->assertTrue(Probe::get($this->tui, 'renderRequested'));
     }
 
+    /**
+     * A push into a slot still showing takes that card over in place — same
+     * id, same stack position, the old timer cancelled and a fresh one armed —
+     * so a sticky "Fetching…" becomes its outcome instead of lingering beside it.
+     */
+    public function testASlottedPushReplacesItsCardInPlace(): void
+    {
+        $center = $this->center();
+        $center->push('Fetching…', ToastSeverity::Info, 600.0, 'git.remote');
+        $center->push('other', ToastSeverity::Info);
+        Probe::set($this->tui, 'renderRequested', false);
+
+        $center->push('Fetched', ToastSeverity::Success, 3.0, 'git.remote');
+
+        $this->assertSame(['other', 'Fetched'], \array_map(static fn (Toast $t): string => $t->message, $center->toasts()), 'replaced where it stood, not stacked');
+        $this->assertSame([2, 1], \array_map(static fn (Toast $t): int => $t->id, $center->toasts()), 'the card keeps its id');
+        $this->assertSame(ToastSeverity::Success, $center->toasts()[1]->severity);
+        $this->assertSame(['1'], $this->scheduler->cancelled, "the progress card's 600 s timer is gone");
+        $this->assertSame([600.0, 2.5, 3.0], \array_values($this->scheduler->delays), 'the outcome runs on its own timer');
+        $this->assertTrue(Probe::get($this->tui, 'renderRequested'));
+
+        $this->scheduler->fire('3');
+        $this->assertSame(['other'], \array_map(static fn (Toast $t): string => $t->message, $center->toasts()), 'the outcome expires on its own timer');
+
+        // A slot no longer showing is simply a new card; a slot-less push never replaces.
+        $center->push('Pulling…', ToastSeverity::Info, 600.0, 'git.remote');
+        $center->push('plain', ToastSeverity::Info);
+        $center->push('plain', ToastSeverity::Info);
+        $this->assertCount(4, $center->toasts());
+    }
+
     public function testTheStackCapEvictsTheOldestAndCancelsItsTimer(): void
     {
         $center = $this->center();

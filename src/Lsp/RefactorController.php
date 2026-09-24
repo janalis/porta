@@ -99,7 +99,7 @@ final class RefactorController extends AbstractLspController implements EditorRe
             $this->positionParams($path, $line, $col),
             function (mixed $result, ?array $error) use ($line, $col, $word): void {
                 if (null !== $error || null === $result || false === $result) {
-                    $this->flash($this->trans('Cannot rename this element'));
+                    $this->notifier->error($this->trans('Cannot rename this element'));
 
                     return;
                 }
@@ -124,7 +124,7 @@ final class RefactorController extends AbstractLspController implements EditorRe
             $this->positionParams($path, $line, $col, ['newName' => $newName]),
             function (mixed $result, ?array $error): void {
                 if (null !== $error || !\is_array($result)) {
-                    $this->flash($this->trans('Rename failed: %message%', ['%message%' => (string) ($error['message'] ?? 'no result')]));
+                    $this->notifier->error($this->trans('Rename failed: %message%', ['%message%' => (string) ($error['message'] ?? 'no result')]));
 
                     return;
                 }
@@ -534,7 +534,7 @@ final class RefactorController extends AbstractLspController implements EditorRe
                 if (!$this->workspaceEditor->applyTextEdits($buffer->document, $result)) {
                     // Overlapping edits: the file is untouched, and saying so
                     // beats "Reformatted" over a file that is not.
-                    $this->flash($this->trans('The formatter sent overlapping edits; nothing changed'));
+                    $this->notifier->warn($this->trans('The formatter sent overlapping edits; nothing changed'));
 
                     return;
                 }

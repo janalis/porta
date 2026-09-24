@@ -697,7 +697,7 @@ Actions (from handlers/hooks):
 | Method | Purpose |
 | --- | --- |
 | `flash(string $message, float $seconds = 2.5)` | Status-bar notification |
-| `notify(string $message, ToastSeverity $severity = ToastSeverity::Info, float $seconds = 2.5)` | The same toast, coloured for what happened: `Success`, `Warn`, `Error`. `flash()` is this at `Info` |
+| `notify(string $message, ToastSeverity $severity = ToastSeverity::Info, float $seconds = 2.5, ?string $slot = null)` | The same toast, coloured for what happened: `Success`, `Warn`, `Error`. `flash()` is this at `Info`. A `$slot` makes the message replaceable: a later notify in the same slot takes over the card still showing — say "Fetching…" for as long as it takes, then the outcome in its place |
 | `refreshStatusSegments()` | Tell the status bar your segment changed; the bar caches its line, so a value that arrives asynchronously needs this |
 | `openView(string $id)` / `closeView(string $id)` | Open or close a registered full-screen view. Opening closes whatever other view owns the main area |
 | `toggleView(string $id)` | Flip it open or closed — what a keybinding on a view wants. "Is it open?" is the registry's to answer, so a plugin never holds its own controller to find out |

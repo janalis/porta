@@ -55,6 +55,7 @@ use Porta\Workbench\Dock\DockToolHandlers;
 use Porta\Workbench\Dock\ResultsPanelMode;
 use Porta\Workbench\EditorArea;
 use Porta\Workbench\Menu\ListboxOpener;
+use Porta\Workbench\Notifier;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Style\StyleSheet;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
@@ -94,7 +95,7 @@ final class SearchUiWiringTest extends TestCase
             $projectSearch,
             $this->dock,
             $this->editor,
-            new StatusBarWidget(),
+            new Notifier(new StatusBarWidget(), $tui),
             $tui,
             new Translator('en'),
             $buffers,

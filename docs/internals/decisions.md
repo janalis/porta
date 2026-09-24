@@ -10299,3 +10299,25 @@ controls' rule, so the mark keeps its accent under the pointer.
   cramped beside them. The control column still starts at the same column;
   only the one-row `[✓]` fallback and list rows keep three columns.
 
+## UI round, phase 1: feedback that says what happened (2026-09-24)
+
+An audit of every toast found three defects:
+- **Git's "Fetching…" lingered for ten minutes.** It was shown for 600 s so that it
+  outlived the operation, and the outcome was stacked beside it.
+- **About twenty failures were sent as Info.** Among them were "Cannot read",
+  "Internal error", a failed rename, a refused stage and a tool that would not start.
+- **Project search wrote to the status bar directly,** so its messages missed the
+  notification log.
+
+The fix for the first is a toast **slot**: a named card that a later notify
+replaces in place, keeping its id and position with a fresh timer. It is used by
+git's remote operations (including a cancel, which never calls back, and a
+follow-up choice, which answers the progress) and by the Settings tool install.
+It was chosen over a progress-token object because it is one optional trailing
+argument on the notify path that already exists: `PluginApi::notify()` gains it,
+and a plugin needs nothing new to hold. "No stashes" and the other "nothing to
+do" messages stay Info, because they are answers, not failures. The status bar's
+caret readout now shows the worst diagnostic on the line, led by its glyph and
+coloured by its severity, where before it showed the first one in the error
+colour, whatever its severity.
+

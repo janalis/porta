@@ -198,6 +198,7 @@ final class ArchitectureCheckCommand extends Command
         'Layout>Ui',
         'Layout>Widget',
         'Layout>Workbench',
+        'LocalHistory>Overlay',
         'LocalHistory>Plugin',
         'LocalHistory>Support',
         'LocalHistory>Workbench',

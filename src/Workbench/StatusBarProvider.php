@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Workbench;
 
 use Porta\Editor\BufferManager;
+use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\EditorPanes;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspSessionPool;
@@ -89,8 +90,14 @@ final readonly class StatusBarProvider
             return ['cells' => $cells, 'left' => $left, 'right' => $paneSegment, 'rightClicks' => []];
         }
 
+        // Led by its severity's glyph, so an error and a hint differ without colour.
         if (null !== ($diagnostic = $this->editor->getCursorDiagnostic())) {
-            $left .= '  '.$this->styles->of(Role::StatusError)->apply($diagnostic);
+            $text = $diagnostic['severity']->glyph().' '.$diagnostic['message'];
+            $left .= '  '.match ($diagnostic['severity']) {
+                DiagnosticSeverity::Error => $this->styles->of(Role::StatusError)->apply($text),
+                DiagnosticSeverity::Warning => $this->styles->of(Role::StatusWarning)->apply($text),
+                DiagnosticSeverity::Information, DiagnosticSeverity::Hint => $text,
+            };
         }
 
         $counts = $this->editor->getDiagnosticCounts();

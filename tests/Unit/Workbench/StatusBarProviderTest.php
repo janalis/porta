@@ -254,6 +254,29 @@ final class StatusBarProviderTest extends TestCase
         $this->assertStringNotContainsString(Glyphs::SEVERITY_WARNING, $right);
     }
 
+    /**
+     * The caret readout leads with its severity's glyph and takes its role —
+     * a warning is not dressed as an error, and a hint wears no alarm at all.
+     */
+    public function testTheCaretDiagnosticLeadsWithItsSeverity(): void
+    {
+        $provider = $this->provider();
+        $this->editor->openFile($this->project->path('t.php'), "<?php\n\n\n");
+        $this->editor->decorations->setDiagnostics([
+            0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'boom', 'col' => 0]],
+            1 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'meh', 'col' => 0]],
+            2 => [['severity' => DiagnosticSeverity::Hint, 'message' => 'tip', 'col' => 0]],
+        ]);
+        $styles = Styles::dark();
+
+        $this->assertStringContainsString($styles->of(Role::StatusError)->apply(Glyphs::SEVERITY_ERROR.' boom'), $provider->segments()['left']);
+        $this->editor->getDocument()->setCursor(1, 0);
+        $this->assertStringContainsString($styles->of(Role::StatusWarning)->apply(Glyphs::SEVERITY_WARNING.' meh'), $provider->segments()['left']);
+        $this->editor->getDocument()->setCursor(2, 0);
+        $left = $provider->segments()['left'];
+        $this->assertStringEndsWith('  '.Glyphs::SEVERITY_HINT.' tip', $left, 'plain: no role at all');
+    }
+
     public function testProblemsSegmentShowsExactlyOneErrorAndOneWarning(): void
     {
         $provider = $this->provider();

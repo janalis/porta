@@ -795,11 +795,13 @@ final class CodeEditorWidget extends AbstractWidget implements
     }
 
     /**
-     * Diagnostic message on the cursor line, for the status bar.
+     * The worst diagnostic on the cursor line, for the status bar.
+     *
+     * @return array{message: string, severity: DiagnosticSeverity}|null
      */
-    public function getCursorDiagnostic(): ?string
+    public function getCursorDiagnostic(): ?array
     {
-        return $this->decorations->diagnosticMessageAt($this->document->cursorLine);
+        return $this->decorations->diagnosticAt($this->document->cursorLine);
     }
 
     /**
@@ -1260,6 +1262,7 @@ final class CodeEditorWidget extends AbstractWidget implements
                 // store: a store write invalidates, and this runs in render.
                 $this->display->methodSeparators ? MemberSeparators::linesFor($this->scopes()) : [],
                 $this->display->showWhitespace,
+                $this->translator,
             );
             $result = $assembler->assemble(
                 $geo,

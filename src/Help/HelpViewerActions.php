@@ -61,7 +61,7 @@ final readonly class HelpViewerActions implements HelpViewerHandler
     #[\Override]
     public function missingTarget(string $target): void
     {
-        $this->notifier->flash($this->translator->trans('Cannot read %file%', ['%file%' => $target]));
+        $this->notifier->error($this->translator->trans('Cannot read %file%', ['%file%' => $target]));
     }
 
     #[\Override]

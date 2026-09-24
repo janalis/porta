@@ -3258,6 +3258,14 @@
         <source>Space toggle · r reset · Ctrl+F find · Tab panes · 2 keybindings</source>
         <target>רווח החלפה · r איפוס · Ctrl+F חיפוש · Tab חלוניות · 2 קיצורי מקשים</target>
       </trans-unit>
+      <trans-unit id="913">
+        <source>%operation% needs a choice</source>
+        <target>%operation% דורש בחירה</target>
+      </trans-unit>
+      <trans-unit id="914">
+        <source>%count% line|%count% lines</source>
+        <target>%count% שורה|%count% שורות</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

@@ -39,6 +39,7 @@ use Porta\Widget\TerminalPanelWidget;
 use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\Dock\DockToolTab;
 use Porta\Workbench\Dock\ResultsPanelMode;
+use Porta\Workbench\Notifier;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
@@ -69,7 +70,7 @@ final class ProjectSearchControllerTest extends TestCase
             $projectSearch,
             $this->dock,
             $this->editor,
-            $this->statusBar,
+            new Notifier($this->statusBar, $tui),
             $tui,
             new Translator('en'),
             $buffers,

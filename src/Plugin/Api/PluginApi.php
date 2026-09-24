@@ -1086,10 +1086,14 @@ final class PluginApi
      * The severity is chosen from core's four and core owns what each looks
      * like, the same split {@see registerStatusSegment()} draws between asking
      * for prominence and naming a colour. `flash()` is this at `Info`.
+     *
+     * A `$slot` makes the message replaceable: a later notify in the same slot
+     * takes over the card still showing instead of stacking beside it — show
+     * "Fetching…" for as long as it takes, then its outcome in the same place.
      */
-    public function notify(string $message, ToastSeverity $severity = ToastSeverity::Info, float $seconds = 2.5): void
+    public function notify(string $message, ToastSeverity $severity = ToastSeverity::Info, float $seconds = 2.5, ?string $slot = null): void
     {
-        $this->manager->runtime()->notifier->notify($message, $severity, $seconds);
+        $this->manager->runtime()->notifier->notify($message, $severity, $seconds, $slot);
     }
 
     /**

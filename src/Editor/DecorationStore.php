@@ -273,15 +273,22 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
         $this->diagnosticCounts = ['errors' => $errors, 'warnings' => $warnings];
     }
 
-    /** The first diagnostic message on $line (the status bar's caret readout), or null. */
-    public function diagnosticMessageAt(int $line): ?string
+    /**
+     * The status bar's caret readout for $line: its WORST diagnostic — an error
+     * under a hint is the one worth reading — the first of equals, or null.
+     *
+     * @return array{message: string, severity: DiagnosticSeverity}|null
+     */
+    public function diagnosticAt(int $line): ?array
     {
-        $list = $this->diagnostics[$line] ?? null;
-        if (!$list) {
-            return null;
+        $worst = null;
+        foreach ($this->diagnostics[$line] ?? [] as $d) {
+            if (null === $worst || $d['severity']->outranks($worst['severity'])) {
+                $worst = ['message' => $d['message'], 'severity' => $d['severity']];
+            }
         }
 
-        return $list[0]['message'];
+        return $worst;
     }
 
     /**

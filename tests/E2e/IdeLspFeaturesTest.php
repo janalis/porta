@@ -409,12 +409,12 @@ final class IdeLspFeaturesTest extends TestCase
                     // the exact string turns "the server said full" into a
                     // ten-second timeout that names the wrong problem.
                     $this->await(
-                        static fn (): bool => \str_starts_with((string) $editor->getCursorDiagnostic(), 'sync:'),
+                        static fn (): bool => \str_starts_with($editor->getCursorDiagnostic()['message'] ?? '', 'sync:'),
                         what: 'the didChange to come back as a diagnostic',
                     );
                     $this->assertSame(
                         'sync:incremental:Z',
-                        $editor->getCursorDiagnostic(),
+                        $editor->getCursorDiagnostic()['message'] ?? null,
                         'a server advertising change kind 2 gets a ranged delta carrying only the typed text',
                     );
                 },

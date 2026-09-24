@@ -11,6 +11,7 @@ use Porta\Editor\DecorationStore;
 use Porta\Editor\Document;
 use Porta\Editor\FoldModel;
 use Porta\Editor\LineNumberMode;
+use Porta\I18n\Translator;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Theme\LightTheme;
 use Porta\Ui\Theme\Styles;
@@ -28,6 +29,7 @@ final class EditorRowAssemblerTest extends TestCase
         bool $indentGuides = false,
         LineNumberMode $lineNumbers = LineNumberMode::Absolute,
         ?DecorationStore $store = null,
+        Translator $translator = new Translator('en'),
     ): array {
         $foldModel = new FoldModel($document);
         $store ??= new DecorationStore(static function (): void {});
@@ -42,6 +44,7 @@ final class EditorRowAssemblerTest extends TestCase
             focused: true,
             showCaret: true,
             styles: $styles,
+            translator: $translator,
         );
 
         return [$assembler, $foldModel, $store];
@@ -203,6 +206,33 @@ final class EditorRowAssemblerTest extends TestCase
         // would misreport 4 instead, since start line (1) is nonzero here.
         $plain = AnsiUtils::stripAnsiCodes($rows[1]);
         $this->assertStringContainsString('b ⋯ 2 lines', $plain);
+    }
+
+    /** The marker speaks the UI's language, and counts a single hidden line as one. */
+    public function testCollapsedFoldMarkerIsTranslatedAndPluralised(): void
+    {
+        $doc = new Document("a\nb\nc\nd\n");
+        [$assembler, $foldModel] = $this->assembler($doc, translator: new Translator('fr'));
+        $doc->setCursor(0, 0);
+        $foldModel->setRegions([[0, 1], [2, 3]], $doc->version);
+        $foldModel->toggle();
+        $geo = new EditorGeometry(numberWidth: 1, gutterWidth: 3, contentWidth: 20, stripeCol: 0);
+
+        $rows = $assembler->assemble(
+            $geo,
+            $this->noSelection(),
+            sticky: [],
+            highlighted: ['a', 'b', 'c', 'd'],
+            stripe: ['', ''],
+            contentRows: 1,
+            vScroll: 0,
+            cursorLine: -1,
+            cursorDisplayCol: 0,
+            hScroll: 0,
+        );
+
+        $this->assertStringContainsString('a ⋯ 1 ligne', AnsiUtils::stripAnsiCodes($rows[0]));
+        $this->assertStringNotContainsString('lignes', AnsiUtils::stripAnsiCodes($rows[0]));
     }
 
     public function testCaretPastEndOfLinePadsExactlyOneColumnForItsCell(): void

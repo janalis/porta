@@ -7,7 +7,9 @@ namespace Porta\Overlay\State;
 /**
  * One live corner notification: identity for dismissal (the auto-expiry timer
  * and the × both address the toast, not a position — the stack reorders as
- * neighbours expire).
+ * neighbours expire). A toast in a $slot is the one message of its kind: a
+ * later push to the same slot replaces it in place (a "Fetching…" becomes its
+ * outcome instead of lingering beside it).
  */
 final class Toast
 {
@@ -16,5 +18,6 @@ final class Toast
         public readonly string $message,
         public readonly ToastSeverity $severity,
         public string $timerId = '',
+        public readonly ?string $slot = null,
     ) {}
 }

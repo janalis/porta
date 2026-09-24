@@ -869,7 +869,7 @@ final class CodeEditorWidgetTest extends TestCase
         $this->assertStringContainsString('█', $stripe, 'error block in the right stripe');
 
         $editor->getDocument()->setCursor(2, 0);
-        $this->assertSame('Boom', $editor->getCursorDiagnostic());
+        $this->assertSame('Boom', $editor->getCursorDiagnostic()['message'] ?? null);
     }
 
     public function testTabIndentsAndShiftTabOutdentsSelection(): void

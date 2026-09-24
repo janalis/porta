@@ -54,7 +54,13 @@ widgets — the resize nudge, the menu-overlay pane list, the theme-refresh
 sweep — asks the region instead.
 
 **`Notifier::notify()` ends in `requestRender()`** on both the toast and
-status-bar paths. Never follow a flash with your own render request.
+status-bar paths. Never follow a flash with your own render request. A failure
+is `error()` (or `warn()` when it half-worked), never a plain `flash()`: the
+severity is the card's frame colour and its glyph in the notification log. A
+long operation says so in a **slot** (`flash($text, 600.0, 'git.remote')`), and
+its outcome is sent to the same slot, which replaces the card in place. A
+progress message sent without a slot stays up for its whole timeout beside the
+result.
 
 **`plugins/<name>/src/`** — a plugin's own classes, under its own namespace
 (`Porta\GitPlugin\`, never `Porta\Git`: core's edge buckets are FQCN-keyed and

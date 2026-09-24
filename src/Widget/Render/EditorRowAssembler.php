@@ -13,6 +13,7 @@ use Porta\Editor\LineNumberMode;
 use Porta\Editor\WhitespaceGlyphs;
 use Porta\Editor\WrapLayout;
 use Porta\Highlight\SemanticTokenStyle;
+use Porta\I18n\Translator;
 use Porta\Support\AnsiText;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\Glyphs;
@@ -68,6 +69,8 @@ final readonly class EditorRowAssembler
         private array $separators = [],
         /** Mark leading and trailing whitespace in the rendered code. */
         private bool $showWhitespace = false,
+        /** Speaks the collapsed-region marker ("⋯ 12 lines") in the UI's language. */
+        private Translator $translator = new Translator('en'),
     ) {
         $this->styles = $styles ?? Styles::dark();
         $this->breakpointSet = \array_fill_keys($store->breakpointLines, value: true);
@@ -468,7 +471,7 @@ final readonly class EditorRowAssembler
         // Collapsed-region marker on the fold-start line.
         if (null !== ($foldEnd = $this->foldModel->foldEndAt($lineIndex))) {
             $hidden = $foldEnd - $lineIndex;
-            $hlLine .= $this->styles->of(Role::Placeholder)->apply(' ⋯ '.$hidden.' lines');
+            $hlLine .= $this->styles->of(Role::Placeholder)->apply(' ⋯ '.$this->translator->trans('%count% line|%count% lines', ['%count%' => $hidden]));
         }
 
         return $hlLine;

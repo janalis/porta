@@ -34,38 +34,43 @@ final readonly class Notifier implements FlashSink
 
     /** Notify at Info severity — the historic entry point, signature unchanged. */
     #[\Override]
-    public function flash(string $message, float $seconds = 2.5): void
+    public function flash(string $message, float $seconds = 2.5, ?string $slot = null): void
     {
-        $this->notify($message, ToastSeverity::Info, $seconds);
+        $this->notify($message, ToastSeverity::Info, $seconds, $slot);
     }
 
-    /** Show a severity-dressed toast (error red, warning amber, success green) and log it. */
-    public function notify(string $message, ToastSeverity $severity, float $seconds = 2.5): void
+    /**
+     * Show a severity-dressed toast (error red, warning amber, success green)
+     * and log it. A $slot names the one message of its kind: a later notify in
+     * the same slot replaces the card still showing, so a long-lived
+     * "Fetching…" is answered in place by its outcome.
+     */
+    public function notify(string $message, ToastSeverity $severity, float $seconds = 2.5, ?string $slot = null): void
     {
         $this->log?->append($message, $severity);
         // @mago-expect lint:no-else-clause -- genuine two-way choice with a shared tail below; an early return would duplicate it.
         if (null !== $this->toasts) {
-            $this->toasts->push($message, $severity, $seconds);
+            $this->toasts->push($message, $severity, $seconds, $slot);
         } else {
             $this->statusBar->flash($message, $seconds);
         }
         $this->tui->requestRender();
     }
 
-    public function success(string $message, float $seconds = 2.5): void
+    public function success(string $message, float $seconds = 2.5, ?string $slot = null): void
     {
-        $this->notify($message, ToastSeverity::Success, $seconds);
+        $this->notify($message, ToastSeverity::Success, $seconds, $slot);
     }
 
-    public function warn(string $message, float $seconds = 4.0): void
+    public function warn(string $message, float $seconds = 4.0, ?string $slot = null): void
     {
-        $this->notify($message, ToastSeverity::Warn, $seconds);
+        $this->notify($message, ToastSeverity::Warn, $seconds, $slot);
     }
 
     /** Errors linger longer — reading time for a message that needs acting on. */
-    public function error(string $message, float $seconds = 5.0): void
+    public function error(string $message, float $seconds = 5.0, ?string $slot = null): void
     {
-        $this->notify($message, ToastSeverity::Error, $seconds);
+        $this->notify($message, ToastSeverity::Error, $seconds, $slot);
     }
 
     /**

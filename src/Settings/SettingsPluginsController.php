@@ -34,6 +34,9 @@ final class SettingsPluginsController
     /** Prefix marking a row that belongs to the plugin's own descriptors. */
     private const string SETTING_PREFIX = 'pluginSetting:';
 
+    /** The one toast a tool install owns: "Installing…", then its outcome in place. */
+    private const string INSTALL_SLOT = 'tool.install';
+
     /**
      * The config key a BUNDLED plugin's Enabled toggle writes.
      *
@@ -286,21 +289,20 @@ final class SettingsPluginsController
         $tool = $offer['tool'];
         // @mago-expect lint:no-boolean-flag-parameter -- $ok is the install-result callback (succeeded/failed), not a mode switch
         $outcome = $this->installerTool->install($offer['via'], function (bool $ok) use ($name, $tool): void {
-            $this->notifier->flash(
-                $ok
-                    ? $this->translator->trans('Installed %tool%', ['%tool%' => $tool])
-                    : $this->translator->trans('Could not install %tool%', ['%tool%' => $tool]),
-                5.0,
-            );
+            // The outcome takes over the "Installing…" card still showing.
+            $ok
+                ? $this->notifier->success($this->translator->trans('Installed %tool%', ['%tool%' => $tool]), 5.0, self::INSTALL_SLOT)
+                : $this->notifier->error($this->translator->trans('Could not install %tool%', ['%tool%' => $tool]), 5.0, self::INSTALL_SLOT);
             if ($ok) {
                 $this->lifecycle->onProviderSettingChanged($name); // relaunch an LSP provider now its binary exists
             }
             $this->lifecycle->refreshView(); // the install row drops once the binary is available
         });
         match ($outcome) {
-            InstallOutcome::Started => $this->notifier->flash($this->translator->trans('Installing %tool%…', ['%tool%' => $tool])),
-            InstallOutcome::Busy => $this->notifier->flash($this->translator->trans('An install is already running')),
-            InstallOutcome::NoManager => $this->notifier->flash($this->translator->trans('No installer found for %tool% — install it via Homebrew or cargo, or put its binary on your PATH', [
+            // Up for as long as the install runs: its outcome replaces it.
+            InstallOutcome::Started => $this->notifier->flash($this->translator->trans('Installing %tool%…', ['%tool%' => $tool]), 600.0, self::INSTALL_SLOT),
+            InstallOutcome::Busy => $this->notifier->warn($this->translator->trans('An install is already running')),
+            InstallOutcome::NoManager => $this->notifier->error($this->translator->trans('No installer found for %tool% — install it via Homebrew or cargo, or put its binary on your PATH', [
                 '%tool%' => $tool,
             ]), 5.0),
         };
