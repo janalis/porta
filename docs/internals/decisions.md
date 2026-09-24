@@ -10293,4 +10293,9 @@ controls' rule, so the mark keeps its accent under the pointer.
   It follows Find in Files' rule now: boxed from 30 terminal rows, one row
   below. The commit box sees only its sidebar's height, so the threshold is 28,
   the terminal's 30 less the menu and status bars (the git tabs' reckoning).
+- **The boxed checkbox is padded.** First drawn compact (`╭─╮ │✓│ ╰─╯`, the
+  width `[✓]` had), it is `╭───╮ │ ✓ │ ╰───╯` now at the user's request. Every
+  other box pads its content a column either side, and the compact box read
+  cramped beside them. The control column still starts at the same column;
+  only the one-row `[✓]` fallback and list rows keep three columns.
 

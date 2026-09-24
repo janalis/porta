@@ -108,8 +108,8 @@ final class SettingsFormWidgetTest extends TestCase
         // sit at column 1, ahead of its label and out of line with every other
         // kind's control. Boxed, it is a box of its own, the label on its
         // middle row like every control's.
-        $this->assertMatchesRegularExpression('/┏━┓\s*\n  Inline diagnostics\s+┃✓┃\s*\n\s+┗━┛/u', $screen, 'the selected one takes the keys: the heavy box');
-        $this->assertMatchesRegularExpression('/Relative line numbers\s+│ │/u', $screen, 'at rest: rails, not the one-row form\'s brackets');
+        $this->assertMatchesRegularExpression('/┏━━━┓\s*\n  Inline diagnostics\s+┃ ✓ ┃\s*\n\s+┗━━━┛/u', $screen, 'the selected one takes the keys: the heavy box');
+        $this->assertMatchesRegularExpression('/Relative line numbers\s+│   │/u', $screen, 'at rest: rails, not the one-row form\'s brackets');
         $this->assertMatchesRegularExpression('/Theme\s+│ dark\s+▾ │/u', $screen, 'a choice is a select');
         $this->assertMatchesRegularExpression('/Tab width\s+│ ◂\s+4\s+▸ │/u', $screen, 'a number is a stepper between two arrows');
         $this->assertStringContainsString('· applies on restart', $screen, 'restart rows are annotated');
@@ -392,8 +392,8 @@ final class SettingsFormWidgetTest extends TestCase
         $widget->handleClick(2, 0);
 
         $this->assertSame([], $changes);
-        $this->assertMatchesRegularExpression('/^\s+╭┄╮/u', $screen[1], 'and says so: its box is dashed');
-        $this->assertMatchesRegularExpression('/Sticky scroll\s+┆ ┆/u', $screen[2]);
+        $this->assertMatchesRegularExpression('/^\s+╭┄┄┄╮/u', $screen[1], 'and says so: its box is dashed');
+        $this->assertMatchesRegularExpression('/Sticky scroll\s+┆   ┆/u', $screen[2]);
     }
 
     public function testAClickOnTheTitleOrPastTheLastRowDoesNothing(): void
@@ -1284,7 +1284,7 @@ final class SettingsFormWidgetTest extends TestCase
         // with marks split the box in two: this Bidi has no isolates.)
         yield 'hebrew choice' => [new SettingsRow('language', 'שפה', SettingsRowKind::Choice, 'he', false, ['en', 'he'], optionLabels: ['en' => 'English', 'he' => 'עברית']), '┃ ▾   תירבע ┃'];
         // The one row is the selected one of a focused form: its box is heavy.
-        yield 'bool' => [new SettingsRow('sticky', 'גלילה דביקה', SettingsRowKind::Bool, true, false), '┃✓┃'];
+        yield 'bool' => [new SettingsRow('sticky', 'גלילה דביקה', SettingsRowKind::Bool, true, false), '┃ ✓ ┃'];
         yield 'action' => [new SettingsRow('rm', 'demo (project)', SettingsRowKind::Action, 'Remove', false), '┃  Remove  ┃'];
         // A Latin label ending in punctuation keeps its closing parenthesis:
         // between Latin and the gap's right-to-left mark it used to mirror

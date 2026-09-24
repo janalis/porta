@@ -36,6 +36,9 @@ final class FieldBox
 
     public const int CHECKBOX_WIDTH = 3;
 
+    /** The boxed checkbox's width: its rails with a column of padding either side of the mark, as every box pads its content. */
+    public const int CHECKBOX_BOX_WIDTH = 5;
+
     /** Rail + pad on each side of the value. */
     public const int CHROME_COLS = 4;
 
@@ -112,9 +115,10 @@ final class FieldBox
 
     /**
      * A checkbox as a box of its own, {@see ROWS} tall and {@see
-     * CHECKBOX_WIDTH} wide — the same family as the boxed field, select and
-     * button beside it: `╭─╮ │✓│ ╰─╯` at rest, heavy while it takes the keys,
-     * dashed disabled. The frame takes the state's border tint like every
+     * CHECKBOX_BOX_WIDTH} wide — the same family as the boxed field, select
+     * and button beside it, its mark padded a column either side the way
+     * their content is: `╭───╮ │ ✓ │ ╰───╯` at rest, heavy while it takes the
+     * keys, dashed disabled. The frame takes the state's border tint like every
      * box; the mark takes the accent only when $tintMark (off the selected
      * row). The one-row {@see checkbox()} is its fallback.
      *
@@ -126,10 +130,12 @@ final class FieldBox
         [$topLeft, $topRight, $bottomLeft, $bottomRight, $horizontal, $vertical] = $state->glyphs();
         $border = self::border($state, $styles);
 
+        $rule = \str_repeat($horizontal, self::CHECKBOX_BOX_WIDTH - 2);
+
         return [
-            $border->apply($topLeft.$horizontal.$topRight),
-            $border->apply($vertical).self::mark($checked, $tintMark ? $styles : null).$border->apply($vertical),
-            $border->apply($bottomLeft.$horizontal.$bottomRight),
+            $border->apply($topLeft.$rule.$topRight),
+            $border->apply($vertical).' '.self::mark($checked, $tintMark ? $styles : null).' '.$border->apply($vertical),
+            $border->apply($bottomLeft.$rule.$bottomRight),
         ];
     }
 

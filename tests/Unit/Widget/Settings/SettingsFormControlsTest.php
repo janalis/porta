@@ -86,9 +86,9 @@ final class SettingsFormControlsTest extends TestCase
         $this->assertCount(1, \array_filter($screen, static fn (string $line): bool => \str_starts_with($line, '─ Editor')), 'a legend heads its group once, not every row in it');
         $this->assertStringContainsString('┏', $screen[2], 'the selected select is heavy-bordered');
         $this->assertMatchesRegularExpression('/Theme\s+┃ dark\s+▾ ┃/u', $screen[3], 'the label sits on the control\'s middle row');
-        $this->assertMatchesRegularExpression('/^\s+╭─╮/u', $screen[6], 'a checkbox is a box of its own, like its neighbours');
-        $this->assertMatchesRegularExpression('/Sticky scroll\s+│✓│/u', $screen[7], 'its label on its middle row');
-        $this->assertMatchesRegularExpression('/^\s+╰─╯/u', $screen[8]);
+        $this->assertMatchesRegularExpression('/^\s+╭───╮/u', $screen[6], 'a checkbox is a box of its own, like its neighbours');
+        $this->assertMatchesRegularExpression('/Sticky scroll\s+│ ✓ │/u', $screen[7], 'its label on its middle row');
+        $this->assertMatchesRegularExpression('/^\s+╰───╯/u', $screen[8]);
         $this->assertSame(\mb_strpos($screen[2], needle: '┏'), \mb_strpos($screen[6], needle: '╭'), 'in the one control column');
         $this->assertMatchesRegularExpression('/Tab width\s+│ ◂\s+4\s+▸ │ · 1-8/u', $screen[10]);
         $this->assertMatchesRegularExpression('/git \(built-in\)\s+┆\s+Built-in\s+┆/u', $screen[14], 'a disabled button is dashed');

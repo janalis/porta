@@ -527,7 +527,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         $this->controls[$index] = [
             'row' => $top + \count($out),
             'col' => SettingsRowLayout::LABEL_CHROME + $layout->label,
-            'width' => SettingsRowKind::Bool === $row->kind ? FieldBox::CHECKBOX_WIDTH : $layout->control,
+            'width' => SettingsRowKind::Bool === $row->kind ? AnsiUtils::visibleWidth($control[0]) : $layout->control, // a checkbox is as wide as it is drawn, boxed or not
             'height' => \count($control),
         ];
         // A button whose caption fell back to its own label leaves the label
@@ -662,7 +662,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
     /**
      * A row's control: the part that shows the value and that actuating moves,
      * as its rows — {@see FieldBox::ROWS} when the page is boxed, a checkbox
-     * too (its own box, `╭─╮ │✓│ ╰─╯`), and one when the pane is too narrow,
+     * too (its own box, `╭───╮ │ ✓ │ ╰───╯`), and one when the pane is too narrow,
      * where a checkbox is `[✓]`.
      *
      * Every kind renders it in the SAME column, which is the whole point —

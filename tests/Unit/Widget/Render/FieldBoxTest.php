@@ -279,12 +279,12 @@ final class FieldBoxTest extends TestCase
     /** @return iterable<string, array{bool|null, FieldState, list<string>}> */
     public static function boxedCheckboxes(): iterable
     {
-        yield 'checked, at rest' => [true, FieldState::Idle, ['╭─╮', '│✓│', '╰─╯']];
-        yield 'unchecked, at rest' => [false, FieldState::Idle, ['╭─╮', '│ │', '╰─╯']];
-        yield 'partial' => [null, FieldState::Idle, ['╭─╮', '│–│', '╰─╯']];
-        yield 'taking the keys' => [true, FieldState::Focused, ['┏━┓', '┃✓┃', '┗━┛']];
-        yield 'disabled' => [false, FieldState::Disabled, ['╭┄╮', '┆ ┆', '╰┄╯']];
-        yield 'danger' => [true, FieldState::Danger, ['╔═╗', '║✓║', '╚═╝']];
+        yield 'checked, at rest' => [true, FieldState::Idle, ['╭───╮', '│ ✓ │', '╰───╯']];
+        yield 'unchecked, at rest' => [false, FieldState::Idle, ['╭───╮', '│   │', '╰───╯']];
+        yield 'partial' => [null, FieldState::Idle, ['╭───╮', '│ – │', '╰───╯']];
+        yield 'taking the keys' => [true, FieldState::Focused, ['┏━━━┓', '┃ ✓ ┃', '┗━━━┛']];
+        yield 'disabled' => [false, FieldState::Disabled, ['╭┄┄┄╮', '┆   ┆', '╰┄┄┄╯']];
+        yield 'danger' => [true, FieldState::Danger, ['╔═══╗', '║ ✓ ║', '╚═══╝']];
     }
 
     /**
@@ -300,7 +300,7 @@ final class FieldBoxTest extends TestCase
         $this->assertSame($expected, \array_map(AnsiUtils::stripAnsiCodes(...), $rows));
         $this->assertCount(FieldBox::ROWS, $rows);
         foreach ($rows as $row) {
-            $this->assertSame(FieldBox::CHECKBOX_WIDTH, AnsiUtils::visibleWidth($row));
+            $this->assertSame(FieldBox::CHECKBOX_BOX_WIDTH, AnsiUtils::visibleWidth($row), 'its mark padded a column either side');
         }
     }
 
@@ -313,9 +313,9 @@ final class FieldBoxTest extends TestCase
         $tinted = FieldBox::checkboxBox(true, FieldState::Focused, Styles::dark());
         $plain = FieldBox::checkboxBox(true, FieldState::Focused, Styles::dark(), tintMark: false);
 
-        $this->assertSame($border->apply('┏━┓'), $tinted[0]);
+        $this->assertSame($border->apply('┏━━━┓'), $tinted[0]);
         $this->assertStringContainsString($accent, $tinted[1]);
         $this->assertStringNotContainsString($accent, $plain[1]);
-        $this->assertSame(['╭─╮', '│✓│', '╰─╯'], FieldBox::checkboxBox(true, FieldState::Idle, new Styles(MonochromeTheme::definition())), 'monochrome: bare glyphs, the shape is the state');
+        $this->assertSame(['╭───╮', '│ ✓ │', '╰───╯'], FieldBox::checkboxBox(true, FieldState::Idle, new Styles(MonochromeTheme::definition())), 'monochrome: bare glyphs, the shape is the state');
     }
 }
