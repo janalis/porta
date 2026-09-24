@@ -793,10 +793,16 @@ final class RefactorControllerTest extends TestCase
         $this->assertSame(['quickfix', 'Select an expression first'], \array_column($items, 'hint'));
         $this->assertSame([false, true], \array_column($items, 'disabled'));
 
+        // The selection never rests on it, as a menu's never rests on a greyed item.
+        $host = Probe::object($this->editor, 'overlayHost');
         $this->editor->handleInput("\x1b[B");
-        $this->editor->handleInput("\r");
+        $this->assertSame(0, Probe::get($host, 'overlay')['selected'], 'Down skips it, wrapping back to the one that can run');
+        // A click on it runs nothing and leaves the list open.
+        $host->layout([0, 0, 24, 100]);
+        $box = Probe::get($host, 'overlayBox');
+        $host->clickAt($box->startRow + $box->headerRows + 1, $box->col + 4);
         $this->assertStringNotContainsString('BLOCKED', $this->text(), 'nothing ran');
-        $this->assertNotNull(Probe::get(Probe::object($this->editor, 'overlayHost'), 'overlay'), 'and the list is still there');
+        $this->assertNotNull(Probe::get($host, 'overlay'), 'and the list is still there');
     }
 
     /** Refactor This offers its answers through the picker like quick fixes do. */

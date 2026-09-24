@@ -256,4 +256,59 @@ final class OverlayHostNavigationTest extends TestCase
         $this->assertTrue($host->searchClickAt($box->startRow + 1, $box->col + 5));
         $this->assertSame(1, Probe::get($host, 'search')->selected);
     }
+
+    /**
+     * The selection never rests on a disabled row — opening, arrows either
+     * way, paging, the wheel — as a menu's never rests on a greyed item.
+     */
+    public function testTheSelectionSkipsDisabledRows(): void
+    {
+        $host = $this->host();
+        $items = [
+            ['label' => 'grey 0', 'hint' => '', 'value' => '0', 'disabled' => true],
+            ['label' => 'one', 'hint' => '', 'value' => '1'],
+            ['label' => 'grey 2', 'hint' => '', 'value' => '2', 'disabled' => true],
+            ['label' => 'three', 'hint' => '', 'value' => '3'],
+        ];
+        $host->openList('T', $items, static fn (): null => null);
+        $selected = static fn (): int => Probe::get($host, 'overlay')['selected'];
+        $kb = $this->editingKeys();
+
+        $this->assertSame(1, $selected(), 'opens on the first row that can be picked');
+        $host->handleInput("\x1b[B", $kb);
+        $this->assertSame(3, $selected(), 'down, past the grey one');
+        $host->handleInput("\x1b[B", $kb);
+        $this->assertSame(1, $selected(), 'wrapping past the grey first row');
+        $host->handleInput("\x1b[A", $kb);
+        $this->assertSame(3, $selected(), 'up, wrapping, past the grey one');
+        $host->handleInput("\x1b[A", $kb);
+        $this->assertSame(1, $selected());
+        $host->moveListSelection(1);
+        $this->assertSame(3, $selected(), 'the wheel skips it too');
+        $host->moveListSelection(-1);
+        $this->assertSame(1, $selected());
+        $host->layout([0, 0, 24, 80]);
+        $host->handleInput("\x1b[5~", $kb);
+        $this->assertSame(1, $selected(), 'a page up to the top lands on the first live row');
+
+        $host->closeList();
+        $host->openList(
+            'T',
+            [['label' => 'a', 'hint' => '', 'value' => 'a'], ['label' => 'b', 'hint' => '', 'value' => 'b'], ['label' => 'grey', 'hint' => '', 'value' => 'g', 'disabled' => true]],
+            static fn (): null => null,
+        );
+        $host->layout([0, 0, 24, 80]);
+        $host->handleInput("\x1b[6~", $kb);
+        $this->assertSame(1, $selected(), 'a page down onto a grey last row stops on the live one before it, not round the corner');
+    }
+
+    /** A list whose every row is disabled keeps its selection where it is, rather than looping. */
+    public function testAllDisabledKeepsTheSelection(): void
+    {
+        $host = $this->host();
+        $host->openList('T', [['label' => 'a', 'hint' => '', 'value' => 'a', 'disabled' => true], ['label' => 'b', 'hint' => '', 'value' => 'b', 'disabled' => true]], static fn (): null => null);
+        $host->handleInput("\x1b[B", $this->editingKeys());
+
+        $this->assertSame(1, Probe::get($host, 'overlay')['selected']);
+    }
 }

@@ -93,6 +93,7 @@ final class OverlayHost
         // gets the list back as it left it: the same filter, the picked row.
         $again = null !== $this->picked && $this->picked['title'] === $title ? $this->picked : null;
         $overlay = ['title' => $title, 'items' => $items, 'selected' => 0, 'hovered' => null, 'filter' => $again['filter'] ?? new TextField(style: $this->cursorStyle), 'onPick' => $onPick];
+        $overlay['selected'] = LiveRows::from($this->matching($overlay), 0, 1);
         if (null !== $again) {
             $overlay['selected'] = (int) \array_search($again['value'], \array_column($this->matching($overlay), column_key: 'value'), strict: true);
         }
@@ -422,7 +423,7 @@ final class OverlayHost
             return;
         }
         if ($kb->matches($keys, 'cursor_up')) {
-            $this->reselect($overlay, ($overlay['selected'] - 1 + $count) % $count);
+            $this->reselect($overlay, ($overlay['selected'] - 1 + $count) % $count, -1);
 
             return;
         }
@@ -435,7 +436,7 @@ final class OverlayHost
         // than wrapping, as a list box's does.
         if ($kb->matches($keys, 'page_up') || $kb->matches($keys, 'page_down')) {
             $page = \max(1, $this->overlayBox->count ?? 1) * ($kb->matches($keys, 'page_up') ? -1 : 1);
-            $this->reselect($overlay, \max(0, \min($count - 1, $overlay['selected'] + $page)));
+            $this->reselect($overlay, LiveRows::within($this->matching($overlay), \max(0, \min($count - 1, $overlay['selected'] + $page)), $page <=> 0));
 
             return;
         }
@@ -506,9 +507,9 @@ final class OverlayHost
      *
      * @param array{title: string, items: list<array{label: string, hint: string, value: string, checked?: bool, disabled?: bool}>, selected: int, hovered: int|null, filter: TextField, onPick: callable(string): void} $overlay
      */
-    private function reselect(array $overlay, int $selected): void
+    private function reselect(array $overlay, int $selected, int $direction = 1): void
     {
-        $overlay['selected'] = $selected;
+        $overlay['selected'] = LiveRows::from($this->matching($overlay), $selected, $direction);
         $this->overlay = $overlay;
         ($this->invalidate)();
     }
@@ -586,7 +587,7 @@ final class OverlayHost
         $box = $this->overlayBox;
         $cue = null === $box ? 0 : self::edgeCue($box, $relRow, $count);
         if (null !== $box && 0 !== $cue) {
-            $this->reselect($overlay, \max(0, \min($count - 1, $overlay['selected'] + ($cue * $box->count))));
+            $this->reselect($overlay, LiveRows::within($this->matching($overlay), \max(0, \min($count - 1, $overlay['selected'] + ($cue * $box->count))), $cue));
 
             return true;
         }
@@ -679,7 +680,7 @@ final class OverlayHost
             return;
         }
         $count = \count($this->matching($overlay));
-        $overlay['selected'] = ((($overlay['selected'] + $delta) % $count) + $count) % $count;
+        $overlay['selected'] = LiveRows::from($this->matching($overlay), ((($overlay['selected'] + $delta) % $count) + $count) % $count, $delta <=> 0);
         $this->overlay = $overlay;
         ($this->invalidate)();
     }

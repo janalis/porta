@@ -10566,4 +10566,12 @@ These were found by running the round's new pieces against each other:
   pointer rested on it ("Fetching…" becoming "Fetched") got a running timer,
   and no motion event would come to pause it again, so it could expire while
   being read. It now stays held.
+- **The change view's selection (found driving the real IDE).** The list
+  opened with the selection on the removed line, a disabled row where Enter
+  did nothing. One Down reached the added line, where Enter only closed the
+  list, so in practice the change was never reverted. The list overlay's
+  selection now skips disabled rows, as a menu's does: arrows and the wheel
+  wrap past them, paging and the frame cues stop at the nearest live row.
+  The change view puts "Revert this change" first, where the selection
+  starts. A revert is one undo step.
 
