@@ -100,7 +100,7 @@ final class CompletionController extends AbstractLspController implements Editor
     }
 
     #[\Override]
-    public function requestCompletion(int $line, int $utf16Col): void
+    public function requestCompletion(int $line, int $utf16Col): bool
     {
         // Deliberately `ready()` and not `readyOrExplain()`: this path is
         // reached both from Ctrl+Space and from the automatic trigger after
@@ -108,7 +108,7 @@ final class CompletionController extends AbstractLspController implements Editor
         // fire on ordinary keystrokes in every buffer without a server.
         // Pinned as an allowlisted silent site by LspRefusalTest.
         if (null === ($path = $this->ready())) {
-            return;
+            return false; // Ctrl+Space's own popup says so; the automatic trigger stays silent
         }
 
         $generation = ++$this->completionGeneration;
@@ -118,7 +118,7 @@ final class CompletionController extends AbstractLspController implements Editor
         // server's methods is the whole point of a second server on one
         // language. Answers arrive in any order and some never do, so each one
         // re-renders what is in hand rather than waiting for the set.
-        $this->lsp->requestAll(
+        $asked = $this->lsp->requestAll(
             'textDocument/completion',
             $this->positionParams($path, $line, $utf16Col),
             'completionProvider',
@@ -129,6 +129,12 @@ final class CompletionController extends AbstractLspController implements Editor
                     return; // a later request is what the user is waiting on
                 }
                 if (null !== $error || null === $result) {
+                    // Still an answer: with nothing in hand yet, the popup
+                    // that said "Loading…" says there is nothing to offer.
+                    if ([] === $this->completionItems) {
+                        $this->editor->showCompletions([]);
+                    }
+
                     return;
                 }
                 /** @var list<array<string, mixed>> $items */
@@ -140,6 +146,8 @@ final class CompletionController extends AbstractLspController implements Editor
                 $this->tui->requestRender();
             },
         );
+
+        return 0 < $asked;
     }
 
     /**
@@ -313,7 +321,8 @@ final class CompletionController extends AbstractLspController implements Editor
             $this->positionParams($path, $line, $col),
             function (mixed $result, ?array $error): void {
                 /** @var array{signatures?: list<array<string, mixed>>, activeSignature?: int, activeParameter?: int} $result */
-                $signature = $result['signatures'][$result['activeSignature'] ?? 0] ?? $result['signatures'][0] ?? null;
+                $active = \array_key_exists($result['activeSignature'] ?? 0, $result['signatures'] ?? []) ? $result['activeSignature'] ?? 0 : 0;
+                $signature = $result['signatures'][$active] ?? null;
                 $label = \is_array($signature) ? (string) ($signature['label'] ?? '') : '';
                 if (!\is_array($signature) || '' === $label) {
                     $this->editor->setSignatureHint(null);
@@ -322,7 +331,14 @@ final class CompletionController extends AbstractLspController implements Editor
                     return;
                 }
 
-                $this->editor->setSignatureHint($label, self::activeParameterRange($signature, $label, $result['activeParameter'] ?? null));
+                // Every overload with its own active argument, so Alt+↑/↓ can
+                // walk them without asking the server again.
+                $overloads = [];
+                foreach ($result['signatures'] ?? [] as $other) {
+                    $otherLabel = (string) ($other['label'] ?? '');
+                    $overloads[] = [$otherLabel, self::activeParameterRange($other, $otherLabel, $result['activeParameter'] ?? null)];
+                }
+                $this->editor->setSignatureHint($label, self::activeParameterRange($signature, $label, $result['activeParameter'] ?? null), $overloads, $active);
                 $this->tui->requestRender();
             },
         );

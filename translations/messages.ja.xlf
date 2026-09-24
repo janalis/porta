@@ -3278,6 +3278,18 @@
         <source>Type to filter</source>
         <target>入力して絞り込み</target>
       </trans-unit>
+      <trans-unit id="918">
+        <source>Loading…</source>
+        <target>読み込み中…</target>
+      </trans-unit>
+      <trans-unit id="919">
+        <source>No suggestions</source>
+        <target>候補はありません</target>
+      </trans-unit>
+      <trans-unit id="920">
+        <source>No language server</source>
+        <target>言語サーバーがありません</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

@@ -795,9 +795,10 @@ final class LspSessionPoolTest extends TestCase
         $pool->notifyDidOpen('/tmp/proj/a.php', '<?php', 'php', 1);
         $this->activeFile->set('/tmp/proj/a.php');
 
-        $pool->requestAll('textDocument/codeLens', [], 'codeLensProvider', static function (mixed $r, ?array $e, string $o): void {});
+        $asked = $pool->requestAll('textDocument/codeLens', [], 'codeLensProvider', static function (mixed $r, ?array $e, string $o): void {});
 
         $this->assertSame([1, 0, 1], \array_map(static fn (FakeLspClient $c): int => \count($c->requests), $built));
+        $this->assertSame(2, $asked, 'it says how many it asked');
     }
 
     /**

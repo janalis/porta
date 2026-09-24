@@ -26,6 +26,12 @@ final class EditorCompletion
     private ?int $hovered = null;
     private string $prefix = '';
     private ?CompletionBox $box = null;
+
+    /** What an asked-for popup says in place of a list, or null — see {@see requestExplicitly()}. */
+    private ?CompletionNote $note = null;
+
+    /** How far the selected item's docblock is scrolled, in wrapped rows; back to 0 as the selection moves. */
+    private int $docScroll = 0;
     /**
      * Items already asked about: object id => the label asked about. An item is
      * asked once and once only, however often the popup re-filters around it or
@@ -40,7 +46,7 @@ final class EditorCompletion
      * @param \Closure(): void         $invalidate         request a redraw
      * @param \Closure(): void         $notifyChange       announce a buffer edit
      * @param \Closure(string): bool   $isInsertable       whether a keystroke is insertable text
-     * @param \Closure(int, int): void          $requestCompletion  ask the IDE for completions at (line, utf16 col)
+     * @param \Closure(int, int): ?bool         $requestCompletion  ask the IDE for completions at (line, utf16 col); false or null when nobody was asked
      * @param \Closure(array<string, mixed>): void $resolveCompletion resolve deferred edits for a raw server item
      * @param \Closure(array<string, mixed>, \Closure(string, string): void): void $resolveDetail ask for an item's type and docblock, deferred by some servers
      */
@@ -62,8 +68,11 @@ final class EditorCompletion
         $this->prefix = $this->document->getWordBeforeCursor();
         $this->items = $items;
         $this->selected = 0;
+        $this->docScroll = 0;
         $this->hovered = null; // the list rebuilt under a still pointer
         $this->open = [] !== $this->filtered();
+        // An answer to Ctrl+Space ends its "Loading…": with a list, or by saying there is none.
+        $this->note = null === $this->note || $this->open ? null : CompletionNote::Empty;
         $this->detailAsked = [];
         $this->askForVisibleDetails();
         ($this->invalidate)();
@@ -76,6 +85,7 @@ final class EditorCompletion
 
     public function close(): void
     {
+        $this->note = null;
         $this->open = false;
         $this->items = [];
         $this->selected = 0;
@@ -93,6 +103,42 @@ final class EditorCompletion
     public function requestCompletion(): void
     {
         ($this->requestCompletion)($this->document->cursorLine, $this->document->getCursorColUtf16());
+    }
+
+    /**
+     * Ctrl+Space: ask, and say so while the answer is on its way — or say
+     * that there is nobody to ask. A keystroke answered by nothing at all
+     * cannot be told apart from a broken binding.
+     */
+    public function requestExplicitly(): void
+    {
+        $this->note = CompletionNote::Loading;
+        $asked = ($this->requestCompletion)($this->document->cursorLine, $this->document->getCursorColUtf16());
+        if (true !== $asked) {
+            $this->note = CompletionNote::NoServer;
+        }
+        ($this->invalidate)();
+    }
+
+    /** The note to draw in place of a list, or null. */
+    public function note(): ?CompletionNote
+    {
+        return $this->open ? null : $this->note;
+    }
+
+    /**
+     * A key while a note is up: the note goes, and the key does what it does.
+     * Esc is spent on the note, as it would be on a popup.
+     */
+    public function dismissNote(string $keys, Keybindings $kb): bool
+    {
+        if (null === $this->note()) {
+            return false;
+        }
+        $this->note = null;
+        ($this->invalidate)();
+
+        return $kb->matches($keys, 'select_cancel');
     }
 
     /**
@@ -151,6 +197,7 @@ final class EditorCompletion
         }
 
         if ($kb->matches($keys, 'cursor_up')) {
+            $this->docScroll = 0;
             $this->selected = ($this->selected - 1 + \count($filtered)) % \count($filtered);
             $this->askForVisibleDetails();
             ($this->invalidate)();
@@ -159,9 +206,29 @@ final class EditorCompletion
         }
 
         if ($kb->matches($keys, 'cursor_down')) {
+            $this->docScroll = 0;
             $this->selected = ($this->selected + 1) % \count($filtered);
             $this->askForVisibleDetails();
             ($this->invalidate)();
+
+            return true;
+        }
+
+        // A page is what the popup shows; paging stops at the ends.
+        if ($kb->matches($keys, 'page_up') || $kb->matches($keys, 'page_down')) {
+            $step = PopupMetrics::COMPLETION_ROWS * ($kb->matches($keys, 'page_up') ? -1 : 1);
+            $this->selected = \max(0, \min(\count($filtered) - 1, $this->selected + $step));
+            $this->docScroll = 0;
+            $this->askForVisibleDetails();
+            ($this->invalidate)();
+
+            return true;
+        }
+
+        // Ctrl+↓/↑ scroll the selected item's docblock, the rest of which is
+        // otherwise only a hover away.
+        if ("\x1b[1;5B" === $keys || "\x1b[1;5A" === $keys) {
+            $this->scrollDoc("\x1b[1;5B" === $keys ? 1 : -1);
 
             return true;
         }
@@ -194,22 +261,26 @@ final class EditorCompletion
         return false;
     }
 
-    /** Consume a click that lands on a popup row (accepting that item); false otherwise. */
+    /**
+     * Consume a click on the popup: a row accepts its item, the frame and the
+     * docblock pane are swallowed — a click on a popup is never a click on
+     * the code under it. False off the popup.
+     */
     public function handleClick(int $relRow, int $relCol): bool
     {
-        if ($this->open) {
-            $index = $this->completionItemAt($relRow, $relCol);
-            if (null !== $index) {
-                $item = $this->filtered()[$index] ?? null;
-                if (null !== $item) {
-                    $this->acceptItem($item);
-                }
-
-                return true;
-            }
+        if (!$this->open) {
+            return false;
+        }
+        $index = $this->completionItemAt($relRow, $relCol);
+        if (null === $index) {
+            return $this->box?->covers($relRow, $relCol) ?? false;
+        }
+        $item = $this->filtered()[$index] ?? null;
+        if (null !== $item) {
+            $this->acceptItem($item);
         }
 
-        return false;
+        return true;
     }
 
     /** Wheel over the completion popup: move the selection, wrapping like the arrow keys. */
@@ -243,7 +314,7 @@ final class EditorCompletion
      * filtered list), or null when the popup should not be drawn. The widget draws
      * it and hands the box geometry back via {@see setBox}.
      *
-     * @return array{items: list<CompletionItem>, selected: int, hovered: int|null}|null
+     * @return array{items: list<CompletionItem>, selected: int, hovered: int|null, docScroll: int}|null
      */
     public function popupState(): ?array
     {
@@ -259,7 +330,18 @@ final class EditorCompletion
         // out from under it — drop a tint that no longer names a row.
         $hovered = null !== $this->hovered && $this->hovered < \count($items) ? $this->hovered : null;
 
-        return ['items' => $items, 'selected' => $this->selected, 'hovered' => $hovered];
+        return ['items' => $items, 'selected' => $this->selected, 'hovered' => $hovered, 'docScroll' => $this->docScroll];
+    }
+
+    /**
+     * Scroll the selected item's docblock by $delta wrapped rows, held inside
+     * what it has: the renderer reports how far it CAN go through the box,
+     * so a scroll past the end stays at the end.
+     */
+    public function scrollDoc(int $delta): void
+    {
+        $this->docScroll = \max(0, \min($this->box->docMaxScroll ?? 0, $this->docScroll + $delta));
+        ($this->invalidate)();
     }
 
     /** Remember the last-rendered popup box geometry for mouse hit-testing. */

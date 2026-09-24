@@ -43,13 +43,11 @@ final class SignatureHintEmphasisTest extends TestCase
      */
     private static function boldRun(string $row): string
     {
-        $at = \strpos($row, needle: "\x1b[1m");
-        self::assertNotFalse($at, 'the row should carry a bold run');
-        $after = \substr($row, $at + 4);
-        $end = \strpos($after, needle: "\x1b[");
-        self::assertNotFalse($end, 'the bold run should be closed');
+        // Bold and underlined: the emphasis must read in monochrome, where
+        // weight alone is easy to miss.
+        self::assertSame(1, \preg_match('/\x1b\[1m\x1b\[4m([^\x1b]*)\x1b\[/', $row, $match), 'the row should carry one bold, underlined run');
 
-        return AnsiUtils::stripAnsiCodes(\substr($after, offset: 0, length: $end));
+        return $match[1];
     }
 
     public function testTheACTIVEPARAMETERIsTheTextThatGoesBold(): void
@@ -82,13 +80,31 @@ final class SignatureHintEmphasisTest extends TestCase
         );
     }
 
-    public function testARangeTruncationCutOffLeavesTheRowUnemphasised(): void
+    /**
+     * A signature wider than the popup is cut AROUND the argument being
+     * typed: an end-cut hid it from the third comma on, which is when a long
+     * signature is worth reading. The row stays its width, the cuts marked.
+     */
+    public function testANarrowPopupKeepsTheActiveArgumentInView(): void
     {
-        // A narrow pane clips the tail; there is then nothing left to bold, and
-        // the offsets must not be applied to text that is no longer there.
-        $narrow = self::render([11, 20], columns: 18);
+        $lines = \array_fill(start_index: 0, count: 10, value: \str_repeat(' ', times: 22));
+        EditorRenderer::signatureHint($lines, columns: 22, gutterWidth: 4, cursorScreenRow: 5, hint: self::HINT, styles: Styles::dark(), activeRange: [11, 20]);
+        $row = $lines[3];
 
-        $this->assertStringNotContainsString("\x1b[1m", $narrow);
+        $this->assertSame('string $b', self::boldRun($row));
+        $this->assertStringContainsString('│ …, string $b) │', AnsiUtils::stripAnsiCodes($row), 'the head cut, the argument whole');
+        $this->assertSame(22, AnsiUtils::visibleWidth($row));
+    }
+
+    /** The overload counter trails the signature, dim; the row keeps its width. */
+    public function testTheOverloadCounterTrailsTheSignature(): void
+    {
+        $lines = \array_fill(start_index: 0, count: 10, value: \str_repeat(' ', times: 60));
+        EditorRenderer::signatureHint($lines, columns: 60, gutterWidth: 4, cursorScreenRow: 5, hint: self::HINT, styles: Styles::dark(), activeRange: [3, 9], counter: '2/3');
+
+        $this->assertStringContainsString('│ fn(int $a, string $b)  2/3 │', AnsiUtils::stripAnsiCodes($lines[3]));
+        $this->assertStringContainsString("\x1b[2m", $lines[3]);
+        $this->assertSame(60, AnsiUtils::visibleWidth($lines[3]));
     }
 
     public function testNoRangeRendersExactlyAsBefore(): void

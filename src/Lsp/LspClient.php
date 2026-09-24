@@ -176,7 +176,15 @@ final class LspClient implements LspClientInterface
             'textDocument' => [
                 'synchronization' => ['didSave' => true],
                 'completion' => [
-                    'completionItem' => ['snippetSupport' => true, 'documentationFormat' => ['plaintext', 'markdown']],
+                    // Tag 1 is Deprecated: said so, a server marks the item and
+                    // the popup draws it struck through instead of offering an
+                    // API it is about to remove as if it were current.
+                    'completionItem' => [
+                        'snippetSupport' => true,
+                        'documentationFormat' => ['plaintext', 'markdown'],
+                        'tagSupport' => ['valueSet' => [CompletionDeprecation::TAG]],
+                        'deprecatedSupport' => true,
+                    ],
                 ],
                 // `tagSupport` says the editor can DRAW an unused or deprecated
                 // symbol differently rather than only listing it. phpactor sends
@@ -215,6 +223,9 @@ final class LspClient implements LspClientInterface
                     'resolveSupport' => ['properties' => ['edit']],
                     'dataSupport' => true,
                     'isPreferredSupport' => true,
+                    // An action the server knows but cannot run here arrives
+                    // with its reason, shown greyed rather than left out.
+                    'disabledSupport' => true,
                 ],
                 // The server colours by MEANING where the lexer colours by
                 // shape. `formats: ['relative']` is the only encoding the spec

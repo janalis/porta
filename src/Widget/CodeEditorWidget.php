@@ -18,6 +18,7 @@ use Porta\Editor\ClipboardRing;
 use Porta\Editor\CodeScopeKind;
 use Porta\Editor\CommentSyntax;
 use Porta\Editor\CompletionItem;
+use Porta\Editor\CompletionNote;
 use Porta\Editor\DecorationStore;
 use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\Document;
@@ -63,6 +64,7 @@ use Porta\Support\PerfCollector;
 use Porta\Support\ProjectPaths;
 use Porta\Support\Scheduler;
 use Porta\Ui\CursorStyle;
+use Porta\Ui\Glyphs;
 use Porta\Ui\LtrPane;
 use Porta\Ui\Role;
 use Porta\Ui\ShortcutFormatter;
@@ -296,7 +298,7 @@ final class CodeEditorWidget extends AbstractWidget implements
             $this->invalidate(...),
             $this->notifyChange(...),
             $this->isInsertable(...),
-            fn (int $l, int $c) => $this->callbacks->completion?->requestCompletion($l, $c),
+            fn (int $l, int $c): ?bool => $this->callbacks->completion?->requestCompletion($l, $c),
             fn (array $raw) => $this->callbacks->completion?->resolveCompletion($raw),
             fn (array $raw, \Closure $onDetail) => $this->callbacks->completion?->resolveCompletionDetail($raw, $onDetail),
         );
@@ -497,10 +499,15 @@ final class CodeEditorWidget extends AbstractWidget implements
     }
 
     #[\Override]
-    public function setSignatureHint(?string $hint, ?array $activeRange = null): void
+    public function setSignatureHint(?string $hint, ?array $activeRange = null, array $overloads = [], int $overload = 0): void
     {
-        $next = null === $hint ? null : new SignatureHint($hint, $activeRange);
-        if ($this->signatureHint?->label !== $next?->label || $this->signatureHint?->activeRange !== $next?->activeRange) {
+        $next = null === $hint ? null : new SignatureHint($hint, $activeRange, $overloads, $overload);
+        if (
+            $this->signatureHint?->label !== $next?->label
+            || $this->signatureHint?->activeRange !== $next?->activeRange
+            || $this->signatureHint?->overloads !== $next?->overloads
+            || $this->signatureHint?->overload !== $next?->overload
+        ) {
             $this->signatureHint = $next;
             $this->invalidate();
         }
@@ -850,6 +857,14 @@ final class CodeEditorWidget extends AbstractWidget implements
 
             return;
         }
+        // Alt+↑/↓ walk a function's overloads while its hint shows more than
+        // one — and are the declaration keys again the moment it does not.
+        if (true === $this->signatureHint?->hasOverloads() && ("\x1b[1;3A" === $data || "\x1b[1;3B" === $data)) {
+            $this->signatureHint = $this->signatureHint->cycled("\x1b[1;3B" === $data ? 1 : -1);
+            $this->invalidate();
+
+            return;
+        }
 
         if ($this->completion->handleSnippetTabStop($data, $kb)) {
             return;
@@ -864,6 +879,11 @@ final class CodeEditorWidget extends AbstractWidget implements
             return;
         }
 
+        // An asked-for popup's note ("Loading…", "No suggestions") goes on
+        // any key, which then does what it does; Esc is spent on the note.
+        if ($this->completion->dismissNote($data, $kb)) {
+            return;
+        }
         if ($this->completion->isOpen() && $this->completion->handleInput($data, $kb)) {
             return;
         }
@@ -1144,12 +1164,21 @@ final class CodeEditorWidget extends AbstractWidget implements
         // Both overlays anchor to the caret's on-screen row (past the sticky headers).
         $cursorScreenRow = \max(0, $this->foldModel->screenRowFor($geo->vScroll, $geo->cursorLine)) + $geo->stickyCount;
         if (null !== $this->signatureHint) {
-            EditorRenderer::signatureHint($result, $geo->columns, $geo->gutterWidth, $cursorScreenRow, $this->signatureHint->label, $this->styles, $this->signatureHint->activeRange);
+            EditorRenderer::signatureHint(
+                $result,
+                $geo->columns,
+                $geo->gutterWidth,
+                $cursorScreenRow,
+                $this->signatureHint->label,
+                $this->styles,
+                $this->signatureHint->activeRange,
+                $this->signatureHint->counter(),
+            );
         }
 
         $this->completion->setBox(null);
+        $anchorCol = $geo->gutterWidth + ($geo->cursorDisplayCol - $geo->hScroll) - \mb_strwidth($this->document->getWordBeforeCursor());
         if (null !== ($popup = $this->completion->popupState())) {
-            $anchorCol = $geo->gutterWidth + ($geo->cursorDisplayCol - $geo->hScroll) - \mb_strwidth($this->document->getWordBeforeCursor());
             $this->completion->setBox(EditorRenderer::completionPopup(
                 $result,
                 $geo->columns,
@@ -1160,7 +1189,13 @@ final class CodeEditorWidget extends AbstractWidget implements
                 $popup['selected'],
                 $popup['hovered'],
                 $this->styles,
+                $popup['docScroll'],
             ));
+        }
+        $note = $this->completion->note();
+        if (null !== $note) {
+            $text = (CompletionNote::Loading === $note ? Glyphs::WORKING.' ' : '').$this->translator->trans($note->text());
+            EditorRenderer::completionNote($result, $geo->columns, $geo->rows, $cursorScreenRow, $anchorCol, $text, $this->styles);
         }
 
         // signatureHint() and completionPopup() rewrite rows in place, keeping the shape.

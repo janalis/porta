@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\I18n;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Editor\CompletionNote;
 use Porta\Search\Everywhere\SearchCategory;
 use Porta\Ui\ScopeKind;
 use Symfony\Component\Finder\Finder;
@@ -322,6 +323,7 @@ final class CatalogCoverageTest extends TestCase
     private const array ENUM_LABEL_CALLS = [
         'Search/Everywhere/SearchEverywhereController.php',
         'Search/ProjectSearchController.php',
+        'Widget/CodeEditorWidget.php',
     ];
 
     public function testEveryEnumLabelCallSiteIsCovered(): void
@@ -362,6 +364,7 @@ final class CatalogCoverageTest extends TestCase
         return [
             ...\array_map(static fn (SearchCategory $c): string => $c->title(), SearchCategory::cases()),
             ...\array_map(static fn (ScopeKind $k): string => $k->label(), ScopeKind::cases()),
+            ...\array_map(static fn (CompletionNote $n): string => $n->text(), CompletionNote::cases()),
         ];
     }
 

@@ -577,7 +577,7 @@ final readonly class EditorActions
             'add_caret_above' => $this->multiCaret->addVertically(-1),
             'add_caret_below' => $this->multiCaret->addVertically(1),
             'add_next_occurrence' => $this->multiCaret->addNextOccurrence(),
-            'trigger_completion' => $this->completion->requestCompletion(),
+            'trigger_completion' => $this->completion->requestExplicitly(),
             'parameter_info' => $this->host->fireSignatureHelp($this->document->cursorLine, $this->document->getCursorColUtf16()),
             'toggle_column_mode' => $this->toggleColumnMode(),
             'goto_line' => $this->promptGotoLine(),

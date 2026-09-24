@@ -37,7 +37,9 @@ final class LspMapper
         17 => 'file',
         18 => 'ref',
         19 => 'folder',
-        20 => 'enum',
+        // An enum's member is a `case` — what PHP spells it — not the enum
+        // itself: the two shared one word, so a popup of both read as twins.
+        20 => 'case',
         21 => 'const',
         22 => 'struct',
         23 => 'event',
@@ -119,6 +121,7 @@ final class LspMapper
                 snippet: $isSnippet ? $raw : null,
                 raw: $item,
                 documentation: self::documentationText($item['documentation'] ?? null) ?? '',
+                deprecated: CompletionDeprecation::of($item),
             );
         }
 

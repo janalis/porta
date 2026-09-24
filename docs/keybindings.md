@@ -111,6 +111,9 @@ nothing.
 | Key | Action |
 | --- | --- |
 | `Ctrl+Space` | Trigger completion (auto after `->` and `::`) |
+| `PgUp` / `PgDn` | A page of the completion list |
+| `Ctrl+↓` / `Ctrl+↑` | Scroll the completion's docblock |
+| `Alt+↓` / `Alt+↑` | Next / previous overload, while the signature popup shows more than one |
 | `Ctrl+B` / `F12` | Go to declaration |
 | `Ctrl+Alt+B` | Go to implementation (chooser when several) |
 | `Ctrl+Shift+B` | Go to type definition |

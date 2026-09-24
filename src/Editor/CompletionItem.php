@@ -26,6 +26,8 @@ final readonly class CompletionItem
         public ?string $snippet = null,
         public array $raw = [],
         public string $documentation = '',
+        /** The server marked it deprecated: drawn struck through, still offered. */
+        public bool $deprecated = false,
     ) {}
 
     /**

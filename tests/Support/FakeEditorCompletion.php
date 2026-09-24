@@ -33,11 +33,13 @@ final readonly class FakeEditorCompletion implements EditorCompletionHandler
         return ($this->templatesFor)($languageId);
     }
 
-    public function requestCompletion(int $line, int $utf16Col): void
+    public function requestCompletion(int $line, int $utf16Col): bool
     {
         if (null !== $this->requestCompletion) {
             ($this->requestCompletion)($line, $utf16Col);
         }
+
+        return true;
     }
 
     public function resolveCompletion(array $item): void

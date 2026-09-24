@@ -12,7 +12,8 @@ use Porta\Editor\Document;
  */
 interface EditorCompletionHandler
 {
-    public function requestCompletion(int $line, int $utf16Col): void;
+    /** Ask the servers for completions; false when no server was there to ask. */
+    public function requestCompletion(int $line, int $utf16Col): bool;
 
     /**
      * Resolve an accepted item (deferred auto-imports).

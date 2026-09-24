@@ -6,8 +6,10 @@ namespace Porta\Tests\Unit\Lsp;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Porta\Editor\CompletionItem;
 use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\Document;
+use Porta\Lsp\CompletionDeprecation;
 use Porta\Lsp\LspMapper;
 
 final class LspMapperTest extends TestCase
@@ -609,5 +611,20 @@ final class LspMapperTest extends TestCase
         ]]);
 
         $this->assertSame([['line' => 2, 'endCol' => 14, 'name' => '$count']], $lookups);
+    }
+
+    /** Deprecated by the tag or by the older boolean; an enum's member is a `case`, apart from the enum itself. */
+    public function testDeprecationAndTheEnumCaseKindAreMapped(): void
+    {
+        $items = LspMapper::mapCompletionItems([
+            ['label' => 'a', 'tags' => [CompletionDeprecation::TAG]],
+            ['label' => 'b', 'deprecated' => true],
+            ['label' => 'c', 'tags' => [9], 'deprecated' => false],
+            ['label' => 'd', 'kind' => 13],
+            ['label' => 'e', 'kind' => 20],
+        ]);
+
+        $this->assertSame([true, true, false, false, false], \array_map(static fn (CompletionItem $i): bool => $i->deprecated, $items));
+        $this->assertSame(['enum', 'case'], [$items[3]->kind, $items[4]->kind]);
     }
 }

@@ -243,9 +243,12 @@ final class LspSessionPool
      * ({@see requestTo()}); it is opaque and only meaningful to this pool.
      *
      * @param \Closure(mixed, ?array<array-key, mixed>, string): void $onResult result, error, owner
+     *
+     * @return int how many servers were asked — 0 when none serves $capability
      */
-    public function requestAll(string $method, mixed $params, string $capability, \Closure $onResult): void
+    public function requestAll(string $method, mixed $params, string $capability, \Closure $onResult): int
     {
+        $asked = 0;
         foreach ($this->sessionsFor($this->activeFile->getFilePath()) as $signature => $session) {
             // Asked once: `serverCapability()` reads the handshake's answer,
             // and a capability is `true`, an options object, or absent.
@@ -257,7 +260,10 @@ final class LspSessionPool
             $session->request($method, $params, static function (mixed $result, ?array $error) use ($onResult, $signature): void {
                 $onResult($result, $error, $signature);
             });
+            ++$asked;
         }
+
+        return $asked;
     }
 
     /**

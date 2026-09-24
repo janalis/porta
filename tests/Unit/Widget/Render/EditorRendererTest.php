@@ -15,6 +15,7 @@ use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\CursorVisibility;
 use Porta\Widget\Render\EditorRenderer;
 use Porta\Widget\Render\PaneFocus;
+use Porta\Widget\Render\PopupMetrics;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 final class EditorRendererTest extends TestCase
@@ -702,15 +703,36 @@ final class EditorRendererTest extends TestCase
         $this->assertSame(2, $box->startRow); // below: borderTop (cursorScreenRow+1=1) + 1 for the box's own border
     }
 
-    public function testCompletionPopupIsNotBelowWhenTheHeightFallsShortByOne(): void
+    public function testCompletionPopupFlipsAboveWhenBelowFallsShortByOne(): void
     {
-        // rows(3): cursorScreenRow(0)+1+framedHeight(3) = 4 > 3 — a "+0"
-        // mutant would wrongly compute 3<=3 and stay "below" instead of
-        // flipping above.
+        // rows(6), caret on row 3: below has 6-3-1 = 2 rows, one short of the
+        // frame's three, and above has exactly three — it flips.
         $items = [new CompletionItem('a', 'a', 'var', '')];
-        $lines = \array_fill(start_index: 0, count: 3, value: \str_pad('', length: 40));
-        $box = EditorRenderer::completionPopup($lines, columns: 40, rows: 3, cursorScreenRow: 0, anchorCol: 2, items: $items, selected: 0, hovered: null, styles: $this->styles());
-        $this->assertSame(1, $box->startRow); // flipped above: max(0, 0-3)=0, +1 for the border
+        $lines = \array_fill(start_index: 0, count: 6, value: \str_pad('', length: 40));
+        $box = EditorRenderer::completionPopup($lines, columns: 40, rows: 6, cursorScreenRow: 3, anchorCol: 2, items: $items, selected: 0, hovered: null, styles: $this->styles());
+        $this->assertSame(1, $box->startRow); // above: borderTop 3-3 = 0, +1 for the border
+    }
+
+    /**
+     * A list that fits on neither side takes the roomier one, cut to the room,
+     * and never lands on the caret's row — the line being typed stays visible.
+     */
+    public function testAListThatFitsNowhereTakesTheRoomierSideAndLeavesTheCaretRow(): void
+    {
+        $items = \array_map(static fn (int $i): CompletionItem => new CompletionItem("item{$i}", "item{$i}", 'var', ''), \range(0, end: 9));
+        $lines = \array_fill(start_index: 0, count: 10, value: \str_pad('', length: 40));
+        $box = EditorRenderer::completionPopup($lines, columns: 40, rows: 10, cursorScreenRow: 3, anchorCol: 2, items: $items, selected: 0, hovered: null, styles: $this->styles());
+
+        $this->assertSame(5, $box->startRow, 'below, the roomier side: its border on row 4');
+        $this->assertSame(4, $box->count, 'as many rows as below holds: 10 - 3 - 1 - 2');
+        $this->assertStringContainsString('▼', AnsiUtils::stripAnsiCodes($lines[9]), 'and says it goes on');
+        $this->assertSame(\str_pad('', length: 40), $lines[3], 'the caret row untouched');
+
+        $lines = \array_fill(start_index: 0, count: 10, value: \str_pad('', length: 40));
+        $box = EditorRenderer::completionPopup($lines, columns: 40, rows: 10, cursorScreenRow: 6, anchorCol: 2, items: $items, selected: 0, hovered: null, styles: $this->styles());
+        $this->assertSame(1, $box->startRow, 'above when above is roomier');
+        $this->assertSame(4, $box->count);
+        $this->assertSame(\str_pad('', length: 40), AnsiUtils::stripAnsiCodes($lines[6]), 'the caret row keeps its text: only the shadow falls on it');
     }
 
     public function testCompletionPopupBorderColClampsAtZeroNotBelow(): void
@@ -743,10 +765,58 @@ final class EditorRendererTest extends TestCase
 
     public function testCompletionPopupTopBorderRowIsNotSkippedWhenBorderTopIsZero(): void
     {
-        // Flips above with no headroom at all: borderTop = max(0, 0-3) = 0.
+        // Above with exactly its three rows of headroom: borderTop = 3-3 = 0.
         $items = [new CompletionItem('a', 'a', 'var', '')];
-        $lines = \array_fill(start_index: 0, count: 1, value: \str_pad('', length: 40));
-        EditorRenderer::completionPopup($lines, columns: 40, rows: 1, cursorScreenRow: 0, anchorCol: 2, items: $items, selected: 0, hovered: null, styles: $this->styles());
-        $this->assertStringContainsString('╭', $lines[0]);
+        $lines = \array_fill(start_index: 0, count: 4, value: \str_pad('', length: 40));
+        EditorRenderer::completionPopup($lines, columns: 40, rows: 4, cursorScreenRow: 3, anchorCol: 2, items: $items, selected: 0, hovered: null, styles: $this->styles());
+        $this->assertStringContainsString('┏', $lines[0]);
+    }
+
+    /** A deprecated item is dim and struck through, still offered; its neighbours are not. */
+    public function testADeprecatedCompletionIsStruckThrough(): void
+    {
+        $items = [new CompletionItem('old', 'old', 'fn', '', deprecated: true), new CompletionItem('new', 'new', 'fn', '')];
+        $lines = \array_fill(start_index: 0, count: 10, value: \str_pad('', length: 40));
+        EditorRenderer::completionPopup($lines, columns: 40, rows: 10, cursorScreenRow: 0, anchorCol: 2, items: $items, selected: 1, hovered: null, styles: $this->styles());
+
+        $this->assertMatchesRegularExpression('/\e\[9m(\e\[[0-9;]*m)*old/', $lines[2]);
+        $this->assertMatchesRegularExpression('/\e\[2m(\e\[[0-9;]*m)*old/', $lines[2]);
+        $this->assertStringNotContainsString("\e[9m", $lines[3]);
+        $this->assertStringContainsString('┃▌new', AnsiUtils::stripAnsiCodes($lines[3]), 'the selected row barred, in the heavy frame');
+    }
+
+    /** A clipped list says so in its border: ▲ once rows are above, ▼ while rows are below. */
+    public function testAClippedListMarksItsBorders(): void
+    {
+        $items = \array_map(static fn (int $i): CompletionItem => new CompletionItem("item{$i}", "item{$i}", 'var', ''), \range(0, end: 19));
+        $lines = \array_fill(start_index: 0, count: 30, value: \str_pad('', length: 40));
+        EditorRenderer::completionPopup($lines, columns: 40, rows: 30, cursorScreenRow: 0, anchorCol: 2, items: $items, selected: 0, hovered: null, styles: $this->styles());
+        $plain = \array_map(AnsiUtils::stripAnsiCodes(...), $lines);
+        $this->assertStringNotContainsString('▲', $plain[1]);
+        $this->assertStringContainsString('▼', $plain[2 + PopupMetrics::COMPLETION_ROWS]);
+
+        $lines = \array_fill(start_index: 0, count: 30, value: \str_pad('', length: 40));
+        EditorRenderer::completionPopup($lines, columns: 40, rows: 30, cursorScreenRow: 0, anchorCol: 2, items: $items, selected: 19, hovered: null, styles: $this->styles());
+        $plain = \array_map(AnsiUtils::stripAnsiCodes(...), $lines);
+        $this->assertStringContainsString('▲', $plain[1]);
+        $this->assertStringNotContainsString('▼', $plain[2 + PopupMetrics::COMPLETION_ROWS]);
+    }
+
+    /** The note stands where the list would have opened: below the caret, or above it when below has no room. */
+    public function testTheNoteOpensWhereTheListWould(): void
+    {
+        $lines = \array_fill(start_index: 0, count: 10, value: \str_pad('', length: 40));
+        EditorRenderer::completionNote($lines, columns: 40, rows: 10, cursorScreenRow: 2, anchorCol: 5, text: 'No suggestions', styles: $this->styles());
+        $this->assertStringContainsString('No suggestions', AnsiUtils::stripAnsiCodes($lines[4]));
+
+        $lines = \array_fill(start_index: 0, count: 10, value: \str_pad('', length: 40));
+        EditorRenderer::completionNote($lines, columns: 40, rows: 10, cursorScreenRow: 8, anchorCol: 5, text: 'No suggestions', styles: $this->styles());
+        $this->assertStringContainsString('No suggestions', AnsiUtils::stripAnsiCodes($lines[6]));
+
+        $lines = \array_fill(start_index: 0, count: 2, value: \str_pad('', length: 40));
+        EditorRenderer::completionNote($lines, columns: 40, rows: 2, cursorScreenRow: 1, anchorCol: 5, text: 'No suggestions', styles: $this->styles());
+        $this->assertSame([\str_pad('', length: 40), \str_pad('', length: 40)], $lines, 'no room on either side: nothing drawn');
+        EditorRenderer::completionNote($lines, columns: 3, rows: 2, cursorScreenRow: 1, anchorCol: 5, text: 'No suggestions', styles: $this->styles());
+        $this->assertSame([\str_pad('', length: 40), \str_pad('', length: 40)], $lines, 'nor in no width');
     }
 }

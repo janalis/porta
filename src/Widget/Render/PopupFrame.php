@@ -33,19 +33,34 @@ final class PopupFrame
      * The top border: `╭──╮`, exactly $innerWidth + CHROME_COLS columns — or
      * the given field state's corners, a select's open list being `┏━━┓`.
      */
-    public static function top(int $innerWidth, Styles $styles, FieldState $state = FieldState::Idle): string
+    public static function top(int $innerWidth, Styles $styles, FieldState $state = FieldState::Idle, string $mark = ''): string
     {
         [$left, $right, , , $rule] = $state->glyphs();
 
-        return $styles->of(Role::TabAccent)->apply($left.\str_repeat($rule, \max(0, $innerWidth)).$right);
+        return $styles->of(Role::TabAccent)->apply($left.self::rule($rule, $innerWidth, $mark).$right);
     }
 
-    /** The bottom border: `╰──╯`, or the given field state's. */
-    public static function bottom(int $innerWidth, Styles $styles, FieldState $state = FieldState::Idle): string
+    /**
+     * The bottom border: `╰──╯`, or the given field state's. A $mark — the
+     * ▼ of a clipped list — sits centred in the rule, taking none of the
+     * rows the list has.
+     */
+    public static function bottom(int $innerWidth, Styles $styles, FieldState $state = FieldState::Idle, string $mark = ''): string
     {
         [, , $left, $right, $rule] = $state->glyphs();
 
-        return $styles->of(Role::TabAccent)->apply($left.\str_repeat($rule, \max(0, $innerWidth)).$right);
+        return $styles->of(Role::TabAccent)->apply($left.self::rule($rule, $innerWidth, $mark).$right);
+    }
+
+    /** $innerWidth columns of $rule, with a one-column $mark centred in it when given. */
+    private static function rule(string $rule, int $innerWidth, string $mark): string
+    {
+        if ('' === $mark || $innerWidth < 3) {
+            return \str_repeat($rule, \max(0, $innerWidth));
+        }
+        $before = \max(0, \intdiv($innerWidth - 1, num2: 2));
+
+        return \str_repeat($rule, $before).$mark.\str_repeat($rule, \max(0, $innerWidth - 1 - $before));
     }
 
     /**

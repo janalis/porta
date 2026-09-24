@@ -29,8 +29,11 @@ offer it) simply keep the lexer's colours, with nothing to configure either way.
 ### Parameter info
 
 Typing `(` or `,` shows the signature of the call you are in, with **the
-argument you are typing in bold** — the server says which one it is, so a
-five-parameter signature no longer reads the same at every comma. `Ctrl+Shift+P`
+argument you are typing in bold and underlined**. The server says which one it
+is, so a five-parameter signature no longer reads the same at every comma. A
+signature too long for the popup is cut around that argument, not at its end.
+A function with overloads shows which one this is (`1/3`), and
+`Alt+↓`/`Alt+↑` walk them. `Ctrl+Shift+P`
 brings the popup back after `Escape`, or summons it anywhere inside an argument
 list. (PhpStorm binds this to `Ctrl+P`, which Go to File owns here.)
 
@@ -254,6 +257,22 @@ The name is served first and the type takes what is left. A completion whose
 label you cannot read is not a completion — the type is what you check once the
 name is already the one you meant — so at a narrow width the type is truncated,
 and when the name alone fills the row the type is not drawn at all.
+
+The popup holds the keys, so it wears the heavy frame. Its selected row starts
+with `▌`, and an item the server marks **deprecated** is struck through. A `▲`
+or `▼` in the border says the list goes on past what is shown, and
+`PgUp`/`PgDn` move a page. When the list fits on neither side of the caret, it
+takes the roomier side, cut to fit. It never covers the line being typed.
+
+The docblock beside the list scrolls with `Ctrl+↓`/`Ctrl+↑`, with its own `▲`/`▼`.
+A click on the popup or the docblock stays on the popup; it does not land in the
+code underneath.
+
+`Ctrl+Space` always gets an answer where it was pressed. While the servers are
+asked it shows `◌ Loading…`. After that you get the list, or "No suggestions", or
+"No language server" when nothing serves the file. Any key takes the note away.
+The automatic trigger after `->` and `::` stays silent, because a note on
+ordinary typing would flicker.
 
 ## Inline debug values
 

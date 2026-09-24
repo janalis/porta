@@ -45,7 +45,7 @@ final class FakeEditorHost implements EditorHost
         ($this->recorder)('jumpTo', [$line, $utf16Col]);
     }
 
-    public function setSignatureHint(?string $hint, ?array $activeRange = null): void
+    public function setSignatureHint(?string $hint, ?array $activeRange = null, array $overloads = [], int $overload = 0): void
     {
         ($this->recorder)('setSignatureHint', [$hint, $activeRange]);
     }

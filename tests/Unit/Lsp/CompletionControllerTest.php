@@ -16,6 +16,7 @@ use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\Probe;
 use Porta\Widget\CodeEditorWidget;
+use Porta\Widget\EditorCallbacks;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Notifier;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -280,9 +281,36 @@ final class CompletionControllerTest extends TestCase
     {
         $controller = $this->controller(); // no file open: ready() is null
 
-        $controller->requestCompletion(0, 0); // must not throw — no session exists to request against
+        $this->assertFalse($controller->requestCompletion(0, 0), 'no session to ask: says so, and does not throw');
+    }
 
-        $this->addToAssertionCount(1);
+    /** Asked means a server was asked: none advertising completion is none asked. */
+    public function testRequestCompletionReportsWhetherAnyServerWasAsked(): void
+    {
+        $controller = $this->controller(['completionProvider' => true]);
+        $this->readyOn($controller, '/p/a.php', "<?php\n\$a->fo\n");
+        $this->assertTrue($controller->requestCompletion(1, 6));
+
+        $silent = $this->controller(['inlayHintProvider' => true]);
+        $this->readyOn($silent, '/p/a.php', "<?php\n\$a->fo\n");
+        $this->assertFalse($silent->requestCompletion(1, 6));
+    }
+
+    /**
+     * An error is still an answer: a Ctrl+Space that said "Loading…" says
+     * "No suggestions" — but an error after a list arrived leaves the list.
+     */
+    public function testAnErrorAnswersALoadingPopup(): void
+    {
+        $controller = $this->controller(['completionProvider' => true]);
+        $this->readyOn($controller, '/p/a.php', "<?php\n\$a->fo\n");
+        $this->editor->setCallbacks(new EditorCallbacks(completion: $controller));
+
+        $this->editor->getDocument()->setCursor(1, 6);
+        $this->editor->handleInput("\x00"); // ctrl+space
+        $this->assertStringContainsString('Loading…', $this->screen());
+        $this->client->requests[0]['respond'](null, error: ['code' => -32_603, 'message' => 'boom']);
+        $this->assertStringContainsString('No suggestions', $this->screen());
     }
 
     public function testRequestSignatureHelpShowsTheActiveSignatureLabel(): void
@@ -300,7 +328,41 @@ final class CompletionControllerTest extends TestCase
         ], error: null);
 
         $screen = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->render(new RenderContext(80, 8))));
-        $this->assertStringContainsString('strlen(string $string): int', $screen);
+        $this->assertStringContainsString('strlen(string $string): int  1/2', $screen, 'with the overload it is');
+    }
+
+    /**
+     * Alt+↓/↑ walk the overloads the server sent, each with its OWN active
+     * argument, without asking again; with one signature they are the
+     * declaration keys as ever.
+     */
+    public function testAltArrowsWalkTheOverloads(): void
+    {
+        $controller = $this->controller();
+        $this->readyOn($controller, '/p/a.php', "<?php\nf(1, \n");
+        $controller->requestSignatureHelp(1, 5);
+        $this->client->requests[0]['respond'](
+            [
+                'signatures' => [
+                    ['label' => 'f(int $a): void', 'parameters' => [['label' => 'int $a']]],
+                    ['label' => 'f(int $a, int $b): void', 'parameters' => [['label' => 'int $a'], ['label' => 'int $b']]],
+                ],
+                'activeSignature' => 5, // out of range: the first is shown
+                'activeParameter' => 1,
+            ],
+            error: null,
+        );
+        $this->assertStringContainsString('f(int $a): void  1/2', $this->screen());
+
+        $this->editor->handleInput("\x1b[1;3B"); // alt+down
+        $this->assertStringContainsString('f(int $a, int $b): void  2/2', $this->screen());
+        $this->assertStringContainsString("\x1b[1m\x1b[4mint \$b", \implode('', $this->editor->render(new RenderContext(100, 8))), 'its own active argument');
+        $this->editor->handleInput("\x1b[1;3B");
+        $this->assertStringContainsString('1/2', $this->screen(), 'wrapping');
+        $this->editor->handleInput("\x1b[1;3A"); // alt+up
+        $this->assertStringContainsString('2/2', $this->screen());
+        $this->editor->handleInput("\x1b[1;3A");
+        $this->assertStringContainsString('1/2', $this->screen());
     }
 
     public function testResolveCompletionAppliesDeferredAutoImportEdits(): void

@@ -3278,6 +3278,18 @@
         <source>Type to filter</source>
         <target>Type to filter</target>
       </trans-unit>
+      <trans-unit id="918">
+        <source>Loading…</source>
+        <target>Loading…</target>
+      </trans-unit>
+      <trans-unit id="919">
+        <source>No suggestions</source>
+        <target>No suggestions</target>
+      </trans-unit>
+      <trans-unit id="920">
+        <source>No language server</source>
+        <target>No language server</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

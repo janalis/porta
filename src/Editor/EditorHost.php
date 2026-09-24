@@ -34,11 +34,14 @@ interface EditorHost
     /**
      * Show (or clear) the signature popup. $activeRange is the BYTE slice of
      * $hint holding the argument being typed, emphasised so a five-parameter
-     * signature does not read the same at every comma.
+     * signature does not read the same at every comma. $overloads is every
+     * signature the server offered (label and active range each), $overload
+     * the one shown — Alt+↑/↓ walk them.
      *
-     * @param array{0: int, 1: int}|null $activeRange
+     * @param array{0: int, 1: int}|null                            $activeRange
+     * @param list<array{0: string, 1: array{0: int, 1: int}|null}> $overloads
      */
-    public function setSignatureHint(?string $hint, ?array $activeRange = null): void;
+    public function setSignatureHint(?string $hint, ?array $activeRange = null, array $overloads = [], int $overload = 0): void;
 
     /** Copied text → the OSC 52 clipboard hook. */
     public function fireCopy(string $text): void;

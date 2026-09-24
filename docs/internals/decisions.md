@@ -10391,3 +10391,30 @@ run and never mirrors. The fix is the settings form's: a right-to-left mark in
 the gap, spent for a space. The Hebrew E2e checks both the layout and that a
 click still picks the row it lands on.
 
+## UI round, phase 4a: the completion popup speaks without colour (2026-09-24)
+
+- **Frame and rows.** The completion list holds the keys, so it wears the heavy
+  frame, like an open select. It gets the `▌` bar, a struck-through row for a
+  deprecated item (the client now declares `tagSupport` and
+  `deprecatedSupport`), and `▲`/`▼` set into the border when clipped. An enum's
+  member is `case`, no longer the same word as the enum.
+- **Placement.** The old rule flipped the list above whenever it did not fit
+  below, even when above had less room. It then clamped the list to row 0,
+  which could lay its border over the line being typed. Now the list takes the
+  roomier side, cut to fit, and the caret row stays clear. The docblock pane
+  draws nothing rather than an empty frame when it has no row for a line.
+- **Ctrl+Space notes.** Ctrl+Space shows a note in place of a missing list:
+  "Loading…", "No suggestions" or "No language server". It needs to know
+  whether anyone was asked, so `requestAll()` returns how many servers it asked,
+  and `EditorCompletionHandler::requestCompletion()` returns whether any were.
+  The automatic trigger is deliberately left silent.
+- **Signature help.** The active argument is bold and underlined, and a
+  signature too long for the popup is cut around that argument. The server's
+  other overloads travel with the hint, each with its own active range, so
+  Alt+↑/↓ walk them with no second request. Those keys are the declaration
+  keys; the hint takes them only while it shows more than one signature.
+- **Doc pane.** It scrolls with Ctrl+↓/↑. The wheel still moves the list,
+  because a wheel event reaches the popup without a position.
+- **Deferred:** moving the signature hint when the completion list also opens
+  above the caret. The list is drawn last and covers it, as before.
+

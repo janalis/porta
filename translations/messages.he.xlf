@@ -3278,6 +3278,18 @@
         <source>Type to filter</source>
         <target>הקלידו כדי לסנן</target>
       </trans-unit>
+      <trans-unit id="918">
+        <source>Loading…</source>
+        <target>טוען…</target>
+      </trans-unit>
+      <trans-unit id="919">
+        <source>No suggestions</source>
+        <target>אין הצעות</target>
+      </trans-unit>
+      <trans-unit id="920">
+        <source>No language server</source>
+        <target>אין שרת שפה</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

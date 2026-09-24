@@ -18,6 +18,7 @@ use Porta\Ui\Sgr;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Support\RowSelection;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Style\Style;
 
 /**
  * Stateless rendering algorithms for the code editor: matching-bracket lookup,
@@ -424,19 +425,22 @@ final class EditorRenderer
      * no shadow: a one-liner casting a four-row footprint reads too heavy —
      * the one deliberate divergence from the other framed popups.
      *
+     * $counter — `2/3` — names which of a function's overloads this is.
+     *
      * @param list<string>               $lines
      * @param array{0: int, 1: int}|null $activeRange byte range within $hint holding the argument being typed
      */
-    public static function signatureHint(array &$lines, int $columns, int $gutterWidth, int $cursorScreenRow, string $hint, Styles $styles, ?array $activeRange = null): void
+    public static function signatureHint(array &$lines, int $columns, int $gutterWidth, int $cursorScreenRow, string $hint, Styles $styles, ?array $activeRange = null, string $counter = ''): void
     {
-        $text = ' '.$hint.' ';
+        $tail = '' === $counter ? 0 : \mb_strwidth($counter) + 2;
+        $natural = \mb_strwidth($hint) + 2 + $tail;
         $col = $gutterWidth;
         $frameMax = $columns - $gutterWidth - 1 - PopupFrame::CHROME_COLS;
-        $width = \min(\mb_strwidth($text), $frameMax);
+        $width = \min($natural, $frameMax);
         if ($width >= 4) {
             $top = $cursorScreenRow >= 3 ? $cursorScreenRow - 3 : $cursorScreenRow + 1;
             if ($top >= 0 && ($top + 3) <= \count($lines)) {
-                $content = self::signatureContent($text, $width, $activeRange, $styles);
+                $content = self::signatureContent($hint, $width, $activeRange, $styles, $counter);
                 $framed = [PopupFrame::top($width, $styles), PopupFrame::rail($content, $width, $styles), PopupFrame::bottom($width, $styles)];
                 foreach ($framed as $i => $framedRow) {
                     $lines[$top + $i] = OverlayCompositor::into($lines[$top + $i], $col, $width + PopupFrame::CHROME_COLS, $columns, $framedRow);
@@ -447,62 +451,114 @@ final class EditorRenderer
         }
 
         $row = $cursorScreenRow > 0 ? $cursorScreenRow - 1 : $cursorScreenRow + 1;
-        $width = \min(\mb_strwidth($text), $columns - $gutterWidth - 1);
+        $width = \min($natural, $columns - $gutterWidth - 1);
         if ($row < 0 || $row >= \count($lines) || $width < 4) {
             return;
         }
-        $popup = self::signatureContent($text, $width, $activeRange, $styles);
+        $popup = self::signatureContent($hint, $width, $activeRange, $styles, $counter);
 
         $lines[$row] = OverlayCompositor::into($lines[$row], $col, $width, $columns, $popup);
     }
 
     /**
-     * The signature popup's styled content, with the argument you are typing
-     * shown bold.
+     * The signature popup's styled content: the argument being typed bold and
+     * underlined — attributes, so it reads in monochrome — and the overload
+     * counter dim at the end.
      *
-     * Width math happens on the PLAIN text and the styling is applied
-     * afterwards, in three pieces: handing an ANSI-carrying string to
-     * `mb_strwidth()` is the classic over-wide row in this codebase. Each piece
-     * re-applies the popup style, so the background cannot drop out mid-line.
+     * A signature wider than the popup is cut around that argument rather
+     * than from the end: the parameter you are on is the one you need, and
+     * a five-parameter signature cut at the third comma hid it from the
+     * fourth onwards. Each side gets an ellipsis where it was cut.
      *
-     * @param array{0: int, 1: int}|null $activeRange byte range within the hint,
-     *                                                before the leading pad space
+     * Width math happens on the PLAIN pieces and the styling is applied
+     * afterwards: handing an ANSI-carrying string to `mb_strwidth()` is the
+     * classic over-wide row in this codebase. Each piece re-applies the popup
+     * style, so the background cannot drop out mid-line.
+     *
+     * @param array{0: int, 1: int}|null $activeRange byte range within $hint
      */
-    private static function signatureContent(string $text, int $width, ?array $activeRange, Styles $styles): string
+    private static function signatureContent(string $hint, int $width, ?array $activeRange, Styles $styles, string $counter = ''): string
     {
         $style = $styles->merge(Role::InlayPopupBg, Role::InlayPopupFg);
-        $plain = AnsiText::truncate($text, $width, pad: true);
-        // Offsets are into the UNTRUNCATED hint, and truncation both drops text
-        // and appends an ellipsis — a multi-byte character the offsets could
-        // land inside, which produces invalid UTF-8 and a garbled row. A hint
-        // that does not fit is already degraded; it degrades the rest of the
-        // way rather than being spliced.
-        if (null === $activeRange || \mb_strwidth($text) > $width) {
-            return $style->apply($plain);
+        $tail = '' === $counter ? '' : '  '.$counter;
+        $room = \max(0, $width - 2 - \mb_strwidth($tail));
+        if (null === $activeRange) {
+            return $style->apply(AnsiText::truncate(' '.$hint, $width - \mb_strwidth($tail) - 1, pad: true)).self::counterTail($tail, $style).$style->apply(' ');
+        }
+        $before = \substr($hint, offset: 0, length: $activeRange[0]);
+        $active = \substr($hint, $activeRange[0], $activeRange[1] - $activeRange[0]);
+        $after = \substr($hint, $activeRange[1]);
+
+        $active = AnsiText::truncate($active, $room);
+        $left = \intdiv(\max(0, $room - \mb_strwidth($active)), num2: 2);
+        $right = \max(0, $room - \mb_strwidth($active) - $left);
+        // What the right side does not need, the left may use; the right then
+        // takes whatever the left left.
+        $left += \max(0, $right - \mb_strwidth($after));
+        $before = self::tailOf($before, \min($left, \max(0, $room - \mb_strwidth($active))));
+        $after = AnsiText::truncate($after, \max(0, $room - \mb_strwidth($active) - \mb_strwidth($before)));
+
+        $line = $style->apply(' '.$before).$style->withBold()->withUnderline()->apply($active).$style->apply(AnsiText::padRight($after, $room - \mb_strwidth($before) - \mb_strwidth($active)));
+
+        return $line.self::counterTail($tail, $style).$style->apply(' ');
+    }
+
+    /** The last $width columns of $text, an ellipsis standing for what went. */
+    private static function tailOf(string $text, int $width): string
+    {
+        if (\mb_strwidth($text) <= $width) {
+            return $text;
+        }
+        if ($width < 1) {
+            return '';
         }
 
-        // +1 for the space `signatureHint()` pads the hint with.
-        $start = $activeRange[0] + 1;
-        $end = $activeRange[1] + 1;
+        return Glyphs::ELLIPSIS.AnsiUtils::sliceByColumn($text, \mb_strwidth($text) - ($width - 1), $width - 1);
+    }
 
-        return $style->apply(\substr($plain, offset: 0, length: $start)).$style->withBold()->apply(\substr($plain, $start, $end - $start)).$style->apply(\substr($plain, $end));
+    private static function counterTail(string $tail, Style $style): string
+    {
+        return '' === $tail ? '' : $style->withDim()->apply($tail);
     }
 
     /**
-     * Draw the autocomplete popup anchored at the caret, wearing the
-     * {@see PopupFrame} (rounded border + drop shadow). Returns the on-screen
-     * geometry of the INNER item box so callers can hit-test mouse clicks —
-     * the frame is chrome, not items; a border click falls through to caret
-     * placement, which closes the popup like any beside-the-popup click.
+     * Draw the autocomplete popup anchored at the caret, in the heavy frame of
+     * a list that holds the keys (the open select's `┏━┓`) plus a drop shadow.
+     * Returns the on-screen geometry of the INNER item box so callers can
+     * hit-test mouse clicks, and the frame and docblock pane so a click there
+     * is swallowed rather than placing the caret in the code beneath.
+     *
+     * Its shapes read without colour: the selected row's `▌`, a deprecated
+     * item struck through, a `▲`/`▼` in the border when the list goes on
+     * past what is shown.
      *
      * @param list<string>         $lines
      * @param list<CompletionItem> $items filtered
      */
-    public static function completionPopup(array &$lines, int $columns, int $rows, int $cursorScreenRow, int $anchorCol, array $items, int $selected, ?int $hovered, Styles $styles): CompletionBox
-    {
-        $windowOffset = \max(0, $selected - self::POPUP_MAX_ITEMS + 1);
-        $visible = \array_slice($items, $windowOffset, self::POPUP_MAX_ITEMS);
-        $selectedInWindow = \min($selected, self::POPUP_MAX_ITEMS - 1);
+    public static function completionPopup(
+        array &$lines,
+        int $columns,
+        int $rows,
+        int $cursorScreenRow,
+        int $anchorCol,
+        array $items,
+        int $selected,
+        ?int $hovered,
+        Styles $styles,
+        int $docScroll = 0,
+    ): CompletionBox {
+        // Below the caret when the whole list fits there, else above when it
+        // fits there; when it fits neither, the roomier side, with the list
+        // cut to the room — never over the line being typed.
+        $roomBelow = $rows - $cursorScreenRow - 1 - PopupFrame::CHROME_ROWS;
+        $roomAbove = $cursorScreenRow - PopupFrame::CHROME_ROWS;
+        $wanted = \min(\count($items), self::POPUP_MAX_ITEMS);
+        $below = $roomBelow >= $wanted || $roomAbove < $wanted && $roomBelow >= $roomAbove;
+        $shown = \max(1, \min($wanted, $below ? $roomBelow : $roomAbove));
+
+        $windowOffset = \max(0, $selected - $shown + 1);
+        $visible = \array_slice($items, $windowOffset, $shown);
+        $selectedInWindow = $selected - $windowOffset;
 
         $width = 12;
         foreach ($visible as $item) {
@@ -519,7 +575,6 @@ final class EditorRenderer
         $width = \min($width, PopupMetrics::COMPLETION_MAX_INNER, $columns - 2 - PopupFrame::CHROME_COLS);
 
         $framedHeight = \count($visible) + PopupFrame::CHROME_ROWS;
-        $below = ($cursorScreenRow + 1 + $framedHeight) <= $rows;
         $borderTop = $below ? $cursorScreenRow + 1 : \max(0, $cursorScreenRow - $framedHeight);
 
         // The content column stays anchored at the typed prefix (the border
@@ -527,7 +582,8 @@ final class EditorRenderer
         $framedWidth = $width + PopupFrame::CHROME_COLS;
         $borderCol = IntMath::clamp($anchorCol - 1, 0, $columns - $framedWidth);
 
-        $framed = [PopupFrame::top($width, $styles)];
+        $heavy = FieldState::Focused;
+        $framed = [PopupFrame::top($width, $styles, $heavy, $windowOffset > 0 ? Glyphs::SCROLL_UP : '')];
         foreach ($visible as $i => $item) {
             $style = $styles->of(self::rowRole($i, $selectedInWindow, null === $hovered ? null : $hovered - $windowOffset));
             $kindTag = $styles->of(Role::CompletionKind)->apply($item->kind);
@@ -547,9 +603,15 @@ final class EditorRenderer
                 // could never do anything.
                 : ' '.$styles->of(Role::CompletionHint)->apply(AnsiText::truncate($item->detail, $detailWidth));
             $label = AnsiText::truncate($item->label, $avail - $detailWidth - (0 === $detailWidth ? 0 : 1), pad: true);
-            $framed[] = PopupFrame::rail($style->apply(' '.$label.$detail.' '.$kindTag.' '), $width, $styles);
+            if ($item->deprecated) {
+                // Still offered, marked as going: dim and struck through,
+                // attributes that survive --no-ansi.
+                $label = $style->withDim()->withStrikethrough()->apply(\rtrim($label)).$style->getAnsiRestore().\str_repeat(' ', \max(0, \mb_strwidth($label) - \mb_strwidth(\rtrim($label))));
+            }
+            $bar = SelectionBar::of($i === $selectedInWindow, focused: true)->value;
+            $framed[] = PopupFrame::rail($style->apply($bar.$label.$detail.' '.$kindTag.' '), $width, $styles, $heavy);
         }
-        $framed[] = PopupFrame::bottom($width, $styles);
+        $framed[] = PopupFrame::bottom($width, $styles, $heavy, ($windowOffset + \count($visible)) < \count($items) ? Glyphs::SCROLL_DOWN : '');
 
         foreach ($framed as $i => $framedRow) {
             $row = $borderTop + $i;
@@ -559,9 +621,38 @@ final class EditorRenderer
             $lines[$row] = OverlayCompositor::into($lines[$row], $borderCol, $framedWidth, $columns, $framedRow);
         }
         $lines = ModalShadow::blit($lines, $borderTop, $borderCol, $framedWidth, $framedHeight, $columns, $styles);
-        self::completionDoc($lines, $columns, $borderCol, $borderTop, $framedWidth, $framedHeight, $below, $visible[$selectedInWindow] ?? null, $styles);
+        $doc = self::completionDoc($lines, $columns, $borderCol, $borderTop, $framedWidth, $framedHeight, $below, $visible[$selectedInWindow] ?? null, $styles, $docScroll);
 
-        return new CompletionBox($borderCol + 1, $width, $borderTop + 1, \count($visible), $windowOffset);
+        return new CompletionBox($borderCol + 1, $width, $borderTop + 1, \count($visible), $windowOffset, $doc['rect'] ?? null, $doc['maxScroll'] ?? 0);
+    }
+
+    /**
+     * An asked-for completion that has no list — "◌ Loading…", "No
+     * suggestions", "No language server" — as a one-row popup where the list
+     * would have opened, so Ctrl+Space is always answered where it was
+     * pressed. Framed like the list, dim like a hint.
+     *
+     * @param list<string> $lines
+     */
+    public static function completionNote(array &$lines, int $columns, int $rows, int $cursorScreenRow, int $anchorCol, string $text, Styles $styles): void
+    {
+        $width = \min(\mb_strwidth($text) + 2, $columns - PopupFrame::CHROME_COLS);
+        if ($width < 3) {
+            return;
+        }
+        $top = ($cursorScreenRow + 1 + 3) <= $rows ? $cursorScreenRow + 1 : $cursorScreenRow - 3;
+        if ($top < 0) {
+            return;
+        }
+        $col = IntMath::clamp($anchorCol - 1, 0, $columns - $width - PopupFrame::CHROME_COLS);
+        $framed = [
+            PopupFrame::top($width, $styles),
+            PopupFrame::rail($styles->merge(Role::PopupRow, Role::CompletionHint)->apply(AnsiText::truncate(' '.$text, $width, pad: true)), $width, $styles),
+            PopupFrame::bottom($width, $styles),
+        ];
+        foreach ($framed as $i => $row) {
+            $lines[$top + $i] = OverlayCompositor::into($lines[$top + $i], $col, $width + PopupFrame::CHROME_COLS, $columns, $row);
+        }
     }
 
     /**
@@ -583,9 +674,12 @@ final class EditorRenderer
      * other side of that edge, and a panel that grew the wrong way would cover
      * the line being typed.
      *
-     * The text is what fits; the rest of a docblock is what hover is for.
+     * The text is what fits, scrolled $docScroll wrapped rows in (Ctrl+↓/↑);
+     * a `▲`/`▼` in its border says there is more above or below.
      *
      * @param list<string> $lines
+     *
+     * @return array{rect: array{int, int, int, int}, maxScroll: int}|null the pane as drawn — [top, col, width, height] — and how far it can scroll; null when none is
      */
     private static function completionDoc(
         array &$lines,
@@ -600,10 +694,11 @@ final class EditorRenderer
         bool $below,
         ?CompletionItem $selected,
         Styles $styles,
-    ): void {
+        int $docScroll = 0,
+    ): ?array {
         $text = null === $selected ? '' : $selected->documentation;
         if ('' === $text) {
-            return;
+            return null;
         }
         $framedWidth = PopupMetrics::COMPLETION_DOC_INNER + PopupFrame::CHROME_COLS;
         $right = $popupCol + $popupWidth;
@@ -616,7 +711,7 @@ final class EditorRenderer
             default => null,
         };
         if (null === $col) {
-            return;
+            return null;
         }
 
         $body = [];
@@ -636,15 +731,17 @@ final class EditorRenderer
         // the thing being written into, and deriving the room from anything
         // else leaves a gap where a row could land past the end of the array.
         $room = $below ? \count($lines) - $popupTop : $popupTop + $popupHeight;
-        // At least one row is always left: the popup chose its own direction by
-        // fitting its OWN frame there, and that frame is two rows of chrome
-        // plus an item — so `$room` is never below three and this slice never
-        // empties the panel.
-        $body = \array_slice($body, offset: 0, length: \min(self::POPUP_MAX_ITEMS, $room - PopupFrame::CHROME_ROWS));
+        $capacity = \min(self::POPUP_MAX_ITEMS, $room - PopupFrame::CHROME_ROWS);
+        if ($capacity < 1) {
+            return null; // a frame with no line of the docblock in it says nothing
+        }
+        $maxScroll = \max(0, \count($body) - $capacity);
+        $scroll = \min($docScroll, $maxScroll);
+        $body = \array_slice($body, offset: $scroll, length: $capacity);
         $framedHeight = \count($body) + PopupFrame::CHROME_ROWS;
         $top = $below ? $popupTop : $popupTop + $popupHeight - $framedHeight;
 
-        $framed = [PopupFrame::top(PopupMetrics::COMPLETION_DOC_INNER, $styles)];
+        $framed = [PopupFrame::top(PopupMetrics::COMPLETION_DOC_INNER, $styles, mark: $scroll > 0 ? Glyphs::SCROLL_UP : '')];
         foreach ($body as $row) {
             // Truncated but not padded: {@see PopupFrame::rail()} pads to the
             // inner width itself — it calls that the single place the invariant
@@ -655,7 +752,7 @@ final class EditorRenderer
                 $styles,
             );
         }
-        $framed[] = PopupFrame::bottom(PopupMetrics::COMPLETION_DOC_INNER, $styles);
+        $framed[] = PopupFrame::bottom(PopupMetrics::COMPLETION_DOC_INNER, $styles, mark: $scroll < $maxScroll ? Glyphs::SCROLL_DOWN : '');
 
         // No bounds guard: the height was capped by the room above, so every
         // row of this frame is inside the array by construction — below,
@@ -665,5 +762,7 @@ final class EditorRenderer
             $lines[$top + $i] = OverlayCompositor::into($lines[$top + $i], $col, $framedWidth, $columns, $framedRow);
         }
         $lines = ModalShadow::blit($lines, $top, $col, $framedWidth, $framedHeight, $columns, $styles);
+
+        return ['rect' => [$top, $col, $framedWidth, $framedHeight], 'maxScroll' => $maxScroll];
     }
 }
