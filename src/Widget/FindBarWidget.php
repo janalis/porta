@@ -415,23 +415,24 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
         // rows above and below it. Every click target
         // sits at a column the typing cannot move.
         // Each box is followed by a one-column gutter, as a form spaces its inputs.
+        // A query that cannot match — a bad pattern, one the engine gave up
+        // on, or no hit at all — draws the Find box double, the danger
+        // border: the state reads by shape, not only by its words.
+        $failing = $this->patternInvalid || $this->patternTooComplex || 0 === $count && '' !== $this->query->value();
         $boxWidth = \min(self::BOX_MAX, \intdiv($columns - self::tagsWidth(), \count($fields)) - 1);
         if ($boxWidth < FieldBox::MIN_BOXED) {
             // Too narrow to seat a box per field and the tags: the field being
             // typed in, one compact row, and no zones recorded — a tag drawn
             // past the edge is neither visible nor clickable.
-            [, $spec, $field] = $fields[$this->withReplace ? $this->activeField : 0];
+            [, $spec, $field, $index] = $fields[$this->withReplace ? $this->activeField : 0];
             $caret = $this->focused ? CaretVisibility::Shown : CaretVisibility::Hidden;
+            $state = 0 === $index && $failing ? FieldState::Danger : FieldState::of($this->focused);
 
-            return [$this->styles->of(Role::Toolbar)->apply(FieldBox::compact($spec, $field, FieldState::of($this->focused), $caret, $columns, $this->styles))];
+            return [$this->styles->of(Role::Toolbar)->apply(FieldBox::compact($spec, $field, $state, $caret, $columns, $this->styles))];
         }
 
         $rows = ['', '', ''];
         $col = 0;
-        // A query that cannot match — a bad pattern, one the engine gave up
-        // on, or no hit at all — draws the Find box double, the danger
-        // border: the state reads by shape, not only by its words.
-        $failing = $this->patternInvalid || $this->patternTooComplex || 0 === $count && '' !== $this->query->value();
         foreach ($fields as [$name, $spec, $field, $index]) {
             $active = $this->focused && $index === $this->activeField;
             $state = 0 === $index && $failing ? FieldState::Danger : FieldState::of($active);

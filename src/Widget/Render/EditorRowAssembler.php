@@ -414,7 +414,9 @@ final readonly class EditorRowAssembler
 
         // The mark under the pointer underlines, as every clickable thing does.
         $hover = $this->store->gutterHover;
-        $pointed = static fn (GutterPart $part, string $cell): string => null !== $hover && $hover['line'] === $lineIndex && $hover['part'] === $part
+        // Only a mark: a click can take one away under a resting pointer, and
+        // an underlined blank reads as a stray underscore.
+        $pointed = static fn (GutterPart $part, string $cell): string => null !== $hover && $hover['line'] === $lineIndex && $hover['part'] === $part && '' !== \trim(AnsiUtils::stripAnsiCodes($cell))
             ? new Style(underline: true)->apply($cell)
             : $cell;
 

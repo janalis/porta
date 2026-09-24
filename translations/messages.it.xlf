@@ -3326,14 +3326,6 @@
         <source>Change reverted</source>
         <target>Modifica annullata</target>
       </trans-unit>
-      <trans-unit id="930">
-        <source>Git: Next Change</source>
-        <target>Git: modifica successiva</target>
-      </trans-unit>
-      <trans-unit id="931">
-        <source>Git: Previous Change</source>
-        <target>Git: modifica precedente</target>
-      </trans-unit>
       <trans-unit id="932">
         <source>Git: Show Change</source>
         <target>Git: mostra modifica</target>
@@ -3373,6 +3365,14 @@
       <trans-unit id="941">
         <source>Bookmark</source>
         <target>Segnalibro</target>
+      </trans-unit>
+      <trans-unit id="942">
+        <source>Next Change</source>
+        <target>Modifica successiva</target>
+      </trans-unit>
+      <trans-unit id="943">
+        <source>Previous Change</source>
+        <target>Modifica precedente</target>
       </trans-unit>
     </body>
   </file>

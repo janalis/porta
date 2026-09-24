@@ -1103,6 +1103,7 @@ final class FindBarWidgetTest extends TestCase
         $top = static fn (): string => AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(120, 3))[0]);
 
         $this->assertStringStartsWith('╔ Find', $top(), 'no hit');
+        $this->assertStringContainsString('║ zzz', AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(30, 3))[0]), 'the one-row form of a narrow pane says it too');
         $bar->open(new FakeFindTarget(new Document("foo\n")), mode: FindMode::Replace, initialQuery: 'zzz');
         $this->assertStringContainsString('╭ Replace', $top(), 'the Replace box is not what failed');
         $bar->open(new FakeFindTarget(new Document("foo\n")), mode: FindMode::Find, initialQuery: 'zzz');

@@ -10505,10 +10505,10 @@ translations of each string for no change a user could see.
 
 ## UI round, phase 6c: changes walked and reverted from the gutter (2026-09-24)
 
-Next/previous change (`git_next_change`, `git_prev_change`) and show-change
-(`git_show_change`) are adoptable catalog verbs, as the other git verbs are.
-The git plugin implements them from its own change marks (`ChangeMarks::
-marksFor`) and a `-U0` diff against HEAD. The keys are PhpStorm's,
+Next/previous change and show-change were first all adoptable git verbs.
+The combinations audit below moved the walk into core. Show-change
+(`git_show_change`) stays adoptable, and the git plugin implements it from a
+`-U0` diff against HEAD. The keys are PhpStorm's,
 Ctrl+Alt+Shift+↓/↑. `matches()` names those modified arrows even with kitty
 off, where `parse()` does not.
 
@@ -10538,4 +10538,22 @@ when the pointed mark changes, so motion events do not re-flash it.
 
 **Deferred:** hover on the marker stripe. A stripe cell stands for a slice of
 the file, not a line, and its hint needs its own wording.
+
+## The combinations audit after the UI round (2026-09-24)
+
+These were found by running the round's new pieces against each other:
+- **Stale change marks.** Change navigation walked the git plugin's copy of
+  the marks, which is the disk's. Core moves the marks with every edit, so
+  after typing new lines the walk landed that many lines off. The walk is now
+  core's: `next_change`/`prev_change` go through `Editor\ChangeNavigation`
+  over the store's marks, whatever paints them. Reading them back through
+  `PluginApi` would have widened a role (`EditorViewOptions`) for one caller.
+  The plugin keeps `git_show_change` (`ChangeView`), which needs git.
+- **The find bar's one-row form.** A narrow pane collapses the bar to one row,
+  and that form ignored the failure state. It now shows the double rails too.
+- **A stray underline in the gutter.** After a click removed a breakpoint, the
+  hover underline stayed on the now-blank cell and read as an underscore.
+  Only a real mark is underlined now.
+- **The signature hint under the completion list.** See phase 4a: the hint
+  takes the side the other caret popups left free.
 

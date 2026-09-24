@@ -177,6 +177,9 @@ final class ActionCatalog
         // PhpStorm's Alt+Down / Alt+Up. Free in the editor: the only other
         // binding is inside the find-in-files modal, which owns its own keymap.
         'next_member' => ['label' => 'Next Declaration', 'keys' => ['alt+down']],
+        // PhpStorm's keys, over the gutter's change strip — whatever paints it.
+        'next_change' => ['label' => 'Next Change', 'keys' => ['ctrl+alt+shift+down']],
+        'prev_change' => ['label' => 'Previous Change', 'keys' => ['ctrl+alt+shift+up']],
         'prev_member' => ['label' => 'Previous Declaration', 'keys' => ['alt+up']],
         // Alt+2 is PhpStorm's Bookmarks tool window, beside Alt+1's project tree.
         'toggle_bookmark' => ['label' => 'Toggle Bookmark', 'keys' => ['f11']],
@@ -204,10 +207,8 @@ final class ActionCatalog
         'ide_command_palette' => ['label' => 'Find Action', 'keys' => ['ctrl+shift+a']],
         'ide_search_everywhere' => ['label' => 'Search Everywhere', 'keys' => ['ctrl+shift+e']],
         'ide_local_history' => ['label' => 'Show Local History', 'keys' => ['ctrl+alt+h'], 'adoptable' => true], // implemented by the bundled local-history plugin
-        // Implemented by the bundled git plugin, from its change marks.
-        // PhpStorm's keys; the change mark's gutter click runs the third.
-        'git_next_change' => ['label' => 'Git: Next Change', 'keys' => ['ctrl+alt+shift+down'], 'adoptable' => true],
-        'git_prev_change' => ['label' => 'Git: Previous Change', 'keys' => ['ctrl+alt+shift+up'], 'adoptable' => true],
+        // Implemented by the bundled git plugin; a change mark's gutter click
+        // runs it.
         'git_show_change' => ['label' => 'Git: Show Change', 'adoptable' => true],
         // Keyless on purpose: neither had a default binding when core
         // implemented them, and the move is not the moment to invent one.

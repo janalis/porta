@@ -100,8 +100,6 @@ final class ActionCatalogTest extends TestCase
             'git_compare_files' => 'Git: Compare Selected Files',
             'git_fetch' => 'Git: Fetch',
             'git_file_history' => 'Git: File History',
-            'git_next_change' => 'Git: Next Change',
-            'git_prev_change' => 'Git: Previous Change',
             'git_pull' => 'Git: Pull',
             'git_push' => 'Git: Push',
             'git_push_upstream' => 'Git: Push (Set Upstream)',

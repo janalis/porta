@@ -11,8 +11,9 @@ Git support is silently disabled outside a git working tree.
   lines you add light as added. That in-between state is an approximation —
   it tracks the caret, so a multi-caret edit only moves the marks around the
   active one — and every recompute above replaces it with git's own answer.
-- **Walking the changes**: `Ctrl+Alt+Shift+↓`/`↑` jump to the next and
-  previous change, wrapping past the end of the file. A click on a change
+- **Walking the changes**: `Ctrl+Alt+Shift+↓`/`↑` (View › Next Change /
+  Previous Change) jump to the next and previous change, wrapping past the
+  end of the file. They follow the marks as they move with your edits. A click on a change
   mark (or **Git: Show Change**) lists what the change removed, greyed and
   struck through, and what it added. Its last row, **Revert this change**,
   puts the removed lines back in the buffer as one undo step. The revert

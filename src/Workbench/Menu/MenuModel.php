@@ -133,6 +133,8 @@ final class MenuModel
             'i:prev_problem',
             'i:next_member',
             'i:prev_member',
+            'i:next_change',
+            'i:prev_change',
             'i:toggle_bookmark',
             'i:ide_bookmarks',
             'i:ide_recent_locations',
