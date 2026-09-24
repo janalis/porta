@@ -10288,4 +10288,9 @@ each list. At rest a boxed checkbox has rails (`│`) where the one-row form has
 brackets: the brackets were standing in for a box, and the box is drawn now.
 Hover underlines the amend label and no longer touches the box, the form
 controls' rule, so the mark keeps its accent under the pointer.
+- **The amend box on a short terminal.** Boxed at every height, it left the
+  git changes list two entries at 20 rows, where the one-row form left four.
+  It follows Find in Files' rule now: boxed from 30 terminal rows, one row
+  below. The commit box sees only its sidebar's height, so the threshold is 28,
+  the terminal's 30 less the menu and status bars (the git tabs' reckoning).
 

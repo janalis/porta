@@ -312,7 +312,8 @@ are presentation and live in `FieldSpec`. A checkbox where the form is boxed
 (settings Bool rows, the commit box's amend) is `FieldBox::checkboxBox()`, a box
 of its own like its neighbours: `╭─╮ │✓│ ╰─╯`, three columns wide and
 `FieldBox::ROWS` tall, the state's frame (heavy while it takes the keys, dashed
-disabled), its label on the middle row. The one-row `FieldBox::checkbox()` is
+disabled), its label on the middle row. The commit box's amend falls back to one row
+below 30 terminal rows, Find in Files' rule, so the changes list keeps room. The one-row `FieldBox::checkbox()` is
 the fallback where the form is not boxed, and the form list rows use (git
 staging, the Find-in-Files preview, the debugger checklist): `[✓]` / `[ ]` /
 `[–]` at rest, the state's own rails otherwise (`FieldState::checkboxRails()`),
