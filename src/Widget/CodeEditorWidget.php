@@ -503,6 +503,12 @@ final class CodeEditorWidget extends AbstractWidget implements
         $this->overlayHost->openPrompt($label, $initial, $onSubmit, $danger);
     }
 
+    /** Whether a gutter cell is a version-control change mark: the strip's column, on a line that has one. */
+    public function changeMarkAt(int $col, int $docLine): bool
+    {
+        return 0 === $col && $this->display->vcsGutter && \array_key_exists($docLine, $this->decorations->vcsMarks);
+    }
+
     /**
      * Show a symbol's documentation in a popup under the caret, where the
      * question was asked. It replaces the completion list: one caret, one

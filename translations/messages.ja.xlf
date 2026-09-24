@@ -3302,6 +3302,42 @@
         <source>Dismiss Notification</source>
         <target>通知を閉じる</target>
       </trans-unit>
+      <trans-unit id="924">
+        <source>No changes in this file</source>
+        <target>このファイルに変更はありません</target>
+      </trans-unit>
+      <trans-unit id="925">
+        <source>No change here</source>
+        <target>ここに変更はありません</target>
+      </trans-unit>
+      <trans-unit id="926">
+        <source>Revert this change</source>
+        <target>この変更を元に戻す</target>
+      </trans-unit>
+      <trans-unit id="927">
+        <source>Change at line %line%</source>
+        <target>%line% 行目の変更</target>
+      </trans-unit>
+      <trans-unit id="928">
+        <source>The buffer has changed since; save it and try again</source>
+        <target>その後バッファーが変更されました。保存してからもう一度お試しください</target>
+      </trans-unit>
+      <trans-unit id="929">
+        <source>Change reverted</source>
+        <target>変更を元に戻しました</target>
+      </trans-unit>
+      <trans-unit id="930">
+        <source>Git: Next Change</source>
+        <target>Git: 次の変更</target>
+      </trans-unit>
+      <trans-unit id="931">
+        <source>Git: Previous Change</source>
+        <target>Git: 前の変更</target>
+      </trans-unit>
+      <trans-unit id="932">
+        <source>Git: Show Change</source>
+        <target>Git: 変更を表示</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

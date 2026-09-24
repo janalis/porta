@@ -6,6 +6,7 @@ namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\TestCase;
+use Porta\Editor\ChangeMarkKind;
 use Porta\Editor\CompletionBox;
 use Porta\Editor\CompletionItem;
 use Porta\Ide;
@@ -682,5 +683,36 @@ final class IdeMousePrimitivesTest extends TestCase
         );
 
         $this->addToAssertionCount(1);
+    }
+
+    /**
+     * A click on a change mark is the change's when a plugin shows changes;
+     * without one it is the breakpoint column it always was — and a click on
+     * the column where a line has no mark is a breakpoint either way.
+     */
+    public function testAChangeMarkClickWithoutAChangeViewerTogglesABreakpoint(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $project = new TempProject(['A.php' => "one\ntwo\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('A.php'),
+            [
+                300 => function ($tui): void {
+                    $editor = $tui->getById('editor');
+                    $editor->decorations->setVcsMarks([1 => ChangeMarkKind::Modified]);
+                    $this->assertTrue($editor->changeMarkAt(0, 1), 'the strip column, on a marked line');
+                    $this->assertFalse($editor->changeMarkAt(0, 0), 'not on an unmarked one');
+                    $this->assertFalse($editor->changeMarkAt(1, 1), 'nor in another column');
+                    $tui->tick();
+                    $tui->handleInput("\x1b[<0;32;4M"); // the strip, line 1
+                    $tui->handleInput("\x1b[<0;32;4m");
+                },
+                400 => function ($tui): void {
+                    $this->assertSame([1], $tui->getById('editor')->decorations->breakpointLines, 'no git plugin: a breakpoint');
+                },
+            ],
+        );
     }
 }

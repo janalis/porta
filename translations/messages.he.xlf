@@ -3302,6 +3302,42 @@
         <source>Dismiss Notification</source>
         <target>סגירת התראה</target>
       </trans-unit>
+      <trans-unit id="924">
+        <source>No changes in this file</source>
+        <target>אין שינויים בקובץ הזה</target>
+      </trans-unit>
+      <trans-unit id="925">
+        <source>No change here</source>
+        <target>אין כאן שינוי</target>
+      </trans-unit>
+      <trans-unit id="926">
+        <source>Revert this change</source>
+        <target>ביטול השינוי הזה</target>
+      </trans-unit>
+      <trans-unit id="927">
+        <source>Change at line %line%</source>
+        <target>שינוי בשורה %line%</target>
+      </trans-unit>
+      <trans-unit id="928">
+        <source>The buffer has changed since; save it and try again</source>
+        <target>המאגר השתנה מאז; שמרו ונסו שוב</target>
+      </trans-unit>
+      <trans-unit id="929">
+        <source>Change reverted</source>
+        <target>השינוי בוטל</target>
+      </trans-unit>
+      <trans-unit id="930">
+        <source>Git: Next Change</source>
+        <target>Git: השינוי הבא</target>
+      </trans-unit>
+      <trans-unit id="931">
+        <source>Git: Previous Change</source>
+        <target>Git: השינוי הקודם</target>
+      </trans-unit>
+      <trans-unit id="932">
+        <source>Git: Show Change</source>
+        <target>Git: הצגת השינוי</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

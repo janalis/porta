@@ -3302,6 +3302,42 @@
         <source>Dismiss Notification</source>
         <target>Dismiss Notification</target>
       </trans-unit>
+      <trans-unit id="924">
+        <source>No changes in this file</source>
+        <target>No changes in this file</target>
+      </trans-unit>
+      <trans-unit id="925">
+        <source>No change here</source>
+        <target>No change here</target>
+      </trans-unit>
+      <trans-unit id="926">
+        <source>Revert this change</source>
+        <target>Revert this change</target>
+      </trans-unit>
+      <trans-unit id="927">
+        <source>Change at line %line%</source>
+        <target>Change at line %line%</target>
+      </trans-unit>
+      <trans-unit id="928">
+        <source>The buffer has changed since; save it and try again</source>
+        <target>The buffer has changed since; save it and try again</target>
+      </trans-unit>
+      <trans-unit id="929">
+        <source>Change reverted</source>
+        <target>Change reverted</target>
+      </trans-unit>
+      <trans-unit id="930">
+        <source>Git: Next Change</source>
+        <target>Git: Next Change</target>
+      </trans-unit>
+      <trans-unit id="931">
+        <source>Git: Previous Change</source>
+        <target>Git: Previous Change</target>
+      </trans-unit>
+      <trans-unit id="932">
+        <source>Git: Show Change</source>
+        <target>Git: Show Change</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

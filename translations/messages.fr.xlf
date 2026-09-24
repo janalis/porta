@@ -3302,6 +3302,42 @@
         <source>Dismiss Notification</source>
         <target>Fermer la notification</target>
       </trans-unit>
+      <trans-unit id="924">
+        <source>No changes in this file</source>
+        <target>Aucune modification dans ce fichier</target>
+      </trans-unit>
+      <trans-unit id="925">
+        <source>No change here</source>
+        <target>Aucune modification ici</target>
+      </trans-unit>
+      <trans-unit id="926">
+        <source>Revert this change</source>
+        <target>Annuler cette modification</target>
+      </trans-unit>
+      <trans-unit id="927">
+        <source>Change at line %line%</source>
+        <target>Modification à la ligne %line%</target>
+      </trans-unit>
+      <trans-unit id="928">
+        <source>The buffer has changed since; save it and try again</source>
+        <target>Le tampon a changé depuis ; enregistrez-le et réessayez</target>
+      </trans-unit>
+      <trans-unit id="929">
+        <source>Change reverted</source>
+        <target>Modification annulée</target>
+      </trans-unit>
+      <trans-unit id="930">
+        <source>Git: Next Change</source>
+        <target>Git : modification suivante</target>
+      </trans-unit>
+      <trans-unit id="931">
+        <source>Git: Previous Change</source>
+        <target>Git : modification précédente</target>
+      </trans-unit>
+      <trans-unit id="932">
+        <source>Git: Show Change</source>
+        <target>Git : afficher la modification</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

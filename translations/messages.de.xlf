@@ -3302,6 +3302,42 @@
         <source>Dismiss Notification</source>
         <target>Benachrichtigung schließen</target>
       </trans-unit>
+      <trans-unit id="924">
+        <source>No changes in this file</source>
+        <target>Keine Änderungen in dieser Datei</target>
+      </trans-unit>
+      <trans-unit id="925">
+        <source>No change here</source>
+        <target>Hier keine Änderung</target>
+      </trans-unit>
+      <trans-unit id="926">
+        <source>Revert this change</source>
+        <target>Diese Änderung zurücknehmen</target>
+      </trans-unit>
+      <trans-unit id="927">
+        <source>Change at line %line%</source>
+        <target>Änderung in Zeile %line%</target>
+      </trans-unit>
+      <trans-unit id="928">
+        <source>The buffer has changed since; save it and try again</source>
+        <target>Der Puffer hat sich seitdem geändert; speichern und erneut versuchen</target>
+      </trans-unit>
+      <trans-unit id="929">
+        <source>Change reverted</source>
+        <target>Änderung zurückgenommen</target>
+      </trans-unit>
+      <trans-unit id="930">
+        <source>Git: Next Change</source>
+        <target>Git: Nächste Änderung</target>
+      </trans-unit>
+      <trans-unit id="931">
+        <source>Git: Previous Change</source>
+        <target>Git: Vorherige Änderung</target>
+      </trans-unit>
+      <trans-unit id="932">
+        <source>Git: Show Change</source>
+        <target>Git: Änderung anzeigen</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

@@ -192,6 +192,7 @@ replaces in the bar, and neither surface can have both.
 | `Alt+F9` | Run to the caret's line *(while paused)* |
 | `F7` / `Shift+F7` | Next / previous merge conflict *(when not debugging)* |
 | `Alt+M` | Resolve the conflict under the caret (ours / theirs / both) |
+| `Ctrl+Alt+Shift+↓` / `Ctrl+Alt+Shift+↑` | Next / previous change against `HEAD` (click a gutter change mark to see it and revert it) |
 
 The debugger's `F7`/`F8`/`F9`/`Shift+F8`/`Ctrl+F2` keys are gated on a
 running session — without one they fall through to their editor meanings.

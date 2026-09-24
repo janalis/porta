@@ -11,6 +11,14 @@ Git support is silently disabled outside a git working tree.
   lines you add light as added. That in-between state is an approximation —
   it tracks the caret, so a multi-caret edit only moves the marks around the
   active one — and every recompute above replaces it with git's own answer.
+- **Walking the changes**: `Ctrl+Alt+Shift+↓`/`↑` jump to the next and
+  previous change, wrapping past the end of the file. A click on a change
+  mark (or **Git: Show Change**) lists what the change removed, greyed and
+  struck through, and what it added. Its last row, **Revert this change**,
+  puts the removed lines back in the buffer as one undo step. The revert
+  happens only if the buffer still holds what the change added. The hunks
+  come from the file on disk, so after an unsaved edit there it asks you to
+  save first.
 - **File-tree marks**: `▎` for a file git does not track yet, `┆` for one that
   differs from `HEAD`. Unlike the gutter these cover the whole working tree, so
   a changed file you have never opened is still marked. They refresh when the

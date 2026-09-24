@@ -10496,3 +10496,27 @@ bar's keys are its own defaults, not a user-rebindable map, so the fixed text
 is accurate, and rebuilding the hints from the keymap would retire seven
 translations of each string for no change a user could see.
 
+## UI round, phase 6c: changes walked and reverted from the gutter (2026-09-24)
+
+Next/previous change (`git_next_change`, `git_prev_change`) and show-change
+(`git_show_change`) are adoptable catalog verbs, as the other git verbs are.
+The git plugin implements them from its own change marks (`ChangeMarks::
+marksFor`) and a `-U0` diff against HEAD. The keys are PhpStorm's,
+Ctrl+Alt+Shift+↓/↑. `matches()` names those modified arrows even with kitty
+off, where `parse()` does not.
+
+A click on a change mark used to toggle a breakpoint, as every non-fold
+gutter column does. It now moves the caret to the line and runs
+`git_show_change`, but only when some plugin provides that verb; otherwise it
+is still a breakpoint. The decision lives in a new `Input/GutterClickRouter`
+and not in `MouseRouter`, whose complexity is the lint threshold. Moving the
+old fold-or-breakpoint `if` out paid for the new target.
+
+The change shows in the list overlay rather than an anchored diff popup. A
+plugin cannot draw a popup at the caret, and the list already renders its
+`disabled` rows struck through, which is exactly how removed lines should
+read. The revert is done in the buffer (one undo step, through
+`replaceDocument()`) and not with `git apply -R` on disk. It checks first that
+the buffer still holds the added lines, because the hunks describe the file
+on disk.
+

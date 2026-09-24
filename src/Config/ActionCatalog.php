@@ -204,6 +204,11 @@ final class ActionCatalog
         'ide_command_palette' => ['label' => 'Find Action', 'keys' => ['ctrl+shift+a']],
         'ide_search_everywhere' => ['label' => 'Search Everywhere', 'keys' => ['ctrl+shift+e']],
         'ide_local_history' => ['label' => 'Show Local History', 'keys' => ['ctrl+alt+h'], 'adoptable' => true], // implemented by the bundled local-history plugin
+        // Implemented by the bundled git plugin, from its change marks.
+        // PhpStorm's keys; the change mark's gutter click runs the third.
+        'git_next_change' => ['label' => 'Git: Next Change', 'keys' => ['ctrl+alt+shift+down'], 'adoptable' => true],
+        'git_prev_change' => ['label' => 'Git: Previous Change', 'keys' => ['ctrl+alt+shift+up'], 'adoptable' => true],
+        'git_show_change' => ['label' => 'Git: Show Change', 'adoptable' => true],
         // Keyless on purpose: neither had a default binding when core
         // implemented them, and the move is not the moment to invent one.
         // They are named here so the Git menu's item and the keymap page
