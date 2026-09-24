@@ -80,6 +80,11 @@ final readonly class MenuOverlayPanesFactory
             ],
             $this->openViewPanes(...),
             $this->panes,
+            // The edge rules sit under whichever view is open; the app menu's
+            // dropdown hangs from its bar across the top one. They take rows
+            // the workspace used to, so the pane union — the modals' bounds —
+            // is what it was.
+            [$this->layout->topRule, $this->layout->bottomRule],
         );
     }
 }

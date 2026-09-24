@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace Porta\Layout;
 
 use Porta\Container\AsIdeService;
+use Porta\Ui\ScreenDensity;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\BreadcrumbsWidget;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ContextMenu;
 use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\DockTabsWidget;
+use Porta\Widget\EdgeRuleWidget;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\FindBarWidget;
 use Porta\Widget\MenuBarWidget;
@@ -48,6 +50,11 @@ final class WorkspaceLayout
 
     public readonly SeparatorWidget $separator;
 
+    /** The rules under the menu bar and above the status bar. */
+    public readonly EdgeRuleWidget $topRule;
+
+    public readonly EdgeRuleWidget $bottomRule;
+
     public function __construct(
         private readonly FileTreeWidget $tree,
         private readonly TabBarWidget $tabBar,
@@ -62,6 +69,7 @@ final class WorkspaceLayout
         private readonly TerminalPanelWidget $terminalPanel,
         private readonly StatusBarWidget $statusBar,
         private readonly Styles $styles,
+        ScreenDensity $density,
     ) {
         // The body is a fixed inner container: breadcrumbs, then the Ctrl+F find
         // bar (below the breadcrumbs, above the content), then the content slot.
@@ -75,6 +83,8 @@ final class WorkspaceLayout
         $this->editorPane->add($tabBar)->add($this->editorBody);
 
         $this->separator = LayoutWidgets::separator($this->styles, 'separator');
+        $this->topRule = LayoutWidgets::edgeRule($this->styles, $density, 'top-rule');
+        $this->bottomRule = LayoutWidgets::edgeRule($this->styles, $density, 'bottom-rule');
         $this->main = LayoutWidgets::container('main', new Style(direction: Direction::Horizontal, gap: 0));
     }
 
@@ -83,12 +93,14 @@ final class WorkspaceLayout
     {
         $tui
             ->add($this->menuBar)
+            ->add($this->topRule)
             ->add($this->main)
             ->add($this->dockTabs)
             ->add($this->resultsPanel)
             ->add($this->debugPanel)
             ->add($this->terminalPanel)
             ->add($this->contextMenu)
+            ->add($this->bottomRule)
             ->add($this->statusBar);
     }
 

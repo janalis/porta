@@ -10630,3 +10630,22 @@ decision:
   receive `Styles` (`ViewServices`, `PaneServices`), and a test writes
   `Styles::dark()->format(…)`. Either wrapper would have been a second
   spelling with no caller of its own.
+
+## Separation lines and boxed controls (2026-09-24)
+
+- **One tint for a separating line.** `Role::Rule` and `Widget/Render/Rule`
+  replace four roles and a dozen hand-rolled runs. `Role` stayed at its pinned
+  61 cases: `TagOffBg` went, its one user (the diff toolbar's off tag) now
+  faint like the find tags'.
+- **One rule for when a control drops to one row.** `Ui/Density`, from the
+  terminal's rows, never a pane's: Find in Files compared its bounds, the
+  commit box its sidebar, and they disagreed about the same screen by the menu
+  and status rows. A plugin's widgets get it through `ViewServices`, since
+  they see only their region.
+- **The edge rules are widgets of their own**, not a row inside the menu or
+  status bar: the bars keep one row for hit-testing, and a dropdown composites
+  over the rule like over any pane. They take rows `main` had, so the pane
+  union — the modals' bounds — did not move.
+
+*Re-opens on:* a surface that needs a density of its own (a pane-local rule
+would bring back the disagreement above).

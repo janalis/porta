@@ -544,6 +544,17 @@ offers a menu opens it: `StatusBarClickRouter::route()` takes the right-click
 router's `openStatusMenu` as a callable, so no branch lands in `MouseRouter`,
 whose complexity pin is the lint threshold.
 
+### Workspace edges: a rule under the menu, one above the status bar
+
+On a roomy screen `Widget/EdgeRuleWidget` rules the workspace off under the
+menu bar and above the status bar; on a compact one it draws nothing and takes
+no row. Each is its own widget (`WorkspaceLayout::$topRule`, `$bottomRule`), so
+the bars keep their one row, and `MenuOverlayPanes`' chrome list makes them
+overlay hosts under every view: the app menu's dropdown hangs from its bar
+across the top rule. They take rows `main` had, so the pane union the modals
+lay out against is unchanged. `LayoutController::chromeRows()` counts them with
+the strips' lids for the panel ceilings.
+
 ### Selection in lists: a bar in the first column
 
 A list row's first column is `Widget/Render/SelectionBar`: `▌` for the cursor

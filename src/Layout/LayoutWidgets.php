@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Porta\Layout;
 
+use Porta\Ui\ScreenDensity;
 use Porta\Ui\Theme\Styles;
+use Porta\Widget\EdgeRuleWidget;
 use Porta\Widget\SeparatorWidget;
 use Symfony\Component\Tui\Style\Style;
 use Symfony\Component\Tui\Widget\ContainerWidget;
@@ -25,6 +27,15 @@ final class LayoutWidgets
         $container->expandVertically(true);
 
         return $container;
+    }
+
+    /** A rule across the workspace's edge, as tall as the screen affords: one row, or none. */
+    public static function edgeRule(Styles $styles, ScreenDensity $density, string $id): EdgeRuleWidget
+    {
+        $rule = new EdgeRuleWidget($density, $styles);
+        $rule->setId($id)->setStyle(new Style(flex: 0));
+
+        return $rule;
     }
 
     public static function separator(Styles $styles, string $id): SeparatorWidget

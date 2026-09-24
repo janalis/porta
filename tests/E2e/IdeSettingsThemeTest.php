@@ -104,45 +104,46 @@ final class IdeSettingsThemeTest extends TestCase
                     $this->assertStringContainsString('Languages', $screen);
                     $this->assertStringContainsString('Inline diagnostics', $screen, 'General content shown');
                     // Toggle Inline diagnostics in the content pane. Screen row
-                    // 7: the title row (2), the boxed "Save changes to" chooser
-                    // that leads every page that writes a file (3-5), the
-                    // Editing legend (6), then this checkbox.
+                    // 8: the menu bar (1) and the rule under it (2), the title
+                    // row (3), the boxed "Save changes to" chooser that leads
+                    // every page that writes a file (4-6), the Editing legend
+                    // (7), then this checkbox. Every row below counts the rule.
                     //
                     // Once: a checkbox toggles on the click that selects it,
                     // as a label does — every other kind of row waits for a
                     // second.
-                    $tui->handleInput("\x1b[<0;40;7M");
-                    $tui->handleInput("\x1b[<0;40;7m");
+                    $tui->handleInput("\x1b[<0;40;8M");
+                    $tui->handleInput("\x1b[<0;40;8m");
                     // Hover the nav sidebar (a tint).
-                    $tui->handleInput("\x1b[<35;5;3M");
+                    $tui->handleInput("\x1b[<35;5;4M");
                 },
                 300 => function (Tui $tui): void {
                     // frame(), not tick(): the click below is hit-tested against
                     // the rects the LAST RENDER produced.
                     $this->frame($tui);
-                    // Click the 'Keybindings' entry in the nav (screen row 5, after
+                    // Click the 'Keybindings' entry in the nav (screen row 6, after
                     // General + Interface + Highlighting).
-                    $tui->handleInput("\x1b[<0;5;5M");
-                    $tui->handleInput("\x1b[<0;5;5m");
+                    $tui->handleInput("\x1b[<0;5;6M");
+                    $tui->handleInput("\x1b[<0;5;6m");
                 },
                 400 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitPainted($tui, $terminal, 'actions');
                     $this->assertSame('settings-nav', $tui->getFocus()?->getId(), 'clicking the nav focuses it');
                     // Hover + wheel + click the keybindings list (content pane), a nav miss too.
-                    $tui->handleInput("\x1b[<35;40;5M"); // hover a list row (nav clears)
-                    $tui->handleInput("\x1b[<65;40;5M"); // wheel down over the list
-                    $tui->handleInput("\x1b[<0;40;5M"); // click a list row
-                    $tui->handleInput("\x1b[<0;40;5m");
+                    $tui->handleInput("\x1b[<35;40;6M"); // hover a list row (nav clears)
+                    $tui->handleInput("\x1b[<65;40;6M"); // wheel down over the list
+                    $tui->handleInput("\x1b[<0;40;6M"); // click a list row
+                    $tui->handleInput("\x1b[<0;40;6m");
                 },
                 500 => function (Tui $tui): void {
                     $this->frame($tui);
-                    // Select PHP in the nav (screen row 8, after Interface +
+                    // Select PHP in the nav (screen row 9, after Interface +
                     // Highlighting + Plugins and the Languages header) → the
                     // content shows its indent rows. Two rows higher than it
                     // used to be: the Version control category and its Git
                     // sub-item went with the git plugin.
-                    $tui->handleInput("\x1b[<0;5;8M");
-                    $tui->handleInput("\x1b[<0;5;8m");
+                    $tui->handleInput("\x1b[<0;5;9M");
+                    $tui->handleInput("\x1b[<0;5;9m");
                 },
                 600 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitPainted($tui, $terminal, 'Indent style');
@@ -152,29 +153,29 @@ final class IdeSettingsThemeTest extends TestCase
                     // Switching pages CLAMPS the selection rather than resetting
                     // it, so which row a language page opens on depends on where
                     // the previous page left it — and "click twice" then means
-                    // one step or two. Screen row 11 is Indent size's label: a
+                    // one step or two. Screen row 12 is Indent size's label: a
                     // select, and a single click on its LABEL only selects (a
                     // click on its box would drop its list).
-                    $tui->handleInput("\x1b[<0;40;11M");
-                    $tui->handleInput("\x1b[<0;40;11m");
-                    // Now step indent style (auto → spaces). Screen row 8: the
-                    // page title (2), the boxed "Save changes to" chooser that
-                    // leads every page writing a file (3-5), the Indentation
-                    // legend (6), then this box, its label on its middle row.
+                    $tui->handleInput("\x1b[<0;40;12M");
+                    $tui->handleInput("\x1b[<0;40;12m");
+                    // Now step indent style (auto → spaces). Screen row 9: the
+                    // page title (3), the boxed "Save changes to" chooser that
+                    // leads every page writing a file (4-6), the Indentation
+                    // legend (7), then this box, its label on its middle row.
                     // Two clicks on the label: select, then the forward step.
-                    $tui->handleInput("\x1b[<0;40;8M");
-                    $tui->handleInput("\x1b[<0;40;8m");
-                    $tui->handleInput("\x1b[<0;40;8M");
-                    $tui->handleInput("\x1b[<0;40;8m");
+                    $tui->handleInput("\x1b[<0;40;9M");
+                    $tui->handleInput("\x1b[<0;40;9m");
+                    $tui->handleInput("\x1b[<0;40;9M");
+                    $tui->handleInput("\x1b[<0;40;9m");
                     // Edit the LSP server row: the label row of the box after
-                    // indent size (9-11) and the Language server legend (13),
-                    // screen row 15. TWO clicks: the first selects, and only a
+                    // indent size (10-12) and the Language server legend (14),
+                    // screen row 16. TWO clicks: the first selects, and only a
                     // click on the already-selected row opens the editor — a
                     // single click no longer mutates whatever it lands on.
-                    $tui->handleInput("\x1b[<0;40;15M");
-                    $tui->handleInput("\x1b[<0;40;15m");
-                    $tui->handleInput("\x1b[<0;40;15M");
-                    $tui->handleInput("\x1b[<0;40;15m");
+                    $tui->handleInput("\x1b[<0;40;16M");
+                    $tui->handleInput("\x1b[<0;40;16m");
+                    $tui->handleInput("\x1b[<0;40;16M");
+                    $tui->handleInput("\x1b[<0;40;16m");
                     foreach (\str_split('my-ls --stdio') as $char) {
                         $tui->handleInput($char);
                     }

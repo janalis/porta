@@ -6,6 +6,7 @@ namespace Porta\Tests\Support;
 
 use Porta\I18n\Translator;
 use Porta\Layout\WorkspaceLayout;
+use Porta\Ui\ScreenDensity;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\BreadcrumbsWidget;
 use Porta\Widget\CodeEditorWidget;
@@ -62,6 +63,7 @@ final class TestWorkspaceLayout
             $terminalPanel ?? self::withId(new TerminalPanelWidget(), id: 'terminal'),
             $statusBar ?? self::withId(new StatusBarWidget(), id: 'status'),
             Styles::dark(),
+            new ScreenDensity(),
         );
     }
 

@@ -21,11 +21,13 @@ final readonly class MenuOverlayPanes
     /**
      * @param list<AbstractWidget&MenuOverlayHost>            $editor    tree, separator, tab bar, editor, breadcrumbs
      * @param \Closure(): list<AbstractWidget&MenuOverlayHost> $viewPanes the OPEN view's panes; empty when none is
+     * @param list<AbstractWidget&MenuOverlayHost>            $chrome    the workspace's edge rules, under every view
      */
     public function __construct(
         private array $editor,
         private \Closure $viewPanes,
         private ?EditorPanes $panes = null,
+        private array $chrome = [],
     ) {}
 
     /**
@@ -43,13 +45,13 @@ final readonly class MenuOverlayPanes
     {
         $view = ($this->viewPanes)();
         if ([] !== $view) {
-            return $view;
+            return [...$view, ...$this->chrome];
         }
 
         // The registered panes are appended at ASK time too: this value is
         // built while the widget tree is assembled, and panes register at the
         // constructor tail — a plugin's even later, when it is enabled live.
-        return [...$this->editor, ...($this->panes?->all() ?? [])];
+        return [...$this->editor, ...($this->panes?->all() ?? []), ...$this->chrome];
     }
 
     /**
@@ -61,6 +63,6 @@ final readonly class MenuOverlayPanes
      */
     public function all(): array
     {
-        return [...$this->editor, ...($this->viewPanes)()];
+        return [...$this->editor, ...($this->viewPanes)(), ...$this->chrome];
     }
 }

@@ -314,7 +314,8 @@ final class LayoutController
      * just asked to take over. Six rows is what the frame itself needs — the
      * menu bar, the tab strip, the dock strip and the status bar — plus a
      * couple of editor rows, so you can still see which file you are coming
-     * back to; and two more where the strips are folder tabs.
+     * back to; and four more on a roomy screen, where the strips are folder
+     * tabs and rules close the workspace's top and bottom edges.
      *
      * A no-op when no panel is open: there is nothing to maximise, and
      * inventing a panel to fill the screen is not what the key asked for.
@@ -349,7 +350,7 @@ final class LayoutController
     {
         $rows = $this->tui->getTerminal()->getRows();
 
-        return \max(3, $rows - 6 - self::folderRows($rows) - $this->panelChrome());
+        return \max(3, $rows - 6 - self::chromeRows($rows) - $this->panelChrome());
     }
 
     /**
@@ -368,12 +369,16 @@ final class LayoutController
     }
 
     /**
-     * The rows the two tab strips take beyond one each, on a terminal tall
-     * enough for folder tabs ({@see TabStripRenderer::rowsFor()}).
+     * The chrome rows a roomy screen adds: the two tab strips' second rows
+     * ({@see TabStripRenderer::rowsFor()}) and the rules at the workspace's
+     * top and bottom edges ({@see \Porta\Widget\EdgeRuleWidget}) — none on
+     * a compact one.
      */
-    private static function folderRows(int $rows): int
+    private static function chromeRows(int $rows): int
     {
-        return 2 * (TabStripRenderer::rowsFor(Density::of($rows)) - 1);
+        $density = Density::of($rows);
+
+        return (2 * (TabStripRenderer::rowsFor($density) - 1)) + (Density::Roomy === $density ? 2 : 0);
     }
 
     /** Shared keyboard-nudge path: clamp like the drags do, persist, repaint. */
@@ -439,7 +444,7 @@ final class LayoutController
     /** Clamp a bottom-panel height so the editor keeps room above it. */
     private function clampPanel(int $height, int $rows, int $chrome): int
     {
-        return IntMath::clamp($height, 3, $rows - 8 - self::folderRows($rows) - $chrome);
+        return IntMath::clamp($height, 3, $rows - 8 - self::chromeRows($rows) - $chrome);
     }
 
     /**

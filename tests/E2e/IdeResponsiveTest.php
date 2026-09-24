@@ -5,8 +5,12 @@ declare(strict_types=1);
 namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Ide;
 use Porta\Tests\Support\RunsIde;
+use Porta\Tests\Support\ScreenReads;
+use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 use Symfony\Component\Tui\Widget\AbstractWidget;
@@ -24,6 +28,7 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
 final class IdeResponsiveTest extends TestCase
 {
     use RunsIde;
+    use ScreenReads;
 
     /** @return list<string> */
     private function mainIds(Tui $tui): array
@@ -71,6 +76,46 @@ final class IdeResponsiveTest extends TestCase
                 },
                 900 => function (Tui $tui): void {
                     $this->awaitMainIds($tui, ['tree', 'separator', 'editor-pane'], 'wide again: the sidebar restored');
+                },
+            ],
+            columns: 100,
+            rows: 30,
+        );
+    }
+
+    /**
+     * A roomy screen rules the workspace off under the menu bar and above the
+     * status bar; one row shorter than the threshold, both rules go and the
+     * editor gets their rows back.
+     */
+    public function testTheEdgeRulesComeAndGoWithTheScreensDensity(): void
+    {
+        $project = new TempProject(['src/Demo.php' => "<?php\n"]);
+        $editorRows = static fn (Tui $tui, Ide $ide): int => Services::resolve($ide, Renderer::class)->getWidgetRect($tui->getById('editor'))->rows ?? 0;
+
+        $this->runIde(
+            $project,
+            $project->path('src/Demo.php'),
+            [
+                300 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($editorRows, &$roomy): void {
+                    $this->frame($tui);
+                    $grid = $this->screenGrid($tui, $terminal);
+                    $this->assertMatchesRegularExpression('/^─+┬?─*$/u', \rtrim($grid[1]), 'the rule under the menu bar');
+                    $this->assertMatchesRegularExpression('/^─+┴?─*$/u', \rtrim($grid[28]), 'and the one above the status bar');
+                    $roomy = $editorRows($tui, $ide);
+
+                    $terminal->simulateResize(100, 29);
+                    $tui->requestRender();
+                },
+                600 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($editorRows, &$roomy): void {
+                    $this->await(function () use ($tui, $ide, $editorRows, $roomy): bool {
+                        $this->frame($tui);
+
+                        return $editorRows($tui, $ide) > ($roomy - 1);
+                    }, what: 'the compact frame');
+                    $grid = $this->screenGrid($tui, $terminal);
+                    $this->assertStringNotContainsString('───', $grid[1], 'no rule under the menu bar');
+                    $this->assertSame($roomy - 1 + 3, $editorRows($tui, $ide), 'one row fewer on screen, yet two rules and the strip\'s lid given back');
                 },
             ],
             columns: 100,
