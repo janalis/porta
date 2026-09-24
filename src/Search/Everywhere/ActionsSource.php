@@ -60,7 +60,10 @@ final readonly class ActionsSource implements SearchSource
                 ),
             ];
         }
-        \usort($scored, static fn (array $a, array $b): int => $b[0] <=> $a[0]);
+        // What can run first, then by score: a command greyed for want of its
+        // context (Step Over with no debug session) is listed, but below the
+        // ones that answer the query now.
+        \usort($scored, static fn (array $a, array $b): int => [$b[1]->enabled, $b[0]] <=> [$a[1]->enabled, $a[0]]);
 
         $emit(\array_map(static fn (array $entry): SearchHit => $entry[1], $scored));
     }

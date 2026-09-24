@@ -198,8 +198,12 @@ final class OverlayHostNavigationTest extends TestCase
         $this->assertGreaterThan(40, $wide);
     }
 
-    /** And as tall as the most rows seen: a query that finds less pads, rather than shrinking and re-centring the box. */
-    public function testTheSearchBoxHoldsItsHeightAsTheQueryNarrows(): void
+    /**
+     * And placed as if as tall as the most rows seen: a query that finds less
+     * shrinks the box from the bottom, its top where it was — nothing moves
+     * under the reader, and no blank rows stand in for the missing ones.
+     */
+    public function testTheSearchBoxKeepsItsTopAsTheQueryNarrows(): void
     {
         $host = $this->host();
         $host->openSearch('S', static fn (): null => null, static fn (): null => null, static fn (): null => null, 'no results');
@@ -209,7 +213,8 @@ final class OverlayHostNavigationTest extends TestCase
         $host->setSearchRows([]);
         $short = $host->layout([0, 0, 24, 100])[0];
 
-        $this->assertSame([\count($tall['rows']), $tall['top']], [\count($short['rows']), $short['top']]);
+        $this->assertSame($tall['top'], $short['top'], 'the top stays');
+        $this->assertLessThan(\count($tall['rows']), \count($short['rows']), 'the box shrinks');
         $this->assertStringContainsString('no results', AnsiUtils::stripAnsiCodes(\implode("\n", $short['rows'])));
     }
 
@@ -310,5 +315,31 @@ final class OverlayHostNavigationTest extends TestCase
         $host->handleInput("\x1b[B", $this->editingKeys());
 
         $this->assertSame(1, Probe::get($host, 'overlay')['selected']);
+    }
+
+    /** In the search modal too, the selection starts on — and steps between — hits that can run. */
+    public function testTheSearchSelectionSkipsGreyedHits(): void
+    {
+        $host = $this->host();
+        $host->openSearch('S', static fn (): null => null, static fn (): null => null, static fn (): null => null);
+        $noop = static fn (): null => null;
+        $host->setSearchRows([
+            SearchRow::header('Actions'),
+            SearchRow::hit(new SearchHit(SearchCategory::Actions, 'Step Over', 'F8', $noop, enabled: false)),
+            SearchRow::hit(new SearchHit(SearchCategory::Actions, 'Save', '', $noop)),
+            SearchRow::hit(new SearchHit(SearchCategory::Actions, 'Step Out', '', $noop, enabled: false)),
+            SearchRow::hit(new SearchHit(SearchCategory::Actions, 'Close', '', $noop)),
+        ]);
+        $selected = static fn (): int => Probe::get($host, 'search')->selected;
+        $kb = $this->editingKeys();
+
+        $this->assertSame(2, $selected(), 'Save, not the greyed Step Over');
+        $host->handleSearchInput("\x1b[B", $kb);
+        $this->assertSame(4, $selected(), 'past Step Out');
+        $host->handleSearchInput("\x1b[B", $kb);
+        $this->assertSame(2, $selected(), 'wrapping past Step Over');
+        $host->layout([0, 0, 24, 80]);
+        $host->handleSearchInput("\x1b[6~", $kb);
+        $this->assertSame(4, $selected());
     }
 }

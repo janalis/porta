@@ -41,9 +41,19 @@ final readonly class SearchRow
         return null !== $this->header;
     }
 
-    /** Whether the selection can land here: a result, never a header or a note. */
+    /** Whether this is a result, rather than a header or a note. */
     public function isHit(): bool
     {
         return null !== $this->hit;
+    }
+
+    /**
+     * Whether the selection can land here: a result that can run — not a
+     * header, a note, or a command greyed for want of its context, which is
+     * there to be read, as a menu's greyed item is.
+     */
+    public function isSelectable(): bool
+    {
+        return true === $this->hit?->enabled;
     }
 }

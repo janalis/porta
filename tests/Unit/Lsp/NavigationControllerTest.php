@@ -209,7 +209,7 @@ final class NavigationControllerTest extends TestCase
         $this->client->requests[0]['respond'](['contents' => ['kind' => 'markdown', 'value' => $doc]], error: null);
 
         $screen = $this->screen();
-        $this->assertStringContainsString('│Greets the name.', $screen, 'read in place, the markup gone');
+        $this->assertStringContainsString('│ Greets the name.', $screen, 'read in place, the markup gone');
         $this->assertStringNotContainsString('line25', $screen, 'row 25 starts off screen');
         $this->assertStringContainsString('▼', $screen, 'and says there is more');
 

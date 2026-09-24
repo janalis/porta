@@ -582,7 +582,8 @@ final class EditorRenderer
 
         $body = [];
         foreach (\explode("\n", $text) as $paragraph) {
-            foreach (AnsiText::wrap($paragraph, PopupMetrics::COMPLETION_DOC_INNER) as $wrapped) {
+            // Padded a column either side, as every box pads its content.
+            foreach (AnsiText::wrap($paragraph, PopupMetrics::COMPLETION_DOC_INNER - 2) as $wrapped) {
                 $body[] = $wrapped;
             }
         }
@@ -613,7 +614,7 @@ final class EditorRenderer
             // inner width itself — it calls that the single place the invariant
             // is enforced — and a second pad here could only ever agree with it.
             $framed[] = PopupFrame::rail(
-                $styles->of(Role::CompletionHint)->apply(AnsiText::truncate($row, PopupMetrics::COMPLETION_DOC_INNER)),
+                $styles->of(Role::CompletionHint)->apply(AnsiText::truncate(' '.$row, PopupMetrics::COMPLETION_DOC_INNER)),
                 PopupMetrics::COMPLETION_DOC_INNER,
                 $styles,
             );

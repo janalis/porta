@@ -173,7 +173,10 @@ final class CaretPopupRenderer
         }
         $body = [];
         foreach (\explode("\n", $text) as $paragraph) {
-            foreach (AnsiText::wrap($paragraph, $width) as $wrapped) {
+            // Two columns narrower than the frame: every box pads its content
+            // a column either side, and a docblock hard against the rail
+            // reads as part of it.
+            foreach (AnsiText::wrap($paragraph, $width - 2) as $wrapped) {
                 $body[] = $wrapped;
             }
         }
@@ -194,7 +197,7 @@ final class CaretPopupRenderer
 
         $framed = [PopupFrame::top($width, $styles, mark: $scroll > 0 ? Glyphs::SCROLL_UP : '')];
         foreach (\array_slice($body, $scroll, $shown) as $row) {
-            $framed[] = PopupFrame::rail($styles->of(Role::PopupRow)->apply(AnsiText::truncate($row, $width, pad: true)), $width, $styles);
+            $framed[] = PopupFrame::rail($styles->of(Role::PopupRow)->apply(AnsiText::truncate(' '.$row, $width, pad: true)), $width, $styles);
         }
         $framed[] = PopupFrame::bottom($width, $styles, mark: $scroll < $maxScroll ? Glyphs::SCROLL_DOWN : '');
         foreach ($framed as $i => $row) {

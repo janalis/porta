@@ -660,11 +660,11 @@ final class OverlayHost
      */
     private function firstHitAtOrAfter(array $rows, int $from): int
     {
-        if (($rows[$from] ?? null) !== null && $rows[$from]->isHit()) {
+        if (($rows[$from] ?? null) !== null && $rows[$from]->isSelectable()) {
             return $from;
         }
         foreach ($rows as $i => $row) {
-            if ($row->isHit()) {
+            if ($row->isSelectable()) {
                 return $i;
             }
         }
@@ -704,7 +704,7 @@ final class OverlayHost
         $count = \count($search->rows);
         for ($step = 1; $step <= $count; ++$step) {
             $i = ((($search->selected + ($dir * $step)) % $count) + $count) % $count;
-            if ($search->rows[$i]->isHit()) {
+            if ($search->rows[$i]->isSelectable()) {
                 return $i;
             }
         }
@@ -762,7 +762,7 @@ final class OverlayHost
     {
         $at = $search->selected;
         for ($moved = 0, $i = $at + $dir; $moved < \max(1, $this->searchBox->count ?? 1) && $i >= 0 && $i < \count($search->rows); $i += $dir) {
-            if (!$search->rows[$i]->isHit()) {
+            if (!$search->rows[$i]->isSelectable()) {
                 continue;
             }
             $at = $i;

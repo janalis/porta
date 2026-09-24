@@ -553,7 +553,7 @@ final class CodeEditorOverlaysTest extends TestCase
         $fits = $this->docPopupAt(caret: 41);
         $short = $this->docPopupAt(caret: 40);
 
-        $this->assertSame(1, \mb_strpos($fits, needle: 'DOC'), 'the panel starts at column 0, its text one in');
+        $this->assertSame(2, \mb_strpos($fits, needle: 'DOC'), 'the panel starts at column 0, its text past the rail and a column of padding');
         $this->assertLessThan(\mb_strpos($fits, needle: '┃▌greet'), \mb_strpos($fits, needle: 'DOC'), 'left of the list');
         $this->assertStringNotContainsString('DOC', $short, 'one column short: no side to put it on');
 

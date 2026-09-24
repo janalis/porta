@@ -291,9 +291,11 @@ A picker behaves like a dialog with a combobox:
   and Shift+Tab walk Search Everywhere's categories.
 - **Filter.** The list overlay's filter field shows from the start, with a
   placeholder.
-- **Size.** Both boxes are sized from the whole list, width and height
-  (`SearchModalState::$widest` and `$tallest`, the unfiltered items), so they
-  never re-centre as the query narrows.
+- **Size.** Both boxes take their width from the whole list
+  (`SearchModalState::$widest`, the unfiltered items). They are placed as if
+  as tall as the whole list (`$tallest`), so the top stays put and the box
+  shrinks from the bottom as the query narrows. Nothing re-centres, and no
+  blank rows stand in for the missing ones.
 - **Streaming.** Rows for the query already answered keep the selected hit
   wherever it moved (`rowsFor`), and a new query selects its best match.
 - **Pending sources.** An async category not yet answered shows its header over

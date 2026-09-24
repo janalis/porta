@@ -10574,4 +10574,17 @@ These were found by running the round's new pieces against each other:
   wrap past them, paging and the frame cues stop at the nearest live row.
   The change view puts "Revert this change" first, where the selection
   starts. A revert is one undo step.
+- **Blank rows in a narrowed picker (found driving the real IDE).** Padding a
+  narrowed picker to its old height left "no results" above a dozen blank
+  rows, which looked broken. The goal was never the height; it was not moving
+  under the reader. The box is now placed as if it had its tallest height, so
+  the top does not move, and it shrinks from the bottom.
+- **The docblock hard against the rail.** Both documentation panes, the hover
+  popup and the completion list's, now pad their text a column either side,
+  as every other box does.
+- **The palette opened on a greyed command (found driving the real IDE).** With
+  no debug session, Find Action's first row was the greyed Step Over, where
+  Enter did nothing. The search modal's selection now skips greyed hits too
+  (`SearchRow::isSelectable()`), and the actions source lists runnable
+  commands before greyed ones, score order within each group.
 

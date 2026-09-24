@@ -114,9 +114,11 @@ final class PickerLayout
         if ([] === $visible) {
             $content[] = $styles->merge(Role::PopupRow, Role::CompletionHint)->apply(AnsiText::truncate(' '.$emptyMessage, $width, pad: true, ellipsis: ''));
         }
-        while (\count($content) < $boxRows) {
-            $content[] = $styles->of(Role::PopupRow)->apply(\str_repeat(' ', \max(0, $width)));
-        }
+        // Rows the filter took are not padded back: the box is PLACED as if
+        // they were ({@see centered()} over the whole list's height), so its
+        // top stays put and it shrinks from the bottom — nothing under the
+        // reader's eye moves, and no blank rows stand in for the missing ones.
+        $missing = \max(0, $boxRows - \count($content));
         // The filter field is there from the start, a combobox's input: a
         // placeholder says typing narrows the list before the first key, and
         // the box keeps one height instead of growing three rows and
@@ -138,7 +140,7 @@ final class PickerLayout
             ...ModalFrame::wrap([...$header, ...$content], $width, $styles, overflow: ListOverflow::of($windowStart, \count($visible), $selected, \count($items))),
         ];
 
-        [$top, $col] = self::centered($bounds, \count($popup), $width + ModalFrame::CHROME_COLS);
+        [$top, $col] = self::centered($bounds, \count($popup) + $missing, $width + ModalFrame::CHROME_COLS);
         $box = new ModalBox(
             $top,
             $col,
@@ -221,15 +223,15 @@ final class PickerLayout
         if ([] === $search->rows && '' !== $search->emptyMessage) {
             $popup[] = $styles->merge(Role::PopupRow, Role::CompletionHint)->apply(AnsiText::truncate(' '.$search->emptyMessage, $width, pad: true, ellipsis: ''));
         }
-        while (\count($popup) < (FieldBox::ROWS + $boxRows)) {
-            $popup[] = $styles->of(Role::PopupRow)->apply(\str_repeat(' ', \max(0, $width)));
-        }
+        // Not padded: placed as if it were — the top stays, the box shrinks
+        // from the bottom as the query narrows (see layoutList()).
+        $missing = \max(0, FieldBox::ROWS + $boxRows - \count($popup));
         $framed = [
             ModalFrame::titleBar($search->title, $width + ModalFrame::CHROME_COLS, $styles, $closeHovered),
             ...ModalFrame::wrap($popup, $width, $styles, overflow: self::searchOverflow($search, $windowStart, \count($visible))),
         ];
 
-        [$top, $col] = self::centered($bounds, \count($framed), $width + ModalFrame::CHROME_COLS);
+        [$top, $col] = self::centered($bounds, \count($framed) + $missing, $width + ModalFrame::CHROME_COLS);
         $box = new ModalBox(
             $top,
             $col,

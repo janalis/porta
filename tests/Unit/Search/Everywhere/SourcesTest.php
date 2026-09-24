@@ -91,6 +91,20 @@ final class SourcesTest extends TestCase
         $source->cancel(); // no-op for a synchronous source
     }
 
+    /** What can run is listed first; a greyed command follows, even when it scores higher. */
+    public function testActionsSourceListsGreyedCommandsLast(): void
+    {
+        $registry = new CommandRegistry();
+        $registry->add('a', static function (): void {}, label: 'Step Over', when: static fn (): bool => false);
+        $registry->add('b', static function (): void {}, label: 'Save Stepwise');
+        $source = new ActionsSource($registry);
+
+        $hits = $this->collect(static fn (\Closure $emit) => $source->query('step', $emit));
+
+        $this->assertSame(['Save Stepwise', 'Step Over'], \array_map(static fn (SearchHit $h): string => $h->label, $hits));
+        $this->assertSame([true, false], \array_map(static fn (SearchHit $h): bool => $h->enabled, $hits));
+    }
+
     /**
      * A command that does not match does not end the search for ones that do.
      *
