@@ -74,6 +74,7 @@ use Porta\Ui\Role;
 use Porta\Ui\ShortcutFormatter;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\CaretPopupRenderer;
+use Porta\Widget\Render\CaretSide;
 use Porta\Widget\Render\EditorDecorations;
 use Porta\Widget\Render\EditorGeometry;
 use Porta\Widget\Render\EditorPopupGeometry;
@@ -1250,23 +1251,13 @@ final class CodeEditorWidget extends AbstractWidget implements
     {
         // Both overlays anchor to the caret's on-screen row (past the sticky headers).
         $cursorScreenRow = \max(0, $this->foldModel->screenRowFor($geo->vScroll, $geo->cursorLine)) + $geo->stickyCount;
-        if (null !== $this->caretPopups->signature) {
-            CaretPopupRenderer::signatureHint(
-                $result,
-                $geo->columns,
-                $geo->gutterWidth,
-                $cursorScreenRow,
-                $this->caretPopups->signature->label,
-                $this->styles,
-                $this->caretPopups->signature->activeRange,
-                $this->caretPopups->signature->counter(),
-            );
-        }
-
+        // The side each popup takes, so the signature hint — drawn last — can
+        // take the other one.
+        $taken = null;
         $this->completion->setBox(null);
         $anchorCol = $geo->gutterWidth + ($geo->cursorDisplayCol - $geo->hScroll) - \mb_strwidth($this->document->getWordBeforeCursor());
         if (null !== ($popup = $this->completion->popupState())) {
-            $this->completion->setBox(EditorRenderer::completionPopup(
+            $box = EditorRenderer::completionPopup(
                 $result,
                 $geo->columns,
                 $geo->rows,
@@ -1277,7 +1268,9 @@ final class CodeEditorWidget extends AbstractWidget implements
                 $popup['hovered'],
                 $this->styles,
                 $popup['docScroll'],
-            ));
+            );
+            $this->completion->setBox($box);
+            $taken = CaretSide::of($box->startRow, $cursorScreenRow);
         }
         $doc = $this->caretPopups->doc;
         if (null !== $doc) {
@@ -1291,11 +1284,25 @@ final class CodeEditorWidget extends AbstractWidget implements
                 $doc->scroll,
                 $this->styles,
             );
+            $taken = null === $doc->drawn ? $taken : CaretSide::of($doc->drawn['rect'][0], $cursorScreenRow);
         }
         $note = $this->completion->note();
         if (null !== $note) {
             $text = (CompletionNote::Loading === $note ? Glyphs::WORKING.' ' : '').$this->translator->trans($note->text());
-            CaretPopupRenderer::completionNote($result, $geo->columns, $geo->rows, $cursorScreenRow, $anchorCol, $text, $this->styles);
+            $taken = CaretPopupRenderer::completionNote($result, $geo->columns, $geo->rows, $cursorScreenRow, $anchorCol, $text, $this->styles) ?? $taken;
+        }
+        if (null !== $this->caretPopups->signature) {
+            CaretPopupRenderer::signatureHint(
+                $result,
+                $geo->columns,
+                $geo->gutterWidth,
+                $cursorScreenRow,
+                $this->caretPopups->signature->label,
+                $this->styles,
+                $this->caretPopups->signature->activeRange,
+                $this->caretPopups->signature->counter(),
+                $taken,
+            );
         }
 
         // signatureHint() and completionPopup() rewrite rows in place, keeping the shape.

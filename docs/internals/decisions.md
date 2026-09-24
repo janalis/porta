@@ -10415,8 +10415,12 @@ click still picks the row it lands on.
   keys; the hint takes them only while it shows more than one signature.
 - **Doc pane.** It scrolls with Ctrl+↓/↑. The wheel still moves the list,
   because a wheel event reaches the popup without a position.
-- **Deferred:** moving the signature hint when the completion list also opens
-  above the caret. The list is drawn last and covers it, as before.
+- **Deferred, then done (the combinations audit):** the signature hint and the
+  completion list shared a side of the caret, and the list drew over the hint.
+  The caret popups are now drawn first and report the side they took
+  (`CaretSide`). The hint is drawn last and takes the other side, framed or
+  as a bare row, and is left out when there is no free side. The
+  documentation popup and the Ctrl+Space note hold their side the same way.
 
 ## UI round, phase 4b: documentation at the caret (2026-09-24)
 

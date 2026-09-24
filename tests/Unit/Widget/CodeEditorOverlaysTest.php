@@ -782,4 +782,49 @@ final class CodeEditorOverlaysTest extends TestCase
         $completion->moveSelection(1);
         $this->addToAssertionCount(1); // no crash, no invalidation needed
     }
+
+    /**
+     * The completion list and the signature hint never share a side of the
+     * caret: a list that opens above sends the hint below, where before the
+     * list was drawn over the very signature being typed into.
+     */
+    public function testTheSignatureHintYieldsItsSideToTheCompletionList(): void
+    {
+        $editor = $this->editor("<?php\n\n\n\n\n\n\necho 'hi';\n\n");
+        $editor->getDocument()->setCursor(7, 5);
+        $editor->setSignatureHint('greet(string $who)');
+        $editor->showCompletions([new CompletionItem(label: 'greet', insertText: 'greet', kind: 'fn', detail: '')]);
+
+        // Nine rows, the caret on row 7: the list fits only above.
+        $plain = \array_map(AnsiUtils::stripAnsiCodes(...), $editor->render(new RenderContext(80, 9)));
+        $list = \array_key_first(\array_filter($plain, static fn (string $r): bool => \str_contains($r, 'greet ')));
+        $hint = \array_key_first(\array_filter($plain, static fn (string $r): bool => \str_contains($r, 'greet(string')));
+
+        $this->assertLessThan(7, $list, 'the list above the caret');
+        $this->assertSame(8, $hint, 'the hint on the free side, below');
+    }
+
+    /** The documentation popup and the Ctrl+Space note hold their side against the hint too. */
+    public function testTheDocPopupAndTheNoteKeepTheirSideFromTheHint(): void
+    {
+        $row = static fn (array $plain, string $needle): ?int => \array_key_first(\array_filter($plain, static fn (string $r): bool => \str_contains($r, $needle)));
+
+        // The caret on row 1: the hint wants below (no framed room above), the doc popup took it.
+        $editor = $this->editor("<?php\necho 'hi';\n\n\n\n\n");
+        $editor->getDocument()->setCursor(1, 5);
+        $editor->setSignatureHint('greet(string $who)');
+        $editor->showDocPopup('Greets.');
+        $plain = \array_map(AnsiUtils::stripAnsiCodes(...), $editor->render(new RenderContext(80, 12)));
+        $this->assertSame(3, $row($plain, needle: 'Greets.'), 'the popup below');
+        $this->assertSame(0, $row($plain, needle: 'greet(string'), 'the hint in the bare row above');
+
+        // The caret on row 6 of nine: the note fits only above, the hint goes below.
+        $editor = $this->editor("<?php\n\n\n\n\n\necho 'hi';\n\n\n");
+        $editor->getDocument()->setCursor(6, 5);
+        $editor->setSignatureHint('greet(string $who)');
+        $editor->handleInput("\x00"); // ctrl+space, nobody to ask
+        $plain = \array_map(AnsiUtils::stripAnsiCodes(...), $editor->render(new RenderContext(80, 9)));
+        $this->assertSame(4, $row($plain, needle: 'No language server'));
+        $this->assertSame(7, $row($plain, needle: 'greet(string'));
+    }
 }

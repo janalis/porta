@@ -331,7 +331,9 @@ The editor's caret popups are composited into the editor pane:
   `too-many-properties`, plus `EditorCompletion::note()`.
 
 The completion list and the doc popup share one placement rule: the side that
-fits, else the roomier side cut to its room, never the caret row.
+fits, else the roomier side cut to its room, never the caret row. The
+signature hint is drawn last and takes whichever side (`CaretSide`) the other
+caret popups left free.
 
 A gutter click goes through `Input/GutterClickRouter`: the fold column folds,
 and a change mark runs `git_show_change` when a plugin provides it. Anything

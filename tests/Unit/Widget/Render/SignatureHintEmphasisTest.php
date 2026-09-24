@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Widget\Render;
 use PHPUnit\Framework\TestCase;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\CaretPopupRenderer;
+use Porta\Widget\Render\CaretSide;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
@@ -116,5 +117,28 @@ final class SignatureHintEmphasisTest extends TestCase
     {
         // The no-capability and no-parameters paths, which must not regress.
         $this->assertStringNotContainsString("\x1b[1m", self::render(null));
+    }
+
+    /**
+     * The hint takes the side of the caret no other popup holds: below when
+     * above is taken, above when below is, and not at all when it has only
+     * the taken side left.
+     */
+    public function testTheHintTakesTheFreeSide(): void
+    {
+        $at = static function (int $row, ?CaretSide $taken, int $rows = 10): ?int {
+            $lines = \array_fill(start_index: 0, count: $rows, value: \str_repeat(' ', times: 60));
+            CaretPopupRenderer::signatureHint($lines, columns: 60, gutterWidth: 4, cursorScreenRow: $row, hint: self::HINT, styles: Styles::dark(), taken: $taken);
+
+            return \array_key_first(\array_filter($lines, static fn (string $line): bool => \str_contains(AnsiUtils::stripAnsiCodes($line), 'fn(int')));
+        };
+
+        // The text row is the frame's middle one.
+        $this->assertSame(3, $at(5, taken: null), 'above by preference');
+        $this->assertSame(7, $at(5, CaretSide::Above), 'below when a list opened above');
+        $this->assertSame(3, $at(5, CaretSide::Below));
+        $this->assertSame(4, $at(2, taken: null), 'no framed room above: below');
+        $this->assertSame(1, $at(2, CaretSide::Below, rows: 4), 'below taken: the bare row above');
+        $this->assertNull($at(0, CaretSide::Below, rows: 2), 'nowhere left: the hint yields');
     }
 }

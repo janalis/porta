@@ -36,15 +36,34 @@ final class CaretPopupRenderer
      * @param list<string>               $lines
      * @param array{0: int, 1: int}|null $activeRange byte range within $hint holding the argument being typed
      */
-    public static function signatureHint(array &$lines, int $columns, int $gutterWidth, int $cursorScreenRow, string $hint, Styles $styles, ?array $activeRange = null, string $counter = ''): void
-    {
+    public static function signatureHint(
+        array &$lines,
+        int $columns,
+        int $gutterWidth,
+        int $cursorScreenRow,
+        string $hint,
+        Styles $styles,
+        ?array $activeRange = null,
+        string $counter = '',
+        ?CaretSide $taken = null,
+    ): void {
+        // Above the caret by preference, below when above has no room — and
+        // never on the side another caret popup ($taken) already holds: the
+        // completion list drawn over the hint hid the very signature being
+        // typed into. With neither side free, the hint yields.
+        $above = CaretSide::Above !== $taken;
+        $below = CaretSide::Below !== $taken;
         $tail = '' === $counter ? 0 : \mb_strwidth($counter) + 2;
         $natural = \mb_strwidth($hint) + 2 + $tail;
         $col = $gutterWidth;
         $frameMax = $columns - $gutterWidth - 1 - PopupFrame::CHROME_COLS;
         $width = \min($natural, $frameMax);
         if ($width >= 4) {
-            $top = $cursorScreenRow >= 3 ? $cursorScreenRow - 3 : $cursorScreenRow + 1;
+            $top = match (true) {
+                $above && $cursorScreenRow >= 3 => $cursorScreenRow - 3,
+                $below => $cursorScreenRow + 1,
+                default => -1,
+            };
             if ($top >= 0 && ($top + 3) <= \count($lines)) {
                 $content = self::signatureContent($hint, $width, $activeRange, $styles, $counter);
                 $framed = [PopupFrame::top($width, $styles), PopupFrame::rail($content, $width, $styles), PopupFrame::bottom($width, $styles)];
@@ -56,7 +75,11 @@ final class CaretPopupRenderer
             }
         }
 
-        $row = $cursorScreenRow > 0 ? $cursorScreenRow - 1 : $cursorScreenRow + 1;
+        $row = match (true) {
+            $above && $cursorScreenRow > 0 => $cursorScreenRow - 1,
+            $below => $cursorScreenRow + 1,
+            default => -1,
+        };
         $width = \min($natural, $columns - $gutterWidth - 1);
         if ($row < 0 || $row >= \count($lines) || $width < 4) {
             return;
@@ -190,15 +213,15 @@ final class CaretPopupRenderer
      *
      * @param list<string> $lines
      */
-    public static function completionNote(array &$lines, int $columns, int $rows, int $cursorScreenRow, int $anchorCol, string $text, Styles $styles): void
+    public static function completionNote(array &$lines, int $columns, int $rows, int $cursorScreenRow, int $anchorCol, string $text, Styles $styles): ?CaretSide
     {
         $width = \min(\mb_strwidth($text) + 2, $columns - PopupFrame::CHROME_COLS);
         if ($width < 3) {
-            return;
+            return null;
         }
         $top = ($cursorScreenRow + 1 + 3) <= $rows ? $cursorScreenRow + 1 : $cursorScreenRow - 3;
         if ($top < 0) {
-            return;
+            return null;
         }
         $col = IntMath::clamp($anchorCol - 1, 0, $columns - $width - PopupFrame::CHROME_COLS);
         $framed = [
@@ -209,5 +232,7 @@ final class CaretPopupRenderer
         foreach ($framed as $i => $row) {
             $lines[$top + $i] = OverlayCompositor::into($lines[$top + $i], $col, $width + PopupFrame::CHROME_COLS, $columns, $row);
         }
+
+        return CaretSide::of($top, $cursorScreenRow);
     }
 }
