@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Porta\Widget\Render;
 
 use Porta\Support\AnsiText;
-use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 
@@ -27,7 +26,7 @@ final class TabStripTail
     {
         $rows = [];
         foreach ($strip['lines'] as $row => $line) {
-            $fill = $folder && $row === $strip['labelRow'] ? $styles->of(Role::Placeholder)->apply(\str_repeat(Glyphs::FRAME_HORIZONTAL, \max(0, $columns - $strip['used']))) : '';
+            $fill = $folder && $row === $strip['labelRow'] ? Rule::horizontal($columns - $strip['used'], $styles) : '';
             $rows[] = $styles->of(Role::Toolbar)->apply(AnsiText::padRight($line.$fill, $columns));
         }
 

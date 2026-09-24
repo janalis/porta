@@ -91,7 +91,7 @@ final class MenuPanel
             };
             $out[] = [
                 'segment' => $item->separator
-                    ? $styles->merge(Role::PopupRow, Role::Placeholder)->apply(\str_repeat(Glyphs::MENU_SEPARATOR, \max(0, $panelWidth)))
+                    ? $styles->merge(Role::PopupRow, Role::Rule)->apply(\str_repeat(Glyphs::MENU_SEPARATOR, \max(0, $panelWidth)))
                     : self::itemSegment(
                         $item,
                         $panelWidth,

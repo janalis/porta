@@ -209,7 +209,11 @@ integrations = ["symfony", "phpunit"]
 #                                when DangerBg went: the armed settings button
 #                                and the git discard confirm are double-bordered
 #                                FieldState::Danger now — a tint that vanished
-#                                in monochrome became a shape that does not)
+#                                in monochrome became a shape that does not.
+#                                Still 61 with Rule, which took TagOffBg's
+#                                slot: one tint for every separating line, and
+#                                the diff toolbar's off tag went faint like the
+#                                find tags')
 #   excessive-parameter-list 24  Input/MouseRouter' constructor, which took
 #                                TreeDragRouter for the tree drag. 23 before.
 #                                Bootstrap/WidgetHooks is 22 — near-

@@ -94,7 +94,6 @@ final class FieldBox
         return self::control(new FieldSpec('', trailing: $trailing), static fn (int $room): string => self::centred($caption, $room, $style), $state, $width, $rows, $styles);
     }
 
-    /** $text centred in exactly $room columns (cut when it does not fit), styled when a style is given. */
     /**
      * A checkbox, {@see CHECKBOX_WIDTH} columns in every state so nothing
      * beside it moves: `[✓]` / `[ ]`, and `[–]` for null, the partial state.
@@ -151,22 +150,7 @@ final class FieldBox
         return false !== $checked && null !== $tint ? $tint->of(Role::TabAccent)->apply($mark) : $mark;
     }
 
-    /**
-     * A fieldset's legend: `─ Editor ──────`, the rule in the field-border
-     * tint — a group's heading, which no key lands on.
-     */
-    public static function fieldsetLegend(string $legend, int $width, Styles $styles): string
-    {
-        $rule = $styles->of(Role::FieldBorder);
-        $text = AnsiText::truncate($legend, \max(0, $width - 4));
-
-        return AnsiText::padRight(
-            $rule->apply(Glyphs::FRAME_HORIZONTAL.' ').$styles->of(Role::Bright)->apply($text).' '
-                .$rule->apply(\str_repeat(Glyphs::FRAME_HORIZONTAL, \max(0, $width - 3 - AnsiUtils::visibleWidth($text)))),
-            $width,
-        );
-    }
-
+    /** $text centred in exactly $room columns (cut when it does not fit), styled when a style is given. */
     public static function centred(string $text, int $room, ?Style $style = null): string
     {
         $text = AnsiText::truncate($text, \max(0, $room));

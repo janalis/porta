@@ -37,7 +37,7 @@ enum Role
     // monochrome) because the selection there is the accent bar the widget
     // draws (Glyphs::SELECTION_BAR styled TabAccent, title Bright+bold) —
     // deliberately NOT bound to the SelectedRow roles. Pane/popup
-    // titles are HeaderBar+bold; in-list section headers are Toolbar+Dim+bold;
+    // titles are HeaderBar+bold; in-list section headers are Rule legends;
     // hover over default rows is RowHighlightBg; hover over bar chrome (menu
     // titles, tab strips) is BarHoverBg, resolved through
     // {@see \Porta\Widget\Render\BarChromeStyle}.
@@ -61,10 +61,9 @@ enum Role
     // typed value — monochrome keeps the italic (plus dim) where Dim is plain.
     case FieldPlaceholder;
 
-    // Git chrome: header/toolbar bars, file-status markers, tag buttons.
+    // Git chrome: header/toolbar bars, file-status markers.
     case HeaderBar;
     case Toolbar;
-    case TagOffBg;
     case Modified;
 
     // Text shades.
@@ -125,6 +124,12 @@ enum Role
     case Faint;
     case Subtle;
     case Emphasis;
+    // A rule: every plain line that separates — the pane divider, the tab and
+    // dock baselines, the status bar's cells, a menu's separator, a modal's
+    // section tee, a group's legend — drawn by {@see \Porta\Widget\Render\Rule}.
+    // One tint, so a line reads as a line wherever it runs; hover and focus
+    // keep their own (the heavy ┃ ━ in the accent).
+    case Rule;
 
     // Status bar segments: git branch, debug indicator, problem counts.
     case StatusAccent;

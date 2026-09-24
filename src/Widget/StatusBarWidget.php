@@ -335,7 +335,7 @@ final class StatusBarWidget extends AbstractWidget
 
     private function separator(): string
     {
-        return ' '.$this->styles->of(Role::Placeholder)->apply(Glyphs::STATUS_SEPARATOR).' ';
+        return ' '.$this->styles->of(Role::Rule)->apply(Glyphs::STATUS_SEPARATOR).' ';
     }
 
     /**

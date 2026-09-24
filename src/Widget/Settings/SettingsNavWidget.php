@@ -16,9 +16,9 @@ use Porta\Ui\Theme\Styles;
 use Porta\Widget\HoverableList;
 use Porta\Widget\PaneNavigationCallbacks;
 use Porta\Widget\Render\EdgeIndicator;
-use Porta\Widget\Render\FieldBox;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
+use Porta\Widget\Render\Rule;
 use Porta\Widget\Support\ArrowScrollTrait;
 use Porta\Widget\Support\FillsPaneTrait;
 use Porta\Widget\Support\HoverTrait;
@@ -450,7 +450,7 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
             if (NavEntryKind::Header === $entry['kind']) {
                 // The form's fieldset legend: a heading reads as one by its
                 // shape, where dim bold was a shade the monochrome theme lost.
-                $lines[] = FieldBox::fieldsetLegend($this->translator->trans($entry['label']), $width, $this->styles);
+                $lines[] = Rule::horizontal($width, $this->styles, $this->translator->trans($entry['label']));
                 continue;
             }
 

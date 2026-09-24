@@ -113,7 +113,9 @@ final class ModalFrame
         $rows = [$cue($overflow->above ?? false, Glyphs::SCROLL_UP)];
         foreach ($sections as $i => $section) {
             if ($i > 0) {
-                $rows[] = $accent->apply(Glyphs::MODAL_TEE_LEFT.\str_repeat(Glyphs::FRAME_HORIZONTAL, \max(0, $innerWidth + 2)).Glyphs::MODAL_TEE_RIGHT);
+                // At least its two tees, like every edge of the frame: a degenerate
+                // width shuts the box rather than opening it.
+                $rows[] = Rule::horizontal(\max(2, $innerWidth + 4), $styles, tees: Role::TabAccent);
             }
             foreach ($section as $line) {
                 $rows[] = $rail.' '.AnsiText::truncate($line, \max(0, $innerWidth), pad: true).' '.$rail;

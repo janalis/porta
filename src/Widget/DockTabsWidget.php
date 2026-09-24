@@ -352,7 +352,7 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverla
             $folder => Glyphs::FRAME_HORIZONTAL,
             default => ' ',
         };
-        $grab = $this->styles->of($folder && !$this->grabHovered ? Role::Placeholder : Role::Toolbar)->apply(\str_repeat($fill, \max(0, $columns - $used)));
+        $grab = $this->styles->of($folder && !$this->grabHovered ? Role::Rule : Role::Toolbar)->apply(\str_repeat($fill, \max(0, $columns - $used)));
 
         // The active tool's status sits right-aligned on the tail: the lid
         // row's on a folder strip, which leaves the grab whole.

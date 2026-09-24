@@ -30,6 +30,7 @@ use Porta\Widget\Render\FieldState;
 use Porta\Widget\Render\HeaderRenderer;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
+use Porta\Widget\Render\Rule;
 use Porta\Widget\Support\ArrowScrollTrait;
 use Porta\Widget\Support\FillsPaneTrait;
 use Porta\Widget\Support\HoverTrait;
@@ -500,7 +501,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         $out = [];
         $legend = $layout->legends[$index] ?? null;
         if (null !== $legend) {
-            $out[] = [FieldBox::fieldsetLegend($legend, $width, $this->styles), null];
+            $out[] = [Rule::horizontal($width, $this->styles, $legend), null];
         }
         $control = $this->control($row, $index, $layout);
         $middle = \intdiv(\count($control), num2: 2); // the label sits on the value row

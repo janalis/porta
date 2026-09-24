@@ -231,7 +231,7 @@ final class TabStripRenderer
      */
     public static function renderCell(array $cell, Styles $styles, TabState $state, string $divider = Glyphs::SEPARATOR, bool $onClose = false): string
     {
-        return self::renderBody($cell, $styles, $state, $onClose).$styles->of(Role::Placeholder)->apply($divider);
+        return self::renderBody($cell, $styles, $state, $onClose).$styles->of(Role::Rule)->apply($divider);
     }
 
     /**

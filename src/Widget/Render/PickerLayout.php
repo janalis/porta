@@ -203,7 +203,7 @@ final class PickerLayout
             if (null !== $row->header) {
                 // A category is a fieldset's legend, `─ Files ───`: a rule that
                 // groups by shape, where a dim word needed its colour.
-                $popup[] = $styles->of(Role::PopupRow)->apply(FieldBox::fieldsetLegend($row->header, $width, $styles));
+                $popup[] = $styles->of(Role::PopupRow)->apply(Rule::horizontal($width, $styles, $row->header));
 
                 continue;
             }

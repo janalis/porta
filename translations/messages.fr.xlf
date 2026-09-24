@@ -7,8 +7,8 @@
         <target> %count% fichier modifié| %count% fichiers modifiés</target>
       </trans-unit>
       <trans-unit id="8">
-        <source> Files (%count%)</source>
-        <target> Fichiers (%count%)</target>
+        <source>Files (%count%)</source>
+        <target>Fichiers (%count%)</target>
       </trans-unit>
       <trans-unit id="9">
         <source> History (%count%)</source>

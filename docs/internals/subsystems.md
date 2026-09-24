@@ -325,7 +325,7 @@ A picker behaves like a dialog with a combobox:
   rows.
 - **Shapes.** Every state has a shape that survives monochrome:
   - the selected row's `▌` in column 0;
-  - a category as a `FieldBox::fieldsetLegend` rule;
+  - a category as a `Rule` legend;
   - the query's matched characters bold and underlined (`MatchMarks` over
     `FuzzyMatcher::positions()`, computed at render time, so no source
     carries positions);
@@ -462,6 +462,21 @@ less than a second. `Alt+D` (`ide_dismiss_toast`) removes the top card, as its
 
 Every entry in the notification log carries its glyph, Info's `◦` included.
 
+### Rules: one tint, one helper
+
+A plain line that separates is `Widget/Render/Rule` in `Role::Rule`: the pane
+divider, the tab and dock baselines, a resting tab's outline, the status bar's
+` │ `, a menu's separator row, a modal's section tee, and a group's legend
+(`─ Editor ────`). One tint, so a line reads as a line wherever it runs. A
+line that is a grab or a focus keeps its own face: the hovered divider's `┃`
+and the dock grab's `━` in the accent, a focused frame's heavy rails.
+
+`Rule::horizontal($width, $styles, $legend, $tees)` is exactly `$width`
+columns. A legend sits after the first stroke only while a stroke still follows
+it, and `$tees` puts `├` `┤` in that role at the ends, joining the rule to the
+rails it cuts across; the legend yields before a tee does. A heavy menu frame
+keeps its own `┣━┫` (`PopupFrame::tee`): a light run cannot meet a heavy tee.
+
 ### Tab strips: folder tabs from 30 rows
 
 Every horizontal strip is `TabStripRenderer::render()`. At
@@ -518,8 +533,8 @@ settings form has none: column 0 is its modified marker, and its selection is
 the heavy control. The Welcome cards wear the full bar down every row of the
 selected card.
 
-The settings nav's headings are fieldset legends (`FieldBox::fieldsetLegend`,
-the form's own). Its `▲`/`▼` edges (`EdgeIndicator`, shared with the vertical
+The settings nav's headings are legends set into a rule (`Rule::horizontal`
+with a legend, the form's own). Its `▲`/`▼` edges (`EdgeIndicator`, shared with the vertical
 tab strip) are controls: a click selects the first entry hidden past that edge.
 The breadcrumbs bar is laid out from the right: ancestors drop behind one
 `… › `, and the current scope is middle-elided only when it is alone and still

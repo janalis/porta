@@ -88,6 +88,8 @@ Every form control — text field, button, select, stepper — draws through
 A list row's selection is `Widget/Render/SelectionBar` in its first column
 (`PanelRowStyle::barred()` for the panels); a scrolling column list's `▲`/`▼`
 row is `Widget/Render/EdgeIndicator`.
+A separating line, with or without a legend, is `Widget/Render/Rule` in
+`Role::Rule`, never a hand-repeated `─`.
 
 The shared row traits live in `Widget/Support/`:
 

@@ -57,6 +57,6 @@ enum TabShape
     /** The outline's tint — secondary to the shape. */
     public function role(): Role
     {
-        return self::Rest === $this ? Role::Placeholder : Role::TabAccent;
+        return self::Rest === $this ? Role::Rule : Role::TabAccent;
     }
 }

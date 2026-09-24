@@ -77,7 +77,7 @@ final class SeparatorWidget extends AbstractWidget implements MenuOverlayHost, V
         // hot-affordance convention, so every grabbable edge speaks it.
         $glyph = $this->hovered
             ? $this->styles->merge(Role::BarHoverBg, Role::TabAccent)->apply(Glyphs::PANE_DIVIDER_ACTIVE)
-            : $this->styles->of(Role::Placeholder)->apply(Glyphs::PANE_DIVIDER);
+            : $this->styles->of(Role::Rule)->apply(Glyphs::PANE_DIVIDER);
 
         return \array_fill(0, $rows, value: $glyph);
     }

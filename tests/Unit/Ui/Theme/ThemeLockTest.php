@@ -40,7 +40,6 @@ final class ThemeLockTest extends TestCase
         yield 'popup-row' => [Role::PopupRow, new Style(background: 236, color: 250)];
         yield 'header-bar' => [Role::HeaderBar, new Style(background: 237)];
         yield 'toolbar' => [Role::Toolbar, new Style(background: 235)];
-        yield 'tag-off-bg' => [Role::TagOffBg, new Style(background: 238)];
         yield 'modified' => [Role::Modified, new Style(color: 179)];
         yield 'dim' => [Role::Dim, new Style(color: 245)];
         yield 'muted' => [Role::Muted, new Style(color: 250)];
@@ -55,6 +54,7 @@ final class ThemeLockTest extends TestCase
         yield 'diag-hint-dim' => [Role::DiagHintDim, new Style(color: 240)];
         yield 'current-line-number' => [Role::CurrentLineNumber, new Style(color: 252)];
         yield 'placeholder' => [Role::Placeholder, new Style(color: 238)];
+        yield 'rule' => [Role::Rule, new Style(color: 238)];
         yield 'inlay' => [Role::Inlay, new Style(color: 243)];
         yield 'debug-value' => [Role::DebugValue, new Style(color: 149)];
         yield 'indent-guide' => [Role::IndentGuide, new Style(color: 238)];
@@ -108,7 +108,6 @@ final class ThemeLockTest extends TestCase
         yield 'popup-row' => [Role::PopupRow, new Style(background: 253, color: 240)];
         yield 'header-bar' => [Role::HeaderBar, new Style(background: 253)];
         yield 'toolbar' => [Role::Toolbar, new Style(background: 254)];
-        yield 'tag-off-bg' => [Role::TagOffBg, new Style(background: 252)];
         yield 'modified' => [Role::Modified, new Style(color: 130)];
         yield 'dim' => [Role::Dim, new Style(color: 244)];
         yield 'muted' => [Role::Muted, new Style(color: 240)];
@@ -123,6 +122,7 @@ final class ThemeLockTest extends TestCase
         yield 'diag-hint-dim' => [Role::DiagHintDim, new Style(color: 240)];
         yield 'current-line-number' => [Role::CurrentLineNumber, new Style(color: 240)];
         yield 'placeholder' => [Role::Placeholder, new Style(color: 250)];
+        yield 'rule' => [Role::Rule, new Style(color: 250)];
         yield 'inlay' => [Role::Inlay, new Style(color: 245)];
         yield 'debug-value' => [Role::DebugValue, new Style(color: 28)];
         yield 'indent-guide' => [Role::IndentGuide, new Style(color: 250)];
