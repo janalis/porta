@@ -23,6 +23,7 @@ use Porta\Overlay\Presenter\OverlayDelivery;
 use Porta\Overlay\Presenter\WelcomeModalController;
 use Porta\Overlay\Region\DropdownRegion;
 use Porta\Overlay\State\MenuOverlayPanes;
+use Porta\Tests\Support\CompactScreen;
 use Porta\Tests\Support\FakePluginLifecycle;
 use Porta\Tests\Support\FakeToolInstallOffers;
 use Porta\Tests\Support\Probe;
@@ -81,7 +82,7 @@ final class WelcomeModalControllerTest extends TestCase
         $this->pane = new TestOverlayPane();
         $this->tui->add($this->pane);
 
-        $this->welcome = new WelcomeWidget(new Translator('en'));
+        $this->welcome = new WelcomeWidget(new Translator('en'), density: CompactScreen::density());
         $this->views = new ViewRegistry();
         $this->menuBar = new MenuBarWidget();
 
@@ -555,7 +556,7 @@ final class WelcomeModalControllerTest extends TestCase
         $this->tui = new BidiTui(terminal: new VirtualTerminal(columns: 80, rows: 24), keybindings: new Keybindings([]), renderer: $this->renderer);
         $this->pane = new TestOverlayPane();
         $this->tui->add($this->pane);
-        $this->welcome = new WelcomeWidget(new Translator('en'));
+        $this->welcome = new WelcomeWidget(new Translator('en'), density: CompactScreen::density());
         $this->views = new ViewRegistry();
         $editArea = new EditorArea(new BufferManager(), new CodeEditorWidget(), new EditorPanes(), $this->tui);
 
@@ -594,7 +595,7 @@ final class WelcomeModalControllerTest extends TestCase
         $this->tui = new BidiTui(terminal: new VirtualTerminal(columns: 80, rows: 24), keybindings: new Keybindings([]), renderer: $this->renderer);
         $this->pane = new TestOverlayPane();
         $this->tui->add($this->pane);
-        $this->welcome = new WelcomeWidget(new Translator('en'));
+        $this->welcome = new WelcomeWidget(new Translator('en'), density: CompactScreen::density());
         $this->views = new ViewRegistry();
         $editArea = new EditorArea(new BufferManager(), new CodeEditorWidget(), new EditorPanes(), $this->tui);
         $controller = new WelcomeModalController(

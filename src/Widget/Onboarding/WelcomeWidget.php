@@ -12,6 +12,7 @@ use Porta\Ui\Glyphs;
 use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
 use Porta\Ui\Role;
+use Porta\Ui\ScreenDensity;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\HoverableList;
 use Porta\Widget\PaneNavigationCallbacks;
@@ -84,6 +85,8 @@ final class WelcomeWidget extends AbstractWidget implements FocusableInterface, 
 
     private readonly ListSelection $list;
 
+    private readonly ScreenDensity $density;
+
     /** @var list<WelcomeStep> */
     private array $steps = [];
 
@@ -109,8 +112,10 @@ final class WelcomeWidget extends AbstractWidget implements FocusableInterface, 
     public function __construct(
         private readonly Translator $translator,
         ?Styles $styles = null,
+        ?ScreenDensity $density = null,
     ) {
         $this->initStyles($styles);
+        $this->density = $density ?? new ScreenDensity();
         $this->list = new ListSelection();
         $this->addStyleClass('card'); // the theme's .card::selected(:focus) rules tint the selection behind the accent bar
     }
@@ -279,9 +284,11 @@ final class WelcomeWidget extends AbstractWidget implements FocusableInterface, 
      * no button: its `[✓]` is the answer. Every text row carries the step's
      * index so a click lands anywhere on the card.
      *
-     * The button is the one-row form of the form controls' button: a card is
-     * a row of a list, and a three-row box on each would halve how many steps
-     * the modal can show.
+     * The button is the form controls' button at the screen's height: a box
+     * where the screen is roomy, beside the title and the detail's first
+     * lines — the card grows to the box's rows when its text is shorter — and
+     * one row on a compact screen, where a three-row box on each card would
+     * halve how many steps the modal can show.
      *
      * @return non-empty-list<array{0: string, 1: int|null}>
      */
@@ -306,7 +313,7 @@ final class WelcomeWidget extends AbstractWidget implements FocusableInterface, 
             $buttonWidth = FieldBox::controlWidth($step->actionLabel);
             $button =
                 ($content - $buttonWidth - 1) >= (AnsiUtils::visibleWidth($prefix) + 8)
-                    ? FieldBox::button($step->actionLabel, FieldState::of($selected), $index === $this->hoveredIndex, $buttonWidth, 1, $this->styles)
+                    ? FieldBox::button($step->actionLabel, FieldState::of($selected), $index === $this->hoveredIndex, $buttonWidth, FieldBox::rowsFor($this->density->current()), $this->styles)
                     : [];
         }
         $text = $content - ([] === $button ? 0 : AnsiUtils::visibleWidth($button[0]) + 1);
@@ -319,6 +326,10 @@ final class WelcomeWidget extends AbstractWidget implements FocusableInterface, 
             $lines[] = $indent.$dim->apply($chunk);
         }
 
+        // A card is as tall as its button: blank text rows beside a box
+        // taller than the title and detail, the card's own, so a click on
+        // any row of the box lands on it.
+        $lines = \array_pad($lines, \count($button), value: '');
         $rows = [];
         foreach ($lines as $i => $line) {
             $beside = \array_key_exists($i, $button) ? ' '.$button[$i] : '';

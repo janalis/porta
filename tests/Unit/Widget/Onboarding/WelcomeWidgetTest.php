@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\I18n\Translator;
 use Porta\Onboarding\WelcomeStep;
 use Porta\Tests\Support\AttachedStyles;
+use Porta\Tests\Support\CompactScreen;
 use Porta\Tests\Support\PagesThroughRows;
 use Porta\Tests\Support\RendersWidget;
 use Porta\Ui\Glyphs;
@@ -117,7 +118,7 @@ final class WelcomeWidgetTest extends TestCase
 
     private function widget(WelcomeStep ...$steps): WelcomeWidget
     {
-        $widget = new WelcomeWidget(new Translator('en'));
+        $widget = new WelcomeWidget(new Translator('en'), density: CompactScreen::density());
         $widget->setSteps(\array_values($steps));
 
         return $widget;
@@ -167,6 +168,29 @@ final class WelcomeWidgetTest extends TestCase
         $this->assertStringContainsString('Syntax highlighting', $lines[self::FIRST_STEP_ROW]);
         $this->assertStringContainsString('why it matters', $lines[self::FIRST_STEP_ROW + 1], 'the detail sits on its own line');
         $this->assertStringContainsString('Language server', $lines[self::FIRST_STEP_ROW + 3]);
+    }
+
+    /**
+     * On a roomy screen a card's button is a box, beside the title and the
+     * detail: the card grows to its three rows, and every row of it — the
+     * one past the detail too — is the card's to click.
+     */
+    public function testARoomyScreenBoxesTheCardsButton(): void
+    {
+        $widget = new WelcomeWidget(new Translator('en'));
+        $widget->setSteps([$this->step('Syntax highlighting'), $this->step('Language server')]);
+        $lines = $this->rendered($widget, rows: 16);
+
+        $this->assertMatchesRegularExpression('/┏━+┓$/u', \rtrim($lines[self::FIRST_STEP_ROW]), 'the box beside the title, heavy on the selected card');
+        $this->assertStringContainsString('why it matters', $lines[self::FIRST_STEP_ROW + 1]);
+        $this->assertMatchesRegularExpression('/┃ +Do it +┃$/u', \rtrim($lines[self::FIRST_STEP_ROW + 1]));
+        $this->assertMatchesRegularExpression('/┗━+┛$/u', \rtrim($lines[self::FIRST_STEP_ROW + 2]), 'a third row, past the one-line detail');
+        $this->assertMatchesRegularExpression('/╭─+╮$/u', \rtrim($lines[self::FIRST_STEP_ROW + 4]), 'the next card\'s rests rounded');
+        $this->assertMatchesRegularExpression('/^ +─+ *$/u', $lines[self::FIRST_STEP_ROW + 3], 'then the rule');
+        $this->assertStringContainsString('Language server', $lines[self::FIRST_STEP_ROW + 4]);
+
+        $widget->handleClick(self::FIRST_STEP_ROW + 6);
+        $this->assertStringContainsString('Language server', $this->selectedStep($widget), 'the box\'s last row is the second card\'s');
     }
 
     /** A rule parts two cards; the last card's spacer stays blank, since nothing follows it. */
@@ -702,7 +726,7 @@ final class WelcomeWidgetTest extends TestCase
      */
     public function testSetStepsInvalidatesTheRenderRevision(): void
     {
-        $widget = new WelcomeWidget(new Translator('en'));
+        $widget = new WelcomeWidget(new Translator('en'), density: CompactScreen::density());
         $widget->setSteps([$this->step('a')]);
         $revision = $widget->getRenderRevision();
 

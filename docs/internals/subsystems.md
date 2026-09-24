@@ -447,7 +447,9 @@ only the box and a column either side of it toggle.
   of its own: the settings form, Find in Files, the find bar (whose compact
   form keeps Find and Replace side by side on its one row), the pickers'
   fields, the Results and keybindings filters and the commit form all ask it.
-  The Welcome card's button stays one row, because a card is a row of a list.
+  The Welcome cards' buttons too: a box beside the title and detail on a roomy
+  screen, the card growing to its rows, and one row on a compact one, where a
+  box on each card would halve the steps the modal shows.
 - **An option toggle is a control too** — `.*`, `Aa`, the diff's `S split`:
   `FieldBox::toggle()` at the height the host drew its fields. Boxed, its
   frame is always the idle one (a toggle never takes the keys; its shortcut

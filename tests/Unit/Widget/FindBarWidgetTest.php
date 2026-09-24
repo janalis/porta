@@ -10,9 +10,9 @@ use Porta\Editor\FindMode;
 use Porta\Event\FindQueryUpdated;
 use Porta\History\SearchHistoryStore;
 use Porta\I18n\Translator;
+use Porta\Tests\Support\CompactScreen;
 use Porta\Tests\Support\FakeFindTarget;
 use Porta\Tests\Support\TempProject;
-use Porta\Ui\ScreenDensity;
 use Porta\Widget\FindBarWidget;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -518,7 +518,7 @@ final class FindBarWidgetTest extends TestCase
         // Bracketed = enabled, so the tags read without colour (the toggle
         // convention the find modal and the checkboxes already follow) —
         // the one-row form, which has no box to say it with.
-        $compact = new FindBarWidget(new Translator('en'), density: self::compactScreen());
+        $compact = new FindBarWidget(new Translator('en'), density: CompactScreen::density());
         $compact->open(new FakeFindTarget($doc), mode: FindMode::Find);
         $compact->handleInput("\x1bw");
         $screen = AnsiUtils::stripAnsiCodes(\implode('', $compact->render(new RenderContext(120, 1))));
@@ -820,7 +820,7 @@ final class FindBarWidgetTest extends TestCase
 
     public function testOnACompactScreenTheTagsAreOneRow(): void
     {
-        $bar = new FindBarWidget(new Translator('en'), density: self::compactScreen());
+        $bar = new FindBarWidget(new Translator('en'), density: CompactScreen::density());
         $bar->open(new FakeFindTarget(new Document("x\n")), mode: FindMode::Replace);
         $rows = \array_map(AnsiUtils::stripAnsiCodes(...), $bar->render(new RenderContext(100, 3)));
 
@@ -830,14 +830,6 @@ final class FindBarWidgetTest extends TestCase
         $this->assertTrue($bar->hoverAt(0, 67), 'the regex tag, after two 32-column fields and their gutters: 66-69');
         $this->assertTrue($bar->hoverAt(1, 67), 'below the one row is off it: the hover clears');
         $this->assertFalse($bar->hoverAt(1, 67), 'and stays clear');
-    }
-
-    private static function compactScreen(): ScreenDensity
-    {
-        $density = new ScreenDensity();
-        $density->observe(24);
-
-        return $density;
     }
 
     public function testFindNextAfterAStaleRefreshJumpsToTheFirstMatchNotTheSecond(): void
