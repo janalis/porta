@@ -51,6 +51,10 @@ final class Glyphs
     // "nothing yet", distinct from every severity and gutter mark.
     public const string WORKING = '◌';
 
+    // The action a server marks as the one it would pick — a quick fix's
+    // isPreferred — leading its label in the list.
+    public const string PREFERRED = '★';
+
     // Diagnostic severity (gutter, inline message prefix, status-bar counts).
     public const string SEVERITY_ERROR = '✗';
     public const string SEVERITY_WARNING = '▲'; // also SCROLL_UP — disjoint surfaces (message row vs strip edge)

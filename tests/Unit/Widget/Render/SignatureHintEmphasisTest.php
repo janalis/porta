@@ -6,7 +6,7 @@ namespace Porta\Tests\Unit\Widget\Render;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Ui\Theme\Styles;
-use Porta\Widget\Render\EditorRenderer;
+use Porta\Widget\Render\CaretPopupRenderer;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
@@ -24,7 +24,7 @@ final class SignatureHintEmphasisTest extends TestCase
     private static function render(?array $activeRange, int $columns = 60): string
     {
         $lines = \array_fill(start_index: 0, count: 10, value: \str_repeat(' ', $columns));
-        EditorRenderer::signatureHint($lines, $columns, gutterWidth: 4, cursorScreenRow: 5, hint: self::HINT, styles: Styles::dark(), activeRange: $activeRange);
+        CaretPopupRenderer::signatureHint($lines, $columns, gutterWidth: 4, cursorScreenRow: 5, hint: self::HINT, styles: Styles::dark(), activeRange: $activeRange);
 
         foreach ($lines as $line) {
             if (\str_contains(AnsiUtils::stripAnsiCodes($line), 'fn(int')) {
@@ -88,19 +88,24 @@ final class SignatureHintEmphasisTest extends TestCase
     public function testANarrowPopupKeepsTheActiveArgumentInView(): void
     {
         $lines = \array_fill(start_index: 0, count: 10, value: \str_repeat(' ', times: 22));
-        EditorRenderer::signatureHint($lines, columns: 22, gutterWidth: 4, cursorScreenRow: 5, hint: self::HINT, styles: Styles::dark(), activeRange: [11, 20]);
+        CaretPopupRenderer::signatureHint($lines, columns: 22, gutterWidth: 4, cursorScreenRow: 5, hint: self::HINT, styles: Styles::dark(), activeRange: [11, 20]);
         $row = $lines[3];
 
         $this->assertSame('string $b', self::boldRun($row));
         $this->assertStringContainsString('│ …, string $b) │', AnsiUtils::stripAnsiCodes($row), 'the head cut, the argument whole');
         $this->assertSame(22, AnsiUtils::visibleWidth($row));
+
+        // Room for the argument and nothing else: it stands alone.
+        $lines = \array_fill(start_index: 0, count: 10, value: \str_repeat(' ', times: 18));
+        CaretPopupRenderer::signatureHint($lines, columns: 18, gutterWidth: 4, cursorScreenRow: 5, hint: self::HINT, styles: Styles::dark(), activeRange: [11, 20]);
+        $this->assertStringContainsString('│ string $b │', AnsiUtils::stripAnsiCodes($lines[3]));
     }
 
     /** The overload counter trails the signature, dim; the row keeps its width. */
     public function testTheOverloadCounterTrailsTheSignature(): void
     {
         $lines = \array_fill(start_index: 0, count: 10, value: \str_repeat(' ', times: 60));
-        EditorRenderer::signatureHint($lines, columns: 60, gutterWidth: 4, cursorScreenRow: 5, hint: self::HINT, styles: Styles::dark(), activeRange: [3, 9], counter: '2/3');
+        CaretPopupRenderer::signatureHint($lines, columns: 60, gutterWidth: 4, cursorScreenRow: 5, hint: self::HINT, styles: Styles::dark(), activeRange: [3, 9], counter: '2/3');
 
         $this->assertStringContainsString('│ fn(int $a, string $b)  2/3 │', AnsiUtils::stripAnsiCodes($lines[3]));
         $this->assertStringContainsString("\x1b[2m", $lines[3]);

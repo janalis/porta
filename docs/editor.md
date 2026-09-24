@@ -37,6 +37,19 @@ A function with overloads shows which one this is (`1/3`), and
 brings the popup back after `Escape`, or summons it anywhere inside an argument
 list. (PhpStorm binds this to `Ctrl+P`, which Go to File owns here.)
 
+### Quick documentation
+
+`Shift+F1` shows the documentation for the symbol at the caret in a popup just
+under it (or above it, when under has no room). Markdown's marks are gone and
+code blocks are indented. The popup scrolls with `↑`/`↓`, `PgUp`/`PgDn` or the
+wheel, and a `▲`/`▼` in its border says there is more. `Esc`, or any other key,
+closes it; the other key then does what it always does. A click on the popup
+stays there, and a click anywhere else closes it.
+
+Quick fixes (`Alt+Enter`) put the server's preferred fix first, marked `★`. An
+action the server knows but cannot run where the caret is appears greyed and
+struck through, with the server's reason beside it.
+
 ### Breadcrumbs
 
 The bar under the tabs names the scopes containing the caret —

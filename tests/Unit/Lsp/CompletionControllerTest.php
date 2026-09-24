@@ -313,6 +313,19 @@ final class CompletionControllerTest extends TestCase
         $this->assertStringContainsString('No suggestions', $this->screen());
     }
 
+    /** Esc is spent on a note: it goes, and nothing else happens. */
+    public function testEscapeDismissesTheNote(): void
+    {
+        $this->controller();
+        $this->editor->openFile('/p/a.php', "<?php\n");
+        $this->editor->setCallbacks(new EditorCallbacks());
+        $this->editor->handleInput("\x00"); // ctrl+space, nobody to ask
+        $this->assertStringContainsString('No language server', $this->screen());
+
+        $this->editor->handleInput("\x1b");
+        $this->assertStringNotContainsString('No language server', $this->screen());
+    }
+
     public function testRequestSignatureHelpShowsTheActiveSignatureLabel(): void
     {
         $controller = $this->controller();

@@ -9,7 +9,13 @@
                 "documentationFormat": [
                     "plaintext",
                     "markdown"
-                ]
+                ],
+                "tagSupport": {
+                    "valueSet": [
+                        1
+                    ]
+                },
+                "deprecatedSupport": true
             }
         },
         "publishDiagnostics": {
@@ -64,7 +70,8 @@
                 ]
             },
             "dataSupport": true,
-            "isPreferredSupport": true
+            "isPreferredSupport": true,
+            "disabledSupport": true
         },
         "semanticTokens": {
             "requests": {

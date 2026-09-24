@@ -14,6 +14,7 @@ use Porta\Editor\ActiveFileProvider;
 use Porta\Editor\AutoPairService;
 use Porta\Editor\BreadcrumbScanner;
 use Porta\Editor\CaretMotion;
+use Porta\Editor\CaretPopups;
 use Porta\Editor\ClipboardRing;
 use Porta\Editor\CodeScopeKind;
 use Porta\Editor\CommentSyntax;
@@ -21,6 +22,7 @@ use Porta\Editor\CompletionItem;
 use Porta\Editor\CompletionNote;
 use Porta\Editor\DecorationStore;
 use Porta\Editor\DiagnosticSeverity;
+use Porta\Editor\DocPopup;
 use Porta\Editor\Document;
 use Porta\Editor\EditorActions;
 use Porta\Editor\EditorCompletion;
@@ -69,6 +71,7 @@ use Porta\Ui\LtrPane;
 use Porta\Ui\Role;
 use Porta\Ui\ShortcutFormatter;
 use Porta\Ui\Theme\Styles;
+use Porta\Widget\Render\CaretPopupRenderer;
 use Porta\Widget\Render\EditorDecorations;
 use Porta\Widget\Render\EditorGeometry;
 use Porta\Widget\Render\EditorPopupGeometry;
@@ -202,7 +205,7 @@ final class CodeEditorWidget extends AbstractWidget implements
     private ?array $lastFollowedCursor = null;
 
     /** One-line signature hint shown above the cursor, cleared on movement. */
-    private ?SignatureHint $signatureHint = null;
+    private readonly CaretPopups $caretPopups;
 
     /** Editing-verb dispatcher (movement/clipboard/line ops), rebuilt per document. */
     private EditorActions $actions;
@@ -235,6 +238,7 @@ final class CodeEditorWidget extends AbstractWidget implements
     ) {
         $this->initStyles($styles);
         $this->callbacks = new EditorCallbacks();
+        $this->caretPopups = new CaretPopups();
         $this->display = new EditorDisplayOptions($this->invalidate(...));
         $this->decorations = new DecorationStore($this->invalidate(...));
         // Injected when the container builds it, so the pickers outlive this
@@ -345,6 +349,7 @@ final class CodeEditorWidget extends AbstractWidget implements
             $mc->setExtras($extras);
         });
         $this->completion = $this->newEditorCompletion($document);
+        $this->caretPopups->doc = null; // about the code that was here
         $this->foldModel = new FoldModel($document);
         $this->scroll = new EditorScroll($document, $this->foldModel, $this->invalidate(...));
         $this->mouse = $this->newEditorMouse($document);
@@ -357,7 +362,7 @@ final class CodeEditorWidget extends AbstractWidget implements
     /**
      * Open a modal list overlay (recent files, later: hover docs etc.).
      *
-     * @param list<array{label: string, hint: string, value: string, checked?: bool}> $items
+     * @param list<array{label: string, hint: string, value: string, checked?: bool, disabled?: bool}> $items
      * @param callable(string): void                                  $onPick receives the picked item's value
      */
     #[\Override]
@@ -498,17 +503,29 @@ final class CodeEditorWidget extends AbstractWidget implements
         $this->overlayHost->openPrompt($label, $initial, $onSubmit, $danger);
     }
 
+    /**
+     * Show a symbol's documentation in a popup under the caret, where the
+     * question was asked. It replaces the completion list: one caret, one
+     * read-out at a time.
+     */
+    public function showDocPopup(string $text): void
+    {
+        $this->completion->close();
+        $this->caretPopups->doc = new DocPopup($text);
+        $this->invalidate();
+    }
+
     #[\Override]
     public function setSignatureHint(?string $hint, ?array $activeRange = null, array $overloads = [], int $overload = 0): void
     {
         $next = null === $hint ? null : new SignatureHint($hint, $activeRange, $overloads, $overload);
         if (
-            $this->signatureHint?->label !== $next?->label
-            || $this->signatureHint?->activeRange !== $next?->activeRange
-            || $this->signatureHint?->overloads !== $next?->overloads
-            || $this->signatureHint?->overload !== $next?->overload
+            $this->caretPopups->signature?->label !== $next?->label
+            || $this->caretPopups->signature?->activeRange !== $next?->activeRange
+            || $this->caretPopups->signature?->overloads !== $next?->overloads
+            || $this->caretPopups->signature?->overload !== $next?->overload
         ) {
-            $this->signatureHint = $next;
+            $this->caretPopups->signature = $next;
             $this->invalidate();
         }
     }
@@ -852,15 +869,29 @@ final class CodeEditorWidget extends AbstractWidget implements
             return;
         }
 
-        if (null !== $this->signatureHint && $kb->matches($data, 'select_cancel')) {
+        // The documentation popup scrolls with the arrows and pages; Esc
+        // closes it, and any other key closes it and then does what it does.
+        $doc = $this->caretPopups->doc;
+        if (null !== $doc) {
+            $this->invalidate();
+            if ($doc->handleKey($data, $kb)) {
+                return;
+            }
+            $this->caretPopups->doc = null;
+            if ($kb->matches($data, 'select_cancel')) {
+                return;
+            }
+        }
+
+        if (null !== $this->caretPopups->signature && $kb->matches($data, 'select_cancel')) {
             $this->setSignatureHint(null);
 
             return;
         }
         // Alt+↑/↓ walk a function's overloads while its hint shows more than
         // one — and are the declaration keys again the moment it does not.
-        if (true === $this->signatureHint?->hasOverloads() && ("\x1b[1;3A" === $data || "\x1b[1;3B" === $data)) {
-            $this->signatureHint = $this->signatureHint->cycled("\x1b[1;3B" === $data ? 1 : -1);
+        if (true === $this->caretPopups->signature?->hasOverloads() && ("\x1b[1;3A" === $data || "\x1b[1;3B" === $data)) {
+            $this->caretPopups->signature = $this->caretPopups->signature->cycled("\x1b[1;3B" === $data ? 1 : -1);
             $this->invalidate();
 
             return;
@@ -959,6 +990,16 @@ final class CodeEditorWidget extends AbstractWidget implements
      */
     public function handlePopupClick(int $relRow, int $relCol): bool
     {
+        // The documentation popup keeps a click on itself and closes on one
+        // anywhere else — which then places the caret as usual.
+        if (null !== $this->caretPopups->doc) {
+            if ($this->caretPopups->doc->covers($relRow, $relCol)) {
+                return true;
+            }
+            $this->caretPopups->doc = null;
+            $this->invalidate();
+        }
+
         return $this->completion->handleClick($relRow, $relCol);
     }
 
@@ -979,6 +1020,12 @@ final class CodeEditorWidget extends AbstractWidget implements
     public function movePopupSelection(int $delta): bool
     {
         if ($this->overlayHost->moveSelection($delta)) {
+            return true;
+        }
+        if (null !== $this->caretPopups->doc) {
+            $this->caretPopups->doc->scrollBy($delta);
+            $this->invalidate();
+
             return true;
         }
         if ($this->completion->isOpen()) {
@@ -1163,16 +1210,16 @@ final class CodeEditorWidget extends AbstractWidget implements
     {
         // Both overlays anchor to the caret's on-screen row (past the sticky headers).
         $cursorScreenRow = \max(0, $this->foldModel->screenRowFor($geo->vScroll, $geo->cursorLine)) + $geo->stickyCount;
-        if (null !== $this->signatureHint) {
-            EditorRenderer::signatureHint(
+        if (null !== $this->caretPopups->signature) {
+            CaretPopupRenderer::signatureHint(
                 $result,
                 $geo->columns,
                 $geo->gutterWidth,
                 $cursorScreenRow,
-                $this->signatureHint->label,
+                $this->caretPopups->signature->label,
                 $this->styles,
-                $this->signatureHint->activeRange,
-                $this->signatureHint->counter(),
+                $this->caretPopups->signature->activeRange,
+                $this->caretPopups->signature->counter(),
             );
         }
 
@@ -1192,10 +1239,23 @@ final class CodeEditorWidget extends AbstractWidget implements
                 $popup['docScroll'],
             ));
         }
+        $doc = $this->caretPopups->doc;
+        if (null !== $doc) {
+            $doc->drawn = CaretPopupRenderer::docPopup(
+                $result,
+                $geo->columns,
+                $geo->rows,
+                $cursorScreenRow,
+                $geo->gutterWidth + ($geo->cursorDisplayCol - $geo->hScroll),
+                $doc->text,
+                $doc->scroll,
+                $this->styles,
+            );
+        }
         $note = $this->completion->note();
         if (null !== $note) {
             $text = (CompletionNote::Loading === $note ? Glyphs::WORKING.' ' : '').$this->translator->trans($note->text());
-            EditorRenderer::completionNote($result, $geo->columns, $geo->rows, $cursorScreenRow, $anchorCol, $text, $this->styles);
+            CaretPopupRenderer::completionNote($result, $geo->columns, $geo->rows, $cursorScreenRow, $anchorCol, $text, $this->styles);
         }
 
         // signatureHint() and completionPopup() rewrite rows in place, keeping the shape.

@@ -8,6 +8,7 @@ use Porta\Container\AsIdeService;
 use Porta\Editor\BufferManager;
 use Porta\I18n\Translator;
 use Porta\Support\ProjectPaths;
+use Porta\Ui\Glyphs;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\EditorRefactorHandler;
 use Porta\Workbench\Notifier;
@@ -347,11 +348,15 @@ final class RefactorController extends AbstractLspController implements EditorRe
      */
     private function pick(string $title, array $actions): void
     {
+        // The server's own pick leads with ★. An action it cannot run here
+        // comes with its reason, which stands in the hint's place, and it is
+        // greyed rather than left out: knowing why is worth a row.
         $items = \array_map(
             static fn (array $a, int $i): array => [
-                'label' => (string) $a['title'],
-                'hint' => self::kindLabel((string) ($a['kind'] ?? '')),
+                'label' => (true === ($a['isPreferred'] ?? null) ? Glyphs::PREFERRED.' ' : '').(string) $a['title'],
+                'hint' => \is_array($a['disabled'] ?? null) ? (string) ($a['disabled']['reason'] ?? '') : self::kindLabel((string) ($a['kind'] ?? '')),
                 'value' => (string) $i,
+                'disabled' => \is_array($a['disabled'] ?? null),
             ],
             $actions,
             \array_keys($actions),

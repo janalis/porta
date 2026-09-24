@@ -314,7 +314,8 @@ final class IdeTest extends TestCase
                 3950 => static fn () => $tui->handleInput("\x1b[1;2P"), // F1
                 4050 => function () use ($editor, $tui): void {
                     $this->painted($tui, 'greet(): string');
-                    $this->assertTrue(EditorState::pickerOpen($editor()));
+                    $this->assertNotNull(Probe::get($editor(), 'caretPopups')->doc, 'in a popup at the caret, not a picker');
+                    $this->assertFalse(EditorState::pickerOpen($editor()));
                     $tui->handleInput("\x1b");
                 },
 

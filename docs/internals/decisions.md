@@ -10418,3 +10418,25 @@ click still picks the row it lands on.
 - **Deferred:** moving the signature hint when the completion list also opens
   above the caret. The list is drawn last and covers it, as before.
 
+## UI round, phase 4b: documentation at the caret (2026-09-24)
+
+`Shift+F1` used to open the list overlay titled "Documentation", one docblock
+line per row. That is a picker with nothing to pick: it was centred on the
+screen, far from the symbol, and it had a filter and a selection that meant
+nothing. Now it is `DocPopup`, a read-only popup anchored under the caret and
+placed by the completion list's rule, so it never covers the caret row. It
+scrolls with ↑/↓, PgUp/PgDn and the wheel. Any other key closes it and then
+does its own work, as a browser tooltip would. Markdown becomes text
+(`HoverMarkdown`, which `hoverToText()` now uses): headings, emphasis, inline
+code and link targets lose their marks, and code blocks keep their lines,
+indented.
+
+The signature hint and the doc popup share one holder, `CaretPopups`. The
+editor widget pins `too-many-properties` at 31, and both are transient
+read-outs about the code at the caret.
+
+Quick fixes: the server's `isPreferred` action already sorted first. It now
+carries a `★`. An action with `disabled` (declared through `disabledSupport`)
+is greyed and struck through, with its reason as the hint. A list item gains
+`disabled?: bool` for this, and picking a disabled item leaves the list open.
+

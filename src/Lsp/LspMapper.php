@@ -273,14 +273,9 @@ final class LspMapper
             }
         }
 
-        $text = \trim(\implode("\n", $parts));
-        if ('' === $text) {
-            return null;
-        }
-        // Light markdown cleanup: drop code fences, collapse blank runs
-        $text = \preg_replace('/^```\w*$/m', replacement: '', subject: $text) ?? $text;
+        $text = HoverMarkdown::plain(\implode("\n", $parts));
 
-        return \preg_replace("/\n{3,}/", replacement: "\n\n", subject: \trim($text)) ?? $text;
+        return '' === \trim($text) ? null : $text;
     }
 
     /**
@@ -356,7 +351,7 @@ final class LspMapper
      * indented file-structure rows.
      *
      * @param list<array<array-key, mixed>|scalar|null>              $symbols
-     * @param list<array{label: string, hint: string, value: string, checked?: bool}> $items    accumulator (by reference)
+     * @param list<array{label: string, hint: string, value: string, checked?: bool, disabled?: bool}> $items    accumulator (by reference)
      */
     public static function flattenSymbols(array $symbols, int $depth, array &$items): void
     {

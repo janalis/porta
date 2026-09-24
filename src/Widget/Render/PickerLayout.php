@@ -43,7 +43,7 @@ final class PickerLayout
 
     /**
      * @param array{int, int, int, int}                                                                                                                             $bounds
-     * @param array{title: string, items: list<array{label: string, hint: string, value: string, checked?: bool}>, selected: int, hovered: int|null, filter: TextField, onPick: callable(string): void} $overlay
+     * @param array{title: string, items: list<array{label: string, hint: string, value: string, checked?: bool, disabled?: bool}>, selected: int, hovered: int|null, filter: TextField, onPick: callable(string): void} $overlay
      *
      * @return array{rows: list<string>, top: int, col: int, width: int, box: ModalBox}
      */
@@ -103,6 +103,10 @@ final class PickerLayout
             $box = \array_key_exists('checked', $item) ? FieldBox::checkbox($item['checked'], tint: RowSelection::Selected === $row ? null : $styles).' ' : '';
             $selectedRow = RowSelection::Selected === $row;
             $label = MatchMarks::apply(AnsiText::truncate($item['label'], $width - $hintWidth - 3 - self::boxWidth($item), pad: true), $item['label'], $filter, $selectedRow);
+            if (true === ($item['disabled'] ?? null)) {
+                // Greyed like a menu's disabled item: dim and struck through.
+                $label = $style->withDim()->withStrikethrough()->apply(\rtrim($label)).$style->getAnsiRestore().\str_repeat(' ', \max(0, \mb_strwidth($label) - \mb_strwidth(\rtrim($label))));
+            }
             // The first column is the selection's shape, the ▌ every list in
             // the IDE draws, so the row reads as chosen without its shade.
             $content[] = $style->apply(SelectionBar::of($selectedRow, focused: true)->value.$box.$label.self::gap($direction).$styles->of(Role::CompletionHint)->apply($item['hint']).' ');
@@ -342,7 +346,7 @@ final class PickerLayout
     /**
      * The columns a checklist item's box and its gap take, 0 for any other item.
      *
-     * @param array{label: string, hint: string, value: string, checked?: bool} $item
+     * @param array{label: string, hint: string, value: string, checked?: bool, disabled?: bool} $item
      */
     private static function boxWidth(array $item): int
     {

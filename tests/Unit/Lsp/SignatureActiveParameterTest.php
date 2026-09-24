@@ -70,7 +70,7 @@ final class SignatureActiveParameterTest extends TestCase
         \end($this->client->requests)['respond']($result, error: null);
 
         /** @var \Porta\Editor\SignatureHint|null $hint */
-        $hint = Probe::get($this->editor, 'signatureHint');
+        $hint = Probe::get($this->editor, 'caretPopups')->signature;
 
         return $hint?->activeRange;
     }
@@ -230,13 +230,13 @@ final class SignatureActiveParameterTest extends TestCase
         $controller = $this->controller();
         $controller->requestSignatureHelp(1, 4);
         \end($this->client->requests)['respond'](['signatures' => [['label' => self::LABEL]]], error: null);
-        $this->assertSame(self::LABEL, Probe::get($this->editor, 'signatureHint')?->label);
+        $this->assertSame(self::LABEL, Probe::get($this->editor, 'caretPopups')->signature?->label);
 
         Probe::set($this->tui, 'renderRequested', false);
         $controller->requestSignatureHelp(1, 4);
         \end($this->client->requests)['respond'](['signatures' => []], error: null);
 
-        $this->assertNull(Probe::get($this->editor, 'signatureHint'));
+        $this->assertNull(Probe::get($this->editor, 'caretPopups')->signature);
         // A hint cleared without a repaint stays on the screen it was drawn on.
         $this->assertTrue((bool) Probe::get($this->tui, 'renderRequested'));
     }
@@ -248,7 +248,7 @@ final class SignatureActiveParameterTest extends TestCase
         $this->assertNull($this->answer([
             'signatures' => [['label' => self::LABEL, 'parameters' => [['label' => ['not' => 'a pair']]], 'activeParameter' => 0]],
         ]));
-        $this->assertSame(self::LABEL, Probe::get($this->editor, 'signatureHint')?->label);
+        $this->assertSame(self::LABEL, Probe::get($this->editor, 'caretPopups')->signature?->label);
     }
 
     public function testAnEmptyParameterSubstringEmphasisesNothing(): void
@@ -263,12 +263,12 @@ final class SignatureActiveParameterTest extends TestCase
     public function testASignatureWithNoParametersStillShowsItsLabel(): void
     {
         $this->assertNull($this->answer(['signatures' => [['label' => self::LABEL]]]));
-        $this->assertSame(self::LABEL, Probe::get($this->editor, 'signatureHint')?->label);
+        $this->assertSame(self::LABEL, Probe::get($this->editor, 'caretPopups')->signature?->label);
     }
 
     public function testAnEmptyLabelClearsTheHintEntirely(): void
     {
         $this->assertNull($this->answer(['signatures' => [['label' => '']]]));
-        $this->assertNull(Probe::get($this->editor, 'signatureHint'));
+        $this->assertNull(Probe::get($this->editor, 'caretPopups')->signature);
     }
 }

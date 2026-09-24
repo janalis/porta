@@ -8,6 +8,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
+use Porta\Editor\CompletionItem;
 use Porta\Editor\Document;
 use Porta\Editor\FileOpener;
 use Porta\Editor\JumpHistory;
@@ -186,24 +187,81 @@ final class NavigationControllerTest extends TestCase
         return \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->layoutPickers([0, 0, 20, 100])[0]['rows']));
     }
 
-    public function testDocumentationPastTheTWELFTHLineIsStillReachable(): void
+    /** The editor as drawn, plain. */
+    private function screen(int $rows = 20): string
     {
-        // The overlay renders a window of twelve rows and moves it with the
-        // selection, so the doc was being sliced to twelve for no reason the
-        // surface required — and the rest was gone, not merely off screen.
+        return \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->render(new RenderContext(100, $rows))));
+    }
+
+    /**
+     * Documentation opens under the caret, in a popup that reads it in place
+     * — markdown's marks gone — and scrolls to the end of it: nothing is cut
+     * away, only out of view until the arrows or the wheel bring it in.
+     */
+    public function testDocumentationOpensAtTheCaretAndScrollsToItsEnd(): void
+    {
         $controller = $this->controller();
         $this->readyOn($controller, '/p/a.php', "<?php\n\$x = 1;\n");
-        $doc = \implode("\n", \array_map(static fn (int $n): string => "line{$n}", \range(start: 1, end: 30)));
+        $doc = "**Greets** the `name`.\n".\implode("\n", \array_map(static fn (int $n): string => "line{$n}", \range(start: 1, end: 30)));
+
+        $caret = $this->editor->getDocument()->cursorLine;
+        $controller->requestHover(1, 0);
+        $this->client->requests[0]['respond'](['contents' => ['kind' => 'markdown', 'value' => $doc]], error: null);
+
+        $screen = $this->screen();
+        $this->assertStringContainsString('│Greets the name.', $screen, 'read in place, the markup gone');
+        $this->assertStringNotContainsString('line25', $screen, 'row 25 starts off screen');
+        $this->assertStringContainsString('▼', $screen, 'and says there is more');
+
+        $this->editor->movePopupSelection(24); // the wheel
+        $this->assertStringContainsString('line25', $this->screen(), 'and scrolls into view');
+
+        $this->editor->handleInput("\x1b[B");
+        $this->editor->handleInput("\x1b[6~");
+        $this->assertStringContainsString('line30', $this->screen(), 'to the end with the keys');
+        $this->assertSame($caret, $this->editor->getDocument()->cursorLine, 'which the caret never saw');
+
+        $this->editor->handleInput("\x1b");
+        $this->assertStringNotContainsString('line30', $this->screen(), 'Esc closes it');
+    }
+
+    /** Any other key closes it and does what it does; a click on it stays on it, one elsewhere closes it. */
+    public function testTheDocPopupClosesOnAnyOtherKeyOrAClickAway(): void
+    {
+        $controller = $this->controller();
+        $this->readyOn($controller, '/p/a.php', "<?php\n\$x = 1;\n");
+        $controller->requestHover(1, 0);
+        $this->client->requests[0]['respond'](['contents' => 'Greets.'], error: null);
+        $this->screen();
+        [$top, $col] = Probe::get($this->editor, 'caretPopups')->doc->drawn['rect'];
+
+        $this->assertTrue($this->editor->handlePopupClick($top + 1, $col + 2), 'on the popup: kept');
+        $this->assertStringContainsString('Greets.', $this->screen());
+        $this->assertFalse($this->editor->handlePopupClick(15, 60), 'away from it: closed, and the click goes on');
+        $this->assertStringNotContainsString('Greets.', $this->screen());
+
+        // Esc is spent on the popup alone: a signature hint under it stays.
+        $controller->requestHover(1, 0);
+        $this->client->requests[1]['respond'](['contents' => 'Greets.'], error: null);
+        $this->editor->setSignatureHint('greet(string $who)');
+        $this->editor->handleInput("\x1b");
+        $this->assertStringNotContainsString('Greets.', $this->screen());
+        $this->assertStringContainsString('greet(string $who)', $this->screen());
+        $this->editor->setSignatureHint(null);
+
+        // Showing it takes the completion list's place; a buffer swap takes it away.
+        $this->editor->showCompletions([new CompletionItem('greeting', 'greeting', 'var', '')]);
+        $this->editor->showDocPopup('Greets.');
+        $this->assertFalse($this->editor->isCompletionOpen());
+        $this->editor->openFile('/p/b.php', "<?php\n");
+        $this->assertStringNotContainsString('Greets.', $this->screen());
+        $this->editor->openFile('/p/a.php', "<?php\n\$x = 1;\n");
 
         $controller->requestHover(1, 0);
-        $this->client->requests[0]['respond'](['contents' => $doc], error: null);
-
-        $this->assertStringContainsString('line1', $this->pickerText());
-        $this->assertStringNotContainsString('line25', $this->pickerText(), 'row 25 starts off screen');
-
-        Probe::object($this->editor, 'overlayHost')->moveListSelection(24);
-
-        $this->assertStringContainsString('line25', $this->pickerText(), 'and scrolls into view');
+        \end($this->client->requests)['respond'](['contents' => 'Greets.'], error: null);
+        $this->editor->handleInput('z');
+        $this->assertStringNotContainsString('Greets.', $this->screen());
+        $this->assertStringContainsString('z<?php', $this->screen(), 'the key typed');
     }
 
     public function testRequestPeekOpensAContextOverlayAtTheDefinition(): void

@@ -433,4 +433,29 @@ final class PickerLayoutTest extends TestCase
             'a count that does not fit is left out, not drawn past the corner',
         );
     }
+
+    /** A disabled list item is dim and struck through; its neighbours are not. */
+    public function testADisabledListItemIsStruckThrough(): void
+    {
+        $out = PickerLayout::layoutList(
+            [0, 0, 24, 100],
+            [
+                'title' => 'Fixes',
+                'items' => [
+                    ['label' => 'Blocked', 'hint' => 'why', 'value' => '0', 'disabled' => true],
+                    ['label' => 'Fine', 'hint' => '', 'value' => '1'],
+                ],
+                'selected' => 1,
+                'hovered' => null,
+                'filter' => new TextField(),
+                'onPick' => static fn (): null => null,
+            ],
+            $this->styles(),
+            closeHovered: false,
+        );
+        $row = static fn (string $label): string => \array_first(\array_filter($out['rows'], static fn (string $r): bool => \str_contains(AnsiUtils::stripAnsiCodes($r), $label)));
+
+        $this->assertMatchesRegularExpression('/\e\[9m(\e\[[0-9;]*m)*Blocked/', $row('Blocked'));
+        $this->assertStringNotContainsString("\e[9m", $row('Fine'));
+    }
 }

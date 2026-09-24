@@ -26,7 +26,7 @@ interface EditorHost
      * Show a modal list to pick from — the third of the prompt/jump primitives
      * above, and the one clipboard history needs.
      *
-     * @param list<array{label: string, hint: string, value: string, checked?: bool}> $items
+     * @param list<array{label: string, hint: string, value: string, checked?: bool, disabled?: bool}> $items
      * @param callable(string): void                                  $onPick receives the picked item's value
      */
     public function openListOverlay(string $title, array $items, callable $onPick): void;

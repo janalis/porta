@@ -774,6 +774,31 @@ final class RefactorControllerTest extends TestCase
         $this->assertStringContainsString('FIRST', $this->buffers->get('/tmp/proj/a.php')->document->getText());
     }
 
+    /**
+     * The server's own pick leads with ★; an action it cannot run here is
+     * greyed with its reason for a hint, and picking it runs nothing and
+     * leaves the list open to choose again.
+     */
+    public function testThePreferredFixIsStarredAndADisabledOneSaysWhy(): void
+    {
+        [$controller] = $this->ready();
+        $controller->requestCodeActions(0, 0);
+        \end($this->client->requests)['respond']([
+            ['title' => 'Blocked', 'disabled' => ['reason' => 'Select an expression first'], 'edit' => $this->editOf('BLOCKED')],
+            ['title' => 'Fix it', 'isPreferred' => true, 'kind' => 'quickfix', 'edit' => $this->editOf('FIXED')],
+        ], error: null);
+
+        $items = Probe::get(Probe::object($this->editor, 'overlayHost'), 'overlay')['items'];
+        $this->assertSame(['★ Fix it', 'Blocked'], \array_column($items, 'label'), 'the preferred one first, and starred');
+        $this->assertSame(['quickfix', 'Select an expression first'], \array_column($items, 'hint'));
+        $this->assertSame([false, true], \array_column($items, 'disabled'));
+
+        $this->editor->handleInput("\x1b[B");
+        $this->editor->handleInput("\r");
+        $this->assertStringNotContainsString('BLOCKED', $this->text(), 'nothing ran');
+        $this->assertNotNull(Probe::get(Probe::object($this->editor, 'overlayHost'), 'overlay'), 'and the list is still there');
+    }
+
     /** Refactor This offers its answers through the picker like quick fixes do. */
     public function testRefactorThisOffersItsAnswersThroughThePicker(): void
     {

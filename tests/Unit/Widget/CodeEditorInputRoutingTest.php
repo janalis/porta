@@ -104,7 +104,7 @@ final class CodeEditorInputRoutingTest extends TestCase
 
         $editor->handleInput("\x1b"); // select_cancel's default binding
 
-        $this->assertNull(Probe::get($editor, 'signatureHint'), 'Escape must clear the open signature hint');
+        $this->assertNull(Probe::get($editor, 'caretPopups')->signature, 'Escape must clear the open signature hint');
     }
 
     public function testHandleInputDispatchedActionRouterDoesNotAlsoRunTheEditingVerb(): void

@@ -127,7 +127,7 @@ nothing.
 | `Ctrl+Alt+N` | Inline |
 | `Ctrl+Alt+O` | Optimize imports (`source.organizeImports`; applied straight away when the server offers one) |
 | `Ctrl+Shift+P` | Parameter info — re-summon the signature popup (PhpStorm's `Ctrl+P`, which Go to File owns here) |
-| `Shift+F1` | Quick documentation |
+| `Shift+F1` | Quick documentation, in a popup under the caret (`↑`/`↓`, `PgUp`/`PgDn` or the wheel scroll it; `Esc` or any other key closes it) |
 | `Ctrl+F12` | File structure popup (type to filter — the symbol's KIND counts, so `method` narrows a class to its methods) |
 | `Alt+7` | Structure panel (persistent, on the dock) |
 | `F2` / `Shift+F2` | Next / previous problem in this file (wraps, and says so) |

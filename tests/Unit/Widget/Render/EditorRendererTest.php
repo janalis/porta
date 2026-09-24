@@ -12,6 +12,7 @@ use Porta\Highlight\CodeHighlighter;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Sgr;
 use Porta\Ui\Theme\Styles;
+use Porta\Widget\Render\CaretPopupRenderer;
 use Porta\Widget\Render\CursorVisibility;
 use Porta\Widget\Render\EditorRenderer;
 use Porta\Widget\Render\PaneFocus;
@@ -508,7 +509,7 @@ final class EditorRendererTest extends TestCase
     public function testSignatureHintDrawsTheFramedPopupAboveTheCaretWhenThereIsHeadroom(): void
     {
         $lines = \array_fill(start_index: 0, count: 10, value: \str_pad('', length: 40));
-        EditorRenderer::signatureHint($lines, columns: 40, gutterWidth: 2, cursorScreenRow: 5, hint: 'function foo(int $x)', styles: $this->styles());
+        CaretPopupRenderer::signatureHint($lines, columns: 40, gutterWidth: 2, cursorScreenRow: 5, hint: 'function foo(int $x)', styles: $this->styles());
         // Framed above: the border top row lands 3 rows above the caret.
         $this->assertStringContainsString('╭', $lines[2]);
     }
@@ -520,7 +521,7 @@ final class EditorRendererTest extends TestCase
         // cap (any sign/operand mistake in its formula changes where the
         // frame's right border lands).
         $lines = \array_fill(start_index: 0, count: 10, value: \str_pad('', length: 10));
-        EditorRenderer::signatureHint($lines, columns: 10, gutterWidth: 2, cursorScreenRow: 5, hint: 'abcdefgh', styles: $this->styles());
+        CaretPopupRenderer::signatureHint($lines, columns: 10, gutterWidth: 2, cursorScreenRow: 5, hint: 'abcdefgh', styles: $this->styles());
         $plain = AnsiUtils::stripAnsiCodes($lines[2]);
         // col(2) + width(5) + CHROME_COLS(2) - 1 = the right border at index 8.
         $this->assertSame('╮', \mb_substr($plain, start: 8, length: 1));
@@ -530,7 +531,7 @@ final class EditorRendererTest extends TestCase
     {
         $lines = \array_fill(start_index: 0, count: 10, value: \str_pad('', length: 40));
         // text = " ab " (width 4): the >=4 vs >4 boundary.
-        EditorRenderer::signatureHint($lines, columns: 40, gutterWidth: 2, cursorScreenRow: 5, hint: 'ab', styles: $this->styles());
+        CaretPopupRenderer::signatureHint($lines, columns: 40, gutterWidth: 2, cursorScreenRow: 5, hint: 'ab', styles: $this->styles());
         $this->assertStringContainsString('╭', $lines[2]);
     }
 
@@ -538,7 +539,7 @@ final class EditorRendererTest extends TestCase
     {
         $lines = \array_fill(start_index: 0, count: 10, value: \str_pad('', length: 40));
         // cursorScreenRow(3) >= 3: top = 3 - 3 = 0, framed above starting at row 0.
-        EditorRenderer::signatureHint($lines, columns: 40, gutterWidth: 2, cursorScreenRow: 3, hint: 'function foo()', styles: $this->styles());
+        CaretPopupRenderer::signatureHint($lines, columns: 40, gutterWidth: 2, cursorScreenRow: 3, hint: 'function foo()', styles: $this->styles());
         $this->assertStringContainsString('╭', $lines[0]);
     }
 
@@ -546,7 +547,7 @@ final class EditorRendererTest extends TestCase
     {
         $lines = \array_fill(start_index: 0, count: 3, value: \str_pad('', length: 40));
         // cursorScreenRow(3) -> top = 0; exactly 3 lines available (top+3<=3).
-        EditorRenderer::signatureHint($lines, columns: 40, gutterWidth: 2, cursorScreenRow: 3, hint: 'function foo()', styles: $this->styles());
+        CaretPopupRenderer::signatureHint($lines, columns: 40, gutterWidth: 2, cursorScreenRow: 3, hint: 'function foo()', styles: $this->styles());
         $this->assertStringContainsString('╭', $lines[0]);
         $this->assertStringContainsString('╰', $lines[2]);
     }
@@ -558,7 +559,7 @@ final class EditorRendererTest extends TestCase
         // laxer top+2 check would pass — the fallback path then also has no
         // room (row 2 is out of range), so nothing renders at all.
         $lines = \array_fill(start_index: 0, count: 2, value: \str_pad('', length: 40));
-        EditorRenderer::signatureHint($lines, columns: 40, gutterWidth: 2, cursorScreenRow: 3, hint: 'function foo()', styles: $this->styles());
+        CaretPopupRenderer::signatureHint($lines, columns: 40, gutterWidth: 2, cursorScreenRow: 3, hint: 'function foo()', styles: $this->styles());
         $this->assertCount(2, $lines, 'must not have grown past the given lines');
         $this->assertSame(\str_pad('', length: 40), $lines[0]);
         $this->assertSame(\str_pad('', length: 40), $lines[1]);
@@ -569,7 +570,7 @@ final class EditorRendererTest extends TestCase
         // Only 2 rows total: the framed slot needs 3, so neither above nor
         // below fits, and it must fall back to the unframed one-liner.
         $lines = \array_fill(start_index: 0, count: 2, value: \str_pad('', length: 40));
-        EditorRenderer::signatureHint($lines, columns: 40, gutterWidth: 2, cursorScreenRow: 0, hint: 'abcdefgh', styles: $this->styles());
+        CaretPopupRenderer::signatureHint($lines, columns: 40, gutterWidth: 2, cursorScreenRow: 0, hint: 'abcdefgh', styles: $this->styles());
         $this->assertStringContainsString('abcdefgh', AnsiUtils::stripAnsiCodes($lines[1]));
     }
 
@@ -579,7 +580,7 @@ final class EditorRendererTest extends TestCase
         // cursorScreenRow<3) and top+3=6 > 5, so it doesn't fit — falls back
         // to row = cursorScreenRow - 1 = 1, not - 0 or - 2 or + 1.
         $lines = \array_fill(start_index: 0, count: 5, value: \str_pad('', length: 40));
-        EditorRenderer::signatureHint($lines, columns: 40, gutterWidth: 2, cursorScreenRow: 2, hint: 'abcdefgh', styles: $this->styles());
+        CaretPopupRenderer::signatureHint($lines, columns: 40, gutterWidth: 2, cursorScreenRow: 2, hint: 'abcdefgh', styles: $this->styles());
         $this->assertStringContainsString('abcdefgh', AnsiUtils::stripAnsiCodes($lines[1]));
         $this->assertSame(\str_pad('', length: 40), $lines[2], 'row 2 (cursorScreenRow itself) must stay untouched');
     }
@@ -589,14 +590,14 @@ final class EditorRendererTest extends TestCase
         // 4 lines, cursorScreenRow=1: framed-above needs top=2, top+3=5>4
         // doesn't fit; fallback row = 1-1 = 0 exactly.
         $lines = \array_fill(start_index: 0, count: 4, value: \str_pad('', length: 40));
-        EditorRenderer::signatureHint($lines, columns: 40, gutterWidth: 2, cursorScreenRow: 1, hint: 'abcdefgh', styles: $this->styles());
+        CaretPopupRenderer::signatureHint($lines, columns: 40, gutterWidth: 2, cursorScreenRow: 1, hint: 'abcdefgh', styles: $this->styles());
         $this->assertStringContainsString('abcdefgh', AnsiUtils::stripAnsiCodes($lines[0]));
     }
 
     public function testSignatureHintFallbackAllowsAWidthOfExactlyFour(): void
     {
         $lines = \array_fill(start_index: 0, count: 2, value: \str_pad('', length: 40));
-        EditorRenderer::signatureHint($lines, columns: 40, gutterWidth: 2, cursorScreenRow: 0, hint: 'xy', styles: $this->styles());
+        CaretPopupRenderer::signatureHint($lines, columns: 40, gutterWidth: 2, cursorScreenRow: 0, hint: 'xy', styles: $this->styles());
         $this->assertStringContainsString('xy', AnsiUtils::stripAnsiCodes($lines[1]));
     }
 
@@ -605,7 +606,7 @@ final class EditorRendererTest extends TestCase
         // columns(8) - gutterWidth(2) - 1 = 5, well under the hint's own
         // 10-column width: this expression must be the binding cap.
         $lines = \array_fill(start_index: 0, count: 2, value: \str_pad('', length: 8));
-        EditorRenderer::signatureHint($lines, columns: 8, gutterWidth: 2, cursorScreenRow: 0, hint: 'abcdefgh', styles: $this->styles());
+        CaretPopupRenderer::signatureHint($lines, columns: 8, gutterWidth: 2, cursorScreenRow: 0, hint: 'abcdefgh', styles: $this->styles());
         $plain = AnsiUtils::stripAnsiCodes($lines[1]);
         // col(2) + width(5) = 7: the last painted column is 6, and 7 is blank.
         $this->assertNotSame(' ', \mb_substr($plain, start: 6, length: 1));
@@ -806,17 +807,59 @@ final class EditorRendererTest extends TestCase
     public function testTheNoteOpensWhereTheListWould(): void
     {
         $lines = \array_fill(start_index: 0, count: 10, value: \str_pad('', length: 40));
-        EditorRenderer::completionNote($lines, columns: 40, rows: 10, cursorScreenRow: 2, anchorCol: 5, text: 'No suggestions', styles: $this->styles());
+        CaretPopupRenderer::completionNote($lines, columns: 40, rows: 10, cursorScreenRow: 2, anchorCol: 5, text: 'No suggestions', styles: $this->styles());
         $this->assertStringContainsString('No suggestions', AnsiUtils::stripAnsiCodes($lines[4]));
 
         $lines = \array_fill(start_index: 0, count: 10, value: \str_pad('', length: 40));
-        EditorRenderer::completionNote($lines, columns: 40, rows: 10, cursorScreenRow: 8, anchorCol: 5, text: 'No suggestions', styles: $this->styles());
+        CaretPopupRenderer::completionNote($lines, columns: 40, rows: 10, cursorScreenRow: 8, anchorCol: 5, text: 'No suggestions', styles: $this->styles());
         $this->assertStringContainsString('No suggestions', AnsiUtils::stripAnsiCodes($lines[6]));
 
         $lines = \array_fill(start_index: 0, count: 2, value: \str_pad('', length: 40));
-        EditorRenderer::completionNote($lines, columns: 40, rows: 2, cursorScreenRow: 1, anchorCol: 5, text: 'No suggestions', styles: $this->styles());
+        CaretPopupRenderer::completionNote($lines, columns: 40, rows: 2, cursorScreenRow: 1, anchorCol: 5, text: 'No suggestions', styles: $this->styles());
         $this->assertSame([\str_pad('', length: 40), \str_pad('', length: 40)], $lines, 'no room on either side: nothing drawn');
-        EditorRenderer::completionNote($lines, columns: 3, rows: 2, cursorScreenRow: 1, anchorCol: 5, text: 'No suggestions', styles: $this->styles());
+        CaretPopupRenderer::completionNote($lines, columns: 3, rows: 2, cursorScreenRow: 1, anchorCol: 5, text: 'No suggestions', styles: $this->styles());
         $this->assertSame([\str_pad('', length: 40), \str_pad('', length: 40)], $lines, 'nor in no width');
+    }
+
+    /**
+     * The documentation popup: under the caret when it fits, above when not,
+     * never over the caret row; its ▼ while there is more below.
+     */
+    public function testTheDocPopupPlacesItselfOffTheCaretRow(): void
+    {
+        $text = \implode("\n", \array_map(static fn (int $n): string => "line{$n}", \range(1, end: 20)));
+        $lines = \array_fill(start_index: 0, count: 14, value: \str_pad('', length: 60));
+        $drawn = CaretPopupRenderer::docPopup($lines, columns: 60, rows: 14, cursorScreenRow: 1, anchorCol: 4, text: $text, scroll: 0, styles: $this->styles());
+
+        $this->assertSame([2, 3, PopupMetrics::COMPLETION_DOC_INNER + 2, PopupMetrics::COMPLETION_ROWS + 2], $drawn['rect'] ?? null, 'below, eight rows of it');
+        $this->assertSame(12, $drawn['maxScroll'] ?? null);
+        $this->assertStringContainsString('▼', AnsiUtils::stripAnsiCodes($lines[11]));
+        $this->assertSame(\str_pad('', length: 60), $lines[1], 'the caret row untouched');
+
+        $lines = \array_fill(start_index: 0, count: 14, value: \str_pad('', length: 60));
+        $drawn = CaretPopupRenderer::docPopup($lines, columns: 60, rows: 14, cursorScreenRow: 12, anchorCol: 4, text: $text, scroll: 99, styles: $this->styles());
+        $this->assertSame(2, $drawn['rect'][0] ?? null, 'above: its bottom border on row 11');
+        $this->assertStringContainsString('line20', AnsiUtils::stripAnsiCodes($lines[10]), 'a scroll past the end shows the end');
+        $this->assertStringContainsString('▲', AnsiUtils::stripAnsiCodes($lines[2]));
+        $this->assertStringNotContainsString('▼', AnsiUtils::stripAnsiCodes($lines[11]));
+
+        $lines = \array_fill(start_index: 0, count: 14, value: \str_pad('', length: 60));
+        $drawn = CaretPopupRenderer::docPopup($lines, columns: 60, rows: 14, cursorScreenRow: 5, anchorCol: 4, text: $text, scroll: 0, styles: $this->styles());
+        $this->assertSame([6, 8], [$drawn['rect'][0] ?? null, $drawn['rect'][3] ?? null], 'fitting nowhere: the roomier side, below, cut to its six rows');
+
+        $lines = \array_fill(start_index: 0, count: 3, value: \str_pad('', length: 60));
+        $this->assertNull(CaretPopupRenderer::docPopup($lines, columns: 60, rows: 3, cursorScreenRow: 1, anchorCol: 4, text: $text, scroll: 0, styles: $this->styles()), 'no room on either side');
+        $this->assertNull(CaretPopupRenderer::docPopup($lines, columns: 9, rows: 3, cursorScreenRow: 1, anchorCol: 4, text: $text, scroll: 0, styles: $this->styles()), 'nor any width');
+    }
+
+    /** A list pushed partly off the pane leaves its docblock no row: no panel, not an empty frame. */
+    public function testADocblockWithNoRowDrawsNothing(): void
+    {
+        $items = [new CompletionItem('a', 'a', 'var', '', documentation: 'Docs.')];
+        $lines = \array_fill(start_index: 0, count: 3, value: \str_pad('', length: 80));
+        $box = EditorRenderer::completionPopup($lines, columns: 80, rows: 3, cursorScreenRow: 0, anchorCol: 2, items: $items, selected: 0, hovered: null, styles: $this->styles());
+
+        $this->assertNull($box->doc);
+        $this->assertStringNotContainsString('╭', AnsiUtils::stripAnsiCodes(\implode('', $lines)));
     }
 }

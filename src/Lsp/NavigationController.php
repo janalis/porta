@@ -357,13 +357,9 @@ final class NavigationController extends AbstractLspController implements Editor
                 if (null === $text) {
                     return false;
                 }
-                // NOT truncated. The list overlay already scrolls — it renders
-                // a window of at most twelve rows and moves it with the
-                // selection — so slicing the text to twelve threw away
-                // documentation the surface was perfectly able to show, and
-                // did it silently.
-                $items = \array_map(static fn (string $l): array => ['label' => $l, 'hint' => '', 'value' => ''], \explode("\n", $text));
-                $this->editor->openListOverlay($this->trans('Documentation'), $items, static function (): void {});
+                // NOT truncated: the popup scrolls, and a docblock cut to what
+                // fits would throw documentation away silently.
+                $this->editor->showDocPopup($text);
                 $this->tui->requestRender();
 
                 return true;
