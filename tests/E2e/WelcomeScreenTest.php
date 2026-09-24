@@ -248,6 +248,47 @@ final class WelcomeScreenTest extends TestCase
     }
 
     /**
+     * On a roomy screen each card's button is a box and the card is as tall
+     * as it: the second card's last row — the box's bottom border, past its
+     * one-line detail — is still that card's to click.
+     */
+    public function testOnARoomyScreenTheCardsButtonsAreBoxesTheirWholeHeightClickable(): void
+    {
+        $project = new TempProject(['a.php' => "<?php\nreturn 1;\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                120 => function (Tui $tui, $terminal, object $ide) use ($project): void {
+                    $this->frame($tui);
+                    $region = $this->modalRegion($ide);
+                    $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+                    $this->assertMatchesRegularExpression('/┃ +Enable tempest +┃/u', $screen, 'the selected card\'s button, a heavy box');
+                    $this->assertMatchesRegularExpression('/│ +Enable phpantom +│/u', $screen, 'the next one\'s at rest');
+
+                    // Box rows: 0 title bar, 1 pad, 2-4 hero, 5-7 first card, 8
+                    // the rule between, 9-11 second card; SGR rows are 1-based.
+                    $row = $region->top + 11 + 1;
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $region->col + 5, $row));
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $region->col + 5, $row));
+                    $tui->tick();
+                    $tui->handleInput("\r");
+                    $tui->tick();
+
+                    $config = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true);
+                    $this->assertSame(
+                        [...IdeConfig::DEFAULT_ENABLED_PLUGINS, 'phpantom'],
+                        \is_array($config) ? $config['enabledPlugins'] ?? null : null,
+                        'the click on the box\'s last row selected the second step',
+                    );
+                },
+            ],
+            rows: 40,
+        );
+    }
+
+    /**
      * Reopening from the menu resets the transient view state: the widget
      * outlives the view, so without the reset a reopen would resume on
      * whatever step the last visit left selected.

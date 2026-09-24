@@ -126,4 +126,47 @@ final class IdeResponsiveTest extends TestCase
             rows: 30,
         );
     }
+
+    /**
+     * A dropdown over a join is left alone: the File menu hangs across the
+     * top rule and over the divider's ┬, and its own border shows there —
+     * the join comes back when the menu closes. What is pinned is the screen;
+     * its heavy border never reads as a rule, so the skip of covered cells
+     * that also guards it is pinned in FrameJoinsTest, with a light one.
+     */
+    public function testADropdownOverAJoinKeepsItsBorder(): void
+    {
+        $project = new TempProject(['src/Demo.php' => "<?php\n"]);
+        // The top rule's row: the menu bar is row 0.
+        $at = static fn (array $grid, int $col): string => \mb_substr($grid[1], $col, length: 1);
+
+        $this->runIde(
+            $project,
+            $project->path('src/Demo.php'),
+            [
+                300 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($at, &$divider): void {
+                    $this->frame($tui);
+                    $divider = Services::resolve($ide, Renderer::class)->getWidgetRect($tui->getById('separator'))->col ?? -1;
+                    $this->assertSame('┬', $at($this->screenGrid($tui, $terminal), $divider));
+
+                    $tui->handleInput("\x1b[21~"); // F10 arms the bar
+                    $tui->handleInput("\r"); // and drops File
+                },
+                500 => function (Tui $tui, VirtualTerminal $terminal) use ($at, &$divider): void {
+                    $this->awaitPainted($tui, $terminal, 'Open Project');
+                    $grid = $this->screenGrid($tui, $terminal);
+                    $this->assertSame('━', $at($grid, $divider), 'the dropdown\'s top border, not the join');
+
+                    $tui->handleInput("\x1b");
+                    $tui->handleInput("\x1b");
+                },
+                700 => function (Tui $tui, VirtualTerminal $terminal) use ($at, &$divider): void {
+                    $this->await(fn (): bool => '┬' === $at($this->screenGrid($tui, $terminal), $divider), what: 'the join back once the menu closed');
+                    $this->assertSame('┬', $at($this->screenGrid($tui, $terminal), $divider));
+                },
+            ],
+            columns: 100,
+            rows: 30,
+        );
+    }
 }
