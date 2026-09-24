@@ -248,4 +248,31 @@ final class SourcesTest extends TestCase
         $this->assertSame('a.php:2', $hits[0]->detail, 'project-relative path, and the line as a reader counts it');
         $source->cancel(); // idempotent; delegates to ProjectSearch::cancel
     }
+
+    /** With no server to ask, the source asks nothing and answers with why, not an empty "no results". */
+    public function testWorkspaceSymbolSourceSaysWhenThereIsNoServer(): void
+    {
+        $asked = 0;
+        $search = static function () use (&$asked): void {
+            ++$asked;
+        };
+        $up = false;
+        $source = new WorkspaceSymbolSource($search, SearchCategory::Symbols, [], new ProjectPaths('/proj'), static fn (): null => null, static fn (): null => null, static function () use (
+            &$up,
+        ): ?string {
+            return $up ? null : 'No language server';
+        });
+        $answers = [];
+        $emit = static function (array $hits, ?string $note = null) use (&$answers): void {
+            $answers[] = [$hits, $note];
+        };
+
+        $source->query('Gre', $emit);
+        $this->assertSame([[[], 'No language server']], $answers);
+        $this->assertSame(0, $asked, 'nobody was asked');
+
+        $up = true;
+        $source->query('Gre', $emit);
+        $this->assertSame(1, $asked, 'with a server, it is asked');
+    }
 }

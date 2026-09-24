@@ -10362,9 +10362,12 @@ rows it hides rather than shrinking the box.
 **Home and End stay with the field** and do not jump the list. A combobox's
 input has the focus, and the caret needs them.
 
-**Deferred:** "No language server" in place of "no results" for Go to Symbol
-without a server. That needs the controller to ask the pool at open, which is
-one more constructor argument for one picker.
+**Deferred, then done:** "No language server" in place of "no results" for Go
+to Symbol without a server. The controller did not need to ask the pool. A
+source's `$emit` may now carry a note with an empty answer. The symbol sources
+answer "No language server" without asking when the pool has no initialized
+server, and the note shows under the category header, where "Searching…"
+stood.
 
 ## UI round, phase 3: pickers say it with shapes (2026-09-24)
 

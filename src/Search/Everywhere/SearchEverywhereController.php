@@ -60,6 +60,9 @@ final class SearchEverywhereController
      */
     private array $pending = [];
 
+    /** @var array<int, string> why a category answered nothing, by order — its note until the next query */
+    private array $notes = [];
+
     /**
      * @param list<SearchSource> $syncSources  files, actions (run immediately)
      * @param list<SearchSource> $asyncSources classes, symbols, text (debounced)
@@ -113,6 +116,7 @@ final class SearchEverywhereController
         // category swollen for a search that never asked for it.
         $this->shown = [];
         $this->pending = [];
+        $this->notes = [];
 
         if ('' === $text) {
             $this->seedEmpty();
@@ -145,13 +149,16 @@ final class SearchEverywhereController
     /** @return \Closure(list<SearchHit>): void */
     private function guard(int $generation, SearchCategory $category): \Closure
     {
-        return function (array $hits) use ($generation, $category): void {
+        return function (array $hits, ?string $note = null) use ($generation, $category): void {
             if ($generation !== $this->generation) {
                 return; // a newer query (or close) superseded this response
             }
             /** @var list<SearchHit> $hits */
             $this->hitsByCategory[$category->order()] = $hits;
             unset($this->pending[$category->order()]);
+            if (null !== $note) {
+                $this->notes[$category->order()] = $note;
+            }
             $this->render();
         };
     }
@@ -252,9 +259,10 @@ final class SearchEverywhereController
             $all = $this->hitsByCategory[$category->order()] ?? [];
             $limit = $this->shown[$category->order()] ?? $this->capFor($category);
             $hits = \array_slice($all, offset: 0, length: $limit);
-            if ([] === $hits && \array_key_exists($category->order(), $this->pending)) {
+            $note = \array_key_exists($category->order(), $this->pending) ? Glyphs::WORKING.' '.$this->translator->trans('Searching…') : $this->notes[$category->order()] ?? null;
+            if ([] === $hits && null !== $note) {
                 $rows[] = SearchRow::header($this->translator->trans($category->title()));
-                $rows[] = SearchRow::note(Glyphs::WORKING.' '.$this->translator->trans('Searching…'));
+                $rows[] = SearchRow::note($note);
 
                 continue;
             }

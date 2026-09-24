@@ -33,6 +33,8 @@ final class WorkspaceSymbolSource implements SearchSource
         private readonly ProjectPaths $paths,
         private readonly \Closure $openFile,
         private readonly \Closure $jumpTo,
+        /** @var (\Closure(): ?string)|null why there is no server to ask right now, or null when there is one */
+        private readonly ?\Closure $unavailable = null,
     ) {}
 
     #[\Override]
@@ -44,6 +46,12 @@ final class WorkspaceSymbolSource implements SearchSource
     #[\Override]
     public function query(string $query, \Closure $emit): void
     {
+        $why = null === $this->unavailable ? null : ($this->unavailable)();
+        if (null !== $why) {
+            $emit([], $why); // nothing, and why — not "no results"
+
+            return;
+        }
         $token = ++$this->token;
         ($this->searchSymbols)($query, function (array $symbols) use ($emit, $token): void {
             // @mago-expect lint:no-insecure-comparison -- $token is a request-sequence counter, not sensitive data

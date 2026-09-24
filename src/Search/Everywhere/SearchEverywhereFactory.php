@@ -62,6 +62,12 @@ final readonly class SearchEverywhereFactory
         private Keybindings $ideKeys,
     ) {}
 
+    /** Why the symbol sources have nobody to ask — their note in place of "no results" — or null when a server is up. */
+    private function noServer(): ?string
+    {
+        return $this->lsp->isInitialized() ? null : $this->translator->trans('No language server');
+    }
+
     /** An action's primary key, formatted as everywhere else, or '' when it has none. */
     private function shortcutOf(string $id): string
     {
@@ -167,7 +173,7 @@ final readonly class SearchEverywhereFactory
         return new SearchEverywhereController(
             $this->overlay,
             [],
-            [new WorkspaceSymbolSource($searchSymbols, SearchCategory::Symbols, [], $this->paths, $openFile, $jumpTo)],
+            [new WorkspaceSymbolSource($searchSymbols, SearchCategory::Symbols, [], $this->paths, $openFile, $jumpTo, $this->noServer(...))],
             $this->buffers,
             $this->tui,
             $this->paths,
@@ -199,8 +205,8 @@ final readonly class SearchEverywhereFactory
                 $this->settings,
             ],
             [
-                new WorkspaceSymbolSource($searchSymbols, SearchCategory::Classes, [5, 10, 11, 23], $this->paths, $openFile, $jumpTo),
-                new WorkspaceSymbolSource($searchSymbols, SearchCategory::Symbols, [], $this->paths, $openFile, $jumpTo),
+                new WorkspaceSymbolSource($searchSymbols, SearchCategory::Classes, [5, 10, 11, 23], $this->paths, $openFile, $jumpTo, $this->noServer(...)),
+                new WorkspaceSymbolSource($searchSymbols, SearchCategory::Symbols, [], $this->paths, $openFile, $jumpTo, $this->noServer(...)),
                 new TextSource(new ProjectSearch($this->paths->root()), $this->paths, $openFile, $jumpTo),
             ],
             $this->buffers,

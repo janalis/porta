@@ -238,6 +238,25 @@ final class SearchEverywhereControllerTest extends TestCase
         $this->assertSame([], \array_filter($overlay->rows, static fn (SearchRow $r): bool => null !== $r->note), 'an empty query asks no async source, and forgets the ones still out');
     }
 
+    /** A category that answers nothing with a note shows the note under its header; the next query forgets it. */
+    public function testASourcesNoteStandsInForItsEmptyAnswer(): void
+    {
+        $overlay = $this->overlay();
+        $symbols = $this->source(SearchCategory::Symbols);
+        $controller = $this->controller($overlay, [], [$symbols], new BufferManager());
+        $controller->open();
+
+        ($overlay->onQuery)('Gre');
+        $this->scheduled[0]();
+        $symbols->emits[0]([], note: 'No language server');
+        $this->assertSame(['Symbols', 'No language server'], \array_values(\array_filter(\array_map(static fn (SearchRow $r): ?string => $r->header ?? $r->note, $overlay->rows))));
+
+        ($overlay->onQuery)('Greg');
+        $this->scheduled[1]();
+        $symbols->emits[1]([]);
+        $this->assertSame([], $overlay->rows, 'an answer of nothing, without a note, shows nothing');
+    }
+
     /** A greyed command is there to be read, not run: picking it does nothing and leaves the palette open. */
     public function testPickingADisabledHitDoesNothing(): void
     {
