@@ -51,4 +51,16 @@ final class DropdownRegionTest extends TestCase
         $this->assertTrue($region->coversRow(9));
         $this->assertFalse($region->coversRow(10));
     }
+
+    /** A scrolled list's rows show later items: a row maps to the item it shows, framed or bare. */
+    public function testAScrolledRegionMapsARowToTheItemItShows(): void
+    {
+        $framed = new DropdownRegion(top: 5, col: 10, width: 8, count: 5, framed: true, first: 7);
+        $bare = new DropdownRegion(top: 5, col: 10, width: 8, count: 3, first: 7);
+
+        $this->assertSame(7, $framed->itemAt(6, 11), 'the first item row shows item 7');
+        $this->assertSame(9, $framed->itemAt(8, 11));
+        $this->assertNull($framed->itemAt(5, 11), 'the border is still no item');
+        $this->assertSame(7, $bare->itemAt(5, 11));
+    }
 }

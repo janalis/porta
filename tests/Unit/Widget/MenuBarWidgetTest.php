@@ -318,6 +318,37 @@ final class MenuBarWidgetTest extends TestCase
         );
     }
 
+    /**
+     * A dropdown with room for fewer rows than it has items shows a window
+     * that moves only as far as keeps the selection in it, never past the
+     * last item, and starts over at the top when a menu opens.
+     */
+    public function testTheDropdownWindowFollowsTheSelection(): void
+    {
+        $bar = new MenuBarWidget();
+        $items = \array_map(static fn (int $i): MenuItem => new MenuItem("Item {$i}", '', null), \range(0, end: 9));
+        $bar->setMenus([new Menu('File', $items), new Menu('Edit', $items)]);
+
+        $this->assertSame(0, $bar->dropdownScroll(4), 'closed: no window');
+        $bar->open(0);
+        $this->assertSame(0, $bar->dropdownScroll(4));
+        for ($i = 0; $i < 5; ++$i) {
+            $bar->handleInput("\x1b[B");
+        }
+        $this->assertSame(2, $bar->dropdownScroll(4), 'item 5 is the window\'s last row');
+        $bar->handleInput("\x1b[A");
+        $bar->handleInput("\x1b[A");
+        $this->assertSame(2, $bar->dropdownScroll(4), 'up within the window moves nothing');
+        $this->assertSame(0, $bar->dropdownScroll(20), 'room for every item: no scroll');
+        $this->assertSame(0, $bar->dropdownScroll(4), 'and none that sticks past the end');
+
+        $bar->moveSelection(6); // item 3 to the last, item 9
+        $this->assertSame(9, $bar->dropdownScroll(1), 'one row: the selection alone');
+        $this->assertSame(6, $bar->dropdownScroll(4), 'never past the last item');
+        $bar->open(1);
+        $this->assertSame(0, $bar->dropdownScroll(4), 'another menu starts at its top');
+    }
+
     public function testOnNavigateFiresOnOpenAndMovement(): void
     {
         $bar = $this->bar();

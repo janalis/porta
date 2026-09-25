@@ -17,6 +17,8 @@ final readonly class DropdownRegion
      *                     mirrored prose — the RTL segmenter honors it per run
      * @param bool $framed whether the box wears a {@see \Porta\Widget\Render\PopupFrame}:
      *                     its outermost row/column ring is border, not items
+     * @param int  $first  the item its first item row shows — past 0 when a
+     *                     list too tall for the screen has scrolled
      */
     public function __construct(
         public int $top,
@@ -25,6 +27,7 @@ final readonly class DropdownRegion
         public int $count,
         public bool $ltr = false,
         public bool $framed = false,
+        public int $first = 0,
     ) {}
 
     /**
@@ -55,8 +58,8 @@ final readonly class DropdownRegion
 
     /**
      * Item index at the screen cell, or null outside the box and — on a
-     * framed box — on its border cells: item i sits one row below the top
-     * border, between the rails, so a 1-cell mis-click on the frame neither
+     * framed box — on its border cells: item $first + i sits i + 1 rows below
+     * the top border, between the rails, so a 1-cell mis-click on the frame neither
      * runs nor dismisses anything.
      */
     public function itemAt(int $row, int $col): ?int
@@ -65,11 +68,11 @@ final readonly class DropdownRegion
             return null;
         }
         if (!$this->framed) {
-            return $row - $this->top;
+            return $this->first + $row - $this->top;
         }
         $onBorderRow = $row === $this->top || $row === ($this->top + $this->count - 1);
         $onBorderCol = $col === $this->col || $col === ($this->col + $this->width - 1);
 
-        return $onBorderRow || $onBorderCol ? null : $row - $this->top - 1;
+        return $onBorderRow || $onBorderCol ? null : $this->first + $row - $this->top - 1;
     }
 }

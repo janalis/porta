@@ -117,6 +117,46 @@ final class MenuOverlayControllerTest extends TestCase
     }
 
     /**
+     * A menu taller than the screen ends where the panes do: a window of its
+     * items that follows the selection, ▲ and ▼ in the border where more run
+     * on, and a click on a row picks the item that row shows.
+     */
+    public function testATallMenuScrollsWithinTheScreen(): void
+    {
+        $this->renderer = new Renderer(new StyleSheet());
+        $this->tui = new BidiTui(terminal: new VirtualTerminal(columns: 30, rows: 8), keybindings: new Keybindings([]), renderer: $this->renderer);
+        $menuBar = new MenuBarWidget();
+        $menuBar->setMenus([new Menu('File', \array_map(static fn (int $i): MenuItem => new MenuItem("Item {$i}", '', null), \range(0, end: 9)))]);
+        $pane = new TestOverlayPane();
+        $this->tui->add($menuBar);
+        $this->tui->add($pane);
+        $this->frame(30, 8);
+        $controller = new MenuOverlayController($this->renderer, $menuBar, new ContextMenu(), new MenuOverlayPanes([$pane], static fn (): array => []));
+        // The pane's rect spans rows 1-8: the box gets eight rows, six items.
+        $screen = static fn (): array => \array_map(AnsiUtils::stripAnsiCodes(...), $pane->render(new RenderContext(30, 8)));
+
+        $menuBar->open(0);
+        $controller->refreshMenu();
+        $rows = $screen();
+        $this->assertStringContainsString('Item 0', $rows[1]);
+        $this->assertStringContainsString('Item 5', $rows[6]);
+        $this->assertStringContainsString('▼', $rows[7], 'more below');
+        $this->assertStringNotContainsString('▲', $rows[0], 'none above');
+        $this->assertSame(8, $controller->menuDropdown()?->count, 'the box stops at the pane\'s last row');
+
+        for ($i = 0; $i < 7; ++$i) {
+            $menuBar->handleInput("\x1b[B");
+        }
+        $controller->refreshMenu();
+        $rows = $screen();
+        $this->assertStringContainsString('Item 7', $rows[6], 'the window followed the selection down, no further');
+        $this->assertStringContainsString('Item 2', $rows[1]);
+        $this->assertStringContainsString('▲', $rows[0], 'more above');
+        $this->assertStringContainsString('▼', $rows[7], 'and below');
+        $this->assertSame(2, $controller->menuDropdown()?->itemAt(2, 3), 'a click on the first item row picks the item it shows');
+    }
+
+    /**
      * The dropdown's top border is left open under its title, whose rails run
      * on into the frame — also when the screen's edge pushed the box left of
      * its title. A context menu hangs from no title, and stays closed.

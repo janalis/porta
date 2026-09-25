@@ -149,26 +149,54 @@ final class MenuPanelTest extends TestCase
         $items = [new MenuItem('Hi', '', static fn (): null => null)];
         $segment = MenuPanel::segments($items, 0, 2, new Styles(DarkTheme::definition()))[0]['segment'];
         // inner = max(0, 2 - EDGE_COLS(2)) = 0: no budget for even a
-        // truncation ellipsis, just the two edge/gap spaces.
-        $this->assertSame('   ', AnsiUtils::stripAnsiCodes($segment));
+        // truncation ellipsis, just the two edge spaces — and no gap, which
+        // used to make the row one column wider than its panel.
+        $this->assertSame('  ', AnsiUtils::stripAnsiCodes($segment));
     }
 
-    public function testALabelYieldsEntirelyToAShortcutWiderThanTheWholePanel(): void
+    /**
+     * A panel too narrow for a row's label and shortcut drops the shortcut,
+     * not the label: the label says what the item does. It used to go the
+     * other way — `Save` gave up every column to a shortcut that still did
+     * not fit, and the row ran 17 columns past its panel.
+     */
+    public function testAShortcutYieldsToTheLabelOnAPanelTooNarrowForBoth(): void
     {
-        // The shortcut alone (21 columns) blows well past the 5-column inner
-        // budget: the label gets none of it (labelMax floors at 0, not a
-        // negative slice) and the gap floors at 1, not 0 or 2.
+        $styles = new Styles(DarkTheme::definition());
         $items = [new MenuItem('Save', 'Ctrl+Alt+Shift+Insert', static fn (): null => null)];
-        $segment = MenuPanel::segments($items, 0, 7, new Styles(DarkTheme::definition()))[0]['segment'];
-        $this->assertSame('  Ctrl+Alt+Shift+Insert ', AnsiUtils::stripAnsiCodes($segment));
+
+        $this->assertSame(' Save  ', AnsiUtils::stripAnsiCodes(MenuPanel::segments($items, 0, 7, $styles)[0]['segment']));
+        $this->assertSame(' Save  Ctrl+Alt+Shift+Insert ', AnsiUtils::stripAnsiCodes(MenuPanel::segments($items, 0, 29, $styles)[0]['segment']), 'the control: where both fit, both show');
+        $this->assertSame(\str_pad(' Save', length: 28), AnsiUtils::stripAnsiCodes(MenuPanel::segments($items, 0, 28, $styles)[0]['segment']), 'one column short, the key goes whole — never cut');
+    }
+
+    /** Each row decides alone: a short item keeps its key beside a long one that had to drop its own. */
+    public function testOnlyTheRowsThatCannotFitDropTheirShortcut(): void
+    {
+        $items = [new MenuItem('Undo', 'Ctrl+Z', static fn (): null => null), new MenuItem('Undo Last Refactoring', 'Ctrl+Alt+Z', static fn (): null => null)];
+        $rows = \array_map(static fn (array $row): string => AnsiUtils::stripAnsiCodes($row['segment']), MenuPanel::segments($items, 0, 26, new Styles(DarkTheme::definition())));
+
+        $this->assertSame([' Undo              Ctrl+Z ', ' Undo Last Refactoring    '], $rows);
+    }
+
+    /** A mirrored row with no shortcut spends no column on the mark that keeps a label and its key apart. */
+    public function testAMirroredRowWithNoShortcutCarriesNoMark(): void
+    {
+        $items = [new MenuItem('Welcome', '', static fn (): null => null)];
+        $segment = MenuPanel::segments($items, 0, 12, new Styles(DarkTheme::definition()), BaseDirection::Rtl)[0]['segment'];
+
+        $this->assertStringNotContainsString(Bidi::RTL_MARK, $segment);
+        $this->assertSame(12, AnsiUtils::visibleWidth($segment));
     }
 
     public function testLongLabelWithNoShortcutTruncatesToExactlyTheInnerWidth(): void
     {
         $items = [new MenuItem(\str_repeat('x', times: 20), '', static fn (): null => null)];
         $segment = MenuPanel::segments($items, 0, 14, new Styles(DarkTheme::definition()))[0]['segment'];
-        // inner = 12: 11 x's plus the truncation ellipsis exactly fill it.
-        $this->assertSame(' xxxxxxxxxxx…  ', AnsiUtils::stripAnsiCodes($segment));
+        // inner = 12: 11 x's plus the truncation ellipsis exactly fill it, and
+        // the row is the panel's 14 — a gap floored at 1 once made it 15, and
+        // the frame's clip then cut it again, a second ellipsis.
+        $this->assertSame(' xxxxxxxxxxx… ', AnsiUtils::stripAnsiCodes($segment));
     }
 
     public function testEmptyShortcutTailConsumesNoColumns(): void

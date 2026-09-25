@@ -76,6 +76,7 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
     private array $menus = [];
     private int $openIndex = 0;
     private int $selected = 0;
+    private int $scroll = 0; // the first item a dropdown too tall for the screen shows
     private ?int $hoveredIndex = null; // title hover-highlighted while no menu is open
 
     /**
@@ -109,6 +110,7 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
         $this->markOpen();
         $this->openIndex = IntMath::clamp($index, 0, \count($this->menus) - 1);
         $this->selected = $this->firstSelectable($this->openIndex);
+        $this->scroll = 0;
         $this->afterNavigate();
     }
 
@@ -327,6 +329,25 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
         }
 
         return MenuPanel::segments($this->menus[$this->openIndex]->items, $this->selected, $panelWidth, $this->styles, $this->direction);
+    }
+
+    /**
+     * The first item a dropdown with room for $visibleRows items shows: the
+     * window moves only as far as keeps the selection in it, and never past
+     * the last item — a list scrolled beyond its end would show empty rows.
+     */
+    public function dropdownScroll(int $visibleRows): int
+    {
+        if (!$this->isDropdownShown() || [] === $this->menus) {
+            return 0;
+        }
+        $this->scroll = IntMath::clamp(
+            IntMath::clamp($this->scroll, $this->selected - $visibleRows + 1, $this->selected),
+            0,
+            \max(0, \count($this->menus[$this->openIndex]->items) - $visibleRows),
+        );
+
+        return $this->scroll;
     }
 
     #[\Override]

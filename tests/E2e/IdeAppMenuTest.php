@@ -114,6 +114,43 @@ final class IdeAppMenuTest extends TestCase
         );
     }
 
+    /**
+     * On a short screen the Edit menu, taller than the room under the bar,
+     * ends above the status bar instead of running off the screen, says
+     * there is more (▼), and scrolls as the selection walks down to it (▲).
+     */
+    public function testATallMenuFitsAShortScreenAndScrolls(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $project = new TempProject(['A.php' => "<?php\necho 1;\n"]);
+        $border = static fn (array $grid): int => (int) \array_key_last(\array_filter($grid, static fn (string $line): bool => 1 === \preg_match('/^\s*┗━/u', $line)));
+
+        $this->runIde(
+            $project,
+            $project->path('A.php'),
+            [
+                200 => static function (Tui $tui): void {
+                    $tui->handleInput("\x1b[21~"); // F10 arms the bar
+                    $tui->handleInput("\x1b[C"); // Edit
+                    $tui->handleInput("\r"); // dropped
+                },
+                300 => function (Tui $tui, VirtualTerminal $terminal) use ($border): void {
+                    $this->awaitPainted($tui, $terminal, '▼');
+                    $grid = $this->screenGrid($tui, $terminal);
+                    $this->assertLessThan(\count($grid) - 1, $border($grid), 'the box closes above the status bar');
+                    $this->assertStringContainsString('▼', $grid[$border($grid)], 'saying more runs on below');
+                    $this->assertStringNotContainsString('▲', $grid[1], 'and none above');
+                    for ($i = 0; $i < 20; ++$i) {
+                        $tui->handleInput("\x1b[B");
+                    }
+                    $this->awaitPainted($tui, $terminal, '▲');
+                },
+            ],
+            columns: 80,
+            rows: 16,
+        );
+    }
+
     public function testAppMenuGreysFileActionsWhenNoFileOpen(): void
     {
         \putenv('PATH=/nonexistent');

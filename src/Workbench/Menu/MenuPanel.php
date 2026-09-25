@@ -200,13 +200,19 @@ final class MenuPanel
         string $gutter,
     ): string {
         $inner = \max(0, $panelWidth - self::EDGE_COLS - AnsiUtils::visibleWidth($gutter));
-        $shortcut = $item->shortcut;
+        // On a panel narrower than its row, the shortcut goes before the
+        // label is cut: the label says what the item does, the key is only
+        // a faster way to it — and one cut to `Ctrl+Sh…` is no key at all.
+        $shortcut = (\mb_strwidth($item->label) + self::SHORTCUT_GAP + \mb_strwidth($item->shortcut)) > $inner ? '' : $item->shortcut;
         $labelMax = \max(0, $inner - ('' !== $shortcut ? \mb_strwidth($shortcut) + self::SHORTCUT_GAP : 0));
         $label = AnsiText::truncate($item->label, $labelMax);
         if (MenuAvailability::Enabled === $availability) {
             $label = self::underlineLetter($label, $item->label, $letter);
         }
-        $gap = \max(1, $inner - AnsiUtils::visibleWidth($label) - \mb_strwidth($shortcut));
+        // With no shortcut there is nothing to keep apart: a label may run to
+        // the edge. A floor of 1 there drew a full-width label one column
+        // past the panel, and the frame's clip then cut it a second time.
+        $gap = \max('' === $shortcut ? 0 : 1, $inner - AnsiUtils::visibleWidth($label) - \mb_strwidth($shortcut));
 
         // Disabled reads dim with its label struck through, and never shows
         // the selected highlight. It used to borrow the row-hover shade, which
@@ -226,11 +232,13 @@ final class MenuPanel
         // run. Four shipped action labels end in a Latin run (`הצג TODO`,
         // `Git: הסחנה (stash)`, …) and a tail like that is strong left-to-right
         // just as the shortcut is, so without it the two merge and the shortcut
-        // is drawn inside the label. `$gap` is floored at 1, and Bidi spends the
-        // mark for a space, so the row keeps its width either way.
-        $divide = BaseDirection::Rtl === $direction
-            ? Bidi::RTL_MARK.\str_repeat(' ', $gap - 1)
-            : \str_repeat(' ', $gap);
+        // is drawn inside the label. With no shortcut there is no tail to keep
+        // apart and no mark; with one, `$gap` is floored at 1 and Bidi spends
+        // the mark for a space, so the row keeps its width either way.
+        $divide =
+            BaseDirection::Rtl === $direction && '' !== $shortcut
+                ? Bidi::RTL_MARK.\str_repeat(' ', \max(0, $gap - 1))
+                : \str_repeat(' ', $gap);
 
         return $style->apply(' '.$gutter.$label.$divide.$tail.' ');
     }

@@ -47,17 +47,20 @@ final class PopupFrame
      * first column within the box and $width its full width, rails included.
      * A title the box cannot hold gets the plain {@see top()}.
      */
-    public static function topOpenAt(int $innerWidth, Styles $styles, FieldState $state, int $offset, int $width): string
+    public static function topOpenAt(int $innerWidth, Styles $styles, FieldState $state, int $offset, int $width, string $mark = ''): string
     {
         $boxWidth = $innerWidth + self::CHROME_COLS;
         if ($offset < 0 || $width < 2 || ($offset + $width) > $boxWidth) {
-            return self::top($innerWidth, $styles, $state);
+            return self::top($innerWidth, $styles, $state, $mark);
         }
         [$left, $right, $bottomLeft, $bottomRight, $rule, $vertical] = $state->glyphs();
         $last = $offset + $width - 1;
         $accent = $styles->of(Role::TabAccent);
-        $before = 0 === $offset ? $vertical : $left.\str_repeat($rule, $offset - 1).$bottomRight;
-        $after = ($boxWidth - 1) === $last ? $vertical : $bottomLeft.\str_repeat($rule, \max(0, $boxWidth - $last - 2)).$right;
+        // A $mark — the ▲ of a scrolled list — is centred in the rule past
+        // the title, or before it when that run is too short to hold one.
+        $runAfter = \max(0, $boxWidth - $last - 2);
+        $before = 0 === $offset ? $vertical : $left.self::rule($rule, $offset - 1, $runAfter < 3 ? $mark : '').$bottomRight;
+        $after = ($boxWidth - 1) === $last ? $vertical : $bottomLeft.self::rule($rule, $runAfter, $mark).$right;
 
         return $accent->apply($before).$styles->of(Role::PopupRow)->apply(\str_repeat(' ', $width - 2)).$accent->apply($after);
     }
@@ -113,20 +116,21 @@ final class PopupFrame
      * separator row becomes a tee row — bottom border. Framed row 1 + i always
      * maps back to item i (separators keep their slot), so hit-testing stays a
      * fixed offset. An $opening leaves the top border open under the title the
-     * menu drops from ({@see topOpenAt()}).
+     * menu drops from ({@see topOpenAt()}). $above and $below are the marks
+     * of a list shown in part — ▲ and ▼ where items run on past the box.
      *
      * @param list<array{segment: string, separator: bool}> $rows
      * @param ?array{offset: int, width: int}               $opening
      *
      * @return list<string> each exactly $innerWidth + CHROME_COLS columns
      */
-    public static function wrapMenu(array $rows, int $innerWidth, Styles $styles, FieldState $state = FieldState::Idle, ?array $opening = null): array
+    public static function wrapMenu(array $rows, int $innerWidth, Styles $styles, FieldState $state = FieldState::Idle, ?array $opening = null, string $above = '', string $below = ''): array
     {
-        $out = [null === $opening ? self::top($innerWidth, $styles, $state) : self::topOpenAt($innerWidth, $styles, $state, $opening['offset'], $opening['width'])];
+        $out = [null === $opening ? self::top($innerWidth, $styles, $state, $above) : self::topOpenAt($innerWidth, $styles, $state, $opening['offset'], $opening['width'], $above)];
         foreach ($rows as $row) {
             $out[] = $row['separator'] ? self::tee($innerWidth, $styles, $state) : self::rail($row['segment'], $innerWidth, $styles, $state);
         }
-        $out[] = self::bottom($innerWidth, $styles, $state);
+        $out[] = self::bottom($innerWidth, $styles, $state, $below);
 
         return $out;
     }

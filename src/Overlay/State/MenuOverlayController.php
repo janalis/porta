@@ -11,6 +11,7 @@ use Porta\Overlay\Region\FloatingRegions;
 use Porta\Overlay\Region\PaneBounds;
 use Porta\Overlay\Region\SpanSlicer;
 use Porta\Support\IntMath;
+use Porta\Ui\Glyphs;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\ContextMenu;
 use Porta\Widget\MenuBarWidget;
@@ -128,10 +129,26 @@ final class MenuOverlayController implements FloatingRegions
         $top = $menuRect->row + $menuRect->rows;
         $title = $this->menuBar->openTitle();
         $opening = null !== $title ? ['offset' => $menuRect->col + $title['start'] - $anchor, 'width' => $title['width']] : null;
+        $inner = $width - PopupFrame::CHROME_COLS;
+        $items = $this->menuBar->dropdownSegments($inner);
+        // The box ends where the panes do, above the status bar: a menu
+        // taller than that shows a window of its items that follows the
+        // selection, ▲ and ▼ in the border where more run on past it.
+        [, , $bottom] = PaneBounds::union($this->panes->current(), $this->renderer) ?? [0, 0, $top + \count($items) + PopupFrame::CHROME_ROWS];
+        $visible = \max(1, \min(\count($items), $bottom - $top - PopupFrame::CHROME_ROWS));
+        $first = $this->menuBar->dropdownScroll($visible);
         // An open menu holds the keys: the heavy frame, the form controls' focus.
-        $rows = PopupFrame::wrapMenu($this->menuBar->dropdownSegments($width - PopupFrame::CHROME_COLS), $width - PopupFrame::CHROME_COLS, $this->styles, FieldState::Focused, $opening);
+        $rows = PopupFrame::wrapMenu(
+            \array_slice($items, $first, $visible),
+            $inner,
+            $this->styles,
+            FieldState::Focused,
+            $opening,
+            $first > 0 ? Glyphs::SCROLL_UP : '',
+            ($first + $visible) < \count($items) ? Glyphs::SCROLL_DOWN : '',
+        );
 
-        $this->menuDropdown = new DropdownRegion($top, $anchor, $width, \count($rows), framed: true);
+        $this->menuDropdown = new DropdownRegion($top, $anchor, $width, \count($rows), framed: true, first: $first);
         $this->menuShadowRegion = $this->shadowWidened($top, $anchor, $width, \count($rows));
         $this->pushOverlays($rows, $top, $anchor, $width, $this->panes->current());
     }

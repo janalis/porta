@@ -139,4 +139,25 @@ final class PopupFrameTest extends TestCase
         $this->assertSame('┃ ┗━┓', AnsiUtils::stripAnsiCodes(PopupFrame::wrapMenu($item, 3, Styles::dark(), FieldState::Focused, ['offset' => 0, 'width' => 3])[0]));
         $this->assertSame('┏━━━┓', AnsiUtils::stripAnsiCodes(PopupFrame::wrapMenu($item, 3, Styles::dark(), FieldState::Focused)[0]));
     }
+
+    /**
+     * A list shown in part says so in its border: ▲ in the top rule, ▼ in
+     * the bottom one. An opened top border keeps its ▲ in the rule past the
+     * title, or before it when that run is too short to hold one.
+     */
+    public function testAPartlyShownListMarksItsBorders(): void
+    {
+        $item = [['segment' => 'a', 'separator' => false]];
+        $rows = \array_map(AnsiUtils::stripAnsiCodes(...), PopupFrame::wrapMenu($item, 5, Styles::dark(), FieldState::Focused, null, Glyphs::SCROLL_UP, Glyphs::SCROLL_DOWN));
+        $this->assertSame(['┏━━▲━━┓', '┃a    ┃', '┗━━▼━━┛'], $rows);
+
+        $top = static fn (int $offset): string => AnsiUtils::stripAnsiCodes(PopupFrame::topOpenAt(10, Styles::dark(), FieldState::Focused, $offset, width: 4, mark: Glyphs::SCROLL_UP));
+        $this->assertSame('┃  ┗━━━▲━━━┓', $top(0), 'past the title');
+        $this->assertSame('┏━━━▲━━━┛  ┃', $top(8), 'before it, the run past it being too short');
+        $this->assertSame(
+            '┏━━━━▲━━━━━┓',
+            AnsiUtils::stripAnsiCodes(PopupFrame::topOpenAt(10, Styles::dark(), FieldState::Focused, -1, width: 4, mark: Glyphs::SCROLL_UP)),
+            'and a closed border keeps it too',
+        );
+    }
 }
