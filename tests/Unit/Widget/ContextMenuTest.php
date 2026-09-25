@@ -491,4 +491,27 @@ final class ContextMenuTest extends TestCase
         $this->assertSame(['cut'], $this->ran);
         $this->assertFalse($menu->isOpen());
     }
+
+    /**
+     * A panel with room for fewer rows than it has items shows a window that
+     * follows the selection; each open starts it over — a select on the
+     * option it opened on.
+     */
+    public function testTheWindowFollowsTheSelectionAndEachOpenStartsItOver(): void
+    {
+        $menu = new ContextMenu();
+        $items = \array_map(static fn (int $i): MenuItem => new MenuItem("Item {$i}", '', null), \range(0, end: 9));
+
+        $this->assertSame(0, $menu->dropdownScroll(4), 'closed: no window');
+        $menu->open($items);
+        $menu->moveSelection(6);
+        $this->assertSame(3, $menu->dropdownScroll(4), 'item 6 is the window\'s last row');
+
+        $menu->open($items);
+        $this->assertSame(0, $menu->dropdownScroll(4), 'a new menu starts at its top');
+        $menu->moveSelection(6);
+        $menu->dropdownScroll(4);
+        $menu->openListbox($items, 1, 10);
+        $this->assertSame(0, $menu->dropdownScroll(4), 'a select starts at the option it opened on');
+    }
 }

@@ -60,6 +60,7 @@ final class ContextMenu extends OverlayWidget
     /** @var list<MenuItem> */
     private array $items = [];
     private int $selected = 0;
+    private int $scroll = 0; // the first item a list too tall for the screen shows
     /** Whether it is open as a select's option list rather than a menu of actions. */
     private bool $listbox = false;
     /** A listbox is at least as wide as the select it hangs from (panel columns, frame excluded). */
@@ -80,6 +81,7 @@ final class ContextMenu extends OverlayWidget
         $this->listbox = false;
         $this->minWidth = 0;
         $this->selected = MenuPanel::firstSelectable($items);
+        $this->scroll = 0;
         $this->afterNavigate();
     }
 
@@ -101,6 +103,7 @@ final class ContextMenu extends OverlayWidget
         $this->listbox = true;
         $this->minWidth = $minWidth;
         $this->selected = \array_key_exists($current, $items) ? $current : MenuPanel::firstSelectable($items);
+        $this->scroll = 0;
         $this->afterNavigate();
     }
 
@@ -133,6 +136,17 @@ final class ContextMenu extends OverlayWidget
     public function segments(int $panelWidth): array
     {
         return $this->open ? MenuPanel::segments($this->items, $this->selected, $panelWidth, $this->styles, $this->direction, letters: !$this->listbox) : [];
+    }
+
+    /** The first item a panel with room for $visibleRows items shows ({@see MenuPanel::window()}). */
+    public function dropdownScroll(int $visibleRows): int
+    {
+        if (!$this->open) {
+            return 0;
+        }
+        $this->scroll = MenuPanel::window($this->scroll, $this->selected, \count($this->items), $visibleRows);
+
+        return $this->scroll;
     }
 
     #[\Override]

@@ -384,7 +384,10 @@ fits the screen both ways: a row too narrow for its label and its shortcut
 drops the shortcut, never cutting the label first, and a menu taller than the
 panes shows a window of its items that follows the selection
 (`MenuBarWidget::dropdownScroll()`), `▲`/`▼` in the border where more run on;
-`DropdownRegion::$first` maps a clicked row back to the item it shows. A
+`DropdownRegion::$first` maps a clicked row back to the item it shows. The
+context menu and a select's list do the same, on whichever side of their
+anchor fits — or, when neither does, the roomier one; both widgets ask
+`MenuPanel::window()` for the next window. A
 resize under an open menu lays it out again on the next frame tick
 (`MenuOverlayController::followResize()`); that needs `PaneBounds::union()` to
 ignore rects the renderer kept from a larger screen — a detached pane's, or a

@@ -331,21 +331,13 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
         return MenuPanel::segments($this->menus[$this->openIndex]->items, $this->selected, $panelWidth, $this->styles, $this->direction);
     }
 
-    /**
-     * The first item a dropdown with room for $visibleRows items shows: the
-     * window moves only as far as keeps the selection in it, and never past
-     * the last item — a list scrolled beyond its end would show empty rows.
-     */
+    /** The first item a dropdown with room for $visibleRows items shows ({@see MenuPanel::window()}). */
     public function dropdownScroll(int $visibleRows): int
     {
         if (!$this->isDropdownShown() || [] === $this->menus) {
             return 0;
         }
-        $this->scroll = IntMath::clamp(
-            IntMath::clamp($this->scroll, $this->selected - $visibleRows + 1, $this->selected),
-            0,
-            \max(0, \count($this->menus[$this->openIndex]->items) - $visibleRows),
-        );
+        $this->scroll = MenuPanel::window($this->scroll, $this->selected, \count($this->menus[$this->openIndex]->items), $visibleRows);
 
         return $this->scroll;
     }

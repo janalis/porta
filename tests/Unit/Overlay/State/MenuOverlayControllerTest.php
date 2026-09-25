@@ -95,6 +95,43 @@ final class MenuOverlayControllerTest extends TestCase
         $this->assertStringContainsString('┏', \implode("\n", $pane->render(new RenderContext(100, 24))), 'a menu holds the keys too: heavy');
     }
 
+    /**
+     * A right-click menu or a select's list too tall for either side of its
+     * anchor takes the roomier side and scrolls there, instead of flipping
+     * up past the screen's top; a select opened on an option far down its
+     * list shows that option.
+     */
+    public function testAListTooTallForEitherSideScrollsOnTheRoomierOne(): void
+    {
+        $this->renderer = new Renderer(new StyleSheet());
+        $this->tui = new BidiTui(terminal: new VirtualTerminal(columns: 100, rows: 24), keybindings: new Keybindings([]), renderer: $this->renderer);
+        $pane = new TestOverlayPane();
+        $this->tui->add($pane);
+        $this->frame();
+        $contextMenu = new ContextMenu();
+        $controller = new MenuOverlayController($this->renderer, new MenuBarWidget(), $contextMenu, new MenuOverlayPanes([$pane], static fn (): array => []));
+        $items = \array_map(static fn (int $i): MenuItem => new MenuItem("Item {$i}", '', null), \range(0, end: 29));
+        $rows = static fn (): array => \array_map(AnsiUtils::stripAnsiCodes(...), $pane->render(new RenderContext(100, 24)));
+
+        $contextMenu->open($items);
+        $controller->setContextAnchor(5, 10);
+        $controller->refreshContextMenu();
+        $region = $controller->contextMenuDropdown();
+        $this->assertSame([5, 19], [$region?->top, $region?->count], 'more room below row 5: down, to the screen\'s last row');
+        $this->assertStringContainsString('▼', $rows()[23]);
+
+        $controller->setContextAnchor(18, 10);
+        $controller->refreshContextMenu();
+        $region = $controller->contextMenuDropdown();
+        $this->assertSame([0, 18], [$region?->top, $region?->count], 'more room above row 18: up, from the screen\'s top');
+
+        $contextMenu->openListbox($items, 25, 10);
+        $controller->setContextAnchor(5, 10);
+        $controller->refreshContextMenu();
+        $this->assertSame(9, $controller->contextMenuDropdown()?->first, 'the current option, 25, is the window\'s last row');
+        $this->assertStringContainsString('▲', $rows()[5]);
+    }
+
     /** An armed bar (F10, nothing dropped) places no dropdown — not even an empty frame. */
     public function testAnArmedBarPlacesNoDropdown(): void
     {
@@ -194,17 +231,18 @@ final class MenuOverlayControllerTest extends TestCase
         $this->assertSame(8, $controller->menuDropdown()?->count, 'laid out again for the shrunk screen');
         $this->assertTrue($pending(), 'and the frame that shows it asked for');
 
-        // A right-click menu too: on the short screen it flips up off its
-        // anchor; grown back, there is room under it again.
+        // A right-click menu too: on the short screen it scrolls under its
+        // anchor — there is no room above row 1 to flip into; grown back,
+        // every item shows.
         $menuBar->close();
         $controller->refreshMenu();
         $contextMenu->open(\array_map(static fn (int $i): MenuItem => new MenuItem("Item {$i}", '', null), \range(0, end: 9)));
         $controller->setContextAnchor(1, 0);
         $controller->refreshContextMenu();
-        $this->assertSame(0, $controller->contextMenuDropdown()?->top, 'flipped up on the short screen');
+        $this->assertSame(8, $controller->contextMenuDropdown()?->count, 'rows 1-8 of the short screen');
         $this->frame(30, 12);
         $this->tui->processRender();
-        $this->assertSame(1, $controller->contextMenuDropdown()?->top, 'under its anchor on the grown one');
+        $this->assertSame(12, $controller->contextMenuDropdown()?->count, 'all ten items on the grown one');
     }
 
     /**

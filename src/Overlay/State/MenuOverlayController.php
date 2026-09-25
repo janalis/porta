@@ -173,16 +173,7 @@ final class MenuOverlayController implements FloatingRegions
         [, , $bottom] = PaneBounds::union($this->panes->current(), $this->renderer) ?? [0, 0, $top + \count($items) + PopupFrame::CHROME_ROWS];
         $visible = \max(1, \min(\count($items), $bottom - $top - PopupFrame::CHROME_ROWS));
         $first = $this->menuBar->dropdownScroll($visible);
-        // An open menu holds the keys: the heavy frame, the form controls' focus.
-        $rows = PopupFrame::wrapMenu(
-            \array_slice($items, $first, $visible),
-            $inner,
-            $this->styles,
-            FieldState::Focused,
-            $opening,
-            $first > 0 ? Glyphs::SCROLL_UP : '',
-            ($first + $visible) < \count($items) ? Glyphs::SCROLL_DOWN : '',
-        );
+        $rows = $this->framedWindow($items, $inner, $first, $visible, $opening);
 
         $this->menuDropdown = new DropdownRegion($top, $anchor, $width, \count($rows), framed: true, first: $first);
         $this->menuShadowRegion = $this->shadowWidened($top, $anchor, $width, \count($rows));
@@ -212,22 +203,52 @@ final class MenuOverlayController implements FloatingRegions
         // slice outside every overlay host would simply not render. The menu
         // only ever opens from a right-click / Ctrl+F10, i.e. after at least
         // one frame, so the current panes always have rects.
-        [, , $screenBottom, $screenRight] = PaneBounds::union($this->panes->current(), $this->renderer) ?? [0, 0, 0, 0];
+        [$screenTop, , $screenBottom, $screenRight] = PaneBounds::union($this->panes->current(), $this->renderer) ?? [0, 0, 0, 0];
         $width = \min($this->contextMenu->panelWidth() + PopupFrame::CHROME_COLS, $screenRight);
         $col = IntMath::clamp($this->contextAnchorCol, 0, $screenRight - $width);
-        // An open menu — or a select's open list — holds the keys: the heavy frame.
-        $rows = PopupFrame::wrapMenu($this->contextMenu->segments($width - PopupFrame::CHROME_COLS), $width - PopupFrame::CHROME_COLS, $this->styles, FieldState::Focused);
-        $top = ($this->contextAnchorRow + \count($rows)) > $screenBottom
-            ? \max(0, ($this->contextAnchorAbove ?? $this->contextAnchorRow) - \count($rows))
-            : $this->contextAnchorRow;
+        $inner = $width - PopupFrame::CHROME_COLS;
+        $items = $this->contextMenu->segments($inner);
+        // Under the anchor when it fits, else above it when it fits there;
+        // a list that fits neither side takes the roomier one and scrolls.
+        $above = $this->contextAnchorAbove ?? $this->contextAnchorRow;
+        $roomBelow = $screenBottom - $this->contextAnchorRow;
+        $roomAbove = $above - $screenTop;
+        $down = (\count($items) + PopupFrame::CHROME_ROWS) <= $roomBelow || $roomBelow >= $roomAbove;
+        $visible = \max(1, \min(\count($items), ($down ? $roomBelow : $roomAbove) - PopupFrame::CHROME_ROWS));
+        $first = $this->contextMenu->dropdownScroll($visible);
+        $rows = $this->framedWindow($items, $inner, $first, $visible);
+        $top = $down ? $this->contextAnchorRow : \max($screenTop, $above - \count($rows));
 
-        $this->contextMenuDropdown = new DropdownRegion($top, $col, $width, \count($rows), framed: true);
+        $this->contextMenuDropdown = new DropdownRegion($top, $col, $width, \count($rows), framed: true, first: $first);
         $this->contextShadowRegion = $this->shadowWidened($top, $col, $width, \count($rows));
         // A pane set includes its separator columns and conditionally hidden
         // rows (e.g. the breadcrumb), so a menu spilling across a pane
         // boundary still composites gaplessly.
         $this->pushOverlays($rows, $top, $col, $width, $this->panes->current());
         $this->laidOutFor = PaneBounds::union($this->panes->current(), $this->renderer);
+    }
+
+    /**
+     * The $visible items from $first on, framed — an open menu, or a select's
+     * open list, holds the keys: the heavy frame, the form controls' focus —
+     * with ▲ and ▼ in the border where the list runs on past the box.
+     *
+     * @param list<array{segment: string, separator: bool}> $items
+     * @param ?array{offset: int, width: int}               $opening
+     *
+     * @return list<string>
+     */
+    private function framedWindow(array $items, int $inner, int $first, int $visible, ?array $opening = null): array
+    {
+        return PopupFrame::wrapMenu(
+            \array_slice($items, $first, $visible),
+            $inner,
+            $this->styles,
+            FieldState::Focused,
+            $opening,
+            $first > 0 ? Glyphs::SCROLL_UP : '',
+            ($first + $visible) < \count($items) ? Glyphs::SCROLL_DOWN : '',
+        );
     }
 
     /**

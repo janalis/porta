@@ -353,4 +353,14 @@ final class MenuPanelTest extends TestCase
         $selected = MenuPanel::segments($items, 0, $width, Styles::dark())[0]['segment'];
         $this->assertStringNotContainsString(Styles::dark()->of(Role::TabAccent)->apply('✓'), $selected, 'the selected row keeps its own shade');
     }
+
+    /** The window moves only as far as keeps the selection in it, and never past the last item. */
+    public function testTheWindowFollowsTheSelectionNoFurther(): void
+    {
+        $this->assertSame(0, MenuPanel::window(0, 3, 10, 4), 'already in view: stays');
+        $this->assertSame(2, MenuPanel::window(0, 5, 10, 4), 'below: the selection becomes the last row');
+        $this->assertSame(1, MenuPanel::window(4, 1, 10, 4), 'above: the selection becomes the first row');
+        $this->assertSame(6, MenuPanel::window(8, 9, 10, 4), 'never past the last item');
+        $this->assertSame(0, MenuPanel::window(3, 5, 10, 20), 'room for all: no scroll');
+    }
 }

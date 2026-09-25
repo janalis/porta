@@ -7,6 +7,7 @@ namespace Porta\Workbench\Menu;
 use Porta\I18n\BaseDirection;
 use Porta\I18n\Bidi;
 use Porta\Support\AnsiText;
+use Porta\Support\IntMath;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
@@ -145,6 +146,22 @@ final class MenuPanel
         $i = Mnemonics::pick(self::labels($items), $key);
 
         return null !== $i && self::selectable($items[$i]) ? $i : null;
+    }
+
+    /**
+     * The first item a list with room for $visibleRows of its $count items
+     * shows, from the $scroll it showed last: the window moves only as far as
+     * keeps $selected in it, and never past the last item — a list scrolled
+     * beyond its end would show empty rows. Both dropdowns keep their own
+     * $scroll and ask this for the next one.
+     */
+    public static function window(int $scroll, int $selected, int $count, int $visibleRows): int
+    {
+        return IntMath::clamp(
+            IntMath::clamp($scroll, $selected - $visibleRows + 1, $selected),
+            0,
+            \max(0, $count - $visibleRows),
+        );
     }
 
     /**
