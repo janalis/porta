@@ -325,6 +325,17 @@ are benign — so it takes reading what the assertion needs to have been on scre
 
 The file is 0/14 under 24 burners at load 155-160 with all three fixed.
 
+**A transient state that a SUBPROCESS ends cannot be awaited into existence.**
+symfony-lsp's status cell shows `downloading 41%` from the chunk that names it
+until the fake curl exits, and a loop busy enough can read that chunk and the
+exit in back-to-back turns with no frame between: the percentage is never
+painted, and `awaitPainted()` burns its whole budget — the lost-effect
+signature, twice in coverage runs, never in 37 local runs under burners and
+pcov. No barrier fixes that, because the state it waits for may never exist.
+The stub holds the download open until the test has seen the meter
+(`FAKE_DOWNLOAD_GATE`, released with a `touch()`), so the state lasts exactly
+as long as the test needs it to.
+
 **Both git argv paths pass `--no-optional-locks`** (`GitProcessRunner` and
 `TempProject::git()`). Porcelain readers must never take the opportunistic index
 lock, which collides with a concurrent add or commit's mandatory one. Keep the
