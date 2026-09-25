@@ -490,14 +490,25 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
             $rows[$this->tagTop + $i] .= $line;
         }
         if (FieldBox::ROWS === $fieldRows) {
-            // The key hints fill the top and bottom rows past the controls on
-            // them — the boxed toggles, or none beside one-row tags; a compact
-            // bar has no rows to spare, and leaves them to the keybindings
-            // page.
-            $hintsAt = FieldBox::ROWS === $tagRows ? $col : $strip;
-            [$above, $below] = self::packHints($hints, $columns - $hintsAt);
-            $rows[0] .= $this->styles->of(Role::Faint)->apply($above);
-            $rows[2] .= $this->styles->of(Role::Faint)->apply($below);
+            // The key hints sit past the controls, centred on the boxes as
+            // their labels are: one line on the middle row, two on the top
+            // and bottom rows, three filling all of them. Beside one-row
+            // tags the middle row is theirs, so the hints keep to the top and
+            // bottom. A compact bar has no rows to spare, and leaves them to
+            // the keybindings page.
+            // Past boxed buttons they keep the one-column gutter every box
+            // keeps; past a field's box the gutter is already drawn.
+            $boxed = FieldBox::ROWS === $tagRows;
+            $gutter = $boxed ? ' ' : '';
+            $lines = self::packHints($hints, $columns - ($boxed ? $col + 1 : $strip), $boxed ? FieldBox::ROWS : 2);
+            $at = match (\count($lines)) {
+                1 => [1],
+                2 => [0, 2],
+                default => [0, 1, 2],
+            };
+            foreach ($lines as $i => $line) {
+                $rows[$at[$i]] .= $gutter.$this->styles->of(Role::Faint)->apply($line);
+            }
         }
 
         return \array_map(fn (string $row): string => $this->styles->of(Role::Toolbar)->apply(AnsiText::padRight($row, $columns)), $rows);
@@ -714,31 +725,36 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
     private const int BOX_MAX = 32;
 
     /**
-     * The hints (two-space separated) packed whole into two lines of $width:
-     * a hint is a key and what it does, and cutting one names half a key.
-     * What does not fit is left to the keybindings page.
+     * The hints (two-space separated) packed whole into at most $lines lines
+     * of $width: a hint is a key and what it does, and cutting one names half
+     * a key. What does not fit is left to the keybindings page.
      *
-     * @return array{string, string}
+     * @param positive-int $lines
+     *
+     * @return list<string> the lines that carry a hint, none when not one fits
      */
-    private static function packHints(string $hints, int $width): array
+    private static function packHints(string $hints, int $width, int $lines): array
     {
-        $above = '';
-        $below = null; // null until the first line is full
+        $packed = [];
+        $line = '';
         foreach (\explode('  ', $hints) as $hint) {
-            $line = $below ?? $above;
             $joined = '' === $line ? $hint : $line.'  '.$hint;
             if (\mb_strwidth($joined) <= $width) {
-                null === $below ? ($above = $joined) : ($below = $joined);
+                $line = $joined;
 
                 continue;
             }
-            if (null !== $below || '' === $above || \mb_strwidth($hint) > $width) {
+            if ('' === $line || (\count($packed) + 1) === $lines || \mb_strwidth($hint) > $width) {
                 break;
             }
-            $below = $hint;
+            $packed[] = $line;
+            $line = $hint;
+        }
+        if ('' !== $line) {
+            $packed[] = $line;
         }
 
-        return [$above, $below ?? ''];
+        return $packed;
     }
 
     /** The option toggles, name => caption, in the order drawn. */

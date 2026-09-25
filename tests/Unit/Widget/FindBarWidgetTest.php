@@ -379,6 +379,35 @@ final class FindBarWidgetTest extends TestCase
         $this->assertStringContainsString('Esc', $plain[2], 'and carry on along the bottom row');
     }
 
+    /**
+     * The hints centre on the boxes as the boxes' labels do: one line rides
+     * the value row, two take the top and bottom, three fill all of them —
+     * each a gutter clear of the last button.
+     */
+    public function testTheHintsCentreOnTheBoxes(): void
+    {
+        $shown = static function (int $columns): array {
+            $bar = new FindBarWidget(new Translator('en'));
+            $bar->open(new FakeFindTarget(new Document("x\n")), mode: FindMode::Find);
+
+            return \array_map(static fn (string $row): string => \mb_substr(AnsiUtils::stripAnsiCodes($row), start: 66), $bar->render(new RenderContext($columns, 3)));
+        };
+
+        $one = $shown(140);
+        $this->assertSame(['', '⏎/F3 next  Shift+F3 prev  Alt+X .*  Alt+W \b  Esc  Alt+C Aa', ''], \array_map(\trim(...), $one), 'one line, on the middle row');
+        $this->assertStringStartsWith(' ⏎', $one[1], 'a gutter clear of the last button');
+
+        $two = \array_map(\trim(...), $shown(120));
+        $this->assertSame(['⏎/F3 next  Shift+F3 prev  Alt+X .*  Alt+W \b  Esc', '', 'Alt+C Aa'], $two, 'two lines, above and below');
+
+        $three = \array_map(\trim(...), $shown(82));
+        $this->assertSame(['⏎/F3 next', 'Shift+F3 prev', 'Alt+X .*'], $three, 'three lines, filling the rows; the rest is left to the keybindings page');
+
+        // Thirteen columns past the gutter: `Shift+F3 prev` fits exactly.
+        $snug = \array_map(\trim(...), $shown(80));
+        $this->assertSame(['⏎/F3 next', 'Shift+F3 prev', 'Alt+X .*'], $snug, 'a hint exactly as wide as the room still takes a line');
+    }
+
     public function testCloseNotifiesAndClearsMatches(): void
     {
         $doc = new Document("x\n");
@@ -704,6 +733,8 @@ final class FindBarWidgetTest extends TestCase
 
         $this->assertStringContainsString('[1/2]', $rows[2]);
         $this->assertStringEndsWith(' .*  \\b  Aa  ↑  ↓  × ', $rows[1], 'beside the tags and buttons, which still fit');
+        $this->assertStringEndsWith('⏎/F3 next            ', $rows[0], 'the middle row is the tags\', so the hints keep above them');
+        $this->assertStringEndsWith('Shift+F3 prev        ', $rows[2], 'and below');
     }
 
     public function testHoverTintsTheTagUnderThePointer(): void
