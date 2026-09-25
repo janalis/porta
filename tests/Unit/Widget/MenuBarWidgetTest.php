@@ -115,6 +115,7 @@ final class MenuBarWidgetTest extends TestCase
         $this->assertStringEndsWith(Glyphs::ELLIPSIS, \rtrim($plain));
         $this->assertSame(1, $bar->titleAtColumn(11), 'and the mark is a title: the first menu it hides');
         $this->assertSame(11, $bar->titleStart(1), 'whose dropdown hangs under the mark');
+        $this->assertSame(11, $bar->titleStart(2), 'as does every later hidden menu\'s, not column 0');
     }
 
     /** The hidden menus are reached through the mark, which is lit while one of them is open. */

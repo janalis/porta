@@ -279,10 +279,14 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
         return MenuPanel::width($this->menus[$this->openIndex]->items);
     }
 
-    /** Absolute start column of menu title $index in the title strip. */
+    /**
+     * Absolute start column of menu title $index in the title strip. Every
+     * menu hidden behind the `…` hangs from the mark, which is the layout's
+     * entry right after the drawn titles — not only the first hidden one.
+     */
     public function titleStart(int $index): int
     {
-        return $this->titleLayout[$index]['start'] ?? 0;
+        return $this->titleLayout[\min($index, $this->shown)]['start'] ?? 0;
     }
 
     /**
