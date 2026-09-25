@@ -13,6 +13,7 @@ use Porta\Overlay\Presenter\FrameJoins;
 use Porta\Overlay\Presenter\PickerModalPresenter;
 use Porta\Overlay\Presenter\ToastPresenter;
 use Porta\Overlay\Presenter\WelcomeModalController;
+use Porta\Overlay\State\MenuOverlayController;
 use Porta\Settings\SettingsViewController;
 use Porta\Support\PerfCollector;
 
@@ -68,6 +69,7 @@ final class AsEagerMembershipTest extends ContainerTestCase
             StructureFollowsCaret::class, // ditto: moves the Structure tab's selection
             ChromeHeight::class, // reads the terminal's rows from the frame hook
             FrameJoins::class, // installs the frame's join pass on BidiTui
+            MenuOverlayController::class, // lays an open menu out again when a resize changes the screen
         ];
 
         $this->assertSame($ordered, \array_slice($actual, offset: 0, length: \count($ordered)), 'the contractual construction order');

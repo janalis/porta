@@ -28,16 +28,53 @@ final class PaneBounds
         $bottom = 0;
         $right = 0;
         foreach ($panes as $pane) {
-            $rect = $renderer->getWidgetRect($pane);
+            $rect = self::liveRect($pane, $renderer);
             if (null === $rect) {
                 continue;
             }
-            $top = \min($top, $rect->row);
-            $left = \min($left, $rect->col);
-            $bottom = \max($bottom, $rect->row + $rect->rows);
-            $right = \max($right, $rect->col + $rect->columns);
+            [$rectTop, $rectLeft, $rectBottom, $rectRight] = $rect;
+            $top = \min($top, $rectTop);
+            $left = \min($left, $rectLeft);
+            $bottom = \max($bottom, $rectBottom);
+            $right = \max($right, $rectRight);
         }
 
         return $bottom > $top && $right > $left ? [$top, $left, $bottom, $right] : null;
+    }
+
+    /**
+     * Where $pane sits on the screen the last frame drew, clipped to it — or
+     * null when it has no place there.
+     *
+     * The renderer keeps a widget's rect for as long as the widget lives,
+     * drawn or not, so a rect can describe an older, larger screen: a pane
+     * the layout detached (the tree on a narrow screen) and one that drew no
+     * rows (an edge rule on a compact one) both still report where they sat
+     * before. Folding those in kept a shrunk terminal's bounds at the old
+     * size. A detached pane counts for nothing; any other is clipped to its
+     * root's rect, which every frame rewrites to the screen it drew.
+     *
+     * @return array{int, int, int, int}|null [top, left, bottom, right)
+     */
+    private static function liveRect(AbstractWidget $pane, Renderer $renderer): ?array
+    {
+        $root = $pane;
+        while (null !== ($parent = $root->getParent())) {
+            $root = $parent;
+        }
+        if ($root === $pane) {
+            return null; // detached: it is its own root
+        }
+        $rect = $renderer->getWidgetRect($pane);
+        $screen = $renderer->getWidgetRect($root);
+        if (null === $rect || null === $screen) {
+            return null;
+        }
+        // The root always sits at the origin, so only the far edges can hang
+        // off it.
+        $bottom = \min($rect->row + $rect->rows, $screen->rows);
+        $right = \min($rect->col + $rect->columns, $screen->columns);
+
+        return $bottom > $rect->row && $right > $rect->col ? [$rect->row, $rect->col, $bottom, $right] : null;
     }
 }

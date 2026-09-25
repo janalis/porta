@@ -385,6 +385,11 @@ drops the shortcut, never cutting the label first, and a menu taller than the
 panes shows a window of its items that follows the selection
 (`MenuBarWidget::dropdownScroll()`), `▲`/`▼` in the border where more run on;
 `DropdownRegion::$first` maps a clicked row back to the item it shows. A
+resize under an open menu lays it out again on the next frame tick
+(`MenuOverlayController::followResize()`); that needs `PaneBounds::union()` to
+ignore rects the renderer kept from a larger screen — a detached pane's, or a
+zero-row edge rule's — which it does by skipping detached panes and clipping
+the rest to the root's rect. A
 disabled item is faint, dim and struck through on its label; neither it nor a
 separator takes the row highlight, which is an underline under monochrome and
 made a disabled item look hovered.

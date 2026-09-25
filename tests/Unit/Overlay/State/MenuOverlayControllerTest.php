@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Overlay\Region\DropdownRegion;
 use Porta\Overlay\State\MenuOverlayController;
 use Porta\Overlay\State\MenuOverlayPanes;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RendersRoot;
 use Porta\Tests\Support\TestOverlayPane;
 use Porta\Ui\BidiTui;
@@ -154,6 +155,56 @@ final class MenuOverlayControllerTest extends TestCase
         $this->assertStringContainsString('▲', $rows[0], 'more above');
         $this->assertStringContainsString('▼', $rows[7], 'and below');
         $this->assertSame(2, $controller->menuDropdown()?->itemAt(2, 3), 'a click on the first item row picks the item it shows');
+    }
+
+    /**
+     * An open menu follows a resize on the frame tick after it: the hook sees
+     * the new screen's rects, lays the dropdown out again for them and asks
+     * for the frame that shows it. Nothing to redo, it asks for nothing.
+     */
+    public function testAnOpenMenuIsLaidOutAgainWhenTheScreenChanges(): void
+    {
+        $this->renderer = new Renderer(new StyleSheet());
+        $this->tui = new BidiTui(terminal: new VirtualTerminal(columns: 30, rows: 12), keybindings: new Keybindings([]), renderer: $this->renderer);
+        $menuBar = new MenuBarWidget();
+        $menuBar->setMenus([new Menu('File', \array_map(static fn (int $i): MenuItem => new MenuItem("Item {$i}", '', null), \range(0, end: 9)))]);
+        $pane = new TestOverlayPane();
+        $this->tui->add($menuBar);
+        $this->tui->add($pane);
+        $this->frame(30, 12);
+        $contextMenu = new ContextMenu();
+        $controller = new MenuOverlayController($this->renderer, $menuBar, $contextMenu, new MenuOverlayPanes([$pane], static fn (): array => []), frameHooks: $this->tui, tui: $this->tui);
+        $pending = fn (): bool => (bool) Probe::get($this->tui, 'renderRequested');
+        $this->tui->processRender(); // the frame adding the widgets asked for
+
+        $this->frame(30, 8);
+        $this->tui->processRender();
+        $this->assertFalse($pending(), 'no menu open: a changed screen asks for nothing');
+        $this->frame(30, 12);
+
+        $menuBar->open(0);
+        $controller->refreshMenu();
+        $this->assertSame(12, $controller->menuDropdown()?->count, 'all ten items and the borders');
+
+        $this->tui->processRender();
+        $this->assertFalse($pending(), 'the same screen: nothing to redo, no frame asked for');
+
+        $this->frame(30, 8);
+        $this->tui->processRender();
+        $this->assertSame(8, $controller->menuDropdown()?->count, 'laid out again for the shrunk screen');
+        $this->assertTrue($pending(), 'and the frame that shows it asked for');
+
+        // A right-click menu too: on the short screen it flips up off its
+        // anchor; grown back, there is room under it again.
+        $menuBar->close();
+        $controller->refreshMenu();
+        $contextMenu->open(\array_map(static fn (int $i): MenuItem => new MenuItem("Item {$i}", '', null), \range(0, end: 9)));
+        $controller->setContextAnchor(1, 0);
+        $controller->refreshContextMenu();
+        $this->assertSame(0, $controller->contextMenuDropdown()?->top, 'flipped up on the short screen');
+        $this->frame(30, 12);
+        $this->tui->processRender();
+        $this->assertSame(1, $controller->contextMenuDropdown()?->top, 'under its anchor on the grown one');
     }
 
     /**

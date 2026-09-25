@@ -151,6 +151,50 @@ final class IdeAppMenuTest extends TestCase
         );
     }
 
+    /**
+     * An open dropdown follows a terminal resize: shrunk, it closes above
+     * the new status bar and scrolls (▼); grown back, it shows every item
+     * again. It used to keep the geometry of the screen it opened on until
+     * the next keypress.
+     */
+    public function testAnOpenMenuFollowsATerminalResize(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $project = new TempProject(['A.php' => "<?php\n"]);
+        $border = static fn (array $grid): ?int => \array_key_last(\array_filter($grid, static fn (string $line): bool => 1 === \preg_match('/^\s*┗━/u', $line)));
+
+        $this->runIde(
+            $project,
+            $project->path('A.php'),
+            [
+                200 => static function (Tui $tui): void {
+                    $tui->handleInput("\x1b[21~"); // F10 arms the bar
+                    $tui->handleInput("\r"); // and drops File
+                },
+                300 => function (Tui $tui, VirtualTerminal $terminal) use ($border): void {
+                    $this->awaitPainted($tui, $terminal, 'Quit');
+                    $this->assertStringNotContainsString('▼', \implode("\n", $this->screenGrid($tui, $terminal)), 'the whole menu fits at 30 rows');
+
+                    $terminal->simulateResize(60, 12);
+                    $tui->requestRender(force: true);
+                    $this->await(function () use ($tui, $terminal, $border): bool {
+                        $grid = $this->screenGrid($tui, $terminal);
+                        $at = $border($grid);
+
+                        return 12 === \count($grid) && null !== $at && $at < 11 && \str_contains($grid[$at], '▼');
+                    }, what: 'the shrunk screen\'s dropdown closing above its status bar, more below');
+
+                    $terminal->simulateResize(100, 30);
+                    $tui->requestRender(force: true);
+                    $this->awaitPainted($tui, $terminal, 'Quit');
+                    $this->assertStringNotContainsString('▼', \implode("\n", $this->screenGrid($tui, $terminal)), 'grown back, the whole menu again');
+                },
+            ],
+            columns: 100,
+            rows: 30,
+        );
+    }
+
     public function testAppMenuGreysFileActionsWhenNoFileOpen(): void
     {
         \putenv('PATH=/nonexistent');

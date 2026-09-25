@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Overlay\State;
 
+use Porta\Container\AsEager;
 use Porta\Container\AsIdeService;
 use Porta\I18n\Translator;
 use Porta\Overlay\Region\DropdownRegion;
@@ -11,6 +12,7 @@ use Porta\Overlay\Region\FloatingRegions;
 use Porta\Overlay\Region\PaneBounds;
 use Porta\Overlay\Region\SpanSlicer;
 use Porta\Support\IntMath;
+use Porta\Ui\FrameHooks;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\ContextMenu;
@@ -22,6 +24,7 @@ use Porta\Widget\Render\PopupFrame;
 use Porta\Widget\Support\StylesDefault;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Render\WidgetRect;
+use Symfony\Component\Tui\Tui;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 
 /**
@@ -36,6 +39,7 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
  * router's hit-testing; the RTL segmenter sees shadow-widened copies so the
  * painted bands reorder with the box.
  */
+#[AsEager]
 #[AsIdeService]
 final class MenuOverlayController implements FloatingRegions
 {
@@ -50,6 +54,9 @@ final class MenuOverlayController implements FloatingRegions
     /** Where a panel that has to flip up ends: the row above it (a select's own top row), or the anchor row. */
     private ?int $contextAnchorAbove = null;
 
+    /** @var array{int, int, int, int}|null the pane bounds the open menus were last laid out against */
+    private ?array $laidOutFor = null;
+
     public function __construct(
         private readonly Renderer $renderer,
         private readonly MenuBarWidget $menuBar,
@@ -57,8 +64,37 @@ final class MenuOverlayController implements FloatingRegions
         private readonly MenuOverlayPanes $panes,
         private readonly Translator $translator = new Translator(),
         ?Styles $styles = null,
+        ?FrameHooks $frameHooks = null,
+        private readonly ?Tui $tui = null,
     ) {
         $this->initStyles($styles);
+        $frameHooks?->onBeforeFrame($this->followResize(...));
+    }
+
+    /**
+     * The per-tick check ({@see FrameHooks::onBeforeFrame}) that an open menu
+     * still fits: a menu is laid out on open and on every move, and a
+     * terminal resized under it used to keep the old screen's box — running
+     * off a shrunk one, or cut short on a grown one — until the next key.
+     * The pane rects a hook sees are the last frame's, so the frame a resize
+     * forces still draws the old box; the tick after it sees the new rects,
+     * lays the menu out again and asks for the frame that shows it.
+     */
+    private function followResize(): void
+    {
+        if (!$this->menuBar->isDropdownShown() && !$this->contextMenu->isOpen()) {
+            return;
+        }
+        if (PaneBounds::union($this->panes->current(), $this->renderer) === $this->laidOutFor) {
+            return;
+        }
+        if ($this->menuBar->isDropdownShown()) {
+            $this->refreshMenu();
+        }
+        if ($this->contextMenu->isOpen()) {
+            $this->refreshContextMenu();
+        }
+        $this->tui?->requestRender();
     }
 
     /** The app-menu dropdown box (framed), for click/hover hit-testing; null when closed. */
@@ -151,6 +187,7 @@ final class MenuOverlayController implements FloatingRegions
         $this->menuDropdown = new DropdownRegion($top, $anchor, $width, \count($rows), framed: true, first: $first);
         $this->menuShadowRegion = $this->shadowWidened($top, $anchor, $width, \count($rows));
         $this->pushOverlays($rows, $top, $anchor, $width, $this->panes->current());
+        $this->laidOutFor = PaneBounds::union($this->panes->current(), $this->renderer);
     }
 
     /**
@@ -190,6 +227,7 @@ final class MenuOverlayController implements FloatingRegions
         // rows (e.g. the breadcrumb), so a menu spilling across a pane
         // boundary still composites gaplessly.
         $this->pushOverlays($rows, $top, $col, $width, $this->panes->current());
+        $this->laidOutFor = PaneBounds::union($this->panes->current(), $this->renderer);
     }
 
     /**
