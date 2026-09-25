@@ -126,15 +126,9 @@ final class PluginManager implements
      * per render or per file open, so a broken plugin reports once per
      * channel, not once per frame.
      *
-     * @var array<string, array<string, true>> channel => plugin => true
+     * @var array<string, array<string, true>> {@see FailureChannel} value => plugin => true
      */
     private array $reported = [];
-
-    /** The {@see $reported} channels — consts so a typo is an analyzer error, not a silent second bucket. */
-    private const string CHANNEL_HIGHLIGHTER = 'highlighter';
-    private const string CHANNEL_SEGMENT = 'segment';
-    private const string CHANNEL_VIEWER = 'viewer';
-    private const string CHANNEL_WHEN = 'when';
 
     private ?PluginRuntime $runtime = null;
 
@@ -476,7 +470,7 @@ final class PluginManager implements
                     try {
                         return $languages();
                     } catch (\Throwable $error) {
-                        $this->reportOnce(self::CHANNEL_HIGHLIGHTER, $plugin, $error);
+                        $this->reportOnce(FailureChannel::Highlighter, $plugin, $error);
 
                         return [];
                     }
@@ -485,7 +479,7 @@ final class PluginManager implements
                     try {
                         $highlight($content, $language, $deliver);
                     } catch (\Throwable $error) {
-                        $this->reportOnce(self::CHANNEL_HIGHLIGHTER, $plugin, $error);
+                        $this->reportOnce(FailureChannel::Highlighter, $plugin, $error);
 
                         throw $error;
                     }
@@ -515,7 +509,7 @@ final class PluginManager implements
                 }
                 $result = $spans['classify']($content, $language);
             } catch (\Throwable $error) {
-                $this->reportOnce(self::CHANNEL_HIGHLIGHTER, $spans['plugin'], $error);
+                $this->reportOnce(FailureChannel::Highlighter, $spans['plugin'], $error);
 
                 continue;
             }
@@ -587,7 +581,7 @@ final class PluginManager implements
                 /** @var mixed $text */
                 $text = $entry['segment']();
             } catch (\Throwable $error) {
-                $this->reportOnce(self::CHANNEL_SEGMENT, $entry['plugin'], $error);
+                $this->reportOnce(FailureChannel::Segment, $entry['plugin'], $error);
 
                 continue;
             }
@@ -655,7 +649,7 @@ final class PluginManager implements
                     return $viewer['id'];
                 }
             } catch (\Throwable $error) {
-                $this->reportOnce(self::CHANNEL_VIEWER, $viewer['plugin'], $error);
+                $this->reportOnce(FailureChannel::Viewer, $viewer['plugin'], $error);
             }
         }
 
@@ -663,12 +657,12 @@ final class PluginManager implements
     }
 
     /** Report a plugin's failure at most once per $channel — see {@see $reported}. */
-    private function reportOnce(string $channel, string $plugin, \Throwable $error): void
+    private function reportOnce(FailureChannel $channel, string $plugin, \Throwable $error): void
     {
-        if (\array_key_exists($plugin, $this->reported[$channel] ?? [])) {
+        if (\array_key_exists($plugin, $this->reported[$channel->value] ?? [])) {
             return;
         }
-        $this->reported[$channel][$plugin] = true;
+        $this->reported[$channel->value][$plugin] = true;
         $this->reportFailure($plugin, $error);
     }
 
@@ -766,7 +760,7 @@ final class PluginManager implements
             try {
                 return $when();
             } catch (\Throwable $error) {
-                $this->reportOnce(self::CHANNEL_WHEN, $plugin, $error);
+                $this->reportOnce(FailureChannel::When, $plugin, $error);
 
                 return false;
             }

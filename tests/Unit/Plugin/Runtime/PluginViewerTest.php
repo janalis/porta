@@ -305,6 +305,27 @@ final class PluginViewerTest extends TestCase
         $this->assertSame([], $manager->statusSegments(), 'a removed plugin takes its segment with it');
     }
 
+    /**
+     * Once per CHANNEL, not once per plugin: a plugin broken in two places is
+     * two faults to fix, and a claim's throw must not silence its segment's.
+     */
+    public function testOnePluginBrokenInTwoChannelsIsReportedOncePerChannel(): void
+    {
+        $manager = $this->manager();
+        $api = $this->api($manager, 'broken');
+        $api->registerViewer('boom', static fn (string $path): bool => throw new \RuntimeException('claim exploded'));
+        $api->registerStatusSegment(static fn (): string => throw new \RuntimeException('segment exploded'));
+        $manager->commit($api);
+
+        $manager->viewerFor('/p/a.png');
+        $manager->statusSegments();
+        $this->assertCount(2, $manager->warnings, 'the claim and the segment, one report each');
+
+        $manager->viewerFor('/p/b.png');
+        $manager->statusSegments();
+        $this->assertCount(2, $manager->warnings, 'and neither again');
+    }
+
     public function testAContributedMenuTravelsWithItsViewSafeListAndLeavesWithItsPlugin(): void
     {
         // A top-level group of its own, rather than an entry in the trailing
