@@ -19,6 +19,7 @@ use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\Settings\SettingsNavWidget;
+use Porta\Widget\TabBarWidget;
 use Porta\Widget\TerminalPanelWidget;
 use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\Renderer;
@@ -69,6 +70,7 @@ trait BuildsLayoutController
             $this->renderer,
             $this->tree,
             TestBottomDock::create($this->tui, new TerminalPanelWidget(), new ResultsPanelWidget(), new DebugPanelWidget()),
+            new TabBarWidget(),
             $this->regions,
             new Translator($locale),
         );

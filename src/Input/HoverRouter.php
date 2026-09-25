@@ -127,8 +127,8 @@ final readonly class HoverRouter
 
     /**
      * The pointer's column relative to the dock strip when it is over the visible
-     * strip — either of a folder strip's rows — else null. The strip carries the
-     * tool tabs and its label row doubles as the panel resize grab, so three
+     * strip — any of a folder strip's rows — else null. The strip carries the
+     * tool tabs and its top row doubles as the panel resize grab, so three
      * routes test it — wheel-cycle, hover, right-menu.
      */
     public function dockStripRelCol(MouseEvent $mouse): ?int
@@ -167,10 +167,11 @@ final readonly class HoverRouter
         $relCol = $stripCol ?? -1;
         $onTab = $onStrip && $this->dockTabs->isOnTab($relCol);
         $tintChanged = $onTab ? $this->dockTabs->hoverTabAt($relCol) : $this->dockTabs->clearHover();
-        // The grab is the label row's tail alone — the row a press arms
-        // (LayoutController::armPanelResize, one row above the panel).
+        // The grab is the top row's tail alone — the row a press arms
+        // (LayoutController::armPanelResize, the strip's height above the
+        // panel), the dock's top edge.
         $stripRect = $this->hit->rect($this->dockTabs);
-        $onGrab = $onStrip && !$onTab && null !== $stripRect && $mouse->row === ($stripRect->row + $this->dockTabs->stripRows() - 1);
+        $onGrab = $onStrip && !$onTab && null !== $stripRect && $mouse->row === $stripRect->row;
         $grabChanged = $onGrab ? $this->dockTabs->hoverGrab() : $this->dockTabs->clearGrab();
         $dockChanged = $tintChanged || $grabChanged;
 

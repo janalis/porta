@@ -475,9 +475,11 @@ only the box and a column either side of it toggle.
   its whole box to the pointer: the find bar, Find in Files' options band and
   the diff toolbar hit-test the band, not a row. The find bar's ↑ ↓ × are boxed
   `FieldBox::button()`s beside boxed toggles; a pane too narrow for both keeps
-  boxed fields with one-row tags on their value row. The diff toolbar's title
-  rides the middle row of its boxed toggles, and every body row counts the
-  header's height.
+  boxed fields with one-row tags on their value row. Its key hints centre on
+  the boxes past the buttons: one line on the middle row, two on the top and
+  bottom, three on all of them; beside one-row tags the middle row is theirs,
+  so the hints keep above and below. The diff toolbar's title rides the middle
+  row of its boxed toggles, and every body row counts the header's height.
 - The screen's density is the terminal's, never a pane's: `Ui/ScreenDensity`
   is the live holder, updated before each frame by `Layout/ChromeHeight`, which
   clears every chrome cache on a flip. A contributed view gets it through
@@ -524,12 +526,24 @@ keeps its own `┣━┫` (`PopupFrame::tee`): a light run cannot meet a heavy t
 ### Tab strips: folder tabs from 30 rows
 
 Every horizontal strip is `TabStripRenderer::render()`. At
-`TabStripRenderer::ROWS` (2) rows each tab is a folder tab with its own rails:
-a lid row above the labels, or below them at a bottom edge (`StripEdge`). The
-lid's shape is the state (`TabShape`): `╭─╮` for the rest, `┍━┑` for the shown
-tab, `┏━┓` with heavy rails for the shown tab of the pane that has the keys.
-The tabs stand on a `─` baseline. On a `Density::Compact` screen (below 30
-terminal rows) a strip is one row, each cell closed by a divider.
+`TabStripRenderer::ROWS` (3) rows each tab is a folder tab with its own rails:
+a lid row, the labels, then the `─` baseline the tabs stand on — mirrored at a
+bottom edge (`StripEdge`), where the baseline is on top. The lid's shape is
+the state (`TabShape`): `╭─╮` for the rest, `┍━┑` for the shown tab, `┏━┓`
+with heavy rails for the shown tab of the pane that has the keys. The baseline
+is each tab's foot (`TabShape::foot`): the rails land on it as `┴─┴`, and it
+opens under the shown tab (`┘ └`, `┚ ┖` under heavy rails), so the tab and its
+pane read as one surface. `TabStripTail` runs it on past the last tab. On a
+`Density::Compact` screen (below 30 terminal rows) a strip is one row, each
+cell closed by a divider.
+
+The editor strip at the side (`TabBarWidget::renderVertical`) follows the same
+height: a folder tab on its side, three rows each (`TabShape::side`), its
+inner edge a rule down the strip that tees into each resting tab and opens
+beside the shown one. The inner edge is a logical end: under RTL the row
+reverses, so `WorkspaceLayout::setMirrored` tells the strip its reading
+direction along with its seat. A compact screen keeps the one-row list with
+its selection bar.
 
 A strip's render context carries its parent's height, not the terminal's, so
 `Layout/ChromeHeight` (eager, a frame hook) reads the terminal's rows into the
@@ -538,11 +552,13 @@ A strip's render context carries its parent's height, not the terminal's, so
 the same rule to the terminal rows it already has. The git mode tabs are a
 plugin widget: they read the density `ViewServices` hands the view.
 
-Hit-testing: a tab is its whole shape (`tabIndexAt` ignores the row), and a
-`×` is on the label row alone (`closeIndexAt`, and the renderer lights a `×`
-only for a pointer on that row). `‹`/`›` page from either row. The dock's
-label-row tail is the resize grab (one row above the panel, which is what
-`armPanelResize` arms), and its status sits on the lid row. The strips' focus
+Hit-testing: a tab is its whole shape (`tabIndexAt` ignores the row on a
+horizontal strip, and matches a side tab's three rows), and a `×` is on the
+label row alone (`closeIndexAt`, and the renderer lights a `×` only for a
+pointer on that row). `‹`/`›` page from any row. The dock's top-row tail is
+the resize grab (the dock's top edge, the strip's height above the panel,
+which is what `armPanelResize` arms); its status sits level with the labels,
+and the baseline under them. The strips' focus
 probes: the editor area's widget for the editor strip, the visible panel for
 the dock, the sidebar's lists and commit box for git. Each strip repaints in
 `beforeRender` when the probed focus differs from what it last drew.

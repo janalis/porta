@@ -223,12 +223,12 @@ final class MouseRouter
         }
         // The dock strip is both the tool tabs and the resize grab: a click
         // on a tab wins, a click on its empty tail falls through to resize
-        // (which sits on the strip row — one row above the visible panel).
+        // (which sits on the strip's top row — the dock's top edge).
         if ($this->tryDockTabClick($mouse)) {
             return;
         }
         $panel = $this->dock->visiblePanel();
-        if (null !== $panel && $this->layout->armPanelResize($panel, $mouse, $this->dock->stripVisible() ? -1 : 0)) {
+        if (null !== $panel && $this->layout->armPanelResize($panel, $mouse, $this->dock->stripVisible() ? -$this->dockTabs->stripRows() : 0)) {
             return;
         }
 

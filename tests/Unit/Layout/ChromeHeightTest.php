@@ -42,8 +42,8 @@ final class ChromeHeightTest extends TestCase
         $height->apply();
 
         $this->assertSame(Density::Roomy, $density->current());
-        $this->assertSame(2, $dock->stripRows());
-        $this->assertCount(2, $tabBar->render(new RenderContext(40, 5)));
+        $this->assertSame(3, $dock->stripRows());
+        $this->assertCount(3, $tabBar->render(new RenderContext(40, 5)));
 
         $terminal->simulateResize(columns: 80, rows: 29);
         $tui->requestRender(force: true);

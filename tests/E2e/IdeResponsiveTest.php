@@ -119,7 +119,7 @@ final class IdeResponsiveTest extends TestCase
                     }, what: 'the compact frame');
                     $grid = $this->screenGrid($tui, $terminal);
                     $this->assertStringNotContainsString('───', $grid[1], 'no rule under the menu bar');
-                    $this->assertSame($roomy - 1 + 3, $editorRows($tui, $ide), 'one row fewer on screen, yet two rules and the strip\'s lid given back');
+                    $this->assertSame($roomy - 1 + 4, $editorRows($tui, $ide), 'one row fewer on screen, yet two rules and the strip\'s lid and foot given back');
                 },
             ],
             columns: 100,

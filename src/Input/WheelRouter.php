@@ -138,12 +138,12 @@ final readonly class WheelRouter
         }
 
         // wide tab per notch on the horizontal strip, the panel-list three
-        // rows per notch on the vertical one.
+        // rows per notch on the vertical one — one folder tab, where they are.
         if ($this->hit->contains($tabsRect, $mouse)) {
             // The side strip is a list of rows; the horizontal one moves one
             // whole TAB per notch — a different unit, not the same constant.
             $tabBar = $this->panes->tabBar;
-            $tabBar->scrollBy($tabBar->position()->isSide() ? WheelStep::rows($mouse) : $mouse->wheelDelta);
+            $tabBar->position()->isSide() ? $tabBar->scrollByRows(WheelStep::rows($mouse)) : $tabBar->scrollBy($mouse->wheelDelta);
             $this->tui->requestRender();
 
             return;

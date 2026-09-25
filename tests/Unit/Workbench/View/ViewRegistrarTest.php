@@ -26,6 +26,7 @@ use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\ResultsPanelWidget;
+use Porta\Widget\TabBarWidget;
 use Porta\Widget\TerminalPanelWidget;
 use Porta\Workbench\EditorArea;
 use Porta\Workbench\Menu\ViewMenuSource;
@@ -123,6 +124,7 @@ final class ViewRegistrarTest extends TestCase
                 $renderer,
                 $tree,
                 TestBottomDock::create($tui, new TerminalPanelWidget(), new ResultsPanelWidget(), new DebugPanelWidget()),
+                new TabBarWidget(),
                 $regions,
                 $translator,
             ),

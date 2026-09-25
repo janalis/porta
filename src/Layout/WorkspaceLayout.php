@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Layout;
 
 use Porta\Container\AsIdeService;
+use Porta\I18n\BaseDirection;
 use Porta\Ui\ScreenDensity;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\BreadcrumbsWidget;
@@ -167,6 +168,7 @@ final class WorkspaceLayout
             return;
         }
         $this->mirrored = $mirrored;
+        $this->tabBar->setTextDirection($mirrored ? BaseDirection::Rtl : BaseDirection::Ltr);
         $this->seatTabBar($this->narrowTabs ? TabBarPosition::Top : $this->configuredTabs);
     }
 

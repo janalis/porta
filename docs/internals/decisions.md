@@ -10656,3 +10656,37 @@ decision:
 *Re-opens on:* a surface that needs a density of its own (a pane-local rule
 would bring back the disagreement above), or a pane that draws `─` against a
 divider (then the join has to check the cell's tint as well).
+
+## Three-row chrome (2026-09-25)
+
+The find bar's fields and buttons were three-row boxes while everything around
+them was not: the key hints sat on the top row with the middle one empty, the
+tab strips were two rows and the side tabs one. On a roomy screen every strip
+is now three rows, the rhythm the boxes set.
+
+- **A strip stands on a line that opens at the shown tab.** The horizontal
+  strips gain a foot row (`TabShape::foot`); the side tabs turn it on its side
+  (`TabShape::side`), a rule down the edge facing the editor. The selection bar
+  the side list wore is dropped where the shape already says it; the compact
+  list keeps it.
+- **The dock's grab moves to its top row.** This reverses the deviation in
+  "Folder tabs, and where their height comes from": the lid row was refused as
+  a grab because a press there did not start a drag. Now it does
+  (`MouseRouter` arms the strip's height above the panel, `HoverRouter` lights
+  that row), and the status sits level with the labels, between the grab and
+  the baseline.
+- **The side rule is a logical end.** A chrome row reverses under RTL, so the
+  strip is told the reading direction (`TabBarWidget::setTextDirection`, from
+  `WorkspaceLayout::setMirrored`) rather than reading its inner edge off its
+  physical seat.
+
+A third row costs each strip one more line of code on a roomy screen; the
+compact rule is untouched, so the 24-row rigs and short terminals see no
+change. `LayoutController::chromeRows()` counts the editor's strip only while
+it is horizontal: at the side it takes columns, and counting it anyway had
+left a maximised panel one row short, two once strips were three rows. A
+wheel notch over the side list moves it three rows either way
+(`TabBarWidget::scrollByRows`): three one-row tabs, or one folder tab.
+
+*Re-opens on:* a roomy screen where the third row is missed — measured, not
+felt — or a surface whose strip cannot open under its shown tab.

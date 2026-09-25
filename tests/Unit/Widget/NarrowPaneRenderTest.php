@@ -112,6 +112,17 @@ final class NarrowPaneRenderTest extends TestCase
         $sideTabs->setPosition(TabBarPosition::Right);
         yield 'tab bar (side)' => [$sideTabs];
 
+        // And its folder tabs on a roomy screen: an outline and a rule more
+        // on every row, none of which may widen it.
+        $tallSideTabs = new TabBarWidget();
+        $tallSideTabs->setProvider(static fn (): array => [
+            ['name' => 'Alpha.php', 'dirty' => true, 'active' => true],
+            ['name' => 'Beta.php', 'dirty' => false, 'active' => false],
+        ]);
+        $tallSideTabs->setPosition(TabBarPosition::Left);
+        $tallSideTabs->setStripRows(3);
+        yield 'tab bar (side, folder tabs)' => [$tallSideTabs];
+
         $crumbs = new BreadcrumbsWidget();
         $crumbs->setProvider(static fn (): array => [
             ['label' => 'App\\Http', 'line' => 2],

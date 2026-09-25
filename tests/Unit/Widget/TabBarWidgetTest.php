@@ -6,9 +6,12 @@ namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Porta\I18n\BaseDirection;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RendersWidget;
 use Porta\Ui\Glyphs;
+use Porta\Ui\Theme\Styles;
+use Porta\Widget\Render\TabCloseGlyph;
 use Porta\Widget\Support\TabBarPosition;
 use Porta\Widget\TabBarWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -208,7 +211,7 @@ final class TabBarWidgetTest extends TestCase
         $bar->beforeRender();
         $bar->render(new RenderContext(60, 1));
 
-        $this->assertSame(['row' => 0, 'col' => 0], $bar->tabAnchor(0), 'first tab starts at the strip edge');
+        $this->assertSame(['row' => 0, 'col' => 0, 'rows' => 1], $bar->tabAnchor(0), 'first tab starts at the strip edge');
         $second = $bar->tabAnchor(1);
         $this->assertNotNull($second);
         $this->assertSame(1, $bar->tabIndexAt($second['row'], $second['col']), 'anchor cell lands inside its own tab');
@@ -536,9 +539,179 @@ final class TabBarWidgetTest extends TestCase
         $this->assertSame(1, $bar->tabIndexAt(1, $closeCol - 1), 'the dirty dot is still tab-1 body');
         $this->assertNull($bar->tabIndexAt(3, 1), 'a filler row misses');
         $this->assertSame(1, $bar->closeIndexAt(1, $closeCol), "row 1's × closes tab 1");
+        $this->assertSame(1, $bar->closeIndexAt(1, $closeCol + 1), 'and the column after it, the last');
+        $this->assertNull($bar->closeIndexAt(1, $closeCol - 1), 'but not the dirty dot before it');
         $this->assertNull($bar->closeIndexAt(1, 2), 'the row body is not a close zone');
         $this->assertNull($bar->closeIndexAt(3, $closeCol), 'a filler row has no close zone');
-        $this->assertSame(['row' => 1, 'col' => 0], $bar->tabAnchor(1), 'vertical anchors sit at the row start');
+        $this->assertSame(['row' => 1, 'col' => 0, 'rows' => 1], $bar->tabAnchor(1), 'vertical anchors sit at the row start');
+    }
+
+    /**
+     * On a roomy screen a side tab is a folder tab on its side: three rows,
+     * its inner edge a rule down the strip that opens beside the shown tab
+     * alone and runs on past the last one. The shape is the state, read with
+     * every SGR stripped.
+     */
+    public function testATallSideTabIsAFolderTabOnItsSide(): void
+    {
+        $tabs = [
+            ['name' => 'a.php', 'dirty' => false, 'active' => false],
+            ['name' => 'b.php', 'dirty' => true, 'active' => true],
+        ];
+        $bar = $this->verticalBar($tabs);
+        $bar->setStripRows(3);
+
+        $rows = \array_map(AnsiUtils::stripAnsiCodes(...), $bar->render(new RenderContext(12, 8)));
+
+        $this->assertSame(
+            [
+                '╭──────────┤',
+                '│ a.php  × │',
+                '╰──────────┤',
+                '┍━━━━━━━━━━┙',
+                '│ b.php ●×  ',
+                '┕━━━━━━━━━━┑',
+                '           │',
+                '           │',
+            ],
+            $rows,
+        );
+
+        $empty = $this->verticalBar([]);
+        $empty->setStripRows(3);
+        $this->assertSame(
+            \array_fill(start_index: 0, count: 3, value: \str_repeat(' ', times: 12)),
+            \array_map(AnsiUtils::stripAnsiCodes(...), $empty->render(new RenderContext(12, 3))),
+            'with no tab the strip is blank, as the horizontal one is',
+        );
+
+        $focused = $this->verticalBar($tabs);
+        $focused->setFocusProbe(static fn (): bool => true);
+        $focused->beforeRender();
+        $focused->setStripRows(3);
+        $this->assertSame(
+            ['┏━━━━━━━━━━┙', '┃ b.php ●×  ', '┗━━━━━━━━━━┑'],
+            \array_slice(\array_map(AnsiUtils::stripAnsiCodes(...), $focused->render(new RenderContext(12, 8))), offset: 3, length: 3),
+            'heavy all round while its pane has the keys',
+        );
+    }
+
+    /**
+     * A strip on the right faces the editor with its first column; under RTL
+     * the row reverses, so a strip at the left does. Either way the rule is
+     * the edge the editor is on once the row is read.
+     */
+    public function testATallSideTabsRuleIsTheEdgeFacingTheEditor(): void
+    {
+        $tabs = [['name' => 'a.php', 'dirty' => false, 'active' => true]];
+        $right = $this->verticalBar($tabs);
+        $right->setPosition(TabBarPosition::Right);
+        $right->setStripRows(3);
+        $this->assertSame(['┕━━━━━━━━━━┑', '  a.php  × │', '┍━━━━━━━━━━┙', '│           '], \array_map(AnsiUtils::stripAnsiCodes(...), $right->render(new RenderContext(12, 4))));
+
+        $rest = $this->verticalBar([['name' => 'a.php', 'dirty' => false, 'active' => false], ['name' => 'b.php', 'dirty' => false, 'active' => true]]);
+        $rest->setPosition(TabBarPosition::Right);
+        $rest->setFocusProbe(static fn (): bool => true);
+        $rest->beforeRender();
+        $rest->setStripRows(3);
+        $this->assertSame(
+            [
+                '├──────────╮',
+                '│ a.php  × │',
+                '├──────────╯',
+                '┕━━━━━━━━━━┓',
+                '  b.php  × ┃',
+                '┍━━━━━━━━━━┛',
+            ],
+            \array_map(AnsiUtils::stripAnsiCodes(...), $rest->render(new RenderContext(12, 6))),
+            'a resting tab tees into the rule; the focused one turns it, heavy all round',
+        );
+
+        $mirrored = $this->verticalBar($tabs);
+        $mirrored->setTextDirection(BaseDirection::Rtl);
+        $mirrored->setStripRows(3);
+        $this->assertSame('│           ', AnsiUtils::stripAnsiCodes($mirrored->render(new RenderContext(12, 4))[3]), 'a left strip under RTL draws the rule first; the reorder puts it on the right');
+        $mirrored->setTextDirection(BaseDirection::Ltr);
+        $this->assertSame('           │', AnsiUtils::stripAnsiCodes($mirrored->render(new RenderContext(12, 4))[3]), 'and back at the end once the direction returns');
+    }
+
+    /** A tall side tab is its three rows to a click, the × is on the middle one alone, and the menu opens under the whole tab. */
+    public function testATallSideTabIsHitAcrossItsRows(): void
+    {
+        $bar = $this->verticalBar([
+            ['name' => 'a.php', 'dirty' => false, 'active' => true],
+            ['name' => 'b.php', 'dirty' => false, 'active' => false],
+        ]);
+        $bar->setStripRows(3);
+        $bar->render(new RenderContext(24, 10));
+
+        $close = TabBarWidget::VERTICAL_WIDTH - 3;
+        $this->assertSame([0, 0, 0, 1, 1, 1, null], \array_map(static fn (int $row): ?int => $bar->tabIndexAt($row, 5), \range(start: 0, end: 6)));
+        $this->assertSame(1, $bar->closeIndexAt(4, $close), "the second tab's × is on its middle row");
+        $this->assertSame(1, $bar->closeIndexAt(4, $close + 1), 'with the column after it');
+        $this->assertNull($bar->closeIndexAt(4, $close + 2), 'not the rule');
+        $this->assertNull($bar->closeIndexAt(3, $close), 'the outline above the × is the tab');
+        $this->assertNull($bar->closeIndexAt(5, $close), 'and below it');
+        $this->assertSame(['row' => 3, 'col' => 0, 'rows' => 3], $bar->tabAnchor(1));
+
+        $bar->hoverTab(5, 5);
+        $lines = $bar->render(new RenderContext(24, 10));
+        $this->assertStringContainsString("\x1b[48;5;240m b.php", $lines[4], "the pointer on the tab's outline still shades its label");
+        $bar->clearHover(); // a move within one tab repaints nothing, so leave it first
+        $bar->hoverTab(3, 5);
+        $lines = $bar->render(new RenderContext(24, 10));
+        $this->assertStringContainsString("\x1b[48;5;240m b.php", $lines[4], 'from its top row too');
+        $bar->hoverTab(6, 5);
+        $lines = $bar->render(new RenderContext(24, 10));
+        $this->assertStringNotContainsString("\x1b[48;5;240m b.php", $lines[4], 'and not from the row past its bottom');
+        $this->assertStringContainsString(TabCloseGlyph::active(Styles::dark()), $lines[1], 'the shown tab wears the active ×');
+        $this->assertStringContainsString(TabCloseGlyph::inactive(Styles::dark()), $lines[4], 'the others the resting one');
+    }
+
+    /** An overflowing tall strip windows whole tabs between its ▲ and ▼, keeping the shown one in view. */
+    public function testATallSideStripWindowsWholeTabs(): void
+    {
+        $tabs = [];
+        for ($i = 1; $i <= 6; ++$i) {
+            $tabs[] = ['name' => \sprintf('file-%02d.php', $i), 'dirty' => false, 'active' => 6 === $i];
+        }
+        $bar = $this->verticalBar($tabs);
+        $bar->setStripRows(3);
+
+        $lines = \array_map(AnsiUtils::stripAnsiCodes(...), $bar->render(new RenderContext(24, 11)));
+
+        $this->assertCount(11, $lines);
+        $this->assertStringContainsString(Glyphs::SCROLL_UP, $lines[0]);
+        $this->assertStringEndsWith('│', $lines[0], 'the rule runs on past the ▲, one line down the strip');
+        $this->assertStringEndsWith('│', $lines[10], 'and past the ▼, blank here with nothing below');
+        $first = $this->verticalBar(self::manyShortTabs(12));
+        $first->setStripRows(3);
+        $bottom = AnsiUtils::stripAnsiCodes($first->render(new RenderContext(24, 11))[10]);
+        $this->assertStringContainsString(Glyphs::SCROLL_DOWN, $bottom);
+        $this->assertStringEndsWith('│', $bottom, 'the ▼ drawn, the rule beside it');
+
+        // Twelve rows seat three whole tabs and leave one over: the ▼ stays
+        // on the last row, where a click on it pages.
+        $uneven = \array_map(AnsiUtils::stripAnsiCodes(...), $first->render(new RenderContext(24, 12)));
+        $this->assertStringContainsString(Glyphs::SCROLL_DOWN, $uneven[11]);
+        $this->assertStringNotContainsString(Glyphs::SCROLL_DOWN, $uneven[10], 'not above the gap');
+        $this->assertSame(3, $first->scrollIndicatorAt(11, 3), 'its zone is the row it is drawn on');
+        $this->assertStringContainsString('file-04.php', $lines[2], 'three whole tabs in the nine rows between');
+        $this->assertStringContainsString('file-06.php', $lines[8], 'ending on the shown one');
+        $this->assertSame(5, $bar->tabIndexAt(9, 5), 'the last tab ends a row above the ▼');
+        $this->assertNull($bar->tabIndexAt(10, 5));
+        foreach ($bar->render(new RenderContext(24, 11)) as $line) {
+            $this->assertSame(24, AnsiUtils::visibleWidth($line));
+        }
+        $fresh = $this->verticalBar($tabs);
+        $fresh->setStripRows(3);
+        $short = \array_map(AnsiUtils::stripAnsiCodes(...), $fresh->render(new RenderContext(24, 4)));
+        $this->assertCount(4, $short, 'a pane too short for a tab and its indicators keeps its height');
+        $this->assertStringContainsString('file-06.php', $short[2], 'and still shows the shown tab whole, under the ▲');
+
+        $two = $this->verticalBar([['name' => 'a.php', 'dirty' => false, 'active' => true]]);
+        $two->setStripRows(3);
+        $this->assertStringStartsWith('┍', AnsiUtils::stripAnsiCodes($two->render(new RenderContext(24, 2))[0]), 'two rows are no room for indicators: the tab, cut at the pane');
     }
 
     /**
@@ -592,40 +765,43 @@ final class TabBarWidgetTest extends TestCase
         $this->assertStringContainsString("\x1b[4mb.php", $onName);
     }
 
-    /** A folder strip: the lid row, then the labels on a baseline — and the × on the label row alone. */
-    public function testAFolderStripIsTwoRowsWhoseCloseIsOnTheLabelRow(): void
+    /** A folder strip: the lid row, the labels, then the baseline — and the × on the label row alone. */
+    public function testAFolderStripIsThreeRowsWhoseCloseIsOnTheLabelRow(): void
     {
         $bar = new TabBarWidget();
         $bar->setProvider(static fn (): array => [
             ['name' => 'a.php', 'dirty' => false, 'active' => true],
             ['name' => 'b.php', 'dirty' => false, 'active' => false],
         ]);
-        $bar->setStripRows(2);
+        $bar->setStripRows(3);
         $bar->beforeRender();
 
-        $rows = \array_map(AnsiUtils::stripAnsiCodes(...), $bar->render(new RenderContext(30, 2)));
+        $rows = \array_map(AnsiUtils::stripAnsiCodes(...), $bar->render(new RenderContext(30, 3)));
 
-        $this->assertSame(['┍━━━━━━━━━┑╭─────────╮        ', '│ a.php × ││ b.php × │────────'], $rows);
-        $this->assertSame(['row' => 1, 'col' => 0], $bar->tabAnchor(0), 'anchored on its label row');
+        $this->assertSame(['┍━━━━━━━━━┑╭─────────╮        ', '│ a.php × ││ b.php × │        ', '┘         └┴─────────┴────────'], $rows);
+        $this->assertSame(['row' => 0, 'col' => 0, 'rows' => 3], $bar->tabAnchor(0), 'anchored on the whole tab');
         $this->assertSame(0, $bar->closeIndexAt(1, 8));
         $this->assertNull($bar->closeIndexAt(0, 8), 'the lid above the × is the tab');
+        $this->assertNull($bar->closeIndexAt(2, 8), 'and so is the foot below it');
         $this->assertSame(0, $bar->tabIndexAt(0, 8));
+        $this->assertSame(0, $bar->tabIndexAt(2, 8));
     }
 
-    /** At a bottom edge the labels come first, and the × is on row 0. */
+    /** At a bottom edge the baseline comes first, and the tab's top anchors the menu that opens above it. */
     public function testABottomFolderStripAnchorsOnItsFirstRow(): void
     {
         $bar = new TabBarWidget();
         $bar->setPosition(TabBarPosition::Bottom);
         $bar->setProvider(static fn (): array => [['name' => 'a.php', 'dirty' => false, 'active' => true]]);
-        $bar->setStripRows(2);
+        $bar->setStripRows(3);
         $bar->beforeRender();
 
-        $rows = \array_map(AnsiUtils::stripAnsiCodes(...), $bar->render(new RenderContext(20, 2)));
+        $rows = \array_map(AnsiUtils::stripAnsiCodes(...), $bar->render(new RenderContext(20, 3)));
 
-        $this->assertStringStartsWith('┕━━━━━━━━━┙', $rows[1]);
-        $this->assertSame(['row' => 0, 'col' => 0], $bar->tabAnchor(0));
-        $this->assertSame(0, $bar->closeIndexAt(0, 8));
+        $this->assertSame('┐         ┌─────────', $rows[0]);
+        $this->assertStringStartsWith('┕━━━━━━━━━┙', $rows[2]);
+        $this->assertSame(['row' => 0, 'col' => 0, 'rows' => 3], $bar->tabAnchor(0));
+        $this->assertSame(0, $bar->closeIndexAt(1, 8));
     }
 
     /**
@@ -640,16 +816,16 @@ final class TabBarWidgetTest extends TestCase
         $bar->setFocusProbe(static function () use (&$focused): bool {
             return $focused;
         });
-        $bar->setStripRows(2);
+        $bar->setStripRows(3);
         $bar->beforeRender();
-        $this->assertStringStartsWith('┍', AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(20, 2))[0]));
+        $this->assertStringStartsWith('┍', AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(20, 3))[0]));
         $revision = $bar->getRenderRevision();
 
         $focused = true;
         $bar->beforeRender();
 
         $this->assertNotSame($revision, $bar->getRenderRevision(), 'a focus change repaints');
-        $this->assertStringStartsWith('┏', AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(20, 2))[0]));
+        $this->assertStringStartsWith('┏', AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(20, 3))[0]));
     }
 
     /** An empty folder strip keeps its height, so the code under it does not jump when the last tab closes. */
@@ -657,9 +833,9 @@ final class TabBarWidgetTest extends TestCase
     {
         $bar = new TabBarWidget();
         $bar->setProvider(static fn (): array => []);
-        $bar->setStripRows(2);
+        $bar->setStripRows(3);
 
-        $this->assertCount(2, $bar->render(new RenderContext(20, 2)));
+        $this->assertCount(3, $bar->render(new RenderContext(20, 3)));
     }
 
     /** The vertical list's bar says whether its pane has the keys, like every other list's — and repaints when that changes. */
@@ -810,6 +986,26 @@ final class TabBarWidgetTest extends TestCase
 
         $bar->scrollBy(-99);
         $this->assertStringContainsString('t-00', $this->plainRender($bar, 80, 5));
+    }
+
+    /** A wheel notch moves the side list the same three rows at either density: three one-row tabs, or one folder tab. */
+    public function testAWheelNotchScrollsTheSideListByRowsNotTabs(): void
+    {
+        $bar = $this->verticalBar(self::manyShortTabs(12));
+        $bar->render(new RenderContext(80, 5));
+        $bar->scrollByRows(3);
+        $bar->render(new RenderContext(80, 5));
+        $this->assertSame(3, $bar->tabIndexAt(1, 1), 'three rows: three one-row tabs');
+
+        $tall = $this->verticalBar(self::manyShortTabs(12));
+        $tall->setStripRows(3);
+        $tall->render(new RenderContext(80, 11));
+        $tall->scrollByRows(3);
+        $tall->render(new RenderContext(80, 11));
+        $this->assertSame(1, $tall->tabIndexAt(1, 1), 'three rows: one folder tab');
+        $tall->scrollByRows(-3);
+        $tall->render(new RenderContext(80, 11));
+        $this->assertSame(0, $tall->tabIndexAt(1, 1), 'and back');
     }
 
     public function testHorizontalIndicatorsMarkOnlyTheClippedSides(): void

@@ -149,4 +149,42 @@ final class IdeTabScrollTest extends TestCase
             },
         ]);
     }
+
+    /**
+     * On a roomy screen a side tab is three rows, so a notch — three rows —
+     * moves the list one folder tab, not three: the same distance on screen
+     * as the one-row list's.
+     */
+    public function testAWheelNotchMovesTheSideFolderTabsOneTab(): void
+    {
+        $project = new TempProject(
+            self::files(self::TALL_FILES)
+            + [
+                '.porta.json' => (string) \json_encode(['settings' => ['tabBarPosition' => 'left']]),
+            ],
+        );
+
+        $this->runIde(
+            $project,
+            null,
+            [
+                100 => static function (Tui $tui, $terminal, $ide) use ($project): void {
+                    self::openAll($ide, $project, self::TALL_FILES);
+                },
+                300 => function (Tui $tui, $terminal, $ide): void {
+                    $this->frame($tui);
+                    /** @var TabBarWidget $tabs */
+                    $tabs = $tui->getById('tabs');
+                    $this->assertSame(3, $tabs->tabAnchor(self::TALL_FILES - 1)['rows'] ?? null, 'forty rows: folder tabs');
+                    $top = static fn (): ?int => $tabs->tabIndexAt(1, 3); // the first tab under the ▲ row
+
+                    $before = $top();
+                    self::wheel($tui, self::tabsRect($ide, $tui), 64);
+                    $this->frame($tui);
+                    $this->assertSame($before - 1, $top(), 'one notch up, one folder tab');
+                },
+            ],
+            rows: 40,
+        );
+    }
 }

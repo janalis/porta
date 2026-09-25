@@ -19,6 +19,8 @@ use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TestBottomDock;
 use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\ResultsPanelWidget;
+use Porta\Widget\Support\TabBarPosition;
+use Porta\Widget\TabBarWidget;
 use Porta\Widget\TerminalPanelWidget;
 use Porta\Workbench\Dock\ResultsPanelMode;
 
@@ -110,6 +112,7 @@ final class LayoutControllerNudgeTest extends TestCase
             $this->renderer,
             $this->tree,
             $dock,
+            new TabBarWidget(),
             $this->regions,
             new Translator('en'),
         );
@@ -142,6 +145,7 @@ final class LayoutControllerNudgeTest extends TestCase
             $this->renderer,
             $this->tree,
             $dock,
+            new TabBarWidget(),
             $this->regions,
             new Translator('en'),
         );
@@ -164,7 +168,7 @@ final class LayoutControllerNudgeTest extends TestCase
         $chosen = $results->visibleRows();
 
         $layout->toggleBottomPanelMaximised();
-        $this->assertSame(30 - 6 - 4, $results->visibleRows(), 'so this maximises rather than restores (30 rows: folder-tab strips a row more each, and the two edge rules)');
+        $this->assertSame(30 - 6 - 6, $results->visibleRows(), 'so this maximises rather than restores (30 rows: folder-tab strips two rows more each, and the two edge rules)');
         $layout->toggleBottomPanelMaximised();
         $this->assertSame($chosen, $results->visibleRows(), 'and comes back to the hand-chosen height');
     }
@@ -224,19 +228,44 @@ final class LayoutControllerNudgeTest extends TestCase
             $this->renderer,
             $this->tree,
             $dock,
+            new TabBarWidget(),
             $this->regions,
             new Translator('en'),
         );
         $dock->showList(ResultsPanelMode::RecentLocations, 'Recent Locations', []);
         $layout->nudgeBottomPanel(1); // persist a proportion, so applyLayout has one to restore
         $layout->toggleBottomPanelMaximised();
-        $this->assertSame(30 - 6 - 4, $results->visibleRows(), 'the frame, a row more for each folder-tab strip, and the two edge rules');
+        $this->assertSame(30 - 6 - 6, $results->visibleRows(), 'the frame, two rows more for each folder-tab strip, and the two edge rules');
 
         $this->tui->getTerminal()->simulateResize(columns: 100, rows: 40);
         $layout->applyLayout();
 
-        $this->assertSame(40 - 6 - 4, $results->visibleRows(), 'it took the bigger screen');
+        $this->assertSame(40 - 6 - 6, $results->visibleRows(), 'it took the bigger screen');
         $this->assertTrue($layout->isBottomPanelMaximised(), 'and is still maximised');
+    }
+
+    /** An editor strip at the side takes columns, not rows: a maximised panel gets its two rows back. */
+    public function testASideTabStripLeavesAMaximisedPanelTheRowsItDoesNotTake(): void
+    {
+        $this->controller(); // builds the tui, tree and regions this one rewires
+        $results = new ResultsPanelWidget();
+        $dock = TestBottomDock::create($this->tui, new TerminalPanelWidget(), $results, new DebugPanelWidget());
+        $tabBar = new TabBarWidget();
+        $tabBar->setPosition(TabBarPosition::Left);
+        $layout = new LayoutController(
+            new LayoutStore($this->project->dir),
+            $this->tui,
+            $this->renderer,
+            $this->tree,
+            $dock,
+            $tabBar,
+            $this->regions,
+            new Translator('en'),
+        );
+        $dock->showList(ResultsPanelMode::RecentLocations, 'Recent Locations', []);
+        $layout->toggleBottomPanelMaximised();
+
+        $this->assertSame(30 - 6 - 4, $results->visibleRows(), 'the frame, the dock strip\'s two rows more, and the two edge rules');
     }
 
     public function testNudgeBottomPanelIsANoOpWhenNoPanelIsOpen(): void

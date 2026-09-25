@@ -145,6 +145,11 @@ final class Bidi
         '┙' => '┕',
         '┣' => '┫',
         '┫' => '┣',
+        // The focused folder tab's rails landing on the strip's baseline.
+        '┚' => '┖',
+        '┖' => '┚',
+        '┒' => '┎',
+        '┎' => '┒',
     ];
 
     /**

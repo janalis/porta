@@ -752,10 +752,11 @@ final class IdeTabsBuffersTest extends TestCase
 
     /**
      * Folder tabs, wired end to end on a 40-row terminal: the lid above a ×
-     * is the tab, so a click there selects it, and only the × on the label
-     * row closes — the geometry the unit tests pin, through the real router.
+     * and the foot below it are the tab, so a click there selects it, and
+     * only the × on the label row closes — the geometry the unit tests pin,
+     * through the real router.
      */
-    public function testAFolderTabsLidSelectsAndItsLabelRowCloses(): void
+    public function testAFolderTabsOutlineSelectsAndItsLabelRowCloses(): void
     {
         \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\n", 'b.php' => "<?php\n"]);
@@ -769,9 +770,9 @@ final class IdeTabsBuffersTest extends TestCase
                     $this->frame($tui);
                     $tabs = $tui->getById('tabs');
                     $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($tabs);
-                    $this->assertSame(2, $rect->rows, 'forty rows: folder tabs');
+                    $this->assertSame(3, $rect->rows, 'forty rows: folder tabs');
                     $zone = Probe::get($tabs, 'lastLayout')[0]; // a.php, the tab not shown
-                    $this->assertSame(1, $zone['row'], 'its label row is the second');
+                    $this->assertSame(1, $zone['labelRow'], 'its label row is the second');
                     $col = $rect->col + $zone['closeStart'] + 1;
 
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $col, $rect->row + 1)); // the lid above its ×
@@ -780,10 +781,66 @@ final class IdeTabsBuffersTest extends TestCase
                     $this->assertStringEndsWith('a.php', (string) $tui->getById('editor')->getFilePath(), 'the lid selected the tab');
                     $this->assertCount(2, Services::resolve($ide, BufferManager::class)->all(), 'and closed nothing');
 
+                    Services::resolve($ide, BufferService::class)->openFile($project->path('b.php'), OpenFocus::Keep);
+                    $this->frame($tui);
+                    $this->assertStringEndsWith('b.php', (string) $tui->getById('editor')->getFilePath(), 'b is shown again, so the click below has something to change');
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $col, $rect->row + 3)); // the foot below its ×
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $col, $rect->row + 3));
+                    $this->frame($tui);
+                    $this->assertStringEndsWith('a.php', (string) $tui->getById('editor')->getFilePath(), 'the foot selected it too');
+                    $this->assertCount(2, Services::resolve($ide, BufferManager::class)->all(), 'and closed nothing');
+
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $col, $rect->row + 2)); // the × itself
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $col, $rect->row + 2));
                     $this->frame($tui);
                     $this->assertCount(1, Services::resolve($ide, BufferManager::class)->all(), 'the × on the label row closed it');
+                },
+            ],
+            rows: 40,
+        );
+    }
+
+    /**
+     * Side folder tabs, wired end to end on a 40-row terminal: each tab is
+     * three rows to a click, the row over its × selects rather than closes,
+     * and the × on its middle row closes — through the real router.
+     */
+    public function testASideFolderTabIsItsThreeRowsAndItsMiddleRowCloses(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $project = new TempProject([
+            'a.php' => "<?php\n",
+            'b.php' => "<?php\n",
+            '.porta.json' => \json_encode(['settings' => ['tabBarPosition' => 'left']]),
+        ]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function (Tui $tui, $terminal, Ide $ide) use ($project): void {
+                    Services::resolve($ide, BufferService::class)->openFile($project->path('b.php'), OpenFocus::Keep);
+                    $this->frame($tui);
+                    $tabs = $tui->getById('tabs');
+                    $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($tabs);
+                    $zone = Probe::get($tabs, 'lastLayout')[0]; // a.php, the tab not shown
+                    $this->assertSame(
+                        ['row' => 0, 'rows' => 3, 'labelRow' => 1],
+                        ['row' => $zone['row'], 'rows' => $zone['rows'], 'labelRow' => $zone['labelRow']],
+                        'forty rows: a side tab is three rows tall',
+                    );
+                    $col = $rect->col + $zone['closeStart'] + 1;
+
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $col, $rect->row + 3)); // the outline under its ×
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $col, $rect->row + 3));
+                    $this->frame($tui);
+                    $this->assertStringEndsWith('a.php', (string) $tui->getById('editor')->getFilePath(), 'the outline selected the tab');
+                    $this->assertCount(2, Services::resolve($ide, BufferManager::class)->all(), 'and closed nothing');
+
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $col, $rect->row + 2)); // the × itself
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $col, $rect->row + 2));
+                    $this->frame($tui);
+                    $this->assertCount(1, Services::resolve($ide, BufferManager::class)->all(), 'the × on the middle row closed it');
                 },
             ],
             rows: 40,

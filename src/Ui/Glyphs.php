@@ -315,6 +315,15 @@ final class Glyphs
     public const string TAB_LID_BOTTOM_LEFT = '┕';
     public const string TAB_LID_BOTTOM_RIGHT = '┙';
 
+    // Where the heavy rails of the focused folder tab land on the strip's
+    // light baseline, which opens under the tab (TabShape::foot): heavy up
+    // or down, light across. The light rails of every other tab land on it
+    // as the frame's own corners and RULE_UP/RULE_DOWN.
+    public const string TAB_FOOT_UP_LEFT = '┚';
+    public const string TAB_FOOT_UP_RIGHT = '┖';
+    public const string TAB_FOOT_DOWN_LEFT = '┒';
+    public const string TAB_FOOT_DOWN_RIGHT = '┎';
+
     // The status bar: ` │ ` between the left's cells, `▾` after a cell that
     // opens a menu (the select's own arrow), and `◦` leading a flash so a
     // message never reads as the file path it replaced.

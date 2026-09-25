@@ -41,8 +41,8 @@ final class TabStripRenderer
     /** The × cell plus its trailing space — the close zone's clickable width. */
     public const int CLOSE_WIDTH = 2;
 
-    /** A folder-tab strip's height: the lid, then the labels (mirrored at a bottom edge). */
-    public const int ROWS = 2;
+    /** A folder-tab strip's height: the lid, the labels, then the baseline they stand on (mirrored at a bottom edge). */
+    public const int ROWS = 3;
 
     /** @return positive-int the strip height the screen affords: folder tabs, or one row where it is {@see Density::Compact} */
     public static function rowsFor(Density $density): int
@@ -63,10 +63,11 @@ final class TabStripRenderer
      * At {@see ROWS} rows each tab is a folder tab — its own rails, and a lid
      * whose shape is its state: `╭─╮` for the rest, `┍━┑` for the active tab
      * of a pane without focus, `┏━┓` and heavy rails for the active tab of the
-     * pane that has it. At a bottom edge the labels come first and the lid is
-     * the tab's bottom. One row is the compact strip, each cell closed by a
-     * divider. The caller pads the rows past `used`: the tail is its own (the
-     * dock's status and resize grab).
+     * pane that has it — standing on a baseline that opens under the active
+     * tab ({@see TabShape::foot}). At a bottom edge the rows run the other way:
+     * the baseline over the labels, the lid the tab's bottom. One row is the
+     * compact strip, each cell closed by a divider. The caller pads the rows
+     * past `used`: the tail is its own (the dock's status and resize grab).
      *
      * @param list<array{label: string, active: bool, family?: string, marker?: string, closable?: bool}> $tabs
      * @param ?int                                                                                         $hoverCol   widget-relative column under the pointer, or null when off the strip
@@ -74,7 +75,7 @@ final class TabStripRenderer
      * @param ?int                                                                                         $lastActive the caller's stored last active index (null on the first frame)
      * @param ?int                                                                                         $hoverRow   the pointer's row in the strip, or null for the label row — a `×` lights only where a click on it closes
      *
-     * @return array{lines: list<string>, labelRow: int, used: int, hitMap: list<array{index: int, start: int, width: int, closeStart: int, closeWidth: int}>, indicatorZones: list<array{row: int, col: int, width: int, step: int}>, scroll: int, lastActive: int}
+     * @return array{lines: list<string>, labelRow: int, footRow: ?int, used: int, hitMap: list<array{index: int, start: int, width: int, closeStart: int, closeWidth: int}>, indicatorZones: list<array{row: int, col: int, width: int, step: int}>, scroll: int, lastActive: int}
      */
     public static function render(
         array $tabs,
@@ -89,7 +90,7 @@ final class TabStripRenderer
         ?int $hoverRow = null,
     ): array {
         $folder = $rows >= self::ROWS;
-        $labelRow = $folder && StripEdge::Top === $edge ? 1 : 0;
+        $labelRow = $folder ? 1 : 0;
         // A folder tab's two rails replace the compact cell's one divider.
         $rails = $folder ? 2 : 1;
         /** @var list<array{tab: array{label: string, active: bool, family?: string, marker?: string, closable?: bool}, text: string, width: int, closeOffset: int|null, labelWidth: int}> $parts */
@@ -111,6 +112,7 @@ final class TabStripRenderer
 
         $label = '';
         $lid = '';
+        $foot = '';
         $used = 0;
         $last = $start;
         $hitMap = [];
@@ -126,6 +128,7 @@ final class TabStripRenderer
             }
             $label .= $prev;
             $lid .= ' ';
+            $foot = Rule::horizontal(1, $styles);
             $used = 1;
         }
         foreach (\array_slice($parts, $start, preserve_keys: true) as $index => $part) {
@@ -149,6 +152,7 @@ final class TabStripRenderer
                 ? $outline->apply($shape->rail()).self::renderBody($part, $styles, $state, $onClose).$outline->apply($shape->rail())
                 : self::renderCell($part, $styles, $state, $crosses ? Glyphs::FAMILY_SEPARATOR : Glyphs::SEPARATOR, $onClose);
             $lid .= $outline->apply($shape->lid($part['width'], $edge));
+            $foot .= $outline->apply($shape->foot($part['width'], $edge));
             $hitMap[] = ['index' => $index, 'start' => $used, 'width' => $part['width'], 'closeStart' => $closeStart, 'closeWidth' => $closeWidth];
             $used += $part['width'];
             $last = $index;
@@ -157,6 +161,7 @@ final class TabStripRenderer
             // Pad to the last column and put › there (a page-right click) when tabs remain.
             $label = AnsiText::padRight($label, $columns - 1);
             $lid = AnsiText::padRight($lid, $columns);
+            $foot .= Rule::horizontal($columns - AnsiUtils::visibleWidth($foot), $styles);
             $next = ' ';
             if ($last < (\count($parts) - 1)) {
                 foreach ($zoneRows as $row) {
@@ -170,13 +175,18 @@ final class TabStripRenderer
 
         $lines = match (true) {
             !$folder => [$label],
-            0 === $labelRow => [$label, $lid],
-            default => [$lid, $label],
+            StripEdge::Top === $edge => [$lid, $label, $foot],
+            default => [$foot, $label, $lid],
         };
 
         return [
             'lines' => $lines,
             'labelRow' => $labelRow,
+            'footRow' => match (true) {
+                !$folder => null,
+                StripEdge::Top === $edge => self::ROWS - 1,
+                default => 0,
+            },
             'used' => $used,
             'hitMap' => $hitMap,
             'indicatorZones' => $indicatorZones,

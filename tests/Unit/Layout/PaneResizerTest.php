@@ -18,6 +18,7 @@ use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\Settings\SettingsNavWidget;
+use Porta\Widget\TabBarWidget;
 use Porta\Widget\TerminalPanelWidget;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Style\StyleSheet;
@@ -58,6 +59,7 @@ final class PaneResizerTest extends TestCase
             new Renderer(new StyleSheet()),
             new FileTreeWidget($project->dir),
             TestBottomDock::create($tui, new TerminalPanelWidget(), new ResultsPanelWidget(), new DebugPanelWidget()),
+            new TabBarWidget(),
             $this->regions,
             new Translator('en'),
         );
@@ -109,6 +111,7 @@ final class PaneResizerTest extends TestCase
             new Renderer(new StyleSheet()),
             $tree,
             TestBottomDock::create($tui, new TerminalPanelWidget(), new ResultsPanelWidget(), new DebugPanelWidget()),
+            new TabBarWidget(),
             $regions,
             new Translator('en'),
         );
@@ -154,6 +157,7 @@ final class PaneResizerTest extends TestCase
             new Renderer(new StyleSheet()),
             new FileTreeWidget($project->dir),
             $dock,
+            new TabBarWidget(),
             $regions,
             new Translator('en'),
         );

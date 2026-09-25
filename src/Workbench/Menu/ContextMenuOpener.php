@@ -104,10 +104,10 @@ final readonly class ContextMenuOpener
             $rect = $this->renderer->getWidgetRect($this->tabBar);
             $index = \array_search($active, $this->buffers->all(), strict: true);
             // A scrolled-out active tab falls back to the strip's origin cell.
-            $anchor = (false === $index ? null : $this->tabBar->tabAnchor($index)) ?? ['row' => 0, 'col' => 0];
-            // One row below the tab; a bottom strip anchors on its own row so the
-            // overlay's overflow flip opens the menu above it instead.
-            $row = TabBarPosition::Bottom === $this->tabBar->position() ? $anchor['row'] : $anchor['row'] + 1;
+            $anchor = (false === $index ? null : $this->tabBar->tabAnchor($index)) ?? ['row' => 0, 'col' => 0, 'rows' => 1];
+            // One row below the tab; a bottom strip anchors on its own top row so
+            // the overlay's overflow flip opens the menu above it instead.
+            $row = TabBarPosition::Bottom === $this->tabBar->position() ? $anchor['row'] : $anchor['row'] + $anchor['rows'];
             $this->openAt($this->items->tabItems($active->path), (null === $rect ? 0 : $rect->row) + $row, (null === $rect ? 0 : $rect->col) + $anchor['col']);
 
             return;

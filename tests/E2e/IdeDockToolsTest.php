@@ -65,12 +65,6 @@ final class IdeDockToolsTest extends TestCase
     }
 
     /**
-     * On a 40-row terminal the dock strip is two rows of folder tabs, and only
-     * the label row's tail is the resize grab — the row a press arms, one
-     * above the panel. The lid row's tail, where the status sits, lights
-     * nothing: a grab that lit there would promise a drag it does not start.
-     */
-    /**
      * Maximised, the panel leaves the frame its rows and a couple of editor
      * rows besides — so you can still see which file you are coming back
      * to. Counted in the panel's CONTENT rows, the Results panel's filter box
@@ -135,7 +129,14 @@ final class IdeDockToolsTest extends TestCase
         );
     }
 
-    public function testOnAFolderStripOnlyTheLabelRowIsTheGrab(): void
+    /**
+     * On a 40-row terminal the dock strip is three rows of folder tabs, and
+     * only the top row's tail is the resize grab — the dock's top edge, the
+     * row a press arms. The status's row under it and the baseline under that
+     * light nothing: a grab that lit there would promise a drag it does not
+     * start.
+     */
+    public function testOnAFolderStripOnlyTheTopRowIsTheGrab(): void
     {
         \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\n"]);
@@ -148,26 +149,29 @@ final class IdeDockToolsTest extends TestCase
                     $tui->handleInput("\x1b6"); // alt+6 → Show Problems
                     $this->frame($tui);
                     $strip = $tui->getById('dock-tabs');
-                    $this->assertSame(2, $strip->stripRows(), 'forty rows: folder tabs');
+                    $this->assertSame(3, $strip->stripRows(), 'forty rows: folder tabs');
                     $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($strip);
-                    $this->assertSame(2, $rect->rows);
+                    $this->assertSame(3, $rect->rows);
                     $col = $rect->col + $rect->columns - 20; // the tail, clear of the tab
 
-                    $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $col + 1, $rect->row + 1)); // the lid row
-                    $this->assertFalse(Probe::get($strip, 'grabHovered'), 'the lid row is no grab');
+                    $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $col + 1, $rect->row + 2)); // the status's row
+                    $this->assertFalse(Probe::get($strip, 'grabHovered'), 'the status row is no grab');
 
-                    $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $col + 1, $rect->row + 2)); // the label row
-                    $this->assertTrue(Probe::get($strip, 'grabHovered'), 'the label row is');
+                    $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $col + 1, $rect->row + 3)); // the baseline
+                    $this->assertFalse(Probe::get($strip, 'grabHovered'), 'nor is the baseline');
+
+                    $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $col + 1, $rect->row + 1)); // the top row
+                    $this->assertTrue(Probe::get($strip, 'grabHovered'), 'the top row is');
 
                     // And it is what a press arms: dragged up three rows, the
                     // panel is three rows taller.
                     $results = $tui->getById('results');
                     $before = $results->visibleRows();
-                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $col + 1, $rect->row + 2));
-                    $tui->handleInput(\sprintf("\x1b[<32;%d;%dM", $col + 1, $rect->row - 1));
-                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $col + 1, $rect->row - 1));
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $col + 1, $rect->row + 1));
+                    $tui->handleInput(\sprintf("\x1b[<32;%d;%dM", $col + 1, $rect->row - 2));
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $col + 1, $rect->row - 2));
                     $this->frame($tui);
-                    $this->assertSame($before + 3, $results->visibleRows(), 'the label row dragged the dock');
+                    $this->assertSame($before + 3, $results->visibleRows(), 'the top row dragged the dock');
                 },
             ],
             rows: 40,

@@ -10,6 +10,7 @@ use Porta\Ui\Glyphs;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\StripEdge;
 use Porta\Widget\Render\TabStripRenderer;
+use Porta\Widget\Render\TabStripTail;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 final class TabStripRendererTest extends TestCase
@@ -140,36 +141,46 @@ final class TabStripRendererTest extends TestCase
     /**
      * Folder tabs: each tab its own outline, the lid above the labels, and
      * the shape is the state — the rest rounded, the shown tab heavy across
-     * the lid, heavy all round once its pane has the keys. Read with every
-     * SGR stripped, so it holds under the monochrome theme and --no-ansi.
+     * the lid, heavy all round once its pane has the keys. They stand on a
+     * baseline that opens under the shown tab alone, and runs on past the
+     * last one. Read with every SGR stripped, so it holds under the
+     * monochrome theme and --no-ansi.
      */
     public function testAFolderStripDrawsEachStateAsAShape(): void
     {
         $tabs = [['label' => 'one', 'active' => true], ['label' => 'two', 'active' => false]];
 
-        $unfocused = TabStripRenderer::render($tabs, 40, Styles::dark(), rows: 2);
-        $focused = TabStripRenderer::render($tabs, 40, Styles::dark(), rows: 2, paneFocused: true);
+        $unfocused = TabStripRenderer::render($tabs, 40, Styles::dark(), rows: 3);
+        $focused = TabStripRenderer::render($tabs, 40, Styles::dark(), rows: 3, paneFocused: true);
 
-        $this->assertSame(['┍━━━━━━━┑╭───────╮', '│ one × ││ two × │'], \array_map(AnsiUtils::stripAnsiCodes(...), $unfocused['lines']));
-        $this->assertSame(['┏━━━━━━━┓╭───────╮', '┃ one × ┃│ two × │'], \array_map(AnsiUtils::stripAnsiCodes(...), $focused['lines']));
+        $this->assertSame(['┍━━━━━━━┑╭───────╮', '│ one × ││ two × │', '┘       └┴───────┴'], \array_map(AnsiUtils::stripAnsiCodes(...), $unfocused['lines']));
+        $this->assertSame(['┏━━━━━━━┓╭───────╮', '┃ one × ┃│ two × │', '┚       ┖┴───────┴'], \array_map(AnsiUtils::stripAnsiCodes(...), $focused['lines']));
         $this->assertSame(1, $unfocused['labelRow']);
+        $this->assertSame(2, $unfocused['footRow']);
+        $compact = TabStripRenderer::render($tabs, 40, Styles::dark(), edge: StripEdge::Bottom);
+        $this->assertNull($compact['footRow'], 'a compact strip has no baseline to run on');
+        $this->assertSame(' one × │ two × │     ', AnsiUtils::stripAnsiCodes(TabStripTail::pad($compact, 21, Styles::dark())[0]), 'so its tail is blank, at either edge');
+        $padded = TabStripTail::pad($unfocused, 22, Styles::dark());
+        $this->assertSame('┘       └┴───────┴────', AnsiUtils::stripAnsiCodes($padded[2]), 'the baseline runs on past the last tab');
+        $this->assertSame('│ one × ││ two × │    ', AnsiUtils::stripAnsiCodes($padded[1]), 'the label row pads with blanks');
     }
 
-    /** A strip under its pane opens downward: the labels first, then the tabs' bottoms. */
+    /** A strip under its pane opens upward: the baseline first, then the labels, then the tabs' bottoms. */
     public function testABottomFolderStripIsMirrored(): void
     {
-        $strip = TabStripRenderer::render([['label' => 'one', 'active' => true], ['label' => 'two', 'active' => false]], 40, Styles::dark(), rows: 2, edge: StripEdge::Bottom, paneFocused: true);
+        $strip = TabStripRenderer::render([['label' => 'one', 'active' => true], ['label' => 'two', 'active' => false]], 40, Styles::dark(), rows: 3, edge: StripEdge::Bottom, paneFocused: true);
 
-        $this->assertSame(['┃ one × ┃│ two × │', '┗━━━━━━━┛╰───────╯'], \array_map(AnsiUtils::stripAnsiCodes(...), $strip['lines']));
-        $this->assertSame(0, $strip['labelRow']);
-        $unfocused = TabStripRenderer::render([['label' => 'one', 'active' => true]], 40, Styles::dark(), rows: 2, edge: StripEdge::Bottom);
-        $this->assertSame('┕━━━━━━━┙', AnsiUtils::stripAnsiCodes($unfocused['lines'][1]));
+        $this->assertSame(['┒       ┎┬───────┬', '┃ one × ┃│ two × │', '┗━━━━━━━┛╰───────╯'], \array_map(AnsiUtils::stripAnsiCodes(...), $strip['lines']));
+        $this->assertSame(1, $strip['labelRow']);
+        $this->assertSame(0, $strip['footRow']);
+        $unfocused = TabStripRenderer::render([['label' => 'one', 'active' => true]], 40, Styles::dark(), rows: 3, edge: StripEdge::Bottom);
+        $this->assertSame(['┐       ┌', '┕━━━━━━━┙'], [AnsiUtils::stripAnsiCodes($unfocused['lines'][0]), AnsiUtils::stripAnsiCodes($unfocused['lines'][2])]);
     }
 
     /** The zones count the rails: a folder tab is one column wider, and its × one column further in. */
     public function testAFolderTabsZonesIncludeItsRails(): void
     {
-        $strip = TabStripRenderer::render([['label' => 'one', 'active' => true], ['label' => 'two', 'active' => false]], 40, Styles::dark(), rows: 2);
+        $strip = TabStripRenderer::render([['label' => 'one', 'active' => true], ['label' => 'two', 'active' => false]], 40, Styles::dark(), rows: 3);
 
         $this->assertSame([0, 9], \array_column($strip['hitMap'], 'start'));
         $this->assertSame([9, 9], \array_column($strip['hitMap'], 'width'));
@@ -182,38 +193,41 @@ final class TabStripRendererTest extends TestCase
     {
         $tabs = [['label' => 'one', 'active' => false], ['label' => 'two', 'active' => true]];
 
-        $onLabel = TabStripRenderer::render($tabs, 40, Styles::dark(), 6, rows: 2, hoverRow: 1);
-        $onLid = TabStripRenderer::render($tabs, 40, Styles::dark(), 6, rows: 2, hoverRow: 0);
+        $onLabel = TabStripRenderer::render($tabs, 40, Styles::dark(), 6, rows: 3, hoverRow: 1);
+        $onLid = TabStripRenderer::render($tabs, 40, Styles::dark(), 6, rows: 3, hoverRow: 0);
 
         $this->assertMatchesRegularExpression('/\x1b\[4m(?:\x1b\[[0-9;]*m)*×/', $onLabel['lines'][1]);
         $this->assertDoesNotMatchRegularExpression('/\x1b\[4m(?:\x1b\[[0-9;]*m)*×/', $onLid['lines'][1]);
         $this->assertStringContainsString("\x1b[4mone", $onLid['lines'][1], 'the tab is hovered all the same');
     }
 
-    /** An overflowing folder strip pages from either of its rows. */
-    public function testAFolderStripsIndicatorsSpanBothRows(): void
+    /** An overflowing folder strip pages from any of its rows, and its baseline runs under the indicators. */
+    public function testAFolderStripsIndicatorsSpanEveryRow(): void
     {
         $tabs = [];
         for ($i = 0; $i < 8; ++$i) {
             $tabs[] = ['label' => "tab{$i}", 'active' => 7 === $i];
         }
 
-        $strip = TabStripRenderer::render($tabs, 30, Styles::dark(), rows: 2);
+        $strip = TabStripRenderer::render($tabs, 30, Styles::dark(), rows: 3);
 
         $this->assertSame(
-            [[0, 0], [1, 0]],
+            [[0, 0], [1, 0], [2, 0]],
             \array_map(static fn (array $zone): array => [$zone['row'], $zone['col']], \array_filter($strip['indicatorZones'], static fn (array $zone): bool => -1 === $zone['step']))
                 |> \array_values(...),
         );
         foreach ($strip['lines'] as $line) {
             $this->assertSame(30, AnsiUtils::visibleWidth($line));
         }
+        $foot = AnsiUtils::stripAnsiCodes($strip['lines'][2]);
+        $this->assertStringStartsWith('─┴', $foot, 'under ‹ the baseline runs on');
+        $this->assertStringEndsWith('└─────────', $foot, 'and on to the last column, under ›');
     }
 
     /** Folder tabs from 30 terminal rows; a compact strip below, where every row is a line of code. */
     public function testTheStripIsCompactBelowThirtyRows(): void
     {
         $this->assertSame(1, TabStripRenderer::rowsFor(Density::Compact));
-        $this->assertSame(2, TabStripRenderer::rowsFor(Density::Roomy));
+        $this->assertSame(3, TabStripRenderer::rowsFor(Density::Roomy));
     }
 }

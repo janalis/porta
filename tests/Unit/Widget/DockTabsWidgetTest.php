@@ -10,6 +10,8 @@ use Porta\Event\DockTabCloseRequested;
 use Porta\Event\DockTabMoveRequested;
 use Porta\Tests\Support\Probe;
 use Porta\Ui\Glyphs;
+use Porta\Ui\Role;
+use Porta\Ui\Theme\Styles;
 use Porta\Widget\DockTabsWidget;
 use Porta\Workbench\Dock\DockTab;
 use Symfony\Component\EventDispatcher\EventDispatcher;
@@ -356,26 +358,48 @@ final class DockTabsWidgetTest extends TestCase
     }
 
     /**
-     * A folder strip splits the tail: the status on the lid row, the grab on
-     * the label row — the row above the panel a press arms — where the tabs
-     * stand on a baseline that heavy-rules under the pointer.
+     * A folder strip splits the tail three ways: the grab on the top row — the
+     * dock's top edge, which a press arms and which heavy-rules under the
+     * pointer — the status level with the labels, and the baseline the tabs
+     * stand on under them.
      */
-    public function testAFolderStripPutsTheStatusOnTheLidAndTheGrabUnderTheTabs(): void
+    public function testAFolderStripPutsTheGrabAboveTheStatusAndTheBaselineUnderIt(): void
     {
         $bar = self::strip([['tab' => DockTab::Results, 'label' => 'Problems', 'active' => true, 'key' => '7', 'status' => '3 results']]);
-        $bar->setStripRows(2);
-        $this->assertSame(2, $bar->stripRows());
+        $bar->setStripRows(3);
+        $this->assertSame(3, $bar->stripRows());
 
-        $rows = \array_map(AnsiUtils::stripAnsiCodes(...), $bar->render(new RenderContext(40, 2)));
+        $rows = \array_map(AnsiUtils::stripAnsiCodes(...), $bar->render(new RenderContext(40, 3)));
 
-        $this->assertStringStartsWith('┍'.\str_repeat('━', times: 12).'┑', $rows[0], 'the tab: ` Problems × ` between its rails');
-        $this->assertStringEndsWith('3 results ', $rows[0], 'the status, right-aligned on the lid row');
-        $this->assertStringEndsWith('│'.\str_repeat('─', times: 26), $rows[1], 'and the baseline under the tabs');
+        $this->assertSame('┍'.\str_repeat('━', times: 12).'┑'.\str_repeat('─', times: 26), $rows[0], 'the tab\'s lid, then the grab: a rule along the top');
+        $this->assertSame('│ Problems × │'.\str_repeat(' ', times: 16).'3 results ', $rows[1], 'the status, right-aligned level with the label');
+        $this->assertSame('┘'.\str_repeat(' ', times: 12).'└'.\str_repeat('─', times: 26), $rows[2], 'and the baseline, open under the shown tab');
+
+        $rule = Styles::dark()->of(Role::Rule)->apply(\str_repeat('─', times: 26));
+        $this->assertStringContainsString($rule, $bar->render(new RenderContext(40, 3))[0], 'at rest the grab is a rule, in the rules\' tint');
 
         $bar->hoverGrab();
-        $this->assertStringEndsWith(\str_repeat('━', times: 26), AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(40, 2))[1]), 'the grab heavy-rules under the pointer');
-        foreach ($bar->render(new RenderContext(40, 2)) as $row) {
+        $this->assertStringNotContainsString(Styles::dark()->of(Role::Rule)->apply(\str_repeat('━', times: 26)), $bar->render(new RenderContext(40, 3))[0], 'under the pointer it leaves that tint');
+        $hovered = \array_map(AnsiUtils::stripAnsiCodes(...), $bar->render(new RenderContext(40, 3)));
+        $this->assertStringEndsWith(\str_repeat('━', times: 26), $hovered[0], 'the grab heavy-rules under the pointer');
+        $this->assertStringEndsWith(\str_repeat('─', times: 26), $hovered[2], 'the baseline does not');
+        foreach ($bar->render(new RenderContext(40, 3)) as $row) {
             $this->assertSame(40, AnsiUtils::visibleWidth($row));
+        }
+    }
+
+    /** A folder strip full to its last column has no tail: its grab, status and baseline take no column the tabs need. */
+    public function testAFullFolderStripAddsNoTail(): void
+    {
+        $tabs = [];
+        foreach (['Problems', 'Usages', 'Todo', 'Tests', 'Output'] as $i => $label) {
+            $tabs[] = ['tab' => null, 'label' => $label, 'active' => 0 === $i, 'key' => (string) $i, 'status' => '3 results'];
+        }
+        $bar = self::strip($tabs);
+        $bar->setStripRows(3);
+
+        foreach ($bar->render(new RenderContext(30, 3)) as $row) {
+            $this->assertSame(30, AnsiUtils::visibleWidth($row));
         }
     }
 
@@ -387,15 +411,15 @@ final class DockTabsWidgetTest extends TestCase
         $bar->setFocusProbe(static function () use (&$focused): bool {
             return $focused;
         });
-        $bar->setStripRows(2);
+        $bar->setStripRows(3);
         $bar->beforeRender();
-        $this->assertStringStartsWith('┍', AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(40, 2))[0]));
+        $this->assertStringStartsWith('┍', AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(40, 3))[0]));
         $revision = $bar->getRenderRevision();
 
         $focused = true;
         $bar->beforeRender();
 
         $this->assertNotSame($revision, $bar->getRenderRevision());
-        $this->assertStringStartsWith('┏', AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(40, 2))[0]));
+        $this->assertStringStartsWith('┏', AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(40, 3))[0]));
     }
 }

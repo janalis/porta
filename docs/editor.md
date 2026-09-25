@@ -76,10 +76,14 @@ diagnostics. The open set is restored on the next launch.
 The View menu's toggles (Soft-Wrap, Code Vision, inline diagnostics,
 auto-pairs, format on save) show a `✓` while they are on.
 
-On a terminal 30 rows or taller the tabs are folder tabs, two rows each. The
-shown tab has a heavy lid (`┍━┑`); while its pane has the keys the whole tab is
-heavy (`┏━┓` over `┃ name ┃`). The dock and the git view's tabs work the same
-way. Shorter terminals keep the one-row strip, so the code keeps the row.
+On a terminal 30 rows or taller the tabs are folder tabs, three rows each,
+standing on a line that opens under the shown tab. The shown tab has a heavy
+lid (`┍━┑`); while its pane has the keys the whole tab is heavy (`┏━┓` over
+`┃ name ┃`). The dock and the git view's tabs work the same way, and so do the
+tabs at the side of the editor, turned on their side: the line runs down the
+edge facing the code. Shorter terminals keep the one-row strip, so the code
+keeps the rows. The dock's top edge is its resize grab, above the tool's
+count.
 
 Two open files with the same name say which is which — `plugin.php (git)` and
 `plugin.php (symfony-lsp)` — and the qualifier grows a directory at a time

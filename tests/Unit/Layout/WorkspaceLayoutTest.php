@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Layout;
 
 use PHPUnit\Framework\TestCase;
+use Porta\I18n\BaseDirection;
 use Porta\Layout\WorkspaceLayout;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TestWorkspaceLayout;
@@ -91,6 +92,24 @@ final class WorkspaceLayoutTest extends TestCase
 
         $layout->setMirrored(false);
         $this->assertSame(['editor-body', 'tabs'], $this->ids(Probe::get($layout, 'editorPane')), 'and back again');
+    }
+
+    /**
+     * The strip is told the reading direction with its seat: a side folder
+     * tab's inner rule is a logical end, and under RTL its row reverses, so
+     * the strip has to know which end faces the editor once it is read.
+     */
+    public function testAMirroredWorkspaceTellsTheStripItReadsRightToLeft(): void
+    {
+        $layout = $this->layout();
+        $tabBar = Probe::get($layout, 'tabBar');
+        $this->assertSame(BaseDirection::Ltr, Probe::get($tabBar, 'direction'));
+
+        $layout->setMirrored(true);
+        $this->assertSame(BaseDirection::Rtl, Probe::get($tabBar, 'direction'));
+
+        $layout->setMirrored(false);
+        $this->assertSame(BaseDirection::Ltr, Probe::get($tabBar, 'direction'), 'and back again');
     }
 
     public function testMirroringLeavesATopStripAlone(): void

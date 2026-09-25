@@ -17,6 +17,7 @@ use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
+use Porta\Widget\Render\Rule;
 use Porta\Widget\Render\TabStripRenderer;
 use Porta\Widget\Support\ColumnHover;
 use Porta\Widget\Support\PaneFocusProbe;
@@ -343,25 +344,29 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverla
         $used = $strip['used'];
         $folder = $this->stripRows > 1;
 
-        // The label row doubles as the dock's height grab: under the pointer
-        // its empty tail heavy-rules so the drag-to-resize reads. At rest it is
-        // the baseline folder tabs stand on, or blank on a compact strip. Every
-        // fill is one column, so no width moves.
+        // The strip's top row doubles as the dock's height grab: under the
+        // pointer its empty tail heavy-rules so the drag-to-resize reads. At
+        // rest a folder strip's grab is a rule, the dock's top edge; a compact
+        // strip's is blank. Every fill is one column, so no width moves.
         $fill = match (true) {
             $this->grabHovered => Glyphs::PANEL_RESIZE_GRAB,
             $folder => Glyphs::FRAME_HORIZONTAL,
             default => ' ',
         };
-        $grab = $this->styles->of($folder && !$this->grabHovered ? Role::Rule : Role::Toolbar)->apply(\str_repeat($fill, \max(0, $columns - $used)));
+        $room = \max(0, $columns - $used);
+        $grab = $this->styles->of($folder && !$this->grabHovered ? Role::Rule : Role::Toolbar)->apply(\str_repeat($fill, $room));
 
-        // The active tool's status sits right-aligned on the tail: the lid
-        // row's on a folder strip, which leaves the grab whole.
-        $status = '' === $status ? '' : $this->statusTail($status, $columns - $used, $folder ? ' ' : $fill);
+        // The active tool's status sits right-aligned on the tail: on a folder
+        // strip, level with the labels — between the grab above it and the
+        // baseline below, which the tabs stand on. A compact strip's one row
+        // is its grab until a status takes it.
+        $status = '' === $status ? '' : $this->statusTail($status, $room, $folder ? ' ' : $fill);
         $rows = [];
         foreach ($strip['lines'] as $row => $line) {
             $tail = match (true) {
-                $row !== $strip['labelRow'] => $status,
-                $folder || '' === $status => $grab,
+                !$folder => '' === $status ? $grab : $status,
+                0 === $row => $grab,
+                $row === $strip['footRow'] => Rule::horizontal($room, $this->styles),
                 default => $status,
             };
             // A Toolbar-background base under the whole row, then the styled tabs.

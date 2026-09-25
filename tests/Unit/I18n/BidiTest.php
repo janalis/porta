@@ -307,6 +307,10 @@ final class BidiTest extends TestCase
         yield 'tab lid top right' => ['┑', '┍'];
         yield 'tab lid bottom left' => ['┕', '┙'];
         yield 'tab lid bottom right' => ['┙', '┕'];
+        yield 'focused tab foot up left' => ['┚', '┖'];
+        yield 'focused tab foot up right' => ['┖', '┚'];
+        yield 'focused tab foot down left' => ['┒', '┎'];
+        yield 'focused tab foot down right' => ['┎', '┒'];
     }
 
     #[DataProvider('fieldCorners')]

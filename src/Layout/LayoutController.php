@@ -14,6 +14,7 @@ use Porta\Ui\Density;
 use Porta\Widget\DockPanelWidget;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\Render\TabStripRenderer;
+use Porta\Widget\TabBarWidget;
 use Porta\Workbench\Dock\BottomDock;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Render\WidgetRect;
@@ -72,6 +73,7 @@ final class LayoutController
         private readonly Renderer $renderer,
         FileTreeWidget $tree,
         private readonly BottomDock $dock,
+        private readonly TabBarWidget $tabBar,
         private readonly ViewRegions $regions,
         private readonly Translator $translator,
     ) {
@@ -350,7 +352,7 @@ final class LayoutController
     {
         $rows = $this->tui->getTerminal()->getRows();
 
-        return \max(3, $rows - 6 - self::chromeRows($rows) - $this->panelChrome());
+        return \max(3, $rows - 6 - $this->chromeRows($rows) - $this->panelChrome());
     }
 
     /**
@@ -369,16 +371,18 @@ final class LayoutController
     }
 
     /**
-     * The chrome rows a roomy screen adds: the two tab strips' second rows
-     * ({@see TabStripRenderer::rowsFor()}) and the rules at the workspace's
-     * top and bottom edges ({@see \Porta\Widget\EdgeRuleWidget}) — none on
-     * a compact one.
+     * The chrome rows a roomy screen adds: the horizontal tab strips' rows
+     * past their first ({@see TabStripRenderer::rowsFor()}) — the dock's,
+     * and the editor's unless it sits at the side, where it takes columns
+     * instead — and the rules at the workspace's top and bottom edges
+     * ({@see \Porta\Widget\EdgeRuleWidget}); none on a compact one.
      */
-    private static function chromeRows(int $rows): int
+    private function chromeRows(int $rows): int
     {
         $density = Density::of($rows);
+        $strips = $this->tabBar->position()->isSide() ? 1 : 2;
 
-        return (2 * (TabStripRenderer::rowsFor($density) - 1)) + (Density::Roomy === $density ? 2 : 0);
+        return ($strips * (TabStripRenderer::rowsFor($density) - 1)) + (Density::Roomy === $density ? 2 : 0);
     }
 
     /** Shared keyboard-nudge path: clamp like the drags do, persist, repaint. */
@@ -444,7 +448,7 @@ final class LayoutController
     /** Clamp a bottom-panel height so the editor keeps room above it. */
     private function clampPanel(int $height, int $rows, int $chrome): int
     {
-        return IntMath::clamp($height, 3, $rows - 8 - self::chromeRows($rows) - $chrome);
+        return IntMath::clamp($height, 3, $rows - 8 - $this->chromeRows($rows) - $chrome);
     }
 
     /**
