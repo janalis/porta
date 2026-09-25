@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Porta\Onboarding;
 
 use Porta\Config\CommandRegistry;
-use Porta\Config\RecommendedPlugins;
+use Porta\Config\RecommendedPlugin;
 use Porta\Highlight\SyntaxHighlightProviderSource;
 use Porta\I18n\Translator;
 use Porta\Plugin\Api\PluginApi;
@@ -42,8 +42,8 @@ final readonly class WelcomeSteps
         // Re-detected on every open (steps are rebuilt each time), so a
         // `composer require` mid-session is picked up by the next open.
         $installed = $this->mago->installed();
-        $fixer = $installed ? RecommendedPlugins::BOTH_TOOLS : RecommendedPlugins::FORMATTER;
-        $analyzer = $installed ? RecommendedPlugins::BOTH_TOOLS : RecommendedPlugins::ANALYZER;
+        $fixer = $installed ? RecommendedPlugin::BothTools : RecommendedPlugin::Formatter;
+        $analyzer = $installed ? RecommendedPlugin::BothTools : RecommendedPlugin::Analyzer;
 
         return [
             new WelcomeStep(
@@ -53,22 +53,22 @@ final readonly class WelcomeSteps
                 // until enabled" contradicts its own [✓] the moment the step is
                 // done — which is the first line a returning user reads.
                 $this->translator->trans('Colours your code'),
-                $this->translator->trans('Enable %name%', ['%name%' => RecommendedPlugins::HIGHLIGHTER]),
+                $this->translator->trans('Enable %name%', ['%name%' => RecommendedPlugin::Highlighter->value]),
                 // Asking the source directly is one call; going through the
                 // registry would mean probing every grammar against every
                 // provider, because its fallback always claims a language.
                 fn (): bool => [] !== $this->highlighters->highlightProviders(),
                 function (): void {
-                    $this->lifecycle->enable(RecommendedPlugins::HIGHLIGHTER);
+                    $this->lifecycle->enable(RecommendedPlugin::Highlighter->value);
                 },
             ),
             new WelcomeStep(
                 $this->translator->trans('PHP language server'),
                 $this->translator->trans('Completion, go-to-definition and diagnostics'),
-                $this->translator->trans('Enable %name%', ['%name%' => RecommendedPlugins::LANGUAGE_SERVER]),
-                fn (): bool => $this->isEnabled(RecommendedPlugins::LANGUAGE_SERVER),
+                $this->translator->trans('Enable %name%', ['%name%' => RecommendedPlugin::LanguageServer->value]),
+                fn (): bool => $this->isEnabled(RecommendedPlugin::LanguageServer),
                 function (): void {
-                    $this->lifecycle->enable(RecommendedPlugins::LANGUAGE_SERVER);
+                    $this->lifecycle->enable(RecommendedPlugin::LanguageServer->value);
                 },
             ),
             // Only on a project that IS a Symfony application — the card would
@@ -79,16 +79,16 @@ final readonly class WelcomeSteps
                     ? [new WelcomeStep(
                         $this->translator->trans('Symfony language tools'),
                         $this->translator->trans('Routes, services, Twig and config completion for this Symfony app'),
-                        $this->translator->trans('Enable %name%', ['%name%' => RecommendedPlugins::SYMFONY_LANGUAGE_SERVER]),
+                        $this->translator->trans('Enable %name%', ['%name%' => RecommendedPlugin::SymfonyLanguageServer->value]),
                         // Enabled is NOT done here, unlike every other card.
                         // This server ships only as a GitHub release, so an
                         // enabled plugin with no binary is a ticked step and a
                         // status bar reading `LSP:none` — the card claiming
                         // credit for something the user cannot yet use.
-                        fn (): bool => $this->isEnabled(RecommendedPlugins::SYMFONY_LANGUAGE_SERVER) && $this->toolReady(RecommendedPlugins::SYMFONY_LANGUAGE_SERVER),
+                        fn (): bool => $this->isEnabled(RecommendedPlugin::SymfonyLanguageServer) && $this->toolReady(RecommendedPlugin::SymfonyLanguageServer),
                         function (): void {
-                            $this->lifecycle->enable(RecommendedPlugins::SYMFONY_LANGUAGE_SERVER);
-                            $this->installServerFor(RecommendedPlugins::SYMFONY_LANGUAGE_SERVER);
+                            $this->lifecycle->enable(RecommendedPlugin::SymfonyLanguageServer->value);
+                            $this->installServerFor(RecommendedPlugin::SymfonyLanguageServer);
                         },
                     )] : []
             ),
@@ -97,20 +97,20 @@ final readonly class WelcomeSteps
             // onboarding shortcut would be a change the user never asked for.
             new WelcomeStep(
                 $this->translator->trans('Code style fixer'),
-                $this->translator->trans('%name% fixes formatting on demand; format-on-save lives in its settings', ['%name%' => $fixer]),
-                $this->translator->trans('Enable %name%', ['%name%' => $fixer]),
+                $this->translator->trans('%name% fixes formatting on demand; format-on-save lives in its settings', ['%name%' => $fixer->value]),
+                $this->translator->trans('Enable %name%', ['%name%' => $fixer->value]),
                 fn (): bool => $this->isEnabled($fixer),
                 function () use ($fixer): void {
-                    $this->lifecycle->enable($fixer);
+                    $this->lifecycle->enable($fixer->value);
                 },
             ),
             new WelcomeStep(
                 $this->translator->trans('Static analysis'),
-                $this->translator->trans('%name% finds bugs without running the code; analyse-on-save in its settings', ['%name%' => $analyzer]),
-                $this->translator->trans('Enable %name%', ['%name%' => $analyzer]),
+                $this->translator->trans('%name% finds bugs without running the code; analyse-on-save in its settings', ['%name%' => $analyzer->value]),
+                $this->translator->trans('Enable %name%', ['%name%' => $analyzer->value]),
                 fn (): bool => $this->isEnabled($analyzer),
                 function () use ($analyzer): void {
-                    $this->lifecycle->enable($analyzer);
+                    $this->lifecycle->enable($analyzer->value);
                 },
             ),
             // A link step (null predicate): `ide_help` already closes every
@@ -132,9 +132,9 @@ final readonly class WelcomeSteps
      * A bundled plugin is installed but off until opted into, so "enabled"
      * means listed *and* not disabled.
      */
-    private function isEnabled(string $plugin): bool
+    private function isEnabled(RecommendedPlugin $plugin): bool
     {
-        return \in_array($plugin, $this->lifecycle->listedNames(), strict: true) && !$this->lifecycle->isDisabled($plugin);
+        return \in_array($plugin->value, $this->lifecycle->listedNames(), strict: true) && !$this->lifecycle->isDisabled($plugin->value);
     }
 
     /**
@@ -145,9 +145,9 @@ final readonly class WelcomeSteps
      * {@see isEnabled()} rather than replacing it. A plugin that declares no
      * offer at all has no tool to wait for, so it is ready by default.
      */
-    private function toolReady(string $plugin): bool
+    private function toolReady(RecommendedPlugin $plugin): bool
     {
-        $offer = $this->offers->installOffer($plugin);
+        $offer = $this->offers->installOffer($plugin->value);
 
         return null === $offer || $offer['available'];
     }
@@ -163,15 +163,15 @@ final readonly class WelcomeSteps
      * simply stays unticked, and pressing it again installs. Silently doing
      * nothing is the right answer there, and guessing is not.
      */
-    private function installServerFor(string $plugin): void
+    private function installServerFor(RecommendedPlugin $plugin): void
     {
-        $offer = $this->offers->installOffer($plugin);
+        $offer = $this->offers->installOffer($plugin->value);
         if (null === $offer || $offer['available']) {
             return;
         }
         $self = \array_find($offer['via'], static fn (array $candidate): bool => PluginApi::INSTALL_SELF === $candidate[0]);
         if (null !== $self) {
-            $this->commands->run($plugin.':'.$self[1]);
+            $this->commands->run($plugin->value.':'.$self[1]);
         }
     }
 }

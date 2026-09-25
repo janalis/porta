@@ -7,7 +7,7 @@ namespace Porta\Tests\E2e;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Config\IdeConfig;
-use Porta\Config\RecommendedPlugins;
+use Porta\Config\RecommendedPlugin;
 use Porta\Ide;
 use Porta\Tests\Support\NavigatesSettings;
 use Porta\Tests\Support\ReadsSettingsForm;
@@ -84,7 +84,7 @@ final class HighlightingSettingsTest extends TestCase
 
                 $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                 $this->assertStringContainsString('No highlighting engine is enabled', $screen);
-                $this->assertStringContainsString('Enable '.RecommendedPlugins::HIGHLIGHTER, $screen);
+                $this->assertStringContainsString('Enable '.RecommendedPlugin::Highlighter->value, $screen);
             },
             200 => function (Tui $tui, $terminal) use ($project): void {
                 // Swapping the content pane detaches the focused widget, which
@@ -94,13 +94,13 @@ final class HighlightingSettingsTest extends TestCase
                 // scope chooser now.
                 $form = $this->settingsForm($tui);
                 $tui->setFocus($form);
-                $this->selectSettingRow($form, 'Enable '.RecommendedPlugins::HIGHLIGHTER);
+                $this->selectSettingRow($form, 'Enable '.RecommendedPlugin::Highlighter->value);
                 $tui->handleInput("\r"); // actuate the button
                 $this->frame($tui); // a bare tick inside the 60fps cap window is not a frame
 
                 $config = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true);
                 $this->assertSame(
-                    [...IdeConfig::DEFAULT_ENABLED_PLUGINS, RecommendedPlugins::HIGHLIGHTER],
+                    [...IdeConfig::DEFAULT_ENABLED_PLUGINS, RecommendedPlugin::Highlighter->value],
                     \is_array($config) ? $config['enabledPlugins'] ?? null : null,
                     'the choice persisted (the absent-key default materialized first)',
                 );
@@ -109,7 +109,7 @@ final class HighlightingSettingsTest extends TestCase
                 // be asserted from it — that is covered by the controller's unit
                 // test. The status flash is unambiguous evidence it took effect.
                 $this->assertStringContainsString(
-                    'Plugin "'.RecommendedPlugins::HIGHLIGHTER.'" enabled',
+                    'Plugin "'.RecommendedPlugin::Highlighter->value.'" enabled',
                     AnsiUtils::stripAnsiCodes($terminal->getOutput()),
                 );
             },

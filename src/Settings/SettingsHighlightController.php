@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Porta\Settings;
 
 use Porta\Config\PortaJsonWriter;
-use Porta\Config\RecommendedPlugins;
+use Porta\Config\RecommendedPlugin;
 use Porta\Event\SettingsRowsStale;
 use Porta\Highlight\HighlightPreferences;
 use Porta\Highlight\HighlightRegistry;
@@ -75,7 +75,7 @@ final class SettingsHighlightController
                 key: self::ENABLE_KEY,
                 label: $this->translator->trans('No highlighting engine is enabled'),
                 kind: SettingsRowKind::Action,
-                value: $this->translator->trans('Enable %name%', ['%name%' => RecommendedPlugins::HIGHLIGHTER]),
+                value: $this->translator->trans('Enable %name%', ['%name%' => RecommendedPlugin::Highlighter->value]),
                 restart: false,
                 hint: $this->translator->trans('Bundled plugins are opt-in; applies to files opened afterwards'),
             );
@@ -132,7 +132,7 @@ final class SettingsHighlightController
             // itself, and the caller re-pulls these rows the moment it returns —
             // so drop the probe here rather than waiting for an event.
             $this->claims = [];
-            $this->lifecycle?->enable(RecommendedPlugins::HIGHLIGHTER);
+            $this->lifecycle?->enable(RecommendedPlugin::Highlighter->value);
 
             return;
         }
@@ -155,7 +155,7 @@ final class SettingsHighlightController
             return false;
         }
 
-        return \in_array(RecommendedPlugins::HIGHLIGHTER, $this->lifecycle->listedNames(), strict: true);
+        return \in_array(RecommendedPlugin::Highlighter->value, $this->lifecycle->listedNames(), strict: true);
     }
 
     /**

@@ -16,33 +16,36 @@ namespace Porta\Config;
  *
  * What it does fix is that the opinion used to be spelled in three places —
  * four constants on the first-run screen and one borrowed from a settings
- * controller — so changing Porta's recommendation meant finding them all.
+ * controller — so changing Porta's recommendation meant finding them all. An
+ * enum rather than constants: the first-run screen's helpers take a
+ * recommendation, not any plugin name, and a case's `value` is the name only
+ * where it leaves for the plugin lifecycle or a label.
  *
  * It lives in `Config` rather than beside the first-run screen because it has
  * two consumers in different namespaces, and this is where the other
  * plugins-this-project-runs fact already lives ({@see IdeConfig::DEFAULT_ENABLED_PLUGINS}
  * — a different list: what is ON by default, not what is RECOMMENDED).
  */
-final class RecommendedPlugins
+enum RecommendedPlugin: string
 {
     /** The bundled syntax-highlighting engine. */
-    public const string HIGHLIGHTER = 'tempest';
+    case Highlighter = 'tempest';
 
     /** The bundled PHP language server. */
-    public const string LANGUAGE_SERVER = 'phpantom';
+    case LanguageServer = 'phpantom';
 
     /**
      * The bundled Symfony language server, offered only when the project IS a
      * Symfony application ({@see \Porta\Onboarding\SymfonyDetector}) — it runs
      * beside the PHP server, serving twig/yaml/xml/json/dotenv.
      */
-    public const string SYMFONY_LANGUAGE_SERVER = 'symfony-lsp';
+    case SymfonyLanguageServer = 'symfony-lsp';
 
     /** The bundled formatter. */
-    public const string FORMATTER = 'php-cs-fixer';
+    case Formatter = 'php-cs-fixer';
 
     /** The bundled analyzer — one lint step keeps the first-run screen a signpost; the others stay in Settings → Plugins. */
-    public const string ANALYZER = 'phpstan';
+    case Analyzer = 'phpstan';
 
     /**
      * The one plugin that serves BOTH tool jobs when the project ships mago
@@ -50,5 +53,5 @@ final class RecommendedPlugins
      * php-cs-fixer or phpstan does not satisfy them, because the offer is
      * "enable the recommended tool", not "have any tool".
      */
-    public const string BOTH_TOOLS = 'mago';
+    case BothTools = 'mago';
 }

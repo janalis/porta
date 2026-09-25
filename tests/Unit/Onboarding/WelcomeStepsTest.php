@@ -6,7 +6,7 @@ namespace Porta\Tests\Unit\Onboarding;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
-use Porta\Config\RecommendedPlugins;
+use Porta\Config\RecommendedPlugin;
 use Porta\Highlight\HighlightRequest;
 use Porta\Highlight\HighlightSink;
 use Porta\Highlight\NoHighlightPlugins;
@@ -125,9 +125,9 @@ final class WelcomeStepsTest extends TestCase
         $this->assertFalse($steps[2]->isDone());
 
         $steps[2]->run();
-        $this->assertSame([[RecommendedPlugins::SYMFONY_LANGUAGE_SERVER, true]], $this->lifecycle->toggled, 'the same enable call Settings → Plugins makes');
+        $this->assertSame([[RecommendedPlugin::SymfonyLanguageServer->value, true]], $this->lifecycle->toggled, 'the same enable call Settings → Plugins makes');
 
-        $this->lifecycle->names[] = RecommendedPlugins::SYMFONY_LANGUAGE_SERVER;
+        $this->lifecycle->names[] = RecommendedPlugin::SymfonyLanguageServer->value;
         $this->assertTrue($this->steps()->all()[2]->isDone(), 'no declared tool to wait for, so enabling IS the whole step');
     }
 
@@ -142,12 +142,12 @@ final class WelcomeStepsTest extends TestCase
     public function testTheSymfonyCardWaitsForTheServerBinaryNotJustThePlugin(): void
     {
         $this->withSymfony();
-        $this->lifecycle->names[] = RecommendedPlugins::SYMFONY_LANGUAGE_SERVER;
-        $this->offers->declare(RecommendedPlugins::SYMFONY_LANGUAGE_SERVER, 'symfony-lsp', available: false);
+        $this->lifecycle->names[] = RecommendedPlugin::SymfonyLanguageServer->value;
+        $this->offers->declare(RecommendedPlugin::SymfonyLanguageServer->value, 'symfony-lsp', available: false);
 
         $this->assertFalse($this->steps()->all()[2]->isDone(), 'enabled, but there is no server to talk to');
 
-        $this->offers->declare(RecommendedPlugins::SYMFONY_LANGUAGE_SERVER, 'symfony-lsp', available: true);
+        $this->offers->declare(RecommendedPlugin::SymfonyLanguageServer->value, 'symfony-lsp', available: true);
         $this->assertTrue($this->steps()->all()[2]->isDone());
     }
 
@@ -155,7 +155,7 @@ final class WelcomeStepsTest extends TestCase
     public function testRunningTheSymfonyCardAlsoInstallsTheServer(): void
     {
         $this->withSymfony();
-        $this->offers->declare(RecommendedPlugins::SYMFONY_LANGUAGE_SERVER, 'symfony-lsp', available: false, package: 'install');
+        $this->offers->declare(RecommendedPlugin::SymfonyLanguageServer->value, 'symfony-lsp', available: false, package: 'install');
         $this->commands->add(
             'symfony-lsp:install',
             function (): void {
@@ -166,7 +166,7 @@ final class WelcomeStepsTest extends TestCase
 
         $this->steps()->all()[2]->run();
 
-        $this->assertSame([[RecommendedPlugins::SYMFONY_LANGUAGE_SERVER, true]], $this->lifecycle->toggled);
+        $this->assertSame([[RecommendedPlugin::SymfonyLanguageServer->value, true]], $this->lifecycle->toggled);
         $this->assertSame(['symfony-lsp:install'], $this->commandsRun, 'the plugin\'s own installer, not a package manager');
     }
 
@@ -174,7 +174,7 @@ final class WelcomeStepsTest extends TestCase
     public function testRunningTheSymfonyCardDoesNotReinstallAServerThatIsThere(): void
     {
         $this->withSymfony();
-        $this->offers->declare(RecommendedPlugins::SYMFONY_LANGUAGE_SERVER, 'symfony-lsp', available: true);
+        $this->offers->declare(RecommendedPlugin::SymfonyLanguageServer->value, 'symfony-lsp', available: true);
         $this->commands->add(
             'symfony-lsp:install',
             function (): void {
@@ -197,7 +197,7 @@ final class WelcomeStepsTest extends TestCase
     public function testAPackageManagerOfferIsNotRunFromTheCard(): void
     {
         $this->withSymfony();
-        $this->offers->declare(RecommendedPlugins::SYMFONY_LANGUAGE_SERVER, 'symfony-lsp', available: false, manager: 'composer', package: 'acme/thing');
+        $this->offers->declare(RecommendedPlugin::SymfonyLanguageServer->value, 'symfony-lsp', available: false, manager: 'composer', package: 'acme/thing');
         $this->commands->add(
             'symfony-lsp:install',
             function (): void {
@@ -208,7 +208,7 @@ final class WelcomeStepsTest extends TestCase
 
         $this->steps()->all()[2]->run();
 
-        $this->assertSame([[RecommendedPlugins::SYMFONY_LANGUAGE_SERVER, true]], $this->lifecycle->toggled, 'it still enables');
+        $this->assertSame([[RecommendedPlugin::SymfonyLanguageServer->value, true]], $this->lifecycle->toggled, 'it still enables');
         $this->assertSame([], $this->commandsRun);
     }
 
@@ -227,7 +227,7 @@ final class WelcomeStepsTest extends TestCase
     {
         $this->steps()->all()[0]->run();
 
-        $this->assertSame([[RecommendedPlugins::HIGHLIGHTER, true]], $this->lifecycle->toggled);
+        $this->assertSame([[RecommendedPlugin::Highlighter->value, true]], $this->lifecycle->toggled);
     }
 
     /** The offer names the actual plugin it would enable, not a generic label. */
@@ -254,7 +254,7 @@ final class WelcomeStepsTest extends TestCase
 
     public function testThePluginStepsAreDoneWhenTheirPluginsAreListedAndNotDisabled(): void
     {
-        $this->lifecycle->names = [RecommendedPlugins::LANGUAGE_SERVER, RecommendedPlugins::FORMATTER, RecommendedPlugins::ANALYZER];
+        $this->lifecycle->names = [RecommendedPlugin::LanguageServer->value, RecommendedPlugin::Formatter->value, RecommendedPlugin::Analyzer->value];
         $steps = $this->steps()->all();
 
         $this->assertTrue($steps[1]->isDone());
@@ -265,8 +265,8 @@ final class WelcomeStepsTest extends TestCase
     /** A listed-but-disabled plugin is not serving anything, so the step stands. */
     public function testAPluginStepIsPendingWhenItsPluginIsDisabled(): void
     {
-        $this->lifecycle->names = [RecommendedPlugins::LANGUAGE_SERVER];
-        $this->lifecycle->disabledNames = [RecommendedPlugins::LANGUAGE_SERVER];
+        $this->lifecycle->names = [RecommendedPlugin::LanguageServer->value];
+        $this->lifecycle->disabledNames = [RecommendedPlugin::LanguageServer->value];
 
         $this->assertFalse($this->steps()->all()[1]->isDone());
     }
@@ -275,21 +275,21 @@ final class WelcomeStepsTest extends TestCase
     {
         $this->steps()->all()[1]->run();
 
-        $this->assertSame([[RecommendedPlugins::LANGUAGE_SERVER, true]], $this->lifecycle->toggled);
+        $this->assertSame([[RecommendedPlugin::LanguageServer->value, true]], $this->lifecycle->toggled);
     }
 
     public function testRunningTheCodeStyleStepEnablesItsPlugin(): void
     {
         $this->steps()->all()[2]->run();
 
-        $this->assertSame([[RecommendedPlugins::FORMATTER, true]], $this->lifecycle->toggled);
+        $this->assertSame([[RecommendedPlugin::Formatter->value, true]], $this->lifecycle->toggled);
     }
 
     public function testRunningTheStaticAnalysisStepEnablesItsPlugin(): void
     {
         $this->steps()->all()[3]->run();
 
-        $this->assertSame([[RecommendedPlugins::ANALYZER, true]], $this->lifecycle->toggled);
+        $this->assertSame([[RecommendedPlugin::Analyzer->value, true]], $this->lifecycle->toggled);
     }
 
     /** The details name the tool a step will enable, so the offer is explicit. */
@@ -297,8 +297,8 @@ final class WelcomeStepsTest extends TestCase
     {
         $steps = $this->steps()->all();
 
-        $this->assertStringContainsString(RecommendedPlugins::FORMATTER, $steps[2]->detail);
-        $this->assertStringContainsString(RecommendedPlugins::ANALYZER, $steps[3]->detail);
+        $this->assertStringContainsString(RecommendedPlugin::Formatter->value, $steps[2]->detail);
+        $this->assertStringContainsString(RecommendedPlugin::Analyzer->value, $steps[3]->detail);
     }
 
     /** A project shipping mago gets it as both the fixer and the analyzer. */
@@ -309,8 +309,8 @@ final class WelcomeStepsTest extends TestCase
 
         $this->assertSame('Enable mago', $steps[2]->actionLabel);
         $this->assertSame('Enable mago', $steps[3]->actionLabel);
-        $this->assertStringContainsString(RecommendedPlugins::BOTH_TOOLS, $steps[2]->detail);
-        $this->assertStringContainsString(RecommendedPlugins::BOTH_TOOLS, $steps[3]->detail);
+        $this->assertStringContainsString(RecommendedPlugin::BothTools->value, $steps[2]->detail);
+        $this->assertStringContainsString(RecommendedPlugin::BothTools->value, $steps[3]->detail);
     }
 
     public function testRunningEitherToolStepWithMagoEnablesTheMagoPlugin(): void
@@ -322,8 +322,8 @@ final class WelcomeStepsTest extends TestCase
 
         $this->assertSame(
             [
-                [RecommendedPlugins::BOTH_TOOLS, true],
-                [RecommendedPlugins::BOTH_TOOLS, true],
+                [RecommendedPlugin::BothTools->value, true],
+                [RecommendedPlugin::BothTools->value, true],
             ],
             $this->lifecycle->toggled,
         );
@@ -333,7 +333,7 @@ final class WelcomeStepsTest extends TestCase
     public function testEnablingMagoCompletesBothToolSteps(): void
     {
         $this->withMago();
-        $this->lifecycle->names = [RecommendedPlugins::BOTH_TOOLS];
+        $this->lifecycle->names = [RecommendedPlugin::BothTools->value];
         $steps = $this->steps()->all();
 
         $this->assertTrue($steps[2]->isDone());
@@ -347,7 +347,7 @@ final class WelcomeStepsTest extends TestCase
     public function testOtherToolsDoNotSatisfyMagoTargetedSteps(): void
     {
         $this->withMago();
-        $this->lifecycle->names = [RecommendedPlugins::FORMATTER, RecommendedPlugins::ANALYZER];
+        $this->lifecycle->names = [RecommendedPlugin::Formatter->value, RecommendedPlugin::Analyzer->value];
         $steps = $this->steps()->all();
 
         $this->assertFalse($steps[2]->isDone());

@@ -9,7 +9,7 @@ use Porta\Config\ConfigFiles;
 use Porta\Config\ConfigScope;
 use Porta\Config\IdeConfig;
 use Porta\Config\PortaJsonWriter;
-use Porta\Config\RecommendedPlugins;
+use Porta\Config\RecommendedPlugin;
 use Porta\Event\SettingsRowsStale;
 use Porta\Highlight\CallableHighlightProvider;
 use Porta\Highlight\HighlightPreferences;
@@ -108,7 +108,7 @@ final class SettingsHighlightControllerTest extends TestCase
      */
     public function testOffersToEnableTheBundledEngineWhenNothingHighlights(): void
     {
-        $this->lifecycle->names = [RecommendedPlugins::HIGHLIGHTER];
+        $this->lifecycle->names = [RecommendedPlugin::Highlighter->value];
 
         $rows = $this->controller()->rows();
 
@@ -120,12 +120,12 @@ final class SettingsHighlightControllerTest extends TestCase
 
     public function testActuatingTheOfferEnablesThePluginLive(): void
     {
-        $this->lifecycle->names = [RecommendedPlugins::HIGHLIGHTER];
+        $this->lifecycle->names = [RecommendedPlugin::Highlighter->value];
         $controller = $this->controller();
 
         $controller->change(SettingsHighlightController::ENABLE_KEY, '');
 
-        $this->assertSame([[RecommendedPlugins::HIGHLIGHTER, true]], $this->lifecycle->toggled);
+        $this->assertSame([[RecommendedPlugin::Highlighter->value, true]], $this->lifecycle->toggled);
         $this->assertFalse(\is_file($this->project->path('.porta.json')), 'enabling the engine must not also persist a bogus highlighter entry');
     }
 
@@ -158,7 +158,7 @@ final class SettingsHighlightControllerTest extends TestCase
     /** Once an engine is loaded the offer is gone — there is nothing to enable. */
     public function testTheOfferDisappearsOnceAnEngineIsAvailable(): void
     {
-        $this->lifecycle->names = [RecommendedPlugins::HIGHLIGHTER];
+        $this->lifecycle->names = [RecommendedPlugin::Highlighter->value];
 
         $rows = $this->controller([$this->provider('tempest', ['*'])])->rows();
 
