@@ -690,6 +690,43 @@ final class IdeRtlLocaleTest extends TestCase
      * one right-to-left run, and visual column 0 maps to logical column 159 on
      * a 160-column terminal. A click near the RIGHT edge is the FIRST menu.
      */
+    /**
+     * Mirrored, the open title and its dropdown are still one outline: under
+     * each of the title's rails the box's top border turns up into it, and
+     * between them it is open — wherever the mirror put the title.
+     */
+    public function testAMirroredDropdownStillOpensUnderItsTitle(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $project = new TempProject([
+            '.porta.json' => \json_encode(['settings' => ['language' => 'he']]),
+            'A.php' => "<?php\n",
+        ]);
+
+        $this->runIde(
+            $project,
+            $project->path('A.php'),
+            [
+                300 => static function (Tui $tui): void {
+                    $tui->handleInput("\x1b[21~"); // F10 arms the bar
+                    $tui->handleInput("\r"); // and drops the first menu
+                },
+                500 => function (Tui $tui, VirtualTerminal $terminal): void {
+                    $rails = [];
+                    $this->await(function () use ($tui, $terminal, &$rails): bool {
+                        $rails = \array_keys(\mb_str_split($this->screenGrid($tui, $terminal)[0]), '┃', strict: true);
+
+                        return 2 === \count($rails);
+                    }, what: 'the open title drawn between its rails');
+                    [$left, $right] = $rails;
+                    $this->assertGreaterThan(80, $left, 'the first title sits on the right, mirrored — otherwise this proves nothing');
+                    $under = \mb_substr($this->screenGrid($tui, $terminal)[1], $left, length: $right - $left + 1);
+                    $this->assertMatchesRegularExpression('/^[┃┗┛] +[┃┗┛]$/u', $under, 'each rail runs on into the box, open between them');
+                },
+            ],
+        );
+    }
+
     public function testRtlClickOnAMenuTitleOpensThatMenu(): void
     {
         \putenv('PATH=/nonexistent');

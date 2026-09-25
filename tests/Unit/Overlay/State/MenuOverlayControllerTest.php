@@ -115,4 +115,40 @@ final class MenuOverlayControllerTest extends TestCase
         $controller->refreshMenu();
         $this->assertInstanceOf(DropdownRegion::class, $controller->menuDropdown(), 'the control: dropped, it is placed');
     }
+
+    /**
+     * The dropdown's top border is left open under its title, whose rails run
+     * on into the frame — also when the screen's edge pushed the box left of
+     * its title. A context menu hangs from no title, and stays closed.
+     */
+    public function testTheDropdownOpensUnderItsTitle(): void
+    {
+        $this->renderer = new Renderer(new StyleSheet());
+        $this->tui = new BidiTui(terminal: new VirtualTerminal(columns: 24, rows: 12), keybindings: new Keybindings([]), renderer: $this->renderer);
+        $menuBar = new MenuBarWidget();
+        $menuBar->setMenus([new Menu('File', [new MenuItem('Save', '', null)]), new Menu('Help', [new MenuItem('About Porta', 'Ctrl+Shift+F1', null)])]);
+        $pane = new TestOverlayPane();
+        $contextMenu = new ContextMenu();
+        $this->tui->add($menuBar);
+        $this->tui->add($pane);
+        $this->frame(24, 12);
+        $controller = new MenuOverlayController($this->renderer, $menuBar, $contextMenu, new MenuOverlayPanes([$pane], static fn (): array => []));
+        $topRow = static fn (): string => AnsiUtils::stripAnsiCodes($pane->render(new RenderContext(24, 11))[0]);
+
+        $menuBar->open(0);
+        $controller->refreshMenu();
+        $this->assertStringStartsWith('┃    ┗', $topRow(), '┃File┃ opens into the box under it');
+
+        // Help sits at columns 6-11, but its box is 24 wide: pushed flush left.
+        $menuBar->open(1);
+        $controller->refreshMenu();
+        $this->assertSame('┏━━━━━┛    ┗━━━━━━━━━━━┓', $topRow());
+
+        $menuBar->close();
+        $controller->refreshMenu();
+        $contextMenu->open([new MenuItem('Copy', '', null)]);
+        $controller->setContextAnchor(1, 0); // the pane's first row
+        $controller->refreshContextMenu();
+        $this->assertStringStartsWith('┏━', $topRow(), 'a context menu keeps its closed border');
+    }
 }

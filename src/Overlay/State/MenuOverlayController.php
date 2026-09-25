@@ -118,15 +118,18 @@ final class MenuOverlayController implements FloatingRegions
         // anchor each dropdown directly under its title (titleStart is
         // menu-bar-local), clamped to the menu row's own span. The frame adds
         // a border cell each side; the top border sits directly under the
-        // title, reading as the title opening the box.
+        // title and is left open there, so the title's rails run on into
+        // the box and the two read as one outline.
         $width = \min($this->menuBar->panelWidth() + PopupFrame::CHROME_COLS, $menuRect->columns);
         $anchor = \max(
             $menuRect->col,
             \min($menuRect->col + $this->menuBar->titleStart($this->menuBar->openIndex()), $menuRect->col + $menuRect->columns - $width),
         );
         $top = $menuRect->row + $menuRect->rows;
+        $title = $this->menuBar->openTitle();
+        $opening = null !== $title ? ['offset' => $menuRect->col + $title['start'] - $anchor, 'width' => $title['width']] : null;
         // An open menu holds the keys: the heavy frame, the form controls' focus.
-        $rows = PopupFrame::wrapMenu($this->menuBar->dropdownSegments($width - PopupFrame::CHROME_COLS), $width - PopupFrame::CHROME_COLS, $this->styles, FieldState::Focused);
+        $rows = PopupFrame::wrapMenu($this->menuBar->dropdownSegments($width - PopupFrame::CHROME_COLS), $width - PopupFrame::CHROME_COLS, $this->styles, FieldState::Focused, $opening);
 
         $this->menuDropdown = new DropdownRegion($top, $anchor, $width, \count($rows), framed: true);
         $this->menuShadowRegion = $this->shadowWidened($top, $anchor, $width, \count($rows));

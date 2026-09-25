@@ -87,6 +87,33 @@ final class IdeAppMenuTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
+    /**
+     * The open title and its dropdown are one outline: the box's top border
+     * is left open under `┃File┃`, the title's rails running on into it.
+     */
+    public function testTheOpenTitleRunsOnIntoItsDropdown(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $project = new TempProject(['A.php' => "<?php\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('A.php'),
+            [
+                200 => static function (Tui $tui): void {
+                    $tui->handleInput("\x1b[21~"); // F10 arms the bar
+                    $tui->handleInput("\r"); // and drops File
+                },
+                300 => function (Tui $tui, VirtualTerminal $terminal): void {
+                    $this->awaitPainted($tui, $terminal, 'Open Project');
+                    $grid = $this->screenGrid($tui, $terminal);
+                    $this->assertStringStartsWith('┃File┃', $grid[0]);
+                    $this->assertStringStartsWith('┃    ┗━', $grid[1], 'open under the title, closed past it');
+                },
+            ],
+        );
+    }
+
     public function testAppMenuGreysFileActionsWhenNoFileOpen(): void
     {
         \putenv('PATH=/nonexistent');

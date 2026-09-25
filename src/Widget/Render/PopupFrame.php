@@ -41,6 +41,28 @@ final class PopupFrame
     }
 
     /**
+     * The top border left open under the title the box hangs from, so the
+     * title's rails run on into the frame — `┃    ┗━━┓`, or `┏━┛    ┗━┓`
+     * where the box was pushed left of its title. $offset is the title's
+     * first column within the box and $width its full width, rails included.
+     * A title the box cannot hold gets the plain {@see top()}.
+     */
+    public static function topOpenAt(int $innerWidth, Styles $styles, FieldState $state, int $offset, int $width): string
+    {
+        $boxWidth = $innerWidth + self::CHROME_COLS;
+        if ($offset < 0 || $width < 2 || ($offset + $width) > $boxWidth) {
+            return self::top($innerWidth, $styles, $state);
+        }
+        [$left, $right, $bottomLeft, $bottomRight, $rule, $vertical] = $state->glyphs();
+        $last = $offset + $width - 1;
+        $accent = $styles->of(Role::TabAccent);
+        $before = 0 === $offset ? $vertical : $left.\str_repeat($rule, $offset - 1).$bottomRight;
+        $after = ($boxWidth - 1) === $last ? $vertical : $bottomLeft.\str_repeat($rule, \max(0, $boxWidth - $last - 2)).$right;
+
+        return $accent->apply($before).$styles->of(Role::PopupRow)->apply(\str_repeat(' ', $width - 2)).$accent->apply($after);
+    }
+
+    /**
      * The bottom border: `╰──╯`, or the given field state's. A $mark — the
      * ▼ of a clipped list — sits centred in the rule, taking none of the
      * rows the list has.
@@ -90,15 +112,17 @@ final class PopupFrame
      * Frame a menu's segment rows: top border, one railed row per item — a
      * separator row becomes a tee row — bottom border. Framed row 1 + i always
      * maps back to item i (separators keep their slot), so hit-testing stays a
-     * fixed offset.
+     * fixed offset. An $opening leaves the top border open under the title the
+     * menu drops from ({@see topOpenAt()}).
      *
      * @param list<array{segment: string, separator: bool}> $rows
+     * @param ?array{offset: int, width: int}               $opening
      *
      * @return list<string> each exactly $innerWidth + CHROME_COLS columns
      */
-    public static function wrapMenu(array $rows, int $innerWidth, Styles $styles, FieldState $state = FieldState::Idle): array
+    public static function wrapMenu(array $rows, int $innerWidth, Styles $styles, FieldState $state = FieldState::Idle, ?array $opening = null): array
     {
-        $out = [self::top($innerWidth, $styles, $state)];
+        $out = [null === $opening ? self::top($innerWidth, $styles, $state) : self::topOpenAt($innerWidth, $styles, $state, $opening['offset'], $opening['width'])];
         foreach ($rows as $row) {
             $out[] = $row['separator'] ? self::tee($innerWidth, $styles, $state) : self::rail($row['segment'], $innerWidth, $styles, $state);
         }

@@ -88,6 +88,9 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
     /** @var list<array{index: int, start: int, width: int}> title strip layout from the last render */
     private array $titleLayout = [];
 
+    /** How many titles the last render drew in full; the rest hide behind the `…`. */
+    private int $shown = 0;
+
     /** @param list<Menu> $menus */
     public function setMenus(array $menus): self
     {
@@ -195,6 +198,7 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
             $mark = Glyphs::ELLIPSIS;
             $shown = $this->fittingTitles($columns - \mb_strwidth($mark));
         }
+        $this->shown = $shown;
 
         $line = '';
         $used = 0;
@@ -239,7 +243,9 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
     private function title(string $title, Style $style, bool $open, bool $hovered): string
     {
         if ($open) {
-            $rail = $style->withBold(false)->apply(Glyphs::FIELD_FOCUS_VERTICAL);
+            // The rails are the dropdown frame's own, run up into the title,
+            // so they wear its tint rather than the title's text colour.
+            $rail = $this->styles->merge(Role::TabActiveBg, Role::TabAccent)->apply(Glyphs::FIELD_FOCUS_VERTICAL);
 
             return $rail.$style->apply($title).$rail;
         }
@@ -277,6 +283,25 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
     public function titleStart(int $index): int
     {
         return $this->titleLayout[$index]['start'] ?? 0;
+    }
+
+    /**
+     * Where the open title sits in the strip, rails included, while its
+     * dropdown shows — so the frame can leave its top border open under it.
+     * Null for a menu dropped from the `…`, which has no rails to join. Read
+     * from the last render's layout, which does not depend on which title is
+     * open: the arrows move the open title before the next frame draws it.
+     *
+     * @return ?array{start: int, width: int}
+     */
+    public function openTitle(): ?array
+    {
+        if (!$this->isDropdownShown() || $this->openIndex >= $this->shown) {
+            return null;
+        }
+        $entry = $this->titleLayout[$this->openIndex];
+
+        return ['start' => $entry['start'], 'width' => $entry['width']];
     }
 
     public function openIndex(): int

@@ -10,6 +10,7 @@ use Porta\Tests\Support\AttachedStyles;
 use Porta\Tests\Support\RendersExactWidth;
 use Porta\Tests\Support\RendersWidget;
 use Porta\Ui\Glyphs;
+use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\MenuBarWidget;
 use Porta\Workbench\Menu\Menu;
@@ -271,6 +272,49 @@ final class MenuBarWidgetTest extends TestCase
         $this->assertSame(1, $bar->openIndex());
         $this->assertGreaterThanOrEqual(8, $bar->panelWidth(), 'open panel has a minimum width');
         $this->assertCount(2, $bar->dropdownSegments($bar->panelWidth()), 'Edit has Undo + Redo');
+    }
+
+    /** The open title's span, rails included, for the frame to open under — only while its dropdown shows. */
+    public function testOpenTitleIsTheDroppedTitlesSpan(): void
+    {
+        $bar = $this->bar();
+        $bar->render(new RenderContext(60, 24));
+
+        $this->assertNull($bar->openTitle(), 'closed');
+        $bar->arm(1);
+        $this->assertNull($bar->openTitle(), 'armed: lit, but nothing hangs from it');
+
+        $bar->open(0);
+        $this->assertSame(['start' => 0, 'width' => 6], $bar->openTitle(), '┃File┃');
+        $bar->handleInput("\x1b[C");
+        $this->assertSame(['start' => 6, 'width' => 6], $bar->openTitle(), 'the arrow moved it before any frame drew it');
+    }
+
+    /** A menu dropped from the `…` has no rails for the frame to join. */
+    public function testAMenuBehindTheMarkHasNoOpenTitle(): void
+    {
+        $bar = new MenuBarWidget();
+        $bar->setMenus([new Menu('File', [new MenuItem('Save', '', null)]), new Menu('Edit', [new MenuItem('Undo', '', null)])]);
+        $bar->render(new RenderContext(9, 1));
+
+        $bar->open(1);
+        $this->assertNull($bar->openTitle());
+        $bar->open(0);
+        $this->assertSame(['start' => 0, 'width' => 6], $bar->openTitle(), 'the control: the title still drawn joins');
+    }
+
+    /** The open title's rails are the dropdown frame's, run up into the bar: they wear its tint. */
+    public function testTheOpenTitlesRailsWearTheFramesTint(): void
+    {
+        $styles = Styles::dark();
+        $bar = new MenuBarWidget($styles);
+        $bar->setMenus([new Menu('File', [new MenuItem('Save', '', null)])]);
+        $bar->open(0);
+
+        $this->assertStringStartsWith(
+            $styles->merge(Role::TabActiveBg, Role::TabAccent)->apply(Glyphs::FIELD_FOCUS_VERTICAL),
+            $bar->render(new RenderContext(20, 1))[0],
+        );
     }
 
     public function testOnNavigateFiresOnOpenAndMovement(): void

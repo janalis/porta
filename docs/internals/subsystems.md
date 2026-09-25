@@ -375,7 +375,11 @@ overlay read the latter. Hidden titles are reached through the `…`, which is a
 title of its own. A select's list takes letters as type-ahead instead. An open
 menu holds the keys, so
 both menus wear the heavy frame, separators as `┣━┫` tees, and the open bar
-title swaps its padding for the frame's rails (`┃File┃`, same width). A
+title swaps its padding for the frame's rails (`┃File┃`, same width, in the
+frame's tint). The dropdown's top border is left open under that title
+(`PopupFrame::topOpenAt()`, fed by `MenuBarWidget::openTitle()`), so the rails
+run on into the box — `┃    ┗━┓`, or `┏━┛    ┗━┓` where the screen edge pushed
+the box left — and it closes only for a menu dropped from the `…`. A
 disabled item is faint, dim and struck through on its label; neither it nor a
 separator takes the row highlight, which is an underline under monochrome and
 made a disabled item look hovered.

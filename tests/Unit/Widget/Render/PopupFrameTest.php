@@ -98,4 +98,45 @@ final class PopupFrameTest extends TestCase
         $this->assertSame('┣━━━┫', AnsiUtils::stripAnsiCodes($rows[2]));
         $this->assertSame('├───┤', AnsiUtils::stripAnsiCodes(PopupFrame::tee(3, Styles::dark())), 'the idle frame keeps light tees');
     }
+
+    /**
+     * A menu dropped from a title leaves its top border open under it, the
+     * title's rails running on into the frame: flush with the box's left
+     * edge, in its middle, flush with its right edge.
+     */
+    public function testTheTopBorderOpensUnderTheTitle(): void
+    {
+        $top = static fn (int $offset, int $width): string => AnsiUtils::stripAnsiCodes(PopupFrame::topOpenAt(8, Styles::dark(), FieldState::Focused, $offset, $width));
+
+        $this->assertSame('┃    ┗━━━┓', $top(0, width: 6), 'flush left: the box edge is the title\'s left rail');
+        $this->assertSame('┏━┛    ┗━┓', $top(2, width: 6), 'a box pushed left of its title turns up into both rails');
+        $this->assertSame('┏━━━┛    ┃', $top(4, width: 6), 'flush right: the box edge is the title\'s right rail');
+        $this->assertSame('┃        ┃', $top(0, width: 10), 'a title as wide as the box leaves only the edges');
+    }
+
+    /** A title the box cannot hold gets the closed border, not a broken one. */
+    public function testATitleOutsideTheBoxClosesTheBorder(): void
+    {
+        $closed = '┏━━━━━━━━┓';
+        $top = static fn (int $offset, int $width): string => AnsiUtils::stripAnsiCodes(PopupFrame::topOpenAt(8, Styles::dark(), FieldState::Focused, $offset, $width));
+
+        $this->assertSame($closed, $top(-1, width: 6), 'starts left of the box');
+        $this->assertSame($closed, $top(5, width: 6), 'runs past its right edge');
+        $this->assertSame($closed, $top(0, width: 1), 'too narrow to have two rails');
+        $this->assertSame('┏━━━┛    ┃', $top(4, width: 6), 'the control: a title ending on the box edge opens');
+    }
+
+    /** The corners are the frame state's own, so an idle frame opens in its light, rounded glyphs. */
+    public function testTheOpeningUsesTheStatesGlyphs(): void
+    {
+        $this->assertSame('╭─╯  ╰─╮', AnsiUtils::stripAnsiCodes(PopupFrame::topOpenAt(6, Styles::dark(), FieldState::Idle, 2, 4)));
+    }
+
+    public function testWrapMenuOpensItsTopBorderOnlyWhenAsked(): void
+    {
+        $item = [['segment' => 'a', 'separator' => false]];
+
+        $this->assertSame('┃ ┗━┓', AnsiUtils::stripAnsiCodes(PopupFrame::wrapMenu($item, 3, Styles::dark(), FieldState::Focused, ['offset' => 0, 'width' => 3])[0]));
+        $this->assertSame('┏━━━┓', AnsiUtils::stripAnsiCodes(PopupFrame::wrapMenu($item, 3, Styles::dark(), FieldState::Focused)[0]));
+    }
 }
