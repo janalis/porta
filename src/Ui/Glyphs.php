@@ -62,6 +62,8 @@ final class Glyphs
     // The find bar's previous / next match buttons.
     public const string FIND_PREV = '↑';
     public const string FIND_NEXT = '↓';
+    // …and its Select All Occurrences button: a caret on every match, "for all".
+    public const string FIND_SELECT_ALL = '∀';
 
     // Diagnostic severity (gutter, inline message prefix, status-bar counts).
     public const string SEVERITY_ERROR = '✗';

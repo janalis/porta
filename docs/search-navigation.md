@@ -34,7 +34,11 @@ keystroke. A caret standing in no word contributes nothing and the field keeps
 what it had; a multi-line selection prefills nothing, because the field is one
 line. `F3`/`Shift+F3` cycle matches, `Tab` switches fields,
 `Alt+R` replaces the current match, `Alt+A` replaces all. `Alt+X` toggles
-regex mode, `Alt+W` whole-word and `Alt+C` match case (`Aa`). Without `Aa`,
+regex mode, `Alt+W` whole-word and `Alt+C` match case (`Aa`). `Alt+Enter`, or
+the `∀` button, selects all occurrences, as PhpStorm's does: every match gets
+a caret with the match selected, the bar closes, and what you type replaces
+them all. It honours the query and its options, which the editor's word-based
+`Ctrl+Alt+Shift+J` cannot. Without `Aa`,
 an all-lower-case query ignores case and one with a capital does not (smart
 case). Note that in this bar `Alt+R` means replace; the Find-in-Files modal
 uses `Alt+R` for its regex toggle instead. In regex mode the replacement is a

@@ -10690,3 +10690,26 @@ wheel notch over the side list moves it three rows either way
 
 *Re-opens on:* a roomy screen where the third row is missed — measured, not
 felt — or a surface whose strip cannot open under its shown tab.
+
+## The find bar's Select All Occurrences (2026-09-25)
+
+PhpStorm's find bar turns every match into a selecting caret (`Alt+Enter`).
+Porta's editor already had `select_all_occurrences` (`Ctrl+Alt+Shift+J`), but
+it takes the word under the caret and drops point carets, so it cannot follow
+a regex, whole-word or match-case query. The bar's version selects the bar's
+own matches instead: `FindTarget::selectMatches()` hands them over, then the
+bar closes so that typing reaches the editor. The docs viewer refuses, and the
+bar draws no `∀` button there.
+
+- **The current match is the primary caret**, so the view stays on the match
+  being looked at rather than jumping to the first.
+- **The target holds the `MultiCaret` of the document it searches**, the same
+  way it holds that document for replace. The widget exposes the caret set as
+  `public private(set)` and gained no method. It sits at the `too-many-methods`
+  ceiling, and "The `too-many-methods` threshold moved" above says to route
+  around that ceiling rather than raise it. A buffer switch leaves the old
+  caret set orphaned, so no guard is needed.
+- The `Alt+⏎ ∀` hint is appended untranslated, like `Alt+C Aa`.
+
+*Re-opens on:* a request to keep the bar open after selecting, which PhpStorm
+does not do.

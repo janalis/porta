@@ -925,4 +925,9 @@ final class HelpViewerWidgetTest extends TestCase
     }
 
     private const int HELP_HEADER_ROWS = 1;
+
+    public function testTheDocsPageTakesNoCaretsFromTheFindBar(): void
+    {
+        $this->assertFalse(new HelpViewerWidget()->selectMatches([['line' => 0, 'start' => 0, 'end' => 1]], current: 0), 'documentation is read-only: the bar stays open');
+    }
 }

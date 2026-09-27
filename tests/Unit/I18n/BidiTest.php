@@ -563,8 +563,11 @@ final class BidiTest extends TestCase
         yield 'before arrows (0x218F)' => [0x218F, false];
         yield 'arrows start (0x2190)' => [0x2190, true];
         yield 'arrows end (0x21FF)' => [0x21FF, true];
-        yield 'after arrows (0x2200)' => [0x2200, false];
-        yield 'before misc technical (0x22FF)' => [0x22FF, false];
+        // The arrows run straight on into the mathematical operators, then
+        // misc technical: 0x2190-0x23FF is one neutral span, and the edges
+        // that matter are its two ends.
+        yield 'operators start (0x2200)' => [0x2200, true];
+        yield 'operators end (0x22FF)' => [0x22FF, true];
         yield 'misc technical start (0x2300)' => [0x2300, true];
         yield 'misc technical end (0x23FF)' => [0x23FF, true];
         yield 'after misc technical (0x2400)' => [0x2400, false];

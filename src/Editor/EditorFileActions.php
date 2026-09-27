@@ -19,8 +19,8 @@ final readonly class EditorFileActions implements EditorFileActionHandler
         private BufferNavigator $navigator,
         private Clipboard $clipboard,
         private FindBarWidget $findBar,
-        // Concrete on purpose: it reads the document *and* hands the widget to
-        // EditorFindTarget as the decoration sink for match highlighting.
+        // Concrete on purpose: it reads the document *and* hands EditorFindTarget
+        // the widget's decoration sink and its caret set.
         private CodeEditorWidget $editor,
         private Tui $tui,
     ) {}
@@ -67,7 +67,7 @@ final readonly class EditorFileActions implements EditorFileActionHandler
         // its first line alone would search for something nobody asked for.
         $initial = '' === $selected ? CaretWord::at($document) : $selected;
         $this->findBar->open(
-            new EditorFindTarget($document, $this->editor->decorations),
+            new EditorFindTarget($document, $this->editor->decorations, $this->editor->multiCaret),
             $mode,
             \str_contains($initial, "\n") ? '' : $initial,
         );

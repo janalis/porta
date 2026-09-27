@@ -319,6 +319,7 @@ final class Bidi
         $symbolNeutral =
             $cp >= 0x2000 && $cp <= 0x206F
             || $cp >= 0x2190 && $cp <= 0x21FF // arrows
+            || $cp >= 0x2200 && $cp <= 0x22FF // mathematical operators (the find bar's ∀)
             || $cp >= 0x2300 && $cp <= 0x23FF // misc technical (⏸)
             || $cp >= 0x2500 && $cp <= 0x257F // box drawing (frame borders)
             || $cp >= 0x2580 && $cp <= 0x259F // block elements (the error stripe)

@@ -44,4 +44,13 @@ interface FindTarget
 
     /** The editable document for the replace path, or null when read-only. */
     public ?Document $replaceDocument { get; }
+
+    /**
+     * Select every match at once, a caret on each (the bar's Select All
+     * Occurrences); $current is the one the bar is on. Returns whether the
+     * target took them — a read-only one has no carets to put there.
+     *
+     * @param non-empty-list<array{line: int, start: int, end: int}> $matches byte offsets
+     */
+    public function selectMatches(array $matches, int $current): bool;
 }

@@ -341,6 +341,42 @@ final class IdeFindUiTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
+    /**
+     * PhpStorm's Select All Occurrences, from the find bar: Alt+Enter puts a
+     * selecting caret on every match and closes the bar, so the next key
+     * types over all of them — in the editor, which has the focus back.
+     */
+    public function testAltEnterInTheFindBarSelectsEveryMatchForTyping(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n// foo foobar foo\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function (Tui $tui, VirtualTerminal $terminal): void {
+                    $tui->handleInput("\x06"); // ctrl+f
+                    foreach (\str_split('foo') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                    $this->awaitPainted($tui, $terminal, '[1/3]');
+
+                    $tui->handleInput("\x1b\r"); // alt+enter
+                    $tui->handleInput('X');
+                    $document = $tui->getById('editor')->getDocument();
+                    $this->await(static fn (): bool => "<?php\n// X Xbar X\n" === $document->getText(), what: 'every match typed over');
+                    $this->assertFalse($tui->getById('find-bar')->isOpen(), 'the bar closed');
+
+                    $tui->handleInput("\x1a"); // ctrl+z
+                    $this->await(static fn (): bool => "<?php\n// foo foobar foo\n" === $document->getText(), what: 'one undo restores them all');
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
     public function testProjectSearchRegexToggle(): void
     {
         $project = new TempProject([

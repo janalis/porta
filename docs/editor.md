@@ -238,7 +238,8 @@ and a plain `$name` stays literal.
 ## Multiple carets
 
 Add carets above/below (`Ctrl+Alt+↑/↓`), at the next occurrence of the
-word (`Alt+J`) or at all occurrences (`Ctrl+Alt+Shift+J`); `Alt+Click`
+word (`Alt+J`) or at all occurrences (`Ctrl+Alt+Shift+J`, or `Alt+Enter`
+in the find bar to select every match of its query); `Alt+Click`
 adds/removes one, `Alt+Shift+drag` makes a column selection. Typing,
 deleting and pasting apply at every caret as a single atomic undo step.
 `Esc` collapses back to one caret.

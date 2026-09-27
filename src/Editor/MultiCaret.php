@@ -239,6 +239,23 @@ final class MultiCaret
     }
 
     /**
+     * Replace the caret set with these selections — the find bar's Select All
+     * Occurrences. $carets[$primary] goes on the Document so the view stays on
+     * the match being looked at; the rest become the extras.
+     *
+     * @param non-empty-list<Caret> $carets
+     */
+    public function selectRanges(array $carets, int $primary): void
+    {
+        $this->restore($carets[$primary]);
+        // The primary stays in the list: the dedupe drops it, being where the
+        // Document's caret now is.
+        $this->extraCarets = $carets;
+        $this->dedupeCarets();
+        ($this->onInvalidate)();
+    }
+
+    /**
      * Route one keystroke while extra carets exist: cancel, move-all, edit-all,
      * or plain text at every caret. Returns false (leaving the carets intact) for
      * any input multi-caret mode does not itself handle.

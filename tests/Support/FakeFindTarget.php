@@ -18,6 +18,9 @@ final class FakeFindTarget implements FindTarget
     /** @var array<int, list<array{start: int, end: int, current: bool}>> the last mirror */
     public array $lastMatches = [];
 
+    /** @var ?array{matches: list<array{line: int, start: int, end: int}>, current: int} the last select-all, taken or not */
+    public ?array $selected = null;
+
     public array $findLines {
         get => \array_values($this->document->lines);
     }
@@ -51,5 +54,12 @@ final class FakeFindTarget implements FindTarget
     public function showSearchMatches(array $byLine): void
     {
         $this->lastMatches = $byLine;
+    }
+
+    public function selectMatches(array $matches, int $current): bool
+    {
+        $this->selected = ['matches' => $matches, 'current' => $current];
+
+        return !$this->readOnly;
     }
 }

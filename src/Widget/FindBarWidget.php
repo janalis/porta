@@ -254,6 +254,12 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface, M
             return;
         }
 
+        if ($kb->matches($data, 'select_all')) {
+            $this->selectAllMatches();
+
+            return;
+        }
+
         if ($kb->matches($data, 'delete_char_backward')) {
             $this->editActiveField(static fn (TextField $field): bool => $field->backspace());
 
@@ -356,8 +362,8 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface, M
     /**
      * A click on an option tag toggles it, exactly as its Alt+X / Alt+W /
      * Alt+C key does; ↑ and ↓ step to the previous and next match as
-     * Shift+F3 and F3 do, × closes as Esc does; a click in a field box makes
-     * it the field typing edits.
+     * Shift+F3 and F3 do, ∀ selects every match as Alt+Enter does, × closes
+     * as Esc does; a click in a field box makes it the field typing edits.
      */
     public function handleClick(int $row, int $col): void
     {
@@ -367,6 +373,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface, M
             'case' => $this->toggleMatchCase(),
             'prev' => $this->stepMatch(-1),
             'next' => $this->stepMatch(1),
+            'select_all' => $this->selectAllMatches(),
             'close' => $this->close(),
             'find' => $this->activeField = 0,
             'replace' => $this->activeField = 1,
@@ -406,12 +413,15 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface, M
             default => '0/0',
         };
 
+        $buttons = $this->buttons();
         $hints =
             (
                 $this->withReplace
                     ? $this->translator->trans('⏎/F3 next  Shift+F3 prev  Tab field  Alt+R replace  Alt+A all  Alt+X .*  Alt+W \b  Esc')
                     : $this->translator->trans('⏎/F3 next  Shift+F3 prev  Alt+X .*  Alt+W \b  Esc')
-            ).'  Alt+C Aa';
+            )
+            .'  Alt+C Aa'
+            .(\array_key_exists('select_all', $buttons) ? '  Alt+⏎ '.Glyphs::FIND_SELECT_ALL : '');
 
         // The match position rides the Find box's bottom border, where it
         // lasts as long as the box does: out in the strip it was the first
@@ -437,10 +447,10 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface, M
         // on one row, so Replace never hides behind Find.
         $fieldRows = FieldBox::rowsFor($this->density->current());
         $tagRows = $fieldRows;
-        $boxWidth = self::boxWidth($columns, \count($fields), $tagRows);
+        $boxWidth = self::boxWidth($columns, \count($fields), \count($buttons), $tagRows);
         if ($boxWidth < FieldBox::MIN_BOXED && FieldBox::ROWS === $tagRows) {
             $tagRows = 1;
-            $boxWidth = self::boxWidth($columns, \count($fields), $tagRows);
+            $boxWidth = self::boxWidth($columns, \count($fields), \count($buttons), $tagRows);
         }
         if ($boxWidth < FieldBox::MIN_BOXED) {
             // Too narrow to seat a field each and the tags: the field being
@@ -476,9 +486,10 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface, M
             };
             $col = $this->place($tags, $col, $name, FieldBox::toggle($glyph, OptionTagState::of($on, $name === $this->hoveredTag), $tagRows, $this->styles));
         }
-        // Previous, next, close: boxed buttons beside boxed toggles, bare
-        // glyphs on a one-row bar. Each underlines under the pointer.
-        foreach (self::BUTTONS as $name => $glyph) {
+        // Previous, next, select all, close: boxed buttons beside boxed
+        // toggles, bare glyphs on a one-row bar. Each underlines under the
+        // pointer.
+        foreach ($buttons as $name => $glyph) {
             $hovered = $name === $this->hoveredTag;
             $col = $this->place(
                 $tags,
@@ -662,6 +673,21 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface, M
         $this->gotoMatch(\min($keepIndex, \count($this->matches) - 1));
     }
 
+    /**
+     * Select All Occurrences (Alt+Enter, or the ∀ button): a caret on every
+     * match, each selecting it, the current one the primary; then the bar
+     * closes, so the focus — and typing — goes back to the editor. Nothing to
+     * select, or a target without carets, and the bar stays as it was.
+     */
+    private function selectAllMatches(): void
+    {
+        $this->refreshIfStale();
+        // Refreshed matches carry no current one (-1) until a step picks it.
+        if ([] !== $this->matches && true === $this->target?->selectMatches($this->matches, \max(0, $this->currentIndex))) {
+            $this->close();
+        }
+    }
+
     private function replaceAll(): void
     {
         $doc = $this->target?->replaceDocument;
@@ -766,19 +792,30 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface, M
     /** The option toggles, name => caption, in the order drawn. */
     private const array TOGGLES = ['regex' => '.*', 'word' => '\\b', 'case' => 'Aa'];
 
-    /** The buttons after them, name => glyph. */
-    private const array BUTTONS = ['prev' => Glyphs::FIND_PREV, 'next' => Glyphs::FIND_NEXT, 'close' => Glyphs::CLOSE];
-
-    /** A field's width: what the toggles and buttons leave, shared, less each one's gutter, capped. */
-    private static function boxWidth(int $columns, int $fields, int $rows): int
+    /**
+     * The buttons after them, name => glyph, in the order drawn. Select All is
+     * only there when the target can take carets: on the docs page it would
+     * be a button that does nothing.
+     *
+     * @return array<string, string>
+     */
+    private function buttons(): array
     {
-        return \min(self::BOX_MAX, \intdiv($columns - self::tagsWidth($rows), $fields) - 1);
+        $selectAll = null === $this->target?->replaceDocument ? [] : ['select_all' => Glyphs::FIND_SELECT_ALL];
+
+        return ['prev' => Glyphs::FIND_PREV, 'next' => Glyphs::FIND_NEXT, ...$selectAll, 'close' => Glyphs::CLOSE];
     }
 
-    /** Display columns of the option toggles and the buttons beside them, at $rows. */
-    private static function tagsWidth(int $rows): int
+    /** A field's width: what the toggles and buttons leave, shared, less each one's gutter, capped. */
+    private static function boxWidth(int $columns, int $fields, int $buttons, int $rows): int
     {
-        $width = \count(self::BUTTONS) * self::buttonWidth($rows);
+        return \min(self::BOX_MAX, \intdiv($columns - self::tagsWidth($buttons, $rows), $fields) - 1);
+    }
+
+    /** Display columns of the option toggles and the $buttons beside them, at $rows. */
+    private static function tagsWidth(int $buttons, int $rows): int
+    {
+        $width = $buttons * self::buttonWidth($rows);
         foreach (self::TOGGLES as $caption) {
             $width += FieldBox::toggleWidth($caption, $rows);
         }
@@ -847,6 +884,9 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface, M
             'toggle_word' => ['alt+w'],
             'toggle_case' => ['alt+c'],
             'replace_all' => ['alt+a'],
+            // PhpStorm's key in its find bar; the editor's Alt+Enter (code
+            // action) is not reached while the bar has the focus.
+            'select_all' => ['alt+enter'],
             'delete_char_backward' => [Key::BACKSPACE],
             // The same chords the find-in-files modal recalls with, because it
             // is the same history.

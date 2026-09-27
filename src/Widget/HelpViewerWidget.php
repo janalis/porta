@@ -596,6 +596,12 @@ final class HelpViewerWidget extends EditorPaneWidget implements FindTarget
         $this->invalidate();
     }
 
+    #[\Override]
+    public function selectMatches(array $matches, int $current): bool
+    {
+        return false; // documentation has no carets
+    }
+
     /**
      * Splice the find-bar's match highlights over a rendered line. Match offsets
      * are byte columns into the STRIPPED line, so map each through the display

@@ -163,4 +163,31 @@ final class MultiCaretTest extends TestCase
 
         $this->assertCount(1, $mc->carets());
     }
+
+    // --- selectRanges (the find bar's Select All Occurrences) -----------------
+
+    public function testSelectRangesPutsThePrimaryOnTheDocumentAndTheRestAsExtras(): void
+    {
+        $doc = new Document("foo x foo\nfoo\n");
+        $mc = new MultiCaret($doc, $this->invalidate(), $this->noop());
+        $mc->setExtras([Caret::point(1, 0)]); // replaced wholesale, not added to
+        $this->calls = [];
+
+        $mc->selectRanges([new Caret(0, 3, 0, 0), new Caret(0, 9, 0, 6), new Caret(1, 3, 1, 0)], primary: 1);
+
+        $this->assertSame(['startLine' => 0, 'startCol' => 6, 'endLine' => 0, 'endCol' => 9], $doc->getSelectionRange(), 'the chosen one is the Document\'s own selection');
+        $this->assertSame([0, 9], [$doc->cursorLine, $doc->cursorCol], 'its caret at the match end');
+        $this->assertEquals([new Caret(0, 3, 0, 0), new Caret(1, 3, 1, 0)], $mc->carets(), 'the others, in order, keeping their selections');
+        $this->assertSame(['invalidate'], $this->calls, 'one redraw');
+    }
+
+    public function testSelectRangesDropsAnExtraOnThePrimarysSpot(): void
+    {
+        $doc = new Document("foo foo\n");
+        $mc = new MultiCaret($doc, $this->noop(), $this->noop());
+
+        $mc->selectRanges([new Caret(0, 3, 0, 0), new Caret(0, 7, 0, 4), new Caret(0, 3, 0, 0)], primary: 0);
+
+        $this->assertEquals([new Caret(0, 7, 0, 4)], $mc->carets(), 'the primary is not doubled as an extra');
+    }
 }

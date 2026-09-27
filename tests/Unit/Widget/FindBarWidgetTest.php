@@ -390,21 +390,21 @@ final class FindBarWidgetTest extends TestCase
             $bar = new FindBarWidget(new Translator('en'));
             $bar->open(new FakeFindTarget(new Document("x\n")), mode: FindMode::Find);
 
-            return \array_map(static fn (string $row): string => \mb_substr(AnsiUtils::stripAnsiCodes($row), start: 66), $bar->render(new RenderContext($columns, 3)));
+            return \array_map(static fn (string $row): string => \mb_substr(AnsiUtils::stripAnsiCodes($row), start: 71), $bar->render(new RenderContext($columns, 3)));
         };
 
         $one = $shown(140);
-        $this->assertSame(['', '⏎/F3 next  Shift+F3 prev  Alt+X .*  Alt+W \b  Esc  Alt+C Aa', ''], \array_map(\trim(...), $one), 'one line, on the middle row');
+        $this->assertSame(['', '⏎/F3 next  Shift+F3 prev  Alt+X .*  Alt+W \b  Esc  Alt+C Aa  Alt+⏎ ∀', ''], \array_map(\trim(...), $one), 'one line, on the middle row');
         $this->assertStringStartsWith(' ⏎', $one[1], 'a gutter clear of the last button');
 
         $two = \array_map(\trim(...), $shown(120));
-        $this->assertSame(['⏎/F3 next  Shift+F3 prev  Alt+X .*  Alt+W \b  Esc', '', 'Alt+C Aa'], $two, 'two lines, above and below');
+        $this->assertSame(['⏎/F3 next  Shift+F3 prev  Alt+X .*  Alt+W \b', '', 'Esc  Alt+C Aa  Alt+⏎ ∀'], $two, 'two lines, above and below');
 
-        $three = \array_map(\trim(...), $shown(82));
+        $three = \array_map(\trim(...), $shown(87));
         $this->assertSame(['⏎/F3 next', 'Shift+F3 prev', 'Alt+X .*'], $three, 'three lines, filling the rows; the rest is left to the keybindings page');
 
         // Thirteen columns past the gutter: `Shift+F3 prev` fits exactly.
-        $snug = \array_map(\trim(...), $shown(80));
+        $snug = \array_map(\trim(...), $shown(85));
         $this->assertSame(['⏎/F3 next', 'Shift+F3 prev', 'Alt+X .*'], $snug, 'a hint exactly as wide as the room still takes a line');
     }
 
@@ -674,11 +674,11 @@ final class FindBarWidgetTest extends TestCase
         $this->assertCount(3, \array_merge(...\array_values($bar->getMatchesByLine())));
 
         // The toggles follow the 32-column box and its gutter, six columns
-        // each boxed: .* spans 33-38, \b 39-44.
+        // each boxed: .* spans 33-38, \b 39-44; the last button, ×, ends at 70.
         $bar->handleClick(1, 41);
         $this->assertCount(2, \array_merge(...\array_values($bar->getMatchesByLine())), 'the click re-ran the search, exactly as Alt+W does');
 
-        $bar->handleClick(1, 70); // past the buttons: no zone at all
+        $bar->handleClick(1, 75); // past the buttons: no zone at all
         $this->assertCount(2, \array_merge(...\array_values($bar->getMatchesByLine())), 'the empty tail is inert');
         $bar->handleClick(1, 10); // the query box is not a tag
         $this->assertCount(2, \array_merge(...\array_values($bar->getMatchesByLine())), 'a click off the tags is inert');
@@ -732,9 +732,9 @@ final class FindBarWidgetTest extends TestCase
         $rows = \array_map(AnsiUtils::stripAnsiCodes(...), $bar->render(new RenderContext(40, 3)));
 
         $this->assertStringContainsString('[1/2]', $rows[2]);
-        $this->assertStringEndsWith(' .*  \\b  Aa  ↑  ↓  × ', $rows[1], 'beside the tags and buttons, which still fit');
-        $this->assertStringEndsWith('⏎/F3 next            ', $rows[0], 'the middle row is the tags\', so the hints keep above them');
-        $this->assertStringEndsWith('Shift+F3 prev        ', $rows[2], 'and below');
+        $this->assertStringEndsWith(' .*  \\b  Aa  ↑  ↓  ∀  × ', $rows[1], 'beside the tags and buttons, which still fit');
+        $this->assertStringEndsWith('⏎/F3 next  Shift+F3 prev', $rows[0], 'the middle row is the tags\', so the hints keep above them');
+        $this->assertStringEndsWith('Alt+X .*  Alt+W \\b  Esc ', $rows[2], 'and below');
     }
 
     public function testHoverTintsTheTagUnderThePointer(): void
@@ -833,7 +833,7 @@ final class FindBarWidgetTest extends TestCase
         // A boxed toggle is its caption plus the rails and padding: six
         // columns for .*, \b and Aa; a boxed button five. They follow the
         // 32-column box and its gutter: regex 33-38, word 39-44, case 45-50,
-        // then ↑ 51-55, ↓ 56-60 and × 61-65.
+        // then ↑ 51-55, ↓ 56-60, ∀ 61-65 and × 66-70.
         $this->assertFalse($bar->hoverAt(1, 32), 'the gutter before the regex zone: no tag');
         $this->assertTrue($bar->hoverAt(1, 33), 'the regex zone starts at 33');
         $this->assertFalse($bar->hoverAt(1, 38), 'still the regex zone (33-38): no change');
@@ -841,9 +841,10 @@ final class FindBarWidgetTest extends TestCase
         $this->assertFalse($bar->hoverAt(1, 44), 'still the word zone (39-44): no change');
         $this->assertTrue($bar->hoverAt(1, 45), 'the case zone, 45-50');
         $this->assertTrue($bar->hoverAt(1, 51), 'the ↑ button, 51-55');
-        $this->assertTrue($bar->hoverAt(1, 61), 'the × button, 61-65');
+        $this->assertTrue($bar->hoverAt(1, 61), 'the ∀ button, 61-65');
+        $this->assertTrue($bar->hoverAt(1, 66), 'the × button, 66-70');
         $bar->clearHover();
-        $this->assertFalse($bar->hoverAt(1, 66), 'past the last button: nothing, no change from already-cleared');
+        $this->assertFalse($bar->hoverAt(1, 71), 'past the last button: nothing, no change from already-cleared');
         $this->assertTrue($bar->hoverAt(0, 34), 'the top border is the toggle too');
         $this->assertFalse($bar->hoverAt(2, 36), 'as is the bottom one: the same toggle, no change');
         $this->assertTrue($bar->hoverAt(3, 34), 'below the bar is off it: the hover clears');
@@ -857,7 +858,7 @@ final class FindBarWidgetTest extends TestCase
 
         $this->assertCount(1, $rows, 'Find and Replace side by side on the one row');
         $this->assertStringContainsString('Replace ', $rows[0]);
-        $this->assertStringContainsString(' .*  \b  Aa  ↑  ↓  × ', $rows[0]);
+        $this->assertStringContainsString(' .*  \b  Aa  ↑  ↓  ∀  × ', $rows[0]);
         $this->assertTrue($bar->hoverAt(0, 67), 'the regex tag, after two 32-column fields and their gutters: 66-69');
         $this->assertTrue($bar->hoverAt(1, 67), 'below the one row is off it: the hover clears');
         $this->assertFalse($bar->hoverAt(1, 67), 'and stays clear');
@@ -968,8 +969,8 @@ final class FindBarWidgetTest extends TestCase
         $bar->open(new FakeFindTarget(new Document("x\n")), mode: FindMode::Find);
         $bar->render(new RenderContext(40, 1));
 
-        $this->assertFalse($bar->hoverAt(1, 18), 'the gutter after the 18-column box');
-        $this->assertTrue($bar->hoverAt(1, 19), 'the tags and buttons fill the last 21 columns of forty');
+        $this->assertFalse($bar->hoverAt(1, 15), 'the gutter after the 15-column box');
+        $this->assertTrue($bar->hoverAt(1, 16), 'the tags and buttons fill the last 24 columns of forty');
         $this->assertTrue($bar->hoverAt(1, 39), 'through to the final column');
     }
 
@@ -1191,7 +1192,8 @@ final class FindBarWidgetTest extends TestCase
     public function testTheButtonsStepAndClose(): void
     {
         $bar = new FindBarWidget(new Translator('en'));
-        $bar->open(new FakeFindTarget(new Document("a a a\n")), mode: FindMode::Find, initialQuery: 'a');
+        $target = new FakeFindTarget(new Document("a a a\n"));
+        $bar->open($target, mode: FindMode::Find, initialQuery: 'a');
         $bar->render(new RenderContext(80, 3));
         $position = static fn (): string => AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(80, 3))[2]);
         $this->assertStringContainsString('[1/3]', $position());
@@ -1201,10 +1203,11 @@ final class FindBarWidgetTest extends TestCase
         $bar->handleClick(1, 53); // ↑
         $bar->handleClick(0, 53); // its top border: a button is its whole box
         $this->assertStringContainsString('[3/3]', $position(), 'wrapping');
-        $this->assertTrue($bar->hoverAt(1, 63));
+        $this->assertTrue($bar->hoverAt(1, 68));
         $this->assertStringContainsString("\e[4m", $bar->render(new RenderContext(80, 3))[1], 'the × under the pointer underlines');
-        $bar->handleClick(1, 63); // ×
+        $bar->handleClick(1, 68); // ×, past ∀
         $this->assertFalse($bar->isOpen());
+        $this->assertNull($target->selected, 'closed by ×, not by Select All closing it');
     }
 
     /** The query's caret moves: a typo mid-word is fixed where it is. */
@@ -1225,5 +1228,111 @@ final class FindBarWidgetTest extends TestCase
     private function allMatches(FindBarWidget $bar): array
     {
         return \array_merge(...\array_values($bar->getMatchesByLine()));
+    }
+
+    // --- Select All Occurrences (Alt+Enter / the ∀ button) --------------------
+
+    public function testAltEnterSelectsEveryMatchAndCloses(): void
+    {
+        $doc = new Document("foo x foo\nfoo\n");
+        $doc->setCursor(0, 4); // the nearest match is the second
+        $target = new FakeFindTarget($doc);
+        $bar = new FindBarWidget(new Translator('en'));
+        $closed = false;
+        $bar->onClose(static function () use (&$closed): void {
+            $closed = true;
+        });
+        $bar->open($target, mode: FindMode::Find, initialQuery: 'foo');
+
+        $bar->handleInput("\x1b\r"); // alt+enter
+
+        $this->assertSame(
+            ['matches' => [['line' => 0, 'start' => 0, 'end' => 3], ['line' => 0, 'start' => 6, 'end' => 9], ['line' => 1, 'start' => 0, 'end' => 3]], 'current' => 1],
+            $target->selected,
+            'every match, the current one named',
+        );
+        $this->assertFalse($bar->isOpen(), 'the bar closes, so typing goes to the carets');
+        $this->assertTrue($closed, 'through the close path that hands the focus back');
+    }
+
+    public function testSelectAllWithNothingMatchedLeavesTheBarOpen(): void
+    {
+        $target = new FakeFindTarget(new Document("foo\n"));
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->open($target, mode: FindMode::Find, initialQuery: 'zzz');
+
+        $bar->handleInput("\x1b\r");
+
+        $this->assertNull($target->selected, 'no empty caret set is handed over');
+        $this->assertTrue($bar->isOpen(), 'the query can still be fixed');
+    }
+
+    /** A stale bar re-searches first, and a refresh leaves no current match: the first is the primary. */
+    public function testSelectAllRefreshesAStaleSearchFirst(): void
+    {
+        $doc = new Document("match one\n");
+        $target = new FakeFindTarget($doc);
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->open($target, mode: FindMode::Find, initialQuery: 'match');
+        $doc->moveToDocumentEnd();
+        $doc->insert("match two\n");
+
+        $bar->handleInput("\x1b\r");
+
+        $this->assertSame(['matches' => [['line' => 0, 'start' => 0, 'end' => 5], ['line' => 1, 'start' => 0, 'end' => 5]], 'current' => 0], $target->selected);
+    }
+
+    public function testClickingTheSelectAllButtonDoesWhatAltEnterDoes(): void
+    {
+        $target = new FakeFindTarget(new Document("foo foo\n"));
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->open($target, mode: FindMode::Find, initialQuery: 'foo');
+        $bar->render(new RenderContext(80, 3)); // ∀ spans 61-65
+
+        $bar->handleClick(1, 63);
+
+        $this->assertCount(2, $target->selected['matches'] ?? []);
+        $this->assertFalse($bar->isOpen());
+    }
+
+    /** On the docs page there are no carets: no ∀ button, no hint, and the key leaves the bar open. */
+    public function testAReadOnlyTargetOffersNoSelectAll(): void
+    {
+        $target = new FakeFindTarget(new Document("foo foo\n"), readOnly: true);
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->open($target, mode: FindMode::Find, initialQuery: 'foo');
+
+        $rows = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $bar->render(new RenderContext(160, 3))));
+        $this->assertStringNotContainsString('∀', $rows, 'neither the button nor its hint');
+        $this->assertStringContainsString('│ × │', $rows, 'the other buttons are drawn');
+
+        $bar->handleInput("\x1b\r");
+        $this->assertTrue($bar->isOpen(), 'the target refused, so the bar stays');
+    }
+
+    // --- A menu dropdown floats over the bar ------------------------------------
+
+    public function testAMenuDropdownCompositesOverTheBoxedBar(): void
+    {
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->open(new FakeFindTarget(new Document("foo\n")), mode: FindMode::Find, initialQuery: 'foo');
+        $bar->setMenuOverlay([['row' => 1, 'col' => 2, 'width' => 7, 'segment' => ' Paste ']]);
+
+        $rows = $bar->render(new RenderContext(80, 3));
+
+        $this->assertStringStartsWith('│  Paste ', AnsiUtils::stripAnsiCodes($rows[1]), 'the span covers the query row, the dropdown in front');
+        $this->assertSame(80, AnsiUtils::visibleWidth($rows[1]), 'without changing the bar width');
+    }
+
+    public function testAMenuDropdownCompositesOverABarTooNarrowForItsTags(): void
+    {
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->open(new FakeFindTarget(new Document("foo\n")), mode: FindMode::Find, initialQuery: 'foo');
+        $bar->setMenuOverlay([['row' => 0, 'col' => 0, 'width' => 5, 'segment' => 'Paste']]);
+
+        $rows = $bar->render(new RenderContext(12, 3)); // one compact field, no tags
+
+        $this->assertCount(1, $rows);
+        $this->assertStringStartsWith('Paste', AnsiUtils::stripAnsiCodes($rows[0]));
     }
 }

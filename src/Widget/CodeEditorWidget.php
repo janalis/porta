@@ -173,7 +173,12 @@ final class CodeEditorWidget extends AbstractWidget implements
     /** Mouse hit-testing + selection, rebuilt per document. */
     private EditorMouse $mouse;
 
-    private MultiCaret $multiCaret;
+    /**
+     * The shown buffer's carets, rebuilt per document. Readable so the find
+     * bar can put a caret on every match: it holds the one for the document it
+     * searches, the way it holds that document for replace.
+     */
+    public private(set) MultiCaret $multiCaret;
 
     /** Structural selection (expand/shrink/surround) + merge-conflict nav, rebuilt per document. */
     private EditorStructural $structural;
