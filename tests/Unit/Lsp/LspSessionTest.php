@@ -337,6 +337,37 @@ final class LspSessionTest extends TestCase
         $this->assertSame(['textDocument/didChange'], \array_column($client->notifications, 'method'), 'and sends the pending edit immediately');
     }
 
+    /**
+     * A flush sends the edit early, and what was to follow it still follows.
+     *
+     * The follow-up is the inlay-hint re-request. Every feature request
+     * flushes — document highlight on each caret move among them — so a flush
+     * that dropped it meant an edit almost never refreshed the hints: they
+     * stayed as the file was when it opened.
+     */
+    public function testAFlushedEditStillRunsWhatWasToFollowIt(): void
+    {
+        $client = new FakeLspClient();
+        $session = $this->session($client);
+        $this->start($session);
+        $doc = new Document('x');
+        $followed = 0;
+
+        $session->scheduleDidChange($doc, static fn (): ?string => '/porta-no-such-root/project/a.php', static function () use (&$followed): void {
+            ++$followed;
+        });
+        $session->ready('/porta-no-such-root/project/a.php', $doc);
+        $this->pump(0.05);
+
+        $this->assertSame(1, $followed, 'the flush sent the edit and then ran the follow-up');
+        $this->pump(0.35);
+        $this->assertSame(1, $followed, 'once: the cancelled debounce does not run it again');
+
+        $session->flushPendingChange('/porta-no-such-root/project/a.php', $doc);
+        $this->pump(0.05);
+        $this->assertSame(1, $followed, 'nothing pending, nothing to follow');
+    }
+
     public function testRequestAndStopDelegateToClient(): void
     {
         $client = new FakeLspClient();

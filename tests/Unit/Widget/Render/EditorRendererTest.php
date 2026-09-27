@@ -15,6 +15,7 @@ use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\CaretPopupRenderer;
 use Porta\Widget\Render\CursorVisibility;
 use Porta\Widget\Render\EditorRenderer;
+use Porta\Widget\Render\LineDecorator;
 use Porta\Widget\Render\PaneFocus;
 use Porta\Widget\Render\PopupMetrics;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -191,6 +192,54 @@ final class EditorRendererTest extends TestCase
         $this->assertLessThan(4_096, \strlen($out), 'hint insertion must stay linear, never multiply per hint');
         $this->assertSame(12, \substr_count(AnsiUtils::stripAnsiCodes($out), needle: 'p:'), 'every hint landed');
         $this->assertStringContainsString('fn(p:x)', AnsiUtils::stripAnsiCodes($out), 'hints insert at their column, pushing content right');
+    }
+
+    /**
+     * A hint lands on a column boundary of a line that is already decorated;
+     * at the end of the word under the caret the highlight's background is
+     * still open there, and it painted "46 references" as part of the word.
+     */
+    public function testAHintAtTheEndOfAHighlightedWordCarriesNoHighlight(): void
+    {
+        $doc = new Document("enum StatusTone: string\n");
+        $highlighted = LineDecorator::applyAll('enum StatusTone: string', [[5, 15, "\x1b[48;5;100m", Sgr::DEFAULT_BG, null]]);
+
+        $out = EditorRenderer::applyInlayHints($doc, 0, [['col' => 15, 'text' => ' 46 references']], $highlighted, $this->styles());
+
+        $this->assertSame('enum StatusTone 46 references: string', AnsiUtils::stripAnsiCodes($out));
+        $this->assertTrue(self::backgroundOpenBefore($out, 'StatusTone'), 'the word itself keeps its highlight');
+        $this->assertFalse(self::backgroundOpenBefore($out, ' 46 references'), 'the hint does not');
+        $this->assertFalse(self::backgroundOpenBefore($out, ': string'), 'nor does the code after it');
+    }
+
+    /** A span that runs on past the hint is picked up again after it. */
+    public function testASpanContinuingPastAHintResumesAfterIt(): void
+    {
+        $doc = new Document("enum StatusTone: string\n");
+        $selected = LineDecorator::applyAll('enum StatusTone: string', [[0, 23, "\x1b[48;5;100m", Sgr::DEFAULT_BG, null]]);
+
+        $out = EditorRenderer::applyInlayHints($doc, 0, [['col' => 15, 'text' => ' 46 references']], $selected, $this->styles());
+
+        $this->assertFalse(self::backgroundOpenBefore($out, ' 46 references'), 'the hint is off the span');
+        $this->assertTrue(self::backgroundOpenBefore($out, ': string'), 'and the span resumes after it');
+    }
+
+    /** Whether a background colour is in force where $needle starts in $ansi. */
+    private static function backgroundOpenBefore(string $ansi, string $needle): bool
+    {
+        $at = \strpos($ansi, $needle);
+        self::assertNotFalse($at, 'the text is there');
+        \preg_match_all('/\x1b\[([0-9;]*)m/', \substr($ansi, offset: 0, length: $at), $codes);
+        $open = false;
+        foreach ($codes[1] as $params) {
+            $open = match (true) {
+                '' === $params, '0' === $params, '49' === $params => false,
+                \str_starts_with($params, '48;') => true,
+                default => $open,
+            };
+        }
+
+        return $open;
     }
 
     public function testInlayHintsAtTheSameColumnKeepTheFoldOrder(): void

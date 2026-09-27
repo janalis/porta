@@ -25,6 +25,15 @@ final class LspSession
     private array $syncedText = [];
     private ?string $changeDebounce = null;
 
+    /**
+     * What the armed debounce runs after its didChange (the inlay-hint
+     * re-request). Held apart from the timer so a FLUSH, which cancels the
+     * timer and sends the edit itself, can still run it.
+     *
+     * @var (\Closure(): void)|null
+     */
+    private ?\Closure $afterSync = null;
+
     /** @var \Closure(list<string>, string, \Closure(string): void, array<string, mixed>|null): LspClientInterface */
     private readonly \Closure $clientFactory;
 
@@ -109,6 +118,7 @@ final class LspSession
             EventLoop::cancel($this->changeDebounce);
             $this->changeDebounce = null;
         }
+        $this->afterSync = null;
         $this->client?->stop();
     }
 
@@ -227,14 +237,17 @@ final class LspSession
             EventLoop::cancel($this->changeDebounce);
         }
 
-        $this->changeDebounce = EventLoop::delay(0.3, function () use ($doc, $resolvePath, $afterSync): void {
+        $this->afterSync = $afterSync;
+        $this->changeDebounce = EventLoop::delay(0.3, function () use ($doc, $resolvePath): void {
             $this->changeDebounce = null;
             $path = $resolvePath();
             if (null === $path) {
+                $this->afterSync = null;
+
                 return;
             }
             $this->sendDidChange($path, $doc);
-            $this->whenReady($afterSync);
+            $this->runAfterSync();
         });
     }
 
@@ -253,6 +266,20 @@ final class LspSession
             // on `->` — so a full-text flush here shipped the whole file per
             // trigger character and left the diff path nearly unreachable.
             $this->sendDidChange($path, $document);
+            // And what the debounce would have run after it. Every feature
+            // request flushes — document highlight on each caret move — so
+            // dropping this meant an edit almost never refreshed the hints.
+            $this->runAfterSync();
+        }
+    }
+
+    /** Run, once, what the pending edit was to be followed by. */
+    private function runAfterSync(): void
+    {
+        $after = $this->afterSync;
+        $this->afterSync = null;
+        if (null !== $after) {
+            $this->whenReady($after);
         }
     }
 

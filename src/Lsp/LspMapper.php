@@ -217,6 +217,7 @@ final class LspMapper
     /**
      * Group inlay hints by (0-based) line, converting UTF-16 columns to byte
      * columns against the given document.
+     * The label keeps the spacing the server asked for ({@see InlayHintLabel}).
      *
      * @param list<array<string, mixed>> $hints
      *
@@ -229,14 +230,8 @@ final class LspMapper
             if (($hint['position']['line'] ?? null) === null || ($hint['position']['character'] ?? null) === null) {
                 continue;
             }
-            /** @var scalar|array<array-key, mixed> $label */
-            $label = $hint['label'] ?? '';
-            if (\is_array($label)) {
-                // label is an InlayHintLabelPart[]; concatenate the parts' text.
-                $label = \implode('', \array_map(static fn ($part): string => \is_array($part) ? (string) ($part['value'] ?? '') : (string) $part, $label));
-            }
-            $label = \trim((string) $label);
-            if ('' === $label) {
+            $label = InlayHintLabel::of($hint);
+            if (null === $label) {
                 continue;
             }
             $line = (int) $hint['position']['line'];

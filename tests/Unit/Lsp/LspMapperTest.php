@@ -42,6 +42,30 @@ final class LspMapperTest extends TestCase
         );
     }
 
+    /**
+     * phpantom sends `" 46 references"` after a class name: the leading space
+     * is the server keeping its label off the name, and trimming it glued
+     * the two together ("StatusTone46 references").
+     */
+    public function testALabelKeepsTheSpacingTheServerAskedFor(): void
+    {
+        $doc = new Document("enum StatusTone: string\n");
+
+        $hints = LspMapper::mapInlayHints($doc, [
+            ['position' => ['line' => 0, 'character' => 15], 'label' => ' 46 references'],
+            ['position' => ['line' => 0, 'character' => 5], 'label' => 'type:', 'paddingRight' => true],
+            ['position' => ['line' => 0, 'character' => 16], 'label' => 'backed', 'paddingLeft' => true],
+            ['position' => ['line' => 0, 'character' => 23], 'label' => "a \n\t b  "],
+            ['position' => ['line' => 0, 'character' => 0], 'label' => 'x', 'paddingLeft' => false, 'paddingRight' => false],
+        ]);
+
+        $this->assertSame(
+            [' 46 references', 'type: ', ' backed', 'a b ', 'x'],
+            \array_column($hints[0], 'text'),
+            'a leading or trailing space, or a padding flag, keeps ONE space on that side; inner runs collapse',
+        );
+    }
+
     public function testMapInlayHintsWithNoUsableHintsReturnsEmpty(): void
     {
         $doc = new Document("<?php\n");

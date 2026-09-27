@@ -221,6 +221,13 @@ final class EditorRenderer
     /**
      * Insert a line's inlay hints as dim virtual text, right-to-left so offsets stay valid.
      *
+     * Each hint opens on a clean pen. It lands on a column boundary of a line
+     * that is already decorated, so whatever span is open there — the
+     * word-under-caret highlight, a search match, a selection — would
+     * otherwise paint the hint as part of the word. The slice after it
+     * replays the state still open, and the caret-line band re-asserts its
+     * background after every reset ({@see LineDecorator::applyFullWidth}).
+     *
      * @param list<array{col: int, text: string}> $lineHints
      */
     public static function applyInlayHints(Document $doc, int $line, array $lineHints, string $hlLine, Styles $styles): string
@@ -235,7 +242,7 @@ final class EditorRenderer
         // columns keep the fold's order: the later-listed hint lands left.
         $placed = [];
         foreach ($lineHints as $i => $hint) {
-            $placed[] = [$doc->displayColAt($line, $hint['col']), -$i, $styles->of(Role::Inlay)->apply($hint['text'])];
+            $placed[] = [$doc->displayColAt($line, $hint['col']), -$i, Sgr::RESET.$styles->of(Role::Inlay)->apply($hint['text'])];
         }
         \usort($placed, static fn (array $a, array $b): int => [$a[0], $a[1]] <=> [$b[0], $b[1]]);
 
