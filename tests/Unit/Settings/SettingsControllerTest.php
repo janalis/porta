@@ -12,6 +12,7 @@ use Porta\Config\PortaJsonWriter;
 use Porta\Editor\BufferManager;
 use Porta\Editor\DiagnosticMessageMode;
 use Porta\Editor\EditorPanes;
+use Porta\Editor\InlayHintMode;
 use Porta\Editor\LineNumberMode;
 use Porta\Event\CursorShapeChanged;
 use Porta\Event\LocaleChanged;
@@ -42,6 +43,7 @@ use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\TestCompletionController;
 use Porta\Tests\Support\TestTui;
 use Porta\Tests\Support\TestWorkspaceLayout;
 use Porta\Tests\Support\Toasts;
@@ -133,6 +135,7 @@ final class SettingsControllerTest extends TestCase
             TestWorkspaceLayout::create(rootDir: $rootDir),
             $dispatcher,
             $this->formatOnSave = self::formatOnSave(),
+            TestCompletionController::idle($editor),
             true,
         );
 
@@ -228,6 +231,7 @@ final class SettingsControllerTest extends TestCase
                 'showWhitespace',
                 'methodSeparators',
                 'diagnosticMessages',
+                'inlayHints',
                 'tooltips',
                 'tooltipDelay',
             ],
@@ -242,7 +246,9 @@ final class SettingsControllerTest extends TestCase
         $this->assertSame('absolute', $byKey['lineNumbers']->value);
         $this->assertSame(['off', 'absolute', 'relative'], $byKey['lineNumbers']->options);
         $this->assertSame(['none', 'inline', 'menu'], $byKey['diagnosticMessages']->options);
+        $this->assertSame(['none', 'inline', 'tooltip'], $byKey['inlayHints']->options);
         $this->assertFalse($byKey['diagnosticMessages']->restart, 'a mode switch applies live');
+        $this->assertFalse($byKey['inlayHints']->restart, 'a mode switch applies live');
         $this->assertTrue($byKey['stickyScroll']->value);
         $this->assertSame(SettingsRowKind::Bool, $byKey['breadcrumbs']->kind);
     }
@@ -376,7 +382,7 @@ final class SettingsControllerTest extends TestCase
         $this->assertSame('absolute', $controller->choice('lineNumbers'));
     }
 
-    /** The diagnostic-message mode walks its three options and wraps, applied to the editor live. */
+    /** Both hint modes walk their three options and wrap, applied to the editor live. */
     public function testCyclingTheHintModesAppliesEachStepLive(): void
     {
         $project = new TempProject();
@@ -389,6 +395,26 @@ final class SettingsControllerTest extends TestCase
             $seen[] = $editor->display->diagnosticMessages;
         }
         $this->assertSame([DiagnosticMessageMode::Menu, DiagnosticMessageMode::None, DiagnosticMessageMode::Inline], $seen, 'inline → menu → none → inline');
+
+        $seen = [];
+        for ($i = 0; $i < 3; ++$i) {
+            $controller->cycleChoice('inlayHints');
+            $seen[] = $editor->display->inlayHints;
+        }
+        $this->assertSame([InlayHintMode::Tooltip, InlayHintMode::None, InlayHintMode::Inline], $seen, 'inline → tooltip → none → inline');
+        $this->assertSame('inline', $this->written($project)['settings']['inlayHints'] ?? null, 'and each step persists');
+    }
+
+    /** A value outside the options (a hand-edited file) restarts the cycle at the first option. */
+    public function testCyclingFromAnUnknownValueStartsAtTheFirstOption(): void
+    {
+        $project = new TempProject();
+        $editor = new CodeEditorWidget();
+        $controller = $this->controller($project->dir, $editor, new StatusBarWidget(), ['inlayHints' => 'sideways'] + IdeConfig::DEFAULT_SETTINGS);
+
+        $controller->cycleChoice('inlayHints');
+
+        $this->assertSame(InlayHintMode::None, $editor->display->inlayHints);
     }
 
     /** Only a choice cycles: an unknown key, or a switch, flashes and changes nothing. */

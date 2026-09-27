@@ -745,6 +745,9 @@ final class IdeHelpersTest extends TestCase
         $messagesBefore = $editor->display->diagnosticMessages;
         $byLabel['Cycle Diagnostic Messages']();
         $this->assertNotSame($messagesBefore, $editor->display->diagnosticMessages);
+        $hintsBefore = $editor->display->inlayHints;
+        $byLabel['Cycle Inlay Hints']();
+        $this->assertNotSame($hintsBefore, $editor->display->inlayHints);
 
         $autoBefore = $editor->display->autoPairs;
         $byLabel['Toggle Auto-Pairs']();

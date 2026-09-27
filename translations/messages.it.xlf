@@ -3610,6 +3610,14 @@
         <source>Changed from its default — r puts it back</source>
         <target>Modificato rispetto al predefinito — r lo ripristina</target>
       </trans-unit>
+      <trans-unit id="1005">
+        <source>Inlay hints</source>
+        <target>Suggerimenti incorporati</target>
+      </trans-unit>
+      <trans-unit id="1006">
+        <source>Cycle Inlay Hints</source>
+        <target>Alterna suggerimenti incorporati</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

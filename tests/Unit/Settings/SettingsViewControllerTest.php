@@ -71,6 +71,7 @@ use Porta\Tests\Support\NavigatesSettings;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\ReadsSettingsForm;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\TestCompletionController;
 use Porta\Tests\Support\TestTui;
 use Porta\Tests\Support\TestWorkspaceLayout;
 use Porta\Ui\BidiTui;
@@ -213,6 +214,7 @@ final class SettingsViewControllerTest extends TestCase
             ),
             new EventDispatcher(),
             self::formatOnSave(),
+            TestCompletionController::idle($editor),
             true,
         );
         $settings = new SettingsController(
@@ -498,6 +500,7 @@ final class SettingsViewControllerTest extends TestCase
         $this->assertStringContainsString('Sticky scroll', $screen);
         $this->assertStringContainsString('Breadcrumbs', $screen);
         $this->assertStringContainsString('Diagnostic messages', $screen);
+        $this->assertStringContainsString('Inlay hints', $screen);
         $this->assertStringNotContainsString('Auto-pairs', $screen, 'editor behavior stays in General');
 
         // Toggle Sticky scroll (a Bool) → routes through changeSetting and persists.

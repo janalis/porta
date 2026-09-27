@@ -147,6 +147,7 @@ final class MenuModel
             'i:tree_select_opened_file',
             self::SEP,
             'i:cycle_diagnostic_messages',
+            'i:cycle_inlay_hints',
             'i:cycle_line_numbers',
             'i:toggle_auto_pairs',
         ],

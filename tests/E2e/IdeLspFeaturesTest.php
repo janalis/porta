@@ -486,6 +486,59 @@ final class IdeLspFeaturesTest extends TestCase
         );
     }
 
+    /**
+     * Both display modes switch live from the View menu's cycle commands —
+     * no restart: the hint leaves the line and comes back (asked for again,
+     * having been dropped while off), and the diagnostic message moves from
+     * after the code to the top of the Alt+Enter list.
+     */
+    public function testHintAndMessageModesSwitchLiveFromTheCommands(): void
+    {
+        $project = new TempProject([
+            '.porta.json' => $this->mockLspConfig(),
+            'src/Inlay.php' => "<?php\n\$x = f();\n",
+        ]);
+        $lineShows = fn (Tui $tui, VirtualTerminal $terminal, string $needle): bool => null !== $this->rowOf($this->screenGrid($tui, $terminal), $needle);
+        // The code line carrying the diagnostic, not the status bar — which
+        // names the caret line's problem in every mode.
+        $codeLineShows = function (Tui $tui, VirtualTerminal $terminal, string $needle): bool {
+            $grid = $this->screenGrid($tui, $terminal);
+
+            return \str_contains($grid[$this->rowOf($grid, '<?php') ?? 0] ?? '', $needle);
+        };
+
+        $this->runIde(
+            $project,
+            $project->path('src/Inlay.php'),
+            [
+                100 => function (Tui $tui, VirtualTerminal $terminal): void {
+                    $this->awaitLspReady($tui, $terminal);
+                    $this->awaitPainted($tui, $terminal, ': int');
+                    $this->awaitPainted($tui, $terminal, 'Mock diagnostic');
+                },
+                200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($lineShows, $codeLineShows): void {
+                    $commands = Services::resolve($ide, CommandRegistry::class);
+                    $commands->run('cycle_inlay_hints'); // inline → tooltip
+                    $this->await(static fn (): bool => !$lineShows($tui, $terminal, needle: ': int'), what: 'the hint to leave the line');
+                    $commands->run('cycle_inlay_hints'); // tooltip → none
+                    $commands->run('cycle_inlay_hints'); // none → inline, asked for again
+                    $this->await(static fn (): bool => $lineShows($tui, $terminal, needle: ': int'), what: 'the hint to come back');
+
+                    $this->assertTrue($codeLineShows($tui, $terminal, needle: 'Mock diagnostic'), 'inline: after the code');
+                    $commands->run('cycle_diagnostic_messages'); // inline → menu
+                    $this->await(static fn (): bool => !$codeLineShows($tui, $terminal, needle: 'Mock diagnostic'), what: 'the message to leave the line');
+                    $tui->getById('editor')->getDocument()->setCursor(0, 0);
+                    $tui->handleInput("\x1b\r"); // alt+enter
+                    $this->await(static fn (): bool => $lineShows($tui, $terminal, needle: 'Import class'), what: 'the quick fixes');
+                    $grid = $this->screenGrid($tui, $terminal);
+                    // The first row naming it, which is above the status bar's.
+                    $this->assertLessThan($this->rowOf($grid, 'Import class'), $this->rowOf($grid, 'Mock diagnostic'), 'the problem heads the fixes');
+                    $tui->handleInput("\x1b");
+                },
+            ],
+        );
+    }
+
     public function testGoToImplementationChooserAndTypeDefinitionJump(): void
     {
         $project = new TempProject([

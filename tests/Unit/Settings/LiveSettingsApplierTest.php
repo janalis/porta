@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Settings;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
 use Porta\Editor\EditorPanes;
+use Porta\Editor\InlayHintMode;
 use Porta\Highlight\ColorMode;
 use Porta\Highlight\TerminalThemeFactory;
 use Porta\I18n\Translator;
@@ -19,6 +20,7 @@ use Porta\Settings\LiveSettingsApplier;
 use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\Probe;
+use Porta\Tests\Support\TestCompletionController;
 use Porta\Tests\Support\TestTui;
 use Porta\Tests\Support\TestWorkspaceLayout;
 use Porta\Ui\CursorStyle;
@@ -46,6 +48,7 @@ final class LiveSettingsApplierTest extends TestCase
         ?Translator $translator = null,
         ?CursorStyle $cursorStyle = null,
         ?TabBarWidget $tabBar = null,
+        CodeEditorWidget $editor = new CodeEditorWidget(),
     ): LiveSettingsApplier {
         $this->formatOnSave = self::buildFormatOnSave();
 
@@ -61,6 +64,7 @@ final class LiveSettingsApplierTest extends TestCase
             TestWorkspaceLayout::create(rootDir: \sys_get_temp_dir()),
             new EventDispatcher(),
             $this->formatOnSave,
+            TestCompletionController::idle($editor),
             true,
         );
     }
@@ -98,6 +102,21 @@ final class LiveSettingsApplierTest extends TestCase
         $applier->disableFormatOnSave();
 
         $this->assertFalse($this->formatOnSave->isEnabled());
+    }
+
+    public function testApplyInlayHintsSwitchesTheEditorsMode(): void
+    {
+        $editor = new CodeEditorWidget();
+        $applier = $this->applier(editor: $editor);
+
+        $applier->applyInlayHints('tooltip');
+        $this->assertSame(InlayHintMode::Tooltip, $editor->display->inlayHints);
+
+        $applier->applyInlayHints('none');
+        $this->assertSame(InlayHintMode::None, $editor->display->inlayHints);
+
+        $applier->applyInlayHints('sideways');
+        $this->assertSame(InlayHintMode::Inline, $editor->display->inlayHints, 'a value outside the options falls back to the default');
     }
 
     public function testApplyLocaleSwitchesTheTranslator(): void
@@ -138,6 +157,7 @@ final class LiveSettingsApplierTest extends TestCase
             $workspaceLayout,
             new EventDispatcher(),
             $this->formatOnSave,
+            TestCompletionController::idle(),
             true,
         );
         $editorPane = Probe::get($workspaceLayout, 'editorPane');

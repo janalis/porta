@@ -7,6 +7,7 @@ namespace Porta\Input;
 use Porta\Config\CommandRegistry;
 use Porta\Container\AsEager;
 use Porta\Container\LayoutSlot;
+use Porta\Editor\InlayHintMode;
 use Porta\I18n\Translator;
 use Porta\Layout\ViewRegions;
 use Porta\Overlay\State\ToastCenter;
@@ -154,6 +155,10 @@ final class TooltipRouter
         $relRow = $mouse->row - $rect->row;
         $relCol = $mouse->col - $rect->col;
         $tip = $pointer->tooltip($relRow, $relCol, $clickShowsChange, $this->translator);
+        // Past the gutter, the code: its inlay hints, while they show as cards.
+        if (null === $tip && InlayHintMode::Tooltip === $editor->display->inlayHints) {
+            $tip = $editor->mouse->inlayTooltipAt($relRow, $relCol, $editor->viewport());
+        }
 
         return $tip?->moved($rect->row, $rect->col);
     }

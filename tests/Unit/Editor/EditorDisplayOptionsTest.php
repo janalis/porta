@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Editor;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\DiagnosticMessageMode;
 use Porta\Editor\EditorDisplayOptions;
+use Porta\Editor\InlayHintMode;
 use Porta\Editor\LineNumberMode;
 
 /**
@@ -80,10 +81,12 @@ final class EditorDisplayOptionsTest extends TestCase
 
         $this->assertSame(LineNumberMode::Absolute, $options->lineNumbers, 'absolute by default');
         $this->assertSame(DiagnosticMessageMode::Inline, $options->diagnosticMessages, 'messages after the code by default');
+        $this->assertSame(InlayHintMode::Inline, $options->inlayHints, 'hints in the line by default');
 
         $modes = [
             'lineNumbers' => [$options->setLineNumbers(...), static fn (): \BackedEnum => $options->lineNumbers, LineNumberMode::Relative],
             'diagnosticMessages' => [$options->setDiagnosticMessages(...), static fn (): \BackedEnum => $options->diagnosticMessages, DiagnosticMessageMode::Menu],
+            'inlayHints' => [$options->setInlayHints(...), static fn (): \BackedEnum => $options->inlayHints, InlayHintMode::Tooltip],
         ];
 
         $expected = 0;

@@ -117,6 +117,7 @@ final readonly class ViewCommands implements CommandProvider
             ->add('ide_dismiss_toast', fn () => $this->workbench->dismissToast(), keyBound: KeyDispatch::Bound, label: 'Dismiss Notification')
             ->add('ide_lsp_log', fn () => $this->workbench->showLspLog(), label: 'LSP: Show Server Log')
             ->add('cycle_diagnostic_messages', fn () => $this->settings->cycleChoice('diagnosticMessages'), label: 'Cycle Diagnostic Messages')
+            ->add('cycle_inlay_hints', fn () => $this->settings->cycleChoice('inlayHints'), label: 'Cycle Inlay Hints')
             ->add('cycle_line_numbers', fn () => $this->settings->cycleChoice('lineNumbers'), keyBound: KeyDispatch::Bound)
             ->add('toggle_auto_pairs', fn () => $this->settings->toggle('autoPairs'), label: 'Toggle Auto-Pairs', checked: fn (): bool => $this->settings->isOn('autoPairs'))
             ->add('toggle_format_on_save', fn () => $this->settings->toggle('formatOnSave'), label: 'Toggle Format on Save', checked: fn (): bool => $this->settings->isOn('formatOnSave'))

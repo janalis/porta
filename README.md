@@ -283,8 +283,9 @@ Both live in `.porta.json`:
 ```
 
 The **command palette** (`Ctrl+Shift+A`, "Find Action") lists every action by
-name and can run common ones, including cycling diagnostic messages and
-line numbers through their modes, which persist back into `.porta.json`.
+name and can run common ones, including cycling diagnostic messages, inlay
+hints and line numbers through their modes, which persist back into
+`.porta.json`.
 Unknown action/setting names are reported in the status bar at startup. The full
 action list is in `Porta\Config\IdeConfig::KNOWN_ACTIONS`. Heavily
 modified chords (e.g. `Alt+Shift+↑`) work best in terminals with the Kitty

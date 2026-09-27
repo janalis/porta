@@ -41,6 +41,7 @@ use Porta\Editor\FoldModel;
 use Porta\Editor\GutterHint;
 use Porta\Editor\GutterPart;
 use Porta\Editor\IndentKind;
+use Porta\Editor\InlayHintMode;
 use Porta\Editor\LineNumberMode;
 use Porta\Editor\MemberSeparators;
 use Porta\Editor\ModalHost;
@@ -172,7 +173,8 @@ final class CodeEditorWidget extends AbstractWidget implements
     private array $occurrencesMemo = ['key' => '', 'spans' => []];
 
     /** Mouse hit-testing + selection, rebuilt per document. */
-    private EditorMouse $mouse;
+    /** Public for the hover path: what a pointer rests on is a question for the same cell mapping a click uses. */
+    public private(set) EditorMouse $mouse;
 
     /**
      * The shown buffer's carets, rebuilt per document. Readable so the find
@@ -1403,6 +1405,7 @@ final class CodeEditorWidget extends AbstractWidget implements
                 $this->display->methodSeparators ? MemberSeparators::linesFor($this->scopes()) : [],
                 $this->display->showWhitespace,
                 $this->translator,
+                $this->display->inlayHints,
             );
             $result = $assembler->assemble(
                 $geo,
@@ -1480,7 +1483,10 @@ final class CodeEditorWidget extends AbstractWidget implements
     private function followCaret(Document $doc, int $cursorLine, int $contentWidth): int
     {
         $cursorDisplayCol = $doc->getCursorDisplayCol();
-        $cursorDisplayCol += EditorRenderer::inlayShiftAt($doc, $cursorLine, $this->decorations->inlayHintsAt($cursorLine), $cursorDisplayCol);
+        // Only hints painted into the line push the caret along it.
+        if (InlayHintMode::Inline === $this->display->inlayHints) {
+            $cursorDisplayCol += EditorRenderer::inlayShiftAt($doc, $cursorLine, $this->decorations->inlayHintsAt($cursorLine), $cursorDisplayCol);
+        }
         $cursorMoved = [$cursorLine, $doc->cursorCol] !== $this->lastFollowedCursor;
         $this->lastFollowedCursor = [$cursorLine, $doc->cursorCol];
         $this->scroll->followCursor($cursorDisplayCol, $contentWidth, $cursorMoved ? CaretMotion::Moved : CaretMotion::Parked);

@@ -32,6 +32,7 @@ final readonly class IdeConfig
         'language' => 'en',
         'theme' => 'dark',
         'diagnosticMessages' => 'inline',
+        'inlayHints' => 'inline',
         'lineNumbers' => 'absolute',
         'stickyScroll' => true,
         'indentGuides' => true,
@@ -120,6 +121,7 @@ final readonly class IdeConfig
         'theme' => ['dark', 'light', 'high-contrast'],
         'lineNumbers' => ['off', 'absolute', 'relative'],
         'diagnosticMessages' => ['none', 'inline', 'menu'],
+        'inlayHints' => ['none', 'inline', 'tooltip'],
         'cursorShape' => ['bar', 'block', 'underline'],
         'tabBarPosition' => ['top', 'bottom', 'left', 'right'],
     ];

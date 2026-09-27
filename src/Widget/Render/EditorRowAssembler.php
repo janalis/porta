@@ -11,6 +11,7 @@ use Porta\Editor\DiagnosticStyle;
 use Porta\Editor\Document;
 use Porta\Editor\FoldModel;
 use Porta\Editor\GutterPart;
+use Porta\Editor\InlayHintMode;
 use Porta\Editor\LineNumberMode;
 use Porta\Editor\WhitespaceGlyphs;
 use Porta\Editor\WrapLayout;
@@ -75,6 +76,8 @@ final readonly class EditorRowAssembler
         private bool $showWhitespace = false,
         /** Speaks the collapsed-region marker ("⋯ 12 lines") in the UI's language. */
         private Translator $translator = new Translator('en'),
+        /** Only {@see InlayHintMode::Inline} splices the hints into the line; a hover card is not painted here. */
+        private InlayHintMode $inlayHints = InlayHintMode::Inline,
     ) {
         $this->styles = $styles ?? Styles::dark();
         $this->breakpointSet = \array_fill_keys($store->breakpointLines, value: true);
@@ -531,7 +534,9 @@ final readonly class EditorRowAssembler
 
         // Inlay hints: dim virtual text inserted after all decorations so
         // their SGR spans stay attached to the real characters.
-        $hlLine = EditorRenderer::applyInlayHints($doc, $lineIndex, $this->store->inlayHintsAt($lineIndex), $hlLine, $this->styles);
+        if (InlayHintMode::Inline === $this->inlayHints) {
+            $hlLine = EditorRenderer::applyInlayHints($doc, $lineIndex, $this->store->inlayHintsAt($lineIndex), $hlLine, $this->styles);
+        }
 
         // Collapsed-region marker on the fold-start line.
         if (null !== ($foldEnd = $this->foldModel->foldEndAt($lineIndex))) {

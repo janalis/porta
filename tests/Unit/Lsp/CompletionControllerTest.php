@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Lsp;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\CompletionItem;
 use Porta\Editor\Document;
+use Porta\Editor\InlayHintMode;
 use Porta\I18n\Translator;
 use Porta\Lsp\CompletionController;
 use Porta\Lsp\LspSessionPool;
@@ -201,6 +202,36 @@ final class CompletionControllerTest extends TestCase
         $controller->requestInlayHints();
 
         $this->assertSame([], $this->client->requests, 'no inlayHintProvider advertised — no request, no error response per edit');
+    }
+
+    public function testHintsSetToNoneAreNotAskedFor(): void
+    {
+        $controller = $this->controller();
+        $this->readyOn($controller, '/p/a.php', "<?php\n\$a=1;\n");
+        $this->editor->display->setInlayHints(InlayHintMode::None);
+
+        $controller->requestInlayHints();
+
+        $this->assertSame([], $this->client->requests, 'a hint nobody will see is not a round trip worth making');
+    }
+
+    public function testSwitchingHintsOffDropsThemAndBackOnAsksAtOnce(): void
+    {
+        $controller = $this->controller();
+        $this->readyOn($controller, '/p/a.php', "<?php\n\$a=1;\n");
+        $this->editor->decorations->setInlayHints([1 => [['col' => 2, 'text' => ': int']]]);
+
+        $controller->applyInlayHintMode(InlayHintMode::None);
+
+        $this->assertSame(InlayHintMode::None, $this->editor->display->inlayHints);
+        $this->assertSame([], $this->editor->decorations->inlayHintsAt(1), 'held hints would go stale under edits nobody re-asks about');
+        $this->assertSame([], $this->client->requests);
+
+        $controller->applyInlayHintMode(InlayHintMode::Tooltip);
+
+        $this->assertSame(InlayHintMode::Tooltip, $this->editor->display->inlayHints);
+        $this->assertCount(1, $this->client->requests, 'a card needs the hints too, and waiting for the next edit is not live');
+        $this->assertSame('textDocument/inlayHint', $this->client->requests[0]['method']);
     }
 
     public function testRequestInlayHintsClampsToTheViewportPlusMargin(): void

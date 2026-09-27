@@ -3610,6 +3610,14 @@
         <source>Changed from its default — r puts it back</source>
         <target>既定値から変更 — r で元に戻す</target>
       </trans-unit>
+      <trans-unit id="1005">
+        <source>Inlay hints</source>
+        <target>インレイヒント</target>
+      </trans-unit>
+      <trans-unit id="1006">
+        <source>Cycle Inlay Hints</source>
+        <target>インレイヒント表示を切り替え</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

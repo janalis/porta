@@ -7,6 +7,7 @@ namespace Porta\Tests\E2e;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Editor\CompletionItem;
+use Porta\Editor\InlayHintMode;
 use Porta\I18n\Translator;
 use Porta\Ide;
 use Porta\Overlay\State\ToastCenter;
@@ -404,6 +405,47 @@ final class IdeTooltipTest extends TestCase
                     [$row, $col] = $this->cellOf($ide, $tui->getById('settings-form'), 'settings:autoPairs');
                     self::moveTo($tui, $row, $col);
                     $this->awaitPainted($tui, $terminal, 'Changed from its default');
+                },
+            ],
+        );
+    }
+
+    /**
+     * With inlay hints shown as cards, resting on the word a hint annotates
+     * says what the hint would have — and in the line's own mode the same
+     * cell asks for no card, the hint being right there.
+     */
+    public function testAnInlayHintIsACardOnlyInTooltipMode(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $project = new TempProject(['status.php' => "<?php\nenum StatusTone: string\n{\n}\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('status.php'),
+            [
+                100 => static function (Tui $tui): void {
+                    $editor = $tui->getById('editor');
+                    $editor->display->setInlayHints(InlayHintMode::Inline);
+                    $editor->decorations->setInlayHints([1 => [['col' => 15, 'text' => ' 46 references']]]);
+                },
+                200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
+                    $this->awaitPainted($tui, $terminal, 'StatusTone 46 references');
+                    $editor = $tui->getById('editor');
+                    $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($editor);
+                    $this->assertInstanceOf(WidgetRect::class, $rect);
+                    $cell = [$rect->row + 1, $rect->col + $editor->gutterWidth() + 7]; // on `StatusTone`
+                    self::moveTo($tui, ...$cell);
+                    $this->assertNull(Probe::get(Services::resolve($ide, TooltipCenter::class), 'pending'), 'inline: the hint is in the line, no card is asked for');
+
+                    $editor->display->setInlayHints(InlayHintMode::Tooltip);
+                    self::moveTo($tui, $cell[0], $cell[1] + 1);
+                    // The inline frame already carried the words: await the
+                    // card itself, then read that it is painted.
+                    $this->await(fn (): bool => 'inlay:1:5' === $this->shown($ide)?->key, what: 'the inlay card');
+                    $this->awaitPainted($tui, $terminal, 'StatusTone: string');
+                    $this->assertNotNull($this->rowOnScreen($tui, $terminal, '46 references'), 'the card says it');
+                    $this->assertNull($this->rowOnScreen($tui, $terminal, 'StatusTone 46'), 'and the line itself no longer does');
                 },
             ],
         );

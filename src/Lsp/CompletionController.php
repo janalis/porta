@@ -6,6 +6,7 @@ namespace Porta\Lsp;
 
 use Porta\Editor\CompletionItem;
 use Porta\Editor\Document;
+use Porta\Editor\InlayHintMode;
 use Porta\Editor\Templates;
 use Porta\Editor\TextMetrics;
 use Porta\I18n\Translator;
@@ -151,6 +152,23 @@ final class CompletionController extends AbstractLspController implements Editor
     }
 
     /**
+     * Switch where inlay hints show, live. Off drops the hints held — they
+     * would go stale under edits nobody re-asks about — and any other mode
+     * asks again at once, so switching back on does not wait for the next
+     * edit to paint.
+     */
+    public function applyInlayHintMode(InlayHintMode $mode): void
+    {
+        $this->editor->display->setInlayHints($mode);
+        if (InlayHintMode::None === $mode) {
+            $this->editor->decorations->setInlayHints([]);
+
+            return;
+        }
+        $this->requestInlayHints();
+    }
+
+    /**
      * Fetch inlay hints (parameter names / inferred types) for the viewport
      * (± {@see self::HINT_MARGIN_LINES}) and hand them to the editor to render
      * as dim inline text. Servers that never advertised `inlayHintProvider`
@@ -159,6 +177,11 @@ final class CompletionController extends AbstractLspController implements Editor
      */
     public function requestInlayHints(): void
     {
+        // Off means not asked for at all: a hint nobody will see is a round
+        // trip per edit burst for nothing.
+        if (InlayHintMode::None === $this->editor->display->inlayHints) {
+            return;
+        }
         /** @var array<string, mixed>|bool|null $capability LSP: boolean or an InlayHintOptions object */
         $capability = $this->lsp->serverCapability($this->editor->getFilePath(), 'inlayHintProvider');
         if (null === $capability || false === $capability) {

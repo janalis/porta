@@ -12,6 +12,7 @@ use Porta\Config\ConfigWarning;
 use Porta\Config\IdeConfig;
 use Porta\Config\PortaJsonWriter;
 use Porta\Editor\DiagnosticMessageMode;
+use Porta\Editor\InlayHintMode;
 use Porta\Editor\LineNumberMode;
 use Porta\I18n\Translator;
 use Porta\Tests\Support\TempProject;
@@ -776,6 +777,10 @@ final class IdeConfigTest extends TestCase
         $this->assertSame(
             \array_map(static fn (DiagnosticMessageMode $mode): string => $mode->value, DiagnosticMessageMode::cases()),
             IdeConfig::CHOICE_SETTINGS['diagnosticMessages'],
+        );
+        $this->assertSame(
+            \array_map(static fn (InlayHintMode $mode): string => $mode->value, InlayHintMode::cases()),
+            IdeConfig::CHOICE_SETTINGS['inlayHints'],
         );
         $this->assertSame(
             \array_map(static fn (TabBarPosition $position): string => $position->value, TabBarPosition::cases()),

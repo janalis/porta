@@ -6,8 +6,8 @@ namespace Porta\Editor;
 
 /**
  * The editor's display options as one piece of state: where diagnostic
- * messages show, the line-number mode, the git gutter, sticky scroll, indent
- * guides, auto-pairs and the rest below.
+ * messages and inlay hints show, the line-number mode, the git gutter, sticky
+ * scroll, indent guides, auto-pairs and the rest below.
  *
  * Held by {@see \Porta\Widget\CodeEditorWidget}, which keeps the public verbs
  * ({@see EditorViewOptions}) as delegators — this owns only the values. It takes
@@ -23,6 +23,7 @@ namespace Porta\Editor;
 final class EditorDisplayOptions
 {
     public private(set) DiagnosticMessageMode $diagnosticMessages = DiagnosticMessageMode::Inline;
+    public private(set) InlayHintMode $inlayHints = InlayHintMode::Inline;
     public private(set) LineNumberMode $lineNumbers = LineNumberMode::Absolute;
     public private(set) bool $vcsGutter = true;
     public private(set) bool $stickyScroll = true;
@@ -56,6 +57,11 @@ final class EditorDisplayOptions
     public function setDiagnosticMessages(DiagnosticMessageMode $mode): bool
     {
         return $this->apply($this->diagnosticMessages, $mode);
+    }
+
+    public function setInlayHints(InlayHintMode $mode): bool
+    {
+        return $this->apply($this->inlayHints, $mode);
     }
 
     public function setLineNumbers(LineNumberMode $mode): bool

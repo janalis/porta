@@ -154,6 +154,15 @@ final class SettingsController
                 'apply' => static fn (int|bool|string $v): bool => $editor->setDiagnosticMessages(DiagnosticMessageMode::tryFrom((string) $v) ?? DiagnosticMessageMode::Inline),
                 'options' => ['none', 'inline', 'menu'],
             ],
+            'inlayHints' => [
+                'label' => 'Inlay hints',
+                'kind' => SettingsRowKind::Choice,
+                'group' => 'interface',
+                'fieldset' => 'Editor',
+                'restart' => false,
+                'apply' => static fn (int|bool|string $v) => $applier->applyInlayHints((string) $v),
+                'options' => ['none', 'inline', 'tooltip'],
+            ],
             'tooltips' => [
                 'label' => 'Show tooltips',
                 'kind' => SettingsRowKind::Bool,

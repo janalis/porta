@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Config\IdeConfig;
 use Porta\Editor\DiagnosticSeverity;
+use Porta\Editor\InlayHintMode;
 use Porta\Editor\LineNumberMode;
 use Porta\Ide;
 use Porta\Settings\SettingsController;
@@ -51,7 +52,7 @@ final class IdeSettingsThemeTest extends TestCase
     {
         \putenv('PATH=/nonexistent');
         $project = new TempProject([
-            '.porta.json' => \json_encode(['settings' => ['diagnosticMessages' => 'none', 'lineNumbers' => 'relative']]),
+            '.porta.json' => \json_encode(['settings' => ['diagnosticMessages' => 'none', 'inlayHints' => 'tooltip', 'lineNumbers' => 'relative']]),
             'A.php' => "<?php\n\$x = 1;\n",
         ]);
 
@@ -62,6 +63,7 @@ final class IdeSettingsThemeTest extends TestCase
                 300 => function ($tui): void {
                     $editor = $tui->getById('editor');
                     $this->assertSame(LineNumberMode::Relative, $editor->display->lineNumbers, 'setting applied from file');
+                    $this->assertSame(InlayHintMode::Tooltip, $editor->display->inlayHints, 'the hint mode applied from file');
                     // Diagnostic messages off: even with a diagnostic, no inline text.
                     $editor->decorations->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'boom', 'col' => 0]]]);
                     $rendered = Paint::lines($editor, new RenderContext(80, 5));

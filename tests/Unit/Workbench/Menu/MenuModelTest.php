@@ -478,10 +478,10 @@ final class MenuModelTest extends TestCase
     public function testCustomCommandLabelIsUsed(): void
     {
         $commands = new CommandRegistry();
-        $commands->add('cycle_diagnostic_messages', static function (): void {}, label: 'Cycle Diagnostic Messages');
+        $commands->add('cycle_inlay_hints', static function (): void {}, label: 'Cycle Inlay Hints');
 
         $menus = $this->build($commands, new CodeEditorWidget());
-        $item = $this->item($menus, 'View', 'Cycle Diagnostic Messages');
+        $item = $this->item($menus, 'View', 'Cycle Inlay Hints');
         $this->assertFalse($item->separator);
     }
 

@@ -3610,6 +3610,14 @@
         <source>Changed from its default — r puts it back</source>
         <target>שונה מברירת המחדל — r מחזיר אותה</target>
       </trans-unit>
+      <trans-unit id="1005">
+        <source>Inlay hints</source>
+        <target>רמזים מוטמעים</target>
+      </trans-unit>
+      <trans-unit id="1006">
+        <source>Cycle Inlay Hints</source>
+        <target>מעבר בין מצבי רמזים מוטמעים</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

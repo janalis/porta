@@ -18,6 +18,7 @@ use Porta\Lsp\WorkspaceEditor;
 use Porta\Settings\LiveSettingsApplier;
 use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\FixedActiveFile;
+use Porta\Tests\Support\TestCompletionController;
 use Porta\Tests\Support\TestTui;
 use Porta\Tests\Support\TestWorkspaceLayout;
 use Porta\Ui\CursorStyle;
@@ -88,6 +89,7 @@ final class ThemeRefreshSweepTest extends TestCase
             TestWorkspaceLayout::create(rootDir: \sys_get_temp_dir()),
             new EventDispatcher(),
             self::formatOnSave(),
+            TestCompletionController::idle(),
             true,
         );
     }
@@ -174,6 +176,7 @@ final class ThemeRefreshSweepTest extends TestCase
             TestWorkspaceLayout::create(rootDir: \sys_get_temp_dir()),
             new EventDispatcher(),
             self::formatOnSave(),
+            TestCompletionController::idle(),
             true,
         );
 
@@ -211,6 +214,7 @@ final class ThemeRefreshSweepTest extends TestCase
             TestWorkspaceLayout::create(rootDir: \sys_get_temp_dir()),
             new EventDispatcher(),
             self::formatOnSave(),
+            TestCompletionController::idle(),
             false, // ansi disabled
         );
 
@@ -300,6 +304,7 @@ final class ThemeRefreshSweepTest extends TestCase
             TestWorkspaceLayout::create(rootDir: \sys_get_temp_dir()),
             new EventDispatcher(),
             self::formatOnSave(),
+            TestCompletionController::idle(),
             true,
         );
 

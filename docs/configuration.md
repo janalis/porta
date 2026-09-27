@@ -110,6 +110,7 @@ else in it.
         "language": "en",
         "theme": "dark",
         "diagnosticMessages": "inline",
+        "inlayHints": "tooltip",
         "lineNumbers": "absolute",
         "autoPairs": true
     },
@@ -143,6 +144,7 @@ catalog validation and bind if the plugin loads.
 | `language` | `"en"` | UI locale: `en`, `fr`, `de`, `es`, `it`, `ja`, `he` (Hebrew mirrors the layout right-to-left) |
 | `theme` | `"dark"` | Color theme: `dark`, `light` or `high-contrast` (WCAG-AAA pairings) — swaps chrome and syntax colors live |
 | `diagnosticMessages` | `"inline"` | Where a diagnostic's message shows: `none`, `inline` (dimmed after the line's code) or `menu` (at the top of the Alt+Enter quick-fix list). The squiggle, gutter mark, stripe and Problems panel show in every mode. Replaces `inlineDiagnostics` (`true` → `inline`, `false` → `none`), which still loads and is retired the first time this one is written |
+| `inlayHints` | `"inline"` | Where the language server's inlay hints (parameter names, types, reference counts) show: `none` (not requested at all), `inline` (dim text in the line) or `tooltip` (a card when the pointer rests on the word) |
 | `lineNumbers` | `"absolute"` | Gutter numbering: `off`, `absolute` or `relative`. Replaces `relativeLineNumbers`, which still loads and is retired the first time this one is written |
 | `autoPairs` | `true` | Auto-closing brackets and quotes |
 | `breadcrumbs` | `true` | The scope path bar above the editor |
@@ -158,8 +160,8 @@ catalog validation and bind if the plugin loads.
 | `tooltipDelay` | `500` | How long the pointer rests before a tooltip shows, in milliseconds (0–2000; the next one shows at once while a card is up) |
 
 All of these apply live when changed from the Settings view or the palette
-commands (`Cycle Diagnostic Messages`, `Cycle Line Numbers`,
-`Toggle Auto-Pairs`).
+commands (`Cycle Diagnostic Messages`, `Cycle Inlay Hints`,
+`Cycle Line Numbers`, `Toggle Auto-Pairs`).
 
 `relativeLineNumbers` and `inlineDiagnostics` are the two keys here that are
 no longer current: a `.porta.json` still carrying one is read without

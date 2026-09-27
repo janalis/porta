@@ -81,8 +81,8 @@ recent-files popup. Every buffer keeps its cursor, undo history and
 diagnostics. The open set is restored on the next launch.
 
 The View menu's toggles (Soft-Wrap, Code Vision, auto-pairs, format on save)
-show a `✓` while they are on. Its cycle commands step diagnostic messages
-and line numbers through their modes.
+show a `✓` while they are on. Its cycle commands step diagnostic messages,
+inlay hints and line numbers through their modes.
 
 On a terminal 30 rows or taller the tabs are folder tabs, three rows each,
 standing on a line that opens under the shown tab. The shown tab has a heavy
@@ -267,6 +267,16 @@ deleted vs `HEAD`, refreshed on open and save), diagnostic markers,
 breakpoint dots, fold triangles, indent guides, identifier-occurrence and matching-bracket
 highlighting, and dimmed inline parameter-name/type **inlay hints** from
 the language server.
+
+**Inlay hints** (Settings → Interface → Editor, or `Cycle Inlay Hints`) show
+in one of three ways:
+- `inline` puts them in the line, keeping the space the server asks for, so
+  phpantom's reference count reads `StatusTone 46 references`;
+- `tooltip` puts them on a [card](#tooltips) when the pointer rests on the
+  word they belong to;
+- `none` does not request them at all.
+
+A switch applies at once.
 
 The caret line's number is bold. With colour, a shaded band marks the whole
 caret line. In the monochrome theme (and under `--no-ansi`) there is no band;

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Settings;
 
 use Porta\Editor\EditorPanes;
+use Porta\Editor\InlayHintMode;
 use Porta\Event\CursorShapeChanged;
 use Porta\Event\LocaleChanged;
 use Porta\Event\TabBarPositionChanged;
@@ -15,6 +16,7 @@ use Porta\Highlight\TerminalThemeFactory;
 use Porta\I18n\Translator;
 use Porta\Layout\ViewRegions;
 use Porta\Layout\WorkspaceLayout;
+use Porta\Lsp\CompletionController;
 use Porta\Lsp\FormatOnSave;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\Theme\Styles;
@@ -46,6 +48,7 @@ final readonly class LiveSettingsApplier
         private WorkspaceLayout $workspaceLayout,
         private EventDispatcherInterface $dispatcher,
         private FormatOnSave $formatOnSave,
+        private CompletionController $completion,
         private bool $ansi,
     ) {}
 
@@ -98,6 +101,12 @@ final readonly class LiveSettingsApplier
     public function disableFormatOnSave(): void
     {
         $this->formatOnSave->disable();
+    }
+
+    /** Live inlay-hint mode switch: none, inline, or a hover card. */
+    public function applyInlayHints(string $mode): void
+    {
+        $this->completion->applyInlayHintMode(InlayHintMode::tryFrom($mode) ?? InlayHintMode::Inline);
     }
 
     /** Live UI-locale switch: point the translator at $locale and announce it. */
