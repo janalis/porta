@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Porta\Editor;
 
 /**
- * The editor's six display toggles as one piece of state: inline diagnostics,
- * the line-number mode, the git gutter, sticky scroll, indent guides and
- * auto-pairs.
+ * The editor's display options as one piece of state: where diagnostic
+ * messages show, the line-number mode, the git gutter, sticky scroll, indent
+ * guides, auto-pairs and the rest below.
  *
  * Held by {@see \Porta\Widget\CodeEditorWidget}, which keeps the public verbs
  * ({@see EditorViewOptions}) as delegators — this owns only the values. It takes
@@ -22,7 +22,7 @@ namespace Porta\Editor;
  */
 final class EditorDisplayOptions
 {
-    public private(set) bool $inlineDiagnostics = true;
+    public private(set) DiagnosticMessageMode $diagnosticMessages = DiagnosticMessageMode::Inline;
     public private(set) LineNumberMode $lineNumbers = LineNumberMode::Absolute;
     public private(set) bool $vcsGutter = true;
     public private(set) bool $stickyScroll = true;
@@ -53,20 +53,14 @@ final class EditorDisplayOptions
         private readonly \Closure $invalidate,
     ) {}
 
-    public function setInlineDiagnostics(bool $on): bool
+    public function setDiagnosticMessages(DiagnosticMessageMode $mode): bool
     {
-        return $this->apply($this->inlineDiagnostics, $on);
+        return $this->apply($this->diagnosticMessages, $mode);
     }
 
     public function setLineNumbers(LineNumberMode $mode): bool
     {
-        if ($mode === $this->lineNumbers) {
-            return false;
-        }
-        $this->lineNumbers = $mode;
-        ($this->invalidate)();
-
-        return true;
+        return $this->apply($this->lineNumbers, $mode);
     }
 
     public function setVcsGutter(bool $on): bool
@@ -109,14 +103,24 @@ final class EditorDisplayOptions
         return $this->apply($this->autoPairs, $on);
     }
 
-    /** Set $flag to $on, repainting only on a real change; answers whether it changed. */
-    // @mago-expect lint:no-boolean-flag-parameter -- a set-this-flag-to-this-value helper; both bools ARE the operation
-    private function apply(bool &$flag, bool $on): bool
+    /**
+     * Set $slot to $value, repainting only on a real change; answers whether it
+     * changed. The slot is a typed property passed by reference, so PHP still
+     * refuses a value of the wrong enum.
+     *
+     * @template T of bool|\BackedEnum
+     *
+     * @param T $slot
+     * @param T $value
+     *
+     * @param-out T $slot
+     */
+    private function apply(bool|\BackedEnum &$slot, bool|\BackedEnum $value): bool
     {
-        if ($flag === $on) {
+        if ($slot === $value) {
             return false;
         }
-        $flag = $on;
+        $slot = $value;
         ($this->invalidate)();
 
         return true;

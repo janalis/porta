@@ -11,6 +11,7 @@ use Porta\Config\ConfigScope;
 use Porta\Config\ConfigWarning;
 use Porta\Config\IdeConfig;
 use Porta\Config\PortaJsonWriter;
+use Porta\Editor\DiagnosticMessageMode;
 use Porta\Editor\LineNumberMode;
 use Porta\I18n\Translator;
 use Porta\Tests\Support\TempProject;
@@ -61,7 +62,7 @@ final class IdeConfigTest extends TestCase
     {
         $project = new TempProject(['.porta.json' => \json_encode([
             'settings' => [
-                'inlineDiagnostics' => 0,
+                'autoPairs' => 0,
                 'lineNumbers' => 'relative',
                 'theme' => 'light',
                 'tabBarPosition' => 'left',
@@ -71,11 +72,11 @@ final class IdeConfigTest extends TestCase
 
         $config = IdeConfig::load($project->dir);
 
-        $this->assertFalse($config->settings['inlineDiagnostics'], '0 coerced to bool');
+        $this->assertFalse($config->settings['autoPairs'], '0 coerced to bool');
         $this->assertSame('relative', $config->settings['lineNumbers']);
         $this->assertSame('light', $config->settings['theme']);
         $this->assertSame('left', $config->settings['tabBarPosition']);
-        $this->assertTrue($config->settings['autoPairs'], 'default preserved when unset');
+        $this->assertTrue($config->settings['stickyScroll'], 'default preserved when unset');
         $this->assertContainsEquals(new ConfigWarning('Unknown setting "%key%" in %file%', ['%key%' => 'bogusSetting', '%file%' => '.porta.json']), $config->warnings);
     }
 
@@ -223,6 +224,42 @@ final class IdeConfigTest extends TestCase
         $this->assertSame('off', IdeConfig::load($both->dir)->settings['lineNumbers'], 'explicit lineNumbers wins');
     }
 
+    public function testInlineDiagnosticsMigratesToTheDiagnosticMessagesMode(): void
+    {
+        $on = new TempProject(['.porta.json' => \json_encode(['settings' => ['inlineDiagnostics' => true]])]);
+        $config = IdeConfig::load($on->dir);
+        $this->assertSame('inline', $config->settings['diagnosticMessages'], 'legacy true → the message after the code');
+        $this->assertArrayNotHasKey('inlineDiagnostics', $config->settings, 'the legacy key itself is not a setting any more');
+        $this->assertSame([], $config->warnings, 'the legacy key is skipped, not warned');
+
+        $off = new TempProject(['.porta.json' => \json_encode(['settings' => ['inlineDiagnostics' => false]])]);
+        $this->assertSame('none', IdeConfig::load($off->dir)->settings['diagnosticMessages'], 'legacy false → no message at all');
+
+        $both = new TempProject(['.porta.json' => \json_encode(['settings' => ['inlineDiagnostics' => false, 'diagnosticMessages' => 'menu']])]);
+        $this->assertSame('menu', IdeConfig::load($both->dir)->settings['diagnosticMessages'], 'an explicit diagnosticMessages wins');
+    }
+
+    public function testWritingDiagnosticMessagesRetiresInlineDiagnostics(): void
+    {
+        $project = new TempProject(['.porta.json' => \json_encode(['settings' => ['inlineDiagnostics' => false]])]);
+        $writer = new PortaJsonWriter(ConfigFiles::for($project->dir));
+
+        $this->assertTrue($writer->persistSetting(ConfigScope::Project, 'theme', 'light'));
+        $this->assertFalse($this->writtenSettings($project)['inlineDiagnostics'], 'an unrelated write keeps the legacy value');
+
+        $this->assertTrue($writer->persistSetting(ConfigScope::Project, 'diagnosticMessages', 'menu'));
+        $this->assertArrayNotHasKey('inlineDiagnostics', $this->writtenSettings($project), 'writing the successor retires it');
+    }
+
+    /** @return array<string, mixed> */
+    private function writtenSettings(TempProject $project): array
+    {
+        /** @var array{settings: array<string, mixed>} $written */
+        $written = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true);
+
+        return $written['settings'];
+    }
+
     public function testPersistSettingMergesAndPreservesUnknownKeys(): void
     {
         $project = new TempProject(['.porta.json' => \json_encode([
@@ -232,16 +269,16 @@ final class IdeConfigTest extends TestCase
             'customUnknownKey' => ['keep' => 'me'],
         ])]);
 
-        $this->assertTrue(new PortaJsonWriter(ConfigFiles::for($project->dir))->persistSetting(ConfigScope::Project, 'inlineDiagnostics', false));
+        $this->assertTrue(new PortaJsonWriter(ConfigFiles::for($project->dir))->persistSetting(ConfigScope::Project, 'autoPairs', false));
 
         $written = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true);
-        $this->assertFalse($written['settings']['inlineDiagnostics'], 'new setting written');
+        $this->assertFalse($written['settings']['autoPairs'], 'new setting written');
         $this->assertSame(8, $written['settings']['tabWidth'], 'existing setting preserved');
         $this->assertSame('phpactor', $written['lsp'], 'lsp preserved');
         $this->assertSame(['keep' => 'me'], $written['customUnknownKey'], 'unknown key preserved');
 
         // And a fresh load reflects the change.
-        $this->assertFalse(IdeConfig::load($project->dir)->settings['inlineDiagnostics']);
+        $this->assertFalse(IdeConfig::load($project->dir)->settings['autoPairs']);
     }
 
     public function testPersistSettingDropsMigratedLegacyKeys(): void
@@ -283,9 +320,9 @@ final class IdeConfigTest extends TestCase
     public function testPersistSettingCreatesFileWhenAbsent(): void
     {
         $project = new TempProject();
-        $this->assertTrue(new PortaJsonWriter(ConfigFiles::for($project->dir))->persistSetting(ConfigScope::Project, 'inlineDiagnostics', false));
+        $this->assertTrue(new PortaJsonWriter(ConfigFiles::for($project->dir))->persistSetting(ConfigScope::Project, 'autoPairs', false));
 
-        $this->assertFalse(IdeConfig::load($project->dir)->settings['inlineDiagnostics']);
+        $this->assertFalse(IdeConfig::load($project->dir)->settings['autoPairs']);
     }
 
     /**
@@ -299,10 +336,10 @@ final class IdeConfigTest extends TestCase
     public function testPersistSettingIgnoresCorruptExistingFile(): void
     {
         $project = new TempProject(['.porta.json' => '{not json']);
-        $this->assertTrue(new PortaJsonWriter(ConfigFiles::for($project->dir))->persistSetting(ConfigScope::Project, 'inlineDiagnostics', false));
+        $this->assertTrue(new PortaJsonWriter(ConfigFiles::for($project->dir))->persistSetting(ConfigScope::Project, 'autoPairs', false));
 
         $written = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true);
-        $this->assertFalse($written['settings']['inlineDiagnostics']);
+        $this->assertFalse($written['settings']['autoPairs']);
     }
 
     public function testPersistSettingReturnsFalseWhenWriteFails(): void
@@ -311,7 +348,7 @@ final class IdeConfigTest extends TestCase
         $project = new TempProject();
         \mkdir($project->path('.porta.json'));
 
-        $this->assertFalse(new PortaJsonWriter(ConfigFiles::for($project->dir))->persistSetting(ConfigScope::Project, 'inlineDiagnostics', false));
+        $this->assertFalse(new PortaJsonWriter(ConfigFiles::for($project->dir))->persistSetting(ConfigScope::Project, 'autoPairs', false));
     }
 
     public function testPersistKeymapMergesAndPreservesOtherEntries(): void
@@ -735,6 +772,10 @@ final class IdeConfigTest extends TestCase
         $this->assertSame(
             \array_map(static fn (LineNumberMode $mode): string => $mode->value, LineNumberMode::cases()),
             IdeConfig::CHOICE_SETTINGS['lineNumbers'],
+        );
+        $this->assertSame(
+            \array_map(static fn (DiagnosticMessageMode $mode): string => $mode->value, DiagnosticMessageMode::cases()),
+            IdeConfig::CHOICE_SETTINGS['diagnosticMessages'],
         );
         $this->assertSame(
             \array_map(static fn (TabBarPosition $position): string => $position->value, TabBarPosition::cases()),

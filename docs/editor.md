@@ -50,6 +50,13 @@ Quick fixes (`Alt+Enter`) put the server's preferred fix first, marked `★`. An
 action the server knows but cannot run where the caret is appears greyed and
 struck through, with the server's reason beside it.
 
+With **Diagnostic messages** set to `menu` (Settings → Interface → Editor, or
+`Cycle Diagnostic Messages`), the message no longer trails the line. Instead
+the caret line's problems head the `Alt+Enter` list, worst first, above the
+fixes for them, as in PhpStorm. They are rows to read, so the selection skips
+them. A line with problems and no fix still opens the list. That covers a
+tool plugin's findings, and a line where no server is running yet.
+
 ### Breadcrumbs
 
 The bar under the tabs names the scopes containing the caret —
@@ -73,8 +80,9 @@ Save / Discard / Cancel prompt on unsaved changes), `Ctrl+E` opens the
 recent-files popup. Every buffer keeps its cursor, undo history and
 diagnostics. The open set is restored on the next launch.
 
-The View menu's toggles (Soft-Wrap, Code Vision, inline diagnostics,
-auto-pairs, format on save) show a `✓` while they are on.
+The View menu's toggles (Soft-Wrap, Code Vision, auto-pairs, format on save)
+show a `✓` while they are on. Its cycle commands step diagnostic messages
+and line numbers through their modes.
 
 On a terminal 30 rows or taller the tabs are folder tabs, three rows each,
 standing on a line that opens under the shown tab. The shown tab has a heavy

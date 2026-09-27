@@ -1163,12 +1163,8 @@
         <target>Alternar pares automáticos</target>
       </trans-unit>
       <trans-unit id="251">
-        <source>Toggle Inline Diagnostics</source>
-        <target>Alternar diagnósticos en línea</target>
-      </trans-unit>
-      <trans-unit id="252">
-        <source>Toggle Relative Line Numbers</source>
-        <target>Alternar números de línea relativos</target>
+        <source>Cycle Diagnostic Messages</source>
+        <target>Alternar mensajes de diagnóstico</target>
       </trans-unit>
       <trans-unit id="253">
         <source>File</source>
@@ -1203,8 +1199,8 @@
         <target>Idioma</target>
       </trans-unit>
       <trans-unit id="261">
-        <source>Inline diagnostics</source>
-        <target>Diagnósticos en línea</target>
+        <source>Diagnostic messages</source>
+        <target>Mensajes de diagnóstico</target>
       </trans-unit>
       <trans-unit id="262">
         <source>Relative line numbers</source>

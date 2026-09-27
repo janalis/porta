@@ -109,8 +109,8 @@ else in it.
     "settings": {
         "language": "en",
         "theme": "dark",
-        "inlineDiagnostics": true,
-        "relativeLineNumbers": false,
+        "diagnosticMessages": "inline",
+        "lineNumbers": "absolute",
         "autoPairs": true
     },
     "languages": {
@@ -142,7 +142,7 @@ catalog validation and bind if the plugin loads.
 | --- | --- | --- |
 | `language` | `"en"` | UI locale: `en`, `fr`, `de`, `es`, `it`, `ja`, `he` (Hebrew mirrors the layout right-to-left) |
 | `theme` | `"dark"` | Color theme: `dark`, `light` or `high-contrast` (WCAG-AAA pairings) — swaps chrome and syntax colors live |
-| `inlineDiagnostics` | `true` | Dimmed end-of-line diagnostic messages |
+| `diagnosticMessages` | `"inline"` | Where a diagnostic's message shows: `none`, `inline` (dimmed after the line's code) or `menu` (at the top of the Alt+Enter quick-fix list). The squiggle, gutter mark, stripe and Problems panel show in every mode. Replaces `inlineDiagnostics` (`true` → `inline`, `false` → `none`), which still loads and is retired the first time this one is written |
 | `lineNumbers` | `"absolute"` | Gutter numbering: `off`, `absolute` or `relative`. Replaces `relativeLineNumbers`, which still loads and is retired the first time this one is written |
 | `autoPairs` | `true` | Auto-closing brackets and quotes |
 | `breadcrumbs` | `true` | The scope path bar above the editor |
@@ -156,12 +156,13 @@ catalog validation and bind if the plugin loads.
 | `cursorShape` | `"bar"` | Hardware cursor shape: `bar`, `block` or `underline` — screen readers follow the hardware cursor |
 
 All of these apply live when changed from the Settings view or the palette
-toggles (`Toggle Inline Diagnostics`, `Toggle Relative Line Numbers`,
+commands (`Cycle Diagnostic Messages`, `Cycle Line Numbers`,
 `Toggle Auto-Pairs`).
 
-`relativeLineNumbers` is the one key here that is no longer current: a
-`.porta.json` still carrying it is read without complaint, and writing
-`lineNumbers` from the Settings view retires it.
+`relativeLineNumbers` and `inlineDiagnostics` are the two keys here that are
+no longer current: a `.porta.json` still carrying one is read without
+complaint, and writing its successor (`lineNumbers`, `diagnosticMessages`)
+from the Settings view retires it.
 
 ### `languages.<id>`
 

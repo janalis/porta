@@ -429,7 +429,7 @@ final class SettingsViewControllerTest extends TestCase
         $this->selectSettingsSection($this->nav, 'highlighting');
         $this->assertSame('highlighting', $this->nav->selectedId());
 
-        $screen = \implode("\n", $this->form->render(new RenderContext(80, 40)));
+        $screen = \implode("\n", $this->form->render(new RenderContext(80, 60)));
         $this->assertStringContainsString('Default highlighter', $screen);
 
         $this->form->handleInput("\x1b[B"); // past the "Save changes to" lead row
@@ -490,12 +490,13 @@ final class SettingsViewControllerTest extends TestCase
         // Tall enough for the whole page: the assertion below names its LAST
         // row, so a viewport that merely fits today's count would start failing
         // the next time the page gains one.
-        $screen = \implode("\n", $this->form->render(new RenderContext(80, 40)));
+        $screen = \implode("\n", $this->form->render(new RenderContext(80, 60)));
         $this->assertStringContainsString('Theme', $screen);
         $this->assertStringContainsString('Line numbers', $screen);
         $this->assertStringContainsString('Sticky scroll', $screen);
         $this->assertStringContainsString('Breadcrumbs', $screen);
-        $this->assertStringNotContainsString('Inline diagnostics', $screen, 'editor behavior stays in General');
+        $this->assertStringContainsString('Diagnostic messages', $screen);
+        $this->assertStringNotContainsString('Auto-pairs', $screen, 'editor behavior stays in General');
 
         // Toggle Sticky scroll (a Bool) → routes through changeSetting and persists.
         $this->form->handleInput("\x1b[B"); // past the "Save changes to" lead row
@@ -518,7 +519,7 @@ final class SettingsViewControllerTest extends TestCase
         $this->assertSame('lang:php', $this->nav->selectedId());
         $this->assertSame(['settings-form'], $this->ids($this->content));
 
-        $screen = \implode("\n", $this->form->render(new RenderContext(80, 40)));
+        $screen = \implode("\n", $this->form->render(new RenderContext(80, 60)));
         $this->assertStringContainsString('Indent style', $screen);
         $this->assertStringContainsString('Indent size', $screen);
         $this->assertStringContainsString('LSP server', $screen, 'the language section also shows its LSP server row');
@@ -590,10 +591,10 @@ final class SettingsViewControllerTest extends TestCase
         // across each section switch below.
         $this->form->handleInput("\x1b[B"); // past the "Save changes to" lead row
         $this->form->handleInput("\r"); // toggle the first own row off its default
-        $this->assertFalse(IdeConfig::load($this->project->dir)->settings['inlineDiagnostics'], 'set first');
+        $this->assertFalse(IdeConfig::load($this->project->dir)->settings['autoPairs'], 'set first');
         $this->form->handleInput('r');
         $written = \json_decode((string) \file_get_contents($this->project->path('.porta.json')), associative: true);
-        $this->assertArrayNotHasKey('inlineDiagnostics', $written['settings'] ?? [], 'reset removed the key rather than writing the default');
+        $this->assertArrayNotHasKey('autoPairs', $written['settings'] ?? [], 'reset removed the key rather than writing the default');
 
         // A language page: the indent rows spell their default `auto`.
         $this->sectionEvents->dispatch(new SettingsSectionRequested('lang:php'));
@@ -717,12 +718,12 @@ final class SettingsViewControllerTest extends TestCase
         $controller->open();
 
         // Pane rows 1-3 are the boxed "Save changes to" lead and row 4 the
-        // Editing legend, so General's first own row, the Inline diagnostics
+        // Editing legend, so General's first own row, the Auto-pairs
         // checkbox, is pane row 5 — one click selects and toggles it, as a
         // label does (default true → false).
         $this->form->render(new RenderContext(80, 24));
         $this->form->handleClick(5, 0);
-        $this->assertFalse(IdeConfig::load($this->project->dir)->settings['inlineDiagnostics']);
+        $this->assertFalse(IdeConfig::load($this->project->dir)->settings['autoPairs']);
     }
 
     public function testRebindingFromTheKeybindingsSection(): void
@@ -815,7 +816,7 @@ final class SettingsViewControllerTest extends TestCase
         $this->form->handleInput("\r");
         $this->form->handleInput("\r");
         $this->assertDirectoryDoesNotExist($this->project->dir.'/.porta/plugins/demo');
-        $screen = \implode("\n", $this->form->render(new RenderContext(80, 40)));
+        $screen = \implode("\n", $this->form->render(new RenderContext(80, 60)));
         $this->assertStringNotContainsString('demo (project)', $screen);
     }
 
@@ -850,7 +851,7 @@ final class SettingsViewControllerTest extends TestCase
         $this->nav->setPluginEntries(['demo']);
         $this->selectSettingsSection($this->nav, 'plugin:demo');
         $this->assertSame('plugin:demo', $this->nav->selectedId());
-        $screen = \implode("\n", $this->form->render(new RenderContext(80, 40)));
+        $screen = \implode("\n", $this->form->render(new RenderContext(80, 60)));
         $this->assertStringContainsString('Enabled', $screen);
         $this->assertStringContainsString('Binary path', $screen);
 
@@ -867,7 +868,7 @@ final class SettingsViewControllerTest extends TestCase
         $this->lifecycle->names = [];
         $controller->refresh();
         $this->assertSame('plugins', $this->nav->selectedId());
-        $screen = \implode("\n", $this->form->render(new RenderContext(80, 40)));
+        $screen = \implode("\n", $this->form->render(new RenderContext(80, 60)));
         $this->assertStringContainsString('Install plugin', $screen);
     }
 

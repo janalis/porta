@@ -31,7 +31,7 @@ final readonly class IdeConfig
     public const array DEFAULT_SETTINGS = [
         'language' => 'en',
         'theme' => 'dark',
-        'inlineDiagnostics' => true,
+        'diagnosticMessages' => 'inline',
         'lineNumbers' => 'absolute',
         'stickyScroll' => true,
         'indentGuides' => true,
@@ -49,7 +49,9 @@ final readonly class IdeConfig
      * Superseded setting keys: silently skipped at load, so a stale value in
      * an older .porta.json never warns. `editorConfig` was the "Respect
      * .editorconfig" toggle — .editorconfig is always honored now, superseded
-     * per language by the indent settings.
+     * per language by the indent settings. `relativeLineNumbers` and
+     * `inlineDiagnostics` were booleans that grew into choices
+     * (`lineNumbers`, `diagnosticMessages`): still read, and migrated.
      *
      * The eight `git*` keys are here because git became a bundled PLUGIN: they
      * live under `plugins.git.*` now, on that plugin's own settings page. The
@@ -62,6 +64,7 @@ final readonly class IdeConfig
     public const array LEGACY_SETTINGS = [
         'editorConfig',
         'relativeLineNumbers',
+        'inlineDiagnostics',
         'gitShowBranch',
         'gitGutterMarks',
         'gitBlameDefault',
@@ -90,7 +93,7 @@ final readonly class IdeConfig
     public const array OBSOLETE_SETTINGS = ['editorConfig'];
 
     /** legacy key => the successor whose write retires it. */
-    public const array SUPERSEDED_BY = ['relativeLineNumbers' => 'lineNumbers'];
+    public const array SUPERSEDED_BY = ['relativeLineNumbers' => 'lineNumbers', 'inlineDiagnostics' => 'diagnosticMessages'];
 
     /**
      * Bundled plugins enabled when `.porta.json` has NO `enabledPlugins` key —
@@ -114,6 +117,7 @@ final readonly class IdeConfig
         'language' => ['en', 'fr', 'de', 'es', 'it', 'ja', 'he'],
         'theme' => ['dark', 'light', 'high-contrast'],
         'lineNumbers' => ['off', 'absolute', 'relative'],
+        'diagnosticMessages' => ['none', 'inline', 'menu'],
         'cursorShape' => ['bar', 'block', 'underline'],
         'tabBarPosition' => ['top', 'bottom', 'left', 'right'],
     ];
@@ -405,6 +409,11 @@ final readonly class IdeConfig
         // mode (an explicit `lineNumbers` in the same file wins).
         if (\array_key_exists('relativeLineNumbers', $config) && !\array_key_exists('lineNumbers', $config)) {
             $settings['lineNumbers'] = (bool) $config['relativeLineNumbers'] ? 'relative' : 'absolute';
+        }
+        // And the legacy `inlineDiagnostics` bool into `diagnosticMessages`:
+        // on was the end-of-line message, off was no message at all.
+        if (\array_key_exists('inlineDiagnostics', $config) && !\array_key_exists('diagnosticMessages', $config)) {
+            $settings['diagnosticMessages'] = (bool) $config['inlineDiagnostics'] ? 'inline' : 'none';
         }
 
         return $settings;

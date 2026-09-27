@@ -6,6 +6,7 @@ namespace Porta\Lsp;
 
 use Porta\Container\AsIdeService;
 use Porta\Editor\BufferManager;
+use Porta\Editor\DiagnosticMessageMode;
 use Porta\I18n\Translator;
 use Porta\Support\ProjectPaths;
 use Porta\Ui\Glyphs;
@@ -136,12 +137,61 @@ final class RefactorController extends AbstractLspController implements EditorRe
         );
     }
 
+    /**
+     * Alt+Enter. With diagnostic messages shown in this menu, the caret line's
+     * problems head the list, above what can be done about them — PhpStorm's
+     * shape — and a line with problems but no fix (a tool plugin's
+     * diagnostics, or no server up yet) still opens the list to read them.
+     */
     #[\Override]
     public function requestCodeActions(int $line, int $col): void
     {
-        $this->requestActions($line, $col, only: null, present: function (array $actions): void {
-            $this->pick($this->trans('Quick Fixes'), $actions);
-        });
+        $problems = $this->problemRows($line);
+        if ([] !== $problems && null === $this->ready()) {
+            $this->pick($this->trans('Quick Fixes'), [], $problems);
+
+            return;
+        }
+        $this->requestActions(
+            $line,
+            $col,
+            only: null,
+            present: function (array $actions) use ($problems): void {
+                $this->pick($this->trans('Quick Fixes'), $actions, $problems);
+            },
+            empty: [] === $problems
+                ? 'No quick fixes here'
+                : function () use ($problems): void {
+                    $this->pick($this->trans('Quick Fixes'), [], $problems);
+                },
+        );
+    }
+
+    /**
+     * The caret line's diagnostics as rows to read, worst first — only while
+     * the messages are shown in this menu. Notes: the list never selects or
+     * runs a row that is there to be read, and draws it plain rather than
+     * struck through like a disabled action.
+     *
+     * @return list<array{label: string, hint: string, value: string, note: true}>
+     */
+    private function problemRows(int $line): array
+    {
+        if (DiagnosticMessageMode::Menu !== $this->editor->display->diagnosticMessages) {
+            return [];
+        }
+        $diagnostics = $this->buffers->active()?->diagnostics[$line] ?? [];
+        \usort($diagnostics, static fn (array $a, array $b): int => $a['severity']->value <=> $b['severity']->value);
+
+        return \array_map(
+            static fn (array $d): array => [
+                'label' => $d['severity']->glyph().' '.\trim((string) \preg_replace('/\s+/u', replacement: ' ', subject: $d['message'])),
+                'hint' => (string) ($d['source'] ?? $d['code'] ?? ''),
+                'value' => '',
+                'note' => true,
+            ],
+            $diagnostics,
+        );
     }
 
     /**
@@ -212,9 +262,9 @@ final class RefactorController extends AbstractLspController implements EditorRe
      *
      * @param list<string>|null                  $only
      * @param \Closure(list<array<string, mixed>>): void $present
-     * @param string                             $empty what to flash when the answer is nothing
+     * @param string|\Closure(): void $empty what to flash when the answer is nothing, or what to do instead
      */
-    private function requestActions(int $line, int $col, ?array $only, \Closure $present, string $empty = 'No quick fixes here'): void
+    private function requestActions(int $line, int $col, ?array $only, \Closure $present, string|\Closure $empty = 'No quick fixes here'): void
     {
         if (null === ($path = $this->readyOrExplain())) {
             return;
@@ -252,7 +302,7 @@ final class RefactorController extends AbstractLspController implements EditorRe
                 // another is still thinking, and must not overwrite what that
                 // other one has already put up.
                 if ([] === $this->actions) {
-                    $this->flash($this->trans($empty));
+                    \is_string($empty) ? $this->flash($this->trans($empty)) : $empty();
 
                     return;
                 }
@@ -344,9 +394,10 @@ final class RefactorController extends AbstractLspController implements EditorRe
     }
 
     /**
-     * @param list<array<string, mixed>> $actions
+     * @param list<array<string, mixed>>                                                $actions
+     * @param list<array{label: string, hint: string, value: string, note: true}>     $problems rows to read above the actions
      */
-    private function pick(string $title, array $actions): void
+    private function pick(string $title, array $actions, array $problems = []): void
     {
         // The server's own pick leads with ★. An action it cannot run here
         // comes with its reason, which stands in the hint's place, and it is
@@ -362,7 +413,9 @@ final class RefactorController extends AbstractLspController implements EditorRe
             \array_keys($actions),
         );
 
-        $this->editor->openListOverlay($title, $items, function (string $index) use ($actions): void {
+        // Each action's value is its index in $actions, not its row: the
+        // problem rows above are never picked, so they need no value.
+        $this->editor->openListOverlay($title, [...$problems, ...$items], function (string $index) use ($actions): void {
             $this->applyOrResolve($actions[(int) $index] ?? []);
         });
     }

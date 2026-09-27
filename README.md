@@ -275,16 +275,16 @@ Both live in `.porta.json`:
     },
     "settings": {
         "tabWidth": 4,
-        "inlineDiagnostics": true,
-        "relativeLineNumbers": false,
+        "diagnosticMessages": "inline",
+        "lineNumbers": "absolute",
         "autoPairs": true
     }
 }
 ```
 
 The **command palette** (`Ctrl+Shift+A`, "Find Action") lists every action by
-name and can run common ones, including toggles for inline diagnostics and
-relative line numbers that persist back into `.porta.json`.
+name and can run common ones, including cycling diagnostic messages and
+line numbers through their modes, which persist back into `.porta.json`.
 Unknown action/setting names are reported in the status bar at startup. The full
 action list is in `Porta\Config\IdeConfig::KNOWN_ACTIONS`. Heavily
 modified chords (e.g. `Alt+Shift+↑`) work best in terminals with the Kitty

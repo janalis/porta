@@ -7,6 +7,7 @@ namespace Porta\Settings;
 use Porta\Config\IdeConfig;
 use Porta\Config\PortaJsonWriter;
 use Porta\Container\AsIdeService;
+use Porta\Editor\DiagnosticMessageMode;
 use Porta\Editor\EditorDisplayOptions;
 use Porta\Editor\LineNumberMode;
 use Porta\I18n\Translator;
@@ -142,15 +143,16 @@ final class SettingsController
                 'restart' => false,
                 'apply' => static fn (int|bool|string $v): bool => $editor->setMethodSeparators((bool) $v),
             ],
-            // --- General (editor behavior) ---
-            'inlineDiagnostics' => [
-                'label' => 'Inline diagnostics',
-                'kind' => SettingsRowKind::Bool,
-                'group' => 'general',
-                'fieldset' => 'Editing',
+            'diagnosticMessages' => [
+                'label' => 'Diagnostic messages',
+                'kind' => SettingsRowKind::Choice,
+                'group' => 'interface',
+                'fieldset' => 'Editor',
                 'restart' => false,
-                'apply' => static fn (int|bool|string $v): bool => $editor->setInlineDiagnostics((bool) $v),
+                'apply' => static fn (int|bool|string $v): bool => $editor->setDiagnosticMessages(DiagnosticMessageMode::tryFrom((string) $v) ?? DiagnosticMessageMode::Inline),
+                'options' => ['none', 'inline', 'menu'],
             ],
+            // --- General (editor behavior) ---
             'autoPairs' => [
                 'label' => 'Auto-pairs',
                 'kind' => SettingsRowKind::Bool,
@@ -252,15 +254,27 @@ final class SettingsController
         return SettingsRowKind::Bool === $kind ? (bool) $raw : (string) $raw;
     }
 
-    /** Cycle the line-numbers mode off → absolute → relative → off (the View menu command). */
-    public function cycleLineNumbers(): void
+    /**
+     * Step a choice setting to its next option, wrapping at the end — the View
+     * menu's cycle commands (line numbers off → absolute → relative → off). An
+     * unknown key, or one that is not a choice, flashes instead.
+     */
+    public function cycleChoice(string $key): void
     {
-        $next = match ((string) ($this->settings['lineNumbers'] ?? 'absolute')) {
-            'off' => 'absolute',
-            'absolute' => 'relative',
-            default => 'off',
-        };
-        $this->changeSetting('lineNumbers', $next);
+        $options = $this->descriptors[$key]['options'] ?? null;
+        if (null === $options) {
+            $this->notifier->flash($this->translator->trans('Unknown setting "%key%"', ['%key%' => $key]));
+
+            return;
+        }
+        $at = \array_search((string) ($this->settings[$key] ?? ''), $options, strict: true);
+        $this->changeSetting($key, $options[false === $at ? 0 : ($at + 1) % \count($options)]);
+    }
+
+    /** A choice setting's current value — the View menu's label beside its cycle command. */
+    public function choice(string $key): string
+    {
+        return (string) ($this->settings[$key] ?? '');
     }
 
     /** Whether a boolean setting is on — the View menu's ✓ beside its toggle. */

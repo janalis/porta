@@ -123,7 +123,7 @@ nothing.
 | `Alt+F7` | Find usages |
 | `Ctrl+Shift+H` / `Ctrl+Alt+Shift+H` | Callers of / calls from the symbol at the caret |
 | `Shift+F6` | Rename symbol (cross-file `WorkspaceEdit`) |
-| `Alt+Enter` | Quick fixes / code actions |
+| `Alt+Enter` | Quick fixes / code actions (headed by the line's problems when diagnostic messages are set to `menu`) |
 | `Ctrl+Alt+Shift+T` | Refactor This |
 | `Ctrl+Alt+N` | Inline |
 | `Ctrl+Alt+O` | Optimize imports (`source.organizeImports`; applied straight away when the server offers one) |

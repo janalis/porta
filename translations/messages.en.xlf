@@ -1163,12 +1163,8 @@
         <target>Toggle Auto-Pairs</target>
       </trans-unit>
       <trans-unit id="251">
-        <source>Toggle Inline Diagnostics</source>
-        <target>Toggle Inline Diagnostics</target>
-      </trans-unit>
-      <trans-unit id="252">
-        <source>Toggle Relative Line Numbers</source>
-        <target>Toggle Relative Line Numbers</target>
+        <source>Cycle Diagnostic Messages</source>
+        <target>Cycle Diagnostic Messages</target>
       </trans-unit>
       <trans-unit id="253">
         <source>File</source>
@@ -1203,8 +1199,8 @@
         <target>Language</target>
       </trans-unit>
       <trans-unit id="261">
-        <source>Inline diagnostics</source>
-        <target>Inline diagnostics</target>
+        <source>Diagnostic messages</source>
+        <target>Diagnostic messages</target>
       </trans-unit>
       <trans-unit id="262">
         <source>Relative line numbers</source>

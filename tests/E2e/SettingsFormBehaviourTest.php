@@ -107,7 +107,7 @@ final class SettingsFormBehaviourTest extends TestCase
 
                     $grid = $this->screenGrid($tui, $terminal);
                     $this->assertNotNull($this->rowOf($grid, 'Language'), 'the page opens showing its early rows');
-                    $this->assertNull($this->rowOf($grid, 'Method separators'), 'and its last row is below the fold');
+                    $this->assertNull($this->rowOf($grid, 'Diagnostic messages'), 'and its last row is below the fold');
 
                     // Walk to the end with real input, as a user would.
                     for ($i = 0; $i < self::MAX_FORM_ROWS; ++$i) {
@@ -116,9 +116,9 @@ final class SettingsFormBehaviourTest extends TestCase
                     $this->frame($tui);
 
                     $grid = $this->screenGrid($tui, $terminal);
-                    $this->assertNotNull($this->rowOf($grid, 'Method separators'), 'the last row scrolled into view');
+                    $this->assertNotNull($this->rowOf($grid, 'Diagnostic messages'), 'the last row scrolled into view');
                     $this->assertStringContainsString(
-                        'Method separators',
+                        'Diagnostic messages',
                         $this->selectedSettingRow($form),
                         'and the selection is ON it, not off the bottom of the pane',
                     );
@@ -170,7 +170,7 @@ final class SettingsFormBehaviourTest extends TestCase
                         'and wrote nothing — a click that mutates is the defect this replaced',
                     );
                     $this->assertTrue(
-                        IdeConfig::load($project->dir)->settings['inlineDiagnostics'],
+                        IdeConfig::load($project->dir)->settings['autoPairs'],
                         'the setting still holds its default in memory too',
                     );
                 },

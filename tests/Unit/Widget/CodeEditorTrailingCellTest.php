@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Editor\DiagnosticMessageMode;
 use Porta\Editor\DiagnosticSeverity;
 use Porta\Tests\Support\RendersExactWidth;
 use Porta\Widget\CodeEditorWidget;
@@ -74,6 +75,23 @@ final class CodeEditorTrailingCellTest extends TestCase
         $this->assertStringContainsString('Boom', AnsiUtils::stripAnsiCodes($rows[1]));
         $this->assertStringContainsString('3 days ago', AnsiUtils::stripAnsiCodes($rows[2]));
         $this->assertExactWidth($rows, 80);
+    }
+
+    public function testOnlyInlineDiagnosticMessagesTakeTheCell(): void
+    {
+        // In the menu, or nowhere, the message leaves the line — and the cell
+        // goes back to the annotation it had been outranking.
+        foreach ([DiagnosticMessageMode::Menu, DiagnosticMessageMode::None] as $mode) {
+            $editor = $this->editor("<?php\n\$count = 41;\n", 'messages.php');
+            $editor->display->setDiagnosticMessages($mode);
+            $editor->decorations->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'Boom', 'col' => 0, 'endCol' => 6]]]);
+            $editor->decorations->setLineAnnotations([1 => 'you, 3 days ago']);
+
+            $row = AnsiUtils::stripAnsiCodes($editor->render(new RenderContext(80, 10))[1]);
+
+            $this->assertStringNotContainsString('Boom', $row, $mode->value.': the message is not in the line');
+            $this->assertStringContainsString('3 days ago', $row, $mode->value.': blame has the cell back');
+        }
     }
 
     public function testADebugValueOnONELineLeavesTheOtherLinesAlone(): void

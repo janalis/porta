@@ -1163,12 +1163,8 @@
         <target>Attiva/disattiva coppie automatiche</target>
       </trans-unit>
       <trans-unit id="251">
-        <source>Toggle Inline Diagnostics</source>
-        <target>Attiva/disattiva diagnostica in linea</target>
-      </trans-unit>
-      <trans-unit id="252">
-        <source>Toggle Relative Line Numbers</source>
-        <target>Attiva/disattiva numeri di riga relativi</target>
+        <source>Cycle Diagnostic Messages</source>
+        <target>Alterna messaggi di diagnostica</target>
       </trans-unit>
       <trans-unit id="253">
         <source>File</source>
@@ -1203,8 +1199,8 @@
         <target>Lingua</target>
       </trans-unit>
       <trans-unit id="261">
-        <source>Inline diagnostics</source>
-        <target>Diagnostica in linea</target>
+        <source>Diagnostic messages</source>
+        <target>Messaggi di diagnostica</target>
       </trans-unit>
       <trans-unit id="262">
         <source>Relative line numbers</source>

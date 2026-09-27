@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace Porta\Overlay\State;
 
 /**
- * Where a list's selection may rest: never on a disabled row — one there to
- * be read, as a menu's greyed item is. A move that wraps (the arrows, the
+ * Where a list's selection may rest: never on a row there to be read — a
+ * disabled one, as a menu's greyed item is, or a note (the problems heading
+ * a quick-fix list). A move that wraps (the arrows, the
  * wheel) walks past such rows round the ends; one that stops at the ends (a
  * page, a frame cue) settles on the nearest live row short of them.
  */
@@ -17,7 +18,7 @@ final class LiveRows
      * disabled — the selection never rests on a row that is there to be read,
      * as a menu's never rests on a greyed item. $at itself when every row is.
      *
-     * @param list<array{label: string, hint: string, value: string, checked?: bool, disabled?: bool}> $items
+     * @param list<array{label: string, hint: string, value: string, checked?: bool, disabled?: bool, note?: bool}> $items
      */
     public static function from(array $items, int $at, int $direction): int
     {
@@ -25,7 +26,7 @@ final class LiveRows
         $step = $direction < 0 ? -1 : 1;
         for ($i = 0; $i < $count; ++$i) {
             $candidate = ((($at + ($i * $step)) % $count) + $count) % $count;
-            if (true !== ($items[$candidate]['disabled'] ?? null)) {
+            if (!self::readOnly($items[$candidate])) {
                 return $candidate;
             }
         }
@@ -39,19 +40,30 @@ final class LiveRows
      * the other way — paging to the top lands on the first live row, not
      * round the corner on the last.
      *
-     * @param list<array{label: string, hint: string, value: string, checked?: bool, disabled?: bool}> $items
+     * @param list<array{label: string, hint: string, value: string, checked?: bool, disabled?: bool, note?: bool}> $items
      */
     public static function within(array $items, int $at, int $direction): int
     {
         $step = $direction < 0 ? -1 : 1;
         foreach ([$step, -$step] as $way) {
             for ($i = $at; $i >= 0 && $i < \count($items); $i += $way) {
-                if (true !== ($items[$i]['disabled'] ?? null)) {
+                if (!self::readOnly($items[$i])) {
                     return $i;
                 }
             }
         }
 
         return $at;
+    }
+
+    /**
+     * Whether a row is there to be read rather than run: disabled (its hint
+     * says why) or a note. Neither is selected, and neither is picked.
+     *
+     * @param array{label: string, hint: string, value: string, checked?: bool, disabled?: bool, note?: bool} $item
+     */
+    public static function readOnly(array $item): bool
+    {
+        return true === ($item['disabled'] ?? null) || true === ($item['note'] ?? null);
     }
 }

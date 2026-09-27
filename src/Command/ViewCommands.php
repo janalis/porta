@@ -116,10 +116,8 @@ final readonly class ViewCommands implements CommandProvider
             ->add('ide_notifications', fn () => $this->workbench->showNotificationLog(), keyBound: KeyDispatch::Bound, label: 'Notification Log')
             ->add('ide_dismiss_toast', fn () => $this->workbench->dismissToast(), keyBound: KeyDispatch::Bound, label: 'Dismiss Notification')
             ->add('ide_lsp_log', fn () => $this->workbench->showLspLog(), label: 'LSP: Show Server Log')
-            ->add('toggle_inline_diagnostics', fn () => $this->settings->toggle('inlineDiagnostics'), label: 'Toggle Inline Diagnostics', checked: fn (): bool => $this->settings->isOn(
-                'inlineDiagnostics',
-            ))
-            ->add('cycle_line_numbers', fn () => $this->settings->cycleLineNumbers(), keyBound: KeyDispatch::Bound)
+            ->add('cycle_diagnostic_messages', fn () => $this->settings->cycleChoice('diagnosticMessages'), label: 'Cycle Diagnostic Messages')
+            ->add('cycle_line_numbers', fn () => $this->settings->cycleChoice('lineNumbers'), keyBound: KeyDispatch::Bound)
             ->add('toggle_auto_pairs', fn () => $this->settings->toggle('autoPairs'), label: 'Toggle Auto-Pairs', checked: fn (): bool => $this->settings->isOn('autoPairs'))
             ->add('toggle_format_on_save', fn () => $this->settings->toggle('formatOnSave'), label: 'Toggle Format on Save', checked: fn (): bool => $this->settings->isOn('formatOnSave'))
             ->add('fold_all', fn () => $this->folding->foldAll(), keyBound: KeyDispatch::Bound)

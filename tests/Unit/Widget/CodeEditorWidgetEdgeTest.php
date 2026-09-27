@@ -10,6 +10,7 @@ use Porta\Config\IndentStyle;
 use Porta\Config\LanguageIndent;
 use Porta\Editor\ChangeMarkKind;
 use Porta\Editor\CompletionItem;
+use Porta\Editor\DiagnosticMessageMode;
 use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\Document;
 use Porta\Editor\LineNumberMode;
@@ -738,7 +739,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         $this->assertStringContainsString('undefined variable', AnsiUtils::stripAnsiCodes($rendered[1]));
         $this->assertSame(80, AnsiUtils::visibleWidth($rendered[1]));
 
-        $editor->display->setInlineDiagnostics(false);
+        $editor->display->setDiagnosticMessages(DiagnosticMessageMode::None);
         $rendered = $editor->render(new RenderContext(80, 5));
         $this->assertStringNotContainsString('undefined variable', AnsiUtils::stripAnsiCodes($rendered[1]));
     }
@@ -748,13 +749,13 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         $editor = $this->editor("<?php\n\$x = 1;\n");
         $editor->decorations->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'undefined variable', 'col' => 0, 'endCol' => 2]]]);
 
-        // inlineDiagnostics defaults on: disable (set), disable again (skip), enable (set), enable again (skip).
-        $editor->display->setInlineDiagnostics(false);
+        // Diagnostic messages default inline: none (set), none again (skip), inline (set), inline again (skip).
+        $editor->display->setDiagnosticMessages(DiagnosticMessageMode::None);
         $this->assertStringNotContainsString('undefined variable', AnsiUtils::stripAnsiCodes(\implode("\n", $editor->render(new RenderContext(80, 5)))));
-        $editor->display->setInlineDiagnostics(false);
-        $editor->display->setInlineDiagnostics(true);
+        $editor->display->setDiagnosticMessages(DiagnosticMessageMode::None);
+        $editor->display->setDiagnosticMessages(DiagnosticMessageMode::Inline);
         $this->assertStringContainsString('undefined variable', AnsiUtils::stripAnsiCodes(\implode("\n", $editor->render(new RenderContext(80, 5)))));
-        $editor->display->setInlineDiagnostics(true);
+        $editor->display->setDiagnosticMessages(DiagnosticMessageMode::Inline);
         $this->assertStringContainsString('undefined variable', AnsiUtils::stripAnsiCodes(\implode("\n", $editor->render(new RenderContext(80, 5)))));
 
         // lineNumbers defaults to absolute: change to relative, set relative again (no-op), then absolute, then off.

@@ -1163,12 +1163,8 @@
         <target>自動ペアを切替</target>
       </trans-unit>
       <trans-unit id="251">
-        <source>Toggle Inline Diagnostics</source>
-        <target>インライン診断を切替</target>
-      </trans-unit>
-      <trans-unit id="252">
-        <source>Toggle Relative Line Numbers</source>
-        <target>相対行番号を切替</target>
+        <source>Cycle Diagnostic Messages</source>
+        <target>診断メッセージ表示を切り替え</target>
       </trans-unit>
       <trans-unit id="253">
         <source>File</source>
@@ -1203,8 +1199,8 @@
         <target>言語</target>
       </trans-unit>
       <trans-unit id="261">
-        <source>Inline diagnostics</source>
-        <target>インライン診断</target>
+        <source>Diagnostic messages</source>
+        <target>診断メッセージ</target>
       </trans-unit>
       <trans-unit id="262">
         <source>Relative line numbers</source>

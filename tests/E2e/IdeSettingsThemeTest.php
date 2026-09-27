@@ -51,7 +51,7 @@ final class IdeSettingsThemeTest extends TestCase
     {
         \putenv('PATH=/nonexistent');
         $project = new TempProject([
-            '.porta.json' => \json_encode(['settings' => ['inlineDiagnostics' => false, 'lineNumbers' => 'relative']]),
+            '.porta.json' => \json_encode(['settings' => ['diagnosticMessages' => 'none', 'lineNumbers' => 'relative']]),
             'A.php' => "<?php\n\$x = 1;\n",
         ]);
 
@@ -62,7 +62,7 @@ final class IdeSettingsThemeTest extends TestCase
                 300 => function ($tui): void {
                     $editor = $tui->getById('editor');
                     $this->assertSame(LineNumberMode::Relative, $editor->display->lineNumbers, 'setting applied from file');
-                    // Inline diagnostics disabled: even with a diagnostic, no inline text.
+                    // Diagnostic messages off: even with a diagnostic, no inline text.
                     $editor->decorations->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'boom', 'col' => 0]]]);
                     $rendered = Paint::lines($editor, new RenderContext(80, 5));
                     $this->assertStringNotContainsString('boom', AnsiUtils::stripAnsiCodes($rendered[1]));
@@ -97,13 +97,13 @@ final class IdeSettingsThemeTest extends TestCase
                     // A bare tick() is not a frame, and every assertion below
                     // reads the ACCUMULATED output — so without a real paint
                     // they were reading whatever the boot happened to leave.
-                    $this->awaitPainted($tui, $terminal, 'Inline diagnostics');
+                    $this->awaitPainted($tui, $terminal, 'Auto-pairs');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertSame('settings-form', $tui->getFocus()?->getId(), 'settings opened focused on the General form');
                     $this->assertStringContainsString('General', $screen, 'the nav sidebar lists sections');
                     $this->assertStringContainsString('Languages', $screen);
-                    $this->assertStringContainsString('Inline diagnostics', $screen, 'General content shown');
-                    // Toggle Inline diagnostics in the content pane. Screen row
+                    $this->assertStringContainsString('Auto-pairs', $screen, 'General content shown');
+                    // Toggle Auto-pairs in the content pane. Screen row
                     // 8: the menu bar (1) and the rule under it (2), the title
                     // row (3), the boxed "Save changes to" chooser that leads
                     // every page that writes a file (4-6), the Editing legend
@@ -195,7 +195,7 @@ final class IdeSettingsThemeTest extends TestCase
             rows: 30,
         );
 
-        $this->assertFalse(IdeConfig::load($project->dir)->settings['inlineDiagnostics'], 'the General toggle persisted');
+        $this->assertFalse(IdeConfig::load($project->dir)->settings['autoPairs'], 'the General toggle persisted');
         $this->assertSame('spaces', IdeConfig::load($project->dir)->languages['php']['indentStyle'], 'the PHP indent change persisted');
         $this->assertSame('my-ls --stdio', IdeConfig::load($project->dir)->lspServers['php'], 'the PHP LSP server persisted');
     }

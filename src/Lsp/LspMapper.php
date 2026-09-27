@@ -346,7 +346,7 @@ final class LspMapper
      * indented file-structure rows.
      *
      * @param list<array<array-key, mixed>|scalar|null>              $symbols
-     * @param list<array{label: string, hint: string, value: string, checked?: bool, disabled?: bool}> $items    accumulator (by reference)
+     * @param list<array{label: string, hint: string, value: string, checked?: bool, disabled?: bool, note?: bool}> $items    accumulator (by reference)
      */
     public static function flattenSymbols(array $symbols, int $depth, array &$items): void
     {

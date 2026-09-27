@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Widget\Render;
 
 use Porta\Editor\DecorationStore;
+use Porta\Editor\DiagnosticMessageMode;
 use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\DiagnosticStyle;
 use Porta\Editor\Document;
@@ -53,7 +54,8 @@ final readonly class EditorRowAssembler
         private LineNumberMode $lineNumbers,
         private bool $indentGuides,
         private bool $vcsGutter,
-        private bool $inlineDiagnostics,
+        /** Only {@see DiagnosticMessageMode::Inline} puts the message after the code. */
+        private DiagnosticMessageMode $diagnosticMessages,
         private bool $focused,
         private bool $showCaret,
         ?Styles $styles = null,
@@ -216,7 +218,7 @@ final readonly class EditorRowAssembler
             // surfaces: a diagnostic still has its squiggle, its gutter mark,
             // its stripe cell and the Problems panel; blame has Alt+B.
             $debugValue = $this->store->debugValues[$lineIndex] ?? '';
-            $hasInlineDiagnostic = '' === $debugValue && $this->inlineDiagnostics && [] !== $lineDiags;
+            $hasInlineDiagnostic = '' === $debugValue && DiagnosticMessageMode::Inline === $this->diagnosticMessages && [] !== $lineDiags;
             $trailing = '' !== $debugValue || $hasInlineDiagnostic ? $debugValue : $this->store->lineAnnotations[$lineIndex] ?? '';
             if ($hasInlineDiagnostic || '' !== $trailing) {
                 $textDisplayWidth = AnsiUtils::visibleWidth($hlLine);

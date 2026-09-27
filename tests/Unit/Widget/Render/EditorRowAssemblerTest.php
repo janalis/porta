@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Editor\Caret;
 use Porta\Editor\ChangeMarkKind;
 use Porta\Editor\DecorationStore;
+use Porta\Editor\DiagnosticMessageMode;
 use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\Document;
 use Porta\Editor\FoldModel;
@@ -42,7 +43,7 @@ final class EditorRowAssemblerTest extends TestCase
             $lineNumbers,
             $indentGuides,
             $vcsGutter,
-            inlineDiagnostics: false,
+            diagnosticMessages: DiagnosticMessageMode::None,
             focused: true,
             showCaret: true,
             styles: $styles,

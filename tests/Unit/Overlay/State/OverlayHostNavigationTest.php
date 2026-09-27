@@ -317,6 +317,21 @@ final class OverlayHostNavigationTest extends TestCase
         $this->assertSame(1, Probe::get($host, 'overlay')['selected']);
     }
 
+    /** A list of notes alone (problems with no fix) is read and closed, never run: Enter leaves it open. */
+    public function testANoteIsNeverPicked(): void
+    {
+        $host = $this->host();
+        $picked = [];
+        $host->openList('Quick Fixes', [['label' => '✗ boom', 'hint' => '', 'value' => '', 'note' => true]], static function (string $value) use (&$picked): void {
+            $picked[] = $value;
+        });
+
+        $host->handleInput("\r", $this->editingKeys());
+
+        $this->assertSame([], $picked);
+        $this->assertNotNull(Probe::get($host, 'overlay'), 'the list stays up to be read');
+    }
+
     /** In the search modal too, the selection starts on — and steps between — hits that can run. */
     public function testTheSearchSelectionSkipsGreyedHits(): void
     {

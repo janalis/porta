@@ -146,7 +146,7 @@ final class MenuModel
             'i:ide_toggle_focus',
             'i:tree_select_opened_file',
             self::SEP,
-            'i:toggle_inline_diagnostics',
+            'i:cycle_diagnostic_messages',
             'i:cycle_line_numbers',
             'i:toggle_auto_pairs',
         ],

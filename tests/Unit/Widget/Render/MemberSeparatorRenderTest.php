@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Widget\Render;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\DecorationStore;
+use Porta\Editor\DiagnosticMessageMode;
 use Porta\Editor\Document;
 use Porta\Editor\FoldModel;
 use Porta\Editor\LineNumberMode;
@@ -47,7 +48,7 @@ final class MemberSeparatorRenderTest extends TestCase
             LineNumberMode::Absolute,
             indentGuides: false,
             vcsGutter: false,
-            inlineDiagnostics: false,
+            diagnosticMessages: DiagnosticMessageMode::None,
             focused: true,
             showCaret: false,
             separators: $separators,

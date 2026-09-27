@@ -507,4 +507,30 @@ final class PickerLayoutTest extends TestCase
         $this->assertMatchesRegularExpression('/\e\[9m(\e\[[0-9;]*m)*Blocked/', $row('Blocked'));
         $this->assertStringNotContainsString("\e[9m", $row('Fine'));
     }
+
+    /** A note is dim like a disabled item, but not struck: a problem struck through would read as fixed. */
+    public function testANoteIsDimButNotStruckThrough(): void
+    {
+        $out = PickerLayout::layoutList(
+            [0, 0, 24, 100],
+            [
+                'title' => 'Quick Fixes',
+                'items' => [
+                    ['label' => '✗ boom', 'hint' => 'phpstan', 'value' => '', 'note' => true],
+                    ['label' => 'Fix it', 'hint' => '', 'value' => '0'],
+                ],
+                'selected' => 1,
+                'hovered' => null,
+                'filter' => new TextField(),
+                'onPick' => static fn (): null => null,
+            ],
+            $this->styles(),
+            closeHovered: false,
+        );
+        $row = static fn (string $label): string => \array_first(\array_filter($out['rows'], static fn (string $r): bool => \str_contains(AnsiUtils::stripAnsiCodes($r), $label)));
+
+        $this->assertMatchesRegularExpression('/\e\[2m(\e\[[0-9;]*m)*✗ boom/', $row('boom'), 'dim');
+        $this->assertStringNotContainsString("\e[9m", $row('boom'), 'not struck');
+        $this->assertStringNotContainsString("\e[2m", $row('Fix it'), 'its neighbour is neither');
+    }
 }

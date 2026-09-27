@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Widget;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\ChangeMarkKind;
 use Porta\Editor\CompletionItem;
+use Porta\Editor\DiagnosticMessageMode;
 use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\Document;
 use Porta\Editor\FindMode;
@@ -1451,7 +1452,7 @@ final class CodeEditorWidgetTest extends TestCase
         $this->assertSame(2, \substr_count($screen, needle: 'abc12345 tester'), 'both annotations render in the trailing space');
 
         // A diagnostic on line 0 wins the trailing slot; line 1 keeps its blame.
-        $editor->display->setInlineDiagnostics(true);
+        $editor->display->setDiagnosticMessages(DiagnosticMessageMode::Inline);
         $editor->decorations->setDiagnostics([0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'Boom', 'col' => 0]]]);
         $screen = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $editor->render(new RenderContext(80, 6))));
         $this->assertStringContainsString('Boom', $screen);

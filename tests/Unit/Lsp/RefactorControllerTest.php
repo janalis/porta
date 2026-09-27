@@ -8,6 +8,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\EditorConfig\ResolvedEditorConfig;
 use Porta\Editor\BufferManager;
+use Porta\Editor\DiagnosticMessageMode;
 use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\Document;
 use Porta\Editor\SelectionMode;
@@ -1024,6 +1025,110 @@ final class RefactorControllerTest extends TestCase
 
         $this->editor->handleInput("\r");
         $this->assertStringContainsString('KEPT', $this->text(), 'the empty answer left the picker alone');
+    }
+
+    // ---------------------------------------------------------------- diagnostic messages in the menu
+
+    /** @return list<string> the open quick-fix list's rows, plain */
+    private function pickerRows(): array
+    {
+        $pickers = $this->editor->layoutPickers([0, 0, 20, 100]);
+
+        return [] === $pickers ? [] : \array_values(\array_filter(\array_map(static fn (string $r): string => \trim(AnsiUtils::stripAnsiCodes($r)), $pickers[0]['rows'])));
+    }
+
+    private function twoProblemsOnLineOne(): void
+    {
+        $this->editor->display->setDiagnosticMessages(DiagnosticMessageMode::Menu);
+        $this->buffers->active()->diagnostics = [
+            1 => [
+                ['severity' => DiagnosticSeverity::Warning, 'message' => "unused\n  variable", 'col' => 0, 'endCol' => 2],
+                ['severity' => DiagnosticSeverity::Error, 'message' => 'boom', 'col' => 0, 'endCol' => 2, 'source' => 'phpstan'],
+            ],
+        ];
+    }
+
+    /**
+     * PhpStorm's shape: the problems on the line, worst first, above what can
+     * be done about them — and the list still runs the action picked, not the
+     * row that sits at that index now that problems are above it.
+     */
+    public function testInMenuModeTheLinesProblemsHeadTheQuickFixes(): void
+    {
+        [$controller] = $this->ready();
+        $this->twoProblemsOnLineOne();
+
+        $controller->requestCodeActions(1, 0);
+        \end($this->client->requests)['respond']([['title' => 'First fix', 'edit' => $this->editOf('FIRST')], ['title' => 'Second fix', 'edit' => $this->editOf('SECOND')]], error: null);
+
+        $screen = \implode("\n", $this->pickerRows());
+        $order = \array_map(static fn (string $needle): int|false => \strpos($screen, $needle), ['boom', 'unused variable', 'First fix', 'Second fix']);
+        $this->assertNotContains(false, $order, 'every problem and every fix is listed: '.$screen);
+        $sorted = $order;
+        \sort($sorted);
+        $this->assertSame($sorted, $order, 'the error, then the warning, then the fixes in the server\'s order');
+        $this->assertStringContainsString('phpstan', $screen, 'a problem says where it came from');
+
+        $this->editor->handleInput("\r");
+        $this->assertStringContainsString('FIRST', $this->text(), 'Enter runs the first FIX: a problem row is there to be read');
+    }
+
+    public function testInMenuModeAProblemWithNoFixStillOpensTheList(): void
+    {
+        [$controller] = $this->ready();
+        $this->twoProblemsOnLineOne();
+
+        $controller->requestCodeActions(1, 0);
+        \end($this->client->requests)['respond']([], error: null);
+
+        $this->assertStringContainsString('boom', \implode("\n", $this->pickerRows()), 'the problems are what there is to show');
+        $this->assertStringNotContainsString('No quick fixes', $this->flashed());
+    }
+
+    /** A tool plugin's findings, or a server not up yet: the problems need no server to be read. */
+    public function testInMenuModeProblemsShowWithNoServerAtAll(): void
+    {
+        $controller = $this->controller();
+        $buffer = $this->buffers->open('/tmp/proj/a.php', "<?php\n\$x = 1;\n");
+        $this->editor->showDocument('/tmp/proj/a.php', $buffer->document);
+        $this->twoProblemsOnLineOne();
+
+        $controller->requestCodeActions(1, 0);
+
+        $this->assertStringContainsString('boom', \implode("\n", $this->pickerRows()));
+        $this->assertStringNotContainsString('No language server', $this->flashed(), 'nothing to explain: the list answered');
+        // @mago-expect lint:no-isset -- $client is a non-nullable typed property; isset() is the only way to test whether it was ever initialized
+        $this->assertFalse(isset($this->client), 'and no server was started to ask');
+    }
+
+    public function testWithMessagesInlineTheMenuHoldsOnlyTheFixes(): void
+    {
+        [$controller] = $this->ready();
+        $this->twoProblemsOnLineOne();
+        $this->editor->display->setDiagnosticMessages(DiagnosticMessageMode::Inline);
+
+        $controller->requestCodeActions(1, 0);
+        \end($this->client->requests)['respond']([['title' => 'First fix', 'edit' => $this->editOf('FIRST')]], error: null);
+
+        $screen = \implode("\n", $this->pickerRows());
+        $this->assertStringContainsString('First fix', $screen);
+        $this->assertStringNotContainsString('boom', $screen, 'the message is after the code, not here');
+    }
+
+    /** Each server's answer re-presents the list; the problems are listed once however many answer. */
+    public function testTwoAnsweringServersListTheProblemsOnce(): void
+    {
+        $this->clients = [];
+        [$controller] = $this->ready(servers: 2);
+        $this->twoProblemsOnLineOne();
+
+        $controller->requestCodeActions(1, 0);
+        $this->clients[0]->requests[0]['respond']([['title' => 'First fix', 'edit' => $this->editOf('FIRST')]], error: null);
+        $this->clients[1]->requests[0]['respond']([['title' => 'Second fix', 'edit' => $this->editOf('SECOND')]], error: null);
+
+        $screen = \implode("\n", $this->pickerRows());
+        $this->assertSame(1, \substr_count($screen, needle: 'boom'));
+        $this->assertStringContainsString('Second fix', $screen);
     }
 
     /** Applying an action goes back to the server that OFFERED it. */

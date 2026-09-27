@@ -1163,12 +1163,8 @@
         <target>Basculer les paires automatiques</target>
       </trans-unit>
       <trans-unit id="251">
-        <source>Toggle Inline Diagnostics</source>
-        <target>Basculer les diagnostics en ligne</target>
-      </trans-unit>
-      <trans-unit id="252">
-        <source>Toggle Relative Line Numbers</source>
-        <target>Basculer les numéros de ligne relatifs</target>
+        <source>Cycle Diagnostic Messages</source>
+        <target>Alterner les messages de diagnostic</target>
       </trans-unit>
       <trans-unit id="253">
         <source>File</source>
@@ -1203,8 +1199,8 @@
         <target>Langue</target>
       </trans-unit>
       <trans-unit id="261">
-        <source>Inline diagnostics</source>
-        <target>Diagnostics en ligne</target>
+        <source>Diagnostic messages</source>
+        <target>Messages de diagnostic</target>
       </trans-unit>
       <trans-unit id="262">
         <source>Relative line numbers</source>

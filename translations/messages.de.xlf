@@ -1163,12 +1163,8 @@
         <target>Auto-Paare umschalten</target>
       </trans-unit>
       <trans-unit id="251">
-        <source>Toggle Inline Diagnostics</source>
-        <target>Inline-Diagnosen umschalten</target>
-      </trans-unit>
-      <trans-unit id="252">
-        <source>Toggle Relative Line Numbers</source>
-        <target>Relative Zeilennummern umschalten</target>
+        <source>Cycle Diagnostic Messages</source>
+        <target>Diagnosemeldungen durchschalten</target>
       </trans-unit>
       <trans-unit id="253">
         <source>File</source>
@@ -1203,8 +1199,8 @@
         <target>Sprache</target>
       </trans-unit>
       <trans-unit id="261">
-        <source>Inline diagnostics</source>
-        <target>Inline-Diagnosen</target>
+        <source>Diagnostic messages</source>
+        <target>Diagnosemeldungen</target>
       </trans-unit>
       <trans-unit id="262">
         <source>Relative line numbers</source>

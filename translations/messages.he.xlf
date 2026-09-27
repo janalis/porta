@@ -1163,12 +1163,8 @@
         <target>הפעל/כבה זוגות אוטומטיים</target>
       </trans-unit>
       <trans-unit id="251">
-        <source>Toggle Inline Diagnostics</source>
-        <target>הפעל/כבה אבחון מוטמע</target>
-      </trans-unit>
-      <trans-unit id="252">
-        <source>Toggle Relative Line Numbers</source>
-        <target>הפעל/כבה מספרי שורות יחסיים</target>
+        <source>Cycle Diagnostic Messages</source>
+        <target>מעבר בין מצבי הודעות אבחון</target>
       </trans-unit>
       <trans-unit id="253">
         <source>File</source>
@@ -1203,8 +1199,8 @@
         <target>שפה</target>
       </trans-unit>
       <trans-unit id="261">
-        <source>Inline diagnostics</source>
-        <target>אבחון מוטמע</target>
+        <source>Diagnostic messages</source>
+        <target>הודעות אבחון</target>
       </trans-unit>
       <trans-unit id="262">
         <source>Relative line numbers</source>

@@ -36,12 +36,19 @@ final class LspRefusalTest extends TestCase
      * wrong, and naming them here is what keeps it a decision rather than an
      * oversight.
      *
+     * Quick fixes ask bare `ready()` only to choose between two answers, not
+     * to refuse: with diagnostic messages in the menu and problems on the
+     * line, no server means the list opens with the problems alone — the
+     * user is shown something. Otherwise the request goes through
+     * `readyOrExplain()` as before.
+     *
      * Keyed by file basename => the methods allowed to call bare `ready()`.
      *
      * @var array<string, list<string>>
      */
     private const array SILENT_BY_DESIGN = [
         'CompletionController.php' => ['requestCompletion', 'requestSignatureHelp'],
+        'RefactorController.php' => ['requestCodeActions'],
     ];
 
     /**

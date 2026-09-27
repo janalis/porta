@@ -35,6 +35,7 @@ final class ConfigurationDocTest extends TestCase
      */
     private const array MAY_LINGER = [
         'relativeLineNumbers' => 'superseded by lineNumbers, still read so an old .porta.json keeps working',
+        'inlineDiagnostics' => 'superseded by diagnosticMessages, still read so an old .porta.json keeps working',
     ];
 
     public function testEverySettingKeyHasARowInTheTable(): void

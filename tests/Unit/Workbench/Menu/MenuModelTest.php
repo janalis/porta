@@ -478,10 +478,10 @@ final class MenuModelTest extends TestCase
     public function testCustomCommandLabelIsUsed(): void
     {
         $commands = new CommandRegistry();
-        $commands->add('toggle_inline_diagnostics', static function (): void {}, label: 'Toggle Inline Diagnostics');
+        $commands->add('cycle_diagnostic_messages', static function (): void {}, label: 'Cycle Diagnostic Messages');
 
         $menus = $this->build($commands, new CodeEditorWidget());
-        $item = $this->item($menus, 'View', 'Toggle Inline Diagnostics');
+        $item = $this->item($menus, 'View', 'Cycle Diagnostic Messages');
         $this->assertFalse($item->separator);
     }
 

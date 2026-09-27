@@ -52,7 +52,7 @@ final class SettingsSearchTest extends TestCase
                 },
                 500 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $grid = $this->screenGrid($tui, $terminal);
-                    $this->assertNotNull($this->rowOf($grid, 'Inline diagnostics'), 'the view opens on General');
+                    $this->assertNotNull($this->rowOf($grid, 'Auto-pairs'), 'the view opens on General');
                     $this->assertNull($this->rowOf($grid, 'Sticky scroll'), 'and Interface rows are elsewhere');
 
                     $tui->handleInput("\x06"); // ctrl+f
@@ -126,7 +126,7 @@ final class SettingsSearchTest extends TestCase
                 900 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $grid = $this->screenGrid($tui, $terminal);
                     $this->assertNotNull($this->rowOf($grid, 'Sticky scroll'), 'the settings view opened on Interface');
-                    $this->assertNull($this->rowOf($grid, 'Inline diagnostics'), 'NOT on General, which is where open() resets to');
+                    $this->assertNull($this->rowOf($grid, 'Auto-pairs'), 'NOT on General, which is where open() resets to');
 
                     $form = $this->settingsForm($tui);
                     $this->assertStringContainsString('Sticky scroll', $this->selectedSettingRow($form), 'landed on the row');

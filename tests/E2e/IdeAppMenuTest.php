@@ -635,7 +635,6 @@ final class IdeAppMenuTest extends TestCase
                     foreach ([
                         'toggle_soft_wrap' => 'Soft-Wrap',
                         'toggle_code_lenses' => 'Code Vision',
-                        'toggle_inline_diagnostics' => 'Inline Diagnostics',
                         'toggle_auto_pairs' => 'Auto-Pairs',
                     ] as $id => $label) {
                         $before = \str_starts_with($row($label), ' ✓ ');

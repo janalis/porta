@@ -35,4 +35,20 @@ final class LiveRowsTest extends TestCase
         $this->assertSame(2, LiveRows::within($rows, 2, 1));
         $this->assertSame(1, LiveRows::within(self::rows(true, true), 1, 1), 'all grey: where it was');
     }
+
+    /** A note is read, like a disabled row: the selection walks past it as well. */
+    public function testANoteIsPassedOverLikeAGreyRow(): void
+    {
+        $rows = [
+            ['label' => 'boom', 'hint' => '', 'value' => '', 'note' => true],
+            ['label' => 'fix', 'hint' => '', 'value' => '0'],
+        ];
+
+        $this->assertSame(1, LiveRows::from($rows, 0, 1));
+        $this->assertSame(1, LiveRows::within($rows, 0, -1));
+        $this->assertTrue(LiveRows::readOnly($rows[0]));
+        $this->assertFalse(LiveRows::readOnly($rows[1]));
+        $this->assertTrue(LiveRows::readOnly(['label' => '', 'hint' => '', 'value' => '', 'disabled' => true]));
+        $this->assertFalse(LiveRows::readOnly(['label' => '', 'hint' => '', 'value' => '', 'disabled' => false, 'note' => false]));
+    }
 }

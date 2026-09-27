@@ -370,7 +370,7 @@ final class CodeEditorWidget extends AbstractWidget implements
     /**
      * Open a modal list overlay (recent files, later: hover docs etc.).
      *
-     * @param list<array{label: string, hint: string, value: string, checked?: bool, disabled?: bool}> $items
+     * @param list<array{label: string, hint: string, value: string, checked?: bool, disabled?: bool, note?: bool}> $items
      * @param callable(string): void                                  $onPick receives the picked item's value
      */
     #[\Override]
@@ -1396,7 +1396,7 @@ final class CodeEditorWidget extends AbstractWidget implements
                 $this->display->lineNumbers,
                 $this->display->indentGuides,
                 $this->display->vcsGutter,
-                $this->display->inlineDiagnostics,
+                $this->display->diagnosticMessages,
                 $this->focused,
                 $this->focused && !$this->findModal->isOpen() && !$this->overlayHost->anyOpen(), // an open modal owns the caret
                 $this->styles,

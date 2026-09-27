@@ -1047,7 +1047,7 @@ final class PluginApi
      * dimmed second column: a stash's date, a branch's tracking state. Both
      * spellings reach the same overlay.
      *
-     * @param array<string, string>|list<array{label: string, hint: string, value: string, checked?: bool, disabled?: bool}> $items in the order to show them
+     * @param array<string, string>|list<array{label: string, hint: string, value: string, checked?: bool, disabled?: bool, note?: bool}> $items in the order to show them
      * @param \Closure(string): void                                                        $onPick
      */
     public function pick(string $title, array $items, \Closure $onPick): void

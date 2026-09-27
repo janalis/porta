@@ -10,6 +10,7 @@ use Porta\Config\ConfigScope;
 use Porta\Config\IdeConfig;
 use Porta\Config\PortaJsonWriter;
 use Porta\Editor\BufferManager;
+use Porta\Editor\DiagnosticMessageMode;
 use Porta\Editor\EditorPanes;
 use Porta\Editor\LineNumberMode;
 use Porta\Event\CursorShapeChanged;
@@ -193,13 +194,13 @@ final class SettingsControllerTest extends TestCase
         $byKey = \array_column($rows, null, 'key');
 
         $this->assertSame(
-            ['inlineDiagnostics', 'autoPairs', 'formatOnSave', 'searchIncludeVendor'],
+            ['autoPairs', 'formatOnSave', 'searchIncludeVendor'],
             \array_column($rows, 'key'),
             'General holds editor behavior (the viewer-tool paths live on their plugins\' pages now); appearance moved to Interface',
         );
         $this->assertFalse($byKey['autoPairs']->value);
         $this->assertSame(SettingsRowKind::Bool, $byKey['autoPairs']->kind);
-        $this->assertFalse($byKey['inlineDiagnostics']->restart, 'live toggles need no restart');
+        $this->assertFalse($byKey['autoPairs']->restart, 'live toggles need no restart');
     }
 
     public function testInterfaceRowsExposeTheAppearanceSettings(): void
@@ -211,7 +212,19 @@ final class SettingsControllerTest extends TestCase
         $byKey = \array_column($rows, null, 'key');
 
         $this->assertSame(
-            ['language', 'theme', 'cursorShape', 'tabBarPosition', 'breadcrumbs', 'lineNumbers', 'stickyScroll', 'indentGuides', 'showWhitespace', 'methodSeparators'],
+            [
+                'language',
+                'theme',
+                'cursorShape',
+                'tabBarPosition',
+                'breadcrumbs',
+                'lineNumbers',
+                'stickyScroll',
+                'indentGuides',
+                'showWhitespace',
+                'methodSeparators',
+                'diagnosticMessages',
+            ],
             \array_column($rows, 'key'),
         );
         $this->assertSame(['en', 'fr', 'de', 'es', 'it', 'ja', 'he'], $byKey['language']->options);
@@ -222,6 +235,8 @@ final class SettingsControllerTest extends TestCase
         $this->assertSame(['top', 'bottom', 'left', 'right'], $byKey['tabBarPosition']->options);
         $this->assertSame('absolute', $byKey['lineNumbers']->value);
         $this->assertSame(['off', 'absolute', 'relative'], $byKey['lineNumbers']->options);
+        $this->assertSame(['none', 'inline', 'menu'], $byKey['diagnosticMessages']->options);
+        $this->assertFalse($byKey['diagnosticMessages']->restart, 'a mode switch applies live');
         $this->assertTrue($byKey['stickyScroll']->value);
         $this->assertSame(SettingsRowKind::Bool, $byKey['breadcrumbs']->kind);
     }
@@ -315,12 +330,42 @@ final class SettingsControllerTest extends TestCase
         $controller = $this->controller($project->dir, $editor, new StatusBarWidget());
 
         // Default absolute → relative → off → absolute.
-        $controller->cycleLineNumbers();
+        $controller->cycleChoice('lineNumbers');
         $this->assertSame(LineNumberMode::Relative, $editor->display->lineNumbers);
-        $controller->cycleLineNumbers();
+        $controller->cycleChoice('lineNumbers');
         $this->assertSame(LineNumberMode::Off, $editor->display->lineNumbers);
-        $controller->cycleLineNumbers();
+        $controller->cycleChoice('lineNumbers');
         $this->assertSame(LineNumberMode::Absolute, $editor->display->lineNumbers);
+        $this->assertSame('absolute', $controller->choice('lineNumbers'));
+    }
+
+    /** The diagnostic-message mode walks its three options and wraps, applied to the editor live. */
+    public function testCyclingTheHintModesAppliesEachStepLive(): void
+    {
+        $project = new TempProject();
+        $editor = new CodeEditorWidget();
+        $controller = $this->controller($project->dir, $editor, new StatusBarWidget(), IdeConfig::DEFAULT_SETTINGS);
+
+        $seen = [];
+        for ($i = 0; $i < 3; ++$i) {
+            $controller->cycleChoice('diagnosticMessages');
+            $seen[] = $editor->display->diagnosticMessages;
+        }
+        $this->assertSame([DiagnosticMessageMode::Menu, DiagnosticMessageMode::None, DiagnosticMessageMode::Inline], $seen, 'inline → menu → none → inline');
+    }
+
+    /** Only a choice cycles: an unknown key, or a switch, flashes and changes nothing. */
+    public function testCyclingSomethingThatIsNotAChoiceFlashesInstead(): void
+    {
+        $project = new TempProject();
+        $editor = new CodeEditorWidget();
+        $status = new StatusBarWidget();
+        $controller = $this->controller($project->dir, $editor, $status, IdeConfig::DEFAULT_SETTINGS);
+
+        $controller->cycleChoice('autoPairs');
+
+        $this->assertTrue($editor->display->autoPairs, 'a switch is not cycled');
+        $this->assertStringContainsString('Unknown setting "autoPairs"', $this->flashText($status));
     }
 
     public function testChangingTheNewInterfaceBoolsAppliesToTheEditorAndBreadcrumbs(): void
@@ -367,15 +412,11 @@ final class SettingsControllerTest extends TestCase
         $editor = new CodeEditorWidget();
         $controller = $this->controller($project->dir, $editor, new StatusBarWidget());
 
-        $controller->changeSetting('inlineDiagnostics', false);
-        $this->assertFalse($editor->display->inlineDiagnostics);
         $controller->changeSetting('autoPairs', false);
         $this->assertFalse($editor->display->autoPairs);
         $controller->changeSetting('formatOnSave', true);
         $this->assertTrue($this->formatOnSave->isEnabled());
 
-        $controller->changeSetting('inlineDiagnostics', true);
-        $this->assertTrue($editor->display->inlineDiagnostics);
         $controller->changeSetting('autoPairs', true);
         $this->assertTrue($editor->display->autoPairs);
         $controller->changeSetting('formatOnSave', false);
@@ -594,9 +635,9 @@ final class SettingsControllerTest extends TestCase
     {
         $project = new TempProject();
         // `1`, not `true` — what a hand-edited .porta.json may well hold.
-        $controller = $this->controller($project->dir, new CodeEditorWidget(), new StatusBarWidget(), ['inlineDiagnostics' => 1] + IdeConfig::DEFAULT_SETTINGS);
+        $controller = $this->controller($project->dir, new CodeEditorWidget(), new StatusBarWidget(), ['autoPairs' => 1] + IdeConfig::DEFAULT_SETTINGS);
 
-        $row = $this->rowFor($controller->formRows(), 'inlineDiagnostics');
+        $row = $this->rowFor($controller->formRows(), 'autoPairs');
 
         $this->assertTrue($row->value, 'the value coerced to the row kind');
         $this->assertFalse($row->isModified(), 'and so did the default, so they compare equal');
@@ -607,13 +648,13 @@ final class SettingsControllerTest extends TestCase
         $project = new TempProject();
         $controller = $this->controller($project->dir, new CodeEditorWidget(), new StatusBarWidget(), IdeConfig::DEFAULT_SETTINGS);
 
-        $this->assertFalse($this->rowFor($controller->formRows(), 'inlineDiagnostics')->isModified(), 'a fresh project is at its defaults');
+        $this->assertFalse($this->rowFor($controller->formRows(), 'autoPairs')->isModified(), 'a fresh project is at its defaults');
 
-        $controller->changeSetting('inlineDiagnostics', false);
-        $this->assertTrue($this->rowFor($controller->formRows(), 'inlineDiagnostics')->isModified(), 'the marker follows the change');
+        $controller->changeSetting('autoPairs', false);
+        $this->assertTrue($this->rowFor($controller->formRows(), 'autoPairs')->isModified(), 'the marker follows the change');
 
-        $controller->changeSetting('inlineDiagnostics', true);
-        $this->assertFalse($this->rowFor($controller->formRows(), 'inlineDiagnostics')->isModified(), 'and clears when it is put back');
+        $controller->changeSetting('autoPairs', true);
+        $this->assertFalse($this->rowFor($controller->formRows(), 'autoPairs')->isModified(), 'and clears when it is put back');
     }
 
     /** @param list<\Porta\Settings\SettingsRow> $rows */
@@ -640,14 +681,14 @@ final class SettingsControllerTest extends TestCase
     {
         $project = new TempProject();
         $controller = $this->controller($project->dir, new CodeEditorWidget(), new StatusBarWidget(), IdeConfig::DEFAULT_SETTINGS);
-        $controller->changeSetting('inlineDiagnostics', false);
-        $this->assertFalse($this->written($project)['settings']['inlineDiagnostics'], 'set first, so the reset has something to undo');
+        $controller->changeSetting('autoPairs', false);
+        $this->assertFalse($this->written($project)['settings']['autoPairs'], 'set first, so the reset has something to undo');
 
-        $controller->resetSetting('inlineDiagnostics');
+        $controller->resetSetting('autoPairs');
 
-        $this->assertArrayNotHasKey('inlineDiagnostics', $this->written($project)['settings'] ?? [], 'the key is gone, not set to its default');
-        $this->assertFalse($this->rowFor($controller->formRows(), 'inlineDiagnostics')->isModified(), 'and the row is back at stock');
-        $this->assertTrue($this->rowFor($controller->formRows(), 'inlineDiagnostics')->value, 'showing the default value in memory');
+        $this->assertArrayNotHasKey('autoPairs', $this->written($project)['settings'] ?? [], 'the key is gone, not set to its default');
+        $this->assertFalse($this->rowFor($controller->formRows(), 'autoPairs')->isModified(), 'and the row is back at stock');
+        $this->assertTrue($this->rowFor($controller->formRows(), 'autoPairs')->value, 'showing the default value in memory');
     }
 
     /** Removing the last setting takes the block with it rather than leaving `{}`. */
@@ -655,9 +696,9 @@ final class SettingsControllerTest extends TestCase
     {
         $project = new TempProject();
         $controller = $this->controller($project->dir, new CodeEditorWidget(), new StatusBarWidget(), IdeConfig::DEFAULT_SETTINGS);
-        $controller->changeSetting('inlineDiagnostics', false);
+        $controller->changeSetting('autoPairs', false);
 
-        $controller->resetSetting('inlineDiagnostics');
+        $controller->resetSetting('autoPairs');
 
         $this->assertArrayNotHasKey('settings', $this->written($project));
     }
