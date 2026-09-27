@@ -34,9 +34,9 @@ final class ModalFrame
     public static function titleBar(string $title, int $width, Styles $styles, bool $closeHovered = false, string $hint = 'Esc'): string
     {
         $accent = $styles->of(Role::TabAccent);
-        $close = $closeHovered ? TabCloseGlyph::active($styles) : TabCloseGlyph::inactive($styles);
+        $close = $closeHovered ? TabCloseGlyph::hovered($styles) : TabCloseGlyph::inactive($styles);
 
-        // '┌ ' + label + ' ' + fill + [' ' + hint] + ' ' + × + '┐': the fixed
+        // '╭ ' + label + ' ' + fill + [' ' + hint] + ' ' + × + '┐': the fixed
         // chrome is 6 columns, plus the hint and its separator when shown.
         $hintWidth = \mb_strwidth($hint);
         $room = $width - 6 - ($hintWidth > 0 ? $hintWidth + 1 : 0);
@@ -138,12 +138,8 @@ final class ModalFrame
             : $accent->apply(Glyphs::MODAL_BOTTOM_RIGHT);
         // Where the reader is in a clipped list — `3/40` — set into the bottom
         // border, as a trailing hint sits in a field's.
-        $position = null === $overflow || !$overflow->clipped() || (\mb_strwidth($overflow->position()) + 3) > ($innerWidth + 2) ? '' : ' '.$overflow->position().' ';
-        $fill = \max(0, $innerWidth + 2 - \mb_strwidth($position) - ('' === $position ? 0 : 1));
-        $rows[] =
-            $accent->apply(Glyphs::MODAL_BOTTOM_LEFT.\str_repeat(Glyphs::FRAME_HORIZONTAL, $fill))
-            .('' === $position ? '' : $styles->of(Role::Dim)->apply($position).$accent->apply(Glyphs::FRAME_HORIZONTAL))
-            .$corner;
+        $position = null !== $overflow && $overflow->clipped() ? $overflow->position() : '';
+        $rows[] = BorderHint::bottom(Glyphs::MODAL_BOTTOM_LEFT, $corner, Glyphs::FRAME_HORIZONTAL, $innerWidth + 2, $accent, $position, $styles);
 
         return $rows;
     }

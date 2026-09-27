@@ -109,9 +109,9 @@ final class ModalFrameTest extends TestCase
 
         $this->assertNotSame($normal, $hovered, 'the × restyles under the pointer');
         $this->assertSame(AnsiUtils::stripAnsiCodes($normal), AnsiUtils::stripAnsiCodes($hovered), 'same text, different shade');
-        // Direction, not just difference: hovered must be the BRIGHT variant, not
-        // merely "a different one" (which a swapped active/inactive would also be).
-        $this->assertStringContainsString(TabCloseGlyph::active(Styles::dark()), $hovered);
+        // Direction, not just difference: hovered must be the hover face every ×
+        // wears, not merely "a different one" (which the active variant would be).
+        $this->assertStringContainsString(TabCloseGlyph::hovered(Styles::dark()), $hovered);
         $this->assertStringContainsString(TabCloseGlyph::inactive(Styles::dark()), $normal);
     }
 

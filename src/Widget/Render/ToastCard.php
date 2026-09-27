@@ -7,8 +7,6 @@ namespace Porta\Widget\Render;
 use Porta\Overlay\State\Toast;
 use Porta\Overlay\State\ToastSeverity;
 use Porta\Support\AnsiText;
-use Porta\Ui\Glyphs;
-use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 
 /**
@@ -30,8 +28,8 @@ final class ToastCard
     /**
      * The frame says the severity by shape as well as colour — an error's is
      * double, a warning's heavy, the rest rounded — so a failure never reads
-     * like a "Saved" under the monochrome theme. The × under the pointer is
-     * underlined as well as brightened. $hint, when given, is set into the
+     * like a "Saved" under the monochrome theme. The × under the pointer wears
+     * {@see TabCloseGlyph::hovered()}. $hint, when given, is set into the
      * bottom border: the key to the notification log on an error, or how many
      * more are waiting on the last card.
      *
@@ -41,7 +39,7 @@ final class ToastCard
     public static function render(Toast $toast, int $innerWidth, Styles $styles, bool $closeHovered = false, string $hint = ''): array
     {
         $accent = $styles->of($toast->severity->role());
-        $close = $closeHovered ? $styles->of(Role::CurrentLineNumber)->withUnderline()->apply(Glyphs::CLOSE) : TabCloseGlyph::inactive($styles);
+        $close = $closeHovered ? TabCloseGlyph::hovered($styles) : TabCloseGlyph::inactive($styles);
         [$topLeft, $topRight, $bottomLeft, $bottomRight, $rule, $side] = self::frame($toast->severity)->glyphs();
 
         // `╭ ✗ ──── ×╮`: glyph chrome is 4 columns (corner, spaces, glyph),
@@ -63,10 +61,7 @@ final class ToastCard
             $body = AnsiText::truncate(' '.$line, \max(0, $innerWidth), pad: true);
             $rows[] = $rail.$body.$rail;
         }
-        // The hint sits right in the border, `╰──── Alt+9 log ─╯`, when it fits.
-        $hintText = '' === $hint || (\mb_strwidth($hint) + 3) > $innerWidth ? '' : ' '.$hint.' ';
-        $bottomFill = \max(0, $innerWidth - \mb_strwidth($hintText) - ('' === $hintText ? 0 : 1));
-        $rows[] = $accent->apply($bottomLeft.\str_repeat($rule, $bottomFill)).('' === $hintText ? '' : $styles->of(Role::Dim)->apply($hintText).$accent->apply($rule)).$accent->apply($bottomRight);
+        $rows[] = BorderHint::bottom($bottomLeft, $accent->apply($bottomRight), $rule, $innerWidth, $accent, $hint, $styles);
 
         return $rows;
     }

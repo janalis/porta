@@ -1234,9 +1234,9 @@ final class OverlayHostTest extends TestCase
         $host->hoverAt($listBox->startRow, $listBox->col + $listBox->width - 2); // only the list's ×
         [$listPlaced, $searchPlaced, $promptPlaced] = $host->layout([0, 0, 24, 100]);
 
-        $active = TabCloseGlyph::active($styles);
+        $hovered = TabCloseGlyph::hovered($styles);
         $inactive = TabCloseGlyph::inactive($styles);
-        $this->assertStringContainsString($active, $listPlaced['rows'][0], 'the hovered surface shows the active ×');
+        $this->assertStringContainsString($hovered, $listPlaced['rows'][0], 'the hovered surface shows the hovered ×');
         $this->assertStringContainsString($inactive, $searchPlaced['rows'][0], 'search must stay inactive');
         $this->assertStringContainsString($inactive, $promptPlaced['rows'][0], 'the prompt must stay inactive');
     }

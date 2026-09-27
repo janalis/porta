@@ -302,13 +302,7 @@ final class FieldBox
                 ? $border->apply($topLeft).$rule($width - 2).$border->apply($topRight)
                 : $border->apply($topLeft.' ').self::legend($state, $styles)->apply($label).$border->apply(' ').$rule($width - 4 - AnsiUtils::visibleWidth($label)).$border->apply($topRight);
 
-        // corner, rule, ' ', hint, ' ', one rule, corner — or no hint at all:
-        // a cut hint names half a key.
-        $hintWidth = AnsiUtils::visibleWidth($spec->trailing);
-        $bottom =
-            '' === $spec->trailing || $hintWidth > ($width - 6)
-                ? $border->apply($bottomLeft).$rule($width - 2).$border->apply($bottomRight)
-                : $border->apply($bottomLeft).$rule($width - 5 - $hintWidth).' '.$styles->of(Role::Faint)->apply($spec->trailing).' '.$rule(1).$border->apply($bottomRight);
+        $bottom = BorderHint::bottom($bottomLeft, $border->apply($bottomRight), $horizontal, $width - 2, $border, $spec->trailing, $styles);
 
         $rows = [$top];
         foreach ($content as $row) {

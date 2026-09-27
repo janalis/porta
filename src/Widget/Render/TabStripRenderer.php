@@ -262,7 +262,7 @@ final class TabStripRenderer
         $body = ' '.$label.AnsiUtils::sliceByColumn($text, $labelEnd, ($closeOffset ?? $width) - $labelEnd);
         if (null !== $closeOffset) {
             $close = match (true) {
-                $onClose => $styles->of(Role::Bright)->withUnderline()->apply(Glyphs::CLOSE),
+                $onClose => TabCloseGlyph::hovered($styles),
                 TabState::Active === $state => TabCloseGlyph::active($styles),
                 default => TabCloseGlyph::inactive($styles),
             };

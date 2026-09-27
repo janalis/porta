@@ -721,15 +721,15 @@ final class FindInFilesModalTest extends TestCase
         $this->assertInstanceOf(ModalBox::class, $box);
 
         // The direction matters, not just "it changed": the × starts dim and
-        // only the active variant is bright, never the reverse.
+        // only the pointer lights it, never the reverse.
         $styles = Styles::dark();
         $this->assertStringContainsString(TabCloseGlyph::inactive($styles), $normalBar, 'the × starts dim, not hot');
-        $this->assertStringNotContainsString(TabCloseGlyph::active($styles), $normalBar);
+        $this->assertStringNotContainsString(TabCloseGlyph::hovered($styles), $normalBar);
 
         $this->assertTrue($modal->hoverAt($box->startRow, $box->col + $box->width - 2), 'onto the ×');
         $hoveredBar = $this->compose($modal)[$box->startRow];
         $this->assertNotSame($normalBar, $hoveredBar, 'the × restyled under the pointer');
-        $this->assertStringContainsString(TabCloseGlyph::active($styles), $hoveredBar, 'hovering the × brightens it');
+        $this->assertStringContainsString(TabCloseGlyph::hovered($styles), $hoveredBar, 'hovering the × brightens it');
         $this->assertStringNotContainsString(TabCloseGlyph::inactive($styles), $hoveredBar);
 
         $this->assertTrue($modal->hoverAt($box->startRow + 2, $box->col + 3), 'off the ×');

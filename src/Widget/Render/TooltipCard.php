@@ -86,17 +86,15 @@ final class TooltipCard
     public static function render(array $lines, Styles $styles): array
     {
         $inner = \max(0, self::width($lines) - PopupFrame::CHROME_COLS);
-        $accent = $styles->of(Role::TabAccent);
         $body = $styles->of(Role::PopupRow);
         $key = $styles->of(Role::Muted);
-        $rail = $accent->apply(Glyphs::FRAME_VERTICAL);
 
-        $rows = [$accent->apply(Glyphs::MODAL_TOP_LEFT.\str_repeat(Glyphs::FRAME_HORIZONTAL, $inner).Glyphs::MODAL_TOP_RIGHT)];
+        $rows = [PopupFrame::top($inner, $styles)];
         foreach ($lines as [$words, $keyText]) {
             $fill = \max(0, $inner - 2 - AnsiUtils::visibleWidth($words) - ('' === $keyText ? 0 : AnsiUtils::visibleWidth($keyText)));
-            $rows[] = $rail.$body->apply(' '.$words.\str_repeat(' ', $fill)).('' === $keyText ? '' : $key->apply($keyText)).$body->apply(' ').$rail;
+            $rows[] = PopupFrame::rail($body->apply(' '.$words.\str_repeat(' ', $fill)).('' === $keyText ? '' : $key->apply($keyText)).$body->apply(' '), $inner, $styles);
         }
-        $rows[] = $accent->apply(Glyphs::MODAL_BOTTOM_LEFT.\str_repeat(Glyphs::FRAME_HORIZONTAL, $inner).Glyphs::MODAL_BOTTOM_RIGHT);
+        $rows[] = PopupFrame::bottom($inner, $styles);
 
         return $rows;
     }
