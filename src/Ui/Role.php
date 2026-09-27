@@ -117,7 +117,11 @@ enum Role
     case Breakpoint;
     case DebugLineBg;
 
-    // Chrome shades: tab/breadcrumb accent, bar-chrome hover, extra greys.
+    // Chrome shades: the accent, bar-chrome hover, extra greys.
+    // TabAccent is the IDE's one accent despite its name: the frame of every
+    // floating surface (ModalFrame, PopupFrame, the tooltip card), the
+    // selection bar, a checked mark, a tab's lid. The name stays because it is
+    // plugin API — `<tab-accent>` in markup (docs/plugins.md).
     case TabAccent;
     case TabActiveBg;
     case BarHoverBg;
