@@ -48,13 +48,18 @@ final class GraphSelectionOverlay
 
         $accent = $styles->of(Role::TabAccent);
         $span = \max(1, $x1 - $x0 + 1); // the guard above proves this, max() proves it to the analyzer
-        $rule = $accent->apply(\str_repeat(Glyphs::FRAME_HORIZONTAL, $span));
+        // The rounded corners every other box in the IDE has, while the box
+        // is a box: a one-row or one-column node is framed by a bare rule.
+        $edge = static fn (string $left, string $right): string => $accent->apply(
+            $span < 2 || $y1 === $y0 ? \str_repeat(Glyphs::FRAME_HORIZONTAL, $span) : $left.\str_repeat(Glyphs::FRAME_HORIZONTAL, $span - 2).$right,
+        );
         $rail = $accent->apply(Glyphs::FRAME_VERTICAL);
         for ($row = $y0; $row <= $y1; ++$row) {
-            $lines[$row] =
-                $row === $y0 || $row === $y1
-                    ? self::splice($lines[$row], $x0, $span, $rule, $cols)
-                    : self::splice(self::splice($lines[$row], $x0, 1, $rail, $cols), $x1, 1, $rail, $cols);
+            $lines[$row] = match ($row) {
+                $y0 => self::splice($lines[$row], $x0, $span, $edge(Glyphs::MODAL_TOP_LEFT, Glyphs::MODAL_TOP_RIGHT), $cols),
+                $y1 => self::splice($lines[$row], $x0, $span, $edge(Glyphs::MODAL_BOTTOM_LEFT, Glyphs::MODAL_BOTTOM_RIGHT), $cols),
+                default => self::splice(self::splice($lines[$row], $x0, 1, $rail, $cols), $x1, 1, $rail, $cols),
+            };
         }
 
         return $lines;

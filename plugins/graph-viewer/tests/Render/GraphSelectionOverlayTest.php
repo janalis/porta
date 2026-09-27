@@ -41,7 +41,41 @@ final class GraphSelectionOverlayTest extends TestCase
         $mid = AnsiUtils::stripAnsiCodes($lines[5]);
         $this->assertSame(7, AnsiUtils::visibleWidth(\strstr($mid, Glyphs::FRAME_VERTICAL, before_needle: true)), 'the left rail sits on column 7');
         $this->assertSame('中中中 '.Glyphs::FRAME_VERTICAL.'中中 '.Glyphs::FRAME_VERTICAL.'中中中', $mid);
-        $this->assertSame('中中中 '.\str_repeat(Glyphs::FRAME_HORIZONTAL, times: 7).'中中中', AnsiUtils::stripAnsiCodes($lines[4]));
+        // Rounded, like every other box: `╭─────╮` over the node, `╰─────╯` under it.
+        $this->assertSame('中中中 '.Glyphs::MODAL_TOP_LEFT.\str_repeat(Glyphs::FRAME_HORIZONTAL, times: 5).Glyphs::MODAL_TOP_RIGHT.'中中中', AnsiUtils::stripAnsiCodes($lines[4]));
+        $this->assertSame('中中中 '.Glyphs::MODAL_BOTTOM_LEFT.\str_repeat(Glyphs::FRAME_HORIZONTAL, times: 5).Glyphs::MODAL_BOTTOM_RIGHT.'中中中', AnsiUtils::stripAnsiCodes($lines[6]));
+    }
+
+    /**
+     * A node one cell tall has no room for corners and rails: it is underlined
+     * by a bare rule, never a `╭╮` pair with nothing inside.
+     */
+    public function testAOneRowNodeIsFramedByABareRule(): void
+    {
+        $node = new GraphNode(0, 'A', 'A', 100.0, 100.0, 60.0, 1.0, null, null, false);
+        $layout = new GraphLayout(200.0, 200.0, [0 => $node], [], []);
+        $view = new ZoomPanModel(200, 200);
+        [$x0, $y0, $x1, $y1] = new GraphCellGrid(20, 10, $view, null)->nodeBox($node);
+        $this->assertSame($y0, $y1, 'the premise: a one-row box');
+
+        $lines = GraphSelectionOverlay::apply(\array_fill(0, count: 10, value: \str_repeat(' ', times: 20)), $layout, $view, 0, 20, 10, Styles::dark());
+
+        $this->assertSame(\str_repeat(Glyphs::FRAME_HORIZONTAL, $x1 - $x0 + 1), \trim(AnsiUtils::stripAnsiCodes($lines[$y0])));
+    }
+
+    /** A node one column wide has no room for a pair of corners either: a bare rule caps it. */
+    public function testAOneColumnNodeIsCappedByABareRule(): void
+    {
+        $node = new GraphNode(0, 'A', 'A', 100.0, 100.0, 1.0, 60.0, null, null, false);
+        $layout = new GraphLayout(200.0, 200.0, [0 => $node], [], []);
+        $view = new ZoomPanModel(200, 200);
+        [$x0, $y0, $x1, $y1] = new GraphCellGrid(20, 10, $view, null)->nodeBox($node);
+        $this->assertSame([$x0, true], [$x1, $y1 > $y0], 'the premise: a one-column box more than a row tall');
+
+        $lines = GraphSelectionOverlay::apply(\array_fill(0, count: 10, value: \str_repeat(' ', times: 20)), $layout, $view, 0, 20, 10, Styles::dark());
+
+        $this->assertSame(Glyphs::FRAME_HORIZONTAL, \trim(AnsiUtils::stripAnsiCodes($lines[$y0])));
+        $this->assertSame(Glyphs::FRAME_HORIZONTAL, \trim(AnsiUtils::stripAnsiCodes($lines[$y1])));
     }
 
     /**
