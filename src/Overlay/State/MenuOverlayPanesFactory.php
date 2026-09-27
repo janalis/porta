@@ -12,6 +12,7 @@ use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\DockTabsWidget;
 use Porta\Widget\FileTreeWidget;
+use Porta\Widget\FindBarWidget;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\TabBarWidget;
@@ -34,6 +35,7 @@ final readonly class MenuOverlayPanesFactory
         private CodeEditorWidget $editor,
         private EditorPanes $panes,
         private BreadcrumbsWidget $breadcrumbs,
+        private FindBarWidget $findBar,
         private DockTabsWidget $dockTabs,
         private ResultsPanelWidget $resultsPanel,
         private TerminalPanelWidget $terminalPanel,
@@ -73,6 +75,7 @@ final readonly class MenuOverlayPanesFactory
                 $this->tabBar,
                 $this->editor,
                 $this->breadcrumbs,
+                $this->findBar,
                 $this->dockTabs,
                 $this->resultsPanel,
                 $this->terminalPanel,

@@ -19,7 +19,7 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
 final readonly class MenuOverlayPanes
 {
     /**
-     * @param list<AbstractWidget&MenuOverlayHost>            $editor    tree, separator, tab bar, editor, breadcrumbs
+     * @param list<AbstractWidget&MenuOverlayHost>            $editor    tree, separator, tab bar, editor, breadcrumbs, find bar
      * @param \Closure(): list<AbstractWidget&MenuOverlayHost> $viewPanes the OPEN view's panes; empty when none is
      * @param list<AbstractWidget&MenuOverlayHost>            $chrome    the workspace's edge rules, under every view
      */

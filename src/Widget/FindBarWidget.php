@@ -30,6 +30,8 @@ use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\FieldBox;
 use Porta\Widget\Render\FieldSpec;
 use Porta\Widget\Render\FieldState;
+use Porta\Widget\Render\MenuOverlayHost;
+use Porta\Widget\Render\MenuOverlayHostTrait;
 use Porta\Widget\Support\InputHook;
 use Porta\Widget\Support\MatchJump;
 use Porta\Widget\Support\OptionTagState;
@@ -56,11 +58,12 @@ use Symfony\Component\Tui\Widget\KeybindingsTrait;
 #[AsChromeRoot]
 #[AsIdeService]
 #[AsWidget('find-bar')]
-final class FindBarWidget extends OverlayWidget implements FocusableInterface
+final class FindBarWidget extends OverlayWidget implements FocusableInterface, MenuOverlayHost
 {
     use FocusableTrait;
     use InputHook;
     use KeybindingsTrait;
+    use MenuOverlayHostTrait;
     use StylesDefault;
 
     private const int MAX_MATCHES = 5000;
@@ -447,7 +450,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
             $caret = $this->focused ? CaretVisibility::Shown : CaretVisibility::Hidden;
             $state = 0 === $index && $failing ? FieldState::Danger : FieldState::of($this->focused);
 
-            return [$this->styles->of(Role::Toolbar)->apply(FieldBox::compact($spec, $field, $state, $caret, $columns, $this->styles))];
+            return $this->withMenuOverlay([$this->styles->of(Role::Toolbar)->apply(FieldBox::compact($spec, $field, $state, $caret, $columns, $this->styles))], $columns);
         }
 
         $this->tagTop = \intdiv($fieldRows - $tagRows, num2: 2);
@@ -511,7 +514,10 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
             }
         }
 
-        return \array_map(fn (string $row): string => $this->styles->of(Role::Toolbar)->apply(AnsiText::padRight($row, $columns)), $rows);
+        // An app-menu dropdown hanging over the bar is drawn on top of it, as
+        // on every pane it crosses: the bar sits between the breadcrumbs and
+        // the editor, right where a dropdown from the menu bar falls.
+        return $this->withMenuOverlay(\array_map(fn (string $row): string => $this->styles->of(Role::Toolbar)->apply(AnsiText::padRight($row, $columns)), $rows), $columns);
     }
 
     // --- Search internals ---------------------------------------------------

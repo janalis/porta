@@ -88,6 +88,43 @@ final class IdeAppMenuTest extends TestCase
     }
 
     /**
+     * An open find bar is under an app-menu dropdown too, not in front of
+     * it. The bar sits between the breadcrumbs and the editor, exactly where
+     * a dropdown from the menu bar falls, and was the one pane there that
+     * did not take the dropdown's spans — so the menu's rows were cut by it.
+     */
+    public function testAppMenuDropdownCoversTheFindBar(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n// foo\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function (Tui $tui, VirtualTerminal $terminal): void {
+                    $tui->handleInput("\x06"); // ctrl+f
+                    $this->awaitPainted($tui, $terminal, '[0/0]');
+                    $bar = AnsiUtils::stripAnsiCodes($tui->getById('menu')->render(new RenderContext(120, 1))[0]);
+                    $edit = \mb_strpos($bar, needle: 'Edit');
+                    $this->assertIsInt($edit, 'the Edit menu is on the bar');
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;1M", $edit + 2));
+                },
+                300 => function (Tui $tui): void {
+                    $this->assertTrue($tui->getById('menu')->isOpen());
+                    // The compact (24-row) bar is one row, and Edit's first
+                    // item, Undo, lands on it.
+                    $row = AnsiUtils::stripAnsiCodes($tui->getById('find-bar')->render(new RenderContext(129, 1))[0]);
+                    $this->assertStringContainsString('Ctrl+Z', $row, 'the dropdown composites over the find bar');
+                    $this->assertStringNotContainsString('Find', $row, 'and hides the field label it covers');
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    /**
      * The open title and its dropdown are one outline: the box's top border
      * is left open under `┃File┃`, the title's rails running on into it.
      */
