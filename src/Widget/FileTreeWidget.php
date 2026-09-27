@@ -746,7 +746,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
         $scroll = $this->list->follow($rows - 1);
 
         $lines = [];
-        $lines[] = HeaderRenderer::title(' '.\basename($this->rootDir).'/', $width, $this->styles);
+        $lines[] = HeaderRenderer::title(\basename($this->rootDir).'/', $width, $this->styles);
         $this->rowTips = [];
 
         for ($row = 1; $row < $rows; ++$row) {

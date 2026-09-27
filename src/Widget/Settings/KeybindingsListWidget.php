@@ -291,13 +291,9 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
         $rows = \max(1, $context->getRows() > 0 ? $context->getRows() : 12);
         $this->lastRows = $rows;
 
-        $title =
-            ' '
-            .(
-                $this->filtering
-                    ? $this->translator->trans('Keybindings — %shown% of %count% · ⏎ to rebind', ['%shown%' => \count($this->shown), '%count%' => \count($this->rows)])
-                    : $this->translator->trans('Keybindings — %count% actions · ⏎ to rebind · Ctrl+F to filter · Del to reset', ['%count%' => \count($this->rows)])
-            );
+        $title = $this->filtering
+            ? $this->translator->trans('Keybindings — %shown% of %count% · ⏎ to rebind', ['%shown%' => \count($this->shown), '%count%' => \count($this->rows)])
+            : $this->translator->trans('Keybindings — %count% actions · ⏎ to rebind · Ctrl+F to filter · Del to reset', ['%count%' => \count($this->rows)]);
         $lines = [HeaderRenderer::title($title, $width, $this->styles)];
         if ($this->filtering) {
             $focused = $this->isFocused();

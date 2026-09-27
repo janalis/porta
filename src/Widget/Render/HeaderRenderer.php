@@ -11,8 +11,9 @@ use Porta\Ui\Theme\Styles;
 use Symfony\Component\Tui\Style\Style;
 
 /**
- * Renders the bold, full-width title bar shared by the overlay/panel widgets
- * (find, go-to-file, results, diff, terminal) and the editor's completion popup.
+ * Renders the bold, full-width title bar of the docked panels (the file tree,
+ * the settings form, the keybindings list, the text preview, the git lists and
+ * commit box).
  * Centralizes the styled header-bar idiom that was copy-pasted across those
  * widgets, scrolling the bar to keep an embedded input caret marker visible
  * when the header holds a text field (a markerless header just clips). An
@@ -21,10 +22,15 @@ use Symfony\Component\Tui\Style\Style;
  */
 final class HeaderRenderer
 {
-    /** The standard panel title bar — {@see Role::HeaderBar}, bold — that five panels styled by hand. */
+    /**
+     * The standard panel title bar — {@see Role::HeaderBar}, bold — with the
+     * one column of inset every panel's title sits at, added here rather than
+     * by each caller (or, worse, inside a translated string a translator can
+     * drop).
+     */
     public static function title(string $text, int $width, Styles $styles, string $suffix = ''): string
     {
-        return self::render($text, $width, $styles->of(Role::HeaderBar)->withBold(), $suffix);
+        return self::render(' '.$text, $width, $styles->of(Role::HeaderBar)->withBold(), $suffix);
     }
 
     public static function render(string $text, int $width, Style $style, string $suffix = ''): string

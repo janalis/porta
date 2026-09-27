@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget\Render;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\HeaderRenderer;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Style\Style;
@@ -20,6 +21,19 @@ final class HeaderRendererTest extends TestCase
         // Padded to the full width.
         $this->assertSame(10, AnsiUtils::visibleWidth($line));
         $this->assertSame('Title     ', AnsiUtils::stripAnsiCodes($line));
+    }
+
+    /**
+     * A panel title sits one column in, added by the renderer: a caller (or a
+     * translation) that padded its own would be two in, and one that forgot
+     * would sit against the pane's edge.
+     */
+    public function testATitleSitsOneColumnIn(): void
+    {
+        $line = HeaderRenderer::title('Files', 10, Styles::dark());
+
+        $this->assertSame(' Files    ', AnsiUtils::stripAnsiCodes($line));
+        $this->assertSame(' Files   Esc ', AnsiUtils::stripAnsiCodes(HeaderRenderer::title('Files', 13, Styles::dark(), suffix: 'Esc')));
     }
 
     public function testCustomBackground(): void

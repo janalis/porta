@@ -3,16 +3,16 @@
   <file source-language="en" target-language="es" datatype="plaintext" original="messages">
     <body>
       <trans-unit id="3">
-        <source> %count% changed file| %count% changed files</source>
-        <target> %count% archivo modificado| %count% archivos modificados</target>
+        <source>%count% changed file|%count% changed files</source>
+        <target>%count% archivo modificado|%count% archivos modificados</target>
       </trans-unit>
       <trans-unit id="8">
         <source>Files (%count%)</source>
         <target>Archivos (%count%)</target>
       </trans-unit>
       <trans-unit id="9">
-        <source> History (%count%)</source>
-        <target> Historial (%count%)</target>
+        <source>History (%count%)</source>
+        <target>Historial (%count%)</target>
       </trans-unit>
       <trans-unit id="10">
         <source> S split </source>
@@ -1863,8 +1863,8 @@
         <target>El stash dejó conflictos — resuélvelos en el editor</target>
       </trans-unit>
       <trans-unit id="435">
-        <source> History — %path% (%count%)</source>
-        <target> Historial — %path% (%count%)</target>
+        <source>History — %path% (%count%)</source>
+        <target>Historial — %path% (%count%)</target>
       </trans-unit>
       <trans-unit id="436">
         <source>Blame annotations shown</source>

@@ -758,7 +758,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
     {
         $count = $this->translator->trans('%count% setting|%count% settings', ['%count%' => \count($this->rows)]);
 
-        return ' '.('' === $this->title ? $count : $this->title.' — '.$count);
+        return '' === $this->title ? $count : $this->title.' — '.$count;
     }
 
     /**
