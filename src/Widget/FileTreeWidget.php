@@ -6,9 +6,11 @@ namespace Porta\Widget;
 
 use Porta\Container\AsIdeService;
 use Porta\Container\AsWidget;
+use Porta\Editor\ChangeMarkKind;
 use Porta\Editor\DiagnosticSeverity;
 use Porta\Event\TreeDropRequested;
 use Porta\Event\TreeFileActivated;
+use Porta\I18n\Translator;
 use Porta\Layout\ResizableSidebar;
 use Porta\Support\AnsiText;
 use Porta\Tree\FileDecorations;
@@ -20,6 +22,8 @@ use Porta\Ui\ListSelection;
 use Porta\Ui\MultiSelection;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
+use Porta\Ui\Tooltip;
+use Porta\Ui\TooltipProvider;
 use Porta\Widget\Render\HeaderRenderer;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
@@ -48,7 +52,7 @@ use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
  */
 #[AsIdeService]
 #[AsWidget('tree', flex: 0)]
-final class FileTreeWidget extends AbstractWidget implements FocusableInterface, HoverableList, MenuOverlayHost, ResizableSidebar, VerticallyExpandableInterface, WheelScrollable
+final class FileTreeWidget extends AbstractWidget implements FocusableInterface, HoverableList, MenuOverlayHost, ResizableSidebar, TooltipProvider, VerticallyExpandableInterface, WheelScrollable
 {
     use ArrowScrollTrait;
     use FillsPaneTrait;
@@ -118,6 +122,18 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
     private array $fileMarks = [];
 
     /**
+     * What each drawn row has to say that it could not show — a name cut
+     * short, marks that are glyphs — from the render that made the memo, so
+     * the two always agree. Keyed by widget-relative row.
+     *
+     * @var array<int, string>
+     */
+    private array $rowTips = [];
+
+    /** The width the last render drew its rows at — a tooltip's span. */
+    private int $drawnWidth = 30;
+
+    /**
      * The last rendered lines and their (revision, width, rows) key. A private
      * memo rather than the widget cache because the vendor's layout engine
      * intrinsic-measures every flex:0 child per frame with render() +
@@ -147,6 +163,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
         int $width = 30,
         ?Styles $styles = null,
         private readonly ?FileDecorations $fileDecorations = null,
+        private readonly Translator $translator = new Translator('en'),
         private readonly ?EventDispatcherInterface $events = null,
     ) {
         $this->width = $width;
@@ -715,6 +732,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
         $width = $this->panelColumns($context);
         $rows = \max(1, $context->getRows() > 0 ? $context->getRows() : 24);
         $this->lastRows = $rows;
+        $this->drawnWidth = $width;
 
         // Both per-frame calls (the intrinsic measure and the real pass) clamp
         // to the same effective width, so one memo entry serves them both; a
@@ -729,6 +747,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
 
         $lines = [];
         $lines[] = HeaderRenderer::title(' '.\basename($this->rootDir).'/', $width, $this->styles);
+        $this->rowTips = [];
 
         for ($row = 1; $row < $rows; ++$row) {
             $index = $scroll + $row - 1;
@@ -753,7 +772,12 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
             // not, and a row marked without it are three different shapes.
             $bar = SelectionBar::of($index === $this->list->selected(), $this->isFocused(), $this->selection->has($node->path));
             $text = $bar->value.AnsiText::blank($node->depth).$icon.$node->name.($node->isDir ? '/' : '');
-            $text = AnsiText::truncate($text, \max(1, $width - AnsiUtils::visibleWidth($marks)), pad: true).$marks;
+            $room = \max(1, $width - AnsiUtils::visibleWidth($marks));
+            $tip = $this->tipFor($node, AnsiUtils::visibleWidth($text) > $room);
+            if (null !== $tip) {
+                $this->rowTips[$row] = $tip;
+            }
+            $text = AnsiText::truncate($text, $room, pad: true).$marks;
 
             // Subtle hover background beneath the pointer keeps the dir/file foreground.
             $lines[] = match (true) {
@@ -778,6 +802,45 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
         $this->memoKey = $key;
 
         return $this->memoLines = $lines;
+    }
+
+    /**
+     * A row whose name was cut, or whose marks are showing, says itself in
+     * full: the path from the project root, and each mark in words.
+     */
+    #[\Override]
+    public function tooltipAt(int $row, int $col): ?Tooltip
+    {
+        $text = $this->rowTips[$row] ?? null;
+
+        return null === $text ? null : new Tooltip('tree:'.($this->nodeAtRow($row)->path ?? $row), $text, $row, 0, $this->drawnWidth);
+    }
+
+    /** The tooltip of a row: null when its name shows whole and it carries no mark. */
+    // @mago-expect lint:no-boolean-flag-parameter -- whether the row cut the name IS the question, answered by the render that drew it.
+    private function tipFor(FileTreeNode $node, bool $cut): ?string
+    {
+        $mark = $node->isDir ? null : $this->fileMarks[$this->bufferPath($node->path)] ?? $this->fileMarks[$node->path] ?? null;
+        if (!$cut && null === $mark) {
+            return null;
+        }
+        $lines = [\ltrim(\substr($node->path, \strlen($this->rootDir)), characters: '/').($node->isDir ? '/' : '')];
+        if (null !== ($mark['status'] ?? null)) {
+            $lines[] = $this->translator->trans('Version control: %change%', ['%change%' => match ($mark['status']) {
+                ChangeMarkKind::Added => $this->translator->trans('Added'),
+                ChangeMarkKind::Modified => $this->translator->trans('Modified'),
+                ChangeMarkKind::Deleted => $this->translator->trans('Deleted'),
+            }]);
+        }
+        if (null !== ($mark['severity'] ?? null)) {
+            // Only an error or a warning is ever worth a row's mark.
+            $lines[] = DiagnosticSeverity::Error === $mark['severity'] ? $this->translator->trans('Has errors') : $this->translator->trans('Has warnings');
+        }
+        if (null !== $mark && $mark['dirty']) {
+            $lines[] = $this->translator->trans('Unsaved changes');
+        }
+
+        return \implode("\n", $lines);
     }
 
     /**

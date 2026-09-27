@@ -164,6 +164,44 @@ final class DockTabsWidgetTest extends TestCase
         $bar->moveTab(DockTab::Terminal, 0, 0);
     }
 
+    /** A stopped session's ○, a status cut to fit, and the grab each say themselves. */
+    public function testTheStripsCellsExplainThemselves(): void
+    {
+        $bar = self::strip([
+            ['tab' => DockTab::Terminal, 'label' => 'bash ○', 'active' => false, 'key' => 's1', 'status' => ''],
+            ['tab' => DockTab::Results, 'label' => 'Problems', 'active' => true, 'key' => '7', 'status' => 'F8 step over · F7 step into · Shift+F8 step out'],
+        ]);
+        $bar->render(new RenderContext(40, 1));
+        $layout = Probe::get($bar, 'lastTabLayout');
+
+        $stopped = $bar->tooltipAt(0, $layout[0]['start']);
+        $this->assertSame(['dock:stopped:s1', 'The process has exited'], [$stopped?->key, $stopped?->text]);
+        $this->assertNull($bar->tooltipAt(0, $layout[1]['start']), 'a running tool says nothing more');
+        $this->assertSame('F8 step over · F7 step into · Shift+F8 step out', $bar->tooltipAt(0, 39)?->text, 'the status, whole where it was cut');
+
+        $bar->render(new RenderContext(120, 1));
+        $this->assertSame('Drag to resize the panel', $bar->tooltipAt(0, 60)?->text, 'a status that fits leaves the grab');
+    }
+
+    public function testAFolderStripsStatusIsOnItsLabelRow(): void
+    {
+        $bar = self::strip([['tab' => DockTab::Results, 'label' => 'Problems', 'active' => true, 'key' => '7', 'status' => \str_repeat('x', times: 60)]]);
+        $bar->setStripRows(3);
+        $bar->render(new RenderContext(40, 3));
+
+        $this->assertSame(\str_repeat('x', times: 60), $bar->tooltipAt(1, 39)?->text);
+        $this->assertSame('Drag to resize the panel', $bar->tooltipAt(0, 39)?->text, 'the top row is the grab');
+        $this->assertNull($bar->tooltipAt(2, 39), 'the baseline');
+    }
+
+    public function testNoTabsNoTooltips(): void
+    {
+        $bar = self::strip([]);
+        $bar->render(new RenderContext(40, 1));
+
+        $this->assertNull($bar->tooltipAt(0, 10));
+    }
+
     public function testBeforeRenderRepaintsOnlyWhenTheTabsChange(): void
     {
         $tabs = [['tab' => DockTab::Results, 'label' => 'Problems', 'active' => true, 'key' => '', 'status' => '']];

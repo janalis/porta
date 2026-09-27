@@ -43,6 +43,8 @@ final readonly class IdeConfig
         'searchIncludeVendor' => false,
         'cursorShape' => 'bar',
         'tabBarPosition' => 'top',
+        'tooltips' => true,
+        'tooltipDelay' => 500,
     ];
 
     /**

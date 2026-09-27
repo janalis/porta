@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Overlay\State;
 
 use PHPUnit\Framework\TestCase;
+use Porta\I18n\Translator;
 use Porta\Overlay\Region\ModalBox;
 use Porta\Overlay\State\Toast;
 use Porta\Overlay\State\ToastCenter;
@@ -140,6 +141,23 @@ final class ToastCenterTest extends TestCase
         $this->assertTrue(Probe::get($this->tui, 'renderRequested'), 'the × hover changed — a frame is needed to paint the tint');
         $this->assertTrue($center->hoverAt(2, 65), 'over the body clears the × tint');
         $this->assertNull($center->closeHoveredId());
+    }
+
+    public function testCoversAndTheCloseTooltip(): void
+    {
+        $center = $this->center();
+        $center->push(Markup::literal('a'), ToastSeverity::Info);
+        $id = $center->toasts()[0]->id;
+        $center->setBoxes([$this->box($id), $this->box($id + 1, top: 5)]);
+
+        $this->assertTrue($center->covers(2, 65), 'a card body');
+        $this->assertTrue($center->covers(6, 65), 'the second card');
+        $this->assertFalse($center->covers(10, 10));
+
+        $close = $center->tooltipAt(1, 77, new Translator('en'));
+        $this->assertSame(['toast:'.$id, 'Dismiss', 1, 77, 78], [$close?->key, $close?->text, $close?->row, $close?->colStart, $close?->colEnd]);
+        $this->assertSame('toast:'.($id + 1), $center->tooltipAt(5, 77, new Translator('en'))?->key, 'each card its own ×');
+        $this->assertNull($center->tooltipAt(2, 65, new Translator('en')), "a card's words need no tooltip");
     }
 
     public function testDismissAllCancelsEveryTimer(): void

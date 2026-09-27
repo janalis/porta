@@ -32,6 +32,7 @@ use Porta\Layout\WorkspaceLayout;
 use Porta\Lsp\LspBootstrapper;
 use Porta\Lsp\LspSessionPool;
 use Porta\Onboarding\OnboardingState;
+use Porta\Overlay\State\TooltipCenter;
 use Porta\Plugin\Lifecycle\PluginLifecycle;
 use Porta\Run\RunController;
 use Porta\Search\SearchUiWiring;
@@ -518,6 +519,7 @@ final class Ide
             $this->debugState->save();
             $this->bookmarkState->save();
             $this->notifier->dismissAll(); // cancel pending toast timers — nothing may outlive the loop
+            $this->service(TooltipCenter::class)->dismiss(); // and a tooltip's dwell
             $this->lsp->stop();
             $this->run->stop();
             $this->debug->stop();

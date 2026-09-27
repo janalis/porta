@@ -18,6 +18,7 @@ use Porta\Ui\Density;
 use Porta\Ui\Role;
 use Porta\Ui\TextField;
 use Porta\Ui\Theme\Styles;
+use Porta\Ui\Tooltip;
 use Porta\Widget\Render\FieldBox;
 use Porta\Widget\Render\FieldSpec;
 use Porta\Widget\Render\FieldState;
@@ -1125,6 +1126,25 @@ final class FindInFilesModal
             $side && FindModalField::Mask === $field => $this->openScopeMenu(),
             default => $this->setActiveField($field),
         };
+    }
+
+    /** An option tag under the pointer says what it does, and its key ({@see FindModalTooltip}); screen coordinates, as hover's. */
+    public function tooltipAt(int $row, int $col): ?Tooltip
+    {
+        $box = $this->open && null !== $this->box && self::onOptions($this->box, $row) ? $this->box : null;
+
+        return null === $box
+            ? null
+            : FindModalTooltip::of(
+                $this->optionZones,
+                $box->innerCol($col),
+                $box->optionsRow,
+                self::fieldHeight($box),
+                $box->col + 2,
+                TokenScope::from($this->options['tokens']),
+                self::KEYS,
+                $this->translator,
+            );
     }
 
     /**

@@ -11,6 +11,7 @@ use Porta\Container\AsIdeService;
 use Porta\I18n\Translator;
 use Porta\Overlay\Presenter\WelcomeModalController;
 use Porta\Overlay\State\OverlayHost;
+use Porta\Overlay\State\TooltipCenter;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ContextMenu;
 use Porta\Widget\MenuBarWidget;
@@ -40,6 +41,7 @@ final readonly class InputDispatcher
         private TreeDragRouter $treeDrag,
         private Notifier $notifier,
         private Translator $translator,
+        private TooltipCenter $tooltips,
     ) {}
 
     public function dispatch(InputEvent $event): void
@@ -48,10 +50,17 @@ final readonly class InputDispatcher
 
         if (null !== ($mouse = MouseEvent::parse($data))) {
             $event->stopPropagation();
+            // A press, a release or a wheel is the user acting, not reading:
+            // the card goes. A bare move is the hover path's to judge.
+            if (!$mouse->isMove()) {
+                $this->tooltips->dismiss();
+            }
             $this->mouseRouter->route($mouse);
 
             return;
         }
+
+        $this->tooltips->dismiss();
 
         // Escape abandons a file-tree drag in flight. Deliberately NOT swallowed:
         // the drag is a mouse gesture with the button still held, and Escape's

@@ -282,6 +282,27 @@ final class TabBarWidgetTest extends TestCase
         $this->assertSame(1, $bar->tabIndexAt(0, 17), 'the dirty dot is still tab-1 body');
     }
 
+    /** A tab says its file in full and its marks in words; its × says what it does; nothing past the tabs. */
+    public function testTabsAndTheirCloseGlyphsExplainThemselves(): void
+    {
+        $bar = new TabBarWidget();
+        $bar->setProvider(static fn (): array => [
+            ['name' => 'a.php', 'dirty' => false, 'active' => true, 'tooltip' => 'src/a.php'],
+            ['name' => 'b.php', 'dirty' => true, 'active' => false, 'tooltip' => "lib/b.php\nUnsaved changes"],
+            ['name' => 'c.php', 'dirty' => false, 'active' => false],
+        ]);
+        $bar->beforeRender();
+        $bar->render(new RenderContext(60, 1));
+
+        $a = $bar->tooltipAt(0, 2);
+        $this->assertSame(['tab:0', 'src/a.php', 0, 0, 1], [$a?->key, $a?->text, $a?->row, $a?->colStart, $a?->rows]);
+        $this->assertSame("lib/b.php\nUnsaved changes", $bar->tooltipAt(0, 17)?->text, 'over the dirty dot too');
+        $close = $bar->tooltipAt(0, 7);
+        $this->assertSame(['tab:close:0', 'Close Tab', 7, 9], [$close?->key, $close?->text, $close?->colStart, $close?->colEnd]);
+        $this->assertNull($bar->tooltipAt(0, 22), 'a tab with no words');
+        $this->assertNull($bar->tooltipAt(0, 55), 'past every tab');
+    }
+
     public function testMenuOverlayCompositesOverTabsKeepingWidth(): void
     {
         $bar = new TabBarWidget();

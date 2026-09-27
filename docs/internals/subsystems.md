@@ -280,16 +280,28 @@ lands one class in each:
 
 - **`State/`** — the mutable per-surface model (open, selection, query). Never
   returns `string[]`.
-- **`Presenter/`** — the eagerly-resolved per-frame span producer. All four
+- **`Presenter/`** — the eagerly-resolved per-frame span producer. All five
   share `OverlayDelivery`: pane-union bounds with the pre-first-frame retry, the
-  per-pane slice loop for both span slots, and the all-panes clear sweep.
+  per-pane slice loop for the span slots, and the all-panes clear sweep.
   Delivery targets current panes and clearing targets all of them, because a
   surface may close across a view swap.
 - **`Region/`** — pure geometry and hit-test value objects.
 
 Each presenter keeps its own gate, state source and clear-once guard. **That
-guard is the invariant that lets four writers share the span slots without
+guard is the invariant that lets five writers share the span slots without
 clobbering each other — do not centralise it.**
+
+The slots composite bottom to top: modal (with the backdrop dim), toast,
+**tooltip**, menu. The tooltip is the fifth surface: `State/TooltipCenter`
+(the dwell, keyed on the element and not the pointer), `Presenter/TooltipPresenter`
+(no shadow — it sits flush against what it explains) and
+`Region/TooltipPlacement` (below, above, right, left, first with room).
+`Input/TooltipRouter` asks whatever owns the cell under the pointer, in
+`HoverRouter`'s order, through `Ui/TooltipProvider`; an open view's region is
+walked for providers, so a plugin pane answers without registering. Any
+non-move input dismisses the card in `InputDispatcher`, and the frame after a
+resize asks again at the pointer's last cell, since a resting pointer sends
+no move.
 
 **The stateless render tier stays in `Widget/Render/`** (`ModalFrame`,
 `PopupFrame`, `ModalShadow`, `OverlayCompositor`, the menu overlay helpers,

@@ -107,7 +107,7 @@ final class SettingsFormBehaviourTest extends TestCase
 
                     $grid = $this->screenGrid($tui, $terminal);
                     $this->assertNotNull($this->rowOf($grid, 'Language'), 'the page opens showing its early rows');
-                    $this->assertNull($this->rowOf($grid, 'Diagnostic messages'), 'and its last row is below the fold');
+                    $this->assertNull($this->rowOf($grid, 'Tooltip delay (ms)'), 'and its last row is below the fold');
 
                     // Walk to the end with real input, as a user would.
                     for ($i = 0; $i < self::MAX_FORM_ROWS; ++$i) {
@@ -116,9 +116,9 @@ final class SettingsFormBehaviourTest extends TestCase
                     $this->frame($tui);
 
                     $grid = $this->screenGrid($tui, $terminal);
-                    $this->assertNotNull($this->rowOf($grid, 'Diagnostic messages'), 'the last row scrolled into view');
+                    $this->assertNotNull($this->rowOf($grid, 'Tooltip delay (ms)'), 'the last row scrolled into view');
                     $this->assertStringContainsString(
-                        'Diagnostic messages',
+                        'Tooltip delay (ms)',
                         $this->selectedSettingRow($form),
                         'and the selection is ON it, not off the bottom of the pane',
                     );

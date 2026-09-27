@@ -34,7 +34,11 @@ final readonly class ColumnModeSegment implements StatusSegment
     {
         return (
             $this->editor->columnMode()
-                ? [new StatusCell($this->translator->trans('COLUMN'), StatusTone::Accent)]
+                ? [new StatusCell(
+                    $this->translator->trans('COLUMN'),
+                    StatusTone::Accent,
+                    tooltip: $this->translator->trans('Column selection mode: Shift+arrows select a rectangle — Alt+C turns it off'),
+                )]
                 : []
         );
     }

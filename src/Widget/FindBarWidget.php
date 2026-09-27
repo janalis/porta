@@ -27,11 +27,14 @@ use Porta\Ui\Role;
 use Porta\Ui\ScreenDensity;
 use Porta\Ui\TextField;
 use Porta\Ui\Theme\Styles;
+use Porta\Ui\Tooltip;
+use Porta\Ui\TooltipProvider;
 use Porta\Widget\Render\FieldBox;
 use Porta\Widget\Render\FieldSpec;
 use Porta\Widget\Render\FieldState;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
+use Porta\Widget\Support\FindBarTooltip;
 use Porta\Widget\Support\InputHook;
 use Porta\Widget\Support\MatchJump;
 use Porta\Widget\Support\OptionTagState;
@@ -58,7 +61,7 @@ use Symfony\Component\Tui\Widget\KeybindingsTrait;
 #[AsChromeRoot]
 #[AsIdeService]
 #[AsWidget('find-bar')]
-final class FindBarWidget extends OverlayWidget implements FocusableInterface, MenuOverlayHost
+final class FindBarWidget extends OverlayWidget implements FocusableInterface, MenuOverlayHost, TooltipProvider
 {
     use FocusableTrait;
     use InputHook;
@@ -357,6 +360,13 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface, M
     public function clearHover(): bool
     {
         return $this->hoverAt(-1, -1);
+    }
+
+    /** A toggle or a button says what it does, and its key ({@see FindBarTooltip}). */
+    #[\Override]
+    public function tooltipAt(int $row, int $col): ?Tooltip
+    {
+        return FindBarTooltip::of($this->zoneAt($row, $col), $this->optionZones, $this->tagTop, $this->tagRows, $this->getKeybindings(), $this->translator);
     }
 
     /**

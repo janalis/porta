@@ -438,6 +438,7 @@ final class DebugControllerTest extends TestCase
         $this->assertStringContainsString('▶', \implode("\n", $this->editor->render(new RenderContext(80, 8))), 'the stopped-line decoration was applied');
         $this->assertTrue($controller->isPaused());
         $this->assertSame('⏸ prog.php:3', $controller->statusCells()[0]->text);
+        $this->assertSame('The debugger is paused at this line', $controller->statusCells()[0]->tooltip, 'the ⏸ in words');
         $this->assertStringContainsString('paused at prog.php:3', $this->panel->statusText(), 'the panel gets its own location string, independent of the status cell');
         $this->assertSame(2, $this->statusEvents, 'start and pause each dispatched DebugStatusChanged');
 
@@ -480,6 +481,7 @@ final class DebugControllerTest extends TestCase
         $controller->continueRun();
         $this->assertContains('continue', $this->client->commands());
         $this->assertSame('▶ debug', $controller->statusCells()[0]->text, 'running segment');
+        $this->assertSame('The debugger is running', $controller->statusCells()[0]->tooltip);
 
         $controller->stop();
         $this->assertFalse($controller->isActive());

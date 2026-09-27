@@ -283,6 +283,22 @@ final class BreadcrumbsWidgetTest extends TestCase
         $this->assertSame(self::trail()[1]['line'], $bar->lineAtColumn(5), 'Widget, where it is drawn now');
     }
 
+    /** The `…` names what it hides; a crumb drawn whole needs no card. */
+    public function testTheLeadSaysWhichAncestorsItHides(): void
+    {
+        $bar = new BreadcrumbsWidget();
+        $bar->setProvider(self::trail(...)); // App › Widget › render
+        $bar->render(new RenderContext(18, 1)); // ' … › render'
+
+        $lead = $bar->tooltipAt(0, 1);
+        $this->assertSame(['crumbs:lead', 'App › Widget', 1, 2], [$lead?->key, $lead?->text, $lead?->colStart, $lead?->colEnd]);
+        $this->assertNull($bar->tooltipAt(0, 6), 'render is drawn whole');
+        $this->assertNull($bar->tooltipAt(1, 1), 'one row');
+
+        $bar->render(new RenderContext(40, 1));
+        $this->assertNull($bar->tooltipAt(0, 1), 'nothing hidden, nothing to say');
+    }
+
     /** Wider by one column, the root fits and the lead goes: never `… ›` in front of nothing hidden. */
     public function testTheLeadAppearsOnlyWhenAnAncestorIsHidden(): void
     {
@@ -293,6 +309,15 @@ final class BreadcrumbsWidgetTest extends TestCase
         $this->assertSame(' … › Widget › render ', AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(21, 1))[0]));
         // Widget alone would fit at 18; with the lead App's absence needs, it does not.
         $this->assertSame(' … › render       ', AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(18, 1))[0]));
+    }
+
+    public function testAnElidedCurrentScopeSaysItsWholeName(): void
+    {
+        $bar = new BreadcrumbsWidget();
+        $bar->setProvider(static fn (): array => [['label' => 'handleIncomingRequest', 'line' => 9]]);
+        $bar->render(new RenderContext(12, 1));
+
+        $this->assertSame('handleIncomingRequest', $bar->tooltipAt(0, 3)?->text);
     }
 
     /** Alone and still too wide, the current scope keeps both of its ends. */

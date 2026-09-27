@@ -74,6 +74,33 @@ final class MenuOverlayHostTraitTest extends TestCase
         $this->assertSame('MMTTTTDDDD', $lines[0], 'toast over modal, menu over toast');
     }
 
+    /** The tooltip card sits above the toasts and below an open menu. */
+    public function testTheTooltipLayerCompositesBetweenToastAndMenu(): void
+    {
+        $host = $this->host();
+        $host->setToastOverlay([['row' => 0, 'col' => 0, 'width' => 8, 'segment' => 'TTTTTTTT']]);
+        $host->setTooltipOverlay([['row' => 0, 'col' => 2, 'width' => 6, 'segment' => 'PPPPPP']]);
+        $host->setMenuOverlay([['row' => 0, 'col' => 6, 'width' => 4, 'segment' => 'DDDD']]);
+
+        $lines = \array_map(AnsiUtils::stripAnsiCodes(...), $host->render(new RenderContext(10, 2)));
+
+        $this->assertSame('TTPPPPDDDD', $lines[0], 'tooltip over toast, menu over tooltip');
+    }
+
+    public function testSetTooltipOverlayRepaintsOnlyOnAChange(): void
+    {
+        $host = $this->host();
+        $spans = [['row' => 0, 'col' => 0, 'width' => 2, 'segment' => 'PP']];
+        $host->setTooltipOverlay($spans);
+        $rev = $host->getRenderRevision();
+
+        $host->setTooltipOverlay($spans);
+        $this->assertSame($rev, $host->getRenderRevision(), 'the same spans: no repaint, or a card up repaints every frame');
+
+        $host->setTooltipOverlay([]);
+        $this->assertGreaterThan($rev, $host->getRenderRevision());
+    }
+
     /** A span sliced against a stale (wider) rect clips to the live width instead of blowing the row. */
     public function testAnOversizedSpanClipsToTheLiveWidth(): void
     {

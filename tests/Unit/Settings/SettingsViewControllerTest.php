@@ -35,6 +35,7 @@ use Porta\Lsp\RefactoringUndo;
 use Porta\Lsp\WorkspaceEditor;
 use Porta\Overlay\State\MenuOverlayController;
 use Porta\Overlay\State\MenuOverlayPanes;
+use Porta\Overlay\State\TooltipCenter;
 use Porta\Plugin\Lifecycle\PluginInstaller;
 use Porta\Plugin\Lifecycle\ToolInstaller;
 use Porta\Plugin\Runtime\PluginHost;
@@ -225,6 +226,7 @@ final class SettingsViewControllerTest extends TestCase
             $applier,
             new BreadcrumbsWidget(),
             new FileIndex($this->project->dir),
+            new TooltipCenter(new FakeScheduler(), $this->tui),
         );
         $bootKeys = new Keybindings([]);
         $keysHost = new PluginHost(IdeConfig::load($this->project->dir), new EventDispatcher(), $this->project->dir);

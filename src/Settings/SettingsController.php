@@ -11,6 +11,7 @@ use Porta\Editor\DiagnosticMessageMode;
 use Porta\Editor\EditorDisplayOptions;
 use Porta\Editor\LineNumberMode;
 use Porta\I18n\Translator;
+use Porta\Overlay\State\TooltipCenter;
 use Porta\Search\FileIndex;
 use Porta\Ui\Theme\Theme;
 use Porta\Widget\BreadcrumbsWidget;
@@ -31,7 +32,7 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  * rows while it owned them, and are live there too: each engine resolves its
  * binary per spawn.)
  *
- * @phpstan-type Descriptor array{label: string, kind: SettingsRowKind, group: 'general'|'interface', fieldset: string, restart: bool, apply: (\Closure(int|bool|string): void)|null, options?: list<string>, optionLabels?: array<string, string>, min?: int, max?: int}
+ * @phpstan-type Descriptor array{label: string, kind: SettingsRowKind, group: 'general'|'interface', fieldset: string, restart: bool, apply: (\Closure(int|bool|string): void)|null, options?: list<string>, optionLabels?: array<string, string>, min?: int, max?: int, step?: int}
  */
 #[AsIdeService]
 final class SettingsController
@@ -54,6 +55,7 @@ final class SettingsController
         LiveSettingsApplier $applier,
         BreadcrumbsWidget $breadcrumbs,
         FileIndex $files,
+        TooltipCenter $tooltips,
     ) {
         $this->descriptors = [
             // --- Interface (the "Interface" settings page) ---
@@ -152,6 +154,25 @@ final class SettingsController
                 'apply' => static fn (int|bool|string $v): bool => $editor->setDiagnosticMessages(DiagnosticMessageMode::tryFrom((string) $v) ?? DiagnosticMessageMode::Inline),
                 'options' => ['none', 'inline', 'menu'],
             ],
+            'tooltips' => [
+                'label' => 'Show tooltips',
+                'kind' => SettingsRowKind::Bool,
+                'group' => 'interface',
+                'fieldset' => 'Tooltips',
+                'restart' => false,
+                'apply' => static fn (int|bool|string $v) => $tooltips->setEnabled((bool) $v),
+            ],
+            'tooltipDelay' => [
+                'label' => 'Tooltip delay (ms)',
+                'kind' => SettingsRowKind::Int,
+                'group' => 'interface',
+                'fieldset' => 'Tooltips',
+                'restart' => false,
+                'apply' => static fn (int|bool|string $v) => $tooltips->setDelayMs((int) $v),
+                'min' => 0,
+                'max' => 2000,
+                'step' => 100,
+            ],
             // --- General (editor behavior) ---
             'autoPairs' => [
                 'label' => 'Auto-pairs',
@@ -231,7 +252,10 @@ final class SettingsController
                 value: self::coerce($this->settings[$key] ?? '', $descriptor['kind']),
                 restart: $descriptor['restart'],
                 options: $descriptor['options'] ?? null,
+                min: $descriptor['min'] ?? null,
+                max: $descriptor['max'] ?? null,
                 optionLabels: $descriptor['optionLabels'] ?? null,
+                step: $descriptor['step'] ?? null,
                 // Through the SAME call as the value above, so the two operands
                 // of isModified() cannot be produced differently. DEFAULT_SETTINGS
                 // holds well-typed values today, so this is symmetry rather than
@@ -249,9 +273,13 @@ final class SettingsController
     }
 
     /** A stored value as its row's kind renders it. */
-    private static function coerce(bool|int|string $raw, SettingsRowKind $kind): bool|string
+    private static function coerce(bool|int|string $raw, SettingsRowKind $kind): bool|int|string
     {
-        return SettingsRowKind::Bool === $kind ? (bool) $raw : (string) $raw;
+        return match ($kind) {
+            SettingsRowKind::Bool => (bool) $raw,
+            SettingsRowKind::Int => (int) $raw,
+            default => (string) $raw,
+        };
     }
 
     /**

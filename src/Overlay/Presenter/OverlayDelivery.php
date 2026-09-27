@@ -99,6 +99,28 @@ final class OverlayDelivery
     }
 
     /**
+     * Push the boxes through the tooltip span slot — above the toasts, below
+     * the menu dropdowns, casting no shadow: a card flush against its element
+     * would lay the shadow over the very thing it explains.
+     *
+     * @param list<array{rows: list<string>, top: int, col: int, width: int}> $boxes
+     */
+    public function deliverTooltip(array $boxes): void
+    {
+        foreach ($this->panes->current() as $pane) {
+            $pane->setTooltipOverlay($this->spans($boxes, $this->renderer->getWidgetRect($pane), shadow: false));
+        }
+    }
+
+    /** Clear the tooltip slot on every pane set. */
+    public function clearTooltip(): void
+    {
+        foreach ($this->panes->all() as $pane) {
+            $pane->setTooltipOverlay([]);
+        }
+    }
+
+    /**
      * One pane's slice of every box: the box rows clipped to the pane's rect
      * plus the shadow bands, empty while the pane has no rect yet.
      *
@@ -106,7 +128,8 @@ final class OverlayDelivery
      *
      * @return list<array{row: int, col: int, width: int, segment: string}>
      */
-    private function spans(array $boxes, ?WidgetRect $rect): array
+    // @mago-expect lint:no-boolean-flag-parameter -- whether a surface casts a shadow is the one thing the slots differ in here.
+    private function spans(array $boxes, ?WidgetRect $rect, bool $shadow = true): array
     {
         if (null === $rect) {
             return [];
@@ -116,7 +139,7 @@ final class OverlayDelivery
             $spans = [
                 ...$spans,
                 ...SpanSlicer::localSpans($box['rows'], $rect, $box['top'], $box['col'], $box['width']),
-                ...ModalShadow::spans($rect, $box['top'], $box['col'], $box['width'], \count($box['rows']), $this->styles),
+                ...($shadow ? ModalShadow::spans($rect, $box['top'], $box['col'], $box['width'], \count($box['rows']), $this->styles) : []),
             ];
         }
 

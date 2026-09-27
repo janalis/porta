@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Help;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
 use Porta\I18n\Translator;
+use Porta\Support\ProjectPaths;
 use Porta\Workbench\Dock\TabListProvider;
 
 /**
@@ -30,7 +31,7 @@ final class TabNamingDocTest extends TestCase
             $buffers->open($path, '<?php');
         }
 
-        return \array_column(new TabListProvider($buffers, new Translator('en'))->tabs(), 'name');
+        return \array_column(new TabListProvider($buffers, new Translator('en'), new ProjectPaths('/'))->tabs(), 'name');
     }
 
     public function testTheDocumentedCollisionExampleIsWhatTheCodeProduces(): void

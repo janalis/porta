@@ -9,6 +9,8 @@ use Porta\Support\AnsiText;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
+use Porta\Ui\Tooltip;
+use Porta\Ui\TooltipProvider;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Porta\Widget\Support\ColumnHover;
@@ -25,7 +27,7 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
  * caret is not inside any scope, so a structureless file keeps its full editor.
  */
 #[AsWidget('breadcrumbs')]
-final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost
+final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost, TooltipProvider
 {
     use ColumnHover;
     use MenuOverlayHostTrait;
@@ -72,6 +74,21 @@ final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost
     /** @var list<array{start: int, width: int, line: int}> segment layout from the last render, for hit-testing */
     private array $lastLayout = [];
 
+    /** @var list<array{start: int, width: int, key: string, text: string}> what the last render hid or cut, where it would have been */
+    private array $tips = [];
+
+    /**
+     * The `…` says which ancestors it stands for; a current scope cut in the
+     * middle says its whole name. A crumb drawn whole needs no card.
+     */
+    #[\Override]
+    public function tooltipAt(int $row, int $col): ?Tooltip
+    {
+        $tip = 0 === $row ? \array_find($this->tips, static fn (array $tip): bool => $col >= $tip['start'] && $col < ($tip['start'] + $tip['width'])) : null;
+
+        return null === $tip ? null : new Tooltip('crumbs:'.$tip['key'], $tip['text'], 0, $tip['start'], $tip['start'] + $tip['width']);
+    }
+
     #[\Override]
     public function beforeRender(): void
     {
@@ -90,6 +107,7 @@ final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost
     public function render(RenderContext $context): array
     {
         $this->lastLayout = [];
+        $this->tips = [];
         if (!$this->visible) {
             return []; // the Interface setting hides the bar entirely
         }
@@ -106,6 +124,12 @@ final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost
             // The ancestors that did not fit, said once: the trail is cut at
             // its root end, never at the scope the caret is in.
             $content .= $this->styles->of(Role::Muted)->apply(Glyphs::ELLIPSIS).$this->separator();
+            $this->tips[] = [
+                'start' => 1,
+                'width' => 1,
+                'key' => 'lead',
+                'text' => \implode(' '.Glyphs::BREADCRUMB_SEPARATOR.' ', \array_column(\array_slice($crumbs, offset: 0, length: $first), 'label')),
+            ];
             $col += self::LEAD_WIDTH;
         }
         $last = \count($crumbs) - 1;
@@ -118,6 +142,9 @@ final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost
             $label = $i === $last ? AnsiText::elideMiddle($crumb['label'], $room) : $crumb['label'];
             $width = \mb_strwidth($label);
             $this->lastLayout[] = ['start' => $col, 'width' => $width, 'line' => $crumb['line']];
+            if ($label !== $crumb['label']) {
+                $this->tips[] = ['start' => $col, 'width' => $width, 'key' => 'current', 'text' => $crumb['label']];
+            }
             // Bar chrome, so the pointer tints with BarHoverBg (not a list
             // row's RowHighlightBg) under whichever foreground the crumb has,
             // and underlines it: a crumb is a link.

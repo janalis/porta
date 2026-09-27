@@ -10,11 +10,14 @@ use Porta\Container\AsWidget;
 use Porta\Event\DockTabActivationRequested;
 use Porta\Event\DockTabCloseRequested;
 use Porta\Event\DockTabMoveRequested;
+use Porta\I18n\Translator;
 use Porta\Support\AnsiText;
 use Porta\Ui\Glyphs;
 use Porta\Ui\LtrPane;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
+use Porta\Ui\Tooltip;
+use Porta\Ui\TooltipProvider;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Porta\Widget\Render\Rule;
@@ -26,6 +29,7 @@ use Porta\Widget\Support\StripScroll;
 use Porta\Widget\Support\StylesDefault;
 use Porta\Workbench\Dock\DockTab;
 use Psr\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 
@@ -43,7 +47,7 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
 #[AsChromeRoot]
 #[AsIdeService]
 #[AsWidget('dock-tabs', flex: 0)]
-final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverlayHost
+final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverlayHost, TooltipProvider
 {
     use ColumnHover;
     use MenuOverlayHostTrait;
@@ -75,11 +79,32 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverla
     /** The panel focus the last render drew, so a focus change repaints the lid. */
     private bool $drawnFocus = false;
 
+    /**
+     * What the strip's cells say under the pointer, from the last render: a
+     * stopped session's ○, a status cut to fit, the resize grab.
+     *
+     * @var list<array{row: int, rows: int, from: int, to: int, key: string, text: string}>
+     */
+    private array $tips = [];
+
     public function __construct(
         ?Styles $styles = null,
+        private readonly Translator $translator = new Translator('en'),
         private readonly ?EventDispatcherInterface $events = null,
     ) {
         $this->initStyles($styles);
+    }
+
+    /**
+     * A stopped session's ○ says what it means; a status cut to fit says
+     * itself whole; the empty tail says it is the panel's resize grab.
+     */
+    #[\Override]
+    public function tooltipAt(int $row, int $col): ?Tooltip
+    {
+        $tip = \array_find($this->tips, static fn (array $tip): bool => $row >= $tip['row'] && $row < ($tip['row'] + $tip['rows']) && $col >= $tip['from'] && $col < $tip['to']);
+
+        return null === $tip ? null : new Tooltip('dock:'.$tip['key'], $tip['text'], $tip['row'], $tip['from'], $tip['to'], $tip['rows']);
     }
 
     /** A drag over the strip crossed same-family tabs: ask the dock to reorder that model. */
@@ -291,6 +316,7 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverla
         $tabs = null !== $this->provider ? ($this->provider)() : [];
         $this->lastTabLayout = [];
         $this->indicatorZones = [];
+        $this->tips = [];
         if ([] === $tabs) {
             return [];
         }
@@ -331,6 +357,16 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverla
         // The renderer's hit map is index-based; re-key it with each entry's dock identity.
         foreach ($strip['hitMap'] as $zone) {
             $tab = $tabs[$zone['index']];
+            if (\str_ends_with($tab['label'], ' '.Glyphs::SESSION_STOPPED)) {
+                $this->tips[] = [
+                    'row' => 0,
+                    'rows' => $this->stripRows,
+                    'from' => $zone['start'],
+                    'to' => $zone['start'] + $zone['width'],
+                    'key' => 'stopped:'.$tab['key'],
+                    'text' => $this->translator->trans('The process has exited'),
+                ];
+            }
             $this->lastTabLayout[] = [
                 'tab' => $tab['tab'],
                 'key' => $tab['key'],
@@ -360,7 +396,15 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverla
         // strip, level with the labels — between the grab above it and the
         // baseline below, which the tabs stand on. A compact strip's one row
         // is its grab until a status takes it.
+        $whole = $status;
         $status = '' === $status ? '' : $this->statusTail($status, $room, $folder ? ' ' : $fill);
+        // The status is cut from its tail — the key reminders — first, so the
+        // whole of it is the tooltip where it lies; then the grab, where the
+        // top row's tail is still bare.
+        if ('' !== $whole && !\str_contains(AnsiUtils::stripAnsiCodes($status), $whole)) {
+            $this->tips[] = ['row' => $folder ? 1 : 0, 'rows' => 1, 'from' => $used, 'to' => $columns, 'key' => 'status', 'text' => $whole];
+        }
+        $this->tips[] = ['row' => 0, 'rows' => 1, 'from' => $used, 'to' => $columns, 'key' => 'grab', 'text' => $this->translator->trans('Drag to resize the panel')];
         $rows = [];
         foreach ($strip['lines'] as $row => $line) {
             $tail = match (true) {

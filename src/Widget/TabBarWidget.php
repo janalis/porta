@@ -6,10 +6,13 @@ namespace Porta\Widget;
 
 use Porta\Container\AsWidget;
 use Porta\I18n\BaseDirection;
+use Porta\I18n\Translator;
 use Porta\Support\AnsiText;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
+use Porta\Ui\Tooltip;
+use Porta\Ui\TooltipProvider;
 use Porta\Widget\Render\EdgeIndicator;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
@@ -37,12 +40,12 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
  * row each where it is compact.
  */
 #[AsWidget('tabs', flex: 0)]
-final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
+final class TabBarWidget extends AbstractWidget implements MenuOverlayHost, TooltipProvider
 {
     use MenuOverlayHostTrait;
     use PaneFocusProbe;
 
-    /** @use ProviderFingerprint<list<array{name: string, dirty: bool, active: bool, closable?: bool}>> */
+    /** @use ProviderFingerprint<list<array{name: string, dirty: bool, active: bool, closable?: bool, tooltip?: string}>> */
     use ProviderFingerprint;
     use StripScroll;
     use StylesDefault;
@@ -62,10 +65,15 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
     /** The workspace's reading direction: under RTL a side strip's row reverses, so its inner edge is the other logical end. */
     private BaseDirection $direction = BaseDirection::Ltr;
 
-    public function __construct(?Styles $styles = null)
-    {
+    public function __construct(
+        ?Styles $styles = null,
+        private readonly Translator $translator = new Translator('en'),
+    ) {
         $this->initStyles($styles);
     }
+
+    /** @var list<array{name: string, dirty: bool, active: bool, closable?: bool, tooltip?: string}> the tabs the last render drew from */
+    private array $lastTabs = [];
 
     /** @var list<array{index: int, row: int, rows: int, labelRow: int, start: int, width: int, closeStart: int, closeWidth: int}> layout from the last render: each tab's top row, its height, and the row its × is on */
     private array $lastLayout = [];
@@ -218,6 +226,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
 
         $columns = $context->getColumns();
         $tabs = null !== $this->provider ? ($this->provider)() : [];
+        $this->lastTabs = $tabs;
 
         if ([] === $tabs) {
             // The empty strip keeps its Toolbar base and its height: closing
@@ -292,6 +301,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
         }
         $this->memoKey = $key;
         $tabs = null !== $this->provider ? ($this->provider)() : [];
+        $this->lastTabs = $tabs;
 
         $this->lastLayout = [];
         $lines = [];
@@ -375,7 +385,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
      * column list, read the way the tree beside it is: `▌` while its pane has
      * the keys, `▎` while it does not.
      *
-     * @param array{name: string, dirty: bool, active: bool, closable?: bool} $tab
+     * @param array{name: string, dirty: bool, active: bool, closable?: bool, tooltip?: string} $tab
      */
     private function listRow(array $tab, TabState $state, int $width): string
     {
@@ -388,7 +398,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
      * ({@see TabShape::side()}). The shape is the state, as on the
      * horizontal strip, so the selection bar has no work to do here.
      *
-     * @param array{name: string, dirty: bool, active: bool, closable?: bool} $tab
+     * @param array{name: string, dirty: bool, active: bool, closable?: bool, tooltip?: string} $tab
      *
      * @return list<string>
      */
@@ -409,7 +419,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
      * `name…  ●× ` in $width columns: the name truncated, then the dirty ●
      * (or a blank) and the × (a blank on a pinned tab) at the end.
      *
-     * @param array{name: string, dirty: bool, active: bool, closable?: bool} $tab
+     * @param array{name: string, dirty: bool, active: bool, closable?: bool, tooltip?: string} $tab
      */
     private function tabBody(array $tab, int $width): string
     {
@@ -505,6 +515,28 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
         }
 
         return null;
+    }
+
+    /**
+     * A tab says which file it holds, in full, and what its marks mean; its
+     * × says what it does. The span is the tab's (or the ×'s) on its label
+     * row, where the arrow points.
+     */
+    #[\Override]
+    public function tooltipAt(int $row, int $col): ?Tooltip
+    {
+        $close = $this->closeIndexAt($row, $col);
+        $index = $close ?? $this->tabIndexAt($row, $col);
+        $entry = null === $index ? null : \array_find($this->lastLayout, static fn (array $entry): bool => $entry['index'] === $index);
+        if (null === $entry) {
+            return null;
+        }
+        if (null !== $close) {
+            return new Tooltip('tab:close:'.$close, $this->translator->trans('Close Tab'), $entry['labelRow'], $entry['closeStart'], $entry['closeStart'] + $entry['closeWidth']);
+        }
+        $text = $this->lastTabs[$entry['index']]['tooltip'] ?? '';
+
+        return '' === $text ? null : new Tooltip('tab:'.$entry['index'], $text, $entry['row'], $entry['start'], $entry['start'] + $entry['width'], $entry['rows']);
     }
 
     /**

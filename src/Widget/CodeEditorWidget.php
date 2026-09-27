@@ -86,6 +86,7 @@ use Porta\Widget\Render\MenuOverlayHostTrait;
 use Porta\Widget\Render\PaneFocus;
 use Porta\Widget\Render\StripeMarks;
 use Porta\Widget\Support\FillsPaneTrait;
+use Porta\Widget\Support\GutterPointer;
 use Porta\Widget\Support\InputHook;
 use Porta\Widget\Support\StylesDefault;
 use Porta\Workbench\Menu\EditorCommandTarget;
@@ -188,8 +189,8 @@ final class CodeEditorWidget extends AbstractWidget implements
 
     private readonly AutoPairService $autoPair;
 
-    /** LSP completion + snippet machinery, rebuilt per document. */
-    private EditorCompletion $completion;
+    /** LSP completion + snippet machinery, rebuilt per document; readable so the pointer can ask its popup what a kind tag means. */
+    public private(set) EditorCompletion $completion;
     private FoldModel $foldModel;
 
     /** Outbound hooks into the coordinator, replaced wholesale by wiring/tests. */
@@ -513,35 +514,18 @@ final class CodeEditorWidget extends AbstractWidget implements
 
     /**
      * Point at the gutter (pane-relative cell): the change strip's mark or the
-     * marker column's under the pointer is underlined, and its meaning comes
-     * back in words for the status bar — null off any mark. Returns whether
-     * the pointed mark changed, with the hint.
-     *
-     * @return array{changed: bool, hint: ?string}
+     * marker column's under the pointer is underlined, as is the marker
+     * stripe's. Returns whether the pointed mark changed; what the mark means
+     * is the tooltip's to say ({@see GutterPointer::tooltip()}).
      */
-    public function hoverGutter(int $relRow, int $relCol, bool $clickShowsChange): array
+    public function hoverGutter(int $relRow, int $relCol): bool
     {
-        $docLine = $relRow >= 0 && $relCol >= 0 && $relCol < $this->lastGutterWidth ? $this->documentLineAt($relRow) : null;
-        $markerCol = $this->lastGutterWidth - 3; // then the fold column, then a space
-        $part = match (true) {
-            null === $docLine => null,
-            $this->changeMarkAt($relCol, $docLine) => GutterPart::Change,
-            $relCol === $markerCol => GutterPart::Marker,
-            default => null,
-        };
-        $hint = null === $part || null === $docLine ? null : GutterHint::for($this->decorations, $docLine, $part, $clickShowsChange, $this->translator);
-        $changed = $this->decorations->hoverGutter(null === $hint ? null : $docLine, $part ?? GutterPart::Marker);
+        $pointer = new GutterPointer($this->viewport(), $this->decorations, $this->display->vcsGutter, $this->document->getLineCount(), $this->documentLineAt(...));
+        [$docLine, $part] = $pointer->partAt($relRow, $relCol);
+        $marked = null !== $part && null !== GutterHint::for($this->decorations, $docLine, $part, clickShowsChange: false, translator: $this->translator);
+        $changed = $this->decorations->hoverGutter($marked ? $docLine : null, $part ?? GutterPart::Marker);
 
-        // The marker stripe in the right margin: its mark says what it is and
-        // which line a click goes to.
-        $mark =
-            $relRow >= 0 && $relCol >= $this->lastStripeCol && $relRow < $this->lastRenderRows
-                ? ErrorStripe::markAt(StripeMarks::from($this->decorations, $this->display->vcsGutter), $relRow, $this->lastRenderRows, $this->document->getLineCount())
-                : null;
-        $changed = $this->decorations->hoverStripe(null === $mark ? null : $relRow) || $changed;
-        $hint ??= null === $mark ? null : $this->translator->trans('%what% · line %line%', ['%what%' => $this->translator->trans($mark['kind']->label()), '%line%' => $mark['line'] + 1]);
-
-        return ['changed' => $changed, 'hint' => $hint];
+        return $this->decorations->hoverStripe(null === $pointer->stripeMarkAt($relRow, $relCol) ? null : $relRow) || $changed;
     }
 
     /** Whether a gutter cell is a version-control change mark: the strip's column, on a line that has one. */

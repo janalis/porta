@@ -39,4 +39,16 @@ final class ClickZonesTest extends TestCase
 
         $this->assertNull($zones->at(2));
     }
+
+    public function testSpanIsTheNamedZonesColumnsForATooltipsAnchor(): void
+    {
+        $zones = new ClickZones();
+        $zones->add('regex', 10, 14);
+        $zones->add('word', 14, 18);
+        $zones->add('word', 30, 34);
+
+        $this->assertSame([14, 18], $zones->span('word'), 'the first zone of that name');
+        $this->assertSame([10, 14], $zones->span('regex'));
+        $this->assertNull($zones->span('case'));
+    }
 }

@@ -3394,6 +3394,222 @@
         <source>Match</source>
         <target>Correspondance</target>
       </trans-unit>
+      <trans-unit id="950">
+        <source>Regular expression</source>
+        <target>Expression régulière</target>
+      </trans-unit>
+      <trans-unit id="951">
+        <source>Whole word</source>
+        <target>Mot entier</target>
+      </trans-unit>
+      <trans-unit id="952">
+        <source>Match case</source>
+        <target>Respecter la casse</target>
+      </trans-unit>
+      <trans-unit id="953">
+        <source>Previous match</source>
+        <target>Occurrence précédente</target>
+      </trans-unit>
+      <trans-unit id="954">
+        <source>Next match</source>
+        <target>Occurrence suivante</target>
+      </trans-unit>
+      <trans-unit id="955">
+        <source>Select all matches</source>
+        <target>Sélectionner toutes les occurrences</target>
+      </trans-unit>
+      <trans-unit id="956">
+        <source>Dismiss</source>
+        <target>Fermer</target>
+      </trans-unit>
+      <trans-unit id="957">
+        <source>Tooltips</source>
+        <target>Infobulles</target>
+      </trans-unit>
+      <trans-unit id="958">
+        <source>Tooltip delay (ms)</source>
+        <target>Délai des infobulles (ms)</target>
+      </trans-unit>
+      <trans-unit id="959">
+        <source>Show tooltips</source>
+        <target>Afficher les infobulles</target>
+      </trans-unit>
+      <trans-unit id="960">
+        <source>Unsaved changes</source>
+        <target>Modifications non enregistrées</target>
+      </trans-unit>
+      <trans-unit id="961">
+        <source>Errors and warnings in this file — click to list them</source>
+        <target>Erreurs et avertissements de ce fichier — cliquer pour les lister</target>
+      </trans-unit>
+      <trans-unit id="962">
+        <source>Line %line%, column %column% — click to go to a line</source>
+        <target>Ligne %line%, colonne %column% — cliquer pour aller à une ligne</target>
+      </trans-unit>
+      <trans-unit id="963">
+        <source>The language server for this file — click for its log</source>
+        <target>Le serveur de langage de ce fichier — cliquer pour son journal</target>
+      </trans-unit>
+      <trans-unit id="964">
+        <source>The debugger is paused at this line</source>
+        <target>Le débogueur est en pause à cette ligne</target>
+      </trans-unit>
+      <trans-unit id="965">
+        <source>The debugger is running</source>
+        <target>Le débogueur est en cours d'exécution</target>
+      </trans-unit>
+      <trans-unit id="966">
+        <source>Column selection mode: Shift+arrows select a rectangle — Alt+C turns it off</source>
+        <target>Mode sélection en colonne : Shift+flèches sélectionnent un rectangle — Alt+C le désactive</target>
+      </trans-unit>
+      <trans-unit id="967">
+        <source>Git branch %branch% — click to switch, create or delete a branch</source>
+        <target>Branche Git %branch% — cliquer pour changer, créer ou supprimer une branche</target>
+      </trans-unit>
+      <trans-unit id="968">
+        <source>Pinned: kept open, with no ×</source>
+        <target>Épinglé : reste ouvert, sans ×</target>
+      </trans-unit>
+      <trans-unit id="969">
+        <source>Version control: %change%</source>
+        <target>Gestion de versions : %change%</target>
+      </trans-unit>
+      <trans-unit id="970">
+        <source>Has errors</source>
+        <target>Contient des erreurs</target>
+      </trans-unit>
+      <trans-unit id="971">
+        <source>Has warnings</source>
+        <target>Contient des avertissements</target>
+      </trans-unit>
+      <trans-unit id="973">
+        <source>Preserve case when replacing</source>
+        <target>Préserver la casse au remplacement</target>
+      </trans-unit>
+      <trans-unit id="974">
+        <source>Match anywhere — comments and strings too</source>
+        <target>Chercher partout — commentaires et chaînes compris</target>
+      </trans-unit>
+      <trans-unit id="975">
+        <source>Match only inside comments and strings</source>
+        <target>Chercher seulement dans les commentaires et les chaînes</target>
+      </trans-unit>
+      <trans-unit id="976">
+        <source>Match everywhere except comments and strings</source>
+        <target>Chercher partout sauf dans les commentaires et les chaînes</target>
+      </trans-unit>
+      <trans-unit id="977">
+        <source>The process has exited</source>
+        <target>Le processus s'est terminé</target>
+      </trans-unit>
+      <trans-unit id="978">
+        <source>Drag to resize the panel</source>
+        <target>Glisser pour redimensionner le panneau</target>
+      </trans-unit>
+      <trans-unit id="979">
+        <source>Drag to resize</source>
+        <target>Glisser pour redimensionner</target>
+      </trans-unit>
+      <trans-unit id="980">
+        <source>Function</source>
+        <target>Fonction</target>
+      </trans-unit>
+      <trans-unit id="981">
+        <source>Constructor</source>
+        <target>Constructeur</target>
+      </trans-unit>
+      <trans-unit id="982">
+        <source>Property</source>
+        <target>Propriété</target>
+      </trans-unit>
+      <trans-unit id="983">
+        <source>Variable</source>
+        <target>Variable</target>
+      </trans-unit>
+      <trans-unit id="984">
+        <source>Constant</source>
+        <target>Constante</target>
+      </trans-unit>
+      <trans-unit id="985">
+        <source>Reference</source>
+        <target>Référence</target>
+      </trans-unit>
+      <trans-unit id="986">
+        <source>Operator</source>
+        <target>Opérateur</target>
+      </trans-unit>
+      <trans-unit id="987">
+        <source>Enum case</source>
+        <target>Cas d'énumération</target>
+      </trans-unit>
+      <trans-unit id="988">
+        <source>Unstage this file</source>
+        <target>Retirer ce fichier de l'index</target>
+      </trans-unit>
+      <trans-unit id="989">
+        <source>Stage this file</source>
+        <target>Indexer ce fichier</target>
+      </trans-unit>
+      <trans-unit id="990">
+        <source>Untracked: new to git</source>
+        <target>Non suivi : nouveau pour git</target>
+      </trans-unit>
+      <trans-unit id="991">
+        <source>Renamed from %path%</source>
+        <target>Renommé depuis %path%</target>
+      </trans-unit>
+      <trans-unit id="992">
+        <source>Copied from %path%</source>
+        <target>Copié depuis %path%</target>
+      </trans-unit>
+      <trans-unit id="993">
+        <source>Unmerged: a conflict to resolve</source>
+        <target>Non fusionné : un conflit à résoudre</target>
+      </trans-unit>
+      <trans-unit id="994">
+        <source>Type changed</source>
+        <target>Type modifié</target>
+      </trans-unit>
+      <trans-unit id="995">
+        <source>Staged</source>
+        <target>Indexé</target>
+      </trans-unit>
+      <trans-unit id="996">
+        <source>Partly staged</source>
+        <target>Partiellement indexé</target>
+      </trans-unit>
+      <trans-unit id="997">
+        <source>Not staged</source>
+        <target>Non indexé</target>
+      </trans-unit>
+      <trans-unit id="998">
+        <source>Unstage everything</source>
+        <target>Tout retirer de l'index</target>
+      </trans-unit>
+      <trans-unit id="999">
+        <source>Stage everything</source>
+        <target>Tout indexer</target>
+      </trans-unit>
+      <trans-unit id="1000">
+        <source>Side-by-side diff</source>
+        <target>Diff côte à côte</target>
+      </trans-unit>
+      <trans-unit id="1001">
+        <source>Hide whitespace-only changes</source>
+        <target>Masquer les changements d'espaces seuls</target>
+      </trans-unit>
+      <trans-unit id="1002">
+        <source>Write a summary first</source>
+        <target>Écrivez d'abord un résumé</target>
+      </trans-unit>
+      <trans-unit id="1003">
+        <source>Stage a change first</source>
+        <target>Indexez d'abord une modification</target>
+      </trans-unit>
+      <trans-unit id="1004">
+        <source>Changed from its default — r puts it back</source>
+        <target>Modifié par rapport au défaut — r le rétablit</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

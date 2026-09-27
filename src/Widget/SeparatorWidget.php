@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace Porta\Widget;
 
+use Porta\I18n\Translator;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
+use Porta\Ui\Tooltip;
+use Porta\Ui\TooltipProvider;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Porta\Widget\Support\FillsPaneTrait;
@@ -29,7 +32,7 @@ use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
  * context menu spilling across the boundary paints solidly over this column
  * instead of leaving a hole.
  */
-final class SeparatorWidget extends AbstractWidget implements MenuOverlayHost, VerticallyExpandableInterface
+final class SeparatorWidget extends AbstractWidget implements MenuOverlayHost, TooltipProvider, VerticallyExpandableInterface
 {
     use FillsPaneTrait;
     use MenuOverlayHostTrait;
@@ -38,9 +41,18 @@ final class SeparatorWidget extends AbstractWidget implements MenuOverlayHost, V
     /** True while the pointer is on this column, or dragging it. */
     private bool $hovered = false;
 
-    public function __construct(?Styles $styles = null)
-    {
+    public function __construct(
+        ?Styles $styles = null,
+        private readonly Translator $translator = new Translator('en'),
+    ) {
         $this->initStyles($styles);
+    }
+
+    /** The divider says it is one — a one-column rule does not look like a handle. Anchored on the pointer's row, so the card follows it along. */
+    #[\Override]
+    public function tooltipAt(int $row, int $col): ?Tooltip
+    {
+        return new Tooltip('separator', $this->translator->trans('Drag to resize'), $row, 0, 1);
     }
 
     /** The pointer is on the divider (or dragging it); returns whether it changed. */

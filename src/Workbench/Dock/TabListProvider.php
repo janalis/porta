@@ -7,6 +7,7 @@ namespace Porta\Workbench\Dock;
 use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
 use Porta\I18n\Translator;
+use Porta\Support\ProjectPaths;
 use Porta\Ui\Glyphs;
 
 /** The tab strip's rows, pulled at render time from the buffer list. */
@@ -15,9 +16,10 @@ final readonly class TabListProvider
     public function __construct(
         private BufferManager $buffers,
         private Translator $translator,
+        private ProjectPaths $paths,
     ) {}
 
-    /** @return list<array{name: string, dirty: bool, active: bool, closable: bool}> */
+    /** @return list<array{name: string, dirty: bool, active: bool, closable: bool, tooltip: string}> */
     public function tabs(): array
     {
         $buffers = $this->buffers->all();
@@ -34,6 +36,9 @@ final readonly class TabListProvider
                 // A pinned tab draws no ×: pinning is what keeps it open. Ctrl+W
                 // and its context menu still close it, deliberately.
                 'closable' => !$b->pinned,
+                // The name may be cut, qualified or a title; its marks are
+                // glyphs. The tooltip says where the file is and what they mean.
+                'tooltip' => $this->tooltip($b),
             ],
             $buffers,
             $titles,
@@ -129,6 +134,20 @@ final readonly class TabListProvider
         }
 
         return $qualified;
+    }
+
+    /** The file the tab holds, in full, and what its pin and its dot mean. */
+    private function tooltip(Buffer $b): string
+    {
+        $lines = ['help' === $b->paneId ? $this->translator->trans('Documentation') : $this->paths->relative($b->path)];
+        if ($b->pinned) {
+            $lines[] = $this->translator->trans('Pinned: kept open, with no ×');
+        }
+        if ($b->isDirty()) {
+            $lines[] = $this->translator->trans('Unsaved changes');
+        }
+
+        return \implode("\n", $lines);
     }
 
     /** Whether this buffer's title came from its path, and so can be qualified with more of it. */

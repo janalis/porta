@@ -129,12 +129,11 @@ final class DebugController implements DebugSessionObserver, StatusSegment
         }
         $path = $this->state->stoppedPath();
         $line = $this->state->stoppedLine();
-        $text =
-            $this->isPaused() && null !== $path && null !== $line
-                ? Glyphs::DEBUG_PAUSED.' '.$this->paths->relative($path).':'.($line + 1)
-                : Glyphs::DEBUG_RUNNING.' '.$this->translator->trans('debug');
+        $paused = $this->isPaused() && null !== $path && null !== $line;
+        $text = $paused ? Glyphs::DEBUG_PAUSED.' '.$this->paths->relative($path).':'.($line + 1) : Glyphs::DEBUG_RUNNING.' '.$this->translator->trans('debug');
+        $tooltip = $paused ? $this->translator->trans('The debugger is paused at this line') : $this->translator->trans('The debugger is running');
 
-        return [new StatusCell($text, StatusTone::Active)];
+        return [new StatusCell($text, StatusTone::Active, tooltip: $tooltip)];
     }
 
     /** Ctrl+F8 / a gutter click: toggle a breakpoint on the caret's (or given) line. */

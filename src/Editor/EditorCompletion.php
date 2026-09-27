@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Porta\Editor;
 
+use Porta\I18n\Translator;
 use Porta\Support\FuzzyMatcher;
+use Porta\Ui\Tooltip;
 use Porta\Widget\Render\PopupMetrics;
 use Symfony\Component\Tui\Input\Keybindings;
 
@@ -307,6 +309,26 @@ final class EditorCompletion
         ($this->invalidate)();
 
         return true;
+    }
+
+    /**
+     * A kind tag spells itself out under the pointer — `iface` is an
+     * interface, `ctor` a constructor. A tag that is already a word (`class`,
+     * `method`) needs no card. Anchored on the tag, flush right in its row.
+     */
+    public function tooltipAt(int $relRow, int $relCol, Translator $translator): ?Tooltip
+    {
+        $index = $this->open ? $this->completionItemAt($relRow, $relCol) : null;
+        $items = $this->filtered();
+        // The list refilters as you type, so a row the last frame drew may be gone.
+        $kind = null !== $index && \array_key_exists($index, $items) ? $items[$index]->kind : '';
+        // Flush right, before the row's one trailing space.
+        $tagStart = null === $this->box ? 0 : $this->box->col + $this->box->width - 1 - \mb_strwidth($kind);
+        $word = $relCol >= $tagStart ? CompletionKindName::of($kind, $translator) : null;
+
+        $tagEnd = $tagStart + \mb_strwidth($kind);
+
+        return null === $word || $relCol >= $tagEnd ? null : new Tooltip('completion-kind:'.$relRow, $word, $relRow, $tagStart, $tagEnd);
     }
 
     /**

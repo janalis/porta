@@ -594,8 +594,17 @@ $api->registerStatusSegment(fn (): ?StatusCell => null === $this->branch ? null 
     "⎇ {$this->branch}",
     StatusTone::Accent,
     fn (): array => $this->branchMenuItems(),
+    tooltip: $api->trans('Git branch %branch% — click to switch, create or delete a branch', ['%branch%' => $this->branch]),
 ));
 ```
+
+The optional `tooltip` is what the cell says, in words, when the pointer rests
+on it. A widget of your own (a contributed view's pane, say) can answer the
+pointer too: implement `Porta\Ui\TooltipProvider`, whose
+`tooltipAt(int $row, int $col): ?Tooltip` is asked in the widget's own
+coordinates on every move. It must be cheap and must not change state; return
+a `Porta\Ui\Tooltip` with a stable key, the words, and the cells it explains.
+Any pane in an open view's region is asked, so nothing needs registering.
 
 The tone is one of core's three (`Subtle`, `Accent`, `Active`) — you ask for
 prominence, core owns the colour. When the value behind a segment changes
@@ -672,7 +681,7 @@ Registration (during `activate()`):
 | `contextFile()` | The file the running invocation is **about**: the right-clicked path when it came from a file context menu, else `activeFile()`. Use it instead of `activeFile()` in any command you put on `FileContext` |
 | `registerSetting(string $key, string $label, string $kind = 'text', $default = '', ?array $options = null, ?string $hint = null, ?int $min = null, ?int $max = null, ?int $step = null)` | Declare a user-editable setting shown on the plugin's settings page; kinds: `text`, `bool`, `int`, `choice` (with `$options`). Values persist under `plugins.<name>.<key>` in `.porta.json`. `$hint` is a one-line description, shown on every kind. `$min`/`$max`/`$step` are **`int` only** (declaring them on another kind throws) — without a `$step` the row moves by 1 per keypress, which is unusable for anything measured in bytes, and the range is shown so the user need not find it by hammering the key |
 | `registerListTool(string $id, string $title, ?\Closure $rerun = null, ?\Closure $activate = null)` | Declare a bottom-dock list of results with jump-to-location |
-| `registerStatusSegment(\Closure $segment)` | Contribute ambient state to the status bar; pulled once per render. Return a string to share the plugins' cell, or a `StatusCell` to claim one with its own tone and right-click menu |
+| `registerStatusSegment(\Closure $segment)` | Contribute ambient state to the status bar; pulled once per render. Return a string to share the plugins' cell, or a `StatusCell` to claim one with its own tone, right-click menu and tooltip |
 | `registerView(string $id, \Closure $factory)` | Contribute a **full-screen view** — a workspace takeover with its own sidebar, drag separator and content pane, opened with `openView($id)`. `$factory(ViewServices $s): ContributedView` runs after plugins commit, with the region already minted for `$id` — once per activation, so a disable→re-enable runs it again against a FRESH region |
 | `registerMenu(string $title, string $after, array $items, ?\Closure $visible = null, string $viewId = '', array $viewSafe = [])` | Contribute a **top-level menu** rather than an entry in the trailing Plugins one. `$items` are `'i:<command-id>'` and separators; `$after` names the core menu it follows; `$viewSafe` lists the ids that stay enabled while `$viewId`'s view owns the main area — a menu without one greys out its own items the moment its view opens |
 | `registerDebugAdapter(string $languageId, \Closure $resolveCommand)` | Supply a DAP adapter's argv for a language (consulted below `.porta.json`) |

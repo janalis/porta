@@ -824,6 +824,36 @@ final class FindBarWidgetTest extends TestCase
         $this->assertSame(1, $flat[0]['end'] - $flat[0]['start'], 'the query is "b" (1 char), not "b\x7f" or longer');
     }
 
+    /** Every glyph says what it does and the key that does it; the tooltip spans the whole boxed control. */
+    public function testEachControlSaysWhatItDoesAndItsKey(): void
+    {
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->open(new FakeFindTarget(new Document("x\n")), mode: FindMode::Find);
+        $bar->render(new RenderContext(80, 3));
+
+        $regex = $bar->tooltipAt(1, 35);
+        $this->assertSame(['find:regex', "Regular expression\tAlt+X", 0, 33, 39, 3], [$regex?->key, $regex?->text, $regex?->row, $regex?->colStart, $regex?->colEnd, $regex?->rows]);
+        $this->assertSame("Whole word\tAlt+W", $bar->tooltipAt(0, 39)?->text, 'any row of a boxed control');
+        $this->assertSame("Match case\tAlt+C", $bar->tooltipAt(2, 45)?->text, "the find bar's own words, not the editor's Toggle Case");
+        $this->assertSame("Previous match\tShift+F3", $bar->tooltipAt(1, 51)?->text);
+        $this->assertSame("Next match\t⏎", $bar->tooltipAt(1, 56)?->text, 'the first of its keys');
+        $this->assertSame("Select all matches\tAlt+⏎", $bar->tooltipAt(1, 61)?->text);
+        $this->assertSame("Close\tEsc", $bar->tooltipAt(1, 66)?->text);
+        $this->assertNull($bar->tooltipAt(1, 10), 'the query box explains itself');
+        $this->assertNull($bar->tooltipAt(3, 35), 'below the controls');
+    }
+
+    public function testAClosedBarHasNoTooltips(): void
+    {
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->open(new FakeFindTarget(new Document("x\n")), mode: FindMode::Find);
+        $bar->render(new RenderContext(80, 3));
+        $bar->close();
+        $bar->render(new RenderContext(80, 3));
+
+        $this->assertNull($bar->tooltipAt(1, 35), 'the zones went with the last render');
+    }
+
     public function testTheToggleZonesAreTheBoxesAndAnswerOnEveryRow(): void
     {
         $bar = new FindBarWidget(new Translator('en'));

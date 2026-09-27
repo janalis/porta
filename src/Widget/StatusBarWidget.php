@@ -12,6 +12,8 @@ use Porta\Support\Clocks;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
+use Porta\Ui\Tooltip;
+use Porta\Ui\TooltipProvider;
 use Porta\Widget\Support\StylesDefault;
 use Porta\Workbench\Menu\MenuItem;
 use Porta\Workbench\StatusClickSpan;
@@ -30,11 +32,11 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
 #[AsChromeRoot]
 #[AsIdeService]
 #[AsWidget('status')]
-final class StatusBarWidget extends AbstractWidget
+final class StatusBarWidget extends AbstractWidget implements TooltipProvider
 {
     use StylesDefault;
 
-    /** @var (callable(): array{cells?: list<array{text: string, menu: (\Closure(): list<MenuItem>)|null}>, left: string, right: string, rightClicks?: list<StatusClickSpan>})|null */
+    /** @var (callable(): array{cells?: list<array{text: string, menu: (\Closure(): list<MenuItem>)|null, tooltip?: ?string}>, left: string, leftTooltip?: ?string, right: string, rightClicks?: list<StatusClickSpan>})|null */
     private $provider;
 
     /**
@@ -50,9 +52,20 @@ final class StatusBarWidget extends AbstractWidget
     /**
      * The contributed cells, as the provider reports them.
      *
-     * @var list<array{text: string, menu: (\Closure(): list<MenuItem>)|null}>
+     * @var list<array{text: string, menu: (\Closure(): list<MenuItem>)|null, tooltip?: ?string}>
      */
     private array $cells = [];
+
+    /** What the file part means in full — its path uncut, its ● in words — or null. */
+    private ?string $leftTooltip = null;
+
+    /**
+     * Every drawn cell that has something to say, from the last render: its
+     * span on the row, its identity and its words.
+     *
+     * @var list<array{from: int, to: int, key: string, text: string}>
+     */
+    private array $renderedTips = [];
 
     /** The column under the pointer, or null: the clickable cell there underlines. */
     private ?int $hoverCol = null;
@@ -91,7 +104,7 @@ final class StatusBarWidget extends AbstractWidget
     }
 
     /**
-     * @param callable(): array{cells?: list<array{text: string, menu: (\Closure(): list<MenuItem>)|null}>, left: string, right: string, rightClicks?: list<StatusClickSpan>} $provider
+     * @param callable(): array{cells?: list<array{text: string, menu: (\Closure(): list<MenuItem>)|null, tooltip?: ?string}>, left: string, leftTooltip?: ?string, right: string, rightClicks?: list<StatusClickSpan>} $provider
      */
     public function setProvider(callable $provider): self
     {
@@ -157,6 +170,19 @@ final class StatusBarWidget extends AbstractWidget
         return true;
     }
 
+    /**
+     * What the cell under the pointer means: a contributed cell's own words,
+     * the file part's full path, or what a right-hand cell is and what a click
+     * on it does. Anything drawn and cut — the path first — is said whole.
+     */
+    #[\Override]
+    public function tooltipAt(int $row, int $col): ?Tooltip
+    {
+        $tip = 0 === $row ? \array_find($this->renderedTips, static fn (array $tip): bool => $col >= $tip['from'] && $col < $tip['to']) : null;
+
+        return null === $tip ? null : new Tooltip('status:'.$tip['key'], $tip['text'], 0, $tip['from'], $tip['to']);
+    }
+
     /** @return array{int, int}|null the drawn clickable span under $col, as `[from, to]` */
     private function litSpan(?int $col): ?array
     {
@@ -220,6 +246,7 @@ final class StatusBarWidget extends AbstractWidget
         $right = $segments['right'];
         $cells = $segments['cells'] ?? [];
         $this->cellClicks = $segments['rightClicks'] ?? [];
+        $this->leftTooltip = $segments['leftTooltip'] ?? null;
         if ($left !== $this->lastLeft || $right !== $this->lastRight || \array_column($cells, 'text') !== \array_column($this->cells, 'text')) {
             $this->cells = $cells;
             $this->lastLeft = $left;
@@ -303,6 +330,7 @@ final class StatusBarWidget extends AbstractWidget
             }
             $at += $width + self::SEPARATOR_WIDTH;
         }
+        $fileWidth = AnsiUtils::visibleWidth($file);
         $leftText = ([] === $parts ? '' : \implode($this->separator(), $parts).$this->separator()).$file;
         $leftWidth = AnsiUtils::visibleWidth($prefix.$file);
 
@@ -316,6 +344,11 @@ final class StatusBarWidget extends AbstractWidget
             static fn (StatusClickSpan $span): StatusClickSpan => $span->shifted($rightStart),
             \array_filter($this->cellClicks, static fn (StatusClickSpan $span): bool => $span->to <= $room),
         ));
+        // The file part says more only where it could: a path cut to fit, or
+        // a state its glyph and colour carry (unsaved, a diagnostic) — a card
+        // repeating a whole file name is noise.
+        $fileSaysMore = null !== $this->leftTooltip && ($file !== $left || \str_contains($this->leftTooltip, "\n"));
+        $this->renderedTips = $this->tips($drawn, $fileSaysMore ? $this->leftTooltip : null, $fileWidth);
         $lit = $this->litSpan($this->hoverCol);
         if (null !== $lit && $lit[0] >= $rightStart) {
             $right =
@@ -328,6 +361,40 @@ final class StatusBarWidget extends AbstractWidget
         $line = AnsiText::truncate($line, $columns, pad: true, ellipsis: '');
 
         return [$this->styles->merge(Role::HeaderBar, Role::CurrentLineNumber)->apply($line)];
+    }
+
+    /**
+     * Where each drawn thing with something to say sits on the row: the cells
+     * in the order drawn, the file part after them when it has more to say —
+     * unless a flash has its place, which says itself — and the right-hand
+     * cells where they landed.
+     *
+     * @param list<array{text: string, menu: (\Closure(): list<MenuItem>)|null, tooltip?: ?string}> $drawn
+     *
+     * @return list<array{from: int, to: int, key: string, text: string}>
+     */
+    private function tips(array $drawn, ?string $fileTip, int $fileWidth): array
+    {
+        $tips = [];
+        $at = 1; // the row's leading space
+        foreach ($drawn as $n => $cell) {
+            $width = AnsiUtils::visibleWidth($cell['text']);
+            if (null !== ($cell['tooltip'] ?? null)) {
+                $tips[] = ['from' => $at, 'to' => $at + $width, 'key' => 'cell:'.$n, 'text' => $cell['tooltip']];
+            }
+            $at += $width + self::SEPARATOR_WIDTH;
+        }
+        if (null === $this->flash && null !== $fileTip && $fileWidth > 0) {
+            $tips[] = ['from' => $at, 'to' => $at + $fileWidth, 'key' => 'file', 'text' => $fileTip];
+        }
+        foreach ($this->renderedClicks as $span) {
+            if ('' === $span->tooltip) {
+                continue;
+            }
+            $tips[] = ['from' => $span->from, 'to' => $span->to, 'key' => $span->action, 'text' => $span->tooltip];
+        }
+
+        return $tips;
     }
 
     /** ` │ `, the one column of rule between two cells and after the last. */

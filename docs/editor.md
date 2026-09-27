@@ -277,8 +277,8 @@ underlined, so the finding still shows without colour. The last pinned
 sticky-scroll row is underlined there too, to separate the pinned headers from
 the code below them.
 
-Under the pointer, a gutter mark underlines and the status bar says what it
-is and what a click does: "Breakpoint · click to remove", "Bookmark", a
+Under the pointer, a gutter mark underlines and its [tooltip](#tooltips) says
+what it is and what a click does: "Breakpoint · click to remove", "Bookmark", a
 diagnostic's message, or "Modified · click to see the change" on a git change
 mark.
 
@@ -574,7 +574,7 @@ the file, and the kinds resolve by strict precedence:
 A faint band behind the marks is the **viewport thumb**: the part of the file
 you are looking at, shown only when the file is taller than the pane. On rows
 with no mark the thumb draws its own `▐`, so it is visible without the band.
-Under the pointer a mark underlines, and the status bar says what it is and
+Under the pointer a mark underlines, and its tooltip says what it is and
 the line a click goes to: "Bookmark · line 41".
 Clicking a cell jumps there.
 
@@ -844,6 +844,33 @@ Click to place the cursor, drag to select (double-click a word,
 triple-click a line, `Shift+Click` extends), wheel to scroll, click the
 gutter to toggle a breakpoint, drag pane separators to resize, and
 right-click for a context menu of common actions.
+
+## Tooltips
+
+Rest the pointer on something whose meaning is a glyph, an abbreviation or a
+cut-off name, and after half a second a small card beside it says it in
+words. Move along a row of controls and each next card shows at once. A key,
+a click or the wheel puts it away.
+
+- **Find bar and Find in Files:** `.*`, `\b`, `Aa`, `∀`, `Pc` and the token
+  scope (`·"`, `i"`, `x"`) name what they do and their key.
+- **Status bar:** the file's full path and its unsaved state, the whole
+  diagnostic at the caret, and what each clickable cell does. A plugin's cell
+  may carry its own.
+- **Tabs, tree, breadcrumbs, results:** the full path or text wherever the row
+  had to cut it; the `●`, `⌾`, change and diagnostic marks in words; a tab's `×`.
+- **Gutter and marker stripe:** what each mark is and what a click does.
+- **Completion popup:** abbreviated kinds spelled out (`iface` → Interface).
+- **Dock strip and pane dividers:** a stopped session's `○`, a status cut to
+  fit, and the resize grabs.
+- **Settings:** a detail cut to fit, and what the `●` of a changed value means.
+- **Git view:** status letters (`R` renamed from…, untracked files shown as `A`),
+  the stage boxes, the diff toggles, a history row in full, and why Commit is
+  disabled.
+
+The card sits below its element when there is room, else above, right or left,
+and follows a resize. Turn it off, or change the half-second, under
+**Settings → Interface → Tooltips** (`tooltips`, `tooltipDelay`).
 
 ## Structure navigation
 

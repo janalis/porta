@@ -48,7 +48,7 @@ final readonly class StatusBarProvider
      * widget lays the cells out — it alone knows which of them fit — so the
      * router still hit-tests a click without knowing which cell is which.
      *
-     * @return array{cells: list<array{text: string, menu: (\Closure(): list<MenuItem>)|null}>, left: string, right: string, rightClicks: list<StatusClickSpan>}
+     * @return array{cells: list<array{text: string, menu: (\Closure(): list<MenuItem>)|null, tooltip: ?string}>, left: string, leftTooltip: ?string, right: string, rightClicks: list<StatusClickSpan>}
      */
     public function segments(): array
     {
@@ -62,6 +62,13 @@ final readonly class StatusBarProvider
             null === $path => $this->translator->trans('porta — open a file from the tree (Enter)'),
             default => $this->paths->relative($path).($doc->isDirty() ? ' '.Glyphs::DIRTY : ''),
         };
+        // The file part is cut in the middle when the row is short, and its
+        // ● is a glyph: the tooltip spells both out.
+        $leftTooltip = match (true) {
+            null !== $active && $active->isViewer() => $this->paths->relative($active->path),
+            null === $path => null,
+            default => $this->paths->relative($path).($doc->isDirty() ? "\n".$this->translator->trans('Unsaved changes') : ''),
+        };
 
         // The contributed cells in visual order — the debugger, the branch —
         // styled by their tone, and a cell with a menu says so with `▾`: it
@@ -74,7 +81,7 @@ final readonly class StatusBarProvider
                     continue;
                 }
                 $text = null === $cell->menu ? $cell->text : $cell->text.' '.Glyphs::STATUS_MENU;
-                $cells[] = ['text' => $this->style($cell->tone)->apply($text), 'menu' => $cell->menu];
+                $cells[] = ['text' => $this->style($cell->tone)->apply($text), 'menu' => $cell->menu, 'tooltip' => $cell->tooltip];
             }
         }
 
@@ -87,12 +94,13 @@ final readonly class StatusBarProvider
         if (null !== $paneSegment && '' !== $paneSegment) {
             // A pane owns its whole right side, so core has nothing clickable
             // to offer there.
-            return ['cells' => $cells, 'left' => $left, 'right' => $paneSegment, 'rightClicks' => []];
+            return ['cells' => $cells, 'left' => $left, 'leftTooltip' => $leftTooltip, 'right' => $paneSegment, 'rightClicks' => []];
         }
 
         // Led by its severity's glyph, so an error and a hint differ without colour.
         if (null !== ($diagnostic = $this->editor->getCursorDiagnostic())) {
             $text = $diagnostic['severity']->glyph().' '.$diagnostic['message'];
+            $leftTooltip = null === $leftTooltip ? $text : $leftTooltip."\n".$text; // whole, where the row may cut it
             $left .= '  '.match ($diagnostic['severity']) {
                 DiagnosticSeverity::Error => $this->styles->of(Role::StatusError)->apply($text),
                 DiagnosticSeverity::Warning => $this->styles->of(Role::StatusWarning)->apply($text),
@@ -137,18 +145,21 @@ final readonly class StatusBarProvider
         $at = AnsiUtils::visibleWidth($busy);
         $problemsWidth = AnsiUtils::visibleWidth($problems);
         if ($problemsWidth > 0) {
-            $clicks[] = new StatusClickSpan($at, $at + $problemsWidth, 'ide_problems');
+            $clicks[] = new StatusClickSpan($at, $at + $problemsWidth, 'ide_problems', $this->translator->trans('Errors and warnings in this file — click to list them'));
         }
         $at += $problemsWidth;
         $locationWidth = AnsiUtils::visibleWidth($location);
-        $clicks[] = new StatusClickSpan($at, $at + $locationWidth, 'goto_line');
+        $clicks[] = new StatusClickSpan($at, $at + $locationWidth, 'goto_line', $this->translator->trans('Line %line%, column %column% — click to go to a line', [
+            '%line%' => $doc->cursorLine + 1,
+            '%column%' => $doc->getCursorDisplayCol() + 1,
+        ]));
         // +2 for the gap between the caret position and the legend.
         $at += $locationWidth + 2;
         // The LSP cell ALONE, not the legend it leads: the hints after it are
         // not a control, and a click landing on one used to open the server log.
-        $clicks[] = new StatusClickSpan($at, $at + AnsiUtils::visibleWidth($lspCell), 'ide_lsp_log');
+        $clicks[] = new StatusClickSpan($at, $at + AnsiUtils::visibleWidth($lspCell), 'ide_lsp_log', $this->translator->trans('The language server for this file — click for its log'));
 
-        return ['cells' => $cells, 'left' => $left, 'right' => $right, 'rightClicks' => $clicks];
+        return ['cells' => $cells, 'left' => $left, 'leftTooltip' => $leftTooltip, 'right' => $right, 'rightClicks' => $clicks];
     }
 
     /**

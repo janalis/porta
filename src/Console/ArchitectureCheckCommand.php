@@ -265,6 +265,9 @@ final class ArchitectureCheckCommand extends Command
         'Settings>Input',
         'Settings>Layout',
         'Settings>Lsp',
+        // The two tooltip settings apply straight to the TooltipCenter — the
+        // same live-apply pattern.
+        'Settings>Overlay',
         'Settings>Plugin',
         // The "Search vendor/ files" toggle applies straight to the shared
         // FileIndex — the SettingsController's live-apply pattern.

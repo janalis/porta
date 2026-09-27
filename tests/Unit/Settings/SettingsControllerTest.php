@@ -27,6 +27,7 @@ use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\RefactoringUndo;
 use Porta\Lsp\WorkspaceEditor;
 use Porta\Onboarding\OnboardingState;
+use Porta\Overlay\State\TooltipCenter;
 use Porta\Search\FileIndex;
 use Porta\Settings\LiveSettingsApplier;
 use Porta\Settings\SettingsController;
@@ -48,6 +49,7 @@ use Porta\Ui\CursorStyle;
 use Porta\Ui\Theme\Styles;
 use Porta\Ui\Theme\StyleSheetThemer;
 use Porta\Ui\Theme\Themes;
+use Porta\Ui\Tooltip;
 use Porta\Widget\BreadcrumbsWidget;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
@@ -84,6 +86,7 @@ final class SettingsControllerTest extends TestCase
 
     private FormatOnSave $formatOnSave;
     private FileIndex $files;
+    private TooltipCenter $tooltips;
 
     /**
      * @param array<string, int|bool|string> $settings
@@ -149,6 +152,7 @@ final class SettingsControllerTest extends TestCase
             $applier,
             $breadcrumbs,
             $this->files = new FileIndex($rootDir),
+            $this->tooltips = new TooltipCenter(new FakeScheduler(), $tui),
         );
     }
 
@@ -224,6 +228,8 @@ final class SettingsControllerTest extends TestCase
                 'showWhitespace',
                 'methodSeparators',
                 'diagnosticMessages',
+                'tooltips',
+                'tooltipDelay',
             ],
             \array_column($rows, 'key'),
         );
@@ -239,6 +245,37 @@ final class SettingsControllerTest extends TestCase
         $this->assertFalse($byKey['diagnosticMessages']->restart, 'a mode switch applies live');
         $this->assertTrue($byKey['stickyScroll']->value);
         $this->assertSame(SettingsRowKind::Bool, $byKey['breadcrumbs']->kind);
+    }
+
+    /** The tooltip rows: a switch and a stepped delay, both applied to the one tooltip live. */
+    public function testTheTooltipRowsApplyLive(): void
+    {
+        $project = new TempProject();
+        $controller = $this->controller($project->dir, new CodeEditorWidget(), new StatusBarWidget(), ['tooltipDelay' => 300]);
+
+        $byKey = \array_column($controller->interfaceRows(), null, 'key');
+        $this->assertTrue($byKey['tooltips']->value);
+        $this->assertSame(SettingsRowKind::Int, $byKey['tooltipDelay']->kind);
+        $this->assertSame([300, 0, 2000, 100, 500], [
+            $byKey['tooltipDelay']->value,
+            $byKey['tooltipDelay']->min,
+            $byKey['tooltipDelay']->max,
+            $byKey['tooltipDelay']->step,
+            $byKey['tooltipDelay']->default,
+        ]);
+        $this->assertTrue($byKey['tooltipDelay']->isModified(), 'an int compares as an int, so 300 differs from 500 and 500 would not');
+
+        $controller->applyAll();
+        $this->tooltips->point(new Tooltip('k', 't', 0, 0, 1));
+        $this->assertNull($this->tooltips->shown(), 'on, with a dwell');
+
+        $controller->changeSetting('tooltipDelay', 0);
+        $this->tooltips->point(new Tooltip('j', 't', 0, 0, 1));
+        $this->assertSame('j', $this->tooltips->shown()?->key, 'no dwell at 0');
+
+        $controller->changeSetting('tooltips', false);
+        $this->assertNull($this->tooltips->shown(), 'off takes the card');
+        $this->assertSame(0, IdeConfig::load($project->dir)->settings['tooltipDelay'], 'persisted as an int');
     }
 
     /**

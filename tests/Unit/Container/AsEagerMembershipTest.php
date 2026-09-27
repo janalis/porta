@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Container;
 
 use Porta\Editor\StructureFollowsCaret;
+use Porta\Input\TooltipRouter;
 use Porta\Layout\ChromeHeight;
 use Porta\Layout\ResponsiveLayout;
 use Porta\Lsp\HighlightController;
@@ -12,6 +13,7 @@ use Porta\Overlay\Presenter\FindModalPresenter;
 use Porta\Overlay\Presenter\FrameJoins;
 use Porta\Overlay\Presenter\PickerModalPresenter;
 use Porta\Overlay\Presenter\ToastPresenter;
+use Porta\Overlay\Presenter\TooltipPresenter;
 use Porta\Overlay\Presenter\WelcomeModalController;
 use Porta\Overlay\State\MenuOverlayController;
 use Porta\Settings\SettingsViewController;
@@ -51,6 +53,7 @@ final class AsEagerMembershipTest extends ContainerTestCase
             FindModalPresenter::class, // 300 — find →
             PickerModalPresenter::class, // 200 — picker →
             ToastPresenter::class, // 100 — toast
+            TooltipPresenter::class, // 50 — tooltip
         ];
         // And the priority-0 tail, where it is not: each of these exists only
         // to register itself with something, and nothing references them, so
@@ -70,6 +73,7 @@ final class AsEagerMembershipTest extends ContainerTestCase
             ChromeHeight::class, // reads the terminal's rows from the frame hook
             FrameJoins::class, // installs the frame's join pass on BidiTui
             MenuOverlayController::class, // lays an open menu out again when a resize changes the screen
+            TooltipRouter::class, // asks again at the pointer after a resize moved the elements
         ];
 
         $this->assertSame($ordered, \array_slice($actual, offset: 0, length: \count($ordered)), 'the contractual construction order');

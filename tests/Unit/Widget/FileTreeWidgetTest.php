@@ -73,6 +73,51 @@ final class FileTreeWidgetTest extends TestCase
         $this->assertMatchesRegularExpression('/clean\.php\s+$/m', $rows, 'a clean file carries no mark at all');
     }
 
+    /** Each mark is a glyph; the row's tooltip spells them all out after the file's path. */
+    public function testAMarkedRowSaysItsMarksInWords(): void
+    {
+        $project = new TempProject(['src/a.php' => "<?php\n", 'b.php' => "<?php\n"]);
+        $buffers = new BufferManager();
+        $buffer = $buffers->open((string) \realpath($project->dir.'/src/a.php'), "<?php\n");
+        $buffer->diagnostics = [0 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'hmm', 'col' => 0]]];
+        $buffer->document->insert('x');
+        $statuses = new FileStatuses();
+        $statuses->applyFileStatuses([(string) \realpath($project->dir.'/src/a.php') => ChangeMarkKind::Modified]);
+        $tree = new FileTreeWidget($project->dir, fileDecorations: new FileDecorations($buffers, $statuses));
+        $tree->revealPath($project->dir.'/src/a.php');
+
+        $tree->beforeRender();
+        $rows = \explode("\n", $this->plain($tree->render(new RenderContext(30, 10))));
+        $row = \array_key_first(\array_filter($rows, static fn (string $r): bool => \str_contains($r, 'a.php')));
+        $this->assertNotNull($row);
+
+        $tip = $tree->tooltipAt($row, 3);
+        $this->assertSame("src/a.php\nVersion control: Modified\nHas warnings\nUnsaved changes", $tip?->text);
+        $this->assertSame([$row, 0, 30], [$tip?->row, $tip?->colStart, $tip?->colEnd], 'the whole row');
+        $this->assertSame('tree:'.$project->dir.'/src/a.php', $tip?->key);
+
+        $clean = \array_key_first(\array_filter($rows, static fn (string $r): bool => \str_contains($r, 'b.php')));
+        $this->assertNull($tree->tooltipAt((int) $clean, 3), 'a whole name with no mark says nothing more');
+        $this->assertNull($tree->tooltipAt(0, 3), 'nor the header');
+    }
+
+    public function testACutNameIsSaidWholeAndAnErrorIsAnError(): void
+    {
+        $project = new TempProject(['a-really-quite-long-file-name.php' => "<?php\n", 'broken.php' => "<?php\n", 'notes.php' => "<?php\n"]);
+        $buffers = new BufferManager();
+        $buffers->open((string) \realpath($project->dir.'/broken.php'), "<?php\n")->diagnostics = [0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'boom', 'col' => 0]]];
+        $buffers->open((string) \realpath($project->dir.'/notes.php'), "<?php\n")->diagnostics = [0 => [['severity' => DiagnosticSeverity::Hint, 'message' => 'tip', 'col' => 0]]];
+        $tree = new FileTreeWidget($project->dir, fileDecorations: new FileDecorations($buffers, new FileStatuses()));
+
+        $tree->beforeRender();
+        $rows = \explode("\n", $this->plain($tree->render(new RenderContext(20, 10))));
+        $find = static fn (string $needle): int => (int) \array_key_first(\array_filter($rows, static fn (string $r): bool => \str_contains($r, $needle)));
+
+        $this->assertSame('a-really-quite-long-file-name.php', $tree->tooltipAt($find('a-really'), 3)?->text, 'no mark, but cut');
+        $this->assertSame("broken.php\nHas errors", $tree->tooltipAt($find('broken'), 3)?->text);
+        $this->assertNull($tree->tooltipAt($find('notes'), 3), 'a hint is no mark, so nothing to spell out');
+    }
+
     /** Both marks on one row: the diagnostic first, then the dirty dot, so the columns stay stable. */
     public function testAFileCanCarryBothMarksAtOnce(): void
     {

@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Porta\Overlay\State;
 
+use Porta\I18n\Translator;
 use Porta\Overlay\Region\ModalBox;
 use Porta\Support\Scheduler;
 use Porta\Ui\Markup\Markup;
+use Porta\Ui\Tooltip;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -179,6 +181,23 @@ final class ToastCenter
         }
 
         return $over;
+    }
+
+    /** Whether a screen cell is on a card — where nothing beneath may answer the pointer. */
+    public function covers(int $row, int $col): bool
+    {
+        return \array_any($this->boxes, static fn (array $entry): bool => $entry['box']->contains($row, $col));
+    }
+
+    /**
+     * The × says what it does; the rest of a card is its own words already.
+     * Screen coordinates, like every hit-test here.
+     */
+    public function tooltipAt(int $row, int $col, Translator $translator): ?Tooltip
+    {
+        $entry = \array_find($this->boxes, static fn (array $entry): bool => $entry['box']->closeHit($row, $col));
+
+        return null === $entry ? null : new Tooltip('toast:'.$entry['id'], $translator->trans('Dismiss'), $row, $col, $col + 1);
     }
 
     /** Pause $toast's timer, keeping the time it had left — or resume it with that time. */

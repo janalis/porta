@@ -24,6 +24,8 @@ use Porta\Ui\ScreenDensity;
 use Porta\Ui\Sgr;
 use Porta\Ui\TextField;
 use Porta\Ui\Theme\Styles;
+use Porta\Ui\Tooltip;
+use Porta\Ui\TooltipProvider;
 use Porta\Widget\Render\FieldBox;
 use Porta\Widget\Render\FieldSpec;
 use Porta\Widget\Render\FieldState;
@@ -55,7 +57,7 @@ use Symfony\Component\Tui\Widget\KeybindingsTrait;
 #[AsChromeRoot]
 #[AsIdeService]
 #[AsWidget('results')]
-final class ResultsPanelWidget extends DockPanelWidget implements FocusableInterface, HoverableList, LtrPane, MenuOverlayHost
+final class ResultsPanelWidget extends DockPanelWidget implements FocusableInterface, HoverableList, LtrPane, MenuOverlayHost, TooltipProvider
 {
     use FocusableTrait;
     use InputHook;
@@ -90,6 +92,9 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
     private array $contextCache = [];
     /** @var list<DisplayRow> the flattened rows actually rendered/navigated */
     private array $displayRows = [];
+
+    /** The width the last render drew at — whether a row was cut, and its tooltip's span. */
+    private int $drawnColumns = 0;
 
     /** @var (\Closure(string, int): list<array{line: int, text: string}>)|null neighbouring source lines around a match (path, line) => lines */
     private ?\Closure $contextProvider = null;
@@ -519,6 +524,7 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
         }
 
         $columns = $context->getColumns();
+        $this->drawnColumns = $columns;
         $lines = [];
 
         // List tools have no header row of their own — the dock strip carries
@@ -657,11 +663,9 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
      */
     private function matchLine(array $result, string $bg, int $columns): string
     {
+        $prefixWidth = $this->prefixWidth($result);
         if ($this->grouped) {
-            $indent = $this->matchIndent();
-            $label = $this->groupedLabel($result);
-            $prefixWidth = \mb_strwidth($indent) + \mb_strwidth($label) + 2; // indent + label + `  `
-            $text = $indent.$this->styles->of(Role::TabAccent)->apply($label).'  '.$this->body($result, $prefixWidth, $columns);
+            $text = $this->matchIndent().$this->styles->of(Role::TabAccent)->apply($this->groupedLabel($result)).'  '.$this->body($result, $prefixWidth, $columns);
 
             return $this->highlightMatch($text, $prefixWidth, $result, $bg, $columns);
         }
@@ -670,10 +674,49 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
             return $this->highlightMatch(' '.$this->body($result, 1, $columns), 1, $result, $bg, $columns);
         }
         $location = $result['path'].':'.($result['line'] + 1);
-        $prefixWidth = 1 + \mb_strwidth($location) + 2; // ` ` + `path:line` + `  `
         $text = ' '.$this->styles->of(Role::TabAccent)->apply($location).'  '.$this->body($result, $prefixWidth, $columns);
 
         return $this->highlightMatch($text, $prefixWidth, $result, $bg, $columns);
+    }
+
+    /**
+     * The columns a match row spends before its text: the indent and label
+     * under a group header, a lead space alone on a location-less row, or
+     * ` path:line  ` when flat.
+     *
+     * @param ResultRow $result
+     */
+    private function prefixWidth(array $result): int
+    {
+        return match (true) {
+            $this->grouped => \mb_strwidth($this->matchIndent()) + \mb_strwidth($this->groupedLabel($result)) + 2,
+            '' === $result['path'] => 1,
+            default => 1 + \mb_strwidth($result['path'].':'.($result['line'] + 1)) + 2,
+        };
+    }
+
+    /**
+     * A match row the panel had to cut says itself whole: where it is, and
+     * the entire line — or message and rule, on the Problems rows. A row
+     * drawn whole needs no card.
+     */
+    #[\Override]
+    public function tooltipAt(int $row, int $col): ?Tooltip
+    {
+        $index = $this->isVisible() ? $this->rowIndexAt($row) : null;
+        $match = null === $index ? -1 : $this->displayRows[$index]->matchIndex;
+        $result = $this->results[$match] ?? null;
+        if (null === $result) {
+            return null;
+        }
+        $tail = $result['tail'] ?? '';
+        $text = $result['text'].('' === $tail ? '' : '  '.$tail);
+        if (($this->prefixWidth($result) + \mb_strwidth($text)) <= $this->drawnColumns) {
+            return null;
+        }
+        $location = '' === $result['path'] ? '' : $result['path'].':'.($result['line'] + 1)."\n";
+
+        return new Tooltip('results:'.$match, $location.$text, $row, 0, $this->drawnColumns);
     }
 
     /**

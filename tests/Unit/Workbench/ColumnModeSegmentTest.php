@@ -41,5 +41,6 @@ final class ColumnModeSegmentTest extends TestCase
         $this->assertCount(1, $cells);
         $this->assertSame('COLUMN', $cells[0]->text);
         $this->assertSame(StatusTone::Accent, $cells[0]->tone, 'it is a mode, not a whisper');
+        $this->assertSame('Column selection mode: Shift+arrows select a rectangle — Alt+C turns it off', $cells[0]->tooltip, 'a mode says how it works and how to leave it');
     }
 }

@@ -23,6 +23,8 @@ use Porta\Ui\Role;
 use Porta\Ui\ScreenDensity;
 use Porta\Ui\TextField;
 use Porta\Ui\Theme\Styles;
+use Porta\Ui\Tooltip;
+use Porta\Ui\TooltipProvider;
 use Porta\Widget\HoverableList;
 use Porta\Widget\PaneNavigationCallbacks;
 use Porta\Widget\Render\FieldBox;
@@ -67,7 +69,7 @@ use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
  * change the value, Enter commits (fires onChange), Esc cancels.
  */
 #[AsWidget('settings-form', flex: 1)]
-final class SettingsFormWidget extends AbstractWidget implements FocusableInterface, HoverableList, MenuOverlayHost, VerticallyExpandableInterface, WheelScrollable
+final class SettingsFormWidget extends AbstractWidget implements FocusableInterface, HoverableList, MenuOverlayHost, TooltipProvider, VerticallyExpandableInterface, WheelScrollable
 {
     use ArrowScrollTrait;
     use FillsPaneTrait;
@@ -112,6 +114,17 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
      * @var array<int, array{row: int, col: int, width: int, height: int}>
      */
     private array $controls = [];
+
+    /**
+     * What each drawn item could not show, from the last render — its detail
+     * cut to fit, what its ● means — keyed by item index.
+     *
+     * @var array<int, string>
+     */
+    private array $tips = [];
+
+    /** The width the last render drew at: a tooltip spans the whole row. */
+    private int $drawnWidth = 0;
     /** The page title, shown in the header row. */
     private string $title = '';
     /** The row index whose text field is being edited inline, or null. */
@@ -471,6 +484,8 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         $lines = [HeaderRenderer::title($this->titleLine(), $width, $this->styles)];
         $this->rowOwner = [null];
         $this->controls = [];
+        $this->tips = [];
+        $this->drawnWidth = $width;
         for ($i = $scroll; $i < \count($this->rows) && \count($lines) <= $window; ++$i) {
             foreach ($this->item($i, $layout, $width, \count($lines)) as [$line, $owner]) {
                 if (\count($lines) > $window) {
@@ -529,6 +544,9 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
             $room = $width - AnsiUtils::visibleWidth($text);
             if ($i === $middle && '' !== $detail && $room > 3) {
                 $text .= $this->styles->of(Role::Dim)->apply(AnsiText::truncate($this->detailSeparator().$detail, $room));
+            }
+            if ($i === $middle) {
+                $this->recordTip($index, $row, AnsiUtils::visibleWidth($this->detailSeparator().$detail) > $room ? $detail : '');
             }
             // An overflowing value being edited must keep its caret on screen:
             // scroll the assembled row to the marker instead of a hard clip
@@ -633,6 +651,36 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
     private function detailSeparator(): string
     {
         return $this->translator->isRtl() ? Bidi::RTL_MARK.'· ' : ' · ';
+    }
+
+    /**
+     * An item under the pointer says what its row could not: the detail cut
+     * to fit — the hint, the range, where the value comes from — and what its
+     * ● means. Anchored on the item's control rows.
+     */
+    #[\Override]
+    public function tooltipAt(int $row, int $col): ?Tooltip
+    {
+        $index = $this->rowOwner[$row] ?? null;
+        if (null === $index || !\array_key_exists($index, $this->tips) || !\array_key_exists($index, $this->controls)) {
+            return null;
+        }
+        $text = $this->tips[$index];
+        $control = $this->controls[$index];
+
+        return new Tooltip('settings:'.$this->rows[$index]->key, $text, $control['row'], 0, $this->drawnWidth, $control['height']);
+    }
+
+    /** The item's tooltip, when its row cut its $cutDetail (or '' when it drew it whole) or it carries the modified mark. */
+    private function recordTip(int $index, SettingsRow $row, string $cutDetail): void
+    {
+        $lines = '' === $cutDetail ? [] : [$cutDetail];
+        if ($row->isModified()) {
+            $lines[] = $this->translator->trans('Changed from its default — r puts it back');
+        }
+        if ([] !== $lines) {
+            $this->tips[$index] = \implode("\n", $lines);
+        }
     }
 
     private function marker(SettingsRow $row): string

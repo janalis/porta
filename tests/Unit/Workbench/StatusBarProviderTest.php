@@ -157,6 +157,45 @@ final class StatusBarProviderTest extends TestCase
         $this->assertStringContainsString(Glyphs::DIRTY, $left);
     }
 
+    /** Every cell that carries a meaning in words passes it on: the file in full, the right-hand cells, a contributed cell's own. */
+    public function testTheTooltipsTravelWithTheirCells(): void
+    {
+        $provider = $this->provider([[new StatusCell('⎇ main', StatusTone::Accent, tooltip: 'the branch')]]);
+        $file = $this->project->write('src/edited.php', "<?php\n");
+        $this->editor->openFile($file, "<?php\n");
+        $this->editor->getDocument()->insert('x');
+
+        $segments = $provider->segments();
+
+        $this->assertSame('the branch', $segments['cells'][0]['tooltip']);
+        $this->assertSame("src/edited.php\nUnsaved changes", $segments['leftTooltip']);
+        $this->assertSame(
+            ['goto_line' => 'Line 1, column 2 — click to go to a line', 'ide_lsp_log' => 'The language server for this file — click for its log'],
+            \array_column(\array_map(static fn (StatusClickSpan $s): array => ['a' => $s->action, 't' => $s->tooltip], $segments['rightClicks']), 't', 'a'),
+        );
+    }
+
+    public function testTheCaretDiagnosticAndTheProblemCountsSayThemselvesInFull(): void
+    {
+        $provider = $this->provider();
+        $this->editor->openFile($this->project->write('t.php', "<?php\n"), "<?php\n");
+        $this->editor->decorations->setDiagnostics([0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'a long message the row may cut', 'col' => 0]]]);
+
+        $segments = $provider->segments();
+
+        $this->assertSame("t.php\n".Glyphs::SEVERITY_ERROR.' a long message the row may cut', $segments['leftTooltip']);
+        $this->assertSame('Errors and warnings in this file — click to list them', $segments['rightClicks'][0]->tooltip);
+    }
+
+    public function testAViewersTooltipIsItsPathAndThePromptHasNone(): void
+    {
+        $provider = $this->provider();
+        $this->assertNull($provider->segments()['leftTooltip'], 'the open-a-file prompt says itself');
+
+        $this->buffers->openPane($this->project->write('shown.png', 'x'), 'image', 'payload');
+        $this->assertSame('shown.png', $provider->segments()['leftTooltip']);
+    }
+
     public function testAnEmptyCellDoesNotAbortTheRestOfItsSource(): void
     {
         // continue vs break only differs within the SAME source's cell loop:

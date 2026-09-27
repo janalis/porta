@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Porta\Input;
 
 use Porta\Overlay\Region\DropdownRegion;
+use Porta\Ui\Tooltip;
+use Porta\Ui\TooltipProvider;
 use Porta\Widget\HoverableList;
 use Porta\Widget\SeparatorWidget;
 use Symfony\Component\Tui\Render\Renderer;
@@ -63,6 +65,20 @@ final readonly class HitTester
         }
 
         return $rect->toRelative($row, $col);
+    }
+
+    /**
+     * What the widget under a screen cell says about it, placed back on the
+     * screen, or null when the cell is outside the widget or means nothing.
+     */
+    public function tooltip(AbstractWidget&TooltipProvider $widget, int $row, int $col): ?Tooltip
+    {
+        $rect = $this->rect($widget);
+        if (null === $rect || !$rect->contains($row, $col)) {
+            return null;
+        }
+
+        return $widget->tooltipAt($row - $rect->row, $col - $rect->col)?->moved($rect->row, $rect->col);
     }
 
     /**

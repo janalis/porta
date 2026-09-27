@@ -322,6 +322,66 @@ final class FindInFilesModalTest extends TestCase
         $this->assertSame(['bar', []], $replaced, 'a re-included match is not reported as excluded');
     }
 
+    /** Every option tag says what it does and its key; the token scope says which of its three states it is in. */
+    public function testTheOptionTagsExplainThemselves(): void
+    {
+        $modal = $this->modal();
+        $this->assertNull($modal->tooltipAt(0, 0), 'closed: nothing');
+        $modal->open('Find in Files');
+        $this->assertNull($modal->tooltipAt(0, 0), 'no box yet');
+        $modal->setOptions(['regex' => false, 'case' => false, 'word' => false, 'preserve' => false, 'tokens' => 'in']);
+        $this->compose($modal);
+        $box = $modal->lastBox();
+        $this->assertInstanceOf(ModalBox::class, $box);
+
+        $texts = [];
+        for ($col = $box->col; $col < ($box->col + $box->width); ++$col) {
+            $tip = $modal->tooltipAt($box->optionsRow, $col);
+            if (null !== $tip) {
+                $texts[$tip->key] = $tip->text;
+            }
+        }
+        $this->assertSame(
+            [
+                'find-modal:regex' => "Regular expression\tAlt+R",
+                'find-modal:case' => "Match case\tAlt+C",
+                'find-modal:word' => "Whole word\tAlt+W",
+                'find-modal:preserve' => "Preserve case when replacing\tAlt+V",
+                'find-modal:tokens' => "Match only inside comments and strings\tAlt+T",
+            ],
+            $texts,
+        );
+
+        $regex = null;
+        for ($col = $box->col; null === $regex; ++$col) {
+            $regex = $modal->tooltipAt($box->optionsRow, $col);
+        }
+        $this->assertSame($col - 1, $regex->colStart, 'the span starts on the first cell that answers');
+        $this->assertSame($box->optionsRow, $regex->row);
+        $this->assertNull($modal->tooltipAt($box->optionsRow - 1, $regex->colStart), 'the Replace field is not a tag');
+
+        $modal->setOptions(['regex' => false, 'case' => false, 'word' => false, 'preserve' => false, 'tokens' => 'except']);
+        $this->compose($modal);
+        $this->assertSame("Match everywhere except comments and strings\tAlt+T", $this->tokenTip($modal));
+        $modal->setOptions(['regex' => false, 'case' => false, 'word' => false, 'preserve' => false, 'tokens' => 'any']);
+        $this->compose($modal);
+        $this->assertSame("Match anywhere — comments and strings too\tAlt+T", $this->tokenTip($modal));
+    }
+
+    private function tokenTip(FindInFilesModal $modal): ?string
+    {
+        $box = $modal->lastBox();
+        $this->assertInstanceOf(ModalBox::class, $box);
+        for ($col = $box->col; $col < ($box->col + $box->width); ++$col) {
+            $tip = $modal->tooltipAt($box->optionsRow, $col);
+            if ('find-modal:tokens' === $tip?->key) {
+                return $tip->text;
+            }
+        }
+
+        return null;
+    }
+
     public function testEdges(): void
     {
         $modal = $this->modal();

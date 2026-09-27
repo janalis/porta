@@ -717,7 +717,7 @@ final class IdeMousePrimitivesTest extends TestCase
         );
     }
 
-    /** A gutter mark under the pointer underlines and says what it is on the status bar; leaving it takes the underline back. */
+    /** A gutter mark under the pointer underlines and says what it is on a tooltip card; leaving it takes the underline back. */
     public function testHoveringAGutterMarkNamesIt(): void
     {
         \putenv('PATH=/nonexistent');
@@ -734,21 +734,22 @@ final class IdeMousePrimitivesTest extends TestCase
                     $tui->tick();
                     $tui->handleInput("\x1b[<35;36;4M"); // the marker column, line 1
                 },
-                400 => function ($tui): void {
+                400 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $editor = $tui->getById('editor');
                     $this->assertSame(1, $editor->decorations->gutterHover['line'] ?? null);
-                    $this->assertStringContainsString('Breakpoint · click to remove', AnsiUtils::stripAnsiCodes(\implode('', $tui->getById('status')->render(new RenderContext(160, 1)))));
+                    // The card follows the dwell; the status bar no longer says it.
+                    $this->awaitPainted($tui, $terminal, 'Breakpoint · click to remove');
+                    $this->assertStringNotContainsString('Breakpoint', AnsiUtils::stripAnsiCodes(\implode('', $tui->getById('status')->render(new RenderContext(160, 1)))));
                     $this->assertStringContainsString("\x1b[4m", \implode("\n", $editor->render(new RenderContext(80, 10))), 'the mark underlined');
+                    $terminal->clearOutput();
                     $tui->handleInput("\x1b[<35;32;3M"); // the change strip, line 0
                 },
-                500 => function ($tui): void {
+                500 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $editor = $tui->getById('editor');
                     $this->assertSame(['line' => 0, 'part' => GutterPart::Change], $editor->decorations->gutterHover);
-                    $this->assertStringContainsString(
-                        'Modified',
-                        AnsiUtils::stripAnsiCodes(\implode('', $tui->getById('status')->render(new RenderContext(160, 1)))),
-                        'no git plugin: no "click to see"',
-                    );
+                    // A card was just up, so the next one follows at once.
+                    $this->awaitPainted($tui, $terminal, 'Modified');
+                    $this->assertStringNotContainsString('click to see', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'no git plugin: no "click to see"');
                     $tui->handleInput("\x1b[<35;60;3M"); // the code
                 },
                 600 => function ($tui): void {
@@ -783,12 +784,12 @@ final class IdeMousePrimitivesTest extends TestCase
                     $this->assertNotNull($row, 'the bookmark is on the stripe');
                     $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", 31 + 129, 3 + $row)); // the stripe's column, that row
                 },
-                500 => function ($tui): void {
+                500 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $editor = $tui->getById('editor');
                     $this->assertNotNull($editor->decorations->stripeHover);
                     $cell = $editor->render(new RenderContext(129, 22))[$editor->decorations->stripeHover];
                     $this->assertMatchesRegularExpression('/\e\[[0-9;]*4[0-9;]*m[^\e]*(\e\[[0-9;]*m)*◈/u', $cell, 'the mark underlined');
-                    $this->assertStringContainsString('Bookmark · line 41', AnsiUtils::stripAnsiCodes(\implode('', $tui->getById('status')->render(new RenderContext(160, 1)))));
+                    $this->awaitPainted($tui, $terminal, 'Bookmark · line 41');
                 },
             ],
         );

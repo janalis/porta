@@ -111,6 +111,26 @@ final class OverlayDeliveryTest extends TestCase
         $this->assertSame([], $this->pane->toastSpans);
     }
 
+    /** A card flush against its element casts no shadow: the shadow would fall on what it explains. */
+    public function testDeliverTooltipUsesItsOwnSlotAndCastsNoShadow(): void
+    {
+        $delivery = $this->delivery();
+        $this->frame();
+
+        $delivery->deliverTooltip([['rows' => ['tip', 'tip'], 'top' => 3, 'col' => 10, 'width' => 3]]);
+        $this->assertSame(
+            [['row' => 3, 'col' => 10, 'width' => 3, 'segment' => 'tip'], ['row' => 4, 'col' => 10, 'width' => 3, 'segment' => 'tip']],
+            $this->pane->tooltipSpans,
+            'the card rows alone, no shadow band',
+        );
+        $this->assertSame([], $this->pane->toastSpans, 'the toast slot is untouched');
+        $this->assertFalse($this->pane->backdrop, 'a tooltip is passive');
+        $this->assertSame([], $this->detachedPane->tooltipSpans, 'a pane with no rect gets empty spans');
+
+        $delivery->clearTooltip();
+        $this->assertSame([], $this->pane->tooltipSpans);
+    }
+
     public function testShadowClampedGrowsByTheShadowBandsOnlyWhereTheyPaint(): void
     {
         $bounds = [0, 0, 24, 100];

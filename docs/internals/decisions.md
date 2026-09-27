@@ -10713,3 +10713,42 @@ bar draws no `∀` button there.
 
 *Re-opens on:* a request to keep the bar open after selecting, which PhpStorm
 does not do.
+
+## Tooltips (2026-09-25)
+
+Much of the chrome is a glyph, an abbreviation or a name cut to fit: `Pc`,
+`i"`, `∀`, `⌾`, git's `R`, `hide-ws`, a tree row's change mark. One place
+explained itself on hover: the gutter and the marker stripe flashed their
+meaning on the status bar (phase 6d). That is replaced by a floating card that
+every surface can use, and the gutter moved onto it. The status bar is far
+from the pointer and cuts the text on a narrow terminal.
+
+- **The dwell is keyed on the element, not the pointer.** A move over the
+  same element changes nothing, for the reason the spring-load dwell gives: a
+  resting hand jitters. Once a card is up, the next element's shows at once,
+  and within 0.6 s of one leaving. A key, a press or the wheel dismisses it
+  and resets that grace.
+- **The card has no arrow.** A `▲` set into the border, then a stem joined by
+  a tee, were both tried; the owner asked for the arrow to go. The card sits
+  flush against its element and casts no shadow, which would fall on the
+  element.
+- **A resize asks again at the pointer's last cell,** one frame late, against
+  the resized layout's rects. An element still under the pointer keeps its
+  card; one carried away takes it with it.
+- **Views are walked, not asked.** Widening `ViewPointer` for the one caller
+  would break every plugin view and is the "widen a role for one caller" the
+  container rules forbid. The router walks the open view's region for
+  `TooltipProvider` widgets instead.
+- **The editor gained no method.** `GutterPointer` (built from the widget's
+  public geometry) answers for both the hover tint and the tooltip, and the
+  completion popup is read through `public private(set)`.
+- **What a card says is recorded at render**, where the row knows what it cut,
+  so the card and the memoized rows cannot disagree.
+
+**Not done, on purpose:** menu items (a disabled item's reason and a cut label
+need an action id threaded through `MenuItem`/`MenuModel::item()`); the help
+viewer's `‹ ›` (the arrows are universal); the Welcome step marks and the
+menu bar's `…`.
+
+*Re-opens on:* a request for keyboard-focus tooltips, or a menu item whose
+disabled state confuses users.

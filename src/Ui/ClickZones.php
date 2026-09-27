@@ -6,7 +6,8 @@ namespace Porta\Ui;
 
 /**
  * A row's named click targets: half-open column spans recorded at render
- * time ({@see clear} + {@see add}) and resolved on click/hover ({@see at}).
+ * time ({@see clear} + {@see add}) and resolved on click/hover ({@see at})
+ * and for a tooltip's anchor ({@see span}).
  * The shared form of the zone lists the toolbar-ish rows hand-rolled —
  * a value object each widget news up, not a service. First match wins.
  * Zone lists carrying non-string payloads or positional lookups (tab
@@ -36,6 +37,23 @@ final class ClickZones
         foreach ($this->zones as $zone) {
             if ($col >= $zone['start'] && $col < $zone['end']) {
                 return $zone['name'];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * The columns [start, end) of the first zone named $name, or null — where
+     * a tooltip's arrow points.
+     *
+     * @return array{int, int}|null
+     */
+    public function span(string $name): ?array
+    {
+        foreach ($this->zones as $zone) {
+            if ($name === $zone['name']) {
+                return [$zone['start'], $zone['end']];
             }
         }
 

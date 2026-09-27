@@ -154,6 +154,8 @@ catalog validation and bind if the plugin loads.
 | `searchIncludeVendor` | `false` | Let Find in Files and Go to File descend into `vendor/` |
 | `formatOnSave` | `false` | Format via the language server before each Ctrl+S save (single-file saves only; a 2s timeout saves unformatted with a flash) |
 | `cursorShape` | `"bar"` | Hardware cursor shape: `bar`, `block` or `underline` — screen readers follow the hardware cursor |
+| `tooltips` | `true` | A card saying what a glyph, a toggle or a cut name means when the pointer rests on it |
+| `tooltipDelay` | `500` | How long the pointer rests before a tooltip shows, in milliseconds (0–2000; the next one shows at once while a card is up) |
 
 All of these apply live when changed from the Settings view or the palette
 commands (`Cycle Diagnostic Messages`, `Cycle Line Numbers`,

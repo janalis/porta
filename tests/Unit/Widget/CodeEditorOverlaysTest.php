@@ -6,9 +6,12 @@ namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\CompletionItem;
+use Porta\Editor\CompletionKindName;
 use Porta\Editor\Document;
 use Porta\Editor\EditorCompletion;
 use Porta\Editor\OccurrenceHighlights;
+use Porta\I18n\Translator;
+use Porta\Lsp\LspMapper;
 use Porta\Overlay\Region\ModalBox;
 use Porta\Overlay\State\FindModalCallbacks;
 use Porta\Search\Everywhere\SearchCategory;
@@ -631,6 +634,55 @@ final class CodeEditorOverlaysTest extends TestCase
         // No render → no captured box → not consumed.
         $this->assertFalse($editor->handlePopupClick(4, 12));
         $this->assertTrue($editor->isCompletionOpen());
+    }
+
+    /** An abbreviated kind tag spells itself out; a tag that is a word, the rest of the row and a closed popup say nothing. */
+    public function testACompletionKindTagSpellsItselfOut(): void
+    {
+        $editor = $this->editor();
+        $editor->getDocument()->setCursor(2, 5);
+        $editor->showCompletions([
+            new CompletionItem(label: 'echoFirst', insertText: 'echoFirst', kind: 'iface', detail: ''),
+            new CompletionItem(label: 'echoSecond', insertText: 'echoSecond', kind: 'class', detail: ''),
+        ]);
+        $rows = \array_map(AnsiUtils::stripAnsiCodes(...), $editor->render(new RenderContext(80, 20)));
+        $row = (int) \array_key_first(\array_filter($rows, static fn (string $r): bool => \str_contains($r, 'echoFirst')));
+        $tag = (int) \mb_strpos($rows[$row], needle: 'iface');
+        $translator = new Translator('en');
+
+        $tip = $editor->completion->tooltipAt($row, $tag + 2, $translator);
+        $this->assertSame(['Interface', $row, $tag, $tag + 5], [$tip?->text, $tip?->row, $tip?->colStart, $tip?->colEnd]);
+        $this->assertNull($editor->completion->tooltipAt($row, $tag - 3, $translator), 'the label is not the tag');
+        $this->assertNull($editor->completion->tooltipAt($row, $tag + 5, $translator), 'nor the space after it');
+        $this->assertNull($editor->completion->tooltipAt($row + 1, (int) \mb_strpos($rows[$row + 1], needle: 'class'), $translator), 'class is a word already');
+
+        $editor->completion->close();
+        $this->assertNull($editor->completion->tooltipAt($row, $tag, $translator));
+    }
+
+    public function testEveryAbbreviatedKindHasItsWord(): void
+    {
+        $translator = new Translator('en');
+        $words = [];
+        foreach (LspMapper::COMPLETION_KINDS as $tag) {
+            $words[$tag] = CompletionKindName::of($tag, $translator);
+        }
+
+        $this->assertSame(
+            [
+                'fn' => 'Function',
+                'ctor' => 'Constructor',
+                'var' => 'Variable',
+                'iface' => 'Interface',
+                'prop' => 'Property',
+                'ref' => 'Reference',
+                'case' => 'Enum case',
+                'const' => 'Constant',
+                'op' => 'Operator',
+            ],
+            \array_filter($words),
+            'every tag that is not already a word, and only those',
+        );
     }
 
     public function testCompletionHoverTintsWithoutMovingTheSelection(): void
