@@ -196,6 +196,40 @@ final class StatusBarProviderTest extends TestCase
         $this->assertSame('shown.png', $provider->segments()['leftTooltip']);
     }
 
+    /**
+     * The file the left part names, and the width of its path alone: the ●
+     * and a caret diagnostic follow it, and they name no file.
+     */
+    public function testTheLeftNamesItsFileAndMeasuresThePathAlone(): void
+    {
+        $provider = $this->provider();
+        $this->assertNull($provider->segments()['leftPath'], 'the open-a-file prompt names no file');
+        $this->assertSame(0, $provider->segments()['leftPathWidth']);
+
+        $file = $this->project->write('src/edited.php', "<?php\n");
+        $this->editor->openFile($file, "<?php\n");
+        $this->editor->getDocument()->insert('x');
+        $this->editor->decorations->setDiagnostics([0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'boom', 'col' => 0]]]);
+        $segments = $provider->segments();
+
+        $this->assertSame($file, $segments['leftPath']);
+        $this->assertSame(\mb_strlen('src/edited.php'), $segments['leftPathWidth'], 'neither the ● nor the diagnostic');
+    }
+
+    public function testAViewerNamesItsOwnFileEvenWhenItsPaneOwnsTheRight(): void
+    {
+        $provider = $this->provider();
+        $abs = $this->project->write('v.bin', 'x');
+        $this->buffers->openPane($abs, 'viewer', 'payload');
+        $this->editor->openFile($this->project->path('editor-side.php'), "<?php\n");
+        $this->panes->register($this->fakePane('viewer', 'PANE-RIGHT'), static fn (string $p): string => '');
+
+        $segments = $provider->segments();
+
+        $this->assertSame($abs, $segments['leftPath'], 'the viewer, not the editor behind it');
+        $this->assertSame(\mb_strlen('v.bin'), $segments['leftPathWidth']);
+    }
+
     public function testAnEmptyCellDoesNotAbortTheRestOfItsSource(): void
     {
         // continue vs break only differs within the SAME source's cell loop:

@@ -326,7 +326,11 @@ you start. `docs/editor.md` has the rest.
 
 The status bar's right-hand cells are clickable too: the error/warning counts
 open **Problems**, the `line:col` position opens **Go to Line**, and the
-`LSP:<status>` cell opens the **LSP server log**.
+`LSP:<status>` cell opens the **LSP server log**. On the left, the file's
+path is a way back to the tree: double-click it to expand the tree down to
+the file and select it (focus stays in the editor, as with a double-clicked
+tab), or right-click it for **Select Opened File in Tree** (`Alt+F1`),
+**Copy Path** and **Copy Relative Path**.
 
 ## Custom keymap
 

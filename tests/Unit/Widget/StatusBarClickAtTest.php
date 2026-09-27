@@ -10,6 +10,8 @@ use Porta\Workbench\StatusClickSpan;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
+use Symfony\Component\Tui\Render\Renderer;
+use Symfony\Component\Tui\Style\StyleSheet;
 
 /**
  * Where a right-hand status cell actually LANDS on the row.
@@ -133,5 +135,92 @@ final class StatusBarClickAtTest extends TestCase
         $status->render(new RenderContext(self::COLUMNS, 1));
 
         $this->assertNull($status->clickAt(50));
+    }
+
+    /**
+     * The status bar naming $path, drawn as `src/a.php` and then a caret
+     * diagnostic, behind the contributed $cells.
+     *
+     * @param list<array{text: string, menu: null}> $cells
+     */
+    private function fileBar(?string $path, array $cells = []): StatusBarWidget
+    {
+        $status = new StatusBarWidget(new MockClock('2020-01-01T00:00:00+00:00'));
+        $status->setProvider(static fn (): array => [
+            'cells' => $cells,
+            'left' => 'src/a.php  boom',
+            'leftPath' => $path,
+            'leftPathWidth' => 9,
+            'right' => 'AB',
+        ]);
+        $status->beforeRender();
+
+        return $status;
+    }
+
+    public function testTheFileIsFoundOnItsPathAndNotOnTheDiagnosticAfterIt(): void
+    {
+        $status = $this->fileBar('/p/src/a.php');
+        $row = $status->render(new RenderContext(self::COLUMNS, 1))[0];
+        $at = self::columnOf($row, 'src/a.php');
+
+        $this->assertNull($status->fileAt($at - 1), 'the leading space');
+        $this->assertSame('/p/src/a.php', $status->fileAt($at));
+        $this->assertSame('/p/src/a.php', $status->fileAt($at + 8), 'its last column');
+        $this->assertNull($status->fileAt($at + 9));
+        $this->assertNull($status->fileAt(self::columnOf($row, 'boom')), 'the diagnostic names no file');
+    }
+
+    public function testTheFileSpanFollowsTheCellsAheadOfIt(): void
+    {
+        $status = $this->fileBar('/p/src/a.php', [['text' => 'main', 'menu' => null]]);
+        $row = $status->render(new RenderContext(self::COLUMNS, 1))[0];
+
+        $this->assertNull($status->fileAt(self::columnOf($row, 'main')));
+        $this->assertSame('/p/src/a.php', $status->fileAt(self::columnOf($row, 'src/a.php')));
+    }
+
+    public function testAPathCutToFitIsStillTheFileButOnlyWhereDrawn(): void
+    {
+        // 12 columns leave the left 7, narrower than the 9-column path: the
+        // span ends where the cut text does, not where the whole path would.
+        $status = $this->fileBar('/p/src/a.php');
+        $row = AnsiUtils::stripAnsiCodes($status->render(new RenderContext(12, 1))[0]);
+        $this->assertSame(1 + 7 + 1, \mb_strpos($row, needle: 'AB'), 'the leading space, the left cut to 7, a one-column gap');
+
+        $this->assertSame('/p/src/a.php', $status->fileAt(7), 'its last drawn column');
+        $this->assertNull($status->fileAt(8), 'past the cut path');
+    }
+
+    public function testNoFileIsNamedByThePromptOrUnderAFlash(): void
+    {
+        $prompt = $this->fileBar(null);
+        $prompt->render(new RenderContext(self::COLUMNS, 1));
+        $this->assertNull($prompt->fileAt(1), 'the open-a-file prompt');
+
+        $status = $this->fileBar('/p/src/a.php');
+        $status->flash('Saved!', 5.0);
+        $status->render(new RenderContext(self::COLUMNS, 1));
+        $this->assertNull($status->fileAt(1), 'a flash has the left');
+    }
+
+    public function testANewFileBehindTheSameTextMovesTheSpan(): void
+    {
+        // Through the renderer, which serves a widget's cached lines unless
+        // it was invalidated: the drawn text does not change, so only the
+        // path can say the span is stale.
+        $path = '/p/src/a.php';
+        $status = new StatusBarWidget(new MockClock('2020-01-01T00:00:00+00:00'));
+        $status->setProvider(static function () use (&$path): array {
+            return ['left' => 'src/a.php', 'leftPath' => $path, 'leftPathWidth' => 9, 'right' => ''];
+        });
+        $renderer = new Renderer(new StyleSheet());
+        $renderer->renderWidget($status, new RenderContext(self::COLUMNS, 1));
+        $this->assertSame('/p/src/a.php', $status->fileAt(1));
+
+        $path = '/q/src/a.php';
+        $renderer->renderWidget($status, new RenderContext(self::COLUMNS, 1));
+
+        $this->assertSame('/q/src/a.php', $status->fileAt(1));
     }
 }

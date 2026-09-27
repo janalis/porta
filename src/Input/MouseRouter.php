@@ -206,10 +206,11 @@ final class MouseRouter
         }
 
         // The status bar's own cells: problem counts, caret position, LSP
-        // status, and a cell's menu (the branch). Below the modals — an open
+        // status, a cell's menu (the branch), and the file part, whose
+        // double-click reveals the file in the tree. Below the modals — an open
         // dropdown may cover the row — and above the pane hit-tests, which do
         // not reach the chrome anyway.
-        if ($this->statusClick->route($mouse, $this->rightClick->openStatusMenu(...))) {
+        if ($this->statusClick->route($mouse, $this->rightClick->openStatusMenu(...), $this->clicks)) {
             return;
         }
 

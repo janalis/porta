@@ -20,7 +20,7 @@ use Symfony\Component\Tui\Tui;
 /**
  * Right-click routing, split out of {@see MouseRouter}: it resolves WHICH item
  * list the pointer is over — editor, tab strip, file tree, dock tab, git
- * changes row, git commit, status-bar branch — and hands it to the existing
+ * changes row, git commit, status-bar branch or file — and hands it to the existing
  * {@see ContextMenuOpener}. No menu applies to the pointer's surface, or a
  * floating picker owns input, means a "no menu here" flash.
  *
@@ -120,6 +120,13 @@ final readonly class ContextMenuRouter
         if (!$handled) {
             $items = $this->viewMenus->of($this->views->activeId())?->contextItemsAt($mouse->row, $mouse->col);
         }
+        // The status bar's file part is a way back to the tree: select the
+        // file there, or copy the path the tree would.
+        $statusCol = $this->statusCol($mouse);
+        $file = null === $statusCol ? null : $this->statusBar->fileAt($statusCol);
+        if (!$handled && null === $items && null !== $file) {
+            $items = [...$this->contextItems->statusFileItems(), MenuItem::separator(), ...$this->treeOps->copyPathItems($file)];
+        }
         // A right-click on a status cell offers whatever that cell put there.
         // This branch used to read one hardcoded span and pair it with the git
         // branch menu; the cell carries its own menu now, so nothing here knows
@@ -153,14 +160,22 @@ final readonly class ContextMenuRouter
         return true;
     }
 
-    /** @return list<MenuItem>|null the menu of the status cell under the pointer */
-    private function statusMenuItems(MouseEvent $mouse): ?array
+    /** The status-bar column under the pointer, or null off the row. */
+    private function statusCol(MouseEvent $mouse): ?int
     {
         $statusRect = $this->hit->rect($this->statusBar);
         if (null === $statusRect || !$statusRect->contains($mouse->row, $mouse->col)) {
             return null;
         }
-        $menu = $this->statusBar->menuAt($statusRect->toRelative($mouse->row, $mouse->col)['col']);
+
+        return $statusRect->toRelative($mouse->row, $mouse->col)['col'];
+    }
+
+    /** @return list<MenuItem>|null the menu of the status cell under the pointer */
+    private function statusMenuItems(MouseEvent $mouse): ?array
+    {
+        $col = $this->statusCol($mouse);
+        $menu = null === $col ? null : $this->statusBar->menuAt($col);
 
         return null === $menu ? null : $menu();
     }

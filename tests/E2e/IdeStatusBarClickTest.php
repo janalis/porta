@@ -5,10 +5,14 @@ declare(strict_types=1);
 namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Editor\BufferService;
+use Porta\Editor\OpenFocus;
+use Porta\Ide;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\ScreenReads;
+use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
@@ -59,5 +63,91 @@ final class IdeStatusBarClickTest extends TestCase
                 },
             ],
         );
+    }
+
+    /**
+     * PhpStorm's way back to the tree: a double-click on the file part expands
+     * the tree down to the file and selects it, as a double-click on its tab
+     * does, and focus stays in the editor.
+     */
+    public function testDoubleClickingTheFileRevealsItInTheTree(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n", 'src/deep/Target.php' => "<?php\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
+                    Services::resolve($ide, BufferService::class)
+                        ->openFile($project->path('src/deep/Target.php'), OpenFocus::Editor);
+                    $this->frame($tui);
+                    $tree = $tui->getById('tree');
+                    $this->assertNotSame('Target.php', $tree->selectedNode()?->name, 'opening a file does not reveal it in the tree');
+
+                    [$col, $row] = $this->statusFile($tui, $terminal, 'src/deep/Target.php');
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $col + 1, $row + 1));
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $col + 1, $row + 1));
+                    $this->assertNotSame('Target.php', $tree->selectedNode()?->name, 'a single click reveals nothing');
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $col + 1, $row + 1));
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $col + 1, $row + 1));
+
+                    $this->assertSame('Target.php', $tree->selectedNode()?->name, 'the double-click revealed and selected the deep file');
+                    $this->assertSame('editor', $tui->getFocus()?->getId(), 'focus stayed in the editor');
+                },
+            ],
+        );
+    }
+
+    /**
+     * A right-click on the file part offers the way back to the tree and the
+     * tree's path-copy pair; its first item selects the file in the tree and
+     * focuses it.
+     */
+    public function testRightClickingTheFileOffersTheTreeMenu(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n", 'src/deep/Target.php' => "<?php\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
+                    Services::resolve($ide, BufferService::class)
+                        ->openFile($project->path('src/deep/Target.php'), OpenFocus::Editor);
+                    $this->frame($tui);
+                    [$col, $row] = $this->statusFile($tui, $terminal, 'src/deep/Target.php');
+                    $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $col + 1, $row + 1));
+                    $this->awaitPainted($tui, $terminal, 'Select Opened File in Tree');
+                    $grid = $this->screenGrid($tui, $terminal);
+                    $this->assertNotNull($this->rowOf($grid, 'Copy Relative Path'), 'the tree\'s path-copy pair is offered');
+                    $this->assertNull($this->rowOf($grid, 'Close Others'), 'not the tab menu');
+
+                    $tui->handleInput("\r"); // the first item is selected
+                    $this->frame($tui);
+                    $this->assertSame('Target.php', $tui->getById('tree')->selectedNode()?->name, 'the file is selected in the tree');
+                    $this->assertSame('tree', $tui->getFocus()?->getId(), 'and the tree has focus');
+                },
+            ],
+        );
+    }
+
+    /**
+     * Where the status bar draws $path, 0-based: the row is found by its
+     * content, since the dock and the find bar move it.
+     *
+     * @return array{int, int}
+     */
+    private function statusFile(Tui $tui, VirtualTerminal $terminal, string $path): array
+    {
+        $grid = $this->screenGrid($tui, $terminal);
+        $row = $this->rowOf($grid, 'LSP:');
+        $this->assertNotNull($row, 'the status bar is on screen');
+        $col = \mb_strpos($grid[$row], $path);
+        $this->assertIsInt($col, 'the file part is on the status bar');
+
+        return [$col, $row];
     }
 }

@@ -48,7 +48,7 @@ final readonly class StatusBarProvider
      * widget lays the cells out — it alone knows which of them fit — so the
      * router still hit-tests a click without knowing which cell is which.
      *
-     * @return array{cells: list<array{text: string, menu: (\Closure(): list<MenuItem>)|null, tooltip: ?string}>, left: string, leftTooltip: ?string, right: string, rightClicks: list<StatusClickSpan>}
+     * @return array{cells: list<array{text: string, menu: (\Closure(): list<MenuItem>)|null, tooltip: ?string}>, left: string, leftTooltip: ?string, leftPath: ?string, leftPathWidth: int, right: string, rightClicks: list<StatusClickSpan>}
      */
     public function segments(): array
     {
@@ -62,6 +62,11 @@ final readonly class StatusBarProvider
             null === $path => $this->translator->trans('porta — open a file from the tree (Enter)'),
             default => $this->paths->relative($path).($doc->isDirty() ? ' '.Glyphs::DIRTY : ''),
         };
+        // The file the left part names, and how wide its path is on its own:
+        // the ● and a caret diagnostic follow it, and only the path is the
+        // tree's file (a double-click reveals it, a right-click offers its menu).
+        $leftPath = null !== $active && $active->isViewer() ? $active->path : $path;
+        $leftPathWidth = null === $leftPath ? 0 : AnsiUtils::visibleWidth($this->paths->relative($leftPath));
         // The file part is cut in the middle when the row is short, and its
         // ● is a glyph: the tooltip spells both out.
         $leftTooltip = match (true) {
@@ -94,7 +99,7 @@ final readonly class StatusBarProvider
         if (null !== $paneSegment && '' !== $paneSegment) {
             // A pane owns its whole right side, so core has nothing clickable
             // to offer there.
-            return ['cells' => $cells, 'left' => $left, 'leftTooltip' => $leftTooltip, 'right' => $paneSegment, 'rightClicks' => []];
+            return ['cells' => $cells, 'left' => $left, 'leftTooltip' => $leftTooltip, 'leftPath' => $leftPath, 'leftPathWidth' => $leftPathWidth, 'right' => $paneSegment, 'rightClicks' => []];
         }
 
         // Led by its severity's glyph, so an error and a hint differ without colour.
@@ -159,7 +164,7 @@ final readonly class StatusBarProvider
         // not a control, and a click landing on one used to open the server log.
         $clicks[] = new StatusClickSpan($at, $at + AnsiUtils::visibleWidth($lspCell), 'ide_lsp_log', $this->translator->trans('The language server for this file — click for its log'));
 
-        return ['cells' => $cells, 'left' => $left, 'leftTooltip' => $leftTooltip, 'right' => $right, 'rightClicks' => $clicks];
+        return ['cells' => $cells, 'left' => $left, 'leftTooltip' => $leftTooltip, 'leftPath' => $leftPath, 'leftPathWidth' => $leftPathWidth, 'right' => $right, 'rightClicks' => $clicks];
     }
 
     /**

@@ -36,7 +36,7 @@ final class StatusBarWidget extends AbstractWidget implements TooltipProvider
 {
     use StylesDefault;
 
-    /** @var (callable(): array{cells?: list<array{text: string, menu: (\Closure(): list<MenuItem>)|null, tooltip?: ?string}>, left: string, leftTooltip?: ?string, right: string, rightClicks?: list<StatusClickSpan>})|null */
+    /** @var (callable(): array{cells?: list<array{text: string, menu: (\Closure(): list<MenuItem>)|null, tooltip?: ?string}>, left: string, leftTooltip?: ?string, leftPath?: ?string, leftPathWidth?: int, right: string, rightClicks?: list<StatusClickSpan>})|null */
     private $provider;
 
     /**
@@ -58,6 +58,21 @@ final class StatusBarWidget extends AbstractWidget implements TooltipProvider
 
     /** What the file part means in full — its path uncut, its ● in words — or null. */
     private ?string $leftTooltip = null;
+
+    /** The file the left part names, or null (the "open a file" hint). */
+    private ?string $leftPath = null;
+
+    /** How wide that file's path is, ahead of the ● and a caret diagnostic. */
+    private int $leftPathWidth = 0;
+
+    /**
+     * The drawn path's span from the last render, and the file it names: a
+     * double-click there reveals the file in the tree, a right-click offers
+     * the tree's menu for it. Null under a flash or with no file open.
+     *
+     * @var array{from: int, to: int, path: string}|null
+     */
+    private ?array $renderedFile = null;
 
     /**
      * Every drawn cell that has something to say, from the last render: its
@@ -104,7 +119,7 @@ final class StatusBarWidget extends AbstractWidget implements TooltipProvider
     }
 
     /**
-     * @param callable(): array{cells?: list<array{text: string, menu: (\Closure(): list<MenuItem>)|null, tooltip?: ?string}>, left: string, leftTooltip?: ?string, right: string, rightClicks?: list<StatusClickSpan>} $provider
+     * @param callable(): array{cells?: list<array{text: string, menu: (\Closure(): list<MenuItem>)|null, tooltip?: ?string}>, left: string, leftTooltip?: ?string, leftPath?: ?string, leftPathWidth?: int, right: string, rightClicks?: list<StatusClickSpan>} $provider
      */
     public function setProvider(callable $provider): self
     {
@@ -151,6 +166,17 @@ final class StatusBarWidget extends AbstractWidget implements TooltipProvider
         }
 
         return null;
+    }
+
+    /**
+     * The file whose drawn path covers column $col, or null. The span stops
+     * at the path: the ● and a caret diagnostic after it name no file.
+     */
+    public function fileAt(int $col): ?string
+    {
+        $file = $this->renderedFile;
+
+        return null !== $file && $col >= $file['from'] && $col < $file['to'] ? $file['path'] : null;
     }
 
     /**
@@ -247,10 +273,15 @@ final class StatusBarWidget extends AbstractWidget implements TooltipProvider
         $cells = $segments['cells'] ?? [];
         $this->cellClicks = $segments['rightClicks'] ?? [];
         $this->leftTooltip = $segments['leftTooltip'] ?? null;
-        if ($left !== $this->lastLeft || $right !== $this->lastRight || \array_column($cells, 'text') !== \array_column($this->cells, 'text')) {
+        $this->leftPathWidth = $segments['leftPathWidth'] ?? 0;
+        $leftPath = $segments['leftPath'] ?? null;
+        // The path is compared too: the file span is only rebuilt by a render,
+        // so it must follow the file even when the drawn text stays the same.
+        if ($leftPath !== $this->leftPath || $left !== $this->lastLeft || $right !== $this->lastRight || \array_column($cells, 'text') !== \array_column($this->cells, 'text')) {
             $this->cells = $cells;
             $this->lastLeft = $left;
             $this->lastRight = $right;
+            $this->leftPath = $leftPath;
             $this->invalidate();
         }
     }
@@ -331,6 +362,10 @@ final class StatusBarWidget extends AbstractWidget implements TooltipProvider
             $at += $width + self::SEPARATOR_WIDTH;
         }
         $fileWidth = AnsiUtils::visibleWidth($file);
+        $this->renderedFile =
+            null !== $this->flash || null === $this->leftPath
+                ? null
+                : ['from' => $at, 'to' => $at + \min($this->leftPathWidth, $fileWidth), 'path' => $this->leftPath];
         $leftText = ([] === $parts ? '' : \implode($this->separator(), $parts).$this->separator()).$file;
         $leftWidth = AnsiUtils::visibleWidth($prefix.$file);
 

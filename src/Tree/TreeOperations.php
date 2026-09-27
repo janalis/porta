@@ -91,8 +91,7 @@ final class TreeOperations
             $items[] = new MenuItem($this->translator->trans('Paste'), '', fn () => $this->treePaste($node));
         }
         $items[] = MenuItem::separator();
-        $items[] = new MenuItem($this->translator->trans('Copy Path'), '', fn () => $this->copyAbsolutePath($node->path));
-        $items[] = new MenuItem($this->translator->trans('Copy Relative Path'), '', fn () => $this->copyRelativePath($node->path));
+        \array_push($items, ...$this->copyPathItems($node->path));
         $items[] = MenuItem::separator();
         $items[] = new MenuItem($this->translator->trans('Rename…'), '', fn () => $this->treeRename($node));
         $items[] = new MenuItem($this->translator->trans('Delete…'), '', fn () => $this->treeDelete($node));
@@ -103,6 +102,20 @@ final class TreeOperations
         $items[] = new MenuItem($this->translator->trans('Refresh'), '', fn () => $this->tree->refresh());
 
         return $items;
+    }
+
+    /**
+     * Copy Path and Copy Relative Path for $path: a tree row's pair, which
+     * the status bar's file part offers too.
+     *
+     * @return list<MenuItem>
+     */
+    public function copyPathItems(string $path): array
+    {
+        return [
+            new MenuItem($this->translator->trans('Copy Path'), '', fn () => $this->copyAbsolutePath($path)),
+            new MenuItem($this->translator->trans('Copy Relative Path'), '', fn () => $this->copyRelativePath($path)),
+        ];
     }
 
     /**

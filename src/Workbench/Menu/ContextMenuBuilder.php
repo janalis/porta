@@ -119,6 +119,18 @@ final readonly class ContextMenuBuilder
     }
 
     /**
+     * The status bar's file part leads with the way back to the tree: the
+     * Alt+F1 verb, which reveals the active file — the one the part names —
+     * and focuses the tree. The router appends the tree's path-copy pair.
+     *
+     * @return list<MenuItem>
+     */
+    public function statusFileItems(): array
+    {
+        return MenuModel::items(['i:tree_select_opened_file'], $this->commands, $this->editor, $this->keybindings->current(), $this->translator);
+    }
+
+    /**
      * What plugins have put on the FILE surface, for the file at $path —
      * appended to the tab menu and to a tree FILE row's menu, behind a
      * separator when there is anything to show.

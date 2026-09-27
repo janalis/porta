@@ -7,13 +7,17 @@ namespace Porta\Tests\Unit\Input;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Editor\Document;
+use Porta\Input\ClickCounter;
 use Porta\Input\HitTester;
 use Porta\Input\MouseEvent;
 use Porta\Input\StatusBarClickRouter;
 use Porta\Tests\Support\EditorState;
+use Porta\Tests\Support\TempProject;
 use Porta\Widget\CodeEditorWidget;
+use Porta\Widget\FileTreeWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\StatusClickSpan;
+use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Render\Renderer;
@@ -34,17 +38,28 @@ final class StatusBarClickRouterTest extends TestCase
     private StatusBarWidget $statusBar;
     private CommandRegistry $commands;
     private CodeEditorWidget $editor;
+    private FileTreeWidget $tree;
+    private TempProject $project;
+    private ClickCounter $clicks;
 
     /** @var list<string> */
     private array $ran = [];
+
+    /** A column on the diagnostic after the path: no file, no cell. */
+    private const int DIAGNOSTIC_COL = 18;
 
     private function router(): StatusBarClickRouter
     {
         $renderer = new Renderer(new StyleSheet());
         $tui = new Tui(terminal: new VirtualTerminal(columns: 40, rows: 1), renderer: $renderer);
+        $this->project = new TempProject(['src/Deep/a.php' => "<?php\n", 'top.php' => "<?php\n"]);
+        $file = $this->project->path('src/Deep/a.php');
         $this->statusBar = new StatusBarWidget();
+        // The path, then a caret diagnostic that names no file.
         $this->statusBar->setProvider(static fn (): array => [
-            'left' => '',
+            'left' => 'src/Deep/a.php  boom',
+            'leftPath' => $file,
+            'leftPathWidth' => 14,
             'right' => 'AB CD',
             'rightClicks' => [
                 new StatusClickSpan(0, 2, 'ide_problems'),
@@ -67,7 +82,10 @@ final class StatusBarClickRouterTest extends TestCase
         $this->editor = new CodeEditorWidget();
         $this->editor->showDocument('/p/a.php', new Document("aa\nbb\ncc\n"));
 
-        return new StatusBarClickRouter(new HitTester($renderer), $this->statusBar, $this->commands, $this->editor);
+        $this->tree = new FileTreeWidget($this->project->dir);
+        $this->clicks = new ClickCounter(new MockClock());
+
+        return new StatusBarClickRouter(new HitTester($renderer), $this->statusBar, $this->commands, $this->editor, $this->tree, $tui);
     }
 
     /** @var list<int> the columns the right-click router was asked to open a menu at */
@@ -103,7 +121,7 @@ final class StatusBarClickRouterTest extends TestCase
     {
         $router = $this->router();
 
-        $this->assertTrue($router->route($this->clickOn('AB'), $this->menus(...)));
+        $this->assertTrue($router->route($this->clickOn('AB'), $this->menus(...), $this->clicks));
         $this->assertSame(['ide_problems'], $this->ran);
     }
 
@@ -114,7 +132,7 @@ final class StatusBarClickRouterTest extends TestCase
         // way that cell does anything.
         $router = $this->router();
 
-        $this->assertTrue($router->route($this->clickOn('CD'), $this->menus(...)));
+        $this->assertTrue($router->route($this->clickOn('CD'), $this->menus(...), $this->clicks));
         $this->assertSame([], $this->ran, 'the registry must not have claimed an editor verb');
         // The EFFECT, not just the absence of the other branch: dropping the
         // runAction call leaves both of those assertions true.
@@ -136,7 +154,7 @@ final class StatusBarClickRouterTest extends TestCase
             label: 'Go to Line',
         );
 
-        $this->assertTrue($router->route($this->clickOn('CD'), $this->menus(...)));
+        $this->assertTrue($router->route($this->clickOn('CD'), $this->menus(...), $this->clicks));
         $this->assertSame(['goto_line'], $this->ran);
         $this->assertFalse(EditorState::promptOpen($this->editor), 'the registry claimed it; the editor must not run it too');
     }
@@ -146,14 +164,14 @@ final class StatusBarClickRouterTest extends TestCase
         // It must fall through, or the panes below never see their clicks.
         $router = $this->router();
 
-        $this->assertFalse($router->route(self::pressAt(2, 0), $this->menus(...)));
+        $this->assertFalse($router->route(self::pressAt(self::DIAGNOSTIC_COL, 0), $this->menus(...), $this->clicks));
     }
 
     public function testAClickOutsideTheStatusRowIsNotConsumed(): void
     {
         $router = $this->router();
 
-        $this->assertFalse($router->route(self::pressAt(0, 5), $this->menus(...)));
+        $this->assertFalse($router->route(self::pressAt(0, 5), $this->menus(...), $this->clicks));
     }
 
     public function testAClickOnANEARBYRowAtACELLSCOLUMNIsStillNotConsumed(): void
@@ -165,7 +183,7 @@ final class StatusBarClickRouterTest extends TestCase
         $router = $this->router();
         $cellColumn = $this->clickOn('AB')->col;
 
-        $this->assertFalse($router->route(self::pressAt($cellColumn, 7), $this->menus(...)));
+        $this->assertFalse($router->route(self::pressAt($cellColumn, 7), $this->menus(...), $this->clicks));
         $this->assertSame([], $this->ran, 'nothing may run from a click off the status row');
     }
 
@@ -178,11 +196,35 @@ final class StatusBarClickRouterTest extends TestCase
     {
         $router = $this->router();
 
-        $this->assertFalse($router->route(self::pressAt(2, 0), $this->menus(...)), 'no menu opened: not consumed');
-        $this->assertSame([2], $this->menuAsked);
-        $this->assertTrue($router->route(self::pressAt(2, 0), static fn (): bool => true), 'a menu opened: consumed');
+        $this->assertFalse($router->route(self::pressAt(self::DIAGNOSTIC_COL, 0), $this->menus(...), $this->clicks), 'no menu opened: not consumed');
+        $this->assertSame([self::DIAGNOSTIC_COL], $this->menuAsked);
+        $this->assertTrue($router->route(self::pressAt(self::DIAGNOSTIC_COL, 0), static fn (): bool => true, $this->clicks), 'a menu opened: consumed');
 
-        $router->route($this->clickOn('AB'), $this->menus(...));
-        $this->assertSame([2], $this->menuAsked, 'a cell with an action never asks');
+        $router->route($this->clickOn('AB'), $this->menus(...), $this->clicks);
+        $this->assertSame([self::DIAGNOSTIC_COL], $this->menuAsked, 'a cell with an action never asks');
+    }
+
+    public function testADoubleClickOnTheFileRevealsItInTheTree(): void
+    {
+        $router = $this->router();
+        $press = $this->clickOn('Deep');
+
+        $this->assertTrue($router->route($press, $this->menus(...), $this->clicks), 'the first click is consumed');
+        $this->assertNotSame($this->project->path('src/Deep/a.php'), $this->tree->selectedNode()?->path, 'a single click reveals nothing');
+
+        $this->assertTrue($router->route($press, $this->menus(...), $this->clicks));
+        $this->assertSame($this->project->path('src/Deep/a.php'), $this->tree->selectedNode()?->path, 'expanded down to the file and selected it');
+        $this->assertSame([], $this->menuAsked, 'the file part is no menu');
+        $this->assertSame([], $this->ran);
+    }
+
+    public function testTheDiagnosticAfterThePathIsNotTheFile(): void
+    {
+        $router = $this->router();
+
+        $router->route(self::pressAt(self::DIAGNOSTIC_COL, 0), $this->menus(...), $this->clicks);
+        $router->route(self::pressAt(self::DIAGNOSTIC_COL, 0), $this->menus(...), $this->clicks);
+
+        $this->assertNotSame($this->project->path('src/Deep/a.php'), $this->tree->selectedNode()?->path);
     }
 }
