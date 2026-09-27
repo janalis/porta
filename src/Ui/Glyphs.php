@@ -108,10 +108,6 @@ final class Glyphs
     // RENAME_FROM — disjoint surfaces (a tree row mid-drag vs a rename prompt).
     public const string DROP_INTO = '←';
 
-    // The menu dropdown's separator rule (a full-width row between item groups).
-    // Same ─ value as FRAME_HORIZONTAL on a disjoint surface.
-    public const string MENU_SEPARATOR = '─';
-
     // The editor's indent guide, one per indent level on a blank leading column.
     // Same │ value as SEPARATOR on a disjoint surface (a guide, not a border).
     public const string INDENT_GUIDE = '│';

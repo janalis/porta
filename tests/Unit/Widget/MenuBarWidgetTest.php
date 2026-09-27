@@ -247,7 +247,11 @@ final class MenuBarWidgetTest extends TestCase
         $this->assertTrue($segments[1]['separator']);
         $this->assertFalse($segments[2]['separator']);
         foreach ($segments as $segment) {
-            $this->assertSame($width, AnsiUtils::visibleWidth($segment['segment']), 'each segment is exactly panelWidth wide');
+            $this->assertSame(
+                $segment['separator'] ? 0 : $width,
+                AnsiUtils::visibleWidth($segment['segment']),
+                'each item segment is exactly panelWidth wide; a separator draws nothing, the frame tees it',
+            );
         }
         $plain = $this->plain(\array_column($segments, 'segment'));
         $this->assertStringContainsString('Save', $plain);

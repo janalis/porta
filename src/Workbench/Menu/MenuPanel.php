@@ -71,7 +71,7 @@ final class MenuPanel
 
     /**
      * The panel's styled rows (one per item, in order), each exactly $panelWidth
-     * wide; item $selected is drawn highlighted.
+     * wide but a separator's, which is empty; item $selected is drawn highlighted.
      *
      * @param list<MenuItem> $items
      *
@@ -91,8 +91,10 @@ final class MenuPanel
                 default => \str_repeat(' ', self::GUTTER_WIDTH),
             };
             $out[] = [
+                // A separator has no row of its own to draw: the frame puts a
+                // tee in its slot ({@see \Porta\Widget\Render\PopupFrame::wrapMenu()}).
                 'segment' => $item->separator
-                    ? $styles->merge(Role::PopupRow, Role::Rule)->apply(\str_repeat(Glyphs::MENU_SEPARATOR, \max(0, $panelWidth)))
+                    ? ''
                     : self::itemSegment(
                         $item,
                         $panelWidth,

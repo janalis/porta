@@ -70,7 +70,11 @@ final class MenuPanelTest extends TestCase
         $this->assertCount(3, $segments);
         $this->assertTrue($segments[1]['separator']);
         foreach ($segments as $segment) {
-            $this->assertSame($width, AnsiUtils::visibleWidth($segment['segment']), 'each row is exactly panelWidth wide');
+            $this->assertSame(
+                $segment['separator'] ? 0 : $width,
+                AnsiUtils::visibleWidth($segment['segment']),
+                'each item row is exactly panelWidth wide; a separator draws nothing, the frame tees it',
+            );
         }
         // The selected row (index 2, Quit) carries the highlight background.
         $this->assertStringContainsString("\x1b[48;5;31m", $segments[2]['segment']);

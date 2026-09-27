@@ -61,7 +61,11 @@ final class ContextMenuTest extends TestCase
         $this->assertFalse($segments[0]['separator']);
         $this->assertTrue($segments[1]['separator']);
         foreach ($segments as $segment) {
-            $this->assertSame($width, AnsiUtils::visibleWidth($segment['segment']), 'each row is exactly panelWidth wide');
+            $this->assertSame(
+                $segment['separator'] ? 0 : $width,
+                AnsiUtils::visibleWidth($segment['segment']),
+                'each item row is exactly panelWidth wide; a separator draws nothing, the frame tees it',
+            );
         }
         $plain = AnsiUtils::stripAnsiCodes(\implode("\n", \array_column($segments, 'segment')));
         $this->assertStringContainsString('Cut', $plain);
