@@ -243,4 +243,17 @@ final class MultilineInputTest extends TestCase
         $this->type($input, "\x1b[D", 'x', "\x1b[C", 'y');
         $this->assertSame('x'.$flag.'y', $input->value(), '← and → each crossed the whole flag');
     }
+
+    /** Up and Down keep the caret's screen column, not its byte offset. */
+    public function testUpAndDownKeepTheScreenColumnAcrossWideText(): void
+    {
+        $input = new MultilineInput();
+        $input->setValue("中中x\nabcdef"); // caret at column 6 of the second line
+        $this->type($input, "\x1b[A", 'X');
+        $this->assertSame("中中xX\nabcdef", $input->value(), 'column 6 clamps to the end, not byte 6 (column 4)');
+
+        $input->setValue("abcd\n中中中");
+        $this->type($input, "\x1b[A", "\x1b[D", "\x1b[D", "\x1b[B", 'X');
+        $this->assertSame("abcd\n中X中中", $input->value(), 'column 2 is after the first 中, not back at the start');
+    }
 }

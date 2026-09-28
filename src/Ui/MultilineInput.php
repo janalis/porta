@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Ui;
 
+use Porta\Editor\Document;
 use Porta\Editor\TextMetrics;
 use Porta\Input\TextInput;
 use Porta\Support\AnsiText;
@@ -136,8 +137,7 @@ final class MultilineInput
     private function moveUp(): bool
     {
         if ($this->line > 0) {
-            --$this->line;
-            $this->col = TextMetrics::charBoundaryAtOrBefore($this->lines[$this->line], $this->col);
+            $this->carryColumnTo($this->line - 1);
         }
 
         return true;
@@ -146,11 +146,22 @@ final class MultilineInput
     private function moveDown(): bool
     {
         if ($this->line < (\count($this->lines) - 1)) {
-            ++$this->line;
-            $this->col = TextMetrics::charBoundaryAtOrBefore($this->lines[$this->line], $this->col);
+            $this->carryColumnTo($this->line + 1);
         }
 
         return true;
+    }
+
+    /**
+     * Move to $line keeping the caret's SCREEN column. Carrying the byte offset
+     * put it wherever that many bytes happened to end: two columns early under
+     * a CJK line, or back to the start when the byte fell inside a character.
+     */
+    private function carryColumnTo(int $line): void
+    {
+        $column = TextMetrics::displayWidth(\substr($this->lines[$this->line], offset: 0, length: $this->col), Document::TAB_SIZE);
+        $this->line = $line;
+        $this->col = TextMetrics::byteColForDisplayCol($this->lines[$line], $column, Document::TAB_SIZE);
     }
 
     /** Left: previous char, or wrap to the previous line's end. */
