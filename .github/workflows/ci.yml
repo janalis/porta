@@ -46,7 +46,7 @@ jobs:
             composer validate --no-check-publish --no-check-lock "$manifest"
           done
       - name: Dependency audit
-        run: composer audit
+        run: composer audit --locked
 
   static:
     if: github.event_name != 'schedule'
