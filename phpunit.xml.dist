@@ -7,18 +7,25 @@
          executionOrder="random"
          beStrictAboutOutputDuringTests="true"
          failOnRisky="true"
-         failOnAllIssues="true"
+         failOnWarning="true"
+         failOnNotice="true"
+         failOnDeprecation="true"
+         failOnPhpunitWarning="true"
+         failOnPhpunitNotice="true"
+         failOnPhpunitDeprecation="true"
          failOnIncomplete="true"
          failOnEmptyTestSuite="true"
          displayDetailsOnTestsThatTriggerWarnings="true"
          displayDetailsOnTestsThatTriggerNotices="true"
          displayDetailsOnTestsThatTriggerDeprecations="true"
 >
-    <!-- failOnAllIssues covers what the four failOnWarning/Deprecation/
-         PhpunitDeprecation/Notice flags spelled out, plus whatever issue kinds
-         PHPUnit adds later. failOnSkipped is DELIBERATELY absent:
-         skipWithoutGit()/skipWithoutBinary() are load-bearing on machines
-         without the wrapped tool.
+    <!-- Every failOn* issue kind is spelled out EXCEPT skipped, and
+         PhpunitConfigTest fails when PHPUnit grows a kind this list lacks.
+         failOnAllIssues cannot be used: it includes skipped tests and
+         overrides failOnSkipped="false", so every skipWithoutGit() /
+         skipWithoutBinary() failed the run on a machine without the wrapped
+         tool — CI's runner has neither graphviz nor an SVG converter. Those
+         skips are load-bearing, not failures.
 
          executionOrder="random" formalizes what the parallel gate already
          relies on (paratest distributes METHODS across workers, so
