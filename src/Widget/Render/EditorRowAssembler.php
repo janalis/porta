@@ -277,9 +277,9 @@ final readonly class EditorRowAssembler
      */
     private function lensRow(string $title, EditorGeometry $geo): string
     {
-        $text = AnsiUtils::sliceWithWidth($this->styles->of(Role::Dim)->apply($title), 0, $geo->contentWidth)['text'];
-
-        return AnsiText::blank(\max(0, $geo->gutterWidth)).AnsiText::padRight($text, $geo->contentWidth);
+        // sliceToWidth, not sliceWithWidth: a wide glyph across the edge of a
+        // translated or CJK title would make the row a column too wide.
+        return AnsiText::blank(\max(0, $geo->gutterWidth)).AnsiUtils::sliceToWidth($this->styles->of(Role::Dim)->apply($title), 0, $geo->contentWidth);
     }
 
     /**

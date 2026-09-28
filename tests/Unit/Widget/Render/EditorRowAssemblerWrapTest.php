@@ -160,4 +160,26 @@ final class EditorRowAssemblerWrapTest extends TestCase
             'each lens takes a row of its own, unnumbered, above its line',
         );
     }
+
+    /**
+     * A wide glyph on the pane's right edge, in a code line and in a lens
+     * title, at every parity of width: one of each pair puts a glyph across the
+     * edge. The Renderer refuses a row wider than the pane, and that exception
+     * ends the session, so every row must measure the pane exactly.
+     */
+    public function testAWideGlyphOnTheRightEdgeNeverWidensARow(): void
+    {
+        $editor = new CodeEditorWidget();
+        $editor->showDocument('/p/a.php', new Document("<?php\n// a".\str_repeat('中', times: 60)."\n"));
+        $editor->decorations->setCodeLenses([1 => [['title' => 'a'.\str_repeat('中', times: 60), 'command' => 'x', 'arguments' => []]]]);
+
+        foreach ([40, 41] as $columns) {
+            $rows = $editor->render(new RenderContext($columns, 6));
+            $this->assertStringContainsString('中', AnsiUtils::stripAnsiCodes($rows[1]), 'the lens row is the second');
+            $this->assertStringContainsString('中', AnsiUtils::stripAnsiCodes($rows[2]), 'the code line is the third');
+            foreach ($rows as $i => $row) {
+                $this->assertSame($columns, AnsiUtils::visibleWidth($row), "row {$i} at {$columns} columns");
+            }
+        }
+    }
 }

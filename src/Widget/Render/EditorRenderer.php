@@ -299,9 +299,7 @@ final class EditorRenderer
     public static function renderContentLine(int $hScroll, string $highlightedLine, int $contentWidth, CursorVisibility $withCursor, int $cursorDisplayCol, string $cursorMarker): string
     {
         if (CursorVisibility::Hidden === $withCursor) {
-            $slice = AnsiUtils::sliceWithWidth($highlightedLine, $hScroll, $contentWidth);
-
-            return AnsiText::padRight($slice['text'].Sgr::RESET, $contentWidth);
+            return AnsiText::padRight(self::window($highlightedLine, $hScroll, $contentWidth).Sgr::RESET, $contentWidth);
         }
 
         // Slice the whole visible window in one pass (correct SGR throughout),
@@ -312,13 +310,38 @@ final class EditorRenderer
         // selection background for the rest of the line. A from-column-0 prefix
         // slice ("slicePrefix") carries no such state and is a literal byte
         // prefix, so the marker lands cleanly without disturbing any styling.
-        $windowed = AnsiUtils::sliceWithWidth($highlightedLine, $hScroll, $contentWidth);
-        $text = $windowed['text'];
+        $text = self::window($highlightedLine, $hScroll, $contentWidth);
         $cursorOffset = \max(0, $cursorDisplayCol - $hScroll);
         $byte = \strlen(AnsiUtils::sliceByColumn($text, 0, $cursorOffset));
         $withCursorText = \substr($text, offset: 0, length: $byte).$cursorMarker.\substr($text, $byte);
 
         return AnsiText::padRight($withCursorText.Sgr::RESET, $contentWidth);
+    }
+
+    /**
+     * The $width columns of $line from $start. `sliceWithWidth()` keeps a wide
+     * glyph that straddles either edge: on the right the row comes out one
+     * column too wide, which the Renderer refuses with a RenderException that
+     * ends the session; on the left the glyph is dropped and the rest shifts a
+     * column away from the caret. `sliceToWidth()` blanks the cut half instead,
+     * but walks every cell: ~4x the cost on a highlighted line (29 vs 7 us,
+     * measured), and the indent guide alone makes most lines non-ASCII. So the
+     * fast slice stays wherever it is right: unscrolled, or on a pure-ASCII
+     * line, it can only go wrong by reporting more columns than asked. The slow
+     * one is asked for the line's own columns only, because past them it pads
+     * INSIDE the slice, before the caller's reset, and the current-line
+     * background that paints the padding would stop at the text.
+     */
+    private static function window(string $line, int $start, int $width): string
+    {
+        if (0 === $start || 1 !== \preg_match('/[\x80-\xFF]/', $line)) {
+            $fast = AnsiUtils::sliceWithWidth($line, $start, $width);
+            if ($fast['width'] <= $width) {
+                return $fast['text'];
+            }
+        }
+
+        return AnsiUtils::sliceToWidth($line, $start, \min($width, AnsiUtils::visibleWidth($line) - $start));
     }
 
     /**

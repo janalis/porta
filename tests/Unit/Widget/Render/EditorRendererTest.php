@@ -10,6 +10,7 @@ use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\Document;
 use Porta\Highlight\CodeHighlighter;
 use Porta\Ui\Glyphs;
+use Porta\Ui\Sgr;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\CursorVisibility;
 use Porta\Widget\Render\EditorRenderer;
@@ -338,6 +339,53 @@ final class EditorRendererTest extends TestCase
         $result = EditorRenderer::renderContentLine(hScroll: 4, highlightedLine: 'abcdefgh', contentWidth: 4, withCursor: CursorVisibility::Shown, cursorDisplayCol: 6, cursorMarker: '¦');
         $plain = AnsiUtils::stripAnsiCodes($result);
         $this->assertSame('ef¦gh', $plain);
+    }
+
+    public function testRenderContentLineBlanksAWideGlyphCutByTheRightEdge(): void
+    {
+        // 中 spans columns 2-3 and the window ends at 3. Kept whole, the row is
+        // four columns in a three-column pane: a RenderException, which takes
+        // the session (reproduced in a 100-column terminal).
+        foreach ([CursorVisibility::Hidden, CursorVisibility::Shown] as $cursor) {
+            $result = EditorRenderer::renderContentLine(hScroll: 0, highlightedLine: 'ab中cd', contentWidth: 3, withCursor: $cursor, cursorDisplayCol: 0, cursorMarker: '');
+            $this->assertSame('ab ', AnsiUtils::stripAnsiCodes($result), $cursor->name);
+            $this->assertSame(3, AnsiUtils::visibleWidth($result), $cursor->name);
+        }
+    }
+
+    public function testRenderContentLineKeepsColumnsWhenTheLeftEdgeCutsAWideGlyph(): void
+    {
+        // hScroll 3 lands inside 中 (columns 2-3): its right half becomes a
+        // space, so `c` stays at column 4 - 3 = 1 where the caret math puts it.
+        // Dropping the glyph instead shifted `cd` left under a caret now one off.
+        $result = EditorRenderer::renderContentLine(hScroll: 3, highlightedLine: 'ab中cd', contentWidth: 3, withCursor: CursorVisibility::Hidden, cursorDisplayCol: 0, cursorMarker: '');
+        $this->assertSame(' cd', AnsiUtils::stripAnsiCodes($result));
+    }
+
+    public function testRenderContentLineCarriesTheLineStyleAcrossAWideGlyphCut(): void
+    {
+        // The non-ASCII path walks cells rather than slicing bytes: the colour
+        // opened before the window must still open it.
+        $result = EditorRenderer::renderContentLine(
+            hScroll: 1,
+            highlightedLine: "\x1b[31mab中cd\x1b[39m",
+            contentWidth: 3,
+            withCursor: CursorVisibility::Hidden,
+            cursorDisplayCol: 0,
+            cursorMarker: '',
+        );
+        $this->assertStringStartsWith("\x1b[31m", $result);
+        $this->assertSame('b中', AnsiUtils::stripAnsiCodes($result));
+    }
+
+    public function testRenderContentLinePadsAScrolledWideLineAfterItsReset(): void
+    {
+        // Scrolled and non-ASCII takes the cell-walking slice, which would pad
+        // a short line INSIDE itself, before the reset. The padding must follow
+        // the reset like every other row's, or the current-line background that
+        // paints it stops where the text does.
+        $result = EditorRenderer::renderContentLine(hScroll: 1, highlightedLine: 'ab中', contentWidth: 6, withCursor: CursorVisibility::Hidden, cursorDisplayCol: 0, cursorMarker: '');
+        $this->assertSame('b中'.Sgr::RESET.'   ', $result);
     }
 
     public function testAppendInlineDiagnosticDefaultsAMissingSeverityToError(): void
