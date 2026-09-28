@@ -109,7 +109,11 @@ final class PtyProcess
         $this->watcher = EventLoop::onReadable($this->master, function (string $watcherId): void {
             /** @var resource $master */
             $master = $this->master;
-            $chunk = \is_resource($master) ? \fread($master, length: 65_536) : false;
+            // Linux answers a read on the master after the child closed its end
+            // with EIO (macOS with an empty read at EOF): fread() warns and
+            // returns false. That is the end of the output, not an error.
+            // @mago-expect lint:no-error-control-operator -- a pty master reports its closed slave as EIO on Linux, a warning no guard can predict; false is read as EOF just below.
+            $chunk = \is_resource($master) ? @\fread($master, length: 65_536) : false;
             if (\is_string($chunk) && '' !== $chunk) {
                 if (null !== $this->onOutput) {
                     ($this->onOutput)($chunk);
@@ -117,7 +121,7 @@ final class PtyProcess
 
                 return;
             }
-            if (!\is_resource($this->master) || \feof($this->master)) {
+            if (false === $chunk || !\is_resource($this->master) || \feof($this->master)) {
                 $this->finish();
             }
         });
