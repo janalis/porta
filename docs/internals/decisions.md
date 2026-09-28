@@ -9971,5 +9971,6 @@ package back to a tagged release. At that point, restore `minimum-stability: sta
 step (clear the flag, `renderFrame`, `writeFrame`). It clips the frame with
 `LineBufferInterface::slice()` and hands the mirrored rows back as an `ArrayLineBuffer`.
 The new 8.2 APIs are not adopted yet: `AnsiUtils::sliceToWidth()`/`walkCells()`
-next to `AnsiText::columnsFrom()`, `postRender()`, `attachChild()`, the tab,
+next to the non-strict `sliceWithWidth()` cuts (`EditorRenderer`,
+`OverlayCompositor`, `SpanSlicer`), `postRender()`, `attachChild()`, the tab,
 collapsible and key-binding widgets. Each needs its own measured case.
