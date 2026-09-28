@@ -9977,7 +9977,10 @@ step (clear the flag, `renderFrame`, `writeFrame`). It clips the frame with
 Two of the new 8.2 APIs were adopted after the upgrade:
 `AnsiUtils::sliceToWidth()` cuts the editor window and the code-lens rows
 (`EditorRenderer::window()`, fast slice kept where it cannot be wrong, 29 vs
-7 us per highlighted row measured), and `walkCells()` finds a column's byte in
+7 us per highlighted row measured) and composes around every overlay cut
+(`OverlayCompositor`, `SpanSlicer`, the graph selection frame, the image focus
+rails — `TerminalBuffer` keeps `AnsiText::columnsFrom()`, since the vendor slice
+pads); and `walkCells()` finds a column's byte in
 `HelpViewerWidget::byteAtColumn()`. `postRender()` now composites the floating
 layers (below). Not adopted: `attachChild()`, the tab, collapsible and key-binding
 widgets. Each needs its own measured case.
