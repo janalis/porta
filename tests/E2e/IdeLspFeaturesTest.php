@@ -18,6 +18,7 @@ use Porta\Lsp\Uri;
 use Porta\Onboarding\OnboardingState;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\EditorState;
+use Porta\Tests\Support\Paint;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\ScreenReads;
@@ -673,14 +674,14 @@ final class IdeLspFeaturesTest extends TestCase
                         static function () use ($tui, $crumbs): bool {
                             $tui->requestRender(force: true);
                             $tui->processRender();
-                            $rows = $crumbs->render(new RenderContext(120, 1));
+                            $rows = Paint::lines($crumbs, new RenderContext(120, 1));
 
                             return \str_contains(AnsiUtils::stripAnsiCodes($rows[0] ?? ''), 'Demo');
                         },
                         what: "the server's symbols to reach the trail",
                     );
 
-                    $plain = AnsiUtils::stripAnsiCodes($crumbs->render(new RenderContext(120, 1))[0]);
+                    $plain = AnsiUtils::stripAnsiCodes(Paint::lines($crumbs, new RenderContext(120, 1))[0]);
                     $this->assertStringContainsString('Demo › greet', $plain, 'a JavaScript file gets a trail');
                 },
                 300 => function ($tui): void {
@@ -688,7 +689,7 @@ final class IdeLspFeaturesTest extends TestCase
                     // on the server's endLine (0-based 6, the `}` line).
                     $editor = $tui->getById('editor');
                     $editor->display->setMethodSeparators(true);
-                    $rows = $editor->render(new RenderContext(80, 12));
+                    $rows = Paint::lines($editor, new RenderContext(80, 12));
                     $ruled = \array_keys(\array_filter($rows, static fn (string $row): bool => \str_contains($row, Sgr::UNDERLINE)));
 
                     $this->assertSame([6], $ruled, "one rule, on the member's last line");
@@ -1675,7 +1676,7 @@ final class IdeLspFeaturesTest extends TestCase
                     Services::resolve($ide, LspLog::class)->append("[php-ls] fatal: cannot index\n");
                     Services::resolve($ide, LspLog::class)->append("[php-ls] retrying\n");
                     $tui->tick();
-                    $panelText = AnsiUtils::stripAnsiCodes(\implode("\n", $tui->getById('results')->render(new RenderContext(160, 12))));
+                    $panelText = AnsiUtils::stripAnsiCodes(\implode("\n", Paint::lines($tui->getById('results'), new RenderContext(160, 12))));
                     $this->assertStringContainsString('[php-ls] fatal: cannot index', $panelText, 'the captured server line appeared live');
                     $this->assertLessThan(
                         \strpos($panelText, needle: 'fatal: cannot index'),
@@ -1755,7 +1756,7 @@ final class IdeLspFeaturesTest extends TestCase
                 },
                 300 => function ($tui, $terminal) use ($palette): void {
                     // Fold All: the LSP foldingRange says 2-4 → the body line hides.
-                    $editorScreen = static fn (): string => AnsiUtils::stripAnsiCodes(\implode("\n", $tui->getById('editor')->render(new RenderContext(120, 20))));
+                    $editorScreen = static fn (): string => AnsiUtils::stripAnsiCodes(\implode("\n", Paint::lines($tui->getById('editor'), new RenderContext(120, 20))));
                     $this->assertStringContainsString("return 'hi '", $editorScreen());
                     $palette($tui, label: 'Fold All');
                     $this->await(static fn (): bool => !\str_contains($editorScreen(), "return 'hi '"));

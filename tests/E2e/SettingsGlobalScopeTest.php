@@ -13,6 +13,7 @@ use Porta\Plugin\Lifecycle\PluginLifecycle;
 use Porta\Settings\SettingsScope;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\NavigatesSettings;
+use Porta\Tests\Support\Paint;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\PreservesPortaHome;
 use Porta\Tests\Support\Probe;
@@ -112,7 +113,7 @@ final class SettingsGlobalScopeTest extends TestCase
 
                     $this->assertStringContainsString(
                         '~/.porta/config.json',
-                        $this->settingRow($form->render(new RenderContext(110, 22)), 'Save changes to'),
+                        $this->settingRow(Paint::lines($form, new RenderContext(110, 22)), 'Save changes to'),
                         'the screen says where this is about to go',
                     );
 
@@ -196,7 +197,7 @@ final class SettingsGlobalScopeTest extends TestCase
                     // what tells them apart.
                     $form = $this->settingsForm($tui);
                     $rows = \array_values(\array_filter(
-                        $form->render(new RenderContext(110, 22)),
+                        Paint::lines($form, new RenderContext(110, 22)),
                         static fn (string $line): bool => \str_contains(AnsiUtils::stripAnsiCodes($line), '['),
                     ));
                     $this->assertStringContainsString(
@@ -424,7 +425,7 @@ final class SettingsGlobalScopeTest extends TestCase
                 },
                 500 => function (Tui $tui, $terminal): void {
                     $form = $this->settingsForm($tui);
-                    $rows = $form->render(new RenderContext(120, 22));
+                    $rows = Paint::lines($form, new RenderContext(120, 22));
 
                     $this->assertStringContainsString('from global', $this->settingRow($rows, 'LSP server'));
                     $this->assertStringContainsString('from global', $this->settingRow($rows, 'Debug adapter'));

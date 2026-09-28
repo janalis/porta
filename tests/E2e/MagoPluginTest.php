@@ -10,6 +10,7 @@ use Porta\Config\IdeConfig;
 use Porta\Editor\BufferService;
 use Porta\Ide;
 use Porta\Tests\Support\ClearsPortaLsp;
+use Porta\Tests\Support\Paint;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
@@ -143,7 +144,7 @@ final class MagoPluginTest extends TestCase
                     $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'mago: no issues in a.php'));
                     $this->frame($tui);
                     $this->assertStringContainsString('mago: no issues in a.php', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
-                    $editorScreen = \implode("\n", $tui->getById('editor')->render(new RenderContext(120, 20)));
+                    $editorScreen = \implode("\n", Paint::lines($tui->getById('editor'), new RenderContext(120, 20)));
                     $this->assertStringNotContainsString('Bad thing', AnsiUtils::stripAnsiCodes($editorScreen), 'clean lint cleared the diagnostic');
                 },
             ],

@@ -13,6 +13,7 @@ use Porta\Overlay\Region\DropdownRegion;
 use Porta\Overlay\State\MenuOverlayController;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\EditorState;
+use Porta\Tests\Support\Paint;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
@@ -88,7 +89,7 @@ final class IdeMousePrimitivesTest extends TestCase
                 },
                 280 => function ($tui, $terminal, Ide $ide): void {
                     $tree = $tui->getById('tree');
-                    $line = $tree->render(new RenderContext(30, 24))[2];
+                    $line = Paint::lines($tree, new RenderContext(30, 24))[2];
                     $this->assertStringContainsString("\x1b[48;5;236m", $line, 'hovered tree row is highlighted');
                     // Move off the tree into the editor → the hover clears.
                     $renderer = Services::resolve($ide, Renderer::class);
@@ -97,7 +98,7 @@ final class IdeMousePrimitivesTest extends TestCase
                 },
                 360 => function ($tui): void {
                     $tree = $tui->getById('tree');
-                    $joined = \implode('', $tree->render(new RenderContext(30, 24)));
+                    $joined = \implode('', Paint::lines($tree, new RenderContext(30, 24)));
                     $this->assertStringNotContainsString("\x1b[48;5;236m", $joined, 'hover cleared after leaving the tree');
                 },
             ],
@@ -147,7 +148,7 @@ final class IdeMousePrimitivesTest extends TestCase
                     // After two wheel-down steps (6 lines) the top visible line is
                     // no longer line 1.
                     $editor = $tui->getById('editor');
-                    $rendered = $editor->render(new RenderContext(69, 20));
+                    $rendered = Paint::lines($editor, new RenderContext(69, 20));
                     $topLineNumber = (int) \trim(AnsiUtils::stripAnsiCodes($rendered[0]));
                     $this->assertGreaterThan(1, $topLineNumber, 'wheel scrolled the viewport down');
                     $this->assertSame(2, $editor->getDocument()->cursorLine, 'wheel scroll left the caret behind');

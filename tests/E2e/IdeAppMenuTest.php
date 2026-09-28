@@ -9,6 +9,7 @@ use Porta\Editor\LineNumberMode;
 use Porta\Ide;
 use Porta\Onboarding\OnboardingState;
 use Porta\Tests\Support\ClearsPortaLsp;
+use Porta\Tests\Support\Paint;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\ScreenReads;
@@ -47,20 +48,20 @@ final class IdeAppMenuTest extends TestCase
                     }
                 },
                 280 => function ($tui): void {
-                    $crumb = AnsiUtils::stripAnsiCodes($tui->getById('breadcrumbs')->render(new RenderContext(120, 1))[0]);
+                    $crumb = AnsiUtils::stripAnsiCodes(Paint::lines($tui->getById('breadcrumbs'), new RenderContext(120, 1))[0]);
                     $this->assertStringContainsString('handle', $crumb, 'breadcrumb is visible');
                     // Open View: its dropdown reaches down over the breadcrumb
                     // row's columns. The column is read from the rendered bar
                     // rather than hard-coded — the menu set is not fixed (Git's
                     // group is absent outside a repository, as here).
-                    $bar = AnsiUtils::stripAnsiCodes($tui->getById('menu')->render(new RenderContext(120, 1))[0]);
+                    $bar = AnsiUtils::stripAnsiCodes(Paint::lines($tui->getById('menu'), new RenderContext(120, 1))[0]);
                     $view = \mb_strpos($bar, needle: 'View');
                     $this->assertIsInt($view, 'the View menu is on the bar');
                     $tui->handleInput(\sprintf("\x1b[<0;%d;1M", $view + 2));
                 },
                 360 => function ($tui): void {
                     $this->assertTrue($tui->getById('menu')->isOpen());
-                    $row = AnsiUtils::stripAnsiCodes($tui->getById('breadcrumbs')->render(new RenderContext(120, 1))[0]);
+                    $row = AnsiUtils::stripAnsiCodes(Paint::lines($tui->getById('breadcrumbs'), new RenderContext(120, 1))[0]);
                     $this->assertStringContainsString('Show Problems', $row, 'the dropdown composites over the breadcrumb row (breadcrumb no longer in front)');
                     // Switch to File (left edge): with the full-width menu row its
                     // dropdown now floats over the TREE columns instead.
@@ -70,7 +71,7 @@ final class IdeAppMenuTest extends TestCase
                     $this->assertTrue($tui->getById('menu')->isOpen());
                     // Tree row 0 carries the frame's top border; the first item
                     // row sits one below it.
-                    $treeTop = AnsiUtils::stripAnsiCodes($tui->getById('tree')->render(new RenderContext(30, 20))[1]);
+                    $treeTop = AnsiUtils::stripAnsiCodes(Paint::lines($tui->getById('tree'), new RenderContext(30, 20))[1]);
                     // The File menu's FIRST item, whatever it is — the row is
                     // read by index, so this names what the menu opens with
                     // rather than what it happens to contain. It was Save File
@@ -241,14 +242,14 @@ final class IdeAppMenuTest extends TestCase
                 },
                 280 => function ($tui): void {
                     $menu = $tui->getById('menu');
-                    $row = $menu->render(new RenderContext(120, 1))[0];
+                    $row = Paint::lines($menu, new RenderContext(120, 1))[0];
                     $this->assertStringContainsString("\x1b[48;5;240m", $row, 'closed title highlights on hover');
                     // Move off the bar (into the editor body) → the highlight clears.
                     $tui->handleInput("\x1b[<35;60;10M");
                 },
                 360 => function ($tui): void {
                     $menu = $tui->getById('menu');
-                    $row = $menu->render(new RenderContext(120, 1))[0];
+                    $row = Paint::lines($menu, new RenderContext(120, 1))[0];
                     $this->assertStringNotContainsString("\x1b[48;5;240m", $row, 'moving off the bar cleared the highlight');
                     $tui->handleInput("\x1b[<0;9;1M"); // click the Edit title (cols 7-12) to open it
                 },

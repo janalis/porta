@@ -5,12 +5,15 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Tests\Support\RendersWidget;
 use Porta\Widget\BreadcrumbsWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 
 final class BreadcrumbsWidgetTest extends TestCase
 {
+    use RendersWidget;
+
     public function testEmptyTrailRendersNoRow(): void
     {
         $bar = new BreadcrumbsWidget();
@@ -111,9 +114,9 @@ final class BreadcrumbsWidgetTest extends TestCase
     {
         $bar = new BreadcrumbsWidget();
         $bar->setProvider(static fn (): array => [['label' => 'App', 'line' => 1]]);
-        $bar->setMenuOverlay([['row' => 0, 'col' => 2, 'width' => 6, 'segment' => "\x1b[7m Paste \x1b[0m"]]);
+        $bar->setMenuOverlay([['row' => 0, 'col' => 2, 'width' => 7, 'segment' => "\x1b[7m Paste \x1b[0m"]]);
 
-        $row = $bar->render(new RenderContext(40, 1))[0];
+        $row = $this->painted($bar, new RenderContext(40, 1))[0];
         $this->assertStringContainsString('Paste', AnsiUtils::stripAnsiCodes($row), 'a dropdown span covers the breadcrumb row');
     }
 

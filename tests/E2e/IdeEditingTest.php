@@ -14,6 +14,7 @@ use Porta\Ide;
 use Porta\Support\RevoltScheduler;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\EditorState;
+use Porta\Tests\Support\Paint;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
@@ -58,7 +59,7 @@ final class IdeEditingTest extends TestCase
                     $this->frame($tui);
                     $editor = $tui->getById('editor');
                     $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($editor);
-                    $screen = static fn (): string => AnsiUtils::stripAnsiCodes(\implode("\n", $editor->render(new RenderContext(120, 20))));
+                    $screen = static fn (): string => AnsiUtils::stripAnsiCodes(\implode("\n", Paint::lines($editor, new RenderContext(120, 20))));
 
                     $this->assertStringContainsString(Glyphs::EXPANDED, $screen(), 'the brace line starts an open region');
 
@@ -97,7 +98,7 @@ final class IdeEditingTest extends TestCase
                     $editor = $tui->getById('editor');
                     $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($editor);
-                    $rendered = $editor->render(new RenderContext($rect->columns, $rect->rows));
+                    $rendered = Paint::lines($editor, new RenderContext($rect->columns, $rect->rows));
                     $this->assertStringContainsString('class Service', AnsiUtils::stripAnsiCodes($rendered[0]), 'class header pinned at the top');
                     // Click the pinned class header's TEXT (editor row 0, first
                     // content column — the gutter's own columns route to the
@@ -125,14 +126,14 @@ final class IdeEditingTest extends TestCase
             [
                 200 => function ($tui): void {
                     // Caret at the very top is outside every scope → no bar.
-                    $this->assertSame([], $tui->getById('breadcrumbs')->render(new RenderContext(120, 1)));
+                    $this->assertSame([], Paint::lines($tui->getById('breadcrumbs'), new RenderContext(120, 1)));
                     // Navigate into handle() with the keyboard (invalidates the editor → relayout).
                     for ($i = 0; $i < 8; ++$i) {
                         $tui->handleInput("\x1b[B"); // down to line 8 (the `$x` line)
                     }
                 },
                 280 => function ($tui): void {
-                    $plain = AnsiUtils::stripAnsiCodes($tui->getById('breadcrumbs')->render(new RenderContext(120, 1))[0]);
+                    $plain = AnsiUtils::stripAnsiCodes(Paint::lines($tui->getById('breadcrumbs'), new RenderContext(120, 1))[0]);
                     $this->assertStringContainsString('App › Service › handle', $plain, 'the scope path is shown');
                 },
                 340 => static function ($tui, $terminal, Ide $ide): void {
@@ -207,7 +208,7 @@ final class IdeEditingTest extends TestCase
                     $tui->handleInput('X');
                     $this->await(
                         static function () use ($tui): bool {
-                            $rows = $tui->getById('breadcrumbs')->render(new RenderContext(120, 1));
+                            $rows = Paint::lines($tui->getById('breadcrumbs'), new RenderContext(120, 1));
 
                             return [] !== $rows && \str_contains(AnsiUtils::stripAnsiCodes($rows[0]), 'handleX');
                         },
@@ -530,7 +531,7 @@ final class IdeEditingTest extends TestCase
                     Services::resolve($ide, Notifier::class)
                         ->flash('a later event', 0.1);
                     $tui->tick();
-                    $panelText = AnsiUtils::stripAnsiCodes(\implode("\n", $tui->getById('results')->render(new RenderContext(160, 12))));
+                    $panelText = AnsiUtils::stripAnsiCodes(\implode("\n", Paint::lines($tui->getById('results'), new RenderContext(160, 12))));
                     $this->assertLessThan(
                         \strpos($panelText, needle: 'the answer is 42'),
                         \strpos($panelText, needle: 'a later event'),

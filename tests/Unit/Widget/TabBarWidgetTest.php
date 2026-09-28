@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Widget;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Porta\Tests\Support\Probe;
+use Porta\Tests\Support\RendersWidget;
 use Porta\Ui\Glyphs;
 use Porta\Widget\Support\TabBarPosition;
 use Porta\Widget\TabBarWidget;
@@ -15,6 +16,8 @@ use Symfony\Component\Tui\Render\RenderContext;
 
 final class TabBarWidgetTest extends TestCase
 {
+    use RendersWidget;
+
     /**
      * The glyph occupying display column $col — which is not mb_substr($col),
      * because a wide glyph advances the column by two and the char index by one.
@@ -289,7 +292,7 @@ final class TabBarWidgetTest extends TestCase
             ['row' => 1, 'col' => 2, 'width' => 8, 'segment' => 'ignored!'],
         ]);
 
-        $line = $bar->render(new RenderContext(40, 1))[0];
+        $line = $this->painted($bar, new RenderContext(40, 1))[0];
         $plain = AnsiUtils::stripAnsiCodes($line);
 
         $this->assertSame(40, AnsiUtils::visibleWidth($line), 'overlay keeps the row exactly one screen wide');
@@ -305,7 +308,7 @@ final class TabBarWidgetTest extends TestCase
             ['row' => 0, 'col' => 0, 'width' => 6, 'segment' => "\x1b[7m Open \x1b[0m"],
         ]);
 
-        $line = $bar->render(new RenderContext(30, 1))[0];
+        $line = $this->painted($bar, new RenderContext(30, 1))[0];
         $this->assertSame(30, AnsiUtils::visibleWidth($line));
         $this->assertStringContainsString('Open', AnsiUtils::stripAnsiCodes($line));
     }
@@ -547,7 +550,7 @@ final class TabBarWidgetTest extends TestCase
             ['row' => 1, 'col' => 2, 'width' => 8, 'segment' => "\x1b[7m Close  \x1b[0m"],
         ]);
 
-        $lines = $bar->render(new RenderContext(80, 3));
+        $lines = $this->painted($bar, new RenderContext(80, 3));
 
         $this->assertSame(TabBarWidget::VERTICAL_WIDTH, AnsiUtils::visibleWidth($lines[1]), 'overlay keeps the row exactly the list width');
         $this->assertStringContainsString('Close', AnsiUtils::stripAnsiCodes($lines[1]), 'dropdown segment composited over the filler row');
@@ -579,7 +582,7 @@ final class TabBarWidgetTest extends TestCase
 
     private function plainRender(TabBarWidget $bar, int $columns = 60, int $rows = 1): string
     {
-        return AnsiUtils::stripAnsiCodes(\implode("\n", $bar->render(new RenderContext($columns, $rows))));
+        return AnsiUtils::stripAnsiCodes(\implode("\n", $this->painted($bar, new RenderContext($columns, $rows))));
     }
 
     public function testScrollByRevealsClippedTrailingTabsAndSurvivesParkedFrames(): void

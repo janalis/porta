@@ -6,6 +6,7 @@ namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Ide;
+use Porta\Tests\Support\Paint;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
@@ -136,7 +137,7 @@ final class ContextMenuParityTest extends TestCase
     /** The status bar's rendered text, where a flash lands. */
     private function statusLine(mixed $tui): string
     {
-        return AnsiUtils::stripAnsiCodes($tui->getById('status')->render(new RenderContext(160, 1))[0]);
+        return AnsiUtils::stripAnsiCodes(Paint::lines($tui->getById('status'), new RenderContext(160, 1))[0]);
     }
 
     /**

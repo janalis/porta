@@ -206,7 +206,7 @@ final class SettingsNavWidgetTest extends TestCase
         $this->assertTrue($widget->expandVertically(false)->isVerticallyExpanded());
 
         $widget->setMenuOverlay([['row' => 0, 'col' => 0, 'width' => 8, 'segment' => "\x1b[7mDROP\x1b[0m"]]);
-        $this->assertStringContainsString('DROP', $widget->render(new RenderContext(24, 20))[0]);
+        $this->assertStringContainsString('DROP', $this->painted($widget, new RenderContext(24, 20))[0]);
     }
 
     public function testDefaultWidthIsTwentyTwo(): void
@@ -488,5 +488,20 @@ final class SettingsNavWidgetTest extends TestCase
 
         $rows = $widget->render(new RenderContext(24, 6));
         $this->assertStringNotContainsString("\x1b[48;5;236m", \implode('', $rows), 'nothing was tinted by hovering the indicator');
+    }
+
+    /**
+     * A side panel draws at its own width however wide the layout is, and a
+     * dropdown over it composites at that width too — at the layout's, the row
+     * padded out past the panel and starved the pane beside it.
+     */
+    public function testAnOverlayCompositesAtThePanelWidthNotTheLayouts(): void
+    {
+        $widget = new SettingsNavWidget(new Translator('en'));
+        $widget->setMenuOverlay([['row' => 0, 'col' => 0, 'width' => 200, 'segment' => \str_repeat('M', times: 200)]]);
+
+        $row = $this->painted($widget, new RenderContext(300, 5))[0];
+        $this->assertSame($widget->width(), AnsiUtils::visibleWidth($row));
+        $this->assertStringContainsString('MMM', $row);
     }
 }

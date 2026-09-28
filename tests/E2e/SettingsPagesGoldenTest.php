@@ -14,6 +14,7 @@ use Porta\Settings\Section\LanguageSection;
 use Porta\Settings\Section\PluginsSection;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\NavigatesSettings;
+use Porta\Tests\Support\Paint;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\PreservesPortaHome;
 use Porta\Tests\Support\ReadsSettingsForm;
@@ -201,7 +202,7 @@ final class SettingsPagesGoldenTest extends TestCase
     private function plainRows(SettingsFormWidget $form): array
     {
         $lines = [];
-        foreach ($form->render(new RenderContext(110, 22)) as $line) {
+        foreach (Paint::lines($form, new RenderContext(110, 22)) as $line) {
             $lines[] = \rtrim(AnsiUtils::stripAnsiCodes($line));
         }
 

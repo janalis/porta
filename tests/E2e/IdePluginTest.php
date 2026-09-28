@@ -7,6 +7,7 @@ namespace Porta\Tests\E2e;
 use PHPUnit\Framework\TestCase;
 use Porta\Ide;
 use Porta\Tests\Support\ClearsPortaLsp;
+use Porta\Tests\Support\Paint;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
@@ -386,7 +387,7 @@ final class IdePluginTest extends TestCase
                     $tree = $tui->getById('tree');
                     $treeRect = $renderer->getWidgetRect($tree);
                     $row = null;
-                    foreach ($tree->render(new RenderContext($treeRect->columns, $treeRect->rows)) as $i => $line) {
+                    foreach (Paint::lines($tree, new RenderContext($treeRect->columns, $treeRect->rows)) as $i => $line) {
                         if (!\str_contains(AnsiUtils::stripAnsiCodes($line), 'other.php')) {
                             continue;
                         }

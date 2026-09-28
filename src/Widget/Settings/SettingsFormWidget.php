@@ -457,7 +457,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         }
         $lines[] = $this->footer($width);
 
-        return $this->withMenuOverlay($lines, $width);
+        return $lines;
     }
 
     /**

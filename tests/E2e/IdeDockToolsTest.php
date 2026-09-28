@@ -16,6 +16,7 @@ use Porta\History\SearchHistoryStore;
 use Porta\Ide;
 use Porta\Lsp\NavigationController;
 use Porta\Lsp\Uri;
+use Porta\Tests\Support\Paint;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
@@ -53,7 +54,7 @@ final class IdeDockToolsTest extends TestCase
     /** The panel's rendered line carrying $needle. */
     private static function resultRow(mixed $tui, string $needle): string
     {
-        $rows = $tui->getById('results')->render(new RenderContext(160, 12));
+        $rows = Paint::lines($tui->getById('results'), new RenderContext(160, 12));
         foreach ($rows as $row) {
             if (\str_contains(AnsiUtils::stripAnsiCodes($row), $needle)) {
                 return $row;
@@ -282,7 +283,7 @@ final class IdeDockToolsTest extends TestCase
                     $tui->setFocus($tui->getById('results'));
                     $tui->handleInput("\x1b[15~"); // F5 → reruns 'alpha', not 'beta'
                     $this->await(static fn (): bool => \str_contains($tui->getById('results')->statusText(), '2 results'));
-                    $panel = AnsiUtils::stripAnsiCodes(\implode("\n", $tui->getById('results')->render(new RenderContext(160, 14))));
+                    $panel = AnsiUtils::stripAnsiCodes(\implode("\n", Paint::lines($tui->getById('results'), new RenderContext(160, 14))));
                     $this->assertStringContainsString('alpha again', $panel, "F5 re-ran the alpha tab's own query");
                     $this->assertStringNotContainsString('beta here', $panel, 'the beta results stayed in their tab');
                 },
@@ -439,7 +440,7 @@ final class IdeDockToolsTest extends TestCase
 
                     $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
-                    $strip = AnsiUtils::stripAnsiCodes($tui->getById('dock-tabs')->render(new RenderContext($rect->columns, 1))[0]);
+                    $strip = AnsiUtils::stripAnsiCodes(Paint::lines($tui->getById('dock-tabs'), new RenderContext($rect->columns, 1))[0]);
                     $problems = (int) \mb_strpos($strip, needle: 'Problems');
                     $second = (int) \mb_strpos($strip, needle: 'Notifications');
 
@@ -476,7 +477,7 @@ final class IdeDockToolsTest extends TestCase
                     $this->frame($tui); // the strip's rect below needs a real frame
                     $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
-                    $strip = AnsiUtils::stripAnsiCodes($tui->getById('dock-tabs')->render(new RenderContext($rect->columns, 1))[0]);
+                    $strip = AnsiUtils::stripAnsiCodes(Paint::lines($tui->getById('dock-tabs'), new RenderContext($rect->columns, 1))[0]);
                     $problems = (int) \mb_strpos($strip, needle: 'Problems');
 
                     $terminal->clearOutput();
@@ -527,7 +528,7 @@ final class IdeDockToolsTest extends TestCase
                     $tui->tick();
                     $this->assertStringContainsString(
                         "\x1b[48;5;240m",
-                        \implode('', $tui->getById('tabs')->render(new RenderContext(160, 1))),
+                        \implode('', Paint::lines($tui->getById('tabs'), new RenderContext(160, 1))),
                         'the hovered editor tab tints',
                     );
 
@@ -537,7 +538,7 @@ final class IdeDockToolsTest extends TestCase
                     $tui->tick();
                     $this->assertStringNotContainsString(
                         "\x1b[48;5;240m",
-                        \implode('', $tui->getById('tabs')->render(new RenderContext(160, 1))),
+                        \implode('', Paint::lines($tui->getById('tabs'), new RenderContext(160, 1))),
                         'leaving the editor strip clears its tint',
                     );
 
@@ -705,7 +706,7 @@ final class IdeDockToolsTest extends TestCase
             $project->path('a.php'),
             [
                 200 => function (Tui $tui, $terminal): void {
-                    $editorScreen = static fn (): string => \implode("\n", $tui->getById('editor')->render(new RenderContext(120, 20)));
+                    $editorScreen = static fn (): string => \implode("\n", Paint::lines($tui->getById('editor'), new RenderContext(120, 20)));
                     $tui->getById('editor')->getDocument()->setCursor(1, 0);
                     $tui->handleInput("\x1b[23~");
                     // F11 → toggle bookmark

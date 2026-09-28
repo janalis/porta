@@ -21,6 +21,7 @@ use Porta\Tests\Support\FakeEditorNavigation;
 use Porta\Tests\Support\FakeEditorRefactor;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RendersExactWidth;
+use Porta\Tests\Support\RendersWidget;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Sgr;
 use Porta\Widget\CodeEditorWidget;
@@ -38,6 +39,8 @@ use Symfony\Component\Tui\Widget\FocusableInterface;
 
 final class CodeEditorWidgetTest extends TestCase
 {
+    use RendersWidget;
+
     use RendersExactWidth;
 
     private function editor(string $content = "<?php\n\necho 'hi';\n", string $path = 'demo.php', ?OccurrenceHighlights $occurrences = null): CodeEditorWidget
@@ -419,7 +422,7 @@ final class CodeEditorWidgetTest extends TestCase
             ['row' => 2, 'col' => 3, 'width' => 10, 'segment' => "\x1b[7m Find     \x1b[0m"],
         ]);
 
-        $rendered = $editor->render(new RenderContext(80, 20));
+        $rendered = $this->painted($editor, new RenderContext(80, 20));
 
         $this->assertCount(20, $rendered);
         $this->assertExactWidth($rendered, 80);

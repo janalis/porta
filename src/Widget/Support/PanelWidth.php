@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Widget\Support;
 
 use Porta\Support\IntMath;
+use Symfony\Component\Tui\Render\RenderContext;
 
 /**
  * Shared column-width state for the resizable side panels (file tree, git
@@ -46,5 +47,11 @@ trait PanelWidth
     public function width(): int
     {
         return $this->width;
+    }
+
+    /** The columns this panel draws: its own width, or less when the layout gives it less. */
+    private function panelColumns(RenderContext $context): int
+    {
+        return \min($this->width, $context->getColumns());
     }
 }

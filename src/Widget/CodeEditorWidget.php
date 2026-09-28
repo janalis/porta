@@ -1183,7 +1183,7 @@ final class CodeEditorWidget extends AbstractWidget implements
                 $this->lastGutterWidth = 0;
                 $this->lastStripeCol = \PHP_INT_MAX; // no stripe over the empty-state pane
 
-                return $this->withMenuOverlay($this->renderEmptyState($columns, $rows), $columns);
+                return $this->renderEmptyState($columns, $rows);
             }
 
             $doc = $this->document;
@@ -1275,7 +1275,11 @@ final class CodeEditorWidget extends AbstractWidget implements
                 $this->scroll->vScrollSegment,
             );
 
-            $result = $this->composePopups($result, new EditorPopupGeometry(
+            // The pickers (list overlay, Search Everywhere, prompt) float over the
+            // whole workspace via PickerModalPresenter — nothing composites into
+            // the pane's own lines here; the application-menu dropdown composites
+            // in postRender(), above everything else.
+            return $this->composePopups($result, new EditorPopupGeometry(
                 columns: $columns,
                 rows: $rows,
                 vScroll: $vScroll,
@@ -1285,12 +1289,6 @@ final class CodeEditorWidget extends AbstractWidget implements
                 gutterWidth: $geo->gutterWidth,
                 stickyCount: \count($sticky),
             ));
-
-            // The pickers (list overlay, Search Everywhere, prompt) float over the
-            // whole workspace via PickerModalPresenter — nothing composites into
-            // the pane's own lines here; the application-menu dropdown floats
-            // above everything else.
-            return $this->withMenuOverlay($result, $columns);
         } finally {
             $this->perf?->editorMark((\hrtime(true) - $startNs) / 1_000_000_000.0);
         }

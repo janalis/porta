@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Ide;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\FindModalReads;
+use Porta\Tests\Support\Paint;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
@@ -136,7 +137,7 @@ final class IdeFindUiTest extends TestCase
             $files["src/File{$i}.php"] = "<?php\n// tok\n";
         }
         $project = new TempProject($files);
-        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(\implode("\n", $tui->getById('results')->render(new RenderContext(160, 16))));
+        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(\implode("\n", Paint::lines($tui->getById('results'), new RenderContext(160, 16))));
 
         $this->runIde(
             $project,
@@ -178,7 +179,7 @@ final class IdeFindUiTest extends TestCase
             'src/A.php' => "<?php\n// tok here\n",
             'other/B.php' => "<?php\n// tok here\n",
         ]);
-        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(\implode("\n", $tui->getById('results')->render(new RenderContext(160, 16))));
+        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(\implode("\n", Paint::lines($tui->getById('results'), new RenderContext(160, 16))));
 
         $this->runIde(
             $project,
@@ -222,7 +223,7 @@ final class IdeFindUiTest extends TestCase
     private function findBarRow(Tui $tui): string
     {
         return AnsiUtils::stripAnsiCodes(
-            \implode('', $tui->getById('find-bar')->render(new RenderContext(120, 1))),
+            \implode('', Paint::lines($tui->getById('find-bar'), new RenderContext(120, 1))),
         );
     }
 

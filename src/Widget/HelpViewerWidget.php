@@ -270,7 +270,7 @@ final class HelpViewerWidget extends EditorPaneWidget implements FindTarget
             $lines[] = AnsiText::truncate($line, $cols, pad: true);
         }
 
-        return $this->withMenuOverlay($lines, $cols);
+        return $lines;
     }
 
     /**

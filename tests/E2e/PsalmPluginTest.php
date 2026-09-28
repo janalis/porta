@@ -11,6 +11,7 @@ use Porta\Ide;
 use Porta\Plugin\Runtime\PluginHost;
 use Porta\Settings\SettingsRowKind;
 use Porta\Tests\Support\ClearsPortaLsp;
+use Porta\Tests\Support\Paint;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
@@ -116,7 +117,7 @@ final class PsalmPluginTest extends TestCase
                 450 => function ($tui, $terminal): void {
                     $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'psalm: no issues in a.php'), what: 'psalm to report the clean run');
                     $this->assertStringContainsString('psalm: no issues in a.php', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
-                    $editorScreen = \implode("\n", $tui->getById('editor')->render(new RenderContext(120, 20)));
+                    $editorScreen = \implode("\n", Paint::lines($tui->getById('editor'), new RenderContext(120, 20)));
                     $this->assertStringNotContainsString('Boom detected', AnsiUtils::stripAnsiCodes($editorScreen), 'the clean run cleared the diagnostic');
                 },
             ],

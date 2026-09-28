@@ -13,6 +13,7 @@ use Porta\Ide;
 use Porta\Settings\SettingsController;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\FindModalReads;
+use Porta\Tests\Support\Paint;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\ScreenReads;
@@ -63,7 +64,7 @@ final class IdeSettingsThemeTest extends TestCase
                     $this->assertSame(LineNumberMode::Relative, $editor->display->lineNumbers, 'setting applied from file');
                     // Inline diagnostics disabled: even with a diagnostic, no inline text.
                     $editor->decorations->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'boom', 'col' => 0]]]);
-                    $rendered = $editor->render(new RenderContext(80, 5));
+                    $rendered = Paint::lines($editor, new RenderContext(80, 5));
                     $this->assertStringNotContainsString('boom', AnsiUtils::stripAnsiCodes($rendered[1]));
                 },
             ],
@@ -310,7 +311,7 @@ final class IdeSettingsThemeTest extends TestCase
                     Services::resolve($ide, CommandRegistry::class)->run('ide_terminal');
                     $terminal->clearOutput();
                     $tui->tick();
-                    $rows = $tui->getById('terminal')->render(new RenderContext(160, 12));
+                    $rows = Paint::lines($tui->getById('terminal'), new RenderContext(160, 12));
                     $this->assertSame(1, $this->caretMarkerCount($rows), 'the focused terminal panel places the hardware cursor');
                 },
             ],

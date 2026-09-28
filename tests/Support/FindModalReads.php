@@ -58,7 +58,7 @@ trait FindModalReads
         // frame so a mutation made this step is on the pane before reading.
         $this->frame($tui);
 
-        return AnsiUtils::stripAnsiCodes(\implode("\n", $tui->getById('editor')->render(new RenderContext(160, 40))));
+        return AnsiUtils::stripAnsiCodes(\implode("\n", Paint::lines($tui->getById('editor'), new RenderContext(160, 40))));
     }
 
     /** The editor pane's raw (styled) rendered rows (after a frame — see modalText). */
@@ -66,7 +66,7 @@ trait FindModalReads
     {
         $this->frame($tui);
 
-        return $tui->getById('editor')->render(new RenderContext(160, 40));
+        return Paint::lines($tui->getById('editor'), new RenderContext(160, 40));
     }
 
     /**

@@ -711,7 +711,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
     #[\Override]
     public function render(RenderContext $context): array
     {
-        $width = \min($this->width, $context->getColumns());
+        $width = $this->panelColumns($context);
         $rows = \max(1, $context->getRows() > 0 ? $context->getRows() : 24);
         $this->lastRows = $rows;
 
@@ -773,7 +773,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
         // tree's reported width and starve the editor pane.
         $this->memoKey = $key;
 
-        return $this->memoLines = $this->withMenuOverlay($lines, $width);
+        return $this->memoLines = $lines;
     }
 
     /**
@@ -980,5 +980,10 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
             'open' => [Key::ENTER],
             'reload' => ['r'],
         ];
+    }
+
+    protected function overlayWidth(RenderContext $context): int
+    {
+        return $this->panelColumns($context);
     }
 }

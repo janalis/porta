@@ -393,7 +393,7 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
     #[\Override]
     public function render(RenderContext $context): array
     {
-        $width = \min($this->width, $context->getColumns());
+        $width = $this->panelColumns($context);
         $rows = \max(1, $context->getRows() > 0 ? $context->getRows() : 12);
 
         // The FileTreeWidget idiom: this flex-0 side pane is rendered twice
@@ -446,7 +446,7 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
             $lines[] = ($scroll + $budget) < \count($this->entries) ? $this->indicatorRow(Glyphs::SCROLL_DOWN, $width) : AnsiText::blank($width);
         }
 
-        return $this->memoLines = $this->withMenuOverlay($lines, $width);
+        return $this->memoLines = $lines;
     }
 
     /** @return array<string, string[]> */
@@ -462,5 +462,10 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
             'find_setting' => ['ctrl+f'],
             'exit_view' => [Key::ESCAPE],
         ];
+    }
+
+    protected function overlayWidth(RenderContext $context): int
+    {
+        return $this->panelColumns($context);
     }
 }

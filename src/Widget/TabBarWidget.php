@@ -167,7 +167,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
         if ([] === $tabs) {
             // The empty strip keeps its Toolbar base: closing the last tab must
             // not drop the bar to the terminal default for one frame-height row.
-            return $this->withMenuOverlay([$this->styles->of(Role::Toolbar)->apply(AnsiText::blank($columns))], $columns);
+            return [$this->styles->of(Role::Toolbar)->apply(AnsiText::blank($columns))];
         }
 
         // Make sure the active tab is visible: drop leading tabs if needed. Each
@@ -231,7 +231,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
         }
 
         // A Toolbar-background base under the whole strip, matching the other tab strips.
-        return $this->withMenuOverlay([$this->styles->of(Role::Toolbar)->apply(AnsiText::padRight($line, $columns))], $columns);
+        return [$this->styles->of(Role::Toolbar)->apply(AnsiText::padRight($line, $columns))];
     }
 
     /** One clickable 1-column ‹/› scroll cell of the horizontal strip. */
@@ -256,7 +256,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
         // it was handed — the renderer throws on it, and that exception escapes
         // the render loop. The strip asks for VERTICAL_WIDTH and takes what it
         // is given, which on a narrow terminal is less.
-        $width = \min(self::VERTICAL_WIDTH, \max(0, $context->getColumns()));
+        $width = $this->verticalWidth($context);
 
         // The FileTreeWidget idiom: in side position the layout engine's
         // intrinsic-width measure renders this widget and clears the vendor
@@ -335,7 +335,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
 
         $this->memoZones = $this->indicatorZones;
 
-        return $this->memoLines = $this->withMenuOverlay($lines, $width);
+        return $this->memoLines = $lines;
     }
 
     /**
@@ -412,5 +412,16 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
         }
 
         return null;
+    }
+
+    /** A side strip is a fixed-width list, however much room the layout offers. */
+    private function verticalWidth(RenderContext $context): int
+    {
+        return \min(self::VERTICAL_WIDTH, \max(0, $context->getColumns()));
+    }
+
+    protected function overlayWidth(RenderContext $context): int
+    {
+        return $this->position->isSide() ? $this->verticalWidth($context) : $context->getColumns();
     }
 }

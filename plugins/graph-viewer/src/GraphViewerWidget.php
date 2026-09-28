@@ -298,7 +298,7 @@ final class GraphViewerWidget extends NavigablePaneWidget
             }
         }
 
-        return $this->withMenuOverlay($lines, $cols);
+        return $lines;
     }
 
     public function handleInput(string $data): void

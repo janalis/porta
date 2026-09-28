@@ -12,6 +12,7 @@ use Porta\Event\WorkingTreeChanged;
 use Porta\Ide;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\EditorState;
+use Porta\Tests\Support\Paint;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\ScreenReads;
@@ -816,7 +817,7 @@ final class TreeDragAndDropTest extends TestCase
     private function statusText(mixed $tui): string
     {
         return AnsiUtils::stripAnsiCodes(
-            $tui->getById('status')->render(new RenderContext(120, 1))[0],
+            Paint::lines($tui->getById('status'), new RenderContext(120, 1))[0],
         );
     }
 
@@ -824,7 +825,7 @@ final class TreeDragAndDropTest extends TestCase
     private function treeRows(mixed $tui): array
     {
         $rows = [];
-        foreach ($tui->getById('tree')->render(new RenderContext(30, 12)) as $line) {
+        foreach (Paint::lines($tui->getById('tree'), new RenderContext(30, 12)) as $line) {
             $rows[] = \rtrim(AnsiUtils::stripAnsiCodes($line));
         }
 

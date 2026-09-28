@@ -549,7 +549,7 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
             $lines[] = AnsiText::padRight($blank, $columns);
         }
 
-        return $this->withMenuOverlay($lines, $columns);
+        return $lines;
     }
 
     /** The dock strip's right-aligned status (result/shown counts). */

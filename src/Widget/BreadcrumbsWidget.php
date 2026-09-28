@@ -119,7 +119,7 @@ final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost
 
         $bar = $this->styles->of(Role::Toolbar)->apply(AnsiText::truncate($content, $columns, pad: true));
 
-        return $this->withMenuOverlay([$bar], $columns);
+        return [$bar];
     }
 
     /**

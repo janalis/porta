@@ -216,7 +216,7 @@ final class KeybindingsListWidgetTest extends TestCase
         $this->assertTrue($widget->expandVertically(false)->isVerticallyExpanded());
 
         $widget->setMenuOverlay([['row' => 0, 'col' => 0, 'width' => 8, 'segment' => "\x1b[7mDROPDOWN\x1b[0m"]]);
-        $this->assertStringContainsString('DROPDOWN', $widget->render(new RenderContext(60, 8))[0]);
+        $this->assertStringContainsString('DROPDOWN', $this->painted($widget, new RenderContext(60, 8))[0]);
     }
 
     public function testSetRowsInvalidatesTheRenderRevision(): void

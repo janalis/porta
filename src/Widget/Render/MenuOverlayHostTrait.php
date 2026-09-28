@@ -5,12 +5,18 @@ declare(strict_types=1);
 namespace Porta\Widget\Render;
 
 use Porta\Support\AnsiText;
+use Symfony\Component\Tui\Render\RenderContext;
 
 /**
  * Canonical {@see MenuOverlayHost} implementation: store the spans, repaint,
- * and composite them as the render's final step via {@see withMenuOverlay}.
+ * and composite them after the render, in {@see postRender()} — the vendor's
+ * hook for exactly this, so no host's render() has to remember to.
+ *
  * The compositing width must be the widget's own line width — padding to the
  * context's columns would blow out the reported width and starve neighbours.
+ * That is the context's width for most hosts; one whose lines are narrower (a
+ * resizable side panel, the one-column separator) says so in
+ * {@see overlayWidth()}.
  */
 trait MenuOverlayHostTrait
 {
@@ -77,6 +83,23 @@ trait MenuOverlayHostTrait
         }
         $this->toastOverlay = $spans;
         $this->invalidate();
+    }
+
+    /**
+     * @param list<string> $lines
+     *
+     * @return list<string>
+     */
+    #[\Override]
+    public function postRender(array $lines, RenderContext $context): array
+    {
+        return $this->withMenuOverlay($lines, $this->overlayWidth($context));
+    }
+
+    /** The width this host's lines are drawn at: the context's, unless the host draws narrower. */
+    protected function overlayWidth(RenderContext $context): int
+    {
+        return $context->getColumns();
     }
 
     /**

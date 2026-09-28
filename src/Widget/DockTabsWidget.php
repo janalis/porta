@@ -332,6 +332,6 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverla
         $line .= $tail;
 
         // A Toolbar-background base under the whole row, then the styled tabs.
-        return $this->withMenuOverlay([$this->styles->of(Role::Toolbar)->apply(AnsiText::padRight($line, $columns))], $columns);
+        return [$this->styles->of(Role::Toolbar)->apply(AnsiText::padRight($line, $columns))];
     }
 }

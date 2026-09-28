@@ -791,17 +791,17 @@ final class FileTreeWidgetTest extends TestCase
         $tree = new FileTreeWidget($project->dir);
         $tree->setFocused(true);
         $context = new RenderContext(30, 10);
-        $tree->render($context);
+        $this->painted($tree, $context);
 
         $segment = "\x1b[48;5;236m CONTEXT \x1b[0m"; // 9 visible cells
         $tree->setMenuOverlay([['row' => 1, 'col' => 2, 'width' => 9, 'segment' => $segment]]);
-        $lines = $tree->render($context);
+        $lines = $this->painted($tree, $context);
 
         $this->assertStringContainsString('CONTEXT', AnsiUtils::stripAnsiCodes($lines[1]), 'overlay composited onto the row');
         $this->assertSame(30, AnsiUtils::visibleWidth($lines[1]), 'row width unchanged by the overlay');
 
         $tree->setMenuOverlay([]); // clearing removes it
-        $this->assertStringNotContainsString('CONTEXT', $this->plain($tree->render($context)));
+        $this->assertStringNotContainsString('CONTEXT', $this->plain($this->painted($tree, $context)));
     }
 
     public function testRenderPadsToExactWidthAndScrolls(): void
@@ -833,5 +833,21 @@ final class FileTreeWidgetTest extends TestCase
         $this->assertStringContainsString('file-13.php', $this->plain($tree->render($context)));
         $tree->handleInput("\x1b[6~"); // page down
         $this->assertStringContainsString('file-20.php', $this->plain($tree->render($context)));
+    }
+
+    /**
+     * A side panel draws at its own width however wide the layout is, and a
+     * dropdown over it composites at that width too — at the layout's, the row
+     * padded out past the panel and starved the pane beside it.
+     */
+    public function testAnOverlayCompositesAtThePanelWidthNotTheLayouts(): void
+    {
+        $project = new TempProject(['a.php' => "<?php\n"]);
+        $widget = new FileTreeWidget($project->dir);
+        $widget->setMenuOverlay([['row' => 0, 'col' => 0, 'width' => 200, 'segment' => \str_repeat('M', times: 200)]]);
+
+        $row = $this->painted($widget, new RenderContext(300, 5))[0];
+        $this->assertSame($widget->width(), AnsiUtils::visibleWidth($row));
+        $this->assertStringContainsString('MMM', $row);
     }
 }

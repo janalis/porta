@@ -78,8 +78,13 @@ final class SeparatorWidget extends AbstractWidget implements MenuOverlayHost, V
         $glyph = $this->hovered
             ? $this->styles->merge(Role::BarHoverBg, Role::TabAccent)->apply(Glyphs::PANE_DIVIDER_ACTIVE)
             : $this->styles->of(Role::Placeholder)->apply(Glyphs::PANE_DIVIDER);
-        $lines = \array_fill(0, $rows, value: $glyph);
 
-        return $this->withMenuOverlay($lines, 1);
+        return \array_fill(0, $rows, value: $glyph);
+    }
+
+    /** One column: the divider never draws wider, whatever the layout offers. */
+    protected function overlayWidth(RenderContext $context): int
+    {
+        return 1;
     }
 }

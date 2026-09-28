@@ -6,6 +6,7 @@ namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Tests\Support\ClearsPortaLsp;
+use Porta\Tests\Support\Paint;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\ScreenReads;
@@ -58,7 +59,7 @@ final class IdePickerTest extends TestCase
                     // The eleventh row is the one the shared cap made
                     // unreachable without activating a grow row first.
                     $this->await(
-                        static fn (): bool => \str_contains(\implode("\n", $tui->getById('editor')->render(new RenderContext(120, 30))), 'Thing11.php'),
+                        static fn (): bool => \str_contains(\implode("\n", Paint::lines($tui->getById('editor'), new RenderContext(120, 30))), 'Thing11.php'),
                         what: 'the picker to fill its box',
                     );
 

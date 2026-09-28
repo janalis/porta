@@ -10,6 +10,7 @@ use Porta\Run\RunController;
 use Porta\Terminal\PtyProcess;
 use Porta\Terminal\TerminalSession;
 use Porta\Tests\Support\EditorState;
+use Porta\Tests\Support\Paint;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\PreservesShell;
 use Porta\Tests\Support\Probe;
@@ -97,7 +98,7 @@ final class IdeTerminalTest extends TestCase
                     // The dock strip shows both sessions as first-class tabs.
                     $renderer = Services::resolve($ide, Renderer::class);
                     $stripRect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
-                    $strip = AnsiUtils::stripAnsiCodes($tui->getById('dock-tabs')->render(new RenderContext($stripRect->columns, 1))[0]);
+                    $strip = AnsiUtils::stripAnsiCodes(Paint::lines($tui->getById('dock-tabs'), new RenderContext($stripRect->columns, 1))[0]);
                     $this->assertSame(2, \substr_count($strip, needle: 'sh'), 'both shell tabs render on the dock strip');
                 },
                 300 => function ($tui, $terminal, Ide $ide): void {
@@ -110,7 +111,7 @@ final class IdeTerminalTest extends TestCase
                     // Click shell 2's dock-strip tab label to activate it (mouse select path).
                     $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
-                    $strip = AnsiUtils::stripAnsiCodes($tui->getById('dock-tabs')->render(new RenderContext($rect->columns, 1))[0]);
+                    $strip = AnsiUtils::stripAnsiCodes(Paint::lines($tui->getById('dock-tabs'), new RenderContext($rect->columns, 1))[0]);
                     // The second "sh" occurrence is shell 2's tab.
                     $secondTab = (int) \mb_strpos($strip, needle: 'sh', offset: (int) \mb_strpos($strip, needle: 'sh') + 1);
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + $secondTab + 1, $rect->row + 1));
@@ -143,7 +144,7 @@ final class IdeTerminalTest extends TestCase
                     // Click the × of the first (inactive) session tab on the dock strip.
                     $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
-                    $strip = AnsiUtils::stripAnsiCodes($tui->getById('dock-tabs')->render(new RenderContext($rect->columns, 1))[0]);
+                    $strip = AnsiUtils::stripAnsiCodes(Paint::lines($tui->getById('dock-tabs'), new RenderContext($rect->columns, 1))[0]);
                     $closeCol = (int) \mb_strpos($strip, needle: '×');
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + $closeCol + 1, $rect->row + 1));
 
@@ -185,7 +186,7 @@ final class IdeTerminalTest extends TestCase
 
                     $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
-                    $strip = AnsiUtils::stripAnsiCodes($tui->getById('dock-tabs')->render(new RenderContext($rect->columns, 1))[0]);
+                    $strip = AnsiUtils::stripAnsiCodes(Paint::lines($tui->getById('dock-tabs'), new RenderContext($rect->columns, 1))[0]);
                     $firstTab = (int) \mb_strpos($strip, needle: 'sh');
                     $secondTab = (int) \mb_strpos($strip, needle: 'sh', offset: $firstTab + 1);
 
@@ -220,7 +221,7 @@ final class IdeTerminalTest extends TestCase
                     $this->frame($tui);
                     $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
-                    $strip = AnsiUtils::stripAnsiCodes($tui->getById('dock-tabs')->render(new RenderContext($rect->columns, 1))[0]);
+                    $strip = AnsiUtils::stripAnsiCodes(Paint::lines($tui->getById('dock-tabs'), new RenderContext($rect->columns, 1))[0]);
 
                     $terminal->clearOutput();
                     $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + (int) \mb_strpos($strip, needle: 'sh') + 1, $rect->row + 1));

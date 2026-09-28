@@ -9,6 +9,7 @@ use Porta\Config\CommandRegistry;
 use Porta\Config\IdeConfig;
 use Porta\Ide;
 use Porta\Tests\Support\ClearsPortaLsp;
+use Porta\Tests\Support\Paint;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
@@ -90,7 +91,7 @@ final class PhpstanPluginTest extends TestCase
                     // The toast and the inline diagnostic land on different
                     // invalidation paths — await the diagnostic itself.
                     $editor = $tui->getById('editor');
-                    $rendered = static fn (): string => AnsiUtils::stripAnsiCodes(\implode("\n", $editor->render(new RenderContext(120, 20))));
+                    $rendered = static fn (): string => AnsiUtils::stripAnsiCodes(\implode("\n", Paint::lines($editor, new RenderContext(120, 20))));
                     $this->await(static fn (): bool => \str_contains($rendered(), 'Boom detected'), what: 'the diagnostic to render inline in the editor');
 
                     // The Problems panel aggregates it like any LSP diagnostic.

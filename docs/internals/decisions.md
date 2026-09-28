@@ -9974,5 +9974,37 @@ Two of the new 8.2 APIs were adopted after the upgrade:
 `AnsiUtils::sliceToWidth()` cuts the editor window and the code-lens rows
 (`EditorRenderer::window()`, fast slice kept where it cannot be wrong, 29 vs
 7 us per highlighted row measured), and `walkCells()` finds a column's byte in
-`HelpViewerWidget::byteAtColumn()`. Not adopted: `postRender()`, `attachChild()`,
-the tab, collapsible and key-binding widgets. Each needs its own measured case.
+`HelpViewerWidget::byteAtColumn()`. `postRender()` now composites the floating
+layers (below). Not adopted: `attachChild()`, the tab, collapsible and key-binding
+widgets. Each needs its own measured case.
+
+## Overlays composite in `postRender()`, and the key bar is not built (2026-09-28)
+
+**`postRender()` — adopted.** `MenuOverlayHostTrait` composites the menu, modal
+and toast spans in the vendor's `postRender()` hook, so 25 `withMenuOverlay()`
+calls left the hosts' `render()` bodies. The width is the catch: compositing at
+the context's columns pads a row out past a host that draws narrower, which
+starves the pane beside it. Eight hosts draw narrower and say so in
+`overlayWidth()` — the six `PanelWidth` side panels (`panelColumns()`), the
+one-column `SeparatorWidget`, and the side `TabBarWidget`. Each override is
+guarded by a test that renders wider than the host with a dropdown reaching past
+it; no test guarded those widths before. A bare `render()` no longer shows
+overlays, so widget tests that assert one render through
+`RendersWidget::painted()` (a real `Renderer`).
+
+Measured with the real IDE, alternating A/B (4 rounds each, 140×40, a File
+dropdown open and moved 240 times, then 240 caret moves): renderMs p50 0.53 ms
+before vs 0.50 ms after, p95 1.08 vs 1.05 ms, over 64 one-second windows each.
+No cost.
+
+**`KeyBindingWidget` key bar — declined.** An optional row of the focused pane's
+keys was scoped and not built. Porta's panes each carry their own bindings (the
+editor's keymap alone is dozens), so a one-row bar needs a chosen subset per
+pane; the pane-local actions (`collapse`, `move_up`…) have no translated labels,
+so each needs new ids in all seven catalogs; and the vendor widget wraps onto
+several rows and keeps its item lists private, so a one-row, overlay-aware bar
+overrides nearly all of it.
+
+*Re-opens on:* a chosen per-pane action list, which turns the bar into a
+translation-and-layout task.
+

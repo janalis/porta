@@ -19,6 +19,7 @@ use Porta\Overlay\State\MenuOverlayController;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\FindModalReads;
 use Porta\Tests\Support\GitBinary;
+use Porta\Tests\Support\Paint;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
@@ -95,7 +96,7 @@ final class IdeContextMenusTest extends TestCase
                     $renderer = Services::resolve($ide, Renderer::class);
                     $editor = $tui->getById('editor');
                     $rect = $renderer->getWidgetRect($editor);
-                    $rows = $editor->render(new RenderContext($rect->columns, $rect->rows));
+                    $rows = Paint::lines($editor, new RenderContext($rect->columns, $rect->rows));
                     // A menu item row (offset a couple rows below the anchor).
                     $menuRow = $rows[3] ?? '';
                     // The menu background must not be active far into the blank pane:
@@ -123,7 +124,7 @@ final class IdeContextMenusTest extends TestCase
                 },
                 280 => function ($tui): void {
                     $this->assertTrue($tui->getById('context-menu')->isOpen(), 'tree context menu opened');
-                    $lines = $tui->getById('separator')->render(new RenderContext(1, 24));
+                    $lines = Paint::lines($tui->getById('separator'), new RenderContext(1, 24));
                     $painted = \array_filter($lines, static fn (string $l): bool => ' ' !== $l);
                     $this->assertNotEmpty($painted, 'the context menu paints over the separator column (no hole)');
                 },
@@ -213,7 +214,7 @@ final class IdeContextMenusTest extends TestCase
                     $this->promote($tui); // modal → results pane
                     // Assert on the results panel itself (the tree sidebar also lists
                     // Outside.php, so the whole screen is the wrong surface).
-                    $panel = AnsiUtils::stripAnsiCodes(\implode("\n", $tui->getById('results')->render(new RenderContext(160, 14))));
+                    $panel = AnsiUtils::stripAnsiCodes(\implode("\n", Paint::lines($tui->getById('results'), new RenderContext(160, 14))));
                     $this->assertStringContainsString('1 result', $tui->getById('results')->statusText(), 'only the in-folder match counts (root is out of scope)');
                     $this->assertStringContainsString('sub/Inside.php', $panel, 'the in-folder match is listed');
                     $this->assertStringNotContainsString('Outside.php', $panel, 'the root match is excluded');
@@ -679,7 +680,7 @@ final class IdeContextMenusTest extends TestCase
                     );
                     $this->assertStringContainsString(
                         Glyphs::BOOKMARK,
-                        \implode("\n", $tui->getById('editor')->render(new RenderContext(120, 20))),
+                        \implode("\n", Paint::lines($tui->getById('editor'), new RenderContext(120, 20))),
                         'and is painted on the new buffer',
                     );
 

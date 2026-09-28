@@ -15,6 +15,7 @@ use Porta\Settings\SettingsController;
 use Porta\Settings\SettingsScope;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\NavigatesSettings;
+use Porta\Tests\Support\Paint;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
@@ -55,7 +56,7 @@ final class IdeRtlLocaleTest extends TestCase
                 200 => function ($tui): void {
                     $ids = \array_map(static fn ($w) => $w->getId(), $tui->getById('main')->all());
                     $this->assertSame(['tree', 'separator', 'editor-pane'], $ids, 'LTR at boot');
-                    $this->assertStringContainsString('File', AnsiUtils::stripAnsiCodes(\implode('', $tui->getById('menu')->render(new RenderContext(120, 1)))));
+                    $this->assertStringContainsString('File', AnsiUtils::stripAnsiCodes(\implode('', Paint::lines($tui->getById('menu'), new RenderContext(120, 1)))));
                 },
                 400 => static function ($tui, $terminal, Ide $ide): void {
                     // The session scope defaults to Global for a project with
@@ -71,7 +72,7 @@ final class IdeRtlLocaleTest extends TestCase
                     $ids = \array_map(static fn ($w) => $w->getId(), $tui->getById('main')->all());
                     $this->assertSame(['editor-pane', 'separator', 'tree'], $ids, 'applyDirection mirrored the panes');
 
-                    $menu = AnsiUtils::stripAnsiCodes(\implode('', $tui->getById('menu')->render(new RenderContext(120, 1))));
+                    $menu = AnsiUtils::stripAnsiCodes(\implode('', Paint::lines($tui->getById('menu'), new RenderContext(120, 1))));
                     $this->assertStringContainsString('קובץ', $menu, 'the menu rebuilt in the new locale');
                     $this->assertStringNotContainsString('File', $menu, 'and dropped the English labels');
                 },
@@ -548,7 +549,7 @@ final class IdeRtlLocaleTest extends TestCase
                     // widget row N is SGR row N + 2.
                     $rows = \array_map(
                         AnsiUtils::stripAnsiCodes(...),
-                        $tui->getById('tree')->render(new RenderContext(30, 12)),
+                        Paint::lines($tui->getById('tree'), new RenderContext(30, 12)),
                     );
                     $this->assertSame('▸ src/', \trim($rows[1] ?? ''), 'src/ is widget row 1');
                     $this->assertSame('move.php', \trim($rows[3] ?? ''), 'move.php is widget row 3');

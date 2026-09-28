@@ -9,6 +9,7 @@ use Porta\Config\CommandRegistry;
 use Porta\Ide;
 use Porta\Terminal\TerminalBuffer;
 use Porta\Tests\Support\ClearsPortaLsp;
+use Porta\Tests\Support\Paint;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
@@ -242,14 +243,14 @@ final class IdeLayoutFocusTest extends TestCase
                     $tui->handleInput("\x1b[<35;31;5M");
                 },
                 280 => function ($tui): void {
-                    $line = $tui->getById('separator')->render(new RenderContext(1, 5))[0];
+                    $line = Paint::lines($tui->getById('separator'), new RenderContext(1, 5))[0];
                     $this->assertStringContainsString(Glyphs::PANE_DIVIDER_ACTIVE, $line, 'heavy under the pointer — the boundary announces it is draggable');
                     $this->assertSame(1, AnsiUtils::visibleWidth($line), 'still exactly one column');
 
                     $tui->handleInput("\x1b[<35;60;5M"); // into the editor
                 },
                 360 => function ($tui): void {
-                    $line = $tui->getById('separator')->render(new RenderContext(1, 5))[0];
+                    $line = Paint::lines($tui->getById('separator'), new RenderContext(1, 5))[0];
                     $this->assertStringContainsString(Glyphs::PANE_DIVIDER, $line, 'thin again once the pointer leaves');
                     $this->assertStringNotContainsString(Glyphs::PANE_DIVIDER_ACTIVE, $line);
                 },

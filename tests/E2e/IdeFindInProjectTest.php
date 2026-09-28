@@ -9,6 +9,7 @@ use Porta\Config\CommandRegistry;
 use Porta\Ide;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\FindModalReads;
+use Porta\Tests\Support\Paint;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
@@ -297,7 +298,7 @@ final class IdeFindInProjectTest extends TestCase
     public function testFindInProjectContextLinesFromOpenBuffer(): void
     {
         $project = new TempProject(['src/A.php' => "<?php\n\$x = 1;\n// tok here\n\$y = 2;\n"]);
-        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(\implode("\n", $tui->getById('results')->render(new RenderContext(160, 20))));
+        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(\implode("\n", Paint::lines($tui->getById('results'), new RenderContext(160, 20))));
 
         $this->runIde(
             $project,
@@ -331,7 +332,7 @@ final class IdeFindInProjectTest extends TestCase
     public function testFindInProjectContextLinesFromDisk(): void
     {
         $project = new TempProject(['src/A.php' => "<?php\n// alpha\n// tok here\n// beta\n"]);
-        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(\implode("\n", $tui->getById('results')->render(new RenderContext(160, 20))));
+        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(\implode("\n", Paint::lines($tui->getById('results'), new RenderContext(160, 20))));
 
         $this->runIde(
             $project,
@@ -541,7 +542,7 @@ final class IdeFindInProjectTest extends TestCase
                     // The grep is a subprocess: await both matches landing
                     // before exporting them.
                     $this->await(static function () use ($tui): bool {
-                        $panel = AnsiUtils::stripAnsiCodes(\implode("\n", $tui->getById('results')->render(new RenderContext(160, 20))));
+                        $panel = AnsiUtils::stripAnsiCodes(\implode("\n", Paint::lines($tui->getById('results'), new RenderContext(160, 20))));
 
                         return \str_contains($panel, 'src/A.php') && \str_contains($panel, 'src/B.php');
                     }, what: 'both matches to land');
@@ -593,7 +594,7 @@ final class IdeFindInProjectTest extends TestCase
             'src/A.php' => "<?php\n// tok here\n",
             'other/B.php' => "<?php\n// tok here\n",
         ]);
-        static fn ($tui): string => AnsiUtils::stripAnsiCodes(\implode("\n", $tui->getById('results')->render(new RenderContext(160, 16))));
+        static fn ($tui): string => AnsiUtils::stripAnsiCodes(\implode("\n", Paint::lines($tui->getById('results'), new RenderContext(160, 16))));
 
         $this->runIde(
             $project,
@@ -636,7 +637,7 @@ final class IdeFindInProjectTest extends TestCase
     public function testFindInProjectF5RerunsPicksUpDiskChanges(): void
     {
         $project = new TempProject(['src/A.php' => "<?php\n// tok here\n"]);
-        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(\implode("\n", $tui->getById('results')->render(new RenderContext(160, 16))));
+        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(\implode("\n", Paint::lines($tui->getById('results'), new RenderContext(160, 16))));
 
         $this->runIde(
             $project,
@@ -808,7 +809,7 @@ final class IdeFindInProjectTest extends TestCase
                 $renderer = Services::resolve($ide, Renderer::class);
                 $treeRect = $renderer->getWidgetRect($tui->getById('tree'));
                 $this->assertInstanceOf(WidgetRect::class, $treeRect);
-                $treeRows = $tui->getById('tree')->render(new RenderContext($treeRect->columns, $treeRect->rows));
+                $treeRows = Paint::lines($tui->getById('tree'), new RenderContext($treeRect->columns, $treeRect->rows));
                 $treeText = AnsiUtils::stripAnsiCodes(\implode("\n", $treeRows));
                 $this->assertStringContainsString('Find in Files', $treeText, "the modal's title bar paints over the tree pane");
                 $this->assertStringContainsString("\x1b[2m", \implode('', $treeRows), 'the tree renders dimmed beneath the modal');

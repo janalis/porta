@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Tests\Support\RendersWidget;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Theme\MonochromeTheme;
 use Porta\Ui\Theme\Styles;
@@ -14,6 +15,8 @@ use Symfony\Component\Tui\Render\RenderContext;
 
 final class SeparatorWidgetTest extends TestCase
 {
+    use RendersWidget;
+
     public function testRendersAOneColumnRuleFillingTheHeight(): void
     {
         $sep = new SeparatorWidget();
@@ -67,8 +70,23 @@ final class SeparatorWidgetTest extends TestCase
         $sep = new SeparatorWidget();
         $sep->setMenuOverlay([['row' => 2, 'col' => 0, 'width' => 1, 'segment' => "\x1b[7mX\x1b[0m"]]);
 
-        $lines = $sep->render(new RenderContext(1, 5));
+        $lines = $this->painted($sep, new RenderContext(1, 5));
         $this->assertSame('X', AnsiUtils::stripAnsiCodes($lines[2]), 'menu segment painted over the separator column');
         $this->assertSame(Glyphs::PANE_DIVIDER, AnsiUtils::stripAnsiCodes($lines[0]), 'other rows keep the rule');
+    }
+
+    /**
+     * The divider is one column however wide the layout is, and a dropdown
+     * crossing it composites into that one column — at the layout's width, the
+     * row padded out past the divider into the pane beside it.
+     */
+    public function testAnOverlayCompositesIntoTheOneColumn(): void
+    {
+        $widget = new SeparatorWidget();
+        $widget->setMenuOverlay([['row' => 0, 'col' => 0, 'width' => 200, 'segment' => \str_repeat('M', times: 200)]]);
+
+        $row = $this->painted($widget, new RenderContext(300, 5))[0];
+        $this->assertSame(1, AnsiUtils::visibleWidth($row));
+        $this->assertStringContainsString('M', AnsiUtils::stripAnsiCodes($row));
     }
 }

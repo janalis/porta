@@ -11,6 +11,7 @@ use Porta\Editor\OpenFocus;
 use Porta\Ide;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\EditorState;
+use Porta\Tests\Support\Paint;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
@@ -67,7 +68,7 @@ final class IdeDebugTest extends TestCase
                     $this->assertStringContainsString('●', $terminal->getOutput(), 'gutter dot rendered');
                 },
                 340 => function ($tui, $terminal, Ide $ide) use ($project): void {
-                    $editorScreen = static fn (): string => \implode("\n", $tui->getById('editor')->render(new RenderContext(120, 20)));
+                    $editorScreen = static fn (): string => \implode("\n", Paint::lines($tui->getById('editor'), new RenderContext(120, 20)));
                     Services::resolve($ide, BufferService::class)
                         ->openFile($project->path('other.php'), OpenFocus::Editor);
                     $this->assertStringNotContainsString('●', $editorScreen(), 'no dot in the other file');
@@ -81,7 +82,7 @@ final class IdeDebugTest extends TestCase
                     $this->frame($tui);
                     $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('editor'));
-                    $editorScreen = static fn (): string => \implode("\n", $tui->getById('editor')->render(new RenderContext(120, 20)));
+                    $editorScreen = static fn (): string => \implode("\n", Paint::lines($tui->getById('editor'), new RenderContext(120, 20)));
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + 2, $rect->row + 2)); // gutter, row 1
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $rect->col + 2, $rect->row + 2));
                     $this->assertStringContainsString('●', $editorScreen(), 'gutter click set a breakpoint');
@@ -153,7 +154,7 @@ final class IdeDebugTest extends TestCase
                 500 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitPainted($tui, $terminal, 'terminated');
                     $this->assertStringContainsString('terminated', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
-                    $editorScreen = \implode("\n", $tui->getById('editor')->render(new RenderContext(120, 20)));
+                    $editorScreen = \implode("\n", Paint::lines($tui->getById('editor'), new RenderContext(120, 20)));
                     $this->assertStringNotContainsString("\x1b[48;5;52m", $editorScreen, 'the band cleared');
                 },
             ],
@@ -246,7 +247,7 @@ final class IdeDebugTest extends TestCase
                     $this->assertTrue($tui->getById('terminal')->isVisible(), 'clicking the session tab revealed the debug session output');
                     $debugCol = static function () use ($tui, $renderer): int {
                         $rect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
-                        $strip = AnsiUtils::stripAnsiCodes($tui->getById('dock-tabs')->render(new RenderContext($rect->columns, 1))[0]);
+                        $strip = AnsiUtils::stripAnsiCodes(Paint::lines($tui->getById('dock-tabs'), new RenderContext($rect->columns, 1))[0]);
                         // The 2nd 'Debug' occurrence is the debug panel's tab.
                         $second = (int) \mb_strpos($strip, needle: 'Debug', offset: (int) \mb_strpos($strip, needle: 'Debug') + 1);
 
@@ -296,7 +297,7 @@ final class IdeDebugTest extends TestCase
                     $tui->handleInput("\r"); // hit count left empty
                     $tui->handleInput("\r"); // log message left empty
                     $tui->tick();
-                    $editorScreen = \implode("\n", $tui->getById('editor')->render(new RenderContext(120, 20)));
+                    $editorScreen = \implode("\n", Paint::lines($tui->getById('editor'), new RenderContext(120, 20)));
                     $this->assertStringContainsString('◆', $editorScreen, 'the conditional breakpoint renders a diamond');
                     $tui->handleInput("\x1b[20;2~"); // shift+f9 debug
                 },
@@ -449,7 +450,7 @@ final class IdeDebugTest extends TestCase
             $project->path('prog.php'),
             [
                 300 => function ($tui): void {
-                    $editorScreen = static fn (): string => \implode("\n", $tui->getById('editor')->render(new RenderContext(120, 20)));
+                    $editorScreen = static fn (): string => \implode("\n", Paint::lines($tui->getById('editor'), new RenderContext(120, 20)));
                     $this->assertStringContainsString('◆', $editorScreen(), 'the restored conditional breakpoint paints at boot');
                     $tui->handleInput("\x1b[20;2~"); // shift+f9 debug
                 },

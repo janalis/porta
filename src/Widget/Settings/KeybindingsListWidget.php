@@ -345,7 +345,7 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
             $lines[] = $this->shadeRow($text, $index === $this->list->selected(), $index === $this->hoveredIndex);
         }
 
-        return $this->withMenuOverlay($lines, $width);
+        return $lines;
     }
 
     /** @return array<string, string[]> */

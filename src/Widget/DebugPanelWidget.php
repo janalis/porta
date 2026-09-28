@@ -250,7 +250,7 @@ final class DebugPanelWidget extends DockPanelWidget implements FocusableInterfa
             $lines[] = $bg->apply(AnsiText::truncate($this->rowText($row), $columns, pad: true));
         }
 
-        return $this->withMenuOverlay($lines, $columns);
+        return $lines;
     }
 
     /** @return array<string, string[]> */

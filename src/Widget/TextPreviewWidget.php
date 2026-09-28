@@ -209,7 +209,7 @@ final class TextPreviewWidget extends EditorPaneWidget
             $lines[] = AnsiText::truncate($this->lines[$this->scrollTop + $row] ?? '', $cols, pad: true);
         }
 
-        return $this->withMenuOverlay($lines, $cols);
+        return $lines;
     }
 
     /** The one row that never scrolls: why this file is not editable. */

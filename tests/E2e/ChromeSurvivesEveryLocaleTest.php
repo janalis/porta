@@ -12,6 +12,7 @@ use Porta\Ide;
 use Porta\Layout\ResponsiveLayout;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\NavigatesSettings;
+use Porta\Tests\Support\Paint;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\PreservesPortaHome;
 use Porta\Tests\Support\Probe;
@@ -116,7 +117,7 @@ final class ChromeSurvivesEveryLocaleTest extends TestCase
         $bar = $tui->getById('status');
         $this->assertInstanceOf(StatusBarWidget::class, $bar, 'the status bar is the status widget');
         foreach (self::WIDTHS as $width) {
-            $row = AnsiUtils::stripAnsiCodes($bar->render(new RenderContext($width, 1))[0]);
+            $row = AnsiUtils::stripAnsiCodes(Paint::lines($bar, new RenderContext($width, 1))[0]);
             $this->assertStringContainsString(
                 'Class.php',
                 $row,
@@ -143,7 +144,7 @@ final class ChromeSurvivesEveryLocaleTest extends TestCase
         $menus = Probe::get($bar, 'menus');
         $this->assertNotEmpty($menus, 'the menu bar has menus to lose');
         foreach (self::WIDTHS as $width) {
-            $row = AnsiUtils::stripAnsiCodes($bar->render(new RenderContext($width, 1))[0]);
+            $row = AnsiUtils::stripAnsiCodes(Paint::lines($bar, new RenderContext($width, 1))[0]);
             $missing = [];
             foreach ($menus as $menu) {
                 /** @var string $title */
@@ -180,7 +181,7 @@ final class ChromeSurvivesEveryLocaleTest extends TestCase
         $floor = $nav->minWidth();
         $nav->setWidth($floor);
         $this->assertSame($floor, $nav->width(), \sprintf('[%s] the nav really is at its floor', $locale));
-        foreach ($nav->render(new RenderContext($floor, 40)) as $line) {
+        foreach (Paint::lines($nav, new RenderContext($floor, 40)) as $line) {
             $row = AnsiUtils::stripAnsiCodes($line);
             $this->assertStringNotContainsString(
                 Glyphs::ELLIPSIS,
@@ -202,7 +203,7 @@ final class ChromeSurvivesEveryLocaleTest extends TestCase
         $list = $tui->getById('settings-keys');
         $this->assertInstanceOf(KeybindingsListWidget::class, $list, 'the keybindings page owns the list');
         foreach (self::WIDTHS as $width) {
-            $header = AnsiUtils::stripAnsiCodes($list->render(new RenderContext($width, 8))[0]);
+            $header = AnsiUtils::stripAnsiCodes(Paint::lines($list, new RenderContext($width, 8))[0]);
             $this->assertStringContainsString(
                 'Ctrl+F',
                 $header,

@@ -219,7 +219,7 @@ final class TerminalPanelWidget extends DockPanelWidget implements FocusableInte
             $lines[$row] = \substr($lines[$row], offset: 0, length: $byte).$this->cursorStyle->marker().\substr($lines[$row], $byte);
         }
 
-        return $this->withMenuOverlay($lines, $columns);
+        return $lines;
     }
 
     private function cycle(int $delta): void

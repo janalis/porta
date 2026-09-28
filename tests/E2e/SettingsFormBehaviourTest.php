@@ -10,6 +10,7 @@ use Porta\Config\IdeConfig;
 use Porta\Ide;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\NavigatesSettings;
+use Porta\Tests\Support\Paint;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\ReadsSettingsForm;
 use Porta\Tests\Support\RunsIde;
@@ -246,14 +247,14 @@ final class SettingsFormBehaviourTest extends TestCase
                     // The FORM's own render, not the screen: a toast saying
                     // "Sticky scroll off" also carries the label, and the
                     // label-addressed helper would happily read that instead.
-                    $rows = $form->render(new RenderContext(100, 24));
+                    $rows = Paint::lines($form, new RenderContext(100, 24));
                     $this->assertStringNotContainsString('●', $this->settingRow($rows, 'Sticky scroll'), 'a fresh project has changed nothing');
 
                     $this->selectSettingRow($form, 'Sticky scroll');
                     $tui->handleInput("\r"); // toggle it off its default
                     $this->frame($tui);
 
-                    $rows = $form->render(new RenderContext(100, 24));
+                    $rows = Paint::lines($form, new RenderContext(100, 24));
                     $this->assertStringContainsString('●', $this->settingRow($rows, 'Sticky scroll'), 'the changed row is marked');
                     $this->assertStringNotContainsString('●', $this->settingRow($rows, 'Indent guides'), 'and its neighbour is not');
                 },

@@ -395,7 +395,7 @@ final class SettingsFormWidgetTest extends TestCase
         // Pane coordinates, not row indices: a dropdown falls where it falls,
         // including over the title row.
         $widget->setMenuOverlay([['row' => 0, 'col' => 0, 'width' => 8, 'segment' => "\x1b[7mDROPDOWN\x1b[0m"]]);
-        $line = $widget->render(new RenderContext(60, 8))[0];
+        $line = $this->painted($widget, new RenderContext(60, 8))[0];
         $this->assertStringContainsString('DROPDOWN', $line);
     }
 
