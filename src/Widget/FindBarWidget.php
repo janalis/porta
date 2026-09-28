@@ -575,10 +575,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface, M
                 $this->wholeWord ? WordMode::WholeWord : WordMode::Anywhere,
                 $caseInsensitive ? CaseMode::Insensitive : CaseMode::Sensitive,
             );
-            \set_error_handler(static fn (): bool => true);
-            $valid = \preg_match($pattern, subject: '');
-            \restore_error_handler();
-            if (false === $valid) {
+            if (!SearchPattern::compiles($pattern)) {
                 $this->patternInvalid = true;
                 $this->notifyUpdate();
 

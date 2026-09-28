@@ -64,7 +64,7 @@ final class ProjectSearch
         }
         $pattern = $this->pattern($query, $options);
         // A malformed regex yields no results rather than a crash.
-        if ($options->regex && !$this->patternValid($pattern)) {
+        if ($options->regex && !SearchPattern::compiles($pattern)) {
             $onDone([]);
 
             return;
@@ -521,16 +521,6 @@ final class ProjectSearch
             $options->wholeWord ? WordMode::WholeWord : WordMode::Anywhere,
             $options->caseSensitive ? CaseMode::Sensitive : CaseMode::Insensitive,
         );
-    }
-
-    /** Whether a user regex compiles, swallowing the warning a malformed pattern raises. */
-    private function patternValid(string $pattern): bool
-    {
-        \set_error_handler(static fn (): bool => true);
-        $ok = \preg_match($pattern, subject: '');
-        \restore_error_handler();
-
-        return false !== $ok;
     }
 
     /** A file's contents as a string, or '' when it is not a readable file. */

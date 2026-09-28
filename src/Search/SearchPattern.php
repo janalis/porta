@@ -19,4 +19,18 @@ final class SearchPattern
 
         return '/'.$body.'/'.(CaseMode::Sensitive === $case ? '' : 'i');
     }
+
+    /**
+     * Whether a built pattern compiles, swallowing the warning a malformed one
+     * raises: the find bar and Find in Files say "bad regex" rather than
+     * searching for nothing, and the project search skips the scan.
+     */
+    public static function compiles(string $pattern): bool
+    {
+        \set_error_handler(static fn (): bool => true);
+        $ok = \preg_match($pattern, subject: '');
+        \restore_error_handler();
+
+        return false !== $ok;
+    }
 }

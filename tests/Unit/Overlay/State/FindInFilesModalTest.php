@@ -152,6 +152,30 @@ final class FindInFilesModalTest extends TestCase
         $this->assertStringContainsString('no results', $this->screen($modal));
     }
 
+    /**
+     * A regex that does not compile finds nothing, and says why: "bad regex"
+     * where "no results" would be, and the query boxed in the danger frame, as
+     * the find bar's is. The same text as a plain query is just a miss.
+     */
+    public function testABadRegexSaysSoInsteadOfNoResults(): void
+    {
+        $modal = $this->modal();
+        $modal->open('Find in Files');
+        $modal->setOptions(['regex' => true, 'case' => false, 'word' => false, 'preserve' => false, 'tokens' => 'any']);
+        $modal->handleInput('(', $this->kb);
+        $modal->setPreview([]);
+
+        $roomy = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $this->composeWithFocus($modal, CaretVisibility::Shown, rows: 30)));
+        $this->assertStringContainsString('bad regex', $roomy);
+        $this->assertStringNotContainsString('no results', $roomy);
+        $this->assertStringContainsString(Glyphs::FIELD_DANGER_TOP_LEFT, $roomy, 'the query wears the danger frame');
+
+        $modal->setOptions(['regex' => false, 'case' => false, 'word' => false, 'preserve' => false, 'tokens' => 'any']);
+        $plain = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $this->composeWithFocus($modal, CaretVisibility::Shown, rows: 30)));
+        $this->assertStringContainsString('no results', $plain, 'a literal ( is a query like any other');
+        $this->assertStringNotContainsString(Glyphs::FIELD_DANGER_TOP_LEFT, $plain);
+    }
+
     public function testQueryTypingFiresOnQuery(): void
     {
         $modal = $this->modal();

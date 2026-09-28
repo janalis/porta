@@ -7,8 +7,12 @@ namespace Porta\Overlay\State;
 use Porta\I18n\Translator;
 use Porta\Overlay\Region\ModalBox;
 use Porta\Overlay\Region\ModalHotspot;
+use Porta\Search\CaseMode;
+use Porta\Search\MatchMode;
 use Porta\Search\SearchOption;
+use Porta\Search\SearchPattern;
 use Porta\Search\TokenScope;
+use Porta\Search\WordMode;
 use Porta\Support\AnsiText;
 use Porta\Support\IntMath;
 use Porta\Ui\CaretVisibility;
@@ -612,7 +616,15 @@ final class FindInFilesModal
             $previewRows[] = FindModalRows::match($result, $selected, $width, $this->styles);
         }
         if ([] === $visible) {
-            $previewRows[] = FindModalRows::empty('' === $this->query->value() ? $this->translator->trans('type to search…') : $this->translator->trans('no results'), $width, $this->styles);
+            $previewRows[] = FindModalRows::empty(
+                match (true) {
+                    '' === $this->query->value() => $this->translator->trans('type to search…'),
+                    $this->patternInvalid() => $this->translator->trans('bad regex'),
+                    default => $this->translator->trans('no results'),
+                },
+                $width,
+                $this->styles,
+            );
         }
         $previewIndex = ModalFrame::CHROME_ROWS_TOP + \count($fields) + 1; // + the tee above the preview
         $footerIndex = $previewIndex + \count($previewRows) + 1; // + the tee above the footer
@@ -840,8 +852,17 @@ final class FindInFilesModal
     {
         $active = CaretVisibility::Shown === $focused && $which === $this->activeField;
         $caret = $active ? CaretVisibility::Shown : CaretVisibility::Hidden;
+        // A regex that does not compile finds nothing: the query says so in
+        // its frame, as the find bar's does, rather than looking merely empty.
+        $state = FindModalField::Query === $which && $this->patternInvalid() ? FieldState::Danger : FieldState::of($active);
 
-        return FieldBox::field($spec, $field, FieldState::of($active), $caret, $width, $height, $this->styles);
+        return FieldBox::field($spec, $field, $state, $caret, $width, $height, $this->styles);
+    }
+
+    /** Whether the query, in regex mode, is a pattern that cannot compile. */
+    private function patternInvalid(): bool
+    {
+        return $this->options['regex'] && !SearchPattern::compiles(SearchPattern::build($this->query->value(), MatchMode::Regex, WordMode::Anywhere, CaseMode::Sensitive));
     }
 
     /**
