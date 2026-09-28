@@ -993,7 +993,9 @@ final class FindInFilesModal
      */
     private function footerLegend(): string
     {
-        return ' '.$this->translator->trans('⏎ open').' · Alt+Enter '.$this->translator->trans('Find window').' · Alt+S '.$this->translator->trans('Scope').' · Esc';
+        // Esc is the title bar's to say, as on every modal; and Enter is ⏎ in
+        // a hint strip, Alt+Enter included (ShortcutFormatter's dialect).
+        return ' '.$this->translator->trans('⏎ open').' · Alt+⏎ '.$this->translator->trans('Find window').' · Alt+S '.$this->translator->trans('Scope');
     }
 
     /**

@@ -132,7 +132,8 @@ final class FindInFilesModalTest extends TestCase
         $this->assertStringContainsString('src/A.php', $screen, 'grouped file header');
         $this->assertStringContainsString('other/B.php', $screen);
         $this->assertStringContainsString('foo one', $screen, 'match rows render');
-        $this->assertStringContainsString('Alt+Enter Find window · Alt+S Scope', $screen, 'the footer legend names the keys');
+        $this->assertStringContainsString('Alt+⏎ Find window · Alt+S Scope', $screen, 'the footer legend names the keys');
+        $this->assertSame(1, \substr_count($screen, needle: 'Esc'), 'Esc once, in the title bar: the footer does not repeat it');
         $this->assertStringNotContainsString('Close', $screen, 'the Close word is retired — Esc/outside-click dismiss');
         $this->assertStringContainsString('Esc', $screen, 'the title carries the dismiss hint');
     }
@@ -1784,7 +1785,7 @@ final class FindInFilesModalTest extends TestCase
 
         $modal->clickAt($box->footerRow, $side);
         $this->assertSame(1, $opened, 'the footer is a legend: nothing on it presses');
-        $this->assertStringContainsString('Alt+Enter Find window · Alt+S Scope', $lines[$box->footerRow], 'but it names both keys, which a compact button has no border to carry');
+        $this->assertStringContainsString('Alt+⏎ Find window · Alt+S Scope', $lines[$box->footerRow], 'but it names both keys, which a compact button has no border to carry');
     }
 
     /** With no host to show a list, the select steps — Alt+S or a click still moves the scope. */
