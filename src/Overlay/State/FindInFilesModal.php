@@ -575,12 +575,11 @@ final class FindInFilesModal
         $fieldRows = FieldBox::rowsFor($density);
         // Everything but the preview: the frame and its tees (8), the footer
         // (1), and the three fields and the options band, each $fieldRows.
-        $maxPreview = \max(1, \min(\count($this->displayRows), $rows - 9 - (4 * $fieldRows), $this->userRows ?? 10));
+        $maxPreview = \max(1, \min(\count($this->displayRows), $rows - 9 - (4 * $fieldRows), $this->userRows ?? PopupMetrics::FIND_PREVIEW_ROWS));
         $windowStart = $this->windowStart($maxPreview);
         $visible = \array_slice($this->displayRows, $windowStart, $maxPreview);
 
         $width = $this->boxWidth($columns, $visible, $fieldRows);
-        $col = $boundLeft + \max(0, \intdiv($columns - $width - ModalFrame::CHROME_COLS, num2: 2));
 
         $fields = $this->headerRows($width, $focused, $fieldRows);
         // Box rows: title bar, pad, find, replace, options, mask, tee, then
@@ -637,7 +636,7 @@ final class FindInFilesModal
         // drag freezes an absolute position; either clamps into the bounds —
         // rows outside the pane union would simply not paint.
         $boxWidth = $width + ModalFrame::CHROME_COLS;
-        $startRow = $boundTop + \max(0, \intdiv($rows - \count($popup), num2: 3));
+        [$startRow, $col] = PopupMetrics::centered($bounds, \count($popup), $boxWidth);
         if (null !== $this->userRow && null !== $this->userCol) {
             $startRow = IntMath::clamp($this->userRow, $boundTop, \max($boundTop, $boundBottom - \count($popup)));
             $col = IntMath::clamp($this->userCol, $boundLeft, \max($boundLeft, $boundRight - $boxWidth));
@@ -704,12 +703,12 @@ final class FindInFilesModal
 
         // Inner width; the frame adds a rail and a padding column each side.
         // A corner-drag override replaces the content-driven width (and its
-        // 80-column comfort cap — user intent wins), still floored/clamped.
+        // comfort cap, FIND_MAX_INNER — user intent wins), still floored/clamped.
         if (null !== $this->userWidth) {
             return \max(PopupMetrics::FIND_MIN_WIDTH, \min($this->userWidth, $columns - PopupMetrics::CENTERED_MARGIN));
         }
 
-        return \min($width, $columns - PopupMetrics::CENTERED_MARGIN, 80);
+        return \min($width, $columns - PopupMetrics::CENTERED_MARGIN, PopupMetrics::FIND_MAX_INNER);
     }
 
     /**

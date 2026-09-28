@@ -15,6 +15,7 @@ use Porta\Ui\Theme\Styles;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\Onboarding\WelcomeWidget;
 use Porta\Widget\Render\ModalFrame;
+use Porta\Widget\Render\PopupMetrics;
 use Porta\Widget\Support\StylesDefault;
 use Porta\Workbench\EditorArea;
 use Porta\Workbench\Menu\ViewMenuSource;
@@ -417,7 +418,7 @@ final class WelcomeModalController implements ContributedView
         // last one off. A Symfony project adds a sixth card, which overflows
         // this window by design: the widget's followHeights() scrolls the
         // selection into view, so navigating down reveals what the fold hides.
-        $innerWidth = \max(20, \min($this->userInnerWidth ?? self::MAX_INNER_WIDTH, $boundRight - $boundLeft - 8));
+        $innerWidth = \max(20, \min($this->userInnerWidth ?? self::MAX_INNER_WIDTH, $boundRight - $boundLeft - PopupMetrics::CENTERED_MARGIN));
         $innerHeight = \max(5, \min($this->userInnerHeight ?? self::MAX_INNER_HEIGHT, $boundBottom - $boundTop - ModalFrame::CHROME_ROWS));
         $width = $innerWidth + ModalFrame::CHROME_COLS;
         $content = \array_values($this->welcome->render(new RenderContext($innerWidth, $innerHeight)));
@@ -429,8 +430,9 @@ final class WelcomeModalController implements ContributedView
 
         // Auto-center (a third down, like the pickers) until a drag freezes an
         // absolute position; clamp either into the pane union.
-        $top = $this->top ?? ($boundTop + \max(0, \intdiv($boundBottom - $boundTop - $rows, num2: 3)));
-        $col = $this->col ?? ($boundLeft + \max(0, \intdiv($boundRight - $boundLeft - $width, num2: 2)));
+        [$centerTop, $centerCol] = PopupMetrics::centered($bounds, $rows, $width);
+        $top = $this->top ?? $centerTop;
+        $col = $this->col ?? $centerCol;
         $top = IntMath::clamp($top, $boundTop, \max($boundTop, $boundBottom - $rows));
         $col = IntMath::clamp($col, $boundLeft, \max($boundLeft, $boundRight - $width));
         if (null !== $this->top || null !== $this->col) {

@@ -42,6 +42,38 @@ final class PopupMetrics
     /** Find in Files never squeezes below this inner width (content- or drag-sized). */
     public const int FIND_MIN_WIDTH = 48;
 
+    /**
+     * Inner-width comfort cap for Find in Files, above the pickers' because
+     * its preview shows lines of code, not labels. A corner drag may go past it.
+     */
+    public const int FIND_MAX_INNER = 80;
+
+    /** Preview rows Find in Files shows until a corner drag sets its own. */
+    public const int FIND_PREVIEW_ROWS = 10;
+
+    /** Rows a centered picker's list shows at most. */
+    public const int PICKER_ROWS = 12;
+
     /** Inner-width cap for the corner toast cards. */
     public const int TOAST_MAX_INNER = 42;
+
+    /**
+     * Screen position of a box centered against the pane union: a third down
+     * (the placement the pickers have always had), centered across. Every
+     * centered surface — the pickers, Find in Files, the Welcome modal —
+     * opens here until a drag gives it a place of its own.
+     *
+     * @param array{int, int, int, int} $bounds [top, left, bottom, right]
+     *
+     * @return array{int, int} [top, col]
+     */
+    public static function centered(array $bounds, int $boxRows, int $boxWidth): array
+    {
+        [$boundTop, $boundLeft, $boundBottom, $boundRight] = $bounds;
+
+        return [
+            $boundTop + \max(0, \intdiv($boundBottom - $boundTop - $boxRows, num2: 3)),
+            $boundLeft + \max(0, \intdiv($boundRight - $boundLeft - $boxWidth, num2: 2)),
+        ];
+    }
 }

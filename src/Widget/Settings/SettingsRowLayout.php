@@ -39,9 +39,6 @@ final readonly class SettingsRowLayout
     /** A label column narrower than this is not worth aligning to. */
     private const int MIN_LABEL = 8;
 
-    /** A control never grows past a browser input's size, however wide the pane. */
-    private const int MAX_CONTROL = 32;
-
     /** A text field's width, value or not: a field, not a label that grows. */
     private const int TEXT_FIELD = 24;
 
@@ -103,7 +100,7 @@ final readonly class SettingsRowLayout
             $heights[] = (null === $legend ? 0 : 1) + ($boxed ? FieldBox::ROWS : 1);
         }
 
-        return new self($label, \min($needed, self::MAX_CONTROL, $room), $boxed, $heights, $legends);
+        return new self($label, \min($needed, FieldBox::MAX_WIDTH, $room), $boxed, $heights, $legends);
     }
 
     /** The width one row's control asks for; a checkbox asks for none. */

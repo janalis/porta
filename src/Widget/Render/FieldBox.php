@@ -48,6 +48,13 @@ final class FieldBox
     public const int MIN_BOXED = 12;
 
     /**
+     * The widest a control grows, frame included: a browser input's fixed
+     * size, never the pane's — the find bar's fields and the settings form's
+     * controls alike.
+     */
+    public const int MAX_WIDTH = 32;
+
+    /**
      * The one rule for a control's height: boxed where the screen is roomy and
      * the box has room for more than its border, one row otherwise. Every host
      * asks this instead of keeping a threshold of its own — sites that each

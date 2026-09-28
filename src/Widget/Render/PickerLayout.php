@@ -67,7 +67,7 @@ final class PickerLayout
         // Rows, like the width below, are a property of the whole list: the box
         // keeps its height while the filter narrows it, padding what the
         // filter took, so it never re-centres under the reader.
-        $boxRows = \max(1, \min(\count($overlay['items']), $rows - 6 - $fieldRows, 12));
+        $boxRows = \max(1, \min(\count($overlay['items']), $rows - 6 - $fieldRows, PopupMetrics::PICKER_ROWS));
         $maxItems = \min($boxRows, \max(1, \count($items)));
         $windowStart = IntMath::clamp($selected - $maxItems + 1, 0, \count($items) - $maxItems);
         $visible = \array_slice($items, $windowStart, $maxItems);
@@ -122,7 +122,7 @@ final class PickerLayout
             $content[] = $styles->merge(Role::PopupRow, Role::CompletionHint)->apply(AnsiText::truncate(' '.$emptyMessage, $width, pad: true, ellipsis: ''));
         }
         // Rows the filter took are not padded back: the box is PLACED as if
-        // they were ({@see centered()} over the whole list's height), so its
+        // they were ({@see PopupMetrics::centered()} over the whole list's height), so its
         // top stays put and it shrinks from the bottom — nothing under the
         // reader's eye moves, and no blank rows stand in for the missing ones.
         $missing = \max(0, $boxRows - \count($content));
@@ -150,7 +150,7 @@ final class PickerLayout
             ...ModalFrame::wrapSections([$header, $content], $width, $styles, overflow: ListOverflow::of($windowStart, \count($visible), $selected, \count($items))),
         ];
 
-        [$top, $col] = self::centered($bounds, \count($popup) + $missing, $width + ModalFrame::CHROME_COLS);
+        [$top, $col] = PopupMetrics::centered($bounds, \count($popup) + $missing, $width + ModalFrame::CHROME_COLS);
         $box = new ModalBox(
             $top,
             $col,
@@ -186,7 +186,7 @@ final class PickerLayout
         // As tall as the most rows seen since it opened, like its width: a
         // narrowing query pads the rows it drops rather than shrinking the box
         // and re-centring it under the reader.
-        $boxRows = \max(0, \min(\max(\count($search->rows), $search->tallest), $rows - 6 - $fieldRows, 12));
+        $boxRows = \max(0, \min(\max(\count($search->rows), $search->tallest), $rows - 6 - $fieldRows, PopupMetrics::PICKER_ROWS));
         $maxRows = \max(1, \min($boxRows, \count($search->rows)));
         $windowStart = IntMath::clamp($search->selected - $maxRows + 1, 0, \max(0, \count($search->rows) - $maxRows));
         $visible = \array_slice($search->rows, $windowStart, $maxRows);
@@ -269,7 +269,7 @@ final class PickerLayout
         // shortens what is drawn, never where it sits.
         $missing = \max(0, ModalFrame::CHROME_ROWS + $fieldRows + ModalFrame::SECTION_ROWS + $boxRows - \count($framed));
 
-        [$top, $col] = self::centered($bounds, \count($framed) + $missing, $width + ModalFrame::CHROME_COLS);
+        [$top, $col] = PopupMetrics::centered($bounds, \count($framed) + $missing, $width + ModalFrame::CHROME_COLS);
         $box = new ModalBox(
             $top,
             $col,
@@ -309,7 +309,7 @@ final class PickerLayout
             ModalFrame::titleBar($prompt['label'], $innerWidth + ModalFrame::CHROME_COLS, $styles, closeHovered: $closeHovered),
             ...ModalFrame::wrap($field, $innerWidth, $styles),
         ];
-        [$top, $col] = self::centered($bounds, \count($framed), $innerWidth + ModalFrame::CHROME_COLS);
+        [$top, $col] = PopupMetrics::centered($bounds, \count($framed), $innerWidth + ModalFrame::CHROME_COLS);
         $box = new ModalBox($top, $col, $innerWidth + ModalFrame::CHROME_COLS, $fieldRows + ModalFrame::CHROME_ROWS, headerRows: ModalFrame::CHROME_ROWS_TOP, windowStart: 0, count: 1);
 
         return ['rows' => $framed, 'top' => $top, 'col' => $col, 'width' => $innerWidth + ModalFrame::CHROME_COLS, 'box' => $box];
@@ -364,24 +364,6 @@ final class PickerLayout
         $place = \array_search($search->selected, $hits, strict: true);
 
         return new ListOverflow($windowStart > 0, ($windowStart + $shown) < \count($search->rows), false === $place ? 0 : $place + 1, \count($hits));
-    }
-
-    /**
-     * Screen position of a box centered against the pane union: a third down
-     * (the placement the pickers have always had), centered horizontally.
-     *
-     * @param array{int, int, int, int} $bounds
-     *
-     * @return array{int, int} [top, col]
-     */
-    private static function centered(array $bounds, int $boxRows, int $boxWidth): array
-    {
-        [$boundTop, $boundLeft, $boundBottom, $boundRight] = $bounds;
-
-        return [
-            $boundTop + \max(0, \intdiv($boundBottom - $boundTop - $boxRows, num2: 3)),
-            $boundLeft + \max(0, \intdiv($boundRight - $boundLeft - $boxWidth, num2: 2)),
-        ];
     }
 
     /**

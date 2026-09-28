@@ -760,9 +760,6 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface, M
         $this->events?->dispatch(new FindQueryUpdated());
     }
 
-    /** A field box's width cap — a browser input's fixed size, not the pane's. */
-    private const int BOX_MAX = 32;
-
     /**
      * The hints (two-space separated) packed whole into at most $lines lines
      * of $width: a hint is a key and what it does, and cutting one names half
@@ -816,7 +813,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface, M
     /** A field's width: what the toggles and buttons leave, shared, less each one's gutter, capped. */
     private static function boxWidth(int $columns, int $fields, int $buttons, int $rows): int
     {
-        return \min(self::BOX_MAX, \intdiv($columns - self::tagsWidth($buttons, $rows), $fields) - 1);
+        return \min(FieldBox::MAX_WIDTH, \intdiv($columns - self::tagsWidth($buttons, $rows), $fields) - 1);
     }
 
     /** Display columns of the option toggles and the $buttons beside them, at $rows. */
