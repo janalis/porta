@@ -135,4 +135,36 @@ final class TextMetricsTest extends TestCase
         $this->assertSame(5, TextMetrics::charBoundaryAtOrBefore($line, 99), 'past the end clamps to length');
         $this->assertSame(0, TextMetrics::charBoundaryAtOrBefore($line, -3), 'before the start clamps to 0');
     }
+
+    public function testGraphemeStepsCrossAWholeDrawnCharacter(): void
+    {
+        $accent = "ae\u{0301}b"; // e + combining acute: bytes 1-3
+        $this->assertSame(4, TextMetrics::nextGrapheme($accent, 1));
+        $this->assertSame(1, TextMetrics::prevGrapheme($accent, 4));
+
+        $family = "a\u{1F468}\u{200D}\u{1F469}\u{200D}\u{1F467}b"; // one ZWJ grapheme, bytes 1-18
+        $this->assertSame(19, TextMetrics::nextGrapheme($family, 1));
+        $this->assertSame(1, TextMetrics::prevGrapheme($family, 19));
+    }
+
+    public function testGraphemeStepsStopAtTheLineEnds(): void
+    {
+        $this->assertSame(2, TextMetrics::nextGrapheme('ab', 2));
+        $this->assertSame(0, TextMetrics::prevGrapheme('ab', 0));
+    }
+
+    public function testGraphemeStepsFallBackToCodePointsOnInvalidUtf8(): void
+    {
+        $this->assertSame(2, TextMetrics::prevGrapheme("ab\xff", 3));
+        $this->assertSame(3, TextMetrics::nextGrapheme("ab\xffc", 2), 'the bad byte alone, not it and the c after it');
+    }
+
+    public function testADisplayColumnNeverMapsInsideAGrapheme(): void
+    {
+        // é written as e + U+0301: the mark is zero columns wide, so column 2
+        // ends at the e — the byte must come after the mark, not between.
+        $this->assertSame(4, TextMetrics::byteColForDisplayCol("ae\u{0301}b", 2, 4));
+        $this->assertSame(1, TextMetrics::byteColForDisplayCol("ae\u{0301}b", 1, 4), 'a boundary already between graphemes stays');
+        $this->assertSame(3, TextMetrics::byteColForDisplayCol("ab\xffc", 3, 4), 'invalid UTF-8 keeps the code-point answer');
+    }
 }

@@ -37,6 +37,51 @@ final class TextMetrics
     }
 
     /**
+     * The byte offset after the grapheme that starts at $col: a caret step or a
+     * Delete. A grapheme is what the terminal draws as one character — a base
+     * letter with its combining marks, a flag, a ZWJ family — so stepping by
+     * code point stopped inside one and deleting that way left half of it.
+     * LSP and width math stay on code points: a UTF-16 position may point
+     * inside a grapheme.
+     */
+    public static function nextGrapheme(string $line, int $col): int
+    {
+        if ($col >= \strlen($line)) {
+            return \strlen($line);
+        }
+
+        return $col + \strlen(self::graphemes(\substr($line, $col))[0]);
+    }
+
+    /** The byte offset where the grapheme before $col starts: a caret step left or a Backspace. */
+    public static function prevGrapheme(string $line, int $col): int
+    {
+        if ($col <= 0) {
+            return 0;
+        }
+        $graphemes = self::graphemes(\substr($line, offset: 0, length: $col));
+
+        return $col - \strlen($graphemes[\count($graphemes) - 1]);
+    }
+
+    /**
+     * $text split into graphemes. grapheme_extract() is not used: at an
+     * invalid byte it skips that byte AND the grapheme after it, where a split
+     * keeps the byte as one element. The code-point split is for the no-intl
+     * polyfill, whose /u regex returns false on invalid UTF-8 — only the CI's
+     * polyfill leg reaches it (contributing.md: intl is compiled in here).
+     *
+     * @return list<string>
+     */
+    private static function graphemes(string $text): array
+    {
+        /** @var list<string>|false $graphemes */
+        $graphemes = \grapheme_str_split($text);
+
+        return false === $graphemes ? \mb_str_split($text) : $graphemes;
+    }
+
+    /**
      * The largest UTF-8 character boundary at or before $col in $line, so a byte
      * offset carried onto another line (e.g. Up/Down) never lands mid-character.
      */
@@ -134,7 +179,24 @@ final class TextMetrics
             $col = $next;
         }
 
-        return $col;
+        // A combining mark is zero columns wide, so the walk stops after its
+        // base letter — inside the grapheme, where typing would split it. Up,
+        // Down and the column moves land on the grapheme's end instead.
+        return self::graphemeEndAtOrAfter($line, $col);
+    }
+
+    /** $col, or the end of the grapheme it falls inside. */
+    private static function graphemeEndAtOrAfter(string $line, int $col): int
+    {
+        $end = 0;
+        foreach (self::graphemes($line) as $grapheme) {
+            if ($end >= $col) {
+                break;
+            }
+            $end += \strlen($grapheme);
+        }
+
+        return $end;
     }
 
     /** UTF-16 code-unit column for a byte offset on $line (for LSP positions). */

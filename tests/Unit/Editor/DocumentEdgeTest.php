@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit\Editor;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\CommentSyntax;
 use Porta\Editor\Document;
@@ -362,5 +363,45 @@ final class DocumentEdgeTest extends TestCase
     {
         $doc = new Document('a');
         $this->assertSame('', $doc->getLine(99));
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function graphemes(): iterable
+    {
+        yield 'e with a combining acute' => ["e\u{0301}"];
+        yield 'a flag' => ["\u{1F1EB}\u{1F1F7}"];
+        yield 'a ZWJ family' => ["\u{1F468}\u{200D}\u{1F469}\u{200D}\u{1F467}"];
+    }
+
+    #[DataProvider('graphemes')]
+    public function testEditingStepsOverAWholeDrawnCharacter(string $grapheme): void
+    {
+        $doc = new Document('a'.$grapheme.'b');
+        $doc->setCursor(0, 1 + \strlen($grapheme));
+        $this->assertTrue($doc->deleteBackward());
+        $this->assertSame('ab', $doc->getLine(0), 'Backspace took all of it');
+
+        $doc = new Document('a'.$grapheme.'b');
+        $doc->setCursor(0, 1);
+        $this->assertTrue($doc->deleteForward());
+        $this->assertSame('ab', $doc->getLine(0), 'Delete took all of it');
+
+        $doc = new Document('a'.$grapheme.'b');
+        $doc->setCursor(0, 1);
+        $doc->moveRight();
+        $this->assertSame(1 + \strlen($grapheme), $doc->cursorCol, '→ crossed it in one step');
+        $doc->moveLeft();
+        $this->assertSame(1, $doc->cursorCol, '← crossed it back');
+    }
+
+    public function testDownFromTheEndOfAnAccentLandsAfterTheMark(): void
+    {
+        $doc = new Document("ab\nae\u{0301}c");
+        $doc->setCursor(0, 2);
+        $doc->moveDown();
+
+        $this->assertSame(4, $doc->cursorCol, 'after the combining mark, not between it and its e');
     }
 }

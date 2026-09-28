@@ -862,7 +862,7 @@ final class Document
     {
         $this->goalCol = null;
         if ($this->cursorCol > 0) {
-            $this->cursorCol = TextMetrics::prevCharBoundary($this->lines[$this->cursorLine], $this->cursorCol);
+            $this->cursorCol = TextMetrics::prevGrapheme($this->lines[$this->cursorLine], $this->cursorCol);
 
             return true;
         }
@@ -881,7 +881,7 @@ final class Document
         $this->goalCol = null;
         $line = $this->lines[$this->cursorLine];
         if ($this->cursorCol < \strlen($line)) {
-            $this->cursorCol = TextMetrics::nextCharBoundary($line, $this->cursorCol);
+            $this->cursorCol = TextMetrics::nextGrapheme($line, $this->cursorCol);
 
             return true;
         }
@@ -1205,7 +1205,7 @@ final class Document
         $this->pushUndo('backspace');
         if ($this->cursorCol > 0) {
             $line = $this->lines[$this->cursorLine];
-            $newCol = TextMetrics::prevCharBoundary($line, $this->cursorCol);
+            $newCol = TextMetrics::prevGrapheme($line, $this->cursorCol);
             $this->lines[$this->cursorLine] = \substr($line, offset: 0, length: $newCol).\substr($line, $this->cursorCol);
             $this->cursorCol = $newCol;
             $this->touch();
@@ -1233,7 +1233,7 @@ final class Document
         }
         $this->pushUndo();
         if ($this->cursorCol < \strlen($line)) {
-            $next = TextMetrics::nextCharBoundary($line, $this->cursorCol);
+            $next = TextMetrics::nextGrapheme($line, $this->cursorCol);
             $this->lines[$this->cursorLine] = \substr($line, offset: 0, length: $this->cursorCol).\substr($line, $next);
             $this->touch();
 
