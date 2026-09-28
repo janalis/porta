@@ -97,6 +97,10 @@ jobs:
         with:
           php-version: '8.5'
           coverage: none
+          # setup-php installs php.ini-production, whose zend.assertions=-1 compiles
+          # every assert() out: the invariants never ran here, and their lines
+          # read as uncovered. It cannot be switched on at runtime, only here.
+          ini-values: zend.assertions=1
           extensions: ${{ env.PHP_EXTENSIONS }}, ${{ matrix.extensions }}
       - uses: actions/cache@v4
         with:
@@ -133,6 +137,10 @@ jobs:
         with:
           php-version: '8.5'
           coverage: pcov
+          # setup-php installs php.ini-production, whose zend.assertions=-1 compiles
+          # every assert() out: the invariants never ran here, and their lines
+          # read as uncovered. It cannot be switched on at runtime, only here.
+          ini-values: zend.assertions=1
           extensions: ${{ env.PHP_EXTENSIONS }}, intl
       - uses: actions/cache@v4
         with:
@@ -165,6 +173,10 @@ jobs:
         with:
           php-version: '8.5'
           coverage: pcov
+          # setup-php installs php.ini-production, whose zend.assertions=-1 compiles
+          # every assert() out: the invariants never ran here, and their lines
+          # read as uncovered. It cannot be switched on at runtime, only here.
+          ini-values: zend.assertions=1
           extensions: ${{ env.PHP_EXTENSIONS }}, intl
       - uses: actions/cache@v4
         with:
