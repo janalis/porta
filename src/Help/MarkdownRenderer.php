@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Help;
 
+use Porta\Editor\TextMetrics;
 use Porta\Support\AnsiText;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
@@ -425,9 +426,16 @@ final class MarkdownRenderer
             foreach (\is_array($splitWords) ? $splitWords : [] as $word) {
                 $wordWidth = AnsiUtils::visibleWidth($word);
                 while ($wordWidth > $room) {
-                    $head = AnsiUtils::sliceByColumn($word, 0, $room);
+                    // The head drops a wide glyph straddling the cut, so the rest
+                    // starts where the head ENDS, not at column $room: cutting the
+                    // rest at the column dropped that glyph from both halves, and a
+                    // CJK paragraph (one "word", no spaces) lost one glyph per line.
+                    // At least one whole glyph per piece, so a glyph wider than
+                    // the room still advances the loop (the line's truncate clips).
+                    $cut = \max(\strlen(AnsiUtils::sliceByColumn($word, 0, $room)), TextMetrics::nextGrapheme($word, 0));
+                    $head = \substr($word, offset: 0, length: $cut);
                     $words[] = new MarkdownWord($head, AnsiUtils::visibleWidth($head), $segment->kind, $segment->target, $segment->group);
-                    $word = AnsiUtils::sliceByColumn($word, $room, \PHP_INT_MAX);
+                    $word = \substr($word, \strlen($head));
                     $wordWidth = AnsiUtils::visibleWidth($word);
                 }
                 if ('' !== $word) {

@@ -596,4 +596,21 @@ final class MarkdownRendererTest extends TestCase
         $close = Sgr::DEFAULT_FG."\x1b[24m";
         $this->assertStringContainsString('l'.$close, $doc->lines[0]);
     }
+
+    /**
+     * A CJK paragraph has no spaces, so it is one "word" hard-broken at the
+     * room. At an odd room the cut falls inside a glyph, which used to drop
+     * from both halves: one character lost per wrapped line.
+     */
+    public function testAWrappedCjkParagraphKeepsEveryCharacter(): void
+    {
+        $text = \str_repeat('一二三四五六七八九十', times: 3);
+        $lines = $this->render($text."\n", 23)->lines; // room 21: odd
+
+        $joined = \implode('', \array_map(static fn (string $line): string => \trim(AnsiUtils::stripAnsiCodes($line)), $lines));
+        $this->assertSame($text, $joined);
+        foreach ($lines as $i => $line) {
+            $this->assertLessThanOrEqual(23, AnsiUtils::visibleWidth($line), 'row '.$i);
+        }
+    }
 }
