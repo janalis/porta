@@ -2006,10 +2006,6 @@
         <source>terminated</source>
         <target>terminated</target>
       </trans-unit>
-      <trans-unit id="472">
-        <source>F8 over · F7 into · Shift+F8 out · F9 resume · Ctrl+F2 stop</source>
-        <target>F8 over · F7 into · Shift+F8 out · F9 resume · Ctrl+F2 stop</target>
-      </trans-unit>
       <trans-unit id="473">
         <source>Frames</source>
         <target>Frames</target>
@@ -3118,10 +3114,6 @@
         <source>No language server ready for this file</source>
         <target>No language server ready for this file</target>
       </trans-unit>
-      <trans-unit id="864">
-        <source>Ctrl+S save  Ctrl+T panel  Ctrl+Space complete  Ctrl+Q quit</source>
-        <target>Ctrl+S save  Ctrl+T panel  Ctrl+Space complete  Ctrl+Q quit</target>
-      </trans-unit>
       <trans-unit id="865">
         <source>Read-only preview  %shown% of %total%</source>
         <target>Read-only preview  %shown% of %total%</target>
@@ -3617,6 +3609,42 @@
       <trans-unit id="1006">
         <source>Cycle Inlay Hints</source>
         <target>Cycle Inlay Hints</target>
+      </trans-unit>
+      <trans-unit id="1007">
+        <source>%key% save</source>
+        <target>%key% save</target>
+      </trans-unit>
+      <trans-unit id="1008">
+        <source>%key% panel</source>
+        <target>%key% panel</target>
+      </trans-unit>
+      <trans-unit id="1009">
+        <source>%key% complete</source>
+        <target>%key% complete</target>
+      </trans-unit>
+      <trans-unit id="1010">
+        <source>%key% quit</source>
+        <target>%key% quit</target>
+      </trans-unit>
+      <trans-unit id="1011">
+        <source>%key% over</source>
+        <target>%key% over</target>
+      </trans-unit>
+      <trans-unit id="1012">
+        <source>%key% into</source>
+        <target>%key% into</target>
+      </trans-unit>
+      <trans-unit id="1013">
+        <source>%key% out</source>
+        <target>%key% out</target>
+      </trans-unit>
+      <trans-unit id="1014">
+        <source>%key% resume</source>
+        <target>%key% resume</target>
+      </trans-unit>
+      <trans-unit id="1015">
+        <source>%key% stop</source>
+        <target>%key% stop</target>
       </trans-unit>
     </body>
   </file>

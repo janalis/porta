@@ -11,7 +11,7 @@ use Porta\Overlay\Region\ModalBox;
 use Porta\Overlay\State\ToastCenter;
 use Porta\Overlay\State\ToastSeverity;
 use Porta\Ui\FrameHooks;
-use Porta\Ui\ShortcutFormatter;
+use Porta\Ui\KeyHints;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\PopupFrame;
 use Porta\Widget\Render\PopupMetrics;
@@ -105,7 +105,7 @@ final class ToastPresenter
         $boxes = [];
         $closeHovered = $this->toasts->closeHoveredId();
         $all = $this->toasts->toasts();
-        $logKey = ShortcutFormatter::format($this->ideKeys->getBindings('ide_notifications')[0] ?? '');
+        $logKey = KeyHints::key('ide_notifications', $this->ideKeys);
         foreach ($all as $n => $toast) {
             // An error points at the log that keeps it; the last card that
             // fits says how many wait behind it, and where to read them.

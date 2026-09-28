@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Workbench;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\ActionCatalog;
 use Porta\Editor\BufferManager;
 use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\EditorPanes;
@@ -25,6 +26,7 @@ use Porta\Workbench\StatusClickSpan;
 use Porta\Workbench\StatusSegment;
 use Porta\Workbench\StatusTone;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
@@ -41,6 +43,8 @@ final class StatusBarProviderTest extends TestCase
     private CodeEditorWidget $editor;
     private EditorPanes $panes;
     private Translator $translator;
+    /** The IDE keymap the provider reads its legend from; the shipped defaults unless a test rebinds. */
+    private ?Keybindings $ideKeys = null;
 
     /** @param list<list<StatusCell>> $perSource */
     private function provider(array $perSource = []): StatusBarProvider
@@ -76,6 +80,7 @@ final class StatusBarProviderTest extends TestCase
             Styles::dark(),
             $this->translator,
             new ProjectPaths($this->project->dir),
+            $this->ideKeys ?? new Keybindings(ActionCatalog::ideDefaults()),
         );
     }
 
@@ -440,6 +445,23 @@ final class StatusBarProviderTest extends TestCase
         $this->assertStringContainsString('no server', $right, 'an unconfigured LspSessionPool reports "no server" once substituted');
     }
 
+    /**
+     * The legend names the keys the keymap binds NOW: a rebound quit says its
+     * new chord, and an action bound to nothing drops out rather than naming
+     * a key that does nothing.
+     */
+    public function testTheLegendFollowsTheLiveKeymap(): void
+    {
+        $this->ideKeys = new Keybindings(['ide_quit' => ['ctrl+w']] + \array_diff_key(ActionCatalog::ideDefaults(), ['ide_toggle_focus' => true]));
+
+        $right = $this->provider()->segments()['right'];
+
+        $this->assertStringContainsString('Ctrl+W quit', $right);
+        $this->assertStringNotContainsString('Ctrl+Q', $right);
+        $this->assertStringNotContainsString('panel', $right, 'nothing binds the focus switch, so no hint names it');
+        $this->assertStringContainsString('Ctrl+S save  Ctrl+Space complete  Ctrl+W quit', $right);
+    }
+
     public function testRightIsProblemsThenLocationThenATwoColumnGapThenTheLegend(): void
     {
         $provider = $this->provider();
@@ -449,9 +471,7 @@ final class StatusBarProviderTest extends TestCase
 
         $expectedProblems = Styles::dark()->of(Role::StatusError)->apply(Glyphs::SEVERITY_ERROR.' 1').' ';
         $expectedLocation = '2:1';
-        $expectedLegend = $this->translator->trans('LSP:%status%  Ctrl+S save  Ctrl+T panel  Ctrl+Space complete  Ctrl+Q quit', [
-            '%status%' => $this->translator->trans('no server'),
-        ]);
+        $expectedLegend = $this->translator->trans('LSP:%status%', ['%status%' => $this->translator->trans('no server')]).'  Ctrl+S save  Ctrl+T panel  Ctrl+Space complete  Ctrl+Q quit';
 
         $right = $provider->segments()['right'];
 

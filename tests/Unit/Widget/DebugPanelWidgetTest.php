@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\ActionCatalog;
 use Porta\Debug\DebugState;
 use Porta\Event\DebugFrameSelected;
 use Porta\Event\DebugVariableEditRequested;
@@ -14,6 +15,7 @@ use Porta\Widget\DebugPanelCallbacks;
 use Porta\Widget\DebugPanelWidget;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\RenderContext;
 
 final class DebugPanelWidgetTest extends TestCase
@@ -44,7 +46,7 @@ final class DebugPanelWidgetTest extends TestCase
 
     public function testClosedRendersNothingAndStatesLabelTheStatusText(): void
     {
-        $panel = new DebugPanelWidget();
+        $panel = new DebugPanelWidget(ideKeys: self::shippedKeys());
         $this->assertSame([], $panel->render(new RenderContext(80, 14)));
 
         // The panel has no header row of its own — the session state and the
@@ -105,6 +107,19 @@ final class DebugPanelWidgetTest extends TestCase
         $this->assertSame(6, Probe::get($panel, 'list')->selected(), 'the seventh and last row, not past it');
         $panel->handleInput("\x1b[5~");
         $this->assertSame(2, Probe::get($panel, 'list')->selected());
+    }
+
+    /** The app-level input hook gets first refusal, as on every focusable panel: a key it takes never moves the list. */
+    public function testTheInputHookGetsFirstRefusal(): void
+    {
+        $panel = $this->panel();
+        $panel->onInput(static fn (string $keys): bool => true);
+        $panel->handleInput("\x1b[B");
+        $this->assertSame(0, Probe::get($panel, 'list')->selected(), 'the hook took the key');
+
+        $panel->onInput(static fn (string $keys): bool => false);
+        $panel->handleInput("\x1b[B");
+        $this->assertSame(1, Probe::get($panel, 'list')->selected(), 'a key the hook declines reaches the list');
     }
 
     public function testEditKeyOnAVariableFiresWithItsContainerNameAndValue(): void
@@ -282,11 +297,28 @@ final class DebugPanelWidgetTest extends TestCase
         $this->assertSame(10, Probe::get($panel, 'visibleRows'));
     }
 
+    private static function shippedKeys(): Keybindings
+    {
+        return new Keybindings(ActionCatalog::ideDefaults());
+    }
+
+    /**
+     * The step legend is the live keymap's: a rebound step says its new key,
+     * and with no keymap at all (a bare panel) the status stands alone.
+     */
+    public function testTheStepLegendFollowsTheLiveKeymap(): void
+    {
+        $panel = new DebugPanelWidget(ideKeys: new Keybindings(['debug_step_over' => ['f10']] + ActionCatalog::ideDefaults()));
+        $this->assertStringStartsWith('starting…  F10 over · F7 into', $panel->statusText());
+
+        $this->assertSame('starting…', new DebugPanelWidget()->statusText());
+    }
+
     public function testStatusTextHandlesTheIdleStateBeforeAnySessionStarts(): void
     {
         // Idle (the property default) shares Starting's copy — but it must
         // still be a matched arm, not fall through to UnhandledMatchError.
-        $panel = new DebugPanelWidget();
+        $panel = new DebugPanelWidget(ideKeys: self::shippedKeys());
 
         $this->assertSame(
             'starting…  F8 over · F7 into · Shift+F8 out · F9 resume · Ctrl+F2 stop',
@@ -296,7 +328,7 @@ final class DebugPanelWidgetTest extends TestCase
 
     public function testStatusTextConcatenatesStatusAndStepLegendInExactOrder(): void
     {
-        $panel = new DebugPanelWidget();
+        $panel = new DebugPanelWidget(ideKeys: self::shippedKeys());
         $panel->open('a.php');
 
         $this->assertSame(

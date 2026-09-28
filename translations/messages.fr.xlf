@@ -2006,10 +2006,6 @@
         <source>terminated</source>
         <target>terminé</target>
       </trans-unit>
-      <trans-unit id="472">
-        <source>F8 over · F7 into · Shift+F8 out · F9 resume · Ctrl+F2 stop</source>
-        <target>F8 enjamber · F7 entrer · Shift+F8 sortir · F9 reprendre · Ctrl+F2 arrêter</target>
-      </trans-unit>
       <trans-unit id="473">
         <source>Frames</source>
         <target>Cadres</target>
@@ -3118,10 +3114,6 @@
         <source>No language server ready for this file</source>
         <target>Aucun serveur de langage prêt pour ce fichier</target>
       </trans-unit>
-      <trans-unit id="864">
-        <source>Ctrl+S save  Ctrl+T panel  Ctrl+Space complete  Ctrl+Q quit</source>
-        <target>Ctrl+S enregistrer  Ctrl+T panneau  Ctrl+Space compléter  Ctrl+Q quitter</target>
-      </trans-unit>
       <trans-unit id="865">
         <source>Read-only preview  %shown% of %total%</source>
         <target>Aperçu en lecture seule  %shown% sur %total%</target>
@@ -3617,6 +3609,42 @@
       <trans-unit id="1006">
         <source>Cycle Inlay Hints</source>
         <target>Alterner les indications incrustées</target>
+      </trans-unit>
+      <trans-unit id="1007">
+        <source>%key% save</source>
+        <target>%key% enregistrer</target>
+      </trans-unit>
+      <trans-unit id="1008">
+        <source>%key% panel</source>
+        <target>%key% panneau</target>
+      </trans-unit>
+      <trans-unit id="1009">
+        <source>%key% complete</source>
+        <target>%key% compléter</target>
+      </trans-unit>
+      <trans-unit id="1010">
+        <source>%key% quit</source>
+        <target>%key% quitter</target>
+      </trans-unit>
+      <trans-unit id="1011">
+        <source>%key% over</source>
+        <target>%key% enjamber</target>
+      </trans-unit>
+      <trans-unit id="1012">
+        <source>%key% into</source>
+        <target>%key% entrer</target>
+      </trans-unit>
+      <trans-unit id="1013">
+        <source>%key% out</source>
+        <target>%key% sortir</target>
+      </trans-unit>
+      <trans-unit id="1014">
+        <source>%key% resume</source>
+        <target>%key% reprendre</target>
+      </trans-unit>
+      <trans-unit id="1015">
+        <source>%key% stop</source>
+        <target>%key% arrêter</target>
       </trans-unit>
     </body>
   </file>

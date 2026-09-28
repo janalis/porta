@@ -14,6 +14,7 @@ use Porta\Event\DebugWatchRemovalRequested;
 use Porta\I18n\Translator;
 use Porta\Support\AnsiText;
 use Porta\Ui\Glyphs;
+use Porta\Ui\KeyHints;
 use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
 use Porta\Ui\LtrPane;
@@ -23,11 +24,13 @@ use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Porta\Widget\Support\DebugRow;
 use Porta\Widget\Support\DebugRowKind;
+use Porta\Widget\Support\InputHook;
 use Porta\Widget\Support\ListPanelInteraction;
 use Porta\Widget\Support\PanelRows;
 use Porta\Widget\Support\PanelRowStyle;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Tui\Input\Key;
+use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\FocusableInterface;
 use Symfony\Component\Tui\Widget\FocusableTrait;
@@ -49,6 +52,7 @@ use Symfony\Component\Tui\Widget\KeybindingsTrait;
 final class DebugPanelWidget extends DockPanelWidget implements FocusableInterface, HoverableList, LtrPane, MenuOverlayHost
 {
     use FocusableTrait;
+    use InputHook;
     use KeybindingsTrait;
     use ListPanelInteraction;
     use MenuOverlayHostTrait;
@@ -78,6 +82,7 @@ final class DebugPanelWidget extends DockPanelWidget implements FocusableInterfa
     public function __construct(
         ?Styles $styles = null,
         private readonly Translator $translator = new Translator('en'),
+        private readonly Keybindings $ideKeys = new Keybindings([]),
         private readonly ?EventDispatcherInterface $events = null,
     ) {
         $this->initStyles($styles);
@@ -121,7 +126,15 @@ final class DebugPanelWidget extends DockPanelWidget implements FocusableInterfa
             DebugState::Terminated => $this->translator->trans('terminated'),
         };
 
-        return $status.'  '.$this->translator->trans('F8 over · F7 into · Shift+F8 out · F9 resume · Ctrl+F2 stop');
+        // From the live keymap: every step key here is rebindable.
+        $legend = KeyHints::legend(
+            ['debug_step_over' => '%key% over', 'debug_step_into' => '%key% into', 'debug_step_out' => '%key% out', 'debug_continue' => '%key% resume', 'debug_stop' => '%key% stop'],
+            fn (string $message, string $key): string => $this->translator->trans($message, ['%key%' => $key]),
+            ' · ',
+            $this->ideKeys,
+        );
+
+        return '' === $legend ? $status : $status.'  '.$legend;
     }
 
     public function open(string $title): void
@@ -200,6 +213,9 @@ final class DebugPanelWidget extends DockPanelWidget implements FocusableInterfa
     #[\Override]
     public function handleInput(string $data): void
     {
+        if ($this->inputHookHandled($data)) {
+            return;
+        }
         $kb = $this->getKeybindings();
         if ($kb->matches($data, 'close')) {
             $this->dismiss();

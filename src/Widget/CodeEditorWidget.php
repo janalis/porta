@@ -70,9 +70,9 @@ use Porta\Support\ProjectPaths;
 use Porta\Support\Scheduler;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\Glyphs;
+use Porta\Ui\KeyHints;
 use Porta\Ui\LtrPane;
 use Porta\Ui\Role;
-use Porta\Ui\ShortcutFormatter;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\CaretPopupRenderer;
 use Porta\Widget\Render\CaretSide;
@@ -1545,7 +1545,7 @@ final class CodeEditorWidget extends AbstractWidget implements
         // that answers `goto_file`, and a rebind used to leave the one hint a
         // new user reads pointing at the old chord. Falls back to naming the
         // action when nothing is bound to it at all.
-        $binding = ShortcutFormatter::format($this->getKeybindings()->getBindings('goto_file')[0] ?? '');
+        $binding = KeyHints::key('goto_file', $this->getKeybindings());
         $hint = '' === $binding
             ? $this->translator->trans('No file open · use Go to File to open one')
             : $this->translator->trans('No file open · press %key% to open a file', ['%key%' => $binding]);

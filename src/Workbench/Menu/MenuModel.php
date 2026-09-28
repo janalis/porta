@@ -8,6 +8,7 @@ use Porta\Config\ActionCatalog;
 use Porta\Config\CommandRegistry;
 use Porta\I18n\Translator;
 use Porta\Plugin\Runtime\PluginMenuSpec;
+use Porta\Ui\KeyHints;
 use Porta\Ui\ShortcutFormatter;
 use Symfony\Component\Tui\Input\Keybindings;
 
@@ -326,7 +327,7 @@ final class MenuModel
                 ? $commands->label($id) ?? ActionCatalog::label($id)
                 : ActionCatalog::label($id),
         );
-        $shortcut = ShortcutFormatter::format(self::binding($id, $editor, $ideKeys));
+        $shortcut = KeyHints::key($id, $editor->getKeybindings(), $ideKeys);
         $run = 'i' === $scope
             ? static fn () => $commands->run($id)
             : static fn () => $editor->runAction($id);
@@ -368,14 +369,5 @@ final class MenuModel
         return 'e' === $scope
             ? 'recent_files' !== $id
             : \in_array($id, self::FILE_SCOPED_IDE, strict: true);
-    }
-
-    /**
-     * The primary key binding for an action id, looking in the editor's merged
-     * keybindings first (editor actions) then the IDE-level ones (ide_* actions).
-     */
-    private static function binding(string $id, EditorCommandTarget $editor, Keybindings $ideKeys): string
-    {
-        return $editor->getKeybindings()->getBindings($id)[0] ?? $ideKeys->getBindings($id)[0] ?? '';
     }
 }

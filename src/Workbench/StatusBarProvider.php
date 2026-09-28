@@ -12,12 +12,14 @@ use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\ServerProgress;
 use Porta\Support\ProjectPaths;
 use Porta\Ui\Glyphs;
+use Porta\Ui\KeyHints;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Workbench\Menu\MenuItem;
 use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Style\Style;
 
 /**
@@ -40,6 +42,7 @@ final readonly class StatusBarProvider
         private Styles $styles,
         private Translator $translator,
         private ProjectPaths $paths,
+        private Keybindings $ideKeys,
     ) {}
 
     /**
@@ -132,7 +135,14 @@ final readonly class StatusBarProvider
         $lspCell = $this->translator->trans('LSP:%status%', [
             '%status%' => $this->lsp->statusFor($this->editor->getFilePath()),
         ]);
-        $hints = $this->translator->trans('Ctrl+S save  Ctrl+T panel  Ctrl+Space complete  Ctrl+Q quit');
+        // From the live keymap: a rebound save used to keep saying Ctrl+S.
+        $hints = KeyHints::legend(
+            ['save' => '%key% save', 'ide_toggle_focus' => '%key% panel', 'trigger_completion' => '%key% complete', 'ide_quit' => '%key% quit'],
+            fn (string $message, string $key): string => $this->translator->trans($message, ['%key%' => $key]),
+            '  ',
+            $this->editor->getKeybindings(),
+            $this->ideKeys,
+        );
         $legend = $lspCell.'  '.$hints;
         // What the server is busy doing, ahead of the counts: it is the most
         // perishable thing on the bar, and until now the IDE never said it at

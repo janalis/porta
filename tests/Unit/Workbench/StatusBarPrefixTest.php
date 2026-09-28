@@ -20,6 +20,7 @@ use Porta\Workbench\StatusCell;
 use Porta\Workbench\StatusSegment;
 use Porta\Workbench\StatusTone;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
@@ -64,6 +65,7 @@ final class StatusBarPrefixTest extends TestCase
             Styles::dark(),
             new Translator('en'),
             new ProjectPaths(\sys_get_temp_dir()),
+            new Keybindings([]),
         );
     }
 

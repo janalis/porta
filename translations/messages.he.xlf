@@ -2006,10 +2006,6 @@
         <source>terminated</source>
         <target>הסתיים</target>
       </trans-unit>
-      <trans-unit id="472">
-        <source>F8 over · F7 into · Shift+F8 out · F9 resume · Ctrl+F2 stop</source>
-        <target>F8 דלג · F7 היכנס · Shift+F8 צא · F9 המשך · Ctrl+F2 עצור</target>
-      </trans-unit>
       <trans-unit id="473">
         <source>Frames</source>
         <target>מסגרות</target>
@@ -3118,10 +3114,6 @@
         <source>No language server ready for this file</source>
         <target>אין שרת שפה מוכן עבור קובץ זה</target>
       </trans-unit>
-      <trans-unit id="864">
-        <source>Ctrl+S save  Ctrl+T panel  Ctrl+Space complete  Ctrl+Q quit</source>
-        <target>Ctrl+S שמור  Ctrl+T פאנל  Ctrl+Space השלמה  Ctrl+Q יציאה</target>
-      </trans-unit>
       <trans-unit id="865">
         <source>Read-only preview  %shown% of %total%</source>
         <target>תצוגה מקדימה לקריאה בלבד  %shown% מתוך %total%</target>
@@ -3617,6 +3609,42 @@
       <trans-unit id="1006">
         <source>Cycle Inlay Hints</source>
         <target>מעבר בין מצבי רמזים מוטמעים</target>
+      </trans-unit>
+      <trans-unit id="1007">
+        <source>%key% save</source>
+        <target>%key% שמור</target>
+      </trans-unit>
+      <trans-unit id="1008">
+        <source>%key% panel</source>
+        <target>%key% פאנל</target>
+      </trans-unit>
+      <trans-unit id="1009">
+        <source>%key% complete</source>
+        <target>%key% השלמה</target>
+      </trans-unit>
+      <trans-unit id="1010">
+        <source>%key% quit</source>
+        <target>%key% יציאה</target>
+      </trans-unit>
+      <trans-unit id="1011">
+        <source>%key% over</source>
+        <target>%key% דלג</target>
+      </trans-unit>
+      <trans-unit id="1012">
+        <source>%key% into</source>
+        <target>%key% היכנס</target>
+      </trans-unit>
+      <trans-unit id="1013">
+        <source>%key% out</source>
+        <target>%key% צא</target>
+      </trans-unit>
+      <trans-unit id="1014">
+        <source>%key% resume</source>
+        <target>%key% המשך</target>
+      </trans-unit>
+      <trans-unit id="1015">
+        <source>%key% stop</source>
+        <target>%key% עצור</target>
       </trans-unit>
     </body>
   </file>
