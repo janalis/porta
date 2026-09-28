@@ -19,6 +19,7 @@ use Porta\Ui\CaretVisibility;
 use Porta\Ui\ClickZones;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\Density;
+use Porta\Ui\PastedNewlines;
 use Porta\Ui\Role;
 use Porta\Ui\TextField;
 use Porta\Ui\Theme\Styles;
@@ -183,8 +184,10 @@ final class FindInFilesModal
         $this->sideZones = new ClickZones();
         $this->callbacks = new FindModalCallbacks(); // a bare modal fires nothing
         $this->scopeLabels = [$this->translator->trans('Whole Project')];
-        $this->query = new TextField(style: $cursorStyle);
-        $this->replace = new TextField(style: $cursorStyle);
+        // Query and replacement already take a literal newline (Alt+Enter), so
+        // a pasted one lands as that same ⏎; the mask is one glob pattern.
+        $this->query = new TextField(style: $cursorStyle, pastedNewlines: PastedNewlines::Keep);
+        $this->replace = new TextField(style: $cursorStyle, pastedNewlines: PastedNewlines::Keep);
         $this->mask = new TextField(style: $cursorStyle);
     }
 
@@ -326,7 +329,7 @@ final class FindInFilesModal
 
             return;
         }
-        if ($this->activeTextField()->insert($data)) {
+        if ($this->activeTextField()->editKey($data) || $this->activeTextField()->insert($data)) {
             $this->notifyField();
         }
     }

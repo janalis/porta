@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit\Ui;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Porta\Ui\CaretVisibility;
 use Porta\Ui\CursorStyle;
+use Porta\Ui\PastedNewlines;
 use Porta\Ui\TextField;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Style\CursorShape;
@@ -241,5 +243,101 @@ final class TextFieldTest extends TestCase
         $rendered = $field->render(CaretVisibility::Shown, width: 10);
 
         $this->assertStringNotContainsString('END', $rendered, 'the window followed the caret to the start');
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function graphemes(): iterable
+    {
+        yield 'e with a combining acute' => ["e\u{0301}"];
+        yield 'a flag, two regional indicators' => ["\u{1F1EB}\u{1F1F7}"];
+        yield 'a ZWJ family' => ["\u{1F468}\u{200D}\u{1F469}\u{200D}\u{1F467}"];
+    }
+
+    #[DataProvider('graphemes')]
+    public function testEditingStepsOverAWholeCharacterNotACodePoint(string $grapheme): void
+    {
+        $field = new TextField('a'.$grapheme.'b');
+        $field->moveLeft();
+        $this->assertTrue($field->backspace());
+        $this->assertSame('ab', $field->value(), 'backspace took all of it, not its last code point');
+
+        $field = new TextField('a'.$grapheme.'b');
+        $field->moveHome();
+        $field->moveRight();
+        $this->assertTrue($field->deleteForward());
+        $this->assertSame('ab', $field->value(), 'Delete took all of it');
+
+        $field = new TextField($grapheme);
+        $field->moveLeft();
+        $field->insert('x');
+        $this->assertSame('x'.$grapheme, $field->value(), 'one ← crossed the whole character');
+    }
+
+    public function testCtrlWStillTakesAWholeArgumentButAltBackspaceOnlyOneClass(): void
+    {
+        $field = new TextField('open src/Foo/Bar.php');
+        $this->assertTrue($field->editKey("\x1b\x7f"));
+        $this->assertSame('open src/Foo/Bar.', $field->value(), 'Alt+Backspace stops at the punctuation');
+
+        $this->assertTrue($field->editKey("\x17"));
+        $this->assertSame('open ', $field->value(), 'Ctrl+W goes back to the space, readline-style');
+    }
+
+    public function testCtrlArrowsMoveTheCaretAWordAtATime(): void
+    {
+        $field = new TextField('foo bar baz');
+        $this->assertTrue($field->editKey("\x1b[1;5D"));
+        $field->insert('X');
+        $this->assertSame('foo bar Xbaz', $field->value());
+
+        $field->moveHome();
+        $this->assertTrue($field->editKey("\x1b[1;5C"));
+        $field->insert('Y');
+        $this->assertSame('fooY bar Xbaz', $field->value());
+    }
+
+    public function testAPasteInsertsAtTheCaret(): void
+    {
+        $field = new TextField('ad');
+        $field->moveLeft();
+
+        $this->assertTrue($field->editKey("\x1b[200~bc\x1b[201~"));
+        $this->assertSame('abcd', $field->value());
+        $field->insert('!');
+        $this->assertSame('abc!d', $field->value(), 'the caret sits after the pasted text');
+    }
+
+    public function testAPastedLineBreakJoinsWithASpaceByDefault(): void
+    {
+        $field = new TextField();
+        $field->editKey("\x1b[200~one\r\ntwo\n\nthree\n\x1b[201~");
+
+        $this->assertSame('one two three', $field->value(), 'inner runs become one space, the copied trailing break goes');
+    }
+
+    public function testAFieldThatTakesNewlinesKeepsThePastedOnes(): void
+    {
+        $field = new TextField(pastedNewlines: PastedNewlines::Keep);
+        $field->editKey("\x1b[200~one\r\ntwo\n\x1b[201~");
+
+        $this->assertSame("one\ntwo", $field->value(), 'the inner break kept, the copied line terminator not');
+    }
+
+    public function testAPastedEscapeSequenceArrivesAsInertText(): void
+    {
+        $field = new TextField();
+        $field->editKey("\x1b[200~\x1b[31mred\ttab\x07\x1b[201~");
+
+        $this->assertSame('[31mred tab', $field->value(), 'no ESC, no BEL; the tab is a space');
+    }
+
+    public function testAnEmptyPasteChangesNothing(): void
+    {
+        $field = new TextField('keep');
+
+        $this->assertFalse($field->editKey("\x1b[200~\n\x1b[201~"));
+        $this->assertSame('keep', $field->value());
     }
 }

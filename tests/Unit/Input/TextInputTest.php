@@ -33,4 +33,20 @@ final class TextInputTest extends TestCase
         $this->assertFalse(TextInput::isPrintable("\x7f")); // DEL
         $this->assertFalse(TextInput::isPrintable("a\x00b"));
     }
+
+    public function testPastedIsNullForAnythingButABracketedPaste(): void
+    {
+        $this->assertNull(TextInput::pasted('abc'));
+        $this->assertNull(TextInput::pasted("\x1b[D"));
+    }
+
+    public function testPastedToleratesAMissingEndMarker(): void
+    {
+        $this->assertSame('cut short', TextInput::pasted("\x1b[200~cut short"));
+    }
+
+    public function testPastedDropsInvalidUtf8(): void
+    {
+        $this->assertSame('ok', TextInput::pasted("\x1b[200~o\xffk\x1b[201~"));
+    }
 }

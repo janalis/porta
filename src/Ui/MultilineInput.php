@@ -8,6 +8,7 @@ use Porta\Editor\TextMetrics;
 use Porta\Input\TextInput;
 use Porta\Support\AnsiText;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Widget\Util\Line;
 
 /**
  * A small multi-line text input (the commit description box): a list of
@@ -66,7 +67,7 @@ final class MultilineInput
             "\x1b[B" => $this->moveDown(),
             "\x1b[D" => $this->moveLeft(),
             "\x1b[C" => $this->moveRight(),
-            default => TextInput::isPrintable($keys) && $this->insertPrintable($keys),
+            default => $this->insertPaste($keys) || TextInput::isPrintable($keys) && $this->insertPrintable($keys),
         };
     }
 
@@ -88,12 +89,7 @@ final class MultilineInput
     private function deleteBackward(): bool
     {
         if ($this->col > 0) {
-            $line = $this->lines[$this->line];
-            $prev = TextMetrics::prevCharBoundary($line, $this->col);
-            $this->lines[$this->line] = \substr($line, offset: 0, length: $prev).\substr($line, $this->col);
-            $this->col = $prev;
-
-            return true;
+            return $this->onCaretLine(static fn (Line $line): bool => $line->deleteCharBackward());
         }
         if ($this->line > 0) {
             $tail = $this->lines[$this->line];
@@ -104,6 +100,26 @@ final class MultilineInput
         }
 
         return true;
+    }
+
+    /**
+     * A bracketed paste, its line breaks splitting lines as Enter would; false
+     * when $keys is not a paste, so the keystroke paths still see it.
+     */
+    private function insertPaste(string $keys): bool
+    {
+        $pasted = TextInput::pasted($keys);
+        if (null === $pasted) {
+            return false;
+        }
+        foreach (\explode("\n", $pasted) as $index => $part) {
+            if ($index > 0) {
+                $this->splitLineAtCaret();
+            }
+            $this->insertPrintable($part);
+        }
+
+        return '' !== $pasted;
     }
 
     private function insertPrintable(string $keys): bool
@@ -141,9 +157,7 @@ final class MultilineInput
     private function moveLeft(): bool
     {
         if ($this->col > 0) {
-            $this->col = TextMetrics::prevCharBoundary($this->lines[$this->line], $this->col);
-
-            return true;
+            return $this->onCaretLine(static fn (Line $line): bool => $line->moveCursorLeft());
         }
         if ($this->line > 0) {
             --$this->line;
@@ -157,9 +171,7 @@ final class MultilineInput
     private function moveRight(): bool
     {
         if ($this->col < \strlen($this->lines[$this->line])) {
-            $this->col = TextMetrics::nextCharBoundary($this->lines[$this->line], $this->col);
-
-            return true;
+            return $this->onCaretLine(static fn (Line $line): bool => $line->moveCursorRight());
         }
         if ($this->line < (\count($this->lines) - 1)) {
             ++$this->line;
@@ -167,6 +179,23 @@ final class MultilineInput
         }
 
         return true;
+    }
+
+    /**
+     * Run a one-line edit on the caret line through the vendor line, which
+     * steps by grapheme: a flag or an accent written as a combining mark goes
+     * as one character, where a code-point step left half of it behind.
+     *
+     * @param \Closure(Line): bool $edit
+     */
+    private function onCaretLine(\Closure $edit): bool
+    {
+        $line = new Line($this->lines[$this->line], $this->col);
+        $changed = $edit($line);
+        $this->lines[$this->line] = $line->getText();
+        $this->col = $line->getCursor();
+
+        return $changed;
     }
 
     /**

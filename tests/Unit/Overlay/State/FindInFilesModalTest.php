@@ -1817,4 +1817,24 @@ final class FindInFilesModalTest extends TestCase
 
         $this->assertSame([0], $chosen, 'the step wraps from the last scope to the first');
     }
+
+    /**
+     * The query and replacement take a literal newline (Alt+Enter), so a pasted
+     * one lands as that same newline; the file mask is one glob and joins them.
+     */
+    public function testAPasteKeepsItsInnerBreaksInQueryAndReplaceButNotTheMask(): void
+    {
+        $modal = $this->modal();
+        $modal->open('Find in Files');
+        $modal->handleInput("\x1b[200~one\ntwo\n\x1b[201~", $this->kb);
+        $this->assertSame("one\ntwo", Probe::get($modal, 'query')->value());
+
+        $modal->handleInput("\t", $this->kb); // query → replace
+        $modal->handleInput("\x1b[200~uno\ndos\x1b[201~", $this->kb);
+        $this->assertSame("uno\ndos", Probe::get($modal, 'replace')->value());
+
+        $modal->handleInput("\t", $this->kb); // replace → mask
+        $modal->handleInput("\x1b[200~*.php\n*.twig\x1b[201~", $this->kb);
+        $this->assertSame('*.php *.twig', Probe::get($modal, 'mask')->value());
+    }
 }

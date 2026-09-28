@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Porta\Ui;
 
-use Porta\Editor\TextMetrics;
 use Porta\Input\TextInput;
 use Porta\Support\AnsiText;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Widget\Util\Line;
 
 /**
  * A single-line text field: the value plus the insert/delete/cursor mechanics
@@ -27,36 +27,41 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
  * `TextFieldTailBehaviourTest` is that contract, written before the caret
  * existed.
  */
-final class TextField
+final readonly class TextField
 {
-    private readonly CursorStyle $style;
+    private CursorStyle $style;
 
-    /** Byte offset of the caret within {@see $value}; always on a character boundary. */
-    private int $col;
+    /**
+     * The value and its caret. The vendor line steps by GRAPHEME — an accented
+     * letter written as a base plus a combining mark, a flag, a ZWJ family —
+     * where this field used to step by code point and leave half of one behind.
+     * Its caret is a byte offset like ours was, so rendering is unchanged.
+     */
+    private Line $line;
 
     public function __construct(
-        private string $value = '',
+        string $value = '',
         ?CursorStyle $style = null,
+        private PastedNewlines $pastedNewlines = PastedNewlines::Join,
     ) {
         $this->style = $style ?? new CursorStyle();
-        $this->col = \strlen($value);
+        $this->line = new Line($value, \strlen($value));
     }
 
     public function value(): string
     {
-        return $this->value;
+        return $this->line->getText();
     }
 
     public function setValue(string $value): void
     {
-        $this->value = $value;
-        $this->col = \strlen($value); // seeded values are there to be appended to
+        $this->line->setText($value);
+        $this->line->setCursor(\strlen($value)); // seeded values are there to be appended to
     }
 
     public function clear(): void
     {
-        $this->value = '';
-        $this->col = 0;
+        $this->setValue('');
     }
 
     /** Insert $keys at the caret when it is insertable text; returns whether the value changed. */
@@ -65,7 +70,7 @@ final class TextField
         if (!TextInput::isPrintable($keys)) {
             return false;
         }
-        $this->write($keys);
+        $this->line->insert($keys);
 
         return true;
     }
@@ -73,98 +78,84 @@ final class TextField
     /** Insert a literal newline (multiline query/replace); rendered as a visible ⏎. */
     public function insertNewline(): void
     {
-        $this->write("\n");
+        $this->line->insert("\n");
     }
 
-    /** Delete the UTF-8 character before the caret; returns whether the value changed. */
+    /** Delete the character before the caret; returns whether the value changed. */
     public function backspace(): bool
     {
-        if (0 === $this->col) {
-            return false;
-        }
-        $from = TextMetrics::prevCharBoundary($this->value, $this->col);
-        $this->value = \substr($this->value, offset: 0, length: $from).\substr($this->value, $this->col);
-        $this->col = $from;
-
-        return true;
+        return $this->line->deleteCharBackward();
     }
 
     /** Delete the character AFTER the caret (Delete); returns whether the value changed. */
     public function deleteForward(): bool
     {
-        if ($this->col >= \strlen($this->value)) {
+        return $this->line->deleteCharForward();
+    }
+
+    /**
+     * Delete back to the start of the word before the caret (Ctrl+W); returns
+     * whether it changed. Readline's unix-word-rubout: the spaces before the
+     * caret, then everything back to the previous space, so `-d memory_limit=1G`
+     * goes as one argument. Alt+Backspace is the finer gesture.
+     */
+    public function deleteWordBackward(): bool
+    {
+        $text = $this->line->getText();
+        $caret = $this->line->getCursor();
+        if (0 === $caret) {
             return false;
         }
-        $to = TextMetrics::nextCharBoundary($this->value, $this->col);
-        $this->value = \substr($this->value, offset: 0, length: $this->col).\substr($this->value, $to);
+        // Spaces are one byte, so the cut never lands inside a character.
+        $word = \rtrim(\substr($text, offset: 0, length: $caret), characters: ' ');
+        $space = \strrpos($word, needle: ' ');
+        $from = false === $space ? 0 : $space + 1;
+        $this->line->setText(\substr($text, offset: 0, length: $from).\substr($text, $caret));
+        $this->line->setCursor($from);
 
         return true;
     }
 
-    /** Delete back to the start of the word before the caret; returns whether it changed. */
-    public function deleteWordBackward(): bool
+    /**
+     * Delete back over one run of a single character class (Alt+Backspace) —
+     * letters and digits, punctuation, or spaces — so `src/Foo/Bar.php` loses
+     * `php`, then `.`, then `Bar`: readline's backward-kill-word, and what
+     * Ctrl+Backspace does in a GUI field. Returns whether it changed.
+     */
+    public function deleteWordPartBackward(): bool
     {
-        if (0 === $this->col) {
-            return false;
-        }
-        $from = $this->col;
-        // Trailing spaces first, then the word itself — the readline gesture.
-        while ($from > 0 && ' ' === $this->value[$from - 1]) {
-            --$from;
-        }
-        while ($from > 0 && ' ' !== $this->value[$from - 1]) {
-            $from = TextMetrics::prevCharBoundary($this->value, $from);
-        }
-        $this->value = \substr($this->value, offset: 0, length: $from).\substr($this->value, $this->col);
-        $this->col = $from;
-
-        return true;
+        return '' !== $this->line->deleteWordBackward();
     }
 
     /** Move the caret one character left; returns whether it moved. */
     public function moveLeft(): bool
     {
-        if (0 === $this->col) {
-            return false;
-        }
-        $this->col = TextMetrics::prevCharBoundary($this->value, $this->col);
-
-        return true;
+        return $this->line->moveCursorLeft();
     }
 
     /** Move the caret one character right; returns whether it moved. */
     public function moveRight(): bool
     {
-        if ($this->col >= \strlen($this->value)) {
-            return false;
-        }
-        $this->col = TextMetrics::nextCharBoundary($this->value, $this->col);
-
-        return true;
+        return $this->line->moveCursorRight();
     }
 
     /** Caret to the start; returns whether it moved. */
     public function moveHome(): bool
     {
-        $moved = 0 !== $this->col;
-        $this->col = 0;
-
-        return $moved;
+        return $this->line->moveCursorToStart();
     }
 
     /** Caret past the last character; returns whether it moved. */
     public function moveEnd(): bool
     {
-        $moved = \strlen($this->value) !== $this->col;
-        $this->col = \strlen($this->value);
-
-        return $moved;
+        return $this->line->moveCursorToEnd();
     }
 
     /**
-     * Run one of the field's own caret keys — ←/→, Home/End, Delete, Ctrl+W —
-     * and return whether it changed anything (false for any other key, and for
-     * a key with nothing to do, such as ← at the start).
+     * Run one of the field's own editing keys — ←/→ and Ctrl+←/→, Home/End,
+     * Delete, Ctrl+W and Alt+Backspace, or a bracketed paste — and return whether it changed
+     * anything (false for any other key, and for a key with nothing to do,
+     * such as ← at the start).
      *
      * Raw sequences rather than keybinding ids: these are the field's editing
      * keys, not rebindable IDE actions, and every text field in the IDE spells
@@ -172,22 +163,40 @@ final class TextField
      */
     public function editKey(string $data): bool
     {
+        $pasted = TextInput::pasted($data);
+        if (null !== $pasted) {
+            return $this->paste($pasted);
+        }
+
         return match ($data) {
             "\x1b[D" => $this->moveLeft(),
             "\x1b[C" => $this->moveRight(),
+            "\x1b[1;5D" => $this->line->moveWordBackward(),
+            "\x1b[1;5C" => $this->line->moveWordForward(),
             "\x1b[H", "\x1bOH", "\x1b[1~" => $this->moveHome(),
             "\x1b[F", "\x1bOF", "\x1b[4~" => $this->moveEnd(),
             "\x1b[3~" => $this->deleteForward(),
             "\x17" => $this->deleteWordBackward(),
+            "\x1b\x7f" => $this->deleteWordPartBackward(),
             default => false,
         };
     }
 
-    /** Write $text at the caret and leave the caret after it. */
-    private function write(string $text): void
+    /** Insert a bracketed paste's text, its line breaks per {@see PastedNewlines}. */
+    private function paste(string $text): bool
     {
-        $this->value = \substr($this->value, offset: 0, length: $this->col).$text.\substr($this->value, $this->col);
-        $this->col += \strlen($text);
+        // A copied line carries its terminator, and a query ending in ⏎ matches
+        // nothing mid-line: trailing breaks go whatever the field keeps.
+        $text = \rtrim($text, characters: "\n");
+        if (PastedNewlines::Join === $this->pastedNewlines) {
+            $text = (string) \preg_replace('/\n+/', replacement: ' ', subject: $text);
+        }
+        if ('' === $text) {
+            return false;
+        }
+        $this->line->insert($text);
+
+        return true;
     }
 
     /**
@@ -200,14 +209,14 @@ final class TextField
     {
         $shown = CaretVisibility::Shown === $cursor;
         // Newlines (multiline query/replace) show as a visible ⏎ so the row stays one line.
-        $display = \str_replace("\n", replace: '⏎', subject: $this->value);
+        $display = \str_replace("\n", replace: '⏎', subject: $this->line->getText());
         if (!$shown) {
             return $display;
         }
         // The marker goes AT the caret, which is why the caret had to become a
         // real offset: pinning it to the tail is what made every consumer
         // append-only.
-        $before = \str_replace("\n", replace: '⏎', subject: \substr($this->value, offset: 0, length: $this->col));
+        $before = \str_replace("\n", replace: '⏎', subject: \substr($this->line->getText(), offset: 0, length: $this->line->getCursor()));
         $caret = AnsiUtils::visibleWidth($before);
         if (null !== $width) {
             return AnsiText::caretWindow($display, $caret, $width, $this->style->marker());

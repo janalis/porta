@@ -121,6 +121,37 @@ final class IdeFindInProjectTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
+    /**
+     * A bracketed paste reaches the query as text. The terminal hands the whole
+     * clipboard over as ONE chunk wrapped in ESC markers, and the field used to
+     * refuse it for that ESC — the paste vanished without a trace.
+     */
+    public function testAQueryPastedIntoFindInProjectSearches(): void
+    {
+        $project = new TempProject([
+            'src/Hit.php' => "<?php\n// pasted needle here\n",
+            'src/Miss.php' => "<?php\n// nothing to see\n",
+        ]);
+        $panelText = $this->modalText(...);
+
+        $this->runIde(
+            $project,
+            $project->path('src/Hit.php'),
+            [
+                100 => static function ($tui): void {
+                    $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
+                    $tui->handleInput("\x1b[200~pasted needle\n\x1b[201~");
+                },
+                200 => function (object $tui) use ($panelText): void {
+                    $this->await(static fn (): bool => \str_contains($panelText($tui), 'src/Hit.php'), what: 'the pasted query to search');
+                    $panel = $panelText($tui);
+                    $this->assertStringContainsString('pasted needle', $panel, 'the query field shows the pasted text');
+                    $this->assertStringNotContainsString('src/Miss.php', $panel);
+                },
+            ],
+        );
+    }
+
     public function testAddToSearchScopesFromTreeThenSelectItInTheCycle(): void
     {
         $project = new TempProject([

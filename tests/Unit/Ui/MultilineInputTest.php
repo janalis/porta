@@ -215,4 +215,32 @@ final class MultilineInputTest extends TestCase
         $this->assertSame(1, $this->markers(...$window), 'the caret marker survives horizontal overflow');
         $this->assertLessThanOrEqual(10, AnsiUtils::visibleWidth($window[0]), 'the caret line is clipped to width');
     }
+
+    public function testAPasteSplitsIntoLinesAtTheCaret(): void
+    {
+        $input = new MultilineInput();
+        $this->type($input, 'a', 'z', "\x1b[D");
+
+        $this->assertTrue($input->handleKey("\x1b[200~b\r\nc\x1b[201~"));
+        $this->assertSame("ab\ncz", $input->value());
+    }
+
+    public function testAnEmptyPasteIsNotConsumed(): void
+    {
+        $this->assertFalse(new MultilineInput()->handleKey("\x1b[200~\x1b[201~"));
+    }
+
+    public function testBackspaceAndArrowsStepOverAWholeCharacter(): void
+    {
+        $flag = "\u{1F1EB}\u{1F1F7}";
+        $input = new MultilineInput();
+        $input->setValue('a'.$flag.'b');
+
+        $this->type($input, "\x1b[D", "\x7f");
+        $this->assertSame('ab', $input->value(), 'backspace took the whole flag');
+
+        $input->setValue($flag);
+        $this->type($input, "\x1b[D", 'x', "\x1b[C", 'y');
+        $this->assertSame('x'.$flag.'y', $input->value(), '← and → each crossed the whole flag');
+    }
 }
