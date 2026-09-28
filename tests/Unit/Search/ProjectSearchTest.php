@@ -430,17 +430,25 @@ final class ProjectSearchTest extends TestCase
         $this->assertCount(ProjectSearch::MAX_RESULTS, $results);
     }
 
-    public function testBrokenGrepBinaryYieldsEmptyResultsWithoutCrashing(): void
+    /**
+     * A grep on PATH that cannot run answers like no grep at all: the built-in
+     * search. macOS spawns the dead binary and learns from its exit code; Linux
+     * refuses the spawn outright. Both used to differ, and macOS showed nothing.
+     */
+    public function testABrokenGrepBinaryFallsBackToTheBuiltInSearch(): void
     {
+        $project = $this->fixtures();
+        $noGrep = new TempProject([], 'porta-nogrep-');
+        \putenv('PATH='.$noGrep->dir);
+        $builtIn = $this->awaitSearch(new ProjectSearch($project->dir), 'needle');
+        $this->assertNotSame([], $builtIn, 'the premise: the built-in search finds the needle');
+
         $tools = new TempProject([], 'porta-badgrep-');
         $badGrep = $tools->write('grep', "\x00\x01 not an executable format");
         \chmod($badGrep, permissions: 0o755);
         \putenv('PATH='.$tools->dir);
 
-        $project = $this->fixtures();
-        $results = $this->awaitSearch(new ProjectSearch($project->dir), 'needle');
-
-        $this->assertSame([], $results, 'spawn succeeds but the dead grep produces no output');
+        $this->assertSame($builtIn, $this->awaitSearch(new ProjectSearch($project->dir), 'needle'));
     }
 
     public function testParseSkipsMalformedGrepLines(): void

@@ -84,7 +84,10 @@ final class ProjectSearch
             return;
         }
 
-        $flags = ['-rn', '--binary-files=without-match', $options->regex ? '-E' : '-F'];
+        // -H: GNU grep drops the `path:` prefix when it is handed a single file
+        // (a file scope), and the parser reads `path:line:text`; BSD grep and
+        // ugrep print it anyway, which is why only Linux lost those matches.
+        $flags = ['-rnH', '--binary-files=without-match', $options->regex ? '-E' : '-F'];
         if (!$options->caseSensitive) {
             $flags[] = '-i';
         }
@@ -103,9 +106,16 @@ final class ProjectSearch
             \array_splice($command, offset: 1, length: 0, replacement: ['--exclude-dir='.$dir]);
         }
 
+        // A grep that cannot answer hands the search to the built-in engine.
+        // Linux's posix_spawn refuses an unrunnable binary outright; macOS
+        // spawns it and reports an exit code — one fallback serves both.
+        $fallback = fn () => $onDone($this->searchWithPhp($query, $options, $paths, $mask));
         $process = new AsyncProcess($command, $this->rootDir);
         $started = $process->start(
-            onExit: fn (int $code, string $out) => $this->finish($out, $onDone, $pattern),
+            // grep's own failure (2, or 126/127 for a binary that cannot run)
+            // with nothing printed is no answer; 1 is grep saying "no match",
+            // which is one.
+            onExit: fn (int $code, string $out) => $code >= 2 && '' === $out ? $fallback() : $this->finish($out, $onDone, $pattern),
             onChunk: function () use ($process, $onDone, $pattern): void {
                 if (\substr_count($process->output(), needle: "\n") > self::MAX_RESULTS) {
                     // Enough results; stop early
@@ -114,11 +124,11 @@ final class ProjectSearch
             },
         );
         if (!$started) {
-            // Defensive: proc_open spawns even unusable binaries (exec
-            // failure surfaces later as an exit code), so this is unreachable
-            // in tests.
+            // Reached on Linux only (the spawn refusal above), where
+            // testABrokenGrepBinaryFallsBackToTheBuiltInSearch drives it; a
+            // macOS run never can, so the line gate is told to look away.
             // @codeCoverageIgnoreStart
-            $onDone($this->searchWithPhp($query, $options, $paths, $mask));
+            $fallback();
 
             return;
 
