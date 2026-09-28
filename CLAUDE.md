@@ -93,24 +93,6 @@ All eight, cheapest first, stopping at the first failure; `verify:quick` skips t
 | touch rendering, input, dock, overlays, git, LSP | `docs/internals/subsystems.md` |
 | change plugin loading, ordering, the API surface | `docs/internals/plugin-system.md` |
 | write a test, or chase a flake | `docs/internals/testing.md` |
-| propose a refactor or a new seam | `docs/internals/decisions.md` |
+| propose a refactor or a seam — check what is SETTLED | `docs/internals/decisions.md` |
 | add or listen to an event | `docs/events.md` |
 | write a plugin against the public API | `docs/plugins.md` |
-
-## Settled — do not re-propose without new evidence
-
-Each was measured and turned down. `docs/internals/decisions.md` has the numbers and says
-what would re-open it. Re-proposing one costs a round.
-
-- Adopting FrameworkBundle or a Kernel; `inline_factories`; `tagged_locator()` for the
-  locator; `classmap-authoritative` in `composer.json`.
-- The extraction audit — every candidate measured, the topic closed. Git is the
-  one that re-opened and landed: `src/Git` and `src/Widget/Git` are
-  `plugins/git/` now, and core keeps no git-named symbol.
-- Namespace cycles — closed at class granularity.
-- `Layout/ViewRegion` as a RENAME of the compiled slots (runtime minting replaced
-  it); clickable status segments (reopened — the branch cell is the consumer).
-- `registerWelcomeStep()`; unifying the five plain-array plugin buffers.
-- Escalating `[loop-leak]` to a failure — refused on evidence.
-- The config scope's merge rules — above all a **union for `enabledPlugins`**, which
-  looks obviously right and is not: an explicit list REPLACES, even an empty one.

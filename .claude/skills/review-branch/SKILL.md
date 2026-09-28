@@ -17,7 +17,7 @@ For each finding give:
 What counts as blocking here, beyond plain bugs:
 
 - A breach of a **Hard rule** in `CLAUDE.md`.
-- Re-opening a question listed under **Settled** in `CLAUDE.md` /
+- Re-opening a question listed under **Settled** in
   `docs/internals/decisions.md` without new evidence.
 - A test that would stay green if the fix were reverted — an assertion no
   mutation kills, an await on the flash instead of the effect, a negative
