@@ -205,6 +205,7 @@ keys.
 
 | Key | Action |
 | --- | --- |
+| `↑` / `↓`, `PageUp` / `PageDown` | Move the selection (in the Debug panel's call stack, watches and variables too) |
 | `Enter` | Open the row's file at its line |
 | `Alt+G` | Cycle how rows are grouped: by file, by directory, or nested |
 | `Alt+E` | Collapse every group, or expand them all when they are already collapsed |

@@ -206,7 +206,8 @@ final class DebugPanelWidget extends DockPanelWidget implements FocusableInterfa
 
             return;
         }
-        if (ListNavigation::handleKey($data, $kb, $this->list, \count($this->rows))) {
+        // A page is the rows the panel shows, so the row landed on was drawn.
+        if (ListNavigation::handleKey($data, $kb, $this->list, \count($this->rows), page: $this->visibleRows)) {
             $this->invalidate();
 
             return;
@@ -261,6 +262,8 @@ final class DebugPanelWidget extends DockPanelWidget implements FocusableInterfa
             'close' => [Key::ESCAPE],
             'move_up' => [Key::UP],
             'move_down' => [Key::DOWN],
+            'page_up' => [Key::PAGE_UP],
+            'page_down' => [Key::PAGE_DOWN],
             'jump' => [Key::ENTER],
             'edit_variable' => ['e'], // panel-local (F2 is the global focus toggle)
             'remove_watch' => [Key::DELETE],

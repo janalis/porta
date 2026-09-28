@@ -93,6 +93,20 @@ final class DebugPanelWidgetTest extends TestCase
         $this->assertStringContainsString('▸ $arr = array(2)', $screen, 'expandable child shows a collapsed arrow');
     }
 
+    /** A page is the rows the panel shows, stopping at the last row rather than wrapping. */
+    public function testPageKeysMoveByTheRowsShown(): void
+    {
+        $panel = $this->panel(); // seven rows: Frames, #0, #1, Variables, Locals, $x, $arr
+        $panel->setVisibleRows(4);
+
+        $panel->handleInput("\x1b[6~");
+        $this->assertSame(4, Probe::get($panel, 'list')->selected());
+        $panel->handleInput("\x1b[6~");
+        $this->assertSame(6, Probe::get($panel, 'list')->selected(), 'the seventh and last row, not past it');
+        $panel->handleInput("\x1b[5~");
+        $this->assertSame(2, Probe::get($panel, 'list')->selected());
+    }
+
     public function testEditKeyOnAVariableFiresWithItsContainerNameAndValue(): void
     {
         $events = new EventDispatcher();

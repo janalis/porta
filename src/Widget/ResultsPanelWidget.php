@@ -389,7 +389,8 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
 
             return;
         }
-        if (ListNavigation::handleKey($data, $kb, $this->list, \count($this->displayRows))) {
+        // A page is the rows the panel shows, so the row landed on was drawn.
+        if (ListNavigation::handleKey($data, $kb, $this->list, \count($this->displayRows), page: $this->visibleRows)) {
             $this->invalidate();
 
             return;
@@ -772,6 +773,8 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
             'close' => [Key::ESCAPE],
             'move_up' => [Key::UP],
             'move_down' => [Key::DOWN],
+            'page_up' => [Key::PAGE_UP],
+            'page_down' => [Key::PAGE_DOWN],
             'jump' => [Key::ENTER],
             'delete_char_backward' => [Key::BACKSPACE],
             'toggle_all' => ['alt+e'],
