@@ -22,6 +22,7 @@ use Porta\Support\DebouncedRequest;
 use Porta\Support\RevoltScheduler;
 use Porta\Support\Scheduler;
 use Porta\Support\Text;
+use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\NavigablePaneWidget;
@@ -294,7 +295,7 @@ final class GraphViewerWidget extends NavigablePaneWidget
                 $lines[0] = $this->errorBanner($this->error, $cols);
             }
             if ($this->layingOut) {
-                $lines[0] = AnsiUtils::truncateToWidth($this->styles->of(Role::Dim)->apply(' ⏳ '.$this->translator->trans('layout…').' '), $cols, pad: true);
+                $lines[0] = AnsiUtils::truncateToWidth($this->styles->of(Role::Dim)->apply(' '.Glyphs::WORKING.' '.$this->translator->trans('layout…').' '), $cols, pad: true);
             }
         }
 
@@ -644,7 +645,7 @@ final class GraphViewerWidget extends NavigablePaneWidget
             'missing-binary' === $this->error => $this->translator->trans('graphviz not found — install graphviz, or set the "dotPath" setting'),
             'missing-plantuml' === $this->error => $this->translator->trans('plantuml not found — install it, or set the "plantumlPath" setting'),
             null !== $this->error => Text::firstLine($this->error),
-            $this->layingOut => '⏳ '.$this->translator->trans('layout…'),
+            $this->layingOut => Glyphs::WORKING.' '.$this->translator->trans('layout…'),
             default => '',
         };
         $style = 'missing-binary' === $this->error || null !== $this->error && !$this->layingOut ? Role::DiagError : Role::Dim;
