@@ -177,6 +177,17 @@ final class FindInFilesModalTest extends TestCase
         $this->assertStringNotContainsString(Glyphs::FIELD_DANGER_TOP_LEFT, $plain);
     }
 
+    /** The Find window's key reads the same on its button as in the footer: Alt+⏎, never Alt+Enter spelled out. */
+    public function testTheFindWindowKeyIsWrittenOneWay(): void
+    {
+        $modal = $this->modal();
+        $modal->open('Find in Files');
+        $roomy = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $this->composeWithFocus($modal, CaretVisibility::Shown, rows: 30)));
+
+        $this->assertSame(2, \substr_count($roomy, needle: 'Alt+⏎'), 'on the button and in the footer');
+        $this->assertStringNotContainsString('Alt+Enter', $roomy);
+    }
+
     public function testQueryTypingFiresOnQuery(): void
     {
         $modal = $this->modal();

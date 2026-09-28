@@ -67,7 +67,7 @@ final class FindInFilesModal
      * options row above — so it was the one action here you could only find by
      * reading the source.
      */
-    private const string FIND_WINDOW_KEY = '(Alt+Enter)';
+    private const string FIND_WINDOW_KEY = '(Alt+⏎)';
 
     private const array KEYS = [
         'select_cancel' => [Key::ESCAPE],
