@@ -12,6 +12,7 @@ use Porta\History\SearchHistoryStore;
 use Porta\I18n\Translator;
 use Porta\Tests\Support\CompactScreen;
 use Porta\Tests\Support\FakeFindTarget;
+use Porta\Tests\Support\RendersWidget;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\FindBarWidget;
 use Symfony\Component\EventDispatcher\EventDispatcher;
@@ -21,6 +22,8 @@ use Symfony\Component\Tui\Style\CursorShape;
 
 final class FindBarWidgetTest extends TestCase
 {
+    use RendersWidget;
+
     private function type(FindBarWidget $bar, string $text): void
     {
         foreach (\str_split($text) as $ch) {
@@ -1348,7 +1351,7 @@ final class FindBarWidgetTest extends TestCase
         $bar->open(new FakeFindTarget(new Document("foo\n")), mode: FindMode::Find, initialQuery: 'foo');
         $bar->setMenuOverlay([['row' => 1, 'col' => 2, 'width' => 7, 'segment' => ' Paste ']]);
 
-        $rows = $bar->render(new RenderContext(80, 3));
+        $rows = $this->painted($bar, new RenderContext(80, 3));
 
         $this->assertStringStartsWith('│  Paste ', AnsiUtils::stripAnsiCodes($rows[1]), 'the span covers the query row, the dropdown in front');
         $this->assertSame(80, AnsiUtils::visibleWidth($rows[1]), 'without changing the bar width');
@@ -1360,7 +1363,7 @@ final class FindBarWidgetTest extends TestCase
         $bar->open(new FakeFindTarget(new Document("foo\n")), mode: FindMode::Find, initialQuery: 'foo');
         $bar->setMenuOverlay([['row' => 0, 'col' => 0, 'width' => 5, 'segment' => 'Paste']]);
 
-        $rows = $bar->render(new RenderContext(12, 3)); // one compact field, no tags
+        $rows = $this->painted($bar, new RenderContext(12, 3)); // one compact field, no tags
 
         $this->assertCount(1, $rows);
         $this->assertStringStartsWith('Paste', AnsiUtils::stripAnsiCodes($rows[0]));

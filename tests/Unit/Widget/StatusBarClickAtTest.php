@@ -215,11 +215,11 @@ final class StatusBarClickAtTest extends TestCase
             return ['left' => 'src/a.php', 'leftPath' => $path, 'leftPathWidth' => 9, 'right' => ''];
         });
         $renderer = new Renderer(new StyleSheet());
-        $renderer->renderWidget($status, new RenderContext(self::COLUMNS, 1));
+        $renderer->renderWidgetLines($status, new RenderContext(self::COLUMNS, 1));
         $this->assertSame('/p/src/a.php', $status->fileAt(1));
 
         $path = '/q/src/a.php';
-        $renderer->renderWidget($status, new RenderContext(self::COLUMNS, 1));
+        $renderer->renderWidgetLines($status, new RenderContext(self::COLUMNS, 1));
 
         $this->assertSame('/q/src/a.php', $status->fileAt(1));
     }

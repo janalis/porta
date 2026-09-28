@@ -56,6 +56,6 @@ final class EdgeRuleWidget extends AbstractWidget implements MenuOverlayHost
         }
         $columns = $context->getColumns();
 
-        return $this->withMenuOverlay([Rule::horizontal($columns, $this->styles)], $columns);
+        return [Rule::horizontal($columns, $this->styles)];
     }
 }

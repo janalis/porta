@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Tests\Support\RendersWidget;
 use Porta\Ui\ScreenDensity;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\EdgeRuleWidget;
@@ -15,6 +16,8 @@ use Symfony\Component\Tui\Render\RenderContext;
 /** A rule across the workspace's edge on a roomy screen, no row at all on a compact one. */
 final class EdgeRuleWidgetTest extends TestCase
 {
+    use RendersWidget;
+
     public function testARoomyScreenDrawsOneRuleRowTheWidthOfTheScreen(): void
     {
         $rule = new EdgeRuleWidget(new ScreenDensity(), Styles::dark());
@@ -51,6 +54,6 @@ final class EdgeRuleWidgetTest extends TestCase
         $rule = new EdgeRuleWidget(new ScreenDensity());
         $rule->setMenuOverlay([['row' => 0, 'col' => 2, 'width' => 4, 'segment' => '┏━━┓']]);
 
-        $this->assertSame('──┏━━┓────', AnsiUtils::stripAnsiCodes($rule->render(new RenderContext(10, 1))[0]));
+        $this->assertSame('──┏━━┓────', AnsiUtils::stripAnsiCodes($this->painted($rule, new RenderContext(10, 1))[0]));
     }
 }

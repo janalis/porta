@@ -232,7 +232,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost, Tool
             // The empty strip keeps its Toolbar base and its height: closing
             // the last tab must neither drop the bar to the terminal default
             // nor move the code under it.
-            return $this->withMenuOverlay(\array_fill(start_index: 0, count: $this->stripRows, value: $this->styles->of(Role::Toolbar)->apply(AnsiText::blank($columns))), $columns);
+            return \array_fill(start_index: 0, count: $this->stripRows, value: $this->styles->of(Role::Toolbar)->apply(AnsiText::blank($columns)));
         }
 
         // The shared strip: the overflow window (reserve ‹/› cells, clamp,
@@ -265,7 +265,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost, Tool
 
         // A Toolbar-background base under the whole strip, matching the other
         // tab strips. Folder tabs stand on a baseline that runs to the edge.
-        return $this->withMenuOverlay(TabStripTail::pad($strip, $columns, $this->styles), $columns);
+        return TabStripTail::pad($strip, $columns, $this->styles);
     }
 
     /**

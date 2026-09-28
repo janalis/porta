@@ -417,7 +417,7 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverla
             $rows[] = $this->styles->of(Role::Toolbar)->apply(AnsiText::padRight($line.$tail, $columns));
         }
 
-        return $this->withMenuOverlay($rows, $columns);
+        return $rows;
     }
 
     /** The status, right-aligned in $room columns over $fill. */

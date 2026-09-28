@@ -470,7 +470,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface, M
             $caret = $this->focused ? CaretVisibility::Shown : CaretVisibility::Hidden;
             $state = 0 === $index && $failing ? FieldState::Danger : FieldState::of($this->focused);
 
-            return $this->withMenuOverlay([$this->styles->of(Role::Toolbar)->apply(FieldBox::compact($spec, $field, $state, $caret, $columns, $this->styles))], $columns);
+            return [$this->styles->of(Role::Toolbar)->apply(FieldBox::compact($spec, $field, $state, $caret, $columns, $this->styles))];
         }
 
         $this->tagTop = \intdiv($fieldRows - $tagRows, num2: 2);
@@ -538,7 +538,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface, M
         // An app-menu dropdown hanging over the bar is drawn on top of it, as
         // on every pane it crosses: the bar sits between the breadcrumbs and
         // the editor, right where a dropdown from the menu bar falls.
-        return $this->withMenuOverlay(\array_map(fn (string $row): string => $this->styles->of(Role::Toolbar)->apply(AnsiText::padRight($row, $columns)), $rows), $columns);
+        return \array_map(fn (string $row): string => $this->styles->of(Role::Toolbar)->apply(AnsiText::padRight($row, $columns)), $rows);
     }
 
     // --- Search internals ---------------------------------------------------

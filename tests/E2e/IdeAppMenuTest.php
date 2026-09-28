@@ -105,7 +105,7 @@ final class IdeAppMenuTest extends TestCase
                 200 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $tui->handleInput("\x06"); // ctrl+f
                     $this->awaitPainted($tui, $terminal, '[0/0]');
-                    $bar = AnsiUtils::stripAnsiCodes($tui->getById('menu')->render(new RenderContext(120, 1))[0]);
+                    $bar = AnsiUtils::stripAnsiCodes(Paint::lines($tui->getById('menu'), new RenderContext(120, 1))[0]);
                     $edit = \mb_strpos($bar, needle: 'Edit');
                     $this->assertIsInt($edit, 'the Edit menu is on the bar');
                     $tui->handleInput(\sprintf("\x1b[<0;%d;1M", $edit + 2));
@@ -114,7 +114,7 @@ final class IdeAppMenuTest extends TestCase
                     $this->assertTrue($tui->getById('menu')->isOpen());
                     // The compact (24-row) bar is one row, and Edit's first
                     // item, Undo, lands on it.
-                    $row = AnsiUtils::stripAnsiCodes($tui->getById('find-bar')->render(new RenderContext(129, 1))[0]);
+                    $row = AnsiUtils::stripAnsiCodes(Paint::lines($tui->getById('find-bar'), new RenderContext(129, 1))[0]);
                     $this->assertStringContainsString('Ctrl+Z', $row, 'the dropdown composites over the find bar');
                     $this->assertStringNotContainsString('Find', $row, 'and hides the field label it covers');
                 },

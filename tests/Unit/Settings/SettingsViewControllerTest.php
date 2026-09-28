@@ -460,7 +460,7 @@ final class SettingsViewControllerTest extends TestCase
         $this->assertFalse($this->contextMenu->isOpen(), 'a form never drawn on screen has nothing to hang a list from');
 
         // Drawn (its content pane as the root), it has a screen rect to hang the list from.
-        $this->renderer->render($this->content, 100, 24);
+        $this->renderer->renderFrame($this->content, 100, 24);
         $this->form->handleInput("\r");
 
         $this->assertTrue($this->contextMenu->isListbox(), 'the list is open');
