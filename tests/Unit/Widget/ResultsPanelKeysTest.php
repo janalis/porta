@@ -53,4 +53,18 @@ final class ResultsPanelKeysTest extends TestCase
         $panel->handleInput("\x1b");
         $this->assertFalse($panel->isOpen());
     }
+
+    /** The filter takes the field's own keys: ← to fix a typo, and a paste. */
+    public function testTheFilterMovesItsCaretAndTakesAPaste(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->setFocused(true);
+        $panel->open('Find', ResultsPanelFields::searchResults());
+        $panel->setResults([['path' => 'src/A.php', 'line' => 1, 'text' => 'alpha']]);
+        $panel->handleInput('a');
+        $panel->handleInput("\x1b[D");
+        $panel->handleInput("\x1b[200~alph\x1b[201~");
+
+        $this->assertSame('alpha', Probe::get($panel, 'filter')->value());
+    }
 }

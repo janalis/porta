@@ -607,4 +607,16 @@ final class KeybindingsListWidgetTest extends TestCase
             yield $width.' he' => [$width, 'he'];
         }
     }
+
+    /** The filter takes the field's own keys: ← to fix a typo, and a paste. */
+    public function testTheFilterMovesItsCaretAndTakesAPaste(): void
+    {
+        $widget = $this->widget();
+        $widget->handleInput('/');
+        $widget->handleInput('e');
+        $widget->handleInput("\x1b[D");
+        $widget->handleInput("\x1b[200~sav\x1b[201~");
+
+        $this->assertSame('save', Probe::get($widget, 'filter')->value());
+    }
 }

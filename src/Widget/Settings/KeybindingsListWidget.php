@@ -255,7 +255,7 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
 
             return true;
         }
-        if ($this->filter->insert($data)) {
+        if ($this->filter->editKey($data) || $this->filter->insert($data)) {
             $this->applyFilter();
             $this->invalidate();
 
