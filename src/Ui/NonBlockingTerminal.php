@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Ui;
 
 use Porta\Support\NonBlockingWriter;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Tui\Terminal\TerminalInterface;
 
 /**
@@ -253,6 +254,13 @@ final class NonBlockingTerminal implements TerminalInterface
     public function isVirtual(): bool
     {
         return $this->inner->isVirtual();
+    }
+
+    /** The inner terminal's, so the Tui that adopts it shares the one its stdin buffer dispatches paste events on. */
+    #[\Override]
+    public function getEventDispatcher(): EventDispatcherInterface
+    {
+        return $this->inner->getEventDispatcher();
     }
 
     /** The tty is gone (or a blocking flush failed): drop the queueing layer. */

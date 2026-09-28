@@ -195,19 +195,19 @@ final class WorkbenchCommandsTest extends TestCase
             $tui->setFocus($tree);
             $root = Probe::object($tui, 'root');
             $this->assertInstanceOf(ContainerWidget::class, $root);
-            $renderer->render($root, 100, 30);
+            $renderer->renderFrame($root, 100, 30);
             $before = $renderer->getWidgetRect($tree)?->columns;
             $this->assertNotNull($before, 'the tree must have a rendered rect to measure against');
 
             $this->assertTrue($commands->isEnabled('resize_pane_grow'));
             $commands->run('resize_pane_grow');
-            $renderer->render($root, 100, 30);
+            $renderer->renderFrame($root, 100, 30);
             $afterGrow = $renderer->getWidgetRect($tree)?->columns;
 
             $this->assertSame($before + 2, $afterGrow, 'resize_pane_grow must widen the tree by exactly 2 columns (nudgeSidebar(2*direction) with direction=1)');
 
             $commands->run('resize_pane_shrink');
-            $renderer->render($root, 100, 30);
+            $renderer->renderFrame($root, 100, 30);
             $afterShrink = $renderer->getWidgetRect($tree)?->columns;
 
             $this->assertSame($before, $afterShrink, 'resize_pane_shrink must exactly undo the grow (direction=-1)');

@@ -52,7 +52,7 @@ final class PerfCollector
     /** @var list<float> seconds spent generating each painted frame (render + bidi + write) */
     private array $paintDurations = [];
 
-    /** @var list<float> seconds spent in Renderer::render per painted frame */
+    /** @var list<float> seconds spent in Renderer::renderFrame per painted frame */
     private array $renderDurations = [];
 
     /**
@@ -61,7 +61,7 @@ final class PerfCollector
      */
     private array $bidiDurations = [];
 
-    /** @var list<float> seconds spent in ScreenWriter::writeLines per painted frame */
+    /** @var list<float> seconds spent in ScreenWriter::writeFrame per painted frame */
     private array $writeDurations = [];
 
     /** @var list<float> seconds spent inside CodeEditorWidget::render per frame */

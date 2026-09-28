@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Workbench;
 use PHPUnit\Framework\TestCase;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\ChromeInvalidator;
+use Symfony\Component\Tui\Render\ArrayLineBuffer;
 use Symfony\Component\Tui\Widget\ContainerWidget;
 
 final class ChromeInvalidatorTest extends TestCase
@@ -16,8 +17,8 @@ final class ChromeInvalidatorTest extends TestCase
         $leaf = new StatusBarWidget();
         $container = new ContainerWidget();
         $container->add($leaf);
-        $leaf->setRenderCache(['cached'], 10, 1);
-        $container->setRenderCache(['cached'], 10, 1);
+        $leaf->setRenderCache(new ArrayLineBuffer(['cached']), 10, 1);
+        $container->setRenderCache(new ArrayLineBuffer(['cached']), 10, 1);
 
         $chrome = new ChromeInvalidator([$container]);
         $chrome->invalidateAll();
@@ -29,7 +30,7 @@ final class ChromeInvalidatorTest extends TestCase
     public function testInvalidateClearsASingleTree(): void
     {
         $widget = new StatusBarWidget();
-        $widget->setRenderCache(['cached'], 10, 1);
+        $widget->setRenderCache(new ArrayLineBuffer(['cached']), 10, 1);
 
         new ChromeInvalidator()->invalidate($widget);
 

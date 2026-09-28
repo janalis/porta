@@ -25,6 +25,6 @@ trait RendersRoot
     {
         $root = Probe::object($this->tui, 'root');
         \assert($root instanceof ContainerWidget, description: 'the Tui root is the container widget');
-        $this->renderer->render($root, $columns, $rows);
+        $this->renderer->renderFrame($root, $columns, $rows);
     }
 }

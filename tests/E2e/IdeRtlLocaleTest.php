@@ -199,7 +199,7 @@ final class IdeRtlLocaleTest extends TestCase
             $terminal = $tui->getTerminal();
             $columns = $terminal->getColumns();
             $rows = $terminal->getRows();
-            $lines = \array_values($renderer->render($root, $columns, $rows));
+            $lines = $renderer->renderFrame($root, $columns, $rows)->toArray();
             $runs = $segmenter->segment($root, $columns, $rows);
             $regions = $segmenter->segmentRegions($columns, $rows);
             foreach ($lines as $row => $line) {
@@ -257,7 +257,7 @@ final class IdeRtlLocaleTest extends TestCase
             $reorder = Services::resolve($ide, PaneReorder::class);
             $terminal = $tui->getTerminal();
             $columns = $terminal->getColumns();
-            $lines = \array_values($renderer->render($root, $columns, $terminal->getRows()));
+            $lines = $renderer->renderFrame($root, $columns, $terminal->getRows())->toArray();
             $runs = $segmenter->segment($root, $columns, $terminal->getRows());
             foreach ($lines as $row => $line) {
                 $this->assertSame($columns, AnsiUtils::visibleWidth($reorder->reorderRow($line, $runs[$row])), "row {$row} kept its width");
@@ -401,7 +401,7 @@ final class IdeRtlLocaleTest extends TestCase
 
                     $columns = $terminal->getColumns();
                     $rows = $terminal->getRows();
-                    $lines = \array_values($renderer->render($root, $columns, $rows));
+                    $lines = $renderer->renderFrame($root, $columns, $rows)->toArray();
                     $runs = $segmenter->segment($root, $columns, $rows);
                     $screen = '';
                     foreach ($lines as $row => $line) {
@@ -458,7 +458,7 @@ final class IdeRtlLocaleTest extends TestCase
                     $segmenter = Services::resolve($ide, PaneSegmenter::class);
                     $reorder = Services::resolve($ide, PaneReorder::class);
                     $this->assertSame(120, $terminal->getColumns());
-                    $lines = \array_values($renderer->render($root, 120, $terminal->getRows()));
+                    $lines = $renderer->renderFrame($root, 120, $terminal->getRows())->toArray();
                     $runs = $segmenter->segment($root, 120, $terminal->getRows());
                     $last = \array_last($runs[0]);
                     $this->assertSame(120, $last['start'] + $last['width'], 'the pane segmentation spans the new width');

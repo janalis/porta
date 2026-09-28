@@ -25,17 +25,17 @@
         "ext-pcntl": "*",
         "composer/semver": "^3.4",
         "revolt/event-loop": "^1.0",
-        "symfony/clock": "^8.1",
-        "symfony/config": "^8.1",
-        "symfony/console": "^8.1",
-        "symfony/dependency-injection": "^8.1",
-        "symfony/event-dispatcher": "^8.1",
-        "symfony/filesystem": "^8.1",
-        "symfony/finder": "^8.1",
+        "symfony/clock": "^8.2",
+        "symfony/config": "^8.2",
+        "symfony/console": "^8.2",
+        "symfony/dependency-injection": "^8.2",
+        "symfony/event-dispatcher": "^8.2",
+        "symfony/filesystem": "^8.2",
+        "symfony/finder": "^8.2",
         "symfony/polyfill-intl-grapheme": "^1.33",
-        "symfony/process": "^8.1",
-        "symfony/translation": "^8.1",
-        "symfony/tui": "^8.1",
+        "symfony/process": "^8.2",
+        "symfony/translation": "^8.2",
+        "symfony/tui": "^8.2",
         "tempest/highlight": "^2.16"
     },
     "require-dev": {
@@ -99,7 +99,8 @@
             "@php vendor/bin/infection --coverage=coverage/infection --skip-initial-tests --git-diff-lines --git-diff-base=HEAD --threads=${PORTA_MUTATE_THREADS:-$(( ($(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4) + 1) / 2 ))} --test-framework-options='--testsuite=Unit --colors=never' --show-mutations"
         ]
     },
-    "minimum-stability": "stable",
+    "minimum-stability": "dev",
+    "prefer-stable": true,
     "config": {
         "allow-plugins": {
             "infection/extension-installer": true

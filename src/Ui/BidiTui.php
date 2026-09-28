@@ -11,6 +11,7 @@ use Porta\Support\Scheduler;
 use Psr\Clock\ClockInterface;
 use Revolt\EventLoop;
 use Symfony\Component\DependencyInjection\Attribute\AsAlias;
+use Symfony\Component\Tui\Render\ArrayLineBuffer;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Render\ScreenWriter;
 use Symfony\Component\Tui\Tui;
@@ -401,7 +402,7 @@ final class BidiTui extends Tui implements FrameHooks
             return;
         }
         // The manual path runs for LTR too — the vendor's processRender does
-        // exactly this (clear the flag, render, writeLines; verified, nothing
+        // exactly this (clear the flag, renderFrame, writeFrame; verified, nothing
         // else) and delegating to it hides where a slow frame spends its time.
         // Timing the three stages separately is what lets a real session's
         // perf.log say "widget tree" vs "RTL reorder" vs "terminal write" for a
@@ -428,7 +429,7 @@ final class BidiTui extends Tui implements FrameHooks
         // every mutation of those guards escaped because nothing could tell.
         $clock = $this->clock;
         $t0 = null !== $clock ? Clocks::seconds($clock) : 0.0;
-        $lines = \array_values($renderer->render($root, $columns, $rows));
+        $frame = $renderer->renderFrame($root, $columns, $rows);
         // A frame is never taller than the screen. The renderer does not clip:
         // a flex:0 child gets its intrinsic height whatever the terminal has, so
         // the real workbench composes THREE rows — menu bar, main, status bar —
@@ -438,7 +439,7 @@ final class BidiTui extends Tui implements FrameHooks
         // a session with no `CSI H` and no `CSI 2J` after its first frame can
         // never recover, which is the permanent-garble report this project has
         // chased from the other end twice.
-        $lines = \array_slice($lines, offset: 0, length: $rows);
+        $lines = $frame->slice(0, $rows);
         $t1 = null !== $clock ? Clocks::seconds($clock) : 0.0;
 
         $segmenter = $this->segmenter;
@@ -484,7 +485,7 @@ final class BidiTui extends Tui implements FrameHooks
         if (null !== $this->frameSink) {
             ($this->frameSink)($lines);
         }
-        $screenWriter->writeLines($lines);
+        $screenWriter->writeFrame(new ArrayLineBuffer($lines));
         $t2 = null !== $clock ? Clocks::seconds($clock) : 0.0;
 
         $this->framePainted($t1 - $t0, $t2 - $t1b, $t1b - $t1);

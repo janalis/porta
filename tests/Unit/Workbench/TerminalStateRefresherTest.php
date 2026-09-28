@@ -6,6 +6,8 @@ namespace Porta\Tests\Unit\Workbench;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Workbench\TerminalStateRefresher;
+use Symfony\Component\EventDispatcher\EventDispatcher;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Tui\Terminal\TerminalInterface;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
@@ -19,6 +21,7 @@ final class TerminalStateRefresherTest extends TestCase
             /** @param list<string> $writes */
             public function __construct(
                 private array &$writes,
+                private readonly EventDispatcherInterface $dispatcher = new EventDispatcher(),
             ) {}
 
             public function start(callable $onInput, callable $onResize, callable $onKittyProtocolActivated): void {}
@@ -64,6 +67,11 @@ final class TerminalStateRefresherTest extends TestCase
             public function isVirtual(): bool
             {
                 return false;
+            }
+
+            public function getEventDispatcher(): EventDispatcherInterface
+            {
+                return $this->dispatcher;
             }
         };
         $refresher = new TerminalStateRefresher(new Tui(terminal: $terminal), every: 3);

@@ -9,6 +9,8 @@ use Porta\Tests\Support\DrainsPeer;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Ui\NonBlockingTerminal;
+use Symfony\Component\EventDispatcher\EventDispatcher;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Tui\Terminal\TerminalInterface;
 
 final class NonBlockingTerminalTest extends TestCase
@@ -114,6 +116,13 @@ final class NonBlockingTerminalTest extends TestCase
             {
                 return false;
             }
+
+            private ?EventDispatcherInterface $dispatcher = null;
+
+            public function getEventDispatcher(): EventDispatcherInterface
+            {
+                return $this->dispatcher ??= new EventDispatcher();
+            }
         };
     }
 
@@ -160,12 +169,14 @@ final class NonBlockingTerminalTest extends TestCase
     {
         [$stream, $peer] = $this->pair();
         $calls = [];
-        $terminal = new NonBlockingTerminal($this->inner($calls), $stream);
+        $inner = $this->inner($calls);
+        $terminal = new NonBlockingTerminal($inner, $stream);
 
         $this->assertSame(123, $terminal->getColumns());
         $this->assertSame(45, $terminal->getRows());
         $this->assertTrue($terminal->isKittyProtocolActive());
         $this->assertFalse($terminal->isVirtual());
+        $this->assertSame($inner->getEventDispatcher(), $terminal->getEventDispatcher(), 'the Tui refuses a terminal whose dispatcher is not its own');
         \fclose($peer);
     }
 
@@ -223,6 +234,11 @@ final class NonBlockingTerminalTest extends TestCase
             public function isVirtual(): bool
             {
                 return false;
+            }
+
+            public function getEventDispatcher(): EventDispatcherInterface
+            {
+                return new EventDispatcher();
             }
         };
         $terminal = new NonBlockingTerminal($inner, $stream);

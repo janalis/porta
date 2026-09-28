@@ -9933,3 +9933,25 @@ name collides with a vendor method (`symfony/tui`'s `EditorDocument` also has
 `getLines()` / `getCursorLine()`), the hand pass matched the receiver, never the
 name. No mago metric floor moved.
 
+## Symfony 8.2 ahead of its release (2026-09-28)
+
+Porta requires `^8.2` of every Symfony component and resolves `8.2.x-dev`, under
+`"minimum-stability": "dev"` with `"prefer-stable": true`. Per-package `@dev`
+flags were tried first and cannot work: 8.2 pulls in `event-dispatcher-contracts
+^3.8` and `polyfill-intl-grapheme ^1.42.1`, which exist only as `dev-main` and
+`1.x-dev`, and a root stability flag does not reach a transitive package.
+`prefer-stable` means that once 8.2.0 ships, a plain `composer update` moves every
+package back to a tagged release. At that point, restore `minimum-stability: stable`.
+
+`symfony/tui` 8.2 changed four APIs Porta uses. `Renderer::render()` became
+`renderFrame()`, `ScreenWriter::writeLines()` became `writeFrame()`, and
+`AbstractWidget::setRenderCache()` now takes a `LineBufferInterface` instead of a
+`list<string>`. `TerminalInterface` also gained `getEventDispatcher()`, and
+`Tui::__construct()` rejects a terminal whose dispatcher is not its own.
+`NonBlockingTerminal` therefore delegates the dispatcher to the terminal it wraps.
+`BidiTui::processRender()` still mirrors the vendor's `processRender()` step for
+step (clear the flag, `renderFrame`, `writeFrame`). It clips the frame with
+`LineBufferInterface::slice()` and hands the mirrored rows back as an `ArrayLineBuffer`.
+The new 8.2 APIs are not adopted yet: `AnsiUtils::sliceToWidth()`/`walkCells()`
+next to `AnsiText::columnsFrom()`, `postRender()`, `attachChild()`, the tab,
+collapsible and key-binding widgets. Each needs its own measured case.
