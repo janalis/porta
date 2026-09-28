@@ -159,17 +159,22 @@ final class AbstractSubprocessHighlighterTest extends TestCase
     }
 
     /**
-     * Await the process out AND back: the base's in-flight counter returning to
-     * zero means the exit callback ran, so render() has decided. Without this a
+     * Await the process out AND back, so render() has decided. Without this a
      * "nothing was delivered" assertion passes vacuously whenever the machine is
      * slow enough that the subprocess never finished — which is exactly what the
      * coverage run exposed.
+     *
+     * Settled is "the debounce timer has fired AND nothing is in flight": the
+     * timer is armed the moment highlight() is called and its callback starts
+     * the process synchronously, so the two are never both clear before the
+     * exit callback has run. It used to await `running` reaching 1 and then 0 —
+     * but a quick child starts and exits inside one loop turn, the 1 is never
+     * observed, and the await ran out its whole budget (every Linux CI run).
      */
     private function awaitRunSettled(): void
     {
         $plugin = $this->plugin;
-        $this->await(static fn (): bool => 1 === Probe::get($plugin, 'running'), what: 'the process to start');
-        $this->await(static fn (): bool => 0 === Probe::get($plugin, 'running'), what: 'the process to finish');
+        $this->await(static fn (): bool => [] === Probe::get($plugin, 'timers') && 0 === Probe::get($plugin, 'running'), what: 'the run to finish');
     }
 
     public function testRegistrationDeclaresTheThreeRowsAndTheBackend(): void
