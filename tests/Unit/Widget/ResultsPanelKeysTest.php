@@ -11,10 +11,10 @@ use Porta\Widget\Support\ResultsPanelFields;
 use Symfony\Component\Tui\Render\RenderContext;
 
 /**
- * PgUp/PgDn in the results panel. Apart from ResultsPanelWidgetTest, which
- * sits on the `too-many-methods` ceiling.
+ * The results panel's list keys: paging, and Esc with a filter typed. Apart
+ * from ResultsPanelWidgetTest, which sits on the `too-many-methods` ceiling.
  */
-final class ResultsPanelPagingTest extends TestCase
+final class ResultsPanelKeysTest extends TestCase
 {
     /** A page is the rows the panel shows: PgDn lands on a row it drew, PgUp comes back. */
     public function testPageKeysMoveByTheRowsShown(): void
@@ -34,5 +34,23 @@ final class ResultsPanelPagingTest extends TestCase
         $this->assertSame($page, Probe::get($panel, 'list')->selected());
         $panel->handleInput("\x1b[5~");
         $this->assertSame(0, Probe::get($panel, 'list')->selected());
+    }
+
+    /** Esc clears a typed filter first and keeps the panel open; the next Esc closes it. */
+    public function testEscClearsTheFilterBeforeItClosesThePanel(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->setFocused(true);
+        $panel->open('Find', ResultsPanelFields::searchResults());
+        $panel->setResults([['path' => 'src/A.php', 'line' => 1, 'text' => 'alpha'], ['path' => 'src/B.php', 'line' => 2, 'text' => 'beta']]);
+        $panel->handleInput('b');
+        $this->assertSame('b', Probe::get($panel, 'filter')->value(), 'the premise: a filter is typed');
+
+        $panel->handleInput("\x1b");
+        $this->assertSame('', Probe::get($panel, 'filter')->value());
+        $this->assertTrue($panel->isOpen(), 'the first Esc spends itself on the filter');
+
+        $panel->handleInput("\x1b");
+        $this->assertFalse($panel->isOpen());
     }
 }

@@ -385,6 +385,16 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
         $kb = $this->getKeybindings();
 
         if ($kb->matches($data, 'close')) {
+            // A typed filter goes first, as in every filtered list: a typo
+            // must not also cost you the results.
+            $field = $this->activeTextField();
+            if (null !== $field && '' !== $field->value()) {
+                $field->clear();
+                $this->afterFieldEdit();
+                $this->invalidate();
+
+                return;
+            }
             $this->dismiss();
 
             return;

@@ -213,6 +213,7 @@ keys.
 | `F5` | Run the search again and refresh the rows |
 | `Alt+X` | Write a Find in Files result set to a file and open it (inert on the other tools, which have no export to offer) |
 | type | Filter the rows, where the tool offers a filter (Find in Files, Problems, Usages, Structure) |
+| `Esc` | Clear the filter, or close the panel when there is none |
 
 ## File tree
 
