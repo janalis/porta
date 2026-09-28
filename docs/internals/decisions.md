@@ -10752,3 +10752,40 @@ menu bar's `…`.
 
 *Re-opens on:* a request for keyboard-focus tooltips, or a menu item whose
 disabled state confuses users.
+
+## A TUI rationalization pass, and what it left alone (2026-09-28)
+
+An audit of the whole TUI (chrome, interaction, layout) proposed about thirty
+changes. The ones that landed: `BorderHint` and `TabCloseGlyph::hovered()` as
+the one hint-in-border and the one × hover; `PopupFrame` under the tooltip
+card; the title inset inside `HeaderRenderer`; `KeyHints` for every legend that
+names a rebindable action; `SearchPattern::compiles()`; Esc clearing the
+results filter first; PgUp/PgDn in the results and debug panels; a results or
+frame row's right-click; `PopupMetrics::centered()`; `FieldBox::MAX_WIDTH`.
+
+**Declined, each for a reason that would have to change first:**
+
+- **A modal section tee in the accent throughout.** It is `Role::Rule` between
+  accent tees on purpose: one tint for every separating line (above).
+- **Toast severity by tint, not shape.** The shape is what reads in monochrome.
+- **`Rule::vertical()` and a grab helper.** Each hand-drawn line is one glyph in
+  a three-way style switch; a helper removes no duplication.
+- **Renaming `Role::TabAccent`.** `<tab-accent>` is plugin markup API.
+- **One legend style.** Modal title bold, group legend plain, field legend by
+  its state: a hierarchy, not drift.
+- **The diff cursor as `SelectedRow` with a selection bar.** The bar shifts the
+  diff geometry the hit tests share, and `SelectedRow`'s foreground would
+  override the added/removed and syntax colours. The grey band is the editor's
+  current-line idiom. *Re-opens on:* a visual pass with the colours in view.
+- **Scroll cues, Home/End and empty-state text in the docked lists.** Settled
+  above (counts in the headers; Home/End belong to a list's text field).
+- **Renaming the widget-local action ids** (`close`, `exit_view`, `jump`…).
+  None is in `ActionCatalog`, so no user can rebind one: pure churn.
+- **Hints for widget-local keys from the keymap** (find bar, settings, Welcome).
+  They cannot go stale; nothing rebinds them.
+- **The graph viewer's `Ctrl+Q quit` from the keymap.** A plugin has no binding
+  lookup, and adding one widens the plugin API for one hint.
+- **A terminal right-click menu.** The terminal has no selection to copy.
+
+*Re-opens on:* evidence against any single reason above; the list is not a
+blanket refusal.
