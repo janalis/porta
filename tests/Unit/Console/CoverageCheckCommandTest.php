@@ -135,6 +135,33 @@ final class CoverageCheckCommandTest extends TestCase
         $this->assertStringStartsWith("\ncoverage-check: FAILED", $tester->getErrorOutput(), 'a blank line opens the error stream, directly before the failure message');
     }
 
+    /** A failing gate names the lines it missed, file by file — the log may be all a CI run leaves. */
+    public function testAShortfallNamesTheMissedLines(): void
+    {
+        $project = new TempProject(['clover.xml' => $this->clover(
+            [
+                '/p/src/Whole.php' => [2, 2],
+                '/p/src/Zeta/Half.php' => [2, 4],
+                '/p/src/Alpha.php' => [1, 2],
+            ],
+            totalCovered: 5,
+            totalStatements: 8,
+            lines: [
+                '/p/src/Whole.php' => [3 => 1, 4 => 2],
+                '/p/src/Zeta/Half.php' => [12 => 0, 7 => 1, 9 => 0, 10 => 3],
+                '/p/src/Alpha.php' => [5 => 0, 6 => 1],
+            ],
+        )]);
+
+        $tester = $this->tester();
+        $status = $tester->execute(['clover' => $project->path('clover.xml'), 'threshold' => '100'], ['capture_stderr_separately' => true]);
+        $errors = $tester->getErrorOutput();
+
+        $this->assertSame(Command::FAILURE, $status);
+        $this->assertStringContainsString("  Zeta/Half.php: 9, 12\n  src/Alpha.php: 5\n", $errors, 'named as the table names them, sorted, lines ascending');
+        $this->assertStringNotContainsString('Whole.php', $errors, 'a fully covered file is not listed');
+    }
+
     public function testAThresholdBelowTheActualCoveragePasses(): void
     {
         $project = new TempProject(['clover.xml' => $this->clover(

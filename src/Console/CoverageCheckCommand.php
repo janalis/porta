@@ -182,6 +182,12 @@ final class CoverageCheckCommand extends Command
         if (($percentage + 1e-9) < $threshold) {
             $errors->writeln('');
             $errors->writeln("coverage-check: FAILED — below the {$threshold}% line-coverage gate.");
+            // The lines, not only the percentages: a CI log is often all there
+            // is of a failed run (its report artifact may never upload), and a
+            // file at 98.59% says nothing about where to look.
+            foreach (self::misses($contributions) as $name => $lines) {
+                $errors->writeln(\sprintf('  %s: %s', $name, \implode(', ', $lines)));
+            }
 
             return Command::FAILURE;
         }
@@ -379,6 +385,41 @@ final class CoverageCheckCommand extends Command
         }
 
         return $lines;
+    }
+
+    /**
+     * Each under-covered file's statement lines that no report saw executed,
+     * by display name; files whose reports carry no `<line>` entries are left
+     * out, since there is nothing to name.
+     *
+     * @param array<string, list<array{statements: int, covered: int, lines: array<int, int>}>> $contributions
+     *
+     * @return array<string, list<int>>
+     */
+    private static function misses(array $contributions): array
+    {
+        $misses = [];
+        foreach ($contributions as $path => $records) {
+            $seen = [];
+            $hit = [];
+            foreach ($records as $record) {
+                foreach ($record['lines'] as $number => $count) {
+                    $seen[$number] = true;
+                    if ($count > 0) {
+                        $hit[$number] = true;
+                    }
+                }
+            }
+            $missed = \array_keys(\array_diff_key($seen, $hit));
+            if ([] === $missed) {
+                continue;
+            }
+            \sort($missed);
+            $misses[self::displayName($path)] = $missed;
+        }
+        \ksort($misses);
+
+        return $misses;
     }
 
     /**
