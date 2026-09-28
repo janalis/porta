@@ -452,13 +452,19 @@ final class IdeHelpersTest extends TestCase
     public function testRelativeMemoizesResolvedPathsButNeverUnresolvedOnes(): void
     {
         $paths = new ProjectPaths($this->project->dir);
-        $missing = $this->project->dir.'/late.php';
+        // A spelling realpath() would rewrite: until the file exists the raw
+        // spelling comes back, and it differs from the resolved answer on
+        // every platform. (A plain `/tmp/…/late.php` only differs where /tmp
+        // is an alias of /private/tmp, as on macOS — on Linux it is already
+        // under the root and resolves relative either way.)
+        \mkdir($this->project->dir.'/sub');
+        $missing = $this->project->dir.'/sub/../late.php';
 
         // Not on disk yet: realpath fails, the raw path comes back — and it
         // must NOT be cached, or the file's creation would never be seen.
-        $this->assertSame($missing, $paths->relative($missing));
+        $this->assertStringEndsWith('sub/../late.php', $paths->relative($missing));
 
-        \file_put_contents($missing, data: '');
+        \file_put_contents($this->project->dir.'/late.php', data: '');
         $this->assertSame('late.php', $paths->relative($missing), 'once the file exists, the same call resolves relative');
         $this->assertSame('late.php', $paths->relative($missing), 'and the memoized answer matches');
 

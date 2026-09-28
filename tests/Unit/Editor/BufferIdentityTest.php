@@ -51,6 +51,26 @@ final class BufferIdentityTest extends TestCase
         $this->assertSame($stored, $manager->all()[0]->path, 'and it keeps the spelling it was opened with first');
     }
 
+    /**
+     * The same question on every filesystem: a hard link is one file under two
+     * names that realpath() keeps apart, so only the inode check can see it.
+     * (The case test above only runs where names are case-insensitive.)
+     */
+    public function testAHardLinkToAnOpenFileIsTheSameBuffer(): void
+    {
+        $this->project = new TempProject(['Ide.php' => "<?php\n// one\n"]);
+        $manager = new BufferManager();
+        $stored = $this->project->path('Ide.php');
+        $linked = $this->project->dir.'/Linked.php';
+        \link($stored, $linked);
+
+        $manager->open($stored, "<?php\n// one\n");
+        $manager->open($linked, "<?php\n// one\n");
+
+        $this->assertCount(1, $manager->all(), 'one inode, one buffer');
+        $this->assertSame($stored, $manager->all()[0]->path);
+    }
+
     /** Two genuinely different files stay two buffers, whatever they are called. */
     public function testDifferentFilesStayDifferentBuffers(): void
     {

@@ -445,7 +445,8 @@ final class WorkspaceEditorTest extends TestCase
     {
         $project = new TempProject(['a.php' => "0123456789\n"]);
         $canonical = \realpath($project->dir).'/a.php';
-        $this->assertNotSame($project->dir, \realpath($project->dir), 'precondition: the temp dir itself has a non-canonical alias to resolve through (e.g. /var vs /private/var)');
+        $aliased = $project->alias();
+        $this->assertNotSame($aliased, \realpath($project->dir), 'precondition: a non-canonical spelling of the root to resolve through');
         // The buffer is opened under the CANONICAL path (as our own editor
         // always resolves it), but the incoming edit's URI — as a real LSP
         // server would send it — carries the non-canonical alias raw, with no
@@ -453,7 +454,7 @@ final class WorkspaceEditorTest extends TestCase
         $we = $this->workspaceEditor();
         $buffer = $this->buffers->open($canonical, "0123456789\n");
         $edit = [self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 1]], 'X')];
-        $nonCanonicalUri = 'file://'.$project->dir.'/a.php';
+        $nonCanonicalUri = 'file://'.$aliased.'/a.php';
 
         $outcome = $we->applyWorkspaceEdit(['changes' => [$nonCanonicalUri => $edit]]);
 
@@ -604,8 +605,9 @@ final class WorkspaceEditorTest extends TestCase
     public function testARenameFactCanonicalisesAServerSpelledOldPath(): void
     {
         $project = new TempProject(['old.php' => "<?php\n"]);
-        $unresolved = $project->path('old.php');
-        $this->assertNotSame(\realpath($project->dir), $project->dir, 'the fixture root must be a symlink for this to test anything');
+        $aliased = $project->alias();
+        $unresolved = $aliased.'/old.php';
+        $this->assertNotSame(\realpath($project->dir), $aliased, 'the server spelling must differ from the canonical root for this to test anything');
 
         $events = new EventDispatcher();
         $renamed = [];
@@ -618,7 +620,7 @@ final class WorkspaceEditorTest extends TestCase
                 'kind' => 'rename',
                 // Hand-built, deliberately UNRESOLVED — what a server sends.
                 'oldUri' => 'file://'.$unresolved,
-                'newUri' => 'file://'.$project->path('new.php'),
+                'newUri' => 'file://'.$aliased.'/new.php',
             ]],
         ]);
 
@@ -655,8 +657,9 @@ final class WorkspaceEditorTest extends TestCase
     public function testADeleteFactCanonicalisesAServerSpelledPathBeforeTheFileGoes(): void
     {
         $project = new TempProject(['gone.php' => "<?php\n"]);
-        $unresolved = $project->path('gone.php');
-        $this->assertNotSame(\realpath($project->dir), $project->dir, 'the fixture root must be a symlink for this to test anything');
+        $aliased = $project->alias();
+        $unresolved = $aliased.'/gone.php';
+        $this->assertNotSame(\realpath($project->dir), $aliased, 'the server spelling must differ from the canonical root for this to test anything');
         $expected = \realpath($unresolved);
 
         $events = new EventDispatcher();

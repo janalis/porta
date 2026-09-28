@@ -16,6 +16,9 @@ final class TempProject
     public readonly string $dir;
     private readonly Filesystem $fs;
 
+    /** @var list<string> symlinks made by {@see alias()}, removed with the project */
+    private array $aliases = [];
+
     /** The git binary, resolved once against the pristine PATH. */
     private static ?string $git = null;
 
@@ -41,6 +44,22 @@ final class TempProject
     public function path(string $relativePath = ''): string
     {
         return '' === $relativePath ? $this->dir : $this->dir.'/'.$relativePath;
+    }
+
+    /**
+     * A symlink to this project's directory: a spelling of the root that
+     * realpath() rewrites, the way a language server's view of the workspace
+     * can differ from ours. macOS gives every temp dir one for free (/var →
+     * /private/var); Linux gives none, so a test that needs one makes it.
+     * Removed with the project.
+     */
+    public function alias(): string
+    {
+        $link = $this->dir.'-alias';
+        \symlink($this->dir, $link);
+        $this->aliases[] = $link;
+
+        return $link;
     }
 
     /**
@@ -100,6 +119,12 @@ final class TempProject
         // the iterator) and the escaping exception crashes the whole paratest
         // worker. Retry once, then leave the corpse to the OS temp cleaner —
         // a leftover dir is harmless; a crashed worker fails the suite.
+        foreach ($this->aliases as $link) {
+            if (!\is_link($link)) {
+                continue;
+            }
+            \unlink($link); // the link only, never its target
+        }
         try {
             $this->fs->remove($this->dir);
         } catch (\Throwable) {
