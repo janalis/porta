@@ -63,10 +63,10 @@ final class GraphSelectionOverlay
     /**
      * $line with $width columns at $col replaced by $patch, keeping the line's
      * width and every column's place: a double-width glyph the patch half-covers
-     * leaves its other half blank rather than sliding the rest (AnsiText::columnsFrom).
+     * leaves its other half blank rather than sliding the rest.
      */
     private static function splice(string $line, int $col, int $width, string $patch, int $cols): string
     {
-        return AnsiText::padRight(AnsiUtils::sliceByColumn($line, 0, $col), $col).$patch.AnsiText::columnsFrom($line, $col + $width, $cols - $col - $width);
+        return AnsiText::padRight(AnsiUtils::sliceByColumn($line, 0, $col), $col).$patch.AnsiUtils::sliceToWidth($line, $col + $width, $cols - $col - $width);
     }
 }

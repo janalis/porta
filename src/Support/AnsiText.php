@@ -157,25 +157,6 @@ final class AnsiText
     }
 
     /**
-     * The $width-column window of $text that keeps display column $caretCol
-     * visible, with $marker inserted exactly at the caret. Used to horizontally
-     * scroll a single-line input so its (zero-width) cursor marker never falls
-     * past the width cut. When $text fits, the window starts at column 0.
-     *
-     * The window is sliced from the raw text and the marker re-inserted, so the
-     * marker cannot be lost at the truncation boundary.
-     *
-     * Both slices are STRICT. `sliceByColumn` defaults to non-strict, which
-     * keeps a grapheme that STARTS inside the range and ends past it — so a
-     * double-width character landing on the last column came back one column
-     * wider than asked for. Nothing downstream caught it: {@see
-     * scrollLineToCaret()} finishes with {@see padRight()}, which is a floor
-     * and never truncates, so the over-wide row went to the renderer and threw.
-     * A find bar, a settings field or a Search Everywhere query row was one CJK
-     * or emoji character away from taking the session down. Strict drops the
-     * straddling glyph instead, and the pad fills the column it leaves.
-     */
-    /**
      * The columns of $line from EXACTLY $startCol, at most $length wide — the
      * slice a caller composing a row around a cut (an overlay's tail, a pane
      * seam, an overwrite) actually means.
@@ -210,6 +191,25 @@ final class AnsiText
         return \str_repeat(' ', $lead).AnsiUtils::sliceByColumn($line, $startCol + $lead, $length - $lead, strict: true);
     }
 
+    /**
+     * The $width-column window of $text that keeps display column $caretCol
+     * visible, with $marker inserted exactly at the caret. Used to horizontally
+     * scroll a single-line input so its (zero-width) cursor marker never falls
+     * past the width cut. When $text fits, the window starts at column 0.
+     *
+     * The window is sliced from the raw text and the marker re-inserted, so the
+     * marker cannot be lost at the truncation boundary.
+     *
+     * Both slices are STRICT. `sliceByColumn` defaults to non-strict, which
+     * keeps a grapheme that STARTS inside the range and ends past it — so a
+     * double-width character landing on the last column came back one column
+     * wider than asked for. Nothing downstream caught it: {@see
+     * scrollLineToCaret()} finishes with {@see padRight()}, which is a floor
+     * and never truncates, so the over-wide row went to the renderer and threw.
+     * A find bar, a settings field or a Search Everywhere query row was one CJK
+     * or emoji character away from taking the session down. Strict drops the
+     * straddling glyph instead, and the pad fills the column it leaves.
+     */
     public static function caretWindow(string $text, int $caretCol, int $width, string $marker): string
     {
         $off = \max(0, $caretCol - $width + 1);

@@ -164,4 +164,18 @@ final class SpanSlicerTest extends TestCase
         }
         $this->assertSame(['ab ', ' cd ', ' ef'], $segments);
     }
+
+    /**
+     * The blank a seam leaves in place of a cut glyph is painted like the popup
+     * around it: the popup's background opens BEFORE it, so a menu crossing a
+     * pane seam over CJK text keeps a solid box instead of a one-column hole.
+     */
+    public function testTheBlankACutGlyphLeavesKeepsThePopupBackground(): void
+    {
+        $segment = "\e[48;5;24mab中cd\e[0m";
+        $span = SpanSlicer::localSpans([$segment], new WidgetRect(row: 0, col: 3, rows: 1, columns: 4), top: 0, anchor: 0, panelWidth: 6)[0];
+
+        $this->assertStringStartsWith("\e[48;5;24m ", $span['segment']);
+        $this->assertSame(' cd', AnsiUtils::stripAnsiCodes($span['segment']), 'clipped to the panel: columns 3-5');
+    }
 }

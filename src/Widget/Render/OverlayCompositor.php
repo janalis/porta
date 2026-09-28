@@ -26,7 +26,9 @@ final class OverlayCompositor
     public static function into(string $line, int $col, int $width, int $columns, string $popup): string
     {
         $head = AnsiText::padRight(AnsiUtils::sliceByColumn($line, 0, $col), $col);
-        $tail = AnsiText::columnsFrom($line, $col + $width, $columns - $col - $width);
+        // Exactly the columns after the popup: a glyph it half-covers leaves its
+        // other half a blank in the row's own style, and nothing after it moves.
+        $tail = AnsiUtils::sliceToWidth($line, $col + $width, $columns - $col - $width);
 
         // sliceByColumn re-emits an APC caret marker at a tail slice's start
         // when the marker sat before the boundary — for a compose that is

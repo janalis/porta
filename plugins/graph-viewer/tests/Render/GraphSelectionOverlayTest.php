@@ -60,4 +60,17 @@ final class GraphSelectionOverlayTest extends TestCase
         $this->assertSame(' 中中中'.Glyphs::FRAME_VERTICAL.' 中中'.Glyphs::FRAME_VERTICAL.' 中中 ', AnsiUtils::stripAnsiCodes($lines[5]));
         $this->assertSame(20, AnsiUtils::visibleWidth($lines[5]));
     }
+
+    /** After a rail, the blank for the glyph it half-covers keeps the text's background. */
+    public function testTheBlankBesideARailKeepsTheTextBackground(): void
+    {
+        $node = new GraphNode(0, 'A', 'A', 100.0, 100.0, 60.0, 40.0, null, null, false);
+        $layout = new GraphLayout(200.0, 200.0, [0 => $node], [], []);
+        $row = "\e[44m ".\str_repeat('中', times: 9)." \e[0m";
+
+        $lines = GraphSelectionOverlay::apply(\array_fill(0, count: 10, value: $row), $layout, new ZoomPanModel(200, 200), 0, 20, 10, Styles::dark());
+
+        $after = \substr($lines[5], (int) \strrpos($lines[5], Glyphs::FRAME_VERTICAL) + \strlen(Glyphs::FRAME_VERTICAL));
+        $this->assertMatchesRegularExpression('/^(?:\e\[[0-9;:]*m)*?\e\[44m /', $after);
+    }
 }

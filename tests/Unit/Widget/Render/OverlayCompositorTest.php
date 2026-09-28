@@ -113,4 +113,13 @@ final class OverlayCompositorTest extends TestCase
 
         return $bg;
     }
+
+    /** The tail's blank for a half-covered glyph is painted in the row's own background. */
+    public function testATailGlyphsBlankKeepsTheRowBackground(): void
+    {
+        $out = OverlayCompositor::into("\e[44mabcde中gh\e[0m", 2, 4, 10, '[pp]');
+
+        $tail = \substr($out, (int) \strpos($out, needle: '[pp]') + 4);
+        $this->assertMatchesRegularExpression('/^(?:\e\[[0-9;:]*m)*?\e\[44m gh/', $tail, 'the background opens before the blank');
+    }
 }

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Porta\Overlay\Region;
 
 use Porta\Overlay\State\MenuOverlayController;
-use Porta\Support\AnsiText;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\WidgetRect;
 
@@ -45,8 +44,9 @@ final class SpanSlicer
             $localRow = $top + $i - $rect->row;
             if ($localRow >= 0 && $localRow < $rect->rows) {
                 // Exactly $clipWidth: a wide glyph straddling a seam must neither
-                // widen this span (the renderer throws) nor shift it (AnsiText::columnsFrom).
-                $slice = $clipped ? AnsiText::padRight(AnsiText::columnsFrom($segment, $clipOffset, $clipWidth), $clipWidth) : $segment;
+                // widen this span (the renderer throws) nor shift it. Its cut half
+                // is a blank that keeps the popup's background.
+                $slice = $clipped ? AnsiUtils::sliceToWidth($segment, $clipOffset, $clipWidth) : $segment;
                 // sliceByColumn re-emits an APC caret marker sitting BEFORE the
                 // clip offset (it is "active state" at the slice start) — but
                 // that marker's cell belongs to an EARLIER pane's slice of this
