@@ -9970,7 +9970,9 @@ package back to a tagged release. At that point, restore `minimum-stability: sta
 `BidiTui::processRender()` still mirrors the vendor's `processRender()` step for
 step (clear the flag, `renderFrame`, `writeFrame`). It clips the frame with
 `LineBufferInterface::slice()` and hands the mirrored rows back as an `ArrayLineBuffer`.
-The new 8.2 APIs are not adopted yet: `AnsiUtils::sliceToWidth()`/`walkCells()`
-next to the non-strict `sliceWithWidth()` cuts (`EditorRenderer`,
-`OverlayCompositor`, `SpanSlicer`), `postRender()`, `attachChild()`, the tab,
-collapsible and key-binding widgets. Each needs its own measured case.
+Two of the new 8.2 APIs were adopted after the upgrade:
+`AnsiUtils::sliceToWidth()` cuts the editor window and the code-lens rows
+(`EditorRenderer::window()`, fast slice kept where it cannot be wrong, 29 vs
+7 us per highlighted row measured), and `walkCells()` finds a column's byte in
+`HelpViewerWidget::byteAtColumn()`. Not adopted: `postRender()`, `attachChild()`,
+the tab, collapsible and key-binding widgets. Each needs its own measured case.
