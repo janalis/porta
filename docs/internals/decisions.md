@@ -4,24 +4,6 @@ Things that were measured and rejected, or measured and deliberately kept.
 Each entry says what would re-open it. Re-proposing one without new evidence
 costs a round; that is the only reason this page exists.
 
-## Settled — do not re-propose without new evidence
-
-The short list, moved here from CLAUDE.md for its line budget; the numbers
-for each are below.
-
-- Adopting FrameworkBundle or a Kernel; `inline_factories`; `tagged_locator()` for the
-  locator; `classmap-authoritative` in `composer.json`.
-- The extraction audit — every candidate measured, the topic closed. Git is the
-  one that re-opened and landed: `src/Git` and `src/Widget/Git` are
-  `plugins/git/` now, and core keeps no git-named symbol.
-- Namespace cycles — closed at class granularity.
-- `Layout/ViewRegion` as a RENAME of the compiled slots (runtime minting replaced
-  it); clickable status segments (reopened — the branch cell is the consumer).
-- `registerWelcomeStep()`; unifying the five plain-array plugin buffers.
-- Escalating `[loop-leak]` to a failure — refused on evidence.
-- The config scope's merge rules — above all a **union for `enabledPlugins`**, which
-  looks obviously right and is not: an explicit list REPLACES, even an empty one.
-
 ## Framework and container
 
 **Adopting `symfony/framework-bundle` or a Kernel — rejected.** Three
