@@ -395,6 +395,14 @@ final class DebugPanelWidget extends DockPanelWidget implements FocusableInterfa
     }
 
     /** Enter or a click: a frame jumps to its source, a reference-bearing row expands/collapses. */
+    #[\Override]
+    protected function rowPath(int $index): ?string
+    {
+        $row = $this->rows[$index] ?? null;
+
+        return null !== $row && DebugRowKind::Frame === $row->kind && '' !== $row->path ? $row->path : null;
+    }
+
     protected function activateRow(int $index): void
     {
         $row = $this->rows[$index] ?? null;

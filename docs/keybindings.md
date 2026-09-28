@@ -319,6 +319,8 @@ cursor, drag to select (double-click a word, triple-click a line,
 entries / tabs / menu items / panel rows, drag pane separators to resize,
 and right-click for a context menu. In the file tree, `Ctrl+Click` adds an
 entry to the selection and `Shift+Click` takes the range from the last one.
+A results row, or a debugger frame, offers **Copy Path** and **Copy Relative
+Path** for the file it names, with whatever plugins add for a file.
 
 **Dragging in the file tree** moves files: onto a folder to move, onto the
 editor to open, `Alt` held at the release to copy, `Esc` to abandon. The tree

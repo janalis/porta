@@ -52,4 +52,35 @@ final class ResultsPanelTooltipTest extends TestCase
         $this->assertNull($panel->tooltipAt($row, 3), 'under its file header the row fits, though flat it would not');
         $this->assertNull($panel->tooltipAt((int) \array_key_first(\array_filter($rows, static fn (string $r): bool => \str_contains($r, 'File.php'))), 3), 'a header is not a match');
     }
+
+    /**
+     * The file a row names, for its right-click: a match's file, a file
+     * header's own; nothing for a row with no location or past the rows.
+     */
+    public function testARowNamesTheFileItWouldOpen(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->open('Find', ResultsPanelFields::searchResults());
+        $panel->setResults([
+            ['path' => 'src/A.php', 'line' => 4, 'text' => 'alpha'],
+            ['path' => '', 'line' => 0, 'text' => 'nowhere'],
+        ]);
+        $lines = \array_map(AnsiUtils::stripAnsiCodes(...), $panel->render(new RenderContext(60, 8)));
+        $rowOf = static fn (string $needle): int => (int) \array_key_first(\array_filter($lines, static fn (string $line): bool => \str_contains($line, $needle)));
+
+        $this->assertSame('src/A.php', $panel->pathAt($rowOf('A.php  (1)')), 'the file header');
+        $this->assertSame('src/A.php', $panel->pathAt($rowOf('alpha')), 'its match');
+        $this->assertNull($panel->pathAt($rowOf('nowhere')), 'the location-less row');
+        $this->assertNull($panel->pathAt(20), 'past the rows');
+
+        // Nested grouping heads files with their directory: that header names
+        // a folder, not a file to copy the path of.
+        $panel->setFocused(true);
+        $panel->handleInput("\x1bg");
+        $panel->handleInput("\x1bg");
+        $nested = \array_map(AnsiUtils::stripAnsiCodes(...), $panel->render(new RenderContext(60, 8)));
+        $directory = \array_key_first(\array_filter($nested, static fn (string $line): bool => \str_contains($line, 'src') && !\str_contains($line, 'A.php')));
+        $this->assertNotNull($directory, 'the premise: a directory header');
+        $this->assertNull($panel->pathAt($directory));
+    }
 }

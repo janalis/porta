@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace Porta\Input;
 
 use Porta\Editor\BufferManager;
+use Porta\Support\ProjectPaths;
 use Porta\Tree\TreeOperations;
+use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\DockTabsWidget;
 use Porta\Widget\MenuBarWidget;
+use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Menu\ContextMenuBuilder;
 use Porta\Workbench\Menu\ContextMenuOpener;
@@ -19,8 +22,9 @@ use Symfony\Component\Tui\Tui;
 
 /**
  * Right-click routing, split out of {@see MouseRouter}: it resolves WHICH item
- * list the pointer is over — editor, tab strip, file tree, dock tab, git
- * changes row, git commit, status-bar branch or file — and hands it to the existing
+ * list the pointer is over — editor, tab strip, file tree, dock tab, results
+ * or debugger row, git changes row, git commit, status-bar branch or file —
+ * and hands it to the existing
  * {@see ContextMenuOpener}. No menu applies to the pointer's surface, or a
  * floating picker owns input, means a "no menu here" flash.
  *
@@ -46,6 +50,9 @@ final readonly class ContextMenuRouter
         private ContextMenuOpener $opener,
         private HoverRouter $hover,
         private StatusBarWidget $statusBar,
+        private ResultsPanelWidget $resultsPanel,
+        private DebugPanelWidget $debugPanel,
+        private ProjectPaths $paths,
     ) {}
 
     public function route(MouseEvent $mouse, ?WidgetRect $treeRect, ?WidgetRect $tabsRect, ?WidgetRect $editorRect): void
@@ -114,6 +121,12 @@ final readonly class ContextMenuRouter
             }
             $items = $this->contextItems->dockTabItems($hit['tab'], $hit['key']);
         }
+        // A results or debugger row names a file: the copy-path verbs the tree
+        // offers for it, and whatever plugins put on the file surface.
+        if (!$handled) {
+            $items = $this->dockRowItems($mouse);
+            $handled = null !== $items;
+        }
         // Whatever view owns the main area answers for its own panes. Two
         // git-shaped branches stood here, each pulling a selected row out of
         // the git router so core could build git's menu from it.
@@ -158,6 +171,32 @@ final readonly class ContextMenuRouter
         $this->opener->openAt($items, $mouse->row, $mouse->col);
 
         return true;
+    }
+
+    /**
+     * The menu of the results or debugger row under the pointer: null off
+     * those panels, and on a row that names no file — which then flashes "no
+     * menu here" like any other surface.
+     *
+     * @return list<MenuItem>|null
+     */
+    private function dockRowItems(MouseEvent $mouse): ?array
+    {
+        foreach ([$this->resultsPanel, $this->debugPanel] as $panel) {
+            $rect = $this->hit->rect($panel);
+            if (null === $rect || !$rect->contains($mouse->row, $mouse->col)) {
+                continue;
+            }
+            $path = $panel->pathAt($rect->toRelative($mouse->row, $mouse->col)['row']);
+            if (null === $path) {
+                return null;
+            }
+            $absolute = $this->paths->absolute($path);
+
+            return [...$this->treeOps->copyPathItems($absolute), ...$this->contextItems->fileItems($absolute)];
+        }
+
+        return null;
     }
 
     /** The status-bar column under the pointer, or null off the row. */

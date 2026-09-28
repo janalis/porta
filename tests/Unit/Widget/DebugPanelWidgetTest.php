@@ -109,6 +109,22 @@ final class DebugPanelWidgetTest extends TestCase
         $this->assertSame(2, Probe::get($panel, 'list')->selected());
     }
 
+    /** A frame row names the file it stopped in, for its right-click; a scope, a variable or a heading names none. */
+    public function testOnlyAFrameRowNamesAFile(): void
+    {
+        $panel = $this->panel(); // rows: Frames, #0 src/a.php, #1 src/b.php, Variables, Locals, $x, $arr
+        $panel->render(new RenderContext(80, 14));
+
+        $this->assertSame('src/a.php', $panel->pathAt(1));
+        $this->assertSame('src/b.php', $panel->pathAt(2));
+        $this->assertSame([null, null, null, null], [$panel->pathAt(0), $panel->pathAt(3), $panel->pathAt(4), $panel->pathAt(5)]);
+
+        // A frame inside PHP's internals has no file to copy the path of.
+        $panel->setFrames([['id' => 1, 'name' => 'array_map', 'path' => '', 'line' => 0]]);
+        $panel->render(new RenderContext(80, 14));
+        $this->assertNull($panel->pathAt(1));
+    }
+
     /** The app-level input hook gets first refusal, as on every focusable panel: a key it takes never moves the list. */
     public function testTheInputHookGetsFirstRefusal(): void
     {

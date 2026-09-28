@@ -34,6 +34,20 @@ trait ListPanelInteraction
     /** Activate the display row at $index (jump / expand / collapse — widget-specific). */
     abstract protected function activateRow(int $index): void;
 
+    /** The project-relative file the row at $index names, or null for a row that names none. */
+    abstract protected function rowPath(int $index): ?string;
+
+    /**
+     * The file the row under $relRow names, for its right-click menu: the one
+     * the row would open. Null past the rows or on a row that names no file.
+     */
+    public function pathAt(int $relRow): ?string
+    {
+        $index = $this->rowIndexAt($relRow);
+
+        return null === $index ? null : $this->rowPath($index);
+    }
+
     /** Scroll the list by $delta rows (mouse wheel); moves the selection, the window follows. */
     public function scrollBy(int $delta): void
     {

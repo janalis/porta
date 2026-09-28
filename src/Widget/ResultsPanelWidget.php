@@ -467,6 +467,18 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
         $this->rebuildView();
     }
 
+    #[\Override]
+    protected function rowPath(int $index): ?string
+    {
+        $row = $this->displayRows[$index] ?? null;
+        if (null === $row || $row->isDirectory) {
+            return null;
+        }
+        $path = $row->filePath ?? $this->results[$row->matchIndex]['path'] ?? '';
+
+        return '' === $path ? null : $path;
+    }
+
     /** Activate a display row: a file header collapses/expands, a match row jumps. */
     protected function activateRow(int $index): void
     {
