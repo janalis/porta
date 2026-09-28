@@ -156,6 +156,8 @@ jobs:
         run: composer coverage:src
       - name: Coverage report artifact
         if: always()
+        # A report, not a gate: a full artifact quota must not fail a green run.
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: coverage-clover
@@ -205,6 +207,8 @@ jobs:
         run: composer coverage:plugins
       - name: Shard reports artifact
         if: always()
+        # A report, not a gate: a full artifact quota must not fail a green run.
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: coverage-plugins-clover
