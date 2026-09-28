@@ -513,6 +513,32 @@ final class HelpViewerWidgetTest extends TestCase
         );
     }
 
+    /**
+     * A match after double-width text: the match's byte offsets map to columns
+     * (two per 中) and back to bytes of the styled line, so the highlight must
+     * open exactly at the match, not a column or a byte early.
+     */
+    public function testASearchMatchAfterWideGlyphsHighlightsExactlyTheMatch(): void
+    {
+        $viewer = $this->viewer();
+        $viewer->refreshPage($this->docs->path('README.md'), "中中中 needle here\n");
+        $viewer->render(new RenderContext(60, 10));
+        $lineNo = null;
+        foreach ($viewer->findLines as $i => $line) {
+            if (!\str_contains($line, 'needle')) {
+                continue;
+            }
+            $lineNo = $i;
+        }
+        $this->assertNotNull($lineNo);
+        $start = (int) \strpos($viewer->findLines[$lineNo], needle: 'needle');
+
+        $viewer->showSearchMatches([$lineNo => [['start' => $start, 'end' => $start + 6, 'current' => true]]]);
+        $row = $viewer->render(new RenderContext(60, 10))[self::HELP_HEADER_ROWS + $lineNo];
+
+        $this->assertMatchesRegularExpression('/中 (?:\e\[[0-9;:]*m)+needle(?:\e\[[0-9;:]*m)+ here/u', $row, 'styled from the n of needle to its e, nothing more');
+    }
+
     public function testRefreshPageResetsScrollTopToExactlyZero(): void
     {
         $viewer = $this->viewer();

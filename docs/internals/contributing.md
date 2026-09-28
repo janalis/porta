@@ -184,9 +184,10 @@ compiled STATICALLY — `php -n -r 'var_dump(extension_loaded("intl"));'` is sti
 true, so no ini trick reproduces it locally; it needs a PHP built without intl,
 i.e. a container.
 
-Grep `src/` for the surface and it looks trivial: `grapheme_str_split()` at
-`src/Widget/HelpViewerWidget.php:640` is the ONLY first-party call site, in
-`src/`, `plugins/` and `tests/` combined. That reading is wrong.
+Grep `src/` for the surface and it looks trivial: no first-party code in
+`src/`, `plugins/` or `tests/` calls a `grapheme_*` function (the last call,
+in `HelpViewerWidget::byteAtColumn()`, now walks `AnsiUtils::walkCells()`).
+That reading is wrong.
 **`symfony/tui` calls those functions 19 times across 9 files**, including
 `Render/CellBuffer`, `Widget/Editor/EditorDocument`, `EditorRenderer`,
 `Widget/Util/Line` and `WordNavigator` — the render and editing core every

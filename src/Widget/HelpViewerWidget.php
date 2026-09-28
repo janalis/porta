@@ -625,28 +625,11 @@ final class HelpViewerWidget extends EditorPaneWidget implements FindTarget
     private function byteAtColumn(string $line, int $col): int
     {
         $offset = 0;
-        $current = 0;
-        $len = \strlen($line);
-        while ($offset < $len) {
-            if ("\x1b" === $line[$offset] && null !== ($ansi = AnsiUtils::extractAnsiCode($line, $offset))) {
-                $offset += $ansi['length']; // zero-width: codes at the boundary attach to the left part
-                continue;
-            }
-            if ($current >= $col) {
+        foreach (AnsiUtils::walkCells($line) as $cell) {
+            if (0 < $cell['width'] && $cell['col'] >= $col) {
                 break;
             }
-            $next = \strpos($line, needle: "\x1b", offset: $offset + 1);
-            $segment = \substr($line, $offset, (false === $next ? $len : $next) - $offset);
-            $split = \grapheme_str_split($segment);
-            /** @var list<string> $graphemes */
-            $graphemes = $split ? $split : [];
-            foreach ($graphemes as $grapheme) {
-                $current += AnsiUtils::graphemeWidth($grapheme);
-                $offset += \strlen($grapheme);
-                if ($current >= $col) {
-                    break;
-                }
-            }
+            $offset += \strlen($cell['text']);
         }
 
         return $offset;
