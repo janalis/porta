@@ -15,6 +15,7 @@ use Porta\Event\ActiveBufferChanged;
 use Porta\Event\BufferOpened;
 use Porta\Event\BufferSaved;
 use Porta\Event\BufferSwitched;
+use Porta\Event\ToolsChanged;
 use Porta\I18n\Translator;
 use Porta\Plugin\Api\AbstractPlugin;
 use Porta\Plugin\Api\DisposablePlugin;
@@ -206,6 +207,44 @@ final class PluginManagerTest extends TestCase
         $labels = \array_column($registry->paletteCommands(), 'label');
         $this->assertCount(1, \array_keys($labels, 'Say Hi Again', true));
         $this->assertNotContains('Say Hi', $labels, 'no stale duplicate came back');
+    }
+
+    public function testToolsCommitInLoadOrderLeaveOnDeactivateAndAnnounceOnlyALiveChange(): void
+    {
+        $events = new EventDispatcher();
+        $announced = 0;
+        $events->addListener(ToolsChanged::class, static function () use (&$announced): void {
+            ++$announced;
+        });
+        $manager = new PluginManager($events, new PluginSettings('/p', []));
+        $tool = static fn (PluginApi $api, string $id) => $api->registerTool($id, 'Tool '.$id, ['type' => 'object'], static fn (array $arguments): string => $id);
+
+        // Boot: committed before the runtime is wired, so nothing is announced.
+        $git = new PluginApi('git', $manager, '/p', new PluginSettings('/p', []));
+        $tool($git, id: 'status');
+        $manager->commit($git);
+        $quiet = new PluginApi('quiet', $manager, '/p', new PluginSettings('/p', []));
+        $manager->commit($quiet);
+        $this->assertSame(0, $announced, 'nothing could have read the set yet');
+        $this->assertSame(['git:status'], \array_map(static fn (array $t): string => $t['plugin'].':'.$t['id'], $manager->tools()));
+
+        // Live: a plugin that offers tools arriving, and one that offers none.
+        $manager->wireRuntime(Probe::get($this->wiredManager(new EventDispatcher()), 'runtime'));
+        $review = new PluginApi('review', $manager, '/p', new PluginSettings('/p', []));
+        $tool($review, id: 'threads');
+        $tool($review, id: 'reply');
+        $manager->commit($review);
+        $this->assertSame(1, $announced);
+        $manager->commit(new PluginApi('silent', $manager, '/p', new PluginSettings('/p', [])));
+        $this->assertSame(1, $announced, 'a plugin with no tools changes nothing');
+        $this->assertSame(['git:status', 'review:threads', 'review:reply'], \array_map(static fn (array $t): string => $t['plugin'].':'.$t['id'], $manager->tools()));
+
+        $registry = new CommandRegistry();
+        $manager->deactivate('git', $registry);
+        $this->assertSame(2, $announced);
+        $this->assertSame(['review:threads', 'review:reply'], \array_map(static fn (array $t): string => $t['plugin'].':'.$t['id'], $manager->tools()), 'only the leaving plugin\'s tools went');
+        $manager->deactivate('quiet', $registry);
+        $this->assertSame(2, $announced, 'a plugin with no tools leaving changes nothing');
     }
 
     public function testADisposablePluginIsTornDownExactlyOnceOnDeactivate(): void

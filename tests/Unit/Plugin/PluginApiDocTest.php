@@ -97,6 +97,7 @@ final class PluginApiDocTest extends TestCase
                 'bufferedSettings',
                 'bufferedStatusSegments',
                 'bufferedTokenSpans',
+                'bufferedTools',
                 'bufferedViewers',
                 'bufferedViews',
                 'pluginName',

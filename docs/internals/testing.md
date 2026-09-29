@@ -77,6 +77,7 @@ Roughly 700 duplicated lines once collapsed onto these.
 | `TestTui::create(cols, rows)` | the three-arg Tui rig |
 | `lsp-stub.php` | `sendMessage` / `readFrames` for stub servers |
 | `DrainsPeer` | `drainPeer()`: read a socket pair's far end from a loop watcher — polling it inside `await()` moves one 8 KB macOS socket buffer per turn |
+| `CallsTools` | `callTool($api, $id, $args)`: run a `registerTool()` handler in its own fiber, as the mcp server does, pumping the loop until it answers; a throw is rethrown |
 
 `await()`'s budget is real seconds, measured with `hrtime()`. It used to add
 0.02 per turn and call that elapsed time, so "timed out after 10.0s" could be a

@@ -33,6 +33,7 @@ final class PluginObservableContractTest extends TestCase
         'MergeToolLaunched',
         'QuitRequested',
         'ThemeChanged',
+        'ToolsChanged',
         'WorkingTreeChanged',
     ];
 

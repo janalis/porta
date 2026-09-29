@@ -431,6 +431,10 @@ final class PluginApiTest extends TestCase
             static fn () => $api->replaceDocument('x'),
             static fn (): string => $api->trans('x'),
             static fn () => $api->prompt('t', '', static function (string $v): void {}),
+            $api->openFiles(...),
+            static fn (): ?string => $api->bufferText('/x'),
+            $api->diagnostics(...),
+            $api->tools(...),
         ];
         foreach ($actions as $i => $action) {
             try {
@@ -522,6 +526,76 @@ final class PluginApiTest extends TestCase
 
         $api->openFile('/p/b.php');
         $this->assertSame([['path' => '/p/b.php', 'focus' => true]], $this->files->opened);
+    }
+
+    public function testRegisterToolBuffersAndValidates(): void
+    {
+        $api = $this->api();
+        $handler = static fn (array $arguments): string => 'ok';
+        $api->registerTool('status', 'The status', ['type' => 'object'], $handler);
+
+        $this->assertSame(
+            [['plugin' => 'demo', 'id' => 'status', 'description' => 'The status', 'inputSchema' => ['type' => 'object'], 'handler' => $handler]],
+            $api->bufferedTools(),
+        );
+        $this->assertSame([], $api->tools(), 'buffered, not yet committed');
+
+        $refusals = [
+            'Invalid tool id "bad:id"' => static fn () => $api->registerTool('bad:id', 'x', ['type' => 'object'], $handler),
+            'Duplicate tool id "status"' => static fn () => $api->registerTool('status', 'x', ['type' => 'object'], $handler),
+            'Tool "blank" needs a description' => static fn () => $api->registerTool('blank', ' ', ['type' => 'object'], $handler),
+            'Tool "untyped" needs an object input schema' => static fn () => $api->registerTool('untyped', 'x', [], $handler),
+            'Tool "listy" needs an object input schema' => static fn () => $api->registerTool('listy', 'x', ['type' => 'array'], $handler),
+        ];
+        foreach ($refusals as $says => $register) {
+            try {
+                $register();
+                $this->fail($says);
+            } catch (PluginException $e) {
+                $this->assertStringStartsWith($says, $e->getMessage());
+            }
+        }
+        $this->assertCount(1, $api->bufferedTools(), 'a refused tool leaves nothing behind');
+    }
+
+    public function testOpenFilesBufferTextAndDiagnosticsReadEveryOpenBuffer(): void
+    {
+        $api = $this->api();
+        $this->assertSame([], $api->openFiles());
+        $this->assertSame([], $api->diagnostics());
+
+        $a = $this->buffers->open('/p/a.php', "one\n");
+        $b = $this->buffers->open('/p/b.php', "two\n");
+        $this->buffers->openPane('/p/c.png', 'image', null);
+        $b->document->insert('!');
+        $a->diagnostics = [
+            3 => [
+                ['severity' => DiagnosticSeverity::Warning, 'message' => 'Unused', 'col' => 4],
+                ['severity' => DiagnosticSeverity::Error, 'message' => 'Undefined', 'col' => 0, 'code' => 7, 'source' => 'phpstan'],
+            ],
+        ];
+        $b->diagnostics = [0 => [['severity' => DiagnosticSeverity::Hint, 'message' => 'Hint', 'col' => 1, 'code' => 'rule.x']]];
+
+        $this->assertSame(
+            [['path' => '/p/a.php', 'dirty' => false], ['path' => '/p/b.php', 'dirty' => true]],
+            $api->openFiles(),
+            'the viewer tab has no text and is left out',
+        );
+        $this->assertSame("one\n", $api->bufferText('/p/a.php'));
+        $this->assertSame("!two\n", $api->bufferText('/p/b.php'), 'the unsaved edit, not the disk');
+        $this->assertNull($api->bufferText('/p/c.png'), 'a viewer has no text');
+        $this->assertNull($api->bufferText('/p/nope.php'));
+
+        $this->assertSame(
+            [
+                ['path' => '/p/a.php', 'line' => 3, 'column' => 4, 'severity' => 2, 'message' => 'Unused'],
+                ['path' => '/p/a.php', 'line' => 3, 'column' => 0, 'severity' => 1, 'message' => 'Undefined', 'source' => 'phpstan', 'code' => '7'],
+                ['path' => '/p/b.php', 'line' => 0, 'column' => 1, 'severity' => 4, 'message' => 'Hint', 'code' => 'rule.x'],
+            ],
+            $api->diagnostics(),
+        );
+        $this->assertSame(['/p/b.php'], \array_column($api->diagnostics('/p/b.php'), 'path'));
+        $this->assertSame([], $api->diagnostics('/p/nope.php'));
     }
 
     public function testSetChangeMarksNormalisesAndReachesTheSink(): void

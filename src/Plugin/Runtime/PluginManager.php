@@ -13,6 +13,7 @@ use Porta\Debug\DebugAdapterProvider;
 use Porta\Editor\EditorPaneSource;
 use Porta\Editor\ViewerProviderSource;
 use Porta\Event\PluginObservable;
+use Porta\Event\ToolsChanged;
 use Porta\Highlight\CallableHighlightProvider;
 use Porta\Highlight\SyntaxHighlightProvider;
 use Porta\Highlight\SyntaxHighlightProviderSource;
@@ -93,6 +94,8 @@ final class PluginManager implements
     private array $statusSegments = [];
     /** @var list<array{plugin: string, languageId: string, resolve: \Closure(): (list<string>|null)}> committed debug adapters, in load order */
     private array $debugAdapters = [];
+    /** @var list<array{plugin: string, id: string, description: string, inputSchema: array<string, mixed>, handler: \Closure(array<string, mixed>): (string|array<array-key, mixed>)}> committed tools, in load order */
+    private array $tools = [];
     /** @var list<ConfigWarning> */
     public private(set) array $warnings = [];
 
@@ -230,7 +233,16 @@ final class PluginManager implements
         foreach ($api->bufferedDebugAdapters() as $adapter) {
             $this->debugAdapters[] = $adapter;
         }
+        $tools = $api->bufferedTools();
+        foreach ($tools as $tool) {
+            $this->tools[] = $tool;
+        }
         $this->settings->registerFor($name, $api->bufferedSettings());
+        // A live enable only: at boot the runtime is not wired yet, and nothing
+        // could have read the set before every plugin committed.
+        if ([] !== $tools && null !== $this->runtime) {
+            $this->events->dispatch(new ToolsChanged());
+        }
     }
 
     /**
@@ -350,6 +362,8 @@ final class PluginManager implements
         $this->listTools = \array_values(\array_filter($this->listTools, static fn (array $tool): bool => $name !== $tool['plugin']));
         $this->statusSegments = \array_values(\array_filter($this->statusSegments, static fn (array $segment): bool => $name !== $segment['plugin']));
         $this->debugAdapters = \array_values(\array_filter($this->debugAdapters, static fn (array $adapter): bool => $name !== $adapter['plugin']));
+        $toolCount = \count($this->tools);
+        $this->tools = \array_values(\array_filter($this->tools, static fn (array $tool): bool => $name !== $tool['plugin']));
         $this->registered = \count($this->commands);
 
         foreach (\array_keys($this->reported) as $channel) {
@@ -361,6 +375,20 @@ final class PluginManager implements
         }
         unset($this->pluginListeners[$name]);
         $this->settings->removeFor($name);
+        if (\count($this->tools) !== $toolCount) {
+            $this->events->dispatch(new ToolsChanged());
+        }
+    }
+
+    /**
+     * The committed tools, in load order — what {@see PluginApi::tools()}
+     * hands a plugin that serves them.
+     *
+     * @return list<array{plugin: string, id: string, description: string, inputSchema: array<string, mixed>, handler: \Closure(array<string, mixed>): (string|array<array-key, mixed>)}>
+     */
+    public function tools(): array
+    {
+        return $this->tools;
     }
 
     public function addWarning(ConfigWarning $warning): void

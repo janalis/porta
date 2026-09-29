@@ -303,6 +303,7 @@ never firing.
 | `DiffToolLaunched` | `string $left`, `string $right` — Porta was launched as git's difftool (`porta --diff`), right after `IdeReady`; either file may be a temp blob outside the project. The bundled git plugin answers with its view |
 | `MergeToolLaunched` | `string $local`, `string $remote`, `string $base`, `string $merged` — launched as git's mergetool (`porta --merge`); `$merged` is the file to resolve. Core sets the exit code from what is left in it at quit |
 | `QuitRequested` | — a COMMAND you may `emit()`: quit the way Ctrl+Q does (unsaved buffers still ask). The git plugin ends a difftool session with it |
+| `ToolsChanged` | — the tools plugins offer with `registerTool()` changed under a live enable or disable. Never at boot. Whatever serves them re-reads `tools()` |
 | `FileRewritten` | `string $path`, `string $previousText` — a refactoring rewrote a file that had no open buffer. The payload is what the write REPLACED: the new content is on disk already, and the old exists nowhere else. Not a save, and no `BufferSaved` fires for it |
 
 Four rules govern the list, and they are enforced by a test rather than by
@@ -323,8 +324,8 @@ Register during `activate()`. A listener added later — from a command handler,
 say — throws, because registrations are committed atomically when your plugin
 loads and one arriving afterwards would silently never fire.
 
-Plugins **listen**; they never dispatch. There is no way to put an event on the
-bus from a plugin, and that is deliberate.
+Only the events in the table can be announced, for the reason they are the
+only ones you can hear: the rest of `Porta\Event` is internal.
 
 ## Installing, removing, disabling
 
@@ -654,6 +655,40 @@ must not mark the buffer modified). If your tool is asynchronous, check
 your subprocess ran, and the buffer you read is not necessarily the one in front
 of them.
 
+### Offering a tool to agents
+
+```php
+$api->registerTool(
+    'status',
+    'The working tree as `git status --porcelain` prints it',
+    ['type' => 'object', 'properties' => new \stdClass()],
+    static fn (array $args): string => $git->status(),
+);
+```
+
+A tool is a verb something OUTSIDE the IDE may call — an agent connected
+through the bundled **mcp** plugin, which serves every registered tool over the
+Model Context Protocol ([Agents](agents.md)). Core only keeps the list, so your plugin offers tools
+without requiring mcp; they are served whenever it is enabled.
+
+- The schema is the JSON Schema of the arguments, and it must be an `object`.
+  The description is all a caller reads before calling, so say what comes back.
+- Return a string, or an array to be sent as JSON. **Throw** to answer with an
+  error: the message goes to the caller, and nothing is flashed in the IDE.
+- The handler runs in its own fiber, so it may wait on a subprocess or
+  anything else that answers through a callback, and the IDE paints on
+  meanwhile. `Porta\Support\FiberWait::for()` does the waiting — and is safe
+  when the callback fires at once, which a bare suspension is not:
+
+  ```php
+  [$code, $out] = FiberWait::for(fn (\Closure $done) => $runner->run($args, fn ($c, $o) => $done([$c, $o])));
+  ```
+- A tool that changes things should change what the user can undo — a buffer
+  edit, not a file write.
+
+A plugin that serves tools reads them with `tools()` and re-reads on
+`ToolsChanged`.
+
 ### Asking the user something
 
 ```php
@@ -710,6 +745,7 @@ Registration (during `activate()`):
 | `registerStatusSegment(\Closure $segment)` | Contribute ambient state to the status bar; pulled once per render. Return a string to share the plugins' cell, or a `StatusCell` to claim one with its own tone, right-click menu and tooltip |
 | `registerView(string $id, \Closure $factory)` | Contribute a **full-screen view** — a workspace takeover with its own sidebar, drag separator and content pane, opened with `openView($id)`. `$factory(ViewServices $s): ContributedView` runs after plugins commit, with the region already minted for `$id` — once per activation, so a disable→re-enable runs it again against a FRESH region |
 | `registerMenu(string $title, string $after, array $items, ?\Closure $visible = null, string $viewId = '', array $viewSafe = [])` | Contribute a **top-level menu** rather than an entry in the trailing Plugins one. `$items` are `'i:<command-id>'` and separators; `$after` names the core menu it follows; `$viewSafe` lists the ids that stay enabled while `$viewId`'s view owns the main area — a menu without one greys out its own items the moment its view opens |
+| `registerTool(string $id, string $description, array $inputSchema, \Closure $handler)` | Offer a verb to agents outside the IDE — see [Offering a tool to agents](#offering-a-tool-to-agents) |
 | `registerDebugAdapter(string $languageId, \Closure $resolveCommand)` | Supply a DAP adapter's argv for a language (consulted below `.porta.json`) |
 | `registerLanguageServer(string $languageId, string $name, \Closure $resolveCommand, ?\Closure $initializationOptions = null, ServerRole $role = ServerRole::Primary)` | Provide a language server for a language: `$resolveCommand` returns the launch argv (null = binary missing, and the language falls to the next provider), and the optional `$initializationOptions` closure returns the LSP `initializationOptions` for the initialize handshake. Both are re-resolved lazily on every LSP (re)configure, so they may read this plugin's live settings. `$role` decides what happens when several plugins claim one language: the first `Primary` wins and later ones are dropped, while a `Supplementary` one runs **beside** it and is promoted to primary when nothing else claims the language. A supplementary server gets the whole document lifecycle, its diagnostics are kept apart from the primary's rather than overwriting them, and its **completion items, code actions and code lenses are merged into the primary's** — with the follow-up round trips (`completionItem/resolve`, `codeAction/resolve`, `workspace/executeCommand`) routed back to whichever server offered the thing. Everything that picks a single answer — go-to-definition, rename, formatting, hover, semantic tokens — still asks the primary only. A server is asked for a verb only if it advertises the matching capability. Plugin servers sit below the user's `.porta.json`/`$PORTA_LSP`/`--lsp` config, and a `{languageId: command}` config entry replaces that language's list outright |
 | `adoptCommand(string $id, \Closure $handler)` | Implement a core command whose id core has vacated, keeping its label, keys and menu position. Bundled plugins only in practice — the id must be marked adoptable |
@@ -751,6 +787,10 @@ Actions (from handlers/hooks):
 | `selectedFiles(): list<string>` | The files selected in the project tree, in tree order, directories left out. One is the ordinary case — the tree always has its cursor row selected — so a command that acts on a set checks the count and says what it wanted |
 | `documentText(): ?string` | Full text of the focused buffer |
 | `caretPosition(): ?array` | `['line' => …, 'column' => …]` (0-based) |
+| `openFiles(): list<array>` | Every open TEXT tab in tab order, `['path' => absolute, 'dirty' => bool]`; viewer tabs are left out |
+| `bufferText(string $path): ?string` | An open buffer's text, unsaved edits included, by absolute path; null when no text tab has it open |
+| `diagnostics(?string $path = null): list<array>` | What every language server and analyser said about the open buffers (or one of them), merged as the Problems panel shows it: `path`, `line`, `column` (0-based), `severity` (1 = error … 4 = hint), `message`, and `source`/`code` when known. A file with no open buffer has none |
+| `tools(): list<array>` | Every tool every running plugin registered, in load order: `plugin`, `id`, `description`, `inputSchema`, `handler`. For a plugin that serves them; re-read on `ToolsChanged` |
 | `insertAtCaret(string $text)` | Insert at the caret |
 | `openFile(string $path)` | Open a file in the editor |
 | `jumpTo(int $line, int $column = 0)` | Move the caret (0-based) |

@@ -212,6 +212,12 @@ final class ArchitectureCheckCommand extends Command
         'Lsp>Ui',
         'Lsp>Widget',
         'Lsp>Workbench',
+        // The mcp plugin's own code (plugins/mcp/src): the socket's writer
+        // (Support), the tool seam it serves (Plugin), and the toast severity
+        // its notify tool picks (Overlay).
+        'McpPlugin>Overlay',
+        'McpPlugin>Plugin',
+        'McpPlugin>Support',
         'Onboarding>Config',
         'Onboarding>Container',
         'Onboarding>Highlight',

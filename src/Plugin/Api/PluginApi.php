@@ -123,6 +123,10 @@ final class PluginApi
     private readonly PluginBuffer $statusSegments;
     /** @var PluginBuffer<array{plugin: string, languageId: string, resolve: \Closure(): (list<string>|null)}> */
     private readonly PluginBuffer $debugAdapters;
+    /** @var PluginBuffer<array{plugin: string, id: string, description: string, inputSchema: array<string, mixed>, handler: \Closure(array<string, mixed>): (string|array<array-key, mixed>)}> */
+    private readonly PluginBuffer $tools;
+    /** @var array<string, true> bare tool ids, for duplicate detection */
+    private array $toolIds = [];
     /** @var array<string, true> bare ids, so showList() can reject one this plugin never registered */
     private array $listToolIds = [];
     /** @var array<string, true> ids taken with adoptCommand() — registered BARE, so their menu specs are too */
@@ -148,6 +152,7 @@ final class PluginApi
         $this->settingHooks = new PluginBuffer();
         $this->statusSegments = new PluginBuffer();
         $this->debugAdapters = new PluginBuffer();
+        $this->tools = new PluginBuffer();
     }
 
     /**
@@ -591,6 +596,54 @@ final class PluginApi
             throw new PluginException(\sprintf('Invalid language id "%s" (expected /^[a-z0-9][a-z0-9_-]*$/i)', $languageId));
         }
         $this->debugAdapters->add(['plugin' => $this->pluginName, 'languageId' => $languageId, 'resolve' => $resolveCommand]);
+    }
+
+    /**
+     * Offer a TOOL: a verb a program outside the IDE may call — an agent
+     * connected through the bundled mcp plugin, today. Core only keeps the
+     * list; whatever serves it reads {@see tools()}, so a plugin contributes
+     * without depending on, or even knowing about, who calls it.
+     *
+     * - `$inputSchema` is the JSON Schema of the arguments, an `object` one:
+     *   `['type' => 'object', 'properties' => [...], 'required' => [...]]`.
+     * - `$handler` receives the decoded arguments and returns the answer: a
+     *   string as it is, an array as JSON. A throw is the caller's error
+     *   message, never the IDE's crash.
+     * - The handler runs in its OWN fiber, so it may wait: suspend on
+     *   `Revolt\EventLoop::getSuspension()` and resume it from a subprocess
+     *   callback, and the IDE keeps painting meanwhile.
+     *
+     * It is called with the user's IDE in whatever state it is in, by
+     * something the user started — keep a tool that CHANGES things to what
+     * the user could undo.
+     *
+     * @param array<string, mixed>                                              $inputSchema
+     * @param \Closure(array<string, mixed>): (string|array<array-key, mixed>) $handler
+     *
+     * @throws PluginException
+     */
+    public function registerTool(string $id, string $description, array $inputSchema, \Closure $handler): void
+    {
+        if (1 !== \preg_match(self::ID_PATTERN, $id)) {
+            throw new PluginException(\sprintf('Invalid tool id "%s" (expected /^[a-z0-9][a-z0-9_-]*$/i)', $id));
+        }
+        if (\array_key_exists($id, $this->toolIds)) {
+            throw new PluginException(\sprintf('Duplicate tool id "%s"', $id));
+        }
+        if ('' === \trim($description)) {
+            throw new PluginException(\sprintf('Tool "%s" needs a description — it is all the caller reads before calling it', $id));
+        }
+        if ('object' !== ($inputSchema['type'] ?? null)) {
+            throw new PluginException(\sprintf('Tool "%s" needs an object input schema (["type" => "object", …])', $id));
+        }
+        $this->toolIds[$id] = true;
+        $this->tools->add([
+            'plugin' => $this->pluginName,
+            'id' => $id,
+            'description' => $description,
+            'inputSchema' => $inputSchema,
+            'handler' => $handler,
+        ]);
     }
 
     /**
@@ -1214,6 +1267,97 @@ final class PluginApi
     }
 
     /**
+     * Every open TEXT tab, in tab order: its absolute path and whether it has
+     * edits not yet saved. Viewer tabs (an image, a graph) are left out — they
+     * have no text for {@see bufferText()} to read.
+     *
+     * @return list<array{path: string, dirty: bool}>
+     */
+    public function openFiles(): array
+    {
+        $files = [];
+        foreach ($this->manager->runtime()->buffers->all() as $buffer) {
+            if ($buffer->isViewer()) {
+                continue;
+            }
+            $files[] = ['path' => $buffer->path, 'dirty' => $buffer->isDirty()];
+        }
+
+        return $files;
+    }
+
+    /**
+     * An open buffer's text as it is in the editor — unsaved edits included —
+     * by absolute path; null when no text tab has that file open. The
+     * active-tab-only {@see documentText()} is this for {@see activeFile()}.
+     */
+    public function bufferText(string $path): ?string
+    {
+        $buffer = $this->manager->runtime()->buffers->get($path);
+
+        return null === $buffer || $buffer->isViewer() ? null : $buffer->document->getText();
+    }
+
+    /**
+     * What every source — language servers and analyser plugins alike — has
+     * said about the OPEN buffers, merged the way the Problems panel shows it.
+     * One file with `$path`, every open one without. A file with no open
+     * buffer has none to read: diagnostics live on buffers.
+     *
+     * Lines and columns are 0-based; `severity` is the LSP scale, 1 = error
+     * to 4 = hint.
+     *
+     * @return list<array{path: string, line: int, column: int, severity: int, message: string, source?: string, code?: string}>
+     */
+    public function diagnostics(?string $path = null): array
+    {
+        $rows = [];
+        foreach ($this->manager->runtime()->buffers->all() as $buffer) {
+            if (null !== $path && $path !== $buffer->path) {
+                continue;
+            }
+            foreach ($buffer->diagnostics as $line => $diagnostics) {
+                foreach ($diagnostics as $diagnostic) {
+                    $row = [
+                        'path' => $buffer->path,
+                        'line' => $line,
+                        'column' => $diagnostic['col'],
+                        'severity' => $diagnostic['severity']->value,
+                        'message' => $diagnostic['message'],
+                    ];
+                    if (\array_key_exists('source', $diagnostic)) {
+                        $row['source'] = $diagnostic['source'];
+                    }
+                    if (\array_key_exists('code', $diagnostic)) {
+                        $row['code'] = (string) $diagnostic['code'];
+                    }
+                    $rows[] = $row;
+                }
+            }
+        }
+
+        return $rows;
+    }
+
+    /**
+     * Every tool every running plugin registered with {@see registerTool()},
+     * in load order — the read a plugin that SERVES tools needs. Read it when
+     * it is needed rather than once: {@see \Porta\Event\ToolsChanged} fires
+     * when the set moves under a live enable or disable.
+     *
+     * An action method: during `activate()` the set is still half-built, so it
+     * throws there.
+     *
+     * @return list<array{plugin: string, id: string, description: string, inputSchema: array<string, mixed>, handler: \Closure(array<string, mixed>): (string|array<array-key, mixed>)}>
+     */
+    public function tools(): array
+    {
+        $this->manager->runtime(); // the not-during-activate() gate
+
+        return $this->manager->tools();
+    }
+
+    /**
      * Replace the active text buffer's WHOLE content — the verb behind "apply
      * what my tool produced": a formatter's output, a restored snapshot.
      *
@@ -1639,5 +1783,11 @@ final class PluginApi
     public function bufferedDebugAdapters(): array
     {
         return $this->debugAdapters->all();
+    }
+
+    /** @return list<array{plugin: string, id: string, description: string, inputSchema: array<string, mixed>, handler: \Closure(array<string, mixed>): (string|array<array-key, mixed>)}> */
+    public function bufferedTools(): array
+    {
+        return $this->tools->all();
     }
 }
