@@ -758,11 +758,23 @@ still restore; only the comparison is unavailable, and it says so.
 ## Image viewer
 
 Opening a `png`, `jpg`, `jpeg`, `gif`, `webp` or `bmp` file shows it as an
-inline image tab (truecolor half-block rendering) instead of text. Zoom
+inline image tab instead of text. Zoom
 with `=`/`-`, `0`/`f` fit, `1` actual size, or `Ctrl+wheel` anchored at the
 pointer (12.5%–800%); pan with the arrows or the wheel. Shrinking averages
 the pixels it covers, so a downscaled image keeps its thin lines instead of
 shimmering; magnifying stays pixel-crisp.
+
+**In a terminal that can draw pixels, the terminal draws them.** Porta asks at
+startup (the kitty graphics protocol — kitty and Ghostty, cmux included), and
+where the answer is yes the image and graph viewers hand the terminal the
+visible part of the picture at the screen's own resolution: one cell shows
+hundreds of pixels instead of two. Zoom percentages then count real screen
+pixels — `1` is one image pixel per screen pixel, and the zoom goes well below
+fit as well as above it. Everywhere else, and until the terminal has answered,
+the picture is drawn in truecolor half-blocks (`▀`, two pixels a cell). WezTerm,
+Konsole and tmux answer the question but cannot show the result, so they get
+half-blocks without being asked. `PORTA_GRAPHICS=kitty` forces the pixels on,
+`PORTA_GRAPHICS=off` turns them off.
 
 `.svg` files open here too, rasterized by an external converter — the
 image-viewer plugin's `svgConverter` setting if you set one, otherwise `rsvg-convert`, `magick` or

@@ -115,7 +115,7 @@ return new class('graph-viewer') extends AbstractPlugin {
             // being read per spawn).
             // @mago-expect lint:prefer-arrow-function -- the body ASSIGNS to $this->widget; an arrow function hides a side effect inside an expression
             function (PaneServices $pane) use ($dot, $plantUml, $renderMode, $findNode): EditorPaneWidget {
-                return $this->widget = new GraphViewerWidget($dot, $pane->translator, $plantUml, new ImageDecoder(), $pane->scheduler, $renderMode, $pane->styles, $findNode);
+                return $this->widget = new GraphViewerWidget($dot, $pane->translator, $plantUml, new ImageDecoder(), $pane->scheduler, $renderMode, $pane->styles, $findNode, $pane->graphics);
             },
             // The pane's payload is the DOT (or PlantUML) source. The size guard
             // is the plugin's own: core has no opinion about how big a diagram

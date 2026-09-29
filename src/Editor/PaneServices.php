@@ -6,6 +6,7 @@ namespace Porta\Editor;
 
 use Porta\I18n\Translator;
 use Porta\Support\Scheduler;
+use Porta\Ui\Graphics\TerminalGraphics;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\ViewerTabHandler;
 
@@ -17,7 +18,7 @@ use Porta\Widget\ViewerTabHandler;
  * A pane is therefore hand-constructed, exactly as
  * {@see \Porta\Layout\WorkspaceLayout} hand-builds its containers.
  *
- * The four members are deliberately the whole list:
+ * The five members are deliberately the whole list:
  *
  * - `$styles` is a HOLDER whose contents a theme switch replaces in place, so a
  *   pane that reads it per render follows the theme with nothing to subscribe to;
@@ -26,7 +27,10 @@ use Porta\Widget\ViewerTabHandler;
  *   (the seam the fake in tests replaces);
  * - `$tabs` is the five-method {@see ViewerTabHandler} — tab cycling, close,
  *   go-to-file, save-all and the view-changed ping — re-bound because the code
- *   editor is detached while a pane holds the slot.
+ *   editor is detached while a pane holds the slot;
+ * - `$graphics` because a pane that shows pixels can draw them at the terminal's
+ *   own resolution when it has one, and only core can ask the terminal (the
+ *   image and graph viewers both do).
  *
  * Growing this DTO is how "my pane needs one more thing from core" becomes
  * visible in review. It should stay hard to add to.
@@ -38,5 +42,6 @@ final readonly class PaneServices
         public Translator $translator,
         public Scheduler $scheduler,
         public ViewerTabHandler $tabs,
+        public TerminalGraphics $graphics,
     ) {}
 }

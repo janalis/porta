@@ -8,6 +8,7 @@ use Porta\I18n\PaneReorder;
 use Porta\Support\Clocks;
 use Porta\Support\PerfCollector;
 use Porta\Support\Scheduler;
+use Porta\Ui\Graphics\KittyPlaceholders;
 use Psr\Clock\ClockInterface;
 use Revolt\EventLoop;
 use Symfony\Component\DependencyInjection\Attribute\AsAlias;
@@ -534,7 +535,10 @@ final class BidiTui extends Tui implements FrameHooks
         if (null !== $this->frameSink) {
             ($this->frameSink)($lines);
         }
-        $screenWriter->writeFrame(new ArrayLineBuffer($lines));
+        // Last of all, after every splice and measurement: an image's cells
+        // are painted as one-column stand-ins and only become real kitty
+        // placeholders here ({@see KittyPlaceholders} says why).
+        $screenWriter->writeFrame(new ArrayLineBuffer(\array_map(KittyPlaceholders::expand(...), $lines)));
         $t2 = null !== $clock ? Clocks::seconds($clock) : 0.0;
 
         $this->framePainted($t1 - $t0, $t2 - $t1b, $t1b - $t1);

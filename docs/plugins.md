@@ -478,7 +478,9 @@ $api->registerPane(
   contents in place, so a pane that reads it per render follows along), the
   `Translator`, a `Scheduler` for debouncing expensive re-renders, and the
   `ViewerTabHandler` your pane calls for tab cycling, close, go-to-file and the
-  "my view moved" ping that refreshes the status bar. That is the whole list —
+  "my view moved" ping that refreshes the status bar, and `TerminalGraphics`:
+  whether the terminal draws real pixels, and the channel that sends them
+  (`Porta\ImageViewer\PixelPlacement` is the bundled viewers' use of it). That is the whole list —
   a pane is hand-built, because a plugin class cannot be a container service.
 - **The loader** runs on every open of a claimed path and returns whatever your
   pane understands — decoded pixels, source text, a parsed model. The buffer

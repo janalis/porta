@@ -44,6 +44,7 @@ use Porta\Support\FreezeWatchdog;
 use Porta\Support\PerfCollector;
 use Porta\Support\RevoltScheduler;
 use Porta\Ui\BidiTui;
+use Porta\Ui\Graphics\TerminalGraphics;
 use Porta\Ui\NonBlockingTerminal;
 use Porta\Ui\TerminalBidi;
 use Porta\Ui\TerminalRestorer;
@@ -88,6 +89,7 @@ final class Ide
     private Notifier $notifier;
     private FreezeWatchdog $watchdog;
     private readonly PerfCollector $perf;
+    private readonly TerminalGraphics $graphics;
     private readonly EditorArea $editorArea;
     private readonly TerminalStateRefresher $terminalRefresher;
     private readonly RunController $run;
@@ -294,6 +296,10 @@ final class Ide
             }
         });
         $this->tui->addListener($this->perf->countInput(...), priority: 1000);
+        // Ahead of the counter and the dispatcher: the graphics probe's
+        // replies arrive as input, and must not count as, or act as, keys.
+        $this->graphics = $this->service(TerminalGraphics::class);
+        $this->tui->addListener($this->graphics->onInput(...), priority: 2000);
         // Last: hand the plugin handlers their live runtime seam and flash the
         // config/plugin load warnings, once every service they reach exists.
         $this->service(StartupWiring::class)->wire();
@@ -395,6 +401,12 @@ final class Ide
         // the terminal-state refresher keeps its own tick-counting 1s cadence.
         $watcher = EventLoop::repeat(0.25, $this->bufferService->pollFilesystemSlice(...));
         $refresher = EventLoop::repeat(1.0, $this->terminalRefresher->tick(...));
+        // Deferred, so it runs once tui->run() has started the terminal: the
+        // answers come back as INPUT, which needs raw mode and the stdin
+        // watcher. A pane paints half-blocks until they have arrived.
+        $graphicsProbe = EventLoop::defer(function (): void {
+            $this->graphics->probe(\getenv());
+        });
 
         // Loop-stall detector: evidence for "the app froze" reports lands in
         // .porta/freeze.log (drift lines + a backtrace on a hard hang).
@@ -505,6 +517,7 @@ final class Ide
             $this->perf->stop();
             EventLoop::cancel($watcher);
             EventLoop::cancel($refresher);
+            EventLoop::cancel($graphicsProbe);
             foreach ($signals as $signal) {
                 EventLoop::cancel($signal);
             }
@@ -513,6 +526,8 @@ final class Ide
             }
             // Disable mouse reporting, then leave the alternate screen (restoring
             // the pre-launch terminal). Guaranteed even if startup above threw.
+            // Images live in the terminal, not in the alternate screen: free them.
+            $this->graphics->release();
             $this->tui->getTerminal()->write(TerminalRestorer::RESTORE);
             $restorer->disarm();
             $this->sessionRestorer->save();

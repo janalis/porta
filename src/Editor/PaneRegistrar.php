@@ -7,6 +7,7 @@ namespace Porta\Editor;
 use Porta\Container\AsIdeService;
 use Porta\I18n\Translator;
 use Porta\Support\Scheduler;
+use Porta\Ui\Graphics\TerminalGraphics;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\EditorPaneWidget;
 use Porta\Widget\ViewerTabHandler;
@@ -35,6 +36,7 @@ final readonly class PaneRegistrar
         private Translator $translator,
         private Scheduler $scheduler,
         private ViewerTabHandler $tabs,
+        private TerminalGraphics $graphics,
     ) {}
 
     /**
@@ -85,7 +87,7 @@ final readonly class PaneRegistrar
     /** @param array{plugin: string, id: string, pane: \Closure, load: \Closure} $registration */
     private function registerOne(array $registration): void
     {
-        $services = new PaneServices($this->styles, $this->translator, $this->scheduler, $this->tabs);
+        $services = new PaneServices($this->styles, $this->translator, $this->scheduler, $this->tabs, $this->graphics);
         try {
             /** @var mixed $pane the factory is a bare Closure at the boundary; what it returns is checked below */
             $pane = $registration['pane']($services);

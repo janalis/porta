@@ -15,6 +15,7 @@ use Porta\I18n\Translator;
 use Porta\ImageViewer\HalfBlockRasterizer;
 use Porta\ImageViewer\ImageData;
 use Porta\ImageViewer\ImageDecoder;
+use Porta\ImageViewer\PixelPlacement;
 use Porta\ImageViewer\ScaledSource;
 use Porta\ImageViewer\ZoomPanModel;
 use Porta\ImageViewer\ZoomPanPane;
@@ -23,6 +24,7 @@ use Porta\Support\RevoltScheduler;
 use Porta\Support\Scheduler;
 use Porta\Support\Text;
 use Porta\Ui\Glyphs;
+use Porta\Ui\Graphics\TerminalGraphics;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\NavigablePaneWidget;
@@ -120,6 +122,9 @@ final class GraphViewerWidget extends NavigablePaneWidget
         // overlay is the PLUGIN's to do — it holds the api — and the widget
         // tests need not thread one through to exercise everything else.
         private readonly ?\Closure $onFindNode = null,
+        // Trailing and optional for the same reason: without it the picture
+        // paints as half-blocks, as it does until the terminal has answered.
+        ?TerminalGraphics $graphics = null,
     ) {
         $this->initStyles($styles);
         // Hand-built (a plugin class cannot be a container service), so the id
@@ -130,6 +135,7 @@ final class GraphViewerWidget extends NavigablePaneWidget
         $this->decoder = $decoder ?? new ImageDecoder();
         $this->pending = new DebouncedRequest($scheduler ?? new RevoltScheduler(), self::RENDER_DEBOUNCE);
         $this->scaled = new ScaledSource();
+        $this->pixels = null !== $graphics ? new PixelPlacement($graphics, $this->afterViewChange(...)) : null;
     }
 
     /** Show a DOT document: adopt the cached layout for its hash, or run the engine. */
@@ -209,6 +215,7 @@ final class GraphViewerWidget extends NavigablePaneWidget
         $this->dotHash = null;
         $this->dot = null;
         $this->bitmap = null;
+        $this->pixels?->forget();
         $this->pending->reset();
         $this->layout = null;
         $this->view = null;
@@ -217,6 +224,12 @@ final class GraphViewerWidget extends NavigablePaneWidget
         $this->selected = null;
         $this->selectionOrder = [];
         $this->invalidate();
+    }
+
+    /** Another pane took the slot: the terminal's copy is freed, and re-sent on return. */
+    public function hide(): void
+    {
+        $this->pixels?->forget();
     }
 
     /** The tab closed for real: drop its remembered view state. */
@@ -279,11 +292,7 @@ final class GraphViewerWidget extends NavigablePaneWidget
         if ($cols < 1 || $rows < 1) {
             return [];
         }
-        $this->lastCols = $cols;
-        $this->lastRows = $rows;
-        // The fit scale depends on the pane size, which is only known here; the
-        // wanted-dpi guard makes this a float compare on every other frame.
-        $this->scheduleRefine();
+        $this->beginFrame($cols, $rows);
         $lines = $this->contentLines($cols, $rows);
         if ($this->isFocused() && $cols >= 3 && $rows >= 3) {
             $lines = $this->focusFrame($lines, $cols, $rows);
@@ -407,7 +416,10 @@ final class GraphViewerWidget extends NavigablePaneWidget
         // CEIL, not round: a continuous zoom (the Ctrl+scroll glide) would
         // otherwise ask for a different dpi at every nudge, where ceiling to
         // the next whole multiple asks once per doubling and never undersamples.
-        $wanted = $base * (int) \ceil(\max(1.0, $scale));
+        // Drawn by the terminal, one column is a whole cell of screen pixels,
+        // which the bitmap has to cover to look sharp.
+        $perColumn = $this->pixelsPerColumn();
+        $wanted = $base * (int) \ceil(\max(1.0, $scale * $perColumn));
         // pixels = extent × dpi/base per axis, so the ceiling scales with 1/√area.
         $cap = (int) \floor($base * \sqrt(ImageDecoder::MAX_PIXELS / ($this->extentW * $this->extentH)));
 
@@ -620,14 +632,12 @@ final class GraphViewerWidget extends NavigablePaneWidget
     private function contentLines(int $cols, int $rows): array
     {
         $view = $this->view;
-        if (GraphRenderMode::Bitmap === $this->mode && null !== $this->bitmap && null !== $view) {
-            $lines = HalfBlockRasterizer::render(
-                $this->scaled->forScale(
-                    $this->bitmap,
-                    $view->effectiveScale($cols, 2 * $rows),
-                    // The raster's own density: dpi over whatever this tool calls 1:1.
-                    ratio: $this->bitmapDpi / ($this->drawingEngine()?->baseDpi() ?? self::BITMAP_DPI),
-                ),
+        $bitmap = $this->bitmap;
+        if (GraphRenderMode::Bitmap === $this->mode && null !== $bitmap && null !== $view) {
+            // The raster's own density: dpi over whatever this tool calls 1:1.
+            $ratio = $this->bitmapDpi / ($this->drawingEngine()?->baseDpi() ?? self::BITMAP_DPI);
+            $lines = $this->pixels?->render($bitmap, $ratio, $view, $cols, $rows) ?? HalfBlockRasterizer::render(
+                $this->scaled->forScale($bitmap, $view->effectiveScale($cols, 2 * $rows), $ratio),
                 $view,
                 $cols,
                 $rows,

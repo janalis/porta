@@ -10853,3 +10853,57 @@ other CSI or OSC counts as visible text and a tab as one column;
 
 *Re-opens on:* a vendor release that makes one of the `@internal` pieces public
 API, or evidence against a single reason above.
+
+## Pixel graphics: kitty placeholders, cut per view, sixel not done (2026-09-28)
+
+The image and graph viewers paint real pixels where the terminal can
+(`Ui/Graphics/TerminalGraphics`, `ImageViewer/PixelPlacement`), half-blocks
+everywhere else. Each choice below was driven in cmux (Ghostty 1.3.2, 16×34
+cells) before it was kept.
+
+**Unicode placeholders, not cursor-placed images.** A frame here is a
+line-diffed text grid with overlays spliced in, a bidi reorder and a join pass;
+an image escape inside a line would be replayed by every slice that crosses it,
+and a cursor-placed image is erased by the writer's `\e[2K`. Placeholder cells
+are text, so a menu, a toast, the focus frame and the graph's selection box
+overwrite them like any cell. Measured: a dropdown over the picture draws whole.
+
+**Panes paint stand-ins; `BidiTui` expands them last.** A real placeholder is
+U+10EEEE plus two combining marks, and the vendor's `slicePrefix` /
+`truncateToWidth` fast paths size a run with `mb_strwidth()`, which counts each
+mark as a column: a slice from column 0 read eleven cells as 33 and cut the
+dropdown 22 columns short, padded blank. One plane-16 codepoint per cell is one
+column to every width function; the cap that keeps them below U+10EEEE is 239
+cells a side, and a bigger pane falls back to half-blocks. The vendor bug also
+mis-measures decomposed accents in ordinary text — worth reporting upstream.
+
+**The view is cut here and sent, not cropped by the terminal.** The first
+design sent each picture once and re-placed a source crop per zoom (`x,y,w,h`
+on the virtual placement). Ghostty draws the whole image into a placeholder
+placement whatever the rectangle says — confirmed step by step: re-cropping,
+repainting the cells, and a new placement named in the underline colour all
+left the picture unchanged. So `PixelPlacement` crops and scales the visible
+part to the cells' pixels (capped at 1 MP) and alternates two image ids: a new
+view is new cell TEXT, which the differential writer must rewrite. A zoom step
+paints in ~90 ms, the PNG encode.
+
+**Zoom counts screen pixels in pixel mode.** A column is a whole cell (16 px
+here), so the ladder's 12.5% was already twice life size and `-` stopped at
+fit. `ZoomPanModel::setPixelsPerColumn()` divides the ladder, `1` and the label
+by it; the geometry itself stays the half-block grid's, which is what keeps the
+selection box and hit-testing on the node. The ~6% aspect error of a non-1:2
+cell is the half-blocks' too, and stays.
+
+**An environment override, not a setting.** `PORTA_GRAPHICS=kitty|off`, the
+`PORTA_TERMINAL_BIDI` shape: the viewer settings live on their plugins, and a
+core choice setting would carry Settings, i18n and config plumbing for an
+escape hatch. WezTerm, Konsole and tmux are refused unasked: they answer the
+query but cannot show a placeholder (tmux would need passthrough wrapping).
+
+**Sixel and iTerm2 OSC 1337: not done.** Both paint at the cursor, so they need
+the inline design above — re-sent on every change and erased by row rewrites.
+
+*Re-opens on:* a Ghostty release that honours the placement rectangle (the
+per-view cut could become one transmit per picture), a vendor fix to the
+`mb_strwidth` fast paths (the stand-ins could go), or a user on a sixel-only
+terminal.

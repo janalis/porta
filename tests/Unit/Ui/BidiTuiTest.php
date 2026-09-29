@@ -13,6 +13,7 @@ use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\TempProject;
 use Porta\Ui\BidiTui;
+use Porta\Ui\Graphics\KittyPlaceholders;
 use Porta\Ui\NonBlockingTerminal;
 use Porta\Ui\PaneSegmenter;
 use Revolt\EventLoop;
@@ -80,6 +81,24 @@ final class BidiTuiTest extends TestCase
         $tui->processRender();
 
         $this->assertStringContainsString(self::SHALOM, $terminal->getOutput());
+    }
+
+    public function testImageStandInsReachTheTerminalAsRealPlaceholders(): void
+    {
+        $terminal = new VirtualTerminal(columns: 20, rows: 2);
+        $this->renderer = new Renderer(new StyleSheet());
+        $tui = new BidiTui(terminal: $terminal, renderer: $this->renderer);
+        $tui->add(new class extends AbstractWidget {
+            public function render(RenderContext $context): array
+            {
+                return [KittyPlaceholders::row(1000, 0, 0, 3)];
+            }
+        });
+        $tui->requestRender();
+        $tui->processRender();
+
+        $this->assertSame(3, \preg_match_all('/\x{10EEEE}\p{Mn}\p{Mn}/u', $terminal->getOutput()));
+        $this->assertDoesNotMatchRegularExpression('/[\x{100000}-\x{10DF20}]/u', $terminal->getOutput(), 'no stand-in is left');
     }
 
     public function testARtlReorderRewritesEachLineToVisualOrder(): void

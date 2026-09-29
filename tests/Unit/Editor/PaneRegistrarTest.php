@@ -16,6 +16,8 @@ use Porta\Support\RevoltScheduler;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RecordingViewerTabHandler;
 use Porta\Tests\Support\TestPane;
+use Porta\Tests\Support\TestTui;
+use Porta\Ui\Graphics\TerminalGraphics;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\EditorPaneWidget;
 use Symfony\Component\EventDispatcher\EventDispatcher;
@@ -40,6 +42,7 @@ final class PaneRegistrarTest extends TestCase
             new Translator('en'),
             new RevoltScheduler(),
             new RecordingViewerTabHandler(),
+            new TerminalGraphics(TestTui::create(), new RevoltScheduler()),
         );
     }
 

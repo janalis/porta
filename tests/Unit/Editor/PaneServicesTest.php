@@ -16,7 +16,7 @@ use Porta\Editor\PaneServices;
  */
 final class PaneServicesTest extends TestCase
 {
-    public function testItHandsAPaneExactlyFourThings(): void
+    public function testItHandsAPaneExactlyFiveThings(): void
     {
         $members = \array_map(
             static fn (\ReflectionParameter $param): string => $param->getName().': '.(string) $param->getType(),
@@ -32,6 +32,9 @@ final class PaneServicesTest extends TestCase
                 'translator: Porta\I18n\Translator',
                 'scheduler: Porta\Support\Scheduler',
                 'tabs: Porta\Widget\ViewerTabHandler',
+                // A pane cannot ask the terminal whether it draws pixels, nor
+                // send them: only core owns the terminal.
+                'graphics: Porta\Ui\Graphics\TerminalGraphics',
             ],
             $members,
         );

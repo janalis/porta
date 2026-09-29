@@ -135,6 +135,25 @@ Porta-level line memos (the file tree, the side tab bar) never saw a chrome
 sweep — which is why `ChromeInvalidator` must `invalidate()` (bump
 revisions), not merely `clearRenderCache()`, as it walks the tree.
 
+**Pixels, when the terminal draws them** (`Ui/Graphics/`). `TerminalGraphics`
+probes once, deferred into the loop so raw mode is on: a kitty graphics query,
+`CSI 16 t` for the cell size, then DA1 — every terminal answers DA1, in order,
+so DA1 with no `OK` before it is a clean "no", and a timeout covers silence. The
+replies arrive as input; its listener sits above the perf counter and the
+dispatcher (priority 2000) and swallows them, or they would dismiss tooltips as
+keypresses. WezTerm, Konsole and tmux are refused without asking (they answer
+but cannot draw a placeholder); `PORTA_GRAPHICS=kitty|off` overrides. Its
+transmit/place/delete commands are cursor-neutral and `q=2`, so they are
+written straight to the terminal between frames. Two things were learned the
+hard way, both in `decisions.md`: a pane never paints real placeholders — the
+combining marks make the vendor's prefix slicers measure a cell three columns
+wide, which cut every overlay splice short — but one-column plane-16 stand-ins,
+which `BidiTui` expands (`KittyPlaceholders::expand`) on the finished frame
+just before the write; and Ghostty ignores a virtual placement's source
+rectangle, so `ImageViewer\PixelPlacement` cuts the view out itself and sends
+it, alternating two image ids so a new view is new cell TEXT the differential
+writer has to rewrite.
+
 The editor viewport **detaches from the caret on wheel scroll**
 (`Editor/EditorScroll`): the caret may leave the screen and the selection
 survives; any caret motion — version, line or column change — re-attaches via

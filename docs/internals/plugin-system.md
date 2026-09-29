@@ -37,8 +37,9 @@ that knows nothing about plugins, and the only post-compile mutation is `set()`
 on the four synthetics.
 
 Everything a plugin's object needs is therefore hand-passed. That is what
-`Editor/PaneServices` is: a four-member DTO (the `Styles` holder, the
-`Translator`, the `Support/Scheduler`, the `ViewerTabHandler`) handed to a pane
+`Editor/PaneServices` is: a five-member DTO (the `Styles` holder, the
+`Translator`, the `Support/Scheduler`, the `ViewerTabHandler`, the
+`Ui/Graphics/TerminalGraphics` channel) handed to a pane
 factory. `Workbench/View/ViewServices` is the same idea one size up — eight
 members for a whole full-screen view. **Growing either is how "my pane needs one
 more thing from core" becomes visible in review**, and both should stay hard to
