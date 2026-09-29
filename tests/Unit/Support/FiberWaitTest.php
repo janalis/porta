@@ -33,4 +33,22 @@ final class FiberWaitTest extends TestCase
         $this->assertSame(['at', 'once'], FiberWait::for(static fn (\Closure $done) => $done(['at', 'once'])));
         $this->assertNull(FiberWait::for(static fn (\Closure $done) => $done(null)), 'a null answer is still an answer');
     }
+
+    public function testTheFirstAnswerWinsSoATimeoutCanRaceTheOperation(): void
+    {
+        $this->assertSame('first', FiberWait::for(static function (\Closure $done): void {
+            $done('first');
+            $done('second');
+        }));
+
+        $fiber = new \Fiber(static fn (): mixed => FiberWait::for(static function (\Closure $done): void {
+            EventLoop::delay(0.01, static fn () => $done('fast'));
+            EventLoop::delay(0.03, static fn () => $done('slow'));
+        }));
+        $fiber->start();
+        $this->await($fiber->isTerminated(...), what: 'the first answer');
+        $this->pump(0.05); // the late answer arrives, and must not resume anything
+
+        $this->assertSame('fast', $fiber->getReturn());
+    }
 }

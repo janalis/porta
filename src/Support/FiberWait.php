@@ -16,6 +16,9 @@ use Revolt\EventLoop;
  * `resume` in the callback / `suspend` after it breaks exactly on the fast
  * path. This suspends only when the answer has not already come.
  *
+ * The FIRST answer wins and any later one is ignored, so an operation can be
+ * raced against a timeout by handing both the same callback.
+ *
  * For a plugin's {@see \Porta\Plugin\Api\PluginApi::registerTool()} handler,
  * which runs in its own fiber, and anything else that does.
  */
@@ -34,6 +37,10 @@ final class FiberWait
         $answer = null;
         $suspension = null;
         $start(static function (mixed $value) use (&$answered, &$answer, &$suspension): void {
+            // @mago-expect analysis:impossible-condition -- $answered is by reference: a SECOND call sees the first one's true
+            if ($answered) {
+                return;
+            }
             $answered = true;
             // @mago-expect analysis:mixed-assignment -- the answer is the caller's T; the template on for() is what types it
             $answer = $value;

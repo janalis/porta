@@ -159,6 +159,15 @@ A prompt that has an agent review your uncommitted changes this way:
 > `porta review add <file>:<line> "<comment>" --author=claude`. When I say I
 > have answered, run `porta review list --json` and act on my replies.
 
+### Through the IDE, with the mcp plugin
+
+With the [mcp plugin](agents.md) on, an agent connected to the running IDE
+has `review_threads`, `review_reply`, `review_resolve` and `review_comment`.
+They work on whichever review the IDE shows — a pull or merge request as
+well as a local one — and go through the same path as the view, so a reply
+posts as you. A call made while the review is loading waits for it, for up
+to thirty seconds.
+
 ## Settings
 
 | Key | Default | Meaning |

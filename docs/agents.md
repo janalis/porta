@@ -62,6 +62,7 @@ ones:
 | `git_diff` | git | Unstaged changes, or staged ones, optionally for one file |
 | `review_threads` | review | The branch's review: every conversation, with its path, line and comments |
 | `review_reply` | review | Answer a thread |
+| `review_resolve` | review | Resolve a thread, or reopen one |
 | `review_comment` | review | Start a conversation on a line |
 
 The list follows the IDE live: enable or disable a plugin, or change
