@@ -10875,7 +10875,8 @@ mark as a column: a slice from column 0 read eleven cells as 33 and cut the
 dropdown 22 columns short, padded blank. One plane-16 codepoint per cell is one
 column to every width function; the cap that keeps them below U+10EEEE is 239
 cells a side, and a bigger pane falls back to half-blocks. The vendor bug also
-mis-measures decomposed accents in ordinary text — worth reporting upstream.
+mis-measures decomposed accents in ordinary text; that half is fixed for all
+text by `Support/AnsiSlice` (2026-09-29), and a report is drafted for upstream.
 
 **The view is cut here and sent, not cropped by the terminal.** The first
 design sent each picture once and re-placed a source crop per zoom (`x,y,w,h`
@@ -10905,5 +10906,5 @@ the inline design above — re-sent on every change and erased by row rewrites.
 
 *Re-opens on:* a Ghostty release that honours the placement rectangle (the
 per-view cut could become one transmit per picture), a vendor fix to the
-`mb_strwidth` fast paths (the stand-ins could go), or a user on a sixel-only
+`mb_strwidth` fast paths (the stand-ins, and `AnsiSlice`, could go), or a user on a sixel-only
 terminal.

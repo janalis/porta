@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Widget\Render;
 
+use Porta\Support\AnsiSlice;
 use Porta\Ui\Sgr;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Style\Style;
@@ -38,9 +39,9 @@ final class LineDecorator
             return $line;
         }
 
-        $before = 0 === $startCol ? '' : AnsiUtils::sliceByColumn($line, 0, $startCol);
-        $middle = AnsiUtils::sliceByColumn($line, $startCol, $endCol - $startCol);
-        $after = $endCol >= $lineWidth ? '' : AnsiUtils::sliceByColumn($line, $endCol, $lineWidth - $endCol);
+        $before = 0 === $startCol ? '' : AnsiSlice::byColumn($line, 0, $startCol);
+        $middle = AnsiSlice::byColumn($line, $startCol, $endCol - $startCol);
+        $after = $endCol >= $lineWidth ? '' : AnsiSlice::byColumn($line, $endCol, $lineWidth - $endCol);
 
         if (null !== $bgReapply) {
             $middle = AnsiUtils::reapplyBackgroundAfterResets($middle, $bgReapply);
@@ -94,7 +95,7 @@ final class LineDecorator
         $bounds = \array_keys($bounds);
         \sort($bounds);
 
-        $out = $bounds[0] > 0 ? AnsiUtils::sliceByColumn($line, 0, $bounds[0]) : '';
+        $out = $bounds[0] > 0 ? AnsiSlice::byColumn($line, 0, $bounds[0]) : '';
         /** @var array<int, array{0: int, 1: int, 2: string, 3: string, 4: ?string}> $active keyed by application index */
         $active = [];
         foreach ($bounds as $bi => $col) {
@@ -137,7 +138,7 @@ final class LineDecorator
                 // and original byte-identical.
                 continue;
             }
-            $segment = AnsiUtils::sliceByColumn($line, $col, $next - $col);
+            $segment = AnsiSlice::byColumn($line, $col, $next - $col);
             $bgChain = '';
             foreach ($active as $span) {
                 $bgChain .= $span[4] ?? '';

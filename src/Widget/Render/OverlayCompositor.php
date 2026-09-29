@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Widget\Render;
 
+use Porta\Support\AnsiSlice;
 use Porta\Support\AnsiText;
 use Porta\Ui\Sgr;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -25,7 +26,7 @@ final class OverlayCompositor
      */
     public static function into(string $line, int $col, int $width, int $columns, string $popup): string
     {
-        $head = AnsiText::padRight(AnsiUtils::sliceByColumn($line, 0, $col), $col);
+        $head = AnsiText::padRight(AnsiSlice::byColumn($line, 0, $col), $col);
         // Exactly the columns after the popup: a glyph it half-covers leaves its
         // other half a blank in the row's own style, and nothing after it moves.
         $tail = AnsiUtils::sliceToWidth($line, $col + $width, $columns - $col - $width);

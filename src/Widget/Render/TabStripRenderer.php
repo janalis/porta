@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Widget\Render;
 
+use Porta\Support\AnsiSlice;
 use Porta\Support\AnsiText;
 use Porta\Ui\Density;
 use Porta\Ui\Glyphs;
@@ -254,19 +255,19 @@ final class TabStripRenderer
         $text = $cell['text'];
         $width = AnsiUtils::visibleWidth($text);
         $labelEnd = 1 + $cell['labelWidth'];
-        $label = AnsiUtils::sliceByColumn($text, 1, $cell['labelWidth']);
+        $label = AnsiSlice::byColumn($text, 1, $cell['labelWidth']);
         if (TabState::Hovered === $state && !$onClose) {
             $label = new Style(underline: true)->apply($label);
         }
         $closeOffset = $cell['closeOffset'];
-        $body = ' '.$label.AnsiUtils::sliceByColumn($text, $labelEnd, ($closeOffset ?? $width) - $labelEnd);
+        $body = ' '.$label.AnsiSlice::byColumn($text, $labelEnd, ($closeOffset ?? $width) - $labelEnd);
         if (null !== $closeOffset) {
             $close = match (true) {
                 $onClose => TabCloseGlyph::hovered($styles),
                 TabState::Active === $state => TabCloseGlyph::active($styles),
                 default => TabCloseGlyph::inactive($styles),
             };
-            $body .= $close.AnsiUtils::sliceByColumn($text, $closeOffset + 1, $width - $closeOffset - 1);
+            $body .= $close.AnsiSlice::byColumn($text, $closeOffset + 1, $width - $closeOffset - 1);
         }
 
         return TabStyle::of($styles, $state)->apply($body);

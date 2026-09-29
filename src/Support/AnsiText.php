@@ -31,7 +31,7 @@ final class AnsiText
      */
     public static function truncate(string $text, int $width, bool $pad = false, string $ellipsis = Glyphs::ELLIPSIS): string
     {
-        return AnsiUtils::truncateToWidth($text, $width, $ellipsis, $pad);
+        return AnsiSlice::truncate($text, $width, $ellipsis, $pad);
     }
 
     /**
@@ -63,7 +63,7 @@ final class AnsiText
         $room = $width - $mark;
         $head = \intdiv($room, num2: 2);
 
-        return AnsiUtils::sliceByColumn($text, startCol: 0, length: $head).$ellipsis.AnsiUtils::sliceByColumn($text, startCol: $visible - ($room - $head), length: $room - $head);
+        return AnsiSlice::byColumn($text, startCol: 0, length: $head).$ellipsis.AnsiSlice::byColumn($text, startCol: $visible - ($room - $head), length: $room - $head);
     }
 
     /**
@@ -141,7 +141,7 @@ final class AnsiText
                 $lines[] = $line;
             }
             while (AnsiUtils::visibleWidth($word) > $width) {
-                $head = AnsiUtils::sliceByColumn($word, startCol: 0, length: $width);
+                $head = AnsiSlice::byColumn($word, startCol: 0, length: $width);
                 if ('' === $head) {
                     break; // a single glyph wider than the whole line; the caller's clip handles it
                 }
@@ -175,11 +175,11 @@ final class AnsiText
      */
     public static function columnsFrom(string $line, int $startCol, int $length): string
     {
-        $slice = AnsiUtils::sliceByColumn($line, $startCol, $length, strict: true);
+        $slice = AnsiSlice::byColumn($line, $startCol, $length, strict: true);
         if ($startCol <= 0 || $length <= 0) {
             return $slice;
         }
-        $before = AnsiUtils::visibleWidth(AnsiUtils::sliceByColumn($line, 0, $startCol));
+        $before = AnsiUtils::visibleWidth(AnsiSlice::byColumn($line, 0, $startCol));
         if ($before >= $startCol || AnsiUtils::visibleWidth($line) <= $startCol) {
             return $slice; // nothing straddles the start, or the line ends before it
         }
@@ -188,7 +188,7 @@ final class AnsiText
         // double-width glyph). max() proves the guard to the analyzer.
         $lead = \max(1, $startCol - $before);
 
-        return \str_repeat(' ', $lead).AnsiUtils::sliceByColumn($line, $startCol + $lead, $length - $lead, strict: true);
+        return \str_repeat(' ', $lead).AnsiSlice::byColumn($line, $startCol + $lead, $length - $lead, strict: true);
     }
 
     /**
@@ -225,8 +225,8 @@ final class AnsiText
     public static function caretWindow(string $text, int $caretCol, int $width, string $marker): string
     {
         $off = \max(0, $caretCol - $width + 1);
-        $left = AnsiUtils::sliceByColumn($text, $off, $caretCol - $off, strict: true);
-        $right = AnsiUtils::sliceByColumn($text, $caretCol, $width - ($caretCol - $off), strict: true);
+        $left = AnsiSlice::byColumn($text, $off, $caretCol - $off, strict: true);
+        $right = AnsiSlice::byColumn($text, $caretCol, $width - ($caretCol - $off), strict: true);
 
         return $left.$marker.$right;
     }
