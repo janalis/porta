@@ -11030,6 +11030,11 @@ leaves a pending review). GitLab is REST, in three reads, because the merge
 request list leaves out the `diff_refs` a new diff note must quote back. The
 fixtures are real API answers with names and words replaced; the probe found
 GitHub's `line: null` on an outdated thread, which is now what "outdated" means.
+**Driven for real** against private scratch repositories on both forges —
+every write (line comment on each side, reply, resolve, reopen, review
+comment), through the CLI and through curl. That found what no fake could:
+`glab api --input -` sends no content type and GitLab refuses the body, so
+the CLI is now always told `Content-Type: application/json`.
 
 **Local reviews are append-only directories**, not one JSON file. The plan
 said a `porta review` CLI would spare agents the JSON. A directory per thread
