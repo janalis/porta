@@ -11,6 +11,7 @@ use Porta\Ui\CursorStyle;
 use Porta\Ui\PastedNewlines;
 use Porta\Ui\TextField;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Style\CursorShape;
 
 final class TextFieldTest extends TestCase
@@ -278,22 +279,36 @@ final class TextFieldTest extends TestCase
     public function testCtrlWStillTakesAWholeArgumentButAltBackspaceOnlyOneClass(): void
     {
         $field = new TextField('open src/Foo/Bar.php');
-        $this->assertTrue($field->editKey("\x1b\x7f"));
+        $this->assertTrue($field->editKey("\x1b\x7f", new Keybindings()));
         $this->assertSame('open src/Foo/Bar.', $field->value(), 'Alt+Backspace stops at the punctuation');
 
-        $this->assertTrue($field->editKey("\x17"));
+        $this->assertTrue($field->editKey("\x17", new Keybindings()));
         $this->assertSame('open ', $field->value(), 'Ctrl+W goes back to the space, readline-style');
+    }
+
+    public function testTheWordDeletesAlsoArriveInTheirKittyEncodings(): void
+    {
+        $kb = new Keybindings();
+        $kb->setKittyProtocolActive(true);
+
+        $field = new TextField('open src/Foo/Bar.php');
+        $this->assertTrue($field->editKey("\x1b[127;3u", $kb), 'kitty Alt+Backspace');
+        $this->assertSame('open src/Foo/Bar.', $field->value());
+
+        $this->assertFalse($field->editKey("\x1b[119;5:3u", $kb), 'a key release is not a keystroke');
+        $this->assertTrue($field->editKey("\x1b[119;5u", $kb), 'kitty Ctrl+W');
+        $this->assertSame('open ', $field->value());
     }
 
     public function testCtrlArrowsMoveTheCaretAWordAtATime(): void
     {
         $field = new TextField('foo bar baz');
-        $this->assertTrue($field->editKey("\x1b[1;5D"));
+        $this->assertTrue($field->editKey("\x1b[1;5D", new Keybindings()));
         $field->insert('X');
         $this->assertSame('foo bar Xbaz', $field->value());
 
         $field->moveHome();
-        $this->assertTrue($field->editKey("\x1b[1;5C"));
+        $this->assertTrue($field->editKey("\x1b[1;5C", new Keybindings()));
         $field->insert('Y');
         $this->assertSame('fooY bar Xbaz', $field->value());
     }
@@ -303,7 +318,7 @@ final class TextFieldTest extends TestCase
         $field = new TextField('ad');
         $field->moveLeft();
 
-        $this->assertTrue($field->editKey("\x1b[200~bc\x1b[201~"));
+        $this->assertTrue($field->editKey("\x1b[200~bc\x1b[201~", new Keybindings()));
         $this->assertSame('abcd', $field->value());
         $field->insert('!');
         $this->assertSame('abc!d', $field->value(), 'the caret sits after the pasted text');
@@ -312,7 +327,7 @@ final class TextFieldTest extends TestCase
     public function testAPastedLineBreakJoinsWithASpaceByDefault(): void
     {
         $field = new TextField();
-        $field->editKey("\x1b[200~one\r\ntwo\n\nthree\n\x1b[201~");
+        $field->editKey("\x1b[200~one\r\ntwo\n\nthree\n\x1b[201~", new Keybindings());
 
         $this->assertSame('one two three', $field->value(), 'inner runs become one space, the copied trailing break goes');
     }
@@ -320,7 +335,7 @@ final class TextFieldTest extends TestCase
     public function testAFieldThatTakesNewlinesKeepsThePastedOnes(): void
     {
         $field = new TextField(pastedNewlines: PastedNewlines::Keep);
-        $field->editKey("\x1b[200~one\r\ntwo\n\x1b[201~");
+        $field->editKey("\x1b[200~one\r\ntwo\n\x1b[201~", new Keybindings());
 
         $this->assertSame("one\ntwo", $field->value(), 'the inner break kept, the copied line terminator not');
     }
@@ -328,7 +343,7 @@ final class TextFieldTest extends TestCase
     public function testAPastedEscapeSequenceArrivesAsInertText(): void
     {
         $field = new TextField();
-        $field->editKey("\x1b[200~\x1b[31mred\ttab\x07\x1b[201~");
+        $field->editKey("\x1b[200~\x1b[31mred\ttab\x07\x1b[201~", new Keybindings());
 
         $this->assertSame('[31mred tab', $field->value(), 'no ESC, no BEL; the tab is a space');
     }
@@ -337,7 +352,7 @@ final class TextFieldTest extends TestCase
     {
         $field = new TextField('keep');
 
-        $this->assertFalse($field->editKey("\x1b[200~\n\x1b[201~"));
+        $this->assertFalse($field->editKey("\x1b[200~\n\x1b[201~", new Keybindings()));
         $this->assertSame('keep', $field->value());
     }
 }

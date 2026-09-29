@@ -9,6 +9,7 @@ use Porta\Ui\CaretVisibility;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\MultilineInput;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Style\CursorShape;
 
 final class MultilineInputTest extends TestCase
@@ -16,7 +17,7 @@ final class MultilineInputTest extends TestCase
     private function type(MultilineInput $input, string ...$keys): void
     {
         foreach ($keys as $key) {
-            $input->handleKey($key);
+            $input->handleKey($key, new Keybindings());
         }
     }
 
@@ -24,7 +25,7 @@ final class MultilineInputTest extends TestCase
     {
         $style = new CursorStyle(CursorShape::Underline);
         $input = new MultilineInput($style);
-        $input->handleKey('a');
+        $input->handleKey('a', new Keybindings());
 
         $out = \implode('', $input->render(20, 3, cursor: CaretVisibility::Shown));
         $this->assertStringContainsString(AnsiUtils::cursorMarker(CursorShape::Underline), $out, 'the marker carries the holder shape');
@@ -62,7 +63,7 @@ final class MultilineInputTest extends TestCase
 
         // Backspace at the very start is consumed but changes nothing.
         $fresh = new MultilineInput();
-        $this->assertTrue($fresh->handleKey("\x7f"));
+        $this->assertTrue($fresh->handleKey("\x7f", new Keybindings()));
         $this->assertSame('', $fresh->value());
     }
 
@@ -87,8 +88,8 @@ final class MultilineInputTest extends TestCase
         $this->assertSame("abZ\ncd", $input3->value());
 
         // Up on the first line and down on the last are consumed no-ops.
-        $this->assertTrue($input3->handleKey("\x1b[B"));
-        $this->assertTrue($input3->handleKey("\x1b[B"));
+        $this->assertTrue($input3->handleKey("\x1b[B", new Keybindings()));
+        $this->assertTrue($input3->handleKey("\x1b[B", new Keybindings()));
     }
 
     public function testSetValueMovesTheCaretToTheEnd(): void
@@ -106,8 +107,8 @@ final class MultilineInputTest extends TestCase
     public function testNonPrintableUnknownKeysAreNotConsumed(): void
     {
         $input = new MultilineInput();
-        $this->assertFalse($input->handleKey("\x1b[Z"), 'unknown escape');
-        $this->assertFalse($input->handleKey("\x01"), 'control byte');
+        $this->assertFalse($input->handleKey("\x1b[Z", new Keybindings()), 'unknown escape');
+        $this->assertFalse($input->handleKey("\x01", new Keybindings()), 'control byte');
         $this->assertSame('', $input->value());
     }
 
@@ -170,7 +171,7 @@ final class MultilineInputTest extends TestCase
         $input = new MultilineInput();
         $this->type($input, 'slow ', "\u{2014}"); // trailing em-dash (3 bytes)
 
-        $this->assertTrue($input->handleKey("\x7f"));
+        $this->assertTrue($input->handleKey("\x7f", new Keybindings()));
         $this->assertSame('slow ', $input->value(), 'the whole em-dash is removed');
         $this->assertTrue(\mb_check_encoding($input->value(), encoding: 'UTF-8'), 'never leaves a partial sequence');
     }
@@ -180,15 +181,15 @@ final class MultilineInputTest extends TestCase
         $input = new MultilineInput();
         $this->type($input, "a\u{2014}b"); // 'a' + 3-byte em-dash + 'b', caret at end (col 5)
 
-        $input->handleKey("\x1b[D"); // left over 'b'
-        $input->handleKey("\x1b[D"); // left over the em-dash in one step
+        $input->handleKey("\x1b[D", new Keybindings()); // left over 'b'
+        $input->handleKey("\x1b[D", new Keybindings()); // left over the em-dash in one step
         // Inserting here must land between 'a' and the em-dash, not mid-sequence.
-        $input->handleKey('X');
+        $input->handleKey('X', new Keybindings());
         $this->assertSame("aX\u{2014}b", $input->value());
         $this->assertTrue(\mb_check_encoding($input->value(), encoding: 'UTF-8'), 'never leaves a partial sequence');
 
-        $input->handleKey("\x1b[C"); // right over the em-dash in one step
-        $input->handleKey('Y');
+        $input->handleKey("\x1b[C", new Keybindings()); // right over the em-dash in one step
+        $input->handleKey('Y', new Keybindings());
         $this->assertSame("aX\u{2014}Yb", $input->value());
         $this->assertTrue(\mb_check_encoding($input->value(), encoding: 'UTF-8'), 'never leaves a partial sequence');
     }
@@ -198,8 +199,8 @@ final class MultilineInputTest extends TestCase
         $input = new MultilineInput();
         $this->type($input, "a\u{2014}bc", "\r", 'xy'); // line 0 has a wide char, caret on line 1 col 2
 
-        $input->handleKey("\x1b[A"); // up onto the multibyte line at byte col 2 (mid em-dash)
-        $input->handleKey('Z'); // insert must not split the em-dash
+        $input->handleKey("\x1b[A", new Keybindings()); // up onto the multibyte line at byte col 2 (mid em-dash)
+        $input->handleKey('Z', new Keybindings()); // insert must not split the em-dash
         $this->assertTrue(\mb_check_encoding($input->value(), encoding: 'UTF-8'), 'never leaves a partial sequence');
         $this->assertStringContainsString("\u{2014}", $input->value(), 'the em-dash survived intact');
     }
@@ -221,13 +222,13 @@ final class MultilineInputTest extends TestCase
         $input = new MultilineInput();
         $this->type($input, 'a', 'z', "\x1b[D");
 
-        $this->assertTrue($input->handleKey("\x1b[200~b\r\nc\x1b[201~"));
+        $this->assertTrue($input->handleKey("\x1b[200~b\r\nc\x1b[201~", new Keybindings()));
         $this->assertSame("ab\ncz", $input->value());
     }
 
     public function testAnEmptyPasteIsNotConsumed(): void
     {
-        $this->assertFalse(new MultilineInput()->handleKey("\x1b[200~\x1b[201~"));
+        $this->assertFalse(new MultilineInput()->handleKey("\x1b[200~\x1b[201~", new Keybindings()));
     }
 
     public function testBackspaceAndArrowsStepOverAWholeCharacter(): void
@@ -255,5 +256,20 @@ final class MultilineInputTest extends TestCase
         $input->setValue("abcd\n中中中");
         $this->type($input, "\x1b[A", "\x1b[D", "\x1b[D", "\x1b[B", 'X');
         $this->assertSame("abcd\n中X中中", $input->value(), 'column 2 is after the first 中, not back at the start');
+    }
+
+    public function testKittyEncodedKeysSplitAndJoinLines(): void
+    {
+        $kb = new Keybindings();
+        $kb->setKittyProtocolActive(true);
+        $input = new MultilineInput();
+        $input->setValue('ab');
+
+        $this->assertTrue($input->handleKey("\x1b[13u", $kb), 'kitty Enter');
+        $this->assertTrue($input->handleKey("\n", $kb), 'LF, which kitty names Shift+Enter');
+        $this->assertSame("ab\n\n", $input->value());
+
+        $this->assertTrue($input->handleKey("\x1b[127u", $kb), 'kitty Backspace');
+        $this->assertSame("ab\n", $input->value());
     }
 }

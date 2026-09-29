@@ -273,7 +273,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface, M
         // history-browsing, so the next Alt+Up starts from the top again
         // rather than from wherever the cursor was left three searches ago.
         $this->historyCursor = -1;
-        $this->editActiveField(static fn (TextField $field): bool => $field->editKey($data) || $field->insert($data));
+        $this->editActiveField(static fn (TextField $field): bool => $field->editKey($data, $kb) || $field->insert($data));
     }
 
     /**

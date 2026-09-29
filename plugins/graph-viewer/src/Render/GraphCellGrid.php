@@ -9,6 +9,7 @@ use Porta\ImageViewer\ZoomPanModel;
 use Porta\Ui\Role;
 use Porta\Ui\Sgr;
 use Porta\Ui\Theme\Styles;
+use Symfony\Component\Tui\Style\Color;
 
 /**
  * The mutable cell grid one {@see GraphRenderer::render} pass draws into:
@@ -160,10 +161,7 @@ final class GraphCellGrid
     public function colorKey(?string $hex, Role $fallback): string
     {
         if (null !== $hex && null !== $this->styles && $this->styles->hasColor()) {
-            $r = (int) \hexdec(\substr($hex, offset: 1, length: 2));
-            $g = (int) \hexdec(\substr($hex, offset: 3, length: 2));
-            $b = (int) \hexdec(\substr($hex, offset: 5, length: 2));
-            $prefix = "\x1b[38;2;{$r};{$g};{$b}m";
+            $prefix = Color::hex($hex)->toForegroundCode(); // DotColor hands over `#rrggbb` only
             $this->painters[$prefix] ??= static fn (string $text): string => $prefix.$text.Sgr::RESET;
 
             return $prefix;

@@ -329,7 +329,7 @@ final class FindInFilesModal
 
             return;
         }
-        if ($this->activeTextField()->editKey($data) || $this->activeTextField()->insert($data)) {
+        if ($this->activeTextField()->editKey($data, $kb) || $this->activeTextField()->insert($data)) {
             $this->notifyField();
         }
     }

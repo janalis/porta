@@ -373,4 +373,11 @@ final class AnsiTextTest extends TestCase
             );
         }
     }
+
+    public function testStripCursorMarkersDropsEveryShapeAndNothingElse(): void
+    {
+        $text = "\x1b[31ma".AnsiUtils::cursorMarker(CursorShape::Bar).'b'.AnsiUtils::cursorMarker().'c'."\x1b_other\x07";
+
+        $this->assertSame("\x1b[31mabc\x1b_other\x07", AnsiText::stripCursorMarkers($text), 'SGR and a foreign APC survive');
+    }
 }

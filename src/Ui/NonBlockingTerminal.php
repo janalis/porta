@@ -6,6 +6,7 @@ namespace Porta\Ui;
 
 use Porta\Support\NonBlockingWriter;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\Tui\Terminal\TerminalEscapeTrait;
 use Symfony\Component\Tui\Terminal\TerminalInterface;
 
 /**
@@ -24,9 +25,11 @@ use Symfony\Component\Tui\Terminal\TerminalInterface;
  * the inner terminal's own boot/teardown mode writes; stop() flushes the
  * queue synchronously so teardown escapes always reach the tty.
  *
- * Every writing method is reimplemented byte-identically through the queue —
- * delegating them to the inner terminal would emit direct, blocking writes
- * that also reorder around queued frame bytes. Known deviations/bypasses:
+ * Every writing method goes through the queue — delegating them to the inner
+ * terminal would emit direct, blocking writes that also reorder around queued
+ * frame bytes. The escape helpers (cursor, clears, title) are the vendor's own
+ * {@see TerminalEscapeTrait}, which writes through THIS class's write(); it is
+ * `@internal`, so a vendor upgrade re-reads it. Known deviations/bypasses:
  * bell() emits BEL through the queue on all platforms (the vendor plays a
  * sound via afplay on macOS), and the inner terminal's one-shot kitty enable
  * (`CSI >7u`) still writes DIRECTLY, bypassing the queue.
@@ -49,6 +52,8 @@ use Symfony\Component\Tui\Terminal\TerminalInterface;
  */
 final class NonBlockingTerminal implements TerminalInterface
 {
+    use TerminalEscapeTrait;
+
     /** @var resource */
     private $stream;
 
@@ -192,56 +197,6 @@ final class NonBlockingTerminal implements TerminalInterface
     public function isKittyProtocolActive(): bool
     {
         return $this->inner->isKittyProtocolActive();
-    }
-
-    #[\Override]
-    public function moveBy(int $lines): void
-    {
-        if ($lines > 0) {
-            $this->write("\x1b[{$lines}B");
-
-            return;
-        }
-        if ($lines < 0) {
-            $this->write("\x1b[".-$lines.'A');
-        }
-    }
-
-    #[\Override]
-    public function hideCursor(): void
-    {
-        $this->write("\x1b[?25l");
-    }
-
-    #[\Override]
-    public function showCursor(): void
-    {
-        $this->write("\x1b[?25h");
-    }
-
-    #[\Override]
-    public function clearLine(): void
-    {
-        $this->write("\x1b[2K");
-    }
-
-    #[\Override]
-    public function clearFromCursor(): void
-    {
-        $this->write("\x1b[0J");
-    }
-
-    #[\Override]
-    public function clearScreen(): void
-    {
-        $this->write("\x1b[2J\x1b[H");
-    }
-
-    #[\Override]
-    public function setTitle(string $title): void
-    {
-        $safe = (string) \preg_replace("/[\x00-\x1f\x7f]|\xc2[\x80-\x9f]/", replacement: '', subject: $title);
-        $this->write("\x1b]0;{$safe}\x07");
     }
 
     #[\Override]

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Overlay\Region;
 
 use Porta\Overlay\State\MenuOverlayController;
+use Porta\Support\AnsiText;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\WidgetRect;
 
@@ -59,7 +60,7 @@ final class SpanSlicer
                     && false !== ($markerAt = \strpos($segment, AnsiUtils::CURSOR_MARKER_PREFIX))
                     && AnsiUtils::visibleWidth(\substr($segment, offset: 0, length: $markerAt)) < $clipOffset
                 ) {
-                    $slice = (string) \preg_replace('/\x1b_pi:c;[^\x07]*\x07/', replacement: '', subject: $slice);
+                    $slice = AnsiText::stripCursorMarkers($slice);
                 }
                 $spans[] = [
                     'row' => $localRow,

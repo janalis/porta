@@ -258,7 +258,7 @@ final class OverlayHost
             return;
         }
         $before = $search->query->value();
-        if ($search->query->editKey($keys)) {
+        if ($search->query->editKey($keys, $kb)) {
             // A caret move repaints; a Delete or Ctrl+W is a new query.
             if ($before === $search->query->value()) {
                 ($this->invalidate)();
@@ -380,7 +380,7 @@ final class OverlayHost
         }
 
         // The caret moves, so a rename's typo mid-word is fixed where it is.
-        if ($prompt['value']->editKey($keys) || $prompt['value']->insert($keys)) {
+        if ($prompt['value']->editKey($keys, $kb) || $prompt['value']->insert($keys)) {
             ($this->invalidate)();
         }
     }
@@ -413,7 +413,7 @@ final class OverlayHost
             return;
         }
         $before = $overlay['filter']->value();
-        if ($overlay['filter']->editKey($keys)) {
+        if ($overlay['filter']->editKey($keys, $kb)) {
             // A caret move repaints; a Delete or Ctrl+W narrows afresh.
             $before === $overlay['filter']->value() ? ($this->invalidate)() : $this->refiltered($overlay);
 

@@ -176,6 +176,7 @@ final class ArchitectureCheckCommand extends Command
         'History>Ui',
         'History>Workbench',
         'I18n>Container',
+        'I18n>Support', // AnsiText::stripCursorMarkers(), the one marker pattern built from the vendor prefix
         'I18n>Ui',
         'Input>Config',
         'Input>Container',

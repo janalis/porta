@@ -449,7 +449,7 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
         }
 
         $field = $this->activeTextField();
-        if (null !== $field && ($field->editKey($data) || $field->insert($data))) {
+        if (null !== $field && ($field->editKey($data, $kb) || $field->insert($data))) {
             $this->afterFieldEdit();
             $this->invalidate();
         }

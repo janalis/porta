@@ -10789,3 +10789,67 @@ frame row's right-click; `PopupMetrics::centered()`; `FieldBox::MAX_WIDTH`.
 
 *Re-opens on:* evidence against any single reason above; the list is not a
 blanket refusal.
+
+## symfony/tui reuse audit (2026-09-28)
+
+A sweep of `src/` and `plugins/*/src` against `vendor/symfony/tui` for logic
+the vendor already has. Most of the text layer already delegates (`AnsiText`
+wraps `AnsiUtils`, `TextField` wraps `Widget\Util\Line`, `TextInput` uses
+`StringUtils`). Four things were adopted:
+
+- **Text-field keys go through the shared `KeyParser`.** `TextField::editKey()`
+  and `MultilineInput::handleKey()` matched raw legacy bytes. With the kitty
+  keyboard protocol on, Ctrl+W arrives as `CSI 119;5u` and Alt+Backspace as
+  `CSI 127;3u`, so word-delete was dead in every text field on a kitty-capable
+  terminal. Both now take the caller's `Keybindings` and match fixed key ids on
+  its parser, which holds the kitty state. Kitty LF names Shift+Enter, so the
+  multi-line input binds both to its line split.
+- **`NonBlockingTerminal` uses `TerminalEscapeTrait`.** Its seven escape helpers
+  were a byte-for-byte copy; the trait writes through the using class's
+  `write()`, so the queue is kept. The trait is `@internal`: re-read it on a
+  vendor upgrade, as with `BidiTui`.
+- **`GraphCellGrid::colorKey()` uses `Color::hex()->toForegroundCode()`.**
+  `DotColor::normalize()` only ever hands it `#rrggbb`, so the vendor's throw
+  is unreachable.
+- **`AnsiText::stripCursorMarkers()`** builds its pattern from
+  `AnsiUtils::CURSOR_MARKER_PREFIX`, replacing three hard-coded `pi:c;`
+  literals (`OverlayCompositor`, `SpanSlicer`, `PaneReorder`).
+
+**Measured and kept, each for its reason:**
+
+- `AnsiText::wrap()` vs `TextWrapper`: `MarkupNode::lines()` relies on its
+  one-space-per-break byte accounting; the vendor rtrims and re-emits ANSI.
+- `AnsiText::columnsFrom()` vs `sliceToWidth()`: the vendor pads (above).
+- `Document` word motion vs `WordNavigator`: `$` is a word character in PHP.
+- `ClipboardRing` vs `KillRing`: promote-on-recopy and a byte budget, no yank-pop.
+- `TextMetrics` / `mb_strwidth` vs `visibleWidth()`: settled (2026-08-14); tab
+  stops and UTF-16 columns are not vendor concerns either way.
+- `TabBarWidget` family vs `TabsWidget`, key hints vs `KeyBindingWidget`: settled.
+- `SettingsFormWidget` vs `SettingsListWidget`: text rows, a choice popup and
+  paging; the vendor only cycles values.
+- `UndoHistory` vs `EditorDocument`: multi-caret snapshots, compound edits,
+  coalescing and a line budget.
+- `OverlayHost` picker and `MenuPanel` vs `SelectListWidget`: floating overlay,
+  mouse hover, disabled rows and mnemonics; `ListSelection` has variable row
+  heights and drag autoscroll the vendor keeps private.
+- `FocusRing` vs `FocusManager`: members change per call; about 15 lines.
+- `ShortcutFormatter` vs `Key::label()`: different glyphs and a Cmd modifier,
+  pinned by `HintDialectTest`.
+- `OverlayCompositor` vs `Compositor`/`Layer`: one bounded splice per row
+  against a whole-canvas cell grid, and the vendor pair is `@internal`.
+- `BidiTui::processRender()`: the deliberate mirror (above).
+- `TerminalReplay` / `TerminalBuffer` vs `ScreenBuffer`: the vendor grid does
+  not auto-wrap, and the terminal panel is line-based scrollback.
+- Raw `EventLoop::repeat` timers vs `TickScheduler`: `@internal`, tied to the
+  TUI tick, and the watchdog must run while the TUI is stalled.
+- Theme `38;5;N` literals and `HalfBlockRasterizer`'s merged SGR vs `Color`:
+  constants, and a per-pixel hot loop.
+- `CodeEditorWidget::hasControlBytes()` vs `StringUtils::hasControlChars()`:
+  it allows tab and LF.
+
+**Open, not done here:** `I18n/Bidi.php` tokenises only SGR and APC, so any
+other CSI or OSC counts as visible text and a tab as one column;
+`AnsiUtils::walkCells()` would count both right.
+
+*Re-opens on:* a vendor release that makes one of the `@internal` pieces public
+API, or evidence against a single reason above.

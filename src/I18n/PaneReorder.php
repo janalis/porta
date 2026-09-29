@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\I18n;
 
 use Porta\Container\AsIdeService;
+use Porta\Support\AnsiText;
 use Porta\Ui\Sgr;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
@@ -274,7 +275,7 @@ final class PaneReorder
             return $slice;
         }
 
-        return (string) \preg_replace('/\x1b_pi:c;[^\x07]*\x07/', replacement: '', subject: $slice);
+        return AnsiText::stripCursorMarkers($slice);
     }
 
     /**

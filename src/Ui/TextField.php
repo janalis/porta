@@ -7,6 +7,8 @@ namespace Porta\Ui;
 use Porta\Input\TextInput;
 use Porta\Support\AnsiText;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Input\Key;
+use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Widget\Util\Line;
 
 /**
@@ -29,6 +31,19 @@ use Symfony\Component\Tui\Widget\Util\Line;
  */
 final readonly class TextField
 {
+    /** The field's own editing keys, by key id — see {@see editKey()}. */
+    private const array KEYS = [
+        'left' => [Key::LEFT],
+        'right' => [Key::RIGHT],
+        'word_left' => ['ctrl+left'],
+        'word_right' => ['ctrl+right'],
+        'home' => [Key::HOME],
+        'end' => [Key::END],
+        'delete' => [Key::DELETE],
+        'delete_word' => ['ctrl+w'],
+        'delete_word_part' => ['alt+backspace'],
+    ];
+
     private CursorStyle $style;
 
     /**
@@ -157,27 +172,32 @@ final readonly class TextField
      * anything (false for any other key, and for a key with nothing to do,
      * such as ← at the start).
      *
-     * Raw sequences rather than keybinding ids: these are the field's editing
+     * Fixed key ids rather than the IDE's keymap: these are the field's editing
      * keys, not rebindable IDE actions, and every text field in the IDE spells
      * them the same way — the settings form, the pickers' filters, the prompts.
+     * They go through the caller's parser, never raw bytes: that parser knows
+     * whether the kitty keyboard protocol is on, and under it Ctrl+W arrives as
+     * `CSI 119;5u`, not `\x17`.
      */
-    public function editKey(string $data): bool
+    public function editKey(string $data, Keybindings $kb): bool
     {
         $pasted = TextInput::pasted($data);
         if (null !== $pasted) {
             return $this->paste($pasted);
         }
 
-        return match ($data) {
-            "\x1b[D" => $this->moveLeft(),
-            "\x1b[C" => $this->moveRight(),
-            "\x1b[1;5D" => $this->line->moveWordBackward(),
-            "\x1b[1;5C" => $this->line->moveWordForward(),
-            "\x1b[H", "\x1bOH", "\x1b[1~" => $this->moveHome(),
-            "\x1b[F", "\x1bOF", "\x1b[4~" => $this->moveEnd(),
-            "\x1b[3~" => $this->deleteForward(),
-            "\x17" => $this->deleteWordBackward(),
-            "\x1b\x7f" => $this->deleteWordPartBackward(),
+        $keys = new Keybindings(self::KEYS, $kb->getParser());
+
+        return match (true) {
+            $keys->matches($data, 'left') => $this->moveLeft(),
+            $keys->matches($data, 'right') => $this->moveRight(),
+            $keys->matches($data, 'word_left') => $this->line->moveWordBackward(),
+            $keys->matches($data, 'word_right') => $this->line->moveWordForward(),
+            $keys->matches($data, 'home') => $this->moveHome(),
+            $keys->matches($data, 'end') => $this->moveEnd(),
+            $keys->matches($data, 'delete') => $this->deleteForward(),
+            $keys->matches($data, 'delete_word') => $this->deleteWordBackward(),
+            $keys->matches($data, 'delete_word_part') => $this->deleteWordPartBackward(),
             default => false,
         };
     }

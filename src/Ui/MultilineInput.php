@@ -9,6 +9,8 @@ use Porta\Editor\TextMetrics;
 use Porta\Input\TextInput;
 use Porta\Support\AnsiText;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Input\Key;
+use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Widget\Util\Line;
 
 /**
@@ -19,6 +21,19 @@ use Symfony\Component\Tui\Widget\Util\Line;
  */
 final class MultilineInput
 {
+    /**
+     * The input's own keys, by key id. Shift+Enter splits too: under the kitty
+     * protocol a bare LF is how the parser names it, and LF always split here.
+     */
+    private const array KEYS = [
+        'split' => [Key::ENTER, 'shift+enter'],
+        'backspace' => [Key::BACKSPACE],
+        'up' => [Key::UP],
+        'down' => [Key::DOWN],
+        'left' => [Key::LEFT],
+        'right' => [Key::RIGHT],
+    ];
+
     /** @var list<string> */
     private array $lines = [''];
     private int $line = 0;
@@ -56,18 +71,20 @@ final class MultilineInput
 
     /**
      * Handle one keystroke; returns whether it was consumed (content or caret
-     * changed). A flat dispatch over mutually exclusive key literals — the one
-     * ordering constraint is that the printable fallback stays last.
+     * changed). Keys go through the caller's parser, which reads both the
+     * legacy and the kitty encodings — the printable fallback stays last.
      */
-    public function handleKey(string $keys): bool
+    public function handleKey(string $keys, Keybindings $kb): bool
     {
-        return match ($keys) {
-            "\r", "\n" => $this->splitLineAtCaret(),
-            "\x7f", "\x08" => $this->deleteBackward(),
-            "\x1b[A" => $this->moveUp(),
-            "\x1b[B" => $this->moveDown(),
-            "\x1b[D" => $this->moveLeft(),
-            "\x1b[C" => $this->moveRight(),
+        $bindings = new Keybindings(self::KEYS, $kb->getParser());
+
+        return match (true) {
+            $bindings->matches($keys, 'split') => $this->splitLineAtCaret(),
+            $bindings->matches($keys, 'backspace') => $this->deleteBackward(),
+            $bindings->matches($keys, 'up') => $this->moveUp(),
+            $bindings->matches($keys, 'down') => $this->moveDown(),
+            $bindings->matches($keys, 'left') => $this->moveLeft(),
+            $bindings->matches($keys, 'right') => $this->moveRight(),
             default => $this->insertPaste($keys) || TextInput::isPrintable($keys) && $this->insertPrintable($keys),
         };
     }

@@ -428,7 +428,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         // Caret movement, so a typo at the START of a value is fixable without
         // retyping the rest — a JSON debug launch config being the case that
         // made append-only editing untenable.
-        if ($field->editKey($data)) {
+        if ($field->editKey($data, $kb)) {
             $this->invalidate();
 
             return;

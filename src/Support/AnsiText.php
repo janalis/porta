@@ -192,6 +192,18 @@ final class AnsiText
     }
 
     /**
+     * $text without its hardware-cursor markers (every shape). The pattern is
+     * built from the vendor's own prefix, so a marker change upstream cannot
+     * leave a stale literal matching nothing.
+     */
+    public static function stripCursorMarkers(string $text): string
+    {
+        $prefix = \preg_quote(AnsiUtils::CURSOR_MARKER_PREFIX, delimiter: '/');
+
+        return (string) \preg_replace('/'.$prefix.'[^\x07]*\x07/', replacement: '', subject: $text);
+    }
+
+    /**
      * The $width-column window of $text that keeps display column $caretCol
      * visible, with $marker inserted exactly at the caret. Used to horizontally
      * scroll a single-line input so its (zero-width) cursor marker never falls
