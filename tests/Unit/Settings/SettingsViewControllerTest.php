@@ -43,6 +43,7 @@ use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Search\FileIndex;
 use Porta\Settings\LiveSettingsApplier;
+use Porta\Settings\Section\CommandLineSection;
 use Porta\Settings\Section\GeneralSection;
 use Porta\Settings\Section\HighlightingSection;
 use Porta\Settings\Section\InterfaceSection;
@@ -368,6 +369,7 @@ final class SettingsViewControllerTest extends TestCase
                         new Translator('en'),
                         $scopeRow,
                     ),
+                    new CommandLineSection(new Translator('en'), $notifier),
                     new PluginsSection($plugins, new Translator('en')),
                     new LanguageSection($languages, $lsp, $debug, $scopeRow),
                     new GeneralSection($settings, new Translator('en'), $scopeRow),

@@ -41,7 +41,7 @@ use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
  * indented sub-row per installed plugin under Plugins, then a
  * (non-selectable) Languages header followed by one row per configurable
  * language. Selecting a row (arrow/click) fires onSelect with its id
- * ('general' | 'interface' | 'highlighting' | 'keybindings' | 'plugins' |
+ * ('general' | 'interface' | 'highlighting' | 'keybindings' | 'commandLine' | 'plugins' |
  * 'plugin:<name>' | 'lang:<id>'); the header is skipped. Self-sizing so the
  * sidebar can be dragged wider/narrower — and {@see minWidth()} measures the
  * rows rather than naming a number, because the row set here grows.
@@ -62,7 +62,14 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
     use PaneNavigationCallbacks;
     use PanelRowStyle;
 
-    private const array SECTIONS = ['general' => 'General', 'interface' => 'Interface', 'highlighting' => 'Highlighting', 'keybindings' => 'Keybindings', 'plugins' => 'Plugins'];
+    private const array SECTIONS = [
+        'general' => 'General',
+        'interface' => 'Interface',
+        'highlighting' => 'Highlighting',
+        'keybindings' => 'Keybindings',
+        'commandLine' => 'Command line',
+        'plugins' => 'Plugins',
+    ];
 
     /**
      * The floor under {@see minWidth()}'s measurement — what this nav was

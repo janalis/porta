@@ -98,6 +98,12 @@ porta --git-setup            # write the entries below to your global git config
 porta --git-setup --dry-run  # print the git config commands instead
 ```
 
+**Settings → Command line** does the same, and shows where it stands:
+*Set up* when nothing is there, *Update* when your global config runs another
+Porta (a checkout since moved) or only part of it is set, and *Remove*, which
+takes the `porta` sections out and resets `diff.tool` / `merge.tool` only while
+they still say `porta` — a tool you picked since stays.
+
 It makes Porta both of git's tools, naming the binary by its absolute path —
 the phar, or the script you ran — so git finds it whatever its own `PATH` is:
 

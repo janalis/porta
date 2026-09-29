@@ -239,8 +239,9 @@ override wins over both.
 
 ## The Settings view (`Ctrl+,`)
 
-A full-screen view with a resizable sidebar: **General**, **Keybindings**,
-**Plugins**, and one section per language.
+A full-screen view with a resizable sidebar: **General**, **Interface**,
+**Highlighting**, **Keybindings**, **Command line**, **Plugins**, and one
+section per language.
 
 - **General** — the `settings` table above, edited live (theme and language
   switch immediately, including a full RTL re-layout for Hebrew).
@@ -248,6 +249,13 @@ A full-screen view with a resizable sidebar: **General**, **Keybindings**,
   capture, the next keypress becomes the binding (persisted to `.porta.json`
   and applied live — IDE-level dispatch and menu shortcut labels re-merge
   immediately).
+- **Command line** — Porta outside the IDE, each installed, updated and
+  removed from here: the `porta` command (a symlink, `~/.local/bin/porta`
+  unless one is already on your `PATH`; a `porta` put there some other way is
+  shown and left alone), Porta as [git's difftool and
+  mergetool](git.md#as-gits-difftool-and-mergetool), and — for the phar —
+  updating Porta itself (`--self-update`, run in the background). A removal
+  takes two presses.
 - **Plugins** — install (git URL or local path, project or global scope) and
   remove plugins; see [plugins.md](plugins.md).
 - **Languages** — indent style/size, the LSP server command (live: the pool

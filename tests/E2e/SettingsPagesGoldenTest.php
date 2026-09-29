@@ -7,6 +7,7 @@ namespace Porta\Tests\E2e;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Ide;
+use Porta\Settings\Section\CommandLineSection;
 use Porta\Settings\Section\GeneralSection;
 use Porta\Settings\Section\HighlightingSection;
 use Porta\Settings\Section\InterfaceSection;
@@ -64,7 +65,7 @@ final class SettingsPagesGoldenTest extends TestCase
     private const string GOLDEN = __DIR__.'/../Support/golden/settings-pages.json';
 
     /** Every page a controller composes rows for. */
-    private const array PAGES = ['general', 'interface', 'highlighting', 'lang:php', 'plugins'];
+    private const array PAGES = ['general', 'interface', 'highlighting', 'commandLine', 'lang:php', 'plugins'];
 
     /**
      * Which page above stands for which section class.
@@ -81,6 +82,7 @@ final class SettingsPagesGoldenTest extends TestCase
      * @var array<class-string, string>
      */
     private const array SECTION_PAGES = [
+        CommandLineSection::class => 'commandLine',
         GeneralSection::class => 'general',
         HighlightingSection::class => 'highlighting',
         InterfaceSection::class => 'interface',
@@ -174,8 +176,24 @@ final class SettingsPagesGoldenTest extends TestCase
             ),
         ]);
         \putenv('PORTA_HOME='.$this->home->dir);
+        // The Command line page names ~/.local/bin/porta: a fixed home keeps
+        // that the same on every machine, and absent.
+        $home = \getenv('HOME');
+        \putenv('HOME=/nonexistent-home');
 
         $pages = [];
+        try {
+            $this->capturePages($pages);
+        } finally {
+            \putenv('HOME='.(string) $home);
+        }
+
+        return $pages;
+    }
+
+    /** @param array<string, list<string>> $pages */
+    private function capturePages(array &$pages): void
+    {
         $this->runIde(
             $this->project,
             $this->project->path('A.php'),
@@ -195,8 +213,6 @@ final class SettingsPagesGoldenTest extends TestCase
             columns: 120,
             rows: 30, // the boxed pages; SettingsRowLayoutTest pins the compact form
         );
-
-        return $pages;
     }
 
     /** @return list<string> */

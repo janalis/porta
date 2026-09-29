@@ -8,6 +8,7 @@ use Porta\Container\Ansi;
 use Porta\Container\LspMode;
 use Porta\Container\ToolLaunch;
 use Porta\Ide;
+use Porta\Install\GitToolSetup;
 use Porta\Support\BootTrace;
 use Porta\Support\DiagnosticLog;
 use Symfony\Component\Console\Attribute\Argument;
@@ -62,7 +63,7 @@ final class PortaCommand extends Command
     /** @var callable(): bool */
     private $isInteractive;
 
-    /** @var \Closure(list<string>): bool */
+    /** @var \Closure(list<string>): array{int, string} */
     private readonly \Closure $git;
 
     /** @var \Closure(list<string>, ?string): array{int, string} */
@@ -73,7 +74,7 @@ final class PortaCommand extends Command
      *                                                                                         trailing closure is called between boot and run, so a crash can say
      *                                                                                         which half died
      * @param (callable(): bool)|null                                           $isInteractive defaults to a POSIX tty check
-     * @param (\Closure(list<string>): bool)|null                               $git           runs `git <args>` for --git-setup; defaults to the real binary
+     * @param (\Closure(list<string>): array{int, string})|null                $git           runs `git <args>` for --git-setup; defaults to the real binary
      * @param string                                                            $self          this binary's absolute path, the one git is told to run (bin/porta
      *                                                                                         passes the phar's or its own)
      * @param (\Closure(list<string>, ?string): array{int, string})|null         $process       runs `gh`/`curl`/the new phar for --self-update; defaults to real processes
@@ -309,8 +310,9 @@ final class PortaCommand extends Command
     }
 
     /**
-     * Run a command for --self-update: its exit code and stdout. Excluded from
-     * coverage: the tests hand a fake in — the real one reaches GitHub.
+     * Run a command for --self-update and --git-setup: its exit code and
+     * stdout. Excluded from coverage: the tests hand fakes in — the real ones
+     * reach GitHub and write the user's global git config.
      *
      * @param list<string> $command
      *
@@ -331,20 +333,17 @@ final class PortaCommand extends Command
     }
 
     /**
-     * Run `git <args>` for --git-setup. Excluded from coverage: the tests hand a
-     * fake in, since the real one writes the user's global config.
+     * `git <args>`, through {@see runProcess()}.
      *
      * @param list<string> $args
      *
+     * @return array{int, string}
+     *
      * @codeCoverageIgnore
      */
-    private static function runGit(array $args): bool
+    private static function runGit(array $args): array
     {
-        try {
-            return 0 === new Process(['git', ...$args])->run();
-        } catch (\Throwable) {
-            return false; // no git binary at all
-        }
+        return self::runProcess(['git', ...$args]);
     }
 
     /**

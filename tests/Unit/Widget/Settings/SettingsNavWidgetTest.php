@@ -93,10 +93,13 @@ final class SettingsNavWidgetTest extends TestCase
         $widget->handleInput("\x1b[B"); // → Keybindings
         $this->assertSame('keybindings', $widget->selectedId());
 
+        $widget->handleInput("\x1b[B"); // → Command line
+        $this->assertSame('commandLine', $widget->selectedId());
+
         $widget->handleInput("\x1b[B"); // → Plugins
         $widget->handleInput("\x1b[B"); // skips the Languages header → PHP
         $this->assertSame('lang:php', $widget->selectedId());
-        $this->assertSame(['interface', 'highlighting', 'keybindings', 'plugins', 'lang:php'], $selected);
+        $this->assertSame(['interface', 'highlighting', 'keybindings', 'commandLine', 'plugins', 'lang:php'], $selected);
 
         $widget->handleInput("\x1b[A"); // back up, skipping the Languages header → Plugins
         $this->assertSame('plugins', $widget->selectedId());
@@ -122,11 +125,11 @@ final class SettingsNavWidgetTest extends TestCase
         $widget->handleClick(3); // Keybindings (row 3, after the new Highlighting row)
         $this->assertSame('keybindings', $widget->selectedId());
 
-        $widget->handleClick(5); // the Languages header → no-op
+        $widget->handleClick(6); // the Languages header → no-op
         $this->assertSame('keybindings', $widget->selectedId());
         $this->assertSame(['keybindings'], $selected, 'the header fires nothing');
 
-        $widget->handleClick(6); // PHP
+        $widget->handleClick(7); // PHP
         $this->assertSame('lang:php', $widget->selectedId());
         $widget->handleClick(99); // dead space
         $this->assertSame('lang:php', $widget->selectedId());
@@ -170,10 +173,10 @@ final class SettingsNavWidgetTest extends TestCase
         $this->assertStringContainsString("\x1b[48;5;31m", $rendered[0], 'General selected + focused');
 
         $widget->setFocused(false);
-        $this->assertTrue($widget->hoverRow(6)); // hover PHP
+        $this->assertTrue($widget->hoverRow(7)); // hover PHP
         $rendered = $widget->render(new RenderContext(24, 20));
-        $this->assertStringContainsString("\x1b[48;5;236m", $rendered[6], 'hovered language tinted');
-        $this->assertTrue($widget->hoverRow(5), 'hovering the header clears the language tint');
+        $this->assertStringContainsString("\x1b[48;5;236m", $rendered[7], 'hovered language tinted');
+        $this->assertTrue($widget->hoverRow(6), 'hovering the header clears the language tint');
         $this->assertFalse($widget->clearHover(), 'already cleared');
     }
 
@@ -395,7 +398,9 @@ final class SettingsNavWidgetTest extends TestCase
         $widget->setPluginEntries(['phpstan']);
         $this->assertGreaterThan($before, $widget->getRenderRevision(), 'setPluginEntries always invalidates');
 
-        $widget->render(new RenderContext(24, 20)); // establish scroll for the click's row mapping
+        // Tall enough that nothing overflows: an overflowing list reserves a
+        // row for its ▲, and this is about the click, not the scrolling.
+        $widget->render(new RenderContext(24, 24)); // establish scroll for the click's row mapping
         $before = $widget->getRenderRevision();
         $widget->handleClick(3); // 'general' -> 'keybindings'
         $this->assertSame('keybindings', $widget->selectedId());
@@ -498,8 +503,8 @@ final class SettingsNavWidgetTest extends TestCase
         $widget->handleClick(5); // the last row of a six-row pane: the ▼ itself
 
         $rows = $this->navRows($widget, 24, rows: 6);
-        $this->assertSame('plugins', $widget->selectedId(), 'the entry just past the window');
-        $this->assertSame('▌Plugins', $rows[4], 'drawn: the window followed it');
+        $this->assertSame('commandLine', $widget->selectedId(), 'the entry just past the window');
+        $this->assertSame('▌Command line', $rows[4], 'drawn: the window followed it');
     }
 
     /** And hover takes the same path, so it was wrong in the same way. */

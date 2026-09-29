@@ -75,6 +75,11 @@ A subdirectory there costs nothing in the graph — `composer arch` attributes a
 file by the first segment after `Porta\`, so `Porta\GitPlugin\Process\Foo` is a
 `GitPlugin` file exactly as `Porta\GitPlugin\Foo` was.
 
+**`Install/`** — Porta outside the IDE: the `porta` link on `PATH`
+(`CommandLink`), git's difftool/mergetool config (`GitToolSetup`) and the
+running binary (`PortaBinary`). Shared by `Console/` (`--git-setup`) and the
+Command line settings page, so neither reaches into the other.
+
 **`Settings/`** — all settings controllers plus the row model (`SettingsRow`,
 `SettingsRowKind`). `Config/` keeps only `.porta.json` parsing and the action
 and command catalogs. Settings **widgets** stay in `Widget/Settings/`.

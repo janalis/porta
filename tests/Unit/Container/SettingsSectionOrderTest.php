@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit\Container;
 
+use Porta\Settings\Section\CommandLineSection;
 use Porta\Settings\Section\GeneralSection;
 use Porta\Settings\Section\HighlightingSection;
 use Porta\Settings\Section\InterfaceSection;
@@ -39,6 +40,7 @@ final class SettingsSectionOrderTest extends ContainerTestCase
         $expected = [
             InterfaceSection::class, // 600
             HighlightingSection::class, // 500
+            CommandLineSection::class, // 450 — above Plugins, as in the nav
             PluginsSection::class, // 400 — claims both 'plugins' and 'plugin:<name>'
             LanguageSection::class, // 200
             GeneralSection::class, // 100 — the catch-all; MUST stay last

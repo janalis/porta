@@ -97,6 +97,7 @@ final class ArchitectureCheckCommand extends Command
         'Config>Plugin',
         'Config>Support',
         'Console>Container',
+        'Console>Install',
         'Console>Support',
         'Container>Config',
         'Debug>Container',
@@ -264,6 +265,7 @@ final class ArchitectureCheckCommand extends Command
         'Settings>Event',
         'Settings>Highlight',
         'Settings>Input',
+        'Settings>Install',
         'Settings>Layout',
         'Settings>Lsp',
         // The two tooltip settings apply straight to the TooltipCenter — the

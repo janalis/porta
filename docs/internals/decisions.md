@@ -10982,3 +10982,30 @@ or checkout install is told how to update instead.
 *Re-opens on:* the repository going public (the credentials could go), or a
 signed-release requirement (a checksum from the same release proves integrity,
 not origin).
+
+## Settings → Command line (2026-09-29)
+
+The `porta` command, git's tools and the self-update are installed, updated and
+removed from a settings page, beside the shell's `--git-setup` /
+`--self-update`. **The logic is core's `Install/`**, shared by `Console/` and
+the page: the git config it writes is Porta's own, not the git plugin's (whose
+views it opens), which is why `GitToolSetup` was already core, and a plugin
+page could not host it anyway — plugin settings are values, never buttons with
+a state. **Only a symlink is managed.** A regular `porta` on `PATH` — a copied
+phar, Composer's `vendor/bin` proxy — was put there some other way and is shown
+as such, never replaced or removed; a link can only have come from an `ln -s`,
+and one pointing elsewhere (a moved checkout, another phar, nothing) is exactly
+what Update is for. **Removal keeps a tool the user picked since:** the two
+`porta` sections go, `diff.tool` / `merge.tool` only while they still say
+`porta`. **State is read, not remembered**: each row rebuild stats the link and
+runs one `git config --get-regexp`, milliseconds, in line, so a change made from
+a shell meanwhile is what the page shows. **The update runs `porta
+--self-update` as a child process** (GitHub is not something the loop waits on)
+and tells "updated" from "up to date" by the phar's hash, not by parsing what it
+printed. Driven for real (a phar stamped v0.0.1 updated to v0.1.0 from the
+page): the running IDE carried on — other pages, menus — on the code it had
+started with, so the page says to restart rather than pretending the new code is
+live.
+
+*Re-opens on:* a Windows port (no symlinks without privilege), or a request to
+manage a copied phar as well.

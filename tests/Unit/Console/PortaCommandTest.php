@@ -333,10 +333,10 @@ final class PortaCommandTest extends TestCase
     public function testGitSetupDryRunPrintsTheConfigNamingThisBinary(): void
     {
         $ran = [];
-        $tester = new CommandTester(new PortaCommand(git: static function (array $args) use (&$ran): bool {
+        $tester = new CommandTester(new PortaCommand(git: static function (array $args) use (&$ran): array {
             $ran[] = $args;
 
-            return true;
+            return [0, ''];
         }, self: '/opt/my porta/bin/porta'));
 
         $this->assertSame(Command::SUCCESS, $tester->execute(['--git-setup' => true, '--dry-run' => true]));
@@ -349,10 +349,10 @@ final class PortaCommandTest extends TestCase
     public function testGitSetupWritesTheGlobalConfig(): void
     {
         $ran = [];
-        $tester = new CommandTester(new PortaCommand(git: static function (array $args) use (&$ran): bool {
+        $tester = new CommandTester(new PortaCommand(git: static function (array $args) use (&$ran): array {
             $ran[] = $args;
 
-            return true;
+            return [0, ''];
         }, self: '/usr/local/bin/porta'));
 
         $this->assertSame(Command::SUCCESS, $tester->execute(['--git-setup' => true]));
@@ -373,10 +373,10 @@ final class PortaCommandTest extends TestCase
     public function testGitSetupStopsAtTheFirstWriteThatFails(): void
     {
         $ran = 0;
-        $tester = new CommandTester(new PortaCommand(git: static function (array $args) use (&$ran): bool {
+        $tester = new CommandTester(new PortaCommand(git: static function (array $args) use (&$ran): array {
             ++$ran;
 
-            return 1 === $ran;
+            return [1 === $ran ? 0 : 255, ''];
         }));
 
         $this->assertSame(Command::FAILURE, $tester->execute(['--git-setup' => true]));

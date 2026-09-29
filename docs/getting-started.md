@@ -48,7 +48,9 @@ Composer asks for a GitHub token (the repository is private), add
 ln -s "$PWD/bin/porta" ~/.local/bin/porta
 ```
 
-To use Porta as git's difftool and mergetool, run `porta --git-setup` — see
+Once Porta runs, **Settings → Command line** does the same from inside it —
+installs, updates or removes the `porta` link, and Porta as git's difftool and
+mergetool. From a shell, `porta --git-setup` makes it git's tools — see
 [the git guide](git.md#as-gits-difftool-and-mergetool).
 
 ## Language server

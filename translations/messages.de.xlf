@@ -3654,6 +3654,138 @@
         <source>Esc to edit the file · F7 next conflict · Alt+M resolve · Ctrl+S, then Ctrl+Q — conflicts left mean the merge fails</source>
         <target>Esc zum Bearbeiten · F7 nächster Konflikt · Alt+M auflösen · Strg+S, dann Strg+Q — verbleibende Konflikte lassen den Merge scheitern</target>
       </trans-unit>
+      <trans-unit id="1018">
+        <source>Command line</source>
+        <target>Befehlszeile</target>
+      </trans-unit>
+      <trans-unit id="1019">
+        <source>porta is now a command: %path%</source>
+        <target>porta ist jetzt ein Befehl: %path%</target>
+      </trans-unit>
+      <trans-unit id="1020">
+        <source>porta is now git's difftool and mergetool</source>
+        <target>porta ist jetzt gits difftool und mergetool</target>
+      </trans-unit>
+      <trans-unit id="1021">
+        <source>Links %path% to this Porta</source>
+        <target>Verlinkt %path% auf dieses Porta</target>
+      </trans-unit>
+      <trans-unit id="1022">
+        <source>%path% runs this Porta</source>
+        <target>%path% startet dieses Porta</target>
+      </trans-unit>
+      <trans-unit id="1023">
+        <source>%path% runs another Porta: %other%</source>
+        <target>%path% startet ein anderes Porta: %other%</target>
+      </trans-unit>
+      <trans-unit id="1024">
+        <source>%path% was installed another way; update or remove it that way</source>
+        <target>%path% wurde anders installiert; aktualisieren oder entfernen Sie es auf demselben Weg</target>
+      </trans-unit>
+      <trans-unit id="1025">
+        <source>%dir% is not on your PATH</source>
+        <target>%dir% ist nicht in Ihrem PATH</target>
+      </trans-unit>
+      <trans-unit id="1026">
+        <source>The porta command</source>
+        <target>Der Befehl porta</target>
+      </trans-unit>
+      <trans-unit id="1027">
+        <source>porta in a terminal</source>
+        <target>porta im Terminal</target>
+      </trans-unit>
+      <trans-unit id="1028">
+        <source>Up to date</source>
+        <target>Aktuell</target>
+      </trans-unit>
+      <trans-unit id="1029">
+        <source>Remove the porta command</source>
+        <target>Den Befehl porta entfernen</target>
+      </trans-unit>
+      <trans-unit id="1030">
+        <source>git difftool and mergetool</source>
+        <target>git difftool und mergetool</target>
+      </trans-unit>
+      <trans-unit id="1031">
+        <source>porta as git's diff and merge tool</source>
+        <target>porta als gits Diff- und Merge-Werkzeug</target>
+      </trans-unit>
+      <trans-unit id="1032">
+        <source>git is not installed</source>
+        <target>git ist nicht installiert</target>
+      </trans-unit>
+      <trans-unit id="1033">
+        <source>Sets diff.tool and merge.tool in your global git config</source>
+        <target>Setzt diff.tool und merge.tool in Ihrer globalen git-Konfiguration</target>
+      </trans-unit>
+      <trans-unit id="1034">
+        <source>git difftool and git mergetool open this Porta</source>
+        <target>git difftool und git mergetool öffnen dieses Porta</target>
+      </trans-unit>
+      <trans-unit id="1035">
+        <source>Your global git config runs another Porta, or only part of the setup is there</source>
+        <target>Ihre globale git-Konfiguration startet ein anderes Porta, oder die Einrichtung ist unvollständig</target>
+      </trans-unit>
+      <trans-unit id="1036">
+        <source>Set up</source>
+        <target>Einrichten</target>
+      </trans-unit>
+      <trans-unit id="1037">
+        <source>Unavailable</source>
+        <target>Nicht verfügbar</target>
+      </trans-unit>
+      <trans-unit id="1038">
+        <source>Remove porta from git</source>
+        <target>porta aus git entfernen</target>
+      </trans-unit>
+      <trans-unit id="1039">
+        <source>Porta itself</source>
+        <target>Porta selbst</target>
+      </trans-unit>
+      <trans-unit id="1040">
+        <source>Replaces %path% with the latest release</source>
+        <target>Ersetzt %path% durch die neueste Version</target>
+      </trans-unit>
+      <trans-unit id="1041">
+        <source>This Porta runs from a checkout or Composer: update it with git pull or composer global update</source>
+        <target>Dieses Porta läuft aus einem Checkout oder über Composer: aktualisieren Sie es mit git pull oder composer global update</target>
+      </trans-unit>
+      <trans-unit id="1042">
+        <source>Updates</source>
+        <target>Aktualisierungen</target>
+      </trans-unit>
+      <trans-unit id="1043">
+        <source>Press Enter again to remove it</source>
+        <target>Drücken Sie erneut Enter, um es zu entfernen</target>
+      </trans-unit>
+      <trans-unit id="1044">
+        <source>The porta command is removed</source>
+        <target>Der Befehl porta ist entfernt</target>
+      </trans-unit>
+      <trans-unit id="1045">
+        <source>porta is no longer git's difftool and mergetool</source>
+        <target>porta ist nicht mehr gits difftool und mergetool</target>
+      </trans-unit>
+      <trans-unit id="1046">
+        <source>Could not do it: %why%</source>
+        <target>Nicht möglich: %why%</target>
+      </trans-unit>
+      <trans-unit id="1047">
+        <source>An update is already running</source>
+        <target>Eine Aktualisierung läuft bereits</target>
+      </trans-unit>
+      <trans-unit id="1048">
+        <source>Restart Porta to use it.</source>
+        <target>Starten Sie Porta neu, um sie zu verwenden.</target>
+      </trans-unit>
+      <trans-unit id="1049">
+        <source>Could not run the update</source>
+        <target>Die Aktualisierung konnte nicht gestartet werden</target>
+      </trans-unit>
+      <trans-unit id="1050">
+        <source>Looking for a newer Porta…</source>
+        <target>Suche nach einem neueren Porta…</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

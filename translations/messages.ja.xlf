@@ -3654,6 +3654,138 @@
         <source>Esc to edit the file · F7 next conflict · Alt+M resolve · Ctrl+S, then Ctrl+Q — conflicts left mean the merge fails</source>
         <target>Esc でファイルを編集 · F7 次の競合 · Alt+M 解決 · Ctrl+S の後 Ctrl+Q — 競合が残るとマージは失敗します</target>
       </trans-unit>
+      <trans-unit id="1018">
+        <source>Command line</source>
+        <target>コマンドライン</target>
+      </trans-unit>
+      <trans-unit id="1019">
+        <source>porta is now a command: %path%</source>
+        <target>porta がコマンドになりました: %path%</target>
+      </trans-unit>
+      <trans-unit id="1020">
+        <source>porta is now git's difftool and mergetool</source>
+        <target>porta が git の difftool と mergetool になりました</target>
+      </trans-unit>
+      <trans-unit id="1021">
+        <source>Links %path% to this Porta</source>
+        <target>%path% をこの Porta にリンクします</target>
+      </trans-unit>
+      <trans-unit id="1022">
+        <source>%path% runs this Porta</source>
+        <target>%path% はこの Porta を起動します</target>
+      </trans-unit>
+      <trans-unit id="1023">
+        <source>%path% runs another Porta: %other%</source>
+        <target>%path% は別の Porta を起動します: %other%</target>
+      </trans-unit>
+      <trans-unit id="1024">
+        <source>%path% was installed another way; update or remove it that way</source>
+        <target>%path% は別の方法でインストールされています。同じ方法で更新または削除してください</target>
+      </trans-unit>
+      <trans-unit id="1025">
+        <source>%dir% is not on your PATH</source>
+        <target>%dir% は PATH に含まれていません</target>
+      </trans-unit>
+      <trans-unit id="1026">
+        <source>The porta command</source>
+        <target>porta コマンド</target>
+      </trans-unit>
+      <trans-unit id="1027">
+        <source>porta in a terminal</source>
+        <target>ターミナルで porta</target>
+      </trans-unit>
+      <trans-unit id="1028">
+        <source>Up to date</source>
+        <target>最新</target>
+      </trans-unit>
+      <trans-unit id="1029">
+        <source>Remove the porta command</source>
+        <target>porta コマンドを削除</target>
+      </trans-unit>
+      <trans-unit id="1030">
+        <source>git difftool and mergetool</source>
+        <target>git の difftool と mergetool</target>
+      </trans-unit>
+      <trans-unit id="1031">
+        <source>porta as git's diff and merge tool</source>
+        <target>git の diff・マージツールとしての porta</target>
+      </trans-unit>
+      <trans-unit id="1032">
+        <source>git is not installed</source>
+        <target>git がインストールされていません</target>
+      </trans-unit>
+      <trans-unit id="1033">
+        <source>Sets diff.tool and merge.tool in your global git config</source>
+        <target>グローバルな git 設定に diff.tool と merge.tool を設定します</target>
+      </trans-unit>
+      <trans-unit id="1034">
+        <source>git difftool and git mergetool open this Porta</source>
+        <target>git difftool と git mergetool はこの Porta を開きます</target>
+      </trans-unit>
+      <trans-unit id="1035">
+        <source>Your global git config runs another Porta, or only part of the setup is there</source>
+        <target>グローバルな git 設定が別の Porta を起動するか、設定が一部しかありません</target>
+      </trans-unit>
+      <trans-unit id="1036">
+        <source>Set up</source>
+        <target>設定する</target>
+      </trans-unit>
+      <trans-unit id="1037">
+        <source>Unavailable</source>
+        <target>利用不可</target>
+      </trans-unit>
+      <trans-unit id="1038">
+        <source>Remove porta from git</source>
+        <target>git から porta を削除</target>
+      </trans-unit>
+      <trans-unit id="1039">
+        <source>Porta itself</source>
+        <target>Porta 本体</target>
+      </trans-unit>
+      <trans-unit id="1040">
+        <source>Replaces %path% with the latest release</source>
+        <target>%path% を最新リリースに置き換えます</target>
+      </trans-unit>
+      <trans-unit id="1041">
+        <source>This Porta runs from a checkout or Composer: update it with git pull or composer global update</source>
+        <target>この Porta はチェックアウトまたは Composer から動作しています。git pull または composer global update で更新してください</target>
+      </trans-unit>
+      <trans-unit id="1042">
+        <source>Updates</source>
+        <target>アップデート</target>
+      </trans-unit>
+      <trans-unit id="1043">
+        <source>Press Enter again to remove it</source>
+        <target>もう一度 Enter を押すと削除します</target>
+      </trans-unit>
+      <trans-unit id="1044">
+        <source>The porta command is removed</source>
+        <target>porta コマンドを削除しました</target>
+      </trans-unit>
+      <trans-unit id="1045">
+        <source>porta is no longer git's difftool and mergetool</source>
+        <target>porta は git の difftool と mergetool ではなくなりました</target>
+      </trans-unit>
+      <trans-unit id="1046">
+        <source>Could not do it: %why%</source>
+        <target>実行できませんでした: %why%</target>
+      </trans-unit>
+      <trans-unit id="1047">
+        <source>An update is already running</source>
+        <target>アップデートはすでに実行中です</target>
+      </trans-unit>
+      <trans-unit id="1048">
+        <source>Restart Porta to use it.</source>
+        <target>使うには Porta を再起動してください。</target>
+      </trans-unit>
+      <trans-unit id="1049">
+        <source>Could not run the update</source>
+        <target>アップデートを実行できませんでした</target>
+      </trans-unit>
+      <trans-unit id="1050">
+        <source>Looking for a newer Porta…</source>
+        <target>新しい Porta を探しています…</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

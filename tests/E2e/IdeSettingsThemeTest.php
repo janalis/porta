@@ -139,13 +139,12 @@ final class IdeSettingsThemeTest extends TestCase
                 },
                 500 => function (Tui $tui): void {
                     $this->frame($tui);
-                    // Select PHP in the nav (screen row 9, after Interface +
-                    // Highlighting + Plugins and the Languages header) → the
-                    // content shows its indent rows. Two rows higher than it
-                    // used to be: the Version control category and its Git
-                    // sub-item went with the git plugin.
-                    $tui->handleInput("\x1b[<0;5;9M");
-                    $tui->handleInput("\x1b[<0;5;9m");
+                    // Select PHP in the nav (screen row 10, after Interface +
+                    // Highlighting + Keybindings + Command line + Plugins and
+                    // the Languages header) → the content shows its indent
+                    // rows.
+                    $tui->handleInput("\x1b[<0;5;10M");
+                    $tui->handleInput("\x1b[<0;5;10m");
                 },
                 600 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitPainted($tui, $terminal, 'Indent style');
