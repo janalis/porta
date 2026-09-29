@@ -34,6 +34,15 @@ final class RunController
 
     private int $shellCounter = 0;
 
+    /**
+     * Who is waiting for a run to end, by session id — told the exit code,
+     * or -1 when the run is replaced or closed first: a killed process never
+     * reports an exit, and a waiter must not wait for one.
+     *
+     * @var array<string, \Closure(int): void>
+     */
+    private array $waiting = [];
+
     public function __construct(
         private readonly RunConfigs $runConfigs,
         private readonly TerminalPanelWidget $terminalPanel,
@@ -72,6 +81,48 @@ final class RunController
             }
         });
         $this->tui->requestRender();
+    }
+
+    /**
+     * The tasks the Run menu would offer right now — the active file, the
+     * composer scripts, the Makefile targets.
+     *
+     * @return list<array{label: string, command: list<string>}>
+     */
+    public function configurations(): array
+    {
+        return $this->runConfigs->discover($this->editor->getFilePath());
+    }
+
+    /**
+     * Run a command in its `run:<title>` session WITHOUT taking the screen:
+     * the tab appears beside the others, but the panel is neither opened nor
+     * focused and the tab the user is looking at stays the active one. For a
+     * run the user did not start — an agent's, through a plugin.
+     *
+     * A run of the same title already going is replaced, exactly as a re-run
+     * from the menu replaces it.
+     *
+     * @param list<string>                $command
+     * @param (\Closure(int): void)|null  $onExit  the exit code; -1 when the run is replaced or closed first
+     */
+    public function runInBackground(array $command, string $title, ?\Closure $onExit = null): void
+    {
+        $shown = $this->sessions->active();
+        $session = $this->sessionFor($title);
+        if (null !== $onExit) {
+            $this->waiting[$session->id] = $onExit;
+        }
+        $this->start($this->attach($session, $command));
+        if (null !== $shown) {
+            $this->sessions->makeActive($shown);
+        }
+    }
+
+    /** The session a run of $title streams into, or null when there has been none. */
+    public function runSession(string $title): ?TerminalSession
+    {
+        return $this->sessions->find('run:'.$title);
     }
 
     public function runLast(): void
@@ -135,24 +186,55 @@ final class RunController
      */
     private function runInTerminal(array $command, string $title): void
     {
+        $this->spawn($this->sessionFor($title), $command);
+    }
+
+    /** The `run:<title>` session, emptied for a new run — or a new one. */
+    private function sessionFor(string $title): TerminalSession
+    {
         $found = $this->sessions->find('run:'.$title);
-        if (null !== $found) {
-            $found->buffer->clear();
-            $found->title = $title; // drop any stale exit-code "(N)" suffix
-            $this->sessions->makeActive($found);
+        if (null === $found) {
+            return $this->sessions->create('run:'.$title, $title);
         }
-        $session = $found ?? $this->sessions->create('run:'.$title, $title);
-        $this->spawn($session, $command);
+        $this->release($found->id);
+        $found->buffer->clear();
+        $found->title = $title; // drop any stale exit-code "(N)" suffix
+        $this->sessions->makeActive($found);
+
+        return $found;
+    }
+
+    /** Tell whoever waits on $id's run that it will never report: it is being replaced or closed. */
+    private function release(string $id): void
+    {
+        $waiter = $this->waiting[$id] ?? null;
+        unset($this->waiting[$id]);
+        if (null !== $waiter) {
+            $waiter(-1);
+        }
     }
 
     /**
-     * Spawn a PTY into a session and stream its output. The panel only
-     * refreshes for the active session — background output must not yank the
-     * live tab's scroll position.
+     * Spawn a PTY into a session, show it, and stream its output. The panel
+     * only refreshes for the active session — background output must not yank
+     * the live tab's scroll position.
      *
      * @param list<string> $command
      */
     private function spawn(TerminalSession $session, array $command): void
+    {
+        $process = $this->attach($session, $command);
+        $this->showActive($session);
+        $this->start($process);
+    }
+
+    /**
+     * A PTY for $command, wired to $session's scrollback and to whoever waits
+     * on it, attached in place of the session's previous process.
+     *
+     * @param list<string> $command
+     */
+    private function attach(TerminalSession $session, array $command): PtyProcess
     {
         $process = new PtyProcess($command, $this->rootDir, columns: 100, rows: 24);
         $process
@@ -165,11 +247,20 @@ final class RunController
             })
             ->onExit(function (int $code) use ($session): void {
                 $session->title = \sprintf('%s (%d)', $session->title, $code);
+                $waiter = $this->waiting[$session->id] ?? null;
+                unset($this->waiting[$session->id]);
+                if (null !== $waiter) {
+                    $waiter($code);
+                }
                 $this->tui->requestRender();
             });
         $session->attach($process);
 
-        $this->showActive($session);
+        return $process;
+    }
+
+    private function start(PtyProcess $process): void
+    {
         if (!$process->start()) {
             // Spawn failure needs a PTY-less system; unreachable here.
             // @codeCoverageIgnoreStart
@@ -203,6 +294,10 @@ final class RunController
     public function closeSession(int $index): void
     {
         $target = -1 === $index ? $this->sessions->activeIndex : $index;
+        $closing = $this->sessions->sessions[$target] ?? null;
+        if (null !== $closing) {
+            $this->release($closing->id);
+        }
         $survivor = $this->sessions->close($target);
         if (null === $survivor) {
             $this->terminalPanel->close();

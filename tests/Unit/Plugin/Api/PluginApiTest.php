@@ -10,6 +10,7 @@ use Porta\Config\ConfigScope;
 use Porta\Config\IdeConfig;
 use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
+use Porta\Editor\BufferSaver;
 use Porta\Editor\ChangeMarkKind;
 use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\Document;
@@ -17,6 +18,7 @@ use Porta\Event\ActiveBufferChanged;
 use Porta\Event\BufferOpened;
 use Porta\Event\BufferReloaded;
 use Porta\Event\BufferSaved;
+use Porta\Event\BufferSaveRequested;
 use Porta\Event\ThemeChanged;
 use Porta\Event\WorkingTreeChanged;
 use Porta\Highlight\DarkTerminalTheme;
@@ -28,6 +30,7 @@ use Porta\Plugin\Api\PluginException;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginRuntime;
 use Porta\Plugin\Runtime\PluginSettings;
+use Porta\Run\RunController;
 use Porta\Settings\SettingsScope;
 use Porta\Support\Clipboard;
 use Porta\Support\ProjectPaths;
@@ -44,6 +47,7 @@ use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestBottomDock;
 use Porta\Tests\Support\TestDockTools;
 use Porta\Tests\Support\TestLspQuery;
+use Porta\Tests\Support\TestRunController;
 use Porta\Tests\Support\TestTui;
 use Porta\Tree\FileStatuses;
 use Porta\Ui\ClickIntent;
@@ -95,6 +99,8 @@ final class PluginApiTest extends TestCase
     private RecordingDiagnosticsSink $diagnostics;
     private BufferManager $buffers;
     private ViewRegistry $views;
+    private EventDispatcher $events;
+    private RunController $runs;
 
     private function api(Presence $wired = Presence::With): PluginApi
     {
@@ -129,6 +135,8 @@ final class PluginApiTest extends TestCase
                     new FakePluginLifecycle(),
                     new FileTreeWidget(\sys_get_temp_dir()),
                     TestLspQuery::create(),
+                    new BufferSaver($this->buffers, $this->events = new EventDispatcher()),
+                    $this->runs = TestRunController::create(tui: $tui),
                 ),
             );
         }
@@ -433,8 +441,8 @@ final class PluginApiTest extends TestCase
             static fn () => $api->replaceDocument('x'),
             static fn (): string => $api->trans('x'),
             static fn () => $api->prompt('t', '', static function (string $v): void {}),
-            $api->openFiles(...),
-            static fn (): ?string => $api->bufferText('/x'),
+            $api->openBuffers(...),
+            $api->runs(...),
             $api->tools(...),
             $api->codeIntelligence(...),
         ];
@@ -476,6 +484,8 @@ final class PluginApiTest extends TestCase
                 lifecycle: $lifecycle = new FakePluginLifecycle(),
                 tree: new FileTreeWidget(\sys_get_temp_dir()),
                 lspQuery: TestLspQuery::create(),
+                saver: new BufferSaver(new BufferManager(), new EventDispatcher()),
+                runs: TestRunController::create(),
             ),
         );
         $api = new PluginApi('demo', $manager, $project->dir, $settings);
@@ -561,10 +571,10 @@ final class PluginApiTest extends TestCase
         $this->assertCount(1, $api->bufferedTools(), 'a refused tool leaves nothing behind');
     }
 
-    public function testOpenFilesBufferTextAndDiagnosticsReadEveryOpenBuffer(): void
+    public function testOpenBuffersAndDiagnosticsReadEveryOpenBuffer(): void
     {
         $api = $this->api();
-        $this->assertSame([], $api->openFiles());
+        $this->assertSame([], $api->openBuffers()->files());
         $this->assertSame([], $api->codeIntelligence()->diagnostics());
 
         $a = $this->buffers->open('/p/a.php', "one\n");
@@ -581,13 +591,13 @@ final class PluginApiTest extends TestCase
 
         $this->assertSame(
             [['path' => '/p/a.php', 'dirty' => false], ['path' => '/p/b.php', 'dirty' => true]],
-            $api->openFiles(),
+            $api->openBuffers()->files(),
             'the viewer tab has no text and is left out',
         );
-        $this->assertSame("one\n", $api->bufferText('/p/a.php'));
-        $this->assertSame("!two\n", $api->bufferText('/p/b.php'), 'the unsaved edit, not the disk');
-        $this->assertNull($api->bufferText('/p/c.png'), 'a viewer has no text');
-        $this->assertNull($api->bufferText('/p/nope.php'));
+        $this->assertSame("one\n", $api->openBuffers()->text('/p/a.php'));
+        $this->assertSame("!two\n", $api->openBuffers()->text('/p/b.php'), 'the unsaved edit, not the disk');
+        $this->assertNull($api->openBuffers()->text('/p/c.png'), 'a viewer has no text');
+        $this->assertNull($api->openBuffers()->text('/p/nope.php'));
 
         $this->assertSame(
             [
@@ -626,6 +636,46 @@ final class PluginApiTest extends TestCase
             ],
             $said,
         );
+    }
+
+    public function testSavingAnOpenBufferAsksForTheUsersSaveAndSaysWhenItWillNot(): void
+    {
+        $api = $this->api();
+        $asked = [];
+        $this->events->addListener(BufferSaveRequested::class, function (BufferSaveRequested $event) use (&$asked): void {
+            $asked[] = $event->path;
+            $this->buffers->get($event->path)?->document->markSaved(); // what the real save leaves behind
+        });
+        $clean = $this->buffers->open('/p/clean.php', "<?php\n");
+        $edited = $this->buffers->open('/p/edited.php', "<?php\n");
+        $edited->document->insert('// x');
+        $moved = $this->buffers->open('/p/moved.php', "<?php\n");
+        $moved->document->insert('// y');
+        $moved->diskChangedUnderEdit = true;
+        $this->buffers->openPane('/p/c.png', 'image', null);
+        $buffers = $api->openBuffers();
+
+        $this->assertNull($buffers->save('/p/clean.php'), 'nothing to save is not a failure');
+        $this->assertNull($buffers->save('/p/edited.php'));
+        $this->assertFalse($edited->isDirty());
+        $this->assertSame('it is not open in the editor', $buffers->save('/p/nope.php'));
+        $this->assertSame('it is not a text file', $buffers->save('/p/c.png'));
+        $this->assertStringStartsWith('it changed on disk since it was opened', (string) $buffers->save('/p/moved.php'));
+        $this->assertSame(['/p/edited.php'], $asked, 'only the edited buffer was saved; the moved one never reached the save');
+        $this->assertFalse($clean->document->isDirty());
+
+        $this->events->removeListener(BufferSaveRequested::class, $this->events->getListeners(BufferSaveRequested::class)[0]);
+        $moved->diskChangedUnderEdit = false;
+        $this->assertSame('it could not be written', $buffers->save('/p/moved.php'), 'the save ran and the buffer is still modified');
+    }
+
+    public function testRunsListTheMenusTasksAndReadWhatARunPrinted(): void
+    {
+        $api = $this->api();
+        $runs = $api->runs();
+
+        $this->assertSame([], $runs->configurations(), 'no file, no composer.json, no Makefile under /p');
+        $this->assertNull($runs->output('nothing'));
     }
 
     public function testSetChangeMarksNormalisesAndReachesTheSink(): void
@@ -856,6 +906,8 @@ final class PluginApiTest extends TestCase
             new FakePluginLifecycle(),
             new FileTreeWidget(\sys_get_temp_dir()),
             TestLspQuery::create(),
+            new BufferSaver(new BufferManager(), new EventDispatcher()),
+            TestRunController::create(),
         ));
         $api = new PluginApi('demo', $manager, '/p', new PluginSettings('/p', [], null, self::projectScope('/p')));
         $api->registerListTool('todo', 'TODO');
@@ -902,6 +954,8 @@ final class PluginApiTest extends TestCase
             new FakePluginLifecycle(),
             $tree,
             TestLspQuery::create(),
+            new BufferSaver(new BufferManager(), new EventDispatcher()),
+            TestRunController::create(),
         ));
         $api = new PluginApi('demo', $manager, $project->dir, new PluginSettings($project->dir, [], null, self::projectScope($project->dir)));
 
@@ -1026,6 +1080,8 @@ final class PluginApiTest extends TestCase
             new FakePluginLifecycle(),
             new FileTreeWidget(\sys_get_temp_dir()),
             TestLspQuery::create(),
+            new BufferSaver(new BufferManager(), new EventDispatcher()),
+            TestRunController::create(),
         ));
 
         return new PluginApi('demo', $manager, '/p', new PluginSettings('/p', [], null, self::projectScope('/p')));

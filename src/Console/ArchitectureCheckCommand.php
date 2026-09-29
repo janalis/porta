@@ -217,6 +217,7 @@ final class ArchitectureCheckCommand extends Command
         // its notify tool picks (Overlay).
         'McpPlugin>Overlay',
         'McpPlugin>Plugin',
+        'McpPlugin>Search', // its own ProjectSearch per call: the shared one cancels the user's
         'McpPlugin>Support',
         'Onboarding>Config',
         'Onboarding>Container',
@@ -240,6 +241,7 @@ final class ArchitectureCheckCommand extends Command
         'Plugin>Highlight',
         'Plugin>Lsp',
         'Plugin>Overlay',
+        'Plugin>Run', // Plugin\Api\Runs: the Run menu's tasks and background runs
         'Plugin>Search',
         'Plugin>Settings',
         'Plugin>Support',

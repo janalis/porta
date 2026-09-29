@@ -11,6 +11,7 @@ use Porta\Container\LayoutSlot;
 use Porta\Event\BufferOpened;
 use Porta\Event\BufferRepointRequested;
 use Porta\Event\BufferSaved;
+use Porta\Event\BufferSaveRequested;
 use Porta\Event\BufferSwitched;
 use Porta\Event\DiagnosticsChanged;
 use Porta\Event\TreeFileActivated;
@@ -712,6 +713,16 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
         );
 
         return false;
+    }
+
+    /** Another part of the IDE asks for a save — {@see BufferSaver}. */
+    #[AsEventListener]
+    public function onBufferSaveRequested(BufferSaveRequested $event): void
+    {
+        $buffer = $this->buffers->get($event->path);
+        if (null !== $buffer) {
+            $this->saveBuffer($buffer);
+        }
     }
 
     public function saveBuffer(Buffer $buffer): bool

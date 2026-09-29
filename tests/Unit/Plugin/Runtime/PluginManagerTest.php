@@ -11,6 +11,7 @@ use Porta\Config\KeyDispatch;
 use Porta\Editor\ActiveBufferTracker;
 use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
+use Porta\Editor\BufferSaver;
 use Porta\Event\ActiveBufferChanged;
 use Porta\Event\BufferOpened;
 use Porta\Event\BufferSaved;
@@ -34,6 +35,7 @@ use Porta\Tests\Support\RecordingDiagnosticsSink;
 use Porta\Tests\Support\RecordingFileOpener;
 use Porta\Tests\Support\TestDockTools;
 use Porta\Tests\Support\TestLspQuery;
+use Porta\Tests\Support\TestRunController;
 use Porta\Tests\Support\TestTui;
 use Porta\Tree\FileStatuses;
 use Porta\Widget\CodeEditorWidget;
@@ -83,6 +85,8 @@ final class PluginManagerTest extends TestCase
                 new FakePluginLifecycle(),
                 new FileTreeWidget(\sys_get_temp_dir()),
                 TestLspQuery::create(),
+                new BufferSaver(new BufferManager(), new EventDispatcher()),
+                TestRunController::create(),
             ),
         );
 

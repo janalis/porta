@@ -9,6 +9,7 @@ use Porta\Config\ConfigFiles;
 use Porta\Config\ConfigScope;
 use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
+use Porta\Editor\BufferSaver;
 use Porta\Editor\Document;
 use Porta\Event\BufferSaved;
 use Porta\I18n\Translator;
@@ -29,6 +30,7 @@ use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestDockTools;
 use Porta\Tests\Support\TestLspQuery;
+use Porta\Tests\Support\TestRunController;
 use Porta\Tests\Support\TestTui;
 use Porta\Tree\FileStatuses;
 use Porta\Widget\CodeEditorWidget;
@@ -148,6 +150,8 @@ final class AbstractAnalyzerPluginTest extends TestCase
             new FakePluginLifecycle(),
             new FileTreeWidget(\sys_get_temp_dir()),
             TestLspQuery::create(),
+            new BufferSaver(new BufferManager(), new EventDispatcher()),
+            TestRunController::create(),
         ));
 
         return new PluginApi('demo', $this->manager, $this->project->dir, $settings);

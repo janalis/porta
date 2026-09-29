@@ -6,6 +6,7 @@ namespace Porta\Plugin\Runtime;
 
 use Porta\Container\AsIdeService;
 use Porta\Editor\BufferManager;
+use Porta\Editor\BufferSaver;
 use Porta\Editor\ChangeMarkSink;
 use Porta\Editor\DiagnosticsSink;
 use Porta\Editor\DocumentReplacer;
@@ -18,6 +19,7 @@ use Porta\I18n\Translator;
 use Porta\Lsp\LspQuery;
 use Porta\Plugin\Api\PluginApi;
 use Porta\Plugin\Lifecycle\PluginLifecycleOps;
+use Porta\Run\RunController;
 use Porta\Support\Clipboard;
 use Porta\Tree\FileStatusSink;
 use Porta\Widget\FileTreeWidget;
@@ -59,5 +61,7 @@ final readonly class PluginRuntime
         public PluginLifecycleOps $lifecycle,
         public FileTreeWidget $tree,
         public LspQuery $lspQuery,
+        public BufferSaver $saver,
+        public RunController $runs,
     ) {}
 }

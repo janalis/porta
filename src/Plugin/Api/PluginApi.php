@@ -1267,35 +1267,25 @@ final class PluginApi
     }
 
     /**
-     * Every open TEXT tab, in tab order: its absolute path and whether it has
-     * edits not yet saved. Viewer tabs (an image, a graph) are left out — they
-     * have no text for {@see bufferText()} to read.
-     *
-     * @return list<array{path: string, dirty: bool}>
+     * The open buffers as a plugin may work with them: which files are open
+     * and edited, their text as it is on screen, and saving one — see
+     * {@see OpenBuffers}. An action method: it throws during `activate()`.
      */
-    public function openFiles(): array
+    public function openBuffers(): OpenBuffers
     {
-        $files = [];
-        foreach ($this->manager->runtime()->buffers->all() as $buffer) {
-            if ($buffer->isViewer()) {
-                continue;
-            }
-            $files[] = ['path' => $buffer->path, 'dirty' => $buffer->isDirty()];
-        }
+        $runtime = $this->manager->runtime();
 
-        return $files;
+        return new OpenBuffers($runtime->buffers, $runtime->saver);
     }
 
     /**
-     * An open buffer's text as it is in the editor — unsaved edits included —
-     * by absolute path; null when no text tab has that file open. The
-     * active-tab-only {@see documentText()} is this for {@see activeFile()}.
+     * The Run menu's tasks and the terminal sessions they run in, for a
+     * plugin that starts one and reads what it printed — see {@see Runs}. An
+     * action method: it throws during `activate()`.
      */
-    public function bufferText(string $path): ?string
+    public function runs(): Runs
     {
-        $buffer = $this->manager->runtime()->buffers->get($path);
-
-        return null === $buffer || $buffer->isViewer() ? null : $buffer->document->getText();
+        return new Runs($this->manager->runtime()->runs);
     }
 
     /**

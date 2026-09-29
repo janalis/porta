@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Config\ConfigFiles;
 use Porta\Config\ConfigScope;
 use Porta\Editor\BufferManager;
+use Porta\Editor\BufferSaver;
 use Porta\I18n\Translator;
 use Porta\Plugin\Api\AbstractPlugin;
 use Porta\Plugin\Api\AbstractToolPlugin;
@@ -26,6 +27,7 @@ use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestDockTools;
 use Porta\Tests\Support\TestLspQuery;
+use Porta\Tests\Support\TestRunController;
 use Porta\Tests\Support\TestTui;
 use Porta\Tree\FileStatuses;
 use Porta\Widget\CodeEditorWidget;
@@ -175,6 +177,8 @@ final class AbstractToolPluginTest extends TestCase
             new FakePluginLifecycle(),
             new FileTreeWidget(\sys_get_temp_dir()),
             TestLspQuery::create(),
+            new BufferSaver(new BufferManager(), new EventDispatcher()),
+            TestRunController::create(),
         ));
 
         return new PluginApi($pluginName, $manager, $this->project->dir, $settings);

@@ -155,6 +155,12 @@ final class PtyProcess
         $this->running = false;
     }
 
+    /** The exit code once the process has ended by itself; null while it runs, and for one that was stopped. */
+    public function exitCode(): ?int
+    {
+        return null === $this->process && $this->exitCode >= 0 ? $this->exitCode : null;
+    }
+
     private function finish(): void
     {
         if (null !== $this->watcher) {

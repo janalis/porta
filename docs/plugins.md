@@ -689,6 +689,36 @@ without requiring mcp; they are served whenever it is enabled.
 A plugin that serves tools reads them with `tools()` and re-reads on
 `ToolsChanged`.
 
+### Working with open buffers
+
+```php
+$buffers = $api->openBuffers();
+foreach ($buffers->files() as ['path' => $path, 'dirty' => $dirty]) { /* … */ }
+$text = $buffers->text($path);            // as on screen, unsaved edits included
+$why = $buffers->save($path);             // null once saved
+```
+
+| Method | Purpose |
+| --- | --- |
+| `files(): list<array>` | Every open TEXT tab in tab order, `['path' => absolute, 'dirty' => bool]`; viewer tabs are left out |
+| `text(string $path): ?string` | An open buffer's text, unsaved edits included; null when no text tab has it open |
+| `save(string $path): ?string` | Save it as Ctrl+S does — local history, the language servers and `onFileSaved` all hear of it. Null once saved (or with nothing to save), else why not. A file that **changed on disk** under the edits is refused, never overwritten: the keyboard asks the user to press Ctrl+S again, and a plugin cannot ask for them |
+
+### Running a task
+
+```php
+$runs = $api->runs();
+$runs->start('phpunit', ['vendor/bin/phpunit'], function (int $code) use ($runs): void {
+    $result = $runs->output('phpunit'); // ['running' => false, 'exitCode' => 0, 'output' => '…']
+});
+```
+
+| Method | Purpose |
+| --- | --- |
+| `configurations(): list<array>` | What the Run menu would offer now — the active PHP file, composer scripts, Makefile targets — as `['label' => …, 'command' => list<string>]` |
+| `start(string $title, array $command, ?\Closure $onExit = null)` | Run `$command` in the `run:<title>` terminal session. The tab appears, but the panel is not opened and focus stays where the user left it. A run of the same title already going is replaced. `$onExit(int $code)` gets the exit code, or `-1` when the run is replaced or closed before it ends |
+| `output(string $title): ?array` | What that run printed, as plain text (its last 400 lines), whether it is still `running`, and its `exitCode` once it ended by itself; null when there has been no such run |
+
 ### Asking about the code
 
 ```php
@@ -812,8 +842,8 @@ Actions (from handlers/hooks):
 | `selectedFiles(): list<string>` | The files selected in the project tree, in tree order, directories left out. One is the ordinary case — the tree always has its cursor row selected — so a command that acts on a set checks the count and says what it wanted |
 | `documentText(): ?string` | Full text of the focused buffer |
 | `caretPosition(): ?array` | `['line' => …, 'column' => …]` (0-based) |
-| `openFiles(): list<array>` | Every open TEXT tab in tab order, `['path' => absolute, 'dirty' => bool]`; viewer tabs are left out |
-| `bufferText(string $path): ?string` | An open buffer's text, unsaved edits included, by absolute path; null when no text tab has it open |
+| `openBuffers(): OpenBuffers` | The open buffers — which are open and edited, their text, saving one; see [Working with open buffers](#working-with-open-buffers) |
+| `runs(): Runs` | The Run menu's tasks and the terminal runs a plugin starts; see [Running a task](#running-a-task) |
 | `codeIntelligence(): CodeIntelligence` | What the IDE knows about the code — see [Asking about the code](#asking-about-the-code) |
 | `tools(): list<array>` | Every tool every running plugin registered, in load order: `plugin`, `id`, `description`, `inputSchema`, `handler`. For a plugin that serves them; re-read on `ToolsChanged` |
 | `insertAtCaret(string $text)` | Insert at the caret |
