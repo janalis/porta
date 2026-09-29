@@ -43,6 +43,7 @@ use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestBottomDock;
 use Porta\Tests\Support\TestDockTools;
+use Porta\Tests\Support\TestLspQuery;
 use Porta\Tests\Support\TestTui;
 use Porta\Tree\FileStatuses;
 use Porta\Ui\ClickIntent;
@@ -127,6 +128,7 @@ final class PluginApiTest extends TestCase
                     $this->editor,
                     new FakePluginLifecycle(),
                     new FileTreeWidget(\sys_get_temp_dir()),
+                    TestLspQuery::create(),
                 ),
             );
         }
@@ -433,8 +435,8 @@ final class PluginApiTest extends TestCase
             static fn () => $api->prompt('t', '', static function (string $v): void {}),
             $api->openFiles(...),
             static fn (): ?string => $api->bufferText('/x'),
-            $api->diagnostics(...),
             $api->tools(...),
+            $api->codeIntelligence(...),
         ];
         foreach ($actions as $i => $action) {
             try {
@@ -473,6 +475,7 @@ final class PluginApiTest extends TestCase
                 new CodeEditorWidget(),
                 lifecycle: $lifecycle = new FakePluginLifecycle(),
                 tree: new FileTreeWidget(\sys_get_temp_dir()),
+                lspQuery: TestLspQuery::create(),
             ),
         );
         $api = new PluginApi('demo', $manager, $project->dir, $settings);
@@ -562,7 +565,7 @@ final class PluginApiTest extends TestCase
     {
         $api = $this->api();
         $this->assertSame([], $api->openFiles());
-        $this->assertSame([], $api->diagnostics());
+        $this->assertSame([], $api->codeIntelligence()->diagnostics());
 
         $a = $this->buffers->open('/p/a.php', "one\n");
         $b = $this->buffers->open('/p/b.php', "two\n");
@@ -592,10 +595,37 @@ final class PluginApiTest extends TestCase
                 ['path' => '/p/a.php', 'line' => 3, 'column' => 0, 'severity' => 1, 'message' => 'Undefined', 'source' => 'phpstan', 'code' => '7'],
                 ['path' => '/p/b.php', 'line' => 0, 'column' => 1, 'severity' => 4, 'message' => 'Hint', 'code' => 'rule.x'],
             ],
-            $api->diagnostics(),
+            $api->codeIntelligence()->diagnostics(),
         );
-        $this->assertSame(['/p/b.php'], \array_column($api->diagnostics('/p/b.php'), 'path'));
-        $this->assertSame([], $api->diagnostics('/p/nope.php'));
+        $this->assertSame(['/p/b.php'], \array_column($api->codeIntelligence()->diagnostics('/p/b.php'), 'path'));
+        $this->assertSame([], $api->codeIntelligence()->diagnostics('/p/nope.php'));
+    }
+
+    public function testTheCodeIntelligenceVerbsAskTheRuntimesLanguageServers(): void
+    {
+        // The runtime's query serves no language here, so each verb's answer
+        // is its refusal — which is enough to show it reached the query.
+        $api = $this->api();
+        $said = [];
+        $keep = static function (mixed $answer, ?string $error) use (&$said): void {
+            $said[] = [$answer, $error];
+        };
+
+        $code = $api->codeIntelligence();
+        $code->definition('/p/a.php', 0, 0, $keep);
+        $code->references('/p/a.php', 0, 0, $keep);
+        $code->hover('/p/a.php', 0, 0, $keep);
+        $code->symbols('A', $keep);
+
+        $this->assertSame(
+            [
+                [[], 'No language server is configured for a.php'],
+                [[], 'No language server is configured for a.php'],
+                [null, 'No language server is configured for a.php'],
+                [[], 'No language server is running — open a file of the project first'],
+            ],
+            $said,
+        );
     }
 
     public function testSetChangeMarksNormalisesAndReachesTheSink(): void
@@ -825,6 +855,7 @@ final class PluginApiTest extends TestCase
             new CodeEditorWidget(),
             new FakePluginLifecycle(),
             new FileTreeWidget(\sys_get_temp_dir()),
+            TestLspQuery::create(),
         ));
         $api = new PluginApi('demo', $manager, '/p', new PluginSettings('/p', [], null, self::projectScope('/p')));
         $api->registerListTool('todo', 'TODO');
@@ -870,6 +901,7 @@ final class PluginApiTest extends TestCase
             new CodeEditorWidget(),
             new FakePluginLifecycle(),
             $tree,
+            TestLspQuery::create(),
         ));
         $api = new PluginApi('demo', $manager, $project->dir, new PluginSettings($project->dir, [], null, self::projectScope($project->dir)));
 
@@ -993,6 +1025,7 @@ final class PluginApiTest extends TestCase
             $editor,
             new FakePluginLifecycle(),
             new FileTreeWidget(\sys_get_temp_dir()),
+            TestLspQuery::create(),
         ));
 
         return new PluginApi('demo', $manager, '/p', new PluginSettings('/p', [], null, self::projectScope('/p')));

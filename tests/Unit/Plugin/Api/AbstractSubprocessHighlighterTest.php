@@ -24,6 +24,7 @@ use Porta\Tests\Support\RecordingDiagnosticsSink;
 use Porta\Tests\Support\RecordingFileOpener;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestDockTools;
+use Porta\Tests\Support\TestLspQuery;
 use Porta\Tests\Support\TestTui;
 use Porta\Tree\FileStatuses;
 use Porta\Widget\CodeEditorWidget;
@@ -133,6 +134,7 @@ final class AbstractSubprocessHighlighterTest extends TestCase
             new CodeEditorWidget(),
             new FakePluginLifecycle(),
             new FileTreeWidget(\sys_get_temp_dir()),
+            TestLspQuery::create(),
         ));
 
         $api = new PluginApi('demo', $this->manager, $this->project->dir, $settings);

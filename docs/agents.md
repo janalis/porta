@@ -43,6 +43,16 @@ socket is removed when Porta quits or the plugin is disabled.
 | `notify` | Show you a short message |
 | `replace_buffer` | Replace a file's whole text in the editor — opening it first if needed |
 | `insert_text` | Insert text at the caret |
+| `definition` | Where the symbol at a position is declared, asked of the language server |
+| `references` | Every place that symbol is used, its declaration included |
+| `hover` | What the language server says about it: signature and documentation |
+| `symbols` | The project's classes, functions and other symbols whose name matches a query |
+
+The last four ask the language server the IDE already runs, about **any file
+of the project** — open or not, with nothing shown and no tab moved — so an
+agent gets the precise answer a text search for a name is not. A column
+counts UTF-16 code units, as the protocol does. A server that does not answer
+within the `lspTimeout` setting (15 seconds) is given up on.
 
 Lines and columns are 1-based, as compilers and `grep` print them. Paths are
 project-relative or absolute, and must be inside the project.

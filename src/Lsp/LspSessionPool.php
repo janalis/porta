@@ -266,6 +266,35 @@ final class LspSessionPool
         return $asked;
     }
 
+    /** Whether a language server is configured for $path's language — running or not. */
+    public function serves(string $path): bool
+    {
+        return !$this->disabled && null !== $this->serverKeyFor($path);
+    }
+
+    /**
+     * Ask the server for $path — the one whose language the FILE is, not the
+     * active tab's. For a caller outside the editor ({@see LspQuery}), which
+     * may ask about a file the user is not looking at.
+     *
+     * Sent once the session is past initialize, so a question arriving while
+     * the server is still starting waits rather than racing the handshake. No
+     * session at all — the file was never opened to this client — answers at
+     * once with an error.
+     */
+    public function requestFor(string $path, string $method, mixed $params, callable $onResult): void
+    {
+        $session = $this->sessionFor($path);
+        if (null === $session) {
+            $onResult(null, ['code' => -32_002, 'message' => 'No language server is running for this file']);
+
+            return;
+        }
+        $session->whenReady(static function () use ($session, $method, $params, $onResult): void {
+            $session->request($method, $params, $onResult);
+        });
+    }
+
     /**
      * Ask the ONE server $owner names — the follow-up half of
      * {@see requestAll()}.

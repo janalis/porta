@@ -25,6 +25,7 @@ use Porta\Tests\Support\RecordingFileOpener;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestBottomDock;
 use Porta\Tests\Support\TestDockTools;
+use Porta\Tests\Support\TestLspQuery;
 use Porta\Tests\Support\TestTui;
 use Porta\Todo\TodoScan;
 use Porta\Todo\TodoTags;
@@ -95,6 +96,7 @@ final class TodoScanTest extends TestCase
             new CodeEditorWidget(),
             new FakePluginLifecycle(),
             new FileTreeWidget(\sys_get_temp_dir()),
+            TestLspQuery::create(),
         ));
 
         $api = new PluginApi('todo', $manager, $project->dir, $settings);

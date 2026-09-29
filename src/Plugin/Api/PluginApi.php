@@ -1299,44 +1299,19 @@ final class PluginApi
     }
 
     /**
-     * What every source — language servers and analyser plugins alike — has
-     * said about the OPEN buffers, merged the way the Problems panel shows it.
-     * One file with `$path`, every open one without. A file with no open
-     * buffer has none to read: diagnostics live on buffers.
+     * What the IDE knows about the CODE, from its language servers and
+     * analysers: the diagnostics on the open buffers, and — asked of the
+     * server for a file, open or not — where a symbol is declared and used,
+     * what it is, and which symbols the project has by name. See
+     * {@see CodeIntelligence}.
      *
-     * Lines and columns are 0-based; `severity` is the LSP scale, 1 = error
-     * to 4 = hint.
-     *
-     * @return list<array{path: string, line: int, column: int, severity: int, message: string, source?: string, code?: string}>
+     * An action method: it throws during `activate()`.
      */
-    public function diagnostics(?string $path = null): array
+    public function codeIntelligence(): CodeIntelligence
     {
-        $rows = [];
-        foreach ($this->manager->runtime()->buffers->all() as $buffer) {
-            if (null !== $path && $path !== $buffer->path) {
-                continue;
-            }
-            foreach ($buffer->diagnostics as $line => $diagnostics) {
-                foreach ($diagnostics as $diagnostic) {
-                    $row = [
-                        'path' => $buffer->path,
-                        'line' => $line,
-                        'column' => $diagnostic['col'],
-                        'severity' => $diagnostic['severity']->value,
-                        'message' => $diagnostic['message'],
-                    ];
-                    if (\array_key_exists('source', $diagnostic)) {
-                        $row['source'] = $diagnostic['source'];
-                    }
-                    if (\array_key_exists('code', $diagnostic)) {
-                        $row['code'] = (string) $diagnostic['code'];
-                    }
-                    $rows[] = $row;
-                }
-            }
-        }
+        $runtime = $this->manager->runtime();
 
-        return $rows;
+        return new CodeIntelligence($runtime->lspQuery, $runtime->buffers);
     }
 
     /**

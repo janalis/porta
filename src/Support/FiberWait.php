@@ -54,4 +54,37 @@ final class FiberWait
         /** @var T */
         return $answer;
     }
+
+    /**
+     * {@see for()}, given up on after $seconds: $timedOut comes back when the
+     * operation has not answered by then. For an operation that may never
+     * answer — a language server's request has no timeout of its own, and a
+     * forge can hang — so that a caller waiting on it cannot hang with it.
+     *
+     * The operation is not cancelled: its late answer is simply ignored.
+     *
+     * @template T
+     * @template U
+     *
+     * @param \Closure(\Closure(T): void): void $start
+     * @param U                                $timedOut what a timeout answers
+     *
+     * @return T|U
+     */
+    public static function within(float $seconds, \Closure $start, mixed $timedOut): mixed
+    {
+        $timer = '';
+        try {
+            // @mago-expect lint:inline-variable-return -- the @var is what types the template answer; inlined, the analyzer sees mixed
+            /** @var T|U $answer */
+            $answer = self::for(static function (\Closure $done) use ($seconds, $start, $timedOut, &$timer): void {
+                $timer = EventLoop::delay($seconds, static fn () => $done($timedOut));
+                $start($done);
+            });
+
+            return $answer;
+        } finally {
+            EventLoop::cancel($timer);
+        }
+    }
 }

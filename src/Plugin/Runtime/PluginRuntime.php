@@ -15,6 +15,7 @@ use Porta\Editor\FileOpener;
 use Porta\Editor\LineAnnotationSink;
 use Porta\Editor\ModalHost;
 use Porta\I18n\Translator;
+use Porta\Lsp\LspQuery;
 use Porta\Plugin\Api\PluginApi;
 use Porta\Plugin\Lifecycle\PluginLifecycleOps;
 use Porta\Support\Clipboard;
@@ -57,5 +58,6 @@ final readonly class PluginRuntime
         public EditorViewOptions $editorView,
         public PluginLifecycleOps $lifecycle,
         public FileTreeWidget $tree,
+        public LspQuery $lspQuery,
     ) {}
 }

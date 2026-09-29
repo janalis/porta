@@ -689,6 +689,31 @@ without requiring mcp; they are served whenever it is enabled.
 A plugin that serves tools reads them with `tools()` and re-reads on
 `ToolsChanged`.
 
+### Asking about the code
+
+```php
+$code = $api->codeIntelligence();
+$problems = $code->diagnostics($path);
+$code->definition($path, $line, $column, function (array $locations, ?string $error): void { /* … */ });
+```
+
+`codeIntelligence()` returns a `Porta\Plugin\Api\CodeIntelligence`, one
+object for everything the IDE's language servers and analysers know. Like the
+other action methods it throws during `activate()`. Lines and columns are
+0-based; a column counts UTF-16 code units, as the protocol does.
+
+| Method | Purpose |
+| --- | --- |
+| `diagnostics(?string $path = null): list<array>` | What every language server and analyser said about the open buffers, or one of them, merged as the Problems panel shows it: `path`, `line`, `column`, `severity` (1 = error … 4 = hint), `message`, and `source`/`code` when known. A file with no open buffer has none |
+| `definition(string $path, int $line, int $column, \Closure $onDone)` | Where the symbol at a position is declared, asked of the server for that file — any file of the project, open or not; nothing is shown and no tab moves. `$onDone(list $locations, ?string $error)`: each location is `path` (absolute), `line`, `column` and the line's `text`; the error says why when there is no answer (no server for the language, one that refused) |
+| `references(string $path, int $line, int $column, \Closure $onDone)` | Every place the symbol is used, its declaration included; `definition()`'s shape |
+| `hover(string $path, int $line, int $column, \Closure $onDone)` | What the server says about the symbol — signature and documentation — as plain text: `$onDone(?string $text, ?string $error)` |
+| `symbols(string $query, \Closure $onDone)` | The project's symbols matching `$query` from the running server (`workspace/symbol`): `$onDone(list $symbols, ?string $error)`, each `path`, `line`, `name` and the protocol's `kind` number. With no server running, the error says so |
+
+The server questions answer later, on the loop, and a request to a language
+server has no timeout of its own. A tool handler waits with
+`FiberWait::within($seconds, …)` so an unresponsive server cannot hang it.
+
 ### Asking the user something
 
 ```php
@@ -789,7 +814,7 @@ Actions (from handlers/hooks):
 | `caretPosition(): ?array` | `['line' => …, 'column' => …]` (0-based) |
 | `openFiles(): list<array>` | Every open TEXT tab in tab order, `['path' => absolute, 'dirty' => bool]`; viewer tabs are left out |
 | `bufferText(string $path): ?string` | An open buffer's text, unsaved edits included, by absolute path; null when no text tab has it open |
-| `diagnostics(?string $path = null): list<array>` | What every language server and analyser said about the open buffers (or one of them), merged as the Problems panel shows it: `path`, `line`, `column` (0-based), `severity` (1 = error … 4 = hint), `message`, and `source`/`code` when known. A file with no open buffer has none |
+| `codeIntelligence(): CodeIntelligence` | What the IDE knows about the code — see [Asking about the code](#asking-about-the-code) |
 | `tools(): list<array>` | Every tool every running plugin registered, in load order: `plugin`, `id`, `description`, `inputSchema`, `handler`. For a plugin that serves them; re-read on `ToolsChanged` |
 | `insertAtCaret(string $text)` | Insert at the caret |
 | `openFile(string $path)` | Open a file in the editor |
