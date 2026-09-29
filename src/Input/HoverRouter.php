@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Input;
 
 use Porta\Container\LayoutSlot;
+use Porta\Layout\ViewRegions;
 use Porta\Overlay\State\MenuOverlayController;
 use Porta\Overlay\State\ToastCenter;
 use Porta\Widget\ContextMenu;
@@ -47,6 +48,7 @@ final readonly class HoverRouter
         private ToastCenter $toasts,
         private StatusBarWidget $statusBar,
         private TooltipRouter $tooltips,
+        private ViewRegions $regions,
     ) {}
 
     /**
@@ -121,6 +123,13 @@ final readonly class HoverRouter
         // into one because the pointer is looked up, not held.
         if (null !== $view && $this->views->isAnyOpen()) {
             if (!$this->handleMenuHover($mouse)) {
+                // The region's divider is core's, like its drag (MouseRouter
+                // arms that for every view): every view's column thickens
+                // under the pointer, without the view having to remember to.
+                $region = $this->regions->find($view);
+                if (null !== $region) {
+                    $this->updateSeparatorHover($mouse, $region->separator());
+                }
                 $this->pointers->of($view)->hover($mouse);
             }
 

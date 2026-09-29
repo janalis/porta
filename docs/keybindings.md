@@ -318,6 +318,7 @@ whole workflow.
 | `x` | Resolve or reopen that thread |
 | `c` | In the list, comment on the review itself; in the file pane, start a thread on the caret's line |
 | `o` | Open the thread's line in the editor |
+| `s` | Show or hide resolved conversations — the toolbar toggle on the file pane, kept like the git view's |
 | `F5` / `Shift+R` | Re-read the review |
 | `Ctrl+Enter` | Send what the reply box holds |
 

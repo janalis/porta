@@ -48,7 +48,10 @@ The token goes to `curl` on its standard input, never on the command line.
 Open it with **Review → Show Review**, or **Show Review** in the command palette.
 
 The left column is resizable: drag the separator. Its width is kept per
-project, like the git view's.
+project, like the git view's. The file pane's toolbar carries a **show-resolved**
+toggle (`s`, or click it), like the git diff's hide-whitespace: it writes the
+`showResolved` setting, so it persists, and the editor follows. Everything in
+the view answers the mouse — an entry, a row, the Send button.
 
 - **Left, top — the review.** Its title, the **Conversation** (review-level
   comments), then each file's threads under the file name. A thread's row
@@ -71,6 +74,7 @@ project, like the git view's.
 | `x` | Resolve / reopen the thread | The same |
 | `c` | Comment on the review itself | Start a thread on the line the caret is on |
 | `o` | Open the thread's line in the editor | — |
+| `s` | Show / hide resolved threads | The same |
 | `F5` / `Shift+R` | Re-read the review | — |
 | `Tab` | Next pane | Next pane |
 | `Esc` | Close the view | Close the view |

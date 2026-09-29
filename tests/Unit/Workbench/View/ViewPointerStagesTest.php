@@ -8,10 +8,8 @@ use PHPUnit\Framework\TestCase;
 use Porta\I18n\Translator;
 use Porta\Input\HitTester;
 use Porta\Input\MouseEvent;
-use Porta\Layout\ViewRegions;
 use Porta\Settings\SettingsMouseRouter;
 use Porta\Tests\Support\TestTui;
-use Porta\Ui\Theme\Styles;
 use Porta\Widget\Settings\KeybindingsListWidget;
 use Porta\Widget\Settings\SettingsFormWidget;
 use Porta\Widget\Settings\SettingsNavWidget;
@@ -46,7 +44,6 @@ final class ViewPointerStagesTest extends TestCase
             new SettingsNavWidget($translator),
             new SettingsFormWidget($translator),
             new KeybindingsListWidget($translator),
-            new ViewRegions(Styles::dark()),
         );
     }
 
@@ -112,7 +109,6 @@ final class ViewPointerStagesTest extends TestCase
             $nav,
             new SettingsFormWidget($translator), // never attached: HitTester::rect() is null, a guaranteed miss
             new KeybindingsListWidget($translator), // same
-            new ViewRegions(Styles::dark()),
         );
 
         $this->assertTrue($router->wheel(new WheelGesture($this->mouse(), WheelAxis::Vertical, 3)), 'a vertical notch over the hit pane scrolls it');
@@ -143,7 +139,6 @@ final class ViewPointerStagesTest extends TestCase
             new SettingsNavWidget($translator), // never attached: a guaranteed miss, checked before $keys
             new SettingsFormWidget($translator), // never attached: also a guaranteed miss
             $keys,
-            new ViewRegions(Styles::dark()),
         );
 
         $this->assertTrue($router->wheel(new WheelGesture($this->mouse(), WheelAxis::Vertical, 3)), 'missing nav and form must not stop the scan before it reaches keys');

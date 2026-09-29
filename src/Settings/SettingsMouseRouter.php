@@ -7,8 +7,6 @@ namespace Porta\Settings;
 use Porta\Input\HitTester;
 use Porta\Input\MouseEvent;
 use Porta\Input\MouseRouter;
-use Porta\Layout\ViewRegions;
-use Porta\Widget\SeparatorWidget;
 use Porta\Widget\Settings\KeybindingsListWidget;
 use Porta\Widget\Settings\SettingsFormWidget;
 use Porta\Widget\Settings\SettingsNavWidget;
@@ -26,20 +24,15 @@ use Symfony\Component\Tui\Tui;
  */
 final readonly class SettingsMouseRouter implements ViewPointer
 {
-    private SeparatorWidget $separator;
-
+    // The region's divider is core's to tint and to drag (HoverRouter,
+    // MouseRouter), as it is for every view.
     public function __construct(
         private HitTester $hit,
         private Tui $tui,
         private SettingsNavWidget $nav,
         private SettingsFormWidget $form,
         private KeybindingsListWidget $keys,
-        ViewRegions $regions,
-    ) {
-        // Held for the divider hover tint only — the RECTS are core's now: it
-        // mints this region, so it hit-tests its own widgets for resize arming.
-        $this->separator = $regions->mint('settings')->separator();
-    }
+    ) {}
 
     #[\Override]
     public function wheel(WheelGesture $gesture): bool
@@ -110,10 +103,7 @@ final readonly class SettingsMouseRouter implements ViewPointer
     #[\Override]
     public function hover(MouseEvent $mouse): void
     {
-        $listsChanged = $this->hit->hover($mouse->row, $mouse->col, $this->nav, $this->form, $this->keys);
-        $sepChanged = $this->hit->hoverDivider($mouse->row, $mouse->col, $this->separator);
-
-        if ($listsChanged || $sepChanged) {
+        if ($this->hit->hover($mouse->row, $mouse->col, $this->nav, $this->form, $this->keys)) {
             $this->tui->requestRender();
         }
     }

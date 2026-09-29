@@ -246,6 +246,7 @@ final class ArchitectureCheckCommand extends Command
         // borrows the git plugin's process runner and diff model, never its
         // live objects. The rest is a plugin reaching for core's toolkits.
         'ReviewPlugin>GitPlugin',
+        'ReviewPlugin>Input', // the view's pointer hit-tests its panes, as git's does
         'ReviewPlugin>Layout', // the view's column resizes through core's ResizableSidebar
         'ReviewPlugin>Overlay',
         'ReviewPlugin>Plugin',

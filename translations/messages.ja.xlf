@@ -3910,6 +3910,14 @@
         <source>Comment on This Line</source>
         <target>この行にコメント</target>
       </trans-unit>
+      <trans-unit id="1082">
+        <source>Show resolved conversations</source>
+        <target>解決済みの会話を表示</target>
+      </trans-unit>
+      <trans-unit id="1083">
+        <source> S show-resolved </source>
+        <target> S show-resolved </target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

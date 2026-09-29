@@ -348,7 +348,6 @@ final class SettingsViewControllerTest extends TestCase
                 $this->nav,
                 $this->form,
                 $this->keymapList,
-                $regions,
             ),
             $this->tui,
             // Same order the porta.settings_section tag priorities produce, with

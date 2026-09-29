@@ -222,6 +222,39 @@ final class IdeLayoutFocusTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
+    /**
+     * An open view's divider thickens the same way — core's, like its drag,
+     * so every view gets it without remembering to. Settings is core's view.
+     */
+    public function testAViewsDividerThickensUnderThePointerToo(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function (Tui $tui, $terminal, Ide $ide): void {
+                    Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
+                    $this->frame($tui);
+                    $separator = $tui->getById('settings-separator');
+                    $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($separator);
+                    \assert(null !== $rect, description: 'the settings divider was painted');
+                    $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $rect->col + 1, $rect->row + 3));
+                    $this->frame($tui);
+                    $this->assertStringContainsString(Glyphs::PANE_DIVIDER_ACTIVE, Paint::lines($separator, new RenderContext(1, 5))[0], 'heavy under the pointer');
+
+                    $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $rect->col + 10, $rect->row + 3));
+                    $this->frame($tui);
+                    $this->assertStringNotContainsString(Glyphs::PANE_DIVIDER_ACTIVE, Paint::lines($separator, new RenderContext(1, 5))[0], 'thin again off it');
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
     public function testThePaneDividerThickensUnderThePointer(): void
     {
         \putenv('PATH=/nonexistent');
