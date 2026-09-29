@@ -34,7 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.5'
@@ -53,13 +53,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.5'
           coverage: none
           extensions: ${{ env.PHP_EXTENSIONS }}, intl
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: ~/.composer/cache
           key: composer-${{ hashFiles('composer.lock') }}
@@ -92,7 +92,7 @@ jobs:
             extensions: ':intl'
     name: tests (${{ matrix.name }})
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.5'
@@ -102,7 +102,7 @@ jobs:
           # read as uncovered. It cannot be switched on at runtime, only here.
           ini-values: zend.assertions=1
           extensions: ${{ env.PHP_EXTENSIONS }}, ${{ matrix.extensions }}
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: ~/.composer/cache
           key: composer-${{ hashFiles('composer.lock') }}
@@ -110,7 +110,7 @@ jobs:
       # The PHPUnit cache dir holds the result cache AND the shared test
       # container dump (tests/bootstrap.php pins PORTA_CACHE_DIR into it);
       # cold, every worker recompiles the container instead of sharing one.
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: .phpunit.cache
           key: phpunit-${{ matrix.name }}-${{ github.run_id }}
@@ -132,7 +132,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.5'
@@ -142,7 +142,7 @@ jobs:
           # read as uncovered. It cannot be switched on at runtime, only here.
           ini-values: zend.assertions=1
           extensions: ${{ env.PHP_EXTENSIONS }}, intl
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: ~/.composer/cache
           key: composer-${{ hashFiles('composer.lock') }}
@@ -158,7 +158,7 @@ jobs:
         if: always()
         # A report, not a gate: a full artifact quota must not fail a green run.
         continue-on-error: true
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: coverage-clover
           path: coverage/*.xml
@@ -170,7 +170,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.5'
@@ -180,7 +180,7 @@ jobs:
           # read as uncovered. It cannot be switched on at runtime, only here.
           ini-values: zend.assertions=1
           extensions: ${{ env.PHP_EXTENSIONS }}, intl
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: ~/.composer/cache
           key: composer-${{ hashFiles('composer.lock') }}
@@ -188,7 +188,7 @@ jobs:
       # This is the ONE pass that sets PORTA_CONTAINER_CACHE=on (it is serial
       # per shard, so tests/bootstrap.php lets it reuse the dump) — cold, it
       # pays a container compile per shard instead of reading one.
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: .phpunit.cache
           key: phpunit-coverage-plugins-${{ github.run_id }}
@@ -209,7 +209,7 @@ jobs:
         if: always()
         # A report, not a gate: a full artifact quota must not fail a green run.
         continue-on-error: true
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: coverage-plugins-clover
           path: coverage/plugins/*.xml
