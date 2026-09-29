@@ -10952,6 +10952,14 @@ no bundled plugin at all; plugin discovery now walks directories
 (`Files::childFiles`). The container compiles from inside the phar and dumps to
 the user cache dir as usual. Not yet published as a release asset.
 
-*Re-opens on:* a request for the 3-pane view, `git difftool --dir-diff` (two
-directories rather than two files — not handled), or Packagist publication (the
+**`--dir-diff` compares the trees in PHP.** Git hands over two temp directories
+of the changed files, the working-tree side as SYMLINKS into the repository, and
+`git diff --no-index` compares a symlink by its target text — every file would
+read as a type change. `DirectoryComparison` walks both trees through the links
+and compares contents; each selected file is then diffed as a pair. The changes
+list holds git's copies there, so stage, stage-all and discard are refused
+(mutation-checked one by one), and commit and line staging are off because the
+comparison clears the repository state they read.
+
+*Re-opens on:* a request for the 3-pane view, or Packagist publication (the
 install docs would lose the VCS-repository step).

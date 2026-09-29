@@ -117,6 +117,10 @@ the phar, or the script you ran — so git finds it whatever its own `PATH` is:
   changed file in the git view, side by side or unified as you last left it.
   Git hands the old side over as a temp file; the view is titled with the real
   path. **`Esc` closes it** and git moves on to the next file.
+  `git difftool --dir-diff` hands over two whole directories instead: their
+  changed files fill the changes list, and each one you select is compared.
+  In a comparison the stage, discard and commit keys do nothing — the rows are
+  git's copies, not your working tree.
 - **`git mergetool`** opens each conflicted file twice over: the git view on its
   row, showing the conflict against your side, and the file itself in the
   editor underneath. `Esc` to edit it, `F7` / `Shift+F7` between conflicts,

@@ -59,6 +59,30 @@ final class IdeGitToolLaunchTest extends TestCase
         $this->assertNotContains(\realpath($project->dir), Services::resolve($ide, RecentProjectsStore::class)->all(), 'a tool run is not the user opening the project');
     }
 
+    public function testWithNothingToAnswerADirectoryDiffOpensNothingAndSaysWhy(): void
+    {
+        // `git difftool --dir-diff` hands over two directories: there is no
+        // file to fall back to, only the reason to give.
+        \putenv('PATH=/nonexistent');
+        $project = new TempProject(['left/a.php' => "<?php\n", 'right/a.php' => "<?php\necho 1;\n"]);
+        $ide = null;
+
+        $this->runIde(
+            $project,
+            null,
+            [
+                0 => function (Tui $tui, VirtualTerminal $terminal, Ide $running) use (&$ide): void {
+                    $ide = $running;
+                    $this->await(static fn (): bool => \in_array('Enable the git plugin to see the comparison', Toasts::all($running), strict: true), what: 'the reason there is no comparison');
+                },
+            ],
+            tool: ToolLaunch::diff($project->path('left'), $project->path('right')),
+        );
+
+        $this->assertInstanceOf(Ide::class, $ide);
+        $this->assertSame(0, $ide->exitCode());
+    }
+
     public function testAMergeLeftWithConflictMarkersExitsOne(): void
     {
         \putenv('PATH=/nonexistent');

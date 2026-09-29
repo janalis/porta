@@ -616,8 +616,11 @@ final class Ide
 
             return;
         }
-        $this->openFile($tool->editable());
-        $this->tui->setFocus($this->editorArea->widget());
+        // A --dir-diff hands over two directories: nothing to open, only to say.
+        if (\is_file($tool->editable())) {
+            $this->openFile($tool->editable());
+            $this->tui->setFocus($this->editorArea->widget());
+        }
         $this->notifier->warn($this->service(Translator::class)->trans('Enable the git plugin to see the comparison'));
     }
 
