@@ -39,6 +39,7 @@ use Symfony\Component\Process\Process;
           <info>porta --diff A B</info>          compare two files (what git difftool runs)
           <info>porta --merge L R B M</info>     resolve M (what git mergetool runs; exits 1 while
                                    conflict markers remain in M)
+          <info>porta --self-update</info>       replace this porta.phar with the latest release
 
         Keys: Ctrl+T/F2 switch tree/editor · Ctrl+S save · Ctrl+Space complete ·
         F12/Ctrl+G go to definition (Alt+Left back) · Ctrl+Z/Ctrl+R undo/redo · Ctrl+Q quit.
@@ -49,7 +50,7 @@ use Symfony\Component\Process\Process;
         xml, json and dotenv, plus PHP when neither PHP server is enabled), then
         typescript-language-server / pyright on PATH.
         HELP,
-    usages: ['src/', 'src/Ide.php:200', '--no-lsp .', '--git-setup', '--diff LOCAL REMOTE', '--merge LOCAL REMOTE BASE MERGED'],
+    usages: ['src/', 'src/Ide.php:200', '--no-lsp .', '--git-setup', '--diff LOCAL REMOTE', '--merge LOCAL REMOTE BASE MERGED', '--self-update'],
 )]
 final class PortaCommand extends Command
 {
@@ -64,6 +65,9 @@ final class PortaCommand extends Command
     /** @var \Closure(list<string>): bool */
     private readonly \Closure $git;
 
+    /** @var \Closure(list<string>, ?string): array{int, string} */
+    private readonly \Closure $process;
+
     /**
      * @param (callable(Workspace, ?string, LspMode, Ansi, \Closure): int)|null $launch        defaults to booting a real {@see Ide}, returning its exit code; the
      *                                                                                         trailing closure is called between boot and run, so a crash can say
@@ -72,12 +76,20 @@ final class PortaCommand extends Command
      * @param (\Closure(list<string>): bool)|null                               $git           runs `git <args>` for --git-setup; defaults to the real binary
      * @param string                                                            $self          this binary's absolute path, the one git is told to run (bin/porta
      *                                                                                         passes the phar's or its own)
+     * @param (\Closure(list<string>, ?string): array{int, string})|null         $process       runs `gh`/`curl`/the new phar for --self-update; defaults to real processes
+     * @param string                                                            $version       the version this binary is (the phar's release tag)
+     * @param string                                                            $phar          the phar running, '' when not one — only a phar can update itself
+     * @param array<string, string|false>                                       $env           the environment, for a GitHub token
      */
     public function __construct(
         ?callable $launch = null,
         ?callable $isInteractive = null,
         ?\Closure $git = null,
         private readonly string $self = 'porta',
+        ?\Closure $process = null,
+        private readonly string $version = Ide::VERSION,
+        private readonly string $phar = '',
+        private readonly array $env = [],
     ) {
         parent::__construct();
         $this->launch = $launch ?? self::launchIde(...);
@@ -85,6 +97,7 @@ final class PortaCommand extends Command
         // ext-posix, and a box without it was refused as "not interactive".
         $this->isInteractive = $isInteractive ?? static fn (): bool => \stream_isatty(\STDIN) && \stream_isatty(\STDOUT);
         $this->git = $git ?? self::runGit(...);
+        $this->process = $process ?? self::runProcess(...);
     }
 
     /** @param list<string> $path */
@@ -109,7 +122,10 @@ final class PortaCommand extends Command
         #[Option('Make porta git\'s difftool and mergetool, in the global git config')]
         // @mago-expect lint:no-boolean-flag-parameter -- Symfony Console's #[Option] shape: a bool option IS a flag.
         bool $gitSetup = false,
-        #[Option('With --git-setup: print the git config commands instead of running them')]
+        #[Option('Replace this porta.phar with the latest release')]
+        // @mago-expect lint:no-boolean-flag-parameter -- Symfony Console's #[Option] shape: a bool option IS a flag.
+        bool $selfUpdate = false,
+        #[Option('With --git-setup: print the git config commands; with --self-update: only say what is available')]
         bool $dryRun = false,
     ): int {
         // Failures speak on stderr so a piped stdout stays clean (the
@@ -130,7 +146,7 @@ final class PortaCommand extends Command
             return Command::INVALID;
         }
 
-        $problem = self::argumentProblem(\count($path), $diff, $merge, $gitSetup, $dryRun, null !== $line);
+        $problem = self::argumentProblem(\count($path), $diff, $merge, $gitSetup || $selfUpdate, $dryRun, null !== $line, $gitSetup && $selfUpdate);
         if (null !== $problem) {
             $io->error('porta: '.$problem);
 
@@ -138,6 +154,9 @@ final class PortaCommand extends Command
         }
         if ($gitSetup) {
             return $this->setUpGit($output, $io, $dryRun);
+        }
+        if ($selfUpdate) {
+            return $this->updateSelf($output, $io, $dryRun);
         }
 
         $cwd = (string) \getcwd();
@@ -189,12 +208,12 @@ final class PortaCommand extends Command
     }
 
     /** Why this combination of paths and modes cannot run, or null when it can. */
-    private static function argumentProblem(int $paths, bool $diff, bool $merge, bool $gitSetup, bool $dryRun, bool $line): ?string
+    private static function argumentProblem(int $paths, bool $diff, bool $merge, bool $maintenance, bool $dryRun, bool $line, bool $bothMaintenance): ?string
     {
         return match (true) {
-            ((int) $diff + (int) $merge + (int) $gitSetup) > 1 => '--diff, --merge and --git-setup are separate modes; pass one.',
-            $dryRun && !$gitSetup => '--dry-run only goes with --git-setup.',
-            $gitSetup && 0 !== $paths => '--git-setup takes no path.',
+            $bothMaintenance || ((int) $diff + (int) $merge + (int) $maintenance) > 1 => '--diff, --merge, --git-setup and --self-update are separate modes; pass one.',
+            $dryRun && !$maintenance => '--dry-run only goes with --git-setup or --self-update.',
+            $maintenance && 0 !== $paths => '--git-setup and --self-update take no path.',
             $diff && 2 !== $paths => \sprintf('--diff compares two files (git difftool\'s $LOCAL $REMOTE); got %d.', $paths),
             $merge && 4 !== $paths => \sprintf('--merge takes four files (git mergetool\'s $LOCAL $REMOTE $BASE $MERGED); got %d.', $paths),
             ($diff || $merge) && $line => '--line opens a file for editing; it does not go with --diff or --merge.',
@@ -251,6 +270,64 @@ final class PortaCommand extends Command
         ]);
 
         return Command::SUCCESS;
+    }
+
+    /** --self-update: fetch the latest release and swap it over the running phar (or, dry, say what is there). */
+    // @mago-expect lint:no-boolean-flag-parameter -- --dry-run is the flag being honoured.
+    private function updateSelf(OutputInterface $output, SymfonyStyle $io, bool $dryRun): int
+    {
+        if ('' === $this->phar) {
+            $io->error(\sprintf(
+                'porta: --self-update replaces the porta.phar it runs from, and this porta runs from %s — update it with `composer global update janalis/porta` or `git pull` instead.',
+                $this->self,
+            ));
+
+            return Command::FAILURE;
+        }
+        $update = new SelfUpdate($this->process, $this->env);
+        try {
+            $latest = $update->latest();
+            if (!SelfUpdate::isNewer($latest, $this->version)) {
+                $output->writeln(\sprintf('porta %s is up to date (latest release: %s).', $this->version, $latest));
+
+                return Command::SUCCESS;
+            }
+            if ($dryRun) {
+                $output->writeln(\sprintf('porta %s can be updated to %s.', $this->version, $latest));
+
+                return Command::SUCCESS;
+            }
+            $update->install($latest, $this->phar, \PHP_BINARY);
+        } catch (\RuntimeException $e) {
+            $io->error('porta: self-update: '.$e->getMessage());
+
+            return Command::FAILURE;
+        }
+        $output->writeln(\sprintf('porta updated: %s → %s.', $this->version, $latest));
+
+        return Command::SUCCESS;
+    }
+
+    /**
+     * Run a command for --self-update: its exit code and stdout. Excluded from
+     * coverage: the tests hand a fake in — the real one reaches GitHub.
+     *
+     * @param list<string> $command
+     *
+     * @return array{int, string}
+     *
+     * @codeCoverageIgnore
+     */
+    private static function runProcess(array $command, ?string $stdin = null): array
+    {
+        try {
+            $process = new Process($command, input: $stdin, timeout: 300);
+            $process->run();
+
+            return [(int) $process->getExitCode(), $process->getOutput()];
+        } catch (\Throwable) {
+            return [127, '']; // the binary is not there
+        }
     }
 
     /**

@@ -1,0 +1,41 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+// `composer build:phar`: build/porta.phar, stamped with the version it is built
+// from. Box's own `git` setting runs `git describe --tags`, which fails outright
+// in a repository without a tag; `--always --dirty` falls back to the commit, so
+// a local build works and a release build (from its tag) carries the tag —
+// which is what `porta --self-update` compares against.
+
+$root = dirname(__DIR__);
+$build = $root.'/build';
+is_dir($build) || mkdir($build);
+
+$box = $build.'/box.phar';
+if (!is_file($box)) {
+    fwrite(STDERR, "Fetching Box…\n");
+    if (!copy('https://github.com/box-project/box/releases/latest/download/box.phar', $box)) {
+        fwrite(STDERR, "build-phar: could not download Box.\n");
+        exit(1);
+    }
+}
+
+$version = trim((string) shell_exec('git -C '.escapeshellarg($root).' describe --tags --always --dirty 2>/dev/null'));
+if ('' === $version) {
+    fwrite(STDERR, "build-phar: not a git checkout, so there is no version to stamp.\n");
+    exit(1);
+}
+
+$config = json_decode((string) file_get_contents($root.'/box.json'), true, flags: JSON_THROW_ON_ERROR);
+$config['base-path'] = $root;
+$config['output'] = $build.'/porta.phar';
+$config['replacements'] = ['package_version' => $version];
+file_put_contents($build.'/box.json', json_encode($config, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
+
+passthru(escapeshellarg(PHP_BINARY).' '.escapeshellarg($box).' compile --no-interaction --config '.escapeshellarg($build.'/box.json'), $status);
+if (0 === $status) {
+    fwrite(STDOUT, "build/porta.phar — porta {$version}\n");
+}
+exit($status);

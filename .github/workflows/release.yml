@@ -1,0 +1,43 @@
+name: Release
+
+# Pushing a `vX.Y.Z` tag publishes a GitHub release carrying porta.phar and its
+# SHA-256 — the two files `porta --self-update` downloads and checks.
+on:
+  push:
+    tags: ['v*']
+
+# Write, for `gh release create`; nothing else is touched.
+permissions:
+  contents: write
+
+env:
+  PHP_EXTENSIONS: mbstring, gd, pcntl, simplexml, ctype
+
+jobs:
+  phar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # bin/build-phar stamps `git describe --tags`, which needs the tags.
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          coverage: none
+          extensions: ${{ env.PHP_EXTENSIONS }}
+      - name: Install
+        run: composer install --no-interaction --no-progress --prefer-dist
+      - name: Build
+        run: composer build:phar
+      - name: The phar runs, and is the tag it claims
+        run: |
+          test "$(php build/porta.phar --version)" = "porta ${GITHUB_REF_NAME}"
+      - name: Checksum
+        working-directory: build
+        run: sha256sum porta.phar > porta.phar.sha256
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" build/porta.phar build/porta.phar.sha256 --title "$GITHUB_REF_NAME" --generate-notes

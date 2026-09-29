@@ -10963,3 +10963,22 @@ comparison clears the repository state they read.
 
 *Re-opens on:* a request for the 3-pane view, or Packagist publication (the
 install docs would lose the VCS-repository step).
+
+## `porta --self-update` (2026-09-29)
+
+The phar replaces itself with the latest GitHub release of the (private)
+repository. **Credentials:** the `gh` CLI's own login first, else `GH_TOKEN` /
+`GITHUB_TOKEN` through the REST API with `curl`, the token handed to curl as a
+config on stdin so it never shows in a process list. **Versions** are release
+tags stamped at build time (`bin/build-phar`, because Box's own `git` setting
+fails in a repository with no tag); a build from commits after a tag counts as
+that tag, and a bare-commit build as `0`. The dot matters: `1d2bb88b` starts with
+a digit and, read as version 1, was offered nothing until a test said so.
+**The swap** checks the checksum, runs the download once (`--version`), writes
+it beside the running phar and renames it over — atomic on one filesystem, so an
+interrupted update leaves the old phar. Only a phar updates itself; a composer
+or checkout install is told how to update instead.
+
+*Re-opens on:* the repository going public (the credentials could go), or a
+signed-release requirement (a checksum from the same release proves integrity,
+not origin).

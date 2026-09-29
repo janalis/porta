@@ -35,8 +35,13 @@ if (!$autoloaded) {
 // The binary git is told to run by --git-setup: the phar when this is one,
 // else this script's real path (a vendor/bin proxy includes it, so __FILE__
 // is the package's own copy).
-$command = new Porta\Console\PortaCommand(self: Phar::running(false) ?: (string) realpath(__FILE__));
-$application = new Symfony\Component\Console\Application('porta', Porta\Ide::VERSION);
+// The phar build stamps its version over this placeholder (bin/build-phar); a
+// checkout or a composer install keeps the package constant.
+$built = '@package_version@';
+$version = str_starts_with($built, '@') ? Porta\Ide::VERSION : $built;
+$phar = Phar::running(false);
+$command = new Porta\Console\PortaCommand(self: '' !== $phar ? $phar : (string) realpath(__FILE__), version: $version, phar: $phar, env: getenv());
+$application = new Symfony\Component\Console\Application('porta', $version);
 $application->addCommand($command);
 $application->setDefaultCommand((string) $command->getName(), true); // single-command app
 $application->run();

@@ -154,14 +154,21 @@ rendered: `Tab` cycles the links, `Enter` or a click follows them, and
 Porta is a command, `porta`. It needs PHP ≥ 8.5 and an interactive terminal.
 Three ways to put it on your `PATH`:
 
-**The phar** — one file, no Composer at run time. `build:phar` fetches
-[Box](https://github.com/box-project/box) into `build/` the first time:
+**The phar** — one file, no Composer at run time. Download it from the
+latest [release](https://github.com/janalis/porta/releases) (the repository is
+private, so with the `gh` CLI: `gh release download --repo janalis/porta
+--pattern porta.phar`), then:
 
 ```bash
-git clone git@github.com:janalis/porta.git && cd porta
-composer install && composer build:phar
-install -m 755 build/porta.phar ~/.local/bin/porta
+install -m 755 porta.phar ~/.local/bin/porta
+porta --self-update   # later: replace it with the latest release
 ```
+
+`--self-update` downloads through your `gh` login (or `GH_TOKEN` /
+`GITHUB_TOKEN`), checks the release's SHA-256, runs the new phar once, and only
+then swaps it in; `--self-update --dry-run` only says whether there is one. To
+build it yourself instead: `composer install && composer build:phar`, which
+fetches [Box](https://github.com/box-project/box) into `build/` the first time.
 
 **Composer, globally.** The repository is not on Packagist, so name it first;
 Porta follows `symfony/tui`'s development branch, hence the stability settings:

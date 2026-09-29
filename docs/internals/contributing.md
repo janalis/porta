@@ -511,6 +511,16 @@ shipped installs skip. The per-boot phase numbers land in `.porta/perf.log`
 as the one-shot `boot` line (see subsystems.md), so measure from there, not
 from guesses.
 
+## Releasing
+
+A release is a tag: `git tag v1.2.0 && git push git@github.com:janalis/porta.git
+v1.2.0`. `.github/workflows/release.yml` builds `porta.phar` from it, checks that
+`porta --version` names the tag, and publishes a GitHub release with the phar
+and `porta.phar.sha256` — the two files `porta --self-update` fetches.
+`bin/build-phar` stamps `git describe --tags --always --dirty`, so a local build
+between tags says which commit it is (`v1.2.0-3-gabc1234`), and self-update
+treats it as the tag it follows.
+
 ## Conventions
 
 **Final classes and constructor injection everywhere.** Collaborators are

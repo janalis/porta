@@ -311,9 +311,11 @@ final class PortaCommandTest extends TestCase
         yield 'diff with one file' => [['path' => ['a'], '--diff' => true], '--diff compares two files'];
         yield 'merge with three' => [['path' => ['a', 'b', 'c'], '--merge' => true], '--merge takes four files'];
         yield 'two paths to edit' => [['path' => ['a', 'b']], 'one file or directory at a time'];
-        yield 'two modes' => [['path' => ['a', 'b'], '--diff' => true, '--merge' => true], '--diff, --merge and --git-setup are separate modes'];
-        yield 'setup with a path' => [['path' => ['a'], '--git-setup' => true], '--git-setup takes no path'];
-        yield 'a dry run of nothing' => [['--dry-run' => true], '--dry-run only goes with --git-setup'];
+        yield 'two modes' => [['path' => ['a', 'b'], '--diff' => true, '--merge' => true], '--diff, --merge, --git-setup and --self-update are separate modes'];
+        yield 'setup and update at once' => [['--git-setup' => true, '--self-update' => true], '--diff, --merge, --git-setup and --self-update are separate modes'];
+        yield 'an update with a path' => [['path' => ['a'], '--self-update' => true], '--git-setup and --self-update take no path'];
+        yield 'setup with a path' => [['path' => ['a'], '--git-setup' => true], '--git-setup and --self-update take no path'];
+        yield 'a dry run of nothing' => [['--dry-run' => true], '--dry-run only goes with --git-setup or --self-update'];
         yield 'a line in a diff' => [['path' => ['a', 'b'], '--diff' => true, '--line' => '3'], '--line opens a file for editing'];
     }
 
@@ -380,5 +382,82 @@ final class PortaCommandTest extends TestCase
         $this->assertSame(Command::FAILURE, $tester->execute(['--git-setup' => true]));
         $this->assertSame(2, $ran, 'nothing after the failed key is tried');
         $this->assertStringContainsString('could not write mergetool.porta.cmd', $tester->getDisplay());
+    }
+
+    /**
+     * A command whose --self-update talks to a scripted `gh` that says $latest,
+     * running as the phar in $dir.
+     */
+    private function updater(string $version, string $latest, ?string $phar, int $newPharRuns = 0): PortaCommand
+    {
+        return new PortaCommand(
+            process: static function (array $command, ?string $stdin = null) use ($latest, $newPharRuns): array {
+                if ('gh' === $command[0] && 'download' === ($command[2] ?? '')) {
+                    $dir = $command[\array_search('--dir', $command, strict: true) + 1];
+                    \file_put_contents($dir.'/porta.phar', data: 'NEW');
+                    \file_put_contents($dir.'/porta.phar.sha256', \hash('sha256', data: 'NEW')."  porta.phar\n");
+                }
+
+                return match (true) {
+                    'gh' === $command[0] && 'view' === ($command[2] ?? '') => [0, $latest."\n"],
+                    'gh' === $command[0] => [0, ''],
+                    default => [$newPharRuns, ''],
+                };
+            },
+            version: $version,
+            phar: $phar ?? '',
+        );
+    }
+
+    public function testSelfUpdateReplacesTheRunningPharWithANewerRelease(): void
+    {
+        $dir = new TempProject(['porta.phar' => 'OLD']);
+        $tester = new CommandTester($this->updater('v1.2.0', 'v1.3.0', $dir->path('porta.phar')));
+
+        $this->assertSame(Command::SUCCESS, $tester->execute(['--self-update' => true]));
+
+        $this->assertStringContainsString('porta updated: v1.2.0 → v1.3.0', $tester->getDisplay());
+        $this->assertSame('NEW', \file_get_contents($dir->path('porta.phar')));
+    }
+
+    public function testSelfUpdateDryRunOnlySaysWhatIsThere(): void
+    {
+        $dir = new TempProject(['porta.phar' => 'OLD']);
+        $tester = new CommandTester($this->updater('v1.2.0', 'v1.3.0', $dir->path('porta.phar')));
+
+        $this->assertSame(Command::SUCCESS, $tester->execute(['--self-update' => true, '--dry-run' => true]));
+
+        $this->assertStringContainsString('porta v1.2.0 can be updated to v1.3.0', $tester->getDisplay());
+        $this->assertSame('OLD', \file_get_contents($dir->path('porta.phar')));
+    }
+
+    public function testSelfUpdateOfTheLatestReleaseChangesNothing(): void
+    {
+        $dir = new TempProject(['porta.phar' => 'OLD']);
+        $tester = new CommandTester($this->updater('v1.3.0', 'v1.3.0', $dir->path('porta.phar')));
+
+        $this->assertSame(Command::SUCCESS, $tester->execute(['--self-update' => true]));
+
+        $this->assertStringContainsString('porta v1.3.0 is up to date', $tester->getDisplay());
+        $this->assertSame('OLD', \file_get_contents($dir->path('porta.phar')));
+    }
+
+    public function testAFailedSelfUpdateSaysWhyAndFails(): void
+    {
+        $dir = new TempProject(['porta.phar' => 'OLD']);
+        $tester = new CommandTester($this->updater('v1.2.0', 'v1.3.0', $dir->path('porta.phar'), newPharRuns: 1));
+
+        $this->assertSame(Command::FAILURE, $tester->execute(['--self-update' => true]));
+
+        $this->assertStringContainsString('porta: self-update: the downloaded phar does not run here', \preg_replace('/\s+/', replacement: ' ', subject: $tester->getDisplay()) ?? '');
+        $this->assertSame('OLD', \file_get_contents($dir->path('porta.phar')));
+    }
+
+    public function testOnlyAPharUpdatesItself(): void
+    {
+        $tester = new CommandTester($this->updater('0.1.0', 'v1.3.0', null));
+
+        $this->assertSame(Command::FAILURE, $tester->execute(['--self-update' => true]));
+        $this->assertStringContainsString('composer global update janalis/porta', \preg_replace('/\s+/', replacement: ' ', subject: $tester->getDisplay()) ?? '');
     }
 }
