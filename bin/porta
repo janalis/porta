@@ -38,6 +38,17 @@ if (!$autoloaded) {
 // checkout or a composer install keeps the package constant.
 $built = '@package_version@';
 $version = str_starts_with($built, '@') ? Porta\Ide::VERSION : $built;
+// `porta <name> …` where a bundled plugin ships a command of that name —
+// `porta review …` is the review plugin's — runs it instead of opening a path.
+$pluginCommand = Porta\Console\PluginCommands::bundled()->find($argv[1] ?? '');
+if (null !== $pluginCommand) {
+    $application = new Symfony\Component\Console\Application('porta', Porta\Ide::VERSION);
+    $application->addCommand($pluginCommand);
+    $application->setDefaultCommand((string) $pluginCommand->getName(), true);
+    $application->run(new Symfony\Component\Console\Input\ArgvInput([$argv[0], ...array_slice($argv, 2)]));
+
+    return;
+}
 $command = new Porta\Console\PortaCommand(self: Porta\Install\PortaBinary::path(), version: $version, phar: Porta\Install\PortaBinary::phar(), env: getenv());
 $application = new Symfony\Component\Console\Application('porta', $version);
 $application->addCommand($command);

@@ -86,6 +86,10 @@ file by the first segment after `Porta\`, so `Porta\GitPlugin\Process\Foo` is a
 running binary (`PortaBinary`). Shared by `Console/` (`--git-setup`) and the
 Command line settings page, so neither reaches into the other.
 
+**`Console/PluginCommands`** — `porta <name> …` for a bundled plugin's console
+command (`extra.porta.commands`): the plugin's class, which must extend
+`Plugin/Api/PluginCommand`, lives in the plugin; core only finds it by name.
+
 **`Settings/`** — all settings controllers plus the row model (`SettingsRow`,
 `SettingsRowKind`). `Config/` keeps only `.porta.json` parsing and the action
 and command catalogs. Settings **widgets** stay in `Widget/Settings/`.

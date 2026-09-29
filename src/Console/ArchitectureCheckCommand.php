@@ -98,6 +98,7 @@ final class ArchitectureCheckCommand extends Command
         'Config>Support',
         'Console>Container',
         'Console>Install',
+        'Console>Plugin', // PluginCommands reads bundled manifests for `porta <name>`, and runs only a Plugin\Api\PluginCommand
         'Console>Support',
         'Container>Config',
         'Debug>Container',

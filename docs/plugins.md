@@ -217,6 +217,24 @@ waiting on it comes up with it. A `require` of only `php` or `ext-*` asks for
 nothing, so a manifest that exists purely to declare `autoload.psr-4` never
 triggers any of this.
 
+## Shipping a console command
+
+A **bundled** plugin can answer `porta <name> …` from a shell — the `review`
+plugin's `porta review` is the reference. Name the command in the manifest:
+
+```json
+"extra": { "porta": { "commands": { "review": "Porta\\ReviewPlugin\\Console\\ReviewCommand" } } }
+```
+
+The class must extend `Porta\Plugin\Api\PluginCommand` — `porta` refuses any
+other, a plain Symfony command included — and is built with no arguments. The
+base gives it `projectRoot()` (the nearest directory up from where it was run
+holding `.porta` or `.git`, since no IDE is open to say) and `errors($output)`
+(stderr, so a failure never lands in a stdout a script reads). The plugin's
+classes and its `requires`' are loadable when it runs. Only the plugins shipped
+with Porta are asked — a project's `.porta/plugins/` never runs from a shell
+prompt — and whether a project enabled the plugin does not matter.
+
 ## Putting a command in a menu
 
 `addMenuItem()` takes an optional surface:

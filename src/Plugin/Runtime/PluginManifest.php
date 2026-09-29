@@ -53,6 +53,7 @@ final readonly class PluginManifest
      * @param bool $dumpsAutoload whether its composer.json declares an autoload mode only a dump can satisfy
      * @param array<string, string> $platform the PLATFORM requirements (`php`, `ext-*`, …) — the half {@see packages()} drops
      * @param int|null $api the plugin-API major it targets (`extra.porta.api`); null trusts the current one
+     * @param array<string, string> $commands console commands it ships (`extra.porta.commands`): `porta <name>` => the command class
      */
     public function __construct(
         public string $name,
@@ -63,6 +64,7 @@ final readonly class PluginManifest
         public bool $dumpsAutoload = false,
         public array $platform = [],
         public ?int $api = null,
+        public array $commands = [],
     ) {}
 
     /**
@@ -279,7 +281,7 @@ final readonly class PluginManifest
      * @param array<array-key, mixed> $autoload
      * @param array<array-key, mixed> $data
      *
-     * @return array{packages: list<string>, dumpsAutoload: bool, platform: array<string, string>, api: int|null}
+     * @return array{packages: list<string>, dumpsAutoload: bool, platform: array<string, string>, api: int|null, commands: array<string, string>}
      */
     private static function composerFacts(array $autoload, array $data): array
     {
@@ -292,7 +294,32 @@ final readonly class PluginManifest
             'dumpsAutoload' => [] !== ($autoload['classmap'] ?? []) || [] !== ($autoload['files'] ?? []),
             'platform' => self::platform($data),
             'api' => self::api($data),
+            'commands' => self::commands($data),
         ];
+    }
+
+    /**
+     * `extra.porta.commands`: a name `porta <name>` answers to, and the class
+     * that answers. A name or class that is not a non-empty string is dropped.
+     *
+     * @param array<array-key, mixed> $data
+     *
+     * @return array<string, string>
+     */
+    private static function commands(array $data): array
+    {
+        $extra = \is_array($data['extra'] ?? null) ? $data['extra'] : [];
+        $porta = \is_array($extra['porta'] ?? null) ? $extra['porta'] : [];
+        $commands = [];
+        /** @var mixed $class */
+        foreach (\is_array($porta['commands'] ?? null) ? $porta['commands'] : [] as $name => $class) {
+            if (!\is_string($name) || '' === $name || !\is_string($class) || '' === $class) {
+                continue;
+            }
+            $commands[$name] = $class;
+        }
+
+        return $commands;
     }
 
     /**

@@ -130,13 +130,30 @@ IDE can write at the same time with plain file tools.
 The IDE notices new files within two seconds. An agent reads your replies back
 by listing the thread's directory.
 
+### `porta review` — the same, from a shell
+
+An agent need not write the files itself:
+
+| Command | Does |
+| --- | --- |
+| `porta review add src/Cart.php:9 "Use array_sum here." --author=claude` | Start a thread on a line — its text recorded for you — and print the thread's id |
+| `porta review reply <thread> "Done."` | Answer a thread |
+| `porta review resolve <thread>` / `reopen <thread>` | Resolve it, or undo that |
+| `porta review comment "Overall fine."` | Comment on the review itself |
+| `porta review list` | Every thread and its answers; `--json` for a program to read |
+
+A message of `-` is read from stdin. `--review <name>` picks the review — by
+default the newest on disk, and a first one is named after its author;
+`--title` names it in the IDE. Comments are signed with `--author`, else
+`$PORTA_REVIEW_AUTHOR`, else git's `user.name`. It finds the project from any
+directory inside it. A name that is not one directory under the reviews
+directory — a `/`, a `..` — is refused.
+
 A prompt that has an agent review your uncommitted changes this way:
 
-> Review my uncommitted changes. For each finding, create
-> `.porta/reviews/claude/<short-id>/thread.json` with the file's path, the
-> 1-based line and that line's exact text. Next to it, write the comment as
-> `<UTC stamp>--claude.md`. Afterwards, read the other `.md` files in those
-> directories for my answers.
+> Review my uncommitted changes. For each finding, run
+> `porta review add <file>:<line> "<comment>" --author=claude`. When I say I
+> have answered, run `porta review list --json` and act on my replies.
 
 ## Settings
 

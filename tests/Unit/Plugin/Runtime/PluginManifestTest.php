@@ -164,6 +164,15 @@ final class PluginManifestTest extends TestCase
         $this->assertNull(PluginManifest::beside($this->pluginDir($project, 'api-none', '{}'))->api);
     }
 
+    public function testTheCommandsMapNamesToClassesAndDropsTheMalformed(): void
+    {
+        $project = new TempProject();
+        $json = '{"extra": {"porta": {"commands": {"review": "A\\\\Review", "": "A\\\\Empty", "blank": "", "num": 3, "0": "A\\\\Indexed"}}}}';
+
+        $this->assertSame(['review' => 'A\\Review'], PluginManifest::beside($this->pluginDir($project, 'cmds', $json))->commands);
+        $this->assertSame([], PluginManifest::beside($this->pluginDir($project, 'none', '{"extra": {"porta": {"commands": "review"}}}'))->commands);
+    }
+
     public function testATypoedComposerJsonSaysWhy(): void
     {
         $project = new TempProject();

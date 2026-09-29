@@ -41,6 +41,7 @@ use Symfony\Component\Process\Process;
           <info>porta --merge L R B M</info>     resolve M (what git mergetool runs; exits 1 while
                                    conflict markers remain in M)
           <info>porta --self-update</info>       replace this porta.phar with the latest release
+          <info>porta review …</info>            write and read local code reviews (porta review --help)
 
         Keys: Ctrl+T/F2 switch tree/editor · Ctrl+S save · Ctrl+Space complete ·
         F12/Ctrl+G go to definition (Alt+Left back) · Ctrl+Z/Ctrl+R undo/redo · Ctrl+Q quit.

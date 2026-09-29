@@ -11036,11 +11036,17 @@ comment), through the CLI and through curl. That found what no fake could:
 `glab api --input -` sends no content type and GitLab refuses the body, so
 the CLI is now always told `Content-Type: application/json`.
 
-**Local reviews are append-only directories**, not one JSON file. The plan
-said a `porta review` CLI would spare agents the JSON. A directory per thread
-and a file per comment spares them the CLI too: nobody ever rewrites another
-writer's file, so an agent and the IDE write at once with plain file tools, and
-core carries no review code. A 2 s fingerprint poll notices an agent's write.
+**Local reviews are append-only directories**, not one JSON file: nobody ever
+rewrites another writer's file, so an agent and the IDE write at once with plain
+file tools. A 2 s fingerprint poll notices an agent's write. **`porta review`**
+writes the same files from a shell, and it is the PLUGIN's: a bundled plugin
+names console commands in `extra.porta.commands`, `bin/porta` hands `porta
+<name> …` to one before reading a path, and core names no command. The class
+must extend `Plugin\Api\PluginCommand` (the project root, the error stream) —
+anything else a manifest names is refused, a plain Symfony command included. Only
+bundled plugins are asked, so a project's `.porta/plugins/` never runs code from
+a shell prompt. Thread and review names typed on the command line are refused
+unless they are one directory under the reviews directory.
 
 **Core grew three plugin decorations**, and each is plugin-scoped:
 - **Line annotations**, per owner. They used to be one map that each publish
