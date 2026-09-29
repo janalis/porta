@@ -188,4 +188,21 @@ final class WrapClickMappingTest extends TestCase
         $this->assertSame([], $this->ran);
         $this->assertSame(1, $this->document->cursorLine);
     }
+
+    /** A block row under a line shifts the lines below it, and a click on it lands on the line it is about. */
+    public function testBlockRowsShiftTheLinesBelowAndAClickOnOneIsItsLine(): void
+    {
+        $mouse = $this->mouse();
+        $this->store->setLineBlocks([1 => ['alice: rename', 'bob: why?']]);
+
+        $this->assertSame(1, $this->clickAt($mouse, 1, 3, null)[0], 'second');
+        $this->assertSame([1, 3], $this->clickAt($mouse, 2, 3, null), 'the first block row is its line, as the line\'s own last row');
+        $this->assertSame(1, $this->clickAt($mouse, 3, 3, null)[0], 'and the second');
+        $this->assertSame(2, $this->clickAt($mouse, 4, 3, null)[0], 'third follows the block');
+
+        // Wrapped, a block row is the line's LAST segment, never a segment past it.
+        $this->store->setLineBlocks([0 => ['note']]);
+        $this->assertSame(0, $this->clickAt($mouse, 3, 3, self::WIDTH)[0], 'the block under the three segments');
+        $this->assertSame(1, $this->clickAt($mouse, 4, 3, self::WIDTH)[0], 'then second');
+    }
 }

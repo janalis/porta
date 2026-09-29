@@ -306,4 +306,27 @@ final class WrapCaretMotionTest extends TestCase
 
         $this->assertSame(0, $scroll->vScrollSegment);
     }
+
+    /**
+     * A block UNDER the caret's line is not above the caret: counting it as a
+     * lens would push the caret's row down by the block and scroll for nothing.
+     * A block above the caret's line does count, as that line's height.
+     */
+    public function testABlockUnderTheCaretsLineDoesNotPushItsRowButOneAboveDoes(): void
+    {
+        $editor = new CodeEditorWidget();
+        $editor->showDocument('/p/a.php', new Document("aaa\nBBB\nccc\nddd\n"));
+        $editor->setFocused(true);
+        $editor->decorations->setLineBlocks([1 => ['one', 'two', 'three']]);
+        $screen = static fn (): string => AnsiUtils::stripAnsiCodes(\implode("\n", $editor->render(new RenderContext(30, 5))));
+
+        $editor->getDocument()->setCursor(1, 0);
+        $screen();
+        $this->assertSame(0, Probe::get($editor, 'scroll')->vScroll, 'aaa, BBB and its block fit: nothing scrolls');
+
+        $editor->getDocument()->setCursor(3, 0);
+        $painted = $screen();
+        $this->assertStringContainsString('ddd', $painted, 'the caret line two past the block is brought on screen');
+        $this->assertGreaterThan(0, Probe::get($editor, 'scroll')->vScroll, 'by scrolling past the block\'s rows');
+    }
 }

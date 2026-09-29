@@ -1464,9 +1464,33 @@ final class PluginApi
     }
 
     /**
+     * Mark the lines of a file that a conversation is attached to — a review
+     * comment thread. Each gets a glyph in the gutter's marker column and a
+     * mark on the scrollbar stripe, and the pointer over the glyph reads the
+     * summary in the status bar.
+     *
+     * Path-keyed and plugin-scoped like {@see setDiagnostics}: the map replaces
+     * what THIS plugin published for the file, so an empty array clears it and
+     * another plugin's marks stay. The marks survive a tab switch. A path with
+     * no open buffer is a silent no-op.
+     *
+     * @param array<int, string> $marks 0-based line => one-line summary
+     */
+    public function setCommentMarks(string $path, array $marks): void
+    {
+        $runtime = $this->manager->runtime();
+        $known = [];
+        foreach ($marks as $line => $summary) {
+            $known[\max(0, $line)] = $summary;
+        }
+        $runtime->changeMarks->applyCommentMarks($path, $known, $this->pluginName);
+    }
+
+    /**
      * Show a dim trailing note after each of the ACTIVE document's lines — the
-     * slot `git blame` uses. The map replaces whatever was showing, so an empty
-     * array clears it.
+     * slot `git blame` uses. The map replaces whatever THIS plugin was showing,
+     * so an empty array clears it; another plugin's notes stay, and a line two
+     * plugins annotate shows both.
      *
      * Unlike {@see setDiagnostics} this takes no path: annotations belong to
      * whatever the editor is showing, and the widget drops them on every
@@ -1478,7 +1502,26 @@ final class PluginApi
     public function setLineAnnotations(array $byLine): void
     {
         $runtime = $this->manager->runtime();
-        $runtime->annotations->setLineAnnotations($byLine);
+        $runtime->annotations->setLineAnnotations($byLine, $this->pluginName);
+        $runtime->tui->requestRender();
+    }
+
+    /**
+     * Show rows of text UNDER lines of the ACTIVE document — a whole review
+     * conversation under the line it is about. Each row is plain text painted
+     * dim; the line grows by as many rows, the way a code lens adds one above.
+     *
+     * Active-document-only and plugin-scoped, exactly like
+     * {@see setLineAnnotations}: the map replaces what THIS plugin showed, an
+     * empty array clears it, and the editor drops every block on a document
+     * show, so re-publish from {@see onBufferSwitched}.
+     *
+     * @param array<int, list<string>> $byLine 0-based line => the rows under it
+     */
+    public function setLineBlocks(array $byLine): void
+    {
+        $runtime = $this->manager->runtime();
+        $runtime->annotations->setLineBlocks($byLine, $this->pluginName);
         $runtime->tui->requestRender();
     }
 

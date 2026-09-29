@@ -48,4 +48,17 @@ final class GutterHintTest extends TestCase
         $this->assertSame('Deleted', GutterHint::for($store, 2, GutterPart::Change, clickShowsChange: false, translator: $translator));
         $this->assertNull(GutterHint::for($store, 3, GutterPart::Change, clickShowsChange: true, translator: $translator));
     }
+
+    /** A conversation's mark reads its summary — under the bookmark, over a diagnostic, as the column draws it. */
+    public function testACommentMarkReadsItsSummary(): void
+    {
+        $store = new DecorationStore(static function (): void {});
+        $store->setCommentMarks([1 => 'alice: rename this', 2 => 'bob: why?']);
+        $store->setBookmarkLines([2]);
+        $store->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'boom', 'col' => 0]]]);
+        $hint = static fn (int $line): ?string => GutterHint::for($store, $line, GutterPart::Marker, clickShowsChange: false, translator: new Translator('en'));
+
+        $this->assertSame('✎ alice: rename this', $hint(1), 'over the error');
+        $this->assertSame('Bookmark', $hint(2), 'under the bookmark');
+    }
 }

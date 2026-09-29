@@ -116,18 +116,17 @@ final readonly class EditorRowAssembler
         $lineCount = $this->document->getLineCount();
         $walk = $vScroll;
         // Which row OF $walk this screen row shows. A line occupies one row per
-        // code lens above it, then one per wrapped segment — so this is 0 for
-        // most lines and the walk moves on as soon as it runs out.
+        // code lens above it, one per wrapped segment, then one per block row
+        // under it — so this is 0 for most lines and the walk moves on as soon
+        // as it runs out.
         // Rows of the top line hidden above the viewport: scrolling INTO a
         // wrapped line taller than the pane starts the walk partway down it.
         $rowInLine = $vScrollSegment;
         for ($row = 0; $row < $contentRows; ++$row) {
             $lineIndex = $walk < $lineCount ? $walk : null;
             $atRow = $rowInLine;
-            $lenses = null === $lineIndex ? [] : $this->store->codeLensesAt($lineIndex);
             if (null !== $lineIndex) {
-                $total = \count($lenses) + ($this->wrap?->rowsFor($lineIndex, $geo->contentWidth) ?? 1);
-                $more = ($rowInLine + 1) < $total;
+                $more = ($rowInLine + 1) < $this->rowsOf($lineIndex, $geo);
                 $rowInLine = $more ? $rowInLine + 1 : 0;
                 if (!$more) {
                     $walk = $this->foldModel->nextVisibleLine($walk);
@@ -143,15 +142,15 @@ final readonly class EditorRowAssembler
                 continue;
             }
 
-            // A lens row belongs to the line below it and shows none of its
-            // text, so it takes no number, no marks and no caret.
-            $lensTitle = $lenses[$atRow] ?? null;
-            if (null !== $lensTitle) {
-                $result[] = $this->lensRow($lensTitle['title'], $geo).$stripe[$stickyCount + $row];
+            // A lens row above the line, or a block row under it, shows none
+            // of the line's text, so it takes no number, no marks and no caret.
+            $virtual = $this->virtualRow($lineIndex, $atRow, $geo);
+            if (null !== $virtual) {
+                $result[] = $virtual.$stripe[$stickyCount + $row];
 
                 continue;
             }
-            $rowSegment = $atRow - \count($lenses);
+            $rowSegment = $atRow - \count($this->store->codeLensesAt($lineIndex));
 
             $isCursorLine = $lineIndex === $cursorLine && (null === $this->wrap || $rowSegment === WrapLayout::segmentOf($cursorDisplayCol, $geo->contentWidth));
             $lineDiags = $this->store->diagnostics[$lineIndex] ?? [];
@@ -326,6 +325,44 @@ final readonly class EditorRowAssembler
         return AnsiText::blank(\max(0, $geo->gutterWidth)).AnsiUtils::sliceToWidth($this->styles->of(Role::Dim)->apply($title), 0, $geo->contentWidth);
     }
 
+    /** The rows a line occupies: its lenses above, its wrapped segments, its block rows under. */
+    private function rowsOf(int $line, EditorGeometry $geo): int
+    {
+        return \count($this->store->codeLensesAt($line)) + $this->segmentsOf($line, $geo) + \count($this->store->lineBlocksAt($line));
+    }
+
+    private function segmentsOf(int $line, EditorGeometry $geo): int
+    {
+        return $this->wrap?->rowsFor($line, $geo->contentWidth) ?? 1;
+    }
+
+    /**
+     * Row $atRow of $line when it is a lens (the rows before the text) or a
+     * block row (the rows after it); null for one of the line's own segments.
+     */
+    private function virtualRow(int $line, int $atRow, EditorGeometry $geo): ?string
+    {
+        $lenses = $this->store->codeLensesAt($line);
+        $lens = $lenses[$atRow] ?? null;
+        if (null !== $lens) {
+            return $this->lensRow($lens['title'], $geo);
+        }
+        $block = $this->store->lineBlocksAt($line)[$atRow - \count($lenses) - $this->segmentsOf($line, $geo)] ?? null;
+
+        return null === $block ? null : $this->blockRow($block, $geo);
+    }
+
+    /**
+     * One row of a block under a line: the writer's plain text, dim like an
+     * inlay, starting at the content column.
+     */
+    private function blockRow(string $text, EditorGeometry $geo): string
+    {
+        return (
+            AnsiText::blank(\max(0, $geo->gutterWidth)).AnsiText::truncate($this->styles->of(Role::Inlay)->apply(\str_replace("\t", replace: '    ', subject: $text)), $geo->contentWidth, pad: true)
+        );
+    }
+
     /**
      * The semantic tokens on one line, resolved to SGR against the LIVE theme.
      *
@@ -382,8 +419,10 @@ final readonly class EditorRowAssembler
             $numStyle = $numStyle->withBold();
         }
         // The marker column, one glyph by priority: the debugger's stopped line,
-        // then the breakpoint dot, then the BOOKMARK, then the worst
-        // diagnostic's severity glyph — so each state also reads without color.
+        // then the breakpoint dot, then the BOOKMARK, then a conversation's
+        // COMMENT mark, then the worst diagnostic's severity glyph — so each
+        // state also reads without color. The comment outranks the diagnostic
+        // for the bookmark's reason below: it has nowhere else in the gutter.
         //
         // The bookmark outranks the diagnostic because it is the only one of
         // the two with nowhere else to show. A diagnostic already colours the
@@ -398,6 +437,7 @@ final readonly class EditorRowAssembler
             ($this->conditionalBreakpointSet[$lineIndex] ?? null) !== null => $this->styles->of(Role::Breakpoint)->apply(Glyphs::BREAKPOINT_CONDITIONAL),
             ($this->breakpointSet[$lineIndex] ?? null) !== null => $this->styles->of(Role::Breakpoint)->apply(Glyphs::BREAKPOINT),
             $this->store->isBookmarked($lineIndex) => $this->styles->of(Role::TabAccent)->apply(Glyphs::BOOKMARK),
+            \array_key_exists($lineIndex, $this->store->commentMarks) => $this->styles->of(Role::Hunk)->apply(Glyphs::COMMENT),
             [] !== $lineDiags => $numStyle->apply(DiagnosticStyle::worst($lineDiags)->glyph()),
             // Without colour the free column points at the caret line.
             CaretLine::Current === $isCursorLine && !$this->styles->hasColor() => $numStyle->apply(Glyphs::CARET_LINE),

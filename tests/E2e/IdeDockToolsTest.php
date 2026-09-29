@@ -272,6 +272,43 @@ final class IdeDockToolsTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
+    public function testCommentMarksAreKeptPerOwnerAndFollowTheActiveBuffer(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n\$x = 1;\n", 'b.php' => "<?php\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function ($tui, $terminal, $ide) use ($project): void {
+                    $decorations = $tui->getById('editor')->decorations;
+                    $a = (string) \realpath($project->path('a.php'));
+
+                    self::bufferService($ide)->applyCommentMarks($a, [1 => 'alice: rename'], 'review');
+                    self::bufferService($ide)->applyCommentMarks($a, [1 => 'bot: nit', 0 => 'bot: header'], 'agent');
+                    $this->assertSame([1 => 'alice: rename · bot: nit', 0 => 'bot: header'], $decorations->commentMarks, 'two owners on one line both show');
+
+                    self::bufferService($ide)->applyCommentMarks($a, [], 'agent');
+                    $this->assertSame([1 => 'alice: rename'], $decorations->commentMarks, 'an owner clears only its own');
+
+                    self::bufferService($ide)->applyCommentMarks($project->path('nope.php'), [0 => 'x'], 'review');
+                    $this->assertSame([1 => 'alice: rename'], $decorations->commentMarks, 'a file with no buffer is a no-op');
+
+                    self::bufferService($ide)->openFile($project->path('b.php'), OpenFocus::Editor);
+                    $this->assertSame([], $decorations->commentMarks, 'b.php has none of its own');
+                    self::bufferService($ide)->applyCommentMarks($a, [0 => 'carol: later'], 'review');
+                    $this->assertSame([], $decorations->commentMarks, 'a background publish does not paint over the file on screen');
+
+                    self::bufferService($ide)->openFile($project->path('a.php'), OpenFocus::Editor);
+                    $this->assertSame([0 => 'carol: later'], $decorations->commentMarks, 'the switch back replays it');
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
     public function testProblemsTabRefreshesLiveAsDiagnosticsLand(): void
     {
         \putenv('PATH=/nonexistent');

@@ -305,6 +305,22 @@ The full-screen view `Ctrl+Alt+D` opens; `Tab` cycles panes and `Esc` closes.
 | `Enter` | In History, switch between the commit list and its file list |
 | `f` / `p` / `Shift+P` | Fetch / pull / push |
 
+## Review view
+
+The `review` plugin's full-screen view (**Review → Show Review**); `Tab` cycles
+panes and `Esc` closes. [The review guide](review.md#the-review-view) has the
+whole workflow.
+
+| Key | Action |
+| --- | --- |
+| `Enter` | In the list, show the entry; in the file pane, open the file at the caret's line |
+| `r` | Reply to the thread (the selected one, or the one the caret is in) |
+| `x` | Resolve or reopen that thread |
+| `c` | In the list, comment on the review itself; in the file pane, start a thread on the caret's line |
+| `o` | Open the thread's line in the editor |
+| `F5` / `Shift+R` | Re-read the review |
+| `Ctrl+Enter` | Send what the reply box holds |
+
 ## Mouse
 
 **Every list popup filters as you type** — file structure, recent files, quick

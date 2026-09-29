@@ -240,6 +240,17 @@ final class ArchitectureCheckCommand extends Command
         'Plugin>Ui', // flash()/notify() take a Ui\Markup\Markup, the value a styled message travels as
         'Plugin>Widget',
         'Plugin>Workbench',
+        // The review plugin's own code (plugins/review/src). ReviewPlugin>GitPlugin
+        // is the second cross-plugin edge, declared by `requires: ["git"]`: it
+        // borrows the git plugin's process runner and diff model, never its
+        // live objects. The rest is a plugin reaching for core's toolkits.
+        'ReviewPlugin>GitPlugin',
+        'ReviewPlugin>Overlay',
+        'ReviewPlugin>Plugin',
+        'ReviewPlugin>Support',
+        'ReviewPlugin>Ui',
+        'ReviewPlugin>Widget',
+        'ReviewPlugin>Workbench',
         'Run>Event',
         'Run>Container',
         'Run>Support',

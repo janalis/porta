@@ -56,13 +56,23 @@ final class EditorScroll
     public private(set) int $contentWidth = 0;
 
     /**
-     * Rows one document line occupies — wrapped segments plus code-lens rows.
+     * Rows one document line occupies — wrapped segments, plus the code-lens
+     * rows above it and the block rows under it.
      * Null means one row per line, which is what every caller wants until soft
      * wrap or code vision is on, and keeps this arithmetic exactly as it was.
      *
      * @var (\Closure(int): int)|null
      */
     public ?\Closure $rowsForLine = null;
+
+    /**
+     * Of {@see $rowsForLine}, the rows UNDER a line's text — a block — which,
+     * unlike a lens above it, do not push the line's own caret row down.
+     * Null when no line has any.
+     *
+     * @var (\Closure(int): int)|null
+     */
+    public ?\Closure $rowsBelowLine = null;
 
     public function setContentWidth(int $width): void
     {
@@ -187,7 +197,7 @@ final class EditorScroll
 
         // Plus the caret's own row WITHIN its line: the lens rows above it and
         // the segment its column falls in.
-        return $row + $rowsFor($cursorLine) - $this->wrappedRows($cursorLine) + $this->caretSegment() - $this->vScrollSegment;
+        return $row + $this->rowsAbove($cursorLine) + $this->caretSegment() - $this->vScrollSegment;
     }
 
     /** The top line that leaves the caret $budget rows down, counting rows. */
@@ -198,7 +208,7 @@ final class EditorScroll
         }
 
         $rowsFor = $this->rowsForLine;
-        $spent = $this->caretSegment() + ($rowsFor($cursorLine) - $this->wrappedRows($cursorLine));
+        $spent = $this->caretSegment() + $this->rowsAbove($cursorLine);
         $line = $cursorLine;
         // Bounded by $step, so no guard is needed for visibleLineAbove() not
         // advancing — and a guard nothing can reach is not a guard.
@@ -213,6 +223,15 @@ final class EditorScroll
         }
 
         return $this->foldModel->snapVisible($line);
+    }
+
+    /** The rows a line has above its own text: its lenses, with the block rows under it taken back out. */
+    private function rowsAbove(int $line): int
+    {
+        $rowsFor = $this->rowsForLine;
+        \assert(null !== $rowsFor, description: 'only asked while lines are taller than one row');
+
+        return $rowsFor($line) - $this->wrappedRows($line) - (null === $this->rowsBelowLine ? 0 : ($this->rowsBelowLine)($line));
     }
 
     /** Segments the caret's own line wraps into, excluding any lens rows. */

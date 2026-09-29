@@ -402,6 +402,7 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
         $this->swapEditorPaneTo($this->editor);
         $this->editor->showDocument($buffer->path, $buffer->document, $buffer->diagnostics, $buffer->highlighter, $buffer->editorConfig);
         $this->editor->decorations->setVcsMarks($buffer->vcsMarks, $buffer->document->getLineCount());
+        $this->editor->decorations->setCommentMarks($buffer->commentMarks());
         $this->dispatcher->dispatch(new BufferSwitched($buffer));
         $this->tui->requestRender();
     }
@@ -843,6 +844,27 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
 
             return;
         }
+    }
+
+    /**
+     * Store an owner's comment marks for a file and, if it is on screen, paint
+     * the merge. A path with no open buffer is a silent no-op, as for change
+     * marks.
+     *
+     * @param array<int, string> $marks 0-based line => one-line summary
+     */
+    #[\Override]
+    public function applyCommentMarks(string $path, array $marks, string $owner): void
+    {
+        $buffer = $this->buffers->get($path);
+        if (null === $buffer) {
+            return;
+        }
+        $buffer->publishCommentMarks($owner, $marks);
+        if ($buffer === $this->buffers->active()) {
+            $this->editor->decorations->setCommentMarks($buffer->commentMarks());
+        }
+        $this->tui->requestRender();
     }
 
     #[\Override]

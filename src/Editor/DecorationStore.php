@@ -15,6 +15,9 @@ namespace Porta\Editor;
  */
 final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
 {
+    /** Between two writers' notes on one line. */
+    private const string ANNOTATION_JOIN = '  · ';
+
     /** @var array<int, list<array{start: int, end: int, current: bool}>> search matches by line (byte cols) */
     public private(set) array $searchMatches = [];
 
@@ -30,8 +33,36 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
      */
     private int $vcsMarkLineCount = 0;
 
-    /** @var array<int, string> 0-based line => trailing annotation (blame) */
+    /**
+     * Every writer's trailing notes joined per line — what the row assembler
+     * paints. Derived from {@see $annotationsByOwner} on every publish.
+     *
+     * @var array<int, string> 0-based line => trailing annotation
+     */
     public private(set) array $lineAnnotations = [];
+
+    /**
+     * The same notes kept apart by who wrote them, for {@see Buffer::$diagnosticsByOwner}'s
+     * reason: blame and a review plugin both annotate lines, and the map one
+     * writer publishes REPLACES only its own.
+     *
+     * @var array<string, array<int, string>> owner => 0-based line => text
+     */
+    private array $annotationsByOwner = [];
+
+    /** @var array<int, string> 0-based line => the conversation's one-line summary, for the pointer's hint */
+    public private(set) array $commentMarks = [];
+
+    /**
+     * Rows of a writer's text shown UNDER a line — a review thread, whole —
+     * by writer, for {@see $annotationsByOwner}'s reason.
+     *
+     * @var array<string, array<int, list<string>>> owner => 0-based line => rows
+     */
+    private array $blocksByOwner = [];
+
+    /** @var array<int, list<string>> every writer's rows merged, 0-based line => rows */
+    private array $lineBlocks = [];
 
     /** @var list<int> 0-based lines with a breakpoint (● in the gutter) */
     public private(set) array $breakpointLines = [];
@@ -85,6 +116,10 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
         $this->recountDiagnostics();
         $this->inlayHints = [];
         $this->lineAnnotations = [];
+        $this->annotationsByOwner = [];
+        $this->commentMarks = [];
+        $this->blocksByOwner = [];
+        $this->lineBlocks = [];
         $this->debugValues = [];
         $this->breakpointLines = [];
         $this->bookmarkLines = [];
@@ -209,10 +244,79 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
         ($this->invalidate)();
     }
 
-    /** @param array<int, string> $byLine 0-based line => trailing annotation (blame); [] clears */
-    public function setLineAnnotations(array $byLine): void
+    /**
+     * Replace $owner's trailing notes; [] clears them. Another writer's notes
+     * stay, and a line two writers annotate shows both, in the order the
+     * writers first spoke.
+     *
+     * @param array<int, string> $byLine 0-based line => trailing annotation
+     */
+    public function setLineAnnotations(array $byLine, string $owner = ''): void
     {
-        $this->lineAnnotations = $byLine;
+        // Assigned in place, so a writer that republishes keeps its turn in the order.
+        $this->annotationsByOwner[$owner] = $byLine;
+        if ([] === $byLine) {
+            unset($this->annotationsByOwner[$owner]);
+        }
+        $merged = [];
+        foreach ($this->annotationsByOwner as $notes) {
+            foreach ($notes as $line => $text) {
+                $merged[$line] = \array_key_exists($line, $merged) ? $merged[$line].self::ANNOTATION_JOIN.$text : $text;
+            }
+        }
+        $this->lineAnnotations = $merged;
+        ($this->invalidate)();
+    }
+
+    /**
+     * Replace $owner's rows under the active document's lines; [] clears them.
+     * Like code lenses these are rows of their own — a line with a block is
+     * taller by its rows — but under the line rather than above it, and the
+     * text is the writer's, painted dim.
+     *
+     * @param array<int, list<string>> $byLine 0-based line => the rows under it
+     */
+    public function setLineBlocks(array $byLine, string $owner = ''): void
+    {
+        $this->blocksByOwner[$owner] = $byLine;
+        if ([] === $byLine) {
+            unset($this->blocksByOwner[$owner]);
+        }
+        $merged = [];
+        foreach ($this->blocksByOwner as $blocks) {
+            foreach ($blocks as $line => $rows) {
+                $merged[$line] = [...($merged[$line] ?? []), ...$rows];
+            }
+        }
+        $this->lineBlocks = $merged;
+        ($this->invalidate)();
+    }
+
+    /** @return list<string> the rows under one line */
+    public function lineBlocksAt(int $line): array
+    {
+        return $this->lineBlocks[$line] ?? [];
+    }
+
+    /**
+     * Whether any line is taller than its text — a lens above it or a block
+     * under it — the cheap check that keeps the row arithmetic on its
+     * one-row-per-line fast path.
+     */
+    public function hasExtraRows(): bool
+    {
+        return [] !== $this->codeLenses || [] !== $this->lineBlocks;
+    }
+
+    /**
+     * The lines a conversation is attached to — a review comment's gutter
+     * glyph and stripe mark — with the summary the pointer's hint reads.
+     *
+     * @param array<int, string> $byLine 0-based line => one-line summary; [] clears
+     */
+    public function setCommentMarks(array $byLine): void
+    {
+        $this->commentMarks = $byLine;
         ($this->invalidate)();
     }
 
@@ -353,12 +457,6 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
     {
         $this->codeLenses = $byLine;
         ($this->invalidate)();
-    }
-
-    /** Whether any line has a lens — the cheap check that keeps the unwrapped hit-test on its fast path. */
-    public function hasCodeLenses(): bool
-    {
-        return [] !== $this->codeLenses;
     }
 
     /** @return list<array{title: string, command: string, arguments: list<mixed>, owner: string}> the lenses above one line */

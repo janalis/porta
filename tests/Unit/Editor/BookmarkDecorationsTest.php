@@ -76,6 +76,25 @@ final class BookmarkDecorationsTest extends TestCase
         );
     }
 
+    /** A conversation's glyph takes the marker column over a diagnostic, and yields it to a bookmark. */
+    public function testACommentMarkSitsBetweenTheBookmarkAndTheDiagnostic(): void
+    {
+        $editor = $this->editor();
+        $gutter = static fn (string $row): string => AnsiUtils::stripAnsiCodes(AnsiUtils::sliceByColumn($row, 0, 8));
+        $editor->decorations->setCommentMarks([1 => 'alice: rename', 2 => 'bob: why?']);
+        $editor->decorations->setDiagnostics([1 => [['col' => 0, 'endCol' => 3, 'message' => 'broken', 'severity' => DiagnosticSeverity::Error]]]);
+
+        $lines = $editor->render(new RenderContext(40, 8));
+        $this->assertStringContainsString(Glyphs::COMMENT, $gutter($lines[1]), 'over the error');
+        $this->assertStringContainsString(Glyphs::COMMENT, $gutter($lines[2]));
+        $this->assertStringNotContainsString(Glyphs::COMMENT, $gutter($lines[0]), 'not on an unmarked line');
+
+        $bookmarks = new Bookmarks();
+        $bookmarks->toggle('/p/a.php', 2);
+        new BookmarkDecorations($bookmarks, $editor->decorations)->apply('/p/a.php');
+        $this->assertStringContainsString(Glyphs::BOOKMARK, $gutter($editor->render(new RenderContext(40, 8))[2]), 'the bookmark outranks it');
+    }
+
     public function testASwitchPaintsTheNewFilesOwnMarksAndNotTheOldFiles(): void
     {
         // The gutter is shared, so showing b.php has to CLEAR a.php's marks

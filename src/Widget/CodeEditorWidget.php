@@ -1343,9 +1343,11 @@ final class CodeEditorWidget extends AbstractWidget implements
             // sit off screen for one paint after every Down.
             $this->scroll->setContentWidth($geo->contentWidth);
             $wrapLayout = $this->display->softWrap ? new WrapLayout($doc) : null;
-            $this->scroll->rowsForLine = null === $wrapLayout && !$this->decorations->hasCodeLenses()
-                ? null // one row per line, and the old arithmetic exactly
-                : fn (int $line): int => \count($this->decorations->codeLensesAt($line)) + ($wrapLayout?->rowsFor($line, $geo->contentWidth) ?? 1);
+            $extraRows = null !== $wrapLayout || $this->decorations->hasExtraRows();
+            $this->scroll->rowsForLine = $extraRows
+                ? fn (int $line): int => \count($this->decorations->codeLensesAt($line)) + ($wrapLayout?->rowsFor($line, $geo->contentWidth) ?? 1) + \count($this->decorations->lineBlocksAt($line))
+                : null; // one row per line, and the old arithmetic exactly
+            $this->scroll->rowsBelowLine = $extraRows ? fn (int $line): int => \count($this->decorations->lineBlocksAt($line)) : null;
 
             // Clamp scroll to cursor: the caret must stay visible below whatever
             // sticky-scroll band the settled scroll position pins at the top.

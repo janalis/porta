@@ -183,4 +183,28 @@ final class EditorRowAssemblerWrapTest extends TestCase
             }
         }
     }
+
+    /**
+     * A block is the other side of a lens: rows of a writer's text UNDER the
+     * line they are about, unnumbered, pushing the lines below it down — and
+     * composing with the lenses above the same line.
+     */
+    public function testLineBlocksRenderUnderTheirLineAndCountAsRows(): void
+    {
+        $editor = new CodeEditorWidget();
+        $editor->showDocument('/p/a.php', new Document("<?php\nclass A {}\nfunction b() {}\n"));
+        $editor->decorations->setCodeLenses([1 => [['title' => '3 usages', 'command' => 'x', 'arguments' => []]]]);
+        $editor->decorations->setLineBlocks([1 => ['alice: rename A', "\tbob: agreed"]], 'review');
+
+        $rows = \array_map(
+            static fn (string $r): string => \trim(AnsiUtils::stripAnsiCodes($r)),
+            $editor->render(new RenderContext(52, 8)),
+        );
+
+        $this->assertSame(
+            ['1   <?php', '3 usages', '2   class A {}', 'alice: rename A', 'bob: agreed', '3   function b() {}', '4', '~'],
+            $rows,
+            'the lens above, the line, then its block rows, then the next line',
+        );
+    }
 }

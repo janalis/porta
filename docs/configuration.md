@@ -285,6 +285,7 @@ The IDE writes a `.porta/` directory into the project you open:
 | `.porta/recent-files.json` | The files this project has had open, newest first, capped at 32 — what `Ctrl+E` offers below the open tabs |
 | `.porta/layout.json` | Pane proportions (sidebar widths, bottom-panel height, git view splits) — hand-editable |
 | `.porta/history/` | Local-history snapshots (see below) |
+| `.porta/reviews/` | Local code reviews an agent writes and you answer — see [review.md](review.md#local-reviews-the-format-an-agent-writes) |
 | `.porta/plugins/` | Installed project-scope plugins |
 | `enabledPlugins` (in `.porta.json`) | Bundled plugins to load. When the key is ABSENT, `image-viewer`, `graph-viewer`, `todo` and `local-history` are on by default; an explicit list (even `[]`) replaces that default entirely, so a list written before one of them existed silently leaves it off — TODO scanning and local-history snapshots are the two that go quiet |
 

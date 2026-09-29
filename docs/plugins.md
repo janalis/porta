@@ -23,6 +23,9 @@ The others: `image-viewer` and `graph-viewer` (the inline viewers — each
 owns its whole implementation and PROVIDES its pane; disable one and its files
 open as text instead, and note that `graph-viewer` requires `image-viewer`
 because a graph is painted with the same rasterizer),
+`review` (pull request, merge request and local-agent review conversations —
+[review.md](review.md); it requires `git` for its classes, and is the
+reference use of `setCommentMarks` and `setLineBlocks`),
 `tempest` (the built-in-quality syntax highlighting engine the Settings ▸
 Highlighting page offers), `chroma` (an external-highlighter example),
 `phpantom` / `phpactor` (PHP language-server providers — the Welcome screen's
@@ -718,6 +721,7 @@ Actions (from handlers/hooks):
 | `showChangeMarkGutter(bool $on)` | Show or hide the version-control gutter STRIP itself. Hiding drops whatever marks were showing, so nothing lingers under a column that is no longer painted |
 | `showList(string $id, array $rows = [], ToolRun $run = ToolRun::Finished)` | Open your list tool's tab and show rows |
 | `setChangeMarks(string $path, array $marks)` | Paint the version-control gutter for one file: `0-based line => 'added'\|'modified'\|'deleted'`. `showChangeMarkGutter(false)` hides the strip and drops them |
+| `setCommentMarks(string $path, array $marks)` | Mark the lines a conversation hangs on — a review thread: `0-based line => one-line summary`. Each gets `✎` in the gutter's marker column and on the scrollbar stripe, and the pointer over it reads the summary. Scoped to your plugin like `setDiagnostics`, kept across tab switches; `[]` clears |
 | `copyToClipboard(string $text)` | Put text on the system clipboard — for a view that copies a commit hash or a path and has no business injecting a service to do it |
 | `syntaxTheme()` | The `TerminalTheme` core is currently painting with, for a backend that bakes colours into its own output. Safe during `activate()`; pair it with `onThemeChanged()`, since a theme switch has no other hook |
 | `updateList(string $id, array $rows, ToolRun $run = ToolRun::Finished)` | Replace its rows in place; a no-op once the user ×'d the tab |
@@ -734,7 +738,8 @@ Actions (from handlers/hooks):
 | `jumpTo(int $line, int $column = 0)` | Move the caret (0-based) |
 | `setDiagnostics(string $path, array $diagnostics)` | Publish editor diagnostics; each item is `['line' => int (0-based), 'message' => string, 'severity' => 1–4 (optional, 1 = error), 'column' => int (optional)]`. An empty list clears **this plugin's** findings for the file and leaves everyone else's — a language server publishing on every keystroke and an analyser publishing on every save no longer overwrite each other. |
 | `setFileStatuses(array $statuses)` | Publish the working tree's per-FILE version-control status for the file tree — `[absolute path => 'added'\|'modified'\|'deleted']`. The map REPLACES whole, so a file leaving it is how "back to unmodified" is said; an empty array clears every mark. |
-| `setLineAnnotations(array $byLine)` | Show a dim trailing note after lines of the ACTIVE document — `[0-based line => string]`. An empty array clears. Takes no path: the editor drops annotations on every document show, so re-publish from `onBufferSwitched` to keep them. |
+| `setLineAnnotations(array $byLine)` | Show a dim trailing note after lines of the ACTIVE document — `[0-based line => string]`. Replaces only YOUR plugin's notes, so an empty array clears yours; a line two plugins annotate shows both. Takes no path: the editor drops annotations on every document show, so re-publish from `onBufferSwitched` to keep them. |
+| `setLineBlocks(array $byLine)` | Show rows of text UNDER lines of the ACTIVE document — `[0-based line => list<string>]`, plain text painted dim; each line grows by its rows, the way a code lens adds one above. Your plugin's own, like `setLineAnnotations`; re-publish from `onBufferSwitched` |
 | `projectRoot(): string` | The project root (also safe during `activate()`) |
 | `setting(string $key): bool\|int\|string` | The current value of a setting this plugin registered — the user's value coerced to the declared kind, or the default. Safe during `activate()`, but `registerSetting()` must run first. |
 | `changeSetting(string $key, bool\|int\|string $value)` | Persist a new value for a setting this plugin registered — coerced, kept live and written to `.porta.json`, exactly like a Settings-page edit. An action method (throws during `activate()`). |
@@ -789,11 +794,14 @@ never per buffer switch: switching tabs changes nothing on disk. Both take
 core's three kinds, and in both cases core owns what they look like.
 
 `setLineAnnotations` writes the slot `git blame` uses — one dim note after each
-line, in the active document only. It is the one editor decoration a plugin may
-write: gutter marks, breakpoints and the stopped-line band stay core's, because
-a plugin cannot invent the `Role` they paint with. The bundled `git` plugin's
-blame mode is the reference use; a coverage overlay or an inline test-result
-strip is the same shape.
+line, in the active document only. Each plugin writes its own notes, and a line
+two plugins annotate (blame, and a review's thread summary) shows both. The
+bundled `git` plugin's blame mode is the reference use; a coverage overlay or an
+inline test-result strip is the same shape. `setCommentMarks` is the one gutter
+mark a plugin may place, and like change marks its look is core's: a plugin says
+WHICH lines carry a conversation, never what the mark looks like. Breakpoints and
+the stopped-line band stay core's, because a plugin cannot invent the `Role` they
+paint with.
 
 ### Applying an in-place formatter's output
 

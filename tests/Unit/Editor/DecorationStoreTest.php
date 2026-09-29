@@ -235,4 +235,51 @@ final class DecorationStoreTest extends TestCase
         // gutter of thirty-one marks on a file whose gutter is off.
         $this->assertSame([], $store->vcsMarks, 'cleared stays cleared');
     }
+
+    /** Each writer replaces only its own notes; two on one line are both shown, first writer first. */
+    public function testLineAnnotationsAreKeptPerOwnerAndJoined(): void
+    {
+        $store = new DecorationStore(static function (): void {});
+        $store->setLineAnnotations([0 => 'alice, 3 days ago', 1 => 'bob, today'], 'git');
+        $store->setLineAnnotations([1 => '✎ 2 · carol: rename this'], 'review');
+
+        $this->assertSame([0 => 'alice, 3 days ago', 1 => 'bob, today  · ✎ 2 · carol: rename this'], $store->lineAnnotations);
+
+        $store->setLineAnnotations([0 => 'dave, now'], 'git');
+        $this->assertSame([0 => 'dave, now', 1 => '✎ 2 · carol: rename this'], $store->lineAnnotations, 'a republish replaces only that owner');
+
+        $store->setLineAnnotations([], 'review');
+        $this->assertSame([0 => 'dave, now'], $store->lineAnnotations, 'an empty map clears only that owner');
+
+        $store->setCommentMarks([2 => 'carol: rename this']);
+        $store->resetForBuffer([]);
+        $this->assertSame([], $store->lineAnnotations, 'a buffer switch drops every owner');
+        $store->setLineAnnotations([4 => 'x'], 'review');
+        $this->assertSame([4 => 'x'], $store->lineAnnotations, 'and none comes back with the next publish');
+        $this->assertSame([], $store->commentMarks, 'comment marks go with the buffer too');
+    }
+
+    /** Blocks are kept per writer and merged in order, count as extra rows, and go with the buffer. */
+    public function testLineBlocksArePerOwnerAndMakeLinesTaller(): void
+    {
+        $store = new DecorationStore(static function (): void {});
+        $this->assertFalse($store->hasExtraRows());
+
+        $store->setLineBlocks([2 => ['alice: a']], 'review');
+        $store->setLineBlocks([2 => ['agent: b'], 4 => ['agent: c']], 'agent');
+        $this->assertSame(['alice: a', 'agent: b'], $store->lineBlocksAt(2));
+        $this->assertSame(['agent: c'], $store->lineBlocksAt(4));
+        $this->assertTrue($store->hasExtraRows());
+
+        $store->setLineBlocks([], 'agent');
+        $this->assertSame(['alice: a'], $store->lineBlocksAt(2), 'an owner clears only its own');
+        $this->assertSame([], $store->lineBlocksAt(4));
+
+        $store->resetForBuffer([]);
+        $this->assertSame([], $store->lineBlocksAt(2));
+        $this->assertFalse($store->hasExtraRows(), 'a buffer switch drops them');
+
+        $store->setCodeLenses([0 => [['title' => 't', 'command' => 'c', 'arguments' => [], 'owner' => 'php']]]);
+        $this->assertTrue($store->hasExtraRows(), 'a lens is an extra row too');
+    }
 }

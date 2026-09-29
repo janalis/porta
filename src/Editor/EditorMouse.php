@@ -231,7 +231,7 @@ final class EditorMouse
         $lastLine = $this->document->getLineCount() - 1;
         // No wrapping and no lenses: rows and lines run one to one, which is
         // the fold model's own arithmetic.
-        if (null === $vp->wrapWidth && !$this->lenses->hasCodeLenses()) {
+        if (null === $vp->wrapWidth && !$this->lenses->hasExtraRows()) {
             $line = $this->foldModel->docLineAtRow($vp->vScroll, $contentRow);
 
             return null === $line ? null : [$line, 0];
@@ -246,7 +246,8 @@ final class EditorMouse
         // guard branch nothing can reach to test.
         for ($step = 0; $line <= $lastLine && $step <= $lastLine; ++$step) {
             $lensRows = \count($this->lenses->codeLensesAt($line));
-            $rows = $lensRows + (null === $vp->wrapWidth ? 1 : $layout->rowsFor($line, $vp->wrapWidth));
+            $segments = null === $vp->wrapWidth ? 1 : $layout->rowsFor($line, $vp->wrapWidth);
+            $rows = $lensRows + $segments + \count($this->lenses->lineBlocksAt($line));
             if ($contentRow < ($row + $rows)) {
                 // A NEGATIVE segment says "this row is a lens", and WHICH one:
                 // -1 is the first lens above the line, -2 the second. The
@@ -257,7 +258,9 @@ final class EditorMouse
                 // Content rows are their segment; a LENS row is encoded as
                 // -(index + 1), so -1 is the first lens above the line and the
                 // caller recovers the index without knowing how many there are.
-                return [$line, $inLine < $lensRows ? -($inLine + 1) : $inLine - $lensRows];
+                // A BLOCK row under the line is its last segment: a click
+                // there puts the caret on the line the block is about.
+                return [$line, $inLine < $lensRows ? -($inLine + 1) : \min($inLine - $lensRows, $segments - 1)];
             }
             $row += $rows;
             $line = $this->foldModel->nextVisibleLine($line);

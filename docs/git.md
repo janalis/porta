@@ -183,3 +183,8 @@ diagnostic keep the diagnostic instead. Annotations re-sync on save and
 buffer switches, and — like the gutter change marks — drift against unsaved
 edits until the next save. `Git: Blame Current Line` still flashes a single
 line's commit without turning the mode on.
+
+## Code review
+
+Pull and merge request threads — and local reviews an agent leaves — are the
+`review` plugin's: see [review.md](review.md).

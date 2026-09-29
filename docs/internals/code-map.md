@@ -69,6 +69,12 @@ container service**, so a plugin holds no core service it was not handed: the
 git plugin carries `Flash`, `Modals`, `Translate` and `DiffPrefs`, each one
 closure from `PluginApi` behind the method name its call sites already used.
 
+A plugin that builds on another's classes says so in `extra.porta.requires`
+and imports them directly: `Porta\ReviewPlugin\` (plugins/review) runs its git
+through the git plugin's `GitProcessRunner` and reads diffs with its
+`DiffDocument`, and owns every instance it uses — plugins share classes, never
+live objects.
+
 A plugin big enough to need interior structure states its own rules, because
 this page cannot: the git plugin's are in `plugins/git/plugin.php`'s docblock.
 A subdirectory there costs nothing in the graph — `composer arch` attributes a

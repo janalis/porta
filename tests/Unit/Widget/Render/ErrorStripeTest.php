@@ -285,4 +285,24 @@ final class ErrorStripeTest extends TestCase
         $this->assertStringNotContainsString("\e[4m", $cells[5]);
         $this->assertStringNotContainsString("\e[4m", ErrorStripe::cells($marks, 10, 100, 0, 9, Styles::dark(), hoveredRow: 3)[3], 'a blank row is not underlined');
     }
+
+    /** A conversation's mark sits under the bookmark and over an ordinary hit, and is read from the store. */
+    public function testACommentMarkTakesItsPlaceBetweenBookmarkAndHit(): void
+    {
+        $cells = $this->stripe(
+            new StripeMarks([], [], [20, 40], [], bookmarkLines: [40], commentLines: [20, 40, 60]),
+            rows: 10,
+            lineCount: 100,
+        );
+        $plain = \array_map(AnsiUtils::stripAnsiCodes(...), $cells);
+
+        $this->assertSame(Glyphs::COMMENT, $plain[2], 'a comment over an ordinary hit');
+        $this->assertSame(Glyphs::BOOKMARK, $plain[4], 'a bookmark over a comment');
+        $this->assertSame(Glyphs::COMMENT, $plain[6], 'alone on its row');
+        $this->assertSame(StripeMark::Comment, ErrorStripe::markAt(new StripeMarks([], [], [], [], commentLines: [60]), 6, 10, 100)['kind'] ?? null);
+
+        $store = new DecorationStore(static function (): void {});
+        $store->setCommentMarks([3 => 'alice: rename', 8 => 'bob: why?']);
+        $this->assertSame([3, 8], StripeMarks::from($store, vcsGutter: false)->commentLines);
+    }
 }

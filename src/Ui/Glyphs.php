@@ -46,6 +46,12 @@ final class Glyphs
     // shape-distinct from every glyph that can share that column.
     public const string BOOKMARK = '◈';
 
+    // A line a conversation hangs on — a review comment thread. In the marker
+    // column under the bookmark, above the diagnostic glyph (which keeps its
+    // coloured number, stripe cell and inline message); on the stripe too.
+    // East Asian Width Neutral, so one column in every locale.
+    public const string COMMENT = '✎';
+
     // Work under way that has not answered yet: a picker category still
     // searching, a completion still loading. An empty circle — the shape of
     // "nothing yet", distinct from every severity and gutter mark.

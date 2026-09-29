@@ -38,9 +38,9 @@ interface EditorDecorationSink
     public function setVcsMarks(array $byLine, ?int $lineCount = null): void;
 
     /**
-     * @param array<int, string> $byLine 0-based line => trailing annotation (blame); [] clears
+     * @param array<int, string> $byLine 0-based line => trailing annotation (blame); [] clears $owner's
      */
-    public function setLineAnnotations(array $byLine): void;
+    public function setLineAnnotations(array $byLine, string $owner = ''): void;
 
     /**
      * The debugger's variable values for the active file, 0-based line => text.

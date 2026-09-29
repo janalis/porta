@@ -23,6 +23,7 @@ enum StripeMark
     case CurrentHit;
     case Change;
     case Bookmark;
+    case Comment;
     case Hit;
 
     public function glyph(?DiagnosticSeverity $severity, ?ChangeMarkKind $change): string
@@ -34,6 +35,7 @@ enum StripeMark
             self::CurrentHit => Glyphs::STRIPE_SEARCH_CURRENT,
             self::Change => $change?->glyph() ?? Glyphs::VCS_MODIFIED,
             self::Bookmark => Glyphs::BOOKMARK,
+            self::Comment => Glyphs::COMMENT,
             self::Hit => Glyphs::STRIPE_SEARCH,
         };
     }
@@ -46,6 +48,7 @@ enum StripeMark
             self::CurrentHit => Role::SearchCurrentBg,
             self::Change => $change?->role() ?? Role::Modified,
             self::Bookmark => Role::TabAccent,
+            self::Comment => Role::Hunk,
             self::Hit => Role::SearchBg,
         };
     }
@@ -60,6 +63,7 @@ enum StripeMark
             self::CurrentHit => 'Current match',
             self::Change => 'Change',
             self::Bookmark => 'Bookmark',
+            self::Comment => 'Conversation',
             self::Hit => 'Match',
         };
     }

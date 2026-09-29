@@ -44,6 +44,14 @@ final class Buffer
     /** @var array<int, ChangeMarkKind> 0-based line => kind vs git HEAD */
     public array $vcsMarks = [];
 
+    /**
+     * The lines a conversation hangs on, by who published them — a review
+     * plugin's threads — so they survive a tab switch like {@see $vcsMarks}.
+     *
+     * @var array<string, array<int, string>> owner => 0-based line => one-line summary
+     */
+    private array $commentMarksByOwner = [];
+
     /** Monotonic focus stamp maintained by the BufferManager. */
     public int $lastFocused = 0;
 
@@ -136,5 +144,35 @@ final class Buffer
     public function stampFromDisk(): void
     {
         $this->diskStamp = $this->diskStampNow();
+    }
+
+    /**
+     * Replace one owner's comment marks; an empty map drops that owner.
+     *
+     * @param array<int, string> $marks 0-based line => one-line summary
+     */
+    public function publishCommentMarks(string $owner, array $marks): void
+    {
+        $this->commentMarksByOwner[$owner] = $marks;
+        if ([] === $marks) {
+            unset($this->commentMarksByOwner[$owner]);
+        }
+    }
+
+    /**
+     * Every owner's marks merged: a line two owners mark reads both summaries.
+     *
+     * @return array<int, string>
+     */
+    public function commentMarks(): array
+    {
+        $merged = [];
+        foreach ($this->commentMarksByOwner as $marks) {
+            foreach ($marks as $line => $summary) {
+                $merged[$line] = \array_key_exists($line, $merged) ? $merged[$line].' · '.$summary : $summary;
+            }
+        }
+
+        return $merged;
     }
 }

@@ -417,7 +417,9 @@ final class PluginApiTest extends TestCase
             static fn () => $api->jumpTo(0),
             static fn () => $api->setDiagnostics('/x', []),
             static fn () => $api->setLineAnnotations([]),
+            static fn () => $api->setLineBlocks([]),
             static fn () => $api->setChangeMarks('/x', []),
+            static fn () => $api->setCommentMarks('/x', []),
             static fn () => $api->emit(new WorkingTreeChanged()),
             static fn () => $api->openView('git'),
             static fn () => $api->closeView('git'),
@@ -544,6 +546,18 @@ final class PluginApiTest extends TestCase
         );
     }
 
+    public function testSetCommentMarksClampsAndReachesTheSinkUnderThePluginsName(): void
+    {
+        $api = $this->api();
+
+        $api->setCommentMarks('/p/a.php', [2 => 'alice: rename', -1 => 'clamped']);
+
+        $this->assertSame(
+            [['path' => '/p/a.php', 'marks' => [2 => 'alice: rename', 0 => 'clamped'], 'owner' => 'demo']],
+            $this->changeMarks->comments,
+        );
+    }
+
     public function testSetFileStatusesNormalisesAndReachesTheSink(): void
     {
         $api = $this->api();
@@ -622,6 +636,30 @@ final class PluginApiTest extends TestCase
 
         $api->setLineAnnotations([]);
         $this->assertSame([], $this->editor->decorations->lineAnnotations, 'an empty map clears them');
+    }
+
+    public function testSetLineBlocksWritesUnderThePluginsNameAndLeavesAnotherOwnersRows(): void
+    {
+        $api = $this->api();
+        $this->editor->decorations->setLineBlocks([1 => ['theirs']], 'other');
+
+        $api->setLineBlocks([1 => ['mine', 'more']]);
+        $this->assertSame(['theirs', 'mine', 'more'], $this->editor->decorations->lineBlocksAt(1));
+
+        $api->setLineBlocks([]);
+        $this->assertSame(['theirs'], $this->editor->decorations->lineBlocksAt(1), 'clearing its own leaves the other plugin\'s');
+    }
+
+    public function testSetLineAnnotationsWritesUnderThePluginsNameAndLeavesAnotherOwnersNotes(): void
+    {
+        $api = $this->api();
+        $this->editor->decorations->setLineAnnotations([0 => 'theirs'], 'other');
+
+        $api->setLineAnnotations([0 => 'mine']);
+        $this->assertSame([0 => 'theirs  · mine'], $this->editor->decorations->lineAnnotations);
+
+        $api->setLineAnnotations([]);
+        $this->assertSame([0 => 'theirs'], $this->editor->decorations->lineAnnotations, 'clearing its own leaves the other plugin\'s');
     }
 
     public function testSetDiagnosticsNormalizesIntoTheByLineShape(): void

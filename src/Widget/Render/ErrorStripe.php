@@ -124,6 +124,9 @@ final class ErrorStripe
         foreach ($marks->bookmarkLines as $line) {
             $offer(StripeMark::Bookmark, $line);
         }
+        foreach ($marks->commentLines as $line) {
+            $offer(StripeMark::Comment, $line);
+        }
         foreach ($marks->searchLines as $line) {
             $offer(StripeMark::Hit, $line);
         }

@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace Porta\Editor;
 
 /**
- * Receives version-control change marks for a file — the gutter's
- * added/modified/deleted stripe.
+ * Receives the gutter marks a writer publishes for a file: version-control
+ * change marks — the added/modified/deleted stripe — and the lines a
+ * conversation (a review comment) is attached to.
  *
  * Path-keyed rather than active-buffer-keyed, for {@see DiagnosticsSink}'s
  * reason: the answer arrives asynchronously and the user may have switched
@@ -24,4 +25,11 @@ interface ChangeMarkSink
 {
     /** @param array<int, ChangeMarkKind> $marks 0-based line => kind; an empty array clears */
     public function applyChangeMarks(string $path, array $marks): void;
+
+    /**
+     * Replace $owner's comment marks for a file; another owner's stay.
+     *
+     * @param array<int, string> $marks 0-based line => one-line summary; an empty array clears
+     */
+    public function applyCommentMarks(string $path, array $marks, string $owner): void;
 }

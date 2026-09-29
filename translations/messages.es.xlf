@@ -3786,6 +3786,130 @@
         <source>Looking for a newer Porta…</source>
         <target>Buscando un Porta más reciente…</target>
       </trans-unit>
+      <trans-unit id="1051">
+        <source>Conversation</source>
+        <target>Conversación</target>
+      </trans-unit>
+      <trans-unit id="1052">
+        <source>Comment on %review%</source>
+        <target>Comentar %review%</target>
+      </trans-unit>
+      <trans-unit id="1053">
+        <source>Conversation (%count%)</source>
+        <target>Conversación (%count%)</target>
+      </trans-unit>
+      <trans-unit id="1054">
+        <source>Copied %url%</source>
+        <target>%url% copiado</target>
+      </trans-unit>
+      <trans-unit id="1055">
+        <source>Local review: %id%</source>
+        <target>Revisión local: %id%</target>
+      </trans-unit>
+      <trans-unit id="1056">
+        <source>Looking for a review…</source>
+        <target>Buscando una revisión…</target>
+      </trans-unit>
+      <trans-unit id="1057">
+        <source>New comment on %path%:%line%</source>
+        <target>Nuevo comentario en %path%:%line%</target>
+      </trans-unit>
+      <trans-unit id="1058">
+        <source>No comments yet — press c to write one</source>
+        <target>Aún no hay comentarios — pulsa c para escribir uno</target>
+      </trans-unit>
+      <trans-unit id="1059">
+        <source>No conversation on this line</source>
+        <target>No hay conversación en esta línea</target>
+      </trans-unit>
+      <trans-unit id="1060">
+        <source>No review for this branch</source>
+        <target>No hay revisión para esta rama</target>
+      </trans-unit>
+      <trans-unit id="1061">
+        <source>Open a project file to comment on</source>
+        <target>Abre un archivo del proyecto para comentar</target>
+      </trans-unit>
+      <trans-unit id="1062">
+        <source>Pick a thread, or press c on a line</source>
+        <target>Elige un hilo o pulsa c en una línea</target>
+      </trans-unit>
+      <trans-unit id="1063">
+        <source>Reply</source>
+        <target>Responder</target>
+      </trans-unit>
+      <trans-unit id="1064">
+        <source>Reply to %author% on %path%:%line%</source>
+        <target>Responder a %author% en %path%:%line%</target>
+      </trans-unit>
+      <trans-unit id="1065">
+        <source>Review</source>
+        <target>Revisión</target>
+      </trans-unit>
+      <trans-unit id="1066">
+        <source>Review (%count% open)</source>
+        <target>Revisión (%count% abiertos)</target>
+      </trans-unit>
+      <trans-unit id="1067">
+        <source>Send</source>
+        <target>Enviar</target>
+      </trans-unit>
+      <trans-unit id="1068">
+        <source>Sent</source>
+        <target>Enviado</target>
+      </trans-unit>
+      <trans-unit id="1069">
+        <source>Show which review?</source>
+        <target>¿Qué revisión mostrar?</target>
+      </trans-unit>
+      <trans-unit id="1070">
+        <source>The branch's pull or merge request</source>
+        <target>La pull o merge request de la rama</target>
+      </trans-unit>
+      <trans-unit id="1071">
+        <source>This review has no link</source>
+        <target>Esta revisión no tiene enlace</target>
+      </trans-unit>
+      <trans-unit id="1072">
+        <source>Thread reopened</source>
+        <target>Hilo reabierto</target>
+      </trans-unit>
+      <trans-unit id="1073">
+        <source>Thread resolved</source>
+        <target>Hilo resuelto</target>
+      </trans-unit>
+      <trans-unit id="1074">
+        <source>outdated</source>
+        <target>desactualizado</target>
+      </trans-unit>
+      <trans-unit id="1075">
+        <source>resolved</source>
+        <target>resuelto</target>
+      </trans-unit>
+      <trans-unit id="1076">
+        <source>Show Review</source>
+        <target>Mostrar la revisión</target>
+      </trans-unit>
+      <trans-unit id="1077">
+        <source>Refresh Review</source>
+        <target>Actualizar la revisión</target>
+      </trans-unit>
+      <trans-unit id="1078">
+        <source>Choose Review…</source>
+        <target>Elegir revisión…</target>
+      </trans-unit>
+      <trans-unit id="1079">
+        <source>Copy Review Link</source>
+        <target>Copiar el enlace de la revisión</target>
+      </trans-unit>
+      <trans-unit id="1080">
+        <source>Show Conversation on This Line</source>
+        <target>Mostrar la conversación de esta línea</target>
+      </trans-unit>
+      <trans-unit id="1081">
+        <source>Comment on This Line</source>
+        <target>Comentar esta línea</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

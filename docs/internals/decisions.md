@@ -11009,3 +11009,58 @@ live.
 
 *Re-opens on:* a Windows port (no symlinks without privilege), or a request to
 manage a copied phar as well.
+
+## Code review conversations — the `review` plugin (2026-09-29)
+
+GitHub pull requests, GitLab merge requests and local reviews an agent writes
+are read and answered from a view, a diff and the editor. **A plugin of its
+own, not part of git**: it requires git for classes (the process runner, the
+diff model) and shares none of git's live objects. Its view is its own, not a
+tab of git's: a tab would need a cross-plugin seam into git's view
+controller, and the Review menu and the palette reach it without one.
+
+**Sources.** One `ReviewSource` interface, three implementations. The forges go
+through their CLI's own login (`gh api`, `glab api`), else `curl` with a token
+from the environment, passed as a config on stdin with the body, so the token
+never shows in a process list. There is **no token setting**, because settings
+have no secret kind and `.porta.json` is often committed. GitHub is read over
+GraphQL, which alone says whether a thread is resolved; a new line comment goes
+over REST (`pulls/{n}/comments` publishes at once, where the GraphQL mutation
+leaves a pending review). GitLab is REST, in three reads, because the merge
+request list leaves out the `diff_refs` a new diff note must quote back. The
+fixtures are real API answers with names and words replaced; the probe found
+GitHub's `line: null` on an outdated thread, which is now what "outdated" means.
+
+**Local reviews are append-only directories**, not one JSON file. The plan
+said a `porta review` CLI would spare agents the JSON. A directory per thread
+and a file per comment spares them the CLI too: nobody ever rewrites another
+writer's file, so an agent and the IDE write at once with plain file tools, and
+core carries no review code. A 2 s fingerprint poll notices an agent's write.
+
+**Core grew three plugin decorations**, and each is plugin-scoped:
+- **Line annotations**, per owner. They used to be one map that each publish
+  replaced, so blame and a review summary would have erased each other. A line
+  two plugins annotate now shows both.
+- **`setCommentMarks`**: a `✎` in the marker column (under the bookmark, over
+  the diagnostic, for the bookmark's reason) and on the stripe. The pointer
+  reads the summary, which is what "gutter mark, hover shows the thread" needed
+  without a hover API.
+- **`setLineBlocks`**: rows under a line, the mirror of code lenses above one.
+  `EditorScroll` learnt `rowsBelowLine`. Counting a block as rows above the
+  caret, the way lenses are counted, scrolled for nothing.
+
+The comment marks live on `Buffer`, and `BufferService` delegates to it: adding
+the merge to `BufferService` itself tripped its `kan-defect` ratchet.
+
+**Two overtaken answers are dropped by generation**: the editor's line
+translation after a buffer switch, and the view's file load after another
+selection. Each guard was mutation-checked, with the plugin's own process lane
+as the E2e barrier.
+
+**A send clears the reply box only if it still holds what was sent.** The E2e
+found this: a reply typed while the previous send was in flight was wiped by
+that send's success.
+
+*Re-opens on:* a request for the review as a tab of the git view (it needs a
+cross-plugin view seam), for pagination past 100 threads or comments, or for a
+forge beyond GitHub and GitLab.

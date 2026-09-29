@@ -579,6 +579,7 @@ the file, and the kinds resolve by strict precedence:
 | `━` | the search hit `F3` is on |
 | `▎` `┆` `▁` | a git change — added / modified / deleted, the same marks the gutter draws |
 | `◈` | a bookmark |
+| `✎` | a review conversation, from a plugin such as [review](review.md) |
 | `┈` | any other search hit from the find bar |
 
 A faint band behind the marks is the **viewport thumb**: the part of the file

@@ -14,6 +14,7 @@ non-blocking event loop.
 | [Keybindings](keybindings.md) | Every default binding, and how to rebind |
 | [Search & navigation](search-navigation.md) | Go to file/symbol/test, find in file, Find in Files, problems panel |
 | [Git](git.md) | Gutter markers, palette operations, the Git view (staging, commits, history) |
+| [Code review](review.md) | Pull and merge request threads, and local reviews from an agent — in a view, in the diff and in the editor |
 | [Run & terminal](run-and-terminal.md) | Run configurations, the integrated terminal |
 | [Debugger](debugger.md) | DAP adapters, breakpoints, stepping, the debug panel |
 | [Configuration](configuration.md) | `.porta.json`, the Settings view, `.editorconfig`, the `.porta/` state directory |

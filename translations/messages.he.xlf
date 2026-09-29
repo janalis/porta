@@ -3786,6 +3786,130 @@
         <source>Looking for a newer Porta…</source>
         <target>מחפש Porta חדש יותר…</target>
       </trans-unit>
+      <trans-unit id="1051">
+        <source>Conversation</source>
+        <target>שיחה</target>
+      </trans-unit>
+      <trans-unit id="1052">
+        <source>Comment on %review%</source>
+        <target>הגב על %review%</target>
+      </trans-unit>
+      <trans-unit id="1053">
+        <source>Conversation (%count%)</source>
+        <target>שיחה (%count%)</target>
+      </trans-unit>
+      <trans-unit id="1054">
+        <source>Copied %url%</source>
+        <target>%url% הועתק</target>
+      </trans-unit>
+      <trans-unit id="1055">
+        <source>Local review: %id%</source>
+        <target>סקירה מקומית: %id%</target>
+      </trans-unit>
+      <trans-unit id="1056">
+        <source>Looking for a review…</source>
+        <target>מחפש סקירה…</target>
+      </trans-unit>
+      <trans-unit id="1057">
+        <source>New comment on %path%:%line%</source>
+        <target>תגובה חדשה על %path%:%line%</target>
+      </trans-unit>
+      <trans-unit id="1058">
+        <source>No comments yet — press c to write one</source>
+        <target>אין עדיין תגובות — לחצו c כדי לכתוב</target>
+      </trans-unit>
+      <trans-unit id="1059">
+        <source>No conversation on this line</source>
+        <target>אין שיחה בשורה זו</target>
+      </trans-unit>
+      <trans-unit id="1060">
+        <source>No review for this branch</source>
+        <target>אין סקירה לענף זה</target>
+      </trans-unit>
+      <trans-unit id="1061">
+        <source>Open a project file to comment on</source>
+        <target>פתחו קובץ בפרויקט כדי להגיב</target>
+      </trans-unit>
+      <trans-unit id="1062">
+        <source>Pick a thread, or press c on a line</source>
+        <target>בחרו שרשור, או לחצו c על שורה</target>
+      </trans-unit>
+      <trans-unit id="1063">
+        <source>Reply</source>
+        <target>תשובה</target>
+      </trans-unit>
+      <trans-unit id="1064">
+        <source>Reply to %author% on %path%:%line%</source>
+        <target>השב ל־%author% על %path%:%line%</target>
+      </trans-unit>
+      <trans-unit id="1065">
+        <source>Review</source>
+        <target>סקירה</target>
+      </trans-unit>
+      <trans-unit id="1066">
+        <source>Review (%count% open)</source>
+        <target>סקירה (%count% פתוחים)</target>
+      </trans-unit>
+      <trans-unit id="1067">
+        <source>Send</source>
+        <target>שליחה</target>
+      </trans-unit>
+      <trans-unit id="1068">
+        <source>Sent</source>
+        <target>נשלח</target>
+      </trans-unit>
+      <trans-unit id="1069">
+        <source>Show which review?</source>
+        <target>איזו סקירה להציג?</target>
+      </trans-unit>
+      <trans-unit id="1070">
+        <source>The branch's pull or merge request</source>
+        <target>בקשת ה־pull או ה־merge של הענף</target>
+      </trans-unit>
+      <trans-unit id="1071">
+        <source>This review has no link</source>
+        <target>לסקירה זו אין קישור</target>
+      </trans-unit>
+      <trans-unit id="1072">
+        <source>Thread reopened</source>
+        <target>השרשור נפתח מחדש</target>
+      </trans-unit>
+      <trans-unit id="1073">
+        <source>Thread resolved</source>
+        <target>השרשור נפתר</target>
+      </trans-unit>
+      <trans-unit id="1074">
+        <source>outdated</source>
+        <target>מיושן</target>
+      </trans-unit>
+      <trans-unit id="1075">
+        <source>resolved</source>
+        <target>נפתר</target>
+      </trans-unit>
+      <trans-unit id="1076">
+        <source>Show Review</source>
+        <target>הצג סקירה</target>
+      </trans-unit>
+      <trans-unit id="1077">
+        <source>Refresh Review</source>
+        <target>רענן סקירה</target>
+      </trans-unit>
+      <trans-unit id="1078">
+        <source>Choose Review…</source>
+        <target>בחר סקירה…</target>
+      </trans-unit>
+      <trans-unit id="1079">
+        <source>Copy Review Link</source>
+        <target>העתק קישור לסקירה</target>
+      </trans-unit>
+      <trans-unit id="1080">
+        <source>Show Conversation on This Line</source>
+        <target>הצג את השיחה בשורה זו</target>
+      </trans-unit>
+      <trans-unit id="1081">
+        <source>Comment on This Line</source>
+        <target>הגב על שורה זו</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

@@ -26,6 +26,7 @@ final readonly class StripeMarks
      * @param list<int>                  $searchLines     0-based lines carrying at least one search match
      * @param list<int>                  $breakpointLines 0-based lines carrying a breakpoint
      * @param list<int>                  $bookmarkLines   0-based bookmarked lines
+     * @param list<int>                  $commentLines    0-based lines a conversation hangs on
      * @param int|null                   $debugLine       the debugger's stopped line
      * @param int|null                   $currentSearchLine the line of the hit F3 is on
      */
@@ -37,6 +38,7 @@ final readonly class StripeMarks
         public array $bookmarkLines = [],
         public ?int $debugLine = null,
         public ?int $currentSearchLine = null,
+        public array $commentLines = [],
     ) {}
 
     /**
@@ -75,6 +77,7 @@ final readonly class StripeMarks
             $store->bookmarkedLines(),
             $store->debugLine,
             $current,
+            \array_keys($store->commentMarks),
         );
     }
 }
