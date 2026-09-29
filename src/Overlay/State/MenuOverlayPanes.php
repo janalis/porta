@@ -59,10 +59,14 @@ final readonly class MenuOverlayPanes
      * that may close across a view swap (clearing a detached widget is
      * harmless, and a closed view's are unreachable anyway).
      *
+     * Every pane {@see current()} can hand a dropdown to must be here too: the
+     * registered panes (the image and graph viewers) were not, so a dropdown
+     * that had opened over one stayed painted on it after the menu closed.
+     *
      * @return list<AbstractWidget&MenuOverlayHost>
      */
     public function all(): array
     {
-        return [...$this->editor, ...($this->viewPanes)(), ...$this->chrome];
+        return [...$this->editor, ...($this->panes?->all() ?? []), ...($this->viewPanes)(), ...$this->chrome];
     }
 }

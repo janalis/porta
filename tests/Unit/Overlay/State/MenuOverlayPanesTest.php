@@ -16,7 +16,53 @@ final class MenuOverlayPanesTest extends TestCase
     public function testCurrentFallsBackToTheEditorPanesWhenNoViewIsOpen(): void
     {
         $editorPane = new TestOverlayPane();
-        $registeredPane = new class extends EditorPaneWidget {
+        $registeredPane = self::registeredPane();
+        $editorPanes = new EditorPanes();
+        $editorPanes->register($registeredPane, static fn (string $path): string => '');
+
+        $panes = new MenuOverlayPanes([$editorPane], static fn (): array => [], $editorPanes);
+
+        // Without $editorPanes (or with the coalesce reversed), only $editor
+        // itself would come back — the registered pane must ALSO be included.
+        $this->assertSame([$editorPane, $registeredPane], $panes->current());
+    }
+
+    public function testCurrentPrefersTheOpenViewOverTheEditorPanes(): void
+    {
+        $editorPane = new TestOverlayPane();
+        $viewPane = new TestOverlayPane();
+        $panes = new MenuOverlayPanes([$editorPane], static fn (): array => [$viewPane]);
+
+        $this->assertSame([$viewPane], $panes->current());
+    }
+
+    public function testAllCombinesTheEditorAndOpenViewPanesRegardlessOfRegisteredPanes(): void
+    {
+        $editorPane = new TestOverlayPane();
+        $viewPane = new TestOverlayPane();
+        $panes = new MenuOverlayPanes([$editorPane], static fn (): array => [$viewPane]);
+
+        $this->assertSame([$editorPane, $viewPane], $panes->all());
+    }
+
+    public function testAllClearsTheRegisteredPanesADropdownCanOpenOver(): void
+    {
+        // current() hands a dropdown to the registered panes (the image and
+        // graph viewers); all() is what a closing menu clears, so leaving them
+        // out kept the last dropdown painted over a viewer after it closed.
+        $editorPane = new TestOverlayPane();
+        $viewPane = new TestOverlayPane();
+        $registeredPane = self::registeredPane();
+        $editorPanes = new EditorPanes();
+        $editorPanes->register($registeredPane, static fn (string $path): string => '');
+        $panes = new MenuOverlayPanes([$editorPane], static fn (): array => [$viewPane], $editorPanes);
+
+        $this->assertSame([$editorPane, $registeredPane, $viewPane], $panes->all());
+    }
+
+    private static function registeredPane(): EditorPaneWidget
+    {
+        return new class extends EditorPaneWidget {
             #[\Override]
             public function paneId(): string
             {
@@ -44,31 +90,5 @@ final class MenuOverlayPanesTest extends TestCase
             #[\Override]
             public function handleInput(string $data): void {}
         };
-        $editorPanes = new EditorPanes();
-        $editorPanes->register($registeredPane, static fn (string $path): string => '');
-
-        $panes = new MenuOverlayPanes([$editorPane], static fn (): array => [], $editorPanes);
-
-        // Without $editorPanes (or with the coalesce reversed), only $editor
-        // itself would come back — the registered pane must ALSO be included.
-        $this->assertSame([$editorPane, $registeredPane], $panes->current());
-    }
-
-    public function testCurrentPrefersTheOpenViewOverTheEditorPanes(): void
-    {
-        $editorPane = new TestOverlayPane();
-        $viewPane = new TestOverlayPane();
-        $panes = new MenuOverlayPanes([$editorPane], static fn (): array => [$viewPane]);
-
-        $this->assertSame([$viewPane], $panes->current());
-    }
-
-    public function testAllCombinesTheEditorAndOpenViewPanesRegardlessOfRegisteredPanes(): void
-    {
-        $editorPane = new TestOverlayPane();
-        $viewPane = new TestOverlayPane();
-        $panes = new MenuOverlayPanes([$editorPane], static fn (): array => [$viewPane]);
-
-        $this->assertSame([$editorPane, $viewPane], $panes->all());
     }
 }
