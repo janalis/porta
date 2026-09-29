@@ -11062,6 +11062,13 @@ translation after a buffer switch, and the view's file load after another
 selection. Each guard was mutation-checked, with the plugin's own process lane
 as the E2e barrier.
 
+**Every pane of the view is a `MenuOverlayHost`.** A view's panes are where the
+floating layers — the app menu's dropdown, toasts, tooltips — are composited,
+and panes that are not hosts paint over them: the File menu opened over the
+view showed its top edge and nothing else. The column is a `ResizableSidebar`
+(the list and the reply box as one), so the separator drag and its persisted
+width come from core like the git view's.
+
 **A send clears the reply box only if it still holds what was sent.** The E2e
 found this: a reply typed while the previous send was in flight was wiped by
 that send's success.

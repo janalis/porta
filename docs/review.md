@@ -47,6 +47,9 @@ The token goes to `curl` on its standard input, never on the command line.
 
 Open it with **Review → Show Review**, or **Show Review** in the command palette.
 
+The left column is resizable: drag the separator. Its width is kept per
+project, like the git view's.
+
 - **Left, top — the review.** Its title, the **Conversation** (review-level
   comments), then each file's threads under the file name. A thread's row
   shows its line, the first comment and how many replies it has. Resolved
