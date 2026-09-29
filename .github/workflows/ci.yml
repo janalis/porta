@@ -158,7 +158,7 @@ jobs:
         if: always()
         # A report, not a gate: a full artifact quota must not fail a green run.
         continue-on-error: true
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-clover
           path: coverage/*.xml
@@ -209,7 +209,7 @@ jobs:
         if: always()
         # A report, not a gate: a full artifact quota must not fail a green run.
         continue-on-error: true
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-plugins-clover
           path: coverage/plugins/*.xml
