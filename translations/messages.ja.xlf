@@ -3646,6 +3646,14 @@
         <source>%key% stop</source>
         <target>%key% 停止</target>
       </trans-unit>
+      <trans-unit id="1016">
+        <source>Enable the git plugin to see the comparison</source>
+        <target>比較を表示するには git プラグインを有効にしてください</target>
+      </trans-unit>
+      <trans-unit id="1017">
+        <source>Esc to edit the file · F7 next conflict · Alt+M resolve · Ctrl+S, then Ctrl+Q — conflicts left mean the merge fails</source>
+        <target>Esc でファイルを編集 · F7 次の競合 · Alt+M 解決 · Ctrl+S の後 Ctrl+Q — 競合が残るとマージは失敗します</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

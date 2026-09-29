@@ -279,6 +279,9 @@ never firing.
 | `GitRemoteCompleted` | `string $operation` (`fetch`/`pull`/`push`), `bool $ok` |
 | `WorkingTreeChanged` | — the working tree moved: a stage, stash, commit, reset or pull, or one of the file tree's own verbs (new file, new folder, move, copy, delete). It is defined by what a listener owes it — "recompute" — not by who moved the tree |
 | `FileRenamed` | `string $from`, `string $to` — both absolute and canonical; `$from` is already gone from disk. A DIRECTORY carries its whole tree, so anything you key by path should ask `ProjectPaths::moved()` rather than compare |
+| `DiffToolLaunched` | `string $left`, `string $right` — Porta was launched as git's difftool (`porta --diff`), right after `IdeReady`; either file may be a temp blob outside the project. The bundled git plugin answers with its view |
+| `MergeToolLaunched` | `string $local`, `string $remote`, `string $base`, `string $merged` — launched as git's mergetool (`porta --merge`); `$merged` is the file to resolve. Core sets the exit code from what is left in it at quit |
+| `QuitRequested` | — a COMMAND you may `emit()`: quit the way Ctrl+Q does (unsaved buffers still ask). The git plugin ends a difftool session with it |
 | `FileRewritten` | `string $path`, `string $previousText` — a refactoring rewrote a file that had no open buffer. The payload is what the write REPLACED: the new content is on disk already, and the old exists nowhere else. Not a save, and no `BufferSaved` fires for it |
 
 Four rules govern the list, and they are enforced by a test rather than by

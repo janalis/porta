@@ -284,6 +284,11 @@ final class EventListenerWiringTest extends TestCase
             // and recovery is local-history's, registered through
             // onFileRewritten at runtime.
             'FileRewritten',
+            // A launch as git's difftool/mergetool. Core does not know git: the
+            // answer is the git plugin's, registered at runtime — and with no
+            // listener at all, Ide falls back to the editor itself.
+            'DiffToolLaunched',
+            'MergeToolLaunched',
         ];
 
         $dispatcher = $this->dispatcher();

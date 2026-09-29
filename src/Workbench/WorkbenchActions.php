@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace Porta\Workbench;
 
 use Porta\Editor\BufferManager;
+use Porta\Event\QuitRequested;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspLog;
 use Porta\Overlay\State\ToastCenter;
 use Porta\Widget\MenuBarWidget;
 use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\Dock\ResultsPanelMode;
+use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -39,6 +41,13 @@ final readonly class WorkbenchActions
             return;
         }
         $this->tui->stop();
+    }
+
+    /** A plugin asked to quit (a difftool session whose comparison was closed): the same guarded quit. */
+    #[AsEventListener]
+    public function onQuitRequested(QuitRequested $event): void
+    {
+        $this->quit();
     }
 
     /**

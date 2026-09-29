@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Support;
 
 use Porta\Config\ConfigScope;
+use Porta\Container\ToolLaunch;
 use Porta\GitPlugin\Process\ProcessLane;
 use Porta\Ide;
 use Porta\Lsp\LspSessionPool;
@@ -185,15 +186,16 @@ trait RunsIde
 
     /**
      * @param array<int, callable> $steps ms => step($tui, $terminal, $ide)
+     * @param ?ToolLaunch          $tool  a launch as git's difftool/mergetool rather than as an editor
      * @param int                  $rows  terminal height; the default is roomy
      *                                    enough that nothing scrolls, so a test
      *                                    about scrolling has to ask for less
      */
-    private function runIde(TempProject $project, ?string $file, array $steps, ?string $docsDir = null, int $columns = 160, int $rows = 24): VirtualTerminal
+    private function runIde(TempProject $project, ?string $file, array $steps, ?string $docsDir = null, int $columns = 160, int $rows = 24, ?ToolLaunch $tool = null): VirtualTerminal
     {
         $terminal = new VirtualTerminal(columns: $columns, rows: $rows);
         $this->suppressFirstRunWelcome($project);
-        $ide = new Ide($project->dir, $file, $terminal, docsDir: $docsDir);
+        $ide = new Ide($project->dir, $file, $terminal, docsDir: $docsDir, tool: $tool);
         $this->pinSettingsScope($ide);
         $tui = Services::resolve($ide, Tui::class);
 

@@ -22,6 +22,7 @@ final class PluginObservableContractTest extends TestCase
     /** Adding to this list is the review point. */
     private const array OBSERVABLE = [
         'ActiveBufferChanged',
+        'DiffToolLaunched',
         'FileRenamed',
         'FileRewritten',
         'GitCommitted',
@@ -29,6 +30,8 @@ final class PluginObservableContractTest extends TestCase
         'IdeReady',
         'IdeShuttingDown',
         'LocaleChanged',
+        'MergeToolLaunched',
+        'QuitRequested',
         'ThemeChanged',
         'WorkingTreeChanged',
     ];

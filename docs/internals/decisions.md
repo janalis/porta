@@ -10908,3 +10908,50 @@ the inline design above — re-sent on every change and erased by row rewrites.
 per-view cut could become one transmit per picture), a vendor fix to the
 `mb_strwidth` fast paths (the stand-ins, and `AnsiSlice`, could go), or a user on a sixel-only
 terminal.
+
+## `porta` as git's difftool and mergetool, and as a phar (2026-09-29)
+
+`porta --diff L R` / `porta --merge L R B M` are git's two tools; `porta
+--git-setup` writes them into the global git config; `composer build:phar`
+builds `build/porta.phar`.
+
+**Core raises facts, the git plugin answers.** Core keeps no git-named symbol,
+so it cannot open the git view. `Ide` dispatches `DiffToolLaunched` /
+`MergeToolLaunched` (PluginObservable, scalars) after `IdeReady`; the plugin
+opens its view. They are facts — the launch happened — not `…Requested`
+commands, because a command must have exactly one COMPILED core listener
+(`EventListenerWiringTest`) and these are answered at runtime. Ending a difftool
+run goes the other way: the plugin `emit()`s `QuitRequested`, a command whose one
+listener is `WorkbenchActions`. With no listener at all (plugin disabled) core
+opens the file in the editor and flashes why.
+
+**The merge verdict is core's.** At quit `$MERGED` is read from disk; no
+`ConflictMarkers` block means exit 0. It does not depend on which UI resolved
+it, and `trustExitCode` then makes git believe it — measured: a quit with
+markers left gave `merge of a.php failed` and `UU`, a resolved one staged it.
+
+**A tool run is ephemeral.** Git calls the tool once per file, from the work-tree
+top, on temp blobs. Before this a launch recorded a recent project, showed the
+Welcome on a new root, and at quit OVERWROTE the project's `session.json` with
+one file's tabs (save without restore). None of that happens for a tool run.
+
+**Two things only a real `git difftool` showed.** Git runs the tool from inside
+`git diff` with `GIT_EXTERNAL_DIFF` set, inherited by every git Porta spawns, so
+`git diff --no-index` handed the diff to git's helper and the view read
+"identical" — every diff-producing command now passes `--no-ext-diff`. And a
+plain `git diff` of an unmerged path is a combined `diff --cc` the pane cannot
+parse, so a conflicted row diffs `--ours`.
+
+**No 3-pane merge view.** The user chose the existing git view plus the editor's
+conflict resolution; a PhpStorm-style view (ours | result | theirs) remains the
+obvious next step.
+
+**The phar.** Box, fetched by the build script into `build/` rather than a dev
+dependency. `glob()` cannot list inside a phar, so the phar first shipped with
+no bundled plugin at all; plugin discovery now walks directories
+(`Files::childFiles`). The container compiles from inside the phar and dumps to
+the user cache dir as usual. Not yet published as a release asset.
+
+*Re-opens on:* a request for the 3-pane view, `git difftool --dir-diff` (two
+directories rather than two files — not handled), or Packagist publication (the
+install docs would lose the VCS-repository step).

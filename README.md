@@ -151,14 +151,40 @@ rendered: `Tab` cycles the links, `Enter` or a click follows them, and
 
 ## Installation
 
-Install into any PHP project:
+Porta is a command, `porta`. It needs PHP ≥ 8.5 and an interactive terminal.
+Three ways to put it on your `PATH`:
+
+**The phar** — one file, no Composer at run time. `build:phar` fetches
+[Box](https://github.com/box-project/box) into `build/` the first time:
 
 ```bash
-composer require --dev pierre/porta
-vendor/bin/ide
+git clone git@github.com:janalis/porta.git && cd porta
+composer install && composer build:phar
+install -m 755 build/porta.phar ~/.local/bin/porta
 ```
 
-Requires PHP ≥ 8.5 and an interactive terminal.
+**Composer, globally.** The repository is not on Packagist, so name it first;
+Porta follows `symfony/tui`'s development branch, hence the stability settings:
+
+```bash
+composer global config repositories.porta vcs git@github.com:janalis/porta.git
+composer global config minimum-stability dev
+composer global config prefer-stable true
+composer global require janalis/porta:dev-main
+```
+
+and put `$(composer global config bin-dir --absolute)` on your `PATH`. If
+Composer asks for a GitHub token (the repository is private), add
+`--prefer-source` to clone over SSH instead.
+
+**A checkout**, to work on Porta itself — a symlink is enough:
+
+```bash
+ln -s "$PWD/bin/porta" ~/.local/bin/porta
+```
+
+To use Porta as git's difftool and mergetool, run `porta --git-setup` — see
+[the git guide](docs/git.md#as-gits-difftool-and-mergetool).
 
 ## Language server
 
@@ -186,9 +212,9 @@ the status bar shows `LSP:none (install phpantom)`.
 ## Usage
 
 ```bash
-vendor/bin/ide             # open the current directory
-vendor/bin/ide src/Foo.php # open a file directly
-vendor/bin/ide ~/other/app # open another project
+porta             # open the current directory
+porta src/Foo.php # open a file directly
+porta ~/other/app # open another project
 ```
 
 ### Keys

@@ -6,6 +6,7 @@ namespace Porta\Console;
 
 use Porta\Container\Ansi;
 use Porta\Container\LspMode;
+use Porta\Container\ToolLaunch;
 use Porta\Ide;
 use Porta\Support\BootTrace;
 use Porta\Support\DiagnosticLog;
@@ -16,6 +17,7 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Component\Process\Process;
 
 /**
  * The `porta` command: resolves the target path/options and launches the IDE.
@@ -33,6 +35,10 @@ use Symfony\Component\Console\Style\SymfonyStyle;
           <info>porta src/</info>                open a directory
           <info>porta src/Ide.php:200</info>     open a file at line 200
           <info>porta --no-lsp .</info>          start without a language server
+          <info>porta --git-setup</info>         make porta git's difftool and mergetool
+          <info>porta --diff A B</info>          compare two files (what git difftool runs)
+          <info>porta --merge L R B M</info>     resolve M (what git mergetool runs; exits 1 while
+                                   conflict markers remain in M)
 
         Keys: Ctrl+T/F2 switch tree/editor · Ctrl+S save · Ctrl+Space complete ·
         F12/Ctrl+G go to definition (Alt+Left back) · Ctrl+Z/Ctrl+R undo/redo · Ctrl+Q quit.
@@ -43,37 +49,50 @@ use Symfony\Component\Console\Style\SymfonyStyle;
         xml, json and dotenv, plus PHP when neither PHP server is enabled), then
         typescript-language-server / pyright on PATH.
         HELP,
-    usages: ['src/', 'src/Ide.php:200', '--no-lsp .'],
+    usages: ['src/', 'src/Ide.php:200', '--no-lsp .', '--git-setup', '--diff LOCAL REMOTE', '--merge LOCAL REMOTE BASE MERGED'],
 )]
 final class PortaCommand extends Command
 {
     use CommandErrorStream;
 
-    /** @var callable(Workspace, ?string, LspMode, Ansi, \Closure): void */
+    /** @var callable(Workspace, ?string, LspMode, Ansi, \Closure): int */
     private $launch;
 
     /** @var callable(): bool */
     private $isInteractive;
 
+    /** @var \Closure(list<string>): bool */
+    private readonly \Closure $git;
+
     /**
-     * @param (callable(Workspace, ?string, LspMode, Ansi, \Closure): void)|null $launch        defaults to booting a real {@see Ide}; the trailing closure is
-     *                                                                                          called between boot and run, so a crash can say which half died
-     * @param (callable(): bool)|null                                            $isInteractive defaults to a POSIX tty check
+     * @param (callable(Workspace, ?string, LspMode, Ansi, \Closure): int)|null $launch        defaults to booting a real {@see Ide}, returning its exit code; the
+     *                                                                                         trailing closure is called between boot and run, so a crash can say
+     *                                                                                         which half died
+     * @param (callable(): bool)|null                                           $isInteractive defaults to a POSIX tty check
+     * @param (\Closure(list<string>): bool)|null                               $git           runs `git <args>` for --git-setup; defaults to the real binary
+     * @param string                                                            $self          this binary's absolute path, the one git is told to run (bin/porta
+     *                                                                                         passes the phar's or its own)
      */
-    public function __construct(?callable $launch = null, ?callable $isInteractive = null)
-    {
+    public function __construct(
+        ?callable $launch = null,
+        ?callable $isInteractive = null,
+        ?\Closure $git = null,
+        private readonly string $self = 'porta',
+    ) {
         parent::__construct();
         $this->launch = $launch ?? self::launchIde(...);
         // stream_isatty is core PHP — the posix_isatty it replaced needed
         // ext-posix, and a box without it was refused as "not interactive".
         $this->isInteractive = $isInteractive ?? static fn (): bool => \stream_isatty(\STDIN) && \stream_isatty(\STDOUT);
+        $this->git = $git ?? self::runGit(...);
     }
 
+    /** @param list<string> $path */
     public function __invoke(
         InputInterface $input,
         OutputInterface $output,
-        #[Argument('File or directory to open (accepts the file:line shorthand)')]
-        ?string $path = null,
+        #[Argument('File or directory to open (accepts the file:line shorthand); the two files of --diff, the four of --merge')]
+        array $path = [],
         #[Option('Language server command (overrides .porta.json and $PORTA_LSP)')]
         ?string $lsp = null,
         #[Option('Start with no language server')]
@@ -81,6 +100,17 @@ final class PortaCommand extends Command
         bool $noLsp = false,
         #[Option('Open the file scrolled to this line', shortcut: 'l')]
         ?string $line = null,
+        #[Option('Compare two files, as git difftool runs it: --diff LOCAL REMOTE')]
+        // @mago-expect lint:no-boolean-flag-parameter -- Symfony Console's #[Option] shape: a bool option IS a flag.
+        bool $diff = false,
+        #[Option('Resolve a merge, as git mergetool runs it: --merge LOCAL REMOTE BASE MERGED')]
+        // @mago-expect lint:no-boolean-flag-parameter -- Symfony Console's #[Option] shape: a bool option IS a flag.
+        bool $merge = false,
+        #[Option('Make porta git\'s difftool and mergetool, in the global git config')]
+        // @mago-expect lint:no-boolean-flag-parameter -- Symfony Console's #[Option] shape: a bool option IS a flag.
+        bool $gitSetup = false,
+        #[Option('With --git-setup: print the git config commands instead of running them')]
+        bool $dryRun = false,
     ): int {
         // Failures speak on stderr so a piped stdout stays clean (the
         // CoverageCheckCommand pattern); CommandTester's plain output has no
@@ -100,18 +130,24 @@ final class PortaCommand extends Command
             return Command::INVALID;
         }
 
-        $target = $path ?? (string) \getcwd();
+        $problem = self::argumentProblem(\count($path), $diff, $merge, $gitSetup, $dryRun, null !== $line);
+        if (null !== $problem) {
+            $io->error('porta: '.$problem);
+
+            return Command::INVALID;
+        }
+        if ($gitSetup) {
+            return $this->setUpGit($output, $io, $dryRun);
+        }
+
+        $cwd = (string) \getcwd();
         try {
-            $workspace = new WorkspaceResolver()->resolve($target, (string) \getcwd());
+            $workspace = $diff || $merge ? self::toolWorkspace($cwd, $path, $merge) : self::editWorkspace($cwd, $path[0] ?? $cwd, $line);
         } catch (\InvalidArgumentException $e) {
             $io->error('porta: '.$e->getMessage());
 
             return Command::FAILURE;
         }
-
-        // An explicit --line overrides the file:line shorthand.
-        $openAt = null !== $line ? \max(1, (int) $line) : $workspace->line;
-        $workspace = new Workspace($workspace->rootDir, $workspace->initialFile, $openAt);
 
         if (!($this->isInteractive)()) {
             $io->error('porta: an interactive terminal is required.');
@@ -122,7 +158,9 @@ final class PortaCommand extends Command
         // output decoration, which we thread to the IDE as its color mode.
         $booted = false;
         try {
-            ($this->launch)($workspace, $lsp, $noLsp ? LspMode::Disabled : LspMode::Enabled, $output->isDecorated() ? Ansi::Enabled : Ansi::Disabled, static function () use (&$booted): void {
+            $exitCode = ($this->launch)($workspace, $lsp, $noLsp ? LspMode::Disabled : LspMode::Enabled, $output->isDecorated() ? Ansi::Enabled : Ansi::Disabled, static function () use (
+                &$booted,
+            ): void {
                 $booted = true;
             });
         } catch (\Throwable $e) {
@@ -147,7 +185,89 @@ final class PortaCommand extends Command
             return Command::FAILURE;
         }
 
+        return $exitCode;
+    }
+
+    /** Why this combination of paths and modes cannot run, or null when it can. */
+    private static function argumentProblem(int $paths, bool $diff, bool $merge, bool $gitSetup, bool $dryRun, bool $line): ?string
+    {
+        return match (true) {
+            ((int) $diff + (int) $merge + (int) $gitSetup) > 1 => '--diff, --merge and --git-setup are separate modes; pass one.',
+            $dryRun && !$gitSetup => '--dry-run only goes with --git-setup.',
+            $gitSetup && 0 !== $paths => '--git-setup takes no path.',
+            $diff && 2 !== $paths => \sprintf('--diff compares two files (git difftool\'s $LOCAL $REMOTE); got %d.', $paths),
+            $merge && 4 !== $paths => \sprintf('--merge takes four files (git mergetool\'s $LOCAL $REMOTE $BASE $MERGED); got %d.', $paths),
+            ($diff || $merge) && $line => '--line opens a file for editing; it does not go with --diff or --merge.',
+            !$diff && !$merge && $paths > 1 => 'one file or directory at a time — use --diff A B to compare two.',
+            default => null,
+        };
+    }
+
+    /** An ordinary launch: the target's workspace, --line overriding the file:line shorthand. */
+    private static function editWorkspace(string $cwd, string $target, ?string $line): Workspace
+    {
+        $workspace = new WorkspaceResolver()->resolve($target, $cwd);
+        $openAt = null !== $line ? \max(1, (int) $line) : $workspace->line;
+
+        return new Workspace($workspace->rootDir, $workspace->initialFile, $openAt);
+    }
+
+    /**
+     * A git tool launch: rooted where git runs it — the work-tree top, its
+     * working directory — never at a temp blob's folder, with every path made
+     * absolute against that directory (git hands them over relative).
+     *
+     * @param list<string> $paths
+     */
+    // @mago-expect lint:no-boolean-flag-parameter -- a diff or a merge is the whole choice, and the two call shapes differ only in the path count already checked.
+    private static function toolWorkspace(string $cwd, array $paths, bool $merge): Workspace
+    {
+        $absolute = \array_map(static fn (string $path): string => \str_starts_with($path, '/') ? $path : $cwd.'/'.$path, $paths);
+        $root = new WorkspaceResolver()->resolve($cwd, $cwd)->rootDir;
+
+        return new Workspace($root, tool: $merge ? ToolLaunch::merge($absolute[0], $absolute[1], $absolute[2], $absolute[3]) : ToolLaunch::diff($absolute[0], $absolute[1]));
+    }
+
+    /** --git-setup: write (or, dry, print) the global config that makes porta git's tools. */
+    // @mago-expect lint:no-boolean-flag-parameter -- --dry-run is the flag being honoured.
+    private function setUpGit(OutputInterface $output, SymfonyStyle $io, bool $dryRun): int
+    {
+        $setup = new GitToolSetup($this->self, $this->git);
+        if ($dryRun) {
+            $output->writeln($setup->commands());
+
+            return Command::SUCCESS;
+        }
+        $failed = $setup->apply();
+        if (null !== $failed) {
+            $io->error(\sprintf('porta: could not write %s to the global git config — is git installed?', $failed));
+
+            return Command::FAILURE;
+        }
+        $output->writeln([
+            'porta is now git\'s difftool and mergetool:',
+            '  git difftool          compare the working tree with the index, a file at a time',
+            '  git mergetool         resolve each conflicted file; save, then Ctrl+Q',
+        ]);
+
         return Command::SUCCESS;
+    }
+
+    /**
+     * Run `git <args>` for --git-setup. Excluded from coverage: the tests hand a
+     * fake in, since the real one writes the user's global config.
+     *
+     * @param list<string> $args
+     *
+     * @codeCoverageIgnore
+     */
+    private static function runGit(array $args): bool
+    {
+        try {
+            return 0 === new Process(['git', ...$args])->run();
+        } catch (\Throwable) {
+            return false; // no git binary at all
+        }
     }
 
     /**
@@ -156,7 +276,7 @@ final class PortaCommand extends Command
      *
      * @codeCoverageIgnore
      */
-    private static function launchIde(Workspace $workspace, ?string $lspCommand, LspMode $lsp, Ansi $ansi, \Closure $onBooted): void
+    private static function launchIde(Workspace $workspace, ?string $lspCommand, LspMode $lsp, Ansi $ansi, \Closure $onBooted): int
     {
         $root = $workspace->rootDir;
         $file = $workspace->initialFile;
@@ -178,13 +298,14 @@ final class PortaCommand extends Command
                 // REQUEST_TIME_FLOAT is the interpreter's own start: the trace's
                 // prelude covers PHP + autoload, which no later clock can see.
                 bootTrace: new BootTrace($_SERVER['REQUEST_TIME_FLOAT'] ?? \microtime(true)),
+                tool: $workspace->tool,
             );
             $onBooted();
             $ide->run();
 
             $next = $ide->reopenAt();
             if (null === $next) {
-                return;
+                return $ide->exitCode();
             }
             // The next project opens on whatever its own session restored, the
             // way a fresh launch with no file argument does.

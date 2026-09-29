@@ -14,13 +14,18 @@ use Porta\Config\IdeConfig;
 use Porta\Container\Ansi;
 use Porta\Container\IdeContainerFactory;
 use Porta\Container\LspMode;
+use Porta\Container\ToolLaunch;
+use Porta\Container\ToolMode;
 use Porta\Debug\DebugController;
 use Porta\Debug\DebugStatePersistence;
 use Porta\Editor\BufferService;
+use Porta\Editor\ConflictMarkers;
 use Porta\Editor\OpenFocus;
 use Porta\Editor\PaneRegistrar;
+use Porta\Event\DiffToolLaunched;
 use Porta\Event\IdeReady;
 use Porta\Event\IdeShuttingDown;
+use Porta\Event\MergeToolLaunched;
 use Porta\History\BookmarkPersistence;
 use Porta\History\RecentProjectsStore;
 use Porta\History\SessionRestorer;
@@ -118,6 +123,9 @@ final class Ide
     private readonly SettingsLanguageController $settingsLanguages;
     private readonly BufferService $bufferService;
 
+    /** {@see exitCode()} */
+    private int $exitCode = 0;
+
     public function __construct(
         private readonly string $rootDir,
         private readonly ?string $initialFile = null,
@@ -129,6 +137,9 @@ final class Ide
         private readonly bool $ansi = true,
         ?string $docsDir = null,
         ?BootTrace $bootTrace = null,
+        // Trailing and optional, like every late addition here: a launch as git's
+        // difftool/mergetool rather than as an editor ({@see ToolLaunch}).
+        private readonly ?ToolLaunch $tool = null,
     ) {
         // Boot-phase evidence: the entrypoint hands in a trace whose prelude
         // covers the interpreter and autoload; test rigs get a fresh one so the
@@ -382,6 +393,16 @@ final class Ide
      * written buffer contents. The confirm for what that costs lives in
      * {@see \Porta\Workbench\ProjectSwitcher}, before the request is made.
      */
+    /**
+     * What the process should exit with: 0, except after a merge-tool run whose
+     * `$MERGED` still holds a conflict block (or cannot be read) — git's
+     * `mergetool.<tool>.trustExitCode` then leaves the file unresolved.
+     */
+    public function exitCode(): int
+    {
+        return $this->exitCode;
+    }
+
     public function reopenAt(): ?string
     {
         return $this->service(ReopenRequest::class)->root();
@@ -479,11 +500,22 @@ final class Ide
             // gate holds them to it — and recorded at READY rather than at
             // construction so a project that fails to boot never displaces a
             // working one at the top of the list.
-            $this->service(RecentProjectsStore::class)->record($this->rootDir);
+            // A git tool run is not the user opening their project: it leaves
+            // the recent list, the session and the Welcome exactly as they were.
+            if (null === $this->tool) {
+                $this->service(RecentProjectsStore::class)->record($this->rootDir);
+            }
 
             // Same reason, for observers: IdeReady lands before the first
             // BufferOpened instead of racing it.
             $this->service(EventDispatcherInterface::class)->dispatch(new IdeReady($this->rootDir));
+
+            if (null !== $this->tool) {
+                $this->startTool($this->tool);
+                $this->tui->run();
+
+                return;
+            }
 
             $openedInitial = false;
             if (null !== $this->initialFile) {
@@ -530,9 +562,14 @@ final class Ide
             $this->graphics->release();
             $this->tui->getTerminal()->write(TerminalRestorer::RESTORE);
             $restorer->disarm();
-            $this->sessionRestorer->save();
-            $this->debugState->save();
-            $this->bookmarkState->save();
+            if (null === $this->tool) {
+                $this->sessionRestorer->save();
+                $this->debugState->save();
+                $this->bookmarkState->save();
+            }
+            if (ToolMode::Merge === $this->tool?->mode) {
+                $this->exitCode = self::resolved($this->tool->editable()) ? 0 : 1;
+            }
             $this->notifier->dismissAll(); // cancel pending toast timers — nothing may outlive the loop
             $this->service(TooltipCenter::class)->dismiss(); // and a tooltip's dwell
             $this->lsp->stop();
@@ -562,6 +599,35 @@ final class Ide
     }
 
     // --- File handling ----------------------------------------------------------
+
+    /**
+     * Hand the launch to whoever answers it — the git plugin — or, with nobody
+     * listening, open the file that matters in the editor and say why.
+     */
+    private function startTool(ToolLaunch $tool): void
+    {
+        $dispatcher = $this->service(EventDispatcherInterface::class);
+        [$first, $second] = $tool->paths;
+        $event = ToolMode::Merge === $tool->mode
+            ? new MergeToolLaunched($first, $second, $tool->paths[2] ?? '', $tool->paths[3] ?? '')
+            : new DiffToolLaunched($first, $second);
+        if ($dispatcher->hasListeners($event::class)) {
+            $dispatcher->dispatch($event);
+
+            return;
+        }
+        $this->openFile($tool->editable());
+        $this->tui->setFocus($this->editorArea->widget());
+        $this->notifier->warn($this->service(Translator::class)->trans('Enable the git plugin to see the comparison'));
+    }
+
+    /** Whether $path is readable and holds no conflict block. */
+    private static function resolved(string $path): bool
+    {
+        $text = \is_file($path) ? \file_get_contents($path) : false;
+
+        return false !== $text && [] === ConflictMarkers::find(\explode("\n", $text));
+    }
 
     private function openFile(string $path): void
     {

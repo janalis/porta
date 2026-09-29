@@ -91,6 +91,44 @@ The view covers changes, staging (including line-level), commit/amend and
 history browsing. History loads 200 commits at a time — moving past the last
 loaded commit pulls in the next page.
 
+## As git's difftool and mergetool
+
+```bash
+porta --git-setup            # write the entries below to your global git config
+porta --git-setup --dry-run  # print the git config commands instead
+```
+
+It makes Porta both of git's tools, naming the binary by its absolute path —
+the phar, or the script you ran — so git finds it whatever its own `PATH` is:
+
+```ini
+[difftool "porta"]
+	cmd = '/path/to/porta' --diff "$LOCAL" "$REMOTE"
+[mergetool "porta"]
+	cmd = '/path/to/porta' --merge "$LOCAL" "$REMOTE" "$BASE" "$MERGED"
+	trustExitCode = true
+[diff]
+	tool = porta
+[merge]
+	tool = porta
+```
+
+- **`git difftool`** (`git difftool HEAD~1`, a branch, a range…) opens each
+  changed file in the git view, side by side or unified as you last left it.
+  Git hands the old side over as a temp file; the view is titled with the real
+  path. **`Esc` closes it** and git moves on to the next file.
+- **`git mergetool`** opens each conflicted file twice over: the git view on its
+  row, showing the conflict against your side, and the file itself in the
+  editor underneath. `Esc` to edit it, `F7` / `Shift+F7` between conflicts,
+  `Alt+M` to keep yours, theirs or both, `Ctrl+S`, then `Ctrl+Q`.
+- **The exit code is the verdict.** Porta exits 0 only when the saved file holds
+  no conflict block, and `trustExitCode` makes git believe it: a file you quit
+  with markers left stays unresolved (`merge of … failed`).
+
+A tool run leaves your project exactly as it was — no session restored or
+saved, no entry in the recent-projects list, no Welcome screen. With the git
+plugin disabled, Porta opens the file in the editor and says why.
+
 ## Remote & branches
 
 `Git: Fetch`, `Git: Pull` and `Git: Push` live in the command palette and the

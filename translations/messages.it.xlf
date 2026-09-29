@@ -3646,6 +3646,14 @@
         <source>%key% stop</source>
         <target>%key% arresta</target>
       </trans-unit>
+      <trans-unit id="1016">
+        <source>Enable the git plugin to see the comparison</source>
+        <target>Attiva il plugin git per vedere il confronto</target>
+      </trans-unit>
+      <trans-unit id="1017">
+        <source>Esc to edit the file · F7 next conflict · Alt+M resolve · Ctrl+S, then Ctrl+Q — conflicts left mean the merge fails</source>
+        <target>Esc per modificare il file · F7 conflitto successivo · Alt+M risolvi · Ctrl+S, poi Ctrl+Q — se restano conflitti il merge fallisce</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

@@ -32,7 +32,10 @@ if (!$autoloaded) {
     exit(1);
 }
 
-$command = new Porta\Console\PortaCommand();
+// The binary git is told to run by --git-setup: the phar when this is one,
+// else this script's real path (a vendor/bin proxy includes it, so __FILE__
+// is the package's own copy).
+$command = new Porta\Console\PortaCommand(self: Phar::running(false) ?: (string) realpath(__FILE__));
 $application = new Symfony\Component\Console\Application('porta', Porta\Ide::VERSION);
 $application->addCommand($command);
 $application->setDefaultCommand((string) $command->getName(), true); // single-command app
