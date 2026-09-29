@@ -38,4 +38,31 @@ final class Files
     {
         return \is_file($path) && \is_writable($path) ? (string) \file_get_contents($path) : null;
     }
+
+    /**
+     * Each immediate subdirectory's $name file, in name order —
+     * `glob("$dir/*\/$name")` as a directory walk.
+     *
+     * Because `glob()` cannot see into a phar: the bundled plugins live at
+     * `phar://…/plugins/*\/plugin.php` when Porta runs as one, and a glob there
+     * returns nothing — so the phar silently shipped without its plugins.
+     * Hidden entries are skipped, as glob's `*` skips them; a missing $dir is
+     * an empty list.
+     *
+     * @return list<string>
+     */
+    public static function childFiles(string $dir, string $name): array
+    {
+        $entries = \is_dir($dir) ? \scandir($dir) : false;
+        $files = [];
+        foreach (false !== $entries ? $entries : [] as $entry) {
+            $file = $dir.'/'.$entry.'/'.$name;
+            if (\str_starts_with($entry, '.') || !\is_file($file)) {
+                continue;
+            }
+            $files[] = $file;
+        }
+
+        return $files;
+    }
 }

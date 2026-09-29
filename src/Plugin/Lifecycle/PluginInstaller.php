@@ -9,6 +9,7 @@ use Porta\I18n\Translator;
 use Porta\Plugin\Runtime\PluginLoader;
 use Porta\Plugin\Runtime\PluginManifest;
 use Porta\Support\AsyncProcess;
+use Porta\Support\Files;
 use Porta\Support\JsonFile;
 use Symfony\Component\DependencyInjection\Attribute\Autoconfigure;
 use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
@@ -646,8 +647,7 @@ final class PluginInstaller
                 continue;
             }
             $isEmbedded = null !== $embeddedReal && \realpath($pluginsDir) === $embeddedReal;
-            $scopeFiles = \glob($pluginsDir.'/*/plugin.php');
-            foreach (\is_array($scopeFiles) ? $scopeFiles : [] as $file) {
+            foreach (Files::childFiles($pluginsDir, 'plugin.php') as $file) {
                 $dir = \dirname($file);
                 $name = \basename($dir);
                 $plugins[] = ['name' => $name, 'scope' => $isEmbedded ? InstallScope::Embedded : $scope, 'dir' => $dir];
@@ -657,8 +657,7 @@ final class PluginInstaller
             }
         }
         if (null !== $this->embeddedDir) {
-            $embeddedFiles = \glob($this->embeddedDir.'/*/plugin.php');
-            foreach (\is_array($embeddedFiles) ? $embeddedFiles : [] as $file) {
+            foreach (Files::childFiles($this->embeddedDir, 'plugin.php') as $file) {
                 $dir = \dirname($file);
                 $name = \basename($dir);
                 if (!\array_key_exists($name, $embeddedSeen)) {

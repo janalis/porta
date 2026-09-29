@@ -8,6 +8,7 @@ use Porta\Config\ConfigWarning;
 use Porta\Plugin\Api\PluginApi;
 use Porta\Plugin\Api\PluginException;
 use Porta\Plugin\Api\PortaPlugin;
+use Porta\Support\Files;
 use Tempest\Highlight\TerminalTheme;
 
 /**
@@ -170,8 +171,7 @@ final readonly class PluginLoader
             if (null === $dir) {
                 continue;
             }
-            $dirFiles = \glob($dir.'/*/plugin.php');
-            foreach (\is_array($dirFiles) ? $dirFiles : [] as $file) {
+            foreach (Files::childFiles($dir, 'plugin.php') as $file) {
                 $name = \basename(\dirname($file));
                 if (!\array_key_exists($name, $seen)) {
                     $seen[$name] = true;
@@ -181,8 +181,7 @@ final readonly class PluginLoader
         }
 
         // Bundled (embedded) plugins are off unless opted into `enabledPlugins`.
-        $embeddedFiles = null === $this->embeddedDir ? [] : \glob($this->embeddedDir.'/*/plugin.php');
-        foreach (\is_array($embeddedFiles) ? $embeddedFiles : [] as $file) {
+        foreach (null === $this->embeddedDir ? [] : Files::childFiles($this->embeddedDir, 'plugin.php') as $file) {
             $name = \basename(\dirname($file));
             if (\array_key_exists($name, $seen)) {
                 continue; // shadowed by a project/global copy, or explicitly disabled

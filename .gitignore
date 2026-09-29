@@ -31,3 +31,6 @@ plugins/*/vendor/
 
 # Claude's per-round checklist (CLAUDE.md, Working style).
 /TASKS.md
+
+# The phar and the Box binary that builds it (composer build:phar).
+/build/

@@ -1,0 +1,25 @@
+{
+    "$schema": "https://raw.githubusercontent.com/box-project/box/main/res/schema.json",
+    "output": "build/porta.phar",
+    "directories": [
+        "src",
+        "config",
+        "docs",
+        "translations"
+    ],
+    "finder": [
+        {
+            "in": "plugins",
+            "exclude": [
+                "tests",
+                "vendor"
+            ]
+        },
+        {
+            "in": "vendor"
+        }
+    ],
+    "files": [
+        "composer.json"
+    ]
+}

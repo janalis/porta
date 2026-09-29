@@ -82,6 +82,10 @@
         "flake:scan": "@php bin/porta-dev flake:scan",
         "duplication": "@php vendor/bin/phpcpd --exclude vendor src plugins tests bin config",
         "container": "@php bin/porta-dev container",
+        "build:phar": [
+            "@php -r \"is_file('build/box.phar') || (is_dir('build') || mkdir('build')) && copy('https://github.com/box-project/box/releases/latest/download/box.phar', 'build/box.phar');\"",
+            "@php build/box.phar compile --no-interaction"
+        ],
         "verify:quick": [
             "@format:check",
             "@lint",
