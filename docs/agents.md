@@ -16,16 +16,24 @@ It is off by default. Turn it on under **Settings → Plugins → mcp**.
 
 ## Connecting an agent
 
-Porta must be open on the project. The agent then launches `porta mcp`, which
-connects to that IDE:
+The agent launches `porta mcp`, which connects to the Porta open on the
+project:
 
 ```sh
 claude mcp add porta -- porta mcp
 ```
 
-Other clients take the same command, `porta mcp`, run from the project
-directory or anywhere below it. With no IDE open on the project it exits with
-a message saying so.
+That needs `porta` on your PATH: **Settings → Command line** puts it there. Or
+give the full path, which `porta mcp --help` prints ready to paste. Other
+clients take the same command, run from the project directory or anywhere
+below it.
+
+The agent usually starts before the IDE, and outlives it. So `porta mcp` does
+not give up when no IDE is open: it waits, and connects when one opens on the
+project. Until then the agent sees a server with no tools, and a call is
+answered with what to open. When the IDE quits, a call it was running is
+answered with an error. When it comes back, the agent is told its tools
+changed. `--wait=<seconds>` makes it give up after that long without an IDE.
 
 The IDE listens on a unix socket, `.porta/mcp.sock`, that only your user can
 open. When the project path is too long for a socket, the socket goes in the

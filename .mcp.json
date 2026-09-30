@@ -1,0 +1,8 @@
+{
+    "mcpServers": {
+        "porta": {
+            "command": "bin/porta",
+            "args": ["mcp"]
+        }
+    }
+}
