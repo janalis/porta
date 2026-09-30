@@ -42,6 +42,36 @@ final readonly class DocumentReplacer
             return false;
         }
         $buffer->document->replaceAll($text);
+        $this->changed($buffer);
+
+        return true;
+    }
+
+    /**
+     * Replace one range of $buffer — 0-based lines and BYTE columns, the end
+     * exclusive — with $text, as ONE undoable edit, told to the same two as
+     * {@see replace()}. The caret ends after the new text, as after typing it.
+     * The range must be inside the document; the caller checks.
+     */
+    public function replaceRange(Buffer $buffer, int $line, int $column, int $endLine, int $endColumn, string $text): void
+    {
+        $document = $buffer->document;
+        $document->transact(static function () use ($document, $line, $column, $endLine, $endColumn, $text): void {
+            $document->setCursor($line, $column);
+            $document->beginSelect();
+            $document->setCursor($endLine, $endColumn, selection: SelectionMode::Keep);
+            if ($document->hasSelection()) {
+                $document->deleteSelection();
+            }
+            $document->insert($text);
+        });
+        $this->changed($buffer);
+    }
+
+    /** What every edit here is followed by. */
+    private function changed(Buffer $buffer): void
+    {
+        $text = $buffer->document->getText();
         // The buffer may now BE what is on disk — a formatter rewrites the file
         // and applies the same bytes here. Saying "modified" then is a lie, and
         // it costs more than a wrong dot: the 1s poller sees a stamp it does not
@@ -55,8 +85,6 @@ final readonly class DocumentReplacer
             $this->editor->invalidate();
         }
         $this->lsp->notifyFullChange($buffer->path, $buffer->document);
-
-        return true;
     }
 
     /**

@@ -6,10 +6,12 @@ namespace Porta\Plugin\Api;
 
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferSaver;
+use Porta\Editor\DocumentReplacer;
 
 /**
  * The open buffers, for a plugin: which files are open and which hold edits
- * not yet saved, each one's text as the user sees it, and saving one.
+ * not yet saved, each one's text and selection as the user sees them,
+ * changing part of it, and saving one.
  *
  * Reached through {@see PluginApi::openBuffers()}. Paths are absolute. Viewer
  * tabs — an image, a graph — have no text, so they are left out of
@@ -20,6 +22,7 @@ final readonly class OpenBuffers
     public function __construct(
         private BufferManager $buffers,
         private BufferSaver $saver,
+        private DocumentReplacer $replacer,
     ) {}
 
     /**
@@ -50,6 +53,52 @@ final readonly class OpenBuffers
         $buffer = $this->buffers->get($path);
 
         return null === $buffer || $buffer->isViewer() ? null : $buffer->document->getText();
+    }
+
+    /**
+     * What is selected in an open buffer — 0-based line and byte column of
+     * each end, as {@see PluginApi::caretPosition()} gives them, and the
+     * text. Null when nothing is, or no text tab has that file open.
+     *
+     * @return array{line: int, column: int, endLine: int, endColumn: int, text: string}|null
+     */
+    public function selection(string $path): ?array
+    {
+        $buffer = $this->buffers->get($path);
+        $range = null === $buffer || $buffer->isViewer() ? null : $buffer->document->getSelectionRange();
+        if (null === $buffer || null === $range) {
+            return null;
+        }
+
+        return [
+            'line' => $range['startLine'],
+            'column' => $range['startCol'],
+            'endLine' => $range['endLine'],
+            'endColumn' => $range['endCol'],
+            'text' => $buffer->document->getSelectedText(),
+        ];
+    }
+
+    /**
+     * Replace a range of an open buffer with $text — 0-based lines and byte
+     * columns as {@see PluginApi::caretPosition()} gives them, the end
+     * exclusive — as ONE edit the user undoes, not saved. Null once applied,
+     * else why not: not open, not text, or a range outside the document.
+     */
+    public function edit(string $path, int $line, int $column, int $endLine, int $endColumn, string $text): ?string
+    {
+        $buffer = $this->buffers->get($path);
+        if (null === $buffer || $buffer->isViewer()) {
+            return \sprintf('%s is not open as text', $path);
+        }
+        $document = $buffer->document;
+        $inside = static fn (int $l, int $c): bool => $l >= 0 && $l < $document->getLineCount() && $c >= 0 && $c <= \strlen($document->getLine($l));
+        if (!$inside($line, $column) || !$inside($endLine, $endColumn) || [$endLine, $endColumn] < [$line, $column]) {
+            return \sprintf('%d:%d–%d:%d is not a range of %s', $line, $column, $endLine, $endColumn, $path);
+        }
+        $this->replacer->replaceRange($buffer, $line, $column, $endLine, $endColumn, $text);
+
+        return null;
     }
 
     /**

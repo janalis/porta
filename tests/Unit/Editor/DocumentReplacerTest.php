@@ -145,6 +145,27 @@ final class DocumentReplacerTest extends TestCase
         $this->assertTrue($buffer->document->isDirty());
     }
 
+    public function testARangeIsOneUndoStepFollowedByTheSameThreeAsASwap(): void
+    {
+        $project = new TempProject(['a.php' => "one\nTWO\n"]);
+        $replacer = $this->replacer();
+        $buffer = $this->buffers->open($project->path('a.php'), "one\ntwo\nthree\n");
+        $this->buffers->setActive($buffer->path);
+
+        $replacer->replaceRange($buffer, 1, 0, 2, 5, 'TWO');
+
+        $this->assertSame("one\nTWO\n", $buffer->document->getText());
+        $this->assertSame([1, 3], [$buffer->document->cursorLine, $buffer->document->cursorCol], 'the caret after the new text');
+        $this->assertFalse($buffer->document->isDirty(), 'it now IS the disk copy');
+        $this->assertSame(1, $this->invalidations->count, 'the buffer on screen repaints');
+
+        $replacer->replaceRange($buffer, 0, 3, 0, 3, '!');
+        $this->assertSame("one!\nTWO\n", $buffer->document->getText(), 'an empty range inserts');
+        $buffer->document->undo();
+        $buffer->document->undo();
+        $this->assertSame("one\ntwo\nthree\n", $buffer->document->getText(), 'one undo each');
+    }
+
     public function testTheServerHearsAboutTheSwapAsADidChange(): void
     {
         // The other half of the contract this class exists to keep: a whole-

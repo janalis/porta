@@ -1314,14 +1314,14 @@ final class PluginApi
 
     /**
      * The open buffers as a plugin may work with them: which files are open
-     * and edited, their text as it is on screen, and saving one — see
+     * and edited, their text as it is on screen, editing and saving one — see
      * {@see OpenBuffers}. An action method: it throws during `activate()`.
      */
     public function openBuffers(): OpenBuffers
     {
         $runtime = $this->manager->runtime();
 
-        return new OpenBuffers($runtime->buffers, $runtime->saver);
+        return new OpenBuffers($runtime->buffers, $runtime->saver, $runtime->documents);
     }
 
     /**

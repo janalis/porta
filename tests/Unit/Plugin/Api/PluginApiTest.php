@@ -14,6 +14,7 @@ use Porta\Editor\BufferSaver;
 use Porta\Editor\ChangeMarkKind;
 use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\Document;
+use Porta\Editor\SelectionMode;
 use Porta\Event\ActiveBufferChanged;
 use Porta\Event\BufferOpened;
 use Porta\Event\BufferReloaded;
@@ -616,6 +617,51 @@ final class PluginApiTest extends TestCase
         );
         $this->assertSame(['/p/b.php'], \array_column($api->codeIntelligence()->diagnostics('/p/b.php'), 'path'));
         $this->assertSame([], $api->codeIntelligence()->diagnostics('/p/nope.php'));
+    }
+
+    public function testOpenBuffersEditARangeAsOneUndoStepAndReadTheSelection(): void
+    {
+        $api = $this->api();
+        $a = $this->buffers->open('/p/a.php', "one é\ntwo\n");
+        $this->buffers->openPane('/p/c.png', 'image', null);
+
+        $this->assertNull($api->openBuffers()->edit('/p/a.php', 0, 4, 1, 1, 'X'), 'byte columns: after "one ", into "two"');
+        $this->assertSame("one Xwo\n", $a->document->getText());
+        $this->assertNull($api->openBuffers()->edit('/p/a.php', 0, 0, 0, 0, '>'), 'an empty range inserts');
+        $this->assertSame(">one Xwo\n", $a->document->getText());
+        $a->document->undo();
+        $this->assertSame("one Xwo\n", $a->document->getText(), 'each edit is one undo step');
+        $a->document->undo();
+        $this->assertSame("one é\ntwo\n", $a->document->getText());
+
+        $refusals = [
+            'is not open as text' => ['/p/nope.php', 0, 0, 0, 0],
+            'c.png is not open as text' => ['/p/c.png', 0, 0, 0, 0],
+            '0:7–0:7 is not a range' => ['/p/a.php', 0, 7, 0, 7],
+            '3:0–3:0 is not a range' => ['/p/a.php', 3, 0, 3, 0],
+            '1:0–0:1 is not a range' => ['/p/a.php', 1, 0, 0, 1],
+            '0:2–0:1 is not a range' => ['/p/a.php', 0, 2, 0, 1],
+            '-1:0–0:0 is not a range' => ['/p/a.php', -1, 0, 0, 0],
+            '0:-1–0:0 is not a range' => ['/p/a.php', 0, -1, 0, 0],
+            '0:0–2:1 is not a range' => ['/p/a.php', 0, 0, 2, 1],
+        ];
+        foreach ($refusals as $says => [$path, $line, $column, $endLine, $endColumn]) {
+            $this->assertStringContainsString($says, (string) $api->openBuffers()->edit($path, $line, $column, $endLine, $endColumn, 'x'), $says);
+        }
+        $this->assertNull($api->openBuffers()->edit('/p/a.php', 0, 6, 2, 0, ''), 'the very end of each line, and of the text, are inside');
+        $this->assertSame('one é', $a->document->getText());
+
+        $this->assertNull($api->openBuffers()->selection('/p/a.php'), 'nothing selected');
+        $this->assertNull($api->openBuffers()->selection('/p/c.png'));
+        $this->assertNull($api->openBuffers()->selection('/p/nope.php'));
+        $a->document->setCursor(0, 6);
+        $a->document->beginSelect();
+        $a->document->setCursor(0, 4, SelectionMode::Keep);
+        $this->assertSame(
+            ['line' => 0, 'column' => 4, 'endLine' => 0, 'endColumn' => 6, 'text' => 'é'],
+            $api->openBuffers()->selection('/p/a.php'),
+            'normalized: the start comes first whichever way it was made',
+        );
     }
 
     public function testTheCodeIntelligenceVerbsAskTheRuntimesLanguageServers(): void

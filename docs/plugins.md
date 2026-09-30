@@ -748,6 +748,7 @@ A plugin that serves tools reads them with `tools()` and re-reads on
 $buffers = $api->openBuffers();
 foreach ($buffers->files() as ['path' => $path, 'dirty' => $dirty]) { /* … */ }
 $text = $buffers->text($path);            // as on screen, unsaved edits included
+$why = $buffers->edit($path, 3, 0, 3, 4, 'next'); // null once applied, one undo step
 $why = $buffers->save($path);             // null once saved
 ```
 
@@ -755,6 +756,8 @@ $why = $buffers->save($path);             // null once saved
 | --- | --- |
 | `files(): list<array>` | Every open TEXT tab in tab order, `['path' => absolute, 'dirty' => bool]`; viewer tabs are left out |
 | `text(string $path): ?string` | An open buffer's text, unsaved edits included; null when no text tab has it open |
+| `selection(string $path): ?array` | What is selected in it: `['line', 'column', 'endLine', 'endColumn', 'text']`, 0-based line and byte column as `caretPosition()` gives them, the start first. Null when nothing is |
+| `edit(string $path, int $line, int $column, int $endLine, int $endColumn, string $text): ?string` | Replace a range with `$text`, in the same 0-based lines and byte columns, the end exclusive; an empty range inserts. It is ONE undo step and it is not saved; the editor and the language server hear of it. Null once applied, else why not: not open as text, or not a range of the document |
 | `save(string $path): ?string` | Save it as Ctrl+S does — local history, the language servers and `onFileSaved` all hear of it. Null once saved (or with nothing to save), else why not. A file that **changed on disk** under the edits is refused, never overwritten: the keyboard asks the user to press Ctrl+S again, and a plugin cannot ask for them |
 
 ### Running a task

@@ -45,10 +45,12 @@ socket is removed when Porta quits or the plugin is disabled.
 | Tool | Does |
 | --- | --- |
 | `context` | The project root, the active file and caret, the files selected in the tree, and every open tab with whether it has unsaved edits |
-| `read_buffer` | The text of an open file as it is in the editor — unsaved edits included. Without a path, the active file |
+| `selection` | What you have selected in the active file, and where |
+| `read_buffer` | The text of an open file as it is in the editor — unsaved edits included. Without a path, the active file. `startLine`/`endLine` read part of it, `lineNumbers` numbers the lines |
 | `open_file` | Open a file and bring it forward, optionally at a line and column |
 | `diagnostics` | What the language servers and analysers report for the open files |
 | `notify` | Show you a short message |
+| `edit_buffer` | Replace one exact piece of a file's text in the editor — opening it first if needed. The piece must occur exactly once |
 | `replace_buffer` | Replace a file's whole text in the editor — opening it first if needed |
 | `insert_text` | Insert text at the caret |
 | `save_buffer` | Save an open file to disk, as Ctrl+S does — off until you turn on `allowSave` |
@@ -69,8 +71,8 @@ project-relative or absolute, and must be inside the project.
 
 **Edits are not saved unless you say so.** Each one is a single undoable step
 in the editor, so you review it, keep it with Ctrl+S, or take it back with
-Ctrl+Z. Turn the `allowEdits` setting off and the two edit tools are not
-offered at all. Turn `allowSave` on and the agent may save too — as Ctrl+S
+Ctrl+Z. Turn the `allowEdits` setting off and the edit tools are not offered
+at all. Turn `allowSave` on and the agent may save too — as Ctrl+S
 does, so local history keeps the version it replaced. A file that changed on
 disk while it held edits is never overwritten: the agent is told to ask you.
 
