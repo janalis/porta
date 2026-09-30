@@ -292,15 +292,19 @@ final readonly class WorkspaceEditor
             // still applied: refusing here would leave the workspace edit HALF
             // APPLIED, which this codebase treats as the worse outcome. What it
             // may not do is happen in silence.
-            if (true === $this->bufferAt($path)?->isDirty()) {
+            $buffer = $this->bufferAt($path);
+            if (true === $buffer?->isDirty()) {
                 $this->notifier?->error($this->translator->trans('Deleted %file% — unsaved changes in it are gone', ['%file%' => \basename($path)]));
             }
+            // What the user last had — the buffer's text, unsaved edits and
+            // all — is what FileDeleted hands on for recovery.
+            $previous = null !== $buffer && !$buffer->isViewer() ? $buffer->document->getText() : Files::textOf($path);
             $this->closeBufferAt($path);
             // Canonical, and resolved BEFORE the removal — afterwards there is
             // nothing left for realpath() to resolve. FileDeleted's contract.
             $key = ($resolved = \realpath($path)) ? $resolved : $path;
             $this->fs->remove($path);
-            $this->events->dispatch(new FileDeleted($key));
+            $this->events->dispatch(new FileDeleted($key, $previous));
 
             return;
         }

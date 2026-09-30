@@ -16,6 +16,7 @@ use Porta\I18n\Translator;
 use Porta\Search\ProjectSearchController;
 use Porta\Search\SearchActions;
 use Porta\Support\Clipboard;
+use Porta\Support\Files;
 use Porta\Support\ProjectPaths;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\FileTreeWidget;
@@ -378,10 +379,14 @@ final class TreeOperations
             $resolved = \realpath($path);
             $key = $resolved ? $resolved : $path;
             $this->withFs($this->translator->trans('Cannot delete %file%', ['%file%' => $this->paths->relative($path)]), function () use ($path, $key): void {
+                // Read before it goes: the text a recovery restores, the open
+                // buffer's when there is one — unsaved edits are the user's too.
+                $buffer = $this->buffers->get($key);
+                $previous = null !== $buffer && !$buffer->isViewer() ? $buffer->document->getText() : Files::textOf($path);
                 $this->fs->remove($path);
                 // $key was resolved before the removal, which is the only time
                 // it could be — the same reason the rename above resolves early.
-                $this->events->dispatch(new FileDeleted($key));
+                $this->events->dispatch(new FileDeleted($key, $previous));
                 if ($this->buffers->has($key)) {
                     $next = $this->buffers->close($key);
                     null !== $next ? $this->bufferService->showBuffer($next) : $this->editor->showDocument('', new Document(''));

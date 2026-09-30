@@ -23,8 +23,10 @@ final class PluginObservableContractTest extends TestCase
     private const array OBSERVABLE = [
         'ActiveBufferChanged',
         'AgentActivity',
+        'AgentEditing',
         'AgentLeft',
         'DiffToolLaunched',
+        'FileDeleted',
         'FileRenamed',
         'FileRewritten',
         'GitCommitted',

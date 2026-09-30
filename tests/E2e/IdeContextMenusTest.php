@@ -12,6 +12,7 @@ use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
 use Porta\Editor\Document;
 use Porta\Editor\EditHistory;
+use Porta\Event\FileDeleted;
 use Porta\History\RecentFilesStore;
 use Porta\Ide;
 use Porta\Overlay\Region\DropdownRegion;
@@ -28,6 +29,7 @@ use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Ui\Glyphs;
 use Porta\Widget\ContextMenu;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Render\Renderer;
@@ -781,12 +783,16 @@ final class IdeContextMenusTest extends TestCase
         \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "<?php\n", 'B.php' => "<?php\n"]);
         $a = (string) \realpath($project->path('A.php'));
+        $kept = [];
 
         $this->runIde(
             $project,
             $project->path('A.php'),
             [
-                150 => function ($tui, $terminal, Ide $ide) use ($a): void {
+                150 => function ($tui, $terminal, Ide $ide) use ($a, &$kept): void {
+                    Services::resolve($ide, EventDispatcherInterface::class)->addListener(FileDeleted::class, static function (FileDeleted $event) use (&$kept): void {
+                        $kept[] = [$event->path, $event->previousText];
+                    });
                     $tui->tick();
                     $tui->getById('editor')->getDocument()->setCursor(0, 0);
                     Services::resolve($ide, BookmarkActions::class)->toggle();
@@ -818,6 +824,7 @@ final class IdeContextMenusTest extends TestCase
         );
 
         $this->assertFileDoesNotExist($project->path('A.php'), 'A.php removed from disk');
+        $this->assertSame([[$a, "X<?php\n"]], $kept, 'the fact carries the text the user had, the unsaved X included, for local history to keep');
     }
 
     public function testEditorContextMenuNearTheBottomFlipsUp(): void

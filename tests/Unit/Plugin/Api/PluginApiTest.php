@@ -16,6 +16,7 @@ use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\Document;
 use Porta\Editor\SelectionMode;
 use Porta\Event\ActiveBufferChanged;
+use Porta\Event\AgentEditing;
 use Porta\Event\BufferOpened;
 use Porta\Event\BufferReloaded;
 use Porta\Event\BufferSaved;
@@ -680,6 +681,35 @@ final class PluginApiTest extends TestCase
             $api->openBuffers()->selection('/p/a.php'),
             'normalized: the start comes first whichever way it was made',
         );
+    }
+
+    public function testOpenBuffersCreateMoveAndDeleteFilesAndSayWhenTheyWillNot(): void
+    {
+        $project = new TempProject(['a.php' => "<?php\n", 'dirty.php' => "<?php\n", 'dir/x.php' => "<?php\n"]);
+        $api = $this->api();
+        $files = $api->openBuffers();
+        $at = static fn (string $name): string => (string) \realpath($project->dir).'/'.$name;
+
+        $this->assertNull($files->create($at('new/b.php'), "<?php\n// b\n"));
+        $this->assertSame("<?php\n// b\n", \file_get_contents($at('new/b.php')), 'folders on the way too');
+        $this->assertNull($files->create($at('empty.txt')));
+        $this->assertSame('', \file_get_contents($at('empty.txt')));
+        $this->assertSame('a.php already exists', $files->create($at('a.php'), 'x'));
+
+        $this->assertNull($files->move($at('a.php'), $at('moved/a.php')));
+        $this->assertFileExists($at('moved/a.php'));
+        $this->assertFileDoesNotExist($at('a.php'));
+        $this->assertSame('b.php already exists', $files->move($at('moved/a.php'), $at('new/b.php')));
+        $this->assertSame('nothing.php is not there to rename', $files->move($at('nothing.php'), $at('else.php')));
+        $this->assertDirectoryDoesNotExist($at('else'), 'no folder made for a move that did not happen');
+
+        $this->buffers->open($at('dirty.php'), "<?php\n")->document->insert('x');
+        $this->assertStringContainsString('unsaved changes', (string) $files->delete($at('dirty.php')));
+        $this->assertFileExists($at('dirty.php'));
+        $this->assertStringContainsString('is a folder', (string) $files->delete($at('dir')));
+        $this->assertNull($files->delete($at('empty.txt')));
+        $this->assertFileDoesNotExist($at('empty.txt'));
+        $this->assertSame('gone.php is not there to delete', $files->delete($at('gone.php')));
     }
 
     public function testTheCodeIntelligenceVerbsAskTheRuntimesLanguageServers(): void
@@ -1529,5 +1559,14 @@ final class PluginApiTest extends TestCase
         $api->emit(new GitRemoteCompleted('pull', ok: false));
 
         $this->assertSame(['pull', false], $completed);
+
+        // mcp to local-history: what a file held before an agent's first edit.
+        $kept = null;
+        $dispatcher->addListener(AgentEditing::class, static function (AgentEditing $event) use (&$kept): void {
+            $kept = [$event->path, $event->previousText];
+        });
+        $api->emit(new AgentEditing('/p/a.php', "before\n"));
+
+        $this->assertSame(['/p/a.php', "before\n"], $kept);
     }
 }

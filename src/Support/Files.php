@@ -34,6 +34,15 @@ final class Files
      * the guard every in-place-edit caller needs before reading a file it
      * intends to overwrite.
      */
+    /**
+     * The text a file holds, for keeping before it goes: null for a
+     * directory, a missing file, or one too large to be text.
+     */
+    public static function textOf(string $path): ?string
+    {
+        return \is_file($path) && (int) \filesize($path) <= self::MAX_TEXT_BYTES ? (string) \file_get_contents($path) : null;
+    }
+
     public static function readWritable(string $path): ?string
     {
         return \is_file($path) && \is_writable($path) ? (string) \file_get_contents($path) : null;

@@ -20,10 +20,20 @@ namespace Porta\Event;
  * asks {@see \Porta\Support\ProjectPaths::isUnder()} rather than comparing for
  * equality. For a plain file that question answers the same as `===` — nothing
  * is ever keyed under `A.php/`.
+ *
+ * **It carries what went.** `$previousText` is the file's text as the user
+ * last had it — the open buffer's, unsaved edits included, else the disk's —
+ * or null for a directory or a file too large to be text. It is what makes a
+ * delete recoverable: `local-history` keeps it as a snapshot, and restoring
+ * that snapshot brings the file back.
+ *
+ * Observable by plugins, for that recovery and for anything else a plugin
+ * keys by path.
  */
-final readonly class FileDeleted
+final readonly class FileDeleted implements PluginObservable
 {
     public function __construct(
         public string $path,
+        public ?string $previousText = null,
     ) {}
 }

@@ -293,6 +293,9 @@ final class EventListenerWiringTest extends TestCase
             // keeps the list; what serves it — the mcp plugin — listens
             // through PluginApi::on() at runtime.
             'ToolsChanged',
+            // An agent's first edit of a file, with what it held: a recovery
+            // fact, and recovery is local-history's, registered at runtime.
+            'AgentEditing',
         ];
 
         $dispatcher = $this->dispatcher();

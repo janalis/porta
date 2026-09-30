@@ -123,6 +123,29 @@ end, up to `runTimeout` (300 seconds), and answers with the exit code and the
 end of the output; a longer run goes on, and `run_output` reads it later.
 Running a label again replaces the run in progress, as the Run menu does.
 
+### Creating, moving and deleting files
+
+With `allowFileOps` on — it is off until you turn it on — the agent can
+change the files themselves:
+
+| Tool | Does |
+| --- | --- |
+| `create_file` | Create a file with its text, and its folders on the way. It is not opened |
+| `move_file` | Rename or move a file or folder. A tab open on it follows, with its unsaved edits |
+| `delete_file` | Delete a file. Never a folder, and never a file with unsaved edits in the editor |
+
+**Every change is revertable through local history** (the bundled
+`local-history` plugin):
+
+- **A deleted file** is kept, with the text you last had, unsaved edits
+  included. It is listed in **Recent Changes**, and restoring it brings the file
+  back. This holds for every delete, the tree's own included.
+- **Before an agent first edits a file**, the version you had is kept, so the
+  file as it was before any agent touched it is one restore away. Ctrl+Z still
+  undoes each edit.
+- **A moved file** keeps its history under its new name.
+- **A created file** is undone by deleting it, which is itself kept.
+
 ### From other plugins
 
 Any plugin can offer tools; their names start with the plugin's. The bundled

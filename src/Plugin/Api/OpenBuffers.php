@@ -9,11 +9,17 @@ use Porta\Editor\BufferSaver;
 use Porta\Editor\DocumentReplacer;
 use Porta\Editor\FileOpener;
 use Porta\Editor\OpenFocus;
+use Porta\Lsp\Uri;
+use Porta\Lsp\WorkspaceEditor;
 
 /**
  * The open buffers, for a plugin: which files are open and which hold edits
  * not yet saved, each one's text and selection as the user sees them,
- * changing part of it, and saving one.
+ * changing part of it, and saving one — and the files under them: creating,
+ * moving and deleting one, which a buffer has to follow. Those three go
+ * through the same path a language server's refactoring does, so an open
+ * buffer is re-pointed with its unsaved edits, every path-keyed store hears
+ * of it, and a delete hands what it removed to local history.
  *
  * Reached through {@see PluginApi::openBuffers()}. Paths are absolute. Viewer
  * tabs — an image, a graph — have no text, so they are left out of
@@ -26,6 +32,7 @@ final readonly class OpenBuffers
         private BufferSaver $saver,
         private DocumentReplacer $replacer,
         private FileOpener $files,
+        private WorkspaceEditor $workspace,
     ) {}
 
     /**
@@ -130,5 +137,54 @@ final readonly class OpenBuffers
     public function save(string $path): ?string
     {
         return $this->saver->save($path);
+    }
+
+    /**
+     * Create a file holding $text — folders on the way included — as a file on
+     * disk, not opened. Null once created, else why not: it already exists.
+     */
+    public function create(string $path, string $text = ''): ?string
+    {
+        $changes = [['kind' => 'create', 'uri' => Uri::fromPath($path)]];
+        if ('' !== $text) {
+            $changes[] = [
+                'textDocument' => ['uri' => Uri::fromPath($path), 'version' => null],
+                'edits' => [['range' => ['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 0]], 'newText' => $text]],
+            ];
+        }
+
+        return $this->workspace->applyWorkspaceEdit(['documentChanges' => $changes])->refused;
+    }
+
+    /**
+     * Rename or move a file or folder; an open buffer under it follows, unsaved
+     * edits and all. The folder it goes into is created. Null once moved, else
+     * why not: nothing there, or something already at $to.
+     */
+    public function move(string $from, string $to): ?string
+    {
+        if (\file_exists($from) && !\is_dir(\dirname($to))) {
+            \mkdir(\dirname($to), recursive: true);
+        }
+
+        return $this->workspace->applyWorkspaceEdit(['documentChanges' => [['kind' => 'rename', 'oldUri' => Uri::fromPath($from), 'newUri' => Uri::fromPath($to)]]])->refused;
+    }
+
+    /**
+     * Delete a FILE — its open buffer closes — handing what it held to
+     * whoever keeps history ({@see \Porta\Event\FileDeleted}). Null once
+     * deleted, else why not: nothing there, a folder, or a buffer with unsaved
+     * edits, which are the user's and are not a plugin's to throw away.
+     */
+    public function delete(string $path): ?string
+    {
+        if (\is_dir($path)) {
+            return \sprintf('%s is a folder — only files are deleted this way', $path);
+        }
+        if (true === $this->buffers->get($path)?->isDirty()) {
+            return \sprintf('%s has unsaved changes in the editor — they are the user\'s to keep or drop', $path);
+        }
+
+        return $this->workspace->applyWorkspaceEdit(['documentChanges' => [['kind' => 'delete', 'uri' => Uri::fromPath($path)]]])->refused;
     }
 }

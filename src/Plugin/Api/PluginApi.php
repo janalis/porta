@@ -1322,7 +1322,7 @@ final class PluginApi
     {
         $runtime = $this->manager->runtime();
 
-        return new OpenBuffers($runtime->buffers, $runtime->saver, $runtime->documents, $runtime->files);
+        return new OpenBuffers($runtime->buffers, $runtime->saver, $runtime->documents, $runtime->files, $runtime->workspaceEditor);
     }
 
     /**

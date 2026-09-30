@@ -665,15 +665,36 @@ final class WorkspaceEditorTest extends TestCase
         $events = new EventDispatcher();
         $deleted = [];
         $events->addListener(FileDeleted::class, static function (FileDeleted $e) use (&$deleted): void {
-            $deleted[] = $e->path;
+            $deleted[] = [$e->path, $e->previousText];
         });
 
         $this->workspaceEditor($events)->applyWorkspaceEdit([
             'documentChanges' => [['kind' => 'delete', 'uri' => 'file://'.$unresolved]],
         ]);
 
-        $this->assertSame([$expected], $deleted);
+        $this->assertSame([[$expected, "<?php\n"]], $deleted, 'with what the file held, read before it went');
         $this->assertFileDoesNotExist($unresolved);
+    }
+
+    public function testADeleteHandsOnTheBuffersTextUnsavedEditsIncludedAndNothingForAFolder(): void
+    {
+        $project = new TempProject(['open.php' => "<?php\n", 'dir/inner.php' => "<?php\n"]);
+        $events = new EventDispatcher();
+        $deleted = [];
+        $events->addListener(FileDeleted::class, static function (FileDeleted $e) use (&$deleted): void {
+            $deleted[] = $e->previousText;
+        });
+        $we = $this->workspaceEditor($events);
+        $this->buffers->open((string) \realpath($project->path('open.php')), "<?php\n")->document->insert('// mine ');
+
+        $we->applyWorkspaceEdit([
+            'documentChanges' => [
+                ['kind' => 'delete', 'uri' => Uri::fromPath($project->path('open.php'))],
+                ['kind' => 'delete', 'uri' => Uri::fromPath($project->path('dir'))],
+            ],
+        ]);
+
+        $this->assertSame(["// mine <?php\n", null], $deleted, 'the text the user had, then nothing for a folder');
     }
 
     /**
