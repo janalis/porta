@@ -1,8 +1,8 @@
 {
     "mcpServers": {
         "porta": {
-            "command": "bin/porta",
-            "args": ["mcp"]
+            "command": "php",
+            "args": ["bin/porta", "mcp"]
         }
     }
 }
