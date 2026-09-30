@@ -48,14 +48,12 @@ over the raw line: spans go through `LineDecorator::applyAll`, insert/overlay
 loops slice the raw line once per gap. A single bounded splice per row
 (`OverlayCompositor::into`, `ModalShadow`) is fine.
 
-**Slice through `Support/AnsiSlice`, never the vendor's `sliceByColumn`,
-`sliceWithWidth` or `truncateToWidth`.** Those size a run that fits with
-`mb_strwidth()`, which counts every combining mark as a column, so a
-decomposed accent or Hebrew niqqud cut every slice short by a column per
-mark — an overlay over such a line dropped a character and padded a blank.
-`AnsiSlice` hands a mark-free line straight through and swaps each
-multi-codepoint character for a one-codepoint stand-in of its width otherwise.
-`AnsiSliceAdoptionTest` fails on a direct call. `sliceToWidth` is unaffected.
+**Slice with the vendor's `sliceByColumn`, `sliceWithWidth` and
+`truncateToWidth` directly** (or `AnsiText`). Until symfony/tui d0adb8b their
+fast path sized a run with `mb_strwidth()`, one column per combining mark, and
+Porta wrapped them in `Support/AnsiSlice`; the wrapper went with that fix. The
+marked-line cases in `AnsiTextTest` and `OverlayCompositorTest` fail on the old
+vendor, so a regression upstream shows up there.
 
 **Styled text as markup.** `Styles::format()` renders Symfony Console's formatter markup against the
 active theme. It lives in `Ui/Markup`: `MarkupParser` is Console's own tag

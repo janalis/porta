@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Porta\Terminal;
 
-use Porta\Support\AnsiSlice;
 use Porta\Support\AnsiText;
 use Porta\Ui\Sgr;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -183,7 +182,7 @@ final class TerminalBuffer
             // Overwrite from the cursor column (e.g. after \r). A wide glyph the
             // write half-covers leaves its other half blank, as a terminal does:
             // both sides keep their columns rather than sliding.
-            $head = AnsiText::padRight(AnsiSlice::byColumn($cur, 0, $this->col), $this->col);
+            $head = AnsiText::padRight(AnsiUtils::sliceByColumn($cur, 0, $this->col), $this->col);
             $tail = AnsiText::columnsFrom($cur, $this->col + $width, $this->curWidth);
             $this->lines[\count($this->lines) - 1] = $head.$text.$tail;
             $this->curWidth = \max($this->curWidth, $this->col + $width);
@@ -194,7 +193,7 @@ final class TerminalBuffer
     private function eraseToLineEnd(): void
     {
         $cur = $this->lines[\count($this->lines) - 1];
-        $this->lines[\count($this->lines) - 1] = AnsiSlice::byColumn($cur, 0, $this->col);
+        $this->lines[\count($this->lines) - 1] = AnsiUtils::sliceByColumn($cur, 0, $this->col);
         $this->curWidth = \min($this->curWidth, $this->col);
     }
 

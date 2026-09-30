@@ -6,7 +6,6 @@ namespace Porta\GraphViewer\Render;
 
 use Porta\GraphViewer\Graph\GraphLayout;
 use Porta\ImageViewer\ZoomPanModel;
-use Porta\Support\AnsiSlice;
 use Porta\Support\AnsiText;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
@@ -73,6 +72,6 @@ final class GraphSelectionOverlay
      */
     private static function splice(string $line, int $col, int $width, string $patch, int $cols): string
     {
-        return AnsiText::padRight(AnsiSlice::byColumn($line, 0, $col), $col).$patch.AnsiUtils::sliceToWidth($line, $col + $width, $cols - $col - $width);
+        return AnsiText::padRight(AnsiUtils::sliceByColumn($line, 0, $col), $col).$patch.AnsiUtils::sliceToWidth($line, $col + $width, $cols - $col - $width);
     }
 }

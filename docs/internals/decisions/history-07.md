@@ -1257,3 +1257,24 @@ status recap that offered to go on.
 *Re-opens on:* a session sample where one gate's failures dominate even after `check`
 (then that gate's own messages are the problem), or E2e timeouts still followed by a
 re-run to look (then the grid is not enough — capture the raw frame too).
+
+## `AnsiSlice` removed: the vendor slices combining marks right (2026-09-30)
+
+The 8.2.x-dev bump to symfony/tui d0adb8b fixed the `mb_strwidth()` fast paths
+in `sliceByColumn`, `sliceWithWidth` and `truncateToWidth`, which is the
+re-open condition on the kitty-graphics entry above. Measured before removing
+the wrapper: seven marked lines (decomposed accents, niqqud, a ZWJ family, an OSC
+link), every start and length, strict and not — zero differences between
+`AnsiSlice` and the vendor. So the 15 callers call the vendor again, and
+`AnsiSlice` and its adoption tripwire are gone. Its cases moved to `AnsiTextTest`
+(through `columnsFrom` and `truncate`) and `OverlayCompositorTest`, and each one
+fails against the old `AnsiUtils.php`.
+
+**Kept: the `KittyPlaceholders` stand-ins.** The new vendor measures real
+placeholders right too (eleven cells slice to 11 columns, where the old vendor
+counted 33), so the stand-ins and the `MAX_CELLS` cap could go. But that changes
+what the frame writer sends to the terminal, and only a real kitty-protocol
+terminal can confirm the result.
+
+*Re-opens on:* a vendor regression the moved cases catch (bring the wrapper
+back), or a round with a kitty-protocol terminal to hand (drop the stand-ins).

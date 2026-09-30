@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Porta\I18n;
 
 use Porta\Container\AsIdeService;
-use Porta\Support\AnsiSlice;
 use Porta\Support\AnsiText;
 use Porta\Ui\Sgr;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -61,10 +60,10 @@ final class PaneReorder
             $end = $region['start'] + $region['width'];
             $width = AnsiUtils::visibleWidth($line);
             $line =
-                AnsiSlice::byColumn($line, startCol: 0, length: $region['start'], strict: true)
+                AnsiUtils::sliceByColumn($line, startCol: 0, length: $region['start'], strict: true)
                 .Sgr::RESET
                 .\str_repeat(' ', $region['width'])
-                .AnsiSlice::byColumn($line, $end, $width - $end, strict: true)
+                .AnsiUtils::sliceByColumn($line, $end, $width - $end, strict: true)
                 .Sgr::RESET;
         }
 
@@ -173,14 +172,14 @@ final class PaneReorder
 
     private static function isPadding(string $line, int $column): bool
     {
-        return ' ' === AnsiUtils::stripAnsiCodes(AnsiSlice::byColumn($line, $column, length: 1, strict: true));
+        return ' ' === AnsiUtils::stripAnsiCodes(AnsiUtils::sliceByColumn($line, $column, length: 1, strict: true));
     }
 
     private static function replaceColumn(string $line, int $column, string $with): string
     {
         $width = AnsiUtils::visibleWidth($line);
 
-        return AnsiSlice::byColumn($line, startCol: 0, length: $column, strict: true).Sgr::RESET.$with.AnsiSlice::byColumn($line, $column + 1, $width - $column - 1, strict: true).Sgr::RESET;
+        return AnsiUtils::sliceByColumn($line, startCol: 0, length: $column, strict: true).Sgr::RESET.$with.AnsiUtils::sliceByColumn($line, $column + 1, $width - $column - 1, strict: true).Sgr::RESET;
     }
 
     /**
@@ -218,9 +217,9 @@ final class PaneReorder
         }
         $start = \max(0, $width - $region['start'] - $keep);
         $end = $start + $keep;
-        $before = AnsiSlice::byColumn($row, startCol: 0, length: $start, strict: true);
-        $after = AnsiSlice::byColumn($row, $end, $width - $end, strict: true);
-        $slice = AnsiSlice::byColumn($line, $region['start'], $keep, strict: true);
+        $before = AnsiUtils::sliceByColumn($row, startCol: 0, length: $start, strict: true);
+        $after = AnsiUtils::sliceByColumn($row, $end, $width - $end, strict: true);
+        $slice = AnsiUtils::sliceByColumn($line, $region['start'], $keep, strict: true);
         $slice = self::withoutABorrowedCaret($line, $slice, $region['start']);
         $middle = $region['ltr'] ? $slice : Bidi::reorder($slice, BaseDirection::Rtl);
 
@@ -232,7 +231,7 @@ final class PaneReorder
     {
         $out = '';
         foreach ($runs as $run) {
-            $slice = AnsiSlice::byColumn($line, $run['start'], $run['width'], strict: true);
+            $slice = AnsiUtils::sliceByColumn($line, $run['start'], $run['width'], strict: true);
             // Reset after every run. MEASURED (July 2026): with the current
             // slicer this changes no rendered output — `Bidi::reorder()` already
             // brackets its result with resets, and `sliceByColumn(strict: true)`
@@ -308,7 +307,7 @@ final class PaneReorder
             if ($region['ltr']) {
                 return $region['start'] + $offset;
             }
-            $slice = AnsiSlice::byColumn($line, $region['start'], $keep, strict: true);
+            $slice = AnsiUtils::sliceByColumn($line, $region['start'], $keep, strict: true);
 
             return $region['start'] + Bidi::visualToLogicalColumn($slice, $offset, BaseDirection::Rtl);
         }
@@ -321,7 +320,7 @@ final class PaneReorder
             if ($run['ltr']) {
                 return $visualCol;
             }
-            $slice = AnsiSlice::byColumn($line, $run['start'], $run['width'], strict: true);
+            $slice = AnsiUtils::sliceByColumn($line, $run['start'], $run['width'], strict: true);
 
             return $run['start'] + Bidi::visualToLogicalColumn($slice, $visualCol - $run['start'], BaseDirection::Rtl);
         }

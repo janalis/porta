@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Widget\Render;
 
-use Porta\Support\AnsiSlice;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
  * Composites the application-menu dropdown's styled segments onto a widget's
@@ -35,7 +35,7 @@ final class MenuOverlay
             if ($width <= 0) {
                 continue;
             }
-            $segment = $width < $span['width'] ? AnsiSlice::byColumn($span['segment'], startCol: 0, length: $width) : $span['segment'];
+            $segment = $width < $span['width'] ? AnsiUtils::sliceByColumn($span['segment'], startCol: 0, length: $width) : $span['segment'];
 
             $lines[$span['row']] = OverlayCompositor::into($lines[$span['row']], $span['col'], $width, $columns, $segment);
         }

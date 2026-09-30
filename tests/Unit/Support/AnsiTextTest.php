@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit\Support;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Porta\Support\AnsiText;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -379,5 +380,74 @@ final class AnsiTextTest extends TestCase
         $text = "\x1b[31ma".AnsiUtils::cursorMarker(CursorShape::Bar).'b'.AnsiUtils::cursorMarker().'c'."\x1b_other\x07";
 
         $this->assertSame("\x1b[31mabc\x1b_other\x07", AnsiText::stripCursorMarkers($text), 'SGR and a foreign APC survive');
+    }
+
+    /** @return iterable<string, array{string}> styled lines whose runs carry combining marks */
+    public static function marked(): iterable
+    {
+        // symfony/tui before d0adb8b cut each of these short: a run with a mark
+        // that FITS the slice was sized by mb_strwidth(), one column per mark.
+        yield 'decomposed accent' => ["cafe\u{0301}\x1b[1m latte\x1b[0m done"];
+        yield 'accents across a style change' => ["e\u{0301}e\u{0301}\x1b[1me\u{0301}e\u{0301}\x1b[0mxyzxyzxyz"];
+        yield 'marks cut from their base by a style change' => ["cafe\x1b[1m\u{0301}\u{0302} latte\x1b[0m done"];
+        yield 'hebrew niqqud' => ["\u{05E9}\u{05B8}\u{05DC}\x1b[1mabcdefgh\x1b[0m"];
+        yield 'an OSC link around the accent' => ["\x1b]8;;https://x\x1b\\cafe\u{0301}\x1b]8;;\x1b\\ latte"];
+    }
+
+    #[DataProvider('marked')]
+    public function testEveryColumnRangeOfAMarkedLineIsAsWideAsAsked(string $line): void
+    {
+        $total = AnsiUtils::visibleWidth($line);
+        for ($start = 0; $start < $total; ++$start) {
+            for ($length = 1; ($start + $length) <= $total; ++$length) {
+                $this->assertSame($length, AnsiUtils::visibleWidth(AnsiText::columnsFrom($line, $start, $length)), "columnsFrom({$start}, {$length})");
+            }
+        }
+    }
+
+    #[DataProvider('marked')]
+    public function testTwoColumnRangesMakeTheMarkedLineAgain(string $line): void
+    {
+        $total = AnsiUtils::visibleWidth($line);
+        for ($cut = 0; $cut <= $total; ++$cut) {
+            $joined = AnsiText::columnsFrom($line, 0, $cut).AnsiText::columnsFrom($line, $cut, $total - $cut);
+
+            $this->assertSame(AnsiUtils::stripAnsiCodes($line), AnsiUtils::stripAnsiCodes($joined), "cut at {$cut}");
+        }
+    }
+
+    #[DataProvider('marked')]
+    public function testTruncatingAMarkedLineKeepsWhatFits(string $line): void
+    {
+        $total = AnsiUtils::visibleWidth($line);
+        for ($width = 4; $width < $total; ++$width) {
+            $truncated = AnsiText::truncate($line, $width);
+
+            $this->assertSame($width, AnsiUtils::visibleWidth($truncated), "truncate({$width})");
+            $this->assertStringEndsWith('…', AnsiUtils::stripAnsiCodes($truncated));
+        }
+        $this->assertSame($line, AnsiText::truncate($line, $total), 'nothing to cut');
+    }
+
+    /** @return iterable<string, array{string}> multi-codepoint characters two columns wide */
+    public static function wideClusters(): iterable
+    {
+        yield 'a wide character with a mark' => ["\u{4E2D}\u{0301}"];
+        yield 'a ZWJ family' => ["\u{1F468}\u{200D}\u{1F469}\u{200D}\u{1F467}"];
+    }
+
+    #[DataProvider('wideClusters')]
+    public function testAWideClusterSlicesLikeOneWideCharacter(string $cluster): void
+    {
+        $marked = "a{$cluster}x\x1b[1myz\x1b[0mabc";
+        $plain = "a\u{4E2D}x\x1b[1myz\x1b[0mabc";
+
+        foreach ([[0, 3], [0, 4], [1, 7], [2, 4], [3, 5], [0, 9]] as [$start, $length]) {
+            $this->assertSame(
+                AnsiUtils::stripAnsiCodes(AnsiText::columnsFrom($plain, $start, $length)),
+                \str_replace($cluster, replace: "\u{4E2D}", subject: AnsiUtils::stripAnsiCodes(AnsiText::columnsFrom($marked, $start, $length))),
+                "columnsFrom({$start}, {$length})",
+            );
+        }
     }
 }

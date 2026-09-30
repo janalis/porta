@@ -10,7 +10,6 @@ use Porta\Editor\CompletionItem;
 use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\DiagnosticStyle;
 use Porta\Editor\Document;
-use Porta\Support\AnsiSlice;
 use Porta\Support\AnsiText;
 use Porta\Support\IntMath;
 use Porta\Ui\Glyphs;
@@ -253,13 +252,13 @@ final class EditorRenderer
         foreach ($placed as [$col, , $text]) {
             $col = \min($col, $lineWidth);
             if ($col > $prev) {
-                $out .= AnsiSlice::byColumn($hlLine, $prev, $col - $prev);
+                $out .= AnsiUtils::sliceByColumn($hlLine, $prev, $col - $prev);
                 $prev = $col;
             }
             $out .= $text;
         }
         if ($prev < $lineWidth) {
-            $out .= AnsiSlice::byColumn($hlLine, $prev, $lineWidth - $prev);
+            $out .= AnsiUtils::sliceByColumn($hlLine, $prev, $lineWidth - $prev);
         }
 
         return $out;
@@ -288,13 +287,13 @@ final class EditorRenderer
         $prev = 0;
         for ($col = 0; $col < $leadingWidth && $col < $lineWidth; $col += $doc->indentDisplayWidth()) {
             if ($col > $prev) {
-                $out .= AnsiSlice::byColumn($hlLine, $prev, $col - $prev);
+                $out .= AnsiUtils::sliceByColumn($hlLine, $prev, $col - $prev);
             }
             $out .= $glyph;
             $prev = $col + 1;
         }
         if ($prev < $lineWidth) {
-            $out .= AnsiSlice::byColumn($hlLine, $prev, $lineWidth - $prev);
+            $out .= AnsiUtils::sliceByColumn($hlLine, $prev, $lineWidth - $prev);
         }
 
         return $out;
@@ -320,7 +319,7 @@ final class EditorRenderer
         // prefix, so the marker lands cleanly without disturbing any styling.
         $text = self::window($highlightedLine, $hScroll, $contentWidth);
         $cursorOffset = \max(0, $cursorDisplayCol - $hScroll);
-        $byte = \strlen(AnsiSlice::byColumn($text, 0, $cursorOffset));
+        $byte = \strlen(AnsiUtils::sliceByColumn($text, 0, $cursorOffset));
         $withCursorText = \substr($text, offset: 0, length: $byte).$cursorMarker.\substr($text, $byte);
 
         return AnsiText::padRight($withCursorText.Sgr::RESET, $contentWidth);
@@ -343,7 +342,7 @@ final class EditorRenderer
     private static function window(string $line, int $start, int $width): string
     {
         if (0 === $start || 1 !== \preg_match('/[\x80-\xFF]/', $line)) {
-            $fast = AnsiSlice::withWidth($line, $start, $width);
+            $fast = AnsiUtils::sliceWithWidth($line, $start, $width);
             if ($fast['width'] <= $width) {
                 return $fast['text'];
             }
@@ -394,7 +393,7 @@ final class EditorRenderer
         $extra = \count($diags) > 1 ? ' +'.(\count($diags) - 1) : '';
         // Severity glyph prefix, so error vs warning reads without color.
         $label = AnsiText::truncate('‹ '.$worst->glyph().' '.(string) \preg_replace('/\s+/', replacement: ' ', subject: $message).$extra.' ›', $available);
-        $head = AnsiText::padRight(AnsiSlice::byColumn($content, 0, $start), $start);
+        $head = AnsiText::padRight(AnsiUtils::sliceByColumn($content, 0, $start), $start);
 
         return AnsiText::padRight($head.$styles->of($worst->dimRole())->apply($label), $contentWidth);
     }
@@ -415,7 +414,7 @@ final class EditorRenderer
         }
 
         $label = AnsiText::truncate((string) \preg_replace('/\s+/', replacement: ' ', subject: $text), $available);
-        $head = AnsiText::padRight(AnsiSlice::byColumn($content, 0, $start), $start);
+        $head = AnsiText::padRight(AnsiUtils::sliceByColumn($content, 0, $start), $start);
 
         return AnsiText::padRight($head.$styles->of($role)->apply($label), $contentWidth);
     }

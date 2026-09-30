@@ -10,7 +10,6 @@ use Porta\Container\AsWidget;
 use Porta\Event\TerminalSessionCloseRequested;
 use Porta\Event\TerminalSessionCycleRequested;
 use Porta\I18n\Translator;
-use Porta\Support\AnsiSlice;
 use Porta\Support\AnsiText;
 use Porta\Support\IntMath;
 use Porta\Terminal\TerminalBuffer;
@@ -22,6 +21,7 @@ use Porta\Widget\Render\MenuOverlayHostTrait;
 use Porta\Widget\Support\InputHook;
 use Porta\Widget\Support\PanelRows;
 use Psr\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\FocusableInterface;
@@ -215,7 +215,7 @@ final class TerminalPanelWidget extends DockPanelWidget implements FocusableInte
         if ($this->focused && 0 === $this->scrollBack && [] !== $window) {
             $row = \count($window) - 1; // the last body line's index
             $col = \min($this->buffer->cursorColumn(), \max(0, $columns - 1));
-            $byte = \strlen(AnsiSlice::byColumn($lines[$row], 0, $col));
+            $byte = \strlen(AnsiUtils::sliceByColumn($lines[$row], 0, $col));
             $lines[$row] = \substr($lines[$row], offset: 0, length: $byte).$this->cursorStyle->marker().\substr($lines[$row], $byte);
         }
 

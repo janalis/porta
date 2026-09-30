@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace Porta\Widget\Render;
 
-use Porta\Support\AnsiSlice;
 use Porta\Support\AnsiText;
 use Porta\Support\IntMath;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Style\Style;
 
 /**
@@ -146,7 +146,7 @@ final class CaretPopupRenderer
             return '';
         }
 
-        return Glyphs::ELLIPSIS.AnsiSlice::byColumn($text, \mb_strwidth($text) - ($width - 1), $width - 1);
+        return Glyphs::ELLIPSIS.AnsiUtils::sliceByColumn($text, \mb_strwidth($text) - ($width - 1), $width - 1);
     }
 
     private static function counterTail(string $tail, Style $style): string

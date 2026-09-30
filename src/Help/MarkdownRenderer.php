@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Porta\Help;
 
 use Porta\Editor\TextMetrics;
-use Porta\Support\AnsiSlice;
 use Porta\Support\AnsiText;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
@@ -433,7 +432,7 @@ final class MarkdownRenderer
                     // CJK paragraph (one "word", no spaces) lost one glyph per line.
                     // At least one whole glyph per piece, so a glyph wider than
                     // the room still advances the loop (the line's truncate clips).
-                    $cut = \max(\strlen(AnsiSlice::byColumn($word, 0, $room)), TextMetrics::nextGrapheme($word, 0));
+                    $cut = \max(\strlen(AnsiUtils::sliceByColumn($word, 0, $room)), TextMetrics::nextGrapheme($word, 0));
                     $head = \substr($word, offset: 0, length: $cut);
                     $words[] = new MarkdownWord($head, AnsiUtils::visibleWidth($head), $segment->kind, $segment->target, $segment->group);
                     $word = \substr($word, \strlen($head));

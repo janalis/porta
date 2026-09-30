@@ -19,7 +19,6 @@ use Porta\ImageViewer\PixelPlacement;
 use Porta\ImageViewer\ScaledSource;
 use Porta\ImageViewer\ZoomPanModel;
 use Porta\ImageViewer\ZoomPanPane;
-use Porta\Support\AnsiSlice;
 use Porta\Support\DebouncedRequest;
 use Porta\Support\RevoltScheduler;
 use Porta\Support\Scheduler;
@@ -29,6 +28,7 @@ use Porta\Ui\Graphics\TerminalGraphics;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\NavigablePaneWidget;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
 
@@ -304,7 +304,7 @@ final class GraphViewerWidget extends NavigablePaneWidget
                 $lines[0] = $this->errorBanner($this->error, $cols);
             }
             if ($this->layingOut) {
-                $lines[0] = AnsiSlice::truncate($this->styles->of(Role::Dim)->apply(' '.Glyphs::WORKING.' '.$this->translator->trans('layout…').' '), $cols, pad: true);
+                $lines[0] = AnsiUtils::truncateToWidth($this->styles->of(Role::Dim)->apply(' '.Glyphs::WORKING.' '.$this->translator->trans('layout…').' '), $cols, pad: true);
             }
         }
 

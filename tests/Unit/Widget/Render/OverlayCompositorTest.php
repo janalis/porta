@@ -122,4 +122,23 @@ final class OverlayCompositorTest extends TestCase
         $tail = \substr($out, (int) \strpos($out, needle: '[pp]') + 4);
         $this->assertMatchesRegularExpression('/^(?:\e\[[0-9;:]*m)*?\e\[44m gh/', $tail, 'the background opens before the blank');
     }
+
+    public function testAnOverlayOverAccentedTextIsNotCutShort(): void
+    {
+        // The symptom, under symfony/tui before d0adb8b: a popup spliced over a
+        // row with a decomposed accent lost a column per mark and was padded
+        // blank to make up the width.
+        $row = "\x1b[32mcafe\u{0301}\x1b[0m au lait, cre\u{0300}me bru\u{0302}le\u{0301}e".\str_repeat(' ', times: 10);
+        $columns = AnsiUtils::visibleWidth($row);
+
+        $composed = OverlayCompositor::into($row, 12, 6, $columns, '[MENU]');
+
+        $this->assertSame($columns, AnsiUtils::visibleWidth($composed));
+        $plain = AnsiUtils::stripAnsiCodes($composed);
+        $this->assertSame(12, AnsiUtils::visibleWidth(\substr($plain, offset: 0, length: (int) \strpos($plain, needle: '[MENU]'))), 'the popup starts at its own column');
+        // Everything before the popup survives: the old vendor dropped the `t`
+        // and padded a blank in its place, which kept the popup's column
+        // honest and hid the loss.
+        $this->assertStringContainsString("cafe\u{0301} au lait[MENU]", $plain);
+    }
 }
