@@ -1347,7 +1347,7 @@ final class PluginApi
     {
         $runtime = $this->manager->runtime();
 
-        return new CodeIntelligence($runtime->lspQuery, $runtime->buffers);
+        return new CodeIntelligence($runtime->lspQuery, $runtime->buffers, $runtime->workspaceEditor, $runtime->documents);
     }
 
     /**

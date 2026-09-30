@@ -185,6 +185,17 @@ final class Document
         return $this->indent->tabWidth;
     }
 
+    /**
+     * The `FormattingOptions` a language server formats this document by:
+     * its own indentation, so a format does not re-indent the whole file.
+     *
+     * @return array{tabSize: int, insertSpaces: bool}
+     */
+    public function formattingOptions(): array
+    {
+        return ['tabSize' => $this->usesTabs() ? $this->tabWidth() : $this->indentSize(), 'insertSpaces' => !$this->usesTabs()];
+    }
+
     /** Display width of one indent level: the tab width for tabbed files, else the indent size. */
     public function indentDisplayWidth(): int
     {

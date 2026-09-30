@@ -71,7 +71,7 @@ final class FormatOnSave
         $token = $this->round->start();
         $doc = $buffer->document;
         $version = $doc->version;
-        $options = ['tabSize' => $doc->usesTabs() ? $doc->tabWidth() : $doc->indentSize(), 'insertSpaces' => !$doc->usesTabs()];
+        $options = $doc->formattingOptions();
 
         // Ctrl+S must never hang: after 2 s the save proceeds unformatted and
         // the late response is dropped — with a flash, so a skipped format is

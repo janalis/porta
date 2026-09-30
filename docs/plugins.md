@@ -795,6 +795,9 @@ other action methods it throws during `activate()`. Lines and columns are
 | `references(string $path, int $line, int $column, \Closure $onDone)` | Every place the symbol is used, its declaration included; `definition()`'s shape |
 | `hover(string $path, int $line, int $column, \Closure $onDone)` | What the server says about the symbol — signature and documentation — as plain text: `$onDone(?string $text, ?string $error)` |
 | `symbols(string $query, \Closure $onDone)` | The project's symbols matching `$query` from the running server (`workspace/symbol`): `$onDone(list $symbols, ?string $error)`, each `path`, `line`, `name` and the protocol's `kind` number. With no server running, the error says so |
+| `outline(string $path, \Closure $onDone)` | What one file declares, outermost first (`textDocument/documentSymbol`): `$onDone(list $symbols, ?string $error)`, each `name`, the protocol's `kind` number, `line`, `column` and `depth` — how deeply it is nested |
+| `rename(string $path, int $line, int $column, string $newName, \Closure $onDone)` | Rename the symbol everywhere the server finds it, and APPLY it as the editor's Rename does: an open file's buffer is edited and left unsaved, a file that is not open is **rewritten on disk**, and Undo Refactoring takes it all back. `$onDone(?array $outcome, ?string $error)`: `files` changed and `skipped`, the ones that could not be written |
+| `format(string $path, \Closure $onDone)` | Format an OPEN file as its server does, by the file's own indentation, as one undoable edit, unsaved. `$onDone(int $applied, ?string $error)`: how many of the server's edits it applied, 0 when the file was already formatted. Refused when the text changed while the server worked |
 
 The server questions answer later, on the loop, and a request to a language
 server has no timeout of its own. A tool handler waits with

@@ -256,4 +256,55 @@ final class LspQueryTest extends TestCase
             $said,
         );
     }
+
+    public function testTheOutlineRenameAndFormattingAreAskedNotApplied(): void
+    {
+        $query = $this->query();
+        $a = $this->path('src/A.php');
+        $said = [];
+        $keep = static function (mixed $answer, ?string $error) use (&$said): void {
+            $said[] = [$answer, $error];
+        };
+
+        $query->documentSymbols($a, $keep);
+        $query->rename($a, 1, 6, 'Z', $keep);
+        $query->rename($a, 1, 6, 'Z', $keep);
+        $query->rename($a, 1, 6, 'Z', $keep);
+        $query->formatting($a, ['tabSize' => 2, 'insertSpaces' => true], $keep);
+        $query->formatting($a, ['tabSize' => 2, 'insertSpaces' => true], $keep);
+
+        $this->assertSame(
+            ['textDocument/documentSymbol', 'textDocument/rename', 'textDocument/rename', 'textDocument/rename', 'textDocument/formatting', 'textDocument/formatting'],
+            \array_column($this->client()->requests, 'method'),
+        );
+        $this->assertSame(['textDocument' => ['uri' => Uri::fromPath($a)], 'position' => ['line' => 1, 'character' => 6], 'newName' => 'Z'], $this->client()->requests[1]['params']);
+        $this->assertSame(['textDocument' => ['uri' => Uri::fromPath($a)], 'options' => ['tabSize' => 2, 'insertSpaces' => true]], $this->client()->requests[4]['params']);
+
+        $edit = ['changes' => [Uri::fromPath($a) => []]];
+        $format = ['range' => ['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 0]], 'newText' => ' '];
+        $this->answer(0, ['A' => ['name' => 'A', 'kind' => 5, 'selectionRange' => ['start' => ['line' => 1, 'character' => 6]]]]);
+        $this->answer(1, $edit);
+        $this->answer(2, null);
+        $this->answer(3, null, ['message' => 'No symbol here']);
+        $this->answer(4, [7 => $format]);
+        $this->answer(5, null);
+
+        $this->assertSame(
+            [
+                [[['name' => 'A', 'kind' => 5, 'line' => 1, 'column' => 6, 'depth' => 0]], null],
+                [$edit, null],
+                [null, 'The language server cannot rename anything at this position'],
+                [null, 'No symbol here'],
+                [[$format], null],
+                [[], null],
+            ],
+            $said,
+            'a keyed answer is read as the list it should have been; no edits is nothing to format',
+        );
+        $this->assertSame(
+            ['textDocument/didOpen '.Uri::fromPath($a), 'textDocument/didClose '.Uri::fromPath($a)],
+            $this->documents(),
+            'lent once for the six questions, given back after the last',
+        );
+    }
 }

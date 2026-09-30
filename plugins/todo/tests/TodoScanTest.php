@@ -29,6 +29,7 @@ use Porta\Tests\Support\TestDockTools;
 use Porta\Tests\Support\TestLspQuery;
 use Porta\Tests\Support\TestRunController;
 use Porta\Tests\Support\TestTui;
+use Porta\Tests\Support\TestWorkspaceEditor;
 use Porta\Todo\TodoScan;
 use Porta\Todo\TodoTags;
 use Porta\Tree\FileStatuses;
@@ -101,6 +102,7 @@ final class TodoScanTest extends TestCase
             TestLspQuery::create(),
             new BufferSaver(new BufferManager(), new EventDispatcher()),
             TestRunController::create(),
+            TestWorkspaceEditor::create(),
         ));
 
         $api = new PluginApi('todo', $manager, $project->dir, $settings);

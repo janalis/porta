@@ -59,10 +59,19 @@ socket is removed when Porta quits or the plugin is disabled.
 | `references` | Every place that symbol is used, its declaration included |
 | `hover` | What the language server says about it: signature and documentation |
 | `symbols` | The project's classes, functions and other symbols whose name matches a query |
+| `outline` | What one file declares — classes, methods, functions — nested, with positions |
+| `format` | Format a file as its language server does, as one undoable edit — not saved |
+| `rename` | Rename a symbol everywhere the language server finds it — off until you allow both edits and saves |
 
-The four code tools ask the language server the IDE already runs, about **any file
+The code tools ask the language server the IDE already runs, about **any file
 of the project** — open or not, with nothing shown and no tab moved — so an
-agent gets the precise answer a text search for a name is not. A column
+agent gets the precise answer a text search for a name is not.
+
+`format` and `rename` change code, as the editor's Reformat and Rename do.
+`format` edits the buffer, unsaved, like the other edit tools. `rename` also
+**rewrites the files that are not open**, since a rename has to reach every
+use. So it is offered only with both `allowEdits` and `allowSave` on, and Undo
+Refactoring takes the whole rename back. A column
 counts UTF-16 code units, as the protocol does. A server that does not answer
 within the `lspTimeout` setting (15 seconds) is given up on.
 

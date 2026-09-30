@@ -6,6 +6,7 @@ namespace Porta\Editor;
 
 use Porta\Container\AsIdeService;
 use Porta\Lsp\LspSessionPool;
+use Porta\Lsp\WorkspaceEditor;
 
 /**
  * Swap a buffer's whole text as ONE undoable edit, and tell the two things that
@@ -66,6 +67,24 @@ final readonly class DocumentReplacer
             $document->insert($text);
         });
         $this->changed($buffer);
+    }
+
+    /**
+     * Apply a language server's text edits to $buffer — a format, say — as
+     * ONE undoable edit, told to the same two as {@see replace()}. False when
+     * they overlap, which leaves the buffer untouched (see
+     * {@see WorkspaceEditor::applyTextEdits()}).
+     *
+     * @param list<array{range: array{start: array{line?: int, character?: int}, end: array{line?: int, character?: int}}, newText: string}> $edits
+     */
+    public function applyEdits(Buffer $buffer, array $edits): bool
+    {
+        if (!WorkspaceEditor::applyTextEdits($buffer->document, $edits)) {
+            return false;
+        }
+        $this->changed($buffer);
+
+        return true;
     }
 
     /** What every edit here is followed by. */

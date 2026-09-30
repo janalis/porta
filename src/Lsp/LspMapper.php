@@ -350,6 +350,28 @@ final class LspMapper
      */
     public static function flattenSymbols(array $symbols, int $depth, array &$items): void
     {
+        foreach (self::outline($symbols, $depth) as $symbol) {
+            $items[] = [
+                'label' => \str_repeat('  ', \max(0, $symbol['depth'])).$symbol['name'],
+                'hint' => self::SYMBOL_KINDS[$symbol['kind']] ?? '',
+                'value' => $symbol['line'].':'.$symbol['column'],
+            ];
+        }
+    }
+
+    /**
+     * A `textDocument/documentSymbol` answer — a DocumentSymbol tree or flat
+     * SymbolInformation — as rows in document order, a parent before its
+     * children, each with how deep it is nested. The position is where the
+     * symbol is NAMED (`selectionRange`), which is where a caret goes to it.
+     *
+     * @param list<array<array-key, mixed>|scalar|null> $symbols
+     *
+     * @return list<array{name: string, kind: int, line: int, column: int, depth: int}>
+     */
+    public static function outline(array $symbols, int $depth = 0): array
+    {
+        $rows = [];
         foreach ($symbols as $symbol) {
             if (!\is_array($symbol) || '' === (string) ($symbol['name'] ?? '')) {
                 continue;
@@ -359,19 +381,21 @@ final class LspMapper
             $range = $symbol['selectionRange'] ?? $symbol['range'] ?? $symbol['location']['range'] ?? ['start' => ['line' => 0, 'character' => 0]];
             /** @var array<array-key, mixed> $start */
             $start = $range['start'] ?? ['line' => 0, 'character' => 0];
-
-            $items[] = [
-                'label' => \str_repeat('  ', \max(0, $depth)).(string) $symbol['name'],
-                'hint' => self::SYMBOL_KINDS[$symbol['kind'] ?? 0] ?? '',
-                'value' => (int) ($start['line'] ?? 0).':'.(int) ($start['character'] ?? 0),
+            $rows[] = [
+                'name' => (string) $symbol['name'],
+                'kind' => (int) ($symbol['kind'] ?? 0),
+                'line' => (int) ($start['line'] ?? 0),
+                'column' => (int) ($start['character'] ?? 0),
+                'depth' => $depth,
             ];
-
             if (\is_array($symbol['children'] ?? null)) {
                 /** @var list<array<array-key, mixed>|scalar|null> $children */
                 $children = $symbol['children'];
-                self::flattenSymbols($children, $depth + 1, $items);
+                $rows = [...$rows, ...self::outline($children, $depth + 1)];
             }
         }
+
+        return $rows;
     }
 
     /**

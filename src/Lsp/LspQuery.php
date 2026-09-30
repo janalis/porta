@@ -65,6 +65,57 @@ final class LspQuery
     }
 
     /**
+     * The symbols one file declares — its outline — outermost first, as
+     * {@see LspMapper::outline()} rows; `kind` is the protocol's SymbolKind.
+     *
+     * @param \Closure(list<array{name: string, kind: int, line: int, column: int, depth: int}>, ?string): void $onDone
+     */
+    public function documentSymbols(string $path, \Closure $onDone): void
+    {
+        $this->ask($path, 'textDocument/documentSymbol', [], static function (mixed $result, ?string $error) use ($onDone): void {
+            /** @var list<array<array-key, mixed>|scalar|null> $symbols */
+            $symbols = \is_array($result) ? \array_values($result) : [];
+            $onDone(LspMapper::outline($symbols), $error);
+        });
+    }
+
+    /**
+     * The WorkspaceEdit that renames the symbol at a position, as the server
+     * computed it — NOT applied: applying is an editor action, and this class
+     * only asks. Null with the reason when the server cannot rename there.
+     *
+     * @param \Closure(array<string, mixed>|null, ?string): void $onDone
+     */
+    public function rename(string $path, int $line, int $column, string $newName, \Closure $onDone): void
+    {
+        $this->ask($path, 'textDocument/rename', ['position' => ['line' => $line, 'character' => $column], 'newName' => $newName], static function (mixed $result, ?string $error) use ($onDone): void {
+            if (null === $error && !\is_array($result)) {
+                $error = 'The language server cannot rename anything at this position';
+            }
+            /** @var array<string, mixed>|null $edit */
+            $edit = null === $error ? $result : null;
+            $onDone($edit, $error);
+        });
+    }
+
+    /**
+     * The text edits that format a file by $options, as the server computed
+     * them against the text it has — NOT applied. None when it is already
+     * formatted.
+     *
+     * @param array{tabSize: int, insertSpaces: bool}                                                                                                  $options
+     * @param \Closure(list<array{range: array{start: array{line?: int, character?: int}, end: array{line?: int, character?: int}}, newText: string}>, ?string): void $onDone
+     */
+    public function formatting(string $path, array $options, \Closure $onDone): void
+    {
+        $this->ask($path, 'textDocument/formatting', ['options' => $options], static function (mixed $result, ?string $error) use ($onDone): void {
+            /** @var list<array{range: array{start: array{line?: int, character?: int}, end: array{line?: int, character?: int}}, newText: string}> $edits */
+            $edits = \is_array($result) ? \array_values($result) : [];
+            $onDone($edits, $error);
+        });
+    }
+
+    /**
      * The project's symbols matching $query, from the server already running —
      * workspace-wide, so no file names which one; with none running there is
      * nobody to ask.

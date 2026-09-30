@@ -17,6 +17,7 @@ use Porta\Editor\LineAnnotationSink;
 use Porta\Editor\ModalHost;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspQuery;
+use Porta\Lsp\WorkspaceEditor;
 use Porta\Plugin\Api\PluginApi;
 use Porta\Plugin\Lifecycle\PluginLifecycleOps;
 use Porta\Run\RunController;
@@ -63,5 +64,6 @@ final readonly class PluginRuntime
         public LspQuery $lspQuery,
         public BufferSaver $saver,
         public RunController $runs,
+        public WorkspaceEditor $workspaceEditor,
     ) {}
 }

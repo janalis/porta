@@ -351,7 +351,7 @@ final readonly class WorkspaceEditor
 
         $buffer = $this->bufferAt($target);
         if (null !== $buffer) {
-            if (!$this->applyTextEdits($buffer->document, $edits)) {
+            if (!self::applyTextEdits($buffer->document, $edits)) {
                 $skipped[] = $target;
 
                 return;
@@ -372,7 +372,7 @@ final readonly class WorkspaceEditor
             return;
         }
         $document = new Document($contents);
-        if (!$this->applyTextEdits($document, $edits)) {
+        if (!self::applyTextEdits($document, $edits)) {
             $skipped[] = $target;
 
             return;
@@ -406,7 +406,7 @@ final readonly class WorkspaceEditor
      *
      * @param list<array{range: array{start: array{line?: int, character?: int}, end: array{line?: int, character?: int}}, newText?: string}> $edits
      */
-    public function applyTextEdits(Document $document, array $edits): bool
+    public static function applyTextEdits(Document $document, array $edits): bool
     {
         if (null !== TextEditOverlap::describe($edits)) {
             return false;

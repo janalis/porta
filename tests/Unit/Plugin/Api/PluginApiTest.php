@@ -52,6 +52,7 @@ use Porta\Tests\Support\TestDockTools;
 use Porta\Tests\Support\TestLspQuery;
 use Porta\Tests\Support\TestRunController;
 use Porta\Tests\Support\TestTui;
+use Porta\Tests\Support\TestWorkspaceEditor;
 use Porta\Tree\FileStatuses;
 use Porta\Ui\ClickIntent;
 use Porta\Ui\Markup\Markup;
@@ -141,6 +142,7 @@ final class PluginApiTest extends TestCase
                     TestLspQuery::create(),
                     new BufferSaver($this->buffers, $this->events = new EventDispatcher()),
                     $this->runs = TestRunController::create(tui: $tui),
+                    TestWorkspaceEditor::create($this->buffers),
                 ),
             );
         }
@@ -490,6 +492,7 @@ final class PluginApiTest extends TestCase
                 lspQuery: TestLspQuery::create(),
                 saver: new BufferSaver(new BufferManager(), new EventDispatcher()),
                 runs: TestRunController::create(),
+                workspaceEditor: TestWorkspaceEditor::create(),
             ),
         );
         $api = new PluginApi('demo', $manager, $project->dir, $settings);
@@ -975,6 +978,7 @@ final class PluginApiTest extends TestCase
             TestLspQuery::create(),
             new BufferSaver(new BufferManager(), new EventDispatcher()),
             TestRunController::create(),
+            TestWorkspaceEditor::create(),
         ));
         $api = new PluginApi('demo', $manager, '/p', new PluginSettings('/p', [], null, self::projectScope('/p')));
         $api->registerListTool('todo', 'TODO');
@@ -1023,6 +1027,7 @@ final class PluginApiTest extends TestCase
             TestLspQuery::create(),
             new BufferSaver(new BufferManager(), new EventDispatcher()),
             TestRunController::create(),
+            TestWorkspaceEditor::create(),
         ));
         $api = new PluginApi('demo', $manager, $project->dir, new PluginSettings($project->dir, [], null, self::projectScope($project->dir)));
 
@@ -1149,6 +1154,7 @@ final class PluginApiTest extends TestCase
             TestLspQuery::create(),
             new BufferSaver(new BufferManager(), new EventDispatcher()),
             TestRunController::create(),
+            TestWorkspaceEditor::create(),
         ));
 
         return new PluginApi('demo', $manager, '/p', new PluginSettings('/p', [], null, self::projectScope('/p')));

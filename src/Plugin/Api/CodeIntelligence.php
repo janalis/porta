@@ -5,13 +5,16 @@ declare(strict_types=1);
 namespace Porta\Plugin\Api;
 
 use Porta\Editor\BufferManager;
+use Porta\Editor\DocumentReplacer;
 use Porta\Lsp\LspQuery;
+use Porta\Lsp\WorkspaceEditor;
 
 /**
  * What the IDE knows about the code, for a plugin: the diagnostics every
  * language server and analyser published on the open buffers, and questions
  * put to the language server for any file of the project — where a symbol is
- * declared, where it is used, what it is, which symbols match a name.
+ * declared, where it is used, what it is, which symbols match a name, what a
+ * file declares — and the two changes it computes: a rename and a format.
  *
  * Reached through {@see PluginApi::codeIntelligence()}, which is an action
  * method; this object holds the live IDE seams and asks at call time. One
@@ -28,6 +31,8 @@ final readonly class CodeIntelligence
     public function __construct(
         private LspQuery $query,
         private BufferManager $buffers,
+        private WorkspaceEditor $edits,
+        private DocumentReplacer $documents,
     ) {}
 
     /**
@@ -122,5 +127,79 @@ final readonly class CodeIntelligence
     public function symbols(string $query, \Closure $onDone): void
     {
         $this->query->workspaceSymbols($query, $onDone);
+    }
+
+    /**
+     * What one file declares — its classes, their methods and properties,
+     * its functions — outermost first, each with how deep it is nested and
+     * where it is named. {@see definition()}'s rules; `kind` is the protocol's
+     * SymbolKind number.
+     *
+     * @param \Closure(list<array{name: string, kind: int, line: int, column: int, depth: int}>, ?string): void $onDone
+     */
+    public function outline(string $path, \Closure $onDone): void
+    {
+        $this->query->documentSymbols($path, $onDone);
+    }
+
+    /**
+     * RENAME the symbol at a position wherever the language server finds it,
+     * and apply that as the editor's own Rename does: an open file's buffer
+     * is edited and left unsaved, a file that is not open is REWRITTEN on
+     * disk, and Undo Refactoring takes the whole rename back. `$onDone` gets
+     * how many files changed and which could not be written, or the error.
+     *
+     * @param \Closure(array{files: int, skipped: list<string>}|null, ?string): void $onDone
+     */
+    public function rename(string $path, int $line, int $column, string $newName, \Closure $onDone): void
+    {
+        $edits = $this->edits;
+        $this->query->rename($path, $line, $column, $newName, static function (?array $edit, ?string $error) use ($edits, $onDone): void {
+            if (null === $edit) {
+                $onDone(null, $error);
+
+                return;
+            }
+            /** @var array<string, mixed> $edit */
+            $outcome = $edits->applyWorkspaceEdit($edit);
+            if ($outcome->isRefused()) {
+                $onDone(null, $outcome->refused);
+
+                return;
+            }
+            $fine = null;
+            $onDone(['files' => $outcome->touched, 'skipped' => $outcome->skipped], $fine);
+        });
+    }
+
+    /**
+     * FORMAT an open file as its language server would, by the file's own
+     * indentation, as one edit the user undoes — not saved. `$onDone` gets
+     * how many of the server's edits it applied — none when the file was
+     * already formatted — or the error: the file is not open, the server
+     * refused, or the text changed while it worked, which makes its edits
+     * wrong.
+     *
+     * @param \Closure(int, ?string): void $onDone
+     */
+    public function format(string $path, \Closure $onDone): void
+    {
+        $buffer = $this->buffers->get($path);
+        if (null === $buffer || $buffer->isViewer()) {
+            $onDone(0, \sprintf('%s is not open as text', $path));
+
+            return;
+        }
+        $documents = $this->documents;
+        $version = $buffer->document->version;
+        $this->query->formatting($path, $buffer->document->formattingOptions(), static function (array $edits, ?string $error) use ($buffer, $version, $documents, $onDone): void {
+            $why = match (true) {
+                null !== $error => $error,
+                $buffer->document->version !== $version => 'The file changed while the language server formatted it — ask again',
+                [] !== $edits && !$documents->applyEdits($buffer, $edits) => 'The language server sent overlapping edits; nothing changed',
+                default => null,
+            };
+            $onDone(null === $why ? \count($edits) : 0, $why);
+        });
     }
 }

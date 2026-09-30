@@ -557,7 +557,7 @@ final class RefactorController extends AbstractLspController implements EditorRe
 
         // Format the selection (rangeFormatting) when one exists, else the file.
         $doc = $this->editor->getDocument();
-        $options = ['tabSize' => $doc->usesTabs() ? $doc->tabWidth() : $doc->indentSize(), 'insertSpaces' => !$doc->usesTabs()];
+        $options = $doc->formattingOptions();
         $selection = $doc->getSelectionRange();
         [$method, $params] = null !== $selection
             ? [
