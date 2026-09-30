@@ -105,6 +105,25 @@ once silently burning their full timeout as sleeps. Write
 `static function () use (&$x): bool { … }`, or read `$this->…` state. When there
 is genuinely nothing to await, say so with `pump()`.
 
+**A paint barrier that gives up prints the screen.** `awaitPainted()` and
+`awaitPaintedRaw()` append the grid as it stood, one `| ` row per line, so
+the failure says whether a modal was still open or a different flash painted.
+Read it before re-running the test to look.
+
+**Golden files regenerate through one variable each**, and the mismatch
+message names it. Regenerate only when the change is the one you meant, then
+read the golden's diff as part of the review:
+
+| Golden | Regenerate with |
+| --- | --- |
+| `EditorRenderGoldenTest` | `UPDATE_EDITOR_GOLDEN=1` |
+| `EditorKeymapTest` | `UPDATE_EDITOR_KEYMAP_GOLDEN=1` |
+| `SettingsRenderGoldenTest` | `UPDATE_SETTINGS_GOLDEN=1` |
+| `SettingsPagesGoldenTest` (E2e) | `UPDATE_SETTINGS_PAGES_GOLDEN=1` |
+| `LspClientTest` (capabilities) | `UPDATE_LSP_CAPABILITIES_GOLDEN=1` |
+
+e.g. `UPDATE_EDITOR_GOLDEN=1 vendor/bin/phpunit tests/Unit/Widget/Render/EditorRenderGoldenTest.php`.
+
 **Expected styled bytes are written as markup**, `Styles::dark()->format('<added>+</>')`.
 It produces the same bytes as the hand-written `->of(Role::Added)->apply('+')`
 for a flat span, and it reads as what the row shows. There is no rig for it

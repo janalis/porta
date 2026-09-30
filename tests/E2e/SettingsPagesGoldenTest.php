@@ -107,7 +107,7 @@ final class SettingsPagesGoldenTest extends TestCase
         $mapped = \array_keys(self::SECTION_PAGES);
         \sort($mapped);
 
-        $this->assertSame($mapped, $sections, 'a settings section appeared or moved: give it a page in SECTION_PAGES and PAGES, then regenerate the golden');
+        $this->assertSame($mapped, $sections, 'a settings section appeared or moved: give it a page in SECTION_PAGES and PAGES, then regenerate the golden with UPDATE_SETTINGS_PAGES_GOLDEN=1');
         $this->assertSame(
             [],
             \array_values(\array_diff(\array_values(self::SECTION_PAGES), self::PAGES)),
@@ -135,10 +135,10 @@ final class SettingsPagesGoldenTest extends TestCase
 
         // Page by page, so a failure names the page rather than the whole file.
         foreach ($expected as $page => $lines) {
-            $this->assertArrayHasKey($page, $actual, "page {$page} missing");
-            $this->assertSame($lines, $actual[$page], "page {$page} reads differently");
+            $this->assertArrayHasKey($page, $actual, "page {$page} missing — if intended, rerun with UPDATE_SETTINGS_PAGES_GOLDEN=1");
+            $this->assertSame($lines, $actual[$page], "page {$page} reads differently — if intended, rerun with UPDATE_SETTINGS_PAGES_GOLDEN=1");
         }
-        $this->assertSame(\array_keys($expected), \array_keys($actual), 'the page set changed');
+        $this->assertSame(\array_keys($expected), \array_keys($actual), 'the page set changed — if intended, rerun with UPDATE_SETTINGS_PAGES_GOLDEN=1');
     }
 
     /**

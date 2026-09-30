@@ -46,14 +46,12 @@ trait RunsIde
      */
     private function awaitPainted(Tui $tui, VirtualTerminal $terminal, string $needle, float $timeout = 10.0): void
     {
-        $this->await(
-            function () use ($tui, $terminal, $needle): bool {
-                $this->frame($tui);
-
-                return \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), $needle);
-            },
-            timeout: $timeout,
-            what: $needle.' to paint',
+        $this->awaitOnScreen(
+            $tui,
+            $terminal,
+            static fn (string $output): bool => \str_contains(AnsiUtils::stripAnsiCodes($output), $needle),
+            $timeout,
+            $needle.' to paint',
         );
     }
 
@@ -73,15 +71,50 @@ trait RunsIde
      */
     private function awaitPaintedRaw(Tui $tui, VirtualTerminal $terminal, string $needle, float $timeout = 10.0): void
     {
-        $this->await(
-            function () use ($tui, $terminal, $needle): bool {
-                $this->frame($tui);
-
-                return \str_contains($terminal->getOutput(), $needle);
-            },
-            timeout: $timeout,
-            what: 'raw '.\addcslashes($needle, characters: "\0..\37").' to paint',
+        $this->awaitOnScreen(
+            $tui,
+            $terminal,
+            static fn (string $output): bool => \str_contains($output, $needle),
+            $timeout,
+            'raw '.\addcslashes($needle, characters: "\0..\37").' to paint',
         );
+    }
+
+    /**
+     * The barrier both paint waits share: a forced frame per turn until $seen
+     * accepts the terminal's output — and, when it never does, the screen as
+     * it stood when the wait gave up.
+     *
+     * A bare "timed out waiting for Saved to paint" says only that the needle
+     * never arrived; what WAS on screen — a modal still open, a different
+     * flash, an empty buffer — is the diagnosis, and without it every E2e
+     * timeout began with a re-run just to look.
+     *
+     * @param \Closure(string): bool $seen
+     */
+    private function awaitOnScreen(Tui $tui, VirtualTerminal $terminal, \Closure $seen, float $timeout, string $what): void
+    {
+        try {
+            $this->await(
+                function () use ($tui, $terminal, $seen): bool {
+                    $this->frame($tui);
+
+                    return $seen($terminal->getOutput());
+                },
+                timeout: $timeout,
+                what: $what,
+            );
+        } catch (\RuntimeException $gaveUp) {
+            $rows = \array_map(\rtrim(...), $this->screenGrid($tui, $terminal));
+            while ([] !== $rows && '' === \end($rows)) {
+                \array_pop($rows);
+            }
+
+            throw new \RuntimeException(
+                $gaveUp->getMessage()."\nThe screen when it gave up:\n| ".\implode("\n| ", $rows),
+                previous: $gaveUp,
+            );
+        }
     }
 
     /**

@@ -63,6 +63,7 @@ final class LspClientTest extends TestCase
         $this->assertSame(
             \json_decode((string) \file_get_contents(self::CAPABILITIES_GOLDEN), associative: true),
             $params['capabilities'],
+            'the advertised capabilities changed — if intended, rerun with UPDATE_LSP_CAPABILITIES_GOLDEN=1',
         );
         $this->assertArrayNotHasKey('initializationOptions', $params, 'no options configured, none sent');
     }

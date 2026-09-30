@@ -43,10 +43,10 @@ final class EditorRenderGoldenTest extends TestCase
 
         // Compare scenario by scenario for a readable diff on failure.
         foreach ($expected as $name => $rows) {
-            $this->assertArrayHasKey($name, $actual, "scenario {$name} missing");
-            $this->assertSame($rows, $actual[$name], "scenario {$name} render changed");
+            $this->assertArrayHasKey($name, $actual, "scenario {$name} missing — if intended, rerun with UPDATE_EDITOR_GOLDEN=1");
+            $this->assertSame($rows, $actual[$name], "scenario {$name} render changed — if intended, rerun with UPDATE_EDITOR_GOLDEN=1");
         }
-        $this->assertSame(\array_keys($expected), \array_keys($actual), 'scenario set changed');
+        $this->assertSame(\array_keys($expected), \array_keys($actual), 'scenario set changed — if intended, rerun with UPDATE_EDITOR_GOLDEN=1');
     }
 
     /** @return array<string, string[]> */

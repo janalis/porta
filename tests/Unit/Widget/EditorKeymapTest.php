@@ -42,9 +42,9 @@ final class EditorKeymapTest extends TestCase
         // Action by action, so a failure names the verb rather than printing
         // two hundred lines of array diff.
         foreach ($expected as $action => $keys) {
-            $this->assertArrayHasKey($action, $actual, "action {$action} is no longer bound");
-            $this->assertSame($keys, $actual[$action], "action {$action} binds different keys");
+            $this->assertArrayHasKey($action, $actual, "action {$action} is no longer bound — if intended, rerun with UPDATE_EDITOR_KEYMAP_GOLDEN=1");
+            $this->assertSame($keys, $actual[$action], "action {$action} binds different keys — if intended, rerun with UPDATE_EDITOR_KEYMAP_GOLDEN=1");
         }
-        $this->assertSame(\array_keys($expected), \array_keys($actual), 'the action set changed');
+        $this->assertSame(\array_keys($expected), \array_keys($actual), 'the action set changed — if intended, rerun with UPDATE_EDITOR_KEYMAP_GOLDEN=1');
     }
 }
