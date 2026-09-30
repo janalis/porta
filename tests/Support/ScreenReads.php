@@ -74,7 +74,7 @@ trait ScreenReads
     private static function backgroundsOf(string $row): array
     {
         $tokens = [];
-        \preg_match_all('/\x1b\[([0-9;]*)m|\x1b_[^\x07]*\x07|\x1b\[[0-9;?]*[A-Za-z]|\X/u', $row, $tokens, \PREG_SET_ORDER);
+        \preg_match_all('/\x1b\[([0-9;]*)m|\x1b_[^\x07]*\x07|\x1b\[[0-9;?]*[ -\/]*[@-~]|\X/u', $row, $tokens, \PREG_SET_ORDER);
         $bg = null;
         $cells = [];
         foreach ($tokens as $token) {

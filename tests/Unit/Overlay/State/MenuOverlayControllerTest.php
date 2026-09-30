@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Overlay\State;
 use PHPUnit\Framework\TestCase;
 use Porta\I18n\Translator;
 use Porta\Overlay\Region\DropdownRegion;
+use Porta\Overlay\State\FloatingLayer;
 use Porta\Overlay\State\MenuOverlayController;
 use Porta\Overlay\State\MenuOverlayPanes;
 use Porta\Tests\Support\Probe;
@@ -81,7 +82,16 @@ final class MenuOverlayControllerTest extends TestCase
         $this->tui->add($pane);
         $this->frame();
         $contextMenu = new ContextMenu();
-        $controller = new MenuOverlayController($this->renderer, new MenuBarWidget(), $contextMenu, new MenuOverlayPanes([$pane], static fn (): array => []), new Translator('he'));
+        $layer = new FloatingLayer();
+        $controller = new MenuOverlayController(
+            $this->renderer,
+            new MenuBarWidget(),
+            $contextMenu,
+            new MenuOverlayPanes([$pane], static fn (): array => []),
+            new Translator('he'),
+            tui: $this->tui,
+            layer: $layer,
+        );
         $contextMenu->open([new MenuItem('Copy', 'Ctrl+C', null)]);
 
         $controller->setContextAnchor(5, 10);
@@ -91,11 +101,92 @@ final class MenuOverlayControllerTest extends TestCase
         [$shadow] = $controller->regions();
         $this->assertSame([9, $box->width + 1, $box->count + 1], [$shadow->col, $shadow->width, $shadow->count], 'the side column left of the box, and the band');
         $this->assertSame([9, $box->width], $shadow->columnsOn($box->top + $box->count), 'the band row: the band alone');
+        $this->assertSame([10, $box->width], $shadow->columnsOn($box->top), 'the top row: the box alone');
+
+        $this->assertTrue((bool) Probe::get($this->tui, 'renderRequested'), 'the layer changed: a frame is asked for');
+        // The menu rides the floating layer; the pane beneath keeps its own text.
+        $this->assertStringContainsString('Copy', AnsiUtils::stripAnsiCodes(\implode("\n", $layer->rows(100, 24))));
+        $this->assertStringNotContainsString('Copy', AnsiUtils::stripAnsiCodes(\implode("\n", $pane->render(new RenderContext(100, 24)))));
 
         $controller->setContextAnchor(5, 0);
         $controller->refreshContextMenu();
         [$edge] = $controller->regions();
         $this->assertSame([0, $box->width], [$edge->col, $edge->width], 'flush left: the box alone, from its own first column');
+
+        $contextMenu->close();
+        $controller->refreshContextMenu();
+        $this->assertStringNotContainsString('Copy', AnsiUtils::stripAnsiCodes(\implode("\n", $layer->rows(100, 24))), 'closed: off the layer');
+    }
+
+    /**
+     * A live switch to a right-to-left locale takes the open menu off the
+     * panes: left on them, it would be composited at its logical columns and
+     * mirrored away, leaving its old copy where it logically sat.
+     */
+    public function testALiveSwitchToMirroredTakesTheMenuOffThePanes(): void
+    {
+        $this->renderer = new Renderer(new StyleSheet());
+        $this->tui = new BidiTui(
+            terminal: new VirtualTerminal(columns: 100, rows: 24),
+            keybindings: new Keybindings([]),
+            renderer: $this->renderer,
+        );
+        $pane = new TestOverlayPane();
+        $this->tui->add($pane);
+        $this->frame();
+        $translator = new Translator('en');
+        $contextMenu = new ContextMenu();
+        $controller = new MenuOverlayController(
+            $this->renderer,
+            new MenuBarWidget(),
+            $contextMenu,
+            new MenuOverlayPanes([$pane], static fn (): array => []),
+            $translator,
+            tui: $this->tui,
+            layer: new FloatingLayer(),
+        );
+        $contextMenu->open([new MenuItem('Copy', 'Ctrl+C', null)]);
+        $controller->setContextAnchor(5, 10);
+        $rendered = static fn (): string => AnsiUtils::stripAnsiCodes(\implode("\n", $pane->render(new RenderContext(100, 24))));
+
+        $controller->refreshContextMenu();
+        $this->assertStringContainsString('Copy', $rendered(), 'left-to-right, the pane draws it');
+
+        $translator->setLocale('he');
+        $controller->refreshContextMenu();
+        $this->assertStringNotContainsString('Copy', $rendered(), 'mirrored, the pane no longer does');
+    }
+
+    /** An unchanged menu asks for no frame: asking every frame would never let the screen settle. */
+    public function testAnUnchangedMirroredMenuAsksForNoFrame(): void
+    {
+        $this->renderer = new Renderer(new StyleSheet());
+        $this->tui = new BidiTui(
+            terminal: new VirtualTerminal(columns: 100, rows: 24),
+            keybindings: new Keybindings([]),
+            renderer: $this->renderer,
+        );
+        $pane = new TestOverlayPane();
+        $this->tui->add($pane);
+        $this->frame();
+        $contextMenu = new ContextMenu();
+        $controller = new MenuOverlayController(
+            $this->renderer,
+            new MenuBarWidget(),
+            $contextMenu,
+            new MenuOverlayPanes([$pane], static fn (): array => []),
+            new Translator('he'),
+            tui: $this->tui,
+            layer: new FloatingLayer(),
+        );
+        $contextMenu->open([new MenuItem('Copy', 'Ctrl+C', null)]);
+        $controller->setContextAnchor(5, 10);
+        $controller->refreshContextMenu();
+        $this->tui->processRender(); // the frame the first refresh asked for
+
+        $controller->refreshContextMenu();
+
+        $this->assertFalse((bool) Probe::get($this->tui, 'renderRequested'));
     }
 
     public function testAListboxIsHeavyFramedAndFlipsAboveItsControl(): void

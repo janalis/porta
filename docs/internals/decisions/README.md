@@ -17,7 +17,8 @@ its one-line row in [Settled questions](../decisions.md).
 | [Part 4](history-04.md) | 2026-09-09 → 2026-09-11 | 42 |
 | [Part 5](history-05.md) | 2026-09-11 → 2026-09-12 | 31 |
 | [Part 6](history-06.md) | 2026-09-12 → 2026-09-28 | 28 |
-| [Part 7](history-07.md) | 2026-09-23 → 2026-09-30 | 39 |
+| [Part 7](history-07.md) | 2026-09-23 → 2026-09-30 | 46 |
+| [Part 8](history-08.md) | 2026-10-01 → | 1 |
 
 ## [Part 1](history-01.md)
 
@@ -280,3 +281,7 @@ its one-line row in [Settled questions](../decisions.md).
 - The live preview split (2026-09-30)
 - symfony/tui fa0b189: a format character takes no column (2026-09-30)
 - Shadows fall bottom-right in both directions (2026-09-30)
+
+## [Part 8](history-08.md)
+
+- A mirrored frame's surfaces ride a layer of their own (2026-10-01)

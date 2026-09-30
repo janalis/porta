@@ -383,16 +383,30 @@ non-move input dismisses the card in `InputDispatcher`, and the frame after a
 resize asks again at the pointer's last cell, since a resting pointer sends
 no move.
 
-**Every shadow falls bottom-right on screen, mirrored or not.** A surface
-under a right-to-left locale is composed logically and then flipped across the
-row, so `ModalShadow::spans()` casts its shadow to the LEFT when told the
-surface is shown `Rtl`, and `DropdownRegion::shadowClamped()` claims those
-cells for the flip. On the band's row the region claims the band alone
-(`lastRow`). A rectangle there takes the cell under the box's far corner, and the
-flip fills it with a pane glyph from across the row. `OverlayDelivery::shown()`
-says how a box is shown. A verbatim box (Find in Files, `'ltr' => true`) is
-never flipped and casts right. `IdeShadowTest` checks each surface in both
-locales.
+**A mirrored frame keeps its floating surfaces on a layer of their own.** Left
+to right, a surface is composited into the panes it floats over. Right to left
+that loses text: the frame is reordered after it is composed, a surface is
+mirrored across the whole row, and a pane only within its own span, so the pane
+text under the surface's LOGICAL columns was gone once the surface moved. An
+open File menu blanked the left third of the editor. Under an RTL locale,
+`OverlayDelivery` and `MenuOverlayController` push their spans to
+`Overlay/State/FloatingLayer` (screen coordinates, blank canvas) and give the
+panes only the backdrop dim. `PaneReorder::reorderRow()` reorders panes that
+have lost nothing, then stamps each region from the canvas row. A layer
+setter reports whether its slot changed, and the caller asks for the frame that a
+pane would have asked for by invalidating itself.
+
+**Every shadow falls bottom-right on screen, mirrored or not.** A mirrored
+surface casts its shadow to the LEFT before the flip (`ModalShadow::spans()`
+told the surface is shown `Rtl`). `DropdownRegion::shadowClamped()` claims cell
+for cell: the top row the box alone (`firstRow`), the rows below it box plus
+side column, the band row the band alone (`lastRow`). A rectangle claimed cells
+no surface paints, and the canvas stamped them blank. A verbatim box (Find in
+Files, `'ltr' => true`) is never flipped, casts right, and moves as one block:
+its narrower rows carry their `box` so each keeps its place in it.
+`OverlayDelivery::shown()` says how a box is shown. `IdeShadowTest` checks each
+surface in both locales; `IdeRtlLocaleTest::testAnOpenMenuHidesOnlyWhatItCovers`
+checks the text beside an open menu.
 
 **The stateless render tier stays in `Widget/Render/`** (`ModalFrame`,
 `PopupFrame`, `ModalShadow`, `OverlayCompositor`, the menu overlay helpers,

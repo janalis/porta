@@ -95,12 +95,15 @@ final class BidiTui extends Tui implements FrameHooks
      * it honest: it holds the rows of the LAST frame and nothing else, so a
      * shrinking terminal leaves no stale rows behind to be served later.
      *
-     * @var array<int, array{in: string, runs: list<array{start: int, width: int, ltr: bool}>, regions: list<array{start: int, width: int, ltr: bool}>, out: string}>
+     * @var array<int, array{in: string, runs: list<array{start: int, width: int, ltr: bool}>, regions: list<array{start: int, width: int, ltr: bool, box?: array{int, int}}>, surfaces: string, out: string}>
      */
     private array $arranged = [];
 
-    /** @var array<int, list<array{start: int, width: int, ltr: bool}>> the last frame's floating boxes, for click mapping */
+    /** @var array<int, list<array{start: int, width: int, ltr: bool, box?: array{int, int}}>> the last frame's floating boxes, for click mapping */
     private array $lastRegions = [];
+
+    /** @var list<string> the last frame's floating layer, what a click inside a box maps through */
+    private array $lastSurfaces = [];
 
     /** Minimum seconds between generated frames while pacing is wired (60fps). */
     public const float MIN_FRAME_INTERVAL = 1 / 60;
@@ -147,11 +150,11 @@ final class BidiTui extends Tui implements FrameHooks
 
     /**
      * @param list<array{start: int, width: int, ltr: bool}> $runs
-     * @param list<array{start: int, width: int, ltr: bool}> $regions
+     * @param list<array{start: int, width: int, ltr: bool, box?: array{int, int}}> $regions
      */
-    private function arrange(PaneReorder $reorder, string $line, array $runs, array $regions): string
+    private function arrange(PaneReorder $reorder, string $line, array $runs, array $regions, string $surfaces): string
     {
-        $row = $reorder->reorderRow($line, $runs, $regions);
+        $row = $reorder->reorderRow($line, $runs, $regions, $surfaces);
 
         // Porta lays the row out either way. On a terminal that runs the bidi
         // algorithm itself the row then has to be FROZEN, or it is reordered a
@@ -288,7 +291,7 @@ final class BidiTui extends Tui implements FrameHooks
             return $visualCol;
         }
 
-        return $this->reorder->logicalColumn($this->lastLines[$row], $visualCol, $this->lastRuns[$row], $this->lastRegions[$row] ?? []);
+        return $this->reorder->logicalColumn($this->lastLines[$row], $visualCol, $this->lastRuns[$row], $this->lastRegions[$row] ?? [], $this->lastSurfaces[$row] ?? '');
     }
 
     /**
@@ -501,6 +504,10 @@ final class BidiTui extends Tui implements FrameHooks
             // shortened span re-aligned the pane's whole row.
             $regions = $segmenter->segmentRegions($columns, $rows);
             $this->lastRegions = $regions; // a click inside a box maps through it, not the pane under it
+            // What the regions are stamped from: the panes no longer carry the
+            // surfaces, or a mirrored surface left a hole where it logically sat.
+            $surfaces = $segmenter->surfaces($columns, $rows);
+            $this->lastSurfaces = $surfaces;
             $out = [];
             $arranged = [];
             foreach ($lines as $row => $line) {
@@ -512,15 +519,16 @@ final class BidiTui extends Tui implements FrameHooks
                 \assert(\array_key_exists($row, $this->lastRuns), description: 'a clipped frame has no row the segmenter did not map');
                 $runs = $this->lastRuns[$row];
                 $region = $regions[$row];
+                $surface = $surfaces[$row];
                 $hit = $this->arranged[$row] ?? null;
-                // All three, because all three are inputs: the same text under
+                // All four, because all four are inputs: the same text under
                 // a resized pane, or under a dropdown that has just opened over
                 // it, mirrors to something else entirely.
                 $line =
-                    null !== $hit && $hit['in'] === $line && $hit['runs'] === $runs && $hit['regions'] === $region
+                    null !== $hit && $hit['in'] === $line && $hit['runs'] === $runs && $hit['regions'] === $region && $hit['surfaces'] === $surface
                         ? $hit['out']
-                        : $this->arrange($reorder, $line, $runs, $region);
-                $arranged[$row] = ['in' => $lines[$row], 'runs' => $runs, 'regions' => $region, 'out' => $line];
+                        : $this->arrange($reorder, $line, $runs, $region, $surface);
+                $arranged[$row] = ['in' => $lines[$row], 'runs' => $runs, 'regions' => $region, 'surfaces' => $surface, 'out' => $line];
                 $out[] = $line;
             }
             $this->arranged = $arranged;

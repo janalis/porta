@@ -67,6 +67,8 @@ final class MenuOverlayController implements FloatingRegions
         ?Styles $styles = null,
         ?FrameHooks $frameHooks = null,
         private readonly ?Tui $tui = null,
+        // A mirrored frame's surfaces, which the panes must not carry.
+        private readonly FloatingLayer $layer = new FloatingLayer(),
     ) {
         $this->initStyles($styles);
         $frameHooks?->onBeforeFrame($this->followResize(...));
@@ -276,6 +278,16 @@ final class MenuOverlayController implements FloatingRegions
         foreach ($panes as $pane) {
             $pane->setMenuOverlay([]);
         }
+        $this->onLayer($this->layer->setMenu([]));
+    }
+
+    /** A changed layer needs the frame a pane would have asked for by invalidating itself. */
+    // @mago-expect lint:no-boolean-flag-parameter -- the one fact: whether the layer's slot changed.
+    private function onLayer(bool $changed): void
+    {
+        if ($changed) {
+            $this->tui?->requestRender();
+        }
     }
 
     /**
@@ -288,6 +300,16 @@ final class MenuOverlayController implements FloatingRegions
      */
     private function pushOverlays(array $rows, int $top, int $anchor, int $width, array $panes): void
     {
+        if ($this->translator->isRtl()) {
+            // Mirrored, the dropdown rides the floating layer and the panes
+            // beneath keep their own text ({@see FloatingLayer} says why).
+            foreach ($panes as $pane) {
+                $pane->setMenuOverlay([]);
+            }
+            $this->onLayer($this->layer->setMenu($this->localSpans($rows, FloatingLayer::rect(), $top, $anchor, $width)));
+
+            return;
+        }
         foreach ($panes as $pane) {
             $rect = $this->renderer->getWidgetRect($pane);
             $pane->setMenuOverlay(null !== $rect ? $this->localSpans($rows, $rect, $top, $anchor, $width) : []);

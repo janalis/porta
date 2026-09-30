@@ -23,51 +23,24 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
 final class PaneReorder
 {
     /**
-     * @param list<array{start: int, width: int, ltr: bool}> $runs    the panes, tiling the row
-     * @param list<array{start: int, width: int, ltr: bool}> $regions floating surfaces, painted over the panes
+     * @param list<array{start: int, width: int, ltr: bool}> $runs     the panes, tiling the row
+     * @param list<array{start: int, width: int, ltr: bool, box?: array{int, int}}> $regions  floating surfaces, painted over the panes
+     * @param string                                          $surfaces the surfaces' own row ({@see \Porta\Overlay\State\FloatingLayer}), which the regions are stamped from
      */
-    public function reorderRow(string $line, array $runs, array $regions = []): string
+    public function reorderRow(string $line, array $runs, array $regions = [], string $surfaces = ''): string
     {
-        // Blank what floats before reordering the panes, then stamp it back.
-        // Without the blanking the pane pass carries the surface's own glyphs
-        // along with it and paints a second copy of the box somewhere else in
-        // the row; without the full-span reorder the pane slides sideways.
-        $row = $this->reorderPanes(self::blankRegions($line, $regions), $runs);
+        // The panes hold only their own text, so they reorder over their full
+        // spans as if nothing floated, and the surfaces are stamped over them
+        // after. When the surfaces were composited into the panes, the pane
+        // pass either carried the surface's glyphs along (a second copy of the
+        // box elsewhere in the row) or, blanked first, left a hole wherever
+        // the surface's LOGICAL columns ended up once mirrored away.
+        $row = $this->reorderPanes($line, $runs);
         foreach ($regions as $region) {
-            $row = $this->paintRegion($row, $line, $region);
+            $row = $this->paintRegion($row, $surfaces, $region);
         }
 
         return $row;
-    }
-
-    /**
-     * The row with every floating surface's columns replaced by spaces.
-     *
-     * The pane underneath then reorders over its FULL span against a hole,
-     * which puts its visible text at exactly the columns it would occupy if
-     * nothing floated at all — and the surface is stamped over the hole after.
-     *
-     * @param list<array{start: int, width: int, ltr: bool}> $regions
-     */
-    private static function blankRegions(string $line, array $regions): string
-    {
-        foreach ($regions as $region) {
-            // No clamping here: regionRunsForRow() never yields a zero width,
-            // and sliceByColumn() tolerates a tail that runs past the row --
-            // guards for either survived every mutation, which is what dead
-            // defensive code looks like.
-            \assert($region['width'] > 0, description: 'regionRunsForRow() never yields an empty surface');
-            $end = $region['start'] + $region['width'];
-            $width = AnsiUtils::visibleWidth($line);
-            $line =
-                AnsiUtils::sliceByColumn($line, startCol: 0, length: $region['start'], strict: true)
-                .Sgr::RESET
-                .\str_repeat(' ', $region['width'])
-                .AnsiUtils::sliceByColumn($line, $end, $width - $end, strict: true)
-                .Sgr::RESET;
-        }
-
-        return $line;
     }
 
     /**
@@ -134,12 +107,12 @@ final class PaneReorder
      * shortened span slid the pane's whole row sideways — the settings screen
      * in Hebrew, reported five times.
      *
-     * The surface's own content is taken from the ORIGINAL row (the panes' pass
-     * has shuffled it) and reordered within its own box unless it is verbatim.
+     * The surface's own content is taken from its own row on the floating
+     * layer and reordered within its own box unless it is verbatim.
      *
-     * @param array{start: int, width: int, ltr: bool} $region
+     * @param array{start: int, width: int, ltr: bool, box?: array{int, int}} $region
      */
-    private function paintRegion(string $row, string $line, array $region): string
+    private function paintRegion(string $row, string $surfaces, array $region): string
     {
         $width = AnsiUtils::visibleWidth($row);
         // A floating box is laid out in the same LOGICAL space as the widgets,
@@ -148,23 +121,49 @@ final class PaneReorder
         // of the screen from the title it belongs to: `File` is logically first,
         // so its dropdown sits at column 0 while the mirrored menu bar draws
         // `קובץ` at the far right. Mirroring across the row is also what makes
-        // the stamp land exactly in the hole {@see blankRegions()} left behind.
+        // the box hang from what it belongs to.
         // Clamp to what the row actually holds: a surface hanging off the end
         // has fewer cells than it claims, and stamping its claimed width would
         // make the row SHORTER than its pane -- caught by the clamping case.
-        $keep = \max(0, \min($region['width'], $width - $region['start']));
+        [$start, $keep] = self::placed($region, $width);
         if (0 === $keep) {
             return $row;
         }
-        $start = \max(0, $width - $region['start'] - $keep);
         $end = $start + $keep;
         $before = AnsiUtils::sliceByColumn($row, startCol: 0, length: $start, strict: true);
         $after = AnsiUtils::sliceByColumn($row, $end, $width - $end, strict: true);
-        $slice = AnsiUtils::sliceByColumn($line, $region['start'], $keep, strict: true);
-        $slice = self::withoutABorrowedCaret($line, $slice, $region['start']);
+        $slice = AnsiUtils::sliceByColumn($surfaces, $region['start'], $keep, strict: true);
+        $slice = self::withoutABorrowedCaret($surfaces, $slice, $region['start']);
         $middle = $region['ltr'] ? $slice : Bidi::reorder($slice, BaseDirection::Rtl);
 
         return $before.Sgr::RESET.$middle.Sgr::RESET.$after.Sgr::RESET;
+    }
+
+    /**
+     * Where a region's row lands in a $width-column frame, and how many of its
+     * cells the row holds: [visual start, cells].
+     *
+     * A mirrored box is reversed cell for cell, so each row lands at the mirror
+     * of its own span. A verbatim box keeps its order and moves as ONE block,
+     * so a row narrower than its box (the first row, beside which no shadow
+     * falls; the band, one cell in) keeps its offset inside the block. Placed
+     * by its own span, Find in Files' title row sat a column right of its body.
+     *
+     * @param array{start: int, width: int, ltr: bool, box?: array{int, int}} $region
+     *
+     * @return array{int, int}
+     */
+    private static function placed(array $region, int $width): array
+    {
+        $keep = \max(0, \min($region['width'], $width - $region['start']));
+        $box = $region['box'] ?? null;
+        if (!$region['ltr'] || null === $box) {
+            return [\max(0, $width - $region['start'] - $keep), $keep];
+        }
+        [$boxStart, $boxWidth] = $box;
+        $boxKeep = \max(0, \min($boxWidth, $width - $boxStart));
+
+        return [\max(0, $width - $boxStart - $boxKeep + $region['start'] - $boxStart), $keep];
     }
 
     /** @param list<array{start: int, width: int, ltr: bool}> $runs */
@@ -225,9 +224,9 @@ final class PaneReorder
      * logical space, so the column selects the same run either way.
      *
      * @param list<array{start: int, width: int, ltr: bool}> $runs
-     * @param list<array{start: int, width: int, ltr: bool}> $regions
+     * @param list<array{start: int, width: int, ltr: bool, box?: array{int, int}}> $regions
      */
-    public function logicalColumn(string $line, int $visualCol, array $runs, array $regions = []): int
+    public function logicalColumn(string $line, int $visualCol, array $runs, array $regions = [], string $surfaces = ''): int
     {
         // The surfaces first, and in reverse: they are painted over the panes
         // in order, so the LAST one drawn owns the cell a click lands on.
@@ -236,11 +235,10 @@ final class PaneReorder
         // frame and the mouse did not follow it.
         $width = AnsiUtils::visibleWidth($line);
         foreach (\array_reverse($regions) as $region) {
-            $keep = \max(0, \min($region['width'], $width - $region['start']));
+            [$start, $keep] = self::placed($region, $width);
             if (0 === $keep) {
                 continue;
             }
-            $start = \max(0, $width - $region['start'] - $keep);
             if ($visualCol < $start || $visualCol >= ($start + $keep)) {
                 continue;
             }
@@ -248,7 +246,7 @@ final class PaneReorder
             if ($region['ltr']) {
                 return $region['start'] + $offset;
             }
-            $slice = AnsiUtils::sliceByColumn($line, $region['start'], $keep, strict: true);
+            $slice = AnsiUtils::sliceByColumn($surfaces, $region['start'], $keep, strict: true);
 
             return $region['start'] + Bidi::visualToLogicalColumn($slice, $offset, BaseDirection::Rtl);
         }

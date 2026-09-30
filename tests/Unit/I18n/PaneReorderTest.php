@@ -227,11 +227,9 @@ final class PaneReorderTest extends TestCase
      * the real settings screen, the blast radius went from "columns 127..224 of
      * four rows" down to the toast's own box.
      *
-     * The invariant is positional, and deliberately not "nothing outside the
-     * region changes": reordering maps logical column c to visual
-     * span_end - 1 - c, so hiding the covered cells leaves its gap at the
-     * MIRRORED span, not at the region's own. What must hold is that no pane
-     * glyph moves — every difference lies in one of those two spans.
+     * With the surfaces on a layer of their own the claim is the strong one:
+     * nothing outside the stamped box changes. It used to allow a second span,
+     * where the pane's hidden cells mirrored to, and that span was the hole.
      */
     public function testAFloatingRegionDoesNotMoveThePaneUnderneath(): void
     {
@@ -241,13 +239,14 @@ final class PaneReorderTest extends TestCase
         $pane = [['start' => 0, 'width' => $width, 'ltr' => false]];
         $region = ['start' => $width - 6, 'width' => 6, 'ltr' => true];
 
+        $surfaces = \str_repeat(' ', $width - 6).'ZZZZZZ';
+
         $without = AnsiUtils::stripAnsiCodes($reorder->reorderRow($line, $pane));
-        $with = AnsiUtils::stripAnsiCodes($reorder->reorderRow($line, $pane, [$region]));
+        $with = AnsiUtils::stripAnsiCodes($reorder->reorderRow($line, $pane, [$region], $surfaces));
 
         $allowed = [];
         for ($c = $region['start']; $c < ($region['start'] + $region['width']); ++$c) {
-            $allowed[$c] = true; // the surface's own columns
-            $allowed[$width - 1 - $c] = true; // and where its hidden cells mirror to
+            $allowed[$width - 1 - $c] = true; // only where the box is stamped: nothing is hidden and nothing moves
         }
         for ($c = 0; $c < $width; ++$c) {
             if (\array_key_exists($c, $allowed)) {
@@ -264,14 +263,13 @@ final class PaneReorderTest extends TestCase
 
     public function testAFloatingRegionShowsItsOwnContentAtItsOwnColumns(): void
     {
-        // And the surface itself survives: blanking it for the pane's pass and
-        // stamping it back must not lose it, nor leave a second copy elsewhere.
+        // The surface comes from its own row, once, at the mirror of its place.
         $reorder = new PaneReorder();
-        $line = \str_repeat(' ', times: 10).'[TOAST]'.\str_repeat(' ', times: 3);
-        $width = AnsiUtils::visibleWidth($line);
-        $pane = [['start' => 0, 'width' => $width, 'ltr' => false]];
+        $line = \str_repeat(' ', times: 20);
+        $surfaces = \str_repeat(' ', times: 10).'[TOAST]'.\str_repeat(' ', times: 3);
+        $pane = [['start' => 0, 'width' => 20, 'ltr' => false]];
 
-        $with = AnsiUtils::stripAnsiCodes($reorder->reorderRow($line, $pane, [['start' => 10, 'width' => 7, 'ltr' => true]]));
+        $with = AnsiUtils::stripAnsiCodes($reorder->reorderRow($line, $pane, [['start' => 10, 'width' => 7, 'ltr' => true]], $surfaces));
 
         // width 20, box at logical 10 wide 7 -> mirrored start 20-10-7 = 3.
         $this->assertSame('[TOAST]', AnsiUtils::sliceByColumn($with, startCol: 3, length: 7), 'the surface is where it belongs');
@@ -282,48 +280,46 @@ final class PaneReorderTest extends TestCase
      * The whole two-pass shape, pinned on twelve Hebrew letters.
      *
      * Hebrew reverses cleanly, so the expected row can be worked out by hand
-     * and every step is constrained: blank the surface's LOGICAL columns, mirror
-     * the pane over its FULL span, stamp the surface's own cells back at its own
-     * columns. A region in the middle, because one at either end lets the
-     * arithmetic be wrong in ways that still look right.
+     * and every step is constrained: mirror the pane over its FULL span, then
+     * stamp the surface from its own row at the mirror of its logical columns.
+     * A region in the middle, because one at either end lets the arithmetic be
+     * wrong in ways that still look right.
      */
-    public function testTheSurfaceIsBlankedMirroredAndStampedBack(): void
+    public function testThePaneMirrorsWholeAndTheSurfaceIsStampedOverIt(): void
     {
         $reorder = new PaneReorder();
         //             0123456789ab
         $line = "\u{05D0}\u{05D1}\u{05D2}\u{05D3}\u{05D4}\u{05D5}\u{05D6}\u{05D7}\u{05D8}\u{05D9}\u{05DA}\u{05DB}";
+        $surfaces = '    WXYZ    ';
         $pane = [['start' => 0, 'width' => 12, 'ltr' => false]];
 
-        $out = AnsiUtils::stripAnsiCodes($reorder->reorderRow($line, $pane, [['start' => 4, 'width' => 4, 'ltr' => true]]));
+        $out = AnsiUtils::stripAnsiCodes($reorder->reorderRow($line, $pane, [['start' => 4, 'width' => 4, 'ltr' => true]], $surfaces));
 
-        // blanked 4..7 -> mirrored -> columns 4..7 stamped from the original.
         $this->assertSame(
             "\u{05DB}\u{05DA}\u{05D9}\u{05D8}" // the tail, mirrored to the front
-            ."\u{05D4}\u{05D5}\u{05D6}\u{05D7}" // the surface, verbatim at its own columns
+            .'WXYZ' // the surface at 12 - 4 - 4, over the pane's own middle
             ."\u{05D3}\u{05D2}\u{05D1}\u{05D0}", // the head, mirrored to the back
             $out,
         );
     }
 
-    public function testTheHoleAndTheMirroredBoxAreTheSameColumns(): void
+    /**
+     * A verbatim pane keeps its text where a mirrored box logically sits.
+     *
+     * The bug the floating layer exists for: the box used to be composited into
+     * the pane at its LOGICAL columns and blanked there before the reorder. A
+     * verbatim pane (the editor) does not move, so the blank stayed where it
+     * was while the box was stamped at the far end of the row. An open File
+     * menu wiped the left third of the editor in Hebrew.
+     */
+    public function testAVerbatimPaneKeepsItsTextWhereAMirroredBoxLogicallySits(): void
     {
-        // The two passes have to agree. blankRegions() blanks the surface's
-        // LOGICAL columns; the pane mirror carries that hole across its span;
-        // the stamp mirrors the box across the row. For a surface over a
-        // full-width pane those are the same columns, so the box lands exactly
-        // in its own hole and no gap is ever visible.
         $reorder = new PaneReorder();
-        $hebrew = "\u{05D0}\u{05D1}\u{05D2}\u{05D3}\u{05D4}\u{05D5}\u{05D6}\u{05D7}";
-        $pane = [['start' => 0, 'width' => 8, 'ltr' => false]];
+        $pane = [['start' => 0, 'width' => 10, 'ltr' => true]];
 
-        $out = AnsiUtils::stripAnsiCodes($reorder->reorderRow($hebrew, $pane, [['start' => 4, 'width' => 4, 'ltr' => true]]));
+        $out = AnsiUtils::stripAnsiCodes($reorder->reorderRow('abcdefghij', $pane, [['start' => 0, 'width' => 4, 'ltr' => true]], '[AB]      '));
 
-        $this->assertSame(8, AnsiUtils::visibleWidth($out), 'the row keeps its width');
-        $this->assertSame(
-            "\u{05D4}\u{05D5}\u{05D6}\u{05D7}",
-            AnsiUtils::sliceByColumn($out, startCol: 0, length: 4),
-            'the box sits at the mirror of its logical columns, filling its own hole',
-        );
+        $this->assertSame('abcdef[AB]', $out, 'the box at the far end, and the text it logically sat on still there');
     }
 
     public function testASurfaceRunningPastTheRowEndIsClamped(): void
@@ -334,17 +330,13 @@ final class PaneReorderTest extends TestCase
         $line = "\u{05D0}\u{05D1}\u{05D2}\u{05D3}";
         $pane = [['start' => 0, 'width' => 4, 'ltr' => false]];
 
-        $out = AnsiUtils::stripAnsiCodes($reorder->reorderRow($line, $pane, [['start' => 2, 'width' => 9, 'ltr' => true]]));
+        $out = AnsiUtils::stripAnsiCodes($reorder->reorderRow($line, $pane, [['start' => 2, 'width' => 9, 'ltr' => true]], '  XY'));
 
         // The surface claims nine columns but only two exist past its start, so
         // it is clamped to those. What must never happen is the row coming back
         // SHORTER than its pane.
         $this->assertSame(4, AnsiUtils::visibleWidth($out), 'the row still measures its width');
-        $this->assertSame(
-            "\u{05D2}\u{05D3}",
-            AnsiUtils::sliceByColumn($out, startCol: 0, length: 2),
-            'only the two cells that exist are stamped, at the mirror of their start',
-        );
+        $this->assertSame('XY', AnsiUtils::sliceByColumn($out, startCol: 0, length: 2), 'only the two cells that exist are stamped, at the mirror of their start');
     }
 
     public function testTheRowIsFrozenWithASingleOverride(): void
@@ -409,27 +401,51 @@ final class PaneReorderTest extends TestCase
         // drew `קובץ` at the far right. Reported, reproduced at 226 columns
         // (region 0+38 against a title at ~218), and fixed here.
         $reorder = new PaneReorder();
-        $line = '[AB]'.\str_repeat(' ', times: 6);
         $pane = [['start' => 0, 'width' => 10, 'ltr' => false]];
 
-        $out = AnsiUtils::stripAnsiCodes($reorder->reorderRow($line, $pane, [['start' => 0, 'width' => 4, 'ltr' => true]]));
+        $out = AnsiUtils::stripAnsiCodes($reorder->reorderRow(\str_repeat(' ', times: 10), $pane, [['start' => 0, 'width' => 4, 'ltr' => true]], '[AB]      '));
 
         $this->assertSame('[AB]', AnsiUtils::sliceByColumn($out, startCol: 6, length: 4), 'the box mirrors to the far end');
         $this->assertSame(10, AnsiUtils::visibleWidth($out), 'and the row keeps its width');
     }
 
-    public function testAMirroredBoxLandsInTheHoleItsHiddenCellsLeft(): void
+    /**
+     * A verbatim box moves as one block, so its narrower rows keep their
+     * place in it. Placed by their own spans, Find in Files' title row (which
+     * casts no side shadow) sat a column right of its body, and its band
+     * started under the box's edge instead of one cell in.
+     */
+    public function testAVerbatimBoxsNarrowerRowsKeepTheirPlaceInTheBlock(): void
     {
-        // The two passes have to agree: blankRegions() blanks the LOGICAL
-        // columns, the pane mirror carries that hole to the mirrored span, and
-        // the stamp fills exactly that span. If they disagreed the row would
-        // show a gap in one place and the box in another -- which is what a
-        // second copy of the menu box looked like.
         $reorder = new PaneReorder();
-        $line = '[AB]'.\str_repeat(' ', times: 6);
+        $pane = [['start' => 0, 'width' => 10, 'ltr' => false]];
+        $blank = \str_repeat(' ', times: 10);
+        $placed = static fn (array $region, string $surfaces): int => (int) \mb_strpos(AnsiUtils::stripAnsiCodes($reorder->reorderRow($blank, $pane, [$region], $surfaces)), needle: 'X');
+
+        // Box [2, 7): the body row is the whole box, stamped at 10 - 2 - 5 = 3.
+        $this->assertSame(3, $placed(['start' => 2, 'width' => 5, 'ltr' => true], surfaces: '  XXXXX   '));
+        $this->assertSame(3, $placed(['start' => 2, 'width' => 4, 'ltr' => true, 'box' => [2, 5]], surfaces: '  XXXX    '), 'the title row, with the body');
+        $this->assertSame(4, $placed(['start' => 3, 'width' => 4, 'ltr' => true, 'box' => [2, 5]], surfaces: '   XXXX   '), 'the band, one cell in');
+        $this->assertSame(4, $placed(['start' => 2, 'width' => 4, 'ltr' => false, 'box' => [2, 5]], surfaces: '  XXXX    '), 'a mirrored row, at the mirror of its own span');
+        // A box running past the row end moves as the part of it that exists.
+        $this->assertSame(1, $placed(['start' => 7, 'width' => 3, 'ltr' => true, 'box' => [6, 6]], surfaces: '       XXX'));
+        $this->assertSame(0, $placed(['start' => 5, 'width' => 4, 'ltr' => true, 'box' => [5, 5]], surfaces: '     XXXX '), 'flush with the row start');
+        $this->assertSame(
+            4,
+            $reorder->logicalColumn($blank, visualCol: 5, runs: $pane, regions: [['start' => 3, 'width' => 4, 'ltr' => true, 'box' => [2, 5]]], surfaces: '   XXXX   '),
+            'a click follows it',
+        );
+    }
+
+    public function testThePaneRowCarriesNoCopyOfTheBox(): void
+    {
+        // The pane pass never sees the surface, so it cannot carry a second
+        // copy of the box somewhere else in the row -- which is what blanking
+        // the surface's columns out of the pane row used to be for.
+        $reorder = new PaneReorder();
         $pane = [['start' => 0, 'width' => 10, 'ltr' => false]];
 
-        $out = AnsiUtils::stripAnsiCodes($reorder->reorderRow($line, $pane, [['start' => 0, 'width' => 4, 'ltr' => true]]));
+        $out = AnsiUtils::stripAnsiCodes($reorder->reorderRow(\str_repeat(' ', times: 10), $pane, [['start' => 0, 'width' => 4, 'ltr' => true]], '[AB]      '));
 
         $this->assertSame(1, \substr_count($out, needle: '[AB]'), 'exactly one copy of the box');
     }
@@ -510,16 +526,17 @@ final class PaneReorderTest extends TestCase
     {
         // A box whose own contents were mirrored has to invert that mirror too,
         // not just its position: the menu items inside a dropdown are Hebrew.
+        // Its contents are read from the surfaces' row, not the pane's.
         $reorder = new PaneReorder();
-        $hebrew = "\u{05D0}\u{05D1}\u{05D2}\u{05D3}";
-        $line = $hebrew.\str_repeat(' ', times: 6);
+        $surfaces = "\u{05D0}\u{05D1}\u{05D2}\u{05D3}".\str_repeat(' ', times: 6);
+        $line = 'ab'.\str_repeat(' ', times: 8);
         $pane = [['start' => 0, 'width' => 10, 'ltr' => false]];
         $region = [['start' => 0, 'width' => 4, 'ltr' => false]];
 
         // The box is stamped at 6..9 and its four Hebrew cells are reversed
         // inside it, so its leftmost visual cell is the LAST logical one.
-        $this->assertSame(3, $reorder->logicalColumn($line, visualCol: 6, runs: $pane, regions: $region));
-        $this->assertSame(0, $reorder->logicalColumn($line, visualCol: 9, runs: $pane, regions: $region));
+        $this->assertSame(3, $reorder->logicalColumn($line, visualCol: 6, runs: $pane, regions: $region, surfaces: $surfaces));
+        $this->assertSame(0, $reorder->logicalColumn($line, visualCol: 9, runs: $pane, regions: $region, surfaces: $surfaces));
     }
 
     public function testTheWidgetsOwnDirectionMarksAreSpentNotPassedOn(): void

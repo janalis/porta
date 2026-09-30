@@ -7,7 +7,9 @@ namespace Porta\Tests\Unit\Ui;
 use PHPUnit\Framework\TestCase;
 use Porta\I18n\Bidi;
 use Porta\I18n\PaneReorder;
+use Porta\Overlay\Region\DropdownRegion;
 use Porta\Overlay\Region\FloatingRegions;
+use Porta\Overlay\State\FloatingLayer;
 use Porta\Support\PerfCollector;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
@@ -251,6 +253,60 @@ final class BidiTuiTest extends TestCase
         $out = $terminal->getOutput();
         $this->assertStringNotContainsString(self::MARKER, $out, 'a box appearing over the row invalidates it');
         $this->assertStringContainsString(self::SHALOM_VISUAL, $out);
+    }
+
+    public function testARowWhoseFloatingLayerChangedIsMirroredAgain(): void
+    {
+        // The same box geometry over the same text, with different contents: a
+        // menu's selection moving. What the regions are stamped from is an input.
+        $terminal = new VirtualTerminal(columns: 20, rows: 2);
+        $tui = $this->tuiWith($terminal);
+        $this->enableRtl($tui);
+        $this->markRememberedRow($tui, ['surfaces' => 'something else']);
+
+        $tui->requestRender();
+        $tui->processRender();
+
+        $this->assertStringNotContainsString(self::MARKER, $terminal->getOutput(), 'new box contents invalidate the row');
+    }
+
+    /**
+     * A click inside a mirrored box of Hebrew maps through the box's own
+     * contents, which are on the floating layer now, not in the pane's row.
+     */
+    public function testAClickInAMirroredBoxMapsThroughTheFloatingLayer(): void
+    {
+        $terminal = new VirtualTerminal(columns: 10, rows: 1);
+        $this->renderer = new Renderer(new StyleSheet());
+        $tui = new BidiTui(terminal: $terminal, renderer: $this->renderer);
+        $tui->add(new class extends AbstractWidget {
+            public function render(RenderContext $context): array
+            {
+                return [\str_repeat('x', times: 10)];
+            }
+        });
+        $layer = new FloatingLayer();
+        $layer->setMenu([['row' => 0, 'col' => 0, 'width' => 4, 'segment' => self::SHALOM]]);
+        $tui->setPaneReorder(
+            new PaneSegmenter(
+                $this->renderer,
+                new class implements FloatingRegions {
+                    public function regions(): array
+                    {
+                        return [new DropdownRegion(0, 0, 4, 1)];
+                    }
+                },
+                $layer,
+            ),
+            new PaneReorder(),
+        );
+        $tui->requestRender();
+        $tui->processRender();
+
+        // The box is stamped at 6..9 with its Hebrew reversed inside it, so its
+        // leftmost screen cell is the LAST logical one.
+        $this->assertSame(3, $tui->logicalColumn(0, 6));
+        $this->assertSame(0, $tui->logicalColumn(0, 9));
     }
 
     public function testTheRememberedFrameHoldsOnlyTheRowsTheLastFrameHad(): void

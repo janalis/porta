@@ -8,6 +8,7 @@ use Porta\I18n\BaseDirection;
 use Porta\I18n\Translator;
 use Porta\Overlay\Region\PaneBounds;
 use Porta\Overlay\Region\SpanSlicer;
+use Porta\Overlay\State\FloatingLayer;
 use Porta\Overlay\State\MenuOverlayPanes;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\ModalShadow;
@@ -24,6 +25,10 @@ use Symfony\Component\Tui\Tui;
  * under the view registry's interlock) and their state source; this owns only
  * "push these boxes onto the panes". Delivery targets the CURRENT pane set,
  * clearing targets ALL panes — a surface may close across a view swap.
+ *
+ * Under a right-to-left locale the boxes go to the {@see FloatingLayer}
+ * instead, and the panes keep only the backdrop dim: a surface composited into
+ * a pane that is then mirrored away from it leaves a blank hole behind.
  */
 final class OverlayDelivery
 {
@@ -37,6 +42,7 @@ final class OverlayDelivery
         // Whether the screen is mirrored: a mirrored surface casts its shadow
         // the other way before the flip, so it still lands bottom-right.
         private readonly Translator $translator = new Translator('en'),
+        private readonly FloatingLayer $layer = new FloatingLayer(),
     ) {
         $this->initStyles($styles);
     }
@@ -78,10 +84,12 @@ final class OverlayDelivery
      */
     public function deliverModal(array $boxes): void
     {
+        $mirrored = $this->translator->isRtl();
         foreach ($this->panes->current() as $pane) {
-            $pane->setModalOverlay($this->spans($boxes, $this->renderer->getWidgetRect($pane)));
+            $pane->setModalOverlay($mirrored ? [] : $this->spans($boxes, $this->renderer->getWidgetRect($pane)));
             $pane->setModalBackdrop(true);
         }
+        $this->onLayer($this->layer->setModal($mirrored ? $this->spans($boxes, FloatingLayer::rect()) : []));
     }
 
     /** Clear the modal slot and the backdrop on every pane set. */
@@ -91,6 +99,7 @@ final class OverlayDelivery
             $pane->setModalOverlay([]);
             $pane->setModalBackdrop(false);
         }
+        $this->onLayer($this->layer->setModal([]));
     }
 
     /**
@@ -101,9 +110,11 @@ final class OverlayDelivery
      */
     public function deliverToast(array $boxes): void
     {
+        $mirrored = $this->translator->isRtl();
         foreach ($this->panes->current() as $pane) {
-            $pane->setToastOverlay($this->spans($boxes, $this->renderer->getWidgetRect($pane)));
+            $pane->setToastOverlay($mirrored ? [] : $this->spans($boxes, $this->renderer->getWidgetRect($pane)));
         }
+        $this->onLayer($this->layer->setToast($mirrored ? $this->spans($boxes, FloatingLayer::rect()) : []));
     }
 
     /** Clear the toast slot on every pane set. */
@@ -112,6 +123,7 @@ final class OverlayDelivery
         foreach ($this->panes->all() as $pane) {
             $pane->setToastOverlay([]);
         }
+        $this->onLayer($this->layer->setToast([]));
     }
 
     /**
@@ -123,9 +135,11 @@ final class OverlayDelivery
      */
     public function deliverTooltip(array $boxes): void
     {
+        $mirrored = $this->translator->isRtl();
         foreach ($this->panes->current() as $pane) {
-            $pane->setTooltipOverlay($this->spans($boxes, $this->renderer->getWidgetRect($pane), shadow: false));
+            $pane->setTooltipOverlay($mirrored ? [] : $this->spans($boxes, $this->renderer->getWidgetRect($pane), shadow: false));
         }
+        $this->onLayer($this->layer->setTooltip($mirrored ? $this->spans($boxes, FloatingLayer::rect(), shadow: false) : []));
     }
 
     /** Clear the tooltip slot on every pane set. */
@@ -133,6 +147,16 @@ final class OverlayDelivery
     {
         foreach ($this->panes->all() as $pane) {
             $pane->setTooltipOverlay([]);
+        }
+        $this->onLayer($this->layer->setTooltip([]));
+    }
+
+    /** A changed layer needs the frame a pane would have asked for by invalidating itself. */
+    // @mago-expect lint:no-boolean-flag-parameter -- the one fact: whether the layer's slot changed.
+    private function onLayer(bool $changed): void
+    {
+        if ($changed) {
+            $this->tui->requestRender();
         }
     }
 

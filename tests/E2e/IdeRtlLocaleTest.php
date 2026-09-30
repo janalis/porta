@@ -377,6 +377,56 @@ final class IdeRtlLocaleTest extends TestCase
     }
 
     /**
+     * An open menu hides only what it covers.
+     *
+     * The dropdown was composited into the panes at its LOGICAL columns and
+     * then mirrored away from them. The editor is verbatim and does not move,
+     * so the text under those logical columns was simply gone: with the File
+     * menu open, the left third of the editor went blank; with a menu from the
+     * middle of the bar, every line was cut off short of the box. The surfaces
+     * ride a layer of their own now, stamped over panes that have lost nothing.
+     */
+    public function testAnOpenMenuHidesOnlyWhatItCovers(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $project = new TempProject([
+            '.porta.json' => \json_encode(['settings' => ['language' => 'he']]),
+            'demo.php' => "<?php\n\nnamespace App;\n\n// a comment long enough to reach the box\nfinal class Demo {}\n",
+        ]);
+
+        $this->runIde(
+            $project,
+            $project->path('demo.php'),
+            [
+                300 => function (Tui $tui, VirtualTerminal $terminal): void {
+                    $this->frame($tui);
+                    foreach (['file' => [], 'mid-bar' => ["\x1b[D", "\x1b[D", "\x1b[D"]] as $menu => $moves) {
+                        \array_map($tui->handleInput(...), ["\x1b[21~", ...$moves, "\r"]);
+                        $screen = [];
+                        $this->await(
+                            function () use ($tui, $terminal, &$screen): bool {
+                                $screen = $this->screenGrid($tui, $terminal);
+
+                                return null !== \array_find($screen, static fn (string $row): bool => 1 === \preg_match('/┗━+┛/u', $row));
+                            },
+                            what: "the {$menu} menu to open",
+                        );
+                        foreach (['<?php', 'namespace App;', '// a comment long enough'] as $text) {
+                            $this->assertNotNull(
+                                \array_find($screen, static fn (string $row): bool => \str_contains($row, $text)),
+                                "{$menu} menu open: '{$text}' is still on screen\n".\implode("\n", \array_slice($screen, offset: 0, length: 12)),
+                            );
+                        }
+                        $tui->handleInput("\x1b");
+                        $tui->handleInput("\x1b");
+                    }
+                },
+            ],
+            columns: 120,
+        );
+    }
+
+    /**
      * A select's list drops UNDER the select on a mirrored screen.
      *
      * Two mirrors meet here: the select was reordered with its row inside the

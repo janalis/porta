@@ -7,6 +7,7 @@ namespace Porta\Ui;
 use Porta\Container\AsIdeService;
 use Porta\Overlay\Region\DropdownRegion;
 use Porta\Overlay\Region\FloatingRegions;
+use Porta\Overlay\State\FloatingLayer;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Widget\AbstractWidget;
@@ -30,7 +31,19 @@ final readonly class PaneSegmenter
     public function __construct(
         private Renderer $renderer,
         private FloatingRegions $dropdowns,
+        private FloatingLayer $layer = new FloatingLayer(),
     ) {}
+
+    /**
+     * What the floating regions are stamped from: the surfaces' own canvas,
+     * one row per screen row. The panes beneath no longer carry them.
+     *
+     * @return list<string>
+     */
+    public function surfaces(int $columns, int $rows): array
+    {
+        return $this->layer->rows($columns, $rows);
+    }
 
     /**
      * The pane runs for every row of the current frame.
@@ -60,7 +73,7 @@ final readonly class PaneSegmenter
      * re-right-aligned the pane's whole row, sliding every label ~28 columns
      * left. A floating surface must hide what is under it and move nothing.
      *
-     * @return array<int, list<array{start: int, width: int, ltr: bool}>>
+     * @return array<int, list<array{start: int, width: int, ltr: bool, box?: array{int, int}}>>
      */
     public function segmentRegions(int $columns, int $rows): array
     {
@@ -79,7 +92,7 @@ final readonly class PaneSegmenter
      *
      * @param list<DropdownRegion> $regions topmost last; each says whether it is verbatim
      *
-     * @return list<array{start: int, width: int, ltr: bool}>
+     * @return list<array{start: int, width: int, ltr: bool, box?: array{int, int}}>
      */
     public static function regionRunsForRow(array $regions, int $row, int $columns): array
     {
@@ -92,9 +105,16 @@ final readonly class PaneSegmenter
             [$col, $width] = $region->columnsOn($row);
             $start = \max(0, $col);
             $end = \min($columns, $col + $width);
-            if ($end > $start) {
-                $runs[] = ['start' => $start, 'width' => $end - $start, 'ltr' => $region->ltr];
+            if ($end <= $start) {
+                continue;
             }
+            $run = ['start' => $start, 'width' => $end - $start, 'ltr' => $region->ltr];
+            // A row narrower than its box (a shadowed box's first row, its
+            // band) says where the box is: a verbatim box moves as one block,
+            // and each row keeps its place in it.
+            $boxStart = \max(0, $region->col);
+            $box = [$boxStart, \min($columns, $region->col + $region->width) - $boxStart];
+            $runs[] = [$start, $end - $start] === $box ? $run : [...$run, 'box' => $box];
         }
 
         return $runs;

@@ -97,13 +97,19 @@ final class PaneSegmenterTest extends TestCase
         );
     }
 
-    /** A region's last row may be its own span: a mirrored shadow's band. */
-    public function testARegionsLastRowRunsItsOwnSpan(): void
+    /**
+     * A region's first and last rows may be spans of their own (a shadowed
+     * box's title row and band), and a row narrower than its box says where
+     * the box is: a verbatim box moves as one block.
+     */
+    public function testARegionsEdgeRowsRunTheirOwnSpansAndCarryTheirBox(): void
     {
-        $region = new DropdownRegion(0, 3, 11, 3, lastRow: [3, 10]);
+        $region = new DropdownRegion(0, 3, 11, 3, ltr: true, firstRow: [3, 10], lastRow: [4, 10]);
 
-        $this->assertRuns(PaneSegmenter::regionRunsForRow([$region], 1, 20), ['start' => 3, 'width' => 11, 'ltr' => false]);
-        $this->assertRuns(PaneSegmenter::regionRunsForRow([$region], 2, 20), ['start' => 3, 'width' => 10, 'ltr' => false]);
+        $this->assertSame([['start' => 3, 'width' => 10, 'ltr' => true, 'box' => [3, 11]]], PaneSegmenter::regionRunsForRow([$region], 0, 20));
+        $this->assertSame([['start' => 3, 'width' => 11, 'ltr' => true]], PaneSegmenter::regionRunsForRow([$region], 1, 20), 'a body row is its box');
+        $this->assertSame([['start' => 4, 'width' => 10, 'ltr' => true, 'box' => [3, 11]]], PaneSegmenter::regionRunsForRow([$region], 2, 20));
+        $this->assertSame([['start' => 4, 'width' => 8, 'ltr' => true, 'box' => [3, 9]]], PaneSegmenter::regionRunsForRow([$region], 2, 12), 'both clipped to the screen');
     }
 
     public function testARowOutsideAPaneIsNotOwnedByIt(): void

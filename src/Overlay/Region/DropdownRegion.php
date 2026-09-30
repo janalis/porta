@@ -21,9 +21,11 @@ final readonly class DropdownRegion
      *                     its outermost row/column ring is border, not items
      * @param int  $first  the item its first item row shows — past 0 when a
      *                     list too tall for the screen has scrolled
-     * @param ?array{int, int} $lastRow the last row's own [col, width), when it
-     *                     is not the box's: a mirrored shadow band, one cell
-     *                     narrower than the box and its side column above it
+     * @param ?array{int, int} $firstRow the first row's own [col, width), when it
+     *                     is not the box's: a shadowed box's top row, which
+     *                     casts no side shadow beside it
+     * @param ?array{int, int} $lastRow the last row's own [col, width): a
+     *                     shadow's band, offset from the box above it
      */
     public function __construct(
         public int $top,
@@ -33,6 +35,7 @@ final readonly class DropdownRegion
         public bool $ltr = false,
         public bool $framed = false,
         public int $first = 0,
+        public ?array $firstRow = null,
         public ?array $lastRow = null,
     ) {}
 
@@ -52,17 +55,36 @@ final readonly class DropdownRegion
     {
         [, $boundLeft, $boundBottom, $boundRight] = $bounds;
         $count = \min($rows + 1, $boundBottom - $top);
+        // Claimed cell for cell: the top row is the box alone, the rows below
+        // it the box and its side column, the band's row the band alone. A
+        // rectangle also claimed the cell beside the title row and the one
+        // under the box's far corner, where no surface paints, and a mirrored
+        // frame stamps those from the floating layer: blank holes.
         if (BaseDirection::Rtl === $shown) {
-            // The box and the side column to its left; then, on the band's row,
-            // the band alone. Claimed as one rectangle, the cell under the box's
-            // far corner came along, and the flip carried a pane glyph into it.
             $left = \max($boundLeft, $col - 1);
-            $band = $count > $rows ? [$left, $col + $width - 1 - $left] : null;
+            $side = $left < $col;
 
-            return new self($top, $left, $col + $width - $left, $count, ltr: $ltr, lastRow: $band);
+            return new self(
+                $top,
+                $left,
+                $col + $width - $left,
+                $count,
+                ltr: $ltr,
+                firstRow: $side ? [$col, $width] : null,
+                lastRow: $count > $rows ? [$left, $col + $width - 1 - $left] : null,
+            );
         }
+        $claimed = \min($width + 1, $boundRight - $col);
 
-        return new self($top, $col, \min($width + 1, $boundRight - $col), $count, ltr: $ltr);
+        return new self(
+            $top,
+            $col,
+            $claimed,
+            $count,
+            ltr: $ltr,
+            firstRow: $claimed > $width ? [$col, $width] : null,
+            lastRow: $count > $rows ? [$col + 1, $claimed - 1] : null,
+        );
     }
 
     /** Whether the screen cell sits inside the box (borders included). */
@@ -74,13 +96,17 @@ final readonly class DropdownRegion
     }
 
     /**
-     * The [col, width) the box takes on $row: its own, or the last row's.
+     * The [col, width) the box takes on $row: its own, or its first or last row's.
      *
      * @return array{int, int}
      */
     public function columnsOn(int $row): array
     {
-        return null !== $this->lastRow && $row === ($this->top + $this->count - 1) ? $this->lastRow : [$this->col, $this->width];
+        return match (true) {
+            null !== $this->firstRow && $row === $this->top => $this->firstRow,
+            null !== $this->lastRow && $row === ($this->top + $this->count - 1) => $this->lastRow,
+            default => [$this->col, $this->width],
+        };
     }
 
     /** Whether the box spans screen row $row (borders included). */
