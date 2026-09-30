@@ -709,6 +709,7 @@ $api->registerTool(
     'The working tree as `git status --porcelain` prints it',
     ['type' => 'object', 'properties' => new \stdClass()],
     static fn (array $args): string => $git->status(),
+    effect: ToolEffect::Reads,
 );
 ```
 
@@ -731,6 +732,12 @@ without requiring mcp; they are served whenever it is enabled.
   ```
 - A tool that changes things should change what the user can undo — a buffer
   edit, not a file write.
+- Say what calling it does with `$effect`, a `Porta\Plugin\Api\ToolEffect`:
+  `Reads`, `Edits` (the IDE only — a tab, a message, an undoable buffer
+  edit), `Writes` (a file on disk, a process), or `Publishes` (something
+  other people see, such as a comment on a forge). An agent's client uses it to
+  run a `Reads` tool without asking and to ask first for the rest. A tool with
+  none says nothing, and a careful client treats it as the worst case.
 
 A plugin that serves tools reads them with `tools()` and re-reads on
 `ToolsChanged`.
@@ -867,7 +874,7 @@ Registration (during `activate()`):
 | `registerStatusSegment(\Closure $segment)` | Contribute ambient state to the status bar; pulled once per render. Return a string to share the plugins' cell, or a `StatusCell` to claim one with its own tone, right-click menu and tooltip |
 | `registerView(string $id, \Closure $factory)` | Contribute a **full-screen view** — a workspace takeover with its own sidebar, drag separator and content pane, opened with `openView($id)`. `$factory(ViewServices $s): ContributedView` runs after plugins commit, with the region already minted for `$id` — once per activation, so a disable→re-enable runs it again against a FRESH region |
 | `registerMenu(string $title, string $after, array $items, ?\Closure $visible = null, string $viewId = '', array $viewSafe = [])` | Contribute a **top-level menu** rather than an entry in the trailing Plugins one. `$items` are `'i:<command-id>'` and separators; `$after` names the core menu it follows; `$viewSafe` lists the ids that stay enabled while `$viewId`'s view owns the main area — a menu without one greys out its own items the moment its view opens |
-| `registerTool(string $id, string $description, array $inputSchema, \Closure $handler)` | Offer a verb to agents outside the IDE — see [Offering a tool to agents](#offering-a-tool-to-agents) |
+| `registerTool(string $id, string $description, array $inputSchema, \Closure $handler, ?ToolEffect $effect = null)` | Offer a verb to agents outside the IDE — see [Offering a tool to agents](#offering-a-tool-to-agents) |
 | `registerDebugAdapter(string $languageId, \Closure $resolveCommand)` | Supply a DAP adapter's argv for a language (consulted below `.porta.json`) |
 | `registerLanguageServer(string $languageId, string $name, \Closure $resolveCommand, ?\Closure $initializationOptions = null, ServerRole $role = ServerRole::Primary)` | Provide a language server for a language: `$resolveCommand` returns the launch argv (null = binary missing, and the language falls to the next provider), and the optional `$initializationOptions` closure returns the LSP `initializationOptions` for the initialize handshake. Both are re-resolved lazily on every LSP (re)configure, so they may read this plugin's live settings. `$role` decides what happens when several plugins claim one language: the first `Primary` wins and later ones are dropped, while a `Supplementary` one runs **beside** it and is promoted to primary when nothing else claims the language. A supplementary server gets the whole document lifecycle, its diagnostics are kept apart from the primary's rather than overwriting them, and its **completion items, code actions and code lenses are merged into the primary's** — with the follow-up round trips (`completionItem/resolve`, `codeAction/resolve`, `workspace/executeCommand`) routed back to whichever server offered the thing. Everything that picks a single answer — go-to-definition, rename, formatting, hover, semantic tokens — still asks the primary only. A server is asked for a verb only if it advertises the matching capability. Plugin servers sit below the user's `.porta.json`/`$PORTA_LSP`/`--lsp` config, and a `{languageId: command}` config entry replaces that language's list outright |
 | `adoptCommand(string $id, \Closure $handler)` | Implement a core command whose id core has vacated, keeping its label, keys and menu position. Bundled plugins only in practice — the id must be marked adoptable |
@@ -912,7 +919,7 @@ Actions (from handlers/hooks):
 | `openBuffers(): OpenBuffers` | The open buffers — which are open and edited, their text, saving one; see [Working with open buffers](#working-with-open-buffers) |
 | `runs(): Runs` | The Run menu's tasks and the terminal runs a plugin starts; see [Running a task](#running-a-task) |
 | `codeIntelligence(): CodeIntelligence` | What the IDE knows about the code — see [Asking about the code](#asking-about-the-code) |
-| `tools(): list<array>` | Every tool every running plugin registered, in load order: `plugin`, `id`, `description`, `inputSchema`, `handler`. For a plugin that serves them; re-read on `ToolsChanged` |
+| `tools(): list<array>` | Every tool every running plugin registered, in load order: `plugin`, `id`, `description`, `inputSchema`, `handler`, `effect`. For a plugin that serves them; re-read on `ToolsChanged` |
 | `insertAtCaret(string $text)` | Insert at the caret |
 | `openFile(string $path)` | Open a file in the editor |
 | `jumpTo(int $line, int $column = 0)` | Move the caret (0-based) |

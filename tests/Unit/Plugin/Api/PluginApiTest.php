@@ -28,6 +28,7 @@ use Porta\Overlay\State\ToastCenter;
 use Porta\Overlay\State\ToastSeverity;
 use Porta\Plugin\Api\PluginApi;
 use Porta\Plugin\Api\PluginException;
+use Porta\Plugin\Api\ToolEffect;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginRuntime;
 use Porta\Plugin\Runtime\PluginSettings;
@@ -548,9 +549,13 @@ final class PluginApiTest extends TestCase
         $api = $this->api();
         $handler = static fn (array $arguments): string => 'ok';
         $api->registerTool('status', 'The status', ['type' => 'object'], $handler);
+        $api->registerTool('push', 'Push', ['type' => 'object'], $handler, ToolEffect::Writes);
 
         $this->assertSame(
-            [['plugin' => 'demo', 'id' => 'status', 'description' => 'The status', 'inputSchema' => ['type' => 'object'], 'handler' => $handler]],
+            [
+                ['plugin' => 'demo', 'id' => 'status', 'description' => 'The status', 'inputSchema' => ['type' => 'object'], 'handler' => $handler, 'effect' => null],
+                ['plugin' => 'demo', 'id' => 'push', 'description' => 'Push', 'inputSchema' => ['type' => 'object'], 'handler' => $handler, 'effect' => ToolEffect::Writes],
+            ],
             $api->bufferedTools(),
         );
         $this->assertSame([], $api->tools(), 'buffered, not yet committed');
@@ -570,7 +575,7 @@ final class PluginApiTest extends TestCase
                 $this->assertStringStartsWith($says, $e->getMessage());
             }
         }
-        $this->assertCount(1, $api->bufferedTools(), 'a refused tool leaves nothing behind');
+        $this->assertCount(2, $api->bufferedTools(), 'a refused tool leaves nothing behind');
     }
 
     public function testOpenBuffersAndDiagnosticsReadEveryOpenBuffer(): void

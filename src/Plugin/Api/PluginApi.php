@@ -125,7 +125,7 @@ final class PluginApi
     private readonly PluginBuffer $statusSegments;
     /** @var PluginBuffer<array{plugin: string, languageId: string, resolve: \Closure(): (list<string>|null)}> */
     private readonly PluginBuffer $debugAdapters;
-    /** @var PluginBuffer<array{plugin: string, id: string, description: string, inputSchema: array<string, mixed>, handler: \Closure(array<string, mixed>): (string|array<array-key, mixed>)}> */
+    /** @var PluginBuffer<array{plugin: string, id: string, description: string, inputSchema: array<string, mixed>, handler: \Closure(array<string, mixed>): (string|array<array-key, mixed>), effect: ?ToolEffect}> */
     private readonly PluginBuffer $tools;
     /** @var array<string, true> bare tool ids, for duplicate detection */
     private array $toolIds = [];
@@ -654,6 +654,10 @@ final class PluginApi
      *   `Revolt\EventLoop::getSuspension()` and resume it from a subprocess
      *   callback, and the IDE keeps painting meanwhile.
      *
+     * - `$effect` says what calling it does, so the caller's client can run a
+     *   {@see ToolEffect::Reads} tool without asking and ask before a
+     *   {@see ToolEffect::Writes} one. Leave it out only when it depends.
+     *
      * It is called with the user's IDE in whatever state it is in, by
      * something the user started — keep a tool that CHANGES things to what
      * the user could undo.
@@ -663,7 +667,7 @@ final class PluginApi
      *
      * @throws PluginException
      */
-    public function registerTool(string $id, string $description, array $inputSchema, \Closure $handler): void
+    public function registerTool(string $id, string $description, array $inputSchema, \Closure $handler, ?ToolEffect $effect = null): void
     {
         if (1 !== \preg_match(self::ID_PATTERN, $id)) {
             throw new PluginException(\sprintf('Invalid tool id "%s" (expected /^[a-z0-9][a-z0-9_-]*$/i)', $id));
@@ -684,6 +688,7 @@ final class PluginApi
             'description' => $description,
             'inputSchema' => $inputSchema,
             'handler' => $handler,
+            'effect' => $effect,
         ]);
     }
 
@@ -1354,7 +1359,7 @@ final class PluginApi
      * An action method: during `activate()` the set is still half-built, so it
      * throws there.
      *
-     * @return list<array{plugin: string, id: string, description: string, inputSchema: array<string, mixed>, handler: \Closure(array<string, mixed>): (string|array<array-key, mixed>)}>
+     * @return list<array{plugin: string, id: string, description: string, inputSchema: array<string, mixed>, handler: \Closure(array<string, mixed>): (string|array<array-key, mixed>), effect: ?ToolEffect}>
      */
     public function tools(): array
     {
@@ -1798,7 +1803,7 @@ final class PluginApi
         return $this->debugAdapters->all();
     }
 
-    /** @return list<array{plugin: string, id: string, description: string, inputSchema: array<string, mixed>, handler: \Closure(array<string, mixed>): (string|array<array-key, mixed>)}> */
+    /** @return list<array{plugin: string, id: string, description: string, inputSchema: array<string, mixed>, handler: \Closure(array<string, mixed>): (string|array<array-key, mixed>), effect: ?ToolEffect}> */
     public function bufferedTools(): array
     {
         return $this->tools->all();

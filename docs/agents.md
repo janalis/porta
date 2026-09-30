@@ -113,6 +113,18 @@ ones:
 The list follows the IDE live: enable or disable a plugin, or change one of
 the `allow…` settings, and connected agents are told to fetch it again.
 
+### What a client may run without asking
+
+Every tool says what calling it does, as the protocol's annotations. The read
+tools are read-only. The edit tools, `open_file` and `notify` change the IDE and
+nothing on disk. `save_buffer`, `run` and `run_tests` change the machine. The
+review's writes publish to the forge. A client that approves by annotation can
+let an agent read freely and still ask before it saves or runs anything.
+
+A client on protocol `2025-06-18` or later gets a JSON answer twice: once as
+text, and once as `structuredContent`, the value itself. A list is wrapped as
+`{"items": [...]}`.
+
 ### Slow calls and cancelled ones
 
 A client that sends a progress token with a call hears from Porta every two
