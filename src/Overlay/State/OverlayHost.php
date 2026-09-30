@@ -19,6 +19,7 @@ use Porta\Widget\Render\FieldBox;
 use Porta\Widget\Render\PickerLayout;
 use Porta\Widget\Support\ListFilter;
 use Porta\Widget\Support\StylesDefault;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Tui;
 
@@ -194,7 +195,11 @@ final class OverlayHost
         $search->hovered = null; // the rows moved under a still pointer
         $search->tallest = \max($search->tallest, \count($rows));
         foreach ($rows as $row) {
-            $search->widest = \max($search->widest, \mb_strwidth($row->header ?? $row->note ?? '') + 4, \mb_strwidth($row->hit->label ?? '') + \mb_strwidth($row->hit->detail ?? '') + 6);
+            $search->widest = \max(
+                $search->widest,
+                AnsiUtils::visibleWidth($row->header ?? $row->note ?? '') + 4,
+                AnsiUtils::visibleWidth($row->hit->label ?? '') + AnsiUtils::visibleWidth($row->hit->detail ?? '') + 6,
+            );
         }
         ($this->invalidate)();
     }

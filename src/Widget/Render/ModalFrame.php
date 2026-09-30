@@ -38,7 +38,7 @@ final class ModalFrame
 
         // '╭ ' + label + ' ' + fill + [' ' + hint] + ' ' + × + '┐': the fixed
         // chrome is 6 columns, plus the hint and its separator when shown.
-        $hintWidth = \mb_strwidth($hint);
+        $hintWidth = AnsiUtils::visibleWidth($hint);
         $room = $width - 6 - ($hintWidth > 0 ? $hintWidth + 1 : 0);
         if ($room < 8 && $hintWidth > 0) {
             $hint = '';

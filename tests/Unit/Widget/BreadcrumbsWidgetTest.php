@@ -357,6 +357,18 @@ final class BreadcrumbsWidgetTest extends TestCase
         $this->assertSame(1, $bar->lineAtColumn(6), 'the second crumb starts right after the full-width separator');
     }
 
+    public function testACrumbIsAsWideAsItIsDrawn(): void
+    {
+        // 'Cafe\u{0301}' is drawn four columns wide; counted by code point it
+        // was five, and every crumb after it clicked one column late.
+        $bar = new BreadcrumbsWidget();
+        $bar->setProvider(static fn (): array => [['label' => "Cafe\u{0301}", 'line' => 0], ['label' => 'Menu', 'line' => 1]]);
+        $bar->render(new RenderContext(80, 1));
+
+        $this->assertNull($bar->lineAtColumn(7), 'the separator after a four-column crumb');
+        $this->assertSame(1, $bar->lineAtColumn(8), 'the next crumb starts where it is drawn');
+    }
+
     public function testARelabelUnderAStillPointerKeepsTheTint(): void
     {
         $bar = new BreadcrumbsWidget();

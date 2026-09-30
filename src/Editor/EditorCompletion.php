@@ -8,6 +8,7 @@ use Porta\I18n\Translator;
 use Porta\Support\FuzzyMatcher;
 use Porta\Ui\Tooltip;
 use Porta\Widget\Render\PopupMetrics;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Keybindings;
 
 /**
@@ -323,10 +324,10 @@ final class EditorCompletion
         // The list refilters as you type, so a row the last frame drew may be gone.
         $kind = null !== $index && \array_key_exists($index, $items) ? $items[$index]->kind : '';
         // Flush right, before the row's one trailing space.
-        $tagStart = null === $this->box ? 0 : $this->box->col + $this->box->width - 1 - \mb_strwidth($kind);
+        $tagStart = null === $this->box ? 0 : $this->box->col + $this->box->width - 1 - AnsiUtils::visibleWidth($kind);
         $word = $relCol >= $tagStart ? CompletionKindName::of($kind, $translator) : null;
 
-        $tagEnd = $tagStart + \mb_strwidth($kind);
+        $tagEnd = $tagStart + AnsiUtils::visibleWidth($kind);
 
         return null === $word || $relCol >= $tagEnd ? null : new Tooltip('completion-kind:'.$relRow, $word, $relRow, $tagStart, $tagEnd);
     }

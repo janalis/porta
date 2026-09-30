@@ -8,6 +8,7 @@ use Porta\Support\AsyncProcess;
 use Porta\Support\Files;
 use Symfony\Component\Finder\Finder;
 use Symfony\Component\Process\ExecutableFinder;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
  * Asynchronous project-wide text search.
@@ -173,7 +174,8 @@ final class ProjectSearch
     /**
      * Locate every match of $pattern within a result line, as display-column
      * spans (so the panel can highlight them). Byte offsets from
-     * `PREG_OFFSET_CAPTURE` are converted to display columns via `mb_strwidth`.
+     * `PREG_OFFSET_CAPTURE` are converted to display columns by the vendor's
+     * `visibleWidth()`, the measure the panel slices the line by.
      *
      * @return list<array{start: int, length: int}>
      */
@@ -197,7 +199,7 @@ final class ProjectSearch
             if ('' === $match) {
                 continue; // a zero-width match highlights nothing
             }
-            $ranges[] = ['start' => \mb_strwidth(\substr($text, offset: 0, length: (int) $hit[1])), 'length' => \mb_strwidth($match)];
+            $ranges[] = ['start' => AnsiUtils::visibleWidth(\substr($text, offset: 0, length: (int) $hit[1])), 'length' => AnsiUtils::visibleWidth($match)];
         }
 
         return $ranges;
@@ -299,7 +301,7 @@ final class ProjectSearch
         $line = \substr_count(\substr($content, offset: 0, length: $offset), needle: "\n");
         $firstLine = \explode("\n", $match)[0];
         $preview = \str_contains($match, "\n") ? $firstLine.' ⏎…' : $firstLine;
-        $width = \mb_strwidth($firstLine);
+        $width = AnsiUtils::visibleWidth($firstLine);
         $ranges = 0 === $width ? [] : [['start' => 0, 'length' => $width]];
 
         return ['path' => $rel, 'line' => $line, 'text' => $preview, 'ranges' => $ranges];

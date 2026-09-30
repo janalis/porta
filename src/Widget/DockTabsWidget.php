@@ -424,7 +424,7 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverla
     private function statusTail(string $status, int $room, string $fill): string
     {
         $text = AnsiText::truncate($status, \max(0, $room - 2), pad: false);
-        $pad = \max(0, $room - \mb_strwidth($text) - 1);
+        $pad = \max(0, $room - AnsiUtils::visibleWidth($text) - 1);
 
         return \str_repeat($fill, $pad).$this->styles->merge(Role::Toolbar, Role::Dim)->apply($text);
     }

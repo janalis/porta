@@ -1278,3 +1278,35 @@ terminal can confirm the result.
 
 *Re-opens on:* a vendor regression the moved cases catch (bring the wrapper
 back), or a round with a kitty-protocol terminal to hand (drop the stand-ins).
+
+## `mb_strwidth` vs `visibleWidth`, re-opened and converted (2026-09-30)
+
+The 2026-08-14 "leave it alone" decision would re-open once width collapsed
+ZWJ/modifier clusters. symfony/tui d0adb8b did that in `graphemeWidth()`. The
+four probes, re-run: 👩‍💻 5 vs 2, a skin tone 4 vs 2, a decomposed accent 2 vs 1,
+a flag 2 vs 2. The difference is now observable. With the caret just before the `x` in
+`é xyz`, the editor painted it after the `x`: one column late per mark, six
+after a ZWJ family. The cause was `TextMetrics`, which summed `mb_strwidth()` per
+code point, while the row is sliced by the vendor. The old vendor already drew
+these at 1, 2 and 2 columns, so the bug predates the bump.
+
+**Changed:** `TextMetrics::displayWidth()`, `expandTabs()` and
+`byteColForDisplayCol()` walk graphemes and take `AnsiUtils::graphemeWidth()`,
+with `mb_strwidth()` kept as the fast path for text holding none of the
+characters it mismeasures. The walk now lands on grapheme ends by itself, so
+`graphemeEndAtOrAfter()` is gone. Every other `\mb_strwidth()` in `src` and the
+plugins (popups, pickers, menus, the results panel, breadcrumbs, search ranges,
+bidi tokens) calls `AnsiUtils::visibleWidth()`, the measure the vendor slices
+and pads by. That also counts a tab as the vendor's three columns in search
+ranges, which the painter already did. Guards: `TextMetricsTest` (width, tab
+stops, byte column and the painted caret, over five cluster classes),
+`ProjectSearchTest` for both backends, and `BreadcrumbsWidgetTest`. Each one fails
+on the old measure.
+
+**Left:** the git diff view (`DiffViewRenderer`, `DiffViewWidget`). Its docblock
+says a tab counts as one column across its scroll, truncation and click mapping,
+but it slices through the vendor, which counts three. Whether that holds needs a
+diff-view test of its own before its widths change.
+
+*Re-opens on:* a vendor `graphemeWidth()` change (re-run the four probes against
+`TextMetricsTest::clusters()`).

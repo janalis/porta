@@ -19,6 +19,7 @@ use Porta\Widget\Support\StylesDefault;
 use Porta\Workbench\Menu\Menu;
 use Porta\Workbench\Menu\MenuPanel;
 use Porta\Workbench\Menu\Mnemonics;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Style\Style;
@@ -198,7 +199,7 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
             // A column held back for the mark, which may cost one more title:
             // a row filled to its edge cannot say that it was cut.
             $mark = Glyphs::ELLIPSIS;
-            $shown = $this->fittingTitles($columns - \mb_strwidth($mark));
+            $shown = $this->fittingTitles($columns - AnsiUtils::visibleWidth($mark));
         }
         $this->shown = $shown;
 
@@ -219,15 +220,15 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
             // SGR would cut that underline short after the letter.
             $text = $hovered ? $menu->title : MenuPanel::underlineLetter($menu->title, $menu->title, $letters[$i]);
             $line .= $this->title($text, BarChromeStyle::of($this->styles, TabState::of($active, $hovered), Role::HeaderBar), $active && $this->dropped, $hovered);
-            $this->titleLayout[] = ['index' => $i, 'start' => $used, 'width' => \mb_strwidth($label)];
-            $used += \mb_strwidth($label);
+            $this->titleLayout[] = ['index' => $i, 'start' => $used, 'width' => AnsiUtils::visibleWidth($label)];
+            $used += AnsiUtils::visibleWidth($label);
         }
-        $pad = \max(0, $columns - $used - \mb_strwidth($mark));
+        $pad = \max(0, $columns - $used - AnsiUtils::visibleWidth($mark));
         if ('' !== $mark) {
             // The mark is a title too, standing for the first menu it hides:
             // a click drops that one under it, and it is lit while any hidden
             // menu is — the arrows walk on into them from the last title.
-            $this->titleLayout[] = ['index' => $shown, 'start' => $used + $pad, 'width' => \mb_strwidth($mark)];
+            $this->titleLayout[] = ['index' => $shown, 'start' => $used + $pad, 'width' => AnsiUtils::visibleWidth($mark)];
             $state = TabState::of($this->open && $this->openIndex >= $shown, !$this->open && $shown === $this->hoveredIndex);
             $mark = BarChromeStyle::of($this->styles, $state, Role::HeaderBar)->apply($mark);
         }
@@ -261,7 +262,7 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
         $used = 0;
         $count = 0;
         foreach ($this->menus as $menu) {
-            $used += \mb_strwidth(' '.$menu->title.' ');
+            $used += AnsiUtils::visibleWidth(' '.$menu->title.' ');
             if ($used > $columns) {
                 break;
             }

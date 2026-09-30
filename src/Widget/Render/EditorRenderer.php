@@ -212,7 +212,7 @@ final class EditorRenderer
                 continue;
             }
 
-            $shift += \mb_strwidth($hint['text']);
+            $shift += AnsiUtils::visibleWidth($hint['text']);
         }
 
         return $shift;
@@ -464,14 +464,14 @@ final class EditorRenderer
 
         $width = 12;
         foreach ($visible as $item) {
-            $width = \max($width, \mb_strwidth($item->label) + \mb_strwidth($item->kind) + 5);
+            $width = \max($width, AnsiUtils::visibleWidth($item->label) + AnsiUtils::visibleWidth($item->kind) + 5);
             // The server's `detail` — a signature for a method, a type for a
             // property — asked for but never drawn until now. Guarded on the
             // detail being there at all: the extra column this term adds is the
             // SEPARATOR, and an item with no type needs no separator. Without
             // the guard every popup in the IDE grew by one column.
             if ('' !== $item->detail) {
-                $width = \max($width, \mb_strwidth($item->label) + \mb_strwidth($item->detail) + \mb_strwidth($item->kind) + 6);
+                $width = \max($width, AnsiUtils::visibleWidth($item->label) + AnsiUtils::visibleWidth($item->detail) + AnsiUtils::visibleWidth($item->kind) + 6);
             }
         }
         $width = \min($width, PopupMetrics::COMPLETION_MAX_INNER, $columns - 2 - PopupFrame::CHROME_COLS);
@@ -492,12 +492,12 @@ final class EditorRenderer
             // The label column absorbs the slack, so the kind tag stays flush
             // right whatever the item is called; the detail is what is left
             // between them, which puts it flush right against the kind.
-            $avail = $width - \mb_strwidth($item->kind) - 3;
+            $avail = $width - AnsiUtils::visibleWidth($item->kind) - 3;
             // The NAME is served first and the type takes what is left: a
             // completion whose label you cannot read is not a completion, while
             // the type is what you check once the name is already the one you
             // meant. At a narrow width the type disappears rather than the name.
-            $detailWidth = \min(\mb_strwidth($item->detail), \max(0, $avail - \min(\mb_strwidth($item->label), $avail) - 1));
+            $detailWidth = \min(AnsiUtils::visibleWidth($item->detail), \max(0, $avail - \min(AnsiUtils::visibleWidth($item->label), $avail) - 1));
             $detail = 0 === $detailWidth
                 ? ''
                 // No pad: $detailWidth is capped BY the detail's own width, so
@@ -508,7 +508,10 @@ final class EditorRenderer
             if ($item->deprecated) {
                 // Still offered, marked as going: dim and struck through,
                 // attributes that survive --no-ansi.
-                $label = $style->withDim()->withStrikethrough()->apply(\rtrim($label)).$style->getAnsiRestore().\str_repeat(' ', \max(0, \mb_strwidth($label) - \mb_strwidth(\rtrim($label))));
+                $label =
+                    $style->withDim()->withStrikethrough()->apply(\rtrim($label))
+                    .$style->getAnsiRestore()
+                    .\str_repeat(' ', \max(0, AnsiUtils::visibleWidth($label) - AnsiUtils::visibleWidth(\rtrim($label))));
             }
             $bar = SelectionBar::of($i === $selectedInWindow, focused: true)->value;
             $framed[] = PopupFrame::rail($style->apply($bar.$label.$detail.' '.$kindTag.' '), $width, $styles, $heavy);

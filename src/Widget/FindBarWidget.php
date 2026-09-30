@@ -775,12 +775,12 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface, M
         $line = '';
         foreach (\explode('  ', $hints) as $hint) {
             $joined = '' === $line ? $hint : $line.'  '.$hint;
-            if (\mb_strwidth($joined) <= $width) {
+            if (AnsiUtils::visibleWidth($joined) <= $width) {
                 $line = $joined;
 
                 continue;
             }
-            if ('' === $line || (\count($packed) + 1) === $lines || \mb_strwidth($hint) > $width) {
+            if ('' === $line || (\count($packed) + 1) === $lines || AnsiUtils::visibleWidth($hint) > $width) {
                 break;
             }
             $packed[] = $line;

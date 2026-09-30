@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Editor;
 
+use Symfony\Component\Tui\Ansi\AnsiUtils;
+
 /**
  * Pure text-measurement algorithms shared by {@see Document}: UTF-8 character
  * boundaries, terminal display width with tab stops, tab expansion, and UTF-16
@@ -13,6 +15,14 @@ namespace Porta\Editor;
  */
 final class TextMetrics
 {
+    /**
+     * What `mb_strwidth()` measures differently from the terminal: combining
+     * marks, format characters (a ZWJ), Hangul vowel/final jamo, skin-tone
+     * modifiers. The vendor's own fast-path test, which it keeps private; text
+     * without any of these is measured by `mb_strwidth()` alone.
+     */
+    private const string MISMEASURED = '/[\p{M}\p{Cf}\x{1160}-\x{11FF}\x{D7B0}-\x{D7FF}\x{1F3FB}-\x{1F3FF}]/u';
+
     /** Next UTF-8 character boundary at or after $col+1 in $line. */
     public static function nextCharBoundary(string $line, int $col): int
     {
@@ -41,8 +51,7 @@ final class TextMetrics
      * Delete. A grapheme is what the terminal draws as one character — a base
      * letter with its combining marks, a flag, a ZWJ family — so stepping by
      * code point stopped inside one and deleting that way left half of it.
-     * LSP and width math stay on code points: a UTF-16 position may point
-     * inside a grapheme.
+     * LSP stays on code points: a UTF-16 position may point inside a grapheme.
      */
     public static function nextGrapheme(string $line, int $col): int
     {
@@ -97,33 +106,29 @@ final class TextMetrics
 
     /**
      * Visual width of a string in terminal cells, expanding tabs to the next
-     * multiple of $tabSize. Tab-free text takes the mb_strwidth fast path.
+     * multiple of $tabSize. A grapheme is as wide as the vendor draws it
+     * ({@see AnsiUtils::graphemeWidth()}): summing code points gave a
+     * decomposed accent two columns and a ZWJ family eight, and the caret
+     * landed that far right of the text.
      */
     public static function displayWidth(string $text, int $tabSize): int
     {
-        if ('' === $text) {
-            return 0;
-        }
-        if (!\str_contains($text, "\t")) {
+        if (!\str_contains($text, "\t") && 1 !== \preg_match(self::MISMEASURED, $text)) {
             return \mb_strwidth($text, encoding: 'UTF-8');
         }
 
         $width = 0;
-        $col = 0;
-        $len = \strlen($text);
-        while ($col < $len) {
-            if ("\t" === $text[$col]) {
-                $width += $tabSize - ($width % $tabSize);
-                ++$col;
-
-                continue;
-            }
-            $next = self::nextCharBoundary($text, $col);
-            $width += \mb_strwidth(\substr($text, $col, $next - $col), encoding: 'UTF-8');
-            $col = $next;
+        foreach (self::graphemes($text) as $grapheme) {
+            $width += self::cellWidth($grapheme, $width, $tabSize);
         }
 
         return $width;
+    }
+
+    /** Columns $grapheme takes when it starts at column $width: a tab runs to the next stop. */
+    private static function cellWidth(string $grapheme, int $width, int $tabSize): int
+    {
+        return "\t" === $grapheme ? $tabSize - ($width % $tabSize) : AnsiUtils::graphemeWidth($grapheme);
     }
 
     /** Expand a single line's tabs to spaces at $tabSize tab stops. */
@@ -131,22 +136,10 @@ final class TextMetrics
     {
         $result = '';
         $width = 0;
-        $col = 0;
-        $len = \strlen($line);
-        while ($col < $len) {
-            if ("\t" === $line[$col]) {
-                $n = $tabSize - ($width % $tabSize);
-                $result .= \str_repeat(' ', \max(0, $n));
-                $width += $n;
-                ++$col;
-
-                continue;
-            }
-            $next = self::nextCharBoundary($line, $col);
-            $seg = \substr($line, $col, $next - $col);
-            $result .= $seg;
-            $width += \mb_strwidth($seg, encoding: 'UTF-8');
-            $col = $next;
+        foreach (self::graphemes($line) as $grapheme) {
+            $cells = self::cellWidth($grapheme, $width, $tabSize);
+            $result .= "\t" === $grapheme ? \str_repeat(' ', \max(0, $cells)) : $grapheme;
+            $width += $cells;
         }
 
         return $result;
@@ -163,40 +156,19 @@ final class TextMetrics
             return \min($displayCol, \strlen($line));
         }
 
+        // Whole graphemes only, so a column never lands inside one, where
+        // typing would split it.
         $col = 0;
         $width = 0;
-        $len = \strlen($line);
-        while ($col < $len && $width < $displayCol) {
-            if ("\t" === $line[$col]) {
-                $width += $tabSize - ($width % $tabSize);
-                ++$col;
-
-                continue;
-            }
-            $next = self::nextCharBoundary($line, $col);
-            $char = \substr($line, $col, $next - $col);
-            $width += \mb_strwidth($char, encoding: 'UTF-8');
-            $col = $next;
-        }
-
-        // A combining mark is zero columns wide, so the walk stops after its
-        // base letter — inside the grapheme, where typing would split it. Up,
-        // Down and the column moves land on the grapheme's end instead.
-        return self::graphemeEndAtOrAfter($line, $col);
-    }
-
-    /** $col, or the end of the grapheme it falls inside. */
-    private static function graphemeEndAtOrAfter(string $line, int $col): int
-    {
-        $end = 0;
         foreach (self::graphemes($line) as $grapheme) {
-            if ($end >= $col) {
+            if ($width >= $displayCol) {
                 break;
             }
-            $end += \strlen($grapheme);
+            $width += self::cellWidth($grapheme, $width, $tabSize);
+            $col += \strlen($grapheme);
         }
 
-        return $end;
+        return $col;
     }
 
     /** UTF-16 code-unit column for a byte offset on $line (for LSP positions). */

@@ -48,7 +48,7 @@ final class MenuPanel
             if ($item->separator) {
                 continue;
             }
-            $width = \max($width, $gutter + \mb_strwidth($item->label) + ('' !== $item->shortcut ? \mb_strwidth($item->shortcut) + self::SHORTCUT_GAP : 0) + self::ITEM_CHROME);
+            $width = \max($width, $gutter + AnsiUtils::visibleWidth($item->label) + ('' !== $item->shortcut ? AnsiUtils::visibleWidth($item->shortcut) + self::SHORTCUT_GAP : 0) + self::ITEM_CHROME);
         }
 
         return $width;
@@ -222,8 +222,8 @@ final class MenuPanel
         // On a panel narrower than its row, the shortcut goes before the
         // label is cut: the label says what the item does, the key is only
         // a faster way to it — and one cut to `Ctrl+Sh…` is no key at all.
-        $shortcut = (\mb_strwidth($item->label) + self::SHORTCUT_GAP + \mb_strwidth($item->shortcut)) > $inner ? '' : $item->shortcut;
-        $labelMax = \max(0, $inner - ('' !== $shortcut ? \mb_strwidth($shortcut) + self::SHORTCUT_GAP : 0));
+        $shortcut = (AnsiUtils::visibleWidth($item->label) + self::SHORTCUT_GAP + AnsiUtils::visibleWidth($item->shortcut)) > $inner ? '' : $item->shortcut;
+        $labelMax = \max(0, $inner - ('' !== $shortcut ? AnsiUtils::visibleWidth($shortcut) + self::SHORTCUT_GAP : 0));
         $label = AnsiText::truncate($item->label, $labelMax);
         if (MenuAvailability::Enabled === $availability) {
             $label = self::underlineLetter($label, $item->label, $letter);
@@ -231,7 +231,7 @@ final class MenuPanel
         // With no shortcut there is nothing to keep apart: a label may run to
         // the edge. A floor of 1 there drew a full-width label one column
         // past the panel, and the frame's clip then cut it a second time.
-        $gap = \max('' === $shortcut ? 0 : 1, $inner - AnsiUtils::visibleWidth($label) - \mb_strwidth($shortcut));
+        $gap = \max('' === $shortcut ? 0 : 1, $inner - AnsiUtils::visibleWidth($label) - AnsiUtils::visibleWidth($shortcut));
 
         // Disabled reads dim with its label struck through, and never shows
         // the selected highlight. It used to borrow the row-hover shade, which
@@ -245,7 +245,7 @@ final class MenuPanel
         if (MenuAvailability::Disabled === $availability) {
             $label = $style->withStrikethrough()->apply($label).$style->getAnsiRestore();
         }
-        $tail = '' !== $shortcut ? $styles->of(Role::CompletionHint)->apply($shortcut) : \str_repeat(' ', \max(0, \mb_strwidth($shortcut)));
+        $tail = '' !== $shortcut ? $styles->of(Role::CompletionHint)->apply($shortcut) : \str_repeat(' ', \max(0, AnsiUtils::visibleWidth($shortcut)));
 
         // A mirrored menu spends one gap column on a mark that ENDS the label's
         // run. Four shipped action labels end in a Latin run (`הצג TODO`,

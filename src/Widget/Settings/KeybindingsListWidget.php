@@ -334,7 +334,7 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
             if ($index === $this->capturingIndex) {
                 $prompt = $this->translator->trans('Press a key… (Esc to cancel)');
                 $right = $this->styles->of(Role::Modified)->apply($prompt);
-                $rightWidth = \mb_strwidth($prompt);
+                $rightWidth = AnsiUtils::visibleWidth($prompt);
             }
 
             $labelWidth = \max(0, $width - $rightWidth - 2);

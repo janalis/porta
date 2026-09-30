@@ -53,8 +53,8 @@ final class CaretPopupRenderer
         // typed into. With neither side free, the hint yields.
         $above = CaretSide::Above !== $taken;
         $below = CaretSide::Below !== $taken;
-        $tail = '' === $counter ? 0 : \mb_strwidth($counter) + 2;
-        $natural = \mb_strwidth($hint) + 2 + $tail;
+        $tail = '' === $counter ? 0 : AnsiUtils::visibleWidth($counter) + 2;
+        $natural = AnsiUtils::visibleWidth($hint) + 2 + $tail;
         $col = $gutterWidth;
         $frameMax = $columns - $gutterWidth - 1 - PopupFrame::CHROME_COLS;
         $width = \min($natural, $frameMax);
@@ -100,8 +100,8 @@ final class CaretPopupRenderer
      * fourth onwards. Each side gets an ellipsis where it was cut.
      *
      * Width math happens on the PLAIN pieces and the styling is applied
-     * afterwards: handing an ANSI-carrying string to `mb_strwidth()` is the
-     * classic over-wide row in this codebase. Each piece re-applies the popup
+     * afterwards: measuring an ANSI-carrying string with a width function that
+     * does not strip it is the classic over-wide row in this codebase. Each piece re-applies the popup
      * style, so the background cannot drop out mid-line.
      *
      * @param array{0: int, 1: int}|null $activeRange byte range within $hint
@@ -110,28 +110,31 @@ final class CaretPopupRenderer
     {
         $style = $styles->merge(Role::InlayPopupBg, Role::InlayPopupFg);
         $tail = '' === $counter ? '' : '  '.$counter;
-        $room = \max(0, $width - 2 - \mb_strwidth($tail));
+        $room = \max(0, $width - 2 - AnsiUtils::visibleWidth($tail));
         if (null === $activeRange) {
             // Cut at the end, the ellipsis ends the row; the counter, when
             // there is one, keeps its place after it.
             return '' === $tail
                 ? $style->apply(AnsiText::truncate(' '.$hint.' ', $width, pad: true))
-                : $style->apply(AnsiText::truncate(' '.$hint, $width - \mb_strwidth($tail) - 1, pad: true)).self::counterTail($tail, $style).$style->apply(' ');
+                : $style->apply(AnsiText::truncate(' '.$hint, $width - AnsiUtils::visibleWidth($tail) - 1, pad: true)).self::counterTail($tail, $style).$style->apply(' ');
         }
         $before = \substr($hint, offset: 0, length: $activeRange[0]);
         $active = \substr($hint, $activeRange[0], $activeRange[1] - $activeRange[0]);
         $after = \substr($hint, $activeRange[1]);
 
         $active = AnsiText::truncate($active, $room);
-        $left = \intdiv(\max(0, $room - \mb_strwidth($active)), num2: 2);
-        $right = \max(0, $room - \mb_strwidth($active) - $left);
+        $left = \intdiv(\max(0, $room - AnsiUtils::visibleWidth($active)), num2: 2);
+        $right = \max(0, $room - AnsiUtils::visibleWidth($active) - $left);
         // What the right side does not need, the left may use; the right then
         // takes whatever the left left.
-        $left += \max(0, $right - \mb_strwidth($after));
-        $before = self::tailOf($before, \min($left, \max(0, $room - \mb_strwidth($active))));
-        $after = AnsiText::truncate($after, \max(0, $room - \mb_strwidth($active) - \mb_strwidth($before)));
+        $left += \max(0, $right - AnsiUtils::visibleWidth($after));
+        $before = self::tailOf($before, \min($left, \max(0, $room - AnsiUtils::visibleWidth($active))));
+        $after = AnsiText::truncate($after, \max(0, $room - AnsiUtils::visibleWidth($active) - AnsiUtils::visibleWidth($before)));
 
-        $line = $style->apply(' '.$before).$style->withBold()->withUnderline()->apply($active).$style->apply(AnsiText::padRight($after, $room - \mb_strwidth($before) - \mb_strwidth($active)));
+        $line =
+            $style->apply(' '.$before)
+            .$style->withBold()->withUnderline()->apply($active)
+            .$style->apply(AnsiText::padRight($after, $room - AnsiUtils::visibleWidth($before) - AnsiUtils::visibleWidth($active)));
 
         return $line.self::counterTail($tail, $style).$style->apply(' ');
     }
@@ -139,14 +142,14 @@ final class CaretPopupRenderer
     /** The last $width columns of $text, an ellipsis standing for what went. */
     private static function tailOf(string $text, int $width): string
     {
-        if (\mb_strwidth($text) <= $width) {
+        if (AnsiUtils::visibleWidth($text) <= $width) {
             return $text;
         }
         if ($width < 1) {
             return '';
         }
 
-        return Glyphs::ELLIPSIS.AnsiUtils::sliceByColumn($text, \mb_strwidth($text) - ($width - 1), $width - 1);
+        return Glyphs::ELLIPSIS.AnsiUtils::sliceByColumn($text, AnsiUtils::visibleWidth($text) - ($width - 1), $width - 1);
     }
 
     private static function counterTail(string $tail, Style $style): string
@@ -218,7 +221,7 @@ final class CaretPopupRenderer
      */
     public static function completionNote(array &$lines, int $columns, int $rows, int $cursorScreenRow, int $anchorCol, string $text, Styles $styles): ?CaretSide
     {
-        $width = \min(\mb_strwidth($text) + 2, $columns - PopupFrame::CHROME_COLS);
+        $width = \min(AnsiUtils::visibleWidth($text) + 2, $columns - PopupFrame::CHROME_COLS);
         if ($width < 3) {
             return null;
         }

@@ -8,6 +8,7 @@ use Porta\Support\AnsiText;
 use Porta\Ui\Role;
 use Porta\Ui\Sgr;
 use Porta\Ui\Theme\Styles;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Style\Style;
 
 /**
@@ -38,7 +39,7 @@ final class HeaderRenderer
         if ('' === $suffix) {
             return $style->apply(AnsiText::scrollLineToCaret($text, $width));
         }
-        $room = \max(0, $width - \mb_strwidth($suffix) - 1);
+        $room = \max(0, $width - AnsiUtils::visibleWidth($suffix) - 1);
         if (0 === $room) {
             // The pane cannot seat the suffix and its gap, so the SUFFIX is
             // what has to shrink — there is no text left to take it out of.

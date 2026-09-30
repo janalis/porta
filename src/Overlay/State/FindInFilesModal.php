@@ -686,7 +686,11 @@ final class FindInFilesModal
     private function boxWidth(int $columns, array $visible, int $fieldRows): int
     {
         $status = $this->statusText();
-        $width = \max(\mb_strwidth($this->title) + \mb_strwidth($status) + 10, \mb_strwidth($this->query->value()) + 9 + FieldBox::CHROME_COLS, PopupMetrics::FIND_MIN_WIDTH); // + 10: the frame's title-bar chrome
+        $width = \max(
+            AnsiUtils::visibleWidth($this->title) + AnsiUtils::visibleWidth($status) + 10,
+            AnsiUtils::visibleWidth($this->query->value()) + 9 + FieldBox::CHROME_COLS,
+            PopupMetrics::FIND_MIN_WIDTH,
+        ); // + 10: the frame's title-bar chrome
         // Room for the Replace hint beside a usable compact value: it carries
         // the replace count, so the box grows to seat it rather than drop it.
         $label = \max(\array_map(AnsiUtils::visibleWidth(...), $this->labels(1)));
@@ -701,7 +705,7 @@ final class FindInFilesModal
         );
         foreach ($visible as $row) {
             $text = $row->filePath ?? $this->results[$row->matchIndex]['text'] ?? '';
-            $width = \max($width, \mb_strwidth($text) + 8);
+            $width = \max($width, AnsiUtils::visibleWidth($text) + 8);
         }
 
         // Inner width; the frame adds a rail and a padding column each side.
@@ -1007,7 +1011,7 @@ final class FindInFilesModal
      */
     private function footerRowWidth(): int
     {
-        return \mb_strwidth($this->footerLegend());
+        return AnsiUtils::visibleWidth($this->footerLegend());
     }
 
     private function footerRow(int $width): string

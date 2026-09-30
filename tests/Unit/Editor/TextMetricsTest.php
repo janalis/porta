@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit\Editor;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\Document;
 use Porta\Editor\TextMetrics;
+use Porta\Widget\Render\CursorVisibility;
+use Porta\Widget\Render\EditorRenderer;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 final class TextMetricsTest extends TestCase
 {
@@ -166,5 +170,39 @@ final class TextMetricsTest extends TestCase
         $this->assertSame(4, TextMetrics::byteColForDisplayCol("ae\u{0301}b", 2, 4));
         $this->assertSame(1, TextMetrics::byteColForDisplayCol("ae\u{0301}b", 1, 4), 'a boundary already between graphemes stays');
         $this->assertSame(3, TextMetrics::byteColForDisplayCol("ab\xffc", 3, 4), 'invalid UTF-8 keeps the code-point answer');
+    }
+
+    /** @return iterable<string, array{string}> graphemes that summing code points measures too wide */
+    public static function clusters(): iterable
+    {
+        yield 'a decomposed accent' => ["e\u{0301}"];
+        yield 'hebrew niqqud' => ["\u{05E9}\u{05B8}"];
+        yield 'a ZWJ family' => ["\u{1F468}\u{200D}\u{1F469}\u{200D}\u{1F467}"];
+        yield 'a skin tone' => ["\u{1F44D}\u{1F3FD}"];
+        yield 'hangul jamo' => ["\u{1100}\u{1161}\u{11A8}"];
+    }
+
+    #[DataProvider('clusters')]
+    public function testAGraphemeIsAsWideAsTheTerminalDrawsIt(string $cluster): void
+    {
+        $drawn = AnsiUtils::visibleWidth($cluster);
+
+        $this->assertSame($drawn + 1, TextMetrics::displayWidth("a{$cluster}", 4));
+        $this->assertSame(4 + $drawn + 1, TextMetrics::displayWidth("\t{$cluster}b", 4), 'the slow path, taken for the tab');
+        $this->assertSame("    {$cluster}".\str_repeat(' ', times: 4 - $drawn).'b', TextMetrics::expandTabs("\t{$cluster}\tb", 4), 'the next tab stop counts the grapheme as drawn');
+        $this->assertSame(1 + \strlen($cluster), TextMetrics::byteColForDisplayCol("a{$cluster}bc", 1 + $drawn, 4), 'the column after it is the byte after it');
+    }
+
+    #[DataProvider('clusters')]
+    public function testTheCaretIsPaintedWhereTheDocumentPutsIt(string $cluster): void
+    {
+        // The symptom: a caret before the `x` was painted after it, one column
+        // late per mark and six after a ZWJ family.
+        $line = "{$cluster}xyz";
+        $caret = TextMetrics::displayWidth($cluster, 4);
+
+        $painted = AnsiUtils::stripAnsiCodes(EditorRenderer::renderContentLine(0, $line, 20, CursorVisibility::Shown, $caret, '|'));
+
+        $this->assertSame("{$cluster}|xyz", \rtrim($painted));
     }
 }

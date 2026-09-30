@@ -16,6 +16,7 @@ use Porta\Widget\Render\MenuOverlayHostTrait;
 use Porta\Widget\Support\ColumnHover;
 use Porta\Widget\Support\ProviderFingerprint;
 use Porta\Widget\Support\StylesDefault;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Style\Style;
 use Symfony\Component\Tui\Widget\AbstractWidget;
@@ -140,7 +141,7 @@ final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost,
             }
             // Alone and still too wide, the current crumb keeps both ends.
             $label = $i === $last ? AnsiText::elideMiddle($crumb['label'], $room) : $crumb['label'];
-            $width = \mb_strwidth($label);
+            $width = AnsiUtils::visibleWidth($label);
             $this->lastLayout[] = ['start' => $col, 'width' => $width, 'line' => $crumb['line']];
             if ($label !== $crumb['label']) {
                 $this->tips[] = ['start' => $col, 'width' => $width, 'key' => 'current', 'text' => $crumb['label']];
@@ -174,9 +175,9 @@ final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost,
     private static function window(array $labels, int $room): array
     {
         $first = \count($labels) - 1;
-        $used = \mb_strwidth($labels[$first]);
+        $used = AnsiUtils::visibleWidth($labels[$first]);
         while ($first > 0) {
-            $next = $used + 3 + \mb_strwidth($labels[$first - 1]);
+            $next = $used + 3 + AnsiUtils::visibleWidth($labels[$first - 1]);
             if (($next + ($first > 1 ? self::LEAD_WIDTH : 0)) > $room) {
                 break;
             }

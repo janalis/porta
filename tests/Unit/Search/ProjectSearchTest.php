@@ -245,12 +245,16 @@ final class ProjectSearchTest extends TestCase
         $this->assertSame([['start' => 4, 'length' => 6]], $this->rangesOf(SearchBackend::Grep, 'the needle here', 'ne+dle', options: new SearchOptions(regex: true)));
         // A multibyte prefix ("café " is 6 bytes but 5 display columns) → start 5.
         $this->assertSame([['start' => 5, 'length' => 6]], $this->rangesOf(SearchBackend::Grep, 'café needle x', 'needle'));
+        // The same word written e + U+0301 is still five columns as the panel
+        // draws it; summing code points put the highlight one column late.
+        $this->assertSame([['start' => 5, 'length' => 6]], $this->rangesOf(SearchBackend::Grep, "cafe\u{0301} needle x", 'needle'));
     }
 
     public function testPhpFallbackMatchRangesMatchGrep(): void
     {
         $this->assertSame([['start' => 4, 'length' => 6]], $this->rangesOf(SearchBackend::PhpFallback, 'the needle here', 'needle'));
         $this->assertSame([['start' => 5, 'length' => 6]], $this->rangesOf(SearchBackend::PhpFallback, 'café needle x', 'needle'));
+        $this->assertSame([['start' => 5, 'length' => 6]], $this->rangesOf(SearchBackend::PhpFallback, "cafe\u{0301} needle x", 'needle'));
     }
 
     /** @return list<string> sorted result paths for a mask over a fixed fixture */

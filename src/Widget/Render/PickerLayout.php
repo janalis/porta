@@ -72,13 +72,13 @@ final class PickerLayout
         $windowStart = IntMath::clamp($selected - $maxItems + 1, 0, \count($items) - $maxItems);
         $visible = \array_slice($items, $windowStart, $maxItems);
 
-        $width = \mb_strwidth($overlay['title']) + 8; // the frame's title-bar chrome (corners, hint, ×) needs its room
+        $width = AnsiUtils::visibleWidth($overlay['title']) + 8; // the frame's title-bar chrome (corners, hint, ×) needs its room
         // Measured over the UNFILTERED list, and over all of it rather than the
         // visible window: a box sized from what survives the filter shrinks and
         // re-centres on every keystroke, walking out from under the eye reading
         // it. The width is a property of the list, not of this frame's slice.
         foreach ($overlay['items'] as $item) {
-            $width = \max($width, self::boxWidth($item) + \mb_strwidth($item['label']) + \mb_strwidth($item['hint']) + 6);
+            $width = \max($width, self::boxWidth($item) + AnsiUtils::visibleWidth($item['label']) + AnsiUtils::visibleWidth($item['hint']) + 6);
         }
         // The filler row shown when nothing matches: measured ALWAYS, not only
         // when it is about to be drawn. Nothing else in this width measures it
@@ -91,14 +91,14 @@ final class PickerLayout
         // and counting this one only when the filter stops matching puts that
         // resize straight back: measured at 15 columns, then 27 on the
         // keystroke that emptied the list.
-        $width = \max($width, \mb_strwidth($emptyMessage) + 2, \mb_strwidth($placeholder) + 2 + FieldBox::CHROME_COLS + 2);
+        $width = \max($width, AnsiUtils::visibleWidth($emptyMessage) + 2, AnsiUtils::visibleWidth($placeholder) + 2 + FieldBox::CHROME_COLS + 2);
         $width = \min($width, $columns - PopupMetrics::CENTERED_MARGIN, PopupMetrics::CENTERED_MAX_INNER);
 
         $content = [];
         foreach ($visible as $i => $item) {
             $row = RowSelection::of(($windowStart + $i) === $selected, ($windowStart + $i) === $overlay['hovered']);
             $style = $styles->of(ModalRowStyle::role($row));
-            $hintWidth = \mb_strwidth($item['hint']);
+            $hintWidth = AnsiUtils::visibleWidth($item['hint']);
             // A checklist's box leads its label, as a browser's does, and is
             // not part of it: the filter matches the words alone.
             $box = \array_key_exists('checked', $item) ? FieldBox::checkbox($item['checked'], tint: RowSelection::Selected === $row ? null : $styles).' ' : '';
@@ -112,7 +112,7 @@ final class PickerLayout
                 default => null,
             };
             if (null !== $readOnly) {
-                $label = $readOnly->apply(\rtrim($label)).$style->getAnsiRestore().\str_repeat(' ', \max(0, \mb_strwidth($label) - \mb_strwidth(\rtrim($label))));
+                $label = $readOnly->apply(\rtrim($label)).$style->getAnsiRestore().\str_repeat(' ', \max(0, AnsiUtils::visibleWidth($label) - AnsiUtils::visibleWidth(\rtrim($label))));
             }
             // The first column is the selection's shape, the ▌ every list in
             // the IDE draws, so the row reads as chosen without its shade.
@@ -197,14 +197,19 @@ final class PickerLayout
         // visibleWidth strips the field's zero-width caret marker, so the
         // width measures the query text alone.
         $queryField = $search->query->render($caret);
-        $width = \max(\mb_strwidth($search->title) + 8, AnsiUtils::visibleWidth($queryField) + 2 + FieldBox::CHROME_COLS, \mb_strwidth($placeholder) + 3 + FieldBox::CHROME_COLS, 24); // + 8: the frame's title-bar chrome
+        $width = \max(
+            AnsiUtils::visibleWidth($search->title) + 8,
+            AnsiUtils::visibleWidth($queryField) + 2 + FieldBox::CHROME_COLS,
+            AnsiUtils::visibleWidth($placeholder) + 3 + FieldBox::CHROME_COLS,
+            24,
+        ); // + 8: the frame's title-bar chrome
         // The widest row seen since the modal opened, not this frame's: the box
         // holds its size while results stream in and the query narrows.
         $width = \max($width, $search->widest);
         // Same rule as the list's filler, and unconditional for the same
         // reason. The 24-column floor happens to seat every translation of
         // "no results" today, which is luck rather than a guarantee.
-        $width = \max($width, \mb_strwidth($search->emptyMessage) + 2);
+        $width = \max($width, AnsiUtils::visibleWidth($search->emptyMessage) + 2);
         $width = \min($width, $columns - PopupMetrics::CENTERED_MARGIN, PopupMetrics::CENTERED_MAX_INNER);
 
         // No legend: the title bar already names what is being searched.
@@ -296,7 +301,7 @@ final class PickerLayout
         $columns = $boundRight - $boundLeft;
 
         $text = ' '.$prompt['label'].': '.$prompt['value']->value();
-        $innerWidth = \min($columns - PopupMetrics::CENTERED_MARGIN, \max(30, \mb_strwidth($text) + 2 + FieldBox::CHROME_COLS));
+        $innerWidth = \min($columns - PopupMetrics::CENTERED_MARGIN, \max(30, AnsiUtils::visibleWidth($text) + 2 + FieldBox::CHROME_COLS));
         // The prompt is a framed modal like its siblings: the frame's title
         // bar carries the label, the Esc hint and the ×, so the boxed field
         // needs no legend. It always takes the keys; a destructive prompt's
@@ -328,14 +333,15 @@ final class PickerLayout
         // The row that grows the list reads as an action, not a result: led
         // by an ellipsis, and never marked as matching the query.
         $text = $hit->keepsOpen ? Glyphs::ELLIPSIS.' '.$hit->label : $hit->label;
-        $labelFloor = \min(\mb_strwidth($text), \max(1, \intdiv($avail + 1, num2: 2)));
+        $labelFloor = \min(AnsiUtils::visibleWidth($text), \max(1, \intdiv($avail + 1, num2: 2)));
         $detail = AnsiText::elideMiddle($hit->detail, \max(0, $avail - $labelFloor - 1));
         $label = AnsiText::truncate($text, \max(1, $avail - AnsiUtils::visibleWidth($detail)), pad: true);
         if ($hit->enabled && !$hit->keepsOpen) {
             $label = MatchMarks::apply($label, $text, $query, $selected);
         }
         if (!$hit->enabled) {
-            $label = $row->withDim()->withStrikethrough()->apply(\rtrim($label)).$row->getAnsiRestore().\str_repeat(' ', \max(0, \mb_strwidth($label) - \mb_strwidth(\rtrim($label))));
+            $label =
+                $row->withDim()->withStrikethrough()->apply(\rtrim($label)).$row->getAnsiRestore().\str_repeat(' ', \max(0, AnsiUtils::visibleWidth($label) - AnsiUtils::visibleWidth(\rtrim($label))));
         }
 
         return $label.self::gap($direction).$styles->of(Role::CompletionHint)->apply($detail);

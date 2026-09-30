@@ -1255,7 +1255,7 @@ final class CodeEditorWidget extends AbstractWidget implements
         // take the other one.
         $taken = null;
         $this->completion->setBox(null);
-        $anchorCol = $geo->gutterWidth + ($geo->cursorDisplayCol - $geo->hScroll) - \mb_strwidth($this->document->getWordBeforeCursor());
+        $anchorCol = $geo->gutterWidth + ($geo->cursorDisplayCol - $geo->hScroll) - AnsiUtils::visibleWidth($this->document->getWordBeforeCursor());
         if (null !== ($popup = $this->completion->popupState())) {
             $box = EditorRenderer::completionPopup(
                 $result,

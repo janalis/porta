@@ -50,7 +50,7 @@ final class FindModalRows
     {
         $bg = $styles->of(ModalRowStyle::role($selected))->getAnsiRestore();
         $label = (string) ($result['line'] + 1);
-        $prefixWidth = 4 + \mb_strwidth($label) + 2;
+        $prefixWidth = 4 + AnsiUtils::visibleWidth($label) + 2;
         $text = '    '.$styles->of(Role::TabAccent)->apply($label).'  '.$result['text'];
 
         $searchStyle = $styles->of(Role::SearchBg);
@@ -88,7 +88,7 @@ final class FindModalRows
         // close would cut the tint.
         $box = FieldBox::checkbox(null !== $replacement, tint: RowSelection::Selected === $selected || $boxHovered ? null : $styles);
         $checkbox = '  '.($boxHovered ? new Style(underline: true)->apply($box) : $box).' ';
-        $prefixWidth = AnsiUtils::visibleWidth($checkbox) + \mb_strwidth($label) + 2;
+        $prefixWidth = AnsiUtils::visibleWidth($checkbox) + AnsiUtils::visibleWidth($label) + 2;
         $head = $checkbox.$styles->of(Role::TabAccent)->apply($label).'  ';
 
         $text = null === $replacement

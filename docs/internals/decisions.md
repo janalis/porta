@@ -257,6 +257,16 @@ new palette commands would have to exist to serve a refactor.
 That is why the factory and loader cross the boundary as bare `\Closure`s and
 the registrar type-checks what comes back.
 
+**Measure a cell with `AnsiUtils::visibleWidth()`, not `mb_strwidth()`.** The
+2026-08-14 decision to leave the split alone rested on the two agreeing on
+every cluster class. symfony/tui d0adb8b made them disagree: a ZWJ sequence or a
+skin tone is two columns, a decomposed accent one, where `mb_strwidth()` sums
+the code points. Re-opened and converted 2026-09-30 (dated history): the painted
+sites call the painter's measure, `TextMetrics` walks graphemes with
+`graphemeWidth()`, and the caret, search-highlight and breadcrumb tests fail on
+the old measure. The git diff view keeps `mb_strwidth()`, because its own
+tab-as-one-column coordinates are a separate question.
+
 ## Plugin API
 
 **`registerWelcomeStep()` — designed and rejected.** The plugins worth
@@ -335,23 +345,6 @@ subprocess per buffer switch. Neither is observable through any seam a test can
 hold. Do not write a test that cannot fail.
 
 ## Leave it alone
-
-**The 56/56 `mb_strwidth` vs `AnsiUtils::visibleWidth` split — measured and
-rejected (2026-08-14).** The premise was that `visibleWidth`'s grapheme path
-(via `UnicodeString::width`) collapses multi-codepoint clusters where
-`mb_strwidth` sums components, so the sites feeding click/hover geometry
-(BreadcrumbsWidget's hit zones, ResultsPanel's match offsets, MenuPanel's
-dropdown sizing) were measuring wrong. Measured on the shipped symfony/string:
-the two functions **agree on every cluster class** — ZWJ emoji (👩‍💻: both 5),
-skin tones (both 4), decomposed accents (both 2), flags (both 2). The vendored
-`graphemeWidth` docblock's "where `mb_strwidth()` overcounts" describes a
-difference `UnicodeString::width` does not deliver. A 56-site swap would change
-nothing observable, and no test could pin it — do not write a test that cannot
-fail.
-
-*Re-opens on:* symfony/string's `width()` actually collapsing ZWJ/modifier
-clusters (re-run the four-probe comparison), at which point the geometry-feeding
-sites are the ones to convert first.
 
 **`PaneSegmenter` per-frame memoization — measured and rejected.** With RTL
 active every frame re-segments the whole widget tree while the vendor

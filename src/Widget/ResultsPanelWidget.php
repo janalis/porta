@@ -42,6 +42,7 @@ use Porta\Widget\Support\ResultLayout;
 use Porta\Widget\Support\ResultsPanelFields;
 use Porta\Widget\Support\ResultsViewState;
 use Psr\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\FocusableInterface;
@@ -712,9 +713,9 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
     private function prefixWidth(array $result): int
     {
         return match (true) {
-            $this->grouped => \mb_strwidth($this->matchIndent()) + \mb_strwidth($this->groupedLabel($result)) + 2,
+            $this->grouped => AnsiUtils::visibleWidth($this->matchIndent()) + AnsiUtils::visibleWidth($this->groupedLabel($result)) + 2,
             '' === $result['path'] => 1,
-            default => 1 + \mb_strwidth($result['path'].':'.($result['line'] + 1)) + 2,
+            default => 1 + AnsiUtils::visibleWidth($result['path'].':'.($result['line'] + 1)) + 2,
         };
     }
 
@@ -734,7 +735,7 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
         }
         $tail = $result['tail'] ?? '';
         $text = $result['text'].('' === $tail ? '' : '  '.$tail);
-        if (($this->prefixWidth($result) + \mb_strwidth($text)) <= $this->drawnColumns) {
+        if (($this->prefixWidth($result) + AnsiUtils::visibleWidth($text)) <= $this->drawnColumns) {
             return null;
         }
         $location = '' === $result['path'] ? '' : $result['path'].':'.($result['line'] + 1)."\n";
@@ -764,7 +765,7 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
             return $result['text'];
         }
         // Two columns for the gap the rule already sat behind.
-        $room = $columns - $prefixWidth - \mb_strwidth($tail) - 2;
+        $room = $columns - $prefixWidth - AnsiUtils::visibleWidth($tail) - 2;
         // Too narrow to hold both: the sentence wins, and the ordinary
         // whole-row cut takes the tail as it always did. A rule name alone,
         // with no message beside it, names nothing you could act on.

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\I18n;
 
 use Porta\Ui\Sgr;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
  * A pragmatic UAX#9-subset reorderer for a single already-composed terminal
@@ -213,7 +214,7 @@ final class Bidi
                 continue; // SGR carries no column
             }
             // The APC cursor marker prints nothing; only real graphemes take width.
-            $width = \str_starts_with($token, "\x1b") ? 0 : \mb_strwidth($token, encoding: 'UTF-8');
+            $width = \str_starts_with($token, "\x1b") ? 0 : AnsiUtils::visibleWidth($token);
             $glyphs[] = ['g' => $token, 'w' => $width];
         }
         if ([] === $glyphs) {
