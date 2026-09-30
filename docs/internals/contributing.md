@@ -36,9 +36,9 @@ flake class `testing.md` describes.
 
 | var | default | used by |
 | --- | --- | --- |
-| `PORTA_TEST_PROCESSES` | half the cores | `composer test` (and its per-suite variants), `composer coverage:src` |
+| `PORTA_TEST_PROCESSES` | half the cores | `composer test` (and its per-suite variants), `composer coverage:src`, `composer mutate`'s coverage step |
 | `PORTA_SHARD_PROCESSES` | **three quarters** of the cores | `composer coverage:plugins` — so `coverage:check`'s second half |
-| `PORTA_MUTATE_THREADS` | half the cores | `composer mutate` |
+| `PORTA_MUTATE_THREADS` | half the cores | `composer mutate`'s Infection step |
 
 Throttling a shared box means setting the first TWO: `coverage:check` runs both
 passes, and `PORTA_TEST_PROCESSES=4` alone still fans out three-quarter-core

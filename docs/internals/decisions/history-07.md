@@ -1080,3 +1080,44 @@ invisible.
 
 *Re-opens on:* a plugin that needs its own domain (a collision core's-wins
 cannot settle), or live-disable having to drop strings before a restart.
+
+## Agent-speed round 2: one change landed, three measured away (2026-09-30)
+
+A survey of what slows an agent's loop proposed five changes. Each was measured
+before building; one survived.
+
+**`composer mutate` builds its coverage with paratest now.** It ran the Unit suite
+serially under pcov before Infection even started. Two serial/parallel pairs on a
+loaded box: **242s → 68s** and **426s → 56s**. Both reports carry the same
+**23,924 of 25,753** executed lines; 797 of 799 files attribute each line to the
+same tests, and the two that differ (`PluginAutoloader`, `ProcessReaper`) hold
+process-global state a serial run is equally exposed to. Infection's verdicts
+over `SearchPattern` matched mutant for mutant (22/22 killed both ways).
+`pcov.directory=src` keeps plugin files out of the report, which is what made the
+parallel merge unsafe for the plugins pass.
+
+**Memoising the container freshness check — not worth it.** The survey read
+"re-hashes ~480 classes per boot" as 15–25s of suite CPU. Measured in-process: a
+repeat tracked boot costs **~1ms** (0.7–1.1ms), untracked 0.02ms; the first boot
+in a process 10–18ms, mostly autoloading a memo cannot skip. Across ~458 boots
+that is under a second of CPU.
+
+**Sharing one built container across `ContainerTestCase` tests — not worth it.**
+All nine container classes run in ~10s serial CPU (EventListenerWiringTest 1.7s,
+IdeContainerFactoryTest 4.4s); the 2.2s/test figure came from a loaded run.
+Spread over the suite's workers it is under a second of wall.
+
+**Dropping the Plugins suite from the `src` coverage pass — blocked on core
+tests.** `--testsuite=Unit,Integration,E2e` leaves **~100 `src` lines in 22
+files** covered only by plugin tests: the plugin-facing seams (`PluginApi`,
+`PluginLifecycle`, `MouseRouter`/`WheelRouter`/`GutterClickRouter`,
+`FiberWait`, `SingleSlotProcess`, `BufferService`). The pass would lose ~20–30s
+only after core tests those seams itself.
+
+**A coverage-map `test:changed` — not built.** The only per-test map is
+`composer mutate`'s, which is Unit-only, and the whole Unit suite is ~22s at 24
+processes; the command would save seconds and add a 100%-covered console command.
+
+*Re-opens on:* the Unit suite passing ~60s (then `test:changed` pays), or core
+growing its own tests for the 22 plugin-only files (then drop Plugins from the
+`src` pass).

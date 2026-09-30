@@ -130,7 +130,9 @@ re-run the failing class alone; and note that `coverage:check` passing while
 handful failing on each run is load; the *same* test failing every run is not.
 
 **`composer mutate` automates the mutation sweep for the code you just
-changed.** It builds Unit-suite coverage, then mutates the working tree's
+changed.** It builds Unit-suite coverage (in parallel, `pcov.directory=src`:
+242s → 68s and 426s → 56s in two serial/parallel pairs on a loaded box, the same
+23,924 executed lines, identical Infection verdicts), then mutates the working tree's
 uncommitted `src/` lines (diff vs HEAD — run `vendor/bin/infection` directly
 with another `--git-diff-base` for a committed range) and reports the
 survivors inline. Non-gating by design: read survivors like a review. Three
