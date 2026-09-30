@@ -118,13 +118,13 @@ final class SettingsRowLayoutTest extends TestCase
         $this->assertSame([2, 1], $layout->heights);
     }
 
-    /** Mirrored, only a label ending in punctuation takes a mark, and the column counts it. */
+    /** Mirrored, only a label ending in punctuation takes a mark, and the mark costs the column nothing. */
     public function testAMirroredLabelEndingInPunctuationIsMarkedAndMeasured(): void
     {
         $this->assertSame('demo (project)'."\u{200E}", SettingsRowLayout::label('demo (project)', BaseDirection::Rtl));
         $this->assertSame('שרת LSP', SettingsRowLayout::label('שרת LSP', BaseDirection::Rtl), 'a letter closes its own run');
         $this->assertSame('demo (project)', SettingsRowLayout::label('demo (project)', BaseDirection::Ltr), 'unmirrored, never');
-        $this->assertSame(15, SettingsRowLayout::measure([$this->row('demo (project)')], 80, Density::Roomy, BaseDirection::Rtl)->label);
+        $this->assertSame(14, SettingsRowLayout::measure([$this->row('demo (project)')], 80, Density::Roomy, BaseDirection::Rtl)->label);
         $this->assertSame(14, SettingsRowLayout::measure([$this->row('demo (project)')], 80, Density::Roomy)->label);
     }
 

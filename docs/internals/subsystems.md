@@ -816,8 +816,8 @@ the W-rules, and has no isolates and no bracket-pair algorithm — so a brackete
 group whose delimiters sit between opposite directions still needs a mark.
 
 Where a run needs pinning, the **directional marks work**: U+200E and U+200F are
-classified strong, and `Bidi` spends each one for a space on the way out, so a
-row stays exactly as wide as every measurer thinks it is. The settings form puts
+classified strong, measure no column, and `Bidi` drops each one on the way out.
+A mark never stands in for a space: a gap beside one writes its own. The settings form puts
 one either side of a row's CONTROL — a select's box, `[✓]`, a button are machine
 data and would otherwise lose a delimiter to the paragraph direction. The detail
 clause opens with a right-to-left mark for the same reason from the other side,

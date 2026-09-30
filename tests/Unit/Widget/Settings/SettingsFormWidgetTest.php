@@ -1180,15 +1180,14 @@ final class SettingsFormWidgetTest extends TestCase
      * logical order and looks perfect there — this defect only exists on screen.
      */
     /**
-     * The mark SPENDS a gap column rather than adding one.
+     * The marks cost the gap nothing.
      *
-     * The label column keeps its alignment only because the mark is paid for
-     * out of the two columns already between a label and its control. Take the
-     * space away and the gap is one column in Hebrew and two in English — the
-     * form quietly laid out differently per locale. That was asserted in a
-     * docblock and by nothing else.
+     * The label column keeps its alignment only because the marks take no
+     * column and the gap keeps its two spaces. Make a mark stand in for a
+     * space and the gap is one column in Hebrew and two in English — the form
+     * quietly laid out differently per locale.
      */
-    public function testTheMarkIsPaidForOutOfTheGap(): void
+    public function testTheMarksCostTheGapNothing(): void
     {
         $label = 'גלילה דביקה';
         $widths = [];

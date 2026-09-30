@@ -348,8 +348,8 @@ final class PickerLayout
     }
 
     /**
-     * The column between a row's label and its hint. Under RTL it is a
-     * right-to-left mark, spent for a space when the row is drawn: a Latin
+     * The column between a row's label and its hint. Under RTL a zero-width
+     * right-to-left mark leads it, dropped when the row is drawn: a Latin
      * label, the spaces and a Latin hint would otherwise resolve into ONE
      * left-to-right run and never mirror, so the label would stay left and a
      * row with no hint would sit right — the mark ends the label's run, and
@@ -357,7 +357,7 @@ final class PickerLayout
      */
     private static function gap(BaseDirection $direction): string
     {
-        return BaseDirection::Rtl === $direction ? Bidi::RTL_MARK : ' ';
+        return BaseDirection::Rtl === $direction ? Bidi::RTL_MARK.' ' : ' ';
     }
 
     /**

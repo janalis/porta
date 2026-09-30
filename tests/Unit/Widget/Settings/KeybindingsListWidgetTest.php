@@ -554,6 +554,28 @@ final class KeybindingsListWidgetTest extends TestCase
         $this->assertCount(1, \array_unique($columns), 'every chord is in the same column: '.\json_encode($columns));
     }
 
+    /**
+     * Mirrored, the chord sits exactly where the unmirrored row puts it, seen
+     * in a mirror. The mark between label and chord takes no column, so the
+     * space beside it is what the gap is made of: a mark standing in for that
+     * space moves every chord a column.
+     */
+    public function testAMirroredChordSitsAtTheMirrorOfItsColumn(): void
+    {
+        $columns = [];
+        foreach (['en', 'he'] as $locale) {
+            $widget = new KeybindingsListWidget(new Translator($locale));
+            AttachedStyles::attach($widget);
+            $widget->setRows([new KeybindingRow('a', 'Quit', 'Ctrl+S', false)]);
+            $line = $widget->render(new RenderContext(52, 4))[1];
+            $shown = AnsiUtils::stripAnsiCodes('he' === $locale ? Bidi::reorder($line, BaseDirection::Rtl) : $line);
+            $columns[$locale] = \mb_strpos($shown, needle: 'Ctrl+S', encoding: 'UTF-8');
+            $width = AnsiUtils::visibleWidth($shown);
+        }
+
+        $this->assertSame($width - $columns['en'] - \strlen('Ctrl+S'), $columns['he']);
+    }
+
     /** And a Latin tail stays with its label rather than crossing the chord. */
     public function testALabelEndingInLatinIsNotTornAroundTheChord(): void
     {

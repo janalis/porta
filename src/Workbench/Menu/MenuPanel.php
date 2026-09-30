@@ -247,17 +247,14 @@ final class MenuPanel
         }
         $tail = '' !== $shortcut ? $styles->of(Role::CompletionHint)->apply($shortcut) : \str_repeat(' ', \max(0, AnsiUtils::visibleWidth($shortcut)));
 
-        // A mirrored menu spends one gap column on a mark that ENDS the label's
-        // run. Four shipped action labels end in a Latin run (`הצג TODO`,
+        // A mirrored menu opens the gap with a mark that ENDS the label's run.
+        // Four shipped action labels end in a Latin run (`הצג TODO`,
         // `Git: הסחנה (stash)`, …) and a tail like that is strong left-to-right
         // just as the shortcut is, so without it the two merge and the shortcut
         // is drawn inside the label. With no shortcut there is no tail to keep
-        // apart and no mark; with one, `$gap` is floored at 1 and Bidi spends
-        // the mark for a space, so the row keeps its width either way.
-        $divide =
-            BaseDirection::Rtl === $direction && '' !== $shortcut
-                ? Bidi::RTL_MARK.\str_repeat(' ', \max(0, $gap - 1))
-                : \str_repeat(' ', $gap);
+        // apart and no mark. The mark takes no column and Bidi drops it, so the
+        // row keeps its width either way.
+        $divide = (BaseDirection::Rtl === $direction && '' !== $shortcut ? Bidi::RTL_MARK : '').\str_repeat(' ', $gap);
 
         return $style->apply(' '.$gutter.$label.$divide.$tail.' ');
     }

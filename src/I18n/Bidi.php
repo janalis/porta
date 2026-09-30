@@ -26,14 +26,14 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
  * These cover the IDE's chrome; richer bidi is out of scope.
  *
  * Where a run still needs pinning, the directional marks work: U+200E and
- * U+200F are strong here, and each is spent for a space on the way out so a row
- * keeps the width every measurer gave it.
+ * U+200F are strong here, measure no column, and are spent on the way out.
+ * A caller that wants a gap beside one writes the space itself.
  */
 final class Bidi
 {
     /**
      * The zero-width marks that pin a run's direction where the text around it
-     * cannot. Strong here, and spent for a space on the way out, so a caller
+     * cannot. Strong here, zero-width, and spent on the way out, so a caller
      * can place one without changing what anything measures.
      */
     public const string LTR_MARK = "\u{200E}";
@@ -66,10 +66,9 @@ final class Bidi
     public const string POP_DIRECTIONAL = "\u{202C}";
 
     /**
-     * Zero-width directional marks, replaced by a space once they have been
-     * read. They measure one column and draw none, so leaving one in the output
-     * shortens the rendered row by exactly that much — and the RTL width
-     * invariant cannot see it, measuring with the same function that is wrong.
+     * Zero-width directional marks, dropped once they have been read. They
+     * measure no column and draw none, but they have already steered this
+     * reorder, and a terminal running UAX#9 would steer again with them.
      *
      * @var array<string, true>
      */
@@ -284,8 +283,8 @@ final class Bidi
         // to give the neutral text beside them a direction. Classified as
         // neutral — which the U+2000-206F range below would do — they achieve
         // exactly nothing, and the Hebrew catalog already ships nine strings
-        // using them. They are spent in serialize(), which puts a space in
-        // their place so the row keeps the width every measurer gave it.
+        // using them. They are spent in serialize(); they take no column, so
+        // dropping them leaves the row the width every measurer gave it.
         if (0x200E === $cp) {
             return 'L';
         }
@@ -515,10 +514,9 @@ final class Bidi
             if (1 === ($levels[$index] % 2) && \array_key_exists($glyph, self::MIRROR)) {
                 $glyph = self::MIRROR[$glyph];
             }
-            // The mark has done its work in levels(); shipping it to the
-            // terminal is what makes a row render narrower than it measures.
-            // A space costs the same column every measurer already counted.
-            $out .= \array_key_exists($glyph, self::SPENT) ? ' ' : $glyph;
+            // The mark has done its work in levels(); it takes no column, so
+            // dropping it changes nothing any measurer counted.
+            $out .= \array_key_exists($glyph, self::SPENT) ? '' : $glyph;
         }
         if ('' !== $emitted) {
             $out .= Sgr::RESET;

@@ -6,6 +6,8 @@ namespace Porta\Tests\Unit\Widget\Render;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Porta\I18n\BaseDirection;
+use Porta\I18n\Bidi;
 use Porta\Overlay\State\SearchModalState;
 use Porta\Search\Everywhere\SearchCategory;
 use Porta\Search\Everywhere\SearchHit;
@@ -506,6 +508,40 @@ final class PickerLayoutTest extends TestCase
 
         $this->assertMatchesRegularExpression('/\e\[9m(\e\[[0-9;]*m)*Blocked/', $row('Blocked'));
         $this->assertStringNotContainsString("\e[9m", $row('Fine'));
+    }
+
+    /**
+     * Mirrored, the gap between a row's label and its hint is as wide as it
+     * is unmirrored. The right-to-left mark that ends the label's run takes no
+     * column, so the gap's space is written beside it: a mark standing in for
+     * that space narrows every mirrored gap by one.
+     */
+    public function testAMirroredRowKeepsItsGapBetweenLabelAndHint(): void
+    {
+        $gaps = [];
+        foreach ([BaseDirection::Ltr, BaseDirection::Rtl] as $direction) {
+            $out = PickerLayout::layoutList(
+                [0, 0, 24, 100],
+                [
+                    'title' => 'Fixes',
+                    'items' => [['label' => 'Fine', 'hint' => 'why', 'value' => '0']],
+                    'selected' => 0,
+                    'hovered' => null,
+                    'filter' => new TextField(),
+                    'onPick' => static fn (): null => null,
+                ],
+                $this->styles(),
+                closeHovered: false,
+                direction: $direction,
+            );
+            $row = \array_first(\array_filter($out['rows'], static fn (string $r): bool => \str_contains(AnsiUtils::stripAnsiCodes($r), 'Fine')));
+            $this->assertNotNull($row);
+            $shown = AnsiUtils::stripAnsiCodes(BaseDirection::Rtl === $direction ? Bidi::reorder($row, BaseDirection::Rtl) : $row);
+            $gaps[$direction->name] = 1 === \preg_match('/Fine( +)why|why( +)Fine/', $shown, $match) ? \strlen($match[1].($match[2] ?? '')) : -1;
+        }
+
+        $this->assertGreaterThan(0, $gaps['Ltr']);
+        $this->assertSame($gaps['Ltr'], $gaps['Rtl']);
     }
 
     /** A note is dim like a disabled item, but not struck: a problem struck through would read as fixed. */

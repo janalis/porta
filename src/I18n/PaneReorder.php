@@ -97,9 +97,8 @@ final class PaneReorder
      * these cells in this order. Verified by running a UAX#9 reorder over the
      * rows Porta actually emits: all forty come back identical.
      *
-     * It SPENDS the row's first cell, so the width never changes and the
-     * over-wide guard cannot fire. A row that does not begin with padding is
-     * left alone rather than grown.
+     * The override takes no column, so it goes in front of the row and the
+     * width never changes — every row is frozen, whatever it starts with.
      */
     public function freezeRow(string $line): string
     {
@@ -115,71 +114,13 @@ final class PaneReorder
         // last column there was no trailing padding, so those rows were skipped
         // and got no freeze at all. Measured on the reported screen: three
         // override characters at columns 176, 199 and 200 on alternate rows,
-        // and none on the rest.
-        // Spend the widgets' own direction marks on the way. They steer PORTA's
-        // reorder, which has already run, and a terminal renders them as
-        // nothing while Porta still counts them as a column each — so left in
-        // place they cost the row a visible column apiece.
-        $line = \strtr($line, [Bidi::LTR_MARK => ' ', Bidi::RTL_MARK => ' ', "\u{061C}" => ' ']);
-        $column = self::freezePoint($line);
-
-        return null === $column ? $line : self::replaceColumn($line, $column, with: Bidi::LTR_OVERRIDE);
-    }
-
-    /**
-     * The cell to spend on the override, or null when the row has none to give.
-     *
-     * Column zero when it is padding — it costs the least and covers the whole
-     * row. Otherwise the first padding cell that still comes BEFORE any
-     * right-to-left character, because an override only governs what follows
-     * it: the help viewer renders prose against a left-hand gutter, so its rows
-     * begin with a border and column zero is never free, and without this those
-     * rows went to the terminal unfrozen.
-     *
-     * Null when the row's right-to-left text starts before any padding does.
-     * Growing the row is not an option — an over-wide row is this renderer's
-     * worst failure — so such a row is left alone and recorded as a known gap
-     * rather than quietly widened.
-     */
-    private static function freezePoint(string $line): ?int
-    {
-        if (self::isPadding($line, column: 0)) {
-            return 0;
-        }
-
-        $column = 0;
-        $glyphs = \preg_split('//u', AnsiUtils::stripAnsiCodes($line), flags: \PREG_SPLIT_NO_EMPTY);
-        \assert(false !== $glyphs, description: 'a composed row always splits into glyphs');
-        foreach ($glyphs as $glyph) {
-            if (' ' === $glyph) {
-                return $column;
-            }
-            if (self::isRightToLeft($glyph)) {
-                return null; // the text got here first
-            }
-            $column += \max(1, AnsiUtils::visibleWidth($glyph));
-        }
-
-        return null;
-    }
-
-    private static function isRightToLeft(string $glyph): bool
-    {
-        $cp = \mb_ord($glyph, encoding: 'UTF-8');
-
-        return false !== $cp && ($cp >= 0x0590 && $cp <= 0x05FF || $cp >= 0x0600 && $cp <= 0x08FF || $cp >= 0xFB1D && $cp <= 0xFDFF || $cp >= 0xFE70 && $cp <= 0xFEFF);
-    }
-
-    private static function isPadding(string $line, int $column): bool
-    {
-        return ' ' === AnsiUtils::stripAnsiCodes(AnsiUtils::sliceByColumn($line, $column, length: 1, strict: true));
-    }
-
-    private static function replaceColumn(string $line, int $column, string $with): string
-    {
-        $width = AnsiUtils::visibleWidth($line);
-
-        return AnsiUtils::sliceByColumn($line, startCol: 0, length: $column, strict: true).Sgr::RESET.$with.AnsiUtils::sliceByColumn($line, $column + 1, $width - $column - 1, strict: true).Sgr::RESET;
+        // and none on the rest. Until symfony/tui fa0b189 measured format
+        // characters as no column, the override still had to replace a
+        // padding cell, and a row with none to give went unfrozen.
+        // Drop the widgets' own direction marks on the way. They steer PORTA's
+        // reorder, which has already run, and a terminal running UAX#9 would
+        // steer with them a second time.
+        return Bidi::LTR_OVERRIDE.\strtr($line, [Bidi::LTR_MARK => '', Bidi::RTL_MARK => '', "\u{061C}" => '']);
     }
 
     /**

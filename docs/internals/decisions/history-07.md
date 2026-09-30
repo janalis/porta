@@ -1435,3 +1435,27 @@ and Alt+W did nothing on the large-file look. `CorePanes` hands it now.
 *Re-opens on:* a request for two text views of one file, which is the editor
 split and its 25 injection sites; or a preview whose render is too slow for the
 0.15 s pause, which would need the pause per pane rather than one constant.
+
+## symfony/tui fa0b189: a format character takes no column (2026-09-30)
+
+The bump to the tui head (plus the 1.43 polyfills, and `symfony/string`
+8.2.x-dev, since tui now needs `^8.1.9` and 8.1.9 is unreleased) brought
+98eede8: `\p{Cf}` and a lone combining mark measure zero. That is what a
+terminal draws, and it broke the contract the RTL layout rested on, in which a
+directional mark measured one column and `Bidi` spent it for a space. Under the
+new vendor a mark measured nothing and still came out as a space, so every
+mirrored menu row came out a column wider than its panel. Thirteen unit tests
+caught it.
+
+The contract flipped rather than being patched: **a mark is zero-width and
+spent for nothing.** Where a mark stood in for a gap column (the menu, picker
+and keybindings dividers, the settings gap and detail separator), the column is
+now a space the caller writes itself, with the mark in front. Where it only
+pinned a run (`SettingsRowLayout::label()`, `valueEnd()`), nothing changed but
+the measure: a punctuation-ended label no longer widens the label column.
+
+`PaneReorder::freezeRow()` got simpler for the same reason. The override is
+`\p{Cf}` too, so it no longer has to replace a padding cell. It goes in front
+of the row. The padding search and the known gap from Part 6, a row whose
+right-to-left text starts before any padding going out unfrozen, are both gone.
+

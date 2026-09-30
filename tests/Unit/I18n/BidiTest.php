@@ -512,20 +512,18 @@ final class BidiTest extends TestCase
     /**
      * A mark costs a column going in and gives it back coming out.
      *
-     * It measures one column and the terminal draws none, so a row carrying one
-     * renders narrower than every width function believes — and the RTL width
-     * invariant cannot see it, measuring with the same function. Rather than
-     * teach every measurer about zero-width characters, the mark is spent
-     * during ordering and leaves a space behind: the arithmetic never changes
-     * and the screen agrees with it.
+     * It measures no column and the terminal draws none, but it has already
+     * steered Porta's reorder; a terminal running UAX#9 would steer with it
+     * again. So it is dropped during ordering, and the row keeps its width.
      */
-    public function testAMarkLeavesASpaceBehindSoTheRowKeepsItsWidth(): void
+    public function testAMarkIsDroppedAndTheRowKeepsItsWidth(): void
     {
         $line = self::SHALOM."\u{200E}".'abc';
 
         $out = Bidi::reorder($line, BaseDirection::Rtl);
 
         $this->assertStringNotContainsString("\u{200E}", $out, 'the mark is spent, not shipped to the terminal');
+        $this->assertStringNotContainsString('  ', AnsiUtils::stripAnsiCodes($out), 'and leaves no space behind');
         $this->assertSame(AnsiUtils::visibleWidth($line), AnsiUtils::visibleWidth($out), 'and the row is exactly as wide as before');
     }
 

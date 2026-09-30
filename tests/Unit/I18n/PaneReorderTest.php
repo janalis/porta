@@ -358,31 +358,29 @@ final class PaneReorderTest extends TestCase
 
         $out = $reorder->freezeRow($line);
 
-        $this->assertSame(Bidi::LTR_OVERRIDE, AnsiUtils::sliceByColumn(AnsiUtils::stripAnsiCodes($out), startCol: 0, length: 1));
+        $this->assertStringStartsWith(Bidi::LTR_OVERRIDE, AnsiUtils::stripAnsiCodes($out));
         $this->assertSame(1, \substr_count($out, needle: Bidi::LTR_OVERRIDE), 'one is enough, and no pop is needed');
         $this->assertSame(AnsiUtils::visibleWidth($line), AnsiUtils::visibleWidth(AnsiUtils::stripAnsiCodes($out)), 'the row keeps its width');
     }
 
-    public function testTheFreezeSpendsTheFirstCellRatherThanGrowingTheRow(): void
+    public function testTheFreezeCostsTheRowNoColumn(): void
     {
+        // The override is a format character: no column measured, none drawn.
+        // It goes in front, and the padding it once had to replace stays.
         $reorder = new PaneReorder();
 
         $out = AnsiUtils::stripAnsiCodes($reorder->freezeRow(' abc'));
 
-        $this->assertSame(Bidi::LTR_OVERRIDE.'abc', $out, 'the leading padding became the override');
+        $this->assertSame(Bidi::LTR_OVERRIDE.' abc', $out);
         $this->assertSame(4, AnsiUtils::visibleWidth($out));
     }
 
-    public function testARowThatDoesNotStartWithPaddingIsLeftAlone(): void
+    public function testARowThatDoesNotStartWithPaddingIsFrozenAllTheSame(): void
     {
-        // Nothing to spend, and growing the row past its pane is this
-        // renderer's worst failure.
+        // Needing no cell to spend, the freeze needs no padding either.
         $reorder = new PaneReorder();
 
-        $out = $reorder->freezeRow('abcd');
-
-        $this->assertSame('abcd', AnsiUtils::stripAnsiCodes($out));
-        $this->assertStringNotContainsString(Bidi::LTR_OVERRIDE, $out);
+        $this->assertSame(Bidi::LTR_OVERRIDE.'abcd', AnsiUtils::stripAnsiCodes($reorder->freezeRow('abcd')));
     }
 
     public function testTheFreezeIgnoresPaneGeometryEntirely(): void
@@ -398,7 +396,7 @@ final class PaneReorderTest extends TestCase
 
         $out = AnsiUtils::stripAnsiCodes($reorder->freezeRow($line));
 
-        $this->assertSame(Bidi::LTR_OVERRIDE.\str_repeat('x', times: 8).'╭───╮', $out, 'everything after column zero is untouched');
+        $this->assertSame(Bidi::LTR_OVERRIDE.$line, $out, 'everything after column zero is untouched');
     }
 
     public function testAFloatingBoxIsMirroredWithTheFrame(): void
@@ -527,55 +525,38 @@ final class PaneReorderTest extends TestCase
     public function testTheWidgetsOwnDirectionMarksAreSpentNotPassedOn(): void
     {
         // Those marks steer PORTA's reorder, which has already run by this
-        // point. The terminal renders them as nothing while Porta still counts
-        // them as a column each, so leaving them in makes every row carrying one
-        // come up short on screen. Spending them for spaces is what
-        // Bidi::serialize() does on the other path.
+        // point; a terminal running UAX#9 would steer with them a second time.
+        // They take no column, so dropping them is what Bidi::serialize() does
+        // on the other path.
         $reorder = new PaneReorder();
-        $line = ' ab'.Bidi::RTL_MARK.Bidi::LTR_MARK.'cd ';
+        $line = ' ab'.Bidi::RTL_MARK.Bidi::LTR_MARK."\u{061C}".'cd ';
         $out = AnsiUtils::stripAnsiCodes($reorder->freezeRow($line));
 
-        $this->assertStringNotContainsString(Bidi::LTR_MARK, $out);
-        $this->assertStringNotContainsString(Bidi::RTL_MARK, $out);
-        $this->assertSame(Bidi::LTR_OVERRIDE.'ab  cd ', $out, 'both marks became spaces; column zero became the override');
-        $this->assertSame(8, AnsiUtils::visibleWidth($out), 'and the row keeps its width');
+        $this->assertSame(Bidi::LTR_OVERRIDE.' abcd ', $out, 'every mark dropped; the override in front');
+        $this->assertSame(AnsiUtils::visibleWidth($line), AnsiUtils::visibleWidth($out), 'and the row keeps its width');
     }
 
-    public function testARowWithAGutterIsFrozenAtItsFirstPadding(): void
+    public function testARowWithAGutterIsFrozenInFrontOfIt(): void
     {
         // The help viewer renders prose against a left-hand border, so column
-        // zero is never free. An override only governs what FOLLOWS it, so the
-        // first padding cell before the Hebrew will do — and without this those
-        // rows reached the terminal unfrozen, which the RTL sweep caught.
+        // zero is never padding. That once sent the override to the first
+        // padding cell instead; costing no column, it now goes in front.
         $reorder = new PaneReorder();
         $line = '│ '."\u{05E9}\u{05DC}\u{05D5}\u{05DD}".' ';
 
         $out = AnsiUtils::stripAnsiCodes($reorder->freezeRow($line));
 
-        $this->assertSame('│'.Bidi::LTR_OVERRIDE."\u{05E9}\u{05DC}\u{05D5}\u{05DD}".' ', $out);
+        $this->assertSame(Bidi::LTR_OVERRIDE.$line, $out);
         $this->assertSame(AnsiUtils::visibleWidth($line), AnsiUtils::visibleWidth($out), 'the row keeps its width');
     }
 
-    public function testARowWhoseTextBeatsItsPaddingIsLeftAlone(): void
+    public function testARowThatOpensWithRightToLeftTextIsFrozenToo(): void
     {
-        // Right-to-left text before any padding: an override placed after it
-        // would not govern it, and growing the row past its pane is this
-        // renderer's worst failure. Left alone, and recorded as a known gap.
+        // Once the known gap: the text came before any padding the override
+        // could replace, and an override after it would not govern it.
         $reorder = new PaneReorder();
         $line = "\u{05E9}\u{05DC}".' ab';
 
-        $out = $reorder->freezeRow($line);
-
-        $this->assertStringNotContainsString(Bidi::LTR_OVERRIDE, $out);
-        $this->assertSame($line, AnsiUtils::stripAnsiCodes($out));
-    }
-
-    public function testARowWithNoPaddingAndNoTextIsLeftAlone(): void
-    {
-        $reorder = new PaneReorder();
-
-        $out = $reorder->freezeRow('abcd');
-
-        $this->assertSame('abcd', AnsiUtils::stripAnsiCodes($out));
+        $this->assertSame(Bidi::LTR_OVERRIDE.$line, AnsiUtils::stripAnsiCodes($reorder->freezeRow($line)));
     }
 }

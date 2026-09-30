@@ -592,10 +592,10 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
      * side of the group, and mirrors on the way — the row then shows two `>`
      * and the value is not bracketed at all.
      *
-     * The mark gives that delimiter something to hold on to. It costs one of
-     * the two gap columns rather than a third, so the label column keeps its
-     * alignment; and {@see \Porta\I18n\Bidi} spends it for a space on the way
-     * out, so the rendered row is as wide as every measurer thinks it is.
+     * The mark gives that delimiter something to hold on to. It takes no
+     * column, so the label column keeps its alignment; and
+     * {@see \Porta\I18n\Bidi} drops it on the way out, so the rendered row is
+     * as wide as every measurer thinks it is.
      */
     private function gap(): string
     {
@@ -607,9 +607,9 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         // half and the column moves with it: across five real labels the
         // checkbox landed at columns 28, 33, 37, 46 and 28.
         //
-        // Both columns already existed as the gap, and each mark is spent for a
-        // space, so the label column and the rendered width are untouched.
-        return $this->translator->isRtl() ? Bidi::RTL_MARK.Bidi::LTR_MARK : '  ';
+        // Neither mark takes a column, so the label column and the rendered
+        // width are those of the two spaces.
+        return ($this->translator->isRtl() ? Bidi::RTL_MARK.Bidi::LTR_MARK : '').'  ';
     }
 
     /**
@@ -639,8 +639,8 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
     }
 
     /**
-     * What opens the detail clause after the control: ` · `, or in a mirrored
-     * form a right-to-left mark for its first space.
+     * What opens the detail clause after the control: ` · `, led in a
+     * mirrored form by a right-to-left mark.
      *
      * The detail is prose and belongs mirrored, but a range opens with
      * digits, and digits after {@see valueEnd()}'s left-to-right mark resolve
@@ -650,7 +650,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
      */
     private function detailSeparator(): string
     {
-        return $this->translator->isRtl() ? Bidi::RTL_MARK.'· ' : ' · ';
+        return ($this->translator->isRtl() ? Bidi::RTL_MARK : '').' · ';
     }
 
     /**
