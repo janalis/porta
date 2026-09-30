@@ -17,17 +17,10 @@ plugins/*/vendor/
 # leak can never be committed; tests/bootstrap.php deletes it on every run.
 /tests/Support/fixtures/home/.porta/config.json
 
-# Artifacts of the plugin-install E2e tests, which install into the fixture
-# home for real. `tempest` beside them IS a committed fixture; these are not.
-/tests/Support/fixtures/home/.porta/composer.json
 # Written by every booted Ide: PORTA_HOME points here for the suite, and the
 # IDE records its project root for the switcher's list. The entries are dead
 # temp paths the moment the run ends.
 /tests/Support/fixtures/home/.porta/recent-projects.json
-# No trailing slash: these two are SYMLINKS into vendor/, not directories.
-/tests/Support/fixtures/home/.porta/plugins/cloned
-/tests/Support/fixtures/home/.porta/plugins/demo
-/tests/Support/fixtures/home/.porta/vendor/
 
 # Claude's per-round checklist (CLAUDE.md, Working style).
 /TASKS.md

@@ -43,16 +43,14 @@ paths = ["src", "tests", "plugins"]
 # generated maps VERBATIM — `array(…)`, no strict_types — because their exact
 # shape is what it exists to prove we can read.
 #
-# The last entry is not a fixture at all — it is where the plugin-install E2e
-# tests really install, so its contents are whatever a test last cloned. It is
-# gitignored for the same reason, and linting generated debris reports on code
-# nobody wrote and nobody can fix.
+# The fixture home's plugin-install debris (`vendor/`, `plugins/{demo,cloned}`)
+# used to be excluded here too. No test installs into it any more — a full
+# verify leaves none — and the dangling symlinks it left made every mago run
+# print "Failed to walk". If it comes back, a test is installing into the
+# shared home: fix the test, do not re-add the exclude.
 excludes = [
     "tests/Support/fixtures/thirdparty/acme-vendored/vendor",
     "tests/Support/fixtures/thirdparty/acme-malformed/vendor",
-    "tests/Support/fixtures/home/.porta/vendor",
-    "tests/Support/fixtures/home/.porta/plugins/cloned",
-    "tests/Support/fixtures/home/.porta/plugins/demo",
 ]
 # Analyzed for type information but never reported on, so the analyzer knows the
 # types of third-party classes (symfony/tui, PHPUnit, …) instead of treating
