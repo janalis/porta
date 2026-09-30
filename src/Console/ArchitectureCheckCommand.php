@@ -418,7 +418,7 @@ final class ArchitectureCheckCommand extends Command
         $sccs = $this->cycles($classEdges);
 
         $failures = [
-            ...$this->edgeDrift($current),
+            ...$this->edgeDrift($current, $nsEdges),
             ...$this->cycleDrift($sccs),
             ...$this->oversizedSuites($root.'/tests/E2e', ...$this->pluginTestDirs($root.'/plugins')),
             ...$this->inlineTempProjects($root.'/tests', ...$this->pluginTestDirs($root.'/plugins')),
@@ -493,11 +493,13 @@ final class ArchitectureCheckCommand extends Command
      *
      * The namespace an edge is attributed to comes from the FQCN, not the path:
      * `plugins/graph-viewer/src/Foo.php` under `Porta\GraphViewer\` is a
-     * `GraphViewer` file exactly as `src/Ui/Foo.php` is a `Ui` one.
+     * `GraphViewer` file exactly as `src/Ui/Foo.php` is a `Ui` one. Each
+     * namespace edge keeps the class imports that make it, so a new one can
+     * be reported with the `use` line to look at.
      *
      * @param array<string, string> $roots directory => PSR-4 prefix
      *
-     * @return array{array<string, true>, array<string, list<string>>}
+     * @return array{array<string, list<string>>, array<string, list<string>>}
      */
     private function graphs(array $roots): array
     {
@@ -511,7 +513,7 @@ final class ArchitectureCheckCommand extends Command
     }
 
     /**
-     * @param array<string, true>         $nsEdges
+     * @param array<string, list<string>> $nsEdges
      * @param array<string, list<string>> $classEdges
      */
     private function scan(string $srcDir, string $prefix, array &$nsEdges, array &$classEdges): void
@@ -537,7 +539,7 @@ final class ArchitectureCheckCommand extends Command
                 $classEdges[$fqcn][] = $import;
                 $importNs = \explode(separator: '\\', string: $import)[1] ?? '';
                 if (null !== $ns && '' !== $importNs && $importNs !== $ns && \str_contains($import, needle: '\\'.$importNs.'\\')) {
-                    $nsEdges[$ns.'>'.$importNs] = true;
+                    $nsEdges[$ns.'>'.$importNs][] = "{$fqcn} uses {$import}";
                 }
             }
         }
@@ -545,17 +547,20 @@ final class ArchitectureCheckCommand extends Command
 
     /**
      * Namespace-ratchet drift, in both directions: a new edge is unjustified
-     * coupling, a vanished one is a stale allowlist.
+     * coupling, a vanished one is a stale allowlist. A new edge names the
+     * imports that make it: the fix is either one of those `use` lines or an
+     * allowlist entry, and the edge alone left an agent grepping for which.
      *
-     * @param list<string> $current
+     * @param list<string>                $current
+     * @param array<string, list<string>> $nsEdges edge => the class imports that make it
      *
      * @return list<string>
      */
-    private function edgeDrift(array $current): array
+    private function edgeDrift(array $current, array $nsEdges): array
     {
         $failures = [];
         foreach (\array_diff($current, $this->allowedEdges) as $edge) {
-            $failures[] = "namespace: NEW edge {$edge} — new coupling; if deliberate, add it to ALLOWED_EDGES in this PR";
+            $failures[] = "namespace: NEW edge {$edge} — new coupling; if deliberate, add it to ALLOWED_EDGES in this PR. Made by: ".\implode('; ', $nsEdges[$edge] ?? []);
         }
         foreach (\array_diff($this->allowedEdges, $current) as $edge) {
             $failures[] = "namespace: edge {$edge} no longer exists — remove it from ALLOWED_EDGES (a stale allowlist is not a gate)";

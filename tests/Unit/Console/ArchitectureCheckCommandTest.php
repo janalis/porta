@@ -62,6 +62,7 @@ final class ArchitectureCheckCommandTest extends TestCase
 
         $this->assertSame(Command::FAILURE, $status);
         $this->assertStringContainsString('NEW edge Alpha>Beta', $errors);
+        $this->assertStringContainsString('Made by: Porta\\Alpha\\One uses Porta\\Beta\\Two', $errors, 'the new edge names the import to look at');
         $this->assertStringContainsString('edge Gamma>Delta no longer exists', $errors);
     }
 
