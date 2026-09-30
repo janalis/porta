@@ -6,16 +6,20 @@ namespace Porta\Tests\Unit\Input;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
+use Porta\Editor\BufferManager;
 use Porta\Editor\Document;
+use Porta\Editor\EditorPanes;
 use Porta\Input\ClickCounter;
 use Porta\Input\HitTester;
 use Porta\Input\MouseEvent;
 use Porta\Input\StatusBarClickRouter;
 use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\TestPane;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\StatusBarWidget;
+use Porta\Workbench\EditorArea;
 use Porta\Workbench\StatusClickSpan;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -41,6 +45,8 @@ final class StatusBarClickRouterTest extends TestCase
     private FileTreeWidget $tree;
     private TempProject $project;
     private ClickCounter $clicks;
+    private BufferManager $buffers;
+    private EditorPanes $panes;
 
     /** @var list<string> */
     private array $ran = [];
@@ -60,10 +66,11 @@ final class StatusBarClickRouterTest extends TestCase
             'left' => 'src/Deep/a.php  boom',
             'leftPath' => $file,
             'leftPathWidth' => 14,
-            'right' => 'AB CD',
+            'right' => 'AB CD EF',
             'rightClicks' => [
                 new StatusClickSpan(0, 2, 'ide_problems'),
                 new StatusClickSpan(3, 5, 'goto_line'),
+                new StatusClickSpan(6, 8, 'test_pane_step'),
             ],
         ]);
         $tui->add($this->statusBar);
@@ -85,7 +92,11 @@ final class StatusBarClickRouterTest extends TestCase
         $this->tree = new FileTreeWidget($this->project->dir);
         $this->clicks = new ClickCounter(new MockClock());
 
-        return new StatusBarClickRouter(new HitTester($renderer), $this->statusBar, $this->commands, $this->editor, $this->tree, $tui);
+        $this->buffers = new BufferManager();
+        $this->panes = new EditorPanes();
+        $editorArea = new EditorArea($this->buffers, $this->editor, $this->panes, $tui);
+
+        return new StatusBarClickRouter(new HitTester($renderer), $this->statusBar, $this->commands, $this->editor, $this->tree, $tui, $editorArea);
     }
 
     /** @var list<int> the columns the right-click router was asked to open a menu at */
@@ -137,6 +148,37 @@ final class StatusBarClickRouterTest extends TestCase
         // The EFFECT, not just the absence of the other branch: dropping the
         // runAction call leaves both of those assertions true.
         $this->assertTrue(EditorState::promptOpen($this->editor), 'the Go to line prompt opened');
+    }
+
+    /** A pane speaking on the right answers for its own cells there: a preview's zoom. */
+    public function testAClickOnAPanesOwnCellRunsItInThePane(): void
+    {
+        $router = $this->router();
+        $pane = $this->viewerPane();
+
+        $this->assertTrue($router->route($this->clickOn('EF'), $this->menus(...), $this->clicks));
+        $this->assertSame(['status:test_pane_step'], $pane->calls);
+        $this->assertSame([], $this->ran);
+    }
+
+    public function testACellThePaneDeclinesStillRunsItsCommand(): void
+    {
+        $router = $this->router();
+        $pane = $this->viewerPane();
+
+        $this->assertTrue($router->route($this->clickOn('AB'), $this->menus(...), $this->clicks));
+        $this->assertSame(['status:ide_problems'], $pane->calls, 'asked first');
+        $this->assertSame(['ide_problems'], $this->ran, 'then the registry, as before');
+    }
+
+    /** A viewer tab in front, so its pane is what the editor area answers with. */
+    private function viewerPane(): TestPane
+    {
+        $pane = new TestPane('viewer');
+        $this->panes->register($pane, static fn (string $path): string => '');
+        $this->buffers->openPane($this->project->path('top.php'), 'viewer', 'payload');
+
+        return $pane;
     }
 
     public function testACommandTheRegistryClaimsIsNotALSORunByTheEditor(): void

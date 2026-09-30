@@ -85,13 +85,22 @@ final class StatusBarProviderTest extends TestCase
         );
     }
 
-    private function fakePane(string $id, string $statusRight): EditorPaneWidget
+    /** @param list<StatusClickSpan> $clicks */
+    private function fakePane(string $id, string $statusRight, array $clicks = []): EditorPaneWidget
     {
-        return new class($id, $statusRight) extends EditorPaneWidget {
+        return new class($id, $statusRight, $clicks) extends EditorPaneWidget {
+            /** @param list<StatusClickSpan> $clicks */
             public function __construct(
                 private readonly string $id,
                 private readonly string $statusRight,
+                private readonly array $clicks,
             ) {}
+
+            #[\Override]
+            public function statusClicks(): array
+            {
+                return $this->clicks;
+            }
 
             #[\Override]
             public function paneId(): string
@@ -414,14 +423,15 @@ final class StatusBarProviderTest extends TestCase
         $this->assertSame(['goto_line', 'ide_lsp_log'], $actions);
     }
 
-    public function testAPaneOwningTheRightSideOffersNothingClickable(): void
+    public function testAPaneOwningTheRightSideOffersItsOwnCellsAndNoneOfCores(): void
     {
         $provider = $this->provider();
         $abs = $this->project->write('v.bin', 'x');
         $this->buffers->openPane($abs, 'viewer', 'payload');
-        $this->panes->register($this->fakePane('viewer', 'PANE-RIGHT'), static fn (string $p): string => '');
+        $zoom = new StatusClickSpan(0, 1, 'zoom_in');
+        $this->panes->register($this->fakePane('viewer', '+ PANE-RIGHT', [$zoom]), static fn (string $p): string => '');
 
-        $this->assertSame([], $provider->segments()['rightClicks']);
+        $this->assertSame([$zoom], $provider->segments()['rightClicks'], 'the caret and LSP cells are not in its text');
     }
 
     public function testLocationIsOneBasedFromTheZeroBasedCursor(): void

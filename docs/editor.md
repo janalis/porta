@@ -804,7 +804,8 @@ it. An edit keeps your place in a long preview.
 Opening a `png`, `jpg`, `jpeg`, `gif`, `webp` or `bmp` file shows it as an
 inline image tab instead of text. Zoom
 with `=`/`-`, `0`/`f` fit, `1` actual size, or `Ctrl+wheel` anchored at the
-pointer (12.5%–800%); pan with the arrows or the wheel. Shrinking averages
+pointer (12.5%–800%) — or click the `+`, the `-` or the `0 fit` hint on the
+status bar; pan with the arrows or the wheel. Shrinking averages
 the pixels it covers, so a downscaled image keeps its thin lines instead of
 shimmering; magnifying stays pixel-crisp.
 
@@ -850,8 +851,8 @@ active.
 Opening a `.dot` or `.gv` file shows its source with the Graphviz graph beside
 it as a [live preview](#live-preview), **the picture `dot` itself draws** — real splines, arrowheads,
 fills and fonts (install graphviz, or point the graph-viewer plugin's `dotPath` setting at it).
-Zoom with `=`/`-`, `0`/`f` fit, `1` actual size, or `Ctrl+wheel` at the
-pointer — including the trackpad's Ctrl+two-finger-scroll, which glides (see
+Zoom with `=`/`-`, `0`/`f` fit, `1` actual size, a click on the status bar's
+`+`, `-` or `0 fit`, or `Ctrl+wheel` at the pointer — including the trackpad's Ctrl+two-finger-scroll, which glides (see
 the image viewer above for why that is as close to a pinch as a terminal
 gets); pan with the arrows, the wheel, or by dragging; select nodes with
 `n`/`p` or a click, which frames the node and names it in the status bar.

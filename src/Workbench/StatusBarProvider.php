@@ -101,12 +101,20 @@ final readonly class StatusBarProvider
         // A preview speaks for itself the same way while it has the keys —
         // shown alone, or clicked beside the editor; while the editor has
         // them, the caret's legend is the one that means something.
-        $focusTarget = $this->editorArea->widget();
-        $paneSegment = $focusTarget instanceof EditorPaneWidget ? $focusTarget->statusRight() : null;
-        if (null !== $paneSegment && '' !== $paneSegment) {
-            // A pane owns its whole right side, so core has nothing clickable
-            // to offer there.
-            return ['cells' => $cells, 'left' => $left, 'leftTooltip' => $leftTooltip, 'leftPath' => $leftPath, 'leftPathWidth' => $leftPathWidth, 'right' => $paneSegment, 'rightClicks' => []];
+        $pane = $this->editorArea->widget();
+        $paneSegment = $pane instanceof EditorPaneWidget ? $pane->statusRight() : '';
+        if ('' !== $paneSegment && $pane instanceof EditorPaneWidget) {
+            // A pane owns its whole right side, what a click there does too:
+            // core has nothing of its own to offer in it.
+            return [
+                'cells' => $cells,
+                'left' => $left,
+                'leftTooltip' => $leftTooltip,
+                'leftPath' => $leftPath,
+                'leftPathWidth' => $leftPathWidth,
+                'right' => $paneSegment,
+                'rightClicks' => $pane->statusClicks(),
+            ];
         }
 
         // Led by its severity's glyph, so an error and a hint differ without colour.

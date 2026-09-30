@@ -9,6 +9,7 @@ use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Porta\Widget\Support\FillsPaneTrait;
 use Porta\Widget\Support\StylesDefault;
+use Porta\Workbench\StatusClickSpan;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 use Symfony\Component\Tui\Widget\FocusableInterface;
 use Symfony\Component\Tui\Widget\FocusableTrait;
@@ -68,6 +69,28 @@ abstract class EditorPaneWidget extends AbstractWidget implements FocusableInter
      * what its keys do and core does not.
      */
     abstract public function statusRight(): string;
+
+    /**
+     * The stretches of {@see statusRight()} a left click acts on, in columns
+     * of that text: a key hint the pointer can press, as the zoom panes' `+`,
+     * `-` and fit. Each names an action {@see runStatusAction()} runs. Most
+     * panes' hints are only printed.
+     *
+     * @return list<StatusClickSpan>
+     */
+    public function statusClicks(): array
+    {
+        return [];
+    }
+
+    /**
+     * Run $action, one {@see statusClicks()} named, and say whether it was
+     * this pane's to run.
+     */
+    public function runStatusAction(string $action): bool
+    {
+        return false;
+    }
 
     /**
      * Another pane (or the editor) took the slot. Free what only the VISIBLE

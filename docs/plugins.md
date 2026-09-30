@@ -524,6 +524,7 @@ can pan and zoom it:
 | `show(string $path, mixed $payload)` | display it (your loader made the payload) |
 | `clear()` | nothing is open at all |
 | `statusRight()` | your status-bar segment, **including your key hints** |
+| `statusClicks()`, `runStatusAction(string $action): bool` | the stretches of that segment a click acts on (`StatusClickSpan`s in its columns), and running one — the zoom panes' `+`, `-` and fit |
 | `hide()` | another pane took the slot — free what only the visible pane needs |
 | `forget(string $path)` | that tab closed for good; drop per-path state |
 | `refreshTheme()` | the theme changed; re-make anything that baked colours |

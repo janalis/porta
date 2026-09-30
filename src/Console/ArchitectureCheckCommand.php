@@ -188,6 +188,7 @@ final class ArchitectureCheckCommand extends Command
         'ImageViewer>Support',
         'ImageViewer>Ui',
         'ImageViewer>Widget',
+        'ImageViewer>Workbench', // StatusClickSpan: the zoom hints a status click runs
         'Input>Layout',
         'Input>Overlay',
         'Input>Support',

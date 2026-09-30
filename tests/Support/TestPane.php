@@ -66,6 +66,14 @@ final class TestPane extends NavigablePaneWidget
         return null === $this->shownPath ? '' : 'test pane  '.\basename($this->shownPath);
     }
 
+    /** A status cell of its own: the step its key makes, and nothing else. */
+    public function runStatusAction(string $action): bool
+    {
+        $this->calls[] = 'status:'.$action;
+
+        return 'test_pane_step' === $action;
+    }
+
     public function forget(string $path): void
     {
         $this->calls[] = 'forget:'.$path;

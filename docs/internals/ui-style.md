@@ -190,6 +190,12 @@ offers a menu opens it: `StatusBarClickRouter::route()` takes the right-click
 router's `openStatusMenu` as a callable, so no branch lands in `MouseRouter`,
 whose complexity pin is the lint threshold.
 
+A pane holding the keys owns the whole right segment, its spans included:
+`EditorPaneWidget::statusClicks()` names them, and the router offers the
+action to `runStatusAction()` before the registry. The zoom panes find their
+`+`, `-` and fit hints by the key leading each two-space-separated hint, so a
+translation moves them without breaking them.
+
 The file part is a span too, and it stops at the path: the provider sends
 `leftPath` and `leftPathWidth`, so the `●` and a caret diagnostic after the
 path name no file. `fileAt()` answers for it. `StatusBarClickRouter` counts

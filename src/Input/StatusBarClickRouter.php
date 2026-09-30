@@ -7,8 +7,10 @@ namespace Porta\Input;
 use Porta\Config\CommandRegistry;
 use Porta\Container\AsIdeService;
 use Porta\Widget\CodeEditorWidget;
+use Porta\Widget\EditorPaneWidget;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\StatusBarWidget;
+use Porta\Workbench\EditorArea;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -38,6 +40,7 @@ final readonly class StatusBarClickRouter
         private CodeEditorWidget $editor,
         private FileTreeWidget $tree,
         private Tui $tui,
+        private EditorArea $editorArea,
     ) {}
 
     /**
@@ -75,8 +78,15 @@ final readonly class StatusBarClickRouter
             return $openMenu($mouse);
         }
 
-        // Registry commands (the tool windows) first; anything else is an
-        // editor verb, which is where `goto_line` lives.
+        // The pane speaking on the right answers for its own cells (a
+        // preview's zoom), then registry commands (the tool windows); anything
+        // else is an editor verb, which is where `goto_line` lives.
+        $pane = $this->editorArea->widget();
+        if ($pane instanceof EditorPaneWidget && $pane->runStatusAction($action)) {
+            $this->tui->requestRender();
+
+            return true;
+        }
         if ($this->commands->has($action)) {
             $this->commands->run($action);
 
