@@ -14,8 +14,10 @@ declare(strict_types=1);
 $stdin = (string) stream_get_contents(STDIN);
 if (str_contains($stdin, 'broken')) {
     // The invalid-document contract: a DOT containing the 'broken' sentinel
-    // fails the way real dot does — parse error on stderr, non-zero exit.
-    fwrite(STDERR, "syntax error near 'broken'\n");
+    // fails the way real dot does — its report on stderr, naming the line,
+    // and a non-zero exit.
+    $line = 1 + substr_count(substr($stdin, 0, (int) strpos($stdin, 'broken')), "\n");
+    fwrite(STDERR, "Error: <stdin>: syntax error in line {$line} near 'broken'\n");
 
     exit(1);
 }

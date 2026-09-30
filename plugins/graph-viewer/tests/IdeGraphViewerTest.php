@@ -21,6 +21,7 @@ use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\UsesBundledPlugins;
 use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
@@ -685,6 +686,45 @@ final class IdeGraphViewerTest extends TestCase
                     Services::resolve($ide, BufferService::class)->openFile((string) \realpath($project->path('huge-binary.dot')));
                     $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Not a UTF-8 text file'), what: 'the viewer\'s refusal');
                     $this->assertCount(1, $buffers->all());
+                },
+            ],
+        );
+    }
+
+    /**
+     * A syntax error is the editor's, like any analyser's: in Split it is a
+     * diagnostic on the line dot names, and the picture beside it stays clear.
+     * Shown alone, the picture has to say it itself.
+     */
+    public function testASyntaxErrorIsTheEditorsBesideTheTextAndThePicturesAlone(): void
+    {
+        $project = new TempProject([
+            '.porta.json' => (string) \json_encode(['enabledPlugins' => ['graph-viewer', 'image-viewer'], 'plugins' => ['graph-viewer' => ['dotPath' => self::fakeDot(), 'renderMode' => 'cells']]]),
+            'g.dot' => "digraph G {\n  A -> B;\n}\n",
+        ]);
+        $this->phpOnlyPath($project);
+
+        $this->runIde(
+            $project,
+            $project->path('g.dot'),
+            [
+                200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
+                    $pane = static fn (): string => \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $tui->getById('graph-viewer')->render(new RenderContext(60, 12))));
+                    $this->await(static fn (): bool => \str_contains($pane(), '┌'), what: 'the graph beside the text');
+                    $editor = Services::resolve($ide, CodeEditorWidget::class);
+                    $this->assertSame($editor, $tui->getFocus());
+
+                    $tui->handleInput("\x1b[B"); // line 2
+                    foreach (\str_split('broken ') as $key) {
+                        $tui->handleInput($key);
+                    }
+                    $this->await(static fn (): bool => 1 === $editor->getDiagnosticCounts()['errors'], what: 'the error in the editor');
+                    $this->assertSame("syntax error near 'broken'", $editor->getCursorDiagnostic()['message'] ?? null, 'on the line dot named');
+                    $this->assertStringNotContainsString('✗', $pane(), 'no banner over the picture beside it');
+                    $this->assertStringContainsString('┌', $pane(), 'the last good graph stays');
+
+                    Services::resolve($ide, CommandRegistry::class)->run('preview_only');
+                    $this->assertStringContainsString("✗ Line 2: syntax error near 'broken'", $pane(), 'alone, the picture says it');
                 },
             ],
         );

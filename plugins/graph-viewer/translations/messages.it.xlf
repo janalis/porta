@@ -118,6 +118,10 @@
         <source>the graph bitmap could not be decoded</source>
         <target>impossibile decodificare la bitmap del grafo</target>
       </trans-unit>
+      <trans-unit id="30">
+        <source>Line %line%: %message%</source>
+        <target>Riga %line%: %message%</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

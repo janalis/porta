@@ -899,8 +899,12 @@ pixels tall. The *Graph rendering* setting (Settings ▸ General) picks which
 one new tabs open with. It is also what you get automatically if your
 graphviz was built without PNG support, with the reason in the banner.
 
-The graph follows the source as you type — an invalid document keeps the
-previous graph under an error banner. The viewer is a bundled plugin, enabled by
+The graph follows the source as you type. An invalid document keeps the
+previous graph, and what `dot` says is wrong shows in the editor like any other
+error: underlined on the line it names, in the gutter and in Problems. With the
+preview shown alone, where the editor is out of sight, the first error also
+tops the picture. A failure of Graphviz itself (not installed, or answering
+nonsense) is the pane's to say, in a banner. The viewer is a bundled plugin, enabled by
 default — disabling it opens `.dot` files as plain text with no preview.
 **Plugins ▸ Project Architecture** generates a namespace-dependency graph of
 the current project into `architecture.dot` and opens it with the graph alone

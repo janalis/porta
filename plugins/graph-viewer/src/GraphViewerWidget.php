@@ -6,6 +6,7 @@ namespace Porta\GraphViewer;
 
 use Porta\GraphViewer\Graph\DiagramEngine;
 use Porta\GraphViewer\Graph\DiagramKind;
+use Porta\GraphViewer\Graph\DotDiagnostics;
 use Porta\GraphViewer\Graph\DotSource;
 use Porta\GraphViewer\Graph\GraphLayout;
 use Porta\GraphViewer\Graph\GraphNode;
@@ -94,6 +95,15 @@ final class GraphViewerWidget extends NavigablePaneWidget
     private ?GraphLayout $layout = null;
     /** dot's stderr (or the parse failure) — the banner over the last good render. */
     private ?string $error = null;
+
+    /** @var array<string, bool> whether each path's source was last told to have errors */
+    private array $erring = [];
+
+    /** The shown source's first error, for a pane shown without its text; null while it has none. */
+    private ?string $sourceError = null;
+
+    /** Whether the source is on screen beside this pane, its errors with it ({@see textBeside()}). */
+    private bool $besideText = false;
     private bool $layingOut = false;
     /** The selected node's _gvid. */
     private ?int $selected = null;
@@ -128,6 +138,10 @@ final class GraphViewerWidget extends NavigablePaneWidget
         // Trailing and optional for the same reason: without it the picture
         // paints as half-blocks, as it does until the terminal has answered.
         ?TerminalGraphics $graphics = null,
+        // Trailing and optional again: publishing diagnostics is the plugin
+        // api's, which only the plugin file holds. Told the source's errors
+        // for a path, 0-based, as the api takes them; an empty list clears.
+        private readonly ?\Closure $onSourceErrors = null,
     ) {
         $this->initStyles($styles);
         // Hand-built (a plugin class cannot be a container service), so the id
@@ -154,6 +168,9 @@ final class GraphViewerWidget extends NavigablePaneWidget
         $hash = \hash('xxh128', $dot);
         if ($path === $this->path && $hash === $this->dotHash) {
             return; // same tab, same content — nothing to do
+        }
+        if ($path !== $this->path) {
+            $this->sourceError = null; // another file's, until its own layout says
         }
         $this->path = $path;
         $this->dotHash = $hash;
@@ -202,13 +219,31 @@ final class GraphViewerWidget extends NavigablePaneWidget
                 }
                 $this->adopt($layout);
             },
-            function (string $message): void {
+            function (string $message) use ($path, $dot): void {
                 $this->layingOut = false;
-                $this->error = $message; // the previous good layout/view stay on screen
+                // The previous good layout and view stay on screen either way.
+                // What dot says is wrong with the source goes beside the text,
+                // like any other error; only a failure of the tool itself —
+                // missing, or answering nonsense — is the picture's to say.
+                $errors = DotDiagnostics::parse($message, $dot);
+                $this->error = [] === $errors ? $message : null;
+                $this->sourceError = [] === $errors ? null : $this->translator->trans('Line %line%: %message%', ['%line%' => $errors[0]['line'] + 1, '%message%' => $errors[0]['message']]);
+                $this->sourceErrors($path, $errors);
                 $this->invalidate();
                 $this->handler?->viewChanged();
             },
         );
+    }
+
+    /** Split shows the source's errors in the editor; alone, this pane banners them. */
+    #[\Override]
+    // @mago-expect lint:no-boolean-flag-parameter -- an #[\Override]: the signature is EditorPaneWidget's, and where the text is IS the fact told
+    public function textBeside(bool $beside): void
+    {
+        if ($beside !== $this->besideText) {
+            $this->besideText = $beside;
+            $this->invalidate();
+        }
     }
 
     /** Detach the current tab (another buffer kind takes the pane); layout caches survive. */
@@ -223,6 +258,7 @@ final class GraphViewerWidget extends NavigablePaneWidget
         $this->layout = null;
         $this->view = null;
         $this->error = null;
+        $this->sourceError = null;
         $this->layingOut = false;
         $this->selected = null;
         $this->selectionOrder = [];
@@ -343,8 +379,11 @@ final class GraphViewerWidget extends NavigablePaneWidget
         // The banner/progress row outranks the focus frame's top border — an
         // error (or in-flight hint) must never hide behind focus chrome.
         if (null !== $this->layout) {
-            if (null !== $this->error) {
-                $lines[0] = $this->errorBanner($this->error, $cols);
+            // A source error is the editor's to show while the text is beside
+            // this pane; shown alone, the picture has to say it.
+            $banner = $this->error ?? ($this->besideText ? null : $this->sourceError);
+            if (null !== $banner) {
+                $lines[0] = $this->errorBanner($banner, $cols);
             }
             if ($this->layingOut) {
                 $lines[0] = AnsiUtils::truncateToWidth($this->styles->of(Role::Dim)->apply(' '.Glyphs::WORKING.' '.$this->translator->trans('layout…').' '), $cols, pad: true);
@@ -412,6 +451,21 @@ final class GraphViewerWidget extends NavigablePaneWidget
     }
 
     /** Adopt a layout: reuse the path's remembered view unless the extent changed (then fit fresh). */
+    /**
+     * Tell the plugin what is wrong with $path's source now, and only when
+     * that changes: a path without errors that stays so is not re-told.
+     *
+     * @param list<array{line: int, message: string, severity: int, column: int}> $errors
+     */
+    private function sourceErrors(string $path, array $errors): void
+    {
+        if ([] === $errors && !($this->erring[$path] ?? false)) {
+            return;
+        }
+        $this->erring[$path] = [] !== $errors;
+        $this->onSourceErrors?->__invoke($path, $errors);
+    }
+
     private function adopt(GraphLayout $layout): void
     {
         $this->layout = $layout;
@@ -422,6 +476,8 @@ final class GraphViewerWidget extends NavigablePaneWidget
         $this->extentH = $height;
         $this->pending->reset(); // re-decide the resolution for this graph
         $path = (string) $this->path;
+        $this->sourceError = null;
+        $this->sourceErrors($path, []); // laid out: the source has none
         $remembered = $this->viewCache[$path] ?? null;
         $this->view =
             null !== $remembered && [$remembered[1], $remembered[2]] === [$width, $height]

@@ -37,16 +37,30 @@ final class EditorSlotTest extends TestCase
     /** @var list<string> which pane was hidden, in order */
     private array $hidden = [];
 
+    /** @var list<string> what each pane was told of its text, in order: `id:beside` / `id:alone` */
+    private array $told = [];
+
     private function pane(string $id): EditorPaneWidget
     {
         $hidden = &$this->hidden;
+        $told = &$this->told;
 
-        return new class($id, $hidden) extends EditorPaneWidget {
-            /** @param list<string> $hidden */
+        return new class($id, $hidden, $told) extends EditorPaneWidget {
+            /**
+             * @param list<string> $hidden
+             * @param list<string> $told
+             */
             public function __construct(
                 private readonly string $id,
                 private array &$hidden,
+                private array &$told,
             ) {}
+
+            // @mago-expect lint:no-boolean-flag-parameter -- an override: the signature is EditorPaneWidget's
+            public function textBeside(bool $beside): void
+            {
+                $this->told[] = $this->id.':'.($beside ? 'beside' : 'alone');
+            }
 
             public function paneId(): string
             {
@@ -126,6 +140,16 @@ final class EditorSlotTest extends TestCase
         $this->slot->showBeside($this->markdown);
 
         $this->assertSame(['image'], $this->hidden, 'the preview only moved beside the editor');
+    }
+
+    /** A preview beside its text leaves the text's errors to the editor; shown alone, it may have to say them. */
+    public function testAPaneIsToldWhetherItsTextIsBesideIt(): void
+    {
+        $this->slot->showBeside($this->markdown);
+        $this->slot->showPane($this->markdown);
+        $this->slot->showPane($this->image);
+
+        $this->assertSame(['markdown:beside', 'markdown:alone', 'image:alone'], $this->told);
     }
 
     public function testShowingWhatIsShownChangesNothing(): void

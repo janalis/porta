@@ -91,9 +91,10 @@ final class EditorPaneWidgetTest extends TestCase
         $pane->selectAt(3, 4);
         $revision = $pane->getRenderRevision();
         $pane->followSource(5, 2);
+        $pane->textBeside(true);
 
         $this->assertFalse($pane->press(1, 2), 'a press takes focus and arms no drag');
-        $this->assertSame($revision, $pane->getRenderRevision(), 'nothing to follow, nothing redrawn');
+        $this->assertSame($revision, $pane->getRenderRevision(), 'nothing to follow, no text to speak for: nothing redrawn');
         $this->assertSame([], $pane->statusClicks(), 'its hints are only printed');
         $this->assertFalse($pane->runStatusAction('zoom_in'), 'so a status click is not its to run');
     }

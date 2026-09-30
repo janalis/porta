@@ -158,20 +158,102 @@ final class GraphViewerWidgetTest extends TestCase
         $this->assertStringContainsString('nodes', $widget->statusInfo());
     }
 
-    public function testAFailedLayoutKeepsTheLastGoodRenderUnderABanner(): void
+    public function testAToolFailureKeepsTheLastGoodRenderUnderABanner(): void
     {
         $this->engine->nextResult = self::layout();
         $widget = $this->widget();
         $widget->show('/p/g.dot', 'good dot');
         $this->assertStringContainsString('A', self::plain($widget->render(new RenderContext(60, 20))));
 
-        $this->engine->nextResult = "syntax error in line 2\nmore context";
+        // Not dot's report on the source, which the editor shows: the tool
+        // itself failed, and only the pane can say so.
+        $this->engine->nextResult = "dot produced invalid JSON: Syntax error\nmore context";
         $widget->show('/p/g.dot', 'broken dot {');
 
         $screen = self::plain($widget->render(new RenderContext(60, 20)));
-        $this->assertStringContainsString('syntax error in line 2', $screen, 'the banner shows stderr\'s first line');
+        $this->assertStringContainsString('dot produced invalid JSON', $screen, 'the banner shows the first line');
         $this->assertStringContainsString('┌', $screen, 'the previous good graph is still on screen');
         $this->assertSame('3 nodes · 2 edges', $widget->statusInfo(), 'the model still reflects the good layout');
+    }
+
+    /**
+     * What dot says is wrong with the source goes to the editor, like any
+     * other analyser's errors, and the picture stays clear: the last good graph
+     * with no banner over it. Laid out again, the source has none.
+     */
+    public function testASourceErrorGoesToTheEditorNotOverThePicture(): void
+    {
+        $told = [];
+        $widget = new GraphViewerWidget($this->engine, new Translator('en'), $this->plantUml, scheduler: $this->scheduler, onSourceErrors: static function (string $path, array $errors) use (
+            &$told,
+        ): void {
+            $told[] = [$path, $errors];
+        });
+        $widget->textBeside(true); // Split: the editor is on screen
+        $this->engine->nextResult = self::layout();
+        $widget->show('/p/g.dot', "digraph G {\n a -> b;\n}");
+        $this->assertSame([], $told, 'a clean source that was never wrong is not re-told');
+
+        $this->engine->nextResult = "Error: <stdin>: syntax error in line 2 near '->'\n";
+        $widget->show('/p/g.dot', "digraph G {\n a -> ;\n}");
+
+        $this->assertSame([['/p/g.dot', [['line' => 1, 'message' => "syntax error near '->'", 'severity' => 1, 'column' => 3]]]], $told);
+        $screen = self::plain($widget->render(new RenderContext(60, 20)));
+        $this->assertStringNotContainsString('syntax error', $screen, 'no banner over the picture');
+        $this->assertStringContainsString('┌', $screen, 'the last good graph stays');
+
+        $this->engine->nextResult = self::layout();
+        $widget->show('/p/g.dot', "digraph G {\n a -> c;\n}");
+        $this->assertSame(['/p/g.dot', []], $told[1], 'fixed: the errors are cleared');
+        $this->assertCount(2, $told);
+    }
+
+    /**
+     * Shown alone — Preview, or a viewer tab — the editor's diagnostics are
+     * off screen, so the picture says it: the first error, over the last good
+     * graph. Beside its text (Split) it leaves that to the editor.
+     */
+    public function testShownWithoutItsTextTheFirstSourceErrorIsBanneredOnThePicture(): void
+    {
+        $this->engine->nextResult = self::layout();
+        $widget = $this->widget();
+        $widget->show('/p/g.dot', 'good');
+        $this->engine->nextResult = "Error: <stdin>: syntax error in line 2 near '->'\nError: <stdin>: syntax error in line 5\n";
+        $widget->show('/p/g.dot', "digraph G {\n a -> ;\n}");
+
+        $alone = self::plain($widget->render(new RenderContext(60, 20)));
+        $this->assertStringContainsString("Line 2: syntax error near '->'", $alone, 'alone: the first error, on the picture');
+        $this->assertStringNotContainsString('Line 5', $alone);
+        $this->assertStringContainsString('┌', $alone, 'over the last good graph');
+
+        $widget->textBeside(true);
+        $this->assertStringNotContainsString('syntax error', self::plain($widget->render(new RenderContext(60, 20))), 'beside the text: the editor says it');
+
+        $widget->textBeside(false);
+        $this->engine->nextResult = self::layout();
+        $widget->show('/p/g.dot', 'fixed');
+        $this->assertStringNotContainsString('syntax error', self::plain($widget->render(new RenderContext(60, 20))), 'fixed: gone');
+    }
+
+    public function testAnotherFileDoesNotInheritTheBanner(): void
+    {
+        $this->engine->nextResult = self::layout();
+        $widget = $this->widget();
+        $widget->show('/p/a.dot', 'good');
+        $this->engine->nextResult = "Error: <stdin>: syntax error in line 1\n";
+        $widget->show('/p/a.dot', 'bad');
+        $this->engine->deferred = true;
+
+        $widget->show('/p/b.dot', 'other'); // laying out
+        $this->assertStringNotContainsString('syntax error', self::plain($widget->render(new RenderContext(60, 20))));
+
+        $this->engine->deferred = false;
+        $this->engine->nextResult = "Error: <stdin>: syntax error in line 1\n";
+        $widget->show('/p/a.dot', 'bad again');
+        $widget->clear();
+        $this->engine->nextResult = self::layout();
+        $widget->show('/p/c.dot', 'c');
+        $this->assertStringNotContainsString('syntax error', self::plain($widget->render(new RenderContext(60, 20))), 'nor after a clear');
     }
 
     public function testAMissingBinaryShowsTheActionableMessageWithoutSpawning(): void

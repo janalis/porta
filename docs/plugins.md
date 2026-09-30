@@ -590,8 +590,11 @@ $api->registerPreview('hex', ['hexdump']);
   the path already shown as an update: keep the zoom, the scroll and the last
   good picture on screen until the new one is ready, and return early when the
   text is unchanged. A text that does not parse is ordinary here — the user is
-  halfway through typing it — so keep the last good rendering and say what is
-  wrong on top of it.
+  halfway through typing it — so keep the last good rendering. Say what is
+  wrong in the editor, with `setDiagnostics()`, as every other analyser does.
+  Core calls `textBeside(bool)` on your pane each time it is arranged: false
+  means the text is off screen (Preview, or a viewer tab), and its errors are
+  then yours to show over the picture too.
 - **A preview claim is asked before every viewer claim**, but only for a file
   small enough to edit (2 MB). Claim the same files with `registerViewer()` too
   and the viewer still takes one too large for the editor.

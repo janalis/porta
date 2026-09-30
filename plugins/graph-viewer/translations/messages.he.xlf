@@ -118,6 +118,10 @@
         <source>the graph bitmap could not be decoded</source>
         <target>לא ניתן לפענח את מפת הסיביות של הגרף</target>
       </trans-unit>
+      <trans-unit id="30">
+        <source>Line %line%: %message%</source>
+        <target>שורה %line%: %message%</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

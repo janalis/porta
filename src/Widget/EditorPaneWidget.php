@@ -131,6 +131,14 @@ abstract class EditorPaneWidget extends AbstractWidget implements FocusableInter
      */
     public function followSource(int $line, int $byteCol): void {}
 
+    /**
+     * Whether the text this pane previews is on screen beside it (Split), or
+     * not (a preview shown alone, or a viewer tab). What the text's own
+     * diagnostics already say beside it, a pane shown alone may have to say
+     * itself: its reader cannot see them.
+     */
+    public function textBeside(bool $beside): void {}
+
     /** Drop per-path state (a remembered zoom, a cached layout); most panes keep none. */
     public function forget(string $path): void {}
 

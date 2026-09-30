@@ -52,12 +52,14 @@ final readonly class EditorSlot
     public function showPane(EditorPaneWidget $pane): void
     {
         $this->seat($pane, [$pane]);
+        $pane->textBeside(false);
     }
 
     /** The editor with $preview beside it, the divider between them. */
     public function showBeside(EditorPaneWidget $preview): void
     {
         $this->seat($this->split->area, [$this->editor, $preview]);
+        $preview->textBeside(true);
     }
 
     /**
