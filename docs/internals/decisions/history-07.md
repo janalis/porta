@@ -1336,3 +1336,16 @@ mutation back to `mb_strwidth()`: no row carries a raw tab and every row is the
 pane's width; the emphasis lands on `NEW` behind each prefix; a drag across a
 tab copies the raw tab and tints the row through its painted end; the scroll
 reaches the end of a line indented with twelve tabs.
+
+## No raw tab reaches the terminal (2026-09-30)
+
+The diff view was not the only row carrying a raw tab. A search hit is
+trimmed at its ends, but a tab inside the line survived into the results
+panel's row, the same way. Rather than chase each widget, the frame write in
+`BidiTui` now turns every tab into `AnsiUtils::TAB_WIDTH` spaces, the width
+every vendor measure had already counted it as. This happens after every
+splice and measurement, next to the kitty placeholder expansion. So what the
+terminal draws is what the layout measured, whatever widget painted the tab.
+The diff view still expands at the editor's stops first, because its columns
+map to bytes. `BidiTuiTest` checks the written bytes; without the replacement,
+the raw tab reaches them.

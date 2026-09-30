@@ -12,6 +12,7 @@ use Porta\Ui\Graphics\KittyPlaceholders;
 use Psr\Clock\ClockInterface;
 use Revolt\EventLoop;
 use Symfony\Component\DependencyInjection\Attribute\AsAlias;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\ArrayLineBuffer;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Render\ScreenWriter;
@@ -537,11 +538,20 @@ final class BidiTui extends Tui implements FrameHooks
         }
         // Last of all, after every splice and measurement: an image's cells
         // are painted as one-column stand-ins and only become real kitty
-        // placeholders here ({@see KittyPlaceholders} says why).
-        $screenWriter->writeFrame(new ArrayLineBuffer(\array_map(KittyPlaceholders::expand(...), $lines)));
+        // placeholders here ({@see KittyPlaceholders} says why). A tab becomes
+        // the TAB_WIDTH spaces every vendor measure counted it as: sent raw,
+        // the terminal jumped to its own eighth-column stop and a row with a
+        // tab in it (a search hit, a diff line) ran past its width.
+        $screenWriter->writeFrame(new ArrayLineBuffer(\array_map(self::forTerminal(...), $lines)));
         $t2 = null !== $clock ? Clocks::seconds($clock) : 0.0;
 
         $this->framePainted($t1 - $t0, $t2 - $t1b, $t1b - $t1);
+    }
+
+    /** One finished row as the terminal must receive it. */
+    private static function forTerminal(string $line): string
+    {
+        return KittyPlaceholders::expand(\str_replace("\t", \str_repeat(' ', times: AnsiUtils::TAB_WIDTH), $line));
     }
 
     /** The trailing-edge wakeup: the cap window elapsed, repaint the pending state. */

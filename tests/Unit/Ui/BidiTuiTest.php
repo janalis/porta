@@ -101,6 +101,27 @@ final class BidiTuiTest extends TestCase
         $this->assertDoesNotMatchRegularExpression('/[\x{100000}-\x{10DF20}]/u', $terminal->getOutput(), 'no stand-in is left');
     }
 
+    public function testATabReachesTheTerminalAsTheSpacesItWasMeasuredAs(): void
+    {
+        // The vendor counts a tab as TAB_WIDTH columns; a raw tab jumps to the
+        // terminal's own stop instead, so `end` was drawn past column 20.
+        $terminal = new VirtualTerminal(columns: 20, rows: 2);
+        $this->renderer = new Renderer(new StyleSheet());
+        $tui = new BidiTui(terminal: $terminal, renderer: $this->renderer);
+        $tui->add(new class extends AbstractWidget {
+            public function render(RenderContext $context): array
+            {
+                return ["ab\tcd\x1b[1m\tend\x1b[0m"];
+            }
+        });
+        $tui->requestRender();
+        $tui->processRender();
+
+        $this->assertStringNotContainsString("\t", $terminal->getOutput());
+        $this->assertStringContainsString('ab   cd', $terminal->getOutput());
+        $this->assertStringContainsString('   end', $terminal->getOutput());
+    }
+
     public function testARtlReorderRewritesEachLineToVisualOrder(): void
     {
         $terminal = new VirtualTerminal(columns: 20, rows: 2);
