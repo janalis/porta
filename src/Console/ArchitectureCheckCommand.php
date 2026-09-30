@@ -219,6 +219,7 @@ final class ArchitectureCheckCommand extends Command
         // notify tool picks (Overlay), and the binary its bridge names (Install).
         'McpPlugin>Event', // what an agent does is told to core as AgentActivity / AgentLeft
         'McpPlugin>Install', // `porta mcp --help` prints the running binary's full path to register
+        'McpPlugin>Lsp', // Claude Code's IDE connection speaks in file:// URIs, spelled as the language servers are
         'McpPlugin>Overlay',
         'McpPlugin>Plugin',
         'McpPlugin>Search', // its own ProjectSearch per call: the shared one cancels the user's

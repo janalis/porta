@@ -40,6 +40,28 @@ open. When the project path is too long for a socket, the socket goes in the
 temp directory under a random name, and `.porta/mcp.sock.path` says where. The
 socket is removed when Porta quits or the plugin is disabled.
 
+## Claude Code sees what you have open
+
+Porta is also an IDE the `claude` CLI connects to, the way it connects to VS
+Code or a JetBrains IDE:
+
+- The prompt shows the file in front of you (**⧉ In A.php**), or how many lines
+  you selected. Claude reads that selection with your next message.
+- Claude can open a file in Porta, and knows your open tabs, the project folder
+  and the diagnostics.
+
+With Porta open on the project, run `/ide` in `claude` and pick **Porta**. A
+`claude` started in Porta's own terminal connects by itself.
+
+**Send Selection to Claude Code** (from the command palette) points Claude at
+the lines you selected, or at the file, as an `@` mention.
+
+Behind the scenes, Porta listens on `127.0.0.1` only, on a port it announces
+in `~/.claude/ide/<port>.lock` (`$CLAUDE_CONFIG_DIR/ide` when that is set).
+That file is readable by you alone and holds the token a connection has to
+present. It is removed when Porta quits. The `claudeCode` setting turns all of
+this off.
+
 ## What it can do
 
 | Tool | Does |
