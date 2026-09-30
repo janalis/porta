@@ -77,4 +77,9 @@ final class RecordingHelpViewerHandler implements HelpViewerHandler
     {
         $this->events[] = 'save-all';
     }
+
+    public function revealSource(int $line, int $byteCol): void
+    {
+        $this->events[] = 'reveal:'.$line.':'.$byteCol;
+    }
 }

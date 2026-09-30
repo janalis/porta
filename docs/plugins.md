@@ -594,6 +594,13 @@ $api->registerPreview('hex', ['hexdump']);
 - **A preview claim is asked before every viewer claim**, but only for a file
   small enough to edit (2 MB). Claim the same files with `registerViewer()` too
   and the viewer still takes one too large for the editor.
+- **Click-to-source.** When a click lands on something the text wrote, call
+  `$this->handler?->revealSource($line, $byteCol)` with where it was written
+  (0-based line, byte column — `Porta\Support\Text::lineAndColumn()` turns an
+  offset in the text into both). The IDE puts the caret there, centred, and
+  hands the text the keys when it is on screen; on a viewer tab the call does
+  nothing, so a pane that is both need not tell them apart. The bundled panes
+  do it for a node (the graph pane) and a shape (the image pane's SVG).
 - The user switches between **Editor**, **Split** and **Preview** with the
   toggles at the right of the breadcrumbs bar or `Ctrl+Alt+V`, and drags the divider;
   the split's proportion is one setting for every previewed file. You do nothing

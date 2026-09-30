@@ -36,4 +36,9 @@ final class RecordingViewerTabHandler implements ViewerTabHandler
     {
         $this->events[] = 'view';
     }
+
+    public function revealSource(int $line, int $byteCol): void
+    {
+        $this->events[] = 'reveal:'.$line.':'.$byteCol;
+    }
 }

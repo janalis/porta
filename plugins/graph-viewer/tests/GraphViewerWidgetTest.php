@@ -834,4 +834,21 @@ final class GraphViewerWidgetTest extends TestCase
         $this->assertSame('3 nodes · 2 edges', $widget->statusInfo());
         $this->assertStringContainsString('┌', self::plain($widget->render(new RenderContext(80, 24))));
     }
+
+    public function testAClickOnANodeRevealsWhereTheTextWritesIt(): void
+    {
+        $this->engine->nextResult = self::layout();
+        $widget = new GraphViewerWidget($this->engine, new Translator('en'), scheduler: $this->scheduler, renderMode: 'cells');
+        $handler = new RecordingViewerTabHandler();
+        $widget->setHandler($handler);
+        $widget->show('/p/g.dot', "digraph G {\n  A -> B;\n  B -> C;\n}\n");
+        $rows = \array_map(AnsiUtils::stripAnsiCodes(...), $widget->render(new RenderContext(80, 24)));
+        $row = (int) \array_key_first(\array_filter($rows, static fn (string $r): bool => 1 === \preg_match('/\bC\b/', $r)));
+        $handler->events = [];
+
+        $widget->selectAt($row, (int) \mb_strpos($rows[$row], needle: 'C')); // a column: the frame is multibyte
+        $widget->selectAt(0, 0); // empty space: deselected, nothing to reveal
+
+        $this->assertSame(['view', 'reveal:2:7', 'view'], $handler->events, 'C is first written on line 2, after "B -> "');
+    }
 }

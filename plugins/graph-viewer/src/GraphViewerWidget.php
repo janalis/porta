@@ -6,6 +6,7 @@ namespace Porta\GraphViewer;
 
 use Porta\GraphViewer\Graph\DiagramEngine;
 use Porta\GraphViewer\Graph\DiagramKind;
+use Porta\GraphViewer\Graph\DotSource;
 use Porta\GraphViewer\Graph\GraphLayout;
 use Porta\GraphViewer\Graph\GraphRenderMode;
 use Porta\GraphViewer\Graph\LayoutEngine;
@@ -276,6 +277,21 @@ final class GraphViewerWidget extends NavigablePaneWidget
         }
         $this->selected = GraphRenderer::nodeAt($this->layout, $this->view, $this->lastCols, $this->lastRows, $relRow, $relCol);
         $this->afterViewChange();
+        $this->revealSelected();
+    }
+
+    /**
+     * Click-to-source: the node just clicked, where the DOT text writes it.
+     * A preview's text is the DOT this pane drew; a viewer tab's handler has
+     * no text to go to and lets it pass.
+     */
+    private function revealSelected(): void
+    {
+        $node = null === $this->selected ? null : $this->layout?->nodes[$this->selected] ?? null;
+        $offset = null === $node ? null : DotSource::declarationOf((string) $this->dot, $node->name);
+        if (null !== $offset) {
+            $this->handler?->revealSource(...Text::lineAndColumn((string) $this->dot, $offset));
+        }
     }
 
     /** A theme switch re-bakes the SGR codes cached in rendered lines. */

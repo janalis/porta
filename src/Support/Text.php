@@ -21,4 +21,19 @@ final class Text
     {
         return \rtrim(\explode("\n", \trim($text), limit: 2)[0], characters: "\r");
     }
+
+    /**
+     * The 0-based line and byte column of byte $offset in $text — where a
+     * position found by searching a whole document sits for an editor that
+     * counts in lines. An offset past the end is clamped to it.
+     *
+     * @return array{int, int}
+     */
+    public static function lineAndColumn(string $text, int $offset): array
+    {
+        $before = \substr($text, offset: 0, length: \max(0, $offset));
+        $lineStart = \strrpos($before, needle: "\n");
+
+        return [\substr_count($before, needle: "\n"), false === $lineStart ? \strlen($before) : \strlen($before) - $lineStart - 1];
+    }
 }

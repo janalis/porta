@@ -241,7 +241,14 @@ arranged by its `PreviewMode`: Editor, Split or Preview.
   opens that file's tab. A click on the page's text, away from a link, is
   reported with the source line its block starts on (`RenderedDoc::$origins`,
   kept by the renderer per block) and the word under the pointer; the preview
-  searches that block of the text for the word and puts the caret there.
+  searches that block of the text for the word.
+- **Click-to-source, for every preview**, goes through the pane's tab handler:
+  `ViewerTabHandler::revealSource($line, $byteCol)`, answered by
+  `Editor/SourceReveal` (the caret there, the text given the keys when it is
+  on screen, nothing for a viewer tab). Each pane finds its own position: the
+  markdown page in the text it holds, the graph pane where the DOT first
+  names the clicked node (`GraphViewer\Graph\DotSource`), the image pane the
+  tag of the topmost SVG shape whose box holds the point (`ImageViewer\SvgHitTest`).
 - **Sizing.** The two sides are FLEX WEIGHTS, never a width: a `flex: 0` side
   is measured by rendering it, which for the editor means twice a frame. The
   share persists as `previewSplitPercent`; below 41 columns the preview steps

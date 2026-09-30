@@ -773,13 +773,17 @@ it. An edit keeps your place in a long preview.
   keeps the same text at its top, and a click still lands on the word it drew,
   whatever the width — the terminal's own resizes included. The proportion is kept per project
   in `.porta/layout.json`, one for every previewed file.
-- **Click to find the source.** A click on a Markdown preview's text puts the
-  editor's caret on the word you clicked, scrolled into view, and gives the
-  text the keys. With the preview shown alone the caret moves all the same,
-  ready for when the text comes back.
-- **Focus.** `F6`, or a click on the preview's navigation bar, gives the
-  preview the keys (a graph or an image takes them on any click, and zooms
-  and pans as described below); `Ctrl+T` or a click on the text goes back.
+- **Click to find the source.** A click on the preview puts the editor's caret
+  on what wrote the thing you clicked, scrolled into view, and gives the text
+  the keys: the word in a Markdown page, the tag of the shape under the pointer
+  in an SVG (the topmost one there, found by its box), the place a graph's DOT
+  first names the node. With the preview shown alone the caret moves all the
+  same, ready for when the text comes back. A PlantUML picture has no geometry
+  to point into, so a click there only takes the keys.
+- **Focus.** `F6` gives the preview the keys — so does a click on a Markdown
+  preview's navigation bar, or a drag on a picture, which pans it; a graph or
+  an image then zooms and pans as described below. `Ctrl+T` or a click on the
+  text goes back.
 - **Markdown reads like the documentation** (`F1`): a navigation bar over the
   page — `‹` `›` through the pages you followed, then the page's place in the
   project — and links you cycle with `Tab` and follow with `Enter` or a click.

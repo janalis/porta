@@ -34,22 +34,28 @@ final class MarkdownPreviewWidget extends MarkdownPageWidget
     /** The routing id, matching the claim registered in {@see \Porta\Bootstrap\CorePanes}. */
     public const string PANE_ID = 'markdown';
 
-    /** @var (\Closure(int, string): void)|null where a click on the page takes the editor */
-    private ?\Closure $onPointAtSource = null;
-
-    /** @param \Closure(int $sourceLine, string $word): void $onPointAtSource */
-    public function onPointAtSource(\Closure $onPointAtSource): void
-    {
-        $this->onPointAtSource = $onPointAtSource;
-    }
-
-    /** A click on the page puts the editor's caret on what was clicked — the text it came from. */
+    /**
+     * A click on the page puts the editor's caret on what was clicked: $word
+     * where the clicked block begins in the text this page was drawn from —
+     * searched from $sourceLine to the block's end, since a wrapped paragraph
+     * is one rendered block of several source lines — or the block's start
+     * when the word is not there as drawn. Its edges are trimmed first: markup
+     * parts a drawn `bold.` from its source `**bold**.`.
+     */
     #[\Override]
     protected function pointAtSource(int $sourceLine, string $word): void
     {
-        if (null !== $this->onPointAtSource) {
-            ($this->onPointAtSource)($sourceLine, $word);
+        $lines = \explode("\n", $this->markdown);
+        $needle = \trim($word, characters: '.,;:!?()[]{}*_`"\'');
+        [$line, $byte] = [$sourceLine, 0];
+        for ($n = $sourceLine; '' !== $needle && $n < \count($lines) && ($n === $sourceLine || '' !== \trim($lines[$n])); ++$n) {
+            $found = \strpos($lines[$n], $needle);
+            if (false !== $found) {
+                [$line, $byte] = [$n, $found];
+                break;
+            }
         }
+        $this->handler?->revealSource($line, $byte);
     }
 
     #[\Override]

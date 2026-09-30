@@ -19,7 +19,10 @@ use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\UsesBundledPlugins;
+use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Render\Renderer;
+use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 
@@ -684,6 +687,40 @@ final class IdeGraphViewerTest extends TestCase
                     $this->assertCount(1, $buffers->all());
                 },
             ],
+        );
+    }
+
+    public function testAClickOnANodeSendsTheCaretToWhereTheTextWritesIt(): void
+    {
+        $project = new TempProject([
+            '.porta.json' => (string) \json_encode(['enabledPlugins' => ['graph-viewer', 'image-viewer'], 'plugins' => ['graph-viewer' => ['dotPath' => self::fakeDot(), 'renderMode' => 'cells']]]),
+            'g.dot' => self::SMALL_DOT,
+        ]);
+        $this->phpOnlyPath($project);
+
+        $this->runIde(
+            $project,
+            $project->path('g.dot'),
+            [
+                200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
+                    $grid = fn (): array => $this->screenGrid($tui, $terminal);
+                    $this->await(static fn (): bool => \str_contains(\implode("\n", $grid()), '┌'), what: 'the graph beside the text');
+                    $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($tui->getById('graph-viewer'));
+                    $this->assertInstanceOf(WidgetRect::class, $rect);
+                    foreach ($grid() as $row => $line) {
+                        $col = \mb_strpos(\mb_substr($line, $rect->col), needle: '  C  ');
+                        if (false !== $col && $row > $rect->row) {
+                            $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + $col + 3, $row + 1));
+                            $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $rect->col + $col + 3, $row + 1));
+                            break;
+                        }
+                    }
+                    $editor = Services::resolve($ide, CodeEditorWidget::class);
+                    $this->assertSame([0, (int) \strpos(self::SMALL_DOT, needle: 'C;')], [$editor->getDocument()->cursorLine, $editor->getDocument()->cursorCol], 'where "B -> C" first writes C');
+                    $this->assertSame($editor, $tui->getFocus());
+                },
+            ],
+            columns: 160,
         );
     }
 }

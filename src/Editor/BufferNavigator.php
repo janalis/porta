@@ -45,7 +45,14 @@ final readonly class BufferNavigator implements BufferNavigationHandler, ViewerT
         private RecentFilesStore $recentFiles,
         private Translator $translator,
         private Notifier $notifier,
+        private SourceReveal $sources,
     ) {}
+
+    #[\Override]
+    public function revealSource(int $line, int $byteCol): void
+    {
+        $this->sources->reveal($line, $byteCol);
+    }
 
     /** Switch to the previous/next tab (+1 / -1) and focus its content. */
     public function cycle(int $offset): void

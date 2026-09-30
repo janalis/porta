@@ -40,6 +40,12 @@ trait DelegatesTabVerbs
         $this->tabs()->saveAll();
     }
 
+    #[\Override]
+    public function revealSource(int $line, int $byteCol): void
+    {
+        $this->tabs()->revealSource($line, $byteCol);
+    }
+
     /**
      * A page scrolls rather than zooms, so a "view changed" ping would repaint
      * a status segment it does not contribute — but the pane contract is one
