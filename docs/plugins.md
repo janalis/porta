@@ -303,6 +303,8 @@ never firing.
 | `DiffToolLaunched` | `string $left`, `string $right` — Porta was launched as git's difftool (`porta --diff`), right after `IdeReady`; either file may be a temp blob outside the project. The bundled git plugin answers with its view |
 | `MergeToolLaunched` | `string $local`, `string $remote`, `string $base`, `string $merged` — launched as git's mergetool (`porta --merge`); `$merged` is the file to resolve. Core sets the exit code from what is left in it at quit |
 | `QuitRequested` | — a COMMAND you may `emit()`: quit the way Ctrl+Q does (unsaved buffers still ask). The git plugin ends a difftool session with it |
+| `AgentActivity` | `string $agent`, `string $name`, `string $path`, `AgentActivityKind $kind` (`Reading`/`Editing`), `int $line`, `int $column`, `float $fadeAfter` — a fact you may `emit()`: an agent is at work on a file. Core shows it — a caret in the agent's colour with its name at the end of the line, a ✦ on the file's tab and tree row — until `$fadeAfter` seconds pass with no new report. The position is 0-based line and byte column; a negative line marks the file with no caret. The mcp plugin sends it for every tool that reads or edits |
+| `AgentLeft` | `string $agent` — a fact you may `emit()`: everything `AgentActivity` showed for that agent goes at once |
 | `ToolsChanged` | — the tools plugins offer with `registerTool()` changed under a live enable or disable. Never at boot. Whatever serves them re-reads `tools()` |
 | `FileRewritten` | `string $path`, `string $previousText` — a refactoring rewrote a file that had no open buffer. The payload is what the write REPLACED: the new content is on disk already, and the old exists nowhere else. Not a save, and no `BufferSaved` fires for it |
 

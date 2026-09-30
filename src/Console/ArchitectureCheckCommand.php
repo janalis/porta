@@ -217,11 +217,14 @@ final class ArchitectureCheckCommand extends Command
         // The mcp plugin's own code (plugins/mcp/src): the socket's writer
         // (Support), the tool seam it serves (Plugin), the toast severity its
         // notify tool picks (Overlay), and the binary its bridge names (Install).
+        'McpPlugin>Event', // what an agent does is told to core as AgentActivity / AgentLeft
         'McpPlugin>Install', // `porta mcp --help` prints the running binary's full path to register
         'McpPlugin>Overlay',
         'McpPlugin>Plugin',
         'McpPlugin>Search', // its own ProjectSearch per call: the shared one cancels the user's
         'McpPlugin>Support',
+        'McpPlugin>Ui', // the agent ✦ its status cell leads with
+        'McpPlugin>Workbench', // that status cell: a StatusCell, as every plugin segment returns
         'Onboarding>Config',
         'Onboarding>Container',
         'Onboarding>Highlight',

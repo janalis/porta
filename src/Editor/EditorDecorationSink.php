@@ -68,6 +68,17 @@ interface EditorDecorationSink
     public function setDebugLine(?int $line): void;
 
     /**
+     * Carets that are not the user's — agents at work — each at a 0-based
+     * line and byte column with the name to show beside it and the colour
+     * slot it is drawn in. Keyed by FILE, unlike every other layer here: they
+     * belong to their files and outlive a switch of tab. The map replaces the
+     * last one whole.
+     *
+     * @param array<string, list<array{line: int, col: int, label: string, slot: int}>> $byPath
+     */
+    public function setRemoteCarets(array $byPath): void;
+
+    /**
      * Code lenses, keyed by the 0-based line they sit ABOVE. The only
      * decoration that adds rows rather than painting into one.
      *

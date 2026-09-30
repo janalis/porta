@@ -70,6 +70,10 @@ final class ThemeLockTest extends TestCase
         yield 'search-current-bg' => [Role::SearchCurrentBg, new Style(background: 130)];
         yield 'occurrence-bg' => [Role::OccurrenceBg, new Style(background: 23)];
         yield 'occurrence-write-bg' => [Role::OccurrenceWriteBg, new Style(background: 52)];
+        yield 'agent-1' => [Role::Agent1, new Style(background: 25, color: 231)];
+        yield 'agent-2' => [Role::Agent2, new Style(background: 130, color: 231)];
+        yield 'agent-3' => [Role::Agent3, new Style(background: 91, color: 231)];
+        yield 'agent-4' => [Role::Agent4, new Style(background: 29, color: 231)];
         yield 'breakpoint' => [Role::Breakpoint, new Style(color: 203)];
         yield 'debug-line-bg' => [Role::DebugLineBg, new Style(background: 52)];
         yield 'tab-accent' => [Role::TabAccent, new Style(color: 110)];
@@ -138,6 +142,10 @@ final class ThemeLockTest extends TestCase
         yield 'search-current-bg' => [Role::SearchCurrentBg, new Style(background: 215)];
         yield 'occurrence-bg' => [Role::OccurrenceBg, new Style(background: 194)];
         yield 'occurrence-write-bg' => [Role::OccurrenceWriteBg, new Style(background: 224)];
+        yield 'agent-1' => [Role::Agent1, new Style(background: 117, color: 16)];
+        yield 'agent-2' => [Role::Agent2, new Style(background: 215, color: 16)];
+        yield 'agent-3' => [Role::Agent3, new Style(background: 183, color: 16)];
+        yield 'agent-4' => [Role::Agent4, new Style(background: 120, color: 16)];
         yield 'breakpoint' => [Role::Breakpoint, new Style(color: 160)];
         yield 'debug-line-bg' => [Role::DebugLineBg, new Style(background: 224)];
         yield 'tab-accent' => [Role::TabAccent, new Style(color: 25)];
@@ -262,6 +270,10 @@ final class ThemeLockTest extends TestCase
             Role::SearchCurrentBg,
             Role::OccurrenceBg,
             Role::OccurrenceWriteBg,
+            Role::Agent1,
+            Role::Agent2,
+            Role::Agent3,
+            Role::Agent4,
         ];
         foreach (Role::cases() as $role) {
             if (\in_array($role, $mapped, strict: true)) {
@@ -297,6 +309,16 @@ final class ThemeLockTest extends TestCase
         $this->assertEquals(new Style(reverse: true, bold: true), $mono->of(Role::SearchCurrentBg), 'the current hit reversed, like a selection');
         $this->assertEquals(new Style(underline: true), $mono->of(Role::OccurrenceBg));
         $this->assertEquals(new Style(underline: true, bold: true), $mono->of(Role::OccurrenceWriteBg), 'a WRITE occurrence stays distinct from a read one without color');
+    }
+
+    public function testEveryAgentGetsItsOwnColourAndMonochromeStillShowsTheCaret(): void
+    {
+        $this->assertSame([Role::Agent1, Role::Agent2, Role::Agent3, Role::Agent4, Role::Agent1], \array_map(Role::agent(...), [0, 1, 2, 3, 4]), 'a fifth agent shares the first colour');
+        foreach ([DarkTheme::definition(), LightTheme::definition(), HighContrastTheme::definition()] as $theme) {
+            $backgrounds = \array_map(static fn (Role $role): string => \json_encode($theme->of($role)->getAnsiRestore()), [Role::Agent1, Role::Agent2, Role::Agent3, Role::Agent4]);
+            $this->assertCount(4, \array_unique($backgrounds), 'four agents, four colours');
+        }
+        $this->assertEquals(new Style(reverse: true, underline: true), MonochromeTheme::definition()->of(Role::Agent3));
     }
 
     public function testMonochromeHoverUsesUnderlineDistinctFromTheSelection(): void

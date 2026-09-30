@@ -113,6 +113,14 @@ enum Role
     case OccurrenceBg;
     case OccurrenceWriteBg;
 
+    // Agents at work (Workbench\AgentPresence): one colour per agent, the
+    // same on its caret cell, its name beside it and its tab mark. Four,
+    // handed out in order of arrival; a fifth agent shares the first's.
+    case Agent1;
+    case Agent2;
+    case Agent3;
+    case Agent4;
+
     // Debugger: the gutter breakpoint dot and the stopped-line band.
     case Breakpoint;
     case DebugLineBg;
@@ -171,5 +179,11 @@ enum Role
         $role = \constant($case);
 
         return $role->tag() === $tag ? $role : null;
+    }
+
+    /** The colour of agent slot $slot (0-based), wrapping past the last. */
+    public static function agent(int $slot): self
+    {
+        return [self::Agent1, self::Agent2, self::Agent3, self::Agent4][\abs($slot) % 4];
     }
 }

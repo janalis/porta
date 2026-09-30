@@ -76,6 +76,29 @@ final class TabBarWidgetTest extends TestCase
         $this->assertStringContainsString("\x1b[48;5;238m", $line, 'active tab background');
     }
 
+    public function testAnAgentAtWorkOnATabsFileMarksItInItsColourBeforeTheDirtyDot(): void
+    {
+        foreach ([TabBarPosition::Top, TabBarPosition::Left] as $position) {
+            $bar = new TabBarWidget();
+            $bar->setPosition($position);
+            $bar->setProvider(static fn (): array => [
+                ['name' => 'a.php', 'dirty' => true, 'active' => true, 'agents' => [0, 2]],
+                ['name' => 'b.php', 'dirty' => false, 'active' => false, 'agents' => []],
+            ]);
+            $bar->beforeRender();
+
+            $rows = $bar->render(new RenderContext(TabBarPosition::Top === $position ? 60 : 16, 3));
+            $plain = AnsiUtils::stripAnsiCodes(\implode("\n", $rows));
+
+            $this->assertMatchesRegularExpression('/a\.php\s+'.Glyphs::AGENT.Glyphs::AGENT.'●/u', $plain, $position->name.': one star per agent, then the dot');
+            $this->assertStringNotContainsString('b.php '.Glyphs::AGENT, $plain);
+            $this->assertStringContainsString("\x1b[48;5;25m", \implode('', $rows), $position->name.': in the first agent\'s colour');
+            foreach ($rows as $row) {
+                $this->assertSame(TabBarPosition::Top === $position ? 60 : 16, AnsiUtils::visibleWidth($row), $position->name.': the stars are counted in the width');
+            }
+        }
+    }
+
     public function testBeforeRenderInvalidatesOnlyOnChange(): void
     {
         $tabs = [['name' => 'a.php', 'dirty' => false, 'active' => true]];

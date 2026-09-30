@@ -57,6 +57,11 @@ final class Glyphs
     // "nothing yet", distinct from every severity and gutter mark.
     public const string WORKING = '◌';
 
+    // An agent at work on a file: beside its name at its caret, on the file's
+    // tab and tree row. A four-pointed star — not ◆, the conditional
+    // breakpoint, nor ●, the dirty dot it may sit next to.
+    public const string AGENT = '✦';
+
     // The action a server marks as the one it would pick — a quick fix's
     // isPreferred — leading its label in the list.
     public const string PREFERRED = '★';

@@ -6,9 +6,12 @@ namespace Porta\Tests\Unit\Workbench\Dock;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
+use Porta\Event\AgentActivity;
 use Porta\I18n\Translator;
 use Porta\Support\ProjectPaths;
+use Porta\Tests\Support\TestAgentPresence;
 use Porta\Ui\Glyphs;
+use Porta\Workbench\AgentActivityKind;
 use Porta\Workbench\Dock\TabListProvider;
 
 final class TabListProviderTest extends TestCase
@@ -22,7 +25,7 @@ final class TabListProviderTest extends TestCase
         $graph->title = 'Project Architecture';
         $buffers->openPane('/p/other.dot', 'graph', 'digraph {}'); // untitled graph tab keeps its basename
 
-        $names = \array_column(new TabListProvider($buffers, new Translator('en'), new ProjectPaths('/'))->tabs(), 'name');
+        $names = \array_column(new TabListProvider($buffers, new Translator('en'), new ProjectPaths('/'), TestAgentPresence::create())->tabs(), 'name');
 
         $this->assertSame(['Demo.php', 'Documentation', 'Project Architecture', 'other.dot'], $names);
     }
@@ -36,7 +39,7 @@ final class TabListProviderTest extends TestCase
         $buffers->open('/p/other.php', '<?php');
         $buffers->get('/p/kept.php')->pinned = true;
 
-        $names = \array_column(new TabListProvider($buffers, new Translator('en'), new ProjectPaths('/'))->tabs(), 'name');
+        $names = \array_column(new TabListProvider($buffers, new Translator('en'), new ProjectPaths('/'), TestAgentPresence::create())->tabs(), 'name');
 
         $this->assertSame([Glyphs::PINNED.' kept.php', 'other.php'], $names);
     }
@@ -49,7 +52,7 @@ final class TabListProviderTest extends TestCase
         $buffers->open('/p/other.php', '<?php');
         $buffers->get('/p/kept.php')->pinned = true;
 
-        $this->assertSame([false, true], \array_column(new TabListProvider($buffers, new Translator('en'), new ProjectPaths('/'))->tabs(), 'closable'));
+        $this->assertSame([false, true], \array_column(new TabListProvider($buffers, new Translator('en'), new ProjectPaths('/'), TestAgentPresence::create())->tabs(), 'closable'));
     }
 
     /**
@@ -71,7 +74,7 @@ final class TabListProviderTest extends TestCase
         $buffers->open('/p/plugins/git/plugin.php', '<?php');
         $buffers->open('/p/plugins/symfony-lsp/plugin.php', '<?php');
 
-        $names = \array_column(new TabListProvider($buffers, new Translator('en'), new ProjectPaths('/'))->tabs(), 'name');
+        $names = \array_column(new TabListProvider($buffers, new Translator('en'), new ProjectPaths('/'), TestAgentPresence::create())->tabs(), 'name');
 
         $this->assertSame(['Ide.php', 'plugin.php (git)', 'plugin.php (symfony-lsp)'], $names, 'and a name nothing collides with is left alone');
     }
@@ -88,7 +91,7 @@ final class TabListProviderTest extends TestCase
         $buffers->open('/p/plugins/git/src/View/GitSidebar.php', '<?php');
         $buffers->open('/p/plugins/other/src/View/GitSidebar.php', '<?php');
 
-        $names = \array_column(new TabListProvider($buffers, new Translator('en'), new ProjectPaths('/'))->tabs(), 'name');
+        $names = \array_column(new TabListProvider($buffers, new Translator('en'), new ProjectPaths('/'), TestAgentPresence::create())->tabs(), 'name');
 
         $this->assertSame(['GitSidebar.php (git/src/View)', 'GitSidebar.php (other/src/View)'], $names);
     }
@@ -111,7 +114,7 @@ final class TabListProviderTest extends TestCase
         $one->title = 'Project Architecture';
         $two->title = 'Project Architecture';
 
-        $names = \array_column(new TabListProvider($buffers, new Translator('en'), new ProjectPaths('/'))->tabs(), 'name');
+        $names = \array_column(new TabListProvider($buffers, new Translator('en'), new ProjectPaths('/'), TestAgentPresence::create())->tabs(), 'name');
 
         $this->assertSame(['Documentation', 'Documentation', 'Project Architecture', 'Project Architecture'], $names);
     }
@@ -124,7 +127,7 @@ final class TabListProviderTest extends TestCase
         $buffers->open('/p/plugins/todo/plugin.php', '<?php');
         $buffers->get('/p/plugins/git/plugin.php')->pinned = true;
 
-        $names = \array_column(new TabListProvider($buffers, new Translator('en'), new ProjectPaths('/'))->tabs(), 'name');
+        $names = \array_column(new TabListProvider($buffers, new Translator('en'), new ProjectPaths('/'), TestAgentPresence::create())->tabs(), 'name');
 
         $this->assertSame([Glyphs::PINNED.' plugin.php (git)', 'plugin.php (todo)'], $names);
     }
@@ -141,7 +144,7 @@ final class TabListProviderTest extends TestCase
         $buffers->open('/notes.md', 'a');
         $buffers->open('/p/notes.md', 'b');
 
-        $names = \array_column(new TabListProvider($buffers, new Translator('en'), new ProjectPaths('/'))->tabs(), 'name');
+        $names = \array_column(new TabListProvider($buffers, new Translator('en'), new ProjectPaths('/'), TestAgentPresence::create())->tabs(), 'name');
 
         $this->assertSame(['notes.md', 'notes.md (p)'], $names);
 
@@ -151,7 +154,7 @@ final class TabListProviderTest extends TestCase
 
         $this->assertSame(
             ['notes.md', 'notes.md'],
-            \array_column(new TabListProvider($rootOnly, new Translator('en'), new ProjectPaths('/'))->tabs(), 'name'),
+            \array_column(new TabListProvider($rootOnly, new Translator('en'), new ProjectPaths('/'), TestAgentPresence::create())->tabs(), 'name'),
             'indistinguishable, but named rather than fatal',
         );
     }
@@ -163,12 +166,12 @@ final class TabListProviderTest extends TestCase
         $buffers->open('/p/b.php', '<?php'); // opening a second buffer makes it the active one
         $a->document->insert('x'); // dirty the first, now-inactive buffer
 
-        $tabs = new TabListProvider($buffers, new Translator('en'), new ProjectPaths('/p'))->tabs();
+        $tabs = new TabListProvider($buffers, new Translator('en'), new ProjectPaths('/p'), TestAgentPresence::create())->tabs();
 
         $this->assertSame(
             [
-                ['name' => 'a.php', 'dirty' => true, 'active' => false, 'closable' => true, 'tooltip' => "a.php\nUnsaved changes"],
-                ['name' => 'b.php', 'dirty' => false, 'active' => true, 'closable' => true, 'tooltip' => 'b.php'],
+                ['name' => 'a.php', 'dirty' => true, 'active' => false, 'closable' => true, 'tooltip' => "a.php\nUnsaved changes", 'agents' => []],
+                ['name' => 'b.php', 'dirty' => false, 'active' => true, 'closable' => true, 'tooltip' => 'b.php', 'agents' => []],
             ],
             $tabs,
         );
@@ -181,9 +184,24 @@ final class TabListProviderTest extends TestCase
         $buffers->open('/p/src/deep/Name.php', '<?php')->pinned = true;
         $buffers->openPane('/p/docs/README.md', 'help', '# docs');
 
-        $tips = \array_column(new TabListProvider($buffers, new Translator('en'), new ProjectPaths('/p'))->tabs(), 'tooltip');
+        $tips = \array_column(new TabListProvider($buffers, new Translator('en'), new ProjectPaths('/p'), TestAgentPresence::create())->tabs(), 'tooltip');
 
         $this->assertSame("src/deep/Name.php\nPinned: kept open, with no ×", $tips[0]);
         $this->assertSame('Documentation', $tips[1], 'a help page is its title, not a path');
+    }
+
+    public function testATabShowsTheAgentsAtWorkOnItsFileInTheirColours(): void
+    {
+        $buffers = new BufferManager();
+        $buffers->open('/p/a.php', '<?php');
+        $buffers->open('/p/b.php', '<?php');
+        $agents = TestAgentPresence::create();
+        $agents->onAgentActivity(new AgentActivity('mcp-1', 'Claude', '/p/a.php', AgentActivityKind::Editing, 0, 0, 10.0));
+        $agents->onAgentActivity(new AgentActivity('mcp-2', 'Codex', '/p/a.php', AgentActivityKind::Reading, 0, 0, 10.0));
+
+        $tabs = new TabListProvider($buffers, new Translator('en'), new ProjectPaths('/p'), $agents)->tabs();
+
+        $this->assertSame([[0, 1], []], \array_column($tabs, 'agents'), 'each agent its own colour slot; b has none');
+        $this->assertSame("a.php\nClaude is editing it\nCodex is reading it", $tabs[0]['tooltip']);
     }
 }

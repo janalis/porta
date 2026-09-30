@@ -35,6 +35,7 @@ use Porta\Widget\Support\InputHook;
 use Porta\Widget\Support\PanelWidth;
 use Porta\Widget\Support\StylesDefault;
 use Porta\Widget\Support\WheelScrollable;
+use Porta\Workbench\AgentActivityKind;
 use Psr\Clock\ClockInterface;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Clock\NativeClock;
@@ -117,7 +118,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
      * render revision, which an edit in the EDITOR never bumps — so the marks
      * are compared here and the memo dropped when they move.
      *
-     * @var array<string, array{dirty: bool, severity: DiagnosticSeverity|null, status: \Porta\Editor\ChangeMarkKind|null}>
+     * @var array<string, array{dirty: bool, severity: DiagnosticSeverity|null, status: \Porta\Editor\ChangeMarkKind|null, agents: list<array{name: string, kind: AgentActivityKind}>}>
      */
     private array $fileMarks = [];
 
@@ -839,14 +840,20 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
         if (null !== $mark && $mark['dirty']) {
             $lines[] = $this->translator->trans('Unsaved changes');
         }
+        foreach ($mark['agents'] ?? [] as $agent) {
+            $lines[] = AgentActivityKind::Editing === $agent['kind']
+                ? $this->translator->trans('%agent% is editing it', ['%agent%' => $agent['name']])
+                : $this->translator->trans('%agent% is reading it', ['%agent%' => $agent['name']]);
+        }
 
         return \implode("\n", $lines);
     }
 
     /**
      * A file row's trailing marks, right-aligned and in a fixed order: its
-     * version-control status, the worst diagnostic it carries, then whether it
-     * has unsaved changes — file state, then problems, then yours. Each is one
+     * version-control status, the worst diagnostic it carries, whether it has
+     * unsaved changes, then whether an agent is at work on it — file state,
+     * then problems, then yours, then someone else's. Each is one
      * column and each is a SHAPE rather than a colour, because the whole row
      * wears one style (a selected row's background has to cover the marks, and
      * painting them separately would mean slicing the styled line again).
@@ -868,7 +875,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
 
         // A file with nothing to say is absent from the snapshot entirely, so
         // reaching here means at least one glyph follows the separating space.
-        return ' '.($mark['status']?->glyph() ?? '').($mark['severity']?->glyph() ?? '').($mark['dirty'] ? Glyphs::DIRTY : '');
+        return ' '.($mark['status']?->glyph() ?? '').($mark['severity']?->glyph() ?? '').($mark['dirty'] ? Glyphs::DIRTY : '').([] === $mark['agents'] ? '' : Glyphs::AGENT);
     }
 
     /**

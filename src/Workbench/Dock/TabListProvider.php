@@ -9,6 +9,8 @@ use Porta\Editor\BufferManager;
 use Porta\I18n\Translator;
 use Porta\Support\ProjectPaths;
 use Porta\Ui\Glyphs;
+use Porta\Workbench\AgentActivityKind;
+use Porta\Workbench\AgentPresence;
 
 /** The tab strip's rows, pulled at render time from the buffer list. */
 final readonly class TabListProvider
@@ -17,9 +19,10 @@ final readonly class TabListProvider
         private BufferManager $buffers,
         private Translator $translator,
         private ProjectPaths $paths,
+        private AgentPresence $agents,
     ) {}
 
-    /** @return list<array{name: string, dirty: bool, active: bool, closable: bool, tooltip: string}> */
+    /** @return list<array{name: string, dirty: bool, active: bool, closable: bool, tooltip: string, agents: list<int>}> agents: the colour slots of the agents at work on it */
     public function tabs(): array
     {
         $buffers = $this->buffers->all();
@@ -39,6 +42,7 @@ final readonly class TabListProvider
                 // The name may be cut, qualified or a title; its marks are
                 // glyphs. The tooltip says where the file is and what they mean.
                 'tooltip' => $this->tooltip($b),
+                'agents' => \array_column($this->agents->in($b->path), 'slot'),
             ],
             $buffers,
             $titles,
@@ -145,6 +149,11 @@ final readonly class TabListProvider
         }
         if ($b->isDirty()) {
             $lines[] = $this->translator->trans('Unsaved changes');
+        }
+        foreach ($this->agents->in($b->path) as $agent) {
+            $lines[] = AgentActivityKind::Editing === $agent['kind']
+                ? $this->translator->trans('%agent% is editing it', ['%agent%' => $agent['name']])
+                : $this->translator->trans('%agent% is reading it', ['%agent%' => $agent['name']]);
         }
 
         return \implode("\n", $lines);

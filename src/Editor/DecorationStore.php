@@ -54,6 +54,13 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
     public private(set) array $commentMarks = [];
 
     /**
+     * Not cleared per buffer: an agent's caret belongs to its file.
+     *
+     * @var array<string, list<array{line: int, col: int, label: string, slot: int}>> path => carets
+     */
+    private array $remoteCarets = [];
+
+    /**
      * Rows of a writer's text shown UNDER a line — a review thread, whole —
      * by writer, for {@see $annotationsByOwner}'s reason.
      *
@@ -485,6 +492,28 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
     public function semanticTokensAt(int $line): array
     {
         return $this->semanticTokens[$line] ?? [];
+    }
+
+    #[\Override]
+    public function setRemoteCarets(array $byPath): void
+    {
+        $this->remoteCarets = $byPath;
+        ($this->invalidate)();
+    }
+
+    /**
+     * The carets of other writers in one file, by 0-based line.
+     *
+     * @return array<int, list<array{col: int, label: string, slot: int}>>
+     */
+    public function remoteCaretsIn(?string $path): array
+    {
+        $byLine = [];
+        foreach ($this->remoteCarets[$path ?? ''] ?? [] as $caret) {
+            $byLine[$caret['line']][] = ['col' => $caret['col'], 'label' => $caret['label'], 'slot' => $caret['slot']];
+        }
+
+        return $byLine;
     }
 
     public function setInlayHints(array $hints): void

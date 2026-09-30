@@ -3058,6 +3058,14 @@
         <source>Display pixel ratio</source>
         <target>画面のピクセル比</target>
       </trans-unit>
+      <trans-unit id="1084">
+        <source>%agent% is editing it</source>
+        <target>%agent% が編集中</target>
+      </trans-unit>
+      <trans-unit id="1085">
+        <source>%agent% is reading it</source>
+        <target>%agent% が読み取り中</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

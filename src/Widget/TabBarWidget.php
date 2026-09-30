@@ -29,6 +29,7 @@ use Porta\Widget\Support\ProviderFingerprint;
 use Porta\Widget\Support\StripScroll;
 use Porta\Widget\Support\StylesDefault;
 use Porta\Widget\Support\TabBarPosition;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 
@@ -45,7 +46,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost, Tool
     use MenuOverlayHostTrait;
     use PaneFocusProbe;
 
-    /** @use ProviderFingerprint<list<array{name: string, dirty: bool, active: bool, closable?: bool, tooltip?: string}>> */
+    /** @use ProviderFingerprint<list<array{name: string, dirty: bool, active: bool, closable?: bool, tooltip?: string, agents?: list<int>}>> */
     use ProviderFingerprint;
     use StripScroll;
     use StylesDefault;
@@ -72,7 +73,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost, Tool
         $this->initStyles($styles);
     }
 
-    /** @var list<array{name: string, dirty: bool, active: bool, closable?: bool, tooltip?: string}> the tabs the last render drew from */
+    /** @var list<array{name: string, dirty: bool, active: bool, closable?: bool, tooltip?: string, agents?: list<int>}> the tabs the last render drew from */
     private array $lastTabs = [];
 
     /** @var list<array{index: int, row: int, rows: int, labelRow: int, start: int, width: int, closeStart: int, closeWidth: int}> layout from the last render: each tab's top row, its height, and the row its × is on */
@@ -244,7 +245,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost, Tool
             \array_map(fn (array $tab): array => [
                 'label' => $tab['name'],
                 'active' => $tab['active'],
-                'marker' => $tab['dirty'] ? $this->styles->of(Role::Modified)->apply(Glyphs::DIRTY) : '',
+                'marker' => $this->agentMarks($tab).($tab['dirty'] ? $this->styles->of(Role::Modified)->apply(Glyphs::DIRTY) : ''),
                 'closable' => $tab['closable'] ?? true,
             ], $tabs),
             $columns,
@@ -385,7 +386,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost, Tool
      * column list, read the way the tree beside it is: `▌` while its pane has
      * the keys, `▎` while it does not.
      *
-     * @param array{name: string, dirty: bool, active: bool, closable?: bool, tooltip?: string} $tab
+     * @param array{name: string, dirty: bool, active: bool, closable?: bool, tooltip?: string, agents?: list<int>} $tab
      */
     private function listRow(array $tab, TabState $state, int $width): string
     {
@@ -398,7 +399,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost, Tool
      * ({@see TabShape::side()}). The shape is the state, as on the
      * horizontal strip, so the selection bar has no work to do here.
      *
-     * @param array{name: string, dirty: bool, active: bool, closable?: bool, tooltip?: string} $tab
+     * @param array{name: string, dirty: bool, active: bool, closable?: bool, tooltip?: string, agents?: list<int>} $tab
      *
      * @return list<string>
      */
@@ -419,18 +420,30 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost, Tool
      * `name…  ●× ` in $width columns: the name truncated, then the dirty ●
      * (or a blank) and the × (a blank on a pinned tab) at the end.
      *
-     * @param array{name: string, dirty: bool, active: bool, closable?: bool, tooltip?: string} $tab
+     * @param array{name: string, dirty: bool, active: bool, closable?: bool, tooltip?: string, agents?: list<int>} $tab
      */
     private function tabBody(array $tab, int $width): string
     {
-        $marker = $tab['dirty'] ? $this->styles->of(Role::Modified)->apply(Glyphs::DIRTY) : ' ';
+        $agents = $this->agentMarks($tab);
+        $marker = $agents.($tab['dirty'] ? $this->styles->of(Role::Modified)->apply(Glyphs::DIRTY) : ' ');
         $close = match (true) {
             !($tab['closable'] ?? true) => ' ',
             $tab['active'] => TabCloseGlyph::active($this->styles),
             default => TabCloseGlyph::inactive($this->styles),
         };
 
-        return AnsiText::truncate($tab['name'], $width - 4, pad: true).' '.$marker.$close.' ';
+        return AnsiText::truncate($tab['name'], $width - 4 - AnsiUtils::visibleWidth($agents), pad: true).' '.$marker.$close.' ';
+    }
+
+    /**
+     * One ✦ per agent at work on the tab's file, each in that agent's colour,
+     * before the dirty dot: whose hands are in it, then whether it is saved.
+     *
+     * @param array{name: string, dirty: bool, active: bool, closable?: bool, tooltip?: string, agents?: list<int>} $tab
+     */
+    private function agentMarks(array $tab): string
+    {
+        return \implode('', \array_map(fn (int $slot): string => $this->styles->of(Role::agent($slot))->apply(Glyphs::AGENT), $tab['agents'] ?? []));
     }
 
     /**

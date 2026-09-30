@@ -77,6 +77,29 @@ final class CodeEditorTrailingCellTest extends TestCase
         $this->assertExactWidth($rows, 80);
     }
 
+    public function testAnAgentAtWorkOnALineTakesTheCellSecondAndPaintsItsCaret(): void
+    {
+        $editor = $this->editor("<?php\n\$count = 41;\n\$other = 1;\n", 'agent.php');
+        $editor->decorations->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'Boom', 'col' => 0, 'endCol' => 6]]]);
+        $editor->decorations->setLineAnnotations([1 => 'you, 3 days ago', 2 => 'them, today']);
+        $editor->decorations->setDebugValues([2 => '$other = 1']);
+        $editor->decorations->setRemoteCarets([
+            'agent.php' => [['line' => 1, 'col' => 1, 'label' => '✦ Claude', 'slot' => 1], ['line' => 2, 'col' => 0, 'label' => '✦ Codex', 'slot' => 0]],
+            'elsewhere.php' => [['line' => 0, 'col' => 0, 'label' => '✦ Nobody here', 'slot' => 2]],
+        ]);
+
+        $rows = $editor->render(new RenderContext(80, 10));
+
+        $this->assertStringContainsString('✦ Claude', AnsiUtils::stripAnsiCodes($rows[1]));
+        $this->assertStringNotContainsString('Boom', AnsiUtils::stripAnsiCodes($rows[1]), 'the agent before the inline diagnostic');
+        $this->assertStringContainsString('$other = 1', AnsiUtils::stripAnsiCodes($rows[2]), 'the debugger\'s value before the agent');
+        $this->assertStringNotContainsString('Nobody here', AnsiUtils::stripAnsiCodes(\implode("\n", $rows)), 'another file\'s agents stay there');
+        // The agent's background (Agent2's, dark: 130) opens on the second
+        // character; the highlighter's own foreground may re-assert inside it.
+        $this->assertMatchesRegularExpression('/\e\[48;5;130m(\e\[[0-9;:]*m)*c/', $rows[1], 'the caret cell, on the second character, in the agent\'s colour');
+        $this->assertExactWidth($rows, 80);
+    }
+
     public function testOnlyInlineDiagnosticMessagesTakeTheCell(): void
     {
         // In the menu, or nowhere, the message leaves the line — and the cell

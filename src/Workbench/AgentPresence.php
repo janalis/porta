@@ -1,0 +1,193 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Porta\Workbench;
+
+use Porta\Container\AsIdeService;
+use Porta\Editor\EditorDecorationSink;
+use Porta\Event\AgentActivity;
+use Porta\Event\AgentLeft;
+use Porta\Event\FileDeleted;
+use Porta\Event\FileRenamed;
+use Porta\Support\ProjectPaths;
+use Porta\Support\Scheduler;
+use Porta\Ui\Glyphs;
+use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
+use Symfony\Component\Tui\Tui;
+
+/**
+ * Which agents are at work on which files, as the IDE shows it: what
+ * {@see AgentActivity} reported, until it goes quiet or {@see AgentLeft}.
+ *
+ * Each agent keeps a colour SLOT, in order of arrival, for as long as it is
+ * shown — its caret, its label and its tab mark are the same colour
+ * everywhere. Each (agent, file) keeps its own fade timer, re-armed by every
+ * report, so an agent reading one file and editing another shows on both
+ * until each goes quiet.
+ *
+ * The editor's carets are pushed to the decoration store whole on every
+ * change; the tab bar and the tree pull {@see in()} when they render.
+ */
+#[AsIdeService]
+final class AgentPresence
+{
+    /** How many agent colours the themes define. */
+    public const int SLOTS = 4;
+
+    /** @var array<string, int> agent => colour slot */
+    private array $slots = [];
+
+    /** @var array<string, array<string, array{name: string, kind: AgentActivityKind, line: int, column: int, timer: string}>> path => agent => what it is doing */
+    private array $files = [];
+
+    public function __construct(
+        private readonly Scheduler $scheduler,
+        private readonly EditorDecorationSink $decorations,
+        private readonly Tui $tui,
+    ) {}
+
+    #[AsEventListener]
+    public function onAgentActivity(AgentActivity $event): void
+    {
+        $path = self::canonical($event->path);
+        $this->slots[$event->agent] ??= $this->freeSlot();
+        $previous = $this->files[$path][$event->agent]['timer'] ?? null;
+        if (null !== $previous) {
+            $this->scheduler->cancel($previous);
+        }
+        // The timer finds its entry by its own id, not by the path it was
+        // armed for: a rename moves the entry, and the fade must follow it.
+        $timer = '';
+        $timer = $this->scheduler->delay($event->fadeAfter, function () use (&$timer): void {
+            $this->fade($timer);
+        });
+        $this->files[$path][$event->agent] = [
+            'name' => $event->name,
+            'kind' => $event->kind,
+            'line' => $event->line,
+            'column' => \max(0, $event->column),
+            'timer' => $timer,
+        ];
+        $this->changed();
+    }
+
+    #[AsEventListener]
+    public function onAgentLeft(AgentLeft $event): void
+    {
+        foreach (\array_keys($this->files) as $path) {
+            $this->forget($path, $event->agent, cancel: true);
+        }
+        unset($this->slots[$event->agent]);
+        $this->changed();
+    }
+
+    #[AsEventListener]
+    public function onFileRenamed(FileRenamed $event): void
+    {
+        foreach ($this->files as $path => $agents) {
+            $moved = ProjectPaths::moved($path, $event->from, $event->to);
+            if (null !== $moved) {
+                unset($this->files[$path]);
+                $this->files[$moved] = $agents;
+            }
+        }
+        $this->changed();
+    }
+
+    #[AsEventListener]
+    public function onFileDeleted(FileDeleted $event): void
+    {
+        foreach (\array_keys($this->files[$event->path] ?? []) as $agent) {
+            $this->forget($event->path, $agent, cancel: true);
+        }
+        $this->changed();
+    }
+
+    /**
+     * Who is at work on $path, first arrived first.
+     *
+     * @return list<array{name: string, kind: AgentActivityKind, slot: int}>
+     */
+    public function in(string $path): array
+    {
+        $agents = [];
+        foreach ($this->files[$path] ?? [] as $agent => $entry) {
+            $agents[] = ['name' => $entry['name'], 'kind' => $entry['kind'], 'slot' => $this->slots[$agent] ?? 0];
+        }
+
+        return $agents;
+    }
+
+    /** @return list<string> every file an agent is at work on */
+    public function files(): array
+    {
+        return \array_keys($this->files);
+    }
+
+    /** A fade timer fired: whatever entry it was armed for goes, wherever it is now. */
+    private function fade(string $timer): void
+    {
+        foreach ($this->files as $path => $agents) {
+            foreach ($agents as $agent => $entry) {
+                if ($timer !== $entry['timer']) {
+                    continue;
+                }
+                $this->forget($path, $agent);
+            }
+        }
+        $this->changed();
+    }
+
+    /** The lowest slot no agent holds, or the first again once all are taken. */
+    private function freeSlot(): int
+    {
+        $taken = \array_flip($this->slots);
+        for ($slot = 0; $slot < self::SLOTS; ++$slot) {
+            if (!\array_key_exists($slot, $taken)) {
+                return $slot;
+            }
+        }
+
+        return \count($this->slots) % self::SLOTS;
+    }
+
+    // @mago-expect lint:no-boolean-flag-parameter -- a fade has already fired its timer; a leave or a delete must cancel it — that IS the one difference
+    private function forget(string $path, string $agent, bool $cancel = false): void
+    {
+        $entry = $this->files[$path][$agent] ?? null;
+        if (null === $entry) {
+            return;
+        }
+        if ($cancel) {
+            $this->scheduler->cancel($entry['timer']);
+        }
+        unset($this->files[$path][$agent]);
+        if ([] === $this->files[$path]) {
+            unset($this->files[$path]);
+        }
+    }
+
+    private function changed(): void
+    {
+        $carets = [];
+        foreach ($this->files as $path => $agents) {
+            foreach ($agents as $agent => $entry) {
+                if ($entry['line'] < 0) {
+                    continue; // on the file, with no caret in it
+                }
+                $carets[$path][] = ['line' => $entry['line'], 'col' => $entry['column'], 'label' => Glyphs::AGENT.' '.$entry['name'], 'slot' => $this->slots[$agent]];
+            }
+        }
+        $this->decorations->setRemoteCarets($carets);
+        $this->tui->requestRender();
+    }
+
+    /** Buffers are keyed by realpath; a file already gone keeps the path it was given. */
+    private static function canonical(string $path): string
+    {
+        $real = \realpath($path);
+
+        return false === $real ? $path : $real;
+    }
+}

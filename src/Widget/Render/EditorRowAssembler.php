@@ -211,17 +211,7 @@ final readonly class EditorRowAssembler
             // line's lineDisplayWidth, and placing the message by the raw width
             // would slice into them (the code/hints get overprinted). Compute the
             // width only when there is something to place after it.
-            // One cell, three claimants, in this order: the debugger's value
-            // for the line, the inline diagnostic, the plugin annotation.
-            //
-            // The value wins because it only exists while the debugger is
-            // STOPPED — a mode entered on purpose, answering the question being
-            // asked right now — and because the other two keep their other
-            // surfaces: a diagnostic still has its squiggle, its gutter mark,
-            // its stripe cell and the Problems panel; blame has Alt+B.
-            $debugValue = $this->store->debugValues[$lineIndex] ?? '';
-            $hasInlineDiagnostic = '' === $debugValue && DiagnosticMessageMode::Inline === $this->diagnosticMessages && [] !== $lineDiags;
-            $trailing = '' !== $debugValue || $hasInlineDiagnostic ? $debugValue : $this->store->lineAnnotations[$lineIndex] ?? '';
+            [$trailing, $role, $hasInlineDiagnostic] = $this->trailing($lineIndex, $decorations, $lineDiags);
             if ($hasInlineDiagnostic || '' !== $trailing) {
                 $textDisplayWidth = AnsiUtils::visibleWidth($hlLine);
                 // $rowOffset, not $hScroll: on a wrapped line those differ, and
@@ -232,13 +222,47 @@ final readonly class EditorRowAssembler
                 // where the line actually ends.
                 $content = $hasInlineDiagnostic
                     ? EditorRenderer::appendInlineDiagnostic($rowOffset, $textDisplayWidth, $lineDiags, $content, $geo->contentWidth, $this->styles)
-                    : EditorRenderer::appendAnnotation($rowOffset, $textDisplayWidth, $trailing, $content, $geo->contentWidth, $this->styles, '' === $debugValue ? Role::Inlay : Role::DebugValue);
+                    : EditorRenderer::appendAnnotation($rowOffset, $textDisplayWidth, $trailing, $content, $geo->contentWidth, $this->styles, $role);
             }
 
             $result[] = $gutter.$content.$stripe[$stickyCount + $row];
         }
 
         return $result;
+    }
+
+    /**
+     * What the cell after a line's text shows, in which role, and whether it
+     * is the inline diagnostic (drawn by its own renderer). One cell, four
+     * claimants, in this order: the debugger's value for the line, an agent's
+     * name, the inline diagnostic, the plugin annotation.
+     *
+     * The value wins because it only exists while the debugger is STOPPED — a
+     * mode entered on purpose, answering the question being asked right now —
+     * and because the others keep their other surfaces: a diagnostic still has
+     * its squiggle, its gutter mark, its stripe cell and the Problems panel;
+     * blame has Alt+B. An agent's name comes second: it is there only for
+     * seconds, and says who is changing the text under the other two.
+     *
+     * @param list<array{col: int, endCol?: int, message: string, severity: DiagnosticSeverity, code?: int|string, source?: string, tags?: list<int>}> $lineDiags
+     *
+     * @return array{0: string, 1: Role, 2: bool}
+     */
+    private function trailing(int $lineIndex, EditorDecorations $decorations, array $lineDiags): array
+    {
+        $debugValue = $this->store->debugValues[$lineIndex] ?? '';
+        if ('' !== $debugValue) {
+            return [$debugValue, Role::DebugValue, false];
+        }
+        $agent = $decorations->remoteCarets[$lineIndex][0] ?? null;
+        if (null !== $agent) {
+            return [$agent['label'], Role::agent($agent['slot']), false];
+        }
+        if (DiagnosticMessageMode::Inline === $this->diagnosticMessages && [] !== $lineDiags) {
+            return ['', Role::Inlay, true];
+        }
+
+        return [$this->store->lineAnnotations[$lineIndex] ?? '', Role::Inlay, false];
     }
 
     /**

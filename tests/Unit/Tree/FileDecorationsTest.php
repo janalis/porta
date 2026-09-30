@@ -8,18 +8,24 @@ use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
 use Porta\Editor\ChangeMarkKind;
 use Porta\Editor\DiagnosticSeverity;
+use Porta\Event\AgentActivity;
+use Porta\Tests\Support\TestAgentPresence;
 use Porta\Tree\FileDecorations;
 use Porta\Tree\FileStatuses;
+use Porta\Workbench\AgentActivityKind;
+use Porta\Workbench\AgentPresence;
 
 final class FileDecorationsTest extends TestCase
 {
+    private AgentPresence $agents;
+
     /** @return array{FileDecorations, BufferManager, FileStatuses} */
     private function make(): array
     {
         $buffers = new BufferManager();
         $statuses = new FileStatuses();
 
-        return [new FileDecorations($buffers, $statuses), $buffers, $statuses];
+        return [new FileDecorations($buffers, $statuses, $this->agents = TestAgentPresence::create()), $buffers, $statuses];
     }
 
     /**
@@ -94,7 +100,7 @@ final class FileDecorationsTest extends TestCase
         $buffer = $buffers->open('/p/a.php', "<?php\n");
         $buffer->document->insert('x');
 
-        $this->assertSame(['/p/a.php' => ['dirty' => true, 'severity' => null, 'status' => null]], $decorations->snapshot());
+        $this->assertSame(['/p/a.php' => ['dirty' => true, 'severity' => null, 'status' => null, 'agents' => []]], $decorations->snapshot());
     }
 
     public function testItReportsTheWorstSeverityAcrossEveryLine(): void
@@ -105,7 +111,7 @@ final class FileDecorationsTest extends TestCase
         // one it found would report the warning.
         $buffer->diagnostics = $this->diagnostics([2, 2, 1, 2]);
 
-        $this->assertSame(['/p/a.php' => ['dirty' => false, 'severity' => DiagnosticSeverity::Error, 'status' => null]], $decorations->snapshot());
+        $this->assertSame(['/p/a.php' => ['dirty' => false, 'severity' => DiagnosticSeverity::Error, 'status' => null, 'agents' => []]], $decorations->snapshot());
     }
 
     /** Info and hint are real diagnostics but not worth a file-row mark. */
@@ -137,8 +143,8 @@ final class FileDecorationsTest extends TestCase
 
         $this->assertSame(
             [
-                '/p/a.php' => ['dirty' => false, 'severity' => DiagnosticSeverity::Warning, 'status' => null],
-                '/p/b.php' => ['dirty' => true, 'severity' => null, 'status' => null],
+                '/p/a.php' => ['dirty' => false, 'severity' => DiagnosticSeverity::Warning, 'status' => null, 'agents' => []],
+                '/p/b.php' => ['dirty' => true, 'severity' => null, 'status' => null, 'agents' => []],
             ],
             $decorations->snapshot(),
         );
@@ -155,7 +161,7 @@ final class FileDecorationsTest extends TestCase
         $statuses->applyFileStatuses(['/p/never-opened.php' => ChangeMarkKind::Modified]);
 
         $this->assertSame(
-            ['/p/never-opened.php' => ['dirty' => false, 'severity' => null, 'status' => ChangeMarkKind::Modified]],
+            ['/p/never-opened.php' => ['dirty' => false, 'severity' => null, 'status' => ChangeMarkKind::Modified, 'agents' => []]],
             $decorations->snapshot(),
         );
     }
@@ -168,7 +174,7 @@ final class FileDecorationsTest extends TestCase
         $buffers->open('/p/a.php', "<?php\n")->document->insert('x');
 
         $this->assertSame(
-            ['/p/a.php' => ['dirty' => true, 'severity' => null, 'status' => ChangeMarkKind::Added]],
+            ['/p/a.php' => ['dirty' => true, 'severity' => null, 'status' => ChangeMarkKind::Added, 'agents' => []]],
             $decorations->snapshot(),
         );
     }
@@ -181,5 +187,21 @@ final class FileDecorationsTest extends TestCase
         $statuses->applyFileStatuses([]);
 
         $this->assertSame([], $decorations->snapshot());
+    }
+
+    public function testAFileAnAgentIsAtWorkOnCarriesWhoAndWhatEvenUnopened(): void
+    {
+        [$decorations, $buffers] = $this->make();
+        $buffers->open('/p/a.php', "<?php\n")->document->insert('x');
+        $this->agents->onAgentActivity(new AgentActivity('mcp-1', 'Claude', '/p/a.php', AgentActivityKind::Editing, 0, 0, 10.0));
+        $this->agents->onAgentActivity(new AgentActivity('mcp-1', 'Claude', '/p/closed.php', AgentActivityKind::Reading, 0, 0, 10.0));
+
+        $this->assertSame(
+            [
+                '/p/a.php' => ['dirty' => true, 'severity' => null, 'status' => null, 'agents' => [['name' => 'Claude', 'kind' => AgentActivityKind::Editing]]],
+                '/p/closed.php' => ['dirty' => false, 'severity' => null, 'status' => null, 'agents' => [['name' => 'Claude', 'kind' => AgentActivityKind::Reading]]],
+            ],
+            $decorations->snapshot(),
+        );
     }
 }

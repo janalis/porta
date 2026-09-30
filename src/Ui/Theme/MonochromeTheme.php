@@ -51,6 +51,12 @@ final class MonochromeTheme
                 Role::SearchCurrentBg->selector() => new Style(reverse: true, bold: true),
                 Role::OccurrenceBg->selector() => new Style(underline: true),
                 Role::OccurrenceWriteBg->selector() => new Style(underline: true, bold: true),
+                // Agents: no colours to tell them apart, so every one is the reversed,
+                // underlined cell — still a caret that is not the user's.
+                Role::Agent1->selector() => new Style(reverse: true, underline: true),
+                Role::Agent2->selector() => new Style(reverse: true, underline: true),
+                Role::Agent3->selector() => new Style(reverse: true, underline: true),
+                Role::Agent4->selector() => new Style(reverse: true, underline: true),
                 // The :focus variant merges over the base rule, so it must
                 // cancel the unfocused dim explicitly.
                 '.list::selected' => new Style(dim: true, reverse: true),

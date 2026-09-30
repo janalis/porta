@@ -84,6 +84,16 @@ stay where you left them, moving only with the text they sat in, so you can keep
 typing in the same file. Turn on `followAgent` to have each file it edits
 brought to the front instead.
 
+**You see an agent at work.** Where it edits or reads, a caret appears in its
+colour, with its name at the end of the line (`✦ Claude`). A ✦ in the same
+colour marks the file's tab and its row in the project tree, and the tooltip
+says who is editing or reading it. The status bar names the agent and what it
+last did (`✦ Claude editing A.php`). All of it goes after `agentFade` seconds
+(10) without the agent touching the file, or at once when it disconnects. Each
+agent keeps one colour; a fifth shares the first's. Turn `showAgentCursor` off
+to keep the marks without the caret in the text, or `showAgents` off to see
+none of it.
+
 **Edits are not saved unless you say so.** Each one is a single undoable step
 in the editor, so you review it, keep it with Ctrl+S, or take it back with
 Ctrl+Z. Turn the `allowEdits` setting off and the edit tools are not offered

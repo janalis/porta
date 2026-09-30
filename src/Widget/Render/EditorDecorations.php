@@ -21,6 +21,7 @@ final readonly class EditorDecorations
      * @param list<Caret>    $carets
      * @param list<array{0: int, 1: int, 2: int, 3: bool}>                            $occurrences [line, startDisplayCol, endDisplayCol, isWrite]
      * @param array{0: array{0: int, 1: int}, 1: array{0: int, 1: int}}|null       $brackets
+     * @param array<int, list<array{col: int, label: string, slot: int}>>             $remoteCarets other writers' carets in this file, by 0-based line (byte cols)
      */
     public function __construct(
         public bool $multiActive,
@@ -28,5 +29,6 @@ final readonly class EditorDecorations
         public array $carets,
         public array $occurrences,
         public ?array $brackets,
+        public array $remoteCarets = [],
     ) {}
 }

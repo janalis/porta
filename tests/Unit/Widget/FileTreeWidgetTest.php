@@ -8,17 +8,20 @@ use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
 use Porta\Editor\ChangeMarkKind;
 use Porta\Editor\DiagnosticSeverity;
+use Porta\Event\AgentActivity;
 use Porta\Event\TreeFileActivated;
 use Porta\Tests\Support\AttachedStyles;
 use Porta\Tests\Support\PagesThroughRows;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RendersWidget;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\TestAgentPresence;
 use Porta\Tree\FileDecorations;
 use Porta\Tree\FileStatuses;
 use Porta\Tree\FileTreeNode;
 use Porta\Ui\Glyphs;
 use Porta\Widget\FileTreeWidget;
+use Porta\Workbench\AgentActivityKind;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -63,7 +66,7 @@ final class FileTreeWidgetTest extends TestCase
         $buffers = new BufferManager();
         $buffers->open((string) \realpath($project->dir.'/broken.php'), "<?php\n")->diagnostics = [0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'boom', 'col' => 0]]];
         $buffers->open((string) \realpath($project->dir.'/edited.php'), "<?php\n")->document->insert('x');
-        $tree = new FileTreeWidget($project->dir, fileDecorations: new FileDecorations($buffers, new FileStatuses()));
+        $tree = new FileTreeWidget($project->dir, fileDecorations: new FileDecorations($buffers, new FileStatuses(), TestAgentPresence::create()));
 
         $tree->beforeRender();
         $rows = $this->plain($tree->render(new RenderContext(30, 10)));
@@ -83,7 +86,7 @@ final class FileTreeWidgetTest extends TestCase
         $buffer->document->insert('x');
         $statuses = new FileStatuses();
         $statuses->applyFileStatuses([(string) \realpath($project->dir.'/src/a.php') => ChangeMarkKind::Modified]);
-        $tree = new FileTreeWidget($project->dir, fileDecorations: new FileDecorations($buffers, $statuses));
+        $tree = new FileTreeWidget($project->dir, fileDecorations: new FileDecorations($buffers, $statuses, TestAgentPresence::create()));
         $tree->revealPath($project->dir.'/src/a.php');
 
         $tree->beforeRender();
@@ -101,13 +104,29 @@ final class FileTreeWidgetTest extends TestCase
         $this->assertNull($tree->tooltipAt(0, 3), 'nor the header');
     }
 
+    public function testAFileAnAgentIsAtWorkOnIsStarredAndSaysWho(): void
+    {
+        $project = new TempProject(['a.php' => "<?php\n", 'b.php' => "<?php\n"]);
+        $agents = TestAgentPresence::create();
+        $agents->onAgentActivity(new AgentActivity('mcp-1', 'Claude', (string) \realpath($project->dir.'/a.php'), AgentActivityKind::Editing, 0, 0, 10.0));
+        $agents->onAgentActivity(new AgentActivity('mcp-2', 'Codex', (string) \realpath($project->dir.'/a.php'), AgentActivityKind::Reading, 0, 0, 10.0));
+        $tree = new FileTreeWidget($project->dir, fileDecorations: new FileDecorations(new BufferManager(), new FileStatuses(), $agents));
+
+        $tree->beforeRender();
+        $rows = \explode("\n", $this->plain($tree->render(new RenderContext(30, 10))));
+        $row = \array_key_first(\array_filter($rows, static fn (string $r): bool => \str_contains($r, 'a.php')));
+
+        $this->assertMatchesRegularExpression('/a\.php\s+'.Glyphs::AGENT.'$/', $rows[(int) $row], 'the star, last of the marks, on a file nobody opened');
+        $this->assertSame("a.php\nClaude is editing it\nCodex is reading it", $tree->tooltipAt((int) $row, 3)?->text);
+    }
+
     public function testACutNameIsSaidWholeAndAnErrorIsAnError(): void
     {
         $project = new TempProject(['a-really-quite-long-file-name.php' => "<?php\n", 'broken.php' => "<?php\n", 'notes.php' => "<?php\n"]);
         $buffers = new BufferManager();
         $buffers->open((string) \realpath($project->dir.'/broken.php'), "<?php\n")->diagnostics = [0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'boom', 'col' => 0]]];
         $buffers->open((string) \realpath($project->dir.'/notes.php'), "<?php\n")->diagnostics = [0 => [['severity' => DiagnosticSeverity::Hint, 'message' => 'tip', 'col' => 0]]];
-        $tree = new FileTreeWidget($project->dir, fileDecorations: new FileDecorations($buffers, new FileStatuses()));
+        $tree = new FileTreeWidget($project->dir, fileDecorations: new FileDecorations($buffers, new FileStatuses(), TestAgentPresence::create()));
 
         $tree->beforeRender();
         $rows = \explode("\n", $this->plain($tree->render(new RenderContext(20, 10))));
@@ -126,7 +145,7 @@ final class FileTreeWidgetTest extends TestCase
         $buffer = $buffers->open((string) \realpath($project->dir.'/a.php'), "<?php\n");
         $buffer->diagnostics = [0 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'hmm', 'col' => 0]]];
         $buffer->document->insert('x');
-        $tree = new FileTreeWidget($project->dir, fileDecorations: new FileDecorations($buffers, new FileStatuses()));
+        $tree = new FileTreeWidget($project->dir, fileDecorations: new FileDecorations($buffers, new FileStatuses(), TestAgentPresence::create()));
 
         $tree->beforeRender();
         $rows = $this->plain($tree->render(new RenderContext(30, 10)));
@@ -140,7 +159,7 @@ final class FileTreeWidgetTest extends TestCase
         $project = new TempProject(['a-really-quite-long-file-name.php' => "<?php\n"]);
         $buffers = new BufferManager();
         $buffers->open((string) \realpath($project->dir.'/a-really-quite-long-file-name.php'), "<?php\n")->document->insert('x');
-        $tree = new FileTreeWidget($project->dir, fileDecorations: new FileDecorations($buffers, new FileStatuses()));
+        $tree = new FileTreeWidget($project->dir, fileDecorations: new FileDecorations($buffers, new FileStatuses(), TestAgentPresence::create()));
 
         $tree->beforeRender();
         $lines = $tree->render(new RenderContext(30, 10));
@@ -161,7 +180,7 @@ final class FileTreeWidgetTest extends TestCase
         $project = new TempProject(['a.php' => "<?php\n"]);
         $buffers = new BufferManager();
         $buffer = $buffers->open((string) \realpath($project->dir.'/a.php'), "<?php\n");
-        $tree = new FileTreeWidget($project->dir, fileDecorations: new FileDecorations($buffers, new FileStatuses()));
+        $tree = new FileTreeWidget($project->dir, fileDecorations: new FileDecorations($buffers, new FileStatuses(), TestAgentPresence::create()));
 
         $tree->beforeRender();
         $before = $this->plain($tree->render(new RenderContext(30, 10)));
@@ -195,7 +214,7 @@ final class FileTreeWidgetTest extends TestCase
             $buffers = new BufferManager();
             // What BufferService does: realpath() before keying.
             $buffers->open((string) \realpath($link.'/a.php'), "<?php\n")->document->insert('x');
-            $tree = new FileTreeWidget($link, fileDecorations: new FileDecorations($buffers, new FileStatuses()));
+            $tree = new FileTreeWidget($link, fileDecorations: new FileDecorations($buffers, new FileStatuses(), TestAgentPresence::create()));
 
             $tree->beforeRender();
             $rows = $this->plain($tree->render(new RenderContext(30, 10)));
@@ -218,7 +237,7 @@ final class FileTreeWidgetTest extends TestCase
             (string) \realpath($project->dir.'/added.php') => ChangeMarkKind::Added,
             (string) \realpath($project->dir.'/edited.php') => ChangeMarkKind::Modified,
         ]);
-        $tree = new FileTreeWidget($project->dir, fileDecorations: new FileDecorations(new BufferManager(), $statuses));
+        $tree = new FileTreeWidget($project->dir, fileDecorations: new FileDecorations(new BufferManager(), $statuses, TestAgentPresence::create()));
 
         $tree->beforeRender();
         $rows = $this->plain($tree->render(new RenderContext(30, 10)));
@@ -244,7 +263,7 @@ final class FileTreeWidgetTest extends TestCase
             $statuses = new FileStatuses();
             // Keyed under the raw root the plugin was given, not realpath's.
             $statuses->applyFileStatuses([$link.'/a.php' => ChangeMarkKind::Modified]);
-            $tree = new FileTreeWidget($link, fileDecorations: new FileDecorations(new BufferManager(), $statuses));
+            $tree = new FileTreeWidget($link, fileDecorations: new FileDecorations(new BufferManager(), $statuses, TestAgentPresence::create()));
 
             $tree->beforeRender();
             $rows = $this->plain($tree->render(new RenderContext(30, 10)));
@@ -266,7 +285,7 @@ final class FileTreeWidgetTest extends TestCase
         $buffer = $buffers->open($path, "<?php\n");
         $buffer->diagnostics = [0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'boom', 'col' => 0]]];
         $buffer->document->insert('x');
-        $tree = new FileTreeWidget($project->dir, fileDecorations: new FileDecorations($buffers, $statuses));
+        $tree = new FileTreeWidget($project->dir, fileDecorations: new FileDecorations($buffers, $statuses, TestAgentPresence::create()));
 
         $tree->beforeRender();
         $rows = $this->plain($tree->render(new RenderContext(30, 10)));
@@ -285,7 +304,7 @@ final class FileTreeWidgetTest extends TestCase
         // by asking whether the NODE is a directory, not by trusting the lookup
         // to miss.
         $buffers->open((string) \realpath($project->dir.'/sub'), "<?php\n")->document->insert('x');
-        $tree = new FileTreeWidget($project->dir, fileDecorations: new FileDecorations($buffers, new FileStatuses()));
+        $tree = new FileTreeWidget($project->dir, fileDecorations: new FileDecorations($buffers, new FileStatuses(), TestAgentPresence::create()));
 
         $tree->beforeRender();
         $rows = $this->plain($tree->render(new RenderContext(30, 10)));

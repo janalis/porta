@@ -3058,6 +3058,14 @@
         <source>Display pixel ratio</source>
         <target>יחס הפיקסלים של המסך</target>
       </trans-unit>
+      <trans-unit id="1084">
+        <source>%agent% is editing it</source>
+        <target>%agent% עורך אותו</target>
+      </trans-unit>
+      <trans-unit id="1085">
+        <source>%agent% is reading it</source>
+        <target>%agent% קורא אותו</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

@@ -3058,6 +3058,14 @@
         <source>Display pixel ratio</source>
         <target>Rapporto pixel dello schermo</target>
       </trans-unit>
+      <trans-unit id="1084">
+        <source>%agent% is editing it</source>
+        <target>%agent% lo sta modificando</target>
+      </trans-unit>
+      <trans-unit id="1085">
+        <source>%agent% is reading it</source>
+        <target>%agent% lo sta leggendo</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

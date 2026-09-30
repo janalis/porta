@@ -765,6 +765,24 @@ Output parsing lives in the `*Parser` tier. The view's axes are all pure
 enums — nothing crosses a persistence boundary, which is what backed enums are
 for.
 
+## Agents at work
+
+An agent connected through the mcp plugin is SHOWN by core, told by events:
+the plugin emits `AgentActivity` (who, which file, reading or editing, where,
+how long to stay) from each tool, and `AgentLeft` when its client goes.
+`Workbench/AgentPresence` keeps who is on which file, hands each agent a colour
+slot (`Role::Agent1`–`Agent4`) and one fade timer per (agent, file) through the
+`Scheduler`. It PUSHES carets to the editor's decoration store
+(`EditorDecorationSink::setRemoteCarets`, keyed by file, not cleared on a tab
+switch) and the tab provider and tree decorations PULL `in()`/`files()` when
+they render. The editor paints the caret cell last in `LineSpans`, and the name
+takes the trailing cell second after a debug value. A timer finds its entry by
+id, so a rename that moved the entry still fades it.
+
+An agent's edit never takes the user's screen: `OpenFocus::Background` opens
+the file behind the active tab, and `DocumentReplacer::replaceRange` keeps the
+buffer's caret and selection, shifted with their text.
+
 ## i18n and RTL
 
 `I18n/Translator` wraps `symfony/translation`. **The English source string is

@@ -9,6 +9,8 @@ use Porta\Editor\BufferManager;
 use Porta\Editor\ChangeMarkKind;
 use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\DiagnosticStyle;
+use Porta\Workbench\AgentActivityKind;
+use Porta\Workbench\AgentPresence;
 
 /**
  * Per-file state the file tree marks its rows with, read straight off the open
@@ -27,10 +29,11 @@ final readonly class FileDecorations
     public function __construct(
         private BufferManager $buffers,
         private FileStatuses $statuses,
+        private AgentPresence $agents,
     ) {}
 
     /**
-     * @return array<string, array{dirty: bool, severity: DiagnosticSeverity|null, status: ChangeMarkKind|null}> absolute path =>
+     * @return array<string, array{dirty: bool, severity: DiagnosticSeverity|null, status: ChangeMarkKind|null, agents: list<array{name: string, kind: AgentActivityKind}>}> absolute path =>
      *                                                                                       state; a null severity means "nothing worth marking".
      *                                                                                       A file with nothing to say is absent entirely
      */
@@ -38,7 +41,7 @@ final readonly class FileDecorations
     {
         $out = [];
         foreach ($this->statuses->statuses as $path => $status) {
-            $out[$path] = ['dirty' => false, 'severity' => null, 'status' => $status];
+            $out[$path] = ['dirty' => false, 'severity' => null, 'status' => $status, 'agents' => []];
         }
         foreach ($this->buffers->all() as $buffer) {
             $dirty = $buffer->isDirty();
@@ -51,7 +54,12 @@ final readonly class FileDecorations
                 'severity' => $severity,
                 // A file can be both: changed against HEAD and unsaved right now.
                 'status' => $out[$buffer->path]['status'] ?? null,
+                'agents' => [],
             ];
+        }
+        foreach ($this->agents->files() as $path) {
+            $out[$path] ??= ['dirty' => false, 'severity' => null, 'status' => null, 'agents' => []];
+            $out[$path]['agents'] = \array_map(static fn (array $agent): array => ['name' => $agent['name'], 'kind' => $agent['kind']], $this->agents->in($path));
         }
 
         return $out;
