@@ -1310,3 +1310,29 @@ diff-view test of its own before its widths change.
 
 *Re-opens on:* a vendor `graphemeWidth()` change (re-run the four probes against
 `TextMetricsTest::clusters()`).
+
+## The diff view paints tabs at the editor's stops (2026-09-30)
+
+The follow-up left open above. The diff view's docblock said a tab was one
+column "everywhere". But the row went to the terminal with the raw tab in
+it: the vendor counted three columns and the terminal jumped to its own
+eighth-column stop, so any tab-indented diff could run past its pane width.
+The emphasis was placed by `mb_strwidth()` as well. Probed on `xx NEW tail`
+behind each prefix: behind a tab it covered `x N`, behind a decomposed accent
+`EW `, behind a ZWJ family `il`.
+
+**Changed:** `DiffViewRenderer::shown()` expands tabs with
+`TextMetrics::expandTabs()` at `Document::TAB_SIZE`. Everything painted goes
+through it: the highlighter's input, deletions and the no-newline marker.
+`columns()` measures that same text. Emphasis ends are both measured from
+column 0, because a tab's width depends on where it starts. The scroll limit and
+the selection tint's end use `columns()`, and a column maps back to a byte with
+`TextMetrics::byteColForDisplayCol()`, which replaces the widget's private
+copy. `DiffLine::text` keeps the tab, so copies and staged patches are
+byte-exact. This adds a new namespace edge, `GitPlugin>Editor`.
+
+Guards in `DiffViewWidgetTest`, each failing on the old view or on a hand
+mutation back to `mb_strwidth()`: no row carries a raw tab and every row is the
+pane's width; the emphasis lands on `NEW` behind each prefix; a drag across a
+tab copies the raw tab and tints the row through its painted end; the scroll
+reaches the end of a line indented with twelve tabs.

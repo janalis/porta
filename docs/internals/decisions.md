@@ -264,8 +264,9 @@ skin tone is two columns, a decomposed accent one, where `mb_strwidth()` sums
 the code points. Re-opened and converted 2026-09-30 (dated history): the painted
 sites call the painter's measure, `TextMetrics` walks graphemes with
 `graphemeWidth()`, and the caret, search-highlight and breadcrumb tests fail on
-the old measure. The git diff view keeps `mb_strwidth()`, because its own
-tab-as-one-column coordinates are a separate question.
+the old measure. The git diff view paints its text with tabs expanded to the
+editor's stops and maps every column on that text (`DiffViewRenderer::shown()`,
+`columns()`); the model keeps the raw tab for copies and patches.
 
 ## Plugin API
 

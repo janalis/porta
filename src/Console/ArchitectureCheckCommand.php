@@ -146,6 +146,7 @@ final class ArchitectureCheckCommand extends Command
         // git — which is what the seven vanished `*>Git` entries above record.
         // What is left is a plugin reaching for core's toolkits, the allowed
         // direction, and the same set `Help` and `GraphViewer` already reach for.
+        'GitPlugin>Editor', // the diff view paints and maps columns with the editor's tab stops
         'GitPlugin>Event',
         'GitPlugin>Highlight',
         'GitPlugin>Input',
