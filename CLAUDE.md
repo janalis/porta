@@ -12,13 +12,14 @@ routed below — read the page before working in that area, not after.
 ## Commands
 
 ```bash
-composer verify   composer verify:quick  composer dev   composer test[:unit|:e2e|:plugins]  composer arch  composer container
+composer verify   composer verify:quick  composer check  composer fix  composer dev   composer test[:unit|:integration|:e2e|:plugins|:serial]  composer arch  composer container
 composer analyze  composer lint   composer format  composer format:check  composer rector  composer rector:check
 composer coverage:check   composer coverage:src   composer coverage:plugins   composer duplication   composer mutate   composer mutate:clean   composer flake:scan
 ```
 
 Always invoke the gates through the composer scripts, output captured, not paged:
-`composer analyze > /tmp/x.log 2>&1; echo "exit=$?"`. The `gates` skill has the inner loop.
+`composer analyze > /tmp/x.log 2>&1; echo "exit=$?"`. The `gates` skill has the inner loop:
+`composer fix` (rector, then format), then `composer check` — every quick gate, not stopping at the first red.
 
 The parallel gates default to HALF the cores (the plugin shards to ¾), because a dev box is
 usually shared (CI sets `PORTA_TEST_PROCESSES: auto`). Throttle BOTH: `PORTA_TEST_PROCESSES=4
@@ -26,7 +27,7 @@ PORTA_SHARD_PROCESSES=4 nice -n 10`, or raise with `auto`; `contributing.md` has
 
 ## Definition of done — `composer verify` green
 
-Eight, in run order, stopping at the first failure; `verify:quick` is the first six.
+Eight, stopping at the first failure; `verify:quick` is the first six, run as format, lint, analyze, rector, arch, duplication.
 
 - `composer format:check` clean; `composer rector:check` **no pending change** — skip, with why.
 - `composer lint` and `composer analyze` — **zero findings each** at any severity: the
@@ -57,14 +58,13 @@ Eight, in run order, stopping at the first failure; `verify:quick` is the first 
   ran, not that anything would notice its absence. Mutation-check the fix too.
 - **Never hand-roll a test rig `tests/Support` already provides.**
 - **One suite at a time, and never edit while one runs** — paratest reads as it goes.
-- **No fixed-gap asserts in E2e**: await the effect in the SAME step. A bare `tick()` is
-  not a frame.
-- `await()`'s condition must re-evaluate — `static function () use (&$x)`, never an arrow
-  fn capturing by value.
+- **No fixed-gap asserts in E2e**: await the effect in the SAME step. A bare `tick()` is not a frame.
+- `await()`'s condition must re-evaluate — `static function () use (&$x)`, never a by-value arrow fn.
 - When a constructor gains a dependency, **fix the direct construction sites in tests too**.
 - **A plugin class can never be a container service.** Everything it needs is hand-passed.
-- Prefer **anonymous classes in plugin files** — cross-plugin redeclaration is an
-  uncatchable fatal.
+- Prefer **anonymous classes in plugin files** — cross-plugin redeclaration is an uncatchable fatal.
+- **Never end a turn while background work you started is pending**, and never ask whether
+  to continue work already asked for — finish it.
 
 ## Where to read more
 

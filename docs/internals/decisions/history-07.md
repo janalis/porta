@@ -1183,3 +1183,77 @@ three **107s / 122s** — 1,044 plugin tests no longer run twice. 100.00%
 (25831/25831) either way.
 
 *Re-opens on:* nothing here; a plugin-only `src` line is now a red gate.
+
+## Agent-speed round 4: what the transcripts say agents lose time on (2026-09-30)
+
+Rounds 1–3 worked from the docs and the git history. This one read the session
+transcripts: the 150 newest, of which 125 were automated security reviews, leaving
+**24 real work sessions** (2026-09-14 → 09-30). Counts below are out of those 24.
+
+**Built: `composer fix` and `composer check`.** The quick gates failed 208 times
+(lint 88 in 20 sessions, analyze 57, rector:check 38, format:check 25), and `verify`
+was re-run three or more times in 15 sessions. The loop was one gate at a time:
+`verify:quick` stops at the first red, and fixing it often reddens the next one
+(rector's output needs formatting), so agents chained `rector … && mago format` by
+hand 57 times. `fix` runs the two fixers in the order that leaves both clean.
+`check` (`bin/keep-going`) runs every step of `verify:quick` to the end and then
+names every red gate in one line. It reads the steps from composer.json, so the
+chain is still defined once, and `verify` still stops at the first failure.
+Measured on a scratch edit that broke format and lint together: `verify:quick`
+reported format only (0.7s), and `check` reported both (8s).
+
+**Built: a paint barrier that gives up prints the screen.** 164 E2e mismatches
+across 21 sessions, and a timeout said only `waiting for X to paint`, so the next
+step was always a re-run to look. `awaitPainted` and `awaitPaintedRaw` now append
+the grid they had in hand. `PaintBarrierTimeoutTest` pins it, and dropping the grid
+fails that test.
+
+**Built: every golden mismatch names its regeneration variable**, and
+`testing.md` lists all five. None of the five `UPDATE_*_GOLDEN` names appeared in
+any doc or skill.
+
+**Built: the arch gate names the import behind a new edge** (`Made by: A uses B`).
+7 arch failures in 6 sessions were each followed by a grep for the `use` line.
+All 15 mutants over the change were killed.
+
+**Built: a lint crib in the `gates` skill.** The same rules came back in session
+after session: `literal-named-argument` 68 times in 19 sessions,
+`possibly-invalid-argument` 30, `mixed-assignment` 18, `no-boolean-flag-parameter`
+17, and `prefer-static-closure` 15. Each has its passing shape, taken from the
+tree. It went in the skill, not CLAUDE.md, which is at its budget.
+
+**Built: an `add-setting` skill.** `IdeConfig` changed in 18 commits since August.
+Each commit touched the same places, and only some of them have a guard: the
+choice pin in `IdeConfigTest`, `ConfigurationDocTest`, the settings-pages golden,
+and the catalogs.
+
+**Removed: the fixture home's install debris and its excludes.** Dangling
+`plugins/{demo,cloned}` symlinks, from an older plugin-install test that installed
+into the shared `PORTA_HOME`, made every mago run print `Failed to walk`. That
+warning showed in 49 outputs in 22 sessions, and `grep -v WARN` was typed 136
+times to hide it. Current tests install elsewhere, and a full `verify` recreated
+none of it. The `mago.toml` excludes and `.gitignore` lines went with the debris,
+so a test that installs there again shows up as an untracked file and a mago
+warning, not as silence.
+
+**Fixed: instructions that disagreed.** `porta-explorer` told the agent to write a
+log to `/tmp` and, ten lines later, never to create a file there. CLAUDE.md listed
+rector beside format, but it runs fourth. It left out `test:integration` and
+`test:serial`. The same-path test ratio was re-counted at 401 of 821 (still 49%).
+CLAUDE.md gains one rule: never end a turn while your own background work is
+pending. "continue" was typed 71 times in 19 of the 24 sessions, usually after a
+status recap that offered to go on.
+
+**Declined:**
+
+- **Truncating `.phpunit.cache/leaks.log` per run** (55.8MB). The bootstrap runs
+  once per paratest worker, so no process can know it is first, and `flake:scan`
+  reads by offset. No session in the sample lost time to it.
+- **A PostToolUse `mago format` hook.** It is redundant with `composer fix`, and a
+  project hook runs for every contributor's session, not only the ones that want it.
+- **Path-scoped lint/analyze scripts.** The six static gates take ~8s together;
+  `composer lint -- path` already passes through.
+
+*Re-opens on:* a session sample where one gate's failures dominate even after `check`
+(then that gate's own messages are the problem), or E2e timeouts still followed by a
+re-run to look (then the grid is not enough — capture the raw frame too).

@@ -14,11 +14,13 @@ composer analyze        # mago static analysis
 composer coverage:check # the suite with coverage, 100% enforced
 composer lint           # mago lint
 composer rector         # rector (apply) — follow with composer format
+composer fix            # rector, then format — the two fixers in the order that leaves both clean
 composer rector:check   # rector dry run — fails on any change it would still make
 composer arch           # the architecture ratchet
 composer duplication    # phpcpd — zero copy-paste clones, tree-wide
 composer verify         # all eight, cheapest first, stopping at the first failure
-composer verify:quick   # the six fast ones — the mid-work check
+composer verify:quick   # the six fast ones, stopping at the first failure
+composer check          # the same six run to the end, then one line naming every red gate — the mid-work check
 composer flake:scan     # run the suite N times and name what failed at least once
 composer mutate         # Infection over the uncommitted src/ diff, judged by Unit (testing.md)
 composer mutate:clean   # delete every coverage/infection* report (~300MB a run)
@@ -442,7 +444,7 @@ would otherwise fight over is given to them one each.
   check each report's `file:line` evidence before accepting it — a claim argued in
   prose is not a verified one.
 - **Use the committed skills** in `.claude/skills/`: `gates` (the inner loop and a hung
-  run), `mutation-check`, `add-command`, `new-plugin`, `review-branch`. Each is a recipe
+  run), `mutation-check`, `add-command`, `add-setting`, `new-plugin`, `review-branch`. Each is a recipe
   that links here; when one disagrees with this page, fix the skill.
 - **End every run with three headings: Blocked on me, Changed, Found.** Mark anything
   you couldn't confirm, and say where you looked.
@@ -457,7 +459,7 @@ edit. While work is in progress, two commands are the loop:
 
 ```bash
 PORTA_TEST_PROCESSES=24 composer test:unit   # 22s
-composer verify:quick                        # 4s
+composer fix; composer check                 # ~8s: fix what fixers can, then every quick gate at once
 ```
 
 The Unit suite is **6,225 of the 7,406 tests** and runs in **22–23s at 24
@@ -469,7 +471,7 @@ rendering or a plugin — those live in the suites it skips, and `composer
 verify` is what says done.
 
 **There is deliberately no "test what I touched" mapper.** Only **49% of
-`src/` classes** (344 of 707) have a `tests/Unit/<same path>Test.php`, so a
+`src/` classes** (401 of 821, recounted 2026-09-30) have a `tests/Unit/<same path>Test.php`, so a
 path-derived selection would silently run nothing for half the tree and report
 green. Run a whole suite instead; it is 23 seconds.
 

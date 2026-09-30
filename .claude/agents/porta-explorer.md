@@ -18,9 +18,9 @@ Read, grep, walk the tree, read the runtime evidence (`.porta/error.log`,
 `.porta/perf.log`, `.phpunit.cache/leaks.log`), read git history, and run the
 read-only static gates when they answer the question: `composer analyze`,
 `composer lint`, `composer arch`, `composer duplication`, `composer container`,
-`composer format:check`. Capture their output rather than paging it —
-`composer analyze > /tmp/x.log 2>&1; echo "exit=$?"` — and read the OUTPUT, not
-only the exit code.
+`composer format:check`. They are fast enough to read in place — pipe through
+`tail -40` rather than writing a log file — and read the OUTPUT, not only the
+exit code.
 
 ## What you must not do
 
