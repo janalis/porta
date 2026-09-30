@@ -1418,6 +1418,20 @@ condition, a changed dependency count on one candidate, not a fresh sweep.
 the key parser reads as Alt+Up, so it ran Previous Declaration. Ctrl+Alt+P is
 the psalm plugin's. Ctrl+Alt+V is free and encodes cleanly (`ESC ^V`).
 
+**The markdown preview reads like the documentation.** A request followed the
+first version: the same navigation bar, links, history and find as the F1
+browser. The whole help page became `Widget/MarkdownPageWidget`, and the help
+browser and the preview extend it. That is not the extraction the audit turned
+down. The audit weighed pulling the history stack (0 of 6 exclusive
+dependencies) and the FindTarget adapter (1 of 7) out of the help widget into
+collaborators, and the numbers still say no. Here the whole page gained a second
+page that needs all of it. The two differ in their tree and in where a link
+leads, and the handler already decided the second: `MarkdownPreviewActions`
+opens the linked file's tab, whose preview is the same pane, so Backspace walks
+back through files. The five tab verbs both handlers delegate are one trait.
+Found on the way: core panes were never handed a tab handler, so Ctrl+Left/Right
+and Alt+W did nothing on the large-file look. `CorePanes` hands it now.
+
 *Re-opens on:* a request for two text views of one file, which is the editor
 split and its 25 injection sites; or a preview whose render is too slow for the
 0.15 s pause, which would need the pause per pane rather than one constant.

@@ -13,12 +13,15 @@ use Porta\Support\DocsUrlOpener;
 use Porta\Widget\FindBarWidget;
 use Porta\Widget\HelpViewerHandler;
 use Porta\Widget\HelpViewerWidget;
+use Porta\Widget\ViewerTabHandler;
 use Porta\Workbench\Notifier;
 use Symfony\Component\Tui\Tui;
 
 /** The IDE-side implementation of the help viewer's link and tab hooks. */
 final readonly class HelpViewerActions implements HelpViewerHandler
 {
+    use DelegatesTabVerbs;
+
     public function __construct(
         private BufferService $bufferService,
         private BufferNavigator $navigator,
@@ -78,38 +81,8 @@ final readonly class HelpViewerActions implements HelpViewerHandler
         $this->notifier->flash($this->translator->trans('Nowhere to go back to'));
     }
 
-    #[\Override]
-    public function cycleBuffer(int $offset): void
+    private function tabs(): ViewerTabHandler
     {
-        $this->navigator->cycle($offset);
-    }
-
-    #[\Override]
-    public function closeBuffer(): void
-    {
-        $this->navigator->closeActive();
-    }
-
-    #[\Override]
-    public function openGotoFile(): void
-    {
-        $this->navigator->openGotoFile();
-    }
-
-    #[\Override]
-    public function saveAll(): void
-    {
-        $this->navigator->saveAll();
-    }
-
-    /**
-     * The help pane scrolls rather than zooms, so a "view changed" ping would
-     * repaint a status segment it does not contribute — but the pane contract is
-     * one interface, and the navigator already knows how to refresh the bar.
-     */
-    #[\Override]
-    public function viewChanged(): void
-    {
-        $this->navigator->viewChanged();
+        return $this->navigator;
     }
 }

@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Porta\Bootstrap;
 
 use Porta\Container\AsIdeService;
+use Porta\Editor\BufferNavigator;
 use Porta\Editor\EditorPanes;
 use Porta\Editor\PreviewRoutes;
 use Porta\Editor\TextPreview;
+use Porta\Help\MarkdownPreviewActions;
 use Porta\I18n\Translator;
 use Porta\Support\Files;
 use Porta\Support\ProjectPaths;
@@ -45,6 +47,9 @@ final readonly class CorePanes
         private MarkdownPreviewWidget $markdownPreview,
         private PreviewRoutes $previews,
         private Translator $translator,
+        private ?MarkdownPreviewActions $previewActions = null,
+        private ?BufferNavigator $tabs = null,
+        private ?ProjectPaths $paths = null,
     ) {}
 
     public function register(): void
@@ -54,6 +59,16 @@ final readonly class CorePanes
         // A preview is fed the editor's text, so its loader is only the path a
         // pane has to have — nothing routes a markdown file to it as a viewer.
         $this->panes->register($this->markdownPreview, $this->loadText(...));
+        // Core's panes get the IDE's tab verbs as the plugins' panes do from
+        // PaneRegistrar — the editor is detached while one holds the slot, so
+        // without a handler Ctrl+Left/Right and Alt+W did nothing there.
+        if (null !== $this->tabs) {
+            $this->textPreview->setHandler($this->tabs);
+        }
+        if (null !== $this->previewActions && null !== $this->paths) {
+            $this->markdownPreview->setHandler($this->previewActions);
+            $this->markdownPreview->setDocsRoot($this->paths->root());
+        }
         $this->previews->claim(MarkdownPreviewWidget::PANE_ID, static fn (string $path): bool => ProjectPaths::hasExtension($path, self::MARKDOWN_EXTENSIONS));
     }
 

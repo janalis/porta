@@ -20,6 +20,7 @@ use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\BreadcrumbsWidget;
 use Porta\Widget\CodeEditorWidget;
+use Porta\Widget\FindBarWidget;
 use Porta\Widget\MarkdownPreviewWidget;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Render\WidgetRect;
@@ -356,6 +357,13 @@ final class IdePreviewSplitTest extends TestCase
                     $service->openFile($project->path('notes.ghost'));
                     $this->awaitPainted($tui, $terminal, 'just text');
                     $this->assertNull($buffers->active()?->previewId, 'no pane answers the claim: plain text');
+
+                    // The read-only look hands tab verbs to the IDE too: it had no handler, so
+                    // Ctrl+Right there did nothing.
+                    $service->openFile($project->path('big.md'));
+                    $tui->setFocus($tui->getById('text-preview'));
+                    $tui->handleInput("\x1b[1;5C"); // Ctrl+Right
+                    $this->assertSame('notes.ghost', \basename((string) $buffers->active()?->path));
                 },
             ],
             columns: 120,
@@ -448,6 +456,89 @@ final class IdePreviewSplitTest extends TestCase
                 },
             ],
             columns: 76,
+        );
+    }
+
+    public function testThePreviewReadsLikeTheDocumentationAndItsLinksLeadToTheirFiles(): void
+    {
+        $project = new TempProject([
+            'README.md' => "# Project\n\n[Guide](docs/guide.md) · [Code](a.php) · [Gone](missing.md) · [Site](https://example.com/x)\n",
+            'docs/guide.md' => "# The guide\n",
+            'a.php' => "<?php\n",
+        ]);
+        $captureFile = $project->path('opened-urls.txt');
+        foreach (['open', 'xdg-open'] as $name) {
+            $shim = $project->write('shim-bin/'.$name, "#!/bin/sh\nprintf '%s\\n' \"\$@\" >> ".\escapeshellarg($captureFile)."\n");
+            \chmod($shim, permissions: 0o755);
+        }
+        \putenv('PATH='.$project->path('shim-bin'));
+
+        $this->runIde(
+            $project,
+            $project->path('README.md'),
+            [
+                0 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
+                    $grid = fn (): string => \implode("\n", $this->screenGrid($tui, $terminal));
+                    $this->await(static fn (): bool => \str_contains($grid(), '│ Project'), what: 'the page');
+                    $this->assertStringContainsString(\basename($project->dir), $grid(), 'the navigation bar names the project, the tree the page lives in');
+                    $preview = Services::resolve($ide, MarkdownPreviewWidget::class);
+                    $buffers = Services::resolve($ide, BufferManager::class);
+                    $service = Services::resolve($ide, BufferService::class);
+                    // A click on the link drawn with $label, where the preview drew it.
+                    $follow = function (string $label) use ($tui, $terminal, $ide, $preview): void {
+                        $rect = self::rect($ide, $preview);
+                        foreach ($this->screenGrid($tui, $terminal) as $row => $line) {
+                            $col = \mb_strpos(\mb_substr($line, $rect->col), $label);
+                            if (false !== $col && $row > $rect->row) {
+                                $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + $col + 1, $row + 1));
+                                $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $rect->col + $col + 1, $row + 1));
+
+                                return;
+                            }
+                        }
+                        self::fail('no link drawn as '.$label);
+                    };
+
+                    // A markdown link opens that file's tab, and the page keeps the keys.
+                    $follow('Guide');
+                    $this->assertSame('guide.md', \basename((string) $buffers->active()?->path));
+                    $this->await(static fn (): bool => \str_contains($grid(), '│ The guide'), what: 'the linked page');
+                    $this->assertSame($preview, $tui->getFocus());
+
+                    // Backspace walks back to the page it was followed from — and no further.
+                    $tui->handleInput("\x7f");
+                    $this->assertSame('README.md', \basename((string) $buffers->active()?->path));
+                    $tui->handleInput("\x7f");
+                    $this->awaitPainted($tui, $terminal, 'Nowhere to go back to');
+
+                    // Anything else opens in the editor; a dangling link says so.
+                    $follow('Code');
+                    $this->assertSame('a.php', \basename((string) $buffers->active()?->path));
+                    $this->assertSame('editor', $tui->getFocus()?->getId());
+                    $service->openFile($project->path('README.md'));
+                    $follow('Gone');
+                    $this->awaitPainted($tui, $terminal, 'Cannot read missing.md');
+
+                    // Ctrl+F finds in the rendered page.
+                    $tui->setFocus($preview);
+                    $tui->handleInput("\x06");
+                    $this->assertTrue(Services::resolve($ide, FindBarWidget::class)->isOpen(), 'the find bar, over the page');
+                    $tui->handleInput("\x1b");
+
+                    // A web link goes to the browser (once the error card that
+                    // floats over the page's top rows is dismissed).
+                    $tui->handleInput("\x1bd");
+                    $follow('Site');
+                    $this->awaitPainted($tui, $terminal, 'Opened https://example.com/x');
+
+                    // The tab verbs reach the IDE from the page, as from any pane.
+                    $before = $buffers->active()?->path;
+                    $tui->setFocus($preview);
+                    $tui->handleInput("\x1b[1;5C"); // Ctrl+Right
+                    $this->assertNotSame($before, $buffers->active()?->path, 'Ctrl+Right moved to the next tab');
+                },
+            ],
+            columns: 140,
         );
     }
 }

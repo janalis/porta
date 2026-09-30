@@ -272,7 +272,8 @@ final class ActionCatalog
         'ide_settings' => ['label' => 'Settings…', 'keys' => ['ctrl+,']],
         'ide_help' => ['label' => 'Documentation', 'keys' => ['f1']],
         'ide_menu' => ['label' => 'Open Menu', 'keys' => ['f10']],
-        // Help viewer (bound by HelpViewerWidget)
+        // Documentation pages (bound by MarkdownPageWidget: the help browser
+        // and the markdown preview read with the same keys)
         'help_next_link' => ['label' => 'Help: Next Link'],
         'help_prev_link' => ['label' => 'Help: Previous Link'],
         'help_follow_link' => ['label' => 'Help: Follow Link'],

@@ -17,5 +17,7 @@ final readonly class MarkdownWord
         public MarkdownSpanKind $kind,
         public ?string $target,
         public int $group,
+        /** No space before it in the source: `[a link].` — the `.` touches the link. */
+        public bool $glued = false,
     ) {}
 }

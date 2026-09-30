@@ -613,4 +613,19 @@ final class MarkdownRendererTest extends TestCase
             $this->assertLessThanOrEqual(23, AnsiUtils::visibleWidth($line), 'row '.$i);
         }
     }
+
+    public function testPunctuationTouchingALinkOrAnEmphasisStaysTouchingIt(): void
+    {
+        $doc = $this->render("Read the [guide](g.md). Some *text*, and **bold**! A `code`;\nnext [line] *spaced* word.", 100);
+
+        $this->assertSame(['Read the guide. Some text, and bold! A code; next [line] spaced word.'], $this->rows($doc->lines), 'no space the source did not have — and every one it did');
+        $this->assertSame(9, $doc->links[0]->col);
+        $this->assertSame(14, $doc->links[0]->endCol, 'the link is its words, not the full stop after them');
+    }
+
+    public function testAGluedWordThatDoesNotFitWrapsAlone(): void
+    {
+        $this->assertSame(['one two three four five', ',six'], $this->rows($this->render('one two three four *five*,six', 24)->lines));
+        $this->assertSame(['one two three four fiv,x'], $this->rows($this->render('one two three four *fiv*,x', 24)->lines), 'a glued word costs no space, so this one still fits');
+    }
 }

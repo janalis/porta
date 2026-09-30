@@ -233,6 +233,12 @@ arranged by its `PreviewMode`: Editor, Split or Preview.
 - **Focus.** `EditorArea::widget()` answers with whichever half has the keys,
   `entry()` with where they land on a fresh open, `visiblePane()` with what the
   routers hit-test, and `members()` with the focus ring's stops.
+- **The markdown page.** `Widget/MarkdownPageWidget` is the documentation's
+  page — navigation bar, links, history, find — and both the help browser and
+  the markdown preview extend it. They differ in their tree (the docs, the
+  project) and in what a link to another page does, which is the handler's:
+  `Help/HelpViewerActions` renders it in place, `Help/MarkdownPreviewActions`
+  opens that file's tab.
 - **Sizing.** The two sides are FLEX WEIGHTS, never a width: a `flex: 0` side
   is measured by rendering it, which for the editor means twice a frame. The
   share persists as `previewSplitPercent`; below 41 columns the preview steps

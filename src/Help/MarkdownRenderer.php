@@ -421,8 +421,16 @@ final class MarkdownRenderer
     {
         $room = \max(1, $room);
         $words = [];
+        // A segment's first word touches the last one when no space parts them
+        // in the source — a link or an emphasis run followed by punctuation.
+        // Rejoined with a space, `[the guide](g.md).` read "the guide .".
+        $spaceBefore = true;
         foreach ($segments as $segment) {
             $splitWords = \preg_split('/ +/', $segment->text, -1, \PREG_SPLIT_NO_EMPTY);
+            $glued = !$spaceBefore && !\str_starts_with($segment->text, ' ');
+            if ([] !== $splitWords && false !== $splitWords) {
+                $spaceBefore = \str_ends_with($segment->text, ' ');
+            }
             foreach (\is_array($splitWords) ? $splitWords : [] as $word) {
                 $wordWidth = AnsiUtils::visibleWidth($word);
                 while ($wordWidth > $room) {
@@ -439,8 +447,9 @@ final class MarkdownRenderer
                     $wordWidth = AnsiUtils::visibleWidth($word);
                 }
                 if ('' !== $word) {
-                    $words[] = new MarkdownWord($word, $wordWidth, $segment->kind, $segment->target, $segment->group);
+                    $words[] = new MarkdownWord($word, $wordWidth, $segment->kind, $segment->target, $segment->group, $glued);
                 }
+                $glued = false;
             }
         }
 
@@ -464,7 +473,7 @@ final class MarkdownRenderer
         $lineWords = [];
         $col = $firstCol;
         foreach ($words as $word) {
-            $needed = ([] === $lineWords ? 0 : 1) + $word->width;
+            $needed = ([] === $lineWords || $word->glued ? 0 : 1) + $word->width;
             if ([] !== $lineWords && ($col + $needed) > $width) {
                 $lines[] = $lineWords;
                 $lineWords = [];
@@ -501,11 +510,12 @@ final class MarkdownRenderer
         $segments = [];
         foreach ($lineWords as $word) {
             $last = [] !== $segments ? \count($segments) - 1 : null;
+            $space = $word->glued ? '' : ' ';
             if (null !== $last && $segments[$last]->kind === $word->kind && $segments[$last]->group === $word->group) {
-                $segments[$last] = new MarkdownSegment($segments[$last]->text.' '.$word->text, $word->kind, $word->target, $word->group);
+                $segments[$last] = new MarkdownSegment($segments[$last]->text.$space.$word->text, $word->kind, $word->target, $word->group);
                 continue;
             }
-            if (null !== $last) {
+            if (null !== $last && !$word->glued) {
                 // The separating space stays outside both styled regions.
                 $segments[] = new MarkdownSegment(' ');
             }

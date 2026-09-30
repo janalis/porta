@@ -62,7 +62,7 @@ cross-event drag state. Rejected, with the count that rejected each:
 | `BufferService`'s pane-swap cluster | 1 — later 2, and extracted (see below) |
 | `CodeEditorWidget`'s render cluster | 3 of ~23 (see below) |
 | `GitViewController`'s history tier | 1 of 11 |
-| `HelpViewerWidget`'s history stack | 0 of 6 |
+| `HelpViewerWidget`'s history stack | 0 of 6 — still; the whole page became a base on 2026-09-30, a different shape |
 | `HelpViewerWidget`'s FindTarget adapter | 1 of 7 |
 | `DiffViewWidget`'s selection model | 0 of 8 |
 | `DiffViewWidget`'s document/highlight cluster | 2 of 10 |

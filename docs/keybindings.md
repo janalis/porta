@@ -259,6 +259,13 @@ Documentation tab.
 Tab-management keys (`Ctrl+←/→`, `Ctrl+F4`, `Ctrl+P`…) keep working on the
 help tab.
 
+**A Markdown file's live preview reads the same way** once it has the keys
+(a click on it, or `F6`): the same keys, the same header — its breadcrumb
+walks the project instead (`project › folder › page`) — and `Ctrl+F` finds in
+the rendered page. A link to another Markdown file opens that file's tab,
+with the preview keeping the keys; `Backspace` walks back through the files
+followed that way. Any other file opens in the editor.
+
 ## Image viewer
 
 When an image tab is active:

@@ -6,56 +6,30 @@ namespace Porta\Widget;
 
 use Porta\Container\AsIdeService;
 use Porta\Container\AsWidget;
-use Porta\Help\MarkdownRenderer;
-use Porta\Help\RenderedDoc;
-use Porta\Support\AnsiText;
-use Porta\Ui\Theme\Styles;
-use Porta\Widget\Support\ScrollsRows;
-use Symfony\Component\Tui\Render\RenderContext;
 
 /**
  * A markdown file as it reads, beside (or instead of) its text: the live
- * preview core ships, rendered by the same {@see MarkdownRenderer} as the help
- * pages and re-rendered per pane width.
+ * preview core ships, drawn exactly as the documentation is
+ * ({@see MarkdownPageWidget}) — the navigation bar over the page, links to
+ * cycle with Tab and follow with Enter or a click, Backspace back through the
+ * pages followed, Ctrl+F to find in the page.
+ *
+ * Its tree is the PROJECT: the breadcrumb walks up to the project root, and a
+ * link to another markdown file opens that file's own tab, which shows its
+ * preview in turn — so following links reads a repository's docs the way the
+ * help browser reads Porta's.
  *
  * It follows the TEXT, not the file: {@see \Porta\Editor\PreviewFeeder} hands
  * it the document on every pause in typing, so what it shows is what the
- * editor holds, saved or not. An edit keeps the reader where they were — the
- * scroll survives a new text for the same file, and only a different file
- * starts from the top.
- *
- * Read-only by construction, the help pane's cousin without its navigation:
- * links are drawn as links, and following one is the editor's job, not a
- * preview's.
+ * editor holds, saved or not. An edit keeps the reader where they were; only
+ * another file starts from the top.
  */
 #[AsIdeService]
 #[AsWidget('markdown-preview')]
-final class MarkdownPreviewWidget extends EditorPaneWidget
+final class MarkdownPreviewWidget extends MarkdownPageWidget
 {
-    use ScrollsRows;
-
     /** The routing id, matching the claim registered in {@see \Porta\Bootstrap\CorePanes}. */
     public const string PANE_ID = 'markdown';
-
-    /** The page's left margin. */
-    private const string MARGIN = ' ';
-
-    private ?string $path = null;
-
-    private string $markdown = '';
-
-    /** The text rendered for {@see $renderedWidth}, dropped on a new text, a resize or a theme switch. */
-    private ?RenderedDoc $doc = null;
-
-    private int $renderedWidth = 0;
-
-    private readonly MarkdownRenderer $renderer;
-
-    public function __construct(?Styles $styles = null)
-    {
-        $this->initStyles($styles);
-        $this->renderer = new MarkdownRenderer($this->styles);
-    }
 
     #[\Override]
     public function paneId(): string
@@ -68,26 +42,11 @@ final class MarkdownPreviewWidget extends EditorPaneWidget
     public function show(string $path, mixed $payload): void
     {
         $markdown = (string) $payload;
-        if ($path === $this->path && $markdown === $this->markdown) {
+        $same = $path === $this->path || \realpath($path) === $this->path;
+        if ($same && $markdown === $this->markdown) {
             return; // the same text for the same file: nothing to draw again
         }
-        if ($path !== $this->path) {
-            $this->scrollTop = 0;
-        }
-        $this->path = $path;
-        $this->markdown = $markdown;
-        $this->doc = null;
-        $this->invalidate();
-    }
-
-    #[\Override]
-    public function clear(): void
-    {
-        $this->path = null;
-        $this->markdown = '';
-        $this->doc = null;
-        $this->scrollTop = 0;
-        $this->invalidate();
+        $this->adopt($path, $markdown, fromTop: !$same);
     }
 
     /**
@@ -100,50 +59,15 @@ final class MarkdownPreviewWidget extends EditorPaneWidget
         return '';
     }
 
-    /** Rendered lines bake palette codes: drop them on a theme switch. */
+    /**
+     * A column of margin on the left, as the editor's gutter gives its text:
+     * the page reads away from the divider, and a heading's rule never starts
+     * against it — the frame's join pass turns a `─` beside a divider into a
+     * tee, which would tie the rule to the pane's edge.
+     */
     #[\Override]
-    public function refreshTheme(): void
+    protected function margin(int $cols): string
     {
-        $this->doc = null;
-        $this->invalidate();
-    }
-
-    /** @return list<string> */
-    #[\Override]
-    public function render(RenderContext $context): array
-    {
-        $cols = $context->getColumns();
-        $rows = $context->getRows();
-        if ($cols < 1 || $rows < 1) {
-            return [];
-        }
-        // A column of margin on the left, as the editor's gutter gives the
-        // text: the rendered page reads away from the divider, and a heading's
-        // rule never starts against it — the frame's join pass turns a `─`
-        // beside a divider into `├`, which would tie the rule to the pane edge.
-        $margin = $cols > 1 ? self::MARGIN : '';
-        $width = $cols - \strlen($margin);
-        if (null === $this->doc || $width !== $this->renderedWidth) {
-            $this->doc = $this->renderer->render($this->markdown, $width);
-            $this->renderedWidth = $width;
-        }
-        $this->bodyRows = $rows;
-        // A shorter text, or a taller pane, can leave the view past the end.
-        $this->scrollTop = $this->clampScroll($this->scrollTop);
-
-        $lines = [];
-        for ($row = 0; $row < $rows; ++$row) {
-            // Truncate as well as pad: the renderer floors its own wrap width,
-            // so a pane narrower than that gets lines wider than itself, and a
-            // row wider than its pane throws out of the render loop.
-            $lines[] = AnsiText::truncate($margin.($this->doc->lines[$this->scrollTop + $row] ?? ''), $cols, pad: true);
-        }
-
-        return $lines;
-    }
-
-    private function rowCount(): int
-    {
-        return \count($this->doc->lines ?? []);
+        return $cols > 1 ? ' ' : '';
     }
 }

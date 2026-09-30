@@ -771,10 +771,15 @@ it. An edit keeps your place in a long preview.
 - **Resize** by dragging the divider between the two, or with
   `Shift+F11`/`Shift+F12` from either half. The proportion is kept per project
   in `.porta/layout.json`, one for every previewed file.
-- **Focus.** Click the preview, or press `F6`, to give it the keys: the
-  arrows, `PageUp`/`PageDown`, `Home`/`End` and the wheel scroll it, and a
-  graph or an image zooms and pans as described below. `Ctrl+T` or a click on
-  the text goes back.
+- **Focus.** Click the preview, or press `F6`, to give it the keys; `Ctrl+T`
+  or a click on the text goes back. A graph or an image then zooms and pans as
+  described below.
+- **Markdown reads like the documentation** (`F1`): a navigation bar over the
+  page — `‹` `›` through the pages you followed, then the page's place in the
+  project — and links you cycle with `Tab` and follow with `Enter` or a click.
+  A link to another Markdown file opens that file, beside its own preview;
+  `Backspace` comes back. `Ctrl+F` finds in the rendered page. The keys are the
+  [documentation browser's](keybindings.md#help-viewer).
 - A window too narrow for two usable sides shows the text alone, and brings
   the preview back when there is room.
 - A file too large to edit (over 2 MB) is not previewed. An SVG or a diagram
