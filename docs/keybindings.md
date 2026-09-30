@@ -46,6 +46,7 @@ nothing.
 | `Alt+9` | Notification log — every flash the status bar showed and you missed |
 | `Alt+D` | Dismiss the newest notification (the top card) |
 | `Ctrl+Alt+H` | Local history |
+| `Ctrl+Alt+Y` / `Ctrl+Alt+U` | Keep / put back the change Claude Code proposes (see [Agents](agents.md)) |
 | `Ctrl+Alt+Z` | Undo the last multi-file refactoring, across every file it touched (`Ctrl+Z` is per file); refuses and names the file if anything changed since |
 
 ## Files and buffers

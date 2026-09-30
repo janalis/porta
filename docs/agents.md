@@ -63,13 +63,14 @@ change as a diff: the lines it removes (`-`), the ones it adds (`+`) and a
 little around them. A row takes you to its line. With the git plugin on, the
 git view also opens with the proposal **side by side** with the file as it is,
 read-only; `Esc` closes it. The `claudeSideBySide` setting turns that off.
-Porta then asks you to **Accept** or **Reject**. The question sits over the
-comparison: dismiss it to scroll the comparison, then **Review Claude's Proposed
-Change** asks again.
+While the comparison is shown, nothing covers it: a notice says the change
+waits, and **`Ctrl+Alt+Y`** keeps it, **`Ctrl+Alt+U`** puts the file back.
+Those keys work from anywhere, the comparison included. Without the side-by-side
+view, Porta asks you to **Accept** or **Reject** in a list instead:
 
-- **Accept** saves the file as it stands, including anything you touched up
-  before accepting.
-- **Reject** puts the old text back.
+- **Accept** (or `Ctrl+Alt+Y`) saves the file as it stands, including anything
+  you touched up before accepting.
+- **Reject** (or `Ctrl+Alt+U`) puts the old text back.
 
 Claude asks this only for an edit it would otherwise ask you to approve. An
 edit your Claude settings already allow (an `Edit` allow rule, or accept-edits
