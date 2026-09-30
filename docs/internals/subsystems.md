@@ -772,9 +772,10 @@ the plugin emits `AgentActivity` (who, which file, reading or editing, where,
 how long to stay) from each tool, and `AgentLeft` when its client goes.
 `Workbench/AgentPresence` keeps who is on which file, hands each agent a colour
 slot (`Role::Agent1`–`Agent4`) and one fade timer per (agent, file) through the
-`Scheduler`. It PUSHES carets to the editor's decoration store
-(`EditorDecorationSink::setRemoteCarets`, keyed by file, not cleared on a tab
-switch) and the tab provider and tree decorations PULL `in()`/`files()` when
+`Scheduler`. It PUSHES each caret to the editor's decoration store as a report
+moves it (`EditorDecorationSink::setRemoteCaret`, keyed by file and agent, not
+cleared on a tab switch); in between, `DecorationStore::remapForEdit` shifts
+them with the user's own edits by the rule the git gutter marks follow, and the tab provider and tree decorations PULL `in()`/`files()` when
 they render. The editor paints the caret cell last in `LineSpans`, and the name
 takes the trailing cell second after a debug value. A timer finds its entry by
 id, so a rename that moved the entry still fades it.

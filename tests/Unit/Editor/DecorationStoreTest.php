@@ -100,7 +100,7 @@ final class DecorationStoreTest extends TestCase
         $store->setVcsMarks([1 => ChangeMarkKind::Deleted, 8 => ChangeMarkKind::Modified]);
 
         // Two lines added: the caret ends two below the line the edit began on.
-        $store->remapVcsMarksForEdit(cursorLine: 5, lineCount: 12);
+        $store->remapForEdit(cursorLine: 5, lineCount: 12);
 
         $this->assertSame(
             [1 => ChangeMarkKind::Deleted, 3 => ChangeMarkKind::Modified, 4 => ChangeMarkKind::Added, 5 => ChangeMarkKind::Added, 10 => ChangeMarkKind::Modified],
@@ -125,7 +125,7 @@ final class DecorationStoreTest extends TestCase
         $store->setVcsMarks([2 => ChangeMarkKind::Added, 4 => ChangeMarkKind::Deleted, 9 => ChangeMarkKind::Modified]);
 
         // Lines 3 and 4 removed, the caret left on line 2 where the edit began.
-        $store->remapVcsMarksForEdit(cursorLine: 2, lineCount: 10);
+        $store->remapForEdit(cursorLine: 2, lineCount: 10);
 
         $this->assertSame(
             [2 => ChangeMarkKind::Added, 7 => ChangeMarkKind::Modified],
@@ -144,7 +144,7 @@ final class DecorationStoreTest extends TestCase
         $store->resetForBuffer([], lineCount: 10);
         $store->setVcsMarks([6 => ChangeMarkKind::Added]);
 
-        $store->remapVcsMarksForEdit(cursorLine: 2, lineCount: 10);
+        $store->remapForEdit(cursorLine: 2, lineCount: 10);
 
         $this->assertSame([2 => ChangeMarkKind::Modified, 6 => ChangeMarkKind::Added], $store->vcsMarks);
     }
@@ -160,7 +160,7 @@ final class DecorationStoreTest extends TestCase
         $store->resetForBuffer([], lineCount: 10);
         $store->setVcsMarks([2 => ChangeMarkKind::Added]);
 
-        $store->remapVcsMarksForEdit(cursorLine: 2, lineCount: 10);
+        $store->remapForEdit(cursorLine: 2, lineCount: 10);
 
         $this->assertSame([2 => ChangeMarkKind::Added], $store->vcsMarks, 'still Added, not Modified');
     }
@@ -178,7 +178,7 @@ final class DecorationStoreTest extends TestCase
             ++$repaints;
         });
 
-        $store->remapVcsMarksForEdit(cursorLine: 4, lineCount: 0);
+        $store->remapForEdit(cursorLine: 4, lineCount: 0);
 
         $this->assertSame([], $store->vcsMarks);
         $this->assertSame(0, $repaints, 'and no repaint was asked for');
@@ -204,7 +204,7 @@ final class DecorationStoreTest extends TestCase
 
         // Reloaded from disk as a 12-line file, with the producer's answer for it.
         $store->setVcsMarks([5 => ChangeMarkKind::Modified], lineCount: 12);
-        $store->remapVcsMarksForEdit(cursorLine: 1, lineCount: 12);
+        $store->remapForEdit(cursorLine: 1, lineCount: 12);
 
         $this->assertSame(
             [1 => ChangeMarkKind::Modified, 5 => ChangeMarkKind::Modified],
@@ -228,7 +228,7 @@ final class DecorationStoreTest extends TestCase
         // The gutter is switched off: the widget clears the marks and says
         // nothing about the document, because it is not answering about one.
         $store->setVcsMarks([]);
-        $store->remapVcsMarksForEdit(cursorLine: 2, lineCount: 30);
+        $store->remapForEdit(cursorLine: 2, lineCount: 30);
 
         // Nothing here may rebase to zero: the next keystroke would then read
         // the whole 30-line file as lines this edit had just added, and paint a
@@ -281,5 +281,31 @@ final class DecorationStoreTest extends TestCase
 
         $store->setCodeLenses([0 => [['title' => 't', 'command' => 'c', 'arguments' => [], 'owner' => 'php']]]);
         $this->assertTrue($store->hasExtraRows(), 'a lens is an extra row too');
+    }
+
+    public function testAnAgentsCaretMovesWithTheUsersEditsInItsFileOnly(): void
+    {
+        $store = new DecorationStore(static function (): void {});
+        $store->resetForBuffer([], lineCount: 10);
+        $caret = static fn (int $line): array => ['line' => $line, 'col' => 3, 'label' => 'x', 'slot' => 0];
+        $store->setRemoteCaret('/p/a.php', 'above', $caret(1));
+        $store->setRemoteCaret('/p/a.php', 'below', $caret(5));
+        $store->setRemoteCaret('/p/a.php', 'further', $caret(8));
+        $store->setRemoteCaret('/p/b.php', 'elsewhere', $caret(5));
+        $lines = static fn (string $path): array => \array_keys($store->remoteCaretsIn($path));
+
+        $store->remapForEdit(cursorLine: 4, lineCount: 12, path: '/p/a.php'); // two lines typed below line 2
+        $this->assertSame([1, 7, 10], $lines('/p/a.php'), 'above the edit stays, below moves down');
+        $this->assertSame([5], $lines('/p/b.php'), 'another file\'s carets stay');
+
+        $store->remapForEdit(cursorLine: 5, lineCount: 9, path: '/p/a.php'); // lines 6-8 removed, the caret left on 5
+        $this->assertSame([1, 5, 7], $lines('/p/a.php'), 'one in the removed lines lands on the edit, one past them moves up');
+
+        $store->remapForEdit(cursorLine: 3, lineCount: 9, path: '/p/a.php');
+        $store->remapForEdit(cursorLine: 3, lineCount: 10);
+        $this->assertSame([1, 5, 7], $lines('/p/a.php'), 'no line added, or no file named: nothing moves');
+
+        $store->setRemoteCaret('/p/a.php', 'above', null);
+        $this->assertSame([5, 7], $lines('/p/a.php'));
     }
 }

@@ -26,8 +26,10 @@ use Symfony\Component\Tui\Tui;
  * report, so an agent reading one file and editing another shows on both
  * until each goes quiet.
  *
- * The editor's carets are pushed to the decoration store whole on every
- * change; the tab bar and the tree pull {@see in()} when they render.
+ * The editor's carets are pushed to the decoration store one by one, as each
+ * report moves them — the store shifts them with the user's own edits in
+ * between, so a push never drags back a caret this class has not heard
+ * about since. The tab bar and the tree pull {@see in()} when they render.
  */
 #[AsIdeService]
 final class AgentPresence
@@ -69,6 +71,7 @@ final class AgentPresence
             'column' => \max(0, $event->column),
             'timer' => $timer,
         ];
+        $this->paint($path, $event->agent);
         $this->changed();
     }
 
@@ -87,9 +90,14 @@ final class AgentPresence
     {
         foreach ($this->files as $path => $agents) {
             $moved = ProjectPaths::moved($path, $event->from, $event->to);
-            if (null !== $moved) {
-                unset($this->files[$path]);
-                $this->files[$moved] = $agents;
+            if (null === $moved) {
+                continue;
+            }
+            unset($this->files[$path]);
+            $this->files[$moved] = $agents;
+            foreach (\array_keys($agents) as $agent) {
+                $this->decorations->setRemoteCaret($path, $agent, null);
+                $this->paint($moved, $agent);
             }
         }
         $this->changed();
@@ -163,23 +171,32 @@ final class AgentPresence
             $this->scheduler->cancel($entry['timer']);
         }
         unset($this->files[$path][$agent]);
+        $this->decorations->setRemoteCaret($path, $agent, null);
         if ([] === $this->files[$path]) {
             unset($this->files[$path]);
         }
     }
 
+    /** $agent's caret in $path, as the editor draws it — none on a negative line. */
+    private function paint(string $path, string $agent): void
+    {
+        $entry = $this->files[$path][$agent];
+        $this->decorations->setRemoteCaret(
+            $path,
+            $agent,
+            $entry['line'] < 0
+                ? null
+                : [
+                    'line' => $entry['line'],
+                    'col' => $entry['column'],
+                    'label' => Glyphs::AGENT.' '.$entry['name'],
+                    'slot' => $this->slots[$agent],
+                ],
+        );
+    }
+
     private function changed(): void
     {
-        $carets = [];
-        foreach ($this->files as $path => $agents) {
-            foreach ($agents as $agent => $entry) {
-                if ($entry['line'] < 0) {
-                    continue; // on the file, with no caret in it
-                }
-                $carets[$path][] = ['line' => $entry['line'], 'col' => $entry['column'], 'label' => Glyphs::AGENT.' '.$entry['name'], 'slot' => $this->slots[$agent]];
-            }
-        }
-        $this->decorations->setRemoteCarets($carets);
         $this->tui->requestRender();
     }
 

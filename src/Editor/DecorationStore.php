@@ -26,7 +26,7 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
 
     /**
      * The document's line count as of the last edit, for {@see
-     * remapVcsMarksForEdit()} — nothing reports how many lines an edit added or
+     * remapForEdit()} — nothing reports how many lines an edit added or
      * removed, so it is the difference from this. Rebased by {@see
      * resetForBuffer()}, since another buffer's count would read as an edit of
      * the difference on this one's first keystroke.
@@ -56,7 +56,7 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
     /**
      * Not cleared per buffer: an agent's caret belongs to its file.
      *
-     * @var array<string, list<array{line: int, col: int, label: string, slot: int}>> path => carets
+     * @var array<string, array<string, array{line: int, col: int, label: string, slot: int}>> path => owner => caret
      */
     private array $remoteCarets = [];
 
@@ -192,7 +192,7 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
      * all of this. What it buys is that the marks are never silently stale in
      * between, which is the state a user spends most of their time in.
      */
-    public function remapVcsMarksForEdit(int $cursorLine, int $lineCount): void
+    public function remapForEdit(int $cursorLine, int $lineCount, ?string $path = null): void
     {
         $delta = $lineCount - $this->vcsMarkLineCount;
         $this->vcsMarkLineCount = $lineCount;
@@ -202,7 +202,28 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
         // three lines and the caret sits three below the first of them; delete a
         // selection and the caret is left at its start, which is that line
         // already. Exact for a single caret, which is every ordinary edit.
-        $this->remapVcsMarks(\max(0, $cursorLine - \max(0, $delta)), $delta);
+        $atLine = \max(0, $cursorLine - \max(0, $delta));
+        $this->shiftRemoteCarets($path, $atLine, $delta);
+        $this->remapVcsMarks($atLine, $delta);
+    }
+
+    /**
+     * The user's edit moved the lines under $path's agent carets: one below
+     * the edit shifts with its line, one in a removed region lands on the
+     * edit — the same rule the git marks follow.
+     */
+    private function shiftRemoteCarets(?string $path, int $atLine, int $lineDelta): void
+    {
+        if (0 === $lineDelta) {
+            return;
+        }
+        foreach ($this->remoteCarets[$path ?? ''] ?? [] as $owner => $caret) {
+            if ($caret['line'] <= $atLine) {
+                continue;
+            }
+            $inRemoved = $lineDelta < 0 && $caret['line'] <= ($atLine - $lineDelta);
+            $this->remoteCarets[(string) $path][$owner]['line'] = $inRemoved ? $atLine : $caret['line'] + $lineDelta;
+        }
     }
 
     private function remapVcsMarks(int $atLine, int $lineDelta): void
@@ -495,9 +516,12 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
     }
 
     #[\Override]
-    public function setRemoteCarets(array $byPath): void
+    public function setRemoteCaret(string $path, string $owner, ?array $caret): void
     {
-        $this->remoteCarets = $byPath;
+        unset($this->remoteCarets[$path][$owner]);
+        if (null !== $caret) {
+            $this->remoteCarets[$path][$owner] = $caret;
+        }
         ($this->invalidate)();
     }
 

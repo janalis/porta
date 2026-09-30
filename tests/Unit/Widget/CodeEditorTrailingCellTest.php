@@ -83,10 +83,9 @@ final class CodeEditorTrailingCellTest extends TestCase
         $editor->decorations->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'Boom', 'col' => 0, 'endCol' => 6]]]);
         $editor->decorations->setLineAnnotations([1 => 'you, 3 days ago', 2 => 'them, today']);
         $editor->decorations->setDebugValues([2 => '$other = 1']);
-        $editor->decorations->setRemoteCarets([
-            'agent.php' => [['line' => 1, 'col' => 1, 'label' => '✦ Claude', 'slot' => 1], ['line' => 2, 'col' => 0, 'label' => '✦ Codex', 'slot' => 0]],
-            'elsewhere.php' => [['line' => 0, 'col' => 0, 'label' => '✦ Nobody here', 'slot' => 2]],
-        ]);
+        $editor->decorations->setRemoteCaret('agent.php', 'a', ['line' => 1, 'col' => 1, 'label' => '✦ Claude', 'slot' => 1]);
+        $editor->decorations->setRemoteCaret('agent.php', 'b', ['line' => 2, 'col' => 0, 'label' => '✦ Codex', 'slot' => 0]);
+        $editor->decorations->setRemoteCaret('elsewhere.php', 'c', ['line' => 0, 'col' => 0, 'label' => '✦ Nobody here', 'slot' => 2]);
 
         $rows = $editor->render(new RenderContext(80, 10));
 

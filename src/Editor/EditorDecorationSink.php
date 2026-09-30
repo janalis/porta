@@ -68,15 +68,15 @@ interface EditorDecorationSink
     public function setDebugLine(?int $line): void;
 
     /**
-     * Carets that are not the user's — agents at work — each at a 0-based
-     * line and byte column with the name to show beside it and the colour
-     * slot it is drawn in. Keyed by FILE, unlike every other layer here: they
-     * belong to their files and outlive a switch of tab. The map replaces the
-     * last one whole.
+     * One caret that is not the user's — an agent at work — at a 0-based line
+     * and byte column, with the name to show beside it and the colour slot it
+     * is drawn in; null takes it away. Keyed by FILE and owner, unlike every
+     * other layer here: it belongs to its file and outlives a switch of tab,
+     * and it moves with the user's own edits until its owner says otherwise.
      *
-     * @param array<string, list<array{line: int, col: int, label: string, slot: int}>> $byPath
+     * @param array{line: int, col: int, label: string, slot: int}|null $caret
      */
-    public function setRemoteCarets(array $byPath): void;
+    public function setRemoteCaret(string $path, string $owner, ?array $caret): void;
 
     /**
      * Code lenses, keyed by the 0-based line they sit ABOVE. The only

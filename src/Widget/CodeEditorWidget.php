@@ -1183,8 +1183,9 @@ final class CodeEditorWidget extends AbstractWidget implements
         // recomputed only on a save, a reload or a buffer switch, so between
         // those they used to sit still while the lines under them moved. The
         // store works out where and by how much from these two numbers — see
-        // {@see DecorationStore::remapVcsMarksForEdit()}.
-        $this->decorations->remapVcsMarksForEdit($this->document->cursorLine, $this->document->getLineCount());
+        // {@see DecorationStore::remapForEdit()}. An agent's caret in this
+        // file moves with its line the same way.
+        $this->decorations->remapForEdit($this->document->cursorLine, $this->document->getLineCount(), $this->filePath);
         $this->invalidate();
         $this->callbacks->completion?->scheduleDidChange($this->document);
     }
