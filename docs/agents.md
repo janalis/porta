@@ -68,8 +68,9 @@ waits, and **`Ctrl+Alt+Y`** keeps it, **`Ctrl+Alt+U`** puts the file back.
 Those keys work from anywhere, the comparison included. Without the side-by-side
 view, Porta asks you to **Accept** or **Reject** in a list instead:
 
-- **Accept** (or `Ctrl+Alt+Y`) saves the file as it stands, including anything
-  you touched up before accepting.
+- **Accept** (or `Ctrl+Alt+Y`) keeps the file as it stands, including anything
+  you touched up before accepting. Claude Code then writes it to disk, as it
+  does with any IDE, and the tab reads as saved.
 - **Reject** (or `Ctrl+Alt+U`) puts the old text back.
 
 Claude asks this only for an edit it would otherwise ask you to approve. An

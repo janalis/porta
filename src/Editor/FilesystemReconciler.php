@@ -125,6 +125,15 @@ final class FilesystemReconciler
         if (null === $content) {
             return; // unreadable / too large / binary now — leave the buffer untouched
         }
+        if ($buffer->isDirty() && $content === $buffer->document->getText()) {
+            // Written with the very text the buffer holds — by whoever the
+            // edits came from (an agent's accepted proposal): saved, not a clash.
+            $buffer->document->markSaved();
+            $buffer->diskChangedUnderEdit = false;
+            $this->tui->requestRender();
+
+            return;
+        }
         if ($buffer->isDirty()) {
             // Remember it, not just flash it. The flash is gone in seconds and
             // the stamp above now matches disk, so without this the save that

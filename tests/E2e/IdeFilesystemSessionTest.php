@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Editor\OpenFocus;
 use Porta\Ide;
@@ -522,6 +523,37 @@ final class IdeFilesystemSessionTest extends TestCase
         );
 
         $this->addToAssertionCount(1);
+    }
+
+    public function testAWriteOfTheDirtyBuffersOwnTextLeavesItSavedWithoutAWarning(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $project = new TempProject(['A.php' => "<?php\n"]);
+
+        $terminal = $this->runIde(
+            $project,
+            $project->path('A.php'),
+            [
+                200 => static function ($tui, $terminal, Ide $ide) use ($project): void {
+                    $tui->tick();
+                    $tui->getById('editor')->getDocument()->setCursor(0, 0);
+                    $tui->getById('editor')->handleInput('X'); // unsaved edit → dirty
+                    $buffer = Services::resolve($ide, BufferManager::class)->active();
+                    \assert(null !== $buffer, description: 'A.php is open');
+                    $buffer->diskChangedUnderEdit = true; // a clash noticed earlier
+                    $project->write('A.php', "X<?php\n"); // someone else saves that same text
+                    $ide->pollFilesystem();
+                },
+                300 => function ($tui, $terminal, Ide $ide): void {
+                    $doc = $tui->getById('editor')->getDocument();
+                    $this->assertSame("X<?php\n", $doc->getText());
+                    $this->assertFalse($doc->isDirty(), 'the buffer IS the disk now');
+                    $this->assertFalse(Services::resolve($ide, BufferManager::class)->active()?->diskChangedUnderEdit, 'and a save will not ask to overwrite');
+                },
+            ],
+        );
+
+        $this->assertStringNotContainsString('changed on disk', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
     }
 
     public function testExternalChangeKeepsDirtyBufferAndWarns(): void
