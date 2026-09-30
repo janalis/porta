@@ -3050,6 +3050,10 @@
         <source>Preview Only</source>
         <target>Preview Only</target>
       </trans-unit>
+      <trans-unit id="1082">
+        <source>Markdown preview</source>
+        <target>Markdown preview</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

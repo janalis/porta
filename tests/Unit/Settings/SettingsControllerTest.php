@@ -14,6 +14,7 @@ use Porta\Editor\DiagnosticMessageMode;
 use Porta\Editor\EditorPanes;
 use Porta\Editor\InlayHintMode;
 use Porta\Editor\LineNumberMode;
+use Porta\Editor\PreviewRoutes;
 use Porta\Event\CursorShapeChanged;
 use Porta\Event\LocaleChanged;
 use Porta\Event\TabBarPositionChanged;
@@ -29,6 +30,8 @@ use Porta\Lsp\RefactoringUndo;
 use Porta\Lsp\WorkspaceEditor;
 use Porta\Onboarding\OnboardingState;
 use Porta\Overlay\State\TooltipCenter;
+use Porta\Plugin\Runtime\PluginManager;
+use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Search\FileIndex;
 use Porta\Settings\LiveSettingsApplier;
 use Porta\Settings\SettingsController;
@@ -89,6 +92,7 @@ final class SettingsControllerTest extends TestCase
     private FormatOnSave $formatOnSave;
     private FileIndex $files;
     private TooltipCenter $tooltips;
+    private PreviewRoutes $previews;
 
     /**
      * @param array<string, int|bool|string> $settings
@@ -156,6 +160,7 @@ final class SettingsControllerTest extends TestCase
             $breadcrumbs,
             $this->files = new FileIndex($rootDir),
             $this->tooltips = new TooltipCenter(new FakeScheduler(), $tui),
+            $this->previews = new PreviewRoutes(new PluginManager(new EventDispatcher(), new PluginSettings($rootDir, []))),
         );
     }
 
@@ -201,7 +206,7 @@ final class SettingsControllerTest extends TestCase
         $byKey = \array_column($rows, null, 'key');
 
         $this->assertSame(
-            ['autoPairs', 'formatOnSave', 'searchIncludeVendor'],
+            ['autoPairs', 'formatOnSave', 'markdownPreview', 'searchIncludeVendor'],
             \array_column($rows, 'key'),
             'General holds editor behavior (the viewer-tool paths live on their plugins\' pages now); appearance moved to Interface',
         );
@@ -590,6 +595,20 @@ final class SettingsControllerTest extends TestCase
         $paths = \array_column($this->files->entries(), 'path');
         $this->assertContains('a.php', $paths);
         $this->assertNotContains('vendor/pkg/Lib.php', $paths, 'disabling narrows the live index back');
+    }
+
+    public function testTheMarkdownPreviewToggleRoutesFilesOpenedAfterIt(): void
+    {
+        $project = new TempProject();
+        $controller = $this->controller($project->dir, new CodeEditorWidget(), new StatusBarWidget());
+        $this->previews->claim('markdown', static fn (string $path): bool => \str_ends_with($path, '.md'));
+        $this->assertSame('markdown', $this->previews->previewFor('/p/README.md'), 'on by default');
+
+        $controller->changeSetting('markdownPreview', false);
+        $this->assertNull($this->previews->previewFor('/p/README.md'), 'off: markdown opens as plain text');
+
+        $controller->changeSetting('markdownPreview', true);
+        $this->assertSame('markdown', $this->previews->previewFor('/p/README.md'));
     }
 
     public function testApplyAllSkipsADescriptorWithNoApplyClosure(): void

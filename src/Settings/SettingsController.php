@@ -10,11 +10,13 @@ use Porta\Container\AsIdeService;
 use Porta\Editor\DiagnosticMessageMode;
 use Porta\Editor\EditorDisplayOptions;
 use Porta\Editor\LineNumberMode;
+use Porta\Editor\PreviewRoutes;
 use Porta\I18n\Translator;
 use Porta\Overlay\State\TooltipCenter;
 use Porta\Search\FileIndex;
 use Porta\Ui\Theme\Theme;
 use Porta\Widget\BreadcrumbsWidget;
+use Porta\Widget\MarkdownPreviewWidget;
 use Porta\Workbench\Notifier;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
@@ -56,6 +58,7 @@ final class SettingsController
         BreadcrumbsWidget $breadcrumbs,
         FileIndex $files,
         TooltipCenter $tooltips,
+        PreviewRoutes $previews,
     ) {
         $this->descriptors = [
             // --- Interface (the "Interface" settings page) ---
@@ -198,6 +201,16 @@ final class SettingsController
                 'fieldset' => 'Editing',
                 'restart' => false,
                 'apply' => static fn (int|bool|string $v) => (bool) $v ? $applier->enableFormatOnSave() : $applier->disableFormatOnSave(),
+            ],
+            // Files opened AFTER the change follow it, as the viewer plugins'
+            // own SVG and PlantUML toggles do: an open tab keeps its preview.
+            'markdownPreview' => [
+                'label' => 'Markdown preview',
+                'kind' => SettingsRowKind::Bool,
+                'group' => 'general',
+                'fieldset' => 'Editing',
+                'restart' => false,
+                'apply' => static fn (int|bool|string $v) => $previews->enable(MarkdownPreviewWidget::PANE_ID, (bool) $v),
             ],
             'searchIncludeVendor' => [
                 'label' => 'Search vendor/ files',

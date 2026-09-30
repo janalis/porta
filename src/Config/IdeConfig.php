@@ -41,6 +41,7 @@ final readonly class IdeConfig
         'breadcrumbs' => true,
         'autoPairs' => true,
         'formatOnSave' => false,
+        'markdownPreview' => true,
         'searchIncludeVendor' => false,
         'cursorShape' => 'bar',
         'tabBarPosition' => 'top',

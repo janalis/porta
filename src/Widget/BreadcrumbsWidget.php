@@ -51,7 +51,11 @@ final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost,
     use ProviderFingerprint;
     use StylesDefault;
 
-    /** The "Interface > Breadcrumbs" toggle; when off the bar renders no rows. */
+    /**
+     * The "Interface > Breadcrumbs" toggle; when off the bar draws no trail.
+     * A previewed file keeps its arrangement toggles even then: they are the
+     * one pointer route to the preview, and not what the setting is about.
+     */
     private bool $visible = true;
 
     /** The active buffer's arrangement, or null when it has no preview (and so no toggles). */
@@ -123,19 +127,15 @@ final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost,
     #[\Override]
     public function beforeRender(): void
     {
-        // The visible gate is load-bearing: the provider tokenizes the whole
-        // file, and a hidden bar must cost nothing — render() drawing no rows
-        // does not stop beforeRender from running every frame.
-        if (!$this->visible) {
-            return;
-        }
+        // Runs every frame, so the trail goes through trailCrumbs(), whose
+        // visible gate keeps a hidden trail from tokenizing the file.
         // The hover column re-resolves per frame, so a relabel needs no
         // clearHover() — a still-correct tint stays, a stale one falls off.
         // The arrangement is part of what the bar shows, so it is part of the
         // fingerprint: a toggle flipped by its key must repaint the tags.
         /** @var ?PreviewMode $mode */
         $mode = null !== $this->previewProvider ? ($this->previewProvider)() : null;
-        $this->refreshFingerprint([null !== $this->provider ? ($this->provider)() : [], $mode?->name]);
+        $this->refreshFingerprint([$this->trailCrumbs(), $mode?->name]);
     }
 
     #[\Override]
@@ -144,10 +144,7 @@ final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost,
         $this->lastLayout = [];
         $this->tips = [];
         $this->toggleZones->clear();
-        if (!$this->visible) {
-            return []; // the Interface setting hides the bar entirely
-        }
-        $crumbs = null !== $this->provider ? ($this->provider)() : [];
+        $crumbs = $this->trailCrumbs();
         /** @var ?PreviewMode $mode */
         $mode = null !== $this->previewProvider ? ($this->previewProvider)() : null;
         if ([] === $crumbs && null === $mode) {
@@ -160,6 +157,18 @@ final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost,
         $content = [] === $crumbs ? ' ' : $this->trail($crumbs, $trail);
 
         return [$this->styles->of(Role::Toolbar)->apply(AnsiText::truncate($content, $trail, pad: true).$toggles)];
+    }
+
+    /**
+     * The scope trail to draw — none while the Interface setting hides it. The
+     * visible gate is load-bearing: the provider tokenizes the whole file, and
+     * a hidden trail must cost nothing, per frame included.
+     *
+     * @return list<array{label: string, line: int}>
+     */
+    private function trailCrumbs(): array
+    {
+        return $this->visible && null !== $this->provider ? ($this->provider)() : [];
     }
 
     /**

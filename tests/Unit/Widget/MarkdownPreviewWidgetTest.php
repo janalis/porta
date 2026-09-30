@@ -39,8 +39,9 @@ final class MarkdownPreviewWidgetTest extends TestCase
         $pane->show('/p/README.md', "# Porta\n\nSome text.\n");
 
         $rows = $this->drawn($pane, 40, 5);
-        $this->assertSame('Porta', \rtrim($rows[0]));
-        $this->assertSame('Some text.', \rtrim($rows[3]));
+        $this->assertSame(' Porta', \rtrim($rows[0]), 'a column of margin, away from the divider');
+        $this->assertNotSame(' ', $this->drawn($pane, 1, 1)[0], 'a one-column pane has no room for it');
+        $this->assertSame('Some text.', \trim($rows[3]));
         $this->assertSame('markdown', $pane->paneId());
         $this->assertSame('', $pane->statusRight(), 'the editor\'s legend stays beside it');
     }
@@ -52,13 +53,13 @@ final class MarkdownPreviewWidgetTest extends TestCase
         $this->drawn($pane, 40, 6);
         $pane->handleInput("\x1b[6~"); // PageDown
         $scrolled = $this->drawn($pane, 40, 6)[0];
-        $this->assertNotSame('Title', \rtrim($scrolled), 'a page down moved the view');
+        $this->assertNotSame('Title', \trim($scrolled), 'a page down moved the view');
 
         $pane->show('/p/a.md', self::longDoc('Renamed'));
         $this->assertSame($scrolled, $this->drawn($pane, 40, 6)[0], 'an edit keeps the reader where they were');
 
         $pane->show('/p/b.md', self::longDoc('Other'));
-        $this->assertSame('Other', \rtrim($this->drawn($pane, 40, 6)[0]), 'another file starts from its top');
+        $this->assertSame('Other', \trim($this->drawn($pane, 40, 6)[0]), 'another file starts from its top');
     }
 
     public function testTheSameTextForTheSameFileIsNotRedrawn(): void
@@ -81,12 +82,12 @@ final class MarkdownPreviewWidgetTest extends TestCase
         $this->drawn($pane, 40, 6);
 
         $pane->handleInput("\x1b[F"); // End
-        $this->assertSame('Paragraph 30.', \rtrim($this->drawn($pane, 40, 6)[5]), 'End shows the last row at the bottom');
+        $this->assertSame('Paragraph 30.', \trim($this->drawn($pane, 40, 6)[5]), 'End shows the last row at the bottom');
         $pane->handleInput("\x1b[H"); // Home
-        $this->assertSame('Title', \rtrim($this->drawn($pane, 40, 6)[0]));
+        $this->assertSame('Title', \trim($this->drawn($pane, 40, 6)[0]));
         $pane->handleInput("\x1b[B"); // Down
         $pane->wheelBy(1);
-        $this->assertSame('Paragraph 1.', \rtrim($this->drawn($pane, 40, 6)[1]), 'two rows down: the underline and the blank are gone');
+        $this->assertSame('Paragraph 1.', \trim($this->drawn($pane, 40, 6)[1]), 'two rows down: the underline and the blank are gone');
 
         $pane->handleInput("\x1bw");
         $this->assertContains('close', $handler->events, 'a tab verb goes to the IDE');
@@ -99,7 +100,7 @@ final class MarkdownPreviewWidgetTest extends TestCase
         $this->assertSame([], $pane->render(new RenderContext(0, 5)));
 
         $pane->clear();
-        $this->assertSame(['', ''], \array_map(\rtrim(...), $this->drawn($pane, 10, 2)));
+        $this->assertSame(['', ''], \array_map(\trim(...), $this->drawn($pane, 10, 2)));
     }
 
     public function testAThemeSwitchRerendersTheText(): void

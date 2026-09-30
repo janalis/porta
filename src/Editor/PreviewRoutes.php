@@ -22,6 +22,9 @@ final class PreviewRoutes
     /** @var array<string, \Closure(string): bool> core's claims, by the pane id they route to */
     private array $core = [];
 
+    /** @var array<string, true> core claims a setting has turned off, by pane id */
+    private array $disabled = [];
+
     public function __construct(
         private readonly ViewerProviderSource $plugins,
     ) {}
@@ -32,6 +35,22 @@ final class PreviewRoutes
         $this->core[$paneId] = $claims;
     }
 
+    /**
+     * Turn one of core's claims off or back on — the setting that lets a user
+     * edit their markdown without the preview. It routes files opened from now
+     * on; a tab already open keeps what it has.
+     */
+    // @mago-expect lint:no-boolean-flag-parameter -- the bool IS the setting's value, passed straight through from its row.
+    public function enable(string $paneId, bool $enabled): void
+    {
+        if ($enabled) {
+            unset($this->disabled[$paneId]);
+
+            return;
+        }
+        $this->disabled[$paneId] = true;
+    }
+
     public function previewFor(string $path): ?string
     {
         $plugin = $this->plugins->previewFor($path);
@@ -39,7 +58,7 @@ final class PreviewRoutes
             return $plugin;
         }
         foreach ($this->core as $paneId => $claims) {
-            if ($claims($path)) {
+            if (!\array_key_exists($paneId, $this->disabled) && $claims($path)) {
                 return $paneId;
             }
         }

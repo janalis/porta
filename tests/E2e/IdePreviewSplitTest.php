@@ -89,8 +89,8 @@ final class IdePreviewSplitTest extends TestCase
                 0 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
                     $grid = fn (): string => \implode("\n", $this->screenGrid($tui, $terminal));
                     // The heading's `#` is the editor's; the preview draws the
-                    // words alone, straight after the divider.
-                    $this->await(static fn (): bool => \str_contains($grid(), '│Porta'), what: 'the rendered heading beside the text');
+                    // words alone, a column of margin past the divider.
+                    $this->await(static fn (): bool => \str_contains($grid(), '│ Porta'), what: 'the rendered heading beside the text');
                     $this->assertStringContainsString('# Porta', $grid(), 'the text is on screen too');
                     $this->assertStringContainsString('[Split]', $grid(), 'the toggle says which arrangement this is');
                     $this->assertSame('editor', $tui->getFocus()?->getId(), 'the text has the keys');
@@ -102,7 +102,7 @@ final class IdePreviewSplitTest extends TestCase
                     foreach (\str_split('## Added') as $key) {
                         $tui->handleInput($key);
                     }
-                    $this->await(static fn (): bool => \str_contains($grid(), '│Added'), what: 'the preview following the typed heading');
+                    $this->await(static fn (): bool => \str_contains($grid(), '│ Added'), what: 'the preview following the typed heading');
                     $this->assertSame(self::README, \file_get_contents($project->path('README.md')), 'nothing was saved to get there');
                 },
             ],
@@ -120,7 +120,7 @@ final class IdePreviewSplitTest extends TestCase
             [
                 0 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $grid = fn (): string => \implode("\n", $this->screenGrid($tui, $terminal));
-                    $this->await(static fn (): bool => \str_contains($grid(), '│Porta'), what: 'the split');
+                    $this->await(static fn (): bool => \str_contains($grid(), '│ Porta'), what: 'the split');
 
                     $this->clickToggle($tui, $ide, 'Preview');
                     $this->await(static fn (): bool => \str_contains($grid(), '[Preview]'), what: 'the preview alone');
@@ -132,11 +132,11 @@ final class IdePreviewSplitTest extends TestCase
                     $tui->handleInput("\x1b\x16"); // Ctrl+Alt+V
                     $this->await(static fn (): bool => \str_contains($grid(), '[Editor]'), what: 'the text alone');
                     $this->assertSame(PreviewMode::Editor, self::mode($ide));
-                    $this->assertStringNotContainsString('│Porta', $grid(), 'no preview beside it');
+                    $this->assertStringNotContainsString('│ Porta', $grid(), 'no preview beside it');
                     $this->assertSame('editor', $tui->getFocus()?->getId());
 
                     $this->clickToggle($tui, $ide, 'Split');
-                    $this->await(static fn (): bool => \str_contains($grid(), '│Porta') && \str_contains($grid(), '# Porta'), what: 'both again');
+                    $this->await(static fn (): bool => \str_contains($grid(), '│ Porta') && \str_contains($grid(), '# Porta'), what: 'both again');
 
                     // The menu's items are checked by the arrangement on screen, and
                     // run like the toggles.
@@ -174,7 +174,7 @@ final class IdePreviewSplitTest extends TestCase
             [
                 0 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use (&$editorColumns, $project): void {
                     $grid = fn (): string => \implode("\n", $this->screenGrid($tui, $terminal));
-                    $this->await(static fn (): bool => \str_contains($grid(), '│Porta'), what: 'the split');
+                    $this->await(static fn (): bool => \str_contains($grid(), '│ Porta'), what: 'the split');
                     $split = Services::resolve($ide, PreviewSplit::class);
                     $editor = Services::resolve($ide, CodeEditorWidget::class);
                     $before = self::rect($ide, $editor)->columns;
@@ -212,7 +212,7 @@ final class IdePreviewSplitTest extends TestCase
             $project->path('README.md'),
             [
                 0 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($editorColumns): void {
-                    $this->await(fn (): bool => \str_contains(\implode("\n", $this->screenGrid($tui, $terminal)), '│Porta'), what: 'the split, again');
+                    $this->await(fn (): bool => \str_contains(\implode("\n", $this->screenGrid($tui, $terminal)), '│ Porta'), what: 'the split, again');
                     $this->assertEqualsWithDelta($editorColumns, self::rect($ide, Services::resolve($ide, CodeEditorWidget::class))->columns, 1.0, 'the remembered proportion');
                 },
             ],
@@ -230,7 +230,7 @@ final class IdePreviewSplitTest extends TestCase
             [
                 0 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $grid = fn (): string => \implode("\n", $this->screenGrid($tui, $terminal));
-                    $this->await(static fn (): bool => \str_contains($grid(), '│Porta'), what: 'the split');
+                    $this->await(static fn (): bool => \str_contains($grid(), '│ Porta'), what: 'the split');
                     $preview = Services::resolve($ide, MarkdownPreviewWidget::class);
 
                     $tui->handleInput("\x1b[17~"); // F6: editor → preview
@@ -265,7 +265,7 @@ final class IdePreviewSplitTest extends TestCase
             [
                 0 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $grid = fn (): string => \implode("\n", $this->screenGrid($tui, $terminal));
-                    $this->await(static fn (): bool => \str_contains($grid(), '│Porta'), what: 'the split');
+                    $this->await(static fn (): bool => \str_contains($grid(), '│ Porta'), what: 'the split');
                     $commands = Services::resolve($ide, CommandRegistry::class);
                     $editor = Services::resolve($ide, CodeEditorWidget::class);
 
@@ -305,7 +305,7 @@ final class IdePreviewSplitTest extends TestCase
                     $this->await(static fn (): bool => \str_contains($grid(), '# Porta'), what: 'the text');
                     $this->frame($tui);
                     $this->assertSame(PreviewMode::Split, self::mode($ide), 'the arrangement is still Split');
-                    $this->assertStringNotContainsString('│Porta', $grid(), 'but there is no room for the preview beside it');
+                    $this->assertStringNotContainsString('│ Porta', $grid(), 'but there is no room for the preview beside it');
                     $this->assertNull(Services::resolve($ide, PreviewSplit::class)->separator->getContext(), 'nor for its divider');
                 },
             ],
@@ -373,14 +373,14 @@ final class IdePreviewSplitTest extends TestCase
             [
                 0 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
                     $grid = fn (): string => \implode("\n", $this->screenGrid($tui, $terminal));
-                    $this->await(static fn (): bool => \str_contains($grid(), '│Alpha'), what: 'the first preview');
+                    $this->await(static fn (): bool => \str_contains($grid(), '│ Alpha'), what: 'the first preview');
                     $preview = Services::resolve($ide, MarkdownPreviewWidget::class);
                     $tui->setFocus($preview);
 
                     // The same frame, no pause: the preview is handed the new file
                     // as it comes on screen, not after the typing pause.
                     Services::resolve($ide, BufferService::class)->openFile($project->path('b.md'), OpenFocus::Editor);
-                    $this->assertStringContainsString('│Bravo', $grid(), 'the new file\'s preview, at once');
+                    $this->assertStringContainsString('│ Bravo', $grid(), 'the new file\'s preview, at once');
                     $this->assertSame('editor', $tui->getFocus()?->getId(), 'a file picked lands on its text, whoever had the keys');
                 },
             ],
@@ -423,7 +423,7 @@ final class IdePreviewSplitTest extends TestCase
             $project->path('README.md'),
             [
                 0 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
-                    $this->await(fn (): bool => \str_contains(\implode("\n", $this->screenGrid($tui, $terminal)), '│Porta'), what: 'the split');
+                    $this->await(fn (): bool => \str_contains(\implode("\n", $this->screenGrid($tui, $terminal)), '│ Porta'), what: 'the split');
                     $divider = self::rect($ide, Services::resolve($ide, PreviewSplit::class)->separator)->col;
 
                     $tui->handleInput("\x1b[21~"); // F10 arms the bar

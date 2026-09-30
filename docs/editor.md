@@ -807,7 +807,7 @@ image-viewer plugin's `svgConverter` setting if you set one, otherwise `rsvg-con
 `convert`, whichever is installed. Zooming in re-renders the drawing rather
 than magnifying pixels, so it stays sharp, and the status bar reports the
 document's own size (100% means 100% of the SVG). With no converter
-installed — or with *Render SVG as an image* turned off on the image-viewer
+installed — or with *Preview SVG beside its markup* turned off on the image-viewer
 plugin's settings page — `.svg` opens as plain editable XML with no preview.
 **Open as Text** (`Ctrl+Alt+X`, or the palette) reopens a viewer tab in the
 editor — an image's bytes, or an SVG or a diagram too large to preview.
@@ -864,7 +864,7 @@ the banner instead of being drawn into the picture. What a PlantUML tab does
 *not* have is a node model, so `n`/`p`, click-select, the node counts and the
 `v` cell rendering do nothing there. PlantUML uses Graphviz for several diagram
 types (class, activity, state), so install `dot` as well if those come out
-empty. With no tool installed — or with *Render PlantUML diagrams* off on the
+empty. With no tool installed — or with *Preview PlantUML beside its source* off on the
 graph-viewer plugin's page — these files stay editable text.
 
 `v` switches to a **cell rendering** that draws node labels as terminal text

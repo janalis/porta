@@ -37,6 +37,9 @@ final class MarkdownPreviewWidget extends EditorPaneWidget
     /** The routing id, matching the claim registered in {@see \Porta\Bootstrap\CorePanes}. */
     public const string PANE_ID = 'markdown';
 
+    /** The page's left margin. */
+    private const string MARGIN = ' ';
+
     private ?string $path = null;
 
     private string $markdown = '';
@@ -114,9 +117,15 @@ final class MarkdownPreviewWidget extends EditorPaneWidget
         if ($cols < 1 || $rows < 1) {
             return [];
         }
-        if (null === $this->doc || $cols !== $this->renderedWidth) {
-            $this->doc = $this->renderer->render($this->markdown, $cols);
-            $this->renderedWidth = $cols;
+        // A column of margin on the left, as the editor's gutter gives the
+        // text: the rendered page reads away from the divider, and a heading's
+        // rule never starts against it — the frame's join pass turns a `─`
+        // beside a divider into `├`, which would tie the rule to the pane edge.
+        $margin = $cols > 1 ? self::MARGIN : '';
+        $width = $cols - \strlen($margin);
+        if (null === $this->doc || $width !== $this->renderedWidth) {
+            $this->doc = $this->renderer->render($this->markdown, $width);
+            $this->renderedWidth = $width;
         }
         $this->bodyRows = $rows;
         // A shorter text, or a taller pane, can leave the view past the end.
@@ -127,7 +136,7 @@ final class MarkdownPreviewWidget extends EditorPaneWidget
             // Truncate as well as pad: the renderer floors its own wrap width,
             // so a pane narrower than that gets lines wider than itself, and a
             // row wider than its pane throws out of the render loop.
-            $lines[] = AnsiText::truncate($this->doc->lines[$this->scrollTop + $row] ?? '', $cols, pad: true);
+            $lines[] = AnsiText::truncate($margin.($this->doc->lines[$this->scrollTop + $row] ?? ''), $cols, pad: true);
         }
 
         return $lines;

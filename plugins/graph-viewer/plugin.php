@@ -40,7 +40,7 @@ return new class('graph-viewer') extends AbstractPlugin {
 
     public function activate(PluginApi $api): void
     {
-        $api->registerSetting('plantuml', 'Render PlantUML diagrams', 'bool', true);
+        $api->registerSetting('plantuml', 'Preview PlantUML beside its source', 'bool', true);
         // The three tool knobs were CORE settings until this plugin owned
         // them (the git-keys precedent): `dotPath`, `graphRender` and the
         // core `plantuml` PATH — renamed, since this plugin's `plantuml` was

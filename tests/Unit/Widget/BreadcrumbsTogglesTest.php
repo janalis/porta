@@ -183,4 +183,19 @@ final class BreadcrumbsTogglesTest extends TestCase
 
         $this->assertNull($bar->previewModeAt($at), 'no toggles drawn, none to click');
     }
+
+    public function testHidingTheBreadcrumbsKeepsTheTogglesAndDropsOnlyTheTrail(): void
+    {
+        $this->mode = PreviewMode::Split;
+        $bar = $this->bar();
+        $bar->setProvider(static fn (): array => [['label' => 'Intro', 'line' => 3]]);
+
+        $bar->hide();
+
+        $row = self::plain($bar, 60);
+        $this->assertStringNotContainsString('Intro', $row, 'the setting is about the trail');
+        $this->assertStringEndsWith(' Editor  [Split]  Preview  ', $row, 'the toggles are the way to the preview, and stay');
+        $this->mode = null;
+        $this->assertSame('', self::plain($bar, 60), 'hidden, with nothing to toggle: no bar');
+    }
 }

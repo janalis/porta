@@ -147,7 +147,7 @@ catalog validation and bind if the plugin loads.
 | `inlayHints` | `"inline"` | Where the language server's inlay hints (parameter names, types, reference counts) show: `none` (not requested at all), `inline` (dim text in the line) or `tooltip` (a card when the pointer rests on the word) |
 | `lineNumbers` | `"absolute"` | Gutter numbering: `off`, `absolute` or `relative`. Replaces `relativeLineNumbers`, which still loads and is retired the first time this one is written |
 | `autoPairs` | `true` | Auto-closing brackets and quotes |
-| `breadcrumbs` | `true` | The scope path bar above the editor |
+| `breadcrumbs` | `true` | The scope path bar above the editor. Off, a previewed file (Markdown, SVG, a diagram) still shows its `Editor` / `Split` / `Preview` toggles on that row |
 | `stickyScroll` | `true` | Pin the enclosing scope headers to the top while scrolling |
 | `indentGuides` | `true` | Vertical rules at each indent level |
 | `methodSeparators` | `false` | A rule between members of a class |
@@ -155,6 +155,7 @@ catalog validation and bind if the plugin loads.
 | `tabBarPosition` | `"top"` | Where the editor tab strip sits: `top`, `bottom`, `left` or `right` |
 | `searchIncludeVendor` | `false` | Let Find in Files and Go to File descend into `vendor/` |
 | `formatOnSave` | `false` | Format via the language server before each Ctrl+S save (single-file saves only; a 2s timeout saves unformatted with a flash) |
+| `markdownPreview` | `true` | Open a Markdown file with its rendered preview beside the text (see [Live preview](editor.md#live-preview)). Off, Markdown opens as plain text. Applies to files opened after the change |
 | `cursorShape` | `"bar"` | Hardware cursor shape: `bar`, `block` or `underline` — screen readers follow the hardware cursor |
 | `tooltips` | `true` | A card saying what a glyph, a toggle or a cut name means when the pointer rests on it |
 | `tooltipDelay` | `500` | How long the pointer rests before a tooltip shows, in milliseconds (0–2000; the next one shows at once while a card is up) |
