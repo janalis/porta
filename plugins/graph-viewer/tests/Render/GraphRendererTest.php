@@ -168,6 +168,30 @@ final class GraphRendererTest extends TestCase
         $this->assertSame(3, GraphRenderer::nodeAt($layout, $view, 100, 30, ...$centre($nodes[2])), 'a tie: the topmost, drawn last');
     }
 
+    /**
+     * Over dot's picture, column c shows the document from c's left edge:
+     * a node spanning columns 7.3 to 13.3 is in cells 7 through 13, the node
+     * covering most of a cell wins it, and a cell no node reaches selects
+     * nothing.
+     */
+    public function testNodeShownAtAnswersForThePictureNotTheRoundedBox(): void
+    {
+        $wide = self::node(1, 'Wide', 103.0, 101.0, w: 60.0, h: 40.0);
+        $sliver = self::node(2, 'Sliver', 140.0, 101.0, w: 12.0, h: 40.0);
+        $layout = new GraphLayout(200.0, 200.0, [1 => $wide, 2 => $sliver], [], []);
+        $view = new ZoomPanModel(200, 200); // fit in 20 × 10: 0.1 column per point
+        $grid = new GraphCellGrid(20, 10, $view, null);
+        $this->assertSame([7, 4, 13, 6], $grid->shownBox($wide));
+
+        $this->assertSame(1, GraphRenderer::nodeShownAt($layout, $view, 20, 10, 5, 7), 'the left edge\'s cell, 70% covered');
+        $this->assertSame(2, GraphRenderer::nodeShownAt($layout, $view, 20, 10, 5, 13), 'cell 13 holds 30% of Wide and 60% of Sliver: the most covered wins');
+        $this->assertSame(2, GraphRenderer::nodeShownAt($layout, $view, 20, 10, 5, 14), 'Sliver alone, to 14.6');
+        $this->assertNull(GraphRenderer::nodeShownAt($layout, $view, 20, 10, 5, 15), 'right of it: empty picture');
+        $this->assertNull(GraphRenderer::nodeShownAt($layout, $view, 20, 10, 5, 6), 'left of Wide: empty picture');
+        $this->assertNull(GraphRenderer::nodeShownAt($layout, $view, 20, 10, 3, 10), 'above the node');
+        $this->assertSame(0.7, \round($grid->coverage($wide, 7, 5), precision: 6));
+    }
+
     public function testAStylelessGridPaintsNothing(): void
     {
         $view = new ZoomPanModel(100, 100);

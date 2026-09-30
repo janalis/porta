@@ -27,10 +27,10 @@ final class GraphSelectionOverlayTest extends TestCase
      */
     public function testTheFrameKeepsItsColumnsOverDoubleWidthText(): void
     {
-        $node = new GraphNode(0, 'A', 'A', 100.0, 100.0, 60.0, 40.0, null, null, false);
+        $node = new GraphNode(0, 'A', 'A', 103.0, 101.0, 60.0, 40.0, null, null, false);
         $layout = new GraphLayout(200.0, 200.0, [0 => $node], [], []);
         $view = new ZoomPanModel(200, 200);
-        [$x0, $y0, $x1, $y1] = new GraphCellGrid(20, 10, $view, null)->nodeBox($node);
+        [$x0, $y0, $x1, $y1] = new GraphCellGrid(20, 10, $view, null)->shownBox($node);
         $this->assertSame([7, 4, 13, 6], [$x0, $y0, $x1, $y1], 'the premise: both rails on the right half of a 中');
 
         $lines = GraphSelectionOverlay::apply(\array_fill(0, count: 10, value: \str_repeat('中', times: 10)), $layout, $view, 0, 20, 10, Styles::dark());
@@ -52,10 +52,10 @@ final class GraphSelectionOverlayTest extends TestCase
      */
     public function testAOneRowNodeIsFramedByABareRule(): void
     {
-        $node = new GraphNode(0, 'A', 'A', 100.0, 100.0, 60.0, 1.0, null, null, false);
+        $node = new GraphNode(0, 'A', 'A', 103.0, 99.0, 60.0, 1.0, null, null, false);
         $layout = new GraphLayout(200.0, 200.0, [0 => $node], [], []);
         $view = new ZoomPanModel(200, 200);
-        [$x0, $y0, $x1, $y1] = new GraphCellGrid(20, 10, $view, null)->nodeBox($node);
+        [$x0, $y0, $x1, $y1] = new GraphCellGrid(20, 10, $view, null)->shownBox($node);
         $this->assertSame($y0, $y1, 'the premise: a one-row box');
 
         $lines = GraphSelectionOverlay::apply(\array_fill(0, count: 10, value: \str_repeat(' ', times: 20)), $layout, $view, 0, 20, 10, Styles::dark());
@@ -66,10 +66,10 @@ final class GraphSelectionOverlayTest extends TestCase
     /** A node one column wide has no room for a pair of corners either: a bare rule caps it. */
     public function testAOneColumnNodeIsCappedByABareRule(): void
     {
-        $node = new GraphNode(0, 'A', 'A', 100.0, 100.0, 1.0, 60.0, null, null, false);
+        $node = new GraphNode(0, 'A', 'A', 99.0, 101.0, 1.0, 60.0, null, null, false);
         $layout = new GraphLayout(200.0, 200.0, [0 => $node], [], []);
         $view = new ZoomPanModel(200, 200);
-        [$x0, $y0, $x1, $y1] = new GraphCellGrid(20, 10, $view, null)->nodeBox($node);
+        [$x0, $y0, $x1, $y1] = new GraphCellGrid(20, 10, $view, null)->shownBox($node);
         $this->assertSame([$x0, true], [$x1, $y1 > $y0], 'the premise: a one-column box more than a row tall');
 
         $lines = GraphSelectionOverlay::apply(\array_fill(0, count: 10, value: \str_repeat(' ', times: 20)), $layout, $view, 0, 20, 10, Styles::dark());
@@ -85,7 +85,7 @@ final class GraphSelectionOverlayTest extends TestCase
      */
     public function testTheFrameKeepsItsColumnsWhenTheTailStartsInsideAGlyph(): void
     {
-        $node = new GraphNode(0, 'A', 'A', 100.0, 100.0, 60.0, 40.0, null, null, false);
+        $node = new GraphNode(0, 'A', 'A', 103.0, 101.0, 60.0, 40.0, null, null, false);
         $layout = new GraphLayout(200.0, 200.0, [0 => $node], [], []);
         $row = ' '.\str_repeat('中', times: 9).' '; // 中 at columns 1-2, 3-4, … 17-18
 
@@ -98,7 +98,7 @@ final class GraphSelectionOverlayTest extends TestCase
     /** After a rail, the blank for the glyph it half-covers keeps the text's background. */
     public function testTheBlankBesideARailKeepsTheTextBackground(): void
     {
-        $node = new GraphNode(0, 'A', 'A', 100.0, 100.0, 60.0, 40.0, null, null, false);
+        $node = new GraphNode(0, 'A', 'A', 103.0, 101.0, 60.0, 40.0, null, null, false);
         $layout = new GraphLayout(200.0, 200.0, [0 => $node], [], []);
         $row = "\e[44m ".\str_repeat('中', times: 9)." \e[0m";
 

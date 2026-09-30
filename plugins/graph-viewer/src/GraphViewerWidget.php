@@ -17,6 +17,7 @@ use Porta\I18n\Translator;
 use Porta\ImageViewer\HalfBlockRasterizer;
 use Porta\ImageViewer\ImageData;
 use Porta\ImageViewer\ImageDecoder;
+use Porta\ImageViewer\PixelOutline;
 use Porta\ImageViewer\PixelPlacement;
 use Porta\ImageViewer\ScaledSource;
 use Porta\ImageViewer\ZoomPanModel;
@@ -273,10 +274,16 @@ final class GraphViewerWidget extends NavigablePaneWidget
     /** Click: select the node under the pane cell (deselects over empty space). */
     public function selectAt(int $relRow, int $relCol): void
     {
-        if (null === $this->layout || null === $this->view) {
+        $layout = $this->layout;
+        $view = $this->view;
+        if (null === $layout || null === $view) {
             return;
         }
-        $this->selected = GraphRenderer::nodeAt($this->layout, $this->view, $this->lastCols, $this->lastRows, $relRow, $relCol);
+        // Over Graphviz's own picture, the node that picture shows in the cell;
+        // over the cell drawing, the box drawn there.
+        $this->selected = $this->showsBitmap()
+            ? GraphRenderer::nodeShownAt($layout, $view, $this->lastCols, $this->lastRows, $relRow, $relCol)
+            : GraphRenderer::nodeAt($layout, $view, $this->lastCols, $this->lastRows, $relRow, $relCol);
         $this->afterViewChange();
         $this->revealSelected();
     }
@@ -664,15 +671,40 @@ final class GraphViewerWidget extends NavigablePaneWidget
         return $rows;
     }
 
+    /** Whether the pane shows Graphviz's own picture rather than the cell drawing. */
+    private function showsBitmap(): bool
+    {
+        return GraphRenderMode::Bitmap === $this->mode && null !== $this->bitmap;
+    }
+
+    /** The selected node's outline, for a picture the terminal draws; null when nothing is selected. */
+    private function selectionOutline(): ?PixelOutline
+    {
+        $node = null === $this->selected ? null : $this->layout?->nodes[$this->selected] ?? null;
+        if (null === $node) {
+            return null;
+        }
+        $rgb = $this->styles->of(Role::TabAccent)->getColor()?->toRgb() ?? ['r' => 255, 'g' => 255, 'b' => 255];
+
+        return new PixelOutline($node->x - ($node->w / 2), $node->y - ($node->h / 2), $node->x + ($node->w / 2), $node->y + ($node->h / 2), [$rgb['r'], $rgb['g'], $rgb['b']]);
+    }
+
     /** @return list<string> */
     private function contentLines(int $cols, int $rows): array
     {
         $view = $this->view;
         $bitmap = $this->bitmap;
-        if (GraphRenderMode::Bitmap === $this->mode && null !== $bitmap && null !== $view) {
+        if ($this->showsBitmap() && null !== $bitmap && null !== $view) {
             // The raster's own density: dpi over whatever this tool calls 1:1.
             $ratio = $this->bitmapDpi / ($this->drawingEngine()?->baseDpi() ?? self::BITMAP_DPI);
-            $lines = $this->pixels?->render($bitmap, $ratio, $view, $cols, $rows) ?? HalfBlockRasterizer::render(
+            // Drawn by the terminal, the selection is stroked into the picture
+            // itself, to the pixel; a frame of glyphs would blank the cells it
+            // sits on.
+            $drawn = $this->pixels?->render($bitmap, $ratio, $view, $cols, $rows, $this->selectionOutline());
+            if (null !== $drawn) {
+                return $drawn;
+            }
+            $lines = HalfBlockRasterizer::render(
                 $this->scaled->forScale($bitmap, $view->effectiveScale($cols, 2 * $rows), $ratio),
                 $view,
                 $cols,

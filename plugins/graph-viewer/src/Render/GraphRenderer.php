@@ -78,6 +78,28 @@ final class GraphRenderer
         return $hit;
     }
 
+    /**
+     * The node Graphviz's own picture shows in a pane cell: the one covering
+     * most of it, the topmost on a tie, or null where the cell shows no node.
+     * {@see nodeAt()} answers for the cell drawing, whose boxes are rounded
+     * outward to whole cells; over the picture those boxes reach into the empty
+     * space around every node, and a click there picked a neighbour.
+     */
+    public static function nodeShownAt(GraphLayout $graph, ZoomPanModel $view, int $cols, int $rows, int $relRow, int $relCol): ?int
+    {
+        $grid = new GraphCellGrid($cols, $rows, $view, null);
+        $hit = null;
+        $most = 0.0;
+        foreach ($graph->nodes as $node) {
+            $covered = $grid->coverage($node, $relCol, $relRow);
+            if ($covered > 0.0 && $covered >= $most) {
+                [$hit, $most] = [$node->id, $covered];
+            }
+        }
+
+        return $hit;
+    }
+
     private static function drawCluster(GraphCellGrid $grid, GraphCluster $cluster): void
     {
         if (!$grid->intersects($cluster->x0, $cluster->y0, $cluster->x1, $cluster->y1)) {

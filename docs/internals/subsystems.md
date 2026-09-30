@@ -159,7 +159,13 @@ which `BidiTui` expands (`KittyPlaceholders::expand`) on the finished frame
 just before the write; and Ghostty ignores a virtual placement's source
 rectangle, so `ImageViewer\PixelPlacement` cuts the view out itself and sends
 it, alternating two image ids so a new view is new cell TEXT the differential
-writer has to rewrite.
+writer has to rewrite. The cut maps the view's cells exactly: what lies off the
+picture stays transparent rather than the picture stretching over it, so a
+point sits on the cell the hit tests map it to. A selection is a
+`PixelOutline` stroked into the cut, since glyphs over a placement blank the
+cells they cover. The graph pane hit-tests its bitmap with
+`GraphRenderer::nodeShownAt()`, by the cell's document span. `nodeAt()` is
+for the cell drawing, whose boxes round outward.
 
 The editor viewport **detaches from the caret on wheel scroll**
 (`Editor/EditorScroll`): the caret may leave the screen and the selection

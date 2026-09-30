@@ -13,6 +13,8 @@ use Porta\Tests\Support\FakeLayoutEngine;
 use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\PixelGraphics;
 use Porta\Tests\Support\PngFixture;
+use Porta\Ui\Role;
+use Porta\Ui\Theme\Styles;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 
@@ -62,16 +64,53 @@ final class GraphViewerPixelsTest extends TestCase
         $this->assertSame([216], $this->engine->renderDpis);
     }
 
-    public function testASelectedNodeIsFramedOverThePicture(): void
+    /**
+     * The selection is stroked into the picture, to the pixel. A frame of
+     * glyphs lands on whole cells, a cell off the node, and blanks the picture
+     * in every cell it covers.
+     */
+    public function testASelectedNodeIsOutlinedInThePictureItself(): void
     {
         $this->settle();
         $this->widget->render(new RenderContext(80, 24));
+        $this->terminal->clearOutput();
         $this->widget->handleInput('n');
 
         $lines = \implode("\n", $this->widget->render(new RenderContext(80, 24)));
 
-        $this->assertStringContainsString('╭', $lines, 'the selection box splices over the cells like any overlay');
-        $this->assertSame([1000], PixelGraphics::imageIdsIn($lines));
+        $this->assertStringNotContainsString('╭', $lines, 'no glyph frame over the picture');
+        $this->assertCount(1, PixelGraphics::imageIdsIn($lines), 'the picture fills its cells, the selected node\'s included');
+        $images = PixelGraphics::sentImages($this->terminal);
+        $this->assertCount(1, $images, 'the picture is sent again, outlined');
+        $this->assertGreaterThan(0, self::accentPixels($images[0]), 'the outline is in the accent colour');
+
+        $this->terminal->clearOutput();
+        $this->widget->handleInput('n'); // the next node
+        $this->widget->render(new RenderContext(80, 24));
+        $this->assertCount(1, PixelGraphics::sentImages($this->terminal), 'another selection, another picture');
+    }
+
+    public function testAPictureWithNothingSelectedHasNoOutline(): void
+    {
+        $this->settle();
+        $this->widget->render(new RenderContext(80, 24));
+
+        $this->assertSame(0, self::accentPixels(PixelGraphics::sentImages($this->terminal)[0]));
+    }
+
+    /** How many of $image's pixels are the theme's accent — the outline's colour. */
+    private static function accentPixels(\GdImage $image): int
+    {
+        $rgb = Styles::dark()->of(Role::TabAccent)->getColor()?->toRgb() ?? ['r' => -1, 'g' => -1, 'b' => -1];
+        $accent = ($rgb['r'] << 16) | ($rgb['g'] << 8) | $rgb['b'];
+        $count = 0;
+        for ($x = 0; $x < \imagesx($image); ++$x) {
+            for ($y = 0; $y < \imagesy($image); ++$y) {
+                $count += (\imagecolorat($image, $x, $y) & 0xFF_FF_FF) === $accent ? 1 : 0;
+            }
+        }
+
+        return $count;
     }
 
     public function testAnotherPaneTakingTheSlotFreesThePictureAndItIsSentAgainOnReturn(): void

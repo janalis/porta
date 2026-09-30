@@ -47,6 +47,36 @@ final class PixelGraphics
         }
     }
 
+    /**
+     * Every image the terminal was sent, decoded — what a pane drew, to the pixel.
+     *
+     * @return list<\GdImage>
+     */
+    public static function sentImages(VirtualTerminal $terminal): array
+    {
+        $commands = [];
+        \preg_match_all('/\x1b_G([^;\x1b]*);([^\x1b]*)\x1b\\\\/', $terminal->getOutput(), $commands, \PREG_SET_ORDER);
+        $images = [];
+        $payload = null;
+        foreach ($commands as [, $keys, $data]) {
+            if (\str_starts_with($keys, 'a=t,')) {
+                $payload = '';
+            }
+            if (null === $payload || !\str_contains($keys, 'm=')) {
+                continue;
+            }
+            $payload .= $data;
+            if (\str_ends_with($keys, 'm=0')) {
+                $gd = \imagecreatefromstring((string) \base64_decode($payload, strict: true));
+                \assert($gd instanceof \GdImage, description: 'a sent image decodes');
+                $images[] = $gd;
+                $payload = null;
+            }
+        }
+
+        return $images;
+    }
+
     /** The image ids a pane's cells name, in order of appearance. */
     public static function imageIdsIn(string $text): array
     {

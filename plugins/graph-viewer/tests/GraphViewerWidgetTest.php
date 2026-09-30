@@ -9,7 +9,9 @@ use Porta\Config\ActionCatalog;
 use Porta\GraphViewer\Graph\DotJsonParser;
 use Porta\GraphViewer\Graph\GraphLayout;
 use Porta\GraphViewer\GraphViewerWidget;
+use Porta\GraphViewer\Render\GraphRenderer;
 use Porta\I18n\Translator;
+use Porta\ImageViewer\ZoomPanModel;
 use Porta\Plugin\Api\PluginApi;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginSettings;
@@ -450,6 +452,44 @@ final class GraphViewerWidgetTest extends TestCase
         $this->assertStringNotContainsString('┌', self::plain($widget->render(new RenderContext(80, 24))), 'the cell rendering stepped aside');
         $this->assertSame([72], $this->engine->renderDpis, '72 dpi: one point per pixel');
         $this->assertSame('3 nodes · 2 edges', $widget->statusInfo(), 'the geometry still answers for the status bar');
+    }
+
+    /**
+     * Over dot's own picture a click selects what the picture shows in that
+     * cell, not what the cell drawing's boxes, rounded outward, would claim:
+     * those reach a cell into the empty space around each node, where a click
+     * picked a neighbour.
+     */
+    public function testOverThePictureAClickSelectsTheNodeThePictureShowsThere(): void
+    {
+        $layout = self::layout();
+        $this->engine->nextResult = $layout;
+        $this->engine->nextPng = PngFixture::bytes(260, 36);
+        $widget = $this->widget();
+        $widget->show('/p/g.dot', 'digraph G { A -> B; }');
+        $this->settle();
+        $widget->render(new RenderContext(80, 24));
+        $view = Probe::get($widget, 'view');
+        $this->assertInstanceOf(ZoomPanModel::class, $view);
+
+        $differ = [];
+        for ($row = 0; $row < 24; ++$row) {
+            for ($col = 0; $col < 80; ++$col) {
+                $shown = GraphRenderer::nodeShownAt($layout, $view, 80, 24, $row, $col);
+                if ($shown !== GraphRenderer::nodeAt($layout, $view, 80, 24, $row, $col)) {
+                    $differ[] = [$row, $col, $shown];
+                }
+            }
+        }
+        $this->assertNotSame([], $differ, 'the premise: the two disagree somewhere');
+        foreach ($differ as [$row, $col, $shown]) {
+            $widget->selectAt($row, $col);
+            $this->assertSame(
+                null === $shown ? '3 nodes · 2 edges' : '3 nodes · 2 edges · '.$layout->nodes[$shown]->label,
+                $widget->statusInfo(),
+                \sprintf('cell %d,%d', $row, $col),
+            );
+        }
     }
 
     public function testTheCellRenderingCoversTheGapUntilTheBitmapArrives(): void

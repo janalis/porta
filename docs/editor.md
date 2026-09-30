@@ -855,7 +855,10 @@ Zoom with `=`/`-`, `0`/`f` fit, `1` actual size, a click on the status bar's
 `+`, `-` or `0 fit`, or `Ctrl+wheel` at the pointer — including the trackpad's Ctrl+two-finger-scroll, which glides (see
 the image viewer above for why that is as close to a pinch as a terminal
 gets); pan with the arrows, the wheel, or by dragging; select nodes with
-`n`/`p` or a click, which frames the node and names it in the status bar.
+`n`/`p` or a click, which frames the node and names it in the status bar. A
+click selects the node the picture shows under the pointer, and nothing over
+the empty space around it. A terminal that draws pixels outlines the selected
+node in the picture itself, to the pixel.
 Zooming in re-renders the graph at a higher resolution rather than magnifying
 pixels, so labels sharpen as you go.
 

@@ -73,6 +73,40 @@ final class GraphCellGrid
         ];
     }
 
+    /**
+     * The cells a node's own outline reaches in a picture Graphviz drew. That
+     * picture maps column c to the document span starting at c's left edge,
+     * not to the rounded centre the cell drawing boxes by ({@see nodeBox()}),
+     * so a box rounded outward claims a cell of empty picture on every side.
+     *
+     * @return array{int, int, int, int} [x0, y0, x1, y1], inclusive
+     */
+    public function shownBox(GraphNode $node): array
+    {
+        [$left, $top, $right, $bottom] = $this->span($node);
+
+        return [(int) \floor($left), (int) \floor($top / 2), (int) \ceil($right) - 1, (int) \ceil($bottom / 2) - 1];
+    }
+
+    /** How much of the cell at ($col, $row) a node's outline covers in that picture: 0 (none) to 1 (all). */
+    public function coverage(GraphNode $node, int $col, int $row): float
+    {
+        [$left, $top, $right, $bottom] = $this->span($node);
+        $width = \min($col + 1.0, $right) - \max((float) $col, $left);
+        $height = \min((2 * $row) + 2.0, $bottom) - \max(2.0 * $row, $top);
+
+        return $width > 0.0 && $height > 0.0 ? ($width * $height) / 2.0 : 0.0;
+    }
+
+    /** @return array{float, float, float, float} the node's outline in columns and half-rows, unrounded */
+    private function span(GraphNode $node): array
+    {
+        $col = fn (float $x): float => $this->rect['padCols'] + (($x - $this->rect['srcX']) * $this->scale);
+        $halfRow = fn (float $y): float => $this->rect['padHalfRows'] + (($y - $this->rect['srcY']) * $this->scale);
+
+        return [$col($node->x - ($node->w / 2)), $halfRow($node->y - ($node->h / 2)), $col($node->x + ($node->w / 2)), $halfRow($node->y + ($node->h / 2))];
+    }
+
     public function put(int $col, int $row, string $char, string $key): void
     {
         if ($col >= 0 && $col < $this->cols && $row >= 0 && $row < $this->rows) {

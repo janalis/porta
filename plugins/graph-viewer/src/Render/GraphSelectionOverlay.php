@@ -15,9 +15,11 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
 /**
  * Frames the selected node on top of the rendered bitmap. The picture comes from
  * dot and knows nothing about selection, but the layout does — so the cue is
- * drawn from node geometry through {@see GraphCellGrid}'s transform, the same one
- * {@see GraphRenderer::nodeAt()} inverts for clicks. The two therefore agree by
- * construction: whatever a click selects is what gets framed.
+ * drawn from node geometry through {@see GraphCellGrid::shownBox()}: the cells
+ * the node's outline reaches in the picture, the ones
+ * {@see GraphRenderer::nodeShownAt()} answers a click on with that node. The two
+ * therefore agree by construction: whatever a click selects is what gets framed.
+ * A terminal drawing pixels frames it in the picture instead ({@see \Porta\ImageViewer\PixelOutline}).
  *
  * Stateless, like the rest of this tier: it takes rendered lines and returns
  * rendered lines, splicing by display column the way both viewers' focus frames
@@ -37,7 +39,7 @@ final class GraphSelectionOverlay
             return $lines;
         }
 
-        [$x0, $y0, $x1, $y1] = new GraphCellGrid($cols, $rows, $view, null)->nodeBox($node);
+        [$x0, $y0, $x1, $y1] = new GraphCellGrid($cols, $rows, $view, null)->shownBox($node);
         $x0 = \max(0, $x0);
         $y0 = \max(0, $y0);
         $x1 = \min($cols - 1, $x1);
