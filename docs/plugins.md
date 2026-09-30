@@ -601,6 +601,10 @@ $api->registerPreview('hex', ['hexdump']);
   hands the text the keys when it is on screen; on a viewer tab the call does
   nothing, so a pane that is both need not tell them apart. The bundled panes
   do it for a node (the graph pane) and a shape (the image pane's SVG).
+- **Following the caret** is the other direction: override
+  `followSource(int $line, int $byteCol)` and bring what that position of the
+  text wrote into view. It is called when the caret reaches another line of
+  the previewed text, not per keystroke; the default does nothing.
 - The user switches between **Editor**, **Split** and **Preview** with the
   toggles at the right of the breadcrumbs bar or `Ctrl+Alt+V`, and drags the divider;
   the split's proportion is one setting for every previewed file. You do nothing

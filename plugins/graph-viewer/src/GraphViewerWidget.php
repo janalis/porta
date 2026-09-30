@@ -8,6 +8,7 @@ use Porta\GraphViewer\Graph\DiagramEngine;
 use Porta\GraphViewer\Graph\DiagramKind;
 use Porta\GraphViewer\Graph\DotSource;
 use Porta\GraphViewer\Graph\GraphLayout;
+use Porta\GraphViewer\Graph\GraphNode;
 use Porta\GraphViewer\Graph\GraphRenderMode;
 use Porta\GraphViewer\Graph\LayoutEngine;
 use Porta\GraphViewer\Render\GraphRenderer;
@@ -278,6 +279,25 @@ final class GraphViewerWidget extends NavigablePaneWidget
         $this->selected = GraphRenderer::nodeAt($this->layout, $this->view, $this->lastCols, $this->lastRows, $relRow, $relCol);
         $this->afterViewChange();
         $this->revealSelected();
+    }
+
+    /**
+     * The caret reached another line of the DOT: select and centre the node
+     * written nearest it there, as a click on that node would have.
+     */
+    #[\Override]
+    public function followSource(int $line, int $byteCol): void
+    {
+        $nodes = $this->layout->nodes ?? [];
+        $name = DotSource::nodeAt((string) $this->dot, \array_values(\array_map(static fn (GraphNode $node): string => $node->name, $nodes)), $line, $byteCol);
+        foreach ($nodes as $id => $node) {
+            if ($node->name !== $name || $id === $this->selected) {
+                continue;
+            }
+            $this->focusNode($id);
+
+            return;
+        }
     }
 
     /**

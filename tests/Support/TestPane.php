@@ -56,6 +56,11 @@ final class TestPane extends NavigablePaneWidget
         $this->shownPayload = null;
     }
 
+    public function followSource(int $line, int $byteCol): void
+    {
+        $this->calls[] = \sprintf('follow:%d,%d', $line, $byteCol);
+    }
+
     public function statusRight(): string
     {
         return null === $this->shownPath ? '' : 'test pane  '.\basename($this->shownPath);

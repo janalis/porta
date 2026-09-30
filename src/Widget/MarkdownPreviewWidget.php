@@ -58,6 +58,13 @@ final class MarkdownPreviewWidget extends MarkdownPageWidget
         $this->handler?->revealSource($line, $byte);
     }
 
+    /** The caret reached another line of the text: keep its block in view. */
+    #[\Override]
+    public function followSource(int $line, int $byteCol): void
+    {
+        $this->showSourceLine($line);
+    }
+
     #[\Override]
     public function paneId(): string
     {

@@ -105,4 +105,35 @@ final class PreviewFeederTest extends TestCase
 
         $this->assertSame(1, $this->shows(), 'only the first feed');
     }
+
+    /** @return list<string> the follow calls, in order */
+    private function follows(): array
+    {
+        return \array_values(\array_filter($this->pane->calls, static fn (string $call): bool => \str_starts_with($call, 'follow:')));
+    }
+
+    public function testThePreviewFollowsTheCaretOncePerLineItReaches(): void
+    {
+        $buffer = $this->open("# one\n\ntwo\nthree\n");
+        $this->feeder->watch();
+        $this->assertSame(['follow:0,0'], $this->follows(), 'where the caret starts');
+
+        $buffer->document->setCursor(2, 1);
+        $this->feeder->watch();
+        $buffer->document->setCursor(2, 3); // the same line: nothing new to show
+        $this->feeder->watch();
+        $buffer->document->setCursor(3, 2);
+        $this->feeder->watch();
+
+        $this->assertSame(['follow:0,0', 'follow:2,1', 'follow:3,2'], $this->follows());
+    }
+
+    public function testAHiddenPreviewFollowsNothing(): void
+    {
+        $buffer = $this->open("# one\n\ntwo\n", PreviewMode::Editor);
+        $buffer->document->setCursor(2, 0);
+        $this->feeder->watch();
+
+        $this->assertSame([], $this->follows());
+    }
 }

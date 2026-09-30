@@ -780,6 +780,10 @@ it. An edit keeps your place in a long preview.
   first names the node. With the preview shown alone the caret moves all the
   same, ready for when the text comes back. A PlantUML picture has no geometry
   to point into, so a click there only takes the keys.
+- **The preview follows the caret.** Move to another line of the text and the
+  preview brings it into view: a Markdown page scrolls to the block the caret
+  is in, and a graph selects and centres the node written there. An SVG
+  preview stays where you left it.
 - **Focus.** `F6` gives the preview the keys — so does a click on a Markdown
   preview's navigation bar, or a drag on a picture, which pans it; a graph or
   an image then zooms and pans as described below. `Ctrl+T` or a click on the

@@ -851,4 +851,35 @@ final class GraphViewerWidgetTest extends TestCase
 
         $this->assertSame(['view', 'reveal:2:7', 'view'], $handler->events, 'C is first written on line 2, after "B -> "');
     }
+
+    public function testTheCaretOnANodesLineSelectsAndCentresIt(): void
+    {
+        $this->engine->nextResult = self::layout();
+        $widget = $this->widget();
+        $widget->show('/p/g.dot', "digraph G {\n  A -> B;\n  B -> C;\n}\n");
+        $widget->render(new RenderContext(80, 24));
+        $handler = new RecordingViewerTabHandler();
+        $widget->setHandler($handler);
+
+        $widget->followSource(2, 7);
+        $this->assertStringContainsString('· C', $widget->statusInfo());
+        $widget->followSource(2, 8); // the same node: nothing to move
+        $widget->followSource(0, 0); // a line naming no node: the selection stays
+
+        $this->assertStringContainsString('· C', $widget->statusInfo());
+        $this->assertSame(['view'], $handler->events, 'one pan, for the one node reached');
+    }
+
+    public function testAPictureWithNoLayoutHasNoNodeToFollow(): void
+    {
+        $this->plantUml->nextPng = PngFixture::bytes(120, 80);
+        $widget = $this->widget();
+        $widget->show('/p/seq.puml', "@startuml\nA -> B\n@enduml");
+        $this->settle();
+        $widget->render(new RenderContext(80, 24));
+
+        $widget->followSource(1, 0);
+
+        $this->assertSame('', $widget->statusInfo());
+    }
 }

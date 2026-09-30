@@ -8,6 +8,7 @@ use Porta\Container\AsEager;
 use Porta\Container\AsIdeService;
 use Porta\Support\Scheduler;
 use Porta\Ui\FrameHooks;
+use Porta\Widget\EditorPaneWidget;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -20,6 +21,10 @@ use Symfony\Component\Tui\Tui;
  * a formatter, an LSP edit, an undo, a reload from disk — moves
  * {@see Document::$version}, and there is no event for all of them. The check
  * is two comparisons, and only a version it has not fed arms the timer.
+ *
+ * It also carries the caret the other way from click-to-source: when the
+ * caret reaches another line, the pane is asked to bring what that line
+ * wrote into view ({@see EditorPaneWidget::followSource()}).
  *
  * The pause is trailing and re-armed on every change, so a burst of typing
  * costs one render at its end, not one per keystroke. What that render costs
@@ -36,6 +41,10 @@ final class PreviewFeeder
     /** What the pane was last handed, so an unchanged document costs nothing. */
     private ?string $fedPath = null;
     private int $fedVersion = -1;
+
+    /** Where the caret was when the preview last followed it: path, then line. */
+    private ?string $followedPath = null;
+    private int $followedLine = -1;
 
     /** The version the armed timer will feed, so a frame that sees it again leaves the timer alone. */
     private ?string $pendingPath = null;
@@ -65,13 +74,19 @@ final class PreviewFeeder
         $this->fedVersion = $buffer->document->version;
     }
 
-    /** Cheap and idempotent, per the hook's contract: arm the pause only for a version not yet fed or pending. */
+    /**
+     * Cheap and idempotent, per the hook's contract: arm the pause only for a
+     * version not yet fed or pending, and let the preview follow the caret
+     * only when it reached another line.
+     */
     public function watch(): void
     {
         $buffer = $this->buffers->active();
-        if (null === $buffer || null === $this->panes->shownPreview($buffer)) {
+        $pane = null === $buffer ? null : $this->panes->shownPreview($buffer);
+        if (null === $buffer || null === $pane) {
             return;
         }
+        $this->follow($buffer, $pane);
         $version = $buffer->document->version;
         if ($buffer->path === $this->fedPath && $version === $this->fedVersion) {
             return;
@@ -90,6 +105,19 @@ final class PreviewFeeder
                 $this->tui->requestRender();
             }
         });
+    }
+
+    /** The caret moved to another line of the previewed text: the preview brings it into view. */
+    private function follow(Buffer $buffer, EditorPaneWidget $pane): void
+    {
+        $document = $buffer->document;
+        if ($buffer->path === $this->followedPath && $document->cursorLine === $this->followedLine) {
+            return;
+        }
+        $this->followedPath = $buffer->path;
+        $this->followedLine = $document->cursorLine;
+        $pane->followSource($document->cursorLine, $document->cursorCol);
+        $this->tui->requestRender();
     }
 
     private function cancel(): void

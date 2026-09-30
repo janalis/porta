@@ -61,6 +61,8 @@ abstract class MarkdownPageWidget extends EditorPaneWidget implements FindTarget
     private int $lastRows = 24;
     /** The columns the last render's margin took, so a click finds the link it drew. */
     private int $marginCols = 0;
+    /** A source line to bring into view at the next render, where the width — and so the wrap — is known. */
+    private ?int $followLine = null;
     /** The tree the page lives in: the breadcrumb mirrors paths under it, and a link must stay inside it. */
     private ?string $docsRoot = null;
     private readonly MarkdownRenderer $renderer;
@@ -256,6 +258,10 @@ abstract class MarkdownPageWidget extends EditorPaneWidget implements FindTarget
             $this->scrollTop = $this->clampScroll($this->scrollTop);
             $this->currentLink = \min($this->currentLink, $doc->groupCount() - 1);
             ++$this->findVersion; // re-wrapped: match offsets are stale
+        }
+        if (null !== $this->followLine) {
+            $this->scrollTop = $this->clampScroll($this->scrollToShow($this->doc->origins ?? [], $this->followLine));
+            $this->followLine = null;
         }
 
         $lines = [$this->headerLine($cols)];
@@ -647,6 +653,40 @@ abstract class MarkdownPageWidget extends EditorPaneWidget implements FindTarget
         $max = \max(0, \count($this->doc->lines ?? []) - $this->bodyRows());
 
         return IntMath::clamp($scrollTop, 0, $max);
+    }
+
+    /**
+     * Bring the block written from $sourceLine into view: the preview's half
+     * of following the caret. Settled at the next render.
+     */
+    protected function showSourceLine(int $sourceLine): void
+    {
+        $this->followLine = $sourceLine;
+        $this->invalidate();
+    }
+
+    /**
+     * Where the view has to start for the block holding $sourceLine to show:
+     * where it is when the block's first line already does, else a third of
+     * the page above it, so the reader sees what leads into it.
+     *
+     * @param list<int> $origins
+     */
+    private function scrollToShow(array $origins, int $sourceLine): int
+    {
+        $block = null;
+        foreach ($origins as $line => $origin) {
+            if ($origin > $sourceLine || null !== $block && $origin <= $origins[$block]) {
+                continue;
+            }
+            $block = $line;
+        }
+        $body = $this->bodyRows();
+        if (null === $block || $block >= $this->scrollTop && $block < ($this->scrollTop + $body)) {
+            return $this->scrollTop;
+        }
+
+        return $block - \intdiv($body, num2: 3);
     }
 
     /**

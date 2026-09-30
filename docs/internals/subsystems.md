@@ -249,6 +249,10 @@ arranged by its `PreviewMode`: Editor, Split or Preview.
   markdown page in the text it holds, the graph pane where the DOT first
   names the clicked node (`GraphViewer\Graph\DotSource`), the image pane the
   tag of the topmost SVG shape whose box holds the point (`ImageViewer\SvgHitTest`).
+  The way back is `EditorPaneWidget::followSource()`, which `PreviewFeeder`
+  calls from its frame hook when the caret reaches another line: the markdown
+  page scrolls to the block, the graph selects the node written nearest the
+  caret (`DotSource::nodeAt()`).
 - **Sizing.** The two sides are FLEX WEIGHTS, never a width: a `flex: 0` side
   is measured by rendering it, which for the editor means twice a frame. The
   share persists as `previewSplitPercent`; below 41 columns the preview steps

@@ -656,4 +656,30 @@ final class IdePreviewSplitTest extends TestCase
             columns: 120,
         );
     }
+
+    public function testMovingTheCaretThroughTheTextKeepsThePreviewOnIt(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $body = \implode("\n\n", \array_map(static fn (int $n): string => 'Filler paragraph '.$n.'.', \range(1, end: 40)));
+        $project = new TempProject(['README.md' => "# Porta\n\n".$body."\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('README.md'),
+            [
+                0 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
+                    $grid = fn (): string => \implode("\n", $this->screenGrid($tui, $terminal));
+                    $this->await(static fn (): bool => \str_contains($grid(), '│ Porta'), what: 'the page');
+                    $this->assertStringNotContainsString('│ Filler paragraph 40.', $grid(), 'the end of the page is below the fold');
+
+                    $tui->handleInput("\x1b[1;5F"); // Ctrl+End: the caret to the last line
+                    $this->await(static fn (): bool => \str_contains($grid(), '│ Filler paragraph 40.'), what: 'the preview following the caret down');
+
+                    $tui->handleInput("\x1b[1;5H"); // Ctrl+Home
+                    $this->await(static fn (): bool => \str_contains($grid(), '│ Porta'), what: 'and back up');
+                },
+            ],
+            columns: 120,
+        );
+    }
 }

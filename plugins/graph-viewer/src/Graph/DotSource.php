@@ -26,17 +26,62 @@ final class DotSource
         if ('' === $name) {
             return null;
         }
-        $masked = (string) \preg_replace_callback(self::NOT_NODE_IDS, static fn (array $m): string => (string) \preg_replace('/[^\n]/', replacement: ' ', subject: $m[0]), $dot);
-        $found = [];
-        $m = [];
-        $quoted = \strpos($masked, '"'.\addcslashes($name, characters: '"\\').'"');
-        if (false !== $quoted) {
-            $found[] = $quoted;
-        }
-        if (1 === \preg_match('~(?<![\w\x80-\xff"])'.\preg_quote($name, delimiter: '~').'(?![\w\x80-\xff"])~', $masked, $m, \PREG_OFFSET_CAPTURE)) {
-            $found[] = (int) $m[0][1];
-        }
+        $found = \array_column(self::uses(self::masked($dot), $name), 0);
 
         return [] === $found ? null : \min($found);
+    }
+
+    /**
+     * Which of $names the text writes nearest byte column $col of line $line
+     * — the node the caret is on, or beside — or null when the line names
+     * none of them. The other half of {@see declarationOf()}: the caret moved,
+     * and the graph shows the node it is on.
+     *
+     * @param list<string> $names
+     */
+    public static function nodeAt(string $dot, array $names, int $line, int $col): ?string
+    {
+        $text = \explode("\n", self::masked($dot))[$line] ?? '';
+        $best = null;
+        $bestDistance = \PHP_INT_MAX;
+        foreach ($names as $name) {
+            foreach ('' === $name ? [] : self::uses($text, $name) as [$start, $end]) {
+                $distance = $col < $start ? $start - $col : \max(0, $col - $end + 1);
+                if ($distance < $bestDistance) {
+                    [$best, $bestDistance] = [$name, $distance];
+                }
+            }
+        }
+
+        return $best;
+    }
+
+    /** $dot with everything that is not a node id blanked, every offset kept. */
+    private static function masked(string $dot): string
+    {
+        return (string) \preg_replace_callback(self::NOT_NODE_IDS, static fn (array $m): string => (string) \preg_replace('/[^\n]/', replacement: ' ', subject: $m[0]), $dot);
+    }
+
+    /**
+     * Every place $text writes $name as an id, bare or quoted, as [start, end) byte spans.
+     *
+     * @return list<array{int, int}>
+     */
+    private static function uses(string $text, string $name): array
+    {
+        $m = [];
+        \preg_match_all(
+            '~"'.\preg_quote(\addcslashes($name, characters: '"\\'), delimiter: '~').'"|(?<![\w\x80-\xff"])'.\preg_quote($name, delimiter: '~').'(?![\w\x80-\xff"])~',
+            $text,
+            $m,
+            \PREG_OFFSET_CAPTURE,
+        );
+
+        $spans = [];
+        foreach ($m[0] ?? [] as $use) {
+            $spans[] = [(int) $use[1], (int) $use[1] + \strlen($use[0])];
+        }
+
+        return $spans;
     }
 }

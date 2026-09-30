@@ -89,8 +89,11 @@ final class EditorPaneWidgetTest extends TestCase
 
         $pane->forget('/p/anything.demo');
         $pane->selectAt(3, 4);
+        $revision = $pane->getRenderRevision();
+        $pane->followSource(5, 2);
 
         $this->assertFalse($pane->press(1, 2), 'a press takes focus and arms no drag');
+        $this->assertSame($revision, $pane->getRenderRevision(), 'nothing to follow, nothing redrawn');
     }
 
     public function testAPaneThatDoesNotScrollIgnoresTheWheel(): void

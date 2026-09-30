@@ -100,6 +100,14 @@ abstract class EditorPaneWidget extends AbstractWidget implements FocusableInter
         return false;
     }
 
+    /**
+     * The text this pane previews had its caret moved to ($line, $byteCol),
+     * 0-based: bring what that text wrote into view — the other half of
+     * click-to-source. Called when the caret reaches another line, never per
+     * keystroke on the same one. A pane with nothing to follow ignores it.
+     */
+    public function followSource(int $line, int $byteCol): void {}
+
     /** Drop per-path state (a remembered zoom, a cached layout); most panes keep none. */
     public function forget(string $path): void {}
 

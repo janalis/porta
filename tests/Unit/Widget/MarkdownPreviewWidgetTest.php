@@ -186,4 +186,37 @@ final class MarkdownPreviewWidgetTest extends TestCase
         $this->assertStringStartsWith(\explode(' ', $top)[0].' '.\explode(' ', $top)[1], \trim($narrow[1]), 'the block that was at the top still is, rewrapped');
         $this->assertSame(\trim($this->drawn($pane, 80, 6)[1]), $top, 'and back at the first width');
     }
+
+    public function testFollowingTheCaretBringsItsBlockIntoViewAndLeavesAVisibleOneAlone(): void
+    {
+        $pane = new MarkdownPreviewWidget();
+        $markdown = self::longDoc(); // "# Title", then "Paragraph N." on source line 2N
+        $pane->show('/p/a.md', $markdown);
+        $this->drawn($pane, 40, 8);
+
+        $pane->followSource(40, 3); // "Paragraph 20."
+        $rows = \array_map(\trim(...), $this->drawn($pane, 40, 8));
+        $this->assertContains('Paragraph 20.', $rows);
+        $this->assertSame('Paragraph 20.', $rows[3], 'a third of the page above it, for what leads in');
+
+        $pane->followSource(38, 0); // "Paragraph 19.", already on screen: the view stays
+        $this->assertSame($rows, \array_map(\trim(...), $this->drawn($pane, 40, 8)));
+
+        $pane->followSource(0, 0); // back to the title
+        $this->assertSame('Title', \trim($this->drawn($pane, 40, 8)[1]));
+    }
+
+    public function testAWrappedBlockIsShownFromItsFirstRow(): void
+    {
+        $pane = new MarkdownPreviewWidget();
+        $long = 'Start '.\str_repeat('word ', times: 120).'end.';
+        $pane->show('/p/a.md', self::longDoc()."\n".$long."\n");
+        $this->drawn($pane, 40, 8);
+        $pane->handleInput("\x1b[F"); // End: the paragraph's tail on screen, its start above
+        $this->assertNotContains('Start word word word word word word', \array_map(\trim(...), $this->drawn($pane, 40, 8)));
+
+        $pane->followSource(62, 0); // the long paragraph's source line
+
+        $this->assertContains('Start word word word word word word', \array_map(\trim(...), $this->drawn($pane, 40, 8)), 'from where the block begins, not merely some row of it');
+    }
 }
