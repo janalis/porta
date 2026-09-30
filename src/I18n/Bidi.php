@@ -107,7 +107,10 @@ final class Bidi
         // mirrored run points away from the thing it introduces — a rename's
         // ← away from the new name, a tree's ▸ away from the children it opens.
         // ▲ ▼ ▾ are deliberately absent: mirroring is horizontal, and a scroll
-        // indicator that flipped would point the wrong way up.
+        // indicator that flipped would point the wrong way up. An arrow that
+        // NAMES a key (`←` for cursor-left) must not flip either: the rows that
+        // print chords hold them left-to-right between marks, so it never
+        // resolves right-to-left and never reaches this table.
         '←' => '→',
         '→' => '←',
         '▸' => '◂',

@@ -588,6 +588,23 @@ final class KeybindingsListWidgetTest extends TestCase
         $this->assertStringContainsString('Ctrl+,', $mirrored);
     }
 
+    /**
+     * A key NAME is not mirrored: cursor-left is bound to the left arrow, and
+     * a mirrored row drew it as the right one. An arrow that points at
+     * something still mirrors; this one names a key on the keyboard.
+     */
+    public function testAMirroredBareArrowKeyKeepsItsDirection(): void
+    {
+        $widget = new KeybindingsListWidget(new Translator('he'));
+        AttachedStyles::attach($widget);
+        $widget->setRows([new KeybindingRow('cursor_left', 'סמן שמאלה', 'left', false)]);
+
+        $mirrored = AnsiUtils::stripAnsiCodes(Bidi::reorder($widget->render(new RenderContext(52, 4))[1], BaseDirection::Rtl));
+
+        $this->assertStringContainsString('←', $mirrored);
+        $this->assertStringNotContainsString('→', $mirrored);
+    }
+
     /** And a Latin tail stays with its label rather than crossing the chord. */
     public function testALabelEndingInLatinIsNotTornAroundTheChord(): void
     {

@@ -519,6 +519,7 @@ final class PickerLayoutTest extends TestCase
     public function testAMirroredRowKeepsItsGapBetweenLabelAndHint(): void
     {
         $gaps = [];
+        $order = [];
         foreach ([BaseDirection::Ltr, BaseDirection::Rtl] as $direction) {
             $out = PickerLayout::layoutList(
                 [0, 0, 24, 100],
@@ -538,10 +539,39 @@ final class PickerLayoutTest extends TestCase
             $this->assertNotNull($row);
             $shown = AnsiUtils::stripAnsiCodes(BaseDirection::Rtl === $direction ? Bidi::reorder($row, BaseDirection::Rtl) : $row);
             $gaps[$direction->name] = 1 === \preg_match('/Fine( +)why|why( +)Fine/', $shown, $match) ? \strlen($match[1].($match[2] ?? '')) : -1;
+            $order[$direction->name] = \strpos($shown, 'Fine') < \strpos($shown, 'why') ? 'label first' : 'hint first';
         }
 
         $this->assertGreaterThan(0, $gaps['Ltr']);
         $this->assertSame($gaps['Ltr'], $gaps['Rtl']);
+        // A Latin label and a Latin hint must not merge into one left-to-right
+        // run: the mark ending the label's run is what mirrors the row.
+        $this->assertSame(['Ltr' => 'label first', 'Rtl' => 'hint first'], $order);
+    }
+
+    /** A hint is often a key, and a bare arrow key keeps its direction in a mirrored row. */
+    public function testAMirroredArrowKeyHintKeepsItsDirection(): void
+    {
+        $out = PickerLayout::layoutList(
+            [0, 0, 24, 100],
+            [
+                'title' => 'Actions',
+                'items' => [['label' => 'סמן שמאלה', 'hint' => '←', 'value' => '0']],
+                'selected' => 0,
+                'hovered' => null,
+                'filter' => new TextField(),
+                'onPick' => static fn (): null => null,
+            ],
+            $this->styles(),
+            closeHovered: false,
+            direction: BaseDirection::Rtl,
+        );
+        $row = \array_first(\array_filter($out['rows'], static fn (string $r): bool => \str_contains(AnsiUtils::stripAnsiCodes($r), '←') || \str_contains(AnsiUtils::stripAnsiCodes($r), '→')));
+        $this->assertNotNull($row);
+
+        $mirrored = AnsiUtils::stripAnsiCodes(Bidi::reorder($row, BaseDirection::Rtl));
+        $this->assertStringContainsString('←', $mirrored);
+        $this->assertStringNotContainsString('→', $mirrored);
     }
 
     /** A note is dim like a disabled item, but not struck: a problem struck through would read as fixed. */

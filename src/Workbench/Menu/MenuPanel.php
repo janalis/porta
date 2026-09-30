@@ -255,11 +255,13 @@ final class MenuPanel
         // apart and no mark. The mark takes no column and Bidi drops it, so the
         // row keeps its width either way.
         $divide = (BaseDirection::Rtl === $direction && '' !== $shortcut ? Bidi::RTL_MARK : '').\str_repeat(' ', $gap);
-        // And a mark that ENDS the shortcut's run, or a chord ending in
-        // punctuation loses it to the paragraph: `Ctrl+,` read `,+Ctrl`.
-        $close = BaseDirection::Rtl === $direction && '' !== $shortcut ? Bidi::LTR_MARK : '';
+        // And left-to-right marks either side of the shortcut, which hold it in
+        // one run: a chord ending in punctuation lost it to the paragraph
+        // (`Ctrl+,` read `,+Ctrl`), and a bare arrow key mirrored into the
+        // other one. A key NAME never mirrors.
+        $pin = BaseDirection::Rtl === $direction && '' !== $shortcut ? Bidi::LTR_MARK : '';
 
-        return $style->apply(' '.$gutter.$label.$divide.$tail.$close.' ');
+        return $style->apply(' '.$gutter.$label.$divide.$pin.$tail.$pin.' ');
     }
 
     /**

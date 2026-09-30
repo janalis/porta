@@ -352,9 +352,12 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
             // left-to-right just as the chord is — so without something to end
             // the label's run the two merge and the chord is drawn inside the
             // label. The mark takes no column, and Bidi drops it on the way out.
-            $divide = $this->translator->isRtl() ? Bidi::RTL_MARK.' ' : ' ';
-            // A mark after the chord too, or one ending in punctuation loses it
-            // to the paragraph direction: `Ctrl+,` read `,+Ctrl`.
+            // The chord is bracketed by left-to-right marks, which hold it in
+            // one run: a chord ending in punctuation lost it to the paragraph
+            // (`Ctrl+,` read `,+Ctrl`), and a bare arrow key mirrored into the
+            // other one (`←` for cursor-left read `→`). A key NAME never
+            // mirrors; an arrow that points at something still does.
+            $divide = $this->translator->isRtl() ? Bidi::RTL_MARK.' '.Bidi::LTR_MARK : ' ';
             $close = $this->translator->isRtl() ? Bidi::LTR_MARK : '';
             $text = AnsiText::truncate($label.$divide.$right.$close.' ', $width, pad: true, ellipsis: '');
             $selected = $index === $this->list->selected();

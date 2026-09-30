@@ -860,6 +860,9 @@ one to begin the value's. A label whose own text ends in a Latin run — `שרת
 `הצג TODO` — is strong left-to-right just as the value beside it is, so without
 the first mark the two merge and the value is drawn inside the label, taking the
 column with it. `SettingsFormWidget`, `KeybindingsListWidget` and `MenuPanel`
-each hand-roll such a row and each carries the pair. The chord in the last two
-also gets a left-to-right mark AFTER it: a chord ending in punctuation (`Ctrl+,`)
-otherwise loses the comma to the paragraph and reads `,+Ctrl`.
+each hand-roll such a row and each carries the pair. A chord, in those rows and
+in a picker's hint, is bracketed by left-to-right marks. Without them a chord
+ending in punctuation (`Ctrl+,`) lost the comma to the paragraph and read
+`,+Ctrl`, and a bare arrow key (`←`, cursor-left) mirrored into the other one.
+An arrow that NAMES a key never mirrors; one that POINTS (a rename's `←`, a
+tree's `▸`) mirrors with the layout.

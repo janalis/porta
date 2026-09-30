@@ -257,6 +257,18 @@ final class MenuPanelTest extends TestCase
         $this->assertStringContainsString('Ctrl+,', AnsiUtils::stripAnsiCodes(Bidi::reorder($row, BaseDirection::Rtl)));
     }
 
+    /** A bare arrow key names a key, not a direction: mirrored, it keeps its glyph. */
+    public function testAMirroredBareArrowShortcutKeepsItsDirection(): void
+    {
+        $items = [new MenuItem('חזרה', '←', static fn (): null => null)];
+
+        $row = MenuPanel::segments($items, 0, 30, new Styles(DarkTheme::definition()), BaseDirection::Rtl)[0]['segment'];
+        $mirrored = AnsiUtils::stripAnsiCodes(Bidi::reorder($row, BaseDirection::Rtl));
+
+        $this->assertStringContainsString('←', $mirrored);
+        $this->assertStringNotContainsString('→', $mirrored);
+    }
+
     /**
      * A segment is exactly the panel's width, in either direction.
      *

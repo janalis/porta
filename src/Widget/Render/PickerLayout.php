@@ -116,7 +116,7 @@ final class PickerLayout
             }
             // The first column is the selection's shape, the ▌ every list in
             // the IDE draws, so the row reads as chosen without its shade.
-            $content[] = $style->apply(SelectionBar::of($selectedRow, focused: true)->value.$box.$label.self::gap($direction).$styles->of(Role::CompletionHint)->apply($item['hint']).' ');
+            $content[] = $style->apply(SelectionBar::of($selectedRow, focused: true)->value.$box.self::withHint($label, $styles->of(Role::CompletionHint)->apply($item['hint']), $direction).' ');
         }
         if ([] === $visible) {
             $content[] = $styles->merge(Role::PopupRow, Role::CompletionHint)->apply(AnsiText::truncate(' '.$emptyMessage, $width, pad: true, ellipsis: ''));
@@ -344,20 +344,26 @@ final class PickerLayout
                 $row->withDim()->withStrikethrough()->apply(\rtrim($label)).$row->getAnsiRestore().\str_repeat(' ', \max(0, AnsiUtils::visibleWidth($label) - AnsiUtils::visibleWidth(\rtrim($label))));
         }
 
-        return $label.self::gap($direction).$styles->of(Role::CompletionHint)->apply($detail);
+        return self::withHint($label, $styles->of(Role::CompletionHint)->apply($detail), $direction);
     }
 
     /**
-     * The column between a row's label and its hint. Under RTL a zero-width
-     * right-to-left mark leads it, dropped when the row is drawn: a Latin
+     * A row's label, the column between, and its hint. Under RTL a zero-width
+     * right-to-left mark leads the gap, dropped when the row is drawn: a Latin
      * label, the spaces and a Latin hint would otherwise resolve into ONE
      * left-to-right run and never mirror, so the label would stay left and a
      * row with no hint would sit right — the mark ends the label's run, and
-     * every row puts its label where an RTL reader starts.
+     * every row puts its label where an RTL reader starts. Left-to-right marks
+     * either side of the hint hold it in one run: a hint is often a key, and a
+     * bare arrow key mirrored into the other one (`←` read `→`).
      */
-    private static function gap(BaseDirection $direction): string
+    private static function withHint(string $label, string $hint, BaseDirection $direction): string
     {
-        return BaseDirection::Rtl === $direction ? Bidi::RTL_MARK.' ' : ' ';
+        if (BaseDirection::Rtl !== $direction) {
+            return $label.' '.$hint;
+        }
+
+        return $label.Bidi::RTL_MARK.' '.Bidi::LTR_MARK.$hint.Bidi::LTR_MARK;
     }
 
     /**
