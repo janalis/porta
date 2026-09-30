@@ -40,11 +40,17 @@ final readonly class ViewHost
         private EditorAreaPanes $editArea,
         private EditorArea $editorArea,
         private Tui $tui,
+        private ?ViewRegistry $views = null,
     ) {}
 
-    /** Swap $region into the main area. */
-    public function show(ViewRegion $region): void
+    /**
+     * Swap view $viewId's $region into the main area; every other view yields
+     * first — however this one came to open, through the registry or not (an
+     * agent's proposal, a git tool launch).
+     */
+    public function show(ViewRegion $region, string $viewId): void
     {
+        $this->views?->yieldTo($viewId);
         // The menu bar is global and full-width, so it stays put; only an open
         // dropdown has to go.
         $this->menuBar->close();

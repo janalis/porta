@@ -118,7 +118,7 @@ final class IdeLiveViewPluginsTest extends TestCase
                                 public function open(): void
                                 {
                                     $this->open = true;
-                                    $this->services->host->show($this->services->region);
+                                    $this->services->host->show($this->services->region, 'demo-view');
                                     $this->services->host->focus($this->content);
                                 }
 

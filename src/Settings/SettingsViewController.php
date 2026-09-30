@@ -136,7 +136,7 @@ final class SettingsViewController implements ContributedView
         $this->open = true;
         // The (global, full-width) menu bar stays put; just drop any open
         // dropdown so its tracked hit region cannot go stale across the swap.
-        $this->host->show($this->region);
+        $this->host->show($this->region, $this->viewId());
 
         $this->selectSection('general'); // always open on General
         $this->host->focus($this->form);

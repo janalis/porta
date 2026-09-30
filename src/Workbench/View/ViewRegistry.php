@@ -119,14 +119,14 @@ final class ViewRegistry
     /** Toggle a view; every other yields first (one at a time). */
     public function toggle(string $id): void
     {
-        $this->closeOthers($id);
+        $this->yieldTo($id);
         $this->find($id)?->toggle();
     }
 
     /** Open a view; the others yield first. */
     public function open(string $id): void
     {
-        $this->closeOthers($id);
+        $this->yieldTo($id);
         $this->find($id)?->open();
     }
 
@@ -144,7 +144,12 @@ final class ViewRegistry
         }
     }
 
-    private function closeOthers(string $target): void
+    /**
+     * Close every view but $target — what a view taking the main area by
+     * itself ({@see ViewHost::show()}) owes the one it displaces, which would
+     * otherwise stay open, and modal, underneath.
+     */
+    public function yieldTo(string $target): void
     {
         foreach ($this->views as $id => $view) {
             if ($id === $target) {
