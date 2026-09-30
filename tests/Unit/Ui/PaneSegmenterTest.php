@@ -97,6 +97,15 @@ final class PaneSegmenterTest extends TestCase
         );
     }
 
+    /** A region's last row may be its own span: a mirrored shadow's band. */
+    public function testARegionsLastRowRunsItsOwnSpan(): void
+    {
+        $region = new DropdownRegion(0, 3, 11, 3, lastRow: [3, 10]);
+
+        $this->assertRuns(PaneSegmenter::regionRunsForRow([$region], 1, 20), ['start' => 3, 'width' => 11, 'ltr' => false]);
+        $this->assertRuns(PaneSegmenter::regionRunsForRow([$region], 2, 20), ['start' => 3, 'width' => 10, 'ltr' => false]);
+    }
+
     public function testARowOutsideAPaneIsNotOwnedByIt(): void
     {
         $leaves = [

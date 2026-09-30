@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Overlay\Region;
 
+use Porta\I18n\BaseDirection;
+
 /**
  * A floating dropdown's screen box (the app menu or the context menu): the
  * one geometry the mouse router hit-tests and the RTL segmenter treats as its
@@ -19,6 +21,9 @@ final readonly class DropdownRegion
      *                     its outermost row/column ring is border, not items
      * @param int  $first  the item its first item row shows — past 0 when a
      *                     list too tall for the screen has scrolled
+     * @param ?array{int, int} $lastRow the last row's own [col, width), when it
+     *                     is not the box's: a mirrored shadow band, one cell
+     *                     narrower than the box and its side column above it
      */
     public function __construct(
         public int $top,
@@ -28,6 +33,7 @@ final readonly class DropdownRegion
         public bool $ltr = false,
         public bool $framed = false,
         public int $first = 0,
+        public ?array $lastRow = null,
     ) {}
 
     /**
@@ -35,19 +41,46 @@ final readonly class DropdownRegion
      * actually paint (a box flush against the pane union's edge casts none
      * there), so the RTL segmenter never claims cells outside the surface.
      *
+     * $shown is the direction the surface reaches the screen in: a mirrored
+     * one casts its shadow to the left before the flip
+     * ({@see \Porta\Widget\Render\ModalShadow::spans()}), so it is widened
+     * to the left.
+     *
      * @param array{int, int, int, int} $bounds [top, left, bottom, right)
      */
-    public static function shadowClamped(int $top, int $col, int $width, int $rows, array $bounds, bool $ltr = false): self
+    public static function shadowClamped(int $top, int $col, int $width, int $rows, array $bounds, bool $ltr = false, BaseDirection $shown = BaseDirection::Ltr): self
     {
-        [, , $boundBottom, $boundRight] = $bounds;
+        [, $boundLeft, $boundBottom, $boundRight] = $bounds;
+        $count = \min($rows + 1, $boundBottom - $top);
+        if (BaseDirection::Rtl === $shown) {
+            // The box and the side column to its left; then, on the band's row,
+            // the band alone. Claimed as one rectangle, the cell under the box's
+            // far corner came along, and the flip carried a pane glyph into it.
+            $left = \max($boundLeft, $col - 1);
+            $band = $count > $rows ? [$left, $col + $width - 1 - $left] : null;
 
-        return new self($top, $col, \min($width + 1, $boundRight - $col), \min($rows + 1, $boundBottom - $top), ltr: $ltr);
+            return new self($top, $left, $col + $width - $left, $count, ltr: $ltr, lastRow: $band);
+        }
+
+        return new self($top, $col, \min($width + 1, $boundRight - $col), $count, ltr: $ltr);
     }
 
     /** Whether the screen cell sits inside the box (borders included). */
     public function contains(int $row, int $col): bool
     {
-        return $this->coversRow($row) && $col >= $this->col && $col < ($this->col + $this->width);
+        [$start, $width] = $this->columnsOn($row);
+
+        return $this->coversRow($row) && $col >= $start && $col < ($start + $width);
+    }
+
+    /**
+     * The [col, width) the box takes on $row: its own, or the last row's.
+     *
+     * @return array{int, int}
+     */
+    public function columnsOn(int $row): array
+    {
+        return null !== $this->lastRow && $row === ($this->top + $this->count - 1) ? $this->lastRow : [$this->col, $this->width];
     }
 
     /** Whether the box spans screen row $row (borders included). */

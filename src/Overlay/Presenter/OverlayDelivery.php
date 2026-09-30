@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Overlay\Presenter;
 
+use Porta\I18n\BaseDirection;
+use Porta\I18n\Translator;
 use Porta\Overlay\Region\PaneBounds;
 use Porta\Overlay\Region\SpanSlicer;
 use Porta\Overlay\State\MenuOverlayPanes;
@@ -32,8 +34,21 @@ final class OverlayDelivery
         private readonly MenuOverlayPanes $panes,
         private readonly Tui $tui,
         ?Styles $styles = null,
+        // Whether the screen is mirrored: a mirrored surface casts its shadow
+        // the other way before the flip, so it still lands bottom-right.
+        private readonly Translator $translator = new Translator('en'),
     ) {
         $this->initStyles($styles);
+    }
+
+    /**
+     * The direction a surface reaches the screen in: mirrored under a
+     * right-to-left locale, unless the surface is verbatim left-to-right.
+     */
+    // @mago-expect lint:no-boolean-flag-parameter -- whether the box is verbatim is the one fact this answers on.
+    public function shown(bool $verbatim = false): BaseDirection
+    {
+        return $this->translator->isRtl() && !$verbatim ? BaseDirection::Rtl : BaseDirection::Ltr;
     }
 
     /**
@@ -56,9 +71,10 @@ final class OverlayDelivery
 
     /**
      * Push the boxes through every current pane's modal span slot, dimming
-     * the panes beneath them.
+     * the panes beneath them. A box marked `ltr` is verbatim, never mirrored,
+     * and casts its shadow as it would left-to-right.
      *
-     * @param list<array{rows: list<string>, top: int, col: int, width: int}> $boxes
+     * @param list<array{rows: list<string>, top: int, col: int, width: int, ltr?: bool}> $boxes
      */
     public function deliverModal(array $boxes): void
     {
@@ -124,7 +140,7 @@ final class OverlayDelivery
      * One pane's slice of every box: the box rows clipped to the pane's rect
      * plus the shadow bands, empty while the pane has no rect yet.
      *
-     * @param list<array{rows: list<string>, top: int, col: int, width: int}> $boxes
+     * @param list<array{rows: list<string>, top: int, col: int, width: int, ltr?: bool}> $boxes
      *
      * @return list<array{row: int, col: int, width: int, segment: string}>
      */
@@ -139,7 +155,7 @@ final class OverlayDelivery
             $spans = [
                 ...$spans,
                 ...SpanSlicer::localSpans($box['rows'], $rect, $box['top'], $box['col'], $box['width']),
-                ...($shadow ? ModalShadow::spans($rect, $box['top'], $box['col'], $box['width'], \count($box['rows']), $this->styles) : []),
+                ...($shadow ? ModalShadow::spans($rect, $box['top'], $box['col'], $box['width'], \count($box['rows']), $this->styles, $this->shown($box['ltr'] ?? false)) : []),
             ];
         }
 

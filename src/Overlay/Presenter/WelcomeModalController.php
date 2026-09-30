@@ -442,6 +442,6 @@ final class WelcomeModalController implements ContributedView
 
         $this->delivery->deliverModal([['rows' => $panel, 'top' => $top, 'col' => $col, 'width' => $width]]);
         $this->box = new ModalBox($top, $col, $width, $rows, headerRows: ModalFrame::CHROME_ROWS_TOP, windowStart: 0, count: $innerHeight);
-        $this->shadowRegion = DropdownRegion::shadowClamped($top, $col, $width, $rows, $bounds);
+        $this->shadowRegion = DropdownRegion::shadowClamped($top, $col, $width, $rows, $bounds, shown: $this->delivery->shown());
     }
 }

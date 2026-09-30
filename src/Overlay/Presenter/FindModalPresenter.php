@@ -83,7 +83,7 @@ final class FindModalPresenter
         \assert(null !== $placed, description: 'layout() is non-null while the modal is open — checked above');
         $width = $this->editor->findModal->lastBox()->width ?? 0;
 
-        $this->delivery->deliverModal([['rows' => $placed['rows'], 'top' => $placed['top'], 'col' => $placed['col'], 'width' => $width]]);
+        $this->delivery->deliverModal([['rows' => $placed['rows'], 'top' => $placed['top'], 'col' => $placed['col'], 'width' => $width, 'ltr' => true]]);
         $this->shown = true;
         $this->shadowRegion = DropdownRegion::shadowClamped($placed['top'], $placed['col'], $width, \count($placed['rows']), $bounds, ltr: true);
     }

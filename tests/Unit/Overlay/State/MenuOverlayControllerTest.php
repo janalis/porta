@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Overlay\State;
 
 use PHPUnit\Framework\TestCase;
+use Porta\I18n\Translator;
 use Porta\Overlay\Region\DropdownRegion;
 use Porta\Overlay\State\MenuOverlayController;
 use Porta\Overlay\State\MenuOverlayPanes;
@@ -63,6 +64,40 @@ final class MenuOverlayControllerTest extends TestCase
      * and a list that must flip up because the select sits near the bottom
      * ends above the select's top border instead of covering the select.
      */
+    /**
+     * Mirrored, a menu claims its shadow to the LEFT, where it is cast before
+     * the flip; at the screen's left edge there is no column to claim, and the
+     * box keeps its own first column.
+     */
+    public function testAMirroredMenuClaimsItsShadowToTheLeft(): void
+    {
+        $this->renderer = new Renderer(new StyleSheet());
+        $this->tui = new BidiTui(
+            terminal: new VirtualTerminal(columns: 100, rows: 24),
+            keybindings: new Keybindings([]),
+            renderer: $this->renderer,
+        );
+        $pane = new TestOverlayPane();
+        $this->tui->add($pane);
+        $this->frame();
+        $contextMenu = new ContextMenu();
+        $controller = new MenuOverlayController($this->renderer, new MenuBarWidget(), $contextMenu, new MenuOverlayPanes([$pane], static fn (): array => []), new Translator('he'));
+        $contextMenu->open([new MenuItem('Copy', 'Ctrl+C', null)]);
+
+        $controller->setContextAnchor(5, 10);
+        $controller->refreshContextMenu();
+        $box = $controller->contextMenuDropdown();
+        $this->assertInstanceOf(DropdownRegion::class, $box);
+        [$shadow] = $controller->regions();
+        $this->assertSame([9, $box->width + 1, $box->count + 1], [$shadow->col, $shadow->width, $shadow->count], 'the side column left of the box, and the band');
+        $this->assertSame([9, $box->width], $shadow->columnsOn($box->top + $box->count), 'the band row: the band alone');
+
+        $controller->setContextAnchor(5, 0);
+        $controller->refreshContextMenu();
+        [$edge] = $controller->regions();
+        $this->assertSame([0, $box->width], [$edge->col, $edge->width], 'flush left: the box alone, from its own first column');
+    }
+
     public function testAListboxIsHeavyFramedAndFlipsAboveItsControl(): void
     {
         $this->renderer = new Renderer(new StyleSheet());

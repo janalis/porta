@@ -89,8 +89,9 @@ final readonly class PaneSegmenter
             if (!$region->coversRow($row)) {
                 continue;
             }
-            $start = \max(0, $region->col);
-            $end = \min($columns, $region->col + $region->width);
+            [$col, $width] = $region->columnsOn($row);
+            $start = \max(0, $col);
+            $end = \min($columns, $col + $width);
             if ($end > $start) {
                 $runs[] = ['start' => $start, 'width' => $end - $start, 'ltr' => $region->ltr];
             }

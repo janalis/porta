@@ -136,8 +136,9 @@ final class ToastPresenter
         ));
         $this->shown = true;
         $this->toasts->setBoxes($boxes);
+        $shown = $this->delivery->shown();
         $this->regions = \array_map(
-            static fn (array $card): DropdownRegion => DropdownRegion::shadowClamped($card['top'], $col, $width, \count($card['rows']), $bounds),
+            static fn (array $card): DropdownRegion => DropdownRegion::shadowClamped($card['top'], $col, $width, \count($card['rows']), $bounds, shown: $shown),
             $cards,
         );
     }

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Overlay\Presenter;
 
 use PHPUnit\Framework\TestCase;
+use Porta\I18n\BaseDirection;
+use Porta\I18n\Translator;
 use Porta\Overlay\Presenter\OverlayDelivery;
 use Porta\Overlay\Region\DropdownRegion;
 use Porta\Overlay\State\MenuOverlayPanes;
@@ -129,6 +131,60 @@ final class OverlayDeliveryTest extends TestCase
 
         $delivery->clearTooltip();
         $this->assertSame([], $this->pane->tooltipSpans);
+    }
+
+    /**
+     * Mirrored, the shadow is cast to the left before the flip, so the region
+     * grows to the left; and on the band's row it takes the band alone, not
+     * the cell under the box's far corner, which the flip would fill with a
+     * pane glyph from across the row.
+     */
+    public function testAMirroredShadowRegionGrowsLeftAndItsBandRowIsTheBand(): void
+    {
+        $bounds = [0, 0, 24, 100];
+
+        $region = DropdownRegion::shadowClamped(2, 4, 10, 5, $bounds, shown: BaseDirection::Rtl);
+        $this->assertSame([2, 3, 11, 6], [$region->top, $region->col, $region->width, $region->count]);
+        $this->assertSame([3, 10], $region->columnsOn(7), 'the band: from the side column, the box wide');
+        $this->assertSame([3, 11], $region->columnsOn(6), 'a box row: the box and its side column');
+        $this->assertTrue($region->contains(7, 12));
+        $this->assertFalse($region->contains(7, 13), 'the far corner is not the band');
+        $this->assertTrue($region->contains(6, 13));
+
+        $edge = DropdownRegion::shadowClamped(2, 0, 10, 5, $bounds, shown: BaseDirection::Rtl);
+        $this->assertSame([0, 10], [$edge->col, $edge->width], 'flush against the left edge: no side column to claim');
+        $this->assertSame([0, 9], $edge->columnsOn(7));
+
+        $flush = DropdownRegion::shadowClamped(19, 4, 10, 5, $bounds, shown: BaseDirection::Rtl);
+        $this->assertSame(5, $flush->count, 'flush against the bottom: no band');
+        $this->assertSame([3, 11], $flush->columnsOn(23), 'and so no row of its own');
+    }
+
+    /** A box reaches the screen mirrored under a right-to-left locale, unless it is verbatim. */
+    public function testASurfaceIsShownMirroredUnderARightToLeftLocaleUnlessVerbatim(): void
+    {
+        $this->assertSame(BaseDirection::Ltr, $this->delivery()->shown());
+
+        $mirrored = new OverlayDelivery($this->renderer, new MenuOverlayPanes([$this->pane], static fn (): array => []), $this->tui, translator: new Translator('he'));
+        $this->assertSame(BaseDirection::Rtl, $mirrored->shown());
+        $this->assertSame(BaseDirection::Ltr, $mirrored->shown(verbatim: true));
+    }
+
+    /** Each box casts by how it is shown: a verbatim one as it would left-to-right. */
+    public function testEachBoxCastsItsShadowByHowItIsShown(): void
+    {
+        $this->delivery();
+        $this->tui->requestRender(force: true);
+        $this->tui->processRender();
+        $delivery = new OverlayDelivery($this->renderer, new MenuOverlayPanes([$this->pane], static fn (): array => []), $this->tui, translator: new Translator('he'));
+        $box = ['rows' => ['abc', 'def', 'ghi'], 'top' => 2, 'col' => 10, 'width' => 3];
+
+        $delivery->deliverModal([$box]);
+        $this->assertContains(9, \array_column($this->pane->modalSpans, 'col'), 'mirrored: the side band left of the box');
+
+        $delivery->deliverModal([[...$box, 'ltr' => true]]);
+        $this->assertContains(13, \array_column($this->pane->modalSpans, 'col'), 'verbatim: the side band right of it');
+        $this->assertNotContains(9, \array_column($this->pane->modalSpans, 'col'));
     }
 
     public function testShadowClampedGrowsByTheShadowBandsOnlyWhereTheyPaint(): void

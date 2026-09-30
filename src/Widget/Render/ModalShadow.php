@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Widget\Render;
 
+use Porta\I18n\BaseDirection;
 use Porta\Overlay\Region\SpanSlicer;
 use Porta\Support\AnsiText;
 use Porta\Ui\Theme\Styles;
@@ -61,16 +62,22 @@ final class ModalShadow
      * span-composited Welcome modal — {@see SpanSlicer} clips each band to
      * the pane exactly as it clips the panel itself.
      *
+     * $shown is the direction the surface reaches the screen in. A mirrored
+     * surface is flipped across the row after composing, so its shadow is
+     * cast to the LEFT here and lands bottom-right on screen, where every
+     * other shadow falls; cast to the right, it came out bottom-left.
+     *
      * @return list<array{row: int, col: int, width: int, segment: string}>
      */
-    public static function spans(WidgetRect $rect, int $top, int $col, int $width, int $rows, Styles $styles): array
+    public static function spans(WidgetRect $rect, int $top, int $col, int $width, int $rows, Styles $styles, BaseDirection $shown = BaseDirection::Ltr): array
     {
         $cell = $styles->rule('.modal::shadow')->apply(' ');
         $band = $styles->rule('.modal::shadow')->apply(AnsiText::blank($width));
+        $mirrored = BaseDirection::Rtl === $shown;
 
         return [
-            ...SpanSlicer::localSpans(\array_fill(0, \max(0, $rows - 1), $cell), $rect, $top + 1, $col + $width, 1),
-            ...SpanSlicer::localSpans([$band], $rect, $top + $rows, $col + 1, $width),
+            ...SpanSlicer::localSpans(\array_fill(0, \max(0, $rows - 1), $cell), $rect, $top + 1, $mirrored ? $col - 1 : $col + $width, 1),
+            ...SpanSlicer::localSpans([$band], $rect, $top + $rows, $mirrored ? $col - 1 : $col + 1, $width),
         ];
     }
 }

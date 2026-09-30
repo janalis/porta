@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Support;
 
 use Porta\Ui\Glyphs;
+use Porta\Ui\Theme\Styles;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
@@ -39,6 +40,80 @@ trait ScreenReads
             AnsiUtils::stripAnsiCodes(...),
             \explode("\r\n", (string) $body),
         );
+    }
+
+    /**
+     * {@see screenGrid()} with every blank cell painted in the modal shadow's
+     * background drawn as ░, so a test can see where a shadow landed. The
+     * shadow's colour is read from the dark theme's own rule, not repeated.
+     *
+     * @return list<string>
+     */
+    private function shadowGrid(Tui $tui, VirtualTerminal $terminal): array
+    {
+        $terminal->consumeOutput();
+        $this->frame($tui);
+        $body = (string) \preg_replace('/^.*\x1b\[H/s', replacement: '', subject: $terminal->consumeOutput());
+        $shadow = self::backgroundsOf(Styles::dark()->rule('.modal::shadow')->apply('x'))[0]['bg'];
+
+        return \array_map(
+            static fn (array $cells): string => \implode('', \array_map(
+                static fn (array $cell): string => ' ' === $cell['glyph'] && null !== $shadow && $shadow === $cell['bg'] ? '░' : $cell['glyph'],
+                $cells,
+            )),
+            \array_map(self::backgroundsOf(...), \explode("\r\n", $body)),
+        );
+    }
+
+    /**
+     * Each printed grapheme of a painted row with the background it was
+     * painted on (the SGR 48 parameters, as written), escapes dropped.
+     *
+     * @return list<array{glyph: string, bg: ?string}>
+     */
+    private static function backgroundsOf(string $row): array
+    {
+        $tokens = [];
+        \preg_match_all('/\x1b\[([0-9;]*)m|\x1b_[^\x07]*\x07|\x1b\[[0-9;?]*[A-Za-z]|\X/u', $row, $tokens, \PREG_SET_ORDER);
+        $bg = null;
+        $cells = [];
+        foreach ($tokens as $token) {
+            if (\str_starts_with($token[0], "\x1b")) {
+                $params = $token[1] ?? null;
+                if (\str_ends_with($token[0], 'm') && null !== $params) {
+                    $bg = self::backgroundAfter($bg, '' === $params ? [0] : \array_map(\intval(...), \explode(';', $params)));
+                }
+                continue;
+            }
+            $cells[] = ['glyph' => $token[0], 'bg' => $bg];
+        }
+
+        return $cells;
+    }
+
+    /**
+     * The background an SGR's parameters leave: reset by 0 or 49, set by
+     * 48;5;n or 48;2;r;g;b, untouched by anything else (a 38 colour's own
+     * parameters are skipped, so they are never read as a 48).
+     *
+     * @param list<int> $params
+     */
+    private static function backgroundAfter(?string $bg, array $params): ?string
+    {
+        for ($i = 0, $count = \count($params); $i < $count; ++$i) {
+            $param = $params[$i];
+            $wide = 2 === ($params[$i + 1] ?? null) ? 4 : 2; // 2;r;g;b or 5;n
+            $bg = match ($param) {
+                0, 49 => null,
+                48 => \implode(';', \array_slice($params, $i + 1, $wide)),
+                default => $bg,
+            };
+            if (38 === $param || 48 === $param) {
+                $i += $wide;
+            }
+        }
+
+        return $bg;
     }
 
     /**

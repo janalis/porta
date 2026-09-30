@@ -383,6 +383,17 @@ non-move input dismisses the card in `InputDispatcher`, and the frame after a
 resize asks again at the pointer's last cell, since a resting pointer sends
 no move.
 
+**Every shadow falls bottom-right on screen, mirrored or not.** A surface
+under a right-to-left locale is composed logically and then flipped across the
+row, so `ModalShadow::spans()` casts its shadow to the LEFT when told the
+surface is shown `Rtl`, and `DropdownRegion::shadowClamped()` claims those
+cells for the flip. On the band's row the region claims the band alone
+(`lastRow`). A rectangle there takes the cell under the box's far corner, and the
+flip fills it with a pane glyph from across the row. `OverlayDelivery::shown()`
+says how a box is shown. A verbatim box (Find in Files, `'ltr' => true`) is
+never flipped and casts right. `IdeShadowTest` checks each surface in both
+locales.
+
 **The stateless render tier stays in `Widget/Render/`** (`ModalFrame`,
 `PopupFrame`, `ModalShadow`, `OverlayCompositor`, the menu overlay helpers,
 `ToastCard`). It returns `string[]` bearing the `$innerWidth + CHROME_COLS`

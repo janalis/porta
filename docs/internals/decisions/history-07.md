@@ -1483,3 +1483,27 @@ mirrors on purpose. The other was a real defect: symfony-lsp's download read
 `מוריד %42`, because a `%` resolved alone. `Bidi` now implements W5 and W6: `# $ %
 ° ± ‰` are terminators that join a number they touch and are neutral anywhere
 else. The expected rows in the tests are fribidi's output.
+
+## Shadows fall bottom-right in both directions (2026-09-30)
+
+Reported: the app menu's shadow broke in Hebrew. A probe that marks
+shadow-coloured cells on the painted frame found three behaviours:
+
+- Toasts and the Welcome modal cast bottom-left.
+- The context menu, and every app menu but File, left their side shadow as a
+  stray column in the pane beneath.
+- Find in Files, which is verbatim, cast bottom-right.
+
+The cause was the same everywhere. A floating surface is flipped across the row
+after it is composed, and the shadow was cast to the right before the flip. The
+menu code already claimed a column to the LEFT for the flip, but the shadow
+never went there. File worked only because its claim clamps at column 0 and
+happened to cover the real shadow. The Welcome modal's garbled top border
+(`Esc ×╮8…`) was the same fault: a claimed pane column carried into the box.
+
+The rule is now one for every surface: the shadow falls bottom-right on screen.
+A mirrored surface casts to the left first. Its region claims the side column
+there and, on the band row, only the band (`DropdownRegion::$lastRow`), because a
+full rectangle carried a stray pane glyph into the corner under the box.
+`IdeShadowTest` fails on the old code for exactly the four mirrored surfaces.
+

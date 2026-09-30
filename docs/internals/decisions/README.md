@@ -279,3 +279,4 @@ its one-line row in [Settled questions](../decisions.md).
 - Agent-speed round 4: what the transcripts say agents lose time on (2026-09-30)
 - The live preview split (2026-09-30)
 - symfony/tui fa0b189: a format character takes no column (2026-09-30)
+- Shadows fall bottom-right in both directions (2026-09-30)

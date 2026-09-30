@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget\Render;
 
 use PHPUnit\Framework\TestCase;
+use Porta\I18n\BaseDirection;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\ModalShadow;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -76,6 +77,20 @@ final class ModalShadowTest extends TestCase
             $byRow[] = [$span['row'], $span['col'], $span['width']];
         }
         $this->assertSame([[3, 10, 1], [4, 10, 1], [5, 5, 6]], $byRow, 'right band rows 3-4, bottom band at row 5 one column in');
+    }
+
+    /**
+     * A mirrored surface is flipped across the row after it is composed, so
+     * it casts to the LEFT: the flip then lands the shadow bottom-right.
+     */
+    public function testAMirroredSurfaceCastsToTheLeftBeforeTheFlip(): void
+    {
+        $rect = new WidgetRect(row: 0, col: 0, rows: 10, columns: 20);
+
+        $spans = ModalShadow::spans($rect, 2, 4, 6, 3, Styles::dark(), BaseDirection::Rtl);
+
+        $byRow = \array_map(static fn (array $span): array => [$span['row'], $span['col'], $span['width']], $spans);
+        $this->assertSame([[3, 3, 1], [4, 3, 1], [5, 3, 6]], $byRow, 'left band rows 3-4, bottom band at row 5 from the left band');
     }
 
     public function testSpansClipToThePane(): void

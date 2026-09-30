@@ -6,6 +6,7 @@ namespace Porta\Overlay\State;
 
 use Porta\Container\AsEager;
 use Porta\Container\AsIdeService;
+use Porta\I18n\BaseDirection;
 use Porta\I18n\Translator;
 use Porta\Overlay\Region\DropdownRegion;
 use Porta\Overlay\Region\FloatingRegions;
@@ -260,14 +261,13 @@ final class MenuOverlayController implements FloatingRegions
     private function shadowWidened(int $top, int $col, int $width, int $rows): DropdownRegion
     {
         [, , $bottom, $right] = PaneBounds::union($this->panes->current(), $this->renderer) ?? [0, 0, 0, 0];
-        // The shadow falls one column past the box. Under a right-to-left
-        // locale the whole rectangle is mirrored with the frame, so widening to
-        // the RIGHT would land the shadow on the left AND push the box a column
-        // off the title it hangs from. Widen to the left instead and the mirror
-        // puts both back where they belong.
-        $left = $this->translator->isRtl() ? \max(0, $col - 1) : $col;
+        // Under a right-to-left locale the whole rectangle is mirrored with
+        // the frame, so the shadow is cast to the LEFT before the flip
+        // ({@see ModalShadow::spans()}) and claimed there: the mirror puts it
+        // bottom-right and keeps the box under the title it hangs from.
+        $shown = $this->translator->isRtl() ? BaseDirection::Rtl : BaseDirection::Ltr;
 
-        return new DropdownRegion($top, $left, \max(1, \min($width + 1, $right - $left)), \max(1, \min($rows + 1, $bottom - $top)));
+        return DropdownRegion::shadowClamped($top, $col, $width, $rows, [0, 0, $bottom, $right], shown: $shown);
     }
 
     /** @param list<AbstractWidget&MenuOverlayHost> $panes */
@@ -307,7 +307,7 @@ final class MenuOverlayController implements FloatingRegions
     {
         return [
             ...SpanSlicer::localSpans($rows, $rect, $top, $anchor, $width),
-            ...ModalShadow::spans($rect, $top, $anchor, $width, \count($rows), $this->styles),
+            ...ModalShadow::spans($rect, $top, $anchor, $width, \count($rows), $this->styles, $this->translator->isRtl() ? BaseDirection::Rtl : BaseDirection::Ltr),
         ];
     }
 }
