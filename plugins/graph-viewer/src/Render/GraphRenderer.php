@@ -52,15 +52,26 @@ final class GraphRenderer
         return $grid->lines();
     }
 
-    /** The node under a pane cell (topmost by draw order = last in id order), or null over empty space. */
+    /**
+     * The node under a pane cell, or null over empty space. Where boxes
+     * overlap — a zoomed-out graph rounds neighbours onto the same row — the
+     * one whose centre is nearest wins: the pointer is on a label, and a
+     * label sits at its box's centre. A tie goes to the topmost (last drawn).
+     */
     public static function nodeAt(GraphLayout $graph, ZoomPanModel $view, int $cols, int $rows, int $relRow, int $relCol): ?int
     {
         $grid = new GraphCellGrid($cols, $rows, $view, null);
         $hit = null;
+        $nearest = \PHP_INT_MAX;
         foreach ($graph->nodes as $node) {
             [$x0, $y0, $x1, $y1] = $grid->nodeBox($node);
-            if ($relCol >= $x0 && $relCol <= $x1 && $relRow >= $y0 && $relRow <= $y1) {
-                $hit = $node->id;
+            if ($relCol < $x0 || $relCol > $x1 || $relRow < $y0 || $relRow > $y1) {
+                continue;
+            }
+            // Rows count double: a cell is about twice as tall as it is wide.
+            $distance = \abs((2 * $relCol) - ($x0 + $x1)) + (2 * \abs((2 * $relRow) - ($y0 + $y1)));
+            if ($distance <= $nearest) {
+                [$hit, $nearest] = [$node->id, $distance];
             }
         }
 

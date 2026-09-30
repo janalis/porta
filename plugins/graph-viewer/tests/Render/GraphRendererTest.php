@@ -139,6 +139,35 @@ final class GraphRendererTest extends TestCase
         $this->assertNull(GraphRenderer::nodeAt($layout, $view, 100, 30, 0, 0));
     }
 
+    /**
+     * A zoomed-out graph rounds neighbours onto shared rows: the click on one
+     * node's label, at its centre, is that node's even where the box drawn
+     * after it reaches over — the architecture graph's GitPlugin under its
+     * GraphViewer neighbour.
+     */
+    public function testWhereBoxesOverlapTheNearestCentreWins(): void
+    {
+        $nodes = [
+            1 => self::node(1, 'Under', 100.0, 40.0, w: 80.0, h: 40.0),
+            2 => self::node(2, 'Over', 100.0, 50.0, w: 80.0, h: 40.0),
+            3 => self::node(3, 'Twin', 100.0, 50.0, w: 80.0, h: 40.0),
+        ];
+        $layout = new GraphLayout(200.0, 100.0, $nodes, [], []);
+        $view = new ZoomPanModel(200, 100);
+        $view->actualSize(100, 60);
+        $grid = new GraphCellGrid(100, 30, $view, null);
+        $centre = static function (GraphNode $node) use ($grid): array {
+            [$x0, $y0, $x1, $y1] = $grid->nodeBox($node);
+
+            return [\intdiv($y0 + $y1, num2: 2), \intdiv($x0 + $x1, num2: 2)];
+        };
+        [$row, $col] = $centre($nodes[1]);
+        $this->assertGreaterThanOrEqual($grid->nodeBox($nodes[2])[1], $row, 'the later boxes do reach over the first one\'s centre');
+
+        $this->assertSame(1, GraphRenderer::nodeAt($layout, $view, 100, 30, $row, $col));
+        $this->assertSame(3, GraphRenderer::nodeAt($layout, $view, 100, 30, ...$centre($nodes[2])), 'a tie: the topmost, drawn last');
+    }
+
     public function testAStylelessGridPaintsNothing(): void
     {
         $view = new ZoomPanModel(100, 100);
