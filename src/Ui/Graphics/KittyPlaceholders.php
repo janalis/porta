@@ -22,9 +22,10 @@ namespace Porta\Ui\Graphics;
  * placeholder then measured three columns wide the moment a run of them was
  * sliced from column 0 — and slicing from column 0 is exactly what an overlay
  * splice does to the head of a row. The symptom was a dropdown cut short and
- * padded blank wherever it crossed a picture. The vendor is fixed now; the
- * stand-ins stay until a kitty-protocol terminal can confirm the frames
- * without them (decisions history, 2026-09-30).
+ * padded blank wherever it crossed a picture. The vendor measures them right
+ * now, but the stand-ins stay for speed. The marks send every slice down the
+ * vendor's per-grapheme walk: a 200-cell row spliced in 2.0 ms against 55 µs
+ * (decisions history, 2026-09-30).
  *
  * So a pane paints a STAND-IN: one plane-16 private-use codepoint per cell,
  * which encodes the row and column and is one column wide to every width

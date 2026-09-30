@@ -1349,3 +1349,16 @@ terminal draws is what the layout measured, whatever widget painted the tab.
 The diff view still expands at the editor's stops first, because its columns
 map to bytes. `BidiTuiTest` checks the written bytes; without the replacement,
 the raw tab reaches them.
+
+## The kitty stand-ins stay, for speed (2026-09-30)
+
+The `AnsiSlice` entry above left the `KittyPlaceholders` stand-ins waiting for
+a kitty-protocol terminal, because the vendor now measures real placeholders
+right. They do not need one: the measured cost decides it. The two marks per
+cell put every slice of an image row on the vendor's per-grapheme walk. A
+200-cell row inside a styled line, sliced twice and measured once: 55 µs with
+stand-ins, 2.0 ms with real placeholders. A pane of such rows under an overlay
+would spend over 100 ms per frame. The bytes double as well (820 vs 1712).
+
+*Re-opens on:* a vendor fast path for runs of U+10EEEE placeholders, or a
+`MAX_CELLS` cap (239 cells a side) that a real pane outgrows.
