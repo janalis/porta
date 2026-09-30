@@ -29,7 +29,7 @@ final readonly class IdeConfig
      * @var array<string, int|bool|string>
      */
     public const array DEFAULT_SETTINGS = [
-        'language' => 'en',
+        'language' => 'auto',
         'theme' => 'dark',
         'diagnosticMessages' => 'inline',
         'inlayHints' => 'inline',
@@ -119,7 +119,7 @@ final readonly class IdeConfig
      * @var array<string, list<string>>
      */
     public const array CHOICE_SETTINGS = [
-        'language' => ['en', 'fr', 'de', 'es', 'it', 'ja', 'he'],
+        'language' => ['auto', 'en', 'fr', 'de', 'es', 'it', 'ja', 'he'],
         'theme' => ['dark', 'light', 'high-contrast'],
         'lineNumbers' => ['off', 'absolute', 'relative'],
         'diagnosticMessages' => ['none', 'inline', 'menu'],

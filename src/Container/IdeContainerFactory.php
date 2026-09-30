@@ -6,6 +6,7 @@ namespace Porta\Container;
 
 use Composer\InstalledVersions;
 use Porta\Config\IdeConfig;
+use Porta\I18n\SystemLocale;
 use Porta\Ide;
 use Symfony\Component\Config\ConfigCache;
 use Symfony\Component\Config\FileLocator;
@@ -58,7 +59,8 @@ final readonly class IdeContainerFactory
         // later (PtyProcess merges getenv() into child environments). Config
         // arrays travel JSON-encoded and resolve via env()->json() args.
         $_ENV['PORTA_ROOT_DIR'] = $rootDir;
-        $_ENV['PORTA_LOCALE'] = (string) ($config->settings['language'] ?? 'en');
+        $_ENV['PORTA_LOCALE'] = (string) ($config->settings['language'] ?? 'auto');
+        $_ENV['PORTA_SYSTEM_LOCALE'] = SystemLocale::fromEnvironment(\getenv(), \extension_loaded('intl') ? \Locale::getDefault() : '');
         $_ENV['PORTA_ANSI'] = Ansi::Enabled === $ansi ? '1' : '0';
         $_ENV['PORTA_THEME'] = (string) ($config->settings['theme'] ?? 'dark');
         $_ENV['PORTA_LSP_COMMAND'] = $lspCommand ?? ''; // '' resolves to null via env(default::…)

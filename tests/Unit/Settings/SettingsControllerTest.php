@@ -245,8 +245,9 @@ final class SettingsControllerTest extends TestCase
             ],
             \array_column($rows, 'key'),
         );
-        $this->assertSame(['en', 'fr', 'de', 'es', 'it', 'ja', 'he'], $byKey['language']->options);
-        $this->assertSame(Translator::LOCALE_NAMES, $byKey['language']->optionLabels, 'the picker shows language names');
+        $this->assertSame(['auto', 'en', 'fr', 'de', 'es', 'it', 'ja', 'he'], $byKey['language']->options);
+        $this->assertSame(['auto' => 'System (English)'] + Translator::LOCALE_NAMES, $byKey['language']->optionLabels, 'the picker shows language names, auto as the system one');
+        $this->assertSame('auto', $byKey['language']->default, 'an unconfigured install follows the system');
         $this->assertSame('light', $byKey['theme']->value);
         $this->assertSame(['dark', 'light', 'high-contrast'], $byKey['theme']->options);
         $this->assertSame(['bar', 'block', 'underline'], $byKey['cursorShape']->options);

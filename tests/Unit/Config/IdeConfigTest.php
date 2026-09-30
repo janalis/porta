@@ -771,7 +771,7 @@ final class IdeConfigTest extends TestCase
         // pins turn drift into a test failure instead of a rejected valid value.
         $this->assertSame(Theme::ids(), IdeConfig::CHOICE_SETTINGS['theme']);
         $this->assertSame(PixelRatio::CHOICES, IdeConfig::CHOICE_SETTINGS['pixelRatio']);
-        $this->assertSame(Translator::LOCALES, IdeConfig::CHOICE_SETTINGS['language']);
+        $this->assertSame(Translator::CHOICES, IdeConfig::CHOICE_SETTINGS['language']);
         $this->assertSame(
             \array_map(static fn (LineNumberMode $mode): string => $mode->value, LineNumberMode::cases()),
             IdeConfig::CHOICE_SETTINGS['lineNumbers'],

@@ -141,7 +141,7 @@ catalog validation and bind if the plugin loads.
 
 | Key | Default | Effect |
 | --- | --- | --- |
-| `language` | `"en"` | UI locale: `en`, `fr`, `de`, `es`, `it`, `ja`, `he` (Hebrew mirrors the layout right-to-left) |
+| `language` | `"auto"` | UI locale: `auto` (the system's: `LC_ALL`, `LC_MESSAGES` or `LANG` on Linux and macOS, the display language on Windows via ext-intl; English when Porta has no catalog for it), `en`, `fr`, `de`, `es`, `it`, `ja`, `he` (Hebrew mirrors the layout right-to-left) |
 | `theme` | `"dark"` | Color theme: `dark`, `light` or `high-contrast` (WCAG-AAA pairings) — swaps chrome and syntax colors live |
 | `diagnosticMessages` | `"inline"` | Where a diagnostic's message shows: `none`, `inline` (dimmed after the line's code) or `menu` (at the top of the Alt+Enter quick-fix list). The squiggle, gutter mark, stripe and Problems panel show in every mode. Replaces `inlineDiagnostics` (`true` → `inline`, `false` → `none`), which still loads and is retired the first time this one is written |
 | `inlayHints` | `"inline"` | Where the language server's inlay hints (parameter names, types, reference counts) show: `none` (not requested at all), `inline` (dim text in the line) or `tooltip` (a card when the pointer rests on the word) |

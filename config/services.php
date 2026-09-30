@@ -135,6 +135,7 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
         ->autoconfigure()
         ->bind('$rootDir', env('PORTA_ROOT_DIR'))
         ->bind('$locale', env('PORTA_LOCALE'))
+        ->bind('$systemLocale', env('PORTA_SYSTEM_LOCALE'))
         ->bind('$ansi', env('PORTA_ANSI')->bool())
         ->bind('$lspCommand', env('default::PORTA_LSP_COMMAND'))
         ->bind('$lspDisabled', env('PORTA_LSP_DISABLED')->bool())

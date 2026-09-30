@@ -469,7 +469,8 @@ final class SettingsViewControllerTest extends TestCase
         $this->form->handleInput("\r");
 
         $this->assertTrue($this->contextMenu->isListbox(), 'the list is open');
-        $this->contextMenu->handleInput("\x1b[B"); // from English, the current option, to Français
+        $this->contextMenu->handleInput("\x1b[B"); // from System, the current option, past English
+        $this->contextMenu->handleInput("\x1b[B"); // to Français
         $this->contextMenu->handleInput("\r");
         $this->assertSame('fr', IdeConfig::load($this->project->dir)->settings['language']);
     }

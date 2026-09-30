@@ -22,7 +22,7 @@ use Symfony\Component\DependencyInjection\ServiceLocator;
 
 final class IdeContainerFactoryTest extends TestCase
 {
-    private const array ENV_KEYS = ['PORTA_CACHE_DIR', 'PORTA_CONTAINER_CACHE', 'XDG_CACHE_HOME', 'HOME'];
+    private const array ENV_KEYS = ['PORTA_CACHE_DIR', 'PORTA_CONTAINER_CACHE', 'XDG_CACHE_HOME', 'HOME', 'LANG'];
 
     /** @var array<string, string|false> */
     private array $savedEnv = [];
@@ -35,7 +35,7 @@ final class IdeContainerFactoryTest extends TestCase
         foreach (self::ENV_KEYS as $key) {
             $this->savedEnv[$key] = \getenv($key);
         }
-        foreach (['PORTA_CACHE_DIR', 'PORTA_ROOT_DIR', 'PORTA_LOCALE', 'PORTA_ANSI', 'PORTA_THEME'] as $key) {
+        foreach (['PORTA_CACHE_DIR', 'PORTA_ROOT_DIR', 'PORTA_LOCALE', 'PORTA_SYSTEM_LOCALE', 'PORTA_ANSI', 'PORTA_THEME'] as $key) {
             $this->savedDollarEnv[$key] = \array_key_exists($key, $_ENV) && \is_string($_ENV[$key]) ? $_ENV[$key] : null;
         }
         // These tests exercise the caching paths themselves; an inherited
@@ -91,6 +91,22 @@ final class IdeContainerFactoryTest extends TestCase
         new IdeContainerFactory()->build('/tmp/porta-factory-test', IdeConfig::load('/tmp/porta-factory-test'), Ansi::Enabled);
 
         $this->assertSame($project->dir.'/translations', $_ENV['PORTA_TRANSLATION_CACHE_DIR'], 'the container-bound translator dumps its catalogs beside the container cache');
+    }
+
+    public function testAnUnconfiguredLanguageFollowsTheSystemLocale(): void
+    {
+        $project = new TempProject();
+        \putenv('PORTA_CACHE_DIR='.$project->dir);
+        \putenv('LANG=fr_FR.UTF-8');
+
+        $locator = $this->build()->get('porta.ide');
+
+        $this->assertSame('auto', $_ENV['PORTA_LOCALE']);
+        $this->assertSame('fr', $_ENV['PORTA_SYSTEM_LOCALE']);
+        $this->assertInstanceOf(ServiceLocator::class, $locator);
+        $translator = $locator->get(Translator::class);
+        $this->assertInstanceOf(Translator::class, $translator);
+        $this->assertSame('fr', $translator->locale(), 'the container-bound translator serves the system locale');
     }
 
     public function testColdCacheDumpsAndServesTheCompiledContainer(): void

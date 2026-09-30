@@ -35,7 +35,7 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  * rows while it owned them, and are live there too: each engine resolves its
  * binary per spawn.)
  *
- * @phpstan-type Descriptor array{label: string, kind: SettingsRowKind, group: 'general'|'interface', fieldset: string, restart: bool, apply: (\Closure(int|bool|string): void)|null, options?: list<string>, optionLabels?: array<string, string>, min?: int, max?: int, step?: int}
+ * @phpstan-type Descriptor array{label: string, kind: SettingsRowKind, group: 'general'|'interface', fieldset: string, restart: bool, apply: (\Closure(int|bool|string): void)|null, options?: list<string>, min?: int, max?: int, step?: int}
  */
 #[AsIdeService]
 final class SettingsController
@@ -70,8 +70,7 @@ final class SettingsController
                 'fieldset' => 'Display',
                 'restart' => false,
                 'apply' => static fn (int|bool|string $v) => $applier->applyLocale((string) $v),
-                'options' => Translator::LOCALES,
-                'optionLabels' => Translator::LOCALE_NAMES,
+                'options' => Translator::CHOICES,
             ],
             'theme' => [
                 'label' => 'Theme',
@@ -266,6 +265,19 @@ final class SettingsController
     }
 
     /**
+     * The language picker shows each locale by its native name, and `auto` as
+     * the system's — translated per build, so it follows a live switch.
+     *
+     * @return array<string, string>
+     */
+    private function languageLabels(): array
+    {
+        $system = Translator::LOCALE_NAMES[$this->translator->systemLocale()];
+
+        return ['auto' => $this->translator->trans('System (%language%)', ['%language%' => $system])] + Translator::LOCALE_NAMES;
+    }
+
+    /**
      * @param 'general'|'interface' $group
      *
      * @return list<SettingsRow>
@@ -286,7 +298,7 @@ final class SettingsController
                 options: $descriptor['options'] ?? null,
                 min: $descriptor['min'] ?? null,
                 max: $descriptor['max'] ?? null,
-                optionLabels: $descriptor['optionLabels'] ?? null,
+                optionLabels: 'language' === $key ? $this->languageLabels() : null,
                 step: $descriptor['step'] ?? null,
                 // Through the SAME call as the value above, so the two operands
                 // of isModified() cannot be produced differently. DEFAULT_SETTINGS

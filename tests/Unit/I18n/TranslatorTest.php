@@ -49,6 +49,32 @@ final class TranslatorTest extends TestCase
         $this->assertSame('fr', $translator->locale());
     }
 
+    public function testAutoIsTheSystemLocale(): void
+    {
+        $project = new TempProject(['messages.fr.xlf' => $this->xliff('fr', $this->unit('Save File', 'Enregistrer le fichier'))]);
+        $translator = new Translator('auto', $project->dir, systemLocale: 'fr');
+
+        $this->assertSame('fr', $translator->locale());
+        $this->assertSame('fr', $translator->systemLocale());
+        $this->assertSame('Enregistrer le fichier', $translator->trans('Save File'));
+
+        $translator->setLocale('en');
+        $translator->setLocale('auto');
+        $this->assertSame('fr', $translator->locale(), 'a live switch back to auto resolves too');
+    }
+
+    public function testAutoFollowsARightToLeftSystem(): void
+    {
+        $translator = new Translator('auto', systemLocale: 'he');
+
+        $this->assertTrue($translator->isRtl());
+    }
+
+    public function testAnUnsupportedSystemLocaleIsEnglish(): void
+    {
+        $this->assertSame('en', new Translator('auto', systemLocale: 'pt')->locale());
+    }
+
     public function testACacheDirDumpsTheCatalogAndStaysHonestAgainstEdits(): void
     {
         // One staleness leg only: Symfony's SelfCheckingResourceChecker

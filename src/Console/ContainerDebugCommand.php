@@ -57,6 +57,7 @@ final class ContainerDebugCommand extends Command
     /** The env channel IdeContainerFactory seeds per boot; dummy values suffice — this inspects wiring, it never runs services. */
     private const array ENV_DEFAULTS = [
         'PORTA_LOCALE' => 'en',
+        'PORTA_SYSTEM_LOCALE' => 'en',
         'PORTA_ANSI' => '1',
         'PORTA_THEME' => 'dark',
         'PORTA_LSP_COMMAND' => '',

@@ -3074,6 +3074,10 @@
         <source>Recent Changes</source>
         <target>Modifiche recenti</target>
       </trans-unit>
+      <trans-unit id="1088">
+        <source>System (%language%)</source>
+        <target>Sistema (%language%)</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

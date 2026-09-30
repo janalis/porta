@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
 use Porta\Editor\EditorPanes;
 use Porta\Editor\InlayHintMode;
+use Porta\Event\LocaleChanged;
 use Porta\Highlight\ColorMode;
 use Porta\Highlight\TerminalThemeFactory;
 use Porta\I18n\Translator;
@@ -50,6 +51,7 @@ final class LiveSettingsApplierTest extends TestCase
         ?CursorStyle $cursorStyle = null,
         ?TabBarWidget $tabBar = null,
         CodeEditorWidget $editor = new CodeEditorWidget(),
+        EventDispatcher $dispatcher = new EventDispatcher(),
     ): LiveSettingsApplier {
         $this->formatOnSave = self::buildFormatOnSave();
 
@@ -63,7 +65,7 @@ final class LiveSettingsApplierTest extends TestCase
             new EditorPanes(),
             $tabBar ?? new TabBarWidget(),
             TestWorkspaceLayout::create(rootDir: \sys_get_temp_dir()),
-            new EventDispatcher(),
+            $dispatcher,
             $this->formatOnSave,
             TestCompletionController::idle($editor),
             PixelGraphics::ratio(),
@@ -129,6 +131,22 @@ final class LiveSettingsApplierTest extends TestCase
         $applier->applyLocale('fr');
 
         $this->assertSame('fr', $translator->locale());
+    }
+
+    public function testApplyAutoLocaleAnnouncesTheSystemLocaleItResolvedTo(): void
+    {
+        $translator = new Translator('en', systemLocale: 'de');
+        $dispatcher = new EventDispatcher();
+        $announced = [];
+        $dispatcher->addListener(LocaleChanged::class, static function (LocaleChanged $e) use (&$announced): void {
+            $announced[] = $e->locale;
+        });
+        $applier = $this->applier(translator: $translator, dispatcher: $dispatcher);
+
+        $applier->applyLocale('auto');
+
+        $this->assertSame('de', $translator->locale());
+        $this->assertSame(['de'], $announced, 'listeners hear a locale, never `auto`');
     }
 
     public function testApplyCursorShapeSwitchesTheHolder(): void

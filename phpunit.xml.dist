@@ -38,6 +38,11 @@
         <!-- The suite asserts on git log/blame output and session timestamps;
              a laptop's local timezone must not be an input to any of it. -->
         <ini name="date.timezone" value="UTC"/>
+        <!-- The `language` setting defaults to `auto`, the system locale: a
+             laptop's LANG must not turn every unconfigured boot French. -->
+        <env name="LANG" value="en_US.UTF-8" force="true"/>
+        <env name="LC_ALL" value="" force="true"/>
+        <env name="LC_MESSAGES" value="" force="true"/>
         <!-- Keep tests away from the developer's real ~/.porta/plugins, while
              installing the bundled `tempest` highlighter as a *global* plugin so
              every booted Ide is coloured. Global plugins are opt-out, so this

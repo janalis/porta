@@ -111,11 +111,14 @@ final readonly class LiveSettingsApplier
         $this->completion->applyInlayHintMode(InlayHintMode::tryFrom($mode) ?? InlayHintMode::Inline);
     }
 
-    /** Live UI-locale switch: point the translator at $locale and announce it. */
+    /**
+     * Live UI-locale switch: point the translator at $locale and announce the
+     * locale it resolved to — `auto` is the system's, never a locale itself.
+     */
     public function applyLocale(string $locale): void
     {
         $this->translator->setLocale($locale);
-        $this->dispatcher->dispatch(new LocaleChanged($locale));
+        $this->dispatcher->dispatch(new LocaleChanged($this->translator->locale()));
     }
 
     /** What 100% zoom means on this display: a named pixel ratio, or `auto` to ask the system. */

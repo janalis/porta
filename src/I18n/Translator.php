@@ -34,6 +34,13 @@ final class Translator
     /** The supported UI locales, in menu order (English first). */
     public const array LOCALES = ['en', 'fr', 'de', 'es', 'it', 'ja', 'he'];
 
+    /**
+     * The `language` setting's choices: `auto` follows {@see SystemLocale}, then each locale.
+     *
+     * @var list<string>
+     */
+    public const array CHOICES = ['auto', ...self::LOCALES];
+
     /** Native display name per locale, for the settings language picker. */
     public const array LOCALE_NAMES = [
         'en' => 'English',
@@ -65,14 +72,17 @@ final class Translator
      *                                         debug=true keeps the dump honest
      *                                         against edited catalogs at the
      *                                         cost of a few file stats.
+     * @param string      $systemLocale        what `auto` resolves to — the
+     *                                         {@see SystemLocale} read at boot
      */
     public function __construct(
         string $locale = 'en',
         ?string $translationsDir = null,
         private readonly ?string $translationCacheDir = null,
+        private readonly string $systemLocale = 'en',
     ) {
         $this->coreDir = $translationsDir ?? \dirname(__DIR__, levels: 2).'/translations';
-        $this->translator = $this->build(self::normalize($locale));
+        $this->translator = $this->build($this->normalize($locale));
     }
 
     /**
@@ -119,12 +129,18 @@ final class Translator
 
     public function setLocale(string $locale): void
     {
-        $this->translator->setLocale(self::normalize($locale));
+        $this->translator->setLocale($this->normalize($locale));
     }
 
     public function locale(): string
     {
         return $this->translator->getLocale();
+    }
+
+    /** The locale `auto` resolves to. */
+    public function systemLocale(): string
+    {
+        return $this->normalize('auto');
     }
 
     /** 'rtl' for right-to-left locales (Hebrew), else 'ltr'. */
@@ -156,9 +172,13 @@ final class Translator
         return $translator;
     }
 
-    /** An unknown locale falls back to English. */
-    private static function normalize(string $locale): string
+    /** `auto` is the system's locale; an unknown locale falls back to English. */
+    private function normalize(string $locale): string
     {
+        if ('auto' === $locale) {
+            $locale = $this->systemLocale;
+        }
+
         return \in_array($locale, self::LOCALES, strict: true) ? $locale : 'en';
     }
 }
