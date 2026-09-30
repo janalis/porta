@@ -225,7 +225,9 @@ integrations = ["symfony", "phpunit"]
 #                                E2e monolith). Unmoved by the git extraction
 #                                because `plugins` is a linted path: the class
 #                                changed address, not shape
-#   halstead effort       21435  Help/MarkdownRenderer::render
+#   halstead effort       19275  Widget/Render/EditorRowAssembler::assemble (was 21435,
+#                                Help/MarkdownRenderer::render, until the preview
+#                                round split its block dispatch, 2026-09-30)
 #   halstead difficulty      30  Overlay/Presenter/WelcomeModalController::open
 #   halstead volume        3236  tests/E2e/IdeTest::testFullScenario — one
 #                                continuous scripted session, deliberately
@@ -314,7 +316,7 @@ too-many-properties = { threshold = 31 }
 too-many-enum-cases = { threshold = 61 }
 excessive-parameter-list = { threshold = 24 }
 kan-defect = { threshold = 8 }
-halstead = { effort-threshold = 21435, difficulty-threshold = 30, volume-threshold = 3236 }
+halstead = { effort-threshold = 19275, difficulty-threshold = 30, volume-threshold = 3236 }
 
 # Symfony coding standard, linter half (see the header). These four are off or
 # at `help` by default, and `help` never fails `--minimum-fail-level=note` —

@@ -12,12 +12,14 @@ namespace Porta\Editor;
  * This is a TEXT buffer's setting, not a viewer's: every mode keeps the real
  * document open, and Preview only detaches the editor the way a viewer tab
  * does — the buffer is still edited, saved and synced like any other.
+ *
+ * Backed, because the session keeps each tab's arrangement across restarts.
  */
-enum PreviewMode
+enum PreviewMode: string
 {
-    case Editor;
-    case Split;
-    case Preview;
+    case Editor = 'editor';
+    case Split = 'split';
+    case Preview = 'preview';
 
     /** The next arrangement in the order the toggles read, wrapping. */
     public function next(): self

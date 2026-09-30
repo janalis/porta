@@ -11,6 +11,7 @@ use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Editor\OpenFocus;
 use Porta\Editor\PreviewMode;
+use Porta\History\SessionRestorer;
 use Porta\Ide;
 use Porta\Layout\PreviewSplit;
 use Porta\Tests\Support\ClearsPortaLsp;
@@ -677,6 +678,36 @@ final class IdePreviewSplitTest extends TestCase
 
                     $tui->handleInput("\x1b[1;5H"); // Ctrl+Home
                     $this->await(static fn (): bool => \str_contains($grid(), '│ Porta'), what: 'and back up');
+                },
+            ],
+            columns: 120,
+        );
+    }
+
+    public function testATabComesBackInTheArrangementItWasLeftIn(): void
+    {
+        $project = $this->project();
+
+        $this->runIde(
+            $project,
+            $project->path('README.md'),
+            [
+                0 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
+                    $this->await(fn (): bool => \str_contains(\implode("\n", $this->screenGrid($tui, $terminal)), '│ Porta'), what: 'the split');
+                    Services::resolve($ide, CommandRegistry::class)->run('preview_only');
+                    Services::resolve($ide, SessionRestorer::class)->save();
+                },
+            ],
+            columns: 120,
+        );
+
+        $this->runIde(
+            $project,
+            null,
+            [
+                0 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
+                    $this->await(static fn (): bool => PreviewMode::Preview === self::mode($ide), what: 'the restored tab, still showing its preview alone');
+                    $this->assertSame('markdown-preview', $tui->getFocus()?->getId(), 'and the keys with it');
                 },
             ],
             columns: 120,

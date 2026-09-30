@@ -8,6 +8,7 @@ use Porta\Container\AsIdeService;
 use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
+use Porta\Editor\PreviewMode;
 use Porta\Workbench\EditorArea;
 use Symfony\Component\Tui\Tui;
 
@@ -47,6 +48,7 @@ final readonly class SessionRestorer
             if (null !== $active) {
                 $active->document->setCursor($buffer['line'], $buffer['col']);
                 $active->pinned = $buffer['pinned'];
+                $this->rearrange($active, $buffer['preview']);
             }
             $opened = true;
         }
@@ -68,6 +70,21 @@ final readonly class SessionRestorer
         return $opened;
     }
 
+    /**
+     * Put a previewed tab back in the arrangement it was left in — text,
+     * both, or the preview alone. A tab that no longer has a preview (its
+     * plugin is off now) and an arrangement this version does not know keep
+     * what opening gave them.
+     */
+    private function rearrange(Buffer $buffer, ?string $saved): void
+    {
+        // arrangePreview() itself refuses a tab with no preview.
+        $mode = PreviewMode::tryFrom((string) $saved);
+        if (null !== $mode) {
+            $this->bufferService->arrangePreview($buffer, $mode);
+        }
+    }
+
     public function save(): void
     {
         $buffers = [];
@@ -75,12 +92,13 @@ final readonly class SessionRestorer
             if ('help' === $buffer->paneId) {
                 continue; // a restored help path would reopen as editable source
             }
-            $buffers[] = [
-                'path' => $buffer->path,
-                'line' => $buffer->document->cursorLine,
-                'col' => $buffer->document->cursorCol,
-                'pinned' => $buffer->pinned,
-            ];
+            $buffers[] =
+                [
+                    'path' => $buffer->path,
+                    'line' => $buffer->document->cursorLine,
+                    'col' => $buffer->document->cursorCol,
+                    'pinned' => $buffer->pinned,
+                ] + (null === ($mode = $buffer->previewArrangement()) ? [] : ['preview' => $mode->value]);
         }
         $this->store->save($buffers, $this->buffers->active()?->path);
     }

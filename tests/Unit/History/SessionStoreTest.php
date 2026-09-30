@@ -17,12 +17,19 @@ final class SessionStoreTest extends TestCase
 
         $buffers = [
             ['path' => '/p/a.php', 'line' => 3, 'col' => 5, 'pinned' => true],
-            ['path' => '/p/b.php', 'line' => 0, 'col' => 0, 'pinned' => false],
+            ['path' => '/p/b.md', 'line' => 0, 'col' => 0, 'pinned' => false, 'preview' => 'preview'],
         ];
         $this->assertTrue($store->save($buffers, '/p/b.php'));
 
         $loaded = $store->load();
-        $this->assertSame($buffers, $loaded['buffers']);
+        $this->assertSame(
+            [
+                ['path' => '/p/a.php', 'line' => 3, 'col' => 5, 'pinned' => true, 'preview' => null],
+                ['path' => '/p/b.md', 'line' => 0, 'col' => 0, 'pinned' => false, 'preview' => 'preview'],
+            ],
+            $loaded['buffers'],
+            'a tab with no preview has no arrangement to keep',
+        );
         $this->assertSame('/p/b.php', $loaded['active']);
     }
 
@@ -106,8 +113,8 @@ final class SessionStoreTest extends TestCase
                 // No `pinned` key in these entries: a session written before
                 // pinning existed, which is the ordinary first launch after an
                 // upgrade. It reads as false rather than tripping the guard.
-                ['path' => '/p/a.php', 'line' => 0, 'col' => 0, 'pinned' => false],
-                ['path' => '/p/b.php', 'line' => 9, 'col' => 3, 'pinned' => false],
+                ['path' => '/p/a.php', 'line' => 0, 'col' => 0, 'pinned' => false, 'preview' => null],
+                ['path' => '/p/b.php', 'line' => 9, 'col' => 3, 'pinned' => false, 'preview' => null],
             ],
             $loaded['buffers'],
         );
@@ -133,7 +140,7 @@ final class SessionStoreTest extends TestCase
 
         $loaded = new SessionStore($project->dir)->load();
         $this->assertCount(1, $loaded['buffers']);
-        $this->assertSame(['path' => '/p/ok.php', 'line' => 2, 'col' => 0, 'pinned' => false], $loaded['buffers'][0]);
+        $this->assertSame(['path' => '/p/ok.php', 'line' => 2, 'col' => 0, 'pinned' => false, 'preview' => null], $loaded['buffers'][0]);
         $this->assertNull($loaded['active']);
     }
 

@@ -25,7 +25,7 @@ final readonly class SessionStore
     }
 
     /**
-     * @param list<array{path: string, line: int, col: int, pinned: bool}> $buffers
+     * @param list<array{path: string, line: int, col: int, pinned: bool, preview?: string}> $buffers
      */
     public function save(array $buffers, ?string $activePath): bool
     {
@@ -39,7 +39,7 @@ final readonly class SessionStore
     }
 
     /**
-     * @return array{buffers: list<array{path: string, line: int, col: int, pinned: bool}>, active: ?string}|null
+     * @return array{buffers: list<array{path: string, line: int, col: int, pinned: bool, preview: ?string}>, active: ?string}|null
      */
     public function load(): ?array
     {
@@ -63,6 +63,9 @@ final readonly class SessionStore
                 // Absent in sessions written before pinning existed, which is
                 // the ordinary case on the first launch after an upgrade.
                 'pinned' => true === ($buffer['pinned'] ?? false),
+                // A previewed tab's arrangement; absent for any other tab, and
+                // in every session written before previews existed.
+                'preview' => \is_string($buffer['preview'] ?? null) ? $buffer['preview'] : null,
             ];
         }
 
