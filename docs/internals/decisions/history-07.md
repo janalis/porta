@@ -1475,3 +1475,11 @@ measures the logical row:
   showed `חיפוש בקבצי vendor/` reading `/vendor`. A slash is no bracket.
 
 Every new test reads the row after `Bidi::reorder`.
+
+**Then a sweep against fribidi.** Every Hebrew catalog string holding Latin
+(373, placeholders filled with realistic values) went through `Bidi::reorder()`
+and `fribidi --rtl` side by side. Two differed. One was the arrows, which `Bidi`
+mirrors on purpose. The other was a real defect: symfony-lsp's download read
+`מוריד %42`, because a `%` resolved alone. `Bidi` now implements W5 and W6: `# $ %
+° ± ‰` are terminators that join a number they touch and are neutral anywhere
+else. The expected rows in the tests are fribidi's output.

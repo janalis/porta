@@ -624,6 +624,41 @@ final class BidiTest extends TestCase
         yield 'a lone closer' => [[')', 'a', '(', ')'], [[2, 3]]];
     }
 
+    /**
+     * W5: a terminator touching a number is part of it, on either side and in
+     * a run. `מוריד %42` was symfony-lsp's download progress. Every expected
+     * row here is fribidi's output for the same input.
+     */
+    #[DataProvider('numberTerminatorProvider')]
+    public function testATerminatorStaysWithItsNumber(string $logical, string $visual): void
+    {
+        $this->assertSame($visual, self::strip(Bidi::reorder($logical, BaseDirection::Rtl)));
+    }
+
+    /** @return iterable<string, array{string, string}> */
+    public static function numberTerminatorProvider(): iterable
+    {
+        yield 'after' => [self::SHALOM.' 42%', '42% '.self::SHALOM_VISUAL];
+        yield 'before' => [self::SHALOM.' $5', '$5 '.self::SHALOM_VISUAL];
+        yield 'a run of them' => [self::SHALOM.' 5%%', '5%% '.self::SHALOM_VISUAL];
+        yield 'degree and plus-minus' => [self::SHALOM." 20\u{B0} \u{B1}3", "\u{B1}3 20\u{B0} ".self::SHALOM_VISUAL];
+        yield 'first on the line' => ['%5 '.self::SHALOM, self::SHALOM_VISUAL.' %5'];
+        // Between a number and Hebrew, a plain neutral would take the Hebrew's
+        // side and cross the number; each terminator, on each side, must not.
+        foreach (['#', '$', '%', "\u{B0}", "\u{B1}", "\u{2030}"] as $terminator) {
+            yield $terminator.' after' => [self::SHALOM.' 5'.$terminator.' '.self::SHALOM, self::SHALOM_VISUAL.' 5'.$terminator.' '.self::SHALOM_VISUAL];
+            yield $terminator.' before' => [self::SHALOM.' '.$terminator.'5 '.self::SHALOM, self::SHALOM_VISUAL.' '.$terminator.'5 '.self::SHALOM_VISUAL];
+        }
+        // W6: nothing to touch, so an ordinary neutral.
+        yield 'alone' => [self::SHALOM.' %', '% '.self::SHALOM_VISUAL];
+        yield 'a space away' => [self::SHALOM.' % 5', '5 % '.self::SHALOM_VISUAL];
+        yield 'between latin and hebrew' => ['abc % '.self::SHALOM, self::SHALOM_VISUAL.' % abc'];
+        // Neutral, not numeric and not Latin: between two Latin words it joins
+        // their run, and before Latin after Hebrew it takes the Hebrew's side.
+        yield 'between latin words' => [self::SHALOM.' abc % def', 'abc % def '.self::SHALOM_VISUAL];
+        yield 'plus-minus before latin' => [self::SHALOM." \u{B1} abc", "abc \u{B1} ".self::SHALOM_VISUAL];
+    }
+
     /** Every zero-width mark is spent, not only the one the settings form uses. */
     public function testEveryDirectionalMarkIsSpent(): void
     {

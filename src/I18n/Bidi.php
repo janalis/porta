@@ -16,14 +16,16 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
  * Hebrew read right-to-left while paths, code and numbers stay left-to-right, and
  * right-anchors LTR content (trailing pad becomes leading pad) under an RTL base.
  *
- * Scope: W4 and W7 of the W-rules. W4 folds a single separator between two
- * European numbers into the number, so a line:column indicator, a decimal and a
- * thousands group survive; W7 makes a number preceded by Latin text Latin, so a
- * path with a line number, a charset like `UTF-8` and a version stay in one
- * piece. Absent: W1-W3, W5, W6, explicit embedding controls (LRE/RLE/PDF),
- * isolates (LRI/RLI/FSI/PDI), Arabic shaping, and paragraph-level base
- * detection (P2/P3 — the base is always passed in). N0 pairs brackets, so a
- * parenthesised group keeps both halves on one side of the text around it.
+ * Scope: W4 to W7 of the W-rules, and N0. W4 folds a single separator between
+ * two European numbers into the number, so a line:column indicator, a decimal
+ * and a thousands group survive; W5 binds a terminator to its number (`42%`)
+ * and W6 leaves any other one neutral; W7 makes a number preceded by Latin
+ * text Latin, so a path with a line number, a charset like `UTF-8` and a
+ * version stay in one piece. N0 pairs brackets, so a parenthesised group keeps
+ * both halves on one side of the text around it. Absent: W1-W3, explicit
+ * embedding controls (LRE/RLE/PDF), isolates (LRI/RLI/FSI/PDI), Arabic
+ * shaping, and paragraph-level base detection (P2/P3 — the base is always
+ * passed in).
  * These cover the IDE's chrome; richer bidi is out of scope.
  *
  * Where a run still needs pinning, the directional marks work: U+200E and
@@ -251,7 +253,7 @@ final class Bidi
         return $acc; // a click past the content maps to the logical line end
     }
 
-    /** Bidi class of a grapheme's base codepoint: R (rtl), EN (digit), L, or N (neutral). */
+    /** Bidi class of a grapheme's base codepoint: R (rtl), EN (digit), ET, CS, L, or N (neutral). */
     private static function classify(string $grapheme): string
     {
         // The zero-width cursor marker (and any stray control sequence) is neutral.
@@ -294,6 +296,12 @@ final class Bidi
         // because it is zero-width like the other two.
         if (0x200F === $cp) {
             return 'R';
+        }
+
+        // UAX#9 ET: a terminator that sticks to the number beside it (W5
+        // below) — `42%`, `$5`, `#3`, `20°` — and is neutral anywhere else.
+        if (0x23 === $cp || 0x24 === $cp || 0x25 === $cp || 0xB0 === $cp || 0xB1 === $cp || 0x2030 === $cp) {
+            return 'ET';
         }
 
         // UAX#9 CS/ES: the separators that can JOIN two numbers (W4 below).
@@ -353,7 +361,7 @@ final class Bidi
 
         // Resolve each neutral run to 'L' or 'R' from its strong neighbours,
         // treating numbers as R for the boundary test and the base at the edges.
-        $classes = self::pairBrackets(self::numbersAfterLatinReadAsLatin(self::joinNumberSeparators($classes), $direction), $glyphs, $direction);
+        $classes = self::pairBrackets(self::numbersAfterLatinReadAsLatin(self::numberTerminators(self::joinNumberSeparators($classes)), $direction), $glyphs, $direction);
         $resolved = $classes;
         $boundary = static fn (string $c): string => 'L' === $c ? 'L' : 'R'; // R, EN, (resolved) → R
         $baseDir = $baseRtl ? 'R' : 'L';
@@ -416,6 +424,41 @@ final class Bidi
 
             $joins = $i > 0 && $i < $last && 'EN' === $original[$i - 1] && 'EN' === $original[$i + 1];
             $classes[$i] = $joins ? 'EN' : 'N';
+        }
+
+        return $classes;
+    }
+
+    /**
+     * UAX#9 W5 and W6: a run of terminators touching a European number is
+     * part of it; any other terminator is an ordinary neutral.
+     *
+     * Without it the `%` of a progress figure resolved alone, took the
+     * paragraph direction and left for the far side: symfony-lsp's download
+     * read `מוריד %42`. Found by running every Hebrew catalog string through
+     * fribidi beside this class.
+     *
+     * @param list<string> $classes
+     *
+     * @return list<string>
+     */
+    private static function numberTerminators(array $classes): array
+    {
+        $count = \count($classes);
+        $i = 0;
+        while ($i < $count) {
+            if ('ET' !== $classes[$i]) {
+                ++$i;
+                continue;
+            }
+            $start = $i;
+            while ($i < $count && 'ET' === $classes[$i]) {
+                ++$i;
+            }
+            $touches = $start > 0 && 'EN' === $classes[$start - 1] || $i < $count && 'EN' === $classes[$i];
+            for ($j = $start; $j < $i; ++$j) {
+                $classes[$j] = $touches ? 'EN' : 'N';
+            }
         }
 
         return $classes;
