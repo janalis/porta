@@ -8,7 +8,9 @@ use PHPUnit\Framework\TestCase;
 use Porta\Editor\ChangeMarkKind;
 use Porta\Editor\DecorationStore;
 use Porta\Editor\DiagnosticSeverity;
+use Porta\Editor\Document;
 use Porta\Editor\GutterPart;
+use Porta\Editor\SelectionMode;
 
 final class DecorationStoreTest extends TestCase
 {
@@ -307,5 +309,66 @@ final class DecorationStoreTest extends TestCase
 
         $store->setRemoteCaret('/p/a.php', 'above', null);
         $this->assertSame([5, 7], $lines('/p/a.php'));
+    }
+
+    public function testAnAgentsCaretMovesAlongItsLineWithTheUsersTypingBeforeIt(): void
+    {
+        $store = new DecorationStore(static function (): void {});
+        $doc = new Document('abcdef');
+        $store->resetForBuffer([], lineCount: 1);
+        $store->setRemoteCaret('/p/a.php', 'agent', ['line' => 0, 'col' => 4, 'label' => 'x', 'slot' => 0]);
+        $col = static fn (): int => $store->remoteCaretsIn('/p/a.php')[0][0]['col'];
+        $edit = static function (\Closure $change) use ($store, $doc): void {
+            $change();
+            $store->remapForEdit($doc->cursorLine, $doc->getLineCount(), '/p/a.php', $doc);
+        };
+        $store->remoteCaretsIn('/p/a.php', $doc); // the frame that shows it measures its line
+        $store->remoteCaretsIn('/p/a.php', $doc); // and the next frame leaves it measured
+
+        $edit(static function () use ($doc): void {
+            $doc->setCursor(0, 1);
+            $doc->insert('XY'); // aXY|bcdef
+        });
+        $this->assertSame(6, $col(), 'typed before it: moved along');
+
+        $edit(static function () use ($doc): void {
+            $doc->setCursor(0, 7);
+            $doc->insert('Z'); // after it
+        });
+        $this->assertSame(6, $col(), 'typed after it: stays');
+
+        $edit(static function () use ($doc): void {
+            $doc->setCursor(0, 1);
+            $doc->beginSelect();
+            $doc->setCursor(0, 3, SelectionMode::Keep);
+            $doc->deleteSelection(); // XY gone
+        });
+        $this->assertSame(4, $col(), 'deleted before it: moved back');
+
+        $edit(static function () use ($doc): void {
+            $doc->setCursor(0, 3);
+            $doc->beginSelect();
+            $doc->setCursor(0, 5, SelectionMode::Keep);
+            $doc->deleteSelection(); // the text under it
+        });
+        $this->assertSame(3, $col(), 'deleted across it: to where the deletion began');
+
+        $edit(static function () use ($doc): void {
+            $doc->setCursor(0, 3);
+            $doc->insert('Q'); // right at it
+        });
+        $this->assertSame(4, $col(), 'typed AT it: pushed along, as text typed at a caret is');
+
+        $store->setRemoteCaret('/p/a.php', 'agent', ['line' => 0, 'col' => 4, 'label' => 'x', 'slot' => 0]);
+        $edit(static function () use ($doc): void {
+            $doc->setCursor(0, 0);
+            $doc->insert('!');
+        });
+        $this->assertSame(4, $col(), 'never measured, never moved — the edit measures it instead');
+        $edit(static function () use ($doc): void {
+            $doc->setCursor(0, 0);
+            $doc->insert('!');
+        });
+        $this->assertSame(5, $col(), 'and the next one moves it');
     }
 }

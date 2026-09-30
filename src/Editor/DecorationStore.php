@@ -61,6 +61,16 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
     private array $remoteCarets = [];
 
     /**
+     * The length each agent caret's line had when it was last measured — at
+     * the frame after it was placed, and after every edit since — so an edit
+     * on that line tells how far it moved the text after it. Absent until
+     * measured.
+     *
+     * @var array<string, array<string, int>> path => owner => bytes
+     */
+    private array $remoteLineLengths = [];
+
+    /**
      * Rows of a writer's text shown UNDER a line — a review thread, whole —
      * by writer, for {@see $annotationsByOwner}'s reason.
      *
@@ -192,7 +202,7 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
      * all of this. What it buys is that the marks are never silently stale in
      * between, which is the state a user spends most of their time in.
      */
-    public function remapForEdit(int $cursorLine, int $lineCount, ?string $path = null): void
+    public function remapForEdit(int $cursorLine, int $lineCount, ?string $path = null, ?Document $document = null): void
     {
         $delta = $lineCount - $this->vcsMarkLineCount;
         $this->vcsMarkLineCount = $lineCount;
@@ -204,7 +214,52 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
         // already. Exact for a single caret, which is every ordinary edit.
         $atLine = \max(0, $cursorLine - \max(0, $delta));
         $this->shiftRemoteCarets($path, $atLine, $delta);
+        if (null !== $path && null !== $document) {
+            if (0 === $delta) {
+                $this->shiftRemoteColumns($path, $document, $cursorLine);
+            }
+            $this->measureRemoteLines($path, $document, all: true);
+        }
         $this->remapVcsMarks($atLine, $delta);
+    }
+
+    /**
+     * An edit within one line moved the text after it along that line: an
+     * agent's caret there, past where the edit started — or at it, for typed
+     * text, which pushes a caret along as it would the user's own — moves
+     * with it, by how much the line grew or shrank. The edit started at the
+     * user's caret less what was just typed; a deletion started where the
+     * caret is now.
+     */
+    private function shiftRemoteColumns(string $path, Document $document, int $line): void
+    {
+        foreach ($this->remoteCarets[$path] ?? [] as $owner => $caret) {
+            $before = $this->remoteLineLengths[$path][$owner] ?? null;
+            if ($line !== $caret['line'] || null === $before) {
+                continue;
+            }
+            $grew = \strlen($document->getLine($line)) - $before;
+            $start = $grew > 0 ? $document->cursorCol - $grew : $document->cursorCol;
+            $after = $grew > 0 ? $caret['col'] >= $start : $caret['col'] > $start;
+            if (0 !== $grew && $after) {
+                $this->remoteCarets[$path][$owner]['col'] = \max($start, $caret['col'] + $grew);
+            }
+        }
+    }
+
+    /**
+     * Remember each caret's line length in $path — only the unmeasured ones
+     * at a frame, every one after an edit.
+     */
+    // @mago-expect lint:no-boolean-flag-parameter -- after an edit every length is stale; at a frame only the new carets lack one — that IS the one difference
+    private function measureRemoteLines(string $path, Document $document, bool $all = false): void
+    {
+        foreach ($this->remoteCarets[$path] ?? [] as $owner => $caret) {
+            if (!$all && \array_key_exists($owner, $this->remoteLineLengths[$path] ?? [])) {
+                continue;
+            }
+            $this->remoteLineLengths[$path][$owner] = \strlen($document->getLine($caret['line']));
+        }
     }
 
     /**
@@ -518,7 +573,7 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
     #[\Override]
     public function setRemoteCaret(string $path, string $owner, ?array $caret): void
     {
-        unset($this->remoteCarets[$path][$owner]);
+        unset($this->remoteCarets[$path][$owner], $this->remoteLineLengths[$path][$owner]);
         if (null !== $caret) {
             $this->remoteCarets[$path][$owner] = $caret;
         }
@@ -526,12 +581,17 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
     }
 
     /**
-     * The carets of other writers in one file, by 0-based line.
+     * The carets of other writers in one file, by 0-based line. Given the
+     * file's document — the editor's frame does — a caret placed since the
+     * last frame has its line measured, so the next edit can move it along.
      *
      * @return array<int, list<array{col: int, label: string, slot: int}>>
      */
-    public function remoteCaretsIn(?string $path): array
+    public function remoteCaretsIn(?string $path, ?Document $document = null): array
     {
+        if (null !== $path && null !== $document) {
+            $this->measureRemoteLines($path, $document);
+        }
         $byLine = [];
         foreach ($this->remoteCarets[$path ?? ''] ?? [] as $caret) {
             $byLine[$caret['line']][] = ['col' => $caret['col'], 'label' => $caret['label'], 'slot' => $caret['slot']];

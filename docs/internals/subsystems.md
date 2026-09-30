@@ -775,7 +775,8 @@ slot (`Role::Agent1`–`Agent4`) and one fade timer per (agent, file) through th
 `Scheduler`. It PUSHES each caret to the editor's decoration store as a report
 moves it (`EditorDecorationSink::setRemoteCaret`, keyed by file and agent, not
 cleared on a tab switch); in between, `DecorationStore::remapForEdit` shifts
-them with the user's own edits by the rule the git gutter marks follow, and the tab provider and tree decorations PULL `in()`/`files()` when
+them with the user's own edits by the rule the git gutter marks follow — and
+along their line, by how much it grew, once a frame has measured it — and the tab provider and tree decorations PULL `in()`/`files()` when
 they render. The editor paints the caret cell last in `LineSpans`, and the name
 takes the trailing cell second after a debug value. A timer finds its entry by
 id, so a rename that moved the entry still fades it.

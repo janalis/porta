@@ -1185,7 +1185,7 @@ final class CodeEditorWidget extends AbstractWidget implements
         // store works out where and by how much from these two numbers — see
         // {@see DecorationStore::remapForEdit()}. An agent's caret in this
         // file moves with its line the same way.
-        $this->decorations->remapForEdit($this->document->cursorLine, $this->document->getLineCount(), $this->filePath);
+        $this->decorations->remapForEdit($this->document->cursorLine, $this->document->getLineCount(), $this->filePath, $this->document);
         $this->invalidate();
         $this->callbacks->completion?->scheduleDidChange($this->document);
     }
@@ -1532,7 +1532,7 @@ final class CodeEditorWidget extends AbstractWidget implements
             carets: $multiActive ? $this->multiCaret->allCarets() : [],
             occurrences: $this->occurrences->spansFor($this->filePath, $doc->version, $doc->cursorLine, $doc->getCursorColUtf16(), $this->occurrencesMemo['spans']),
             brackets: $this->focused ? $this->matchingBrackets($doc) : null,
-            remoteCarets: $this->decorations->remoteCaretsIn($this->filePath),
+            remoteCarets: $this->decorations->remoteCaretsIn($this->filePath, $doc),
         );
     }
 
