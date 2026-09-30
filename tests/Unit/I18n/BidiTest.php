@@ -527,6 +527,103 @@ final class BidiTest extends TestCase
         $this->assertSame(AnsiUtils::visibleWidth($line), AnsiUtils::visibleWidth($out), 'and the row is exactly as wide as before');
     }
 
+    /**
+     * N0: a Hebrew label ending in a Latin parenthetical keeps both brackets
+     * round the Latin. Each half used to resolve alone, and the row read
+     * `LSP))` — the settings form's "format on save (LSP)", on screen.
+     */
+    public function testABracketPairHoldingLatinInHebrewTakesTheParagraphSide(): void
+    {
+        $out = self::strip(Bidi::reorder(self::SHALOM.' (LSP)', BaseDirection::Rtl));
+
+        $this->assertSame('(LSP) '.self::SHALOM_VISUAL, $out);
+    }
+
+    /** A Latin label ending in a parenthetical stays one left-to-right run, brackets and all. */
+    public function testABracketPairAfterLatinTakesTheLatinSide(): void
+    {
+        $out = self::strip(Bidi::reorder('demo (project)', BaseDirection::Rtl));
+
+        $this->assertSame('demo (project)', $out);
+    }
+
+    /** Under a left-to-right base, Hebrew in brackets after Hebrew is one right-to-left run with them. */
+    public function testABracketPairHoldingHebrewAfterHebrewMirrorsWithIt(): void
+    {
+        $out = self::strip(Bidi::reorder(self::SHALOM.' ('.self::SHALOM.')', BaseDirection::Ltr));
+
+        $this->assertSame('('.self::SHALOM_VISUAL.') '.self::SHALOM_VISUAL, $out);
+    }
+
+    /** A pair holding nothing strong is left to the neutral rules. */
+    public function testAnEmptyBracketPairStaysNeutral(): void
+    {
+        $out = self::strip(Bidi::reorder(self::SHALOM.' ()', BaseDirection::Rtl));
+
+        // Both halves resolve with the Hebrew and mirror, as they did before N0.
+        $this->assertSame('() '.self::SHALOM_VISUAL, $out);
+    }
+
+    /**
+     * BD16: a closing bracket pairs with the nearest open one of its kind and
+     * closes everything opened after it; one with no partner pairs nothing.
+     * Here `]` closes `[` and takes the stray `(` with it, so `)` is alone:
+     * the pair holds Latin after Hebrew and takes the paragraph side, and the
+     * lone `)` resolves by N1 like any neutral, mirroring at the far end.
+     */
+    public function testACrossedBracketPairsByTheRulesStack(): void
+    {
+        $out = self::strip(Bidi::reorder(self::SHALOM.' [a (b] c)', BaseDirection::Rtl));
+
+        $this->assertSame('(c [a (b] '.self::SHALOM_VISUAL, $out);
+    }
+
+    /**
+     * The strong text right against the opening bracket is what N0 looks back
+     * to, even at the very start of the line: `a(x)` stays whole.
+     */
+    public function testABracketPairLooksBackToTheCharacterBesideIt(): void
+    {
+        $this->assertSame('a(x)', self::strip(Bidi::reorder('a(x)', BaseDirection::Rtl)));
+    }
+
+    /** Any strong text of the paragraph direction inside the pair wins it, not only the first. */
+    public function testABracketPairHoldingBothDirectionsTakesTheParagraphs(): void
+    {
+        $out = self::strip(Bidi::reorder('demo (x '.self::SHALOM.')', BaseDirection::Rtl));
+
+        $this->assertSame('('.self::SHALOM_VISUAL.' x) demo', $out);
+    }
+
+    /** A pair with nothing strong in it is skipped, and the pairs after it still resolve. */
+    public function testAnEmptyPairDoesNotStopThePairsAfterIt(): void
+    {
+        $this->assertSame('a(x) ()', self::strip(Bidi::reorder('() a(x)', BaseDirection::Rtl)));
+    }
+
+    /**
+     * BD16 as a table: nested pairs come back in the order they OPEN, a
+     * closing bracket pairs once, with the nearest opener of its kind, and a
+     * crossing closer drops the openers above its partner.
+     *
+     * @param list<string>          $glyphs
+     * @param list<array{int, int}> $pairs
+     */
+    #[DataProvider('bracketPairProvider')]
+    public function testBracketsPairByTheRulesStack(array $glyphs, array $pairs): void
+    {
+        $this->assertSame($pairs, Probe::invokeStatic(Bidi::class, 'bracketPairs', $glyphs));
+    }
+
+    /** @return iterable<string, array{list<string>, list<array{int, int}>}> */
+    public static function bracketPairProvider(): iterable
+    {
+        yield 'nested' => [['(', '[', 'a', ']', ')'], [[0, 4], [1, 3]]];
+        yield 'an unclosed opener under a pair' => [['(', '(', 'a', ')'], [[1, 3]]];
+        yield 'crossed' => [['[', 'a', '(', 'b', ']', 'c', ')'], [[0, 4]]];
+        yield 'a lone closer' => [[')', 'a', '(', ')'], [[2, 3]]];
+    }
+
     /** Every zero-width mark is spent, not only the one the settings form uses. */
     public function testEveryDirectionalMarkIsSpent(): void
     {

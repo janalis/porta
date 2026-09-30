@@ -1317,7 +1317,7 @@ final class SettingsFormWidgetTest extends TestCase
     public static function mirroredValueProvider(): iterable
     {
         // The CONTROL is what the mark protects; the detail beyond it is prose
-        // and mirrors, separated by the space the spent mark leaves behind.
+        // and mirrors, separated by the separator's own space.
         yield 'choice' => [new SettingsRow('theme', 'ערכת נושא', SettingsRowKind::Choice, 'dark', false, ['dark', 'light']), '┃ dark   ▾ ┃'];
         // A right-to-left VALUE runs on into the box's neutrals and mirrors
         // the whole box as one: intact, its arrow at the left — where a
@@ -1329,7 +1329,16 @@ final class SettingsFormWidgetTest extends TestCase
         yield 'action' => [new SettingsRow('rm', 'demo (project)', SettingsRowKind::Action, 'Remove', false), '┃  Remove  ┃'];
         // A Latin label ending in punctuation keeps its closing parenthesis:
         // between Latin and the gap's right-to-left mark it used to mirror
-        // away, and the row read `(demo (project`.
+        // away, and the row read `(demo (project`. Bidi pairs the brackets (N0).
+        // A trailing slash is no bracket; the label's own mark keeps it.
+        yield 'hebrew label ending in a latin path' => [
+            new SettingsRow('vendor', 'חיפוש בקבצי vendor/', SettingsRowKind::Bool, true, false),
+            'vendor/ יצבקב שופיח',
+        ];
+        yield 'hebrew label with a latin parenthetical' => [
+            new SettingsRow('fmt', 'עיצוב בעת שמירה (LSP)', SettingsRowKind::Bool, true, false),
+            '(LSP) הרימש תעב בוציע',
+        ];
         yield 'latin label' => [new SettingsRow('rm', 'demo (project)', SettingsRowKind::Action, 'Remove', false), 'demo (project)'];
         yield 'int' => [new SettingsRow('indent', 'גודל הזחה', SettingsRowKind::Int, 4, false, null, 1, 8), '┃ ◂  4   ▸ ┃'];
         yield 'int range' => [new SettingsRow('indent', 'גודל הזחה', SettingsRowKind::Int, 4, false, null, 1, 8), '1-8'];

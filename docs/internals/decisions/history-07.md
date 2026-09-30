@@ -1459,3 +1459,19 @@ the measure: a punctuation-ended label no longer widens the label column.
 of the row. The padding search and the known gap from Part 6, a row whose
 right-to-left text starts before any padding going out unfrozen, are both gone.
 
+**Follow-up the same day, from driving the IDE in Hebrew** against a HEAD~1
+capture. Three defects showed that no width test could see, because each
+measures the logical row:
+
+- The settings gap put its spaces after the left-to-right mark. They joined the
+  control's run and were drawn on its far side: `│ ✓ │Markdown`. The spaces go
+  between the marks now.
+- `Ctrl+,` read `,+Ctrl` in the File menu, a pre-existing defect. The comma sat
+  between Latin and the paragraph edge. The menu and the keybindings list now
+  close the chord with a left-to-right mark.
+- `עיצוב בעת שמירה (LSP)` read `LSP))`, also pre-existing. `Bidi` now
+  implements N0 (bracket pairs by BD16). `SettingsRowLayout::label()` keeps
+  its mark all the same: removing it passed every unit test, and the drive
+  showed `חיפוש בקבצי vendor/` reading `/vendor`. A slash is no bracket.
+
+Every new test reads the row after `Bidi::reorder`.

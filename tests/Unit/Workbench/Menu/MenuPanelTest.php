@@ -247,6 +247,16 @@ final class MenuPanelTest extends TestCase
         $this->assertCount(1, \array_unique($columns), 'every shortcut is in the same column: '.\json_encode($columns));
     }
 
+    /** A shortcut ending in punctuation keeps it: `Ctrl+,` read `,+Ctrl` in the mirrored File menu. */
+    public function testAMirroredShortcutEndingInPunctuationStaysWhole(): void
+    {
+        $items = [new MenuItem('הגדרות…', 'Ctrl+,', static fn (): null => null)];
+
+        $row = MenuPanel::segments($items, 0, 30, new Styles(DarkTheme::definition()), BaseDirection::Rtl)[0]['segment'];
+
+        $this->assertStringContainsString('Ctrl+,', AnsiUtils::stripAnsiCodes(Bidi::reorder($row, BaseDirection::Rtl)));
+    }
+
     /**
      * A segment is exactly the panel's width, in either direction.
      *

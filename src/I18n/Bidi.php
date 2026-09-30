@@ -21,8 +21,9 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
  * thousands group survive; W7 makes a number preceded by Latin text Latin, so a
  * path with a line number, a charset like `UTF-8` and a version stay in one
  * piece. Absent: W1-W3, W5, W6, explicit embedding controls (LRE/RLE/PDF),
- * isolates (LRI/RLI/FSI/PDI), the bracket-pair algorithm (N0), Arabic shaping,
- * and paragraph-level base detection (P2/P3 — the base is always passed in).
+ * isolates (LRI/RLI/FSI/PDI), Arabic shaping, and paragraph-level base
+ * detection (P2/P3 — the base is always passed in). N0 pairs brackets, so a
+ * parenthesised group keeps both halves on one side of the text around it.
  * These cover the IDE's chrome; richer bidi is out of scope.
  *
  * Where a run still needs pinning, the directional marks work: U+200E and
@@ -187,7 +188,7 @@ final class Bidi
             return $line; // LTR base with no RTL runs: already in visual order
         }
 
-        $levels = self::levels($classes, $direction);
+        $levels = self::levels($classes, \array_column($cells, column_key: 'g'), $direction);
         $order = self::visualOrder($levels);
 
         return self::serialize($cells, $levels, $order);
@@ -225,7 +226,7 @@ final class Bidi
             return $visualCol;
         }
 
-        $levels = self::levels($classes, $direction);
+        $levels = self::levels($classes, \array_column($glyphs, column_key: 'g'), $direction);
         $order = self::visualOrder($levels);
 
         $logicalStart = [];
@@ -340,10 +341,11 @@ final class Bidi
      * matching side (N1) or the base direction (N2), numbers counting as R (N1).
      *
      * @param list<string> $classes
+     * @param list<string> $glyphs  the cells the classes were read from, for N0
      *
      * @return list<int>
      */
-    private static function levels(array $classes, BaseDirection $direction): array
+    private static function levels(array $classes, array $glyphs, BaseDirection $direction): array
     {
         $baseRtl = BaseDirection::Rtl === $direction;
         $base = $baseRtl ? 1 : 0;
@@ -351,7 +353,7 @@ final class Bidi
 
         // Resolve each neutral run to 'L' or 'R' from its strong neighbours,
         // treating numbers as R for the boundary test and the base at the edges.
-        $classes = self::numbersAfterLatinReadAsLatin(self::joinNumberSeparators($classes), $direction);
+        $classes = self::pairBrackets(self::numbersAfterLatinReadAsLatin(self::joinNumberSeparators($classes), $direction), $glyphs, $direction);
         $resolved = $classes;
         $boundary = static fn (string $c): string => 'L' === $c ? 'L' : 'R'; // R, EN, (resolved) → R
         $baseDir = $baseRtl ? 'R' : 'L';
@@ -454,6 +456,146 @@ final class Bidi
         }
 
         return $classes;
+    }
+
+    /** The opening bracket each closing one pairs with (UAX#9 BD16, Bidi_Paired_Bracket). */
+    private const array BRACKET_PAIRS = [')' => '(', ']' => '[', '}' => '{'];
+
+    /** BD16's stack depth: past it, the rest of the paragraph pairs nothing. */
+    private const int BRACKET_STACK_LIMIT = 63;
+
+    /**
+     * UAX#9 N0: a matched bracket pair takes ONE direction, from what it holds.
+     *
+     * Holding strong text of the paragraph direction, both halves take it.
+     * Holding only the opposite direction, they take that when the strong text
+     * before the opening bracket agrees, and the paragraph direction when it
+     * does not. Holding nothing strong, they stay neutral for N1.
+     *
+     * Without it each half resolved alone against its own neighbours, and a
+     * Hebrew label ending `(LSP)` came out `LSP))`: the opening bracket sat
+     * between Hebrew and Latin and took the paragraph's side, the closing one
+     * sat between Latin and whatever followed and took another.
+     *
+     * Pairs resolve in the order they open, and a resolved pair counts as
+     * strong for the ones after it, as the rule says.
+     *
+     * @param list<string> $classes
+     * @param list<string> $glyphs
+     *
+     * @return list<string>
+     */
+    private static function pairBrackets(array $classes, array $glyphs, BaseDirection $direction): array
+    {
+        $embedding = BaseDirection::Rtl === $direction ? 'R' : 'L';
+        foreach (self::bracketPairs($glyphs) as [$open, $close]) {
+            $pairDirection = self::pairDirection($classes, $open, $close, $embedding);
+            if (null === $pairDirection) {
+                continue;
+            }
+            $classes[$open] = $pairDirection;
+            $classes[$close] = $pairDirection;
+        }
+
+        return $classes;
+    }
+
+    /**
+     * The direction N0 gives the pair at $open and $close; null when it holds
+     * nothing strong and is left to N1.
+     *
+     * @param list<string> $classes
+     */
+    private static function pairDirection(array $classes, int $open, int $close, string $embedding): ?string
+    {
+        $inside = self::strongIn($classes, $open + 1, $close);
+        if (\in_array($embedding, $inside, strict: true)) {
+            return $embedding;
+        }
+        if ([] === $inside) {
+            return null;
+        }
+
+        // Only the opposite direction inside: it wins when the text before agrees.
+        $opposite = 'R' === $embedding ? 'L' : 'R';
+
+        return $opposite === self::strongBefore($classes, $open, $embedding) ? $opposite : $embedding;
+    }
+
+    /**
+     * Matched bracket pairs by BD16, ordered by their opening bracket.
+     *
+     * @param list<string> $glyphs
+     *
+     * @return list<array{int, int}>
+     */
+    private static function bracketPairs(array $glyphs): array
+    {
+        /** @var list<array{string, int}> $stack the open brackets, innermost last */
+        $stack = [];
+        /** @var list<array{int, int}> $pairs */
+        $pairs = [];
+        foreach ($glyphs as $i => $glyph) {
+            if (\in_array($glyph, self::BRACKET_PAIRS, strict: true)) {
+                if (self::BRACKET_STACK_LIMIT === \count($stack)) {
+                    break;
+                }
+                $stack[] = [$glyph, $i];
+                continue;
+            }
+            $opener = self::BRACKET_PAIRS[$glyph] ?? null;
+            if (null === $opener) {
+                continue;
+            }
+            for ($depth = \count($stack) - 1; $depth >= 0; --$depth) {
+                [$bracket, $at] = $stack[$depth];
+                if ($opener !== $bracket) {
+                    continue;
+                }
+                $pairs[] = [$at, $i];
+                $stack = \array_slice($stack, offset: 0, length: $depth);
+                break;
+            }
+        }
+        \sort($pairs);
+
+        return $pairs;
+    }
+
+    /**
+     * The strong directions in [$from, $to), a number counting as R (N0).
+     *
+     * @param list<string> $classes
+     *
+     * @return list<string>
+     */
+    private static function strongIn(array $classes, int $from, int $to): array
+    {
+        $found = [];
+        for ($i = $from; $i < $to; ++$i) {
+            if ('N' === $classes[$i]) {
+                continue;
+            }
+            $found[] = 'L' === $classes[$i] ? 'L' : 'R';
+        }
+
+        return $found;
+    }
+
+    /**
+     * The first strong direction before $index, the paragraph's when none is.
+     *
+     * @param list<string> $classes
+     */
+    private static function strongBefore(array $classes, int $index, string $embedding): string
+    {
+        for ($i = $index - 1; $i >= 0; --$i) {
+            if ('N' !== $classes[$i]) {
+                return 'L' === $classes[$i] ? 'L' : 'R';
+            }
+        }
+
+        return $embedding;
     }
 
     /**

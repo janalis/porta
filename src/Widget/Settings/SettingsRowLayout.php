@@ -61,13 +61,13 @@ final readonly class SettingsRowLayout
     /**
      * A label as a row draws it, measured here so the column fits it whole.
      *
-     * In a mirrored form a label that ENDS in punctuation — `עיצוב בעת שמירה
-     * (LSP)`, a plugin's `demo (project)` — gets a left-to-right mark after
-     * it: its closing parenthesis sat between the Latin it closes and the
-     * gap's right-to-left mark, took the paragraph direction, left for the far
-     * side and mirrored, and the row read `(demo (project`. A label ending in
-     * a letter needs no mark, and gets none: its column stays the same in both
-     * directions.
+     * In a mirrored form a label that ENDS in punctuation — `חיפוש בקבצי
+     * vendor/` — gets a left-to-right mark after it: the slash sat between the
+     * Latin it ends and the gap's right-to-left mark, took the paragraph
+     * direction and left for the far side, and the row read `/vendor`. A
+     * closing bracket no longer needs it ({@see \Porta\I18n\Bidi} pairs
+     * brackets), but the mark does it no harm. A label ending in a letter
+     * needs no mark, and gets none.
      */
     public static function label(string $label, BaseDirection $direction): string
     {

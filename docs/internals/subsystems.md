@@ -811,18 +811,19 @@ map visual → logical per pane before hit-testing.
 
 Two limits worth knowing. The marker is whole-pane, so a verbatim pane's own
 translated headings render left-to-right beside mirrored chrome; the results and
-debug panels carry both. And `Bidi` implements W4 and W7 but not the rest of
-the W-rules, and has no isolates and no bracket-pair algorithm — so a bracketed
-group whose delimiters sit between opposite directions still needs a mark.
+debug panels carry both. And `Bidi` implements W4, W7 and N0 (bracket pairs)
+but not the rest of the W-rules, and has no isolates — so a run whose edge sits
+between opposite directions still needs a mark.
 
 Where a run needs pinning, the **directional marks work**: U+200E and U+200F are
 classified strong, measure no column, and `Bidi` drops each one on the way out.
 A mark never stands in for a space: a gap beside one writes its own. The settings form puts
 one either side of a row's CONTROL — a select's box, `[✓]`, a button are machine
 data and would otherwise lose a delimiter to the paragraph direction. The detail
-clause opens with a right-to-left mark for the same reason from the other side,
-and a label ending in punctuation (`demo (project)`) closes with a left-to-right
-one (`SettingsRowLayout::label()`). The detail
+clause opens with a right-to-left mark for the same reason from the other side.
+A label ending in other punctuation (`vendor/`) closes with a left-to-right
+mark (`SettingsRowLayout::label()`); a parenthetical (`עיצוב בעת שמירה (LSP)`)
+would need none, since N0 gives both brackets the side of what they hold. The detail
 clause past the control is deliberately left OUTSIDE the marks: it is translated
 prose and belongs mirrored, and wrapping it is what broke the scope row.
 
@@ -831,4 +832,6 @@ one to begin the value's. A label whose own text ends in a Latin run — `שרת
 `הצג TODO` — is strong left-to-right just as the value beside it is, so without
 the first mark the two merge and the value is drawn inside the label, taking the
 column with it. `SettingsFormWidget`, `KeybindingsListWidget` and `MenuPanel`
-each hand-roll such a row and each carries the pair.
+each hand-roll such a row and each carries the pair. The chord in the last two
+also gets a left-to-right mark AFTER it: a chord ending in punctuation (`Ctrl+,`)
+otherwise loses the comma to the paragraph and reads `,+Ctrl`.

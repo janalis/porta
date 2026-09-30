@@ -576,6 +576,18 @@ final class KeybindingsListWidgetTest extends TestCase
         $this->assertSame($width - $columns['en'] - \strlen('Ctrl+S'), $columns['he']);
     }
 
+    /** A chord ending in punctuation keeps it: `Ctrl+,` read `,+Ctrl`. */
+    public function testAMirroredChordEndingInPunctuationStaysWhole(): void
+    {
+        $widget = new KeybindingsListWidget(new Translator('he'));
+        AttachedStyles::attach($widget);
+        $widget->setRows([new KeybindingRow('a', 'הגדרות', 'Ctrl+,', false)]);
+
+        $mirrored = AnsiUtils::stripAnsiCodes(Bidi::reorder($widget->render(new RenderContext(52, 4))[1], BaseDirection::Rtl));
+
+        $this->assertStringContainsString('Ctrl+,', $mirrored);
+    }
+
     /** And a Latin tail stays with its label rather than crossing the chord. */
     public function testALabelEndingInLatinIsNotTornAroundTheChord(): void
     {

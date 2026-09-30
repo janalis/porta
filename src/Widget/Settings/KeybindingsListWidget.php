@@ -353,7 +353,10 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
             // the label's run the two merge and the chord is drawn inside the
             // label. The mark takes no column, and Bidi drops it on the way out.
             $divide = $this->translator->isRtl() ? Bidi::RTL_MARK.' ' : ' ';
-            $text = AnsiText::truncate($label.$divide.$right.' ', $width, pad: true, ellipsis: '');
+            // A mark after the chord too, or one ending in punctuation loses it
+            // to the paragraph direction: `Ctrl+,` read `,+Ctrl`.
+            $close = $this->translator->isRtl() ? Bidi::LTR_MARK : '';
+            $text = AnsiText::truncate($label.$divide.$right.$close.' ', $width, pad: true, ellipsis: '');
             $selected = $index === $this->list->selected();
             $lines[] = $this->shadeRow($this->barred($text, $selected), $selected, $index === $this->hoveredIndex);
         }
