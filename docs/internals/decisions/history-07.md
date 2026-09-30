@@ -1121,3 +1121,39 @@ processes; the command would save seconds and add a 100%-covered console command
 *Re-opens on:* the Unit suite passing ~60s (then `test:changed` pays), or core
 growing its own tests for the 22 plugin-only files (then drop Plugins from the
 `src` pass).
+
+## Agent-speed round 3: what repeated editing was worth a tool (2026-09-30)
+
+**Built: `bin/porta-dev i18n:add` and `composer mutate:clean`.** The catalogs are
+the most-edited files after this history (~150 commits each), and a string was
+seven hand edits with an id picked by eye — where a duplicate id empties the
+whole locale without an error. `mutate:clean` exists because every `mutate` run
+leaves ~300MB and hand runs had left 1.5GB.
+
+**Declined, each because the double entry IS the guard:**
+
+- **`ThemeLockTest` against a golden file.** Restating every theme value is what
+  makes a colour change deliberate. A regenerate flag turns that into one
+  command anyone can run without looking — a lock with the key in it.
+- **The arch allowlist as a data file with `arch --write`.** The drift message
+  already names the edge and the fix, so adding one is a one-line edit; most
+  lines carry a comment saying why the coupling is allowed. `--write` would add
+  edges with no reason attached, which is the ratchet's whole point.
+
+**Declined as churn without payoff:**
+
+- **An `IdeE2eTestCase` for the `RunsIde` + `PreservesPath` + `ClearsPortaLsp`
+  trio.** Three one-line `use`s that compose as `#[After]` hooks, the house
+  shape; ~45 files of churn to save nothing per test.
+- **A `#[NoPath]` attribute.** `putenv('PATH=/nonexistent')` plus `PreservesPath`
+  is the idiom, not a missing rig. The two hand-rolled saves
+  (`ContainerSmokeTest`, `PluginCommandsTest`) are scoped `try/finally` blocks.
+- **Splitting `tests/Unit/IdeHelpersTest.php` (1,240 lines).** A grab-bag, but its
+  shared setUp copied into six files trips the zero-clone gate, and every
+  section is found by grep.
+- **A doc test that `docs/events.md` lists every event.** The page explains the
+  mechanism; it is not a catalogue, and its only stale fact was a count — now
+  removed rather than guarded.
+
+*Re-opens on:* a theme or allowlist edit landing wrong because the second entry
+was mis-typed rather than skipped; E2e boilerplate causing a real defect.
