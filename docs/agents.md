@@ -58,13 +58,19 @@ the lines you selected, or at the file, as an `@` mention.
 
 **Claude's proposed edits are shown here.** When Claude wants to change a file,
 Porta brings the file to the front with the change applied in place, as one
-undoable edit, and asks you to **Accept** or **Reject**:
+undoable edit. The **Claude's Proposed Change** list in the dock shows the
+change as a diff: the lines it removes (`-`), the ones it adds (`+`) and a
+little around them. A row takes you to its line. Porta then asks you to
+**Accept** or **Reject**:
 
 - **Accept** saves the file as it stands, including anything you touched up
   before accepting.
 - **Reject** puts the old text back.
 
-Claude waits for your answer. If you dismiss the question, **Review Claude's
+Claude asks this only for an edit it would otherwise ask you to approve. An
+edit your Claude settings already allow (an `Edit` allow rule, or accept-edits
+mode) is made without asking, here or in the terminal. Claude waits for your
+answer. If you dismiss the question, **Review Claude's
 Proposed Change** brings it back. While a proposal is shown, Claude Code appears as
 any agent does: its caret and name at the change, a ✦ on the file's tab.
 Local history keeps the file as it was before Claude's first change to it. A file with unsaved edits in Porta is not
