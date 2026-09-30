@@ -361,9 +361,10 @@ run → decode → `setDiagnostics` → count flash) and
 process ceiling, the token → themed-ANSI conversion).
 
 **The test for what belongs in a base is the gate boundary, not
-deduplication.** Plugin files sit outside mago's analyzer and outside the
-coverage gate, so logic that must be covered and analysed moves into `src/` even
-at one caller.
+deduplication.** Plugin files are analysed like `src/` (`mago.toml` `paths`)
+but graded for coverage by that plugin's OWN tests alone (`coverage:plugins`),
+so logic core's suites must cover — shared by every plugin that extends the
+base — moves into `src/` even at one caller.
 
 Third-party plugins may extend these or implement `PortaPlugin` directly;
 `PluginLoader` only ever checks `instanceof PortaPlugin`.

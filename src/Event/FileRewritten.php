@@ -17,7 +17,8 @@ namespace Porta\Event;
  * `local-history` snapshots on {@see BufferSaved}, which needs a buffer, and
  * the editor's undo stack is per document — so a twenty-file rename left
  * eighteen files changed with NO recovery path at all, which
- * `docs/internals/decisions.md` carried as a known hole.
+ * the decision history carried as a known hole (`docs/internals/decisions/history-02.md`,
+ * "A rewritten file keeps what it replaced").
  *
  * It is deliberately not a save. A save is something the user did and the
  * buffer's own history covers it; this is something a server asked for, to a

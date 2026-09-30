@@ -48,7 +48,8 @@ $_ENV['PORTA_CACHE_DIR'] = $portaCacheDir;
 // phpunit.xml.dist, which keeps php-code-coverage's static analyser (whose
 // executable-line map disagrees with pcov's on match expressions) out of the
 // paratest merge entirely. It is also what collapses every worker's PathReducer
-// base to `<repo>/src` so the coverage merge resolves at all (decisions.md).
+// base to `<repo>/src` so the coverage merge resolves at all (docs/internals/decisions/history-01.md,
+// "The verify loop, measured").
 //
 // Both reasons are about the PARALLEL `src` run. A caller that knows it is
 // neither parallel nor grading `src` — `composer coverage:plugins`, one serial

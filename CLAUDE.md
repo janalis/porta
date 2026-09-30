@@ -14,30 +14,30 @@ routed below — read the page before working in that area, not after.
 ```bash
 composer verify   composer verify:quick  composer dev   composer test[:unit|:e2e|:plugins]  composer arch  composer container
 composer analyze  composer lint   composer format  composer format:check  composer rector  composer rector:check
-composer coverage:check   composer coverage:src   composer coverage:plugins   composer duplication
+composer coverage:check   composer coverage:src   composer coverage:plugins   composer duplication   composer mutate   composer flake:scan
 ```
 
-Always invoke the gates through the composer scripts. Capture their output rather than
-paging it: `composer analyze > /tmp/x.log 2>&1; echo "exit=$?"`.
+Always invoke the gates through the composer scripts, output captured, not paged:
+`composer analyze > /tmp/x.log 2>&1; echo "exit=$?"`. The `gates` skill has the inner loop.
 
-The parallel gates default to HALF the cores, because a dev box usually shares them with
-runners or another agent (CI sets `PORTA_TEST_PROCESSES: auto`). Turn it down with
-`PORTA_TEST_PROCESSES=4 nice -n 10`, or up with `auto`; `contributing.md` has the numbers.
+The parallel gates default to HALF the cores (the plugin shards to ¾), because a dev box is
+usually shared (CI sets `PORTA_TEST_PROCESSES: auto`). Throttle BOTH: `PORTA_TEST_PROCESSES=4
+PORTA_SHARD_PROCESSES=4 nice -n 10`, or raise with `auto`; `contributing.md` has the numbers.
 
 ## Definition of done — `composer verify` green
 
-All eight, cheapest first, stopping at the first failure; `verify:quick` skips the tail.
+Eight, in run order, stopping at the first failure; `verify:quick` is the first six.
 
-- `composer coverage:check` — **100% line coverage** over `src/` AND every plugin's own
-  `src/`, by that plugin's OWN tests. It runs the suite, so `composer test` is not a gate.
-- `composer analyze` and `composer lint` — **zero findings each** at any severity: the
+- `composer format:check` clean; `composer rector:check` **no pending change** — skip, with why.
+- `composer lint` and `composer analyze` — **zero findings each** at any severity: the
   scripts pass `--minimum-fail-level=note`, where mago's own default fails on errors only.
   Fix, or suppress with a reasoned `// @mago-expect lint:<rule> -- why`.
 - `composer arch` — fails on drift in EITHER direction. A new edge is added to the
   allowlist in the same commit; a vanished edge is removed from it.
 - `composer duplication` — **zero clones** tree-wide, no allowlist: share it, or say in
   the code why the copy is the honest shape.
-- `composer format:check` clean; `composer rector:check` **no pending change** — skip, with why.
+- `composer coverage:src` then `coverage:plugins` (= `coverage:check`) — **100% line coverage**
+  over `src/` AND every plugin's own `src/`, by its OWN tests. `composer test` is not a gate.
 
 ## Hard rules
 
@@ -46,8 +46,7 @@ All eight, cheapest first, stopping at the first failure; `verify:quick` skips t
 - The formatter **never re-wraps lines**. Keep your own line breaks.
 - **Never `lazy: true`** on a container definition. Every definition is shared.
 - **One-consumer interfaces are forbidden**, as is widening a role for one caller.
-- **FQCN is determined by path**, so a move is a pure rename. Grep the old namespace to
-  prove zero.
+- **FQCN is determined by path**, so a move is a pure rename. Grep the old namespace: zero.
 - **Events carry scalars, enums and VOs — never widget instances.** Never dispatch from a
   render path. The dispatcher is an optional TRAILING constructor argument on a widget.
 - A command event (`…Requested`) has **exactly one** listener; a fact may have any number.
@@ -75,6 +74,7 @@ All eight, cheapest first, stopping at the first failure; `verify:quick` skips t
 | add or move a class, pick a namespace | `docs/internals/code-map.md` |
 | add a service, an attribute, a factory | `docs/internals/container.md` |
 | touch rendering, input, dock, overlays, git, LSP | `docs/internals/subsystems.md` |
+| change how a control, toast, tab or list LOOKS | `docs/internals/ui-style.md` |
 | change plugin loading, ordering, the API surface | `docs/internals/plugin-system.md` |
 | write a test, or chase a flake | `docs/internals/testing.md` |
 | propose a refactor or a new seam | `docs/internals/decisions.md` |
@@ -83,8 +83,8 @@ All eight, cheapest first, stopping at the first failure; `verify:quick` skips t
 
 ## Settled — do not re-propose without new evidence
 
-Each was measured and turned down. `docs/internals/decisions.md` has the numbers and says
-what would re-open it. Re-proposing one costs a round.
+Each was measured and turned down. `docs/internals/decisions.md` says what would re-open it;
+its dated history (look entries up, never read it whole) has the numbers. Re-proposing costs a round.
 
 - Adopting FrameworkBundle or a Kernel; `inline_factories`; `tagged_locator()` for the
   locator; `classmap-authoritative` in `composer.json`.

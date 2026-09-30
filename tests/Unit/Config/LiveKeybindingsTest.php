@@ -52,7 +52,7 @@ final class LiveKeybindingsTest extends TestCase
      *
      * The global config layer was landed on the claim that this comes "for
      * free" because rebuild() re-reads the file — true, and asserted nowhere,
-     * which is the same shape as a rule recorded in decisions.md and left
+     * which is the same shape as a rule recorded in the decision history (`history-01.md`, "The global config scope") and left
      * unimplemented for eleven commits. A claim in a commit message is not a
      * guard.
      */

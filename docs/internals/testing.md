@@ -88,7 +88,7 @@ enforced. Measuring tightens every deadline, so a coverage run gets an explicit
 serial passes of E2e and Plugins under 16 CPU burners, load to 207. `pump()` is
 measured for a sharper reason: it stands in for a real clock, so `pump(0.4)` has
 to be 0.4s. The 0.02s turn itself stays — a backoff was measured and bought
-nothing (decisions.md has the four alternated runs).
+nothing ([decision history](decisions/history-01.md), "The verify loop, measured", has the four alternated runs).
 
 `awaitPainted` exists because 91 E2e sites did action → `tick()` → assert the
 message is on screen. A bare tick is not a frame, so whether the status bar had
@@ -135,7 +135,7 @@ uncommitted `src/` lines (diff vs HEAD — run `vendor/bin/infection` directly
 with another `--git-diff-base` for a committed range) and reports the
 survivors inline. Non-gating by design: read survivors like a review. Three
 shapes are inevitably harmless — a literal nothing observes (a mkdir mode), a
-cast that exists for the analyzer, an equivalent flags value — and decisions.md
+cast that exists for the analyzer, an equivalent flags value — and the decision history
 already documents the redundancy-not-gap verdict for two hand-found ones.
 Judged against the **Unit suite only**, deliberately: the full suite is what
 the manual-sweep doctrine warns about (kills that cannot be about the mutated
@@ -449,7 +449,7 @@ Diagnose before killing — the evidence above is gone the moment the process is
 
 **An invariant assertion is not a guard until a mutation kills it.** Coverage
 says a line ran, not that anything would notice its absence. See
-[decisions.md](decisions.md) for the measured cases, including the five untested
+the [decision history](decisions/README.md) (its mutation entries) for the measured cases, including the five untested
 seams a full mutation pass over the event listeners found — and the two
 survivors that were redundancy rather than gaps.
 

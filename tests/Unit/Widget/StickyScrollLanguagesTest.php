@@ -18,7 +18,7 @@ use Symfony\Component\Tui\Render\RenderContext;
  * wherever the trail does.
  *
  * It used to be PHP-only while breadcrumbs had already gained every language —
- * an asymmetry `decisions.md` recorded rather than hid, because closing it
+ * an asymmetry the decision history recorded rather than hid (`docs/internals/decisions/history-01.md`, "sticky scroll did not"), because closing it
  * meant getting a dependency into the codebase's widest class without moving a
  * ratchet.
  */

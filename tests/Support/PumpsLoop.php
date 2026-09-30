@@ -22,7 +22,7 @@ use Revolt\EventLoop;
  * subprocess or a server whose latency dwarfs 20ms. At six processes it was
  * actively worse — 13.7s → 24.9s for one E2e run — because `awaitPainted`
  * forces a full render per check, and a tight re-check spends the spare WALL
- * time this suite has on the CPU it does not. decisions.md carries the numbers.
+ * time this suite has on the CPU it does not. `docs/internals/decisions/history-01.md`, "The verify loop, measured", carries the numbers.
  */
 trait PumpsLoop
 {

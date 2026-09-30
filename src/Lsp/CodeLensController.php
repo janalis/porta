@@ -19,7 +19,7 @@ use Symfony\Component\Tui\Tui;
  * Rejected once as too deep, on the grounds that a lens is a VIRTUAL ROW and
  * the row assembler mapped screen rows to document lines one for one. Soft wrap
  * gave it segments, so a lens row is one more thing a line can occupy — see
- * `docs/internals/decisions.md`.
+ * `docs/internals/decisions/history-01.md`, "The PhpStorm-shaped UI round".
  *
  * **Gated on the capability**, like every other optional request here: phpantom
  * advertises `codeLensProvider`, phpactor does not, and asking a server that

@@ -293,7 +293,7 @@ final class IdeRtlLocaleTest extends TestCase
      * the degenerate output a broken walk produces satisfies it perfectly.
      *
      * Ten cases and 102 assertions passed with mirroring switched off for every
-     * row but one (decisions.md, 2026-09-11). This is the case that notices.
+     * row but one (`docs/internals/decisions/history-05.md`, "The RTL segmenter's two skips"). This is the case that notices.
      *
      * Asserted as "both kinds of run are present" rather than as a column
      * number, so it survives a layout change and still fails the moment a body

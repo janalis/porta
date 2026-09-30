@@ -95,7 +95,7 @@ final class CoveragePluginsCommand extends Command
     public function __invoke(
         InputInterface $input,
         OutputInterface $output,
-        #[Option('How many shards to run at once; omit for half the cores')]
+        #[Option('How many shards to run at once; omit for 4 (composer passes three quarters of the cores)')]
         ?int $processes = null,
         #[Option('Seconds before a shard is called wedged and killed')]
         int $timeout = 600,

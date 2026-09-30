@@ -1,0 +1,57 @@
+---
+name: gates
+description: Run Porta's gates the cheap way — the inner loop while working, `composer verify` once at the end, output captured, load throttled, a hung paratest recognised. Use before running any composer gate or test suite in this repo.
+---
+
+The loop, cheapest first. Stop at the first red and fix it before going on.
+
+```bash
+composer verify:quick > /tmp/porta-quick.log 2>&1; echo "exit=$?"     # ~4s: format, lint, analyze, rector, arch, duplication
+PORTA_TEST_PROCESSES=24 composer test:unit > /tmp/porta-unit.log 2>&1; echo "exit=$?"   # ~22s
+composer verify > /tmp/porta-verify.log 2>&1; echo "exit=$?"          # ~260s: the definition of done
+```
+
+- **Run one file or folder** through the same script (paratest takes ONE path):
+  `composer test -- tests/Unit/Editor`; one test: `composer test:unit -- --filter name`.
+- **"Is my new class covered?"** costs seconds, not the gate:
+  `composer coverage -- --coverage-filter=src/Editor tests/Unit/Editor`, then
+  `bin/porta-dev coverage:check coverage/clover.xml 100 --only=/src/Editor/`.
+  It overwrites `coverage/clover.xml`; the real gate re-runs it anyway.
+- **`test:unit` skips** Integration, E2e and Plugins — anything about wiring, focus,
+  rendering or a plugin. Run `composer test:e2e` / `test:plugins` when you touched those.
+- **There is no "tests for my diff" command, on purpose**: only half of `src/` has a
+  same-path test, so a derived selection reports green over nothing
+  (`docs/internals/contributing.md`, "The inner loop").
+- **Read the log, not the rtk summary.** rtk can print `PHPUnit: ok` over a crash:
+  `grep -E "FAIL|Error|Fatal|exit=" /tmp/porta-*.log`, or run through `rtk proxy`.
+
+## Load
+
+- The box is often shared. Throttle BOTH knobs:
+  `PORTA_TEST_PROCESSES=4 PORTA_SHARD_PROCESSES=4 nice -n 10 composer verify`.
+  With the box to yourself, raise with `PORTA_TEST_PROCESSES=auto` (or 24).
+- `uptime` before blaming a test. A *different* handful failing each run is load; the
+  *same* test failing every run is a defect. Re-run a failing class alone.
+
+## Never
+
+- Two suite runners at once on one checkout, or an edit while a suite runs — paratest
+  reads test files as it goes.
+- A new gate command chained after a failing one: read why it failed first.
+
+## A run that stops moving
+
+paratest at ~99% with no output for minutes is the **wedge**, not a slow test:
+`ps -o etime=,pcpu= <pid>` shows 0.0% CPU and `pgrep -P <pid>` no children.
+Collect the evidence in `docs/internals/testing.md` ("The paratest wedge") BEFORE
+killing it, then kill that runner and re-run.
+
+## When a gate is red
+
+| Gate | Where the rule is |
+| --- | --- |
+| lint / analyze | fix, or `// @mago-expect lint:<rule> -- why` |
+| arch | add the new edge / remove the vanished one in `src/Console/ArchitectureCheckCommand.php`, same commit |
+| duplication | share the code, or say in the code why the copy is honest |
+| rector:check | `composer rector`, then re-run `composer format` and lint |
+| coverage | `docs/internals/contributing.md`, "Definition of done"; plugin code needs its OWN tests |

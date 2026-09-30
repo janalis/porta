@@ -10,9 +10,11 @@ IDE, or writing a plugin against its API, start at
 | [Where code lives](code-map.md) | Namespace membership, how to move a class |
 | [The container](container.md) | DI, the composition root, the porta attributes |
 | [Subsystems](subsystems.md) | Rendering, input, editor, dock, overlays, git, LSP |
+| [How Porta looks](ui-style.md) | Controls, toasts, tabs, status bar, selection, box sizing |
 | [The plugin system](plugin-system.md) | Discovery, load order, autoloading, the drain |
 | [Testing](testing.md) | Suites, rigs, the flake doctrine, mutation |
 | [Settled questions](decisions.md) | Measured rejections, and what would re-open them |
+| [Decision history](decisions/README.md) | The dated rounds behind them — look entries up, never read it whole |
 
 Two of these are worth reading before you propose anything large.
 [Settled questions](decisions.md) lists what has already been measured and

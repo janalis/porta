@@ -5,7 +5,7 @@ Porta is extensible with small PHP plugins: a directory containing a
 hooks through a stable API. Plugins run in-process on the shared event loop
 and are trusted code, like composer scripts.
 
-Fourteen plugins ship **bundled with Porta** ([`plugins/`](../plugins/) in the
+Sixteen plugins ship **bundled with Porta** ([`plugins/`](../plugins/) in the
 package). Bundled plugins are governed by the `enabledPlugins` list; when your
 `.porta.json` has no such key, a small default set (the two viewers plus
 `todo`, `local-history` and `git`) is enabled — an explicit list (even an

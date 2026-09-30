@@ -233,8 +233,8 @@ above. Grade every flake change against a before and an after at the same load.
 
 **`composer coverage:check`** — **100% line coverage**, over `src/` *and* over
 every plugin's own `src/`. A new branch with no covering test fails the gate. It
-runs two passes: the parallel one over `src`, then the serial
-`composer coverage:plugins` over `plugins/`. Plugin code must therefore be
+runs two passes: the parallel one over `src`, then
+`composer coverage:plugins` over `plugins/`, one serial phpunit per shard. Plugin code must therefore be
 covered by that plugin's OWN tests — see [testing.md](testing.md) for why the
 plugin half cannot ride the parallel run.
 
@@ -363,8 +363,8 @@ suite's ~458 Ide boots recompiles instead of loading the shared dump.
 **The plugins pass no longer pays that**, because it never needed it. Both
 reasons the flag exists — every worker compiling every `src` file so no file is
 missed, and that compile collapsing each worker's PathReducer base so the merge
-resolves — are about the parallel `src` run. `composer coverage:plugins` is one
-serial process filtered to `plugins/`, so it sets `PORTA_CONTAINER_CACHE=on`
+resolves — are about the parallel `src` run. `composer coverage:plugins` runs serial
+processes filtered to `plugins/` (one per shard), so it sets `PORTA_CONTAINER_CACHE=on`
 itself and the bootstrap's pcov sniff now only applies to a run that did not
 say. Measured, alternated: **151.0 / 151.4s off, 131.2 / 138.3s on**, with
 `TOTAL (/plugins/) 100.00% (4284/4284)` and 127 plugin files in every run. The
@@ -377,7 +377,7 @@ several ways at once.
 against paratest's 99s at the same lanes — and `coverage:check` refuses the
 result: 8 files cannot be merged from Clover, because a method declaration line
 that is itself executable is written as a `type="method"` entry whose count is a
-MAX over the method, with its `stmt` entry dropped. `decisions.md` has the
+MAX over the method, with its `stmt` entry dropped. [The decision history](decisions/history-02.md) ("Parallelism: the box was 80% idle") has the
 numbers and the two escapes that were tried.
 
 **opcache is not a test-loop lever.** It is worth setting for `bin/porta`
@@ -413,7 +413,7 @@ Two things never fan out, both measured rather than assumed:
 - **One suite runner at a time on a checkout.** Two paratest runs share
   `.phpunit.cache` (65MB of container dumps, result cache, coverage cache) and
   thrash; the two coverage passes overwrite each other's reports; and the box's
-  E2e barriers fail for load rather than for cause. `decisions.md` records the
+  E2e barriers fail for load rather than for cause. The [decision history](decisions/history-02.md) ("The clipboard history was a memory regression") records the
   measurement — a paratest run and a mutation run at once, load average 38,
   three E2e failures that all passed when run alone.
 - **No edits while a suite runs.** paratest loads test files in workers as it
@@ -438,6 +438,9 @@ would otherwise fight over is given to them one each.
 - **Fan read-only sweeps out to `porta-explorer`** (above), one area per agent, and
   check each report's `file:line` evidence before accepting it — a claim argued in
   prose is not a verified one.
+- **Use the committed skills** in `.claude/skills/`: `gates` (the inner loop and a hung
+  run), `mutation-check`, `add-command`, `new-plugin`, `review-branch`. Each is a recipe
+  that links here; when one disagrees with this page, fix the skill.
 - **End every run with three headings: Blocked on me, Changed, Found.** Mark anything
   you couldn't confirm, and say where you looked.
 

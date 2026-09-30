@@ -1,7 +1,7 @@
 # Events
 
 Porta's subsystems talk to each other over one `symfony/event-dispatcher`
-bus. Not quite forty event classes live in `src/Event/`, every one of them
+bus. Some fifty event classes live in `src/Event/`, every one of them
 `final readonly`, and listeners are compiled into the dispatcher's map from
 attributes — there is no runtime registration in core.
 
