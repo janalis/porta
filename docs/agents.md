@@ -60,8 +60,12 @@ the lines you selected, or at the file, as an `@` mention.
 Porta brings the file to the front with the change applied in place, as one
 undoable edit. The **Claude's Proposed Change** list in the dock shows the
 change as a diff: the lines it removes (`-`), the ones it adds (`+`) and a
-little around them. A row takes you to its line. Porta then asks you to
-**Accept** or **Reject**:
+little around them. A row takes you to its line. With the git plugin on, the
+git view also opens with the proposal **side by side** with the file as it is,
+read-only; `Esc` closes it. The `claudeSideBySide` setting turns that off.
+Porta then asks you to **Accept** or **Reject**. The question sits over the
+comparison: dismiss it to scroll the comparison, then **Review Claude's Proposed
+Change** asks again.
 
 - **Accept** saves the file as it stands, including anything you touched up
   before accepting.

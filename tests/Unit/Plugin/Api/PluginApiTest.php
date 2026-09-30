@@ -21,6 +21,7 @@ use Porta\Event\BufferOpened;
 use Porta\Event\BufferReloaded;
 use Porta\Event\BufferSaved;
 use Porta\Event\BufferSaveRequested;
+use Porta\Event\ChangeProposed;
 use Porta\Event\GitRemoteCompleted;
 use Porta\Event\ThemeChanged;
 use Porta\Event\WorkingTreeChanged;
@@ -1568,5 +1569,14 @@ final class PluginApiTest extends TestCase
         $api->emit(new AgentEditing('/p/a.php', "before\n"));
 
         $this->assertSame(['/p/a.php', "before\n"], $kept);
+
+        // mcp to git: a proposal to show side by side.
+        $compared = null;
+        $dispatcher->addListener(ChangeProposed::class, static function (ChangeProposed $event) use (&$compared): void {
+            $compared = [$event->path, $event->proposedPath];
+        });
+        $api->emit(new ChangeProposed('/p/a.php', '/tmp/x/a.php'));
+
+        $this->assertSame(['/p/a.php', '/tmp/x/a.php'], $compared);
     }
 }

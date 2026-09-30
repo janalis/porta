@@ -288,6 +288,9 @@ final class EventListenerWiringTest extends TestCase
             // answer is the git plugin's, registered at runtime — and with no
             // listener at all, Ide falls back to the editor itself.
             'DiffToolLaunched',
+            // An agent's proposal, for whatever shows two texts side by
+            // side — the git plugin's comparison, registered at runtime.
+            'ChangeProposed',
             'MergeToolLaunched',
             // The tool set moved under a live enable or disable. Core only
             // keeps the list; what serves it — the mcp plugin — listens
