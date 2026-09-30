@@ -88,8 +88,9 @@ brought to the front instead.
 colour, with its name at the end of the line (`✦ Claude`). A ✦ in the same
 colour marks the file's tab and its row in the project tree, and the tooltip
 says who is editing or reading it. The status bar names the agent and what it
-last did (`✦ Claude editing A.php`); its menu takes you to the file each agent
-is at, or stops showing agents. The caret keeps its place in the text while
+last did (`✦ Claude editing A.php`). Its menu takes you to the file each agent
+is at, opens **Recent Changes** — where whatever an agent replaced or deleted
+can be restored — or stops showing agents. The caret keeps its place in the text while
 you type around it — above it, or earlier on its line. All of it goes after `agentFade` seconds
 (10) without the agent touching the file, or at once when it disconnects. Each
 agent keeps one colour; a fifth shares the first's. Turn `showAgentCursor` off

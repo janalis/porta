@@ -3066,6 +3066,14 @@
         <source>%agent% is reading it</source>
         <target>%agent% le lit</target>
       </trans-unit>
+      <trans-unit id="1086">
+        <source>Nothing answers to %command% — is its plugin enabled?</source>
+        <target>Rien ne répond à %command% — son plugin est-il activé ?</target>
+      </trans-unit>
+      <trans-unit id="1087">
+        <source>Recent Changes</source>
+        <target>Modifications récentes</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
