@@ -135,6 +135,57 @@ final class IdeStatusBarClickTest extends TestCase
     }
 
     /**
+     * A plugin's status cell that carries a menu wears the select's `▾`, and
+     * a select opens on a plain LEFT click — the branch cell is the one that
+     * asked for it, core does not know which cell is whose.
+     */
+    public function testLeftClickingAPluginCellWithAMenuOpensIt(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n"]);
+        $dir = $project->path('.porta/plugins/cell-menu');
+        \mkdir($dir, permissions: 0o777, recursive: true);
+        \file_put_contents($dir.'/plugin.php', data: <<<'PHP'
+            <?php
+
+            declare(strict_types=1);
+
+            use Porta\Plugin\Api\AbstractPlugin;
+            use Porta\Plugin\Api\PluginApi;
+            use Porta\Workbench\Menu\MenuItem;
+            use Porta\Workbench\StatusCell;
+
+            return new class('cell-menu') extends AbstractPlugin {
+                public function activate(PluginApi $api): void
+                {
+                    $api->registerStatusSegment(static fn (): StatusCell => new StatusCell(
+                        'on-trunk',
+                        menu: static fn (): array => [new MenuItem('Switch to another branch', '', static function (): void {})],
+                    ));
+                }
+            };
+            PHP);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function (Tui $tui, VirtualTerminal $terminal): void {
+                    $this->awaitPainted($tui, $terminal, 'on-trunk');
+                    $grid = $this->screenGrid($tui, $terminal);
+                    $row = $this->rowOf($grid, 'on-trunk');
+                    $this->assertNotNull($row);
+                    $col = \mb_strpos($grid[$row], needle: 'on-trunk');
+                    $this->assertIsInt($col);
+
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $col + 2, $row + 1));
+                    $this->awaitPainted($tui, $terminal, 'Switch to another branch');
+                },
+            ],
+        );
+    }
+
+    /**
      * Where the status bar draws $path, 0-based: the row is found by its
      * content, since the dock and the find bar move it.
      *

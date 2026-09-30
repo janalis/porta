@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\CommandRegistry;
 use Porta\Ide;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\Paint;
@@ -116,6 +117,56 @@ final class IdePluginTest extends TestCase
         );
 
         $this->addToAssertionCount(1);
+    }
+
+    /**
+     * A plugin's save is Ctrl+S's save, not a file write of its own: the
+     * buffer's modified mark clears and `onFileSaved` hears of it, which only
+     * the service that owns the buffers can do.
+     */
+    public function testAPluginSavesAnEditedBufferTheWayCtrlSDoes(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $project = new TempProject([
+            '.porta/plugins/saver/plugin.php' => <<<'PHP'
+                <?php
+                use Porta\Plugin\Api\AbstractPlugin;
+                use Porta\Plugin\Api\PluginApi;
+
+                return new class('saver') extends AbstractPlugin {
+                    public function activate(PluginApi $api): void
+                    {
+                        $api->registerCommand('save', 'Save It', static function () use ($api): void {
+                            $api->flash('saved: '.($api->openBuffers()->save((string) $api->activeFile()) ?? 'ok'));
+                        });
+                        $api->onFileSaved(static function (string $path): void {
+                            file_put_contents($path.'.hooked', 'yes');
+                        });
+                    }
+                };
+                PHP,
+            'a.php' => "<?php\n",
+        ]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                100 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
+                    $editor = $tui->getById('editor');
+                    $editor->getDocument()->setCursor(1, 0);
+                    $tui->handleInput('Z');
+                    $this->assertTrue($editor->getDocument()->isDirty());
+
+                    Services::resolve($ide, CommandRegistry::class)->run('saver:save');
+
+                    $this->awaitPainted($tui, $terminal, 'saved: ok');
+                    $this->assertSame("<?php\nZ", \file_get_contents($project->path('a.php')), 'the edit reached the disk');
+                    $this->assertFalse($editor->getDocument()->isDirty(), 'and the modified mark cleared');
+                    $this->assertFileExists($project->path('a.php.hooked'), 'onFileSaved heard of it');
+                },
+            ],
+        );
     }
 
     public function testPaletteListsPluginCommandsAndUserRebindsDispatch(): void

@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Config\ConfigScope;
 use Porta\Ide;
+use Porta\Lsp\LspSessionPool;
 use Porta\Onboarding\OnboardingState;
 use Porta\Plugin\Lifecycle\PluginLifecycle;
 use Porta\Settings\SettingsScope;
@@ -257,6 +258,45 @@ final class PluginLifecycleTest extends TestCase
         // via the onPluginSettingChanged delegation.
         $lifecycle->onPluginSettingChanged('acme', 'someKey', 'someValue');
         $this->addToAssertionCount(1);
+    }
+
+    /**
+     * An upgrade lands the new server binary where the old one was, so only a
+     * forced relaunch re-resolves it — and only for a plugin that serves a
+     * language at all. The resolver reads its argv from a file so that the
+     * re-resolve is visible in the pool's map.
+     */
+    public function testAReplacedServerBinaryRelaunchesOnlyForAProviderPlugin(): void
+    {
+        $ide = $this->boot();
+        $this->writePlugin('other');
+        $dir = $this->project->dir.'/.porta/plugins/acme-ls';
+        \mkdir($dir, permissions: 0o777, recursive: true);
+        \file_put_contents($dir.'/plugin.php', data: <<<'PHP'
+            <?php
+            return new class implements Porta\Plugin\Api\PortaPlugin {
+                public function name(): string { return 'acme-ls'; }
+                public function activate(Porta\Plugin\Api\PluginApi $api): void
+                {
+                    $root = $api->projectRoot();
+                    $api->registerLanguageServer('acme', 'acme-ls', static fn (): array => [trim((string) file_get_contents($root.'/ls-argv'))]);
+                }
+            };
+            PHP);
+        \file_put_contents($this->project->dir.'/ls-argv', data: '/opt/acme-ls-1');
+        $lifecycle = $this->lifecycle($ide);
+        $lifecycle->enable('acme-ls');
+        $lifecycle->enable('other');
+        $pool = Services::resolve($ide, LspSessionPool::class);
+        $servers = static fn (): string => (string) \json_encode(Probe::get($pool, 'servers'));
+        $this->assertStringContainsString('acme-ls-1', $servers());
+
+        \file_put_contents($this->project->dir.'/ls-argv', data: '/opt/acme-ls-2');
+        $lifecycle->onServerBinaryReplaced('other');
+        $this->assertStringContainsString('acme-ls-1', $servers(), 'a plugin serving no language relaunches nothing');
+
+        $lifecycle->onServerBinaryReplaced('acme-ls');
+        $this->assertStringContainsString('acme-ls-2', $servers(), 'the provider\'s server is re-resolved');
     }
 
     public function testRefreshNavSyncsTheSidebarWithTheListedNames(): void

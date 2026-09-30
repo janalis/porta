@@ -6,11 +6,13 @@ namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\TestCase;
+use Porta\Config\CommandRegistry;
 use Porta\Editor\ChangeMarkKind;
 use Porta\Editor\CompletionBox;
 use Porta\Editor\CompletionItem;
 use Porta\Editor\GutterPart;
 use Porta\Ide;
+use Porta\Input\GutterClickRouter;
 use Porta\Overlay\Region\DropdownRegion;
 use Porta\Overlay\State\MenuOverlayController;
 use Porta\Tests\Support\ClearsPortaLsp;
@@ -712,6 +714,35 @@ final class IdeMousePrimitivesTest extends TestCase
                 },
                 400 => function ($tui): void {
                     $this->assertSame([1], $tui->getById('editor')->decorations->breakpointLines, 'no git plugin: a breakpoint');
+                },
+            ],
+        );
+    }
+
+    /** With a change viewer — the git plugin adopts the id — the same click shows the change, from that line. */
+    public function testAChangeMarkClickWithAChangeViewerShowsTheChange(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $project = new TempProject(['A.php' => "one\ntwo\n"]);
+        $shownFrom = [];
+
+        $this->runIde(
+            $project,
+            $project->path('A.php'),
+            [
+                300 => static function ($tui, $terminal, Ide $ide) use (&$shownFrom): void {
+                    $editor = $tui->getById('editor');
+                    Services::resolve($ide, CommandRegistry::class)->add(GutterClickRouter::SHOW_CHANGE, static function () use ($editor, &$shownFrom): void {
+                        $shownFrom[] = $editor->getDocument()->cursorLine;
+                    });
+                    $editor->decorations->setVcsMarks([1 => ChangeMarkKind::Modified]);
+                    $tui->tick();
+                    $tui->handleInput("\x1b[<0;32;4M"); // the strip, line 1
+                    $tui->handleInput("\x1b[<0;32;4m");
+                },
+                400 => function ($tui) use (&$shownFrom): void {
+                    $this->assertSame([1], $shownFrom, 'the change viewer ran, with the caret on the clicked line');
+                    $this->assertSame([], $tui->getById('editor')->decorations->breakpointLines, 'and no breakpoint was set');
                 },
             ],
         );

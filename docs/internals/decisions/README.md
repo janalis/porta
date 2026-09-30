@@ -17,7 +17,7 @@ its one-line row in [Settled questions](../decisions.md).
 | [Part 4](history-04.md) | 2026-09-09 → 2026-09-11 | 42 |
 | [Part 5](history-05.md) | 2026-09-11 → 2026-09-12 | 31 |
 | [Part 6](history-06.md) | 2026-09-12 → 2026-09-28 | 28 |
-| [Part 7](history-07.md) | 2026-09-23 → 2026-09-30 | 36 |
+| [Part 7](history-07.md) | 2026-09-23 → 2026-09-30 | 37 |
 
 ## [Part 1](history-01.md)
 
@@ -275,3 +275,4 @@ its one-line row in [Settled questions](../decisions.md).
 - Plugins carry their own translations (2026-09-30)
 - Agent-speed round 2: one change landed, three measured away (2026-09-30)
 - Agent-speed round 3: what repeated editing was worth a tool (2026-09-30)
+- The `src` coverage pass is graded by core's own suites (2026-09-30)

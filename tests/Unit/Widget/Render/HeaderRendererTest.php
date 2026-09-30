@@ -78,15 +78,19 @@ final class HeaderRendererTest extends TestCase
     /**
      * Every title row in the IDE is this renderer, so it must fill its width
      * exactly at any width — a short line leaves the pane's background
-     * showing through, an over-wide one garbles the row below.
+     * showing through, an over-wide one garbles the row below. A pane too
+     * narrow for the `Esc` hint and its gap shrinks the HINT, since there is
+     * no title left to take the room from.
      */
     public function testFillsExactlyTheWidthEvenBelowTheEllipsisWidth(): void
     {
         foreach (\range(0, end: 12) as $width) {
             foreach ([' a title', '日本語のタイトル', '', 'x'] as $title) {
-                $line = HeaderRenderer::render($title, $width, new Style(background: 237));
+                foreach (['', 'Esc'] as $suffix) {
+                    $line = HeaderRenderer::render($title, $width, new Style(background: 237), $suffix);
 
-                $this->assertSame($width, AnsiUtils::visibleWidth($line), "{$title} @ {$width}");
+                    $this->assertSame($width, AnsiUtils::visibleWidth($line), "{$title} + {$suffix} @ {$width}");
+                }
             }
         }
     }

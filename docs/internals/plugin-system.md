@@ -371,8 +371,9 @@ Third-party plugins may extend these or implement `PortaPlugin` directly;
 
 ## Coverage runs a second pass, sharded
 
-`composer coverage:check` is the parallel run over `src` (`coverage:src`)
-**plus** `composer coverage:plugins` — which is now `bin/porta-dev
+`composer coverage:check` is the parallel run over `src` (`coverage:src`,
+core's Unit, Integration and E2e suites only — a `src` line only a plugin's
+test reaches fails it) **plus** `composer coverage:plugins` — which is now `bin/porta-dev
 coverage:plugins`, a fan-out of independent **serial** phpunit runs, one per
 plugin test FILE, several at a time, each writing its own report into
 `coverage/plugins/`. `coverage:check` grades that directory as one report.

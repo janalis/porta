@@ -90,6 +90,14 @@ final class TestPane extends NavigablePaneWidget
         $this->afterViewChange();
     }
 
+    /** A navigable pane arms a drag on every press, as the graph pane does. */
+    public function press(int $relRow, int $relCol): bool
+    {
+        $this->calls[] = \sprintf('press:%d,%d', $relRow, $relCol);
+
+        return true;
+    }
+
     public function selectAt(int $relRow, int $relCol): void
     {
         $this->calls[] = \sprintf('select:%d,%d', $relRow, $relCol);

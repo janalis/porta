@@ -71,7 +71,7 @@
             "@php bin/porta-dev coverage:check coverage/plugins 100 --only=/plugins/ --require=plugins"
         ],
         "coverage:src": [
-            "@coverage",
+            "@coverage --testsuite=Unit,Integration,E2e",
             "@php bin/porta-dev coverage:check coverage/clover.xml 100"
         ],
         "coverage:check": [

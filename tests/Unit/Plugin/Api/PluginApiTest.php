@@ -19,6 +19,7 @@ use Porta\Event\BufferOpened;
 use Porta\Event\BufferReloaded;
 use Porta\Event\BufferSaved;
 use Porta\Event\BufferSaveRequested;
+use Porta\Event\GitRemoteCompleted;
 use Porta\Event\ThemeChanged;
 use Porta\Event\WorkingTreeChanged;
 use Porta\Highlight\DarkTerminalTheme;
@@ -101,6 +102,7 @@ final class PluginApiTest extends TestCase
     private ViewRegistry $views;
     private EventDispatcher $events;
     private RunController $runs;
+    private FakePluginLifecycle $lifecycle;
 
     private function api(Presence $wired = Presence::With): PluginApi
     {
@@ -132,7 +134,7 @@ final class PluginApiTest extends TestCase
                     new Clipboard($tui),
                     new StatusBarWidget(),
                     $this->editor,
-                    new FakePluginLifecycle(),
+                    $this->lifecycle = new FakePluginLifecycle(),
                     new FileTreeWidget(\sys_get_temp_dir()),
                     TestLspQuery::create(),
                     new BufferSaver($this->buffers, $this->events = new EventDispatcher()),
@@ -667,6 +669,20 @@ final class PluginApiTest extends TestCase
         $this->events->removeListener(BufferSaveRequested::class, $this->events->getListeners(BufferSaveRequested::class)[0]);
         $moved->diskChangedUnderEdit = false;
         $this->assertSame('it could not be written', $buffers->save('/p/moved.php'), 'the save ran and the buffer is still modified');
+    }
+
+    public function testRelaunchLanguageServerIsAnActionThatNamesThePluginToTheLifecycle(): void
+    {
+        try {
+            $this->api(wired: Presence::Without)->relaunchLanguageServer();
+            $this->fail('calling it during activate() must throw');
+        } catch (PluginException $e) {
+            $this->assertStringContainsString('unavailable during activate()', $e->getMessage());
+        }
+
+        $this->api()->relaunchLanguageServer();
+
+        $this->assertSame(['demo'], $this->lifecycle->serverBinaryReplaced, 'the lifecycle decides whether this plugin serves a language');
     }
 
     public function testRunsListTheMenusTasksAndReadWhatARunPrinted(): void
@@ -1432,5 +1448,14 @@ final class PluginApiTest extends TestCase
         $api->emit($event);
 
         $this->assertSame($event, $received, 'the event reached the dispatcher, not just the not-during-activate() gate');
+
+        // Plugin to plugin, payload intact: git emits this one and review hears it.
+        $completed = null;
+        $dispatcher->addListener(GitRemoteCompleted::class, static function (GitRemoteCompleted $event) use (&$completed): void {
+            $completed = [$event->operation, $event->ok];
+        });
+        $api->emit(new GitRemoteCompleted('pull', ok: false));
+
+        $this->assertSame(['pull', false], $completed);
     }
 }

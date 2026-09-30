@@ -1157,3 +1157,29 @@ leaves ~300MB and hand runs had left 1.5GB.
 
 *Re-opens on:* a theme or allowlist edit landing wrong because the second entry
 was mis-typed rather than skipped; E2e boilerplate causing a real defect.
+
+## The `src` coverage pass is graded by core's own suites (2026-09-30)
+
+**Landed: `coverage:src` runs `--testsuite=Unit,Integration,E2e`.** Round 2
+left it blocked on ~100 `src` lines in 22 files that only plugin tests reached.
+Core now tests those seams itself: `FiberWait::within()`, `SingleSlotProcess`,
+`Text`, `Outcome`, `Runs::start()`, the header's narrow-suffix branch, a plugin
+save through `BufferSaveRequested`, a listener answering a difftool launch and
+asking to quit, a left click on a plugin status cell with a menu, a gutter
+change mark with a change viewer, a view's own context menu on both chains, a
+replaced server binary relaunching only a provider, and — through
+`tests/Support/TestPane` served by a project plugin — the navigable pane's
+wheel, sideways wheel, ctrl+wheel ladder and glide, drag-pan, click-select,
+disk refresh, loader refusal, "Open as Text" and the architecture title.
+The glide is made deterministic by stamping `ZoomGesture::$lastTime` ahead of
+the clock, not by two quick inputs a loaded box can space past its 100ms.
+
+It also makes the rule CLAUDE.md states true for `src/` — 100% **by its own
+tests** — which a pass that ran plugin tests could not check. The Plugins
+suite still runs once in `verify`, in `coverage:plugins`.
+
+Measured at 8 processes, alternated: all four suites **169s / 175s**, core's
+three **107s / 122s** — 1,044 plugin tests no longer run twice. 100.00%
+(25831/25831) either way.
+
+*Re-opens on:* nothing here; a plugin-only `src` line is now a red gate.

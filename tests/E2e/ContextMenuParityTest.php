@@ -5,13 +5,20 @@ declare(strict_types=1);
 namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\CommandRegistry;
 use Porta\Ide;
+use Porta\Overlay\State\MenuOverlayController;
 use Porta\Tests\Support\Paint;
 use Porta\Tests\Support\PreservesPath;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\ContextMenu;
+use Porta\Workbench\Menu\MenuItem;
+use Porta\Workbench\Menu\ViewContextMenu;
+use Porta\Workbench\Menu\ViewMenuSource;
+use Porta\Workbench\Menu\ViewMenuSources;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Render\Renderer;
@@ -81,6 +88,59 @@ final class ContextMenuParityTest extends TestCase
         );
 
         $this->addToAssertionCount(1);
+    }
+
+    /**
+     * A full-screen view's panes are no core widget either chain can name, so
+     * the open view answers for itself: the pointed-at cell on a right-click,
+     * its focused pane — anchor included — on Ctrl+F10. The settings view has
+     * no menus of its own; the source handed in stands for a plugin view's.
+     */
+    public function testAnOpenViewAnswersBothChainsWithItsOwnMenu(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function ($tui, $terminal, Ide $ide): void {
+                    Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
+                    $this->frame($tui);
+                    $items = [new MenuItem('Compare with branch', '', static function (): void {})];
+                    Services::resolve($ide, ViewMenuSources::class)->register('settings', new readonly class($items) implements ViewMenuSource {
+                        /** @param list<MenuItem> $items */
+                        public function __construct(
+                            private array $items,
+                        ) {}
+
+                        public function contextItemsAt(int $row, int $col): ?array
+                        {
+                            return $this->items;
+                        }
+
+                        public function focusedContextMenu(): ?ViewContextMenu
+                        {
+                            return new ViewContextMenu($this->items, row: 7, col: 11);
+                        }
+                    });
+
+                    $byMouse = $this->menuFor($tui, $ide, static function ($tui): void {
+                        $tui->handleInput("\x1b[<2;40;8M");
+                    });
+                    $overlay = Services::resolve($ide, MenuOverlayController::class);
+                    $anchor = null;
+                    $byKeyboard = $this->menuFor($tui, $ide, static function ($tui) use ($overlay, &$anchor): void {
+                        $tui->handleInput(self::CTRL_F10);
+                        $anchor = [Probe::get($overlay, 'contextAnchorRow'), Probe::get($overlay, 'contextAnchorCol')];
+                    });
+                    $this->assertSame(['Compare with branch'], $byMouse, 'the view answered the right-click');
+                    $this->assertSame($byMouse, $byKeyboard, 'and Ctrl+F10 on its focused pane');
+                    $this->assertSame([7, 11], $anchor, 'anchored where the view said, not at the pointer');
+                },
+            ],
+        );
     }
 
     /**

@@ -51,4 +51,40 @@ final class FiberWaitTest extends TestCase
 
         $this->assertSame('fast', $fiber->getReturn());
     }
+
+    public function testWithinAnswersWithTheOperationWhenItBeatsTheDeadline(): void
+    {
+        $fiber = new \Fiber(static fn (): mixed => FiberWait::within(
+            0.5,
+            static function (\Closure $done): void {
+                EventLoop::delay(0.01, static fn () => $done('answered'));
+            },
+            'timed out',
+        ));
+        $fiber->start();
+
+        $this->await($fiber->isTerminated(...), what: 'the answer');
+
+        $this->assertSame('answered', $fiber->getReturn());
+    }
+
+    public function testWithinAnswersTheTimeoutValueWhenTheOperationNeverDoes(): void
+    {
+        $fiber = new \Fiber(static fn (): mixed => FiberWait::within(0.02, static function (\Closure $done): void {}, 'timed out'));
+        $fiber->start();
+        $this->assertFalse($fiber->isTerminated(), 'it waits for the deadline');
+
+        $this->await($fiber->isTerminated(...), what: 'the deadline');
+
+        $this->assertSame('timed out', $fiber->getReturn());
+    }
+
+    public function testWithinCancelsItsTimerOnceAnswered(): void
+    {
+        $before = \count(EventLoop::getIdentifiers());
+
+        $this->assertSame('now', FiberWait::within(30.0, static fn (\Closure $done) => $done('now'), 'timed out'));
+
+        $this->assertCount($before, EventLoop::getIdentifiers(), 'no 30s timer left armed behind an answered wait');
+    }
 }

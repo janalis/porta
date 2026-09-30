@@ -67,7 +67,8 @@ final class BackgroundRunTest extends TestCase
         $focused = $this->tui->getFocus();
         $exit = null;
 
-        $this->runs->runInBackground(self::php('echo "hello from the run in ", getcwd(), "\n"; exit(3);'), 'agent', static function (int $code) use (&$exit): void {
+        // Through the plugin's facade: {@see Runs::start()} is the way in a plugin has.
+        new Runs($this->runs)->start('agent', self::php('echo "hello from the run in ", getcwd(), "\n"; exit(3);'), static function (int $code) use (&$exit): void {
             $exit = $code;
         });
 

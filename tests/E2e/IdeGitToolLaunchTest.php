@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\CommandRegistry;
 use Porta\Container\ToolLaunch;
 use Porta\History\RecentProjectsStore;
 use Porta\Ide;
@@ -57,6 +58,58 @@ final class IdeGitToolLaunchTest extends TestCase
         $this->assertSame(0, $ide->exitCode());
         $this->assertFileDoesNotExist($project->path('.porta/session.json'), 'the project\'s session is not a diff\'s to overwrite');
         $this->assertNotContains(\realpath($project->dir), Services::resolve($ide, RecentProjectsStore::class)->all(), 'a tool run is not the user opening the project');
+    }
+
+    /**
+     * With a listener, the launch is ITS to answer: core opens nothing and
+     * says nothing. When the comparison is done, the plugin asks to quit —
+     * the same guarded quit Ctrl+Q runs, so a clean session just ends.
+     */
+    public function testAListenerAnswersTheLaunchAndMayAskToQuit(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $project = new TempProject(['right.php' => "<?php\necho 'right-hand side';\n", 'left.php' => "<?php\n"]);
+        $dir = $project->path('.porta/plugins/diff-answer');
+        \mkdir($dir, permissions: 0o777, recursive: true);
+        \file_put_contents($dir.'/plugin.php', data: <<<'PHP'
+            <?php
+
+            declare(strict_types=1);
+
+            use Porta\Event\DiffToolLaunched;
+            use Porta\Event\QuitRequested;
+            use Porta\Plugin\Api\AbstractPlugin;
+            use Porta\Plugin\Api\PluginApi;
+
+            return new class('diff-answer') extends AbstractPlugin {
+                public function activate(PluginApi $api): void
+                {
+                    $root = $api->projectRoot();
+                    $api->on(DiffToolLaunched::class, static function (DiffToolLaunched $launch) use ($root): void {
+                        file_put_contents($root.'/answered', basename($launch->left).' vs '.basename($launch->right));
+                    });
+                    $api->registerCommand('done', 'Done', static fn () => $api->emit(new QuitRequested()));
+                }
+            };
+            PHP);
+
+        $this->runIde(
+            $project,
+            null,
+            [
+                0 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
+                    $this->assertFileExists($project->path('answered'), 'the launch reached the listener');
+                    $this->assertSame('left.php vs right.php', \file_get_contents($project->path('answered')));
+                    $this->assertNotContains('Enable the git plugin to see the comparison', Toasts::all($ide), 'core stays out of an answered launch');
+                    $this->assertStringNotContainsString('right-hand side', \implode("\n", $this->screenGrid($tui, $terminal)), 'and opens no fallback file');
+
+                    Services::resolve($ide, CommandRegistry::class)->run('diff-answer:done');
+
+                    $this->assertFalse($tui->isRunning(), 'a clean session quits on the plugin\'s request');
+                },
+            ],
+            tool: ToolLaunch::diff($project->path('left.php'), $project->path('right.php')),
+        );
     }
 
     public function testWithNothingToAnswerADirectoryDiffOpensNothingAndSaysWhy(): void
