@@ -3,10 +3,11 @@ name: gates
 description: Run Porta's gates the cheap way — the inner loop while working, `composer verify` once at the end, output captured, load throttled, a hung paratest recognised. Use before running any composer gate or test suite in this repo.
 ---
 
-The loop, cheapest first. Stop at the first red and fix it before going on.
+The loop, cheapest first.
 
 ```bash
-composer verify:quick > /tmp/porta-quick.log 2>&1; echo "exit=$?"     # ~4s: format, lint, analyze, rector, arch, duplication
+composer fix                                                           # rector, THEN format — rector's output is what needs formatting
+composer check > /tmp/porta-quick.log 2>&1; echo "exit=$?"            # ~8s: every quick gate, run to the end; last line names each red one
 PORTA_TEST_PROCESSES=24 composer test:unit > /tmp/porta-unit.log 2>&1; echo "exit=$?"   # ~22s
 composer verify > /tmp/porta-verify.log 2>&1; echo "exit=$?"          # ~260s: the definition of done
 ```
@@ -53,5 +54,25 @@ killing it, then kill that runner and re-run.
 | lint / analyze | fix, or `// @mago-expect lint:<rule> -- why` |
 | arch | add the new edge / remove the vanished one in `src/Console/ArchitectureCheckCommand.php`, same commit |
 | duplication | share the code, or say in the code why the copy is honest |
-| rector:check | `composer rector`, then re-run `composer format` and lint |
+| rector:check | `composer fix` (rector then format), then lint again |
+
+`composer check` is `verify:quick` without the stop at the first red; `verify` itself
+still stops, which is what a definition of done should do.
+
+## The lint rules agents trip most
+
+Measured over a month of sessions — each of these came back in more than five. Write
+the passing shape the first time:
+
+| Rule | Passing shape |
+| --- | --- |
+| `literal-named-argument` | name every literal after the first: `\str_pad($s, length: 3, pad_string: ' ')`, `\explode("\n", $t, limit: 2)` |
+| `prefer-static-closure` | `static fn` / `static function` whenever `$this` is not used |
+| `no-boolean-flag-parameter` | two methods or an enum; if the bool IS the one fact the call carries, `// @mago-expect lint:no-boolean-flag-parameter -- why` above the method (76 in `src`) |
+| `mixed-assignment` | narrow at the source (`\is_array($x) ? … : []`); a decoded JSON value may carry `@mago-expect analysis:mixed-assignment -- narrowed below` |
+| `possibly-invalid-argument` / `less-specific-nested-argument-type` | narrow the value (`\is_string`, a `@var list<string>` on a decoded array) before the call, not a cast |
+| `unfulfilled-expect` | the suppression outlived its finding — delete the `@mago-expect` line |
+| `halstead` | the method is too dense: extract a named private helper, do not suppress |
+
+A suppression is `// @mago-expect <lint|analysis>:<rule> -- why`, on the line above.
 | coverage | `docs/internals/contributing.md`, "Definition of done"; plugin code needs its OWN tests |

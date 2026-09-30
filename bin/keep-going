@@ -1,0 +1,37 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+// `composer check`: every step of a chain script (default `verify:quick`), run
+// to the end instead of stopping at the first red, then one line naming each
+// gate that failed. Composer stops a chain at its first failure, which is right
+// for `verify` but turns a lint finding plus a rector change into two rounds of
+// fix-and-rerun. The steps are read from composer.json so the chain is defined
+// once — `composer verify` still walks it, and VerifyGatesMatchCiTest with it.
+
+$root = dirname(__DIR__);
+$chain = $argv[1] ?? 'verify:quick';
+$composer = json_decode((string) file_get_contents($root.'/composer.json'), true);
+$steps = $composer['scripts'][$chain] ?? null;
+if (!is_array($steps)) {
+    fwrite(STDERR, "keep-going: '{$chain}' is not a chain script in composer.json.\n");
+    exit(2);
+}
+
+$binary = getenv('COMPOSER_BINARY') ?: 'composer';
+$failed = [];
+foreach ($steps as $step) {
+    $script = ltrim($step, '@');
+    passthru(escapeshellarg($binary).' run-script --no-interaction '.escapeshellarg($script), $status);
+    if (0 !== $status) {
+        $failed[] = $script;
+    }
+}
+
+if ([] === $failed) {
+    echo "\nkeep-going: {$chain} — all ".count($steps)." gates green.\n";
+    exit(0);
+}
+fwrite(STDERR, "\nkeep-going: {$chain} — FAILED: ".implode(', ', $failed)."\n");
+exit(1);
