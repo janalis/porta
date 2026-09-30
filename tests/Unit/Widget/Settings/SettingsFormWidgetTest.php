@@ -1180,6 +1180,28 @@ final class SettingsFormWidgetTest extends TestCase
      * logical order and looks perfect there — this defect only exists on screen.
      */
     /**
+     * Mirrored, the gap still stands between the label and its control.
+     *
+     * Its spaces sit between the two marks. Put after the left-to-right mark
+     * they join the control's run, are drawn on the control's far side, and
+     * the label ends up against the box — while every column count, measured
+     * before the reorder, stays exactly right.
+     */
+    public function testAMirroredGapStaysBetweenTheLabelAndItsControl(): void
+    {
+        $widget = new SettingsFormWidget(new Translator('he'));
+        AttachedStyles::attach($widget);
+        $widget->setRows([new SettingsRow('preview', 'תצוגה מקדימה של Markdown', SettingsRowKind::Bool, true, false)], 'T');
+
+        $shown = \implode("\n", \array_map(
+            static fn (string $line): string => AnsiUtils::stripAnsiCodes(Bidi::reorder($line, BaseDirection::Rtl)),
+            $this->body($widget->render(new RenderContext(58, 4))),
+        ));
+
+        $this->assertMatchesRegularExpression('/[^ ]  Markdown/u', $shown, 'two columns part the control from the label');
+    }
+
+    /**
      * The marks cost the gap nothing.
      *
      * The label column keeps its alignment only because the marks take no

@@ -607,9 +607,12 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         // half and the column moves with it: across five real labels the
         // checkbox landed at columns 28, 33, 37, 46 and 28.
         //
-        // Neither mark takes a column, so the label column and the rendered
-        // width are those of the two spaces.
-        return ($this->translator->isRtl() ? Bidi::RTL_MARK.Bidi::LTR_MARK : '').'  ';
+        // The spaces go BETWEEN the marks: after the right-to-left one they
+        // resolve with the label's side; after the left-to-right one they would
+        // join the control's run and be drawn on its far side, leaving the label
+        // against the box. Neither mark takes a column, so the label column and
+        // the rendered width are those of the two spaces.
+        return $this->translator->isRtl() ? Bidi::RTL_MARK.'  '.Bidi::LTR_MARK : '  ';
     }
 
     /**
