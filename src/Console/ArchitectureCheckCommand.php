@@ -207,6 +207,7 @@ final class ArchitectureCheckCommand extends Command
         'LocalHistory>Plugin',
         'LocalHistory>Support',
         'LocalHistory>Workbench',
+        'Lsp>Config',
         'Lsp>Container',
         'Lsp>Editor',
         'Lsp>Event',

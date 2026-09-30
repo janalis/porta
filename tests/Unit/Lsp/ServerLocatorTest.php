@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Lsp\ServerLocator;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\PreservesPath;
+use Porta\Tests\Support\PreservesPortaHome;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TempProject;
 
@@ -15,6 +16,7 @@ final class ServerLocatorTest extends TestCase
 {
     use ClearsPortaLsp;
     use PreservesPath;
+    use PreservesPortaHome;
 
     /** @var array<string, array{command: list<string>, name: string}> a phpantom plugin server, for the defaults layer */
     private const array PHPANTOM = ['php' => [['command' => ['/opt/phpantom_lsp'], 'name' => 'phpantom']]];
@@ -39,6 +41,47 @@ final class ServerLocatorTest extends TestCase
         $this->assertSame(['*'], \array_keys($servers));
         $this->assertSame(['node', '/x/intelephense.js', '--stdio'], $servers['*'][0]['command']);
         $this->assertSame('intelephense', $servers['*'][0]['name']);
+    }
+
+    /**
+     * The two files, as the Settings view shows them merged; the project's
+     * servers for the languages it is given, a list serving every language.
+     *
+     * @param array<string, mixed> $global
+     * @param array<string, mixed> $project
+     *
+     * @return array<string, non-empty-list<array{command: list<string>, name: string, initializationOptions?: array<string, mixed>}>>
+     */
+    private function locateWith(array $global, array $project): array
+    {
+        $home = new TempProject(['.porta/config.json' => \json_encode($global, \JSON_THROW_ON_ERROR)]);
+        $root = new TempProject(['.porta.json' => \json_encode($project, \JSON_THROW_ON_ERROR)]);
+        \putenv('PORTA_HOME='.$home->dir);
+
+        return ServerLocator::locateAll($root->dir, null, self::PHPANTOM);
+    }
+
+    public function testAGlobalServerRunsAsTheSettingsViewShowsIt(): void
+    {
+        \putenv('PATH=/nonexistent');
+        \putenv('PORTA_LSP=env-ls');
+
+        $this->assertSame(
+            ['phpactor', 'language-server'],
+            $this->locateWith(['lsp' => ['php' => 'phpactor language-server']], [])['php'][0]['command'],
+            'a global map entry beats the env var and the plugin',
+        );
+        $servers = $this->locateWith(['lsp' => ['php' => 'phpactor language-server', 'yaml' => 'g-yaml']], ['lsp' => ['php' => 'p-php']]);
+        $this->assertSame([['p-php'], ['g-yaml']], [$servers['php'][0]['command'], $servers['yaml'][0]['command']], 'merged per language, the project on top');
+        $this->assertSame(
+            ['*' => ['p-all']],
+            \array_map(static fn (array $list): array => $list[0]['command'], $this->locateWith(['lsp' => ['php' => 'g-php']], ['lsp' => 'p-all'])),
+            'the project\'s single server is its whole answer',
+        );
+        $this->assertSame(['*' => ['g-all']], \array_map(static fn (array $list): array => $list[0]['command'], $this->locateWith([
+            'lsp' => 'g-all',
+        ], [])), 'a global single server serves every language, before the env var');
+        $this->assertSame(['p-php'], $this->locateWith(['lsp' => 'g-all'], ['lsp' => ['php' => 'p-php']])['php'][0]['command'], 'the project\'s map beats a global single server');
     }
 
     public function testOverrideWinsOverEverything(): void

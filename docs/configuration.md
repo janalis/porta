@@ -239,6 +239,11 @@ LSP server in the Settings view converts the single-command form to a map,
 keeping the original command under the `*` key. A `--lsp` command-line
 override wins over both.
 
+The per-language maps of the global and project files merge per language, the
+project's winning. A single command in the project file wins over everything
+in the global file; one in the global file applies only when neither file has a
+map, and wins over `PORTA_LSP`.
+
 ## The Settings view (`Ctrl+,`)
 
 A full-screen view with a resizable sidebar: **General**, **Interface**,

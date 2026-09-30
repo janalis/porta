@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Lsp;
 
+use Porta\Config\ConfigFiles;
+use Porta\Config\ConfigScope;
 use Porta\Support\Argv;
 use Porta\Support\JsonFile;
 use Symfony\Component\Process\ExecutableFinder;
@@ -13,11 +15,14 @@ use Symfony\Component\Process\ExecutableFinder;
  *
  * Resolution order (see {@see locateAll()}):
  *  0. an explicit $override (e.g. the `--lsp` CLI option) — serves every language
- *  1. "lsp" in the project's .porta.json: a command string/argv (serves every
- *     language, the historical form) or a {languageId: command} map for
- *     per-language servers, e.g.
+ *  1. "lsp" in the project's .porta.json as a command string/argv — serves
+ *     every language, the historical form
+ *  2. "lsp" as a {languageId: command} map for per-language servers, in the
+ *     global ~/.porta/config.json and the project's .porta.json, merged per
+ *     language with the project's on top, e.g.
  *     {"lsp": {"php": "phpactor language-server", "typescript": "typescript-language-server --stdio"}}
- *  2. PORTA_LSP environment variable — serves every language
+ *  2b. "lsp" in the global file as a command string/argv, then the PORTA_LSP
+ *     environment variable — serves every language
  *  3. plugin-provided servers, each scoped to its language (PHP comes from the
  *     phpantom/phpactor bundled plugins)
  *  4. auto-detected defaults for the remaining languages:
@@ -47,10 +52,20 @@ final class ServerLocator
             return ['*' => [self::server(self::split($override))]];
         }
 
-        /** @var array{lsp?: string|array<array-key, mixed>}|null $config */
-        $config = JsonFile::read($rootDir.'/.porta.json');
-        $lsp = $config['lsp'] ?? null;
-        if (\is_array($lsp) && [] !== $lsp && !\array_is_list($lsp)) {
+        $files = ConfigFiles::for($rootDir);
+        // @mago-expect analysis:mixed-assignment -- a raw config value, narrowed by single() and map()
+        $project = self::lspIn($files->path(ConfigScope::Project));
+        // @mago-expect analysis:mixed-assignment -- likewise
+        $global = self::lspIn($files->path(ConfigScope::Global));
+        // The project's single server is its whole answer; below it, the
+        // per-language maps of both files, the project's winning per language
+        // — as the Settings view shows them — then the global single server.
+        $single = self::single($project);
+        if (null !== $single) {
+            return ['*' => [$single]];
+        }
+        $map = [...self::map($global), ...self::map($project)];
+        if ([] !== $map) {
             // {languageId: command} map: each entry (a string or argv list) overrides
             // that language, but the rest keep their default (plugin or auto-detected)
             // — so configuring one language never silently unserves the others.
@@ -63,7 +78,7 @@ final class ServerLocator
             // Mutating them therefore produces equivalent mutants; they are
             // not a coverage gap.
             /** @var mixed $command */
-            foreach ($lsp as $language => $command) {
+            foreach ($map as $language => $command) {
                 if (\is_string($command) && '' !== $command) {
                     $servers[(string) $language] = [self::server(self::split($command))];
                     continue;
@@ -76,13 +91,33 @@ final class ServerLocator
             return $servers;
         }
 
-        // The historical single-server sources (config string/argv, env var)
-        // keep their catch-all semantics: one server sees every file.
-        if (null !== ($single = self::explicitSingle($rootDir))) {
+        // The historical single-server sources keep their catch-all
+        // semantics: one server sees every file.
+        $single = self::single($global) ?? self::single(\getenv('PORTA_LSP'));
+        if (null !== $single) {
             return ['*' => [$single]];
         }
 
         return self::effectiveDefaults($pluginServers);
+    }
+
+    /** A config file's raw "lsp" value; null when the file, or the key, is absent. */
+    private static function lspIn(?string $file): mixed
+    {
+        /** @var array{lsp?: mixed}|null $config */
+        $config = null === $file ? null : JsonFile::read($file);
+
+        return $config['lsp'] ?? null;
+    }
+
+    /**
+     * An "lsp" value in its per-language map form, else empty.
+     *
+     * @return array<array-key, mixed>
+     */
+    private static function map(mixed $lsp): array
+    {
+        return \is_array($lsp) && !\array_is_list($lsp) ? $lsp : [];
     }
 
     /**
@@ -108,26 +143,18 @@ final class ServerLocator
     }
 
     /**
-     * The explicitly configured single server: .porta.json "lsp" as a command
-     * string or argv list, then the PORTA_LSP env var. Null when neither is set.
+     * A single-server "lsp" value — a command string or argv list, or the
+     * PORTA_LSP env var's string — as the server; null for anything else.
      *
      * @return array{command: list<string>, name: string}|null
      */
-    private static function explicitSingle(string $rootDir): ?array
+    private static function single(mixed $lsp): ?array
     {
-        /** @var array{lsp?: string|array<array-key, mixed>}|null $config */
-        $config = JsonFile::read($rootDir.'/.porta.json');
-        $lsp = $config['lsp'] ?? null;
         if (\is_string($lsp) && '' !== $lsp) {
             return self::server(self::split($lsp));
         }
         if (\is_array($lsp) && [] !== $lsp && \array_is_list($lsp)) {
             return self::server(\array_values(\array_map(strval(...), $lsp)));
-        }
-
-        $env = \getenv('PORTA_LSP');
-        if (\is_string($env) && '' !== $env) {
-            return self::server(self::split($env));
         }
 
         return null;
