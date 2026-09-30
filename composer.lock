@@ -469,12 +469,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/console.git",
-                "reference": "e57b6b5603b523ba94ea9748ed80f03229c94976"
+                "reference": "440fb189f48a65d91cb62e2de7da18b41f6db541"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/console/zipball/e57b6b5603b523ba94ea9748ed80f03229c94976",
-                "reference": "e57b6b5603b523ba94ea9748ed80f03229c94976",
+                "url": "https://api.github.com/repos/symfony/console/zipball/440fb189f48a65d91cb62e2de7da18b41f6db541",
+                "reference": "440fb189f48a65d91cb62e2de7da18b41f6db541",
                 "shasum": ""
             },
             "require": {
@@ -562,7 +562,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-09-18T16:04:11+00:00"
+            "time": "2026-09-29T20:56:41+00:00"
         },
         {
             "name": "symfony/dependency-injection",
@@ -570,12 +570,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/dependency-injection.git",
-                "reference": "59ae2cbf2a8265a7a26ca05a896f40ca9efa71a3"
+                "reference": "bfc6cac68181d7564ad9d285983cd47c178f1197"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/dependency-injection/zipball/59ae2cbf2a8265a7a26ca05a896f40ca9efa71a3",
-                "reference": "59ae2cbf2a8265a7a26ca05a896f40ca9efa71a3",
+                "url": "https://api.github.com/repos/symfony/dependency-injection/zipball/bfc6cac68181d7564ad9d285983cd47c178f1197",
+                "reference": "bfc6cac68181d7564ad9d285983cd47c178f1197",
                 "shasum": ""
             },
             "require": {
@@ -645,7 +645,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-09-25T14:45:58+00:00"
+            "time": "2026-09-29T12:40:15+00:00"
         },
         {
             "name": "symfony/deprecation-contracts",
@@ -1788,12 +1788,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/translation.git",
-                "reference": "8e52c6552cbb3b081e1521d42a2e31241821cd45"
+                "reference": "b8d220779549540dc5213b0a5126c6e5c2e968d3"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/translation/zipball/8e52c6552cbb3b081e1521d42a2e31241821cd45",
-                "reference": "8e52c6552cbb3b081e1521d42a2e31241821cd45",
+                "url": "https://api.github.com/repos/symfony/translation/zipball/b8d220779549540dc5213b0a5126c6e5c2e968d3",
+                "reference": "b8d220779549540dc5213b0a5126c6e5c2e968d3",
                 "shasum": ""
             },
             "require": {
@@ -1879,7 +1879,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-09-25T14:49:48+00:00"
+            "time": "2026-09-28T09:55:27+00:00"
         },
         {
             "name": "symfony/translation-contracts",
@@ -1969,12 +1969,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/tui.git",
-                "reference": "008cdca391a52b1db0dd4a3c2e146ecc895aa930"
+                "reference": "d0adb8b3b62a7a7c4ddf5e807dfa235ddc4a7381"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/tui/zipball/008cdca391a52b1db0dd4a3c2e146ecc895aa930",
-                "reference": "008cdca391a52b1db0dd4a3c2e146ecc895aa930",
+                "url": "https://api.github.com/repos/symfony/tui/zipball/d0adb8b3b62a7a7c4ddf5e807dfa235ddc4a7381",
+                "reference": "d0adb8b3b62a7a7c4ddf5e807dfa235ddc4a7381",
                 "shasum": ""
             },
             "require": {
@@ -1982,7 +1982,7 @@
                 "revolt/event-loop": "^1.0",
                 "symfony/event-dispatcher": "^8.0",
                 "symfony/polyfill-intl-grapheme": "^1.42.1",
-                "symfony/string": "^8.0"
+                "symfony/string": "^8.0.6"
             },
             "require-dev": {
                 "league/commonmark": "^2.9",
@@ -2041,7 +2041,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-09-18T07:03:57+00:00"
+            "time": "2026-09-29T21:12:36+00:00"
         },
         {
             "name": "symfony/var-exporter",
