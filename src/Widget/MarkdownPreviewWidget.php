@@ -19,6 +19,9 @@ use Porta\Container\AsWidget;
  * preview in turn — so following links reads a repository's docs the way the
  * help browser reads Porta's.
  *
+ * And the page points back at its text: a click on it, away from a link,
+ * puts the editor's caret on the word clicked and scrolls it into view.
+ *
  * It follows the TEXT, not the file: {@see \Porta\Editor\PreviewFeeder} hands
  * it the document on every pause in typing, so what it shows is what the
  * editor holds, saved or not. An edit keeps the reader where they were; only
@@ -30,6 +33,24 @@ final class MarkdownPreviewWidget extends MarkdownPageWidget
 {
     /** The routing id, matching the claim registered in {@see \Porta\Bootstrap\CorePanes}. */
     public const string PANE_ID = 'markdown';
+
+    /** @var (\Closure(int, string): void)|null where a click on the page takes the editor */
+    private ?\Closure $onPointAtSource = null;
+
+    /** @param \Closure(int $sourceLine, string $word): void $onPointAtSource */
+    public function onPointAtSource(\Closure $onPointAtSource): void
+    {
+        $this->onPointAtSource = $onPointAtSource;
+    }
+
+    /** A click on the page puts the editor's caret on what was clicked — the text it came from. */
+    #[\Override]
+    protected function pointAtSource(int $sourceLine, string $word): void
+    {
+        if (null !== $this->onPointAtSource) {
+            ($this->onPointAtSource)($sourceLine, $word);
+        }
+    }
 
     #[\Override]
     public function paneId(): string

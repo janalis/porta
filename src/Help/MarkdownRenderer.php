@@ -42,6 +42,12 @@ final class MarkdownRenderer
     private array $lines = [];
     /** @var list<LinkSpan> */
     private array $links = [];
+    /** @var list<int> the source line each rendered line came from, kept in step by {@see origin()} */
+    private array $origins = [];
+    /** @var list<string> prose lines waiting to be joined into one paragraph */
+    private array $paragraph = [];
+    /** The source line the waiting paragraph starts on. */
+    private int $paragraphStart = 0;
     /** Set after a heading: source blank lines are absorbed until real content follows. */
     private bool $swallowBlanks = false;
 
@@ -55,16 +61,20 @@ final class MarkdownRenderer
         $this->nextGroup = 0;
         $this->lines = [];
         $this->links = [];
+        $this->origins = [];
         $this->swallowBlanks = false;
 
         $source = \explode("\n", $markdown);
-        $paragraph = [];
+        $this->paragraph = [];
         for ($i = 0, $count = \count($source); $i < $count; ++$i) {
             $line = \rtrim($source[$i]);
             $m = [];
 
+            // Whatever the previous step drew came from its own line; a
+            // paragraph's lines were claimed when it flushed.
+            $this->origin(\max(0, $i - 1));
             if ('' === \trim($line)) {
-                $this->flushParagraph($paragraph, $width);
+                $this->flushParagraph($width);
                 if (!$this->swallowBlanks) {
                     $this->lines[] = '';
                 }
@@ -72,74 +82,99 @@ final class MarkdownRenderer
             }
             $this->swallowBlanks = false;
             if (\str_starts_with(\trim($line), '```')) {
-                $this->flushParagraph($paragraph, $width);
+                $this->flushParagraph($width);
                 $i = $this->fence($source, $i + 1, $width);
                 continue;
             }
             if (\str_starts_with(\ltrim($line), '|')) {
-                $this->flushParagraph($paragraph, $width);
-                $rows = [];
-                for (; $i < $count && \str_starts_with(\ltrim(\rtrim($source[$i])), '|'); ++$i) {
-                    $rows[] = \trim($source[$i]);
-                }
-                --$i;
-                $this->table($rows, $width);
+                $this->flushParagraph($width);
+                $i = $this->tableAt($source, $i, $width);
                 continue;
             }
             if (1 === \preg_match('/^(#{1,6}) (.+)$/', $line, $m)) {
-                $this->flushParagraph($paragraph, $width);
+                $this->flushParagraph($width);
                 $this->heading(\strlen($m[1]), $m[2], $width);
                 continue;
             }
             if (1 === \preg_match('/^\s*(-{3,}|\*{3,}|_{3,})\s*$/', $line)) {
-                $this->flushParagraph($paragraph, $width);
+                $this->flushParagraph($width);
                 $this->lines[] = $this->styles->of(Role::Muted)->getAnsiRestore().\str_repeat(Glyphs::MD_RULE, $width).$this->resetAll();
                 continue;
             }
-            if (\str_starts_with($line, '> ')) {
-                $this->flushParagraph($paragraph, $width);
-                $prefix = $this->styles->of(Role::Muted)->getAnsiRestore().Glyphs::MD_QUOTE_BAR.' '.$this->fgReset();
-                $this->wrapSegments($this->inline(\substr($line, offset: 2)), $width, $prefix, 2, $prefix);
+            if ($this->prefixedItem($line, $width)) {
                 continue;
             }
-            if (1 === \preg_match('/^(\s*)- (.+)$/', $line, $m)) {
-                $this->flushParagraph($paragraph, $width);
-                $indent = \strlen($m[1]);
-                $prefix = $m[1].$this->styles->of(Role::Muted)->getAnsiRestore().Glyphs::MD_BULLET.' '.$this->fgReset();
-                $this->wrapSegments($this->inline($m[2]), $width, $prefix, $indent + 2, \str_repeat(' ', $indent + 2));
-                continue;
-            }
-            if (1 === \preg_match('/^(\s*)(\d+\.) (.+)$/', $line, $m)) {
-                $this->flushParagraph($paragraph, $width);
-                $hang = \strlen($m[1]) + \strlen($m[2]) + 1;
-                $this->wrapSegments($this->inline($m[3]), $width, $m[1].$m[2].' ', $hang, \str_repeat(' ', $hang));
-                continue;
-            }
-            $paragraph[] = \trim($line);
+            $this->paragraphStart = [] === $this->paragraph ? $i : $this->paragraphStart;
+            $this->paragraph[] = \trim($line);
         }
-        $this->flushParagraph($paragraph, $width);
+        $this->origin(\max(0, $count - 1));
+        $this->flushParagraph($width);
 
         // Collapse a trailing run of blank lines to none.
         while ([] !== $this->lines && '' === \end($this->lines)) {
             \array_pop($this->lines);
         }
+        $this->origin(0);
 
-        return new RenderedDoc($this->lines, $this->links);
+        return new RenderedDoc($this->lines, $this->links, $this->origins);
+    }
+
+    /**
+     * A line drawn behind a prefix — a quote's bar, a bullet, an item number —
+     * with its text wrapped under it. False when $line is none of those.
+     */
+    private function prefixedItem(string $line, int $width): bool
+    {
+        $m = [];
+        if (\str_starts_with($line, '> ')) {
+            $this->flushParagraph($width);
+            $prefix = $this->styles->of(Role::Muted)->getAnsiRestore().Glyphs::MD_QUOTE_BAR.' '.$this->fgReset();
+            $this->wrapSegments($this->inline(\substr($line, offset: 2)), $width, $prefix, 2, $prefix);
+
+            return true;
+        }
+        if (1 === \preg_match('/^(\s*)- (.+)$/', $line, $m)) {
+            $this->flushParagraph($width);
+            $indent = \strlen($m[1]);
+            $prefix = $m[1].$this->styles->of(Role::Muted)->getAnsiRestore().Glyphs::MD_BULLET.' '.$this->fgReset();
+            $this->wrapSegments($this->inline($m[2]), $width, $prefix, $indent + 2, \str_repeat(' ', $indent + 2));
+
+            return true;
+        }
+        if (1 === \preg_match('/^(\s*)(\d+\.) (.+)$/', $line, $m)) {
+            $this->flushParagraph($width);
+            $hang = \strlen($m[1]) + \strlen($m[2]) + 1;
+            $this->wrapSegments($this->inline($m[3]), $width, $m[1].$m[2].' ', $hang, \str_repeat(' ', $hang));
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Bring the origin map level with the lines: every line added since the
+     * last call came from $source, and lines taken back (a heading swallows
+     * the blank rows before it) take their origins with them. Called after
+     * each block, so a block's lines point at the source line it starts on.
+     */
+    private function origin(int $source): void
+    {
+        $this->origins = \array_pad(\array_slice($this->origins, offset: 0, length: \count($this->lines)), \count($this->lines), $source);
     }
 
     /**
      * Hard-wrapped source prose joins into one logical paragraph before
      * re-wrapping, so wide panes get long lines instead of the author's 72s.
-     *
-     * @param list<string> $paragraph
      */
-    private function flushParagraph(array &$paragraph, int $width): void
+    private function flushParagraph(int $width): void
     {
-        if ([] === $paragraph) {
+        if ([] === $this->paragraph) {
             return;
         }
-        $this->wrapSegments($this->inline(\implode(' ', $paragraph)), $width, '', 0, '');
-        $paragraph = [];
+        $this->wrapSegments($this->inline(\implode(' ', $this->paragraph)), $width, '', 0, '');
+        $this->origin($this->paragraphStart);
+        $this->paragraph = [];
     }
 
     /**
@@ -155,6 +190,7 @@ final class MarkdownRenderer
         for (; $i < $count && !\str_starts_with(\trim($source[$i]), '```'); ++$i) {
             $text = AnsiText::truncate('  '.\rtrim($source[$i]), $width);
             $this->lines[] = $bg.AnsiText::padRight($text, $width).$this->resetAll();
+            $this->origin($i); // a code line is its own source line
         }
 
         return $i;
@@ -195,6 +231,23 @@ final class MarkdownRenderer
         }
         $this->lines[] = '';
         $this->swallowBlanks = true;
+    }
+
+    /**
+     * The table starting at source line $first: its `|` rows gathered and
+     * drawn. Returns the index of its last row, where the block loop resumes.
+     *
+     * @param list<string> $source
+     */
+    private function tableAt(array $source, int $first, int $width): int
+    {
+        $rows = [];
+        for ($i = $first; $i < \count($source) && \str_starts_with(\ltrim(\rtrim($source[$i])), '|'); ++$i) {
+            $rows[] = \trim($source[$i]);
+        }
+        $this->table($rows, $width, $first);
+
+        return $i - 1;
     }
 
     /** @param list<string> $rows raw `| a | b |` lines (a `---` separator row allowed) */
@@ -281,7 +334,7 @@ final class MarkdownRenderer
      *
      * @param list<string> $rows the `|`-delimited source lines, separator included
      */
-    private function table(array $rows, int $width): void
+    private function table(array $rows, int $width, int $first): void
     {
         $cells = [];
         $sources = [];
@@ -307,6 +360,7 @@ final class MarkdownRenderer
                     $rule .= \str_repeat(Glyphs::MD_RULE, \max(0, $columnWidth)).'  ';
                 }
                 $this->lines[] = $this->styles->of(Role::Muted)->getAnsiRestore().AnsiText::truncate(\rtrim($rule), $width).$this->resetAll();
+                $this->origin($first + $index);
                 continue;
             }
 
@@ -339,8 +393,10 @@ final class MarkdownRenderer
                 $this->lines[] = AnsiText::truncate($line, $width);
                 $this->recordSpans($spans, \count($this->lines) - 1, $width);
             }
+            $this->origin($first + $index);
         }
         $this->lines[] = '';
+        $this->origin($first + \count($rows) - 1);
     }
 
     /**
@@ -428,9 +484,8 @@ final class MarkdownRenderer
         foreach ($segments as $segment) {
             $splitWords = \preg_split('/ +/', $segment->text, -1, \PREG_SPLIT_NO_EMPTY);
             $glued = !$spaceBefore && !\str_starts_with($segment->text, ' ');
-            if ([] !== $splitWords && false !== $splitWords) {
-                $spaceBefore = \str_ends_with($segment->text, ' ');
-            }
+            // An all-blank segment leaves the question to the next one.
+            $spaceBefore = [] === $splitWords || false === $splitWords ? $spaceBefore || '' !== $segment->text : \str_ends_with($segment->text, ' ');
             foreach (\is_array($splitWords) ? $splitWords : [] as $word) {
                 $wordWidth = AnsiUtils::visibleWidth($word);
                 while ($wordWidth > $room) {

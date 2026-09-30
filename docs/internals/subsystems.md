@@ -238,7 +238,10 @@ arranged by its `PreviewMode`: Editor, Split or Preview.
   the markdown preview extend it. They differ in their tree (the docs, the
   project) and in what a link to another page does, which is the handler's:
   `Help/HelpViewerActions` renders it in place, `Help/MarkdownPreviewActions`
-  opens that file's tab.
+  opens that file's tab. A click on the page's text, away from a link, is
+  reported with the source line its block starts on (`RenderedDoc::$origins`,
+  kept by the renderer per block) and the word under the pointer; the preview
+  searches that block of the text for the word and puts the caret there.
 - **Sizing.** The two sides are FLEX WEIGHTS, never a width: a `flex: 0` side
   is measured by rendering it, which for the editor means twice a frame. The
   share persists as `previewSplitPercent`; below 41 columns the preview steps

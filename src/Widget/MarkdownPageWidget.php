@@ -198,8 +198,33 @@ abstract class MarkdownPageWidget extends EditorPaneWidget implements FindTarget
 
             return true;
         }
+        $source = $doc->origins[$line] ?? null;
+        if (null !== $source) {
+            $this->pointAtSource($source, $this->wordAt(AnsiUtils::stripAnsiCodes($doc->lines[$line] ?? ''), $relCol));
+        }
 
         return false;
+    }
+
+    /**
+     * A click on the page's text, away from any link: the source line the
+     * clicked block starts on, and the word under the pointer ('' between
+     * words). A page with a source to show — the preview — takes the reader
+     * there; the help browser's pages have none, and ignore it.
+     */
+    protected function pointAtSource(int $sourceLine, string $word): void {}
+
+    /** The run of non-blank characters covering display column $col of a plain line, or ''. */
+    private function wordAt(string $line, int $col): string
+    {
+        $at = $this->byteAtColumn($line, $col);
+        if ($at >= \strlen($line) || ' ' === $line[$at]) {
+            return '';
+        }
+        $start = \strrpos(\substr($line, offset: 0, length: $at), needle: ' ');
+        $end = \strpos($line, needle: ' ', offset: $at);
+
+        return \substr($line, false === $start ? 0 : $start + 1, false === $end ? null : $end - (false === $start ? 0 : $start + 1));
     }
 
     /** @return list<string> */
@@ -217,9 +242,17 @@ abstract class MarkdownPageWidget extends EditorPaneWidget implements FindTarget
         $this->marginCols = \strlen($margin);
         $width = $cols - $this->marginCols;
         if (null === $this->doc || $width !== $this->renderedWidth) {
+            // A resize rewraps the page, so the same scroll offset would show
+            // other text: keep the source line at the top instead. A new text
+            // (no page to measure against) keeps the offset as it was.
+            $anchor = $this->doc?->origins[$this->scrollTop] ?? null;
             $doc = $this->renderer->render($this->markdown, $width);
             $this->doc = $doc;
             $this->renderedWidth = $width;
+            if (null !== $anchor) {
+                // The same text, so the anchor's block is in the new page too.
+                $this->scrollTop = (int) \array_key_first(\array_filter($doc->origins, static fn (int $origin): bool => $origin >= $anchor));
+            }
             $this->scrollTop = $this->clampScroll($this->scrollTop);
             $this->currentLink = \min($this->currentLink, $doc->groupCount() - 1);
             ++$this->findVersion; // re-wrapped: match offsets are stale

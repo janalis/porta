@@ -136,4 +136,57 @@ final class MarkdownPreviewWidgetTest extends TestCase
 
         $this->assertNotSame(' ', $this->drawn($pane, 1, 3)[1]);
     }
+
+    public function testAClickOnThePageReportsItsSourceLineAndTheWordUnderIt(): void
+    {
+        $pane = $this->pane();
+        $pointed = [];
+        $pane->onPointAtSource(static function (int $line, string $word) use (&$pointed): void {
+            $pointed[] = [$line, $word];
+        });
+        $pane->show('/p/a.md', "# Title\n\nsome words\nhere, and more\n");
+        $rows = $this->drawn($pane, 60, 8);
+        $row = (int) \array_key_first(\array_filter($rows, static fn (string $r): bool => \str_contains($r, 'some words')));
+
+        $pane->press($row, (int) \strpos($rows[$row], needle: 'here,') + 2);
+        $pane->press($row, (int) \strpos($rows[$row], needle: 'words') + 5); // the space after it
+        $pane->press(1, 3); // the heading
+
+        $this->assertSame([[2, 'here,'], [2, ''], [0, 'Title']], $pointed, 'the block\'s first source line, and the word as drawn');
+    }
+
+    public function testALinkClickFollowsTheLinkAndPointsNowhere(): void
+    {
+        $pane = $this->pane();
+        $pointed = 0;
+        $pane->onPointAtSource(static function () use (&$pointed): void {
+            ++$pointed;
+        });
+        $guide = $this->project->path('docs/guide.md');
+        $pane->show($guide, (string) \file_get_contents($guide));
+        $rows = $this->drawn($pane, 80, 8);
+        $row = (int) \array_key_first(\array_filter($rows, static fn (string $r): bool => \str_contains($r, 'the other')));
+
+        $pane->press($row, (int) \strpos($rows[$row], needle: 'the other'));
+
+        $this->assertSame(0, $pointed);
+        $this->assertSame(['help:other.md'], $this->handler->events);
+    }
+
+    public function testAResizeKeepsTheSameTextAtTheTopOfThePage(): void
+    {
+        $pane = new MarkdownPreviewWidget();
+        $paragraphs = \array_map(static fn (int $n): string => 'Block '.$n.' '.\str_repeat('word ', times: 12), \range(1, end: 20));
+        $pane->show('/p/a.md', \implode("\n\n", $paragraphs));
+        $this->drawn($pane, 80, 6);
+        $pane->handleInput("\x1b[6~");
+        $pane->handleInput("\x1b[6~"); // two pages down
+        $top = \trim($this->drawn($pane, 80, 6)[1]);
+        $this->assertStringStartsWith('Block', $top, 'the view starts at a block');
+
+        $narrow = $this->drawn($pane, 30, 6);
+
+        $this->assertStringStartsWith(\explode(' ', $top)[0].' '.\explode(' ', $top)[1], \trim($narrow[1]), 'the block that was at the top still is, rewrapped');
+        $this->assertSame(\trim($this->drawn($pane, 80, 6)[1]), $top, 'and back at the first width');
+    }
 }

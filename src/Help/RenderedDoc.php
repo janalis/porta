@@ -13,11 +13,13 @@ final readonly class RenderedDoc
 {
     /**
      * @param list<string>   $lines
-     * @param list<LinkSpan> $links ordered by group, then line
+     * @param list<LinkSpan> $links   ordered by group, then line
+     * @param list<int>      $origins for each rendered line, the 0-based source line its block starts on
      */
     public function __construct(
         public array $lines,
         public array $links,
+        public array $origins = [],
     ) {}
 
     /** The number of distinct links (Tab cycles these groups). */

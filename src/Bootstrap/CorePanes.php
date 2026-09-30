@@ -67,6 +67,7 @@ final readonly class CorePanes
         }
         if (null !== $this->previewActions && null !== $this->paths) {
             $this->markdownPreview->setHandler($this->previewActions);
+            $this->markdownPreview->onPointAtSource($this->previewActions->revealSource(...));
             $this->markdownPreview->setDocsRoot($this->paths->root());
         }
         $this->previews->claim(MarkdownPreviewWidget::PANE_ID, static fn (string $path): bool => ProjectPaths::hasExtension($path, self::MARKDOWN_EXTENSIONS));

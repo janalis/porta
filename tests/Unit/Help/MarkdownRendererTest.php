@@ -628,4 +628,22 @@ final class MarkdownRendererTest extends TestCase
         $this->assertSame(['one two three four five', ',six'], $this->rows($this->render('one two three four *five*,six', 24)->lines));
         $this->assertSame(['one two three four fiv,x'], $this->rows($this->render('one two three four *fiv*,x', 24)->lines), 'a glued word costs no space, so this one still fits');
     }
+
+    public function testEveryRenderedLineKnowsTheSourceLineItsBlockStartsOn(): void
+    {
+        $markdown = "# T\n\nfirst line of\nsecond line\n\n- item\n\n```\ncode1\ncode2\n```\n\n| a | b |\n| --- | --- |\n| 1 | 2 |\n\n## H2\ntext";
+        $doc = $this->render($markdown, 40);
+
+        $this->assertCount(\count($doc->lines), $doc->origins, 'one origin per line, the swallowed blanks included');
+        $at = static fn (string $text): int => $doc->origins[\array_search($text, \array_map(\rtrim(...), \array_map(AnsiUtils::stripAnsiCodes(...), $doc->lines)), strict: true)];
+        $this->assertSame(0, $at('T'));
+        $this->assertSame(2, $at('first line of second line'), 'a paragraph points at its first source line');
+        $this->assertSame(5, $at('• item'));
+        $this->assertSame(8, $at('  code1'), 'a code line is its own line');
+        $this->assertSame(9, $at('  code2'));
+        $this->assertSame(12, $at(' a  b'), 'a table row is its own line');
+        $this->assertSame(14, $at(' 1  2'));
+        $this->assertSame(16, $at('H2'));
+        $this->assertSame(17, $at('text'), 'the paragraph the document ends on');
+    }
 }

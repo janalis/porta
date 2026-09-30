@@ -260,7 +260,8 @@ Tab-management keys (`Ctrl+←/→`, `Ctrl+F4`, `Ctrl+P`…) keep working on the
 help tab.
 
 **A Markdown file's live preview reads the same way** once it has the keys
-(a click on it, or `F6`): the same keys, the same header — its breadcrumb
+(`F6`, or a click on its navigation bar — a click on its text instead puts the
+editor's caret on the word clicked): the same keys, the same header — its breadcrumb
 walks the project instead (`project › folder › page`) — and `Ctrl+F` finds in
 the rendered page. A link to another Markdown file opens that file's tab,
 with the preview keeping the keys; `Backspace` walks back through the files

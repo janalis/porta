@@ -769,11 +769,17 @@ it. An edit keeps your place in a long preview.
   `Ctrl+Alt+V` steps through the three, and *View ▸ Editor Only / Editor and
   Preview / Preview Only* do the same. Each tab keeps its own choice.
 - **Resize** by dragging the divider between the two, or with
-  `Shift+F11`/`Shift+F12` from either half. The proportion is kept per project
+  `Shift+F11`/`Shift+F12` from either half. The page rewraps as it goes and
+  keeps the same text at its top, and a click still lands on the word it drew,
+  whatever the width — the terminal's own resizes included. The proportion is kept per project
   in `.porta/layout.json`, one for every previewed file.
-- **Focus.** Click the preview, or press `F6`, to give it the keys; `Ctrl+T`
-  or a click on the text goes back. A graph or an image then zooms and pans as
-  described below.
+- **Click to find the source.** A click on a Markdown preview's text puts the
+  editor's caret on the word you clicked, scrolled into view, and gives the
+  text the keys. With the preview shown alone the caret moves all the same,
+  ready for when the text comes back.
+- **Focus.** `F6`, or a click on the preview's navigation bar, gives the
+  preview the keys (a graph or an image takes them on any click, and zooms
+  and pans as described below); `Ctrl+T` or a click on the text goes back.
 - **Markdown reads like the documentation** (`F1`): a navigation bar over the
   page — `‹` `›` through the pages you followed, then the page's place in the
   project — and links you cycle with `Tab` and follow with `Enter` or a click.
