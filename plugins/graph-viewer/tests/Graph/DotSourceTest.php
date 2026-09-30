@@ -19,6 +19,26 @@ final class DotSourceTest extends TestCase
         $this->assertSame(\strpos(self::DOT, needle: 'AB'), DotSource::declarationOf(self::DOT, 'AB'));
     }
 
+    public function testNoAssignmentNamesANodeHoweverItsValueIsWritten(): void
+    {
+        $dot = "digraph G {\n  rankdir=LR;\n  a -> b [weight=2, color = red];\n  b [label=<<b>x</b> y>];\n  graph [label=c];\n  2 -> red;\n  x -> y -> c -> rankdir;\n}";
+
+        $this->assertSame(\strpos($dot, needle: '2 -> red'), DotSource::declarationOf($dot, '2'), 'not the bare weight=2');
+        $this->assertSame(\strpos($dot, needle: 'red;'), DotSource::declarationOf($dot, 'red'), 'not color = red, spaced');
+        $this->assertSame(\strpos($dot, needle: 'x -> y'), DotSource::declarationOf($dot, 'x'), 'not inside an HTML label');
+        $this->assertSame(\strpos($dot, needle: 'y -> c'), DotSource::declarationOf($dot, 'y'), 'not after the nested tag either');
+        $this->assertSame(\strpos($dot, needle: 'c -> rankdir'), DotSource::declarationOf($dot, 'c'), 'not label=c');
+        $this->assertSame(\strpos($dot, needle: 'rankdir;'), DotSource::declarationOf($dot, 'rankdir'), 'not the attribute\'s own name');
+    }
+
+    public function testABackslashInAQuotedIdIsTheNodesOwn(): void
+    {
+        // What Graphviz names "Porta\\Widget": both backslashes, as written.
+        $dot = "digraph G {\n  \"Porta\\\\Widget\" [label=\"Widget\"];\n}";
+
+        $this->assertSame(\strpos($dot, needle: '"Porta'), DotSource::declarationOf($dot, 'Porta\\\\Widget'));
+    }
+
     public function testTheEarlierOfTheBareAndTheQuotedSpellingWins(): void
     {
         $this->assertSame(0, DotSource::declarationOf("\"x\" -> y;\nx -> z;", 'x'));

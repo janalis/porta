@@ -12,13 +12,21 @@ namespace Porta\GraphViewer\Graph;
  * The first place the node's id appears as an id: bare (`A -> B`) or quoted
  * (`"hello world" -> B`), whichever comes first. What is not a node id is
  * masked out before looking, keeping every offset where it was: comments,
- * attribute values (`label="A"` names no node), and the graph's own name
- * (`digraph A {`).
+ * attribute assignments (`label="A"`, `weight=2`, `rankdir=LR` name no
+ * node), and the graph's own name (`digraph A {`).
  */
 final class DotSource
 {
-    /** Comments, `= "value"` attribute strings, and the id right after `graph`/`digraph`/`subgraph`. */
-    private const string NOT_NODE_IDS = '~/\*.*?\*/|//[^\n]*|^[ \t]*#[^\n]*|=\s*"(?:[^"\\\\]|\\\\.)*"|\b(?:di|sub)?graph\s+(?:"(?:[^"\\\\]|\\\\.)*"|[\w\x80-\xff]+)~msi';
+    /**
+     * Comments; every `name = value` assignment, whole — an attribute's name
+     * and its value are never nodes, however the value is written: quoted,
+     * bare (`weight=2`, `color=red`) or an HTML string with its nested tags
+     * (`label=<<b>x</b>>`); and the id right after `graph`/`digraph`/`subgraph`.
+     */
+    private const string NOT_NODE_IDS =
+        '~/\*.*?\*/|//[^\n]*|^[ \t]*#[^\n]*'
+            .'|(?:"(?:[^"\\\\]|\\\\.)*"|[\w\x80-\xff.]++)\s*=\s*(?:"(?:[^"\\\\]|\\\\.)*"|(?<html><(?:[^<>]++|(?&html))*>)|-?[\w\x80-\xff.]++)'
+            .'|\b(?:di|sub)?graph\s+(?:"(?:[^"\\\\]|\\\\.)*"|[\w\x80-\xff]+)~msi';
 
     /** The byte offset of $name's first use as a node id in $dot, or null when it is never written. */
     public static function declarationOf(string $dot, string $name): ?int
@@ -65,13 +73,16 @@ final class DotSource
     /**
      * Every place $text writes $name as an id, bare or quoted, as [start, end) byte spans.
      *
+     * A quoted id's one escape is `\"`: Graphviz keeps every other backslash
+     * as written, so `"Porta\\Widget"` is the node named `Porta\\Widget`.
+     *
      * @return list<array{int, int}>
      */
     private static function uses(string $text, string $name): array
     {
         $m = [];
         \preg_match_all(
-            '~"'.\preg_quote(\addcslashes($name, characters: '"\\'), delimiter: '~').'"|(?<![\w\x80-\xff"])'.\preg_quote($name, delimiter: '~').'(?![\w\x80-\xff"])~',
+            '~"'.\preg_quote(\str_replace('"', replace: '\\"', subject: $name), delimiter: '~').'"|(?<![\w\x80-\xff"])'.\preg_quote($name, delimiter: '~').'(?![\w\x80-\xff"])~',
             $text,
             $m,
             \PREG_OFFSET_CAPTURE,
