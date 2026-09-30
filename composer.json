@@ -95,6 +95,7 @@
             "@verify:quick",
             "@coverage:check"
         ],
+        "mutate:clean": "rm -rf coverage/infection coverage/infection_* coverage/infection-* coverage/infection.log",
         "mutate": [
             "@php -d pcov.enabled=1 -d pcov.directory=src vendor/bin/paratest --processes=${PORTA_TEST_PROCESSES:-$(( ($(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4) + 1) / 2 ))} --testsuite=Unit --passthru-php=\"'-d' 'pcov.enabled=1' '-d' 'pcov.directory=src'\" --coverage-xml=coverage/infection/coverage-xml --log-junit=coverage/infection/junit.xml",
             "@php vendor/bin/infection --coverage=coverage/infection --skip-initial-tests --git-diff-lines --git-diff-base=HEAD --threads=${PORTA_MUTATE_THREADS:-$(( ($(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4) + 1) / 2 ))} --test-framework-options='--testsuite=Unit --colors=never' --show-mutations"

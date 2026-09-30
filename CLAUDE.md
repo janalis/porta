@@ -14,7 +14,7 @@ routed below — read the page before working in that area, not after.
 ```bash
 composer verify   composer verify:quick  composer dev   composer test[:unit|:e2e|:plugins]  composer arch  composer container
 composer analyze  composer lint   composer format  composer format:check  composer rector  composer rector:check
-composer coverage:check   composer coverage:src   composer coverage:plugins   composer duplication   composer mutate   composer flake:scan
+composer coverage:check   composer coverage:src   composer coverage:plugins   composer duplication   composer mutate   composer mutate:clean   composer flake:scan
 ```
 
 Always invoke the gates through the composer scripts, output captured, not paged:

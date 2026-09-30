@@ -29,7 +29,8 @@ Worked examples: `git show --stat b4506a85` (mcp), `006b7600` (symfony-lsp). The
    `Porta\`, not the directory name (`GitPlugin`, but `SymfonyLsp`). `plugin.php` is outside the graph.
    Guard: `composer arch` (fails on drift in both directions).
 7. **Translations**, if it has strings: `plugins/<name>/translations/messages.{en,de,es,fr,he,it,ja}.xlf`,
-   ids from 1, called through `$api->trans()`. The catalog gates pick it up automatically.
+   ids from 1, called through `$api->trans()`; add each string with
+   `php bin/porta-dev i18n:add "…" --plugin=<name> --target=fr:… …`. The catalog gates pick it up automatically.
    - All 7 files are required.
    - A source string may not be in two sets.
    - Every unit must be used by this plugin.

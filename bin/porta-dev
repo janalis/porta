@@ -30,4 +30,5 @@ $application->addCommand(new Porta\Console\ContainerDebugCommand());
 $application->addCommand(new Porta\Console\CoverageCheckCommand());
 $application->addCommand(new Porta\Console\CoveragePluginsCommand());
 $application->addCommand(new Porta\Console\FlakeScanCommand());
+$application->addCommand(new Porta\Console\TranslationAddCommand());
 $application->run();

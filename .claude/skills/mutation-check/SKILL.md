@@ -18,13 +18,15 @@ grep -A12 "Escaped mutants" /tmp/porta-mutate.log     # or read coverage/infecti
   another `--git-diff-base`, copying the rest of the `mutate` script's flags.
 - It judges against the **Unit suite only**. An escape in code only Integration, E2e
   or Plugins covers is a harness artefact: find that covering test before writing one.
-- It builds Unit coverage first (serial, a few minutes). Don't run it while another
+- It builds Unit coverage first (paratest, about a minute). Don't run it while another
   suite is running.
 - Non-gating. Read survivors like a review. Usually harmless: a literal nothing
   observes (a mkdir mode), a cast for the analyser, comparator weights (1:0 → 2:0), a
   term on both sides of a decision. Worth acting on: a guard whose arms aren't each
   covered, and request payloads nothing asserts. `infection.json5` has the long form.
 - A timeout is not an escape.
+- Each run leaves ~300MB in `coverage/infection`, and hand runs leave `coverage/infection_*`:
+  `composer mutate:clean` removes them all.
 
 ## By hand, when the tool can't reach it (plugins, E2e-only code, one guard)
 

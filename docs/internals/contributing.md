@@ -20,6 +20,9 @@ composer duplication    # phpcpd — zero copy-paste clones, tree-wide
 composer verify         # all eight, cheapest first, stopping at the first failure
 composer verify:quick   # the six fast ones — the mid-work check
 composer flake:scan     # run the suite N times and name what failed at least once
+composer mutate         # Infection over the uncommitted src/ diff, judged by Unit (testing.md)
+composer mutate:clean   # delete every coverage/infection* report (~300MB a run)
+php bin/porta-dev i18n:add "Text" --target=fr:… …   # one message into all seven catalogs, next free id
 composer format         # mago format (apply)
 composer format:check   # mago format --check
 composer container      # kernel-less debug:container

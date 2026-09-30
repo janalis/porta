@@ -31,9 +31,9 @@ Worked examples: `git show f8a2f798` (tree cut/copy/paste), `b8cf05bb`, `51c3f7c
      `IdeContextMenusTest`).
 5. **`docs/keybindings.md`**: a row for the chord. `KeybindingsDocTest` checks only that the CHORD appears
    somewhere, so a reused chord passes without a row. Add the row anyway.
-6. **Translations**: the label is the message id. Add a `<trans-unit id="N">` with the same `N` to all
-   seven `translations/messages.{en,de,es,fr,he,it,ja}.xlf`. N is the next free id:
-   `grep -o 'trans-unit id="[0-9]*"' translations/messages.en.xlf | grep -o '[0-9]*' | sort -n | tail -1`.
+6. **Translations**: the label is the message id. Add it to all seven catalogs in one command, which
+   picks the next free id and refuses a missing locale or a source already there:
+   `php bin/porta-dev i18n:add "Title Case Label" --target="fr:…" --target="de:…" --target="es:…" --target="it:…" --target="ja:…" --target="he:…"`
    - Write modifiers as `Ctrl+`, never symbols (`HintDialectTest`).
    - **A duplicate id empties the whole locale** silently. Only `CatalogCompletenessTest` catches it.
    - Guards: `CatalogCompletenessTest` (in every target, non-empty) and `CatalogCoverageTest` (used,
