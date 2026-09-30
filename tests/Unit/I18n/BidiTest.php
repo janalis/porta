@@ -547,6 +547,23 @@ final class BidiTest extends TestCase
         $this->assertSame('demo (project)', $out);
     }
 
+    /**
+     * BD16's stack holds 63 openers: one short of it the parenthetical still
+     * pairs, and at it the paragraph pairs nothing more — its brackets fall to
+     * the neutral rules and the `(` leaves the Latin run. Nothing more means
+     * even a closer whose opener sits below the overflow: the walk stops.
+     */
+    public function testBracketPairingStopsAtTheStackLimit(): void
+    {
+        $under = self::strip(Bidi::reorder(\str_repeat('[', times: 62).'demo (project)', BaseDirection::Rtl));
+        $at = self::strip(Bidi::reorder(\str_repeat('[', times: 63).'demo (project)', BaseDirection::Rtl));
+
+        $this->assertStringStartsWith('demo (project)', $under);
+        $this->assertStringStartsWith('(demo (project', $at);
+        $overflowed = self::strip(Bidi::reorder('demo (project'.\str_repeat('[', times: 62).'x[)', BaseDirection::Rtl));
+        $this->assertStringStartsWith('(]demo (project', $overflowed, 'the `)` after the overflow pairs with nothing');
+    }
+
     /** Under a left-to-right base, Hebrew in brackets after Hebrew is one right-to-left run with them. */
     public function testABracketPairHoldingHebrewAfterHebrewMirrorsWithIt(): void
     {

@@ -178,6 +178,20 @@ final class PaneSegmenterTest extends TestCase
     }
 
     /** The region walk has the same shape, and the same hole. */
+    public function testARegionPastTheRightEdgeIsSkipped(): void
+    {
+        $regions = [
+            new DropdownRegion(0, 20, 5, 1), // columns 20-24 on a 12-column screen
+            new DropdownRegion(0, 2, 3, 1),
+        ];
+
+        // Nothing of the first is on screen; the walk goes on to the second.
+        $this->assertRuns(
+            PaneSegmenter::regionRunsForRow($regions, 0, 12),
+            ['start' => 2, 'width' => 3, 'ltr' => false],
+        );
+    }
+
     public function testARegionThatMissesTheRowDoesNotStopTheWalk(): void
     {
         $leaves = [

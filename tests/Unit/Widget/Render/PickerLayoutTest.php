@@ -539,7 +539,7 @@ final class PickerLayoutTest extends TestCase
             $this->assertNotNull($row);
             $shown = AnsiUtils::stripAnsiCodes(BaseDirection::Rtl === $direction ? Bidi::reorder($row, BaseDirection::Rtl) : $row);
             $gaps[$direction->name] = 1 === \preg_match('/Fine( +)why|why( +)Fine/', $shown, $match) ? \strlen($match[1].($match[2] ?? '')) : -1;
-            $order[$direction->name] = \strpos($shown, 'Fine') < \strpos($shown, 'why') ? 'label first' : 'hint first';
+            $order[$direction->name] = \strpos($shown, needle: 'Fine') < \strpos($shown, needle: 'why') ? 'label first' : 'hint first';
         }
 
         $this->assertGreaterThan(0, $gaps['Ltr']);
