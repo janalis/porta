@@ -5,10 +5,11 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Ui;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Tests\Support\Catalogs;
 
 /**
  * Ratchets the key-hint dialect ({@see \Porta\Ui\ShortcutFormatter}) over the
- * English catalog — `Ctrl+S`, never `^S` or `ctrl+s`.
+ * English catalogs, core's and every plugin's — `Ctrl+S`, never `^S` or `ctrl+s`.
  *
  * It scans the catalog rather than src/, and that is what makes it work. The
  * codebase is full of legitimate lowercase `alt+m` strings: they are
@@ -25,24 +26,12 @@ use PHPUnit\Framework\TestCase;
  */
 final class HintDialectTest extends TestCase
 {
-    private const string CATALOG = __DIR__.'/../../../translations/messages.en.xlf';
-
-    /** @return list<string> every <source> text of the English catalog */
+    /** @return list<string> every <source> text of every set's English catalog */
     private function sources(): array
     {
-        $xml = \simplexml_load_file(self::CATALOG);
-        $this->assertNotFalse($xml, 'messages.en.xlf is not valid XML');
-        $xml->registerXPathNamespace('x', 'urn:oasis:names:tc:xliff:document:1.2');
-
         $sources = [];
-        $units = $xml->xpath('//x:trans-unit');
-        foreach ($units ? $units : [] as $unit) {
-            $unit->registerXPathNamespace('x', 'urn:oasis:names:tc:xliff:document:1.2');
-            $node = $unit->xpath('x:source');
-            $node = $node ? $node : [];
-            if ([] !== $node) {
-                $sources[] = (string) $node[0];
-            }
+        foreach (\array_keys(Catalogs::sets()) as $set) {
+            $sources = [...$sources, ...Catalogs::englishSources($set)];
         }
         $this->assertNotEmpty($sources, 'the catalog scan found nothing to guard');
 

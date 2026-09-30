@@ -16,15 +16,20 @@ use Symfony\Component\Translation\Translator as SymfonyTranslator;
  * The message ids are the English source strings, so an untranslated (or 'en')
  * lookup returns the original English text.
  *
- * The catalogs are registered as lazy resources: a locale's ~1100-unit file is
+ * The catalogs are registered as lazy resources: a locale's ~750-unit file is
  * only parsed on the first trans() that needs it, so constructing a translator
  * (including the widgets' `?? new Translator('en')` fallbacks) costs nothing
  * per catalog, and switching locale pays for exactly the one it activates.
  * {@see LenientXliffLoader} keeps the two catalog conventions the old
  * hand-rolled parser had: malformed file → English, stubbed entry → English.
+ *
+ * A plugin ships its own strings in `<plugin>/translations/` and the loader
+ * hands that dir to {@see addCatalogDirectory()}. Core's catalog is added
+ * LAST, and a later resource wins in Symfony, so a plugin can add strings but
+ * can never retranslate one of core's.
  */
 #[AsIdeService]
-final readonly class Translator
+final class Translator
 {
     /** The supported UI locales, in menu order (English first). */
     public const array LOCALES = ['en', 'fr', 'de', 'es', 'it', 'ja', 'he'];
@@ -43,6 +48,11 @@ final readonly class Translator
     /** Locales written right-to-left. */
     private const array RTL = ['he'];
 
+    private readonly string $coreDir;
+
+    /** @var list<string> plugin catalog dirs, in registration order */
+    private array $pluginDirs = [];
+
     private SymfonyTranslator $translator;
 
     /**
@@ -56,18 +66,32 @@ final readonly class Translator
      *                                         against edited catalogs at the
      *                                         cost of a few file stats.
      */
-    public function __construct(string $locale = 'en', ?string $translationsDir = null, ?string $translationCacheDir = null)
+    public function __construct(
+        string $locale = 'en',
+        ?string $translationsDir = null,
+        private readonly ?string $translationCacheDir = null,
+    ) {
+        $this->coreDir = $translationsDir ?? \dirname(__DIR__, levels: 2).'/translations';
+        $this->translator = $this->build(self::normalize($locale));
+    }
+
+    /**
+     * Serve the `messages.<locale>.xlf` catalogs in $dir too — a plugin's own
+     * strings. The inner translator is REBUILT rather than given one more
+     * resource: symfony names its dumped catalog after `cacheVary` alone, and
+     * the dump only re-checks the files it recorded, so a resource added to a
+     * translator with a cache dir is served the old dump without it — and
+     * that dump is shared by every project on the machine. The dir set joins
+     * `cacheVary`, so each plugin set dumps under its own name. Loading stays
+     * lazy, so a rebuild parses nothing.
+     */
+    public function addCatalogDirectory(string $dir): void
     {
-        $dir = $translationsDir ?? \dirname(__DIR__, levels: 2).'/translations';
-        $this->translator = new SymfonyTranslator(self::normalize($locale), null, $translationCacheDir, debug: true);
-        $this->translator->setFallbackLocales(['en']);
-        $this->translator->addLoader('xlf', new LenientXliffLoader());
-        foreach (self::LOCALES as $l) {
-            $file = $dir.'/messages.'.$l.'.xlf';
-            if (\is_file($file)) {
-                $this->translator->addResource('xlf', $file, $l);
-            }
+        if (\in_array($dir, $this->pluginDirs, strict: true)) {
+            return;
         }
+        $this->pluginDirs[] = $dir;
+        $this->translator = $this->build($this->translator->getLocale());
     }
 
     /**
@@ -112,6 +136,24 @@ final readonly class Translator
     public function isRtl(): bool
     {
         return 'rtl' === $this->direction();
+    }
+
+    private function build(string $locale): SymfonyTranslator
+    {
+        $translator = new SymfonyTranslator($locale, null, $this->translationCacheDir, debug: true, cacheVary: ['catalog_dirs' => $this->pluginDirs]);
+        $translator->setFallbackLocales(['en']);
+        $translator->addLoader('xlf', new LenientXliffLoader());
+        // Core last: the later resource wins a shared id.
+        foreach ([...$this->pluginDirs, $this->coreDir] as $dir) {
+            foreach (self::LOCALES as $l) {
+                $file = $dir.'/messages.'.$l.'.xlf';
+                if (\is_file($file)) {
+                    $translator->addResource('xlf', $file, $l);
+                }
+            }
+        }
+
+        return $translator;
     }
 
     /** An unknown locale falls back to English. */

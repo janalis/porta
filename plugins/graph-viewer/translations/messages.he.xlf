@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">
+  <file source-language="en" target-language="he" datatype="plaintext" original="messages">
+    <body>
+      <trans-unit id="1">
+        <source>Graph: Zoom In</source>
+        <target>גרף: התקרבות</target>
+      </trans-unit>
+      <trans-unit id="2">
+        <source>Graph: Zoom Out</source>
+        <target>גרף: התרחקות</target>
+      </trans-unit>
+      <trans-unit id="3">
+        <source>Graph: Fit to Window</source>
+        <target>גרף: התאמה לחלון</target>
+      </trans-unit>
+      <trans-unit id="4">
+        <source>Graph: Actual Size</source>
+        <target>גרף: גודל אמיתי</target>
+      </trans-unit>
+      <trans-unit id="5">
+        <source>Graph: Pan Left</source>
+        <target>גרף: הזזה שמאלה</target>
+      </trans-unit>
+      <trans-unit id="6">
+        <source>Graph: Pan Right</source>
+        <target>גרף: הזזה ימינה</target>
+      </trans-unit>
+      <trans-unit id="7">
+        <source>Graph: Pan Up</source>
+        <target>גרף: הזזה למעלה</target>
+      </trans-unit>
+      <trans-unit id="8">
+        <source>Graph: Pan Down</source>
+        <target>גרף: הזזה למטה</target>
+      </trans-unit>
+      <trans-unit id="9">
+        <source>Graph: Select Next Node</source>
+        <target>גרף: בחירת הצומת הבא</target>
+      </trans-unit>
+      <trans-unit id="10">
+        <source>Graph: Select Previous Node</source>
+        <target>גרף: בחירת הצומת הקודם</target>
+      </trans-unit>
+      <trans-unit id="11">
+        <source>Graph: Find Node</source>
+        <target>גרף: חיפוש צומת</target>
+      </trans-unit>
+      <trans-unit id="12">
+        <source>Find node</source>
+        <target>חיפוש צומת</target>
+      </trans-unit>
+      <trans-unit id="13">
+        <source>No graph nodes to search</source>
+        <target>אין צמתים לחיפוש</target>
+      </trans-unit>
+      <trans-unit id="14">
+        <source>%in% in · %out% out</source>
+        <target>%in% נכנס · %out% יוצא</target>
+      </trans-unit>
+      <trans-unit id="15">
+        <source>graphviz not found — install graphviz, or set the "dotPath" setting</source>
+        <target>graphviz לא נמצא — התקינו graphviz או הגדירו את ההגדרה "dotPath"</target>
+      </trans-unit>
+      <trans-unit id="16">
+        <source>layout…</source>
+        <target>פריסה…</target>
+      </trans-unit>
+      <trans-unit id="17">
+        <source>Graph file too large (&gt; 10 MB)</source>
+        <target>קובץ גרף גדול מדי (&gt; 10 MB)</target>
+      </trans-unit>
+      <trans-unit id="18">
+        <source>+/- zoom  0 fit  n/p select  / find  Ctrl+Q quit</source>
+        <target>+/- זום  0 התאמה  n/p בחירה  Ctrl+Q יציאה</target>
+      </trans-unit>
+      <trans-unit id="19">
+        <source>Architecture command produced no output</source>
+        <target>פקודת הארכיטקטורה לא הפיקה פלט</target>
+      </trans-unit>
+      <trans-unit id="20">
+        <source>Export failed: %error%</source>
+        <target>הייצוא נכשל: %error%</target>
+      </trans-unit>
+      <trans-unit id="21">
+        <source>Exported %file%</source>
+        <target>‏%file% יוצא</target>
+      </trans-unit>
+      <trans-unit id="22">
+        <source>Graph: Export SVG</source>
+        <target>גרף: ייצוא כ-SVG</target>
+      </trans-unit>
+      <trans-unit id="23">
+        <source>Graph: Export PNG</source>
+        <target>גרף: ייצוא כ-PNG</target>
+      </trans-unit>
+      <trans-unit id="24">
+        <source>Graphviz dot path</source>
+        <target>נתיב Graphviz dot</target>
+      </trans-unit>
+      <trans-unit id="25">
+        <source>Architecture command (stdout = DOT)</source>
+        <target>פקודת ארכיטקטורה (stdout = DOT)</target>
+      </trans-unit>
+      <trans-unit id="26">
+        <source>Graph rendering</source>
+        <target>עיבוד הגרף</target>
+      </trans-unit>
+      <trans-unit id="27">
+        <source>PlantUML path (or .jar)</source>
+        <target>נתיב PlantUML (או .jar)</target>
+      </trans-unit>
+      <trans-unit id="28">
+        <source>plantuml not found — install it, or set the "plantumlPath" setting</source>
+        <target>plantuml לא נמצא — התקינו אותו או הגדירו את ההגדרה "plantumlPath"</target>
+      </trans-unit>
+      <trans-unit id="29">
+        <source>the graph bitmap could not be decoded</source>
+        <target>לא ניתן לפענח את מפת הסיביות של הגרף</target>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

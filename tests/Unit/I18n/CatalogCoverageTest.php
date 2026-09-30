@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\I18n;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\CompletionNote;
 use Porta\Search\Everywhere\SearchCategory;
+use Porta\Tests\Support\Catalogs;
 use Porta\Ui\ScopeKind;
 use Porta\Widget\Render\StripeMark;
 use Symfony\Component\Finder\Finder;
@@ -19,11 +20,13 @@ use Symfony\Component\Finder\Finder;
  * statically-knowable UI string (literal ->trans() ids across src/ and the
  * bundled plugins, plus the two label tables translated at render time with
  * dynamic ids, which is exactly what defeats an extractor) and requires each
- * to exist as an en <source>.
+ * to exist as an en <source> — core's, or for a literal inside a plugin, core's
+ * or that plugin's own catalog. Core code can never lean on a plugin's catalog:
+ * the plugin may not be loaded.
  */
 final class CatalogCoverageTest extends TestCase
 {
-    private const string ROOT = __DIR__.'/../../..';
+    private const string ROOT = Catalogs::ROOT;
 
     /**
      * Ids the gate has found used in code but missing from messages.en.xlf —
@@ -38,8 +41,20 @@ final class CatalogCoverageTest extends TestCase
 
     public function testEveryUiStringLiteralReachesTheEnglishCatalogOrTheShrinkList(): void
     {
-        $ids = \array_values(\array_unique([...$this->transLiterals(), ...$this->labelLiterals(), ...$this->categoryLiterals()]));
-        $missing = \array_values(\array_diff($ids, $this->englishSources()));
+        $core = Catalogs::englishSources(Catalogs::CORE);
+        $uses = [
+            ...$this->transLiterals(),
+            ...\array_map(static fn (string $id): array => [Catalogs::CORE, $id], [...$this->labelLiterals(), ...$this->categoryLiterals()]),
+        ];
+        $catalogued = [];
+        $missing = [];
+        foreach ($uses as [$set, $id]) {
+            $catalogued[$set] ??= Catalogs::CORE === $set || !\array_key_exists($set, Catalogs::sets()) ? $core : [...$core, ...Catalogs::englishSources($set)];
+            if (!\in_array($id, $catalogued[$set], strict: true)) {
+                $missing[] = $id;
+            }
+        }
+        $missing = \array_values(\array_unique($missing));
         \sort($missing);
 
         $gaps = self::KNOWN_GAPS;
@@ -47,7 +62,7 @@ final class CatalogCoverageTest extends TestCase
         $this->assertSame(
             $gaps,
             $missing,
-            'untranslated UI literals changed: a new one must be added to messages.en.xlf (and the six targets), a translated one must leave KNOWN_GAPS',
+            'untranslated UI literals changed: a new one must be added to messages.en.xlf (a plugin-only one to the plugin\'s own translations/) and the six targets, a translated one must leave KNOWN_GAPS',
         );
     }
 
@@ -83,36 +98,95 @@ final class CatalogCoverageTest extends TestCase
      */
     public function testEveryCataloguedStringIsUsedSomewhereInTheTree(): void
     {
-        $corpus = $this->corpus();
-
         $unused = [];
-        foreach ($this->englishSources() as $source) {
-            // A pipe plural is one unit; either half is a legitimate spelling
-            // for code to carry, and the catalog stores them joined.
-            foreach ([$source, ...\explode('|', $source)] as $needle) {
-                if ('' !== $needle && \str_contains($corpus, $needle)) {
-                    continue 2;
+        foreach (Catalogs::sets() as $set => $dir) {
+            // A plugin's own unit has to be used by THAT plugin's code: one
+            // only another part of the tree, or a test, still says is dead
+            // where it sits.
+            $corpus = Catalogs::CORE === $set ? $this->treeCorpus(self::ROOT) : $this->runtimeCorpus(\dirname($dir));
+            foreach (Catalogs::englishSources($set) as $source) {
+                if (self::uses($corpus, $source)) {
+                    continue;
                 }
+                $unused[] = $set.': '.$source;
             }
-            $unused[] = $source;
         }
         \sort($unused);
 
-        $this->assertSame([], $unused, "messages.en.xlf carries strings that appear nowhere in the tree — a reword left the old unit behind in all seven catalogs:\n  ".\implode("\n  ", $unused));
+        $this->assertSame([], $unused, "a catalog carries strings that appear nowhere it is used — a reword left the old unit behind in all seven files:\n  ".\implode("\n  ", $unused));
     }
 
     /**
-     * Every file a UI string could be written in, concatenated, with PHP\'s
-     * string escapes decoded so the text compares against what the catalog
-     * stores.
+     * And the split between the sets: a core unit that only ONE plugin's
+     * runtime code uses — none of core's, no other plugin's — belongs in that
+     * plugin's own `translations/`, where it ships, loads and is removed with
+     * the plugin. A string two users share stays in core.
+     *
+     * The same loose substring read as above, over runtime code only (tests
+     * and docs quote strings without using them). Loose errs toward keeping a
+     * unit in core, which is the harmless direction: a short string like `Run`
+     * reads as used everywhere, and core is where a shared string lives.
      */
-    private function corpus(): string
+    public function testNoCoreUnitServesASinglePlugin(): void
+    {
+        $runtime = [Catalogs::CORE => $this->runtimeCorpus(self::ROOT.'/src', self::ROOT.'/config', self::ROOT.'/bin')];
+        $plugins = \glob(self::ROOT.'/plugins/*', \GLOB_ONLYDIR);
+        foreach (\is_array($plugins) ? $plugins : [] as $plugin) {
+            $runtime[\basename($plugin)] = $this->runtimeCorpus($plugin);
+        }
+
+        $misplaced = [];
+        foreach (Catalogs::englishSources(Catalogs::CORE) as $source) {
+            $users = \array_keys(\array_filter($runtime, static fn (string $corpus): bool => self::uses($corpus, $source)));
+            if ([Catalogs::CORE] !== $users && 1 === \count($users)) {
+                $misplaced[] = $source.' → plugins/'.$users[0].'/translations';
+            }
+        }
+        \sort($misplaced);
+
+        $this->assertSame([], $misplaced, "core's catalog carries strings only one plugin uses — move them to that plugin's catalog:\n  ".\implode("\n  ", $misplaced));
+    }
+
+    /**
+     * Whether $corpus carries $source. A pipe plural is one unit; either half
+     * is a legitimate spelling for code to carry, and the catalog stores them
+     * joined.
+     */
+    private static function uses(string $corpus, string $source): bool
+    {
+        return \array_any([$source, ...\explode('|', $source)], static fn (string $needle): bool => '' !== $needle && \str_contains($corpus, $needle));
+    }
+
+    /**
+     * Every file under $dir a UI string could be written in, concatenated,
+     * with PHP\'s string escapes decoded so the text compares against what
+     * the catalog stores — tests included.
+     */
+    private function treeCorpus(string $dir): string
+    {
+        return $this->corpus([], [$dir]);
+    }
+
+    /**
+     * {@see treeCorpus()} without the tests: a test quotes a string without
+     * being a user of it.
+     */
+    private function runtimeCorpus(string ...$dirs): string
+    {
+        return $this->corpus(['tests'], \array_values($dirs));
+    }
+
+    /**
+     * @param list<string> $alsoExclude
+     * @param list<string> $dirs
+     */
+    private function corpus(array $alsoExclude, array $dirs): string
     {
         $tree = new Finder()
             ->files()
-            ->in(self::ROOT)
+            ->in(\array_values(\array_filter($dirs, \is_dir(...))))
             ->name('/\\.(php|json|md)$/')
-            ->exclude(['vendor', 'translations', 'coverage', 'node_modules'])
+            ->exclude(['vendor', 'translations', 'coverage', 'node_modules', ...$alsoExclude])
             ->ignoreDotFiles(false)
             ->ignoreVCS(true);
 
@@ -127,7 +201,8 @@ final class CatalogCoverageTest extends TestCase
     /**
      * Every literal string in the FIRST argument of a ->trans() (or its
      * markup twin, Translator::markup()) call in src/
-     * and the bundled plugins' src/. Dynamic ids cannot be collected
+     * and the bundled plugins' src/ and plugin.php, each with the set its
+     * file resolves against (core, or the plugin's name). Dynamic ids cannot be collected
      * statically; the two big dynamic-id tables are covered by
      * {@see labelLiterals()} and the enum labels by {@see enumLabelLiterals()}.
      *
@@ -144,12 +219,13 @@ final class CatalogCoverageTest extends TestCase
      * that is an array key, not an id, and taking the whole argument reported
      * two of those as untranslated.
      *
-     * @return list<string>
+     * @return list<array{string, string}> [set, id]
      */
     private function transLiterals(): array
     {
         $ids = [];
         foreach ($this->phpFiles() as $path) {
+            $set = 1 === \preg_match('#/plugins/([^/]+)/#', $path, $plugin) ? $plugin[1] : Catalogs::CORE;
             $tokens = \token_get_all((string) \file_get_contents($path));
             $count = \count($tokens);
             for ($i = 1; $i < $count; ++$i) {
@@ -167,7 +243,7 @@ final class CatalogCoverageTest extends TestCase
                 }
 
                 foreach ($this->firstArgumentStrings($tokens, $j + 1) as $id) {
-                    $ids[] = $id;
+                    $ids[] = [$set, $id];
                 }
             }
         }
@@ -371,33 +447,13 @@ final class CatalogCoverageTest extends TestCase
         ];
     }
 
-    /** @return list<string> the en catalog's <source> texts */
-    private function englishSources(): array
-    {
-        $xml = \simplexml_load_file(self::ROOT.'/translations/messages.en.xlf');
-        $this->assertNotFalse($xml, 'messages.en.xlf is not valid XML');
-        $xml->registerXPathNamespace('x', 'urn:oasis:names:tc:xliff:document:1.2');
-
-        $sources = [];
-        $units = $xml->xpath('//x:trans-unit');
-        foreach ($units ? $units : [] as $unit) {
-            $unit->registerXPathNamespace('x', 'urn:oasis:names:tc:xliff:document:1.2');
-            $node = $unit->xpath('x:source');
-            $node = $node ? $node : [];
-            if ([] !== $node) {
-                $sources[] = (string) $node[0];
-            }
-        }
-
-        return $sources;
-    }
-
-    /** @return list<string> every .php file under src/ and plugins/<name>/src/ */
+    /** @return list<string> every .php file under src/ and plugins/<name>/src/, and every plugins/<name>/plugin.php */
     private function phpFiles(): array
     {
         $pluginSrc = \glob(self::ROOT.'/plugins/*/src');
         $roots = [self::ROOT.'/src', ...(\is_array($pluginSrc) ? $pluginSrc : [])];
-        $files = [];
+        $entries = \glob(self::ROOT.'/plugins/*/plugin.php');
+        $files = \is_array($entries) ? $entries : [];
         foreach ($roots as $root) {
             $tree = new Finder()
                 ->files()

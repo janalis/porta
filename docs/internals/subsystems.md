@@ -1003,7 +1003,17 @@ for.
 
 `I18n/Translator` wraps `symfony/translation`. **The English source string is
 the message id**, so untranslated lookups fall back to English, with XLIFF
-catalogs in `translations/`.
+catalogs in `translations/` — and each plugin's own in
+`plugins/<name>/translations/`, added by the loader through
+`addCatalogDirectory()` (see `plugin-system.md`).
+
+Adding a dir **rebuilds** the inner translator instead of adding a resource.
+The parsed-catalog dump is named after symfony's `cacheVary` alone and
+re-checks only the files it recorded, and the dump dir is shared by every
+project on the machine — so a dir added to a live translator was served a dump
+made without it. The dir set is part of `cacheVary` now, which gives each
+plugin set its own dump. Resources are added plugins first and core last: a
+later resource wins a shared id, and core's must.
 
 RTL mirrors the layout (reversed pane order) and, via `Ui/BidiTui`, reorders
 each composed row **per pane**: `Ui/PaneSegmenter` splits the row into each

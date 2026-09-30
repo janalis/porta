@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Plugin\Runtime;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\ConfigWarning;
+use Porta\I18n\Translator;
 use Porta\Plugin\Runtime\PluginLoader;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginSettings;
@@ -173,6 +174,31 @@ final class PluginLoaderTest extends TestCase
 
         $this->assertNull($loader->loadFile($project->path('live/plugin.php'), $manager));
         $this->assertTrue($manager->hasPlugin('live'));
+    }
+
+    public function testAPluginsOwnTranslationsServeOnceItCommits(): void
+    {
+        $catalog =
+            '<?xml version="1.0" encoding="utf-8"?><xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">'
+            .'<file source-language="en" target-language="fr" datatype="plaintext" original="messages"><body>'
+            .'<trans-unit id="1"><source>Hello from %name%</source><target>Bonjour de %name%</target></trans-unit>'
+            .'</body></file></xliff>';
+        $project = new TempProject([
+            'core/.keep' => '',
+            'tr/plugin.php' => $this->pluginSource('tr'),
+            'tr/translations/messages.fr.xlf' => $catalog,
+            'broken/plugin.php' => $this->pluginSource('broken', "throw new \\RuntimeException('boom');"),
+            'broken/translations/messages.fr.xlf' => \str_replace(search: 'Hello from %name%', replace: 'Broken %name%', subject: $catalog),
+        ]);
+        $translator = new Translator('fr', $project->path('core'));
+        $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
+        $loader = new PluginLoader($project->dir, null, new PluginSettings($project->dir, []), translator: $translator);
+
+        $this->assertNull($loader->loadFile($project->path('tr/plugin.php'), $manager));
+        $this->assertInstanceOf(ConfigWarning::class, $loader->loadFile($project->path('broken/plugin.php'), $manager));
+
+        $this->assertSame('Bonjour de tr', $translator->trans('Hello from %name%', ['%name%' => 'tr']));
+        $this->assertSame('Broken x', $translator->trans('Broken %name%', ['%name%' => 'x']), 'a plugin that failed to load contributes no strings either');
     }
 
     public function testTheLiveLoadPathAppliesTheSameCompatibilityCheck(): void

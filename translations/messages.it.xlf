@@ -2,26 +2,6 @@
 <xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">
   <file source-language="en" target-language="it" datatype="plaintext" original="messages">
     <body>
-      <trans-unit id="3">
-        <source>%count% changed file|%count% changed files</source>
-        <target>%count% file modificato|%count% file modificati</target>
-      </trans-unit>
-      <trans-unit id="8">
-        <source>Files (%count%)</source>
-        <target>File (%count%)</target>
-      </trans-unit>
-      <trans-unit id="9">
-        <source>History (%count%)</source>
-        <target>Cronologia (%count%)</target>
-      </trans-unit>
-      <trans-unit id="10">
-        <source> S split </source>
-        <target> S split </target>
-      </trans-unit>
-      <trans-unit id="11">
-        <source> W hide-ws </source>
-        <target> W hide-ws </target>
-      </trans-unit>
       <trans-unit id="12">
         <source>&quot;%title%&quot; failed: %message%</source>
         <target>&quot;%title%&quot; non riuscito: %message%</target>
@@ -94,26 +74,6 @@
         <source>Close Others</source>
         <target>Chiudi le altre</target>
       </trans-unit>
-      <trans-unit id="34">
-        <source>Commit failed (nothing staged?)</source>
-        <target>Commit non riuscito (niente in stage?)</target>
-      </trans-unit>
-      <trans-unit id="35">
-        <source>Commit failed: %summary%</source>
-        <target>Commit non riuscito: %summary%</target>
-      </trans-unit>
-      <trans-unit id="36">
-        <source>Commit message</source>
-        <target>Messaggio di commit</target>
-      </trans-unit>
-      <trans-unit id="37">
-        <source>Committed: %summary%</source>
-        <target>Commit eseguito: %summary%</target>
-      </trans-unit>
-      <trans-unit id="38">
-        <source>Copied %count% line|Copied %count% lines</source>
-        <target>%count% riga copiata|%count% righe copiate</target>
-      </trans-unit>
       <trans-unit id="40">
         <source>Copied %text%</source>
         <target>Copiato %text%</target>
@@ -125,10 +85,6 @@
       <trans-unit id="42">
         <source>Copy Relative Path</source>
         <target>Copia percorso relativo</target>
-      </trans-unit>
-      <trans-unit id="43">
-        <source>Could not read that snapshot</source>
-        <target>Impossibile leggere quello snapshot</target>
       </trans-unit>
       <trans-unit id="44">
         <source>Could not start the terminal process</source>
@@ -146,37 +102,17 @@
         <source>Deleted %file%</source>
         <target>%file% eliminato</target>
       </trans-unit>
-      <trans-unit id="48">
-        <source>Deleted %path%</source>
-        <target>%path% eliminato</target>
-      </trans-unit>
       <trans-unit id="49">
         <source>Delete…</source>
         <target>Elimina…</target>
-      </trans-unit>
-      <trans-unit id="50">
-        <source>Description</source>
-        <target>Descrizione</target>
       </trans-unit>
       <trans-unit id="51">
         <source>Diff</source>
         <target>Diff</target>
       </trans-unit>
-      <trans-unit id="52">
-        <source>Diff context: %label%</source>
-        <target>Contesto diff: %label%</target>
-      </trans-unit>
       <trans-unit id="53">
         <source>Discard &amp; Close</source>
         <target>Scarta e chiudi</target>
-      </trans-unit>
-      <trans-unit id="54">
-        <source>Discard failed</source>
-        <target>Scarto non riuscito</target>
-      </trans-unit>
-      <trans-unit id="55">
-        <source>Discarded changes to %path%</source>
-        <target>Modifiche a %path% scartate</target>
       </trans-unit>
       <trans-unit id="56">
         <source>Docs: %url%</source>
@@ -202,10 +138,6 @@
         <source>Formatting not supported by %server%</source>
         <target>Formattazione non supportata da %server%</target>
       </trans-unit>
-      <trans-unit id="63">
-        <source>Git not available</source>
-        <target>Git non disponibile</target>
-      </trans-unit>
       <trans-unit id="65">
         <source>Indent size</source>
         <target>Dimensione indentazione</target>
@@ -230,10 +162,6 @@
         <source>LSP:%status%</source>
         <target>LSP:%status%</target>
       </trans-unit>
-      <trans-unit id="71">
-        <source>Last commit undone (changes kept staged)</source>
-        <target>Ultimo commit annullato (modifiche mantenute in stage)</target>
-      </trans-unit>
       <trans-unit id="72">
         <source>New File</source>
         <target>Nuovo file</target>
@@ -250,10 +178,6 @@
         <source>New Folder…</source>
         <target>Nuova cartella…</target>
       </trans-unit>
-      <trans-unit id="76">
-        <source>No blame for this line</source>
-        <target>Nessun blame per questa riga</target>
-      </trans-unit>
       <trans-unit id="77">
         <source>No definition found</source>
         <target>Nessuna definizione trovata</target>
@@ -265,10 +189,6 @@
       <trans-unit id="79">
         <source>No implementation found</source>
         <target>Nessuna implementazione trovata</target>
-      </trans-unit>
-      <trans-unit id="80">
-        <source>No local history for this file yet</source>
-        <target>Ancora nessuna cronologia locale per questo file</target>
       </trans-unit>
       <trans-unit id="81">
         <source>No previous run — press Ctrl+Shift+R to pick one</source>
@@ -293,10 +213,6 @@
       <trans-unit id="86">
         <source>Not a UTF-8 text file</source>
         <target>Non è un file di testo UTF-8</target>
-      </trans-unit>
-      <trans-unit id="87">
-        <source>Not a git repository</source>
-        <target>Non è un repository git</target>
       </trans-unit>
       <trans-unit id="88">
         <source>Nothing to peek</source>
@@ -402,18 +318,6 @@
         <source>Replaced in %count% file|Replaced in %count% files</source>
         <target>Sostituito in %count% file|Sostituito in %count% file</target>
       </trans-unit>
-      <trans-unit id="116">
-        <source>Restored from local history</source>
-        <target>Ripristinato dalla cronologia locale</target>
-      </trans-unit>
-      <trans-unit id="821">
-        <source>%file% is gone — restoring a version will bring it back</source>
-        <target>%file% non c’è più — ripristinare una versione lo riporterà indietro</target>
-      </trans-unit>
-      <trans-unit id="820">
-        <source>Cannot restore %file% — it is no longer there</source>
-        <target>Impossibile ripristinare %file% — il file non c’è più</target>
-      </trans-unit>
       <trans-unit id="117">
         <source>Run</source>
         <target>Esegui</target>
@@ -433,22 +337,6 @@
       <trans-unit id="122">
         <source>Saved %file%</source>
         <target>%file% salvato</target>
-      </trans-unit>
-      <trans-unit id="123">
-        <source>Show whitespace changes to stage lines (w)</source>
-        <target>Mostra le modifiche agli spazi per mettere in stage le righe (w)</target>
-      </trans-unit>
-      <trans-unit id="124">
-        <source>Stage failed</source>
-        <target>Stage non riuscito</target>
-      </trans-unit>
-      <trans-unit id="125">
-        <source>Staged %path%</source>
-        <target>%path% messo in stage</target>
-      </trans-unit>
-      <trans-unit id="126">
-        <source>Summary (required)</source>
-        <target>Riepilogo (obbligatorio)</target>
       </trans-unit>
       <trans-unit id="127">
         <source>Target outside the filesystem</source>
@@ -474,21 +362,9 @@
         <source>Unsupported key — try another</source>
         <target>Tasto non supportato — provane un altro</target>
       </trans-unit>
-      <trans-unit id="133">
-        <source>Untracked files always show the whole file</source>
-        <target>I file non tracciati mostrano sempre l’intero file</target>
-      </trans-unit>
-      <trans-unit id="134">
-        <source>Untracked: stage the whole file with Space in the changes list</source>
-        <target>Non tracciato: metti in stage l’intero file con Spazio nell’elenco modifiche</target>
-      </trans-unit>
       <trans-unit id="135">
         <source>[scrolled +%count%]</source>
         <target>[scorrimento +%count%]</target>
-      </trans-unit>
-      <trans-unit id="135arrow">
-        <source>[→%count%]</source>
-        <target>[→%count%]</target>
       </trans-unit>
       <trans-unit id="135se">
         <source>Search Everywhere</source>
@@ -513,14 +389,6 @@
       <trans-unit id="140">
         <source>failed</source>
         <target>non riuscito</target>
-      </trans-unit>
-      <trans-unit id="141">
-        <source>git apply refused the partial patch</source>
-        <target>git apply ha rifiutato la patch parziale</target>
-      </trans-unit>
-      <trans-unit id="142">
-        <source>git refused the staging change</source>
-        <target>git ha rifiutato la modifica dello stage</target>
       </trans-unit>
       <trans-unit id="143">
         <source>no matches</source>
@@ -1002,18 +870,6 @@
         <source>Toggle Comment</source>
         <target>Attiva/disattiva commento</target>
       </trans-unit>
-      <trans-unit id="238h0">
-        <source>No local history yet</source>
-        <target>Nessuna cronologia locale</target>
-      </trans-unit>
-      <trans-unit id="238h1">
-        <source>%count% version|%count% versions</source>
-        <target>%count% versione|%count% versioni</target>
-      </trans-unit>
-      <trans-unit id="238h2">
-        <source>Recent Changes</source>
-        <target>Modifiche recenti</target>
-      </trans-unit>
       <trans-unit id="238u0">
         <source>Undo Last Refactoring</source>
         <target>Annulla l’ultimo refactoring</target>
@@ -1057,14 +913,6 @@
       <trans-unit id="824">
         <source>Git: Compare Selected Files</source>
         <target>Confronta i file selezionati</target>
-      </trans-unit>
-      <trans-unit id="825">
-        <source>Select two files in the project tree to compare</source>
-        <target>Seleziona due file nell’albero del progetto da confrontare</target>
-      </trans-unit>
-      <trans-unit id="826">
-        <source>The two files are identical</source>
-        <target>I due file sono identici</target>
       </trans-unit>
       <trans-unit id="827">
         <source>No other files to switch to</source>
@@ -1238,49 +1086,13 @@
         <source>default</source>
         <target>predefinito</target>
       </trans-unit>
-      <trans-unit id="272">
-        <source>±10 lines</source>
-        <target>±10 righe</target>
-      </trans-unit>
       <trans-unit id="273">
         <source>whole file</source>
         <target>intero file</target>
       </trans-unit>
-      <trans-unit id="274">
-        <source>No changes selected</source>
-        <target>Nessuna modifica selezionata</target>
-      </trans-unit>
-      <trans-unit id="275">
-        <source>Working tree clean</source>
-        <target>Albero di lavoro pulito</target>
-      </trans-unit>
-      <trans-unit id="276">
-        <source>No changes (whitespace hidden)</source>
-        <target>Nessuna modifica (spazi nascosti)</target>
-      </trans-unit>
       <trans-unit id="277">
         <source>No changes</source>
         <target>Nessuna modifica</target>
-      </trans-unit>
-      <trans-unit id="278">
-        <source>Select a commit file</source>
-        <target>Seleziona un file del commit</target>
-      </trans-unit>
-      <trans-unit id="878">
-        <source>No commits</source>
-        <target>Nessun commit</target>
-      </trans-unit>
-      <trans-unit id="279">
-        <source>No files in this commit</source>
-        <target>Nessun file in questo commit</target>
-      </trans-unit>
-      <trans-unit id="280">
-        <source>No patch (whitespace hidden)</source>
-        <target>Nessuna patch (spazi nascosti)</target>
-      </trans-unit>
-      <trans-unit id="281">
-        <source>No patch for this file</source>
-        <target>Nessuna patch per questo file</target>
       </trans-unit>
       <trans-unit id="282">
         <source>on</source>
@@ -1297,14 +1109,6 @@
       <trans-unit id="285">
         <source>indent style</source>
         <target>stile di indentazione</target>
-      </trans-unit>
-      <trans-unit id="286">
-        <source>Whitespace changes hidden</source>
-        <target>Modifiche agli spazi nascoste</target>
-      </trans-unit>
-      <trans-unit id="287">
-        <source>Whitespace changes shown</source>
-        <target>Modifiche agli spazi mostrate</target>
       </trans-unit>
       <trans-unit id="288">
         <source>Find in Files…</source>
@@ -1326,53 +1130,9 @@
         <source>No test subject found</source>
         <target>Nessun soggetto di test trovato</target>
       </trans-unit>
-      <trans-unit id="295">
-        <source>Image too large (&gt; 20 MB)</source>
-        <target>Immagine troppo grande (&gt; 20 MB)</target>
-      </trans-unit>
-      <trans-unit id="296">
-        <source>Cannot display image %file%</source>
-        <target>Impossibile visualizzare l’immagine %file%</target>
-      </trans-unit>
       <trans-unit id="297">
         <source>Not available in this view</source>
         <target>Non disponibile in questa vista</target>
-      </trans-unit>
-      <trans-unit id="298">
-        <source>+/- zoom  0 fit  Arrows pan  Ctrl+Q quit</source>
-        <target>+/- zoom  0 adatta  frecce sposta  Ctrl+Q esci</target>
-      </trans-unit>
-      <trans-unit id="299">
-        <source>Image: Zoom In</source>
-        <target>Immagine: Ingrandisci</target>
-      </trans-unit>
-      <trans-unit id="300">
-        <source>Image: Zoom Out</source>
-        <target>Immagine: Riduci</target>
-      </trans-unit>
-      <trans-unit id="301">
-        <source>Image: Fit to Window</source>
-        <target>Immagine: Adatta alla finestra</target>
-      </trans-unit>
-      <trans-unit id="302">
-        <source>Image: Actual Size</source>
-        <target>Immagine: Dimensione reale</target>
-      </trans-unit>
-      <trans-unit id="303">
-        <source>Image: Pan Left</source>
-        <target>Immagine: Sposta a sinistra</target>
-      </trans-unit>
-      <trans-unit id="304">
-        <source>Image: Pan Right</source>
-        <target>Immagine: Sposta a destra</target>
-      </trans-unit>
-      <trans-unit id="305">
-        <source>Image: Pan Up</source>
-        <target>Immagine: Sposta in alto</target>
-      </trans-unit>
-      <trans-unit id="306">
-        <source>Image: Pan Down</source>
-        <target>Immagine: Sposta in basso</target>
       </trans-unit>
       <trans-unit id="307">
         <source>Debug Current File</source>
@@ -1590,37 +1350,13 @@
         <source>Fetching…</source>
         <target>Recupero…</target>
       </trans-unit>
-      <trans-unit id="367">
-        <source>Fetched</source>
-        <target>Recuperato</target>
-      </trans-unit>
-      <trans-unit id="368">
-        <source>Pulling…</source>
-        <target>Pull in corso…</target>
-      </trans-unit>
       <trans-unit id="369">
         <source>Pulled</source>
         <target>Pull completato</target>
       </trans-unit>
-      <trans-unit id="370">
-        <source>Pushing…</source>
-        <target>Push in corso…</target>
-      </trans-unit>
       <trans-unit id="371">
         <source>Pushed</source>
         <target>Push completato</target>
-      </trans-unit>
-      <trans-unit id="372">
-        <source>%operation% failed: %error%</source>
-        <target>%operation% non riuscito: %error%</target>
-      </trans-unit>
-      <trans-unit id="373">
-        <source>A git remote operation is already running</source>
-        <target>Un’operazione remota git è già in corso</target>
-      </trans-unit>
-      <trans-unit id="374">
-        <source>Not a git repository (or git missing)</source>
-        <target>Non è un repository git (o git manca)</target>
       </trans-unit>
       <trans-unit id="375">
         <source>Git: Fetch</source>
@@ -1646,25 +1382,9 @@
         <source>Branches</source>
         <target>Rami</target>
       </trans-unit>
-      <trans-unit id="381">
-        <source>+ Create new branch…</source>
-        <target>+ Crea nuovo ramo…</target>
-      </trans-unit>
       <trans-unit id="382">
         <source>current</source>
         <target>corrente</target>
-      </trans-unit>
-      <trans-unit id="383">
-        <source>New branch name</source>
-        <target>Nome del nuovo ramo</target>
-      </trans-unit>
-      <trans-unit id="384">
-        <source>Switched to %branch%</source>
-        <target>Passato a %branch%</target>
-      </trans-unit>
-      <trans-unit id="385">
-        <source>Created and switched to %branch%</source>
-        <target>Creato e passato a %branch%</target>
       </trans-unit>
       <trans-unit id="386">
         <source>Close Other Tabs</source>
@@ -1678,69 +1398,17 @@
         <source>Formatting timed out — saved unformatted</source>
         <target>Formattazione scaduta — salvato non formattato</target>
       </trans-unit>
-      <trans-unit id="389">
-        <source>Pull: branch diverged</source>
-        <target>Pull: il branch è divergente</target>
-      </trans-unit>
-      <trans-unit id="390">
-        <source>Rebase local commits onto the remote</source>
-        <target>Rebase dei commit locali sul remoto</target>
-      </trans-unit>
-      <trans-unit id="391">
-        <source>Merge the remote into the local branch</source>
-        <target>Merge del remoto nel branch locale</target>
-      </trans-unit>
-      <trans-unit id="392">
-        <source>Push: no upstream branch</source>
-        <target>Push: nessun branch upstream</target>
-      </trans-unit>
-      <trans-unit id="393">
-        <source>Push with --set-upstream origin %branch%</source>
-        <target>Push con --set-upstream origin %branch%</target>
-      </trans-unit>
-      <trans-unit id="394">
-        <source>No git remote operation is running</source>
-        <target>Nessuna operazione git remota in corso</target>
-      </trans-unit>
-      <trans-unit id="395">
-        <source>Git remote operation cancelled</source>
-        <target>Operazione git remota annullata</target>
-      </trans-unit>
       <trans-unit id="396">
         <source>Git: Cancel Remote Operation</source>
         <target>Git: annulla operazione remota</target>
-      </trans-unit>
-      <trans-unit id="397">
-        <source>− Delete branch…</source>
-        <target>− Elimina branch…</target>
       </trans-unit>
       <trans-unit id="398">
         <source>remote</source>
         <target>remoto</target>
       </trans-unit>
-      <trans-unit id="399">
-        <source>Delete branch</source>
-        <target>Elimina branch</target>
-      </trans-unit>
-      <trans-unit id="400">
-        <source>Delete %branch%?</source>
-        <target>Eliminare %branch%?</target>
-      </trans-unit>
       <trans-unit id="401">
         <source>Delete</source>
         <target>Elimina</target>
-      </trans-unit>
-      <trans-unit id="402">
-        <source>Deleted branch %branch%</source>
-        <target>Branch %branch% eliminato</target>
-      </trans-unit>
-      <trans-unit id="403">
-        <source>No other local branches to delete</source>
-        <target>Nessun altro branch locale da eliminare</target>
-      </trans-unit>
-      <trans-unit id="404">
-        <source>Switched to %branch% (tracking %remote%)</source>
-        <target>Passato a %branch% (traccia %remote%)</target>
       </trans-unit>
       <trans-unit id="405">
         <source>Edit Breakpoint Condition</source>
@@ -1814,25 +1482,9 @@
         <source>Git: Toggle Blame Annotations</source>
         <target>Git: annotazioni blame</target>
       </trans-unit>
-      <trans-unit id="423">
-        <source>Stash failed</source>
-        <target>Stash non riuscito</target>
-      </trans-unit>
-      <trans-unit id="424">
-        <source>Stash popped</source>
-        <target>Stash ripristinato</target>
-      </trans-unit>
-      <trans-unit id="425">
-        <source>No stashes</source>
-        <target>Nessuno stash</target>
-      </trans-unit>
       <trans-unit id="426">
         <source>Stashes</source>
         <target>Stash</target>
-      </trans-unit>
-      <trans-unit id="427">
-        <source>%stash%: apply, pop or drop?</source>
-        <target>%stash%: applicare, ripristinare o eliminare?</target>
       </trans-unit>
       <trans-unit id="428">
         <source>Apply</source>
@@ -1845,34 +1497,6 @@
       <trans-unit id="430">
         <source>Drop</source>
         <target>Elimina</target>
-      </trans-unit>
-      <trans-unit id="431">
-        <source>Applied %stash%</source>
-        <target>%stash% applicato</target>
-      </trans-unit>
-      <trans-unit id="432">
-        <source>Popped %stash%</source>
-        <target>%stash% ripristinato</target>
-      </trans-unit>
-      <trans-unit id="433">
-        <source>Dropped %stash%</source>
-        <target>%stash% eliminato</target>
-      </trans-unit>
-      <trans-unit id="434">
-        <source>Stash left conflicts — resolve them in the editor</source>
-        <target>Lo stash ha lasciato conflitti — risolvili nell’editor</target>
-      </trans-unit>
-      <trans-unit id="435">
-        <source>History — %path% (%count%)</source>
-        <target>Cronologia — %path% (%count%)</target>
-      </trans-unit>
-      <trans-unit id="436">
-        <source>Blame annotations shown</source>
-        <target>Annotazioni blame visibili</target>
-      </trans-unit>
-      <trans-unit id="437">
-        <source>Blame annotations hidden</source>
-        <target>Annotazioni blame nascoste</target>
       </trans-unit>
       <trans-unit id="438">
         <source>Run to Cursor</source>
@@ -2046,14 +1670,6 @@
         <source>Stage</source>
         <target>Aggiungi allo stage</target>
       </trans-unit>
-      <trans-unit id="483">
-        <source>Unstage</source>
-        <target>Rimuovi dallo stage</target>
-      </trans-unit>
-      <trans-unit id="484">
-        <source>Discard…</source>
-        <target>Scarta…</target>
-      </trans-unit>
       <trans-unit id="485">
         <source>File History</source>
         <target>Cronologia del file</target>
@@ -2194,113 +1810,9 @@
         <source>Open the guide</source>
         <target>Apri la guida</target>
       </trans-unit>
-      <trans-unit id="522">
-        <source>Graph: Zoom In</source>
-        <target>Grafo: Ingrandisci</target>
-      </trans-unit>
-      <trans-unit id="523">
-        <source>Graph: Zoom Out</source>
-        <target>Grafo: Riduci</target>
-      </trans-unit>
-      <trans-unit id="524">
-        <source>Graph: Fit to Window</source>
-        <target>Grafo: Adatta alla finestra</target>
-      </trans-unit>
-      <trans-unit id="525">
-        <source>Graph: Actual Size</source>
-        <target>Grafo: Dimensione reale</target>
-      </trans-unit>
-      <trans-unit id="526">
-        <source>Graph: Pan Left</source>
-        <target>Grafo: Scorri a sinistra</target>
-      </trans-unit>
-      <trans-unit id="527">
-        <source>Graph: Pan Right</source>
-        <target>Grafo: Scorri a destra</target>
-      </trans-unit>
-      <trans-unit id="528">
-        <source>Graph: Pan Up</source>
-        <target>Grafo: Scorri in alto</target>
-      </trans-unit>
-      <trans-unit id="529">
-        <source>Graph: Pan Down</source>
-        <target>Grafo: Scorri in basso</target>
-      </trans-unit>
-      <trans-unit id="530">
-        <source>Graph: Select Next Node</source>
-        <target>Grafo: Seleziona nodo successivo</target>
-      </trans-unit>
-      <trans-unit id="531">
-        <source>Graph: Select Previous Node</source>
-        <target>Grafo: Seleziona nodo precedente</target>
-      </trans-unit>
-      <trans-unit id="816">
-        <source>Graph: Find Node</source>
-        <target>Grafo: Trova nodo</target>
-      </trans-unit>
-      <trans-unit id="817">
-        <source>Find node</source>
-        <target>Trova nodo</target>
-      </trans-unit>
-      <trans-unit id="818">
-        <source>No graph nodes to search</source>
-        <target>Nessun nodo da cercare</target>
-      </trans-unit>
-      <trans-unit id="819">
-        <source>%in% in · %out% out</source>
-        <target>%in% in · %out% out</target>
-      </trans-unit>
-      <trans-unit id="532">
-        <source>graphviz not found — install graphviz, or set the "dotPath" setting</source>
-        <target>graphviz non trovato — installare graphviz o impostare l'opzione "dotPath"</target>
-      </trans-unit>
-      <trans-unit id="533">
-        <source>layout…</source>
-        <target>layout…</target>
-      </trans-unit>
       <trans-unit id="534">
         <source>Project Architecture</source>
         <target>Architettura del progetto</target>
-      </trans-unit>
-      <trans-unit id="535">
-        <source>Graph file too large (&gt; 10 MB)</source>
-        <target>File di grafo troppo grande (&gt; 10 MB)</target>
-      </trans-unit>
-      <trans-unit id="536">
-        <source>+/- zoom  0 fit  n/p select  / find  Ctrl+Q quit</source>
-        <target>+/- zoom  0 adatta  n/p seleziona  Ctrl+Q esci</target>
-      </trans-unit>
-      <trans-unit id="538">
-        <source>Architecture command produced no output</source>
-        <target>Il comando di architettura non ha prodotto output</target>
-      </trans-unit>
-      <trans-unit id="539">
-        <source>Cannot write %file%</source>
-        <target>Impossibile scrivere %file%</target>
-      </trans-unit>
-      <trans-unit id="540">
-        <source>Export failed: %error%</source>
-        <target>Esportazione non riuscita: %error%</target>
-      </trans-unit>
-      <trans-unit id="541">
-        <source>Exported %file%</source>
-        <target>%file% esportato</target>
-      </trans-unit>
-      <trans-unit id="542">
-        <source>Graph: Export SVG</source>
-        <target>Grafo: Esporta come SVG</target>
-      </trans-unit>
-      <trans-unit id="543">
-        <source>Graph: Export PNG</source>
-        <target>Grafo: Esporta come PNG</target>
-      </trans-unit>
-      <trans-unit id="544">
-        <source>Graphviz dot path</source>
-        <target>Percorso di Graphviz dot</target>
-      </trans-unit>
-      <trans-unit id="545">
-        <source>Architecture command (stdout = DOT)</source>
-        <target>Comando di architettura (stdout = DOT)</target>
       </trans-unit>
       <trans-unit id="546">
         <source>Installing dependencies for "%name%"…</source>
@@ -2338,26 +1850,6 @@
         <source>Breadcrumbs bar</source>
         <target>Barra breadcrumb</target>
       </trans-unit>
-      <trans-unit id="555">
-        <source>Cherry-pick</source>
-        <target>Cherry-pick</target>
-      </trans-unit>
-      <trans-unit id="556">
-        <source>Cherry-picked %sha%</source>
-        <target>Cherry-pick di %sha% eseguito</target>
-      </trans-unit>
-      <trans-unit id="557">
-        <source>Copied %sha%</source>
-        <target>%sha% copiato</target>
-      </trans-unit>
-      <trans-unit id="558">
-        <source>Copy Hash</source>
-        <target>Copia hash</target>
-      </trans-unit>
-      <trans-unit id="559">
-        <source>Create Branch from Commit…</source>
-        <target>Crea ramo dal commit…</target>
-      </trans-unit>
       <trans-unit id="560">
         <source>Cycle Line Numbers</source>
         <target>Alterna numeri di riga</target>
@@ -2370,10 +1862,6 @@
         <source>Debug adapter</source>
         <target>Adattatore di debug</target>
       </trans-unit>
-      <trans-unit id="563">
-        <source>Delete Branch…</source>
-        <target>Elimina ramo…</target>
-      </trans-unit>
       <trans-unit id="564">
         <source>Exported %count% result|Exported %count% results</source>
         <target>%count% risultato esportato|%count% risultati esportati</target>
@@ -2385,10 +1873,6 @@
       <trans-unit id="566">
         <source>Find in Project: %query%</source>
         <target>Cerca nel progetto: %query%</target>
-      </trans-unit>
-      <trans-unit id="567">
-        <source>Graph rendering</source>
-        <target>Rendering del grafo</target>
       </trans-unit>
       <trans-unit id="568">
         <source>Help: Back</source>
@@ -2466,14 +1950,6 @@
         <source>Log message (empty: pause instead of logging)</source>
         <target>Messaggio di log (vuoto: pausa invece di registrare)</target>
       </trans-unit>
-      <trans-unit id="587">
-        <source>Mixed (unstage changes)</source>
-        <target>Mixed (rimuovi le modifiche dallo stage)</target>
-      </trans-unit>
-      <trans-unit id="588">
-        <source>New Branch…</source>
-        <target>Nuovo ramo…</target>
-      </trans-unit>
       <trans-unit id="589">
         <source>Next Dock Panel</source>
         <target>Pannello dock successivo</target>
@@ -2490,49 +1966,17 @@
         <source>Open as Text</source>
         <target>Apri come testo</target>
       </trans-unit>
-      <trans-unit id="593">
-        <source>PlantUML path (or .jar)</source>
-        <target>Percorso di PlantUML (o .jar)</target>
-      </trans-unit>
       <trans-unit id="594">
         <source>Previous Dock Panel</source>
         <target>Pannello dock precedente</target>
-      </trans-unit>
-      <trans-unit id="595">
-        <source>Reset to %sha% (%mode%)</source>
-        <target>Reset a %sha% (%mode%)</target>
-      </trans-unit>
-      <trans-unit id="596">
-        <source>Reset to %sha%?</source>
-        <target>Reset a %sha%?</target>
-      </trans-unit>
-      <trans-unit id="597">
-        <source>Reset to Commit…</source>
-        <target>Reset al commit…</target>
       </trans-unit>
       <trans-unit id="598">
         <source>Restart Debugger</source>
         <target>Riavvia il debugger</target>
       </trans-unit>
-      <trans-unit id="599">
-        <source>Revert Commit</source>
-        <target>Revert del commit</target>
-      </trans-unit>
-      <trans-unit id="600">
-        <source>Reverted %sha%</source>
-        <target>Revert di %sha% eseguito</target>
-      </trans-unit>
-      <trans-unit id="601">
-        <source>SVG converter path</source>
-        <target>Percorso del convertitore SVG</target>
-      </trans-unit>
       <trans-unit id="602">
         <source>Set %name% to</source>
         <target>Imposta %name% a</target>
-      </trans-unit>
-      <trans-unit id="603">
-        <source>Soft (keep staged changes)</source>
-        <target>Soft (mantieni le modifiche in stage)</target>
       </trans-unit>
       <trans-unit id="604">
         <source>Sort Lines</source>
@@ -2541,10 +1985,6 @@
       <trans-unit id="605">
         <source>Sticky scroll</source>
         <target>Sticky scroll</target>
-      </trans-unit>
-      <trans-unit id="606">
-        <source>Switch Branch…</source>
-        <target>Cambia ramo…</target>
       </trans-unit>
       <trans-unit id="607">
         <source>This debug adapter cannot edit variables</source>
@@ -2561,22 +2001,6 @@
       <trans-unit id="610">
         <source>not configured</source>
         <target>non configurato</target>
-      </trans-unit>
-      <trans-unit id="611">
-        <source>plantuml not found — install it, or set the "plantumlPath" setting</source>
-        <target>plantuml non trovato — installalo o imposta l'impostazione "plantumlPath"</target>
-      </trans-unit>
-      <trans-unit id="612">
-        <source>rendering…</source>
-        <target>rendering…</target>
-      </trans-unit>
-      <trans-unit id="613">
-        <source>the SVG could not be decoded</source>
-        <target>impossibile decodificare l'SVG</target>
-      </trans-unit>
-      <trans-unit id="614">
-        <source>the graph bitmap could not be decoded</source>
-        <target>impossibile decodificare la bitmap del grafo</target>
       </trans-unit>
       <trans-unit id="615">
         <source>%tool%: no %nouns% in %file%</source>
@@ -2746,81 +2170,9 @@
         <source>%tool%: exited with code %code%</source>
         <target>%tool%: terminato con codice %code%</target>
       </trans-unit>
-      <trans-unit id="658">
-        <source>%tool%: formatted %file%</source>
-        <target>%tool%: %file% formattato</target>
-      </trans-unit>
       <trans-unit id="659">
         <source>%tool%: fixed %file%</source>
         <target>%tool%: %file% corretto</target>
-      </trans-unit>
-      <trans-unit id="660">
-        <source>%tool%: fixed project</source>
-        <target>%tool%: progetto corretto</target>
-      </trans-unit>
-      <trans-unit id="661">
-        <source>%tool%: generated config</source>
-        <target>%tool%: configurazione generata</target>
-      </trans-unit>
-      <trans-unit id="662">
-        <source>symfony-lsp: downloading the latest release…</source>
-        <target>symfony-lsp: download dell’ultima versione…</target>
-      </trans-unit>
-      <trans-unit id="663">
-        <source>symfony-lsp installed: %path%</source>
-        <target>symfony-lsp installato: %path%</target>
-      </trans-unit>
-      <trans-unit id="664">
-        <source>symfony-lsp install failed: %why%</source>
-        <target>installazione di symfony-lsp non riuscita: %why%</target>
-      </trans-unit>
-      <trans-unit id="879">
-        <source>symfony-lsp: checking for a newer release…</source>
-        <target>symfony-lsp: ricerca di una versione più recente…</target>
-      </trans-unit>
-      <trans-unit id="880">
-        <source>symfony-lsp updated: %from% → %to%</source>
-        <target>symfony-lsp aggiornato: %from% → %to%</target>
-      </trans-unit>
-      <trans-unit id="881">
-        <source>symfony-lsp is already up to date (%version%)</source>
-        <target>symfony-lsp è già aggiornato (%version%)</target>
-      </trans-unit>
-      <trans-unit id="882">
-        <source>symfony-lsp update failed: %why%</source>
-        <target>aggiornamento di symfony-lsp non riuscito: %why%</target>
-      </trans-unit>
-      <trans-unit id="883">
-        <source>symfony-lsp: resolving…</source>
-        <target>symfony-lsp: risoluzione…</target>
-      </trans-unit>
-      <trans-unit id="884">
-        <source>symfony-lsp: downloading…</source>
-        <target>symfony-lsp: download…</target>
-      </trans-unit>
-      <trans-unit id="885">
-        <source>symfony-lsp: downloading %percent%%</source>
-        <target>symfony-lsp: download %percent%%</target>
-      </trans-unit>
-      <trans-unit id="886">
-        <source>symfony-lsp: verifying…</source>
-        <target>symfony-lsp: verifica…</target>
-      </trans-unit>
-      <trans-unit id="887">
-        <source>symfony-lsp: extracting…</source>
-        <target>symfony-lsp: estrazione…</target>
-      </trans-unit>
-      <trans-unit id="888">
-        <source>symfony-lsp: checking the binary…</source>
-        <target>symfony-lsp: controllo del binario…</target>
-      </trans-unit>
-      <trans-unit id="889">
-        <source>symfony-lsp %version% is available — run "Symfony LSP: Update Server"</source>
-        <target>symfony-lsp %version% è disponibile — esegui «Symfony LSP: aggiorna server»</target>
-      </trans-unit>
-      <trans-unit id="890">
-        <source>Check for a newer server once a day</source>
-        <target>Cerca un server più recente una volta al giorno</target>
       </trans-unit>
       <trans-unit id="891">
         <source>Update %tool%</source>
@@ -2977,22 +2329,6 @@
       <trans-unit id="801">
         <source>Maximize Panel</source>
         <target>Massimizza pannello</target>
-      </trans-unit>
-      <trans-unit id="802">
-        <source>Compare with Snapshot</source>
-        <target>Confronta con snapshot</target>
-      </trans-unit>
-      <trans-unit id="804">
-        <source>Comparing %file% with a snapshot</source>
-        <target>Confronto di %file% con uno snapshot</target>
-      </trans-unit>
-      <trans-unit id="806">
-        <source>Comparing snapshots needs git on your PATH</source>
-        <target>Per confrontare gli snapshot serve git nel PATH</target>
-      </trans-unit>
-      <trans-unit id="808">
-        <source>That snapshot matches the file on disk</source>
-        <target>Questo snapshot coincide con il file su disco</target>
       </trans-unit>
       <trans-unit id="809">
         <source>Copy Reference</source>
@@ -3214,22 +2550,6 @@
         <source>Commit</source>
         <target>Commit</target>
       </trans-unit>
-      <trans-unit id="905">
-        <source>Amend last commit</source>
-        <target>Correggi ultimo commit</target>
-      </trans-unit>
-      <trans-unit id="906">
-        <source>Commit to branch</source>
-        <target>Esegui commit sul ramo</target>
-      </trans-unit>
-      <trans-unit id="907">
-        <source>Discard changes to %path%?</source>
-        <target>Annullare le modifiche a %path%?</target>
-      </trans-unit>
-      <trans-unit id="908">
-        <source>Discard (y)</source>
-        <target>Annulla (y)</target>
-      </trans-unit>
       <trans-unit id="909">
         <source>Keep</source>
         <target>Mantieni</target>
@@ -3238,17 +2558,9 @@
         <source>(excluded)</source>
         <target>(escluso)</target>
       </trans-unit>
-      <trans-unit id="911">
-        <source>No commit to amend</source>
-        <target>Nessun commit da modificare</target>
-      </trans-unit>
       <trans-unit id="912">
         <source>Space toggle · r reset · Ctrl+F find · Tab panes · 2 keybindings</source>
         <target>Spazio attiva/disattiva · r ripristina · Ctrl+F cerca · Tab riquadri · 2 scorciatoie</target>
-      </trans-unit>
-      <trans-unit id="913">
-        <source>%operation% needs a choice</source>
-        <target>%operation% richiede una scelta</target>
       </trans-unit>
       <trans-unit id="914">
         <source>%count% line|%count% lines</source>
@@ -3293,26 +2605,6 @@
       <trans-unit id="924">
         <source>No changes in this file</source>
         <target>Nessuna modifica in questo file</target>
-      </trans-unit>
-      <trans-unit id="925">
-        <source>No change here</source>
-        <target>Nessuna modifica qui</target>
-      </trans-unit>
-      <trans-unit id="926">
-        <source>Revert this change</source>
-        <target>Annulla questa modifica</target>
-      </trans-unit>
-      <trans-unit id="927">
-        <source>Change at line %line%</source>
-        <target>Modifica alla riga %line%</target>
-      </trans-unit>
-      <trans-unit id="928">
-        <source>The buffer has changed since; save it and try again</source>
-        <target>Il buffer è cambiato nel frattempo; salvalo e riprova</target>
-      </trans-unit>
-      <trans-unit id="929">
-        <source>Change reverted</source>
-        <target>Modifica annullata</target>
       </trans-unit>
       <trans-unit id="932">
         <source>Git: Show Change</source>
@@ -3454,10 +2746,6 @@
         <source>Column selection mode: Shift+arrows select a rectangle — Alt+C turns it off</source>
         <target>Selezione a colonna: Shift+frecce selezionano un rettangolo — Alt+C la disattiva</target>
       </trans-unit>
-      <trans-unit id="967">
-        <source>Git branch %branch% — click to switch, create or delete a branch</source>
-        <target>Branch Git %branch% — clic per cambiare, creare o eliminare un branch</target>
-      </trans-unit>
       <trans-unit id="968">
         <source>Pinned: kept open, with no ×</source>
         <target>Fissata: resta aperta, senza ×</target>
@@ -3534,70 +2822,6 @@
         <source>Enum case</source>
         <target>Caso di enumerazione</target>
       </trans-unit>
-      <trans-unit id="988">
-        <source>Unstage this file</source>
-        <target>Rimuovi questo file dall'area di stage</target>
-      </trans-unit>
-      <trans-unit id="989">
-        <source>Stage this file</source>
-        <target>Metti in stage questo file</target>
-      </trans-unit>
-      <trans-unit id="990">
-        <source>Untracked: new to git</source>
-        <target>Non tracciato: nuovo per git</target>
-      </trans-unit>
-      <trans-unit id="991">
-        <source>Renamed from %path%</source>
-        <target>Rinominato da %path%</target>
-      </trans-unit>
-      <trans-unit id="992">
-        <source>Copied from %path%</source>
-        <target>Copiato da %path%</target>
-      </trans-unit>
-      <trans-unit id="993">
-        <source>Unmerged: a conflict to resolve</source>
-        <target>Non unito: un conflitto da risolvere</target>
-      </trans-unit>
-      <trans-unit id="994">
-        <source>Type changed</source>
-        <target>Tipo cambiato</target>
-      </trans-unit>
-      <trans-unit id="995">
-        <source>Staged</source>
-        <target>In stage</target>
-      </trans-unit>
-      <trans-unit id="996">
-        <source>Partly staged</source>
-        <target>Parzialmente in stage</target>
-      </trans-unit>
-      <trans-unit id="997">
-        <source>Not staged</source>
-        <target>Non in stage</target>
-      </trans-unit>
-      <trans-unit id="998">
-        <source>Unstage everything</source>
-        <target>Rimuovi tutto dall'area di stage</target>
-      </trans-unit>
-      <trans-unit id="999">
-        <source>Stage everything</source>
-        <target>Metti tutto in stage</target>
-      </trans-unit>
-      <trans-unit id="1000">
-        <source>Side-by-side diff</source>
-        <target>Diff affiancato</target>
-      </trans-unit>
-      <trans-unit id="1001">
-        <source>Hide whitespace-only changes</source>
-        <target>Nascondi le modifiche di soli spazi</target>
-      </trans-unit>
-      <trans-unit id="1002">
-        <source>Write a summary first</source>
-        <target>Scrivi prima un riepilogo</target>
-      </trans-unit>
-      <trans-unit id="1003">
-        <source>Stage a change first</source>
-        <target>Metti prima in stage una modifica</target>
-      </trans-unit>
       <trans-unit id="1004">
         <source>Changed from its default — r puts it back</source>
         <target>Modificato rispetto al predefinito — r lo ripristina</target>
@@ -3649,10 +2873,6 @@
       <trans-unit id="1016">
         <source>Enable the git plugin to see the comparison</source>
         <target>Attiva il plugin git per vedere il confronto</target>
-      </trans-unit>
-      <trans-unit id="1017">
-        <source>Esc to edit the file · F7 next conflict · Alt+M resolve · Ctrl+S, then Ctrl+Q — conflicts left mean the merge fails</source>
-        <target>Esc per modificare il file · F7 conflitto successivo · Alt+M risolvi · Ctrl+S, poi Ctrl+Q — se restano conflitti il merge fallisce</target>
       </trans-unit>
       <trans-unit id="1018">
         <source>Command line</source>
@@ -3790,65 +3010,9 @@
         <source>Conversation</source>
         <target>Conversazione</target>
       </trans-unit>
-      <trans-unit id="1052">
-        <source>Comment on %review%</source>
-        <target>Commenta %review%</target>
-      </trans-unit>
-      <trans-unit id="1053">
-        <source>Conversation (%count%)</source>
-        <target>Conversazione (%count%)</target>
-      </trans-unit>
-      <trans-unit id="1054">
-        <source>Copied %url%</source>
-        <target>%url% copiato</target>
-      </trans-unit>
-      <trans-unit id="1055">
-        <source>Local review: %id%</source>
-        <target>Revisione locale: %id%</target>
-      </trans-unit>
-      <trans-unit id="1056">
-        <source>Looking for a review…</source>
-        <target>Ricerca di una revisione…</target>
-      </trans-unit>
-      <trans-unit id="1057">
-        <source>New comment on %path%:%line%</source>
-        <target>Nuovo commento su %path%:%line%</target>
-      </trans-unit>
-      <trans-unit id="1058">
-        <source>No comments yet — press c to write one</source>
-        <target>Nessun commento — premi c per scriverne uno</target>
-      </trans-unit>
-      <trans-unit id="1059">
-        <source>No conversation on this line</source>
-        <target>Nessuna conversazione su questa riga</target>
-      </trans-unit>
-      <trans-unit id="1060">
-        <source>No review for this branch</source>
-        <target>Nessuna revisione per questo branch</target>
-      </trans-unit>
-      <trans-unit id="1061">
-        <source>Open a project file to comment on</source>
-        <target>Apri un file del progetto da commentare</target>
-      </trans-unit>
-      <trans-unit id="1062">
-        <source>Pick a thread, or press c on a line</source>
-        <target>Scegli una discussione o premi c su una riga</target>
-      </trans-unit>
-      <trans-unit id="1063">
-        <source>Reply</source>
-        <target>Rispondi</target>
-      </trans-unit>
-      <trans-unit id="1064">
-        <source>Reply to %author% on %path%:%line%</source>
-        <target>Rispondi a %author% su %path%:%line%</target>
-      </trans-unit>
       <trans-unit id="1065">
         <source>Review</source>
         <target>Revisione</target>
-      </trans-unit>
-      <trans-unit id="1066">
-        <source>Review (%count% open)</source>
-        <target>Revisione (%count% aperte)</target>
       </trans-unit>
       <trans-unit id="1067">
         <source>Send</source>
@@ -3858,65 +3022,9 @@
         <source>Sent</source>
         <target>Inviato</target>
       </trans-unit>
-      <trans-unit id="1069">
-        <source>Show which review?</source>
-        <target>Quale revisione mostrare?</target>
-      </trans-unit>
-      <trans-unit id="1070">
-        <source>The branch's pull or merge request</source>
-        <target>La pull o merge request del branch</target>
-      </trans-unit>
-      <trans-unit id="1071">
-        <source>This review has no link</source>
-        <target>Questa revisione non ha un link</target>
-      </trans-unit>
-      <trans-unit id="1072">
-        <source>Thread reopened</source>
-        <target>Discussione riaperta</target>
-      </trans-unit>
-      <trans-unit id="1073">
-        <source>Thread resolved</source>
-        <target>Discussione risolta</target>
-      </trans-unit>
-      <trans-unit id="1074">
-        <source>outdated</source>
-        <target>obsoleto</target>
-      </trans-unit>
       <trans-unit id="1075">
         <source>resolved</source>
         <target>risolto</target>
-      </trans-unit>
-      <trans-unit id="1076">
-        <source>Show Review</source>
-        <target>Mostra la revisione</target>
-      </trans-unit>
-      <trans-unit id="1077">
-        <source>Refresh Review</source>
-        <target>Aggiorna la revisione</target>
-      </trans-unit>
-      <trans-unit id="1078">
-        <source>Choose Review…</source>
-        <target>Scegli la revisione…</target>
-      </trans-unit>
-      <trans-unit id="1079">
-        <source>Copy Review Link</source>
-        <target>Copia il link della revisione</target>
-      </trans-unit>
-      <trans-unit id="1080">
-        <source>Show Conversation on This Line</source>
-        <target>Mostra la conversazione di questa riga</target>
-      </trans-unit>
-      <trans-unit id="1081">
-        <source>Comment on This Line</source>
-        <target>Commenta questa riga</target>
-      </trans-unit>
-      <trans-unit id="1082">
-        <source>Show resolved conversations</source>
-        <target>Mostra le conversazioni risolte</target>
-      </trans-unit>
-      <trans-unit id="1083">
-        <source> S show-resolved </source>
-        <target> S show-resolved </target>
       </trans-unit>
     </body>
   </file>

@@ -11082,3 +11082,40 @@ that send's success.
 *Re-opens on:* a request for the review as a tab of the git view (it needs a
 cross-plugin view seam), for pagination past 100 threads or comments, or for a
 forge beyond GitHub and GitLab.
+
+## Plugins carry their own translations (2026-09-30)
+
+Every plugin string lived in core's seven catalogs: 223 of 979 units, 121 of
+them git's. A third-party plugin had no way to ship a catalog at all, so its
+strings were English in every locale.
+
+A plugin now ships `translations/messages.<locale>.xlf`, and the loader
+registers the dir after the plugin commits. It is found **by convention, not by
+a `PluginApi` verb**: every plugin that has strings wants them loaded, so a
+verb would be a call each plugin must remember and none would ever skip.
+
+The units moved where exactly one plugin's runtime code uses the string: git
+121, graph-viewer 29, review 28, symfony-lsp 15, image-viewer 14, local-history
+13, phpantom 2, mago 1. Those shared with core or between plugins stay in core
+(`Cancel`, `Run`, `on`/`off`, `Not a UTF-8 text file`, `Languages`). One
+domain, merged, because core translates plugin-supplied labels itself.
+
+**The translator rebuilds on a new dir, rather than keying its own cache
+path.** Adding a resource to symfony's translator kept serving the old dump,
+because its file name hashes only `cacheVary`. Putting the dir set into
+`cacheVary` fixes that at the source, and a rebuild costs nothing since loading
+is lazy. A per-plugin-set cache subdirectory would have worked too, and would
+have left the dump name lying about what it holds. Core loads last so a plugin
+cannot retranslate core.
+
+Every catalog gate now iterates the sets (`tests/Support/Catalogs`, which also
+replaced three copies of the source-reading XPath). `CatalogCoverageTest` scans
+`plugins/*/plugin.php` too, whose ~32 literal `trans()` calls it could not see
+before. A literal in core must resolve in core's catalog: core cannot lean on a
+plugin that may not be loaded. `GitCatalogTest` boots the IDE in French,
+because every plugin test runs in English, where a missing catalog is
+invisible.
+
+*Re-opens on:* a plugin that needs its own domain (a collision core's-wins
+cannot settle), or live-disable having to drop strings before a restart.
+

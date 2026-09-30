@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">
+  <file source-language="en" target-language="en" datatype="plaintext" original="messages">
+    <body>
+      <trans-unit id="1">
+        <source>%tool%: fixed project</source>
+        <target>%tool%: fixed project</target>
+      </trans-unit>
+      <trans-unit id="2">
+        <source>%tool%: generated config</source>
+        <target>%tool%: generated config</target>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

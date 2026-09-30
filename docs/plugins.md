@@ -754,6 +754,27 @@ $api->prompt('New name', $current, fn (string $name) => $this->rename($name));
 The same overlays the IDE's own pickers use. Both are action methods — call
 them from a command handler or a hook, never from `activate()`.
 
+### Translating your strings
+
+Ship a `translations/` dir beside your `plugin.php`, one XLIFF 1.2 file per
+locale: `messages.en.xlf`, `messages.fr.xlf`, and so on for `de`, `es`, `it`,
+`ja` and `he`. **The English source string is the message id**, so a unit reads
+`<source>Working tree clean</source><target>Arbre de travail propre</target>`
+and your code calls `$api->trans('Working tree clean')`. A locale you ship no
+file for, or a unit you leave out, shows the English.
+
+The dir is picked up once your plugin loads — nothing to register — and it is
+merged into the IDE's own catalog. Two rules follow from that merge:
+
+- **Core wins a shared string.** Its catalog loads last, so a unit of yours
+  whose source is one of core's (`Cancel`, `Run`) changes nothing. Use core's
+  string as it is.
+- **Disabling your plugin keeps its strings until a restart.** They are keyed
+  by their English text, so nothing else can pick them up by mistake.
+
+A widget translates through the `Translator` it is handed
+(`PaneServices`, `ViewServices`), which serves the same merged catalog.
+
 ### Lifecycle
 
 - Plugins load during startup, **before** the keybinding map is built, so
@@ -835,7 +856,7 @@ Actions (from handlers/hooks):
 | `syntaxTheme()` | The `TerminalTheme` core is currently painting with, for a backend that bakes colours into its own output. Safe during `activate()`; pair it with `onThemeChanged()`, since a theme switch has no other hook |
 | `updateList(string $id, array $rows, ToolRun $run = ToolRun::Finished)` | Replace its rows in place; a no-op once the user ×'d the tab |
 | `replaceDocument(string $text)` | Replace the active text buffer's whole content as ONE undoable edit; no-op on an identical text, a viewer tab, or nothing open |
-| `trans(string $id, array $params = [])` | Translate through the IDE's catalogs; an unknown string passes through |
+| `trans(string $id, array $params = [])` | Translate through the IDE's catalogs and your own — see [Translating your strings](#translating-your-strings); an unknown string passes through |
 | `pick(string $title, array $items, \Closure $onPick)` | Ask the user to choose from `value => label`, or from full rows (`['label' => …, 'hint' => …, 'value' => …]`) when the list needs a dimmed second column |
 | `prompt(string $label, string $initial, \Closure $onSubmit)` | Ask the user for one line of text |
 | `activeFile(): ?string` | Absolute path of the focused buffer |

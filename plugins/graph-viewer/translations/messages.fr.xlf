@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">
+  <file source-language="en" target-language="fr" datatype="plaintext" original="messages">
+    <body>
+      <trans-unit id="1">
+        <source>Graph: Zoom In</source>
+        <target>Graphe : Zoom avant</target>
+      </trans-unit>
+      <trans-unit id="2">
+        <source>Graph: Zoom Out</source>
+        <target>Graphe : Zoom arrière</target>
+      </trans-unit>
+      <trans-unit id="3">
+        <source>Graph: Fit to Window</source>
+        <target>Graphe : Ajuster à la fenêtre</target>
+      </trans-unit>
+      <trans-unit id="4">
+        <source>Graph: Actual Size</source>
+        <target>Graphe : Taille réelle</target>
+      </trans-unit>
+      <trans-unit id="5">
+        <source>Graph: Pan Left</source>
+        <target>Graphe : Défiler à gauche</target>
+      </trans-unit>
+      <trans-unit id="6">
+        <source>Graph: Pan Right</source>
+        <target>Graphe : Défiler à droite</target>
+      </trans-unit>
+      <trans-unit id="7">
+        <source>Graph: Pan Up</source>
+        <target>Graphe : Défiler vers le haut</target>
+      </trans-unit>
+      <trans-unit id="8">
+        <source>Graph: Pan Down</source>
+        <target>Graphe : Défiler vers le bas</target>
+      </trans-unit>
+      <trans-unit id="9">
+        <source>Graph: Select Next Node</source>
+        <target>Graphe : Sélectionner le nœud suivant</target>
+      </trans-unit>
+      <trans-unit id="10">
+        <source>Graph: Select Previous Node</source>
+        <target>Graphe : Sélectionner le nœud précédent</target>
+      </trans-unit>
+      <trans-unit id="11">
+        <source>Graph: Find Node</source>
+        <target>Graphe : Rechercher un nœud</target>
+      </trans-unit>
+      <trans-unit id="12">
+        <source>Find node</source>
+        <target>Rechercher un nœud</target>
+      </trans-unit>
+      <trans-unit id="13">
+        <source>No graph nodes to search</source>
+        <target>Aucun nœud à rechercher</target>
+      </trans-unit>
+      <trans-unit id="14">
+        <source>%in% in · %out% out</source>
+        <target>%in% entrant · %out% sortant</target>
+      </trans-unit>
+      <trans-unit id="15">
+        <source>graphviz not found — install graphviz, or set the "dotPath" setting</source>
+        <target>graphviz introuvable — installez graphviz ou définissez le réglage « dotPath »</target>
+      </trans-unit>
+      <trans-unit id="16">
+        <source>layout…</source>
+        <target>mise en page…</target>
+      </trans-unit>
+      <trans-unit id="17">
+        <source>Graph file too large (&gt; 10 MB)</source>
+        <target>Fichier de graphe trop volumineux (&gt; 10 Mo)</target>
+      </trans-unit>
+      <trans-unit id="18">
+        <source>+/- zoom  0 fit  n/p select  / find  Ctrl+Q quit</source>
+        <target>+/- zoom  0 ajuster  n/p sélection  Ctrl+Q quitter</target>
+      </trans-unit>
+      <trans-unit id="19">
+        <source>Architecture command produced no output</source>
+        <target>La commande d'architecture n'a rien produit</target>
+      </trans-unit>
+      <trans-unit id="20">
+        <source>Export failed: %error%</source>
+        <target>Échec de l'export : %error%</target>
+      </trans-unit>
+      <trans-unit id="21">
+        <source>Exported %file%</source>
+        <target>%file% exporté</target>
+      </trans-unit>
+      <trans-unit id="22">
+        <source>Graph: Export SVG</source>
+        <target>Graphe : Exporter en SVG</target>
+      </trans-unit>
+      <trans-unit id="23">
+        <source>Graph: Export PNG</source>
+        <target>Graphe : Exporter en PNG</target>
+      </trans-unit>
+      <trans-unit id="24">
+        <source>Graphviz dot path</source>
+        <target>Chemin de l'exécutable Graphviz dot</target>
+      </trans-unit>
+      <trans-unit id="25">
+        <source>Architecture command (stdout = DOT)</source>
+        <target>Commande d'architecture (stdout = DOT)</target>
+      </trans-unit>
+      <trans-unit id="26">
+        <source>Graph rendering</source>
+        <target>Rendu du graphe</target>
+      </trans-unit>
+      <trans-unit id="27">
+        <source>PlantUML path (or .jar)</source>
+        <target>Chemin de PlantUML (ou .jar)</target>
+      </trans-unit>
+      <trans-unit id="28">
+        <source>plantuml not found — install it, or set the "plantumlPath" setting</source>
+        <target>plantuml introuvable — installez-le ou définissez le réglage "plantumlPath"</target>
+      </trans-unit>
+      <trans-unit id="29">
+        <source>the graph bitmap could not be decoded</source>
+        <target>le bitmap du graphe n'a pas pu être décodé</target>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

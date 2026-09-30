@@ -52,7 +52,8 @@ workbench view, and the services that view was written against — `Notifier`,
 available: they are container services, and half of them would hand a plugin far
 more than the one verb it wants. So it carries `Flash`, `Modals`, `Translate`
 and `DiffPrefs`: one closure from `PluginApi` behind the method name the call
-sites already used. **~90 call sites are unchanged**, which is the test of
+sites already used. (`Translate` is about WHEN a lookup may run, not where the
+strings live: git's own are in `plugins/git/translations/`.) **~90 call sites are unchanged**, which is the test of
 whether a shim is the right shape — if the bodies have to change, the seam is
 in the wrong place.
 
@@ -282,6 +283,26 @@ Plugins listen; they never dispatch.
 
 **Prefer anonymous classes in plugin files** — cross-plugin class redeclaration
 is an uncatchable fatal.
+
+## A plugin's strings are its own catalog
+
+A plugin ships `translations/messages.<locale>.xlf` beside its entry file, and
+`PluginLoader::loadFile()` hands that dir to `I18n/Translator::addCatalogDirectory()`
+**after** `commit` — a plugin that fails to activate contributes no strings.
+There is no `PluginApi` verb: the dir is found by convention, on the boot load
+and on a live enable alike.
+
+It merges into the one `messages` domain, because core translates what a
+plugin hands it — setting labels, menu titles, tab titles, keymap labels — with
+the same lookup. Core's catalog is added LAST, so a plugin can add strings but
+never retranslate one of core's.
+
+**The split rule:** a string only one plugin's runtime code uses lives in that
+plugin's catalog; one that core uses, or that two plugins share, lives in core.
+`CatalogCoverageTest::testNoCoreUnitServesASinglePlugin` and
+`CatalogCompletenessTest::testNoSourceIsCataloguedInTwoSets` enforce it, and
+every catalog gate iterates the sets through `tests/Support/Catalogs`, so a
+plugin that grows a `translations/` dir is gated from its first commit.
 
 ## Panes and viewers
 

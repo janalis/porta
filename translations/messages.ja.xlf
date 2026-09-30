@@ -2,26 +2,6 @@
 <xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">
   <file source-language="en" target-language="ja" datatype="plaintext" original="messages">
     <body>
-      <trans-unit id="3">
-        <source>%count% changed file|%count% changed files</source>
-        <target>%count% 件の変更ファイル</target>
-      </trans-unit>
-      <trans-unit id="8">
-        <source>Files (%count%)</source>
-        <target>ファイル (%count%)</target>
-      </trans-unit>
-      <trans-unit id="9">
-        <source>History (%count%)</source>
-        <target>履歴 (%count%)</target>
-      </trans-unit>
-      <trans-unit id="10">
-        <source> S split </source>
-        <target> S split </target>
-      </trans-unit>
-      <trans-unit id="11">
-        <source> W hide-ws </source>
-        <target> W hide-ws </target>
-      </trans-unit>
       <trans-unit id="12">
         <source>&quot;%title%&quot; failed: %message%</source>
         <target>「%title%」が失敗しました: %message%</target>
@@ -94,26 +74,6 @@
         <source>Close Others</source>
         <target>他を閉じる</target>
       </trans-unit>
-      <trans-unit id="34">
-        <source>Commit failed (nothing staged?)</source>
-        <target>コミットに失敗しました (ステージが空?)</target>
-      </trans-unit>
-      <trans-unit id="35">
-        <source>Commit failed: %summary%</source>
-        <target>コミットに失敗しました: %summary%</target>
-      </trans-unit>
-      <trans-unit id="36">
-        <source>Commit message</source>
-        <target>コミットメッセージ</target>
-      </trans-unit>
-      <trans-unit id="37">
-        <source>Committed: %summary%</source>
-        <target>コミットしました: %summary%</target>
-      </trans-unit>
-      <trans-unit id="38">
-        <source>Copied %count% line|Copied %count% lines</source>
-        <target>%count% 行をコピーしました</target>
-      </trans-unit>
       <trans-unit id="40">
         <source>Copied %text%</source>
         <target>%text% をコピーしました</target>
@@ -125,10 +85,6 @@
       <trans-unit id="42">
         <source>Copy Relative Path</source>
         <target>相対パスをコピー</target>
-      </trans-unit>
-      <trans-unit id="43">
-        <source>Could not read that snapshot</source>
-        <target>そのスナップショットを読み込めませんでした</target>
       </trans-unit>
       <trans-unit id="44">
         <source>Could not start the terminal process</source>
@@ -146,37 +102,17 @@
         <source>Deleted %file%</source>
         <target>%file% を削除しました</target>
       </trans-unit>
-      <trans-unit id="48">
-        <source>Deleted %path%</source>
-        <target>%path% を削除しました</target>
-      </trans-unit>
       <trans-unit id="49">
         <source>Delete…</source>
         <target>削除…</target>
-      </trans-unit>
-      <trans-unit id="50">
-        <source>Description</source>
-        <target>説明</target>
       </trans-unit>
       <trans-unit id="51">
         <source>Diff</source>
         <target>差分</target>
       </trans-unit>
-      <trans-unit id="52">
-        <source>Diff context: %label%</source>
-        <target>差分コンテキスト: %label%</target>
-      </trans-unit>
       <trans-unit id="53">
         <source>Discard &amp; Close</source>
         <target>破棄して閉じる</target>
-      </trans-unit>
-      <trans-unit id="54">
-        <source>Discard failed</source>
-        <target>破棄に失敗しました</target>
-      </trans-unit>
-      <trans-unit id="55">
-        <source>Discarded changes to %path%</source>
-        <target>%path% の変更を破棄しました</target>
       </trans-unit>
       <trans-unit id="56">
         <source>Docs: %url%</source>
@@ -202,10 +138,6 @@
         <source>Formatting not supported by %server%</source>
         <target>%server% は整形に対応していません</target>
       </trans-unit>
-      <trans-unit id="63">
-        <source>Git not available</source>
-        <target>git を利用できません</target>
-      </trans-unit>
       <trans-unit id="65">
         <source>Indent size</source>
         <target>インデント幅</target>
@@ -230,10 +162,6 @@
         <source>LSP:%status%</source>
         <target>LSP:%status%</target>
       </trans-unit>
-      <trans-unit id="71">
-        <source>Last commit undone (changes kept staged)</source>
-        <target>直前のコミットを取り消しました (変更はステージに残ります)</target>
-      </trans-unit>
       <trans-unit id="72">
         <source>New File</source>
         <target>新規ファイル</target>
@@ -250,10 +178,6 @@
         <source>New Folder…</source>
         <target>新規フォルダー…</target>
       </trans-unit>
-      <trans-unit id="76">
-        <source>No blame for this line</source>
-        <target>この行の blame はありません</target>
-      </trans-unit>
       <trans-unit id="77">
         <source>No definition found</source>
         <target>定義が見つかりません</target>
@@ -265,10 +189,6 @@
       <trans-unit id="79">
         <source>No implementation found</source>
         <target>実装が見つかりません</target>
-      </trans-unit>
-      <trans-unit id="80">
-        <source>No local history for this file yet</source>
-        <target>このファイルのローカル履歴はまだありません</target>
       </trans-unit>
       <trans-unit id="81">
         <source>No previous run — press Ctrl+Shift+R to pick one</source>
@@ -293,10 +213,6 @@
       <trans-unit id="86">
         <source>Not a UTF-8 text file</source>
         <target>UTF-8 のテキストファイルではありません</target>
-      </trans-unit>
-      <trans-unit id="87">
-        <source>Not a git repository</source>
-        <target>git リポジトリではありません</target>
       </trans-unit>
       <trans-unit id="88">
         <source>Nothing to peek</source>
@@ -402,18 +318,6 @@
         <source>Replaced in %count% file|Replaced in %count% files</source>
         <target>%count% 件のファイルで置換しました</target>
       </trans-unit>
-      <trans-unit id="116">
-        <source>Restored from local history</source>
-        <target>ローカル履歴から復元しました</target>
-      </trans-unit>
-      <trans-unit id="821">
-        <source>%file% is gone — restoring a version will bring it back</source>
-        <target>%file% はもうありません — バージョンを復元すると元に戻ります</target>
-      </trans-unit>
-      <trans-unit id="820">
-        <source>Cannot restore %file% — it is no longer there</source>
-        <target>%file% を復元できません — ファイルがもうありません</target>
-      </trans-unit>
       <trans-unit id="117">
         <source>Run</source>
         <target>実行</target>
@@ -433,22 +337,6 @@
       <trans-unit id="122">
         <source>Saved %file%</source>
         <target>%file% を保存しました</target>
-      </trans-unit>
-      <trans-unit id="123">
-        <source>Show whitespace changes to stage lines (w)</source>
-        <target>行をステージするには空白の変更を表示 (w)</target>
-      </trans-unit>
-      <trans-unit id="124">
-        <source>Stage failed</source>
-        <target>ステージに失敗しました</target>
-      </trans-unit>
-      <trans-unit id="125">
-        <source>Staged %path%</source>
-        <target>%path% をステージしました</target>
-      </trans-unit>
-      <trans-unit id="126">
-        <source>Summary (required)</source>
-        <target>概要 (必須)</target>
       </trans-unit>
       <trans-unit id="127">
         <source>Target outside the filesystem</source>
@@ -474,21 +362,9 @@
         <source>Unsupported key — try another</source>
         <target>サポートされていないキー — 別のキーを試してください</target>
       </trans-unit>
-      <trans-unit id="133">
-        <source>Untracked files always show the whole file</source>
-        <target>追跡外のファイルは常にファイル全体を表示します</target>
-      </trans-unit>
-      <trans-unit id="134">
-        <source>Untracked: stage the whole file with Space in the changes list</source>
-        <target>追跡外: 変更リストで Space を押してファイル全体をステージします</target>
-      </trans-unit>
       <trans-unit id="135">
         <source>[scrolled +%count%]</source>
         <target>[スクロール +%count%]</target>
-      </trans-unit>
-      <trans-unit id="135arrow">
-        <source>[→%count%]</source>
-        <target>[→%count%]</target>
       </trans-unit>
       <trans-unit id="135se">
         <source>Search Everywhere</source>
@@ -513,14 +389,6 @@
       <trans-unit id="140">
         <source>failed</source>
         <target>失敗</target>
-      </trans-unit>
-      <trans-unit id="141">
-        <source>git apply refused the partial patch</source>
-        <target>git apply が部分パッチを拒否しました</target>
-      </trans-unit>
-      <trans-unit id="142">
-        <source>git refused the staging change</source>
-        <target>git がステージ変更を拒否しました</target>
       </trans-unit>
       <trans-unit id="143">
         <source>no matches</source>
@@ -1002,18 +870,6 @@
         <source>Toggle Comment</source>
         <target>コメントを切替</target>
       </trans-unit>
-      <trans-unit id="238h0">
-        <source>No local history yet</source>
-        <target>ローカル履歴はまだありません</target>
-      </trans-unit>
-      <trans-unit id="238h1">
-        <source>%count% version|%count% versions</source>
-        <target>%count% 個のバージョン|%count% 個のバージョン</target>
-      </trans-unit>
-      <trans-unit id="238h2">
-        <source>Recent Changes</source>
-        <target>最近の変更</target>
-      </trans-unit>
       <trans-unit id="238u0">
         <source>Undo Last Refactoring</source>
         <target>最後のリファクタリングを元に戻す</target>
@@ -1057,14 +913,6 @@
       <trans-unit id="824">
         <source>Git: Compare Selected Files</source>
         <target>選択したファイルを比較</target>
-      </trans-unit>
-      <trans-unit id="825">
-        <source>Select two files in the project tree to compare</source>
-        <target>比較する 2 つのファイルをプロジェクトツリーで選択してください</target>
-      </trans-unit>
-      <trans-unit id="826">
-        <source>The two files are identical</source>
-        <target>2 つのファイルは同一です</target>
       </trans-unit>
       <trans-unit id="827">
         <source>No other files to switch to</source>
@@ -1238,49 +1086,13 @@
         <source>default</source>
         <target>既定</target>
       </trans-unit>
-      <trans-unit id="272">
-        <source>±10 lines</source>
-        <target>±10 行</target>
-      </trans-unit>
       <trans-unit id="273">
         <source>whole file</source>
         <target>ファイル全体</target>
       </trans-unit>
-      <trans-unit id="274">
-        <source>No changes selected</source>
-        <target>変更が選択されていません</target>
-      </trans-unit>
-      <trans-unit id="275">
-        <source>Working tree clean</source>
-        <target>作業ツリーはクリーンです</target>
-      </trans-unit>
-      <trans-unit id="276">
-        <source>No changes (whitespace hidden)</source>
-        <target>変更なし (空白を非表示)</target>
-      </trans-unit>
       <trans-unit id="277">
         <source>No changes</source>
         <target>変更なし</target>
-      </trans-unit>
-      <trans-unit id="278">
-        <source>Select a commit file</source>
-        <target>コミットのファイルを選択</target>
-      </trans-unit>
-      <trans-unit id="878">
-        <source>No commits</source>
-        <target>コミットはありません</target>
-      </trans-unit>
-      <trans-unit id="279">
-        <source>No files in this commit</source>
-        <target>このコミットにファイルはありません</target>
-      </trans-unit>
-      <trans-unit id="280">
-        <source>No patch (whitespace hidden)</source>
-        <target>パッチなし (空白を非表示)</target>
-      </trans-unit>
-      <trans-unit id="281">
-        <source>No patch for this file</source>
-        <target>このファイルのパッチはありません</target>
       </trans-unit>
       <trans-unit id="282">
         <source>on</source>
@@ -1297,14 +1109,6 @@
       <trans-unit id="285">
         <source>indent style</source>
         <target>インデントスタイル</target>
-      </trans-unit>
-      <trans-unit id="286">
-        <source>Whitespace changes hidden</source>
-        <target>空白の変更を非表示</target>
-      </trans-unit>
-      <trans-unit id="287">
-        <source>Whitespace changes shown</source>
-        <target>空白の変更を表示</target>
       </trans-unit>
       <trans-unit id="288">
         <source>Find in Files…</source>
@@ -1326,53 +1130,9 @@
         <source>No test subject found</source>
         <target>テスト対象が見つかりません</target>
       </trans-unit>
-      <trans-unit id="295">
-        <source>Image too large (&gt; 20 MB)</source>
-        <target>画像が大きすぎます (&gt; 20 MB)</target>
-      </trans-unit>
-      <trans-unit id="296">
-        <source>Cannot display image %file%</source>
-        <target>画像 %file% を表示できません</target>
-      </trans-unit>
       <trans-unit id="297">
         <source>Not available in this view</source>
         <target>このビューでは利用できません</target>
-      </trans-unit>
-      <trans-unit id="298">
-        <source>+/- zoom  0 fit  Arrows pan  Ctrl+Q quit</source>
-        <target>+/- ズーム  0 フィット  矢印 移動  Ctrl+Q 終了</target>
-      </trans-unit>
-      <trans-unit id="299">
-        <source>Image: Zoom In</source>
-        <target>画像: ズームイン</target>
-      </trans-unit>
-      <trans-unit id="300">
-        <source>Image: Zoom Out</source>
-        <target>画像: ズームアウト</target>
-      </trans-unit>
-      <trans-unit id="301">
-        <source>Image: Fit to Window</source>
-        <target>画像: ウィンドウに合わせる</target>
-      </trans-unit>
-      <trans-unit id="302">
-        <source>Image: Actual Size</source>
-        <target>画像: 実寸表示</target>
-      </trans-unit>
-      <trans-unit id="303">
-        <source>Image: Pan Left</source>
-        <target>画像: 左へ移動</target>
-      </trans-unit>
-      <trans-unit id="304">
-        <source>Image: Pan Right</source>
-        <target>画像: 右へ移動</target>
-      </trans-unit>
-      <trans-unit id="305">
-        <source>Image: Pan Up</source>
-        <target>画像: 上へ移動</target>
-      </trans-unit>
-      <trans-unit id="306">
-        <source>Image: Pan Down</source>
-        <target>画像: 下へ移動</target>
       </trans-unit>
       <trans-unit id="307">
         <source>Debug Current File</source>
@@ -1590,37 +1350,13 @@
         <source>Fetching…</source>
         <target>フェッチ中…</target>
       </trans-unit>
-      <trans-unit id="367">
-        <source>Fetched</source>
-        <target>フェッチ完了</target>
-      </trans-unit>
-      <trans-unit id="368">
-        <source>Pulling…</source>
-        <target>プル中…</target>
-      </trans-unit>
       <trans-unit id="369">
         <source>Pulled</source>
         <target>プル完了</target>
       </trans-unit>
-      <trans-unit id="370">
-        <source>Pushing…</source>
-        <target>プッシュ中…</target>
-      </trans-unit>
       <trans-unit id="371">
         <source>Pushed</source>
         <target>プッシュ完了</target>
-      </trans-unit>
-      <trans-unit id="372">
-        <source>%operation% failed: %error%</source>
-        <target>%operation% が失敗しました: %error%</target>
-      </trans-unit>
-      <trans-unit id="373">
-        <source>A git remote operation is already running</source>
-        <target>git リモート操作は既に実行中です</target>
-      </trans-unit>
-      <trans-unit id="374">
-        <source>Not a git repository (or git missing)</source>
-        <target>git リポジトリではありません（または git がありません）</target>
       </trans-unit>
       <trans-unit id="375">
         <source>Git: Fetch</source>
@@ -1646,25 +1382,9 @@
         <source>Branches</source>
         <target>ブランチ</target>
       </trans-unit>
-      <trans-unit id="381">
-        <source>+ Create new branch…</source>
-        <target>+ 新しいブランチを作成…</target>
-      </trans-unit>
       <trans-unit id="382">
         <source>current</source>
         <target>現在</target>
-      </trans-unit>
-      <trans-unit id="383">
-        <source>New branch name</source>
-        <target>新しいブランチ名</target>
-      </trans-unit>
-      <trans-unit id="384">
-        <source>Switched to %branch%</source>
-        <target>%branch% に切り替えました</target>
-      </trans-unit>
-      <trans-unit id="385">
-        <source>Created and switched to %branch%</source>
-        <target>%branch% を作成して切り替えました</target>
       </trans-unit>
       <trans-unit id="386">
         <source>Close Other Tabs</source>
@@ -1678,69 +1398,17 @@
         <source>Formatting timed out — saved unformatted</source>
         <target>フォーマットがタイムアウト — 未フォーマットで保存</target>
       </trans-unit>
-      <trans-unit id="389">
-        <source>Pull: branch diverged</source>
-        <target>Pull: ブランチが分岐しています</target>
-      </trans-unit>
-      <trans-unit id="390">
-        <source>Rebase local commits onto the remote</source>
-        <target>ローカルのコミットをリモートにリベース</target>
-      </trans-unit>
-      <trans-unit id="391">
-        <source>Merge the remote into the local branch</source>
-        <target>リモートをローカルブランチにマージ</target>
-      </trans-unit>
-      <trans-unit id="392">
-        <source>Push: no upstream branch</source>
-        <target>Push: アップストリームブランチがありません</target>
-      </trans-unit>
-      <trans-unit id="393">
-        <source>Push with --set-upstream origin %branch%</source>
-        <target>--set-upstream origin %branch% でプッシュ</target>
-      </trans-unit>
-      <trans-unit id="394">
-        <source>No git remote operation is running</source>
-        <target>実行中の git リモート操作はありません</target>
-      </trans-unit>
-      <trans-unit id="395">
-        <source>Git remote operation cancelled</source>
-        <target>git リモート操作をキャンセルしました</target>
-      </trans-unit>
       <trans-unit id="396">
         <source>Git: Cancel Remote Operation</source>
         <target>Git: リモート操作をキャンセル</target>
-      </trans-unit>
-      <trans-unit id="397">
-        <source>− Delete branch…</source>
-        <target>− ブランチを削除…</target>
       </trans-unit>
       <trans-unit id="398">
         <source>remote</source>
         <target>リモート</target>
       </trans-unit>
-      <trans-unit id="399">
-        <source>Delete branch</source>
-        <target>ブランチを削除</target>
-      </trans-unit>
-      <trans-unit id="400">
-        <source>Delete %branch%?</source>
-        <target>%branch% を削除しますか？</target>
-      </trans-unit>
       <trans-unit id="401">
         <source>Delete</source>
         <target>削除</target>
-      </trans-unit>
-      <trans-unit id="402">
-        <source>Deleted branch %branch%</source>
-        <target>ブランチ %branch% を削除しました</target>
-      </trans-unit>
-      <trans-unit id="403">
-        <source>No other local branches to delete</source>
-        <target>削除できる他のローカルブランチはありません</target>
-      </trans-unit>
-      <trans-unit id="404">
-        <source>Switched to %branch% (tracking %remote%)</source>
-        <target>%branch% に切り替えました（%remote% を追跡）</target>
       </trans-unit>
       <trans-unit id="405">
         <source>Edit Breakpoint Condition</source>
@@ -1814,25 +1482,9 @@
         <source>Git: Toggle Blame Annotations</source>
         <target>Git: Blame 注釈を切り替え</target>
       </trans-unit>
-      <trans-unit id="423">
-        <source>Stash failed</source>
-        <target>スタッシュに失敗しました</target>
-      </trans-unit>
-      <trans-unit id="424">
-        <source>Stash popped</source>
-        <target>スタッシュを復元しました</target>
-      </trans-unit>
-      <trans-unit id="425">
-        <source>No stashes</source>
-        <target>スタッシュはありません</target>
-      </trans-unit>
       <trans-unit id="426">
         <source>Stashes</source>
         <target>スタッシュ</target>
-      </trans-unit>
-      <trans-unit id="427">
-        <source>%stash%: apply, pop or drop?</source>
-        <target>%stash%: 適用・復元・削除？</target>
       </trans-unit>
       <trans-unit id="428">
         <source>Apply</source>
@@ -1845,34 +1497,6 @@
       <trans-unit id="430">
         <source>Drop</source>
         <target>削除</target>
-      </trans-unit>
-      <trans-unit id="431">
-        <source>Applied %stash%</source>
-        <target>%stash% を適用しました</target>
-      </trans-unit>
-      <trans-unit id="432">
-        <source>Popped %stash%</source>
-        <target>%stash% を復元しました</target>
-      </trans-unit>
-      <trans-unit id="433">
-        <source>Dropped %stash%</source>
-        <target>%stash% を削除しました</target>
-      </trans-unit>
-      <trans-unit id="434">
-        <source>Stash left conflicts — resolve them in the editor</source>
-        <target>スタッシュで競合が発生しました — エディタで解決してください</target>
-      </trans-unit>
-      <trans-unit id="435">
-        <source>History — %path% (%count%)</source>
-        <target>履歴 — %path% (%count%)</target>
-      </trans-unit>
-      <trans-unit id="436">
-        <source>Blame annotations shown</source>
-        <target>Blame 注釈を表示</target>
-      </trans-unit>
-      <trans-unit id="437">
-        <source>Blame annotations hidden</source>
-        <target>Blame 注釈を非表示</target>
       </trans-unit>
       <trans-unit id="438">
         <source>Run to Cursor</source>
@@ -2046,14 +1670,6 @@
         <source>Stage</source>
         <target>ステージ</target>
       </trans-unit>
-      <trans-unit id="483">
-        <source>Unstage</source>
-        <target>ステージ解除</target>
-      </trans-unit>
-      <trans-unit id="484">
-        <source>Discard…</source>
-        <target>破棄…</target>
-      </trans-unit>
       <trans-unit id="485">
         <source>File History</source>
         <target>ファイル履歴</target>
@@ -2194,113 +1810,9 @@
         <source>Open the guide</source>
         <target>ガイドを開く</target>
       </trans-unit>
-      <trans-unit id="522">
-        <source>Graph: Zoom In</source>
-        <target>グラフ: ズームイン</target>
-      </trans-unit>
-      <trans-unit id="523">
-        <source>Graph: Zoom Out</source>
-        <target>グラフ: ズームアウト</target>
-      </trans-unit>
-      <trans-unit id="524">
-        <source>Graph: Fit to Window</source>
-        <target>グラフ: ウィンドウに合わせる</target>
-      </trans-unit>
-      <trans-unit id="525">
-        <source>Graph: Actual Size</source>
-        <target>グラフ: 実際のサイズ</target>
-      </trans-unit>
-      <trans-unit id="526">
-        <source>Graph: Pan Left</source>
-        <target>グラフ: 左へパン</target>
-      </trans-unit>
-      <trans-unit id="527">
-        <source>Graph: Pan Right</source>
-        <target>グラフ: 右へパン</target>
-      </trans-unit>
-      <trans-unit id="528">
-        <source>Graph: Pan Up</source>
-        <target>グラフ: 上へパン</target>
-      </trans-unit>
-      <trans-unit id="529">
-        <source>Graph: Pan Down</source>
-        <target>グラフ: 下へパン</target>
-      </trans-unit>
-      <trans-unit id="530">
-        <source>Graph: Select Next Node</source>
-        <target>グラフ: 次のノードを選択</target>
-      </trans-unit>
-      <trans-unit id="531">
-        <source>Graph: Select Previous Node</source>
-        <target>グラフ: 前のノードを選択</target>
-      </trans-unit>
-      <trans-unit id="816">
-        <source>Graph: Find Node</source>
-        <target>グラフ: ノードを検索</target>
-      </trans-unit>
-      <trans-unit id="817">
-        <source>Find node</source>
-        <target>ノードを検索</target>
-      </trans-unit>
-      <trans-unit id="818">
-        <source>No graph nodes to search</source>
-        <target>検索できるノードがありません</target>
-      </trans-unit>
-      <trans-unit id="819">
-        <source>%in% in · %out% out</source>
-        <target>入 %in% · 出 %out%</target>
-      </trans-unit>
-      <trans-unit id="532">
-        <source>graphviz not found — install graphviz, or set the "dotPath" setting</source>
-        <target>graphviz が見つかりません — graphviz をインストールするか、"dotPath" 設定を指定してください</target>
-      </trans-unit>
-      <trans-unit id="533">
-        <source>layout…</source>
-        <target>レイアウト中…</target>
-      </trans-unit>
       <trans-unit id="534">
         <source>Project Architecture</source>
         <target>プロジェクトアーキテクチャ</target>
-      </trans-unit>
-      <trans-unit id="535">
-        <source>Graph file too large (&gt; 10 MB)</source>
-        <target>グラフファイルが大きすぎます (&gt; 10 MB)</target>
-      </trans-unit>
-      <trans-unit id="536">
-        <source>+/- zoom  0 fit  n/p select  / find  Ctrl+Q quit</source>
-        <target>+/- ズーム  0 フィット  n/p 選択  Ctrl+Q 終了</target>
-      </trans-unit>
-      <trans-unit id="538">
-        <source>Architecture command produced no output</source>
-        <target>アーキテクチャコマンドの出力がありません</target>
-      </trans-unit>
-      <trans-unit id="539">
-        <source>Cannot write %file%</source>
-        <target>%file% に書き込めません</target>
-      </trans-unit>
-      <trans-unit id="540">
-        <source>Export failed: %error%</source>
-        <target>エクスポートに失敗しました: %error%</target>
-      </trans-unit>
-      <trans-unit id="541">
-        <source>Exported %file%</source>
-        <target>%file% をエクスポートしました</target>
-      </trans-unit>
-      <trans-unit id="542">
-        <source>Graph: Export SVG</source>
-        <target>グラフ: SVG としてエクスポート</target>
-      </trans-unit>
-      <trans-unit id="543">
-        <source>Graph: Export PNG</source>
-        <target>グラフ: PNG としてエクスポート</target>
-      </trans-unit>
-      <trans-unit id="544">
-        <source>Graphviz dot path</source>
-        <target>Graphviz dot のパス</target>
-      </trans-unit>
-      <trans-unit id="545">
-        <source>Architecture command (stdout = DOT)</source>
-        <target>アーキテクチャコマンド (stdout = DOT)</target>
       </trans-unit>
       <trans-unit id="546">
         <source>Installing dependencies for "%name%"…</source>
@@ -2338,26 +1850,6 @@
         <source>Breadcrumbs bar</source>
         <target>パンくずバー</target>
       </trans-unit>
-      <trans-unit id="555">
-        <source>Cherry-pick</source>
-        <target>チェリーピック</target>
-      </trans-unit>
-      <trans-unit id="556">
-        <source>Cherry-picked %sha%</source>
-        <target>%sha% をチェリーピックしました</target>
-      </trans-unit>
-      <trans-unit id="557">
-        <source>Copied %sha%</source>
-        <target>%sha% をコピーしました</target>
-      </trans-unit>
-      <trans-unit id="558">
-        <source>Copy Hash</source>
-        <target>ハッシュをコピー</target>
-      </trans-unit>
-      <trans-unit id="559">
-        <source>Create Branch from Commit…</source>
-        <target>コミットからブランチを作成…</target>
-      </trans-unit>
       <trans-unit id="560">
         <source>Cycle Line Numbers</source>
         <target>行番号表示を切り替え</target>
@@ -2370,10 +1862,6 @@
         <source>Debug adapter</source>
         <target>デバッグアダプター</target>
       </trans-unit>
-      <trans-unit id="563">
-        <source>Delete Branch…</source>
-        <target>ブランチを削除…</target>
-      </trans-unit>
       <trans-unit id="564">
         <source>Exported %count% result|Exported %count% results</source>
         <target>%count% 件の結果をエクスポートしました|%count% 件の結果をエクスポートしました</target>
@@ -2385,10 +1873,6 @@
       <trans-unit id="566">
         <source>Find in Project: %query%</source>
         <target>プロジェクト内を検索: %query%</target>
-      </trans-unit>
-      <trans-unit id="567">
-        <source>Graph rendering</source>
-        <target>グラフのレンダリング</target>
       </trans-unit>
       <trans-unit id="568">
         <source>Help: Back</source>
@@ -2466,14 +1950,6 @@
         <source>Log message (empty: pause instead of logging)</source>
         <target>ログメッセージ（空の場合はログではなく一時停止）</target>
       </trans-unit>
-      <trans-unit id="587">
-        <source>Mixed (unstage changes)</source>
-        <target>Mixed（変更のステージを解除）</target>
-      </trans-unit>
-      <trans-unit id="588">
-        <source>New Branch…</source>
-        <target>新しいブランチ…</target>
-      </trans-unit>
       <trans-unit id="589">
         <source>Next Dock Panel</source>
         <target>次のドックパネル</target>
@@ -2490,49 +1966,17 @@
         <source>Open as Text</source>
         <target>テキストとして開く</target>
       </trans-unit>
-      <trans-unit id="593">
-        <source>PlantUML path (or .jar)</source>
-        <target>PlantUMLのパス（または .jar）</target>
-      </trans-unit>
       <trans-unit id="594">
         <source>Previous Dock Panel</source>
         <target>前のドックパネル</target>
-      </trans-unit>
-      <trans-unit id="595">
-        <source>Reset to %sha% (%mode%)</source>
-        <target>%sha% へリセットしました (%mode%)</target>
-      </trans-unit>
-      <trans-unit id="596">
-        <source>Reset to %sha%?</source>
-        <target>%sha% へリセットしますか？</target>
-      </trans-unit>
-      <trans-unit id="597">
-        <source>Reset to Commit…</source>
-        <target>コミットへリセット…</target>
       </trans-unit>
       <trans-unit id="598">
         <source>Restart Debugger</source>
         <target>デバッガーを再起動</target>
       </trans-unit>
-      <trans-unit id="599">
-        <source>Revert Commit</source>
-        <target>コミットをリバート</target>
-      </trans-unit>
-      <trans-unit id="600">
-        <source>Reverted %sha%</source>
-        <target>%sha% をリバートしました</target>
-      </trans-unit>
-      <trans-unit id="601">
-        <source>SVG converter path</source>
-        <target>SVGコンバーターのパス</target>
-      </trans-unit>
       <trans-unit id="602">
         <source>Set %name% to</source>
         <target>%name% を設定</target>
-      </trans-unit>
-      <trans-unit id="603">
-        <source>Soft (keep staged changes)</source>
-        <target>Soft（ステージ済みの変更を保持）</target>
       </trans-unit>
       <trans-unit id="604">
         <source>Sort Lines</source>
@@ -2541,10 +1985,6 @@
       <trans-unit id="605">
         <source>Sticky scroll</source>
         <target>スティッキースクロール</target>
-      </trans-unit>
-      <trans-unit id="606">
-        <source>Switch Branch…</source>
-        <target>ブランチを切り替え…</target>
       </trans-unit>
       <trans-unit id="607">
         <source>This debug adapter cannot edit variables</source>
@@ -2561,22 +2001,6 @@
       <trans-unit id="610">
         <source>not configured</source>
         <target>未設定</target>
-      </trans-unit>
-      <trans-unit id="611">
-        <source>plantuml not found — install it, or set the "plantumlPath" setting</source>
-        <target>plantuml が見つかりません — インストールするか、"plantumlPath" 設定を指定してください</target>
-      </trans-unit>
-      <trans-unit id="612">
-        <source>rendering…</source>
-        <target>レンダリング中…</target>
-      </trans-unit>
-      <trans-unit id="613">
-        <source>the SVG could not be decoded</source>
-        <target>SVGをデコードできませんでした</target>
-      </trans-unit>
-      <trans-unit id="614">
-        <source>the graph bitmap could not be decoded</source>
-        <target>グラフのビットマップをデコードできませんでした</target>
       </trans-unit>
       <trans-unit id="615">
         <source>%tool%: no %nouns% in %file%</source>
@@ -2746,81 +2170,9 @@
         <source>%tool%: exited with code %code%</source>
         <target>%tool%: コード %code% で終了しました</target>
       </trans-unit>
-      <trans-unit id="658">
-        <source>%tool%: formatted %file%</source>
-        <target>%tool%: %file% を整形しました</target>
-      </trans-unit>
       <trans-unit id="659">
         <source>%tool%: fixed %file%</source>
         <target>%tool%: %file% を修正しました</target>
-      </trans-unit>
-      <trans-unit id="660">
-        <source>%tool%: fixed project</source>
-        <target>%tool%: プロジェクトを修正しました</target>
-      </trans-unit>
-      <trans-unit id="661">
-        <source>%tool%: generated config</source>
-        <target>%tool%: 設定を生成しました</target>
-      </trans-unit>
-      <trans-unit id="662">
-        <source>symfony-lsp: downloading the latest release…</source>
-        <target>symfony-lsp: 最新リリースをダウンロード中…</target>
-      </trans-unit>
-      <trans-unit id="663">
-        <source>symfony-lsp installed: %path%</source>
-        <target>symfony-lsp をインストールしました: %path%</target>
-      </trans-unit>
-      <trans-unit id="664">
-        <source>symfony-lsp install failed: %why%</source>
-        <target>symfony-lsp のインストールに失敗しました: %why%</target>
-      </trans-unit>
-      <trans-unit id="879">
-        <source>symfony-lsp: checking for a newer release…</source>
-        <target>symfony-lsp: 新しいリリースを確認しています…</target>
-      </trans-unit>
-      <trans-unit id="880">
-        <source>symfony-lsp updated: %from% → %to%</source>
-        <target>symfony-lsp を更新しました: %from% → %to%</target>
-      </trans-unit>
-      <trans-unit id="881">
-        <source>symfony-lsp is already up to date (%version%)</source>
-        <target>symfony-lsp は最新です (%version%)</target>
-      </trans-unit>
-      <trans-unit id="882">
-        <source>symfony-lsp update failed: %why%</source>
-        <target>symfony-lsp の更新に失敗しました: %why%</target>
-      </trans-unit>
-      <trans-unit id="883">
-        <source>symfony-lsp: resolving…</source>
-        <target>symfony-lsp: 解決中…</target>
-      </trans-unit>
-      <trans-unit id="884">
-        <source>symfony-lsp: downloading…</source>
-        <target>symfony-lsp: ダウンロード中…</target>
-      </trans-unit>
-      <trans-unit id="885">
-        <source>symfony-lsp: downloading %percent%%</source>
-        <target>symfony-lsp: ダウンロード中 %percent%%</target>
-      </trans-unit>
-      <trans-unit id="886">
-        <source>symfony-lsp: verifying…</source>
-        <target>symfony-lsp: 検証中…</target>
-      </trans-unit>
-      <trans-unit id="887">
-        <source>symfony-lsp: extracting…</source>
-        <target>symfony-lsp: 展開中…</target>
-      </trans-unit>
-      <trans-unit id="888">
-        <source>symfony-lsp: checking the binary…</source>
-        <target>symfony-lsp: バイナリを確認中…</target>
-      </trans-unit>
-      <trans-unit id="889">
-        <source>symfony-lsp %version% is available — run "Symfony LSP: Update Server"</source>
-        <target>symfony-lsp %version% が利用可能です —「Symfony LSP: Update Server」を実行してください</target>
-      </trans-unit>
-      <trans-unit id="890">
-        <source>Check for a newer server once a day</source>
-        <target>新しいサーバーを 1 日 1 回確認する</target>
       </trans-unit>
       <trans-unit id="891">
         <source>Update %tool%</source>
@@ -2977,22 +2329,6 @@
       <trans-unit id="801">
         <source>Maximize Panel</source>
         <target>パネルを最大化</target>
-      </trans-unit>
-      <trans-unit id="802">
-        <source>Compare with Snapshot</source>
-        <target>スナップショットと比較</target>
-      </trans-unit>
-      <trans-unit id="804">
-        <source>Comparing %file% with a snapshot</source>
-        <target>%file% をスナップショットと比較しています</target>
-      </trans-unit>
-      <trans-unit id="806">
-        <source>Comparing snapshots needs git on your PATH</source>
-        <target>スナップショットの比較には PATH 上の git が必要です</target>
-      </trans-unit>
-      <trans-unit id="808">
-        <source>That snapshot matches the file on disk</source>
-        <target>このスナップショットはディスク上のファイルと一致します</target>
       </trans-unit>
       <trans-unit id="809">
         <source>Copy Reference</source>
@@ -3214,22 +2550,6 @@
         <source>Commit</source>
         <target>コミット</target>
       </trans-unit>
-      <trans-unit id="905">
-        <source>Amend last commit</source>
-        <target>直前のコミットを修正</target>
-      </trans-unit>
-      <trans-unit id="906">
-        <source>Commit to branch</source>
-        <target>ブランチにコミット</target>
-      </trans-unit>
-      <trans-unit id="907">
-        <source>Discard changes to %path%?</source>
-        <target>%path% の変更を破棄しますか？</target>
-      </trans-unit>
-      <trans-unit id="908">
-        <source>Discard (y)</source>
-        <target>破棄 (y)</target>
-      </trans-unit>
       <trans-unit id="909">
         <source>Keep</source>
         <target>保持</target>
@@ -3238,17 +2558,9 @@
         <source>(excluded)</source>
         <target>(除外)</target>
       </trans-unit>
-      <trans-unit id="911">
-        <source>No commit to amend</source>
-        <target>修正するコミットがありません</target>
-      </trans-unit>
       <trans-unit id="912">
         <source>Space toggle · r reset · Ctrl+F find · Tab panes · 2 keybindings</source>
         <target>Space 切替 · r 既定に戻す · Ctrl+F 検索 · Tab ペイン · 2 キー割当</target>
-      </trans-unit>
-      <trans-unit id="913">
-        <source>%operation% needs a choice</source>
-        <target>%operation% には選択が必要です</target>
       </trans-unit>
       <trans-unit id="914">
         <source>%count% line|%count% lines</source>
@@ -3293,26 +2605,6 @@
       <trans-unit id="924">
         <source>No changes in this file</source>
         <target>このファイルに変更はありません</target>
-      </trans-unit>
-      <trans-unit id="925">
-        <source>No change here</source>
-        <target>ここに変更はありません</target>
-      </trans-unit>
-      <trans-unit id="926">
-        <source>Revert this change</source>
-        <target>この変更を元に戻す</target>
-      </trans-unit>
-      <trans-unit id="927">
-        <source>Change at line %line%</source>
-        <target>%line% 行目の変更</target>
-      </trans-unit>
-      <trans-unit id="928">
-        <source>The buffer has changed since; save it and try again</source>
-        <target>その後バッファーが変更されました。保存してからもう一度お試しください</target>
-      </trans-unit>
-      <trans-unit id="929">
-        <source>Change reverted</source>
-        <target>変更を元に戻しました</target>
       </trans-unit>
       <trans-unit id="932">
         <source>Git: Show Change</source>
@@ -3454,10 +2746,6 @@
         <source>Column selection mode: Shift+arrows select a rectangle — Alt+C turns it off</source>
         <target>矩形選択モード: Shift+矢印で矩形を選択 — Alt+C で解除</target>
       </trans-unit>
-      <trans-unit id="967">
-        <source>Git branch %branch% — click to switch, create or delete a branch</source>
-        <target>Git ブランチ %branch% — クリックで切り替え・作成・削除</target>
-      </trans-unit>
       <trans-unit id="968">
         <source>Pinned: kept open, with no ×</source>
         <target>ピン留め: × なしで開いたまま</target>
@@ -3534,70 +2822,6 @@
         <source>Enum case</source>
         <target>列挙ケース</target>
       </trans-unit>
-      <trans-unit id="988">
-        <source>Unstage this file</source>
-        <target>このファイルのステージを解除</target>
-      </trans-unit>
-      <trans-unit id="989">
-        <source>Stage this file</source>
-        <target>このファイルをステージ</target>
-      </trans-unit>
-      <trans-unit id="990">
-        <source>Untracked: new to git</source>
-        <target>未追跡: git に新規</target>
-      </trans-unit>
-      <trans-unit id="991">
-        <source>Renamed from %path%</source>
-        <target>%path% から名前変更</target>
-      </trans-unit>
-      <trans-unit id="992">
-        <source>Copied from %path%</source>
-        <target>%path% からコピー</target>
-      </trans-unit>
-      <trans-unit id="993">
-        <source>Unmerged: a conflict to resolve</source>
-        <target>未マージ: 解決すべき競合</target>
-      </trans-unit>
-      <trans-unit id="994">
-        <source>Type changed</source>
-        <target>種類が変更</target>
-      </trans-unit>
-      <trans-unit id="995">
-        <source>Staged</source>
-        <target>ステージ済み</target>
-      </trans-unit>
-      <trans-unit id="996">
-        <source>Partly staged</source>
-        <target>一部ステージ済み</target>
-      </trans-unit>
-      <trans-unit id="997">
-        <source>Not staged</source>
-        <target>未ステージ</target>
-      </trans-unit>
-      <trans-unit id="998">
-        <source>Unstage everything</source>
-        <target>すべてのステージを解除</target>
-      </trans-unit>
-      <trans-unit id="999">
-        <source>Stage everything</source>
-        <target>すべてステージ</target>
-      </trans-unit>
-      <trans-unit id="1000">
-        <source>Side-by-side diff</source>
-        <target>左右に並べた差分</target>
-      </trans-unit>
-      <trans-unit id="1001">
-        <source>Hide whitespace-only changes</source>
-        <target>空白のみの変更を隠す</target>
-      </trans-unit>
-      <trans-unit id="1002">
-        <source>Write a summary first</source>
-        <target>まず概要を入力してください</target>
-      </trans-unit>
-      <trans-unit id="1003">
-        <source>Stage a change first</source>
-        <target>まず変更をステージしてください</target>
-      </trans-unit>
       <trans-unit id="1004">
         <source>Changed from its default — r puts it back</source>
         <target>既定値から変更 — r で元に戻す</target>
@@ -3649,10 +2873,6 @@
       <trans-unit id="1016">
         <source>Enable the git plugin to see the comparison</source>
         <target>比較を表示するには git プラグインを有効にしてください</target>
-      </trans-unit>
-      <trans-unit id="1017">
-        <source>Esc to edit the file · F7 next conflict · Alt+M resolve · Ctrl+S, then Ctrl+Q — conflicts left mean the merge fails</source>
-        <target>Esc でファイルを編集 · F7 次の競合 · Alt+M 解決 · Ctrl+S の後 Ctrl+Q — 競合が残るとマージは失敗します</target>
       </trans-unit>
       <trans-unit id="1018">
         <source>Command line</source>
@@ -3790,65 +3010,9 @@
         <source>Conversation</source>
         <target>会話</target>
       </trans-unit>
-      <trans-unit id="1052">
-        <source>Comment on %review%</source>
-        <target>%review% にコメント</target>
-      </trans-unit>
-      <trans-unit id="1053">
-        <source>Conversation (%count%)</source>
-        <target>会話 (%count%)</target>
-      </trans-unit>
-      <trans-unit id="1054">
-        <source>Copied %url%</source>
-        <target>%url% をコピーしました</target>
-      </trans-unit>
-      <trans-unit id="1055">
-        <source>Local review: %id%</source>
-        <target>ローカルレビュー: %id%</target>
-      </trans-unit>
-      <trans-unit id="1056">
-        <source>Looking for a review…</source>
-        <target>レビューを探しています…</target>
-      </trans-unit>
-      <trans-unit id="1057">
-        <source>New comment on %path%:%line%</source>
-        <target>%path%:%line% への新しいコメント</target>
-      </trans-unit>
-      <trans-unit id="1058">
-        <source>No comments yet — press c to write one</source>
-        <target>コメントはまだありません — c で書き込みます</target>
-      </trans-unit>
-      <trans-unit id="1059">
-        <source>No conversation on this line</source>
-        <target>この行に会話はありません</target>
-      </trans-unit>
-      <trans-unit id="1060">
-        <source>No review for this branch</source>
-        <target>このブランチのレビューはありません</target>
-      </trans-unit>
-      <trans-unit id="1061">
-        <source>Open a project file to comment on</source>
-        <target>コメントするプロジェクトのファイルを開いてください</target>
-      </trans-unit>
-      <trans-unit id="1062">
-        <source>Pick a thread, or press c on a line</source>
-        <target>スレッドを選ぶか、行で c を押します</target>
-      </trans-unit>
-      <trans-unit id="1063">
-        <source>Reply</source>
-        <target>返信</target>
-      </trans-unit>
-      <trans-unit id="1064">
-        <source>Reply to %author% on %path%:%line%</source>
-        <target>%path%:%line% の %author% に返信</target>
-      </trans-unit>
       <trans-unit id="1065">
         <source>Review</source>
         <target>レビュー</target>
-      </trans-unit>
-      <trans-unit id="1066">
-        <source>Review (%count% open)</source>
-        <target>レビュー (未解決 %count%)</target>
       </trans-unit>
       <trans-unit id="1067">
         <source>Send</source>
@@ -3858,65 +3022,9 @@
         <source>Sent</source>
         <target>送信しました</target>
       </trans-unit>
-      <trans-unit id="1069">
-        <source>Show which review?</source>
-        <target>どのレビューを表示しますか？</target>
-      </trans-unit>
-      <trans-unit id="1070">
-        <source>The branch's pull or merge request</source>
-        <target>ブランチのプルリクエストまたはマージリクエスト</target>
-      </trans-unit>
-      <trans-unit id="1071">
-        <source>This review has no link</source>
-        <target>このレビューにはリンクがありません</target>
-      </trans-unit>
-      <trans-unit id="1072">
-        <source>Thread reopened</source>
-        <target>スレッドを再開しました</target>
-      </trans-unit>
-      <trans-unit id="1073">
-        <source>Thread resolved</source>
-        <target>スレッドを解決しました</target>
-      </trans-unit>
-      <trans-unit id="1074">
-        <source>outdated</source>
-        <target>古い</target>
-      </trans-unit>
       <trans-unit id="1075">
         <source>resolved</source>
         <target>解決済み</target>
-      </trans-unit>
-      <trans-unit id="1076">
-        <source>Show Review</source>
-        <target>レビューを表示</target>
-      </trans-unit>
-      <trans-unit id="1077">
-        <source>Refresh Review</source>
-        <target>レビューを更新</target>
-      </trans-unit>
-      <trans-unit id="1078">
-        <source>Choose Review…</source>
-        <target>レビューを選択…</target>
-      </trans-unit>
-      <trans-unit id="1079">
-        <source>Copy Review Link</source>
-        <target>レビューのリンクをコピー</target>
-      </trans-unit>
-      <trans-unit id="1080">
-        <source>Show Conversation on This Line</source>
-        <target>この行の会話を表示</target>
-      </trans-unit>
-      <trans-unit id="1081">
-        <source>Comment on This Line</source>
-        <target>この行にコメント</target>
-      </trans-unit>
-      <trans-unit id="1082">
-        <source>Show resolved conversations</source>
-        <target>解決済みの会話を表示</target>
-      </trans-unit>
-      <trans-unit id="1083">
-        <source> S show-resolved </source>
-        <target> S show-resolved </target>
       </trans-unit>
     </body>
   </file>

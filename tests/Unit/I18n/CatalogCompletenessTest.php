@@ -4,40 +4,28 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit\I18n;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Porta\I18n\LenientXliffLoader;
 use Porta\I18n\Translator;
+use Porta\Tests\Support\Catalogs;
 
 /**
- * Guards the shipped XLIFF catalogs: every English source id must exist in all
- * six target catalogs (no missing keys), each file must be well-formed XLIFF with
- * a source and target per unit, the target-language attribute must match, and
+ * Guards the shipped XLIFF catalogs — core's and every plugin's own, one set
+ * at a time: every English source id must exist in all six target catalogs
+ * of its set (no missing keys), each file must be well-formed XLIFF with a
+ * source and target per unit, the target-language attribute must match, and
  * every file must LOAD — see {@see testEveryCatalogSurvivesTheLoaderThatShipsIt()},
  * which is the one of these the others cannot stand in for.
  */
 final class CatalogCompletenessTest extends TestCase
 {
-    private const string DIR = __DIR__.'/../../../translations';
-
-    /** @return list<string> the <source> texts of a catalog, in document order */
-    private function sources(string $locale): array
+    /** @return iterable<string, array{string}> */
+    public static function catalogSets(): iterable
     {
-        $xml = \simplexml_load_file(self::DIR.'/messages.'.$locale.'.xlf');
-        $this->assertNotFalse($xml, "messages.{$locale}.xlf is not valid XML");
-        $xml->registerXPathNamespace('x', 'urn:oasis:names:tc:xliff:document:1.2');
-
-        $sources = [];
-        $units = $xml->xpath('//x:trans-unit');
-        foreach ($units ? $units : [] as $unit) {
-            $unit->registerXPathNamespace('x', 'urn:oasis:names:tc:xliff:document:1.2');
-            $node = $unit->xpath('x:source');
-            $node = $node ? $node : [];
-            if ([] !== $node) {
-                $sources[] = (string) $node[0];
-            }
+        foreach (Catalogs::sets() as $name => $dir) {
+            yield $name => [$dir];
         }
-
-        return $sources;
     }
 
     /**
@@ -60,34 +48,38 @@ final class CatalogCompletenessTest extends TestCase
      * IS what a broken file degrades to, so "it loaded" is satisfied by the
      * defect.
      */
-    public function testEveryCatalogSurvivesTheLoaderThatShipsIt(): void
+    #[DataProvider('catalogSets')]
+    public function testEveryCatalogSurvivesTheLoaderThatShipsIt(string $dir): void
     {
         $loader = new LenientXliffLoader();
-        $english = \count($loader->load(self::DIR.'/messages.en.xlf', 'en')->all('messages'));
-        $this->assertGreaterThan(500, $english, 'the English catalog loaded, and is the size a catalog should be');
+        $english = \count($loader->load($dir.'/messages.en.xlf', 'en')->all('messages'));
+        $this->assertSame(\count(Catalogs::sources($dir.'/messages.en.xlf')), $english, 'the English catalog loaded every unit it carries');
+        $this->assertGreaterThan(0, $english, 'a catalog set carries at least one unit');
 
-        foreach (['fr', 'de', 'es', 'it', 'ja', 'he'] as $locale) {
-            $loaded = \count($loader->load(self::DIR.'/messages.'.$locale.'.xlf', $locale)->all('messages'));
+        foreach (self::targets() as $locale) {
+            $loaded = \count($loader->load($dir.'/messages.'.$locale.'.xlf', $locale)->all('messages'));
             $this->assertSame($english, $loaded, \sprintf('messages.%s.xlf loads %d of %d units — a schema error degrades it to English in silence', $locale, $loaded, $english));
         }
     }
 
-    public function testEveryEnglishSourceExistsInAllSixTargetCatalogs(): void
+    #[DataProvider('catalogSets')]
+    public function testEveryEnglishSourceExistsInAllSixTargetCatalogs(string $dir): void
     {
-        $english = $this->sources('en');
+        $english = Catalogs::sources($dir.'/messages.en.xlf');
         $this->assertNotEmpty($english, 'the English catalog carries the canonical source list');
 
-        foreach (['fr', 'de', 'es', 'it', 'ja', 'he'] as $locale) {
-            $have = $this->sources($locale);
+        foreach (self::targets() as $locale) {
+            $have = Catalogs::sources($dir.'/messages.'.$locale.'.xlf');
             $missing = \array_values(\array_diff($english, $have));
             $this->assertSame([], $missing, "messages.{$locale}.xlf is missing sources: ".\implode(' | ', $missing));
         }
     }
 
-    public function testEveryUnitHasANonEmptyTargetInEveryCatalog(): void
+    #[DataProvider('catalogSets')]
+    public function testEveryUnitHasANonEmptyTargetInEveryCatalog(string $dir): void
     {
         foreach (Translator::LOCALES as $locale) {
-            $xml = \simplexml_load_file(self::DIR.'/messages.'.$locale.'.xlf');
+            $xml = \simplexml_load_file($dir.'/messages.'.$locale.'.xlf');
             $this->assertNotFalse($xml);
             $xml->registerXPathNamespace('x', 'urn:oasis:names:tc:xliff:document:1.2');
 
@@ -102,15 +94,41 @@ final class CatalogCompletenessTest extends TestCase
         }
     }
 
-    public function testTargetLanguageAttributeMatchesTheFile(): void
+    #[DataProvider('catalogSets')]
+    public function testTargetLanguageAttributeMatchesTheFile(string $dir): void
     {
         foreach (Translator::LOCALES as $locale) {
-            $xml = \simplexml_load_file(self::DIR.'/messages.'.$locale.'.xlf');
+            $xml = \simplexml_load_file($dir.'/messages.'.$locale.'.xlf');
             $this->assertNotFalse($xml);
             $files = $xml->xpath('//*[local-name()="file"]');
             $file = ($files ? $files : [])[0] ?? null;
             $this->assertInstanceOf(\SimpleXMLElement::class, $file);
             $this->assertSame($locale, (string) $file['target-language']);
         }
+    }
+
+    /**
+     * No source may live in two sets. A plugin unit repeating one of core's
+     * would be dead weight at best — core's catalog loads last and wins — and
+     * two plugins sharing one would each carry a copy for a translator to
+     * keep in step: a string with two users belongs in core.
+     */
+    public function testNoSourceIsCataloguedInTwoSets(): void
+    {
+        $owners = [];
+        foreach (\array_keys(Catalogs::sets()) as $set) {
+            foreach (Catalogs::englishSources($set) as $source) {
+                $owners[$source][] = $set;
+            }
+        }
+        $shared = \array_filter($owners, static fn (array $sets): bool => \count($sets) > 1);
+
+        $this->assertSame([], \array_map(static fn (array $sets): string => \implode(', ', $sets), $shared), 'a source catalogued twice: a string two sets use belongs in core alone');
+    }
+
+    /** @return list<string> every locale but English */
+    private static function targets(): array
+    {
+        return \array_values(\array_diff(Translator::LOCALES, ['en']));
     }
 }

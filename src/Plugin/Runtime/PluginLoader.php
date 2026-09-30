@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Plugin\Runtime;
 
 use Porta\Config\ConfigWarning;
+use Porta\I18n\Translator;
 use Porta\Plugin\Api\PluginApi;
 use Porta\Plugin\Api\PluginException;
 use Porta\Plugin\Api\PortaPlugin;
@@ -24,6 +25,10 @@ use Tempest\Highlight\TerminalTheme;
  * A plugin that ships CLASSES of its own declares them in a `composer.json`
  * beside its entry file ({@see PluginManifest}); those namespaces are
  * registered with {@see PluginAutoloader} before anything is required.
+ *
+ * A plugin that ships a `translations/` dir beside its entry file gets it
+ * served by the {@see Translator} once it commits — its own strings, never
+ * core's (core's catalog wins a shared id).
  */
 final readonly class PluginLoader
 {
@@ -41,6 +46,7 @@ final readonly class PluginLoader
         private array $disabled = [],
         private array $enabled = [],
         private ?TerminalTheme $syntaxTheme = null,
+        private ?Translator $translator = null,
     ) {}
 
     /**
@@ -246,6 +252,9 @@ final readonly class PluginLoader
             $api = new PluginApi($name, $manager, $this->rootDir, $this->settings, $this->syntaxTheme);
             $plugin->activate($api);
             $manager->commit($api, $plugin); // atomic: a throwing activate() lands nothing
+            if (\is_dir($manifest->directory.'/translations')) {
+                $this->translator?->addCatalogDirectory($manifest->directory.'/translations');
+            }
         } catch (\Throwable $error) {
             return new ConfigWarning('Plugin "%name%" failed to load: %message%', ['%name%' => \basename(\dirname($file)), '%message%' => $error->getMessage()]);
         }

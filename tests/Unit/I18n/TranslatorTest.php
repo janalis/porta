@@ -70,6 +70,54 @@ final class TranslatorTest extends TestCase
         $this->assertSame('Sauvegarder', $second->trans('Save File'), 'the edited catalog is re-parsed, not served stale');
     }
 
+    public function testACatalogDirectoryServesAPluginsOwnStrings(): void
+    {
+        $core = new TempProject(['messages.fr.xlf' => $this->xliff('fr', $this->unit('Save File', 'Enregistrer le fichier'))]);
+        $plugin = new TempProject(['messages.fr.xlf' => $this->xliff('fr', $this->unit('Show Blame', 'Afficher l’annotation'))]);
+        $translator = new Translator('en', $core->dir);
+        $translator->setLocale('fr');
+
+        $translator->addCatalogDirectory($plugin->dir);
+
+        $this->assertSame('fr', $translator->locale(), 'the rebuild keeps the active locale');
+        $this->assertSame('Afficher l’annotation', $translator->trans('Show Blame'), "the plugin's own string");
+        $this->assertSame('Enregistrer le fichier', $translator->trans('Save File'), "core's strings still serve");
+    }
+
+    public function testCoreWinsAStringAPluginCataloguesToo(): void
+    {
+        // A plugin adds strings; it must not be able to retranslate core's —
+        // `Cancel` or `Run` would change across the whole IDE.
+        $core = new TempProject(['messages.fr.xlf' => $this->xliff('fr', $this->unit('Cancel', 'Annuler'))]);
+        $plugin = new TempProject(['messages.fr.xlf' => $this->xliff('fr', $this->unit('Cancel', 'Abandonner'))]);
+        $translator = new Translator('fr', $core->dir);
+
+        $translator->addCatalogDirectory($plugin->dir);
+
+        $this->assertSame('Annuler', $translator->trans('Cancel'));
+    }
+
+    public function testACatalogDirectoryAddedAfterADumpIsNotServedTheStaleDump(): void
+    {
+        // The dumped catalog is named after cacheVary alone and re-checks only
+        // the files it recorded, and the cache dir is shared machine-wide: a
+        // dir registered after the first trans() of a boot — or a project
+        // with one more plugin than the last — must not be served a dump that
+        // was made without it.
+        $core = new TempProject(['messages.fr.xlf' => $this->xliff('fr', $this->unit('Save File', 'Enregistrer'))]);
+        $plugin = new TempProject(['messages.fr.xlf' => $this->xliff('fr', $this->unit('Show Blame', 'Annoter'))]);
+        $cache = new TempProject();
+        $translator = new Translator('fr', $core->dir, $cache->dir);
+        $this->assertSame('Show Blame', $translator->trans('Show Blame'), 'dumped without the plugin');
+
+        $translator->addCatalogDirectory($plugin->dir);
+        $this->assertSame('Annoter', $translator->trans('Show Blame'));
+        $translator->addCatalogDirectory($plugin->dir);
+        $this->assertSame('Annoter', $translator->trans('Show Blame'));
+
+        $this->assertCount(2, (array) \glob($cache->dir.'/catalogue.fr.*.php'), 'one dump per dir set: a dir added twice is one set, not a third dump');
+    }
+
     public function testPlaceholdersAreInterpolated(): void
     {
         $project = new TempProject(['messages.fr.xlf' => $this->xliff('fr', $this->unit('Committed: %summary%', 'Validé : %summary%'))]);
