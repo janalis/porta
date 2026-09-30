@@ -800,7 +800,7 @@ other action methods it throws during `activate()`. Lines and columns are
 
 | Method | Purpose |
 | --- | --- |
-| `diagnostics(?string $path = null): list<array>` | What every language server and analyser said about the open buffers, or one of them, merged as the Problems panel shows it: `path`, `line`, `column`, `severity` (1 = error … 4 = hint), `message`, and `source`/`code` when known. A file with no open buffer has none |
+| `diagnostics(?string $path = null): list<array>` | What every language server and analyser said about the open buffers, or one of them, merged as the Problems panel shows it: `path`, `line`, `column`, `endColumn` when the finding ends on its own line, `severity` (1 = error … 4 = hint), `message`, and `source`/`code` when known. A file with no open buffer has none |
 | `definition(string $path, int $line, int $column, \Closure $onDone)` | Where the symbol at a position is declared, asked of the server for that file — any file of the project, open or not; nothing is shown and no tab moves. `$onDone(list $locations, ?string $error)`: each location is `path` (absolute), `line`, `column` and the line's `text`; the error says why when there is no answer (no server for the language, one that refused) |
 | `references(string $path, int $line, int $column, \Closure $onDone)` | Every place the symbol is used, its declaration included; `definition()`'s shape |
 | `hover(string $path, int $line, int $column, \Closure $onDone)` | What the server says about the symbol — signature and documentation — as plain text: `$onDone(?string $text, ?string $error)` |

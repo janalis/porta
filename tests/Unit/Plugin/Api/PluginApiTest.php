@@ -606,8 +606,8 @@ final class PluginApiTest extends TestCase
         $b->document->insert('!');
         $a->diagnostics = [
             3 => [
-                ['severity' => DiagnosticSeverity::Warning, 'message' => 'Unused', 'col' => 4],
-                ['severity' => DiagnosticSeverity::Error, 'message' => 'Undefined', 'col' => 0, 'code' => 7, 'source' => 'phpstan'],
+                ['severity' => DiagnosticSeverity::Warning, 'message' => 'Unused', 'col' => 4, 'endCol' => 9],
+                ['severity' => DiagnosticSeverity::Error, 'message' => 'Undefined', 'col' => 0, 'endCol' => \PHP_INT_MAX, 'code' => 7, 'source' => 'phpstan'],
             ],
         ];
         $b->diagnostics = [0 => [['severity' => DiagnosticSeverity::Hint, 'message' => 'Hint', 'col' => 1, 'code' => 'rule.x']]];
@@ -624,7 +624,7 @@ final class PluginApiTest extends TestCase
 
         $this->assertSame(
             [
-                ['path' => '/p/a.php', 'line' => 3, 'column' => 4, 'severity' => 2, 'message' => 'Unused'],
+                ['path' => '/p/a.php', 'line' => 3, 'column' => 4, 'endColumn' => 9, 'severity' => 2, 'message' => 'Unused'],
                 ['path' => '/p/a.php', 'line' => 3, 'column' => 0, 'severity' => 1, 'message' => 'Undefined', 'source' => 'phpstan', 'code' => '7'],
                 ['path' => '/p/b.php', 'line' => 0, 'column' => 1, 'severity' => 4, 'message' => 'Hint', 'code' => 'rule.x'],
             ],

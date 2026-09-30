@@ -41,10 +41,11 @@ final readonly class CodeIntelligence
      * One file with `$path`, every open one without. A file with no open
      * buffer has none to read: diagnostics live on buffers.
      *
-     * Lines and columns are 0-based; `severity` is the LSP scale, 1 = error
+     * Lines and columns are 0-based; `endColumn` is where the finding ends
+     * when it ends on its own line. `severity` is the LSP scale, 1 = error
      * to 4 = hint.
      *
-     * @return list<array{path: string, line: int, column: int, severity: int, message: string, source?: string, code?: string}>
+     * @return list<array{path: string, line: int, column: int, endColumn?: int, severity: int, message: string, source?: string, code?: string}>
      */
     public function diagnostics(?string $path = null): array
     {
@@ -55,13 +56,13 @@ final readonly class CodeIntelligence
             }
             foreach ($buffer->diagnostics as $line => $diagnostics) {
                 foreach ($diagnostics as $diagnostic) {
-                    $row = [
-                        'path' => $buffer->path,
-                        'line' => $line,
-                        'column' => $diagnostic['col'],
-                        'severity' => $diagnostic['severity']->value,
-                        'message' => $diagnostic['message'],
-                    ];
+                    $row = ['path' => $buffer->path, 'line' => $line, 'column' => $diagnostic['col']];
+                    // One that runs onto later lines is kept to the end of its first.
+                    $end = $diagnostic['endCol'] ?? \PHP_INT_MAX;
+                    if (\PHP_INT_MAX !== $end) {
+                        $row['endColumn'] = $end;
+                    }
+                    $row += ['severity' => $diagnostic['severity']->value, 'message' => $diagnostic['message']];
                     if (\array_key_exists('source', $diagnostic)) {
                         $row['source'] = $diagnostic['source'];
                     }
