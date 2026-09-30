@@ -65,7 +65,9 @@ undoable edit, and asks you to **Accept** or **Reject**:
 - **Reject** puts the old text back.
 
 Claude waits for your answer. If you dismiss the question, **Review Claude's
-Proposed Change** brings it back. A file with unsaved edits in Porta is not
+Proposed Change** brings it back. While a proposal is shown, Claude Code appears as
+any agent does: its caret and name at the change, a ✦ on the file's tab.
+Local history keeps the file as it was before Claude's first change to it. A file with unsaved edits in Porta is not
 overwritten: that proposal is turned down, with a notice to save or discard
 your edits first.
 
