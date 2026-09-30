@@ -56,6 +56,19 @@ With Porta open on the project, run `/ide` in `claude` and pick **Porta**. A
 **Send Selection to Claude Code** (from the command palette) points Claude at
 the lines you selected, or at the file, as an `@` mention.
 
+**Claude's proposed edits are shown here.** When Claude wants to change a file,
+Porta brings the file to the front with the change applied in place, as one
+undoable edit, and asks you to **Accept** or **Reject**:
+
+- **Accept** saves the file as it stands, including anything you touched up
+  before accepting.
+- **Reject** puts the old text back.
+
+Claude waits for your answer. If you dismiss the question, **Review Claude's
+Proposed Change** brings it back. A file with unsaved edits in Porta is not
+overwritten: that proposal is turned down, with a notice to save or discard
+your edits first.
+
 Behind the scenes, Porta listens on `127.0.0.1` only, on a port it announces
 in `~/.claude/ide/<port>.lock` (`$CLAUDE_CONFIG_DIR/ide` when that is set).
 That file is readable by you alone and holds the token a connection has to
