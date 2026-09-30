@@ -41,6 +41,7 @@ use Porta\Settings\SettingsRowKind;
 use Porta\Settings\SettingsScope;
 use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\FixedActiveFile;
+use Porta\Tests\Support\PixelGraphics;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\Services;
@@ -140,6 +141,7 @@ final class SettingsControllerTest extends TestCase
             $dispatcher,
             $this->formatOnSave = self::formatOnSave(),
             TestCompletionController::idle($editor),
+            PixelGraphics::ratio(),
             true,
         );
 
@@ -228,6 +230,7 @@ final class SettingsControllerTest extends TestCase
                 'language',
                 'theme',
                 'cursorShape',
+                'pixelRatio',
                 'tabBarPosition',
                 'breadcrumbs',
                 'lineNumbers',
@@ -247,6 +250,9 @@ final class SettingsControllerTest extends TestCase
         $this->assertSame('light', $byKey['theme']->value);
         $this->assertSame(['dark', 'light', 'high-contrast'], $byKey['theme']->options);
         $this->assertSame(['bar', 'block', 'underline'], $byKey['cursorShape']->options);
+        $this->assertSame(['auto', '1', '1.25', '1.5', '2', '3'], $byKey['pixelRatio']->options);
+        $this->assertSame('auto', $byKey['pixelRatio']->value);
+        $this->assertFalse($byKey['pixelRatio']->restart, 'a ratio applies live');
         $this->assertSame(['top', 'bottom', 'left', 'right'], $byKey['tabBarPosition']->options);
         $this->assertSame('absolute', $byKey['lineNumbers']->value);
         $this->assertSame(['off', 'absolute', 'relative'], $byKey['lineNumbers']->options);

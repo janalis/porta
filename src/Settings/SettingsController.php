@@ -14,6 +14,7 @@ use Porta\Editor\PreviewRoutes;
 use Porta\I18n\Translator;
 use Porta\Overlay\State\TooltipCenter;
 use Porta\Search\FileIndex;
+use Porta\Ui\Graphics\PixelRatio;
 use Porta\Ui\Theme\Theme;
 use Porta\Widget\BreadcrumbsWidget;
 use Porta\Widget\MarkdownPreviewWidget;
@@ -89,6 +90,15 @@ final class SettingsController
                 'restart' => false,
                 'apply' => static fn (int|bool|string $v) => $applier->applyCursorShape((string) $v),
                 'options' => ['bar', 'block', 'underline'],
+            ],
+            'pixelRatio' => [
+                'label' => 'Display pixel ratio',
+                'kind' => SettingsRowKind::Choice,
+                'group' => 'interface',
+                'fieldset' => 'Display',
+                'restart' => false,
+                'apply' => static fn (int|bool|string $v) => $applier->applyPixelRatio((string) $v),
+                'options' => PixelRatio::CHOICES,
             ],
             'tabBarPosition' => [
                 'label' => 'Tab bar position',

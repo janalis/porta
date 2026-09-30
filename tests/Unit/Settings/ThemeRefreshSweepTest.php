@@ -18,6 +18,7 @@ use Porta\Lsp\WorkspaceEditor;
 use Porta\Settings\LiveSettingsApplier;
 use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\FixedActiveFile;
+use Porta\Tests\Support\PixelGraphics;
 use Porta\Tests\Support\TestCompletionController;
 use Porta\Tests\Support\TestTui;
 use Porta\Tests\Support\TestWorkspaceLayout;
@@ -90,6 +91,7 @@ final class ThemeRefreshSweepTest extends TestCase
             new EventDispatcher(),
             self::formatOnSave(),
             TestCompletionController::idle(),
+            PixelGraphics::ratio(),
             true,
         );
     }
@@ -177,6 +179,7 @@ final class ThemeRefreshSweepTest extends TestCase
             new EventDispatcher(),
             self::formatOnSave(),
             TestCompletionController::idle(),
+            PixelGraphics::ratio(),
             true,
         );
 
@@ -215,6 +218,7 @@ final class ThemeRefreshSweepTest extends TestCase
             new EventDispatcher(),
             self::formatOnSave(),
             TestCompletionController::idle(),
+            PixelGraphics::ratio(),
             false, // ansi disabled
         );
 
@@ -305,6 +309,7 @@ final class ThemeRefreshSweepTest extends TestCase
             new EventDispatcher(),
             self::formatOnSave(),
             TestCompletionController::idle(),
+            PixelGraphics::ratio(),
             true,
         );
 

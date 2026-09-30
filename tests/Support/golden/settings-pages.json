@@ -24,7 +24,7 @@
         " ⏎ edit · ←/→ change · r reset · Ctrl+F find · Tab panes · 2 keybindings"
     ],
     "interface": [
-        " Interface — 15 settings",
+        " Interface — 16 settings",
         "                       ┏━━━━━━━━━━━━━━━━━━━━━━━━┓",
         "  Save changes to      ┃ .porta.json          ▾ ┃ · for this session",
         "                       ┗━━━━━━━━━━━━━━━━━━━━━━━━┛",
@@ -38,13 +38,13 @@
         "                       ╭────────────────────────╮",
         "  Cursor shape         │ bar                  ▾ │",
         "                       ╰────────────────────────╯",
+        "                       ╭────────────────────────╮",
+        "  Display pixel ratio  │ auto                 ▾ │",
+        "                       ╰────────────────────────╯",
         "─ Layout ─────────────────────────────────────────────────────────────────────────────────────────────────────",
         "                       ╭────────────────────────╮",
         "  Tab bar position     │ top                  ▾ │",
         "                       ╰────────────────────────╯",
-        "                       ╭───╮",
-        "  Breadcrumbs bar      │ ✓ │",
-        "                       ╰───╯",
         " ⏎ edit · ←/→ change · r reset · Ctrl+F find · Tab panes · 2 keybindings"
     ],
     "highlighting": [

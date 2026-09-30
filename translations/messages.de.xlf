@@ -3054,6 +3054,10 @@
         <source>Markdown preview</source>
         <target>Markdown-Vorschau</target>
       </trans-unit>
+      <trans-unit id="1083">
+        <source>Display pixel ratio</source>
+        <target>Pixelverhältnis des Bildschirms</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

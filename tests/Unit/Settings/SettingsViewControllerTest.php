@@ -70,6 +70,7 @@ use Porta\Tests\Support\FakePluginLifecycle;
 use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\NavigatesSettings;
+use Porta\Tests\Support\PixelGraphics;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\ReadsSettingsForm;
 use Porta\Tests\Support\TempProject;
@@ -217,6 +218,7 @@ final class SettingsViewControllerTest extends TestCase
             new EventDispatcher(),
             self::formatOnSave(),
             TestCompletionController::idle($editor),
+            PixelGraphics::ratio(),
             true,
         );
         $settings = new SettingsController(
@@ -510,6 +512,7 @@ final class SettingsViewControllerTest extends TestCase
         $this->form->handleInput("\x1b[B"); // past the "Save changes to" lead row
         $this->form->handleInput("\x1b[B"); // Theme
         $this->form->handleInput("\x1b[B"); // Cursor shape
+        $this->form->handleInput("\x1b[B"); // Display pixel ratio
         $this->form->handleInput("\x1b[B"); // Tab bar position
         $this->form->handleInput("\x1b[B"); // Breadcrumbs bar (Layout, beside the tab bar)
         $this->form->handleInput("\x1b[B"); // Line numbers

@@ -813,9 +813,12 @@ shimmering; magnifying stays pixel-crisp.
 startup (the kitty graphics protocol — kitty and Ghostty, cmux included), and
 where the answer is yes the image and graph viewers hand the terminal the
 visible part of the picture at the screen's own resolution: one cell shows
-hundreds of pixels instead of two. Zoom percentages then count real screen
-pixels — `1` is one image pixel per screen pixel, and the zoom goes well below
-fit as well as above it. Everywhere else, and until the terminal has answered,
+hundreds of pixels instead of two. Zoom percentages then count the display's
+own pixels, as a browser does. `1` is one image pixel per logical pixel, so on a
+Retina screen 100% is the size Preview shows, still drawn at full resolution.
+The zoom goes well below fit as well as above it. The display's pixel ratio is
+asked of the system (the `pixelRatio` setting, Settings › Interface › Display,
+names it instead). Everywhere else, and until the terminal has answered,
 the picture is drawn in truecolor half-blocks (`▀`, two pixels a cell). WezTerm,
 Konsole and tmux answer the question but cannot show the result, so they get
 half-blocks without being asked. `PORTA_GRAPHICS=kitty` forces the pixels on,

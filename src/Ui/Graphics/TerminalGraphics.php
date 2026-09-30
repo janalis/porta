@@ -62,6 +62,9 @@ final class TerminalGraphics
 
     private int $cellHeight = 16;
 
+    /** Device pixels per logical pixel ({@see PixelRatio}); 1 until known. */
+    private float $pixelRatio = 1.0;
+
     private int $nextId = 1000;
 
     private ?string $timer = null;
@@ -152,6 +155,28 @@ final class TerminalGraphics
     public function available(): bool
     {
         return true === $this->kitty;
+    }
+
+    /**
+     * How many of the terminal's pixels make one of the display's logical
+     * pixels: 2 on a Retina screen, where the terminal counts device pixels.
+     * A zoom of 100% means one document pixel per LOGICAL pixel, as in a
+     * browser; a sharp picture is still drawn in device pixels.
+     */
+    public function pixelRatio(): float
+    {
+        return $this->pixelRatio;
+    }
+
+    /** Adopt a new ratio, and tell the panes when it changed what 100% means. */
+    public function setPixelRatio(float $ratio): void
+    {
+        $ratio = \max(1.0, $ratio);
+        if (\abs($ratio - $this->pixelRatio) < 1e-9) {
+            return;
+        }
+        $this->pixelRatio = $ratio;
+        $this->notify();
     }
 
     /** @return array{0: int, 1: int} one cell's width and height in pixels */
@@ -245,9 +270,14 @@ final class TerminalGraphics
     {
         $changed = $kitty !== $this->kitty;
         $this->kitty = $kitty;
-        if (!$changed) {
-            return;
+        if ($changed) {
+            $this->notify();
         }
+    }
+
+    /** What a pane should paint changed: tell every listener, and draw again. */
+    private function notify(): void
+    {
         foreach ($this->listeners as $listener) {
             $listener();
         }

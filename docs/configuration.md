@@ -156,6 +156,7 @@ catalog validation and bind if the plugin loads.
 | `searchIncludeVendor` | `false` | Let Find in Files and Go to File descend into `vendor/` |
 | `formatOnSave` | `false` | Format via the language server before each Ctrl+S save (single-file saves only; a 2s timeout saves unformatted with a flash) |
 | `markdownPreview` | `true` | Open a Markdown file with its rendered preview beside the text (see [Live preview](editor.md#live-preview)). Off, Markdown opens as plain text. Applies to files opened after the change |
+| `pixelRatio` | `"auto"` | What a 100% zoom means in the image and graph viewers, on a terminal that draws pixels: one document pixel per logical pixel of the display, as a browser shows it. `auto` asks the system (the backing scale on macOS, `GDK_SCALE` or `QT_SCALE_FACTOR` on Linux, and 1 over SSH, where the screen is another machine's); `1`, `1.25`, `1.5`, `2` or `3` names it |
 | `cursorShape` | `"bar"` | Hardware cursor shape: `bar`, `block` or `underline` — screen readers follow the hardware cursor |
 | `tooltips` | `true` | A card saying what a glyph, a toggle or a cut name means when the pointer rests on it |
 | `tooltipDelay` | `500` | How long the pointer rests before a tooltip shows, in milliseconds (0–2000; the next one shows at once while a card is up) |

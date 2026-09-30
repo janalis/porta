@@ -19,6 +19,7 @@ use Porta\Lsp\WorkspaceEditor;
 use Porta\Settings\LiveSettingsApplier;
 use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\FixedActiveFile;
+use Porta\Tests\Support\PixelGraphics;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TestCompletionController;
 use Porta\Tests\Support\TestTui;
@@ -65,6 +66,7 @@ final class LiveSettingsApplierTest extends TestCase
             new EventDispatcher(),
             $this->formatOnSave,
             TestCompletionController::idle($editor),
+            PixelGraphics::ratio(),
             true,
         );
     }
@@ -158,6 +160,7 @@ final class LiveSettingsApplierTest extends TestCase
             new EventDispatcher(),
             $this->formatOnSave,
             TestCompletionController::idle(),
+            PixelGraphics::ratio(),
             true,
         );
         $editorPane = Probe::get($workspaceLayout, 'editorPane');

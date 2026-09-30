@@ -49,6 +49,7 @@ use Porta\Support\FreezeWatchdog;
 use Porta\Support\PerfCollector;
 use Porta\Support\RevoltScheduler;
 use Porta\Ui\BidiTui;
+use Porta\Ui\Graphics\PixelRatio;
 use Porta\Ui\Graphics\TerminalGraphics;
 use Porta\Ui\NonBlockingTerminal;
 use Porta\Ui\TerminalBidi;
@@ -427,6 +428,7 @@ final class Ide
         // watcher. A pane paints half-blocks until they have arrived.
         $graphicsProbe = EventLoop::defer(function (): void {
             $this->graphics->probe(\getenv());
+            $this->service(PixelRatio::class)->probe(\getenv());
         });
 
         // Loop-stall detector: evidence for "the app froze" reports lands in
@@ -560,6 +562,7 @@ final class Ide
             // the pre-launch terminal). Guaranteed even if startup above threw.
             // Images live in the terminal, not in the alternate screen: free them.
             $this->graphics->release();
+            $this->service(PixelRatio::class)->release();
             $this->tui->getTerminal()->write(TerminalRestorer::RESTORE);
             $restorer->disarm();
             if (null === $this->tool) {

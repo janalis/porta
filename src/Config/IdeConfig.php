@@ -44,6 +44,7 @@ final readonly class IdeConfig
         'markdownPreview' => true,
         'searchIncludeVendor' => false,
         'cursorShape' => 'bar',
+        'pixelRatio' => 'auto',
         'tabBarPosition' => 'top',
         'tooltips' => true,
         'tooltipDelay' => 500,
@@ -124,6 +125,7 @@ final readonly class IdeConfig
         'diagnosticMessages' => ['none', 'inline', 'menu'],
         'inlayHints' => ['none', 'inline', 'tooltip'],
         'cursorShape' => ['bar', 'block', 'underline'],
+        'pixelRatio' => ['auto', '1', '1.25', '1.5', '2', '3'],
         'tabBarPosition' => ['top', 'bottom', 'left', 'right'],
     ];
 

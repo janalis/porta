@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Support;
 
+use Porta\Ui\Graphics\PixelRatio;
 use Porta\Ui\Graphics\TerminalGraphics;
 use Symfony\Component\Tui\Event\InputEvent;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
@@ -37,6 +38,12 @@ final class PixelGraphics
         $terminal->clearOutput();
 
         return [$graphics, $terminal];
+    }
+
+    /** A {@see PixelRatio} over a graphics channel nobody reads: for a service that only passes settings on. */
+    public static function ratio(): PixelRatio
+    {
+        return new PixelRatio(self::unanswered()[0]);
     }
 
     /** Feed the terminal's replies to $graphics, as the input listener would. */

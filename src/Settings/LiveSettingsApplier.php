@@ -19,6 +19,7 @@ use Porta\Layout\WorkspaceLayout;
 use Porta\Lsp\CompletionController;
 use Porta\Lsp\FormatOnSave;
 use Porta\Ui\CursorStyle;
+use Porta\Ui\Graphics\PixelRatio;
 use Porta\Ui\Theme\Styles;
 use Porta\Ui\Theme\StyleSheetThemer;
 use Porta\Ui\Theme\Theme;
@@ -49,6 +50,7 @@ final readonly class LiveSettingsApplier
         private EventDispatcherInterface $dispatcher,
         private FormatOnSave $formatOnSave,
         private CompletionController $completion,
+        private PixelRatio $pixelRatio,
         private bool $ansi,
     ) {}
 
@@ -114,6 +116,12 @@ final readonly class LiveSettingsApplier
     {
         $this->translator->setLocale($locale);
         $this->dispatcher->dispatch(new LocaleChanged($locale));
+    }
+
+    /** What 100% zoom means on this display: a named pixel ratio, or `auto` to ask the system. */
+    public function applyPixelRatio(string $ratio): void
+    {
+        $this->pixelRatio->apply($ratio);
     }
 
     public function applyCursorShape(string $shape): void
