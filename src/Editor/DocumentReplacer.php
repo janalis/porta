@@ -51,12 +51,19 @@ final readonly class DocumentReplacer
     /**
      * Replace one range of $buffer — 0-based lines and BYTE columns, the end
      * exclusive — with $text, as ONE undoable edit, told to the same two as
-     * {@see replace()}. The caret ends after the new text, as after typing it.
-     * The range must be inside the document; the caller checks.
+     * {@see replace()}.
+     *
+     * The buffer's caret and selection STAY where the user left them — moved
+     * along with the text they sat after, pulled to the end of the new text
+     * when the range swallowed them — because the edit is someone else's: an
+     * agent's, while the user may be typing elsewhere in the same file. The
+     * range must be inside the document; the caller checks.
      */
     public function replaceRange(Buffer $buffer, int $line, int $column, int $endLine, int $endColumn, string $text): void
     {
         $document = $buffer->document;
+        $caret = [$document->cursorLine, $document->cursorCol];
+        $anchor = self::anchor($document->getSelectionRange(), $caret);
         $document->transact(static function () use ($document, $line, $column, $endLine, $endColumn, $text): void {
             $document->setCursor($line, $column);
             $document->beginSelect();
@@ -66,7 +73,63 @@ final readonly class DocumentReplacer
             }
             $document->insert($text);
         });
+        $newlines = \substr_count($text, needle: "\n");
+        $last = \strrpos($text, needle: "\n");
+        $after = [$line + $newlines, false === $last ? $column + \strlen($text) : \strlen($text) - $last - 1];
+        [$caretLine, $caretCol] = self::shifted($caret, [$line, $column], [$endLine, $endColumn], $after);
+        $document->setCursor($caretLine, $caretCol);
+        if (null !== $anchor) {
+            [$anchorLine, $anchorCol] = self::shifted($anchor, [$line, $column], [$endLine, $endColumn], $after);
+            $document->setSelectionRange($anchorLine, $anchorCol, $caretLine, $caretCol);
+        }
         $this->changed($buffer);
+    }
+
+    /**
+     * The end of a selection the caret is NOT at — where it was started —
+     * or null with nothing selected: the range is normalized and says only
+     * which end comes first.
+     *
+     * @param array{startLine: int, startCol: int, endLine: int, endCol: int}|null $range
+     * @param array{int, int}                                                     $caret
+     *
+     * @return array{int, int}|null
+     */
+    private static function anchor(?array $range, array $caret): ?array
+    {
+        if (null === $range) {
+            return null;
+        }
+        $start = [$range['startLine'], $range['startCol']];
+
+        return $start === $caret ? [$range['endLine'], $range['endCol']] : $start;
+    }
+
+    /**
+     * Where a position lands once [$start, $end) became text ending at $after:
+     * before the range it stays, inside it goes to the new end, after it
+     * shifts — by columns too when it shared the range's last line.
+     *
+     * @param array{int, int} $at
+     * @param array{int, int} $start
+     * @param array{int, int} $end
+     * @param array{int, int} $after
+     *
+     * @return array{int, int}
+     */
+    private static function shifted(array $at, array $start, array $end, array $after): array
+    {
+        if ($at <= $start) {
+            return $at;
+        }
+        if ($at < $end) {
+            return $after;
+        }
+        if ($at[0] === $end[0]) {
+            return [$after[0], $after[1] + $at[1] - $end[1]];
+        }
+
+        return [$at[0] + $after[0] - $end[0], $at[1]];
     }
 
     /**

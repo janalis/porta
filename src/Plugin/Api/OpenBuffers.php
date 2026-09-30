@@ -7,6 +7,8 @@ namespace Porta\Plugin\Api;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferSaver;
 use Porta\Editor\DocumentReplacer;
+use Porta\Editor\FileOpener;
+use Porta\Editor\OpenFocus;
 
 /**
  * The open buffers, for a plugin: which files are open and which hold edits
@@ -23,7 +25,24 @@ final readonly class OpenBuffers
         private BufferManager $buffers,
         private BufferSaver $saver,
         private DocumentReplacer $replacer,
+        private FileOpener $files,
     ) {}
+
+    /**
+     * Open a file as a text tab BEHIND the one the user is on — no tab comes
+     * forward, no focus moves — so a change can be made to it where the user
+     * sees it without being taken there. An open one is left as it is. Null
+     * once it is open as text, else why not: not a file, or not text (an
+     * image, a file too large to edit).
+     */
+    public function open(string $path): ?string
+    {
+        if (null === $this->text($path)) {
+            $this->files->openFile($path, OpenFocus::Background);
+        }
+
+        return null === $this->text($path) ? \sprintf('%s cannot be opened as text', $path) : null;
+    }
 
     /**
      * Every open TEXT tab, in tab order: its path and whether it has edits not

@@ -125,7 +125,7 @@ final class PluginApi
     private readonly PluginBuffer $statusSegments;
     /** @var PluginBuffer<array{plugin: string, languageId: string, resolve: \Closure(): (list<string>|null)}> */
     private readonly PluginBuffer $debugAdapters;
-    /** @var PluginBuffer<array{plugin: string, id: string, description: string, inputSchema: array<string, mixed>, handler: \Closure(array<string, mixed>): (string|array<array-key, mixed>), effect: ?ToolEffect}> */
+    /** @var PluginBuffer<array{plugin: string, id: string, description: string, inputSchema: array<string, mixed>, handler: \Closure(array<string, mixed>, ToolCaller=): (string|array<array-key, mixed>), effect: ?ToolEffect}> */
     private readonly PluginBuffer $tools;
     /** @var array<string, true> bare tool ids, for duplicate detection */
     private array $toolIds = [];
@@ -647,7 +647,8 @@ final class PluginApi
      *
      * - `$inputSchema` is the JSON Schema of the arguments, an `object` one:
      *   `['type' => 'object', 'properties' => [...], 'required' => [...]]`.
-     * - `$handler` receives the decoded arguments and returns the answer: a
+     * - `$handler` receives the decoded arguments, and the {@see ToolCaller}
+     *   as a second argument it may leave undeclared, and returns the answer: a
      *   string as it is, an array as JSON. A throw is the caller's error
      *   message, never the IDE's crash.
      * - The handler runs in its OWN fiber, so it may wait: suspend on
@@ -663,7 +664,7 @@ final class PluginApi
      * the user could undo.
      *
      * @param array<string, mixed>                                              $inputSchema
-     * @param \Closure(array<string, mixed>): (string|array<array-key, mixed>) $handler
+     * @param \Closure(array<string, mixed>, ToolCaller=): (string|array<array-key, mixed>) $handler
      *
      * @throws PluginException
      */
@@ -1321,7 +1322,7 @@ final class PluginApi
     {
         $runtime = $this->manager->runtime();
 
-        return new OpenBuffers($runtime->buffers, $runtime->saver, $runtime->documents);
+        return new OpenBuffers($runtime->buffers, $runtime->saver, $runtime->documents, $runtime->files);
     }
 
     /**
@@ -1359,7 +1360,7 @@ final class PluginApi
      * An action method: during `activate()` the set is still half-built, so it
      * throws there.
      *
-     * @return list<array{plugin: string, id: string, description: string, inputSchema: array<string, mixed>, handler: \Closure(array<string, mixed>): (string|array<array-key, mixed>), effect: ?ToolEffect}>
+     * @return list<array{plugin: string, id: string, description: string, inputSchema: array<string, mixed>, handler: \Closure(array<string, mixed>, ToolCaller=): (string|array<array-key, mixed>), effect: ?ToolEffect}>
      */
     public function tools(): array
     {
@@ -1803,7 +1804,7 @@ final class PluginApi
         return $this->debugAdapters->all();
     }
 
-    /** @return list<array{plugin: string, id: string, description: string, inputSchema: array<string, mixed>, handler: \Closure(array<string, mixed>): (string|array<array-key, mixed>), effect: ?ToolEffect}> */
+    /** @return list<array{plugin: string, id: string, description: string, inputSchema: array<string, mixed>, handler: \Closure(array<string, mixed>, ToolCaller=): (string|array<array-key, mixed>), effect: ?ToolEffect}> */
     public function bufferedTools(): array
     {
         return $this->tools->all();

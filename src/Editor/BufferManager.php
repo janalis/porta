@@ -31,15 +31,23 @@ final class BufferManager
 
     public function open(string $path, string $content): Buffer
     {
-        $path = $this->sameFileAlreadyOpen($path) ?? $path;
-        if (!\array_key_exists($path, $this->buffers)) {
-            $this->buffers[$path] = new Buffer($path, $this->trackedDocument($path, $content), $this->highlighters->forFile($path));
-        }
-        $buffer = $this->buffers[$path];
-        $this->activePath = $path;
+        $buffer = $this->add($path, $content);
+        $this->activePath = $buffer->path;
         $buffer->lastFocused = ++$this->focusCounter;
 
         return $buffer;
+    }
+
+    /**
+     * The tab for $path, created from $content when it is not open — WITHOUT
+     * making it the active one: the tab bar gains it behind the tab in front.
+     */
+    public function add(string $path, string $content): Buffer
+    {
+        $path = $this->sameFileAlreadyOpen($path) ?? $path;
+        $this->buffers[$path] ??= new Buffer($path, $this->trackedDocument($path, $content), $this->highlighters->forFile($path));
+
+        return $this->buffers[$path];
     }
 
     /**

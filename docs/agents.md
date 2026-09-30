@@ -78,6 +78,12 @@ within the `lspTimeout` setting (15 seconds) is given up on.
 Lines and columns are 1-based, as compilers and `grep` print them. Paths are
 project-relative or absolute, and must be inside the project.
 
+**An agent's edit does not take your screen.** A file it changes opens in a
+tab behind yours, or is changed where it already is. Your caret and selection
+stay where you left them, moving only with the text they sat in, so you can keep
+typing in the same file. Turn on `followAgent` to have each file it edits
+brought to the front instead.
+
 **Edits are not saved unless you say so.** Each one is a single undoable step
 in the editor, so you review it, keep it with Ctrl+S, or take it back with
 Ctrl+Z. Turn the `allowEdits` setting off and the edit tools are not offered

@@ -720,6 +720,9 @@ without requiring mcp; they are served whenever it is enabled.
 
 - The schema is the JSON Schema of the arguments, and it must be an `object`.
   The description is all a caller reads before calling, so say what comes back.
+- The handler also receives a `Porta\Plugin\Api\ToolCaller` as a second
+  argument, which it may leave undeclared: `$caller->name` is who is calling (an
+  MCP client's own name), and `$caller->id` tells two callers with one name apart.
 - Return a string, or an array to be sent as JSON. **Throw** to answer with an
   error: the message goes to the caller, and nothing is flashed in the IDE.
 - The handler runs in its own fiber, so it may wait on a subprocess or
@@ -756,6 +759,7 @@ $why = $buffers->save($path);             // null once saved
 | --- | --- |
 | `files(): list<array>` | Every open TEXT tab in tab order, `['path' => absolute, 'dirty' => bool]`; viewer tabs are left out |
 | `text(string $path): ?string` | An open buffer's text, unsaved edits included; null when no text tab has it open |
+| `open(string $path): ?string` | Open a file as a text tab BEHIND the one in front — no tab comes forward, no focus moves — so it can be changed where the user sees it without being taken there. Null once it is open as text, else why not (not a file, an image, too large) |
 | `selection(string $path): ?array` | What is selected in it: `['line', 'column', 'endLine', 'endColumn', 'text']`, 0-based line and byte column as `caretPosition()` gives them, the start first. Null when nothing is |
 | `edit(string $path, int $line, int $column, int $endLine, int $endColumn, string $text): ?string` | Replace a range with `$text`, in the same 0-based lines and byte columns, the end exclusive; an empty range inserts. It is ONE undo step and it is not saved; the editor and the language server hear of it. Null once applied, else why not: not open as text, or not a range of the document |
 | `save(string $path): ?string` | Save it as Ctrl+S does — local history, the language servers and `onFileSaved` all hear of it. Null once saved (or with nothing to save), else why not. A file that **changed on disk** under the edits is refused, never overwritten: the keyboard asks the user to press Ctrl+S again, and a plugin cannot ask for them |

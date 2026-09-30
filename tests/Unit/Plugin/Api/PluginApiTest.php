@@ -29,6 +29,7 @@ use Porta\Overlay\State\ToastCenter;
 use Porta\Overlay\State\ToastSeverity;
 use Porta\Plugin\Api\PluginApi;
 use Porta\Plugin\Api\PluginException;
+use Porta\Plugin\Api\ToolCaller;
 use Porta\Plugin\Api\ToolEffect;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginRuntime;
@@ -563,6 +564,15 @@ final class PluginApiTest extends TestCase
             $api->bufferedTools(),
         );
         $this->assertSame([], $api->tools(), 'buffered, not yet committed');
+        $caller = new ToolCaller('mcp-1', 'Claude Code');
+        $seen = null;
+        $api->registerTool('who', 'Who is calling', ['type' => 'object'], static function (array $arguments, ToolCaller $by) use (&$seen): string {
+            $seen = [$by->id, $by->name];
+
+            return 'ok';
+        });
+        $this->assertSame('ok', \array_last($api->bufferedTools())['handler']([], $caller));
+        $this->assertSame(['mcp-1', 'Claude Code'], $seen, 'the caller rides as the second argument');
 
         $refusals = [
             'Invalid tool id "bad:id"' => static fn () => $api->registerTool('bad:id', 'x', ['type' => 'object'], $handler),
@@ -579,7 +589,7 @@ final class PluginApiTest extends TestCase
                 $this->assertStringStartsWith($says, $e->getMessage());
             }
         }
-        $this->assertCount(2, $api->bufferedTools(), 'a refused tool leaves nothing behind');
+        $this->assertCount(3, $api->bufferedTools(), 'a refused tool leaves nothing behind');
     }
 
     public function testOpenBuffersAndDiagnosticsReadEveryOpenBuffer(): void
@@ -653,6 +663,11 @@ final class PluginApiTest extends TestCase
         }
         $this->assertNull($api->openBuffers()->edit('/p/a.php', 0, 6, 2, 0, ''), 'the very end of each line, and of the text, are inside');
         $this->assertSame('one é', $a->document->getText());
+
+        $this->assertNull($api->openBuffers()->open('/p/a.php'), 'already open as text');
+        $this->assertSame([], $this->files->opened, 'so nothing is asked of the opener');
+        $this->assertSame('/p/new.php cannot be opened as text', $api->openBuffers()->open('/p/new.php'), 'the opener here opens nothing');
+        $this->assertSame([['path' => '/p/new.php', 'focus' => false]], $this->files->opened, 'asked once, without taking focus');
 
         $this->assertNull($api->openBuffers()->selection('/p/a.php'), 'nothing selected');
         $this->assertNull($api->openBuffers()->selection('/p/c.png'));

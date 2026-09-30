@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
 use Porta\Editor\DocumentReplacer;
 use Porta\Editor\EditorInvalidator;
+use Porta\Editor\SelectionMode;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspSessionPool;
 use Porta\Tests\Support\FakeLspClient;
@@ -155,7 +156,7 @@ final class DocumentReplacerTest extends TestCase
         $replacer->replaceRange($buffer, 1, 0, 2, 5, 'TWO');
 
         $this->assertSame("one\nTWO\n", $buffer->document->getText());
-        $this->assertSame([1, 3], [$buffer->document->cursorLine, $buffer->document->cursorCol], 'the caret after the new text');
+        $this->assertSame([0, 0], [$buffer->document->cursorLine, $buffer->document->cursorCol], 'the caret before the range stays');
         $this->assertFalse($buffer->document->isDirty(), 'it now IS the disk copy');
         $this->assertSame(1, $this->invalidations->count, 'the buffer on screen repaints');
 
@@ -164,6 +165,44 @@ final class DocumentReplacerTest extends TestCase
         $buffer->document->undo();
         $buffer->document->undo();
         $this->assertSame("one\ntwo\nthree\n", $buffer->document->getText(), 'one undo each');
+    }
+
+    public function testTheUsersCaretAndSelectionStayWithTheTextTheySatIn(): void
+    {
+        $replacer = $this->replacer();
+        $buffer = $this->buffers->open('/p/a.php', "abcdef\nghij\nklm\n");
+        $document = $buffer->document;
+        $at = static fn (): array => [$document->cursorLine, $document->cursorCol];
+
+        $document->setCursor(1, 3); // "ghi|j"
+        $replacer->replaceRange($buffer, 0, 2, 1, 1, "X\nYZ"); // "ab[cdef\ng]hij" → "abX\nYZhij"
+        $this->assertSame("abX\nYZhij\nklm\n", $document->getText());
+        $this->assertSame([1, 4], $at(), 'on the range\'s last line: shifted by columns too');
+
+        $replacer->replaceRange($buffer, 0, 0, 0, 1, '');
+        $this->assertSame([1, 4], $at(), 'an edit on an earlier line leaves the columns');
+
+        $document->setCursor(2, 1);
+        $replacer->replaceRange($buffer, 0, 0, 0, 0, "new\n");
+        $this->assertSame([3, 1], $at(), 'a line inserted above moves it down');
+
+        $document->setCursor(1, 1);
+        $replacer->replaceRange($buffer, 1, 0, 2, 2, 'Q');
+        $this->assertSame("new\nQhij\nklm\n", $document->getText());
+        $this->assertSame([1, 1], $at(), 'swallowed by the range: at the end of the new text');
+
+        $document->setCursor(2, 3);
+        $document->beginSelect();
+        $document->setCursor(2, 1, SelectionMode::Keep); // selected "lm", backwards
+        $replacer->replaceRange($buffer, 2, 0, 2, 0, '>>');
+        $this->assertSame(['startLine' => 2, 'startCol' => 3, 'endLine' => 2, 'endCol' => 5], $document->getSelectionRange(), 'the selection moved with its text');
+        $this->assertSame([2, 3], $at(), 'and the caret is still at the end it was at');
+
+        $document->setCursor(2, 5);
+        $document->beginSelect();
+        $document->setCursor(1, 0, SelectionMode::Keep);
+        $replacer->replaceRange($buffer, 0, 0, 0, 3, 'NEW');
+        $this->assertSame(['startLine' => 1, 'startCol' => 0, 'endLine' => 2, 'endCol' => 5], $document->getSelectionRange(), 'forwards or backwards, across lines');
     }
 
     public function testTheServerHearsAboutTheSwapAsADidChange(): void

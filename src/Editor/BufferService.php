@@ -169,6 +169,11 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
     public function openFile(string $path, OpenFocus $focus = OpenFocus::Keep, OpenAs $as = OpenAs::Viewer): void
     {
         $path = ($resolved = \realpath($path)) ? $resolved : $path;
+        if (OpenFocus::Background === $focus && null !== $this->buffers->active()) {
+            $this->openBehind($path);
+
+            return;
+        }
 
         // "Open as Text" on a tab that is already a viewer: drop it first, so
         // the path key is free for a text buffer. A viewer tab holds an empty
@@ -229,24 +234,9 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
         }
 
         $buffer = $this->buffers->open($path, $content);
-        $buffer->stampFromDisk();
-        $this->applyEditorConfig($buffer);
-        $buffer->previewId = $preview;
-        // The generated architecture graph is opened to be LOOKED at — its DOT
-        // is the scanner's output, not something written by hand.
-        $buffer->previewMode = self::ARCHITECTURE_FILENAME === \basename($path) ? PreviewMode::Preview : PreviewMode::Split;
-        $this->applyTitle($buffer);
-
         // didOpen before showBuffer so the inlay-hint request it fires is
-        // ordered after the server knows about the file; this is also what
-        // lazily starts the file's language server.
-        $this->lsp->notifyDidOpen(
-            $path,
-            $buffer->document->getText(),
-            ProjectPaths::languageId($path),
-            $buffer->document->version,
-        );
-
+        // ordered after the server knows about the file.
+        $this->adopt($buffer, $preview);
         $this->showBuffer($buffer);
         $this->dispatcher->dispatch(new BufferOpened($buffer));
 
@@ -254,6 +244,52 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
             $this->focusEditorArea();
         }
         $this->tui->requestRender();
+    }
+
+    /**
+     * {@see OpenFocus::Background}: $path joins the tab bar behind the tab in
+     * front, which stays in front — as TEXT, or not at all: a file a viewer
+     * claims, one too large to edit or not UTF-8 is left unopened, since what
+     * opens a file behind the user's back means to change its text. An open
+     * one is left as it is.
+     */
+    private function openBehind(string $path): void
+    {
+        $preview = $this->previewFor($path);
+        $viewer = null !== $preview ? null : $this->viewers->viewerFor($path);
+        if ($this->buffers->has($path) || !\is_file($path) || !\is_readable($path) || null !== $viewer && null !== $this->panes->paneFor($viewer) || (int) \filesize($path) > Files::MAX_TEXT_BYTES) {
+            return;
+        }
+        $content = (string) \file_get_contents($path);
+        if ('' !== $content && !\mb_check_encoding($content, encoding: 'UTF-8')) {
+            return;
+        }
+        $buffer = $this->buffers->add($path, $content);
+        $this->adopt($buffer, $preview);
+        $this->dispatcher->dispatch(new BufferOpened($buffer));
+        $this->tui->requestRender();
+    }
+
+    /**
+     * What a text buffer just read from disk needs before anyone sees it: its
+     * disk stamp, editorconfig, preview and title — and the language server's
+     * didOpen, which is also what lazily starts that server.
+     */
+    private function adopt(Buffer $buffer, ?string $preview): void
+    {
+        $buffer->stampFromDisk();
+        $this->applyEditorConfig($buffer);
+        $buffer->previewId = $preview;
+        // The generated architecture graph is opened to be LOOKED at — its DOT
+        // is the scanner's output, not something written by hand.
+        $buffer->previewMode = self::ARCHITECTURE_FILENAME === \basename($buffer->path) ? PreviewMode::Preview : PreviewMode::Split;
+        $this->applyTitle($buffer);
+        $this->lsp->notifyDidOpen(
+            $buffer->path,
+            $buffer->document->getText(),
+            ProjectPaths::languageId($buffer->path),
+            $buffer->document->version,
+        );
     }
 
     /**

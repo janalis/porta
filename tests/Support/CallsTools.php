@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Support;
 
 use Porta\Plugin\Api\PluginApi;
+use Porta\Plugin\Api\ToolCaller;
 
 /**
  * Call a tool a plugin registered with {@see PluginApi::registerTool()} the way
@@ -34,7 +35,7 @@ trait CallsTools
         // would otherwise surface in the loop, not here.
         $fiber = new \Fiber(static function () use ($tool, $arguments): array {
             try {
-                return ['answer' => $tool['handler']($arguments)];
+                return ['answer' => $tool['handler']($arguments, new ToolCaller('test', 'Test agent'))];
             } catch (\Throwable $error) {
                 return ['thrown' => $error];
             }

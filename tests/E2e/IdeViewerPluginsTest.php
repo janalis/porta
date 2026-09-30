@@ -10,8 +10,10 @@ use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Editor\EditorPanes;
+use Porta\Editor\OpenFocus;
 use Porta\Ide;
 use Porta\Plugin\Lifecycle\PluginLifecycle;
+use Porta\Support\Files;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
@@ -354,6 +356,41 @@ final class IdeViewerPluginsTest extends TestCase
     }
 
     /** A 1×1 PNG, enough to exercise the routing refusal. */
+    public function testABackgroundOpenJoinsTheTabBarBehindAndOnlyAsText(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $project = new TempProject([
+            '.porta.json' => (string) \json_encode(['enabledPlugins' => ['image-viewer']]),
+            'a.php' => "<?php\n",
+            'b.php' => "<?php\necho 'b';\n",
+            'img.png' => $this->onePixelPng(),
+            'bad.txt' => "\xff\xfe\xfa",
+            'big.txt' => \str_repeat('x', Files::MAX_TEXT_BYTES + 1),
+        ]);
+        // Canonical, as buffers are keyed; a missing file keeps its plain path.
+        $path = static fn (string $name): string => false !== \realpath($project->path($name)) ? (string) \realpath($project->path($name)) : $project->path($name);
+
+        $this->runIde($project, null, [
+            200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($path): void {
+                $service = Services::resolve($ide, BufferService::class);
+                $buffers = Services::resolve($ide, BufferManager::class);
+                $service->openFile($path('a.php'), OpenFocus::Background);
+                $this->assertSame($path('a.php'), $buffers->active()?->path, 'with nothing in front, it comes forward');
+
+                $service->openFile($path('b.php'), OpenFocus::Background);
+                $this->assertSame($path('a.php'), $buffers->active()?->path, 'the tab in front stays in front');
+                $this->assertSame("<?php\necho 'b';\n", $buffers->get($path('b.php'))?->document->getText());
+                $this->assertSame([$path('a.php'), $path('b.php')], \array_map(static fn (Buffer $buffer): string => $buffer->path, $buffers->all()));
+
+                foreach (['img.png', 'bad.txt', 'big.txt', 'missing.php', 'b.php'] as $name) {
+                    $service->openFile($path($name), OpenFocus::Background);
+                }
+                $this->assertCount(2, $buffers->all(), 'no viewer, no non-text, nothing too large, nothing missing — and no second b');
+                $this->assertSame($path('a.php'), $buffers->active()?->path);
+            },
+        ]);
+    }
+
     private function onePixelPng(): string
     {
         $gd = \imagecreatetruecolor(1, height: 1);
