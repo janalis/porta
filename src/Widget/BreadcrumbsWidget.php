@@ -5,17 +5,24 @@ declare(strict_types=1);
 namespace Porta\Widget;
 
 use Porta\Container\AsWidget;
+use Porta\Editor\PreviewMode;
+use Porta\Event\PreviewModeRequested;
+use Porta\I18n\Translator;
 use Porta\Support\AnsiText;
+use Porta\Ui\ClickZones;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Porta\Ui\Tooltip;
 use Porta\Ui\TooltipProvider;
+use Porta\Widget\Render\FieldBox;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Porta\Widget\Support\ColumnHover;
+use Porta\Widget\Support\OptionTagState;
 use Porta\Widget\Support\ProviderFingerprint;
 use Porta\Widget\Support\StylesDefault;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Style\Style;
@@ -26,6 +33,13 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
  * (`Namespace › Class › method`). Content comes from a provider closure so it
  * tracks the caret for free on every frame. Renders zero rows (no bar) when the
  * caret is not inside any scope, so a structureless file keeps its full editor.
+ *
+ * A file with a live preview also gets the arrangement toggles at the bar's
+ * right end — ` Editor [Split] Preview ` — and so always has the bar: those
+ * files (markdown, SVG, a graph) rarely have a scope to show, and the toggles
+ * are how the preview is reached with the pointer. They sit on this row
+ * because it is the one that stays put while the slot under it changes from
+ * the editor, to the split, to the preview alone.
  */
 #[AsWidget('breadcrumbs')]
 final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost, TooltipProvider
@@ -40,9 +54,25 @@ final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost,
     /** The "Interface > Breadcrumbs" toggle; when off the bar renders no rows. */
     private bool $visible = true;
 
-    public function __construct(?Styles $styles = null)
-    {
+    /** The active buffer's arrangement, or null when it has no preview (and so no toggles). */
+    private ?\Closure $previewProvider = null;
+
+    /** The toggles' columns in the last render, by the mode each one picks. */
+    private readonly ClickZones $toggleZones;
+
+    public function __construct(
+        ?Styles $styles = null,
+        private readonly Translator $translator = new Translator('en'),
+        private readonly ?EventDispatcherInterface $events = null,
+    ) {
         $this->initStyles($styles);
+        $this->toggleZones = new ClickZones();
+    }
+
+    /** @param \Closure(): ?PreviewMode $provider */
+    public function setPreviewProvider(\Closure $provider): void
+    {
+        $this->previewProvider = $provider;
     }
 
     public function show(): void
@@ -96,12 +126,16 @@ final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost,
         // The visible gate is load-bearing: the provider tokenizes the whole
         // file, and a hidden bar must cost nothing — render() drawing no rows
         // does not stop beforeRender from running every frame.
-        if (null === $this->provider || !$this->visible) {
+        if (!$this->visible) {
             return;
         }
         // The hover column re-resolves per frame, so a relabel needs no
         // clearHover() — a still-correct tint stays, a stale one falls off.
-        $this->refreshFingerprint(($this->provider)());
+        // The arrangement is part of what the bar shows, so it is part of the
+        // fingerprint: a toggle flipped by its key must repaint the tags.
+        /** @var ?PreviewMode $mode */
+        $mode = null !== $this->previewProvider ? ($this->previewProvider)() : null;
+        $this->refreshFingerprint([null !== $this->provider ? ($this->provider)() : [], $mode?->name]);
     }
 
     #[\Override]
@@ -109,15 +143,33 @@ final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost,
     {
         $this->lastLayout = [];
         $this->tips = [];
+        $this->toggleZones->clear();
         if (!$this->visible) {
             return []; // the Interface setting hides the bar entirely
         }
         $crumbs = null !== $this->provider ? ($this->provider)() : [];
-        if ([] === $crumbs) {
-            return []; // no scope → no bar (the editor keeps the row)
+        /** @var ?PreviewMode $mode */
+        $mode = null !== $this->previewProvider ? ($this->previewProvider)() : null;
+        if ([] === $crumbs && null === $mode) {
+            return []; // no scope, no preview → no bar (the editor keeps the row)
         }
 
         $columns = $context->getColumns();
+        $toggles = null === $mode ? '' : $this->toggles($mode, $columns);
+        $trail = $columns - AnsiUtils::visibleWidth($toggles);
+        $content = [] === $crumbs ? ' ' : $this->trail($crumbs, $trail);
+
+        return [$this->styles->of(Role::Toolbar)->apply(AnsiText::truncate($content, $trail, pad: true).$toggles)];
+    }
+
+    /**
+     * The crumbs laid out in $columns, from the right, recording each one's
+     * columns for the click and the hover.
+     *
+     * @param non-empty-list<array{label: string, line: int}> $crumbs
+     */
+    private function trail(array $crumbs, int $columns): string
+    {
         [$first, $room] = self::window(\array_column($crumbs, 'label'), $columns - 1);
         $content = ' '; // a leading space; the bar background wraps the padded row
         $col = 1;
@@ -154,9 +206,70 @@ final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost,
             $col += $width;
         }
 
-        $bar = $this->styles->of(Role::Toolbar)->apply(AnsiText::truncate($content, $columns, pad: true));
+        return $content;
+    }
 
-        return [$bar];
+    /**
+     * The three arrangement toggles as one-row tags, right-aligned with a gap
+     * after each, their columns recorded — or nothing when the bar is too
+     * narrow to seat them whole, since a tag drawn past the edge is neither
+     * readable nor clickable.
+     */
+    private function toggles(PreviewMode $shown, int $columns): string
+    {
+        $tags = [];
+        $width = 0;
+        foreach (PreviewMode::cases() as $mode) {
+            $caption = $this->caption($mode);
+            $tags[] = [$mode, $caption];
+            $width += FieldBox::toggleWidth($caption, rows: 1) + 1;
+        }
+        $col = $columns - $width;
+        if ($col < 1) {
+            return '';
+        }
+        $line = '';
+        foreach ($tags as $index => [$mode, $caption]) {
+            $tagWidth = FieldBox::toggleWidth($caption, rows: 1);
+            $hovered = null !== $this->hoverCol && $this->hoverCol >= $col && $this->hoverCol < ($col + $tagWidth);
+            $this->toggleZones->add((string) $index, $col, $col + $tagWidth);
+            $line .= FieldBox::toggle($caption, OptionTagState::of($mode === $shown, $hovered), 1, $this->styles)[0].' ';
+            $col += $tagWidth + 1;
+        }
+
+        return $line;
+    }
+
+    private function caption(PreviewMode $mode): string
+    {
+        return $this->translator->trans(match ($mode) {
+            PreviewMode::Editor => 'Editor',
+            PreviewMode::Split => 'Split',
+            PreviewMode::Preview => 'Preview',
+        });
+    }
+
+    /** The arrangement the toggle at column $col of the last render picks, or null between them. */
+    public function previewModeAt(int $col): ?PreviewMode
+    {
+        $index = $this->toggleZones->at($col);
+
+        return null === $index ? null : PreviewMode::cases()[(int) $index];
+    }
+
+    /**
+     * A press at column $col: a toggle asks for its arrangement, which the
+     * buffer service performs. Returns whether a toggle was under it.
+     */
+    public function pressToggle(int $col): bool
+    {
+        $mode = $this->previewModeAt($col);
+        if (null === $mode) {
+            return false;
+        }
+        $this->events?->dispatch(new PreviewModeRequested($mode));
+
+        return true;
     }
 
     /** `… › `: what stands for the ancestors the bar had no room for. */
@@ -203,10 +316,16 @@ final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost,
         };
     }
 
-    /** Tint the crumb under the pointer (visual only). Stores the column; change at crumb granularity. */
+    /**
+     * Tint the crumb or toggle under the pointer (visual only). Stores the
+     * column; change at item granularity — a toggle resolves below zero, so it
+     * never shares an index with a crumb.
+     */
     public function hoverAt(int $col): bool
     {
-        return $this->storeHover($col, $this->crumbIndexAt($col));
+        $toggle = $this->toggleZones->at($col);
+
+        return $this->storeHover($col, null === $toggle ? $this->crumbIndexAt($col) : -1 - (int) $toggle);
     }
 
     /** The jump line of the crumb at column $col of the last render, or null. */

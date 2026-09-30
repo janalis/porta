@@ -191,6 +191,11 @@ final class ActionCatalog
         'ide_last_edit' => ['label' => 'Last Edit Location', 'keys' => ['ctrl+shift+backspace']],
         'toggle_soft_wrap' => ['label' => 'Soft-Wrap', 'keys' => ['alt+z']],
         'toggle_code_lenses' => ['label' => 'Code Vision', 'keys' => ['alt+v']],
+        // V for view: steps a markdown/SVG/graph file through the text alone,
+        // the text beside its preview, and the preview alone. Not Alt+P, which
+        // cannot be had — its legacy encoding (ESC p) is alt+up's — nor
+        // Ctrl+Alt+P, the psalm plugin's analysis key.
+        'toggle_preview' => ['label' => 'Toggle Preview', 'keys' => ['ctrl+alt+v']],
         // PhpStorm's split, which Porta used to collapse onto the popup: Alt+7 is
         // the persistent Structure TOOL WINDOW, Ctrl+F12 the transient popup.
         'ide_structure' => ['label' => 'Structure', 'keys' => ['alt+7']],

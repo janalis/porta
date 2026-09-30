@@ -15,6 +15,7 @@ use Porta\Tests\Support\FixedActiveFile;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
+use Porta\Workbench\EditorArea;
 use Porta\Workbench\StatusBarProvider;
 use Porta\Workbench\StatusCell;
 use Porta\Workbench\StatusSegment;
@@ -55,10 +56,13 @@ final class StatusBarPrefixTest extends TestCase
             $perSource,
         );
 
+        $buffers = new BufferManager();
+        $editor = new CodeEditorWidget();
+
         return new StatusBarProvider(
-            new BufferManager(),
-            new CodeEditorWidget(),
-            new EditorPanes(),
+            $buffers,
+            $editor,
+            new EditorArea($buffers, $editor, new EditorPanes(), new Tui(terminal: new VirtualTerminal(columns: 100, rows: 20))),
             $sources,
             new LspSessionPool(\sys_get_temp_dir(), new FixedActiveFile(), new Translator('en')),
             new ServerProgress(new Tui(terminal: new VirtualTerminal(columns: 100, rows: 20))),

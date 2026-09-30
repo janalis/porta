@@ -9,10 +9,9 @@ use Porta\Container\AsWidget;
 use Porta\Editor\TextPreview;
 use Porta\I18n\Translator;
 use Porta\Support\AnsiText;
-use Porta\Support\IntMath;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
-use Symfony\Component\Tui\Input\Key;
+use Porta\Widget\Support\ScrollsRows;
 use Symfony\Component\Tui\Render\RenderContext;
 
 /**
@@ -32,16 +31,17 @@ use Symfony\Component\Tui\Render\RenderContext;
  * that is never dirty with its cursor pinned at 0:0, so the guarantee comes
  * from the shape rather than from remembering to check a flag.
  *
- * It binds the EDITOR's own navigation verbs rather than minting `preview_*`
- * ids of its own. The help viewer mints its own because it has verbs of its own
- * — links, history, find — and this has nothing but scrolling. Rebinding
- * PageDown therefore moves it here too, which is the answer a user rebinding
- * "page down" means.
+ * It binds the EDITOR's own navigation verbs ({@see ScrollsRows}) rather than
+ * minting `preview_*` ids of its own. The help viewer mints its own because it
+ * has verbs of its own — links, history, find — and this has nothing but
+ * scrolling.
  */
 #[AsIdeService]
 #[AsWidget('text-preview')]
 final class TextPreviewWidget extends EditorPaneWidget
 {
+    use ScrollsRows;
+
     /** The routing id, matching the loader registered in {@see \Porta\Bootstrap\CorePanes}. */
     public const string PANE_ID = 'large-file';
 
@@ -55,41 +55,11 @@ final class TextPreviewWidget extends EditorPaneWidget
     /** @var list<string> the preview split into lines, built once per show() */
     private array $lines = [];
 
-    private int $scrollTop = 0;
-
-    /** Body rows of the last render, so PageUp/PageDown move by what was on screen. */
-    private int $bodyRows = 1;
-
     public function __construct(
         private readonly Translator $translator,
         ?Styles $styles = null,
     ) {
         $this->initStyles($styles);
-    }
-
-    /**
-     * Scrolling and tab management, and nothing else: there is no caret here to
-     * move, so the arrows scroll. The tab verbs are re-bound for the reason the
-     * help viewer re-binds them — the code editor is detached while a pane owns
-     * the slot, so its keymap is not listening.
-     *
-     * @return array<string, list<string>>
-     */
-    #[\Override]
-    protected static function getDefaultKeybindings(): array
-    {
-        return [
-            'cursor_up' => [Key::UP],
-            'cursor_down' => [Key::DOWN],
-            'page_up' => [Key::PAGE_UP],
-            'page_down' => [Key::PAGE_DOWN],
-            'document_start' => [Key::HOME],
-            'document_end' => [Key::END],
-            'next_buffer' => ['ctrl+right'],
-            'prev_buffer' => ['ctrl+left'],
-            'close_buffer' => ['ctrl+f4', 'alt+w'],
-            'goto_file' => ['ctrl+shift+n', 'ctrl+p'],
-        ];
     }
 
     #[\Override]
@@ -141,52 +111,6 @@ final class TextPreviewWidget extends EditorPaneWidget
     }
 
     #[\Override]
-    public function wheelBy(int $rows): void
-    {
-        $this->scrollBy($rows);
-    }
-
-    /** Move the view by $rows; the argument is a notch or a page, never a jump. */
-    public function scrollBy(int $rows): void
-    {
-        $this->scrollTo($this->scrollTop + $rows);
-    }
-
-    /**
-     * Put the view AT $top, clamped — which is how Home and End are expressed.
-     *
-     * Separate from {@see scrollBy()} rather than passing it `PHP_INT_MAX`, the
-     * idiom the help viewer uses: `$scrollTop + PHP_INT_MAX` overflows to float
-     * the moment the view is not already at the top, and the clamp below takes
-     * an int. That is not theoretical — End after a PageDown is the ordinary
-     * way to reach the bottom of a file, and it was a TypeError.
-     */
-    public function scrollTo(int $top): void
-    {
-        $this->scrollTop = $this->clampScroll($top);
-        $this->invalidate();
-    }
-
-    #[\Override]
-    public function handleInput(string $data): void
-    {
-        $kb = $this->getKeybindings();
-        match (true) {
-            $kb->matches($data, 'cursor_up') => $this->scrollBy(-1),
-            $kb->matches($data, 'cursor_down') => $this->scrollBy(1),
-            $kb->matches($data, 'page_up') => $this->scrollBy(-$this->bodyRows),
-            $kb->matches($data, 'page_down') => $this->scrollBy($this->bodyRows),
-            $kb->matches($data, 'document_start') => $this->scrollTo(0),
-            $kb->matches($data, 'document_end') => $this->scrollTo(\PHP_INT_MAX),
-            $kb->matches($data, 'next_buffer') => $this->handler?->cycleBuffer(1),
-            $kb->matches($data, 'prev_buffer') => $this->handler?->cycleBuffer(-1),
-            $kb->matches($data, 'close_buffer') => $this->handler?->closeBuffer(),
-            $kb->matches($data, 'goto_file') => $this->handler?->openGotoFile(),
-            default => null,
-        };
-    }
-
-    #[\Override]
     public function render(RenderContext $context): array
     {
         $cols = $context->getColumns();
@@ -234,10 +158,9 @@ final class TextPreviewWidget extends EditorPaneWidget
         return $this->styles->of(Role::HeaderBar)->apply(AnsiText::truncate($text, $cols, pad: true, ellipsis: ''));
     }
 
-    /** The furthest the view may scroll: the last body-full of lines. */
-    private function clampScroll(int $top): int
+    private function rowCount(): int
     {
-        return IntMath::clamp($top, 0, \max(0, \count($this->lines) - $this->bodyRows));
+        return \count($this->lines);
     }
 
     /**

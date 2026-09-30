@@ -32,16 +32,15 @@ final readonly class EditorLayoutPanes
     ) {}
 
     /**
-     * The pane currently holding the editor slot, or null when the code editor
-     * has it. One question instead of three named getters: a router asks what is
-     * showing rather than which of the built-in viewers it might be, so a
-     * plugin's pane is routed to on the same path.
+     * The pane on screen in the editor slot, or null when the code editor has
+     * it alone. One question instead of three named getters: a router asks what
+     * is showing rather than which of the built-in viewers it might be, so a
+     * plugin's pane is routed to on the same path — and a preview beside the
+     * editor is there to be clicked whichever of the two holds the keys.
      */
     public function pane(): ?EditorPaneWidget
     {
-        $widget = $this->editorArea->widget();
-
-        return $widget instanceof EditorPaneWidget ? $widget : null;
+        return $this->editorArea->visiblePane();
     }
 
     /** The pane above, when it is one the pointer can pan and zoom. */

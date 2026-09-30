@@ -10,6 +10,7 @@ use Porta\Editor\EditorPanes;
 use Porta\I18n\PaneReorder;
 use Porta\I18n\Translator;
 use Porta\Layout\PaneLayout;
+use Porta\Layout\PreviewSplit;
 use Porta\Layout\ResponsiveLayout;
 use Porta\Layout\ViewRegions;
 use Porta\Layout\WorkspaceLayout;
@@ -72,6 +73,7 @@ final class ResponsiveLayoutTest extends TestCase
             new PaneReorder(),
             new ViewRegistry(),
             new ViewRegions(Styles::dark()),
+            new PreviewSplit(Styles::dark()),
         );
         $this->paneLayout->arrangeEditorArea();
 
@@ -112,6 +114,7 @@ final class ResponsiveLayoutTest extends TestCase
             new PaneReorder(),
             new ViewRegistry(),
             $regions,
+            new PreviewSplit(Styles::dark()),
         );
 
         $paneLayout->applyDirection();
@@ -341,6 +344,7 @@ final class ResponsiveLayoutTest extends TestCase
             new PaneReorder(),
             new ViewRegistry(),
             $regions,
+            new PreviewSplit(Styles::dark()),
         );
 
         $paneLayout->arrangeViewAreas();
@@ -371,6 +375,7 @@ final class ResponsiveLayoutTest extends TestCase
             new PaneReorder(),
             new ViewRegistry(),
             $regions,
+            new PreviewSplit(Styles::dark()),
         );
         $ltr->applyDirection();
         $this->assertFalse($this->bidi->isMirrored(), 'an LTR locale must not install the reorder seam');
@@ -388,6 +393,7 @@ final class ResponsiveLayoutTest extends TestCase
             new PaneReorder(),
             new ViewRegistry(),
             $regions,
+            new PreviewSplit(Styles::dark()),
         );
         $rtl->applyDirection();
         $this->assertTrue($this->bidi->isMirrored(), 'an RTL locale must install it');
@@ -415,6 +421,7 @@ final class ResponsiveLayoutTest extends TestCase
             new PaneReorder(),
             new ViewRegistry(),
             $regions,
+            new PreviewSplit(Styles::dark()),
         );
 
         $paneLayout->applyDirection();

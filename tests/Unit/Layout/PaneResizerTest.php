@@ -9,11 +9,13 @@ use Porta\Config\LayoutStore;
 use Porta\I18n\Translator;
 use Porta\Layout\LayoutController;
 use Porta\Layout\PaneResizer;
+use Porta\Layout\PreviewSplit;
 use Porta\Layout\ViewRegions;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestBottomDock;
 use Porta\Tests\Support\TestTui;
 use Porta\Ui\Theme\Styles;
+use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\ResultsPanelWidget;
@@ -62,6 +64,7 @@ final class PaneResizerTest extends TestCase
             new TabBarWidget(),
             $this->regions,
             new Translator('en'),
+            new PreviewSplit(Styles::dark()),
         );
         $tui->add($this->nav);
         $tui->setFocus($this->nav);
@@ -70,8 +73,10 @@ final class PaneResizerTest extends TestCase
             $tui,
             $layout,
             new FileTreeWidget($project->dir),
+            new CodeEditorWidget(),
             TestBottomDock::create($tui, new TerminalPanelWidget(), new ResultsPanelWidget(), new DebugPanelWidget()),
             $this->regions,
+            new PreviewSplit(Styles::dark()),
         );
     }
 
@@ -114,6 +119,7 @@ final class PaneResizerTest extends TestCase
             new TabBarWidget(),
             $regions,
             new Translator('en'),
+            new PreviewSplit(Styles::dark()),
         );
         $tui->add($tree);
         $tui->setFocus($tree);
@@ -121,8 +127,10 @@ final class PaneResizerTest extends TestCase
             $tui,
             $layout,
             $tree,
+            new CodeEditorWidget(),
             TestBottomDock::create($tui, new TerminalPanelWidget(), new ResultsPanelWidget(), new DebugPanelWidget()),
             $regions,
+            new PreviewSplit(Styles::dark()),
         );
         $before = $tree->width();
 
@@ -160,8 +168,9 @@ final class PaneResizerTest extends TestCase
             new TabBarWidget(),
             $regions,
             new Translator('en'),
+            new PreviewSplit(Styles::dark()),
         );
-        $resizer = new PaneResizer($tui, $layout, new FileTreeWidget($project->dir), $dock, $regions);
+        $resizer = new PaneResizer($tui, $layout, new FileTreeWidget($project->dir), new CodeEditorWidget(), $dock, $regions, new PreviewSplit(Styles::dark()));
 
         $this->assertSame($debug, $dock->visiblePanel(), 'sanity: the debug panel is the one the dock shows');
         $this->assertTrue($resizer->canResize(), 'the focused widget is the dock\'s own visible panel');

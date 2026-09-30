@@ -14,9 +14,11 @@ use Porta\GitPlugin\Widget\HistoryListWidget;
 use Porta\I18n\Translator;
 use Porta\Input\MouseEvent;
 use Porta\Layout\LayoutController;
+use Porta\Layout\PreviewSplit;
 use Porta\Tests\Support\BuildsLayoutController;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TestBottomDock;
+use Porta\Ui\Theme\Styles;
 use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\Support\TabBarPosition;
@@ -115,6 +117,7 @@ final class LayoutControllerNudgeTest extends TestCase
             new TabBarWidget(),
             $this->regions,
             new Translator('en'),
+            new PreviewSplit(Styles::dark()),
         );
         $dock->showList(ResultsPanelMode::RecentLocations, 'Recent Locations', []);
 
@@ -148,6 +151,7 @@ final class LayoutControllerNudgeTest extends TestCase
             new TabBarWidget(),
             $this->regions,
             new Translator('en'),
+            new PreviewSplit(Styles::dark()),
         );
         $dock->showList(ResultsPanelMode::RecentLocations, 'Recent Locations', []);
 
@@ -231,6 +235,7 @@ final class LayoutControllerNudgeTest extends TestCase
             new TabBarWidget(),
             $this->regions,
             new Translator('en'),
+            new PreviewSplit(Styles::dark()),
         );
         $dock->showList(ResultsPanelMode::RecentLocations, 'Recent Locations', []);
         $layout->nudgeBottomPanel(1); // persist a proportion, so applyLayout has one to restore
@@ -261,6 +266,7 @@ final class LayoutControllerNudgeTest extends TestCase
             $tabBar,
             $this->regions,
             new Translator('en'),
+            new PreviewSplit(Styles::dark()),
         );
         $dock->showList(ResultsPanelMode::RecentLocations, 'Recent Locations', []);
         $layout->toggleBottomPanelMaximised();

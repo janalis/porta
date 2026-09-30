@@ -12,6 +12,7 @@ use Porta\I18n\Translator;
 use Porta\Input\HitTester;
 use Porta\Layout\EditorAreaPanes;
 use Porta\Layout\LayoutController;
+use Porta\Layout\PreviewSplit;
 use Porta\Layout\ViewRegion;
 use Porta\Layout\ViewRegions;
 use Porta\Tests\Support\FakeScheduler;
@@ -127,6 +128,7 @@ final class ViewRegistrarTest extends TestCase
                 new TabBarWidget(),
                 $regions,
                 $translator,
+                new PreviewSplit(Styles::dark()),
             ),
             new ScreenDensity(),
         );

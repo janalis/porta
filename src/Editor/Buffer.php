@@ -71,6 +71,17 @@ final class Buffer
      */
     public bool $pinned = false;
 
+    /**
+     * The pane that previews this TEXT buffer beside the editor (the markdown,
+     * image or graph pane), or null when nothing does. Unlike {@see $paneId}
+     * this does not make the buffer a viewer: the document is the real file,
+     * and the pane is fed its text as it changes.
+     */
+    public ?string $previewId = null;
+
+    /** How a previewed buffer is arranged; a new tab opens beside its preview. */
+    public PreviewMode $previewMode = PreviewMode::Split;
+
     public readonly CodeHighlighter $highlighter;
 
     public function __construct(
@@ -95,6 +106,16 @@ final class Buffer
     public function isViewer(): bool
     {
         return null !== $this->paneId;
+    }
+
+    /**
+     * The arrangement this buffer shows in, or null when it has no preview —
+     * the question the toggles, the commands and the slot all ask. A viewer
+     * tab never has one: its pane IS the tab.
+     */
+    public function previewArrangement(): ?PreviewMode
+    {
+        return null === $this->previewId || $this->isViewer() ? null : $this->previewMode;
     }
 
     /** Whether the document has unsaved changes. */

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Input;
 
 use Porta\Container\LayoutSlot;
+use Porta\Layout\PreviewSplit;
 use Porta\Layout\ViewRegions;
 use Porta\Overlay\State\MenuOverlayController;
 use Porta\Overlay\State\ToastCenter;
@@ -49,6 +50,7 @@ final readonly class HoverRouter
         private StatusBarWidget $statusBar,
         private TooltipRouter $tooltips,
         private ViewRegions $regions,
+        private PreviewSplit $previewSplit,
     ) {}
 
     /**
@@ -277,6 +279,7 @@ final readonly class HoverRouter
         $this->updateStripHover($mouse);
         $this->updateListHover($mouse);
         $this->updateSeparatorHover($mouse, $this->separator);
+        $this->updateSeparatorHover($mouse, $this->previewSplit->separator);
 
         if ($this->handleMenuHover($mouse)) {
             return;

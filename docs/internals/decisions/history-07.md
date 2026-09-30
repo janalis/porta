@@ -1362,3 +1362,62 @@ would spend over 100 ms per frame. The bytes double as well (820 vs 1712).
 
 *Re-opens on:* a vendor fast path for runs of U+10EEEE placeholders, or a
 `MAX_CELLS` cap (239 cells a side) that a real pane outgrows.
+
+## The live preview split (2026-09-30)
+
+Markdown, SVG, DOT and PlantUML files open as TEXT, with a live preview beside
+them. Before, SVG and the diagrams opened in a read-only viewer, and "Open as
+Text" was the only way back to the source. Markdown had no rendered view at all
+outside the help browser. The toggles at the breadcrumbs bar's right end and
+`Ctrl+Alt+V` switch between Editor, Split and Preview. The divider drags, and
+Shift+F11/F12 nudges it. `.porta/layout.json` keeps one share for every
+previewed file.
+
+**Not the editor splits.** Editor splits were measured and declined. The
+reason: `CodeEditorWidget` is one shared service with 25 constructor
+injections, all meaning *the* editor. That decline was recorded only in agent
+memory until now. The preview split needs none of it. There is one editor, one
+active buffer and one focused-editor model; the right half is an ordinary
+`EditorPaneWidget` fed the buffer's text. A split of two TEXT views would still
+reopen that measurement.
+
+What it took, and why each piece is shaped as it is:
+
+- **Routing.** `PluginApi::registerPreview()` sits beside `registerViewer()`,
+  on the same `ViewerProviderSource` seam, because both answer one question for
+  one consumer. `Editor\PreviewRoutes` adds core's markdown claim behind the
+  plugins'. A preview claim is asked first, and only for a file small enough to
+  edit (2 MB), so a viewer claim still takes a file too large for the editor.
+  The bundled plugins keep both claims for that reason.
+- **The slot.** `Layout\PreviewSplit` sizes its two sides by FLEX WEIGHT,
+  never by a width. A fixed side would be `flex: 0`, and the layout engine
+  measures an intrinsic side by rendering it — the editor, twice a frame, its
+  cache cleared in between. Weights cost nothing, hold across a resize and are
+  exactly the persisted value. Below 41 columns the split shows the text alone
+  and keeps Split as the arrangement.
+- **The feed.** `Editor\PreviewFeeder` watches `Document::$version` from the
+  frame hook, the `StructureFollowsCaret` shape. No event covers every
+  mutation: typing, a formatter, an LSP edit, undo and a reload all move the
+  version. A trailing 0.15 s pause means a burst of typing costs one render.
+- **Focus.** `EditorArea::widget()` is whichever half has the keys;
+  `entry()` is where they land when the area is entered anew (the text, unless
+  the preview is alone). The status bar speaks for the focused half, so a
+  graph's node count shows once the graph is clicked.
+- **A lone preview hands the text back.** The pickers and the unsaved-changes
+  list composite over the EDITOR, which Preview detaches. They switch the tab
+  to Split first rather than open over a widget nothing draws.
+
+**`BufferService`'s pane-swap cluster was extracted, reopening a settled row.**
+The extraction audit rejected it at one exclusive dependency. The split gave
+it a second (`PreviewSplit`, beside `editor_body`). Kept in place, it also made
+a new `Editor>Layout` edge and pushed `BufferService` past the kan-defect
+ceiling of 8. It is `Workbench\EditorSlot` now. That is the audit's own reopen
+condition, a changed dependency count on one candidate, not a fresh sweep.
+
+**Alt+P could not be the key.** The legacy encoding of Alt+P (`ESC p`) is what
+the key parser reads as Alt+Up, so it ran Previous Declaration. Ctrl+Alt+P is
+the psalm plugin's. Ctrl+Alt+V is free and encodes cleanly (`ESC ^V`).
+
+*Re-opens on:* a request for two text views of one file, which is the editor
+split and its 25 injection sites; or a preview whose render is too slow for the
+0.15 s pause, which would need the pause per pane rather than one constant.

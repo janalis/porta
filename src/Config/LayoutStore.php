@@ -9,7 +9,8 @@ use Symfony\Component\Filesystem\Filesystem;
 
 /**
  * Persists the user-adjusted pane proportions (sidebar width and bottom-panel
- * height, as percentages of the terminal size) to `<root>/.porta/layout.json`,
+ * height, as percentages of the terminal size, and the editor's share of a
+ * preview split) to `<root>/.porta/layout.json`,
  * so a project reopens with the same layout. The file may also be hand-edited.
  */
 final readonly class LayoutStore
@@ -35,6 +36,9 @@ final readonly class LayoutStore
         if ([] !== $prefs->viewSidebarWidthPercent) {
             $data['viewSidebarWidthPercent'] = $prefs->viewSidebarWidthPercent;
         }
+        if (null !== $prefs->previewSplitPercent) {
+            $data['previewSplitPercent'] = $prefs->previewSplitPercent;
+        }
 
         return JsonFile::write($this->fs, $this->file, $data);
     }
@@ -51,6 +55,7 @@ final readonly class LayoutStore
             sidebarWidthPercent: $this->percent($data['sidebarWidthPercent'] ?? null),
             bottomPanelHeightPercent: $this->percent($data['bottomPanelHeightPercent'] ?? null),
             viewSidebarWidthPercent: $this->viewWidths($data),
+            previewSplitPercent: $this->percent($data['previewSplitPercent'] ?? null),
         );
     }
 

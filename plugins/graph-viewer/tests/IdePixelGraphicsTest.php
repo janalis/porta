@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Porta\GraphViewer\Tests;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Ide;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\PreservesPath;
+use Porta\Tests\Support\Previews;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\UsesBundledPlugins;
@@ -45,7 +47,8 @@ final class IdePixelGraphicsTest extends TestCase
             $project,
             $project->path('g.dot'),
             [
-                0 => function (Tui $tui, VirtualTerminal $terminal): void {
+                0 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
+                    Previews::alone($ide); // the picture across the whole editor area, as the viewer tab was
                     $this->await(static fn (): bool => \str_contains($terminal->getOutput(), "\x1b_Gi=31,"), what: 'the graphics probe');
                     $terminal->simulateInput("\x1b_Gi=31;OK\x1b\\\x1b[6;16;8t\x1b[?62;22c");
                     $this->awaitPaintedRaw($tui, $terminal, self::PLACEHOLDER);
@@ -65,7 +68,10 @@ final class IdePixelGraphicsTest extends TestCase
                     foreach ($crossed as $row) {
                         $this->assertSame(2, \substr_count($row, needle: '┃'), 'both borders survive a row of picture: '.$row);
                     }
-                    $this->assertStringContainsString('Alt+Z', \implode("\n", $crossed), 'a shortcut at the dropdown\'s far edge is still drawn');
+                    // Whichever items the picture happens to cross, one of them
+                    // carries a shortcut at the box's far edge — the cell a
+                    // mismeasured placeholder row used to cut off.
+                    $this->assertMatchesRegularExpression('/Alt\+[0-9A-Z]/', \implode("\n", $crossed), 'a shortcut at the dropdown\'s far edge is still drawn');
 
                     $tui->handleInput("\x1b");
                     $tui->handleInput("\x1b");

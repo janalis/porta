@@ -19,7 +19,8 @@ use Porta\Widget\EditorPaneWidget;
 
 /**
  * The Graphviz graph viewer as a bundled plugin: the routing claim (.dot/.gv
- * open in the built-in graph pane), the Project Architecture command, the
+ * open as text with the graph pane previewing them live), the Project
+ * Architecture command, the
  * SVG/PNG exports and the generator-command setting. This file only WIRES:
  * everything behind it — the pane widget, the layout engines, the DOT parser,
  * the renderers and the architecture scanner — is this plugin's OWN code
@@ -49,7 +50,12 @@ return new class('graph-viewer') extends AbstractPlugin {
         $api->registerSetting('dotPath', 'Graphviz dot path', hint: 'empty = discover on PATH');
         $api->registerSetting('renderMode', 'Graph rendering', 'choice', 'bitmap', ['bitmap', 'cells']);
         $api->registerSetting('plantumlPath', 'PlantUML path (or .jar)', hint: 'empty = discover');
-        $api->registerViewer('graph', fn (string $path): bool => DotFiles::isDotPath($path) || $this->claimsPlantUml($path));
+        // A diagram is its SOURCE: it opens in the editor with the drawing
+        // beside it, re-laid-out as it is edited. The viewer claim keeps a
+        // file too large for the editor, which the preview claim declines.
+        $diagram = fn (string $path): bool => DotFiles::isDotPath($path) || $this->claimsPlantUml($path);
+        $api->registerPreview('graph', $diagram);
+        $api->registerViewer('graph', $diagram);
         // A value written under the pre-move core key is adopted once and
         // written through from onReady (persisting is an IDE action).
         $legacy = new LegacyCoreSettings($api->projectRoot(), 'graph-viewer', ['dotPath' => 'dotPath', 'renderMode' => 'graphRender', 'plantumlPath' => 'plantuml']);

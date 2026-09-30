@@ -14,6 +14,7 @@ use Porta\Plugin\Lifecycle\PluginLifecycle;
 use Porta\Plugin\Runtime\PluginHost;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\PreservesPath;
+use Porta\Tests\Support\Previews;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
@@ -71,7 +72,8 @@ final class IdeGraphViewerTest extends TestCase
             $project,
             $project->path('g.dot'),
             [
-                200 => function ($tui, $terminal, $ide) use ($project): void {
+                200 => function ($tui, $terminal, Ide $ide) use ($project): void {
+                    Previews::alone($ide); // the graph's own status segment, with the keys
                     $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'nodes'), what: 'the adopted dotPath laying out the graph');
                     $this->await(static function () use ($project): bool {
                         $file = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true);
@@ -106,6 +108,7 @@ final class IdeGraphViewerTest extends TestCase
             $project->path('g.dot'),
             [
                 200 => function ($tui, $terminal, Ide $ide) use ($project): void {
+                    Previews::alone($ide);
                     // A bogus path: the engine reports rather than laying out.
                     $this->await(
                         static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'could not start dot'),
@@ -123,6 +126,7 @@ final class IdeGraphViewerTest extends TestCase
                     // rather than reusing the layout it cached by hash; the NEW
                     // binary is what answers, with no restart.
                     Services::resolve($ide, BufferService::class)->openFile((string) \realpath($project->path('h.dot')));
+                    Previews::alone($ide);
                     $this->await(
                         static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'nodes'),
                         what: 'the edited dotPath laying out the graph',
@@ -157,7 +161,8 @@ final class IdeGraphViewerTest extends TestCase
             $project,
             $project->path('g.dot'),
             [
-                200 => function (Tui $tui, $terminal, $ide): void {
+                200 => function (Tui $tui, $terminal, Ide $ide): void {
+                    Previews::alone($ide);
                     $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'nodes'), what: 'the graph layout to land');
                     $this->assertSame('graph-viewer', $tui->getFocus()?->getId());
 
@@ -184,7 +189,8 @@ final class IdeGraphViewerTest extends TestCase
             $project,
             $dotPath,
             [
-                200 => function (Tui $tui, $terminal, $ide): void {
+                200 => function (Tui $tui, $terminal, Ide $ide): void {
+                    Previews::alone($ide);
                     // The stub answers on the loop: await the layout instead of sleeping.
                     $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'nodes'), what: 'the graph layout to land');
                     $this->frame($tui);
@@ -253,7 +259,8 @@ final class IdeGraphViewerTest extends TestCase
             $project,
             $project->path('g.dot'),
             [
-                200 => function ($tui, $terminal, $ide): void {
+                200 => function ($tui, $terminal, Ide $ide): void {
+                    Previews::alone($ide);
                     $screen = static fn (): string => AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->await(static fn (): bool => \str_contains($screen(), 'nodes'), what: 'the graph layout to land');
 
@@ -316,7 +323,8 @@ final class IdeGraphViewerTest extends TestCase
             $project,
             $project->path('g.dot'),
             [
-                200 => function (Tui $tui, VirtualTerminal $terminal): void {
+                200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
+                    Previews::alone($ide); // `v` is the pane's key
                     // Read the CURRENT grid: the accumulated output still holds
                     // the cell rendering that painted before the bitmap landed.
                     $grid = fn (): string => \implode("\n", $this->screenGrid($tui, $terminal));
@@ -348,7 +356,8 @@ final class IdeGraphViewerTest extends TestCase
             $project,
             $project->path('seq.puml'),
             [
-                200 => function (Tui $tui, VirtualTerminal $terminal): void {
+                200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
+                    Previews::alone($ide);
                     $grid = fn (): string => \implode("\n", $this->screenGrid($tui, $terminal));
                     $this->await(static fn (): bool => \str_contains($grid(), '▀'), what: "PlantUML's picture to paint");
 
@@ -428,6 +437,7 @@ final class IdeGraphViewerTest extends TestCase
             $dotPath,
             [
                 200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($dotPath, $phpPath, $bigPath, $binaryPath, $archPath): void {
+                    Previews::alone($ide); // kept by the tab: every re-open below shows the graph alone
                     $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'nodes'), what: 'the graph layout');
                     $buffers = Services::resolve($ide, BufferManager::class);
                     $this->assertCount(1, $buffers->all());
@@ -444,24 +454,24 @@ final class IdeGraphViewerTest extends TestCase
                     $this->awaitPainted($tui, $terminal, '3 nodes');
                     $this->assertStringContainsString('3 nodes', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
 
-                    // An explicit re-open of a tab whose file changed on disk
-                    // refreshes the payload immediately — no 1s reconciler wait.
+                    // The graph is a text buffer now: a change on disk reloads
+                    // it like any other file, and the preview follows the text.
                     // (The display cannot prove it — fake-dot ignores stdin —
-                    // so assert the model; the synchronous refresh needs no await.)
-                    $service->openFile($phpPath);
+                    // so assert the model.)
                     \file_put_contents($dotPath, data: "digraph G { A -> B; }\n");
-                    $service->openFile($dotPath);
-                    $this->assertSame("digraph G { A -> B; }\n", $buffers->get($dotPath)?->panePayload, 'the payload refreshed on the explicit re-open');
+                    \touch($dotPath, mtime: \time() + 2);
+                    $service->pollFilesystem();
+                    $this->assertSame("digraph G { A -> B; }\n", $buffers->get($dotPath)?->document->getText(), 'the text reloaded from disk');
 
                     $service->openFile($bigPath);
-                    $this->assertCount(2, $buffers->all(), 'an oversized DOT is refused');
+                    $this->assertCount(2, $buffers->all(), 'an oversized DOT is refused — too large to edit, and too large for its viewer');
                     $service->openFile($binaryPath);
                     $this->assertCount(2, $buffers->all(), 'a non-UTF-8 DOT is refused');
 
                     $service->openFile($archPath, OpenFocus::Editor);
                     $this->awaitPainted($tui, $terminal, 'Project Architecture');
                     $this->assertStringContainsString('Project Architecture', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the artifact path titles its tab');
-                    $this->assertSame('graph-viewer', $tui->getFocus()?->getId(), 'OpenFocus::Editor lands on the viewer');
+                    $this->assertSame('graph-viewer', $tui->getFocus()?->getId(), 'the generated graph opens to be looked at: its preview alone, with the keys');
 
                     $service->closeTabsExcept($phpPath); // graph tabs bulk-close through forget()
                     $this->frame($tui);
@@ -644,6 +654,34 @@ final class IdeGraphViewerTest extends TestCase
                     Services::resolve($ide, CommandRegistry::class)->run('graph-viewer:export-svg');
                     $this->pump(0.1);
                     $this->assertStringNotContainsString('Exported', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                },
+            ],
+        );
+    }
+
+    public function testADiagramTooLargeToEditStillOpensInTheGraphPane(): void
+    {
+        // Past the editor's 2 MB the preview declines and the viewer claim
+        // takes the file, under the viewer's own 10 MB cap.
+        $project = new TempProject([
+            '.porta.json' => (string) \json_encode(['enabledPlugins' => ['graph-viewer', 'image-viewer'], 'plugins' => ['graph-viewer' => ['dotPath' => self::fakeDot()]]]),
+            'huge.dot' => '/* '.\str_repeat('x', times: 2_200_000).' */ '.self::SMALL_DOT,
+            'huge-binary.dot' => "\xff\xfe\x00digraph".\str_repeat('x', times: 2_200_000),
+        ]);
+        $this->phpOnlyPath($project);
+
+        $this->runIde(
+            $project,
+            $project->path('huge.dot'),
+            [
+                200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
+                    $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'nodes'), what: 'the graph of a file too large to edit');
+                    $buffers = Services::resolve($ide, BufferManager::class);
+                    $this->assertTrue($buffers->active()?->isViewer(), 'a viewer tab, not a text one');
+
+                    Services::resolve($ide, BufferService::class)->openFile((string) \realpath($project->path('huge-binary.dot')));
+                    $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Not a UTF-8 text file'), what: 'the viewer\'s refusal');
+                    $this->assertCount(1, $buffers->all());
                 },
             ],
         );

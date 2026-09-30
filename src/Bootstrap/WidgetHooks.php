@@ -6,6 +6,8 @@ namespace Porta\Bootstrap;
 
 use Porta\Container\AsIdeService;
 use Porta\Editor\BreadcrumbTrailProvider;
+use Porta\Editor\BufferManager;
+use Porta\Editor\PreviewMode;
 use Porta\Help\HelpViewerActions;
 use Porta\Overlay\State\MenuOverlayController;
 use Porta\Run\RunController;
@@ -57,6 +59,7 @@ final readonly class WidgetHooks
         private MenuOverlayController $overlay,
         private ViewRegistry $views,
         private EditorArea $editorArea,
+        private BufferManager $buffers,
         private string $docsDir,
     ) {}
 
@@ -74,6 +77,7 @@ final readonly class WidgetHooks
             return $pane instanceof FocusableInterface && $pane->isFocused();
         });
         $this->breadcrumbs->setProvider($this->trail->trail(...));
+        $this->breadcrumbs->setPreviewProvider(fn (): ?PreviewMode => $this->buffers->active()?->previewArrangement());
         $this->statusBar->setProvider($this->statusSegments->segments(...));
 
         // The dock hooks (single-visible invariant, MRU restore, focus return)

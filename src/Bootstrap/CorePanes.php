@@ -6,15 +6,19 @@ namespace Porta\Bootstrap;
 
 use Porta\Container\AsIdeService;
 use Porta\Editor\EditorPanes;
+use Porta\Editor\PreviewRoutes;
 use Porta\Editor\TextPreview;
 use Porta\I18n\Translator;
 use Porta\Support\Files;
+use Porta\Support\ProjectPaths;
 use Porta\Widget\HelpViewerWidget;
+use Porta\Widget\MarkdownPreviewWidget;
 use Porta\Widget\TextPreviewWidget;
 
 /**
- * Registers the panes core ships — the help browser and the read-only look at
- * a file too large to edit — into the same registry a plugin's
+ * Registers the panes core ships — the help browser, the read-only look at a
+ * file too large to edit, and the markdown preview — into the same registry a
+ * plugin's
  * `registerPane()` reaches through
  * {@see \Porta\Editor\PaneRegistrar}.
  *
@@ -31,17 +35,26 @@ use Porta\Widget\TextPreviewWidget;
 #[AsIdeService]
 final readonly class CorePanes
 {
+    /** What core previews itself: markdown, by the extensions a README is written under. */
+    private const array MARKDOWN_EXTENSIONS = ['md', 'markdown'];
+
     public function __construct(
         private EditorPanes $panes,
         private HelpViewerWidget $helpViewer,
         private TextPreviewWidget $textPreview,
+        private MarkdownPreviewWidget $markdownPreview,
+        private PreviewRoutes $previews,
         private Translator $translator,
     ) {}
 
     public function register(): void
     {
-        $this->panes->register($this->helpViewer, $this->loadHelp(...));
+        $this->panes->register($this->helpViewer, $this->loadText(...));
         $this->panes->register($this->textPreview, $this->loadPreview(...));
+        // A preview is fed the editor's text, so its loader is only the path a
+        // pane has to have — nothing routes a markdown file to it as a viewer.
+        $this->panes->register($this->markdownPreview, $this->loadText(...));
+        $this->previews->claim(MarkdownPreviewWidget::PANE_ID, static fn (string $path): bool => ProjectPaths::hasExtension($path, self::MARKDOWN_EXTENSIONS));
     }
 
     /**
@@ -75,7 +88,7 @@ final readonly class CorePanes
     }
 
     /** A help page is text: read it, refusing anything that is not UTF-8. */
-    private function loadHelp(string $path): string
+    private function loadText(string $path): string
     {
         $content = Files::read($path);
         if ('' !== $content && !\mb_check_encoding($content, encoding: 'UTF-8')) {

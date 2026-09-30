@@ -283,7 +283,7 @@ The IDE writes a `.porta/` directory into the project you open:
 | --- | --- |
 | `.porta/session.json` | Open buffers and cursor positions, restored when you launch without a file argument |
 | `.porta/recent-files.json` | The files this project has had open, newest first, capped at 32 — what `Ctrl+E` offers below the open tabs |
-| `.porta/layout.json` | Pane proportions (sidebar widths, bottom-panel height, git view splits) — hand-editable |
+| `.porta/layout.json` | Pane proportions (sidebar widths, bottom-panel height, git view splits, the editor's share beside a live preview) — hand-editable |
 | `.porta/history/` | Local-history snapshots (see below) |
 | `.porta/reviews/` | Local code reviews an agent writes and you answer — see [review.md](review.md#local-reviews-the-format-an-agent-writes) |
 | `.porta/plugins/` | Installed project-scope plugins |

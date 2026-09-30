@@ -3026,6 +3026,30 @@
         <source>resolved</source>
         <target>解決済み</target>
       </trans-unit>
+      <trans-unit id="1076">
+        <source>Split</source>
+        <target>分割</target>
+      </trans-unit>
+      <trans-unit id="1077">
+        <source>Preview</source>
+        <target>プレビュー</target>
+      </trans-unit>
+      <trans-unit id="1078">
+        <source>Toggle Preview</source>
+        <target>プレビューの切り替え</target>
+      </trans-unit>
+      <trans-unit id="1079">
+        <source>Editor Only</source>
+        <target>エディターのみ</target>
+      </trans-unit>
+      <trans-unit id="1080">
+        <source>Editor and Preview</source>
+        <target>エディターとプレビュー</target>
+      </trans-unit>
+      <trans-unit id="1081">
+        <source>Preview Only</source>
+        <target>プレビューのみ</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

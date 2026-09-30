@@ -13,7 +13,7 @@ use Symfony\Component\Tui\Tui;
  * editor area's focusable content, and the bottom dock's visible panel. The
  * editor area resolves the ring member per cycle so the ring always lands on
  * the active tab's attached viewer (editor / image / help) and never on a
- * detached widget. The git and settings views own their pane cycling; the
+ * detached widget — and stops at both halves of a preview split. The git and settings views own their pane cycling; the
  * coordinator delegates to them instead of this ring while they are open.
  */
 final readonly class FocusRing
@@ -28,7 +28,7 @@ final readonly class FocusRing
     /** Move focus to the next (+1) or previous (-1) ring member, wrapping around. */
     public function cycle(int $direction): void
     {
-        $members = [$this->tree, $this->editorArea->widget()];
+        $members = [$this->tree, ...$this->editorArea->members()];
         $panel = $this->dock->visiblePanel();
         if (null !== $panel) {
             $members[] = $panel;

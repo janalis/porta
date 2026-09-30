@@ -93,6 +93,7 @@ final class PluginApiDocTest extends TestCase
                 'bufferedMenuItems',
                 'bufferedMenus',
                 'bufferedPanes',
+                'bufferedPreviews',
                 'bufferedSettingHooks',
                 'bufferedSettings',
                 'bufferedStatusSegments',

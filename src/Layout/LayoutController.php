@@ -59,6 +59,15 @@ final class LayoutController
     private int $panelResizeChrome = 0;
     private ?int $bottomPanelHeightPercent = null;
 
+    /** True while a drag on the preview split's divider is armed. */
+    private bool $previewResizing = false;
+
+    /** The split's share when the drag was armed, so a press that never moved persists nothing. */
+    private int $previewResizeStart = 0;
+
+    /** The editor's persisted share of a preview split, in percent (null = never dragged). */
+    private ?int $previewSplitPercent = null;
+
     /**
      * The height to give the bottom panel back when maximise is toggled off —
      * and, being non-null, the fact that it IS maximised. Not persisted: a
@@ -76,6 +85,7 @@ final class LayoutController
         private readonly TabBarWidget $tabBar,
         private readonly ViewRegions $regions,
         private readonly Translator $translator,
+        private readonly PreviewSplit $previewSplit,
     ) {
         $this->treeResize = new SidebarResizeState($tree);
     }
@@ -109,6 +119,12 @@ final class LayoutController
             }
         }
         $this->bottomPanelHeightPercent = $layout->bottomPanelHeightPercent;
+        $this->previewSplitPercent = $layout->previewSplitPercent;
+        if (null !== $this->previewSplitPercent) {
+            // A share, not a width: it holds across a terminal resize by
+            // itself, so there is nothing to recompute here.
+            $this->previewSplit->setPercent($this->previewSplitPercent);
+        }
 
         // Plain width fields: safe to set even while a view's widgets are detached.
         foreach ($this->sidebarResizes() as $state) {
@@ -153,6 +169,9 @@ final class LayoutController
             if ($this->continueSidebarResize($mouse, $viewLeftRect, $state)) {
                 return true;
             }
+        }
+        if ($this->continuePreviewResize($mouse)) {
+            return true;
         }
 
         // Bottom-panel resize: dragging a panel's top edge sets the bottom-panel height.
@@ -202,6 +221,31 @@ final class LayoutController
     }
 
     /**
+     * Apply an armed drag on the preview split's divider, and persist the
+     * share on release. The split measures the pointer against its own area,
+     * so a drag that wanders over the tree or the tab strip still resolves.
+     */
+    private function continuePreviewResize(MouseEvent $mouse): bool
+    {
+        if (!$this->previewResizing || !($mouse->isLeftDrag() || $mouse->isLeftRelease())) {
+            return false;
+        }
+        $rect = $this->previewSplit->rect();
+        if (null !== $rect) {
+            $this->previewSplit->dragTo($mouse->col, $rect);
+            $this->tui->requestRender();
+        }
+        if ($mouse->isLeftRelease()) {
+            $this->previewResizing = false;
+            if ($this->previewSplit->percent() !== $this->previewResizeStart) {
+                $this->commitPreviewSplit();
+            }
+        }
+
+        return true;
+    }
+
+    /**
      * The sidebar width a drag to $mouse implies: the distance from the pane's
      * anchored edge to the pointer. The pane is anchored where the layout pins
      * it — left edge under LTR, right edge under RTL, where
@@ -230,6 +274,20 @@ final class LayoutController
         $state = $this->viewResize($id);
 
         return null !== $state && $this->arm($state, $separatorRect, $mouse);
+    }
+
+    /** Arm a drag when a left-press lands on the preview split's divider, while it is on screen. */
+    public function armPreviewResize(MouseEvent $mouse): bool
+    {
+        $separator = $this->previewSplit->separator;
+        $rect = null === $separator->getContext() ? null : $this->renderer->getWidgetRect($separator);
+        if (null === $rect || !$rect->contains($mouse->row, $mouse->col)) {
+            return false;
+        }
+        $this->previewResizeStart = $this->previewSplit->percent();
+        $this->previewResizing = true;
+
+        return true;
     }
 
     /** The shared arm path: capture the start width, mark the drag active. */
@@ -273,6 +331,28 @@ final class LayoutController
     public function nudgeSidebar(int $delta): void
     {
         $this->nudgeSidebarWidth($this->treeResize, $delta);
+    }
+
+    /** Keyboard resize of the preview split (Shift+F11/F12 from either half): the editor side by $delta columns. */
+    public function nudgePreviewSplit(int $delta): void
+    {
+        $rect = $this->previewSplit->rect();
+        if (null === $rect) {
+            return;
+        }
+        $this->previewSplit->nudge($delta, $rect);
+        $this->commitPreviewSplit();
+        $this->tui->requestRender();
+    }
+
+    /** Persist the split's share when it moved — one global proportion, for every previewed file. */
+    private function commitPreviewSplit(): void
+    {
+        $percent = $this->previewSplit->percent();
+        if ($percent !== $this->previewSplitPercent) {
+            $this->previewSplitPercent = $percent;
+            $this->persistLayout();
+        }
     }
 
     /** Keyboard resize of a view's sidebar. */
@@ -411,6 +491,7 @@ final class LayoutController
             $state->resizing = ResizeState::Idle;
         }
         $this->panelResizing = false;
+        $this->previewResizing = false;
     }
 
     /** @return list<SidebarResizeState> */
@@ -492,6 +573,7 @@ final class LayoutController
             sidebarWidthPercent: $this->treeResize->widthPercent,
             bottomPanelHeightPercent: $this->bottomPanelHeightPercent,
             viewSidebarWidthPercent: $this->viewWidths(),
+            previewSplitPercent: $this->previewSplitPercent,
         ));
     }
 }

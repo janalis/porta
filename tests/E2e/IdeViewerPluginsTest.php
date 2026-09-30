@@ -6,6 +6,7 @@ namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
+use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Editor\EditorPanes;
@@ -85,27 +86,28 @@ final class IdeViewerPluginsTest extends TestCase
             $project->path('a.dot'),
             [
                 200 => function ($tui, $terminal, Ide $ide) use ($project): void {
-                    $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'nodes'), what: 'the graph layout');
                     $buffers = Services::resolve($ide, BufferManager::class);
                     $aPath = (string) \realpath($project->path('a.dot'));
-                    $this->assertSame('graph', $buffers->get($aPath)?->paneId, 'default-enabled: the viewer routed the initial file');
+                    $this->assertSame('graph', $buffers->get($aPath)?->previewId, 'default-enabled: the initial file opened with the graph beside it');
+                    $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), '┌'), what: 'the graph layout');
 
                     $lifecycle = Services::resolve($ide, PluginLifecycle::class);
                     $lifecycle->disable('graph-viewer');
-                    $this->assertSame('graph', $buffers->get($aPath)?->paneId, 'the open tab STAYS a graph tab');
+                    $this->assertSame('graph', $buffers->get($aPath)?->previewId, 'the open tab KEEPS its preview: the pane stays standing');
                     $this->assertNull(Services::resolve($ide, CommandRegistry::class)->label('graph-viewer:architecture'), 'the plugin commands left the registry live');
 
                     $service = Services::resolve($ide, BufferService::class);
                     $bPath = (string) \realpath($project->path('b.dot'));
                     $service->openFile($bPath);
                     $tui->tick();
-                    $this->assertNotSame('graph', $buffers->get($bPath)?->paneId, 'a NEW .dot open routes to text while disabled');
+                    $this->assertInstanceOf(Buffer::class, $buffers->get($bPath), 'b.dot opened');
+                    $this->assertNull($buffers->get($bPath)?->previewId, 'a NEW .dot open is plain text while disabled');
 
                     $lifecycle->enable('graph-viewer');
                     $this->assertNotNull(Services::resolve($ide, CommandRegistry::class)->label('graph-viewer:architecture'), 're-enable restores the commands live');
                     $cPath = (string) \realpath($project->path('c.dot'));
                     $service->openFile($cPath);
-                    $this->assertSame('graph', $buffers->get($cPath)?->paneId, 'routing resumed for files opened afterwards');
+                    $this->assertSame('graph', $buffers->get($cPath)?->previewId, 'previews resumed for files opened afterwards');
                 },
             ],
         );

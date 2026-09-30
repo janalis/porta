@@ -147,9 +147,13 @@ wheel verb is `wheelBy` and not `scrollBy`. Two units, two names.
 **`Editor/EditorPanes`** — the pane registry, keyed by the id a viewer claim
 returns, each pane with the loader that turns a path into its payload.
 `Editor/PaneRegistrar` builds plugin-registered panes from
-`Editor/EditorPaneSource`, and `Bootstrap/CorePanes` registers the one pane core
-still ships, the help browser. The drain is core's deliberately — see
-[decisions.md](decisions.md).
+`Editor/EditorPaneSource`, and `Bootstrap/CorePanes` registers the panes core
+still ships: the help browser, the large-file look and the markdown preview
+(with its claim in `Editor/PreviewRoutes`). The drain is core's deliberately —
+see [decisions.md](decisions.md). What fills the editor slot is
+`Workbench/EditorSlot`; the editor-beside-a-preview arrangement it mounts is
+`Layout/PreviewSplit`, and the subsystem is in
+[subsystems.md](subsystems.md#the-editor-slot-and-live-previews).
 
 **`Plugin/`** — three tiers, one rule each. `Api/` is the surface a plugin file
 compiles against. `Runtime/` is what the IDE runs. `Lifecycle/` is enabling,

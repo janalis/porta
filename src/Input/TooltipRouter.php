@@ -9,6 +9,7 @@ use Porta\Container\AsEager;
 use Porta\Container\LayoutSlot;
 use Porta\Editor\InlayHintMode;
 use Porta\I18n\Translator;
+use Porta\Layout\PreviewSplit;
 use Porta\Layout\ViewRegions;
 use Porta\Overlay\State\ToastCenter;
 use Porta\Overlay\State\TooltipCenter;
@@ -72,6 +73,7 @@ final class TooltipRouter
         private readonly ViewRegions $regions,
         private readonly CommandRegistry $commands,
         private readonly Translator $translator,
+        private readonly PreviewSplit $previewSplit,
         ?FrameHooks $frameHooks = null,
     ) {
         $frameHooks?->onBeforeFrame($this->followResize(...));
@@ -218,6 +220,7 @@ final class TooltipRouter
             // A hidden panel keeps its last rect, so it answers only while shown.
             ...(($panel = $this->dock->visiblePanel()) instanceof TooltipProvider ? [$panel] : []),
             $this->separator,
+            $this->previewSplit->separator,
         ];
     }
 }

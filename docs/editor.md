@@ -756,6 +756,30 @@ That comparison is the one part that needs `git` on your `PATH` — it runs
 project that is not a repository. Without git the snapshots still record and
 still restore; only the comparison is unavailable, and it says so.
 
+## Live preview
+
+A Markdown file (`.md`, `.markdown`) opens as text with its rendered preview
+beside it, and so do an SVG, a Graphviz graph and a PlantUML diagram while
+their plugins can draw them (below). The preview follows **what you type**, not
+the file on disk. It redraws when you pause, so nothing has to be saved to see
+it. An edit keeps your place in a long preview.
+
+- **Editor / Split / Preview** — the toggles at the right end of the
+  breadcrumbs bar choose the text alone, both, or the picture alone.
+  `Ctrl+Alt+V` steps through the three, and *View ▸ Editor Only / Editor and
+  Preview / Preview Only* do the same. Each tab keeps its own choice.
+- **Resize** by dragging the divider between the two, or with
+  `Shift+F11`/`Shift+F12` from either half. The proportion is kept per project
+  in `.porta/layout.json`, one for every previewed file.
+- **Focus.** Click the preview, or press `F6`, to give it the keys: the
+  arrows, `PageUp`/`PageDown`, `Home`/`End` and the wheel scroll it, and a
+  graph or an image zooms and pans as described below. `Ctrl+T` or a click on
+  the text goes back.
+- A window too narrow for two usable sides shows the text alone, and brings
+  the preview back when there is room.
+- A file too large to edit (over 2 MB) is not previewed. An SVG or a diagram
+  that size still opens in its viewer.
+
 ## Image viewer
 
 Opening a `png`, `jpg`, `jpeg`, `gif`, `webp` or `bmp` file shows it as an
@@ -777,16 +801,16 @@ Konsole and tmux answer the question but cannot show the result, so they get
 half-blocks without being asked. `PORTA_GRAPHICS=kitty` forces the pixels on,
 `PORTA_GRAPHICS=off` turns them off.
 
-`.svg` files open here too, rasterized by an external converter — the
+`.svg` files are drawn by this viewer too — as a [live preview](#live-preview)
+beside their markup — rasterized by an external converter: the
 image-viewer plugin's `svgConverter` setting if you set one, otherwise `rsvg-convert`, `magick` or
 `convert`, whichever is installed. Zooming in re-renders the drawing rather
 than magnifying pixels, so it stays sharp, and the status bar reports the
 document's own size (100% means 100% of the SVG). With no converter
 installed — or with *Render SVG as an image* turned off on the image-viewer
-plugin's settings page — `.svg` keeps opening as editable XML, as it always
-has. **Open as Text** (`Ctrl+Alt+X`, or the palette) is the per-file way back:
-it reopens the active viewer tab in the editor, and works for a graph's DOT or
-an image's bytes just as well.
+plugin's settings page — `.svg` opens as plain editable XML with no preview.
+**Open as Text** (`Ctrl+Alt+X`, or the palette) reopens a viewer tab in the
+editor — an image's bytes, or an SVG or a diagram too large to preview.
 
 **Ctrl+two-finger-scroll on a trackpad is the pinch**: after the first notch
 the zoom glides continuously toward the pointer instead of jumping between
@@ -804,8 +828,8 @@ active.
 
 ## Graph viewer
 
-Opening a `.dot` or `.gv` file renders the Graphviz graph as an interactive
-tab, showing **the picture `dot` itself draws** — real splines, arrowheads,
+Opening a `.dot` or `.gv` file shows its source with the Graphviz graph beside
+it as a [live preview](#live-preview), **the picture `dot` itself draws** — real splines, arrowheads,
 fills and fonts (install graphviz, or point the graph-viewer plugin's `dotPath` setting at it).
 Zoom with `=`/`-`, `0`/`f` fit, `1` actual size, or `Ctrl+wheel` at the
 pointer — including the trackpad's Ctrl+two-finger-scroll, which glides (see
@@ -849,11 +873,12 @@ pixels tall. The *Graph rendering* setting (Settings ▸ General) picks which
 one new tabs open with. It is also what you get automatically if your
 graphviz was built without PNG support, with the reason in the banner.
 
-Editing the file re-renders it in place — an invalid document keeps the
+The graph follows the source as you type — an invalid document keeps the
 previous graph under an error banner. The viewer is a bundled plugin, enabled by
-default — disabling it opens `.dot` files as editable text instead.
+default — disabling it opens `.dot` files as plain text with no preview.
 **Plugins ▸ Project Architecture** generates a namespace-dependency graph of
-the current project into `architecture.dot` and opens it in this viewer. The
+the current project into `architecture.dot` and opens it with the graph alone
+on screen (`Ctrl+Alt+V` brings its DOT back). The
 plugin's *Architecture output directory* setting picks where that file goes —
 empty means the project root, a relative path resolves from it, an absolute one
 is taken as given, and the directory is created if it does not exist. (Its

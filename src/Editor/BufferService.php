@@ -7,13 +7,13 @@ namespace Porta\Editor;
 use Porta\Config\EditorConfig\DocumentWriter;
 use Porta\Config\EditorConfig\EditorConfigResolver;
 use Porta\Container\AsIdeService;
-use Porta\Container\LayoutSlot;
 use Porta\Event\BufferOpened;
 use Porta\Event\BufferRepointRequested;
 use Porta\Event\BufferSaved;
 use Porta\Event\BufferSaveRequested;
 use Porta\Event\BufferSwitched;
 use Porta\Event\DiagnosticsChanged;
+use Porta\Event\PreviewModeRequested;
 use Porta\Event\TreeFileActivated;
 use Porta\I18n\Translator;
 use Porta\Lsp\BufferReopener;
@@ -28,6 +28,8 @@ use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\HelpViewerWidget;
 use Porta\Widget\TextPreviewWidget;
+use Porta\Workbench\EditorArea;
+use Porta\Workbench\EditorSlot;
 use Porta\Workbench\Notifier;
 use Psr\Clock\ClockInterface;
 use Psr\EventDispatcher\EventDispatcherInterface;
@@ -36,8 +38,6 @@ use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Tui\Tui;
-use Symfony\Component\Tui\Widget\AbstractWidget;
-use Symfony\Component\Tui\Widget\ContainerWidget;
 
 /**
  * The open-buffer lifecycle, extracted from the coordinator: opening files
@@ -77,12 +77,14 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
         private readonly Translator $translator,
         private readonly FilesystemReconciler $reconciler,
         private readonly HelpViewerWidget $helpViewer,
-        #[LayoutSlot('editor_body')]
-        private readonly ContainerWidget $editorBody,
         private readonly EventDispatcherInterface $dispatcher,
         private readonly FormatOnSave $formatOnSave,
         private readonly ViewerProviderSource $viewers,
         private readonly EditorPanes $panes,
+        private readonly PreviewRoutes $previews,
+        private readonly PreviewFeeder $feeder,
+        private readonly EditorArea $editorArea,
+        private readonly EditorSlot $slot,
         private readonly Filesystem $fs = new Filesystem(),
         private readonly ClockInterface $clock = new NativeClock(),
     ) {}
@@ -191,11 +193,17 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
 
             return;
         }
+        // A file with a live preview (markdown, and SVG or a graph while their
+        // plugins are on) opens as TEXT, its pane beside it — asked before the
+        // viewers, which claim the same files, and only while the file is
+        // small enough to edit: one too large for the text path still goes to
+        // its viewer, where it can at least be looked at.
+        $preview = $this->previewFor($path);
         // The registered viewer routes decide which pane a file opens in (the
         // bundled image-viewer/graph-viewer plugins claim their extensions —
         // disabling one routes its files here to the text path instead; an id
         // no built-in pane answers to falls through the same way).
-        $viewer = OpenAs::Text === $as ? null : $this->viewers->viewerFor($path);
+        $viewer = OpenAs::Text === $as || null !== $preview ? null : $this->viewers->viewerFor($path);
         if (null !== $viewer && null !== $this->panes->paneFor($viewer)) {
             $this->openInPane($path, $viewer, $focus);
 
@@ -223,6 +231,11 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
         $buffer = $this->buffers->open($path, $content);
         $buffer->stampFromDisk();
         $this->applyEditorConfig($buffer);
+        $buffer->previewId = $preview;
+        // The generated architecture graph is opened to be LOOKED at — its DOT
+        // is the scanner's output, not something written by hand.
+        $buffer->previewMode = self::ARCHITECTURE_FILENAME === \basename($path) ? PreviewMode::Preview : PreviewMode::Split;
+        $this->applyTitle($buffer);
 
         // didOpen before showBuffer so the inlay-hint request it fires is
         // ordered after the server knows about the file; this is also what
@@ -299,12 +312,7 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
             return;
         }
         $buffer = $this->buffers->openPane($path, $paneId, $payload);
-        // The artifact's directory is a plugin setting, so the FILE NAME is all
-        // core can key the title on (and a hand-written architecture.dot is
-        // titled the same, which is the honest reading of the name).
-        if (self::ARCHITECTURE_FILENAME === \basename($path)) {
-            $buffer->title = 'Project Architecture';
-        }
+        $this->applyTitle($buffer);
         $buffer->stampFromDisk();
         $this->showBuffer($buffer);
         $this->dispatcher->dispatch(new BufferOpened($buffer));
@@ -312,6 +320,34 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
             $this->focusEditorArea();
         }
         $this->tui->requestRender();
+    }
+
+    /**
+     * The artifact's directory is a plugin setting, so the FILE NAME is all
+     * core can key the title on (and a hand-written architecture.dot is titled
+     * the same, which is the honest reading of the name) — whether the graph
+     * opened in its viewer or as text beside its preview.
+     */
+    private function applyTitle(Buffer $buffer): void
+    {
+        if (self::ARCHITECTURE_FILENAME === \basename($buffer->path)) {
+            $buffer->title = 'Project Architecture';
+        }
+    }
+
+    /**
+     * The pane that would preview $path, or null: none claims it, the pane it
+     * names is not registered (its plugin was removed), or the file is too
+     * large for the text path the preview sits beside.
+     */
+    private function previewFor(string $path): ?string
+    {
+        if (!\is_file($path) || (int) \filesize($path) > Files::MAX_TEXT_BYTES) {
+            return null;
+        }
+        $preview = $this->previews->previewFor($path);
+
+        return null !== $preview && null !== $this->panes->paneFor($preview) ? $preview : null;
     }
 
     /**
@@ -362,11 +398,10 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
         $this->tui->requestRender();
     }
 
-    /** Focus the editor-pane content: the active tab's viewer, else the editor. */
+    /** Focus the editor-pane content: the active tab's viewer or lone preview, else the editor. */
     public function focusEditorArea(): void
     {
-        $active = $this->buffers->active();
-        $this->tui->setFocus($this->panes->paneFor((string) $active?->paneId) ?? $this->editor);
+        $this->tui->setFocus($this->editorArea->entry());
     }
 
     /**
@@ -394,59 +429,74 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
             // mutates a throwaway document, not the previous buffer's cursor.
             $this->editor->showDocument('', new Document(''));
             $pane->show($buffer->path, $buffer->panePayload);
-            $this->swapEditorPaneTo($pane);
+            $this->slot->showPane($pane);
             $this->dispatcher->dispatch(new BufferSwitched($buffer));
             $this->tui->requestRender();
 
             return;
         }
-        $this->swapEditorPaneTo($this->editor);
+        // The editor holds the document in every arrangement — detached in
+        // Preview, the way a viewer tab leaves it, but still the buffer's own:
+        // a save, a jump or an LSP edit lands in the text the preview follows.
+        $preview = $this->panes->shownPreview($buffer);
+        match (true) {
+            null === $preview => $this->slot->showEditor(),
+            PreviewMode::Split === $buffer->previewMode => $this->slot->showBeside($preview),
+            default => $this->slot->showPane($preview),
+        };
         $this->editor->showDocument($buffer->path, $buffer->document, $buffer->diagnostics, $buffer->highlighter, $buffer->editorConfig);
         $this->editor->decorations->setVcsMarks($buffer->vcsMarks, $buffer->document->getLineCount());
         $this->editor->decorations->setCommentMarks($buffer->commentMarks());
+        $this->feeder->feed($buffer);
         $this->dispatcher->dispatch(new BufferSwitched($buffer));
         $this->tui->requestRender();
     }
 
-    /**
-     * Make $widget the editor body's content slot (breadcrumbs → content; the
-     * tab strip sits around the body, wherever the tabBarPosition setting put it).
-     * Detaching the focused widget makes the focus manager fall back to an
-     * arbitrary focusable, so focus is handed to the incoming widget instead.
-     */
-    private function swapEditorPaneTo(AbstractWidget $widget): void
+    /** The bar's toggles ask for an arrangement of the file on screen. */
+    #[AsEventListener]
+    public function onPreviewModeRequested(PreviewModeRequested $event): void
     {
-        if (\in_array($widget, $this->editorBody->all(), strict: true)) {
+        $active = $this->buffers->active();
+        if (null !== $active) {
+            $this->arrangePreview($active, $event->mode);
+        }
+    }
+
+    /**
+     * Rearrange a previewed buffer — the toggles' and the commands' one verb.
+     * The focus follows what the arrangement shows: the editor, unless the
+     * preview is all there is.
+     */
+    public function arrangePreview(Buffer $buffer, PreviewMode $mode): void
+    {
+        if (null === $buffer->previewArrangement()) {
             return;
         }
-        $focused = $this->tui->getFocus();
-        $hadFocus = false;
-        foreach ($this->panes->all() as $pane) {
-            if ($pane === $widget) {
-                continue;
-            }
-            $hadFocus = $hadFocus || $focused === $pane;
-            $this->editorBody->remove($pane);
-            // Losing the slot is not the same as closing: a pane frees what only
-            // the VISIBLE pane needs (the image pane's decoded pixels) and keeps
-            // the rest — which is what the per-viewer clear() calls scattered
-            // through this class used to say one viewer at a time.
-            $pane->hide();
+        $buffer->previewMode = $mode;
+        if ($buffer === $this->buffers->active()) {
+            $this->showBuffer($buffer);
+            $this->focusEditorArea();
         }
-        if ($widget !== $this->editor) {
-            $hadFocus = $hadFocus || $focused === $this->editor;
-            $this->editorBody->remove($this->editor);
-        }
-        $this->editorBody->add($widget);
-        if ($hadFocus) {
-            $this->tui->setFocus($widget);
+        $this->tui->requestRender();
+    }
+
+    /**
+     * The editor-hosted modals — the pickers, the unsaved-changes list —
+     * composite over the EDITOR, which a buffer showing its preview alone has
+     * detached. Bring the text back beside the preview first; a buffer in any
+     * other arrangement already shows it.
+     */
+    private function revealEditor(Buffer $buffer): void
+    {
+        if (PreviewMode::Preview === $buffer->previewArrangement()) {
+            $this->arrangePreview($buffer, PreviewMode::Split);
         }
     }
 
     /** The empty state after the last tab closes: a blank editor, tree focused. */
     private function showEmptyEditor(): void
     {
-        $this->swapEditorPaneTo($this->editor);
+        $this->slot->showEditor();
         foreach ($this->panes->all() as $pane) {
             $pane->clear();
         }
@@ -587,6 +637,7 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
             return;
         }
         if (CloseMode::Guarded === $mode && $active->isDirty()) {
+            $this->revealEditor($active);
             $name = \basename($active->path);
             $this->editor->openListOverlay(
                 $this->translator->trans('Unsaved changes in %name%', ['%name%' => $name]),
@@ -808,6 +859,10 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
     {
         $active = $this->buffers->active();
         if (null === $active || !$active->isViewer()) {
+            if (null !== $active) {
+                $this->revealEditor($active);
+            }
+
             return true;
         }
         if (null !== $this->activateAdjacentTextBuffer()) {

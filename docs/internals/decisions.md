@@ -59,7 +59,7 @@ cross-event drag state. Rejected, with the count that rejected each:
 
 | Candidate | Exclusive dependencies |
 | --- | --- |
-| `BufferService`'s pane-swap cluster | 1 |
+| `BufferService`'s pane-swap cluster | 1 — later 2, and extracted (see below) |
 | `CodeEditorWidget`'s render cluster | 3 of ~23 (see below) |
 | `GitViewController`'s history tier | 1 of 11 |
 | `HelpViewerWidget`'s history stack | 0 of 6 |
@@ -78,6 +78,15 @@ different-purpose lists.
 
 *Re-opens on:* a changed dependency count or a removed cross-event seam, applied
 to one candidate. Not a fresh sweep.
+
+The pane-swap cluster met that condition on 2026-09-30. The preview split gave
+it a second exclusive dependency, and it is `Workbench/EditorSlot` now.
+[The live preview split](decisions/history-07.md) has the reasons.
+
+**A preview beside the editor is not an editor split.** Editor splits are
+declined: they need a second `CodeEditorWidget` and a focused-editor
+indirection through all 25 of its injection sites. The preview split keeps one
+editor and puts a pane beside it. *Re-opens on:* two TEXT views of one file.
 
 **Namespace cycles are closed.** The import graph had 42 top-level cycle pairs;
 the two stable-dependency inversions worth fixing were fixed. Verified at class

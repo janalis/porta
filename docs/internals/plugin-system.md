@@ -217,7 +217,7 @@ synthetic `IdeConfig`. `ensureLoaded()` is idempotent and triggered by the
 built and plugin default keys merge into it.
 
 Registration buffers in the per-plugin `PluginApi` and commits atomically after
-`activate()`. Twelve of the sixteen extension points share the generic
+`activate()`. Fifteen of the nineteen extension points share the generic
 `PluginBuffer`; the other four (commands, menu items, hooks, setting
 descriptors) stay plain arrays, each saying why at its declaration.
 
@@ -307,7 +307,9 @@ plugin that grows a `translations/` dir is gated from its first commit.
 ## Panes and viewers
 
 `registerViewer(id, claims)` says which files are mine; `registerPane(id,
-factory, loader)` says what shows them. The loader runs on every open and
+factory, loader)` says what shows them. `registerPreview(id, claims)` says
+which files open as TEXT with that pane beside them, fed the editor's text
+rather than its loader's payload; it is asked first, below the 2 MB text cap. The loader runs on every open and
 **throws to refuse** a file (too large, undecodable, not UTF-8); its message is
 flashed as-is.
 

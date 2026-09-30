@@ -210,6 +210,34 @@ the document saved and re-stamps it, because otherwise the poller reloads
 identical content and flashes "Reloaded" after every format. Size is compared
 before content, since a project-wide replace deliberately diverges from disk.
 
+## The editor slot and live previews
+
+The editor body is breadcrumbs, the find bar, then ONE content slot, and
+`Workbench/EditorSlot` fills it with the code editor, a pane (a viewer tab's,
+or a preview shown alone), or `Layout/PreviewSplit`: the editor with a preview
+pane beside it. `BufferService::showBuffer()` decides which from the buffer.
+A buffer with a `paneId` is a viewer tab. A text buffer with a `previewId` is
+arranged by its `PreviewMode`: Editor, Split or Preview.
+
+- **A previewed buffer is a text buffer in every arrangement.** It is saved,
+  synced with the language server and reloaded from disk like any other file.
+  Preview detaches the editor the way a viewer tab does, so the editor-hosted
+  modals (the pickers, the unsaved-changes list) switch the tab back to Split
+  before they open (`BufferService::revealEditor()`).
+- **Routing.** A preview claim (`PreviewRoutes`: plugins first, then core's
+  markdown) is asked before the viewer claims, and only for a file under the
+  2 MB text cap, so a viewer still takes a file too large to edit.
+- **The feed.** `Editor/PreviewFeeder` hands the pane the document's text when
+  the tab comes on screen, and again 0.15 s after the version last moved,
+  watched from the frame hook.
+- **Focus.** `EditorArea::widget()` answers with whichever half has the keys,
+  `entry()` with where they land on a fresh open, `visiblePane()` with what the
+  routers hit-test, and `members()` with the focus ring's stops.
+- **Sizing.** The two sides are FLEX WEIGHTS, never a width: a `flex: 0` side
+  is measured by rendering it, which for the editor means twice a frame. The
+  share persists as `previewSplitPercent`; below 41 columns the preview steps
+  aside.
+
 ## Input routing
 
 `Input/MouseRouter` maps every SGR mouse event to the pane under the pointer and

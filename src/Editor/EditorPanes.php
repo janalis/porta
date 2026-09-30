@@ -58,6 +58,19 @@ final class EditorPanes
     }
 
     /**
+     * The pane previewing $buffer that its arrangement puts on screen, or null
+     * — no preview, the editor alone, or a preview id nothing answers to any
+     * more. The one spelling of the question the slot, the focus and the feed
+     * all ask.
+     */
+    public function shownPreview(Buffer $buffer): ?EditorPaneWidget
+    {
+        $mode = $buffer->previewArrangement();
+
+        return null !== $mode && $mode->showsPreview() ? $this->paneFor((string) $buffer->previewId) : null;
+    }
+
+    /**
      * Who registered the pane answering $id: the plugin name, '' for core, or
      * null when nothing answers. The distinction carries the live-enable skip:
      * a re-enabled plugin's own standing pane keeps the slot, anyone else's is

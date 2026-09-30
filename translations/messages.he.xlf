@@ -3026,6 +3026,30 @@
         <source>resolved</source>
         <target>נפתר</target>
       </trans-unit>
+      <trans-unit id="1076">
+        <source>Split</source>
+        <target>מפוצל</target>
+      </trans-unit>
+      <trans-unit id="1077">
+        <source>Preview</source>
+        <target>תצוגה מקדימה</target>
+      </trans-unit>
+      <trans-unit id="1078">
+        <source>Toggle Preview</source>
+        <target>החלפת תצוגה מקדימה</target>
+      </trans-unit>
+      <trans-unit id="1079">
+        <source>Editor Only</source>
+        <target>עורך בלבד</target>
+      </trans-unit>
+      <trans-unit id="1080">
+        <source>Editor and Preview</source>
+        <target>עורך ותצוגה מקדימה</target>
+      </trans-unit>
+      <trans-unit id="1081">
+        <source>Preview Only</source>
+        <target>תצוגה מקדימה בלבד</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

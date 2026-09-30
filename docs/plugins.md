@@ -569,6 +569,37 @@ Disabling your plugin stops the routing, so its files fall back to the text
 editor; a tab already open in your pane keeps working. Removing the plugin drops
 the pane for good.
 
+### Previewing a file beside its text
+
+A pane can also be a **live preview**: the file opens in the text editor as
+usual, and your pane sits beside it showing what the text becomes — the bundled
+SVG and diagram previews, and core's own markdown one. One more call:
+
+```php
+$api->registerPane('hex', /* factory */, /* loader */);
+$api->registerPreview('hex', ['hexdump']);
+```
+
+- **Your pane is fed the editor's TEXT**, not what your loader reads from disk:
+  `show($path, $text)` is called when the tab comes on screen, and again each
+  time typing pauses (0.15s), saved or not. So a pane that previews takes its
+  own source format as its payload — the image pane an SVG's markup, the graph
+  pane DOT. The loader is still needed; it is what `registerViewer()` uses.
+- **`show()` is called with the same path over and over.** Treat a new text for
+  the path already shown as an update: keep the zoom, the scroll and the last
+  good picture on screen until the new one is ready, and return early when the
+  text is unchanged. A text that does not parse is ordinary here — the user is
+  halfway through typing it — so keep the last good rendering and say what is
+  wrong on top of it.
+- **A preview claim is asked before every viewer claim**, but only for a file
+  small enough to edit (2 MB). Claim the same files with `registerViewer()` too
+  and the viewer still takes one too large for the editor.
+- The user switches between **Editor**, **Split** and **Preview** with the
+  toggles at the right of the breadcrumbs bar or `Ctrl+Alt+V`, and drags the divider;
+  the split's proportion is one setting for every previewed file. You do nothing
+  for any of it — in Split your pane is simply narrower, and `hide()` is called
+  when it leaves the screen, as for any pane.
+
 ### Showing a list of results
 
 A tool that finds things — matches, failures, offenders — puts them in the

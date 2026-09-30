@@ -12,6 +12,7 @@ use Porta\GitPlugin\Widget\GitTabsWidget;
 use Porta\GitPlugin\Widget\HistoryListWidget;
 use Porta\I18n\Translator;
 use Porta\Layout\LayoutController;
+use Porta\Layout\PreviewSplit;
 use Porta\Layout\ResizableSidebar;
 use Porta\Layout\ViewRegions;
 use Porta\Ui\Theme\Styles;
@@ -48,6 +49,7 @@ trait BuildsLayoutController
     private Tui $tui;
     private Renderer $renderer;
     private ViewRegions $regions;
+    private PreviewSplit $previewSplit;
 
     private function controller(string $locale = 'en', int $columns = 100): LayoutController
     {
@@ -73,6 +75,7 @@ trait BuildsLayoutController
             new TabBarWidget(),
             $this->regions,
             new Translator($locale),
+            $this->previewSplit = new PreviewSplit(Styles::dark(), renderer: $this->renderer, tui: $this->tui),
         );
     }
 

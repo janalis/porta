@@ -12,6 +12,7 @@ use Porta\Editor\BufferService;
 use Porta\Editor\EditorDecorationSink;
 use Porta\Editor\EditorDisplayOptions;
 use Porta\Editor\LastEditNavigator;
+use Porta\Editor\PreviewMode;
 use Porta\Editor\RecentLocationActions;
 use Porta\Layout\LayoutController;
 use Porta\Lsp\CodeLensController;
@@ -128,6 +129,7 @@ final readonly class ViewCommands implements CommandProvider
             ->add('dock_prev_panel', fn () => $this->dock->cycle(-1), keyBound: KeyDispatch::Bound, when: fn (): bool => null !== $this->dock->visiblePanel())
             ->add('ide_terminal_new', fn () => $this->run->newTerminalSession(), keyBound: KeyDispatch::Bound)
             ->add('ide_run', fn () => $this->run->openRunMenu(), keyBound: KeyDispatch::Bound);
+        $this->registerPreview($commands);
         $commands
             ->add('ide_settings', fn () => $this->views->toggle('settings'), keyBound: KeyDispatch::Bound)
             // No ActionCatalog entry and no default key: a keyless catalog entry
@@ -147,6 +149,47 @@ final readonly class ViewCommands implements CommandProvider
                 },
                 keyBound: KeyDispatch::Bound,
             );
+    }
+
+    /**
+     * The live preview's arrangements: one key that steps through them, and
+     * one menu item each, checked while it is the one on screen. All four are
+     * gated on the active file having a preview; the palette ignores `when`,
+     * and {@see BufferService::arrangePreview()} refuses a file without one.
+     */
+    private function registerPreview(CommandRegistry $commands): void
+    {
+        $previewed = fn (): bool => null !== $this->buffers->active()?->previewArrangement();
+        $commands->add(
+            'toggle_preview',
+            function (): void {
+                $active = $this->buffers->active();
+                $mode = $active?->previewArrangement();
+                if (null !== $active && null !== $mode) {
+                    $this->bufferService->arrangePreview($active, $mode->next());
+                }
+            },
+            keyBound: KeyDispatch::Bound,
+            when: $previewed,
+        );
+        foreach ([
+            'preview_editor' => [PreviewMode::Editor, 'Editor Only'],
+            'preview_split' => [PreviewMode::Split, 'Editor and Preview'],
+            'preview_only' => [PreviewMode::Preview, 'Preview Only'],
+        ] as $id => [$mode, $label]) {
+            $commands->add(
+                $id,
+                function () use ($mode): void {
+                    $active = $this->buffers->active();
+                    if (null !== $active) {
+                        $this->bufferService->arrangePreview($active, $mode);
+                    }
+                },
+                label: $label,
+                when: $previewed,
+                checked: fn (): bool => $mode === $this->buffers->active()?->previewArrangement(),
+            );
+        }
     }
 
     /**

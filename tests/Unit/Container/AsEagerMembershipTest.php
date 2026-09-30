@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit\Container;
 
+use Porta\Editor\PreviewFeeder;
 use Porta\Editor\StructureFollowsCaret;
 use Porta\Input\TooltipRouter;
 use Porta\Layout\ChromeHeight;
+use Porta\Layout\PreviewSplit;
 use Porta\Layout\ResponsiveLayout;
 use Porta\Lsp\HighlightController;
 use Porta\Overlay\Presenter\FindModalPresenter;
@@ -74,6 +76,8 @@ final class AsEagerMembershipTest extends ContainerTestCase
             FrameJoins::class, // installs the frame's join pass on BidiTui
             MenuOverlayController::class, // lays an open menu out again when a resize changes the screen
             TooltipRouter::class, // asks again at the pointer after a resize moved the elements
+            PreviewFeeder::class, // hands a live preview the text once typing pauses
+            PreviewSplit::class, // steps the preview aside while the split is too narrow for two sides
         ];
 
         $this->assertSame($ordered, \array_slice($actual, offset: 0, length: \count($ordered)), 'the contractual construction order');

@@ -20,7 +20,7 @@ enum FailureChannel: string
     /** A status-bar segment's provider. */
     case Segment = 'segment';
 
-    /** A viewer's claim on a file. */
+    /** A viewer's or a live preview's claim on a file. */
     case Viewer = 'viewer';
 
     /** A menu entry's `when` predicate. */

@@ -55,7 +55,7 @@ final readonly class WorkbenchCommands implements CommandProvider
                     // Whatever the editor area is showing right now — the editor
                     // or any registered pane. The old list named two of the three
                     // viewers, so a focused HELP pane toggled to itself.
-                    $inEditorArea = $this->tui->getFocus() === $this->editorArea->widget();
+                    $inEditorArea = \in_array($this->tui->getFocus(), $this->editorArea->members(), strict: true);
                     $this->tui->setFocus($inEditorArea ? $this->tree : $this->editorArea->widget());
                     $this->tui->requestRender();
                 },

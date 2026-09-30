@@ -15,8 +15,15 @@ namespace Porta\Editor;
  * The returned id names a built-in viewer pane ('image', 'graph'); unknown
  * ids fall through to the text path, leaving room for a future
  * widget-registration API without breaking this contract.
+ *
+ * The live-preview claim is the same question with a different answer — the
+ * file still opens as text, with the pane beside it — so it rides the same
+ * seam rather than a second one-method interface for the same consumer.
  */
 interface ViewerProviderSource
 {
     public function viewerFor(string $path): ?string;
+
+    /** The pane that previews $path beside the editor, or null ({@see \Porta\Plugin\Api\PluginApi::registerPreview()}). */
+    public function previewFor(string $path): ?string;
 }

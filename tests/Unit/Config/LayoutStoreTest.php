@@ -20,6 +20,7 @@ final class LayoutStoreTest extends TestCase
             sidebarWidthPercent: 22,
             bottomPanelHeightPercent: 35,
             viewSidebarWidthPercent: ['git' => 28, 'settings' => 19],
+            previewSplitPercent: 62,
         )));
 
         $loaded = $store->load();
@@ -27,6 +28,7 @@ final class LayoutStoreTest extends TestCase
         $this->assertSame(22, $loaded->sidebarWidthPercent);
         $this->assertSame(35, $loaded->bottomPanelHeightPercent);
         $this->assertSame(['git' => 28, 'settings' => 19], $loaded->viewSidebarWidthPercent);
+        $this->assertSame(62, $loaded->previewSplitPercent);
     }
 
     public function testLoadWhenNoFileReturnsNull(): void
@@ -48,6 +50,7 @@ final class LayoutStoreTest extends TestCase
         $this->assertNull($loaded->sidebarWidthPercent, 'non-numeric value is ignored');
         $this->assertNull($loaded->bottomPanelHeightPercent, 'absent key is null');
         $this->assertSame([], $loaded->viewSidebarWidthPercent, 'no view has been resized');
+        $this->assertNull($loaded->previewSplitPercent, 'no preview split has been dragged');
     }
 
     public function testHandEditedNumericStringIsAccepted(): void

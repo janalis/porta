@@ -219,6 +219,10 @@ final class MouseRouter
         if ($this->layout->armSidebarResize($sepRect, $mouse)) {
             return;
         }
+        // The editor↔preview divider, while a previewed file shows in Split.
+        if ($this->layout->armPreviewResize($mouse)) {
+            return;
+        }
         if (null !== $activeView && $this->layout->armViewSidebarResize($activeView, $viewSepRect, $mouse)) {
             return;
         }
@@ -657,6 +661,12 @@ final class MouseRouter
         // so the click only counts when a segment is actually under the
         // pointer — otherwise it falls through to whatever now owns the row.
         $rel = $this->hit->hit($this->panes->breadcrumbs, $mouse->row, $mouse->col);
+        // A previewed file's arrangement toggles share the bar's right end.
+        if (null !== $rel && $this->panes->breadcrumbs->pressToggle($rel['col'])) {
+            $this->tui->requestRender();
+
+            return true;
+        }
         $line = null === $rel ? null : $this->panes->breadcrumbs->lineAtColumn($rel['col']);
         if (null !== $line) {
             $this->tui->setFocus($this->panes->editor);

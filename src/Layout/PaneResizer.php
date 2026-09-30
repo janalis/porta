@@ -4,13 +4,15 @@ declare(strict_types=1);
 
 namespace Porta\Layout;
 
+use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\FileTreeWidget;
 use Porta\Workbench\Dock\BottomDock;
 use Symfony\Component\Tui\Tui;
 
 /**
  * The Shift+F11/F12 resize nudge for whichever resizable pane holds the
- * focus. Sidebars move 2 columns per press, bottom panels 1 row; a
+ * focus. Sidebars and the preview split's divider move 2 columns per press,
+ * bottom panels 1 row; a
  * non-resizable focus answers false so the chord falls through to the widget.
  */
 final readonly class PaneResizer
@@ -19,8 +21,10 @@ final readonly class PaneResizer
         private Tui $tui,
         private LayoutController $layout,
         private FileTreeWidget $tree,
+        private CodeEditorWidget $editor,
         private BottomDock $dock,
         private ViewRegions $regions,
+        private PreviewSplit $previewSplit,
     ) {}
 
     public function canResize(): bool
@@ -55,6 +59,22 @@ final readonly class PaneResizer
         return null;
     }
 
+    /**
+     * Whether $focus is one half of a preview split on screen: the editor or
+     * the pane beside it. The split's area is attached only in Split, so the
+     * editor alone — or a lone preview — resizes nothing.
+     */
+    private function inPreviewSplit(?object $focus): bool
+    {
+        $pane = $this->previewSplit->preview();
+
+        if (null === $pane || null === $this->previewSplit->area->getContext()) {
+            return false;
+        }
+
+        return null !== $focus && ($focus === $pane || $focus === $this->editor);
+    }
+
     private function resizer(int $direction): ?\Closure
     {
         $focus = $this->tui->getFocus();
@@ -63,6 +83,7 @@ final readonly class PaneResizer
             $focus === $this->tree => fn () => $this->layout->nudgeSidebar(2 * $direction),
             null !== $focus && $focus === $this->dock->visiblePanel() => fn () => $this->layout->nudgeBottomPanel($direction),
             null !== ($view = $this->viewOwning($focus)) => fn () => $this->layout->nudgeViewSidebar($view, 2 * $direction),
+            $this->inPreviewSplit($focus) => fn () => $this->layout->nudgePreviewSplit(2 * $direction),
             default => null,
         };
     }

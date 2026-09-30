@@ -107,6 +107,8 @@ final class PluginApi
     private readonly PluginBuffer $tokenSpans;
     /** @var PluginBuffer<array{plugin: string, id: string, claims: \Closure(string): bool}> */
     private readonly PluginBuffer $viewers;
+    /** @var PluginBuffer<array{plugin: string, id: string, claims: \Closure(string): bool}> */
+    private readonly PluginBuffer $previews;
     /** @var PluginBuffer<array{plugin: string, id: string, pane: \Closure, load: \Closure}> */
     private readonly PluginBuffer $panes;
 
@@ -144,6 +146,7 @@ final class PluginApi
         $this->highlighters = new PluginBuffer();
         $this->tokenSpans = new PluginBuffer();
         $this->viewers = new PluginBuffer();
+        $this->previews = new PluginBuffer();
         $this->panes = new PluginBuffer();
         $this->views = new PluginBuffer();
         $this->actions = new PluginBuffer();
@@ -454,11 +457,52 @@ final class PluginApi
      */
     public function registerViewer(string $id, array|\Closure $claims): void
     {
+        $this->viewers->add($this->route('viewer', $id, $claims));
+    }
+
+    /**
+     * Claim file paths for a LIVE PREVIEW: files matching $claims open in the
+     * text editor as usual, with the pane named by $id beside it showing what
+     * the text becomes — and following it as it is edited. The toggles above
+     * the editor switch between the text, both, and the preview alone.
+     *
+     * The pane is whatever {@see registerPane()} registered under $id, and it is
+     * fed the document's TEXT as its payload (not what its loader would read
+     * from disk), so a pane that previews must take its own source format: the
+     * image pane an SVG's markup, the graph pane DOT. An id no pane answers to
+     * leaves the file a plain text buffer.
+     *
+     * A preview claim is asked BEFORE {@see registerViewer()}'s, so a plugin
+     * may claim the same files for both: the preview wins while the file is
+     * small enough to edit, and the viewer still takes one too large to.
+     *
+     * @param list<string>|\Closure(string): bool $claims
+     *
+     * @throws PluginException
+     */
+    public function registerPreview(string $id, array|\Closure $claims): void
+    {
+        $this->previews->add($this->route('preview', $id, $claims));
+    }
+
+    /**
+     * One routing claim, as both {@see registerViewer()} and
+     * {@see registerPreview()} buffer it: the id checked, an extension list
+     * turned into the case-insensitive predicate.
+     *
+     * @param list<string>|\Closure(string): bool $claims
+     *
+     * @return array{plugin: string, id: string, claims: \Closure(string): bool}
+     *
+     * @throws PluginException
+     */
+    private function route(string $kind, string $id, array|\Closure $claims): array
+    {
         if (1 !== \preg_match(self::ID_PATTERN, $id)) {
-            throw new PluginException(\sprintf('Invalid viewer id "%s" (expected /^[a-z0-9][a-z0-9_-]*$/i)', $id));
+            throw new PluginException(\sprintf('Invalid %s id "%s" (expected /^[a-z0-9][a-z0-9_-]*$/i)', $kind, $id));
         }
         if (\is_array($claims) && [] === $claims) {
-            throw new PluginException('A viewer must claim at least one file extension');
+            throw new PluginException(\sprintf('A %s must claim at least one file extension', $kind));
         }
         if (\is_array($claims)) {
             /** @var list<string> $list */
@@ -466,11 +510,8 @@ final class PluginApi
             $extensions = \array_map(\strtolower(...), $list);
             $claims = static fn (string $path): bool => ProjectPaths::hasExtension($path, $extensions);
         }
-        $this->viewers->add([
-            'plugin' => $this->pluginName,
-            'id' => $id,
-            'claims' => $claims,
-        ]);
+
+        return ['plugin' => $this->pluginName, 'id' => $id, 'claims' => $claims];
     }
 
     /**
@@ -1696,6 +1737,12 @@ final class PluginApi
     public function bufferedViewers(): array
     {
         return $this->viewers->all();
+    }
+
+    /** @return list<array{plugin: string, id: string, claims: \Closure(string): bool}> */
+    public function bufferedPreviews(): array
+    {
+        return $this->previews->all();
     }
 
     /** @return list<array{plugin: string, id: string, pane: \Closure, load: \Closure}> */

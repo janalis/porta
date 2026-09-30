@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Overlay\State;
 
 use Porta\Editor\EditorPanes;
+use Porta\Layout\PreviewSplit;
 use Porta\Layout\ViewRegions;
 use Porta\Layout\WorkspaceLayout;
 use Porta\Widget\BreadcrumbsWidget;
@@ -41,6 +42,7 @@ final readonly class MenuOverlayPanesFactory
         private TerminalPanelWidget $terminalPanel,
         private DebugPanelWidget $debugPanel,
         private ViewRegistry $views,
+        private PreviewSplit $previewSplit,
     ) {}
 
     /**
@@ -72,6 +74,9 @@ final readonly class MenuOverlayPanesFactory
             [
                 $this->tree,
                 $this->layout->separator,
+                // The preview split's divider — detached, and so skipped,
+                // whenever no previewed file shows in Split.
+                $this->previewSplit->separator,
                 $this->tabBar,
                 $this->editor,
                 $this->breadcrumbs,

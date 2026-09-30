@@ -27,6 +27,7 @@ use Porta\Widget\DockTabsWidget;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\FindBarWidget;
 use Porta\Widget\HelpViewerWidget;
+use Porta\Widget\MarkdownPreviewWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\Onboarding\WelcomeWidget;
 use Porta\Widget\ResultsPanelWidget;
@@ -227,6 +228,22 @@ final class NarrowPaneRenderTest extends TestCase
             truncated: true,
         ));
         yield 'text preview' => [$preview];
+
+        // The markdown preview sits in HALF the editor's width, so it is the
+        // pane most likely to be narrower than the renderer's own wrap floor —
+        // a table and a fenced line are the rows that do not wrap.
+        $markdown = new MarkdownPreviewWidget();
+        $markdown->show('/p/README.md', '# A heading long enough to wrap
+
+| a | b |
+| --- | --- |
+| '.\str_repeat('x', times: 80).' | y |
+
+```
+'.\str_repeat('z', times: 120).'
+```
+');
+        yield 'markdown preview' => [$markdown];
     }
 
     #[DataProvider('paneWidgets')]

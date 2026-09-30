@@ -20,6 +20,7 @@ use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\EditorPaneWidget;
+use Porta\Workbench\EditorArea;
 use Porta\Workbench\StatusBarProvider;
 use Porta\Workbench\StatusCell;
 use Porta\Workbench\StatusClickSpan;
@@ -73,7 +74,7 @@ final class StatusBarProviderTest extends TestCase
         return new StatusBarProvider(
             $this->buffers,
             $this->editor,
-            $this->panes,
+            new EditorArea($this->buffers, $this->editor, $this->panes, new Tui(terminal: new VirtualTerminal(columns: 100, rows: 20))),
             $sources,
             new LspSessionPool($this->project->dir, new FixedActiveFile(), $this->translator),
             new ServerProgress(new Tui(terminal: new VirtualTerminal(columns: 100, rows: 20))),

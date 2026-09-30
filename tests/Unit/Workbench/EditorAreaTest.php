@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Workbench;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
 use Porta\Editor\EditorPanes;
+use Porta\Editor\PreviewMode;
 use Porta\ImageViewer\ImageData;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TestPane;
@@ -101,5 +102,57 @@ final class EditorAreaTest extends TestCase
         $this->area->focus();
 
         $this->assertTrue((bool) Probe::get($this->tui, 'renderRequested'));
+    }
+
+    /** A markdown text buffer previewed by the graph test pane, in $mode. */
+    private function previewed(PreviewMode $mode): void
+    {
+        $buffer = $this->buffers->open('/tmp/README.md', '# hi');
+        $buffer->previewId = 'graph';
+        $buffer->previewMode = $mode;
+    }
+
+    public function testASplitAnswersWithTheHalfThatHasTheKeysAndEntersAtTheText(): void
+    {
+        $this->previewed(PreviewMode::Split);
+        $this->tui->add($this->editor);
+        $this->tui->add($this->graphViewer);
+
+        $this->tui->setFocus($this->editor);
+        $this->assertSame($this->editor, $this->area->widget());
+        $this->tui->setFocus($this->graphViewer);
+        $this->assertSame($this->graphViewer, $this->area->widget(), 'the preview has the keys: it is the area\'s content');
+        $this->assertSame($this->editor, $this->area->entry(), 'but entering the area anew lands on the text');
+
+        $this->assertSame($this->graphViewer, $this->area->visiblePane(), 'the pointer can reach the preview whoever has the keys');
+        $this->assertSame([$this->editor, $this->graphViewer], $this->area->members(), 'two stops on the focus ring');
+    }
+
+    public function testALonePreviewIsTheWholeArea(): void
+    {
+        $this->previewed(PreviewMode::Preview);
+
+        $this->assertSame($this->graphViewer, $this->area->widget());
+        $this->assertSame($this->graphViewer, $this->area->entry());
+        $this->assertSame($this->graphViewer, $this->area->visiblePane());
+        $this->assertSame([$this->graphViewer], $this->area->members());
+    }
+
+    public function testTheTextAloneHasNoPaneToReach(): void
+    {
+        $this->previewed(PreviewMode::Editor);
+
+        $this->assertSame($this->editor, $this->area->widget());
+        $this->assertNull($this->area->visiblePane());
+        $this->assertSame([$this->editor], $this->area->members());
+    }
+
+    public function testAViewerTabIsReachedWhateverHasTheKeys(): void
+    {
+        $this->buffers->openPane('/tmp/arch.dot', 'graph', 'digraph {}');
+
+        $this->assertSame($this->graphViewer, $this->area->entry());
+        $this->assertSame($this->graphViewer, $this->area->visiblePane());
+        $this->assertSame([$this->graphViewer], $this->area->members());
     }
 }

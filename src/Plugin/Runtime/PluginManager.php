@@ -78,6 +78,8 @@ final class PluginManager implements
     private array $tokenSpans = [];
     /** @var list<array{plugin: string, id: string, claims: \Closure(string): bool}> committed viewer routes, in load order */
     private array $viewers = [];
+    /** @var list<array{plugin: string, id: string, claims: \Closure(string): bool}> committed live-preview routes, in load order */
+    private array $previews = [];
     /** @var list<array{plugin: string, id: string, pane: \Closure, load: \Closure}> committed panes, in load order */
     private array $panes = [];
     /** @var list<array{plugin: string, id: string, factory: \Closure}> committed full-screen views, in load order */
@@ -208,6 +210,9 @@ final class PluginManager implements
         }
         foreach ($api->bufferedViewers() as $viewer) {
             $this->viewers[] = $viewer;
+        }
+        foreach ($api->bufferedPreviews() as $preview) {
+            $this->previews[] = $preview;
         }
         foreach ($api->bufferedPanes() as $pane) {
             $this->panes[] = $pane;
@@ -354,6 +359,7 @@ final class PluginManager implements
         $this->highlighters = \array_values(\array_filter($this->highlighters, static fn (array $highlighter): bool => $name !== $highlighter['plugin']));
         $this->tokenSpans = \array_values(\array_filter($this->tokenSpans, static fn (array $spans): bool => $name !== $spans['plugin']));
         $this->viewers = \array_values(\array_filter($this->viewers, static fn (array $viewer): bool => $name !== $viewer['plugin']));
+        $this->previews = \array_values(\array_filter($this->previews, static fn (array $preview): bool => $name !== $preview['plugin']));
         $this->panes = \array_values(\array_filter($this->panes, static fn (array $pane): bool => $name !== $pane['plugin']));
         $this->views = \array_values(\array_filter($this->views, static fn (array $view): bool => $name !== $view['plugin']));
         $this->menus = \array_values(\array_filter($this->menus, static fn (array $menu): bool => $name !== $menu['plugin']));
@@ -671,13 +677,32 @@ final class PluginManager implements
     #[\Override]
     public function viewerFor(string $path): ?string
     {
-        foreach ($this->viewers as $viewer) {
+        return $this->firstClaim($this->viewers, $path);
+    }
+
+    /** The same question for the live-preview routes, asked first on every open. */
+    #[\Override]
+    public function previewFor(string $path): ?string
+    {
+        return $this->firstClaim($this->previews, $path);
+    }
+
+    /**
+     * The id of the first route whose claim matches $path. Viewers and
+     * previews share the report-once channel: both are a plugin's claim on a
+     * file, and one broken predicate is one thing to tell the user.
+     *
+     * @param list<array{plugin: string, id: string, claims: \Closure(string): bool}> $routes
+     */
+    private function firstClaim(array $routes, string $path): ?string
+    {
+        foreach ($routes as $route) {
             try {
-                if ($viewer['claims']($path)) {
-                    return $viewer['id'];
+                if ($route['claims']($path)) {
+                    return $route['id'];
                 }
             } catch (\Throwable $error) {
-                $this->reportOnce(FailureChannel::Viewer, $viewer['plugin'], $error);
+                $this->reportOnce(FailureChannel::Viewer, $route['plugin'], $error);
             }
         }
 

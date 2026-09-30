@@ -23,12 +23,13 @@ nothing.
 | `Ctrl+T` | Switch focus between file tree and editor |
 | `F6` / `Ctrl+F6` | Cycle focus forward / backward across panes (in the git and settings views, cycles their panes) |
 | `Ctrl+F10` | Open the context menu for the focused pane (editor: at the caret; tree: at the selected node; image/help tab: the tab menu) |
-| `Shift+F11` / `Shift+F12` | Shrink / grow the focused pane (file tree, git and settings sidebars, and the bottom panels) |
+| `Shift+F11` / `Shift+F12` | Shrink / grow the focused pane (file tree, git and settings sidebars, the bottom panels, and the editor beside a live preview) |
 | `Ctrl+Shift+'` | Maximize the open bottom panel; press again to put it back at the height it had |
 | `Ctrl+Shift+L` | Cycle the line-number mode (absolute → relative → off) |
 | `Alt+PageDown` / `Alt+PageUp` | Next / previous panel on the bottom dock |
 | `Alt+Z` | Toggle soft wrap (off by default; horizontal scroll is disabled while it is on) |
 | `Alt+V` | Toggle code vision — the server's "3 usages" lines above declarations (off by default) |
+| `Ctrl+Alt+V` | Step a previewed file (Markdown, SVG, a Graphviz or PlantUML diagram) through the text alone, the text beside its live preview, and the preview alone — the same as the `Editor` `Split` `Preview` toggles at the right of the breadcrumbs bar |
 | `F10` | Arm the application menu: File is lit, `←`/`→` move along the titles, `↓`/`Enter`/`Space` or a title's underlined letter opens one; `F10` or `Esc` again lets go |
 | a menu's underlined letter | Run that item (in a select's list, a letter jumps to the next option starting with it) |
 | `F1` | Open the documentation browser (these guides, fully rendered; see the Help viewer table below) |

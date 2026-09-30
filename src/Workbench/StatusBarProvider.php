@@ -6,7 +6,6 @@ namespace Porta\Workbench;
 
 use Porta\Editor\BufferManager;
 use Porta\Editor\DiagnosticSeverity;
-use Porta\Editor\EditorPanes;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\ServerProgress;
@@ -16,6 +15,7 @@ use Porta\Ui\KeyHints;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\CodeEditorWidget;
+use Porta\Widget\EditorPaneWidget;
 use Porta\Workbench\Menu\MenuItem;
 use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -33,7 +33,7 @@ final readonly class StatusBarProvider
     public function __construct(
         private BufferManager $buffers,
         private CodeEditorWidget $editor,
-        private EditorPanes $panes,
+        private EditorArea $editorArea,
         /** @var iterable<StatusSegment> ambient-state contributors, core's first (see StatusSegment) */
         #[AutowireIterator('porta.status_segment')]
         private iterable $segmentSources,
@@ -98,7 +98,11 @@ final readonly class StatusBarProvider
         // viewer, so the status bar had to know which viewer was showing; a pane
         // that contributes nothing (the help pane) returns '' and falls through
         // to the editor's diagnostics/LSP legend below.
-        $paneSegment = $this->panes->paneFor((string) $active?->paneId)?->statusRight();
+        // A preview speaks for itself the same way while it has the keys —
+        // shown alone, or clicked beside the editor; while the editor has
+        // them, the caret's legend is the one that means something.
+        $focusTarget = $this->editorArea->widget();
+        $paneSegment = $focusTarget instanceof EditorPaneWidget ? $focusTarget->statusRight() : null;
         if (null !== $paneSegment && '' !== $paneSegment) {
             // A pane owns its whole right side, so core has nothing clickable
             // to offer there.

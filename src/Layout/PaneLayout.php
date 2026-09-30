@@ -36,6 +36,7 @@ final class PaneLayout implements EditorAreaPanes
         private readonly PaneReorder $reorder,
         private readonly ViewRegistry $views,
         private readonly ViewRegions $regions,
+        private readonly PreviewSplit $previewSplit,
     ) {
         $this->editorPanes = $layout->editorPanes();
     }
@@ -126,6 +127,9 @@ final class PaneLayout implements EditorAreaPanes
         // workspace which way it reads so a right-hand strip moves to the far
         // left rather than sitting between the editor and the file tree.
         $this->layout->setMirrored($this->translator->isRtl());
+        // The preview split mirrors like the workspace around it: the editor
+        // on the leading side, its preview on the trailing one.
+        $this->previewSplit->setMirrored($this->translator->isRtl());
         $this->arrangeViewAreas();
         if (!$this->views->isAnyOpen()) {
             $this->arrangeEditorArea();

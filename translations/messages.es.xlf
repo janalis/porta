@@ -3026,6 +3026,30 @@
         <source>resolved</source>
         <target>resuelto</target>
       </trans-unit>
+      <trans-unit id="1076">
+        <source>Split</source>
+        <target>Dividido</target>
+      </trans-unit>
+      <trans-unit id="1077">
+        <source>Preview</source>
+        <target>Vista previa</target>
+      </trans-unit>
+      <trans-unit id="1078">
+        <source>Toggle Preview</source>
+        <target>Alternar vista previa</target>
+      </trans-unit>
+      <trans-unit id="1079">
+        <source>Editor Only</source>
+        <target>Solo editor</target>
+      </trans-unit>
+      <trans-unit id="1080">
+        <source>Editor and Preview</source>
+        <target>Editor y vista previa</target>
+      </trans-unit>
+      <trans-unit id="1081">
+        <source>Preview Only</source>
+        <target>Solo vista previa</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

@@ -490,4 +490,55 @@ final class PluginViewerTest extends TestCase
         $manager->deactivate('demo', new CommandRegistry());
         $this->assertSame([], $manager->menuSpecs(MenuSurface::EditorContext), 'a removed plugin takes its context item with it');
     }
+
+    public function testAPreviewClaimIsItsOwnRouteAskedInLoadOrderAndGoesWithItsPlugin(): void
+    {
+        $manager = $this->manager();
+        $graphs = $this->api($manager, 'graph-viewer');
+        $graphs->registerViewer('graph', ['dot']);
+        $graphs->registerPreview('graph', ['DOT', 'gv']);
+        $manager->commit($graphs);
+        $later = $this->api($manager, 'later');
+        $later->registerPreview('other', static fn (string $path): bool => true);
+        $manager->commit($later);
+
+        $this->assertSame('graph', $manager->previewFor('/p/g.dot'), 'the preview route answers for itself');
+        $this->assertSame('graph', $manager->previewFor('/p/G.GV'), 'case-insensitively, like a viewer claim');
+        $this->assertSame('other', $manager->previewFor('/p/a.md'), 'the next plugin in load order answers what the first did not');
+        $this->assertSame('graph', $manager->viewerFor('/p/g.dot'), 'and the viewer claim is still there beside it');
+        $this->assertNull($manager->viewerFor('/p/a.gv'), 'the two claims are separate lists');
+
+        $manager->deactivate('graph-viewer', new CommandRegistry());
+        $this->assertSame('other', $manager->previewFor('/p/g.dot'), 'a removed plugin takes its preview claim with it');
+    }
+
+    public function testAThrowingPreviewClaimDeclinesAndReportsOnce(): void
+    {
+        $manager = $this->manager();
+        $broken = $this->api($manager, 'broken');
+        $broken->registerPreview('boom', static fn (string $path): bool => throw new \RuntimeException('claim exploded'));
+        $manager->commit($broken);
+
+        $this->assertNull($manager->previewFor('/p/a.md'));
+        $this->assertNull($manager->previewFor('/p/b.md'));
+        $this->assertCount(1, $manager->warnings, 'reported once, not per open');
+    }
+
+    public function testAPreviewIdIsValidatedLikeAViewers(): void
+    {
+        $api = $this->api($this->manager(), 'p');
+
+        $this->expectException(PluginException::class);
+        $this->expectExceptionMessageIsOrContains('Invalid preview id "bad id"');
+        $api->registerPreview('bad id', ['md']);
+    }
+
+    public function testAPreviewMustClaimSomething(): void
+    {
+        $api = $this->api($this->manager(), 'p');
+
+        $this->expectException(PluginException::class);
+        $this->expectExceptionMessageIsOrContains('A preview must claim at least one file extension');
+        $api->registerPreview('md', []);
+    }
 }

@@ -18,10 +18,14 @@ namespace Porta\Config;
  */
 final readonly class LayoutPrefs
 {
-    /** @param array<string, int> $viewSidebarWidthPercent view id => width, for whichever views have been resized */
+    /**
+     * @param array<string, int> $viewSidebarWidthPercent view id => width, for whichever views have been resized
+     * @param int|null           $previewSplitPercent     the editor's share of a preview split — one for every previewed file
+     */
     public function __construct(
         public ?int $sidebarWidthPercent = null,
         public ?int $bottomPanelHeightPercent = null,
         public array $viewSidebarWidthPercent = [],
+        public ?int $previewSplitPercent = null,
     ) {}
 }
