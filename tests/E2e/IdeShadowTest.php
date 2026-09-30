@@ -35,7 +35,7 @@ final class IdeShadowTest extends TestCase
     /** @return iterable<string, array{string, string}> */
     public static function surfaceProvider(): iterable
     {
-        foreach (['app menu', 'context menu', 'toast', 'welcome', 'find in files'] as $surface) {
+        foreach (['app menu', 'context menu', 'toast', 'welcome', 'find in files', 'picker'] as $surface) {
             foreach (['en', 'he'] as $locale) {
                 yield "{$surface}, {$locale}" => [$surface, $locale];
             }
@@ -70,6 +70,7 @@ final class IdeShadowTest extends TestCase
                         'toast' => Services::resolve($ide, Notifier::class)->notify('A toast with a shadow', ToastSeverity::Info, seconds: 30),
                         'welcome' => $commands->run('ide_welcome'),
                         'find in files' => $commands->run('ide_find_in_project'),
+                        'picker' => $commands->run('ide_search_everywhere'),
                     };
 
                     $cells = [];
