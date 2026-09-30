@@ -225,7 +225,8 @@ let an agent read freely and still ask before it saves or runs anything.
 
 A client on protocol `2025-06-18` or later gets a JSON answer twice: once as
 text, and once as `structuredContent`, the value itself. A list is wrapped as
-`{"items": [...]}`.
+`{"items": [...]}`. Claude Code's IDE connection gets text alone, as from
+VS Code: the CLI reads those answers itself.
 
 ### Slow calls and cancelled ones
 
