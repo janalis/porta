@@ -46,6 +46,19 @@ machines, use one of these:
   joins `127.0.0.1:52814#…`.
 - **A VPN such as Tailscale.** Set **Accept guests from** to `0.0.0.0` and
   share the host's VPN address.
+- **A relay.** When neither side can reach the other (both behind a router,
+  say), anyone can run `porta assist-relay` on a machine both can reach. It
+  listens on port 7420 (`--port` changes it, `--bind` the address). Set
+  **Relay to share through** to that machine's `address:port`, then share.
+  The invite then names the relay and the session, as
+  `relay.example.com:7420/6b1f…#…`, and guests join it the usual way.
+
+  The relay only joins the two connections and passes bytes between them.
+  The encryption runs from the guest all the way to the host, checked against
+  the fingerprint in the invite, so the relay sees neither the code nor the
+  token, and it cannot stand in for the host. If the relay stops, everyone
+  who came in through it is cut off and the host is told. Share again for a
+  new invite once it is back.
 
 ## Joining
 
@@ -150,6 +163,7 @@ tab is refused with a message saying so.
 | Your name in a session | your login name | The name the others see beside your caret |
 | Accept guests from | `127.0.0.1` | `127.0.0.1`: this machine only (reach it through a tunnel or VPN). `0.0.0.0`: the whole network |
 | Port to share on | `0` | `0` picks a free port each time |
+| Relay to share through | empty | `host:port` of a `porta assist-relay` for guests who cannot reach this machine. Empty: guests connect directly |
 | Largest file to share (MB) | `4` | Bigger files stay on the host |
 
 ## Limits

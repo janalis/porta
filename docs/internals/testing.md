@@ -79,7 +79,7 @@ Roughly 700 duplicated lines once collapsed onto these.
 | `DrainsPeer` | `drainPeer()`: read a socket pair's far end from a loop watcher — polling it inside `await()` moves one 8 KB macOS socket buffer per turn |
 | `Previews` | `alone($ide)`: show the active previewed file's preview alone, with the keys — the viewer tab a test about an SVG or graph PANE used to open |
 | `CallsTools` | `callTool($api, $id, $args)`: run a `registerTool()` handler in its own fiber, as the mcp server does, pumping the loop until it answers; a throw is rethrown |
-| `TalksAssist` (plugins/assist) | the other end of a shared session: `askIn()` a host IDE as a guest, or `listen()` / `acceptGuest()` for a guest IDE; `say()` / `expect($type)` speak the wire, `share()`, `command()`, `api()` drive the IDE under test |
+| `TalksAssist` (plugins/assist) | the other end of a shared session: `askIn()` a host IDE as a guest (through the relay, when the invite names one), or `listen()` / `acceptGuest()` for a guest IDE; `say()` / `expect($type)` speak the wire, `share()`, `command()`, `api()` drive the IDE under test |
 
 `await()`'s budget is real seconds, measured with `hrtime()`. It used to add
 0.02 per turn and call that elapsed time, so "timed out after 10.0s" could be a
