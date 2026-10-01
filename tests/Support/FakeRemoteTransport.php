@@ -17,6 +17,8 @@ use Porta\I18n\Translator;
 use Porta\Search\FileIndex;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Notifier;
+use Psr\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Filesystem\Filesystem;
 
 /**
@@ -167,7 +169,7 @@ final class FakeRemoteTransport extends RemoteTransport
      * A remote project at $cacheDir served by this fake — what a test needs
      * when the remote filesystem is a collaborator, not the thing tested.
      */
-    public function filesystem(string $cacheDir, ?StatusBarWidget $status = null): RemoteFilesystem
+    public function filesystem(string $cacheDir, ?StatusBarWidget $status = null, ?EventDispatcherInterface $events = null): RemoteFilesystem
     {
         return new RemoteFilesystem(
             new ProjectLocation(new RemoteSpec('ssh', 'example.org', '/srv')),
@@ -186,6 +188,7 @@ final class FakeRemoteTransport extends RemoteTransport
             new Translator('en'),
             new BufferManager(),
             new FileIndex($cacheDir),
+            $events ?? new EventDispatcher(),
         );
     }
 

@@ -964,10 +964,12 @@ Each SOURCE replaces its own list whole (`set()`), and the diff is what fires
 `ParticipantJoined`/`ParticipantLeft`. `outOfTouch()` keeps a source's people
 as last seen (`⌁`, accent tone) and arms a `Scheduler` timer; a `set()` within
 `Participants::GRACE` (60 s) calls it off, else the timer empties the source.
-What it shows changing dispatches `ParticipantsChanged`, which
+What it shows changing dispatches `StatusCellsChanged`, which
 `StatusBarRefreshListener` turns into `invalidate()`: a frame skips
 `beforeRender()` under a cached subtree, so a bare render request would leave
-the cell as it was (`StatusBarRefreshListenerTest` shows the trap).
+the cell as it was (`StatusBarRefreshListenerTest` shows the trap). Any cell
+whose source changes while nothing else on screen does says it the same way
+— `RemoteFilesystem`'s `⇡N` and its last refusal too.
 A plugin reaches it through `PluginApi::participants()` →
 `Plugin/Api/PluginParticipants` (`set`, `outOfTouch`, `yourName`), under
 `plugin:<name>`, which `PluginManager::deactivate()` empties.

@@ -23,6 +23,7 @@ use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestTui;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Notifier;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 
 final class ProjectSearchTest extends TestCase
 {
@@ -105,6 +106,7 @@ final class ProjectSearchTest extends TestCase
                 new Translator('en'),
                 new BufferManager(),
                 new FileIndex($cache->dir),
+                new EventDispatcher(),
             )->remoteCommand(['grep']),
             'a local project runs its commands here',
         );

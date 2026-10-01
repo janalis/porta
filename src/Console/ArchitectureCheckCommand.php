@@ -148,6 +148,7 @@ final class ArchitectureCheckCommand extends Command
         'Event>Widget',
         'Filesystem>Container',
         'Filesystem>Editor', // the remote poll re-lists the directories holding an open buffer first
+        'Filesystem>Event', // StatusCellsChanged: the ⇡N cell moves while nothing else on screen does
         'Filesystem>Search', // a walk of a remote tree refreshes what go-to-file reads
         'Filesystem>Support',
         'Filesystem>Ui', // the status cell's glyphs

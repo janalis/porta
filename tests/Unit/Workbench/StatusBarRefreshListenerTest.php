@@ -7,7 +7,7 @@ namespace Porta\Tests\Unit\Workbench;
 use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\TestCase;
 use Porta\Event\DebugStatusChanged;
-use Porta\Event\ParticipantsChanged;
+use Porta\Event\StatusCellsChanged;
 use Porta\Tests\Support\TestTui;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\StatusBarRefreshListener;
@@ -47,7 +47,7 @@ final class StatusBarRefreshListenerTest extends TestCase
         $this->assertStringNotContainsString('after!', $frame(), 'the trap: a cached subtree never asks the bar again');
 
         $listener = new StatusBarRefreshListener($bar, $tui);
-        $listener->onStatusChanged(new ParticipantsChanged());
+        $listener->onStatusChanged(new StatusCellsChanged());
         $this->assertStringContainsString('after!', $frame(), 'marked dirty: read again, and painted');
 
         $cell = 'debug';

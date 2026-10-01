@@ -21,6 +21,7 @@ use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestTui;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Notifier;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
 
 /** A project on this machine: everything is here, and every verb is the disk's. */
@@ -98,6 +99,7 @@ final class LocalFilesystemTest extends TestCase
             new Translator('en'),
             new BufferManager(),
             new FileIndex($cache->dir),
+            new EventDispatcher(),
         );
         $spec = new RemoteSpec('ssh', 'h', '/srv');
         $files = new ProjectFiles(new ProjectLocation($spec), $remote($spec), new LocalFilesystem());

@@ -6,7 +6,7 @@ namespace Porta\Workbench;
 
 use Porta\Event\DebugStatusChanged;
 use Porta\Event\LspStatusChanged;
-use Porta\Event\ParticipantsChanged;
+use Porta\Event\StatusCellsChanged;
 use Porta\Widget\StatusBarWidget;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\Tui\Tui;
@@ -24,7 +24,7 @@ final readonly class StatusBarRefreshListener
     ) {}
 
     #[AsEventListener]
-    public function onStatusChanged(DebugStatusChanged|LspStatusChanged|ParticipantsChanged $event): void
+    public function onStatusChanged(DebugStatusChanged|LspStatusChanged|StatusCellsChanged $event): void
     {
         $this->statusBar->invalidate();
         $this->tui->requestRender();

@@ -7,7 +7,7 @@ namespace Porta\Tests\Unit\Presence;
 use PHPUnit\Framework\TestCase;
 use Porta\Event\ParticipantJoined;
 use Porta\Event\ParticipantLeft;
-use Porta\Event\ParticipantsChanged;
+use Porta\Event\StatusCellsChanged;
 use Porta\Presence\Identity;
 use Porta\Presence\Participant;
 use Porta\Presence\Participants;
@@ -81,7 +81,7 @@ final class ParticipantsTest extends TestCase
     public function testTheStatusBarIsToldOnlyWhenWhatItShowsChanged(): void
     {
         $participants = $this->participants();
-        $changes = fn (): int => \count($this->events->take(ParticipantsChanged::class));
+        $changes = fn (): int => \count($this->events->take(StatusCellsChanged::class));
 
         $participants->set('presence', [new Participant('a', 'Ada', 'local')]);
         $this->assertSame(1, $changes(), 'someone came');

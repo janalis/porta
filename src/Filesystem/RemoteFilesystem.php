@@ -6,6 +6,7 @@ namespace Porta\Filesystem;
 
 use Porta\Container\AsIdeService;
 use Porta\Editor\BufferManager;
+use Porta\Event\StatusCellsChanged;
 use Porta\I18n\Translator;
 use Porta\Search\FileIndex;
 use Porta\Ui\Glyphs;
@@ -13,6 +14,7 @@ use Porta\Workbench\Notifier;
 use Porta\Workbench\StatusCell;
 use Porta\Workbench\StatusSegment;
 use Porta\Workbench\StatusTone;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Revolt\EventLoop;
 use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
 use Symfony\Component\Filesystem\Filesystem;
@@ -98,6 +100,7 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
         private readonly Translator $translator,
         private readonly BufferManager $buffers,
         private readonly FileIndex $files,
+        private readonly EventDispatcherInterface $events,
         private readonly Filesystem $fs = new Filesystem(),
     ) {
         $this->realRoot = ($resolved = \realpath($rootDir)) ? $resolved : $rootDir;
@@ -381,7 +384,7 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
                 return;
             }
             /** @var list<RemoteEntry> $answer */
-            $this->trouble = null;
+            $this->troubled(null);
             unset($this->retry[$relative]);
             $this->reconcile($relative, $answer);
         });
@@ -480,7 +483,7 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
             if ($this->queue->touches($relative)) {
                 return; // a change of ours is on its way: the server's copy is not the latest
             }
-            $this->trouble = null;
+            $this->troubled(null);
             $this->fs->dumpFile($this->absolute($relative), $answer->bytes);
             $this->index->file($relative, $answer->stamp, fetched: true);
             $this->index->save();
@@ -560,7 +563,7 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
     private function uploaded(string $relative, RemoteStamp|string|null $answer): void
     {
         if ($answer instanceof RemoteStamp) {
-            $this->trouble = null;
+            $this->troubled(null);
             unset($this->force[$relative]);
             $this->index->file($relative, $answer, fetched: true);
             $this->index->save();
@@ -639,9 +642,30 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
     private function change(string $relative, \Closure $change): void
     {
         $this->queue->add($relative, function (\Closure $next) use ($change): void {
+            // The cell counts what is on its way: one fewer once answered.
+            $answered = function () use ($next): void {
+                $next();
+                $this->cellChanged();
+            };
             $transport = $this->transport();
-            null === $transport ? $next() : $change($transport, $next);
+            null === $transport ? $answered() : $change($transport, $answered);
         });
+        $this->cellChanged();
+    }
+
+    /** The last thing the server refused, or null once it answered yes: the cell says it, so a change is said. */
+    private function troubled(?string $trouble): void
+    {
+        if ($trouble !== $this->trouble) {
+            $this->trouble = $trouble;
+            $this->cellChanged();
+        }
+    }
+
+    /** What the status cell shows moved — the count on its way, the last refusal — whatever else did not. */
+    private function cellChanged(): void
+    {
+        $this->events->dispatch(new StatusCellsChanged());
     }
 
     /**
@@ -661,13 +685,13 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
 
     private function cannotRead(string $relative, string $error): void
     {
-        $this->trouble = $error;
+        $this->troubled($error);
         $this->notifier->error($this->translator->trans('Cannot read %file% from the server: %error%', self::about($relative, $error)), slot: self::SLOT);
     }
 
     private function cannotChange(string $relative, string $error): void
     {
-        $this->trouble = $error;
+        $this->troubled($error);
         $this->notifier->error($this->translator->trans('Cannot change %file% on the server: %error%', self::about($relative, $error)), slot: self::SLOT);
     }
 

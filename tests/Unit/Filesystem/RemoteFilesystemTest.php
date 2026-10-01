@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Filesystem;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
+use Porta\Event\StatusCellsChanged;
 use Porta\Filesystem\ProjectLocation;
 use Porta\Filesystem\RemoteFilesystem;
 use Porta\Filesystem\RemoteSpec;
@@ -16,6 +17,7 @@ use Porta\I18n\Translator;
 use Porta\Search\FileIndex;
 use Porta\Tests\Support\FakeRemoteTransport;
 use Porta\Tests\Support\PumpsLoop;
+use Porta\Tests\Support\RecordingEvents;
 use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestTui;
@@ -23,6 +25,7 @@ use Porta\Ui\Glyphs;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Notifier;
 use Porta\Workbench\StatusTone;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Filesystem\Filesystem;
 
 /**
@@ -71,6 +74,7 @@ final class RemoteFilesystemTest extends TestCase
             new Translator('en'),
             $this->buffers,
             new FileIndex($this->cache->dir),
+            new EventDispatcher(),
         );
     }
 
@@ -95,6 +99,7 @@ final class RemoteFilesystemTest extends TestCase
             new Translator('en'),
             $this->buffers,
             $index,
+            new EventDispatcher(),
         );
     }
 
@@ -113,6 +118,7 @@ final class RemoteFilesystemTest extends TestCase
             new Translator('en'),
             $this->buffers,
             new FileIndex($this->cache->dir),
+            new EventDispatcher(),
         );
     }
 
@@ -220,6 +226,39 @@ final class RemoteFilesystemTest extends TestCase
 
         $this->assertSame("# changed\n", \file_get_contents($this->server->path('README.md')));
         $this->assertSame(0, $files->pending());
+    }
+
+    public function testTheStatusBarIsToldWhenTheCellsCountOrTroubleMoves(): void
+    {
+        $events = new RecordingEvents();
+        $this->server->write('more.md', 'not fetched yet');
+        $files = $this->transport->filesystem($this->cache->dir, $this->status, $events);
+        $files->listed($this->cache->dir);
+        $files->available($this->cache->path('README.md'), static fn (): null => null);
+        $told = static fn (): int => \count($events->take(StatusCellsChanged::class));
+        $told();
+
+        $this->transport->hold = true;
+        $files->dumpFile($this->cache->path('README.md'), 'one');
+        $this->assertSame(1, $told(), 'on its way: the count went up');
+        $this->transport->release();
+        $this->assertSame(1, $told(), 'answered: the count went down, with nothing else on screen to repaint the cell');
+
+        $this->transport->fail['*'] = 'disk full';
+        $files->dumpFile($this->cache->path('README.md'), 'two');
+        $this->assertSame(3, $told(), 'up, refused — the cell says why — and down');
+        $files->dumpFile($this->cache->path('README.md'), 'three');
+        $this->assertSame(3, $told(), 'up, accepted — the refusal goes — and down');
+        $files->poll();
+        $files->poll();
+        $this->assertSame(0, $told(), 'a poll that finds nothing new tells nobody');
+
+        $this->transport->fail['*'] = 'connection refused';
+        $files->available($this->cache->path('more.md'), static fn (): null => null);
+        $this->assertSame(1, $told(), 'a read refused: the cell says so');
+        $cell = $files->statusCells()[0];
+        $this->assertSame(StatusTone::Accent, $cell->tone);
+        $this->assertStringEndsWith("\nconnection refused", (string) $cell->tooltip);
     }
 
     public function testSavesWhileAnUploadIsQueuedRideTheSameUpload(): void
@@ -423,6 +462,7 @@ final class RemoteFilesystemTest extends TestCase
             new Translator('en'),
             $this->buffers,
             new FileIndex($this->cache->dir),
+            new EventDispatcher(),
         );
         $files->listed($this->cache->dir); // before any plugin: wanted
         $source->transport = $this->transport;
@@ -748,6 +788,7 @@ final class RemoteFilesystemTest extends TestCase
             new Translator('en'),
             $this->buffers,
             new FileIndex($this->cache->dir),
+            new EventDispatcher(),
         )->listed($this->cache->dir);
         $files = $this->noTransport();
 
@@ -784,6 +825,7 @@ final class RemoteFilesystemTest extends TestCase
             new Translator('en'),
             $this->buffers,
             new FileIndex($this->cache->dir),
+            new EventDispatcher(),
         );
 
         $this->assertFalse($files->listed($this->cache->dir));

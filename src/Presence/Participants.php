@@ -10,7 +10,7 @@ use Porta\Editor\FileOpener;
 use Porta\Editor\OpenFocus;
 use Porta\Event\ParticipantJoined;
 use Porta\Event\ParticipantLeft;
-use Porta\Event\ParticipantsChanged;
+use Porta\Event\StatusCellsChanged;
 use Porta\I18n\Translator;
 use Porta\Support\ProjectPaths;
 use Porta\Support\Scheduler;
@@ -94,7 +94,7 @@ final class Participants implements StatusSegment
             $this->events->dispatch(new ParticipantJoined($source.'/'.$id, $came->name, $came->via));
         }
         if ($found || self::shown($before) !== self::shown($now)) {
-            $this->events->dispatch(new ParticipantsChanged());
+            $this->events->dispatch(new StatusCellsChanged());
         }
     }
 
@@ -107,7 +107,7 @@ final class Participants implements StatusSegment
         $this->lost[$source] = $this->scheduler->delay(self::GRACE, function () use ($source): void {
             $this->set($source, []);
         });
-        $this->events->dispatch(new ParticipantsChanged());
+        $this->events->dispatch(new StatusCellsChanged());
     }
 
     /** @return list<Participant> everyone, source by source */
