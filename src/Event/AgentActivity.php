@@ -18,6 +18,10 @@ use Porta\Workbench\AgentActivityKind;
  * 0-based line and byte column, as {@see \Porta\Plugin\Api\OpenBuffers} counts
  * them; one past the end is clamped. A NEGATIVE line shows the agent on the
  * file — its tab, its tree row — with no caret drawn in the text.
+ *
+ * With an anchor (a non-negative `$anchorLine`), the text from it to the
+ * caret is the agent's selection, tinted in its colour — a collaborator
+ * selecting, say.
  */
 final readonly class AgentActivity implements PluginObservable
 {
@@ -29,5 +33,7 @@ final readonly class AgentActivity implements PluginObservable
         public int $line,
         public int $column,
         public float $fadeAfter,
+        public int $anchorLine = -1,
+        public int $anchorColumn = 0,
     ) {}
 }

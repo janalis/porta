@@ -125,6 +125,39 @@ final class Document
      */
     public private(set) string $eol = "\n";
 
+    /**
+     * Whether the USER may change this text: a read-only document still moves
+     * its caret and selection, and an edit from code — a collaborator's, a
+     * reload — still lands. What gives back a keystroke's change is
+     * {@see ReadOnlyInput}, which the editor runs its input through. A change
+     * of who may edit starts a fresh undo history: the steps from before were
+     * someone else's to take back.
+     */
+    public bool $readOnly = false {
+        set {
+            $this->readOnly = $value;
+            $this->history->clear();
+        }
+    }
+
+    /**
+     * Undo and redo, answered by someone else while set — each closure says
+     * whether it changed anything. For a shared session, where undo must take
+     * back only this user's own edits, which a snapshot of the whole text
+     * cannot do once someone else has typed since. Either hand-over forgets
+     * the snapshots so far: from before one they would restore text others
+     * have changed since, and from during one they were never this history's
+     * to replay.
+     *
+     * @var array{undo: \Closure(): bool, redo: \Closure(): bool}|null
+     */
+    public ?array $historyDelegate = null {
+        set {
+            $this->historyDelegate = $value;
+            $this->history->clear();
+        }
+    }
+
     public function __construct(string $text = '')
     {
         $text = $this->adopt($text);
@@ -1412,6 +1445,9 @@ final class Document
 
     public function undo(): bool
     {
+        if (null !== $this->historyDelegate) {
+            return $this->historyDelegate['undo']();
+        }
         $state = $this->history->undo($this->snapshot());
         if (null === $state) {
             return false;
@@ -1424,6 +1460,9 @@ final class Document
 
     public function redo(): bool
     {
+        if (null !== $this->historyDelegate) {
+            return $this->historyDelegate['redo']();
+        }
         $state = $this->history->redo($this->snapshot());
         if (null === $state) {
             return false;

@@ -56,7 +56,7 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
     /**
      * Not cleared per buffer: an agent's caret belongs to its file.
      *
-     * @var array<string, array<string, array{line: int, col: int, label: string, slot: int}>> path => owner => caret
+     * @var array<string, array<string, array{line: int, col: int, label: string, slot: int, anchor?: array{line: int, col: int}|null}>> path => owner => caret
      */
     private array $remoteCarets = [];
 
@@ -595,6 +595,37 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
         $byLine = [];
         foreach ($this->remoteCarets[$path ?? ''] ?? [] as $caret) {
             $byLine[$caret['line']][] = ['col' => $caret['col'], 'label' => $caret['label'], 'slot' => $caret['slot']];
+        }
+
+        return $byLine;
+    }
+
+    /**
+     * The selections of other writers in one file, by 0-based line: on each
+     * line the byte columns it covers — the end PHP_INT_MAX where it runs on
+     * past the line's end — and its owner's colour slot.
+     *
+     * @return array<int, list<array{start: int, end: int, slot: int}>>
+     */
+    public function remoteSelectionsIn(?string $path): array
+    {
+        $byLine = [];
+        foreach ($this->remoteCarets[$path ?? ''] ?? [] as $caret) {
+            $anchor = $caret['anchor'] ?? null;
+            if (null === $anchor) {
+                continue;
+            }
+            [$from, $to] = [[$anchor['line'], $anchor['col']], [$caret['line'], $caret['col']]];
+            if ($to < $from) {
+                [$from, $to] = [$to, $from];
+            }
+            for ($line = $from[0]; $line <= $to[0]; ++$line) {
+                $byLine[$line][] = [
+                    'start' => $line === $from[0] ? $from[1] : 0,
+                    'end' => $line === $to[0] ? $to[1] : \PHP_INT_MAX,
+                    'slot' => $caret['slot'],
+                ];
+            }
         }
 
         return $byLine;

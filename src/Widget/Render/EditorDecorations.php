@@ -22,6 +22,7 @@ final readonly class EditorDecorations
      * @param list<array{0: int, 1: int, 2: int, 3: bool}>                            $occurrences [line, startDisplayCol, endDisplayCol, isWrite]
      * @param array{0: array{0: int, 1: int}, 1: array{0: int, 1: int}}|null       $brackets
      * @param array<int, list<array{col: int, label: string, slot: int}>>             $remoteCarets other writers' carets in this file, by 0-based line (byte cols)
+     * @param array<int, list<array{start: int, end: int, slot: int}>>              $remoteSelections other writers' selections in this file, by 0-based line (byte cols, PHP_INT_MAX past the end)
      */
     public function __construct(
         public bool $multiActive,
@@ -30,5 +31,6 @@ final readonly class EditorDecorations
         public array $occurrences,
         public ?array $brackets,
         public array $remoteCarets = [],
+        public array $remoteSelections = [],
     ) {}
 }

@@ -3078,6 +3078,10 @@
         <source>System (%language%)</source>
         <target>Système (%language%)</target>
       </trans-unit>
+      <trans-unit id="1089">
+        <source>This file is read-only</source>
+        <target>Ce fichier est en lecture seule</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

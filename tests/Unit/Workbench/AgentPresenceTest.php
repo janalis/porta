@@ -63,6 +63,24 @@ final class AgentPresenceTest extends TestCase
         $this->assertSame([], $this->editor->decorations->remoteCaretsIn(null));
     }
 
+    public function testASelectionAnchorIsHandedToTheEditor(): void
+    {
+        $presence = $this->presence();
+
+        $presence->onAgentActivity(new AgentActivity('a', 'Ana', '/p/a.php', AgentActivityKind::Editing, 2, 1, 10.0, anchorLine: 0, anchorColumn: -4));
+        $presence->onAgentActivity(new AgentActivity('b', 'Bo', '/p/a.php', AgentActivityKind::Editing, 4, 0, 10.0));
+
+        $this->assertSame(
+            [
+                0 => [['start' => 0, 'end' => \PHP_INT_MAX, 'slot' => 0]],
+                1 => [['start' => 0, 'end' => \PHP_INT_MAX, 'slot' => 0]],
+                2 => [['start' => 0, 'end' => 1, 'slot' => 0]],
+            ],
+            $this->editor->decorations->remoteSelectionsIn('/p/a.php'),
+            'a column before the line start is clamped to it; no anchor, no selection',
+        );
+    }
+
     public function testQuietFadesEachFileOnItsOwnAndAnotherReportReArmsIt(): void
     {
         $presence = $this->presence();

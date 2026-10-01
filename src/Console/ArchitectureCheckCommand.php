@@ -69,6 +69,17 @@ final class ArchitectureCheckCommand extends Command
 
     /** The audited namespace import graph, sorted, as 'From>To'. */
     private const array ALLOWED_EDGES = [
+        // The assist plugin's own code (plugins/assist/src): its wire rides the
+        // shared line framer and non-blocking writer (Support), it edits and
+        // watches buffers through the plugin API (Plugin), and it shows the
+        // others through core's agent presence (Event, Workbench).
+        'AssistPlugin>Config', // `porta assist` enables the plugin in the copy: the default list, and home
+        'AssistPlugin>Event',
+        'AssistPlugin>Install', // `porta assist` opens this very Porta on the copy
+        'AssistPlugin>Overlay', // the toast severities its notices pick
+        'AssistPlugin>Plugin',
+        'AssistPlugin>Support',
+        'AssistPlugin>Workbench',
         'Bootstrap>Config',
         'Bootstrap>Container',
         'Bootstrap>Editor',

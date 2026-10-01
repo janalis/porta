@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Porta\McpPlugin\Protocol;
+namespace Porta\Support;
 
 /**
- * MCP's stdio framing: one JSON-RPC message per line, newline-terminated, no
- * embedded newlines. `feed()` takes bytes as they arrive — split or batched
+ * One message per line, newline-terminated, no embedded newlines — MCP's
+ * stdio framing, and the assist plugin's wire. `feed()` takes bytes as they arrive — split or batched
  * arbitrarily — and hands back every complete line.
  *
- * Not {@see \Porta\Support\JsonRpcFramer}, which is Content-Length framing
+ * Not {@see JsonRpcFramer}, which is Content-Length framing
  * (LSP and DAP): the two share only the rule that the read buffer is capped,
  * and a peer that never sends a newline would otherwise grow it without bound.
  * Past the cap the partial line is thrown away and everything up to the next

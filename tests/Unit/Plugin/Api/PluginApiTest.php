@@ -684,6 +684,70 @@ final class PluginApiTest extends TestCase
         );
     }
 
+    public function testOpenBuffersApplySeveralRangesAsOneStepOrNoneAtAll(): void
+    {
+        $api = $this->api();
+        $a = $this->buffers->open('/p/a.php', "one\ntwo\n");
+        $buffers = $api->openBuffers();
+        $version = $buffers->version('/p/a.php');
+
+        $this->assertNull($buffers->edits('/p/a.php', []), 'nothing to do is done');
+        $this->assertSame($version, $buffers->version('/p/a.php'), 'and changes nothing');
+        $this->assertNull($buffers->edits('/p/a.php', [
+            ['line' => 0, 'column' => 0, 'endLine' => 0, 'endColumn' => 0, 'text' => '<'],
+            ['line' => 0, 'column' => 3, 'endLine' => 1, 'endColumn' => 0, 'text' => ' '],
+            ['line' => 1, 'column' => 3, 'endLine' => 1, 'endColumn' => 3, 'text' => '>'],
+        ]));
+        $this->assertSame("<one two>\n", $a->document->getText());
+        $this->assertNotSame($version, $buffers->version('/p/a.php'), 'the version moves with the text');
+        $a->document->undo();
+        $this->assertSame("one\ntwo\n", $a->document->getText(), 'one undo step');
+
+        $overlapping = $buffers->edits('/p/a.php', [
+            ['line' => 0, 'column' => 0, 'endLine' => 0, 'endColumn' => 2, 'text' => 'x'],
+            ['line' => 0, 'column' => 1, 'endLine' => 0, 'endColumn' => 3, 'text' => 'y'],
+        ]);
+        $this->assertSame('0:1–0:3 is not a range of /p/a.php after the one before it', $overlapping);
+        $this->assertSame("one\ntwo\n", $a->document->getText(), 'a refusal applies none of them');
+        $this->assertNotNull($buffers->edits('/p/a.php', [['line' => 0, 'column' => 0, 'endLine' => 9, 'endColumn' => 0, 'text' => '']]));
+        $this->assertNull($buffers->version('/p/nope.php'));
+    }
+
+    public function testOpenBuffersHandUndoToAPluginAndRefuseTheUsersKeys(): void
+    {
+        $api = $this->api();
+        $a = $this->buffers->open('/p/a.php', "one\n");
+        $this->buffers->openPane('/p/c.png', 'image', null);
+        $buffers = $api->openBuffers();
+        $undone = 0;
+
+        $this->assertTrue($buffers->delegateHistory(
+            '/p/a.php',
+            static function () use (&$undone): bool {
+                ++$undone;
+
+                return true;
+            },
+            static fn (): bool => false,
+        ));
+        $this->assertTrue($a->document->undo());
+        $this->assertFalse($a->document->redo());
+        $this->assertSame(1, $undone);
+        $buffers->reclaimHistory('/p/a.php');
+        $this->assertFalse($a->document->undo(), 'its own again, and empty');
+        $buffers->reclaimHistory('/p/nope.php');
+        $this->assertFalse($buffers->delegateHistory('/p/c.png', static fn (): bool => true, static fn (): bool => true));
+        $this->assertFalse($buffers->delegateHistory('/p/nope.php', static fn (): bool => true, static fn (): bool => true));
+
+        $this->assertTrue($buffers->makeReadOnly('/p/a.php'));
+        $this->assertTrue($a->document->readOnly);
+        $buffers->makeWritable('/p/a.php');
+        $this->assertFalse($a->document->readOnly);
+        $buffers->makeWritable('/p/nope.php');
+        $this->assertFalse($buffers->makeReadOnly('/p/c.png'));
+        $this->assertFalse($buffers->makeReadOnly('/p/nope.php'));
+    }
+
     public function testOpenBuffersCreateMoveAndDeleteFilesAndSayWhenTheyWillNot(): void
     {
         $project = new TempProject(['a.php' => "<?php\n", 'dirty.php' => "<?php\n", 'dir/x.php' => "<?php\n"]);

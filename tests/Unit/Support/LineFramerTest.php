@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Porta\McpPlugin\Tests\Protocol;
+namespace Porta\Tests\Unit\Support;
 
 use PHPUnit\Framework\TestCase;
-use Porta\McpPlugin\Protocol\LineFramer;
+use Porta\Support\LineFramer;
 
 final class LineFramerTest extends TestCase
 {

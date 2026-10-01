@@ -241,4 +241,27 @@ final class DocumentReplacerTest extends TestCase
             \array_column($client->notifications, 'method'),
         );
     }
+
+    public function testSeveralRangesAreOneUndoStepAndTheCaretShiftsThroughEach(): void
+    {
+        $replacer = $this->replacer();
+        $buffer = $this->buffers->open('/p/a.php', "one\ntwo\nthree\n");
+        $document = $buffer->document;
+        $document->setCursor(2, 2); // "th|ree"
+        $document->beginSelect();
+        $document->setCursor(2, 4, SelectionMode::Keep); // "ee" selected, the caret after it
+
+        $replacer->replaceRanges($buffer, [
+            ['line' => 0, 'column' => 0, 'endLine' => 0, 'endColumn' => 3, 'text' => "ONE\nAND A HALF"],
+            ['line' => 1, 'column' => 3, 'endLine' => 1, 'endColumn' => 3, 'text' => '!'],
+            ['line' => 2, 'column' => 0, 'endLine' => 2, 'endColumn' => 1, 'text' => ''],
+        ]);
+
+        $this->assertSame("ONE\nAND A HALF\ntwo!\nhree\n", $document->getText(), 'each range lands on the text it named');
+        $this->assertSame([3, 3], [$document->cursorLine, $document->cursorCol], 'the caret moved down a line and left a column');
+        $this->assertSame(['startLine' => 3, 'startCol' => 1, 'endLine' => 3, 'endCol' => 3], $document->getSelectionRange(), 'the selection kept its text');
+
+        $document->undo();
+        $this->assertSame("one\ntwo\nthree\n", $document->getText(), 'one undo takes all three back');
+    }
 }

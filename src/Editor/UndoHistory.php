@@ -164,6 +164,15 @@ final class UndoHistory
         return $state;
     }
 
+    /** Forget every step, both ways. */
+    public function clear(): void
+    {
+        $this->undoStack = [];
+        $this->redoStack = [];
+        $this->undoLines = 0;
+        $this->lastEditKind = '';
+    }
+
     /** @param Snapshot $snapshot */
     private function store(array $snapshot): void
     {

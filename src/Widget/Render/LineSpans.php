@@ -148,6 +148,17 @@ final class LineSpans
             }
         }
 
+        // Other writers' selections — a collaborator's — in their colour,
+        // under their carets.
+        foreach ($decorations->remoteSelections[$lineIndex] ?? [] as $remote) {
+            $length = \strlen($doc->getLine($lineIndex));
+            $start = $doc->displayColAt($lineIndex, \min($remote['start'], $length));
+            $end = $doc->displayColAt($lineIndex, \min($remote['end'], $length));
+            if ($end > $start) {
+                $style = $styles->of(Role::agent($remote['slot']));
+                $spans[] = [$start, $end, $style->getAnsiRestore(), Sgr::resetFor($style), null];
+            }
+        }
         // Other writers' carets — an agent at work — last, over everything:
         // a cell in the agent's colour, where it read or wrote.
         foreach ($decorations->remoteCarets[$lineIndex] ?? [] as $remote) {

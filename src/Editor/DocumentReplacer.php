@@ -61,26 +61,50 @@ final readonly class DocumentReplacer
      */
     public function replaceRange(Buffer $buffer, int $line, int $column, int $endLine, int $endColumn, string $text): void
     {
+        $this->replaceRanges($buffer, [['line' => $line, 'column' => $column, 'endLine' => $endLine, 'endColumn' => $endColumn, 'text' => $text]]);
+    }
+
+    /**
+     * {@see replaceRange()} for several ranges at once, still ONE undoable
+     * edit: a collaborator's change that touched three places is one thing
+     * they did. The ranges are in the document as it is NOW, in order, and
+     * none overlaps the next; the caller checks.
+     *
+     * @param non-empty-list<array{line: int, column: int, endLine: int, endColumn: int, text: string}> $ranges
+     */
+    public function replaceRanges(Buffer $buffer, array $ranges): void
+    {
         $document = $buffer->document;
         $caret = [$document->cursorLine, $document->cursorCol];
         $anchor = self::anchor($document->getSelectionRange(), $caret);
-        $document->transact(static function () use ($document, $line, $column, $endLine, $endColumn, $text): void {
-            $document->setCursor($line, $column);
-            $document->beginSelect();
-            $document->setCursor($endLine, $endColumn, selection: SelectionMode::Keep);
-            if ($document->hasSelection()) {
-                $document->deleteSelection();
+        // Last first: an edit never moves the text BEFORE it, so every range
+        // still names the text it was given for when its turn comes — and so
+        // do the caret and the anchor, shifted by each edit after them.
+        $ranges = \array_reverse($ranges);
+        $document->transact(static function () use ($document, $ranges): void {
+            foreach ($ranges as $range) {
+                $document->setCursor($range['line'], $range['column']);
+                $document->beginSelect();
+                $document->setCursor($range['endLine'], $range['endColumn'], selection: SelectionMode::Keep);
+                if ($document->hasSelection()) {
+                    $document->deleteSelection();
+                }
+                $document->insert($range['text']);
             }
-            $document->insert($text);
         });
-        $newlines = \substr_count($text, needle: "\n");
-        $last = \strrpos($text, needle: "\n");
-        $after = [$line + $newlines, false === $last ? $column + \strlen($text) : \strlen($text) - $last - 1];
-        [$caretLine, $caretCol] = self::shifted($caret, [$line, $column], [$endLine, $endColumn], $after);
-        $document->setCursor($caretLine, $caretCol);
+        foreach ($ranges as $range) {
+            $text = $range['text'];
+            $newlines = \substr_count($text, needle: "\n");
+            $last = \strrpos($text, needle: "\n");
+            $start = [$range['line'], $range['column']];
+            $end = [$range['endLine'], $range['endColumn']];
+            $after = [$range['line'] + $newlines, false === $last ? $range['column'] + \strlen($text) : \strlen($text) - $last - 1];
+            $caret = self::shifted($caret, $start, $end, $after);
+            $anchor = null === $anchor ? null : self::shifted($anchor, $start, $end, $after);
+        }
+        $document->setCursor($caret[0], $caret[1]);
         if (null !== $anchor) {
-            [$anchorLine, $anchorCol] = self::shifted($anchor, [$line, $column], [$endLine, $endColumn], $after);
-            $document->setSelectionRange($anchorLine, $anchorCol, $caretLine, $caretCol);
+            $document->setSelectionRange($anchor[0], $anchor[1], $caret[0], $caret[1]);
         }
         $this->changed($buffer);
     }

@@ -113,18 +113,107 @@ final readonly class OpenBuffers
      */
     public function edit(string $path, int $line, int $column, int $endLine, int $endColumn, string $text): ?string
     {
+        return $this->edits($path, [['line' => $line, 'column' => $column, 'endLine' => $endLine, 'endColumn' => $endColumn, 'text' => $text]]);
+    }
+
+    /**
+     * {@see edit()} for several ranges of one buffer at once, as ONE edit the
+     * user undoes: each range in the text as it is NOW, in document order,
+     * none overlapping the next. Null once applied (an empty list changes
+     * nothing), else why not — and then nothing was applied.
+     *
+     * @param list<array{line: int, column: int, endLine: int, endColumn: int, text: string}> $edits
+     */
+    public function edits(string $path, array $edits): ?string
+    {
         $buffer = $this->buffers->get($path);
         if (null === $buffer || $buffer->isViewer()) {
             return \sprintf('%s is not open as text', $path);
         }
         $document = $buffer->document;
         $inside = static fn (int $l, int $c): bool => $l >= 0 && $l < $document->getLineCount() && $c >= 0 && $c <= \strlen($document->getLine($l));
-        if (!$inside($line, $column) || !$inside($endLine, $endColumn) || [$endLine, $endColumn] < [$line, $column]) {
-            return \sprintf('%d:%d–%d:%d is not a range of %s', $line, $column, $endLine, $endColumn, $path);
+        $previous = [0, 0];
+        foreach ($edits as $e) {
+            $start = [$e['line'], $e['column']];
+            $end = [$e['endLine'], $e['endColumn']];
+            if (!$inside(...$start) || !$inside(...$end) || $end < $start || $start < $previous) {
+                return \sprintf('%d:%d–%d:%d is not a range of %s after the one before it', $e['line'], $e['column'], $e['endLine'], $e['endColumn'], $path);
+            }
+            $previous = $end;
         }
-        $this->replacer->replaceRange($buffer, $line, $column, $endLine, $endColumn, $text);
+        if ([] !== $edits) {
+            $this->replacer->replaceRanges($buffer, $edits);
+        }
 
         return null;
+    }
+
+    /**
+     * A number that changes whenever an open buffer's text does — so a plugin
+     * comparing copies of it reads the text only when there is something new.
+     * Null when it is not open as text.
+     */
+    public function version(string $path): ?int
+    {
+        $buffer = $this->buffers->get($path);
+
+        return null === $buffer || $buffer->isViewer() ? null : $buffer->document->version;
+    }
+
+    /**
+     * Answer undo and redo in an open buffer instead of its own history —
+     * each closure saying whether it changed anything — until
+     * {@see reclaimHistory()}. For a shared session, where Ctrl+Z must take
+     * back the user's own edits and not a collaborator's typed since. The
+     * buffer's own history is forgotten on both hand-overs. False when it is
+     * not open as text.
+     *
+     * @param \Closure(): bool $undo
+     * @param \Closure(): bool $redo
+     */
+    public function delegateHistory(string $path, \Closure $undo, \Closure $redo): bool
+    {
+        $buffer = $this->buffers->get($path);
+        if (null === $buffer || $buffer->isViewer()) {
+            return false;
+        }
+        $buffer->document->historyDelegate = ['undo' => $undo, 'redo' => $redo];
+
+        return true;
+    }
+
+    /** Give an open buffer its own undo and redo back — from now on, nothing earlier. */
+    public function reclaimHistory(string $path): void
+    {
+        $document = $this->buffers->get($path)?->document;
+        if (null !== $document) {
+            $document->historyDelegate = null;
+        }
+    }
+
+    /**
+     * Refuse the user's keystrokes that would change an open buffer — the
+     * caret, the selection and copy still work, and a flash says why. Edits
+     * from code ({@see edit()}) still land. False when it is not open as text.
+     */
+    public function makeReadOnly(string $path): bool
+    {
+        $buffer = $this->buffers->get($path);
+        if (null === $buffer || $buffer->isViewer()) {
+            return false;
+        }
+        $buffer->document->readOnly = true;
+
+        return true;
+    }
+
+    /** Let the user edit an open buffer again. */
+    public function makeWritable(string $path): void
+    {
+        $document = $this->buffers->get($path)?->document;
+        if (null !== $document) {
+            $document->readOnly = false;
+        }
     }
 
     /**

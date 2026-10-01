@@ -73,8 +73,11 @@ interface EditorDecorationSink
      * is drawn in; null takes it away. Keyed by FILE and owner, unlike every
      * other layer here: it belongs to its file and outlives a switch of tab,
      * and it moves with the user's own edits until its owner says otherwise.
+     * With an `anchor`, the text between it and the caret is the owner's
+     * selection, tinted in the same colour; it is drawn where it was put, and
+     * the owner moves it.
      *
-     * @param array{line: int, col: int, label: string, slot: int}|null $caret
+     * @param array{line: int, col: int, label: string, slot: int, anchor?: array{line: int, col: int}|null}|null $caret
      */
     public function setRemoteCaret(string $path, string $owner, ?array $caret): void;
 

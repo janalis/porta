@@ -40,7 +40,7 @@ final class AgentPresence
     /** @var array<string, int> agent => colour slot */
     private array $slots = [];
 
-    /** @var array<string, array<string, array{name: string, kind: AgentActivityKind, line: int, column: int, timer: string}>> path => agent => what it is doing */
+    /** @var array<string, array<string, array{name: string, kind: AgentActivityKind, line: int, column: int, anchor: array{line: int, col: int}|null, timer: string}>> path => agent => what it is doing */
     private array $files = [];
 
     public function __construct(
@@ -69,6 +69,7 @@ final class AgentPresence
             'kind' => $event->kind,
             'line' => $event->line,
             'column' => \max(0, $event->column),
+            'anchor' => $event->anchorLine < 0 ? null : ['line' => $event->anchorLine, 'col' => \max(0, $event->anchorColumn)],
             'timer' => $timer,
         ];
         $this->paint($path, $event->agent);
@@ -191,6 +192,7 @@ final class AgentPresence
                     'col' => $entry['column'],
                     'label' => Glyphs::AGENT.' '.$entry['name'],
                     'slot' => $this->slots[$agent],
+                    'anchor' => $entry['anchor'],
                 ],
         );
     }

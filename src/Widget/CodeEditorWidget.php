@@ -47,6 +47,7 @@ use Porta\Editor\MemberSeparators;
 use Porta\Editor\ModalHost;
 use Porta\Editor\MultiCaret;
 use Porta\Editor\OccurrenceHighlights;
+use Porta\Editor\ReadOnlyInput;
 use Porta\Editor\ScopeRescan;
 use Porta\Editor\SignatureHint;
 use Porta\Editor\StatementSyntax;
@@ -879,94 +880,103 @@ final class CodeEditorWidget extends AbstractWidget implements
     #[\Override]
     public function handleInput(string $data): void
     {
-        if ($this->inputHookHandled($data)) {
-            return;
-        }
+        // A read-only buffer — a guest's without the right to edit — takes
+        // every key, and gives back whatever text a key changed: the caret,
+        // the selection and copy still work, as they do on a page one may read.
+        $refused = ReadOnlyInput::refuse($this->document, function () use ($data): void {
+            if ($this->inputHookHandled($data)) {
+                return;
+            }
 
-        // Bracketed paste: buffer chunks between ESC[200~ / ESC[201~
-        $pastedText = $this->processBracketedPaste($data);
-        if (null !== $pastedText) {
-            $this->document->insert($pastedText);
+            // Bracketed paste: buffer chunks between ESC[200~ / ESC[201~
+            $pastedText = $this->processBracketedPaste($data);
+            if (null !== $pastedText) {
+                $this->document->insert($pastedText);
+                $this->notifyChange();
+                if ('' === $data) {
+                    return;
+                }
+            }
+            if (null === $pastedText && '' === $data && $this->isBufferingPaste()) {
+                return;
+            }
+
+            $kb = $this->getKeybindings();
+
+            if ($this->overlayHost->handleInput($data, $kb)) {
+                return;
+            }
+
+            // The documentation popup scrolls with the arrows and pages; Esc
+            // closes it, and any other key closes it and then does what it does.
+            $doc = $this->caretPopups->doc;
+            if (null !== $doc) {
+                $this->invalidate();
+                if ($doc->handleKey($data, $kb)) {
+                    return;
+                }
+                $this->caretPopups->doc = null;
+                if ($kb->matches($data, 'select_cancel')) {
+                    return;
+                }
+            }
+
+            if (null !== $this->caretPopups->signature && $kb->matches($data, 'select_cancel')) {
+                $this->setSignatureHint(null);
+
+                return;
+            }
+            // The declaration keys (Alt+↑/↓) walk a function's overloads while
+            // its hint shows more than one, and are the declaration keys again
+            // the moment it does not. Both spellings: the keymap's, which a legacy
+            // terminal sends as ESC p / ESC n, and the modified-arrow CSI, which
+            // the parser leaves unnamed.
+            $overload = match (true) {
+                "\x1b[1;3B" === $data || $kb->matches($data, 'next_member') => 1,
+                "\x1b[1;3A" === $data || $kb->matches($data, 'prev_member') => -1,
+                default => 0,
+            };
+            if (0 !== $overload && true === $this->caretPopups->signature?->hasOverloads()) {
+                $this->caretPopups->signature = $this->caretPopups->signature->cycled($overload);
+                $this->invalidate();
+
+                return;
+            }
+
+            if ($this->completion->handleSnippetTabStop($data, $kb)) {
+                return;
+            }
+
+            // Live templates: Tab expands the abbreviation at the caret. After the
+            // snippet-tab-stop check, so Tab walks the stops of what it just
+            // expanded, and before the editing verbs, so Tab still indents when
+            // there is no template there.
+            $language = ProjectPaths::languageId($this->filePath ?? '');
+            if (null !== $this->filePath && $this->completion->expandTemplate($data, $kb, $this->callbacks->completion?->templatesFor($language) ?? TemplateCatalog::forLanguage($language))) {
+                return;
+            }
+
+            // An asked-for popup's note ("Loading…", "No suggestions") goes on
+            // any key, which then does what it does; Esc is spent on the note.
+            if ($this->completion->dismissNote($data, $kb)) {
+                return;
+            }
+            if ($this->completion->isOpen() && $this->completion->handleInput($data, $kb)) {
+                return;
+            }
+
+            // Editor-level actions (keymap + menu) fire through the action router;
+            // anything it does not claim falls through to the editing verbs.
+            if ($this->actionRouter->dispatchKey($data, $kb)) {
+                return;
+            }
+
+            $this->actions->handleKey($data, $kb);
+        });
+        if ($refused) {
             $this->notifyChange();
-            if ('' === $data) {
-                return;
-            }
+            $this->flash?->flash($this->translator->trans('This file is read-only'));
         }
-        if (null === $pastedText && '' === $data && $this->isBufferingPaste()) {
-            return;
-        }
-
-        $kb = $this->getKeybindings();
-
-        if ($this->overlayHost->handleInput($data, $kb)) {
-            return;
-        }
-
-        // The documentation popup scrolls with the arrows and pages; Esc
-        // closes it, and any other key closes it and then does what it does.
-        $doc = $this->caretPopups->doc;
-        if (null !== $doc) {
-            $this->invalidate();
-            if ($doc->handleKey($data, $kb)) {
-                return;
-            }
-            $this->caretPopups->doc = null;
-            if ($kb->matches($data, 'select_cancel')) {
-                return;
-            }
-        }
-
-        if (null !== $this->caretPopups->signature && $kb->matches($data, 'select_cancel')) {
-            $this->setSignatureHint(null);
-
-            return;
-        }
-        // The declaration keys (Alt+↑/↓) walk a function's overloads while
-        // its hint shows more than one, and are the declaration keys again
-        // the moment it does not. Both spellings: the keymap's, which a legacy
-        // terminal sends as ESC p / ESC n, and the modified-arrow CSI, which
-        // the parser leaves unnamed.
-        $overload = match (true) {
-            "\x1b[1;3B" === $data || $kb->matches($data, 'next_member') => 1,
-            "\x1b[1;3A" === $data || $kb->matches($data, 'prev_member') => -1,
-            default => 0,
-        };
-        if (0 !== $overload && true === $this->caretPopups->signature?->hasOverloads()) {
-            $this->caretPopups->signature = $this->caretPopups->signature->cycled($overload);
-            $this->invalidate();
-
-            return;
-        }
-
-        if ($this->completion->handleSnippetTabStop($data, $kb)) {
-            return;
-        }
-
-        // Live templates: Tab expands the abbreviation at the caret. After the
-        // snippet-tab-stop check, so Tab walks the stops of what it just
-        // expanded, and before the editing verbs, so Tab still indents when
-        // there is no template there.
-        $language = ProjectPaths::languageId($this->filePath ?? '');
-        if (null !== $this->filePath && $this->completion->expandTemplate($data, $kb, $this->callbacks->completion?->templatesFor($language) ?? TemplateCatalog::forLanguage($language))) {
-            return;
-        }
-
-        // An asked-for popup's note ("Loading…", "No suggestions") goes on
-        // any key, which then does what it does; Esc is spent on the note.
-        if ($this->completion->dismissNote($data, $kb)) {
-            return;
-        }
-        if ($this->completion->isOpen() && $this->completion->handleInput($data, $kb)) {
-            return;
-        }
-
-        // Editor-level actions (keymap + menu) fire through the action router;
-        // anything it does not claim falls through to the editing verbs.
-        if ($this->actionRouter->dispatchKey($data, $kb)) {
-            return;
-        }
-
-        $this->actions->handleKey($data, $kb);
     }
 
     /**
@@ -1533,6 +1543,7 @@ final class CodeEditorWidget extends AbstractWidget implements
             occurrences: $this->occurrences->spansFor($this->filePath, $doc->version, $doc->cursorLine, $doc->getCursorColUtf16(), $this->occurrencesMemo['spans']),
             brackets: $this->focused ? $this->matchingBrackets($doc) : null,
             remoteCarets: $this->decorations->remoteCaretsIn($this->filePath, $doc),
+            remoteSelections: $this->decorations->remoteSelectionsIn($this->filePath),
         );
     }
 
