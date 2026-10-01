@@ -10,17 +10,39 @@ non-blocking event loop.
 | Guide | Contents |
 | --- | --- |
 | [Getting started](getting-started.md) | Installation, LSP setup, launching, first steps |
-| [Editor](editor.md) | Buffers, editing, multi-caret, folding, indentation, local history, image viewer, mouse |
+| [Editor](editor.md) | Buffers, editing, multi-caret, folding, indentation, live preview, mouse |
 | [Keybindings](keybindings.md) | Every default binding, and how to rebind |
 | [Search & navigation](search-navigation.md) | Go to file/symbol/test, find in file, Find in Files, problems panel |
-| [Git](git.md) | Gutter markers, palette operations, the Git view (staging, commits, history) |
-| [Code review](review.md) | Pull and merge request threads, and local reviews from an agent — in a view, in the diff and in the editor |
-| [Assist](assist.md) | Work on one project together, live: share it, let others in, edit the same files at once, follow each other |
-| [Agents (MCP)](agents.md) | Let an agent such as Claude Code read your buffers and diagnostics, open files and make undoable edits in the running IDE |
 | [Run & terminal](run-and-terminal.md) | Run configurations, the integrated terminal |
 | [Debugger](debugger.md) | DAP adapters, breakpoints, stepping, the debug panel |
 | [Configuration](configuration.md) | `.porta.json`, the Settings view, `.editorconfig`, the `.porta/` state directory |
 | [Plugins](plugins.md) | Installing/removing plugins, writing your own, the `PluginApi` reference |
+
+## Bundled plugins
+
+Porta ships these plugins, each documented in its own directory — and so can
+yours ([Documenting your plugin](plugins.md#documenting-your-plugin)). A
+plugin's guide also opens from its page under **Settings → Plugins**.
+
+| Plugin | Contents |
+| --- | --- |
+| [Git](../plugins/git/docs/README.md) | Gutter markers, palette operations, the Git view (staging, commits, history), difftool and mergetool |
+| [Code review](../plugins/review/docs/README.md) | Pull and merge request threads, and local reviews from an agent — in a view, in the diff and in the editor |
+| [Assist](../plugins/assist/docs/README.md) | Work on one project together, live: share it, let others in, edit the same files at once, follow each other |
+| [Agents (MCP)](../plugins/mcp/docs/README.md) | Let an agent such as Claude Code read your buffers and diagnostics, open files and make undoable edits in the running IDE |
+| [Local history](../plugins/local-history/docs/README.md) | A snapshot on every save, independent of git: compare, restore, recover deleted files |
+| [Image viewer](../plugins/image-viewer/docs/README.md) | Images and SVG drawings as pictures — zoom, pan, pixel-exact where the terminal allows |
+| [Graph viewer](../plugins/graph-viewer/docs/README.md) | Graphviz and PlantUML diagrams drawn beside their source, the project's architecture graph |
+| [TODO](../plugins/todo/docs/README.md) | Every TODO and FIXME in the project, in a panel |
+| [PHPantom](../plugins/phpantom/docs/README.md) | The suggested PHP language server, and its fixer |
+| [Phpactor](../plugins/phpactor/docs/README.md) | Phpactor as the PHP language server instead |
+| [Symfony language server](../plugins/symfony-lsp/docs/README.md) | Twig, YAML, XML, JSON and dotenv intelligence, installed and updated for you |
+| [PHPStan](../plugins/phpstan/docs/README.md) | Analyse the current file, or every file on save |
+| [Psalm](../plugins/psalm/docs/README.md) | Analyse the current file, or every file on save |
+| [Mago](../plugins/mago/docs/README.md) | Format and lint, on demand or on save |
+| [PHP CS Fixer](../plugins/php-cs-fixer/docs/README.md) | Fix the current file, or every file on save |
+| [Tempest](../plugins/tempest/docs/README.md) | The built-in syntax highlighting engine |
+| [Chroma](../plugins/chroma/docs/README.md) | Highlighting for the languages the built-in engine has no grammar for |
 
 ## Language support
 

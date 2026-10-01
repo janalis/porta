@@ -67,6 +67,10 @@ abstract class MarkdownPageWidget extends EditorPaneWidget implements FindTarget
     private ?int $followLine = null;
     /** The tree the page lives in: the breadcrumb mirrors paths under it, and a link must stay inside it. */
     private ?string $docsRoot = null;
+    /** @var (\Closure(): array<string, string>)|null more trees a link may lead into — dir => name — beside the docs root: the plugins' own docs */
+    private ?\Closure $moreRoots = null;
+    /** @var array{0: string, 1: ?string}|null the tree the current page sits in — its dir, and a name when it is not the docs root — found when the page is taken, so a render never globs */
+    private ?array $tree = null;
     private readonly MarkdownRenderer $renderer;
 
     public function __construct(?Styles $styles = null)
@@ -80,6 +84,21 @@ abstract class MarkdownPageWidget extends EditorPaneWidget implements FindTarget
     {
         $resolved = \realpath($dir);
         $this->docsRoot = $resolved ? $resolved : $dir;
+        $this->tree = null === $this->path ? null : $this->treeOf($this->path);
+    }
+
+    /**
+     * Trees beside the docs root that a link may lead into, each under its
+     * own name: a plugin's documentation lives in the plugin, and Porta's
+     * pages link to it there. Asked again on every navigation, so a plugin
+     * installed while the IDE runs is reachable without a restart.
+     *
+     * @param \Closure(): array<string, string> $roots dir => name
+     */
+    public function setMoreRoots(\Closure $roots): void
+    {
+        $this->moreRoots = $roots;
+        $this->tree = null === $this->path ? null : $this->treeOf($this->path);
     }
 
     /**
@@ -92,6 +111,7 @@ abstract class MarkdownPageWidget extends EditorPaneWidget implements FindTarget
     {
         $resolved = \realpath($path);
         $this->path = $resolved ? $resolved : $path;
+        $this->tree = $this->treeOf($this->path);
         $this->markdown = $markdown;
         $this->doc = null;
         if ($fromTop) {
@@ -374,22 +394,55 @@ abstract class MarkdownPageWidget extends EditorPaneWidget implements FindTarget
         $crumbs = [];
         if (null !== $root && null !== $rootReadme && $rootReadme !== $path) {
             $crumbs[] = ['action' => \is_file($rootReadme) ? 'nav:'.$rootReadme : '', 'label' => $this->crumbLabel($rootReadme)];
-            if (\str_starts_with($path, $root.'/')) {
-                $dirs = \array_filter(\explode('/', \trim(\substr(\dirname($path), \strlen($root)), characters: '/')), static fn (string $d): bool => '' !== $d);
-                if ('README.md' === \basename($path) && [] !== $dirs) {
-                    $label = \array_pop($dirs);
-                }
-                $prefix = $root;
-                foreach ($dirs as $dir) {
+            if (null !== $this->tree) {
+                [$base, $name] = $this->tree;
+                // A named tree (a plugin's docs) hangs off the root as one
+                // folder crumb wearing the plugin's name.
+                $folders = null === $name ? [] : [[$name, $base]];
+                $prefix = $base;
+                foreach (\explode('/', \substr(\dirname($path), \strlen($base))) as $dir) {
+                    if ('' === $dir) {
+                        continue; // the slash right after the root
+                    }
                     $prefix .= '/'.$dir;
-                    $index = $prefix.'/README.md';
-                    $crumbs[] = ['action' => \is_file($index) ? 'nav:'.$index : '', 'label' => $dir];
+                    $folders[] = [$dir, $prefix];
+                }
+                if ('README.md' === \basename($path) && [] !== $folders) {
+                    [$label] = \array_pop($folders);
+                }
+                foreach ($folders as [$folderLabel, $folder]) {
+                    $index = $folder.'/README.md';
+                    $crumbs[] = ['action' => \is_file($index) ? 'nav:'.$index : '', 'label' => $folderLabel];
                 }
             }
         }
         $crumbs[] = ['action' => '', 'label' => $label];
 
         return $crumbs;
+    }
+
+    /**
+     * The tree $path sits in: the docs root (no name), else one of the
+     * {@see setMoreRoots()} trees under its name, else null — a page outside
+     * every tree, which no link may lead to.
+     *
+     * @return array{0: string, 1: ?string}|null
+     */
+    private function treeOf(string $path): ?array
+    {
+        $root = $this->docsRoot;
+        if (null !== $root && \str_starts_with($path, $root.'/')) {
+            return [$root, null];
+        }
+        foreach (null === $this->moreRoots ? [] : ($this->moreRoots)() as $dir => $name) {
+            $resolved = \realpath($dir);
+            $dir = $resolved ? $resolved : $dir;
+            if (\str_starts_with($path, $dir.'/')) {
+                return [$dir, $name];
+            }
+        }
+
+        return null;
     }
 
     #[\Override]
@@ -483,11 +536,11 @@ abstract class MarkdownPageWidget extends EditorPaneWidget implements FindTarget
             return;
         }
         $resolved = \realpath(\str_starts_with($target, '/') ? $target : \dirname((string) $this->path).'/'.$target);
-        // Containment mirrors hierarchyCrumbs(): every page — plugin pages
-        // sync under the docs root too — must resolve inside it, so a link
-        // that escapes (an absolute path, a ../ chain) is not a doc target.
-        $root = $this->docsRoot;
-        if (false === $resolved || !\is_file($resolved) || null === $root || !\str_starts_with($resolved, $root.'/')) {
+        // Containment mirrors hierarchyCrumbs(): a target must resolve inside
+        // the docs root or one of the plugins' docs trees, so a link that
+        // escapes (an absolute path, a ../ chain into a plugin's src/) is not
+        // a doc target.
+        if (false === $resolved || !\is_file($resolved) || null === $this->treeOf($resolved)) {
             $this->docs()?->missingTarget($target);
 
             return;

@@ -136,6 +136,108 @@ final class HelpViewerWidgetTest extends TestCase
         $this->assertSame(['missing:../secret.php', 'missing:/etc/hosts', 'missing:../pages-evil/secret.md'], $handler->events, 'a target outside the docs root never opens a buffer');
     }
 
+    /**
+     * A plugin carries its own docs, and Porta's front page links into them:
+     * a tree beside the docs root, reachable, and crumbed under the plugin's
+     * name — `README › demo › usage`, the plugin's index as its folder.
+     */
+    public function testALinkIntoAPluginsDocsOpensItUnderThePluginsName(): void
+    {
+        $tree = new TempProject([
+            'docs/README.md' => "# Home\n\n[Demo](../plugins/demo/docs/README.md)\n",
+            'plugins/demo/docs/README.md' => "# Demo\n\n[Usage](usage.md)\n",
+            'plugins/demo/docs/usage.md' => "# Usage\n",
+        ]);
+        $viewer = new HelpViewerWidget();
+        $viewer->setFocused(true);
+        $handler = new RecordingHelpViewerHandler();
+        $handler->onOpenHelp = static function (string $path) use ($viewer): void {
+            $viewer->refreshPage($path, (string) \file_get_contents($path));
+        };
+        $viewer->setHandler($handler);
+        $viewer->setDocsRoot($tree->path('docs'));
+        $viewer->setMoreRoots(static fn (): array => [$tree->path('plugins/demo/docs') => 'demo']);
+        $viewer->refreshPage($tree->path('docs/README.md'), (string) \file_get_contents($tree->path('docs/README.md')));
+        $this->screen($viewer);
+
+        $viewer->handleInput("\t");
+        $viewer->handleInput("\r");
+        $this->assertSame(['help:README.md'], $handler->events, "the plugin's front page opened");
+        $this->assertSame(\realpath($tree->path('plugins/demo/docs/README.md')), $viewer->path());
+        $header = $this->screen($viewer)[0];
+        $this->assertStringContainsString('README › demo', $header, "the plugin's index wears the plugin's name");
+        $this->assertStringNotContainsString('demo ›', $header, 'and it is the last crumb');
+
+        $viewer->handleInput("\t");
+        $viewer->handleInput("\r");
+        $this->assertStringContainsString('README › demo › usage', $this->screen($viewer)[0]);
+        $this->assertTrue($viewer->clickAt(0, 15), "the plugin's crumb leads to its index");
+        $this->assertSame(\realpath($tree->path('plugins/demo/docs/README.md')), $viewer->path());
+    }
+
+    /**
+     * The plugin's docs are a tree of their own, not a hole in the
+     * containment: its `src/`, and another plugin's docs that are not a
+     * root, stay as out of reach as anything else outside.
+     */
+    public function testALinkOutOfAPluginsDocsIsRefused(): void
+    {
+        $tree = new TempProject([
+            'docs/README.md' => "# Home\n",
+            'plugins/demo/docs/README.md' => "# Demo\n\n[src](../src/Secret.php) and [other](../../other/docs/README.md) and [evil](../docs-evil/x.md)\n",
+            'plugins/demo/src/Secret.php' => "<?php\n",
+            'plugins/demo/docs-evil/x.md' => "# Not docs\n",
+            'plugins/other/docs/README.md' => "# Other\n",
+        ]);
+        $viewer = new HelpViewerWidget();
+        $viewer->setFocused(true);
+        $handler = new RecordingHelpViewerHandler();
+        $viewer->setHandler($handler);
+        $viewer->setDocsRoot($tree->path('docs'));
+        $viewer->setMoreRoots(static fn (): array => [$tree->path('plugins/demo/docs') => 'demo']);
+        $viewer->refreshPage($tree->path('plugins/demo/docs/README.md'), (string) \file_get_contents($tree->path('plugins/demo/docs/README.md')));
+        $this->screen($viewer);
+
+        foreach (\range(1, end: 3) as $_) {
+            $viewer->handleInput("\t");
+            $viewer->handleInput("\r");
+        }
+
+        $this->assertSame(['missing:../src/Secret.php', 'missing:../../other/docs/README.md', 'missing:../docs-evil/x.md'], $handler->events);
+    }
+
+    /**
+     * The roots are asked for on every navigation, not once: a plugin
+     * installed while the IDE runs is reachable without a restart. And a
+     * root handed over unresolved (a symlinked temp dir) still contains the
+     * resolved page.
+     */
+    public function testThePluginRootsAreReadAtEachNavigation(): void
+    {
+        $tree = new TempProject([
+            'docs/README.md' => "# Home\n\n[Late](../plugins/late/docs/README.md)\n",
+            'plugins/late/docs/README.md' => "# Late\n",
+        ]);
+        $viewer = new HelpViewerWidget();
+        $viewer->setFocused(true);
+        $handler = new RecordingHelpViewerHandler();
+        $viewer->setHandler($handler);
+        $viewer->setDocsRoot($tree->path('docs'));
+        $roots = [];
+        $viewer->setMoreRoots(static function () use (&$roots): array {
+            return $roots;
+        });
+        $viewer->refreshPage($tree->path('docs/README.md'), (string) \file_get_contents($tree->path('docs/README.md')));
+        $this->screen($viewer);
+
+        $viewer->handleInput("\t");
+        $viewer->handleInput("\r");
+        $roots = [$tree->dir.'/plugins/late/docs' => 'late']; // installed now
+        $viewer->handleInput("\r");
+
+        $this->assertSame(['missing:../plugins/late/docs/README.md', 'help:README.md'], $handler->events);
+    }
+
     public function testTabCyclesLinksHighlightsAndScrollsIntoView(): void
     {
         $viewer = $this->viewer();

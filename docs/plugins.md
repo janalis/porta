@@ -5,12 +5,13 @@ Porta is extensible with small PHP plugins: a directory containing a
 hooks through a stable API. Plugins run in-process on the shared event loop
 and are trusted code, like composer scripts.
 
-Seventeen plugins ship **bundled with Porta** ([`plugins/`](../plugins/) in the
-package). Bundled plugins are governed by the `enabledPlugins` list; when your
-`.porta.json` has no such key, a small default set (the two viewers plus
-`todo`, `local-history` and `git`) is enabled — an explicit list (even an
-empty one) replaces that default. Four of them are the documented reference
-patterns:
+A set of plugins ships **bundled with Porta** (`plugins/` in the
+package), each documented in its own directory — the
+[Bundled plugins](README.md#bundled-plugins) table lists them. Bundled plugins
+are governed by the `enabledPlugins` list; when your `.porta.json` has no such
+key, a small default set (the two viewers plus `todo`, `local-history` and
+`git`) is enabled — an explicit list (even an empty one) replaces that default.
+Four of them are the documented reference patterns:
 
 | Plugin | What it shows |
 | --- | --- |
@@ -19,39 +20,14 @@ patterns:
 | `mago` | Both patterns at once: format-in-place + JSON-lint diagnostics, with separate "Format on save" / "Lint on save" settings (both on chains format→lint) |
 | `psalm` | The phpstan pattern for Psalm's JSON array output, with "Analyse on save" |
 
-The others: `image-viewer` and `graph-viewer` (the inline viewers — each
-owns its whole implementation and PROVIDES its pane; disable one and its files
-open as text instead, and note that `graph-viewer` requires `image-viewer`
-because a graph is painted with the same rasterizer),
-`assist` (working on one project together, live — a host shares, guests join,
-everyone edits the same files and sees each other's carets: [assist.md](assist.md)),
-`review` (pull request, merge request and local-agent review conversations —
-[review.md](review.md); it requires `git` for its classes, and is the
-reference use of `setCommentMarks` and `setLineBlocks`),
-`tempest` (the built-in-quality syntax highlighting engine the Settings ▸
-Highlighting page offers), `chroma` (an external-highlighter example),
-`phpantom` / `phpactor` (PHP language-server providers — the Welcome screen's
-one-keystroke LSP setup), `symfony-lsp` (the official Symfony language server,
-serving twig, yaml, xml, json and dotenv — and PHP when neither PHP server is
-enabled — with runtime indexing as an explicit opt-in setting; it ships only
-as a GitHub-Releases binary, so the plugin's "Symfony LSP: Install Server"
-command downloads, checksum-verifies and lands it in `~/.porta/bin` for every
-project to share, reporting each step — resolving, downloading with a
-percentage, verifying, extracting, checking the binary — in a status-bar cell
-that clears when it is done. "Symfony LSP: Update Server" takes over the menu
-entry once a copy is there and **compares before it downloads**: it resolves
-the latest tag, asks the installed binary its version, and says
-"already up to date" rather than fetching ~9MB again. The same two verbs sit on
-the plugin's settings page as one button, captioned Install or Update with the
-installed version beside it, and the Welcome card is not done until the server
-is actually there — pressing it enables the plugin *and* installs. With
-`check-updates` on (the default) one request a day offers a newer release when
-there is one, and says nothing at all when there is not or when it cannot
-reach GitHub. Everything here needs `curl` and `tar` on the PATH, and honours
-`GITHUB_TOKEN`/`GH_TOKEN` if GitHub rate-limits the release lookup), and
-`todo`,
-`local-history` and `git` (core features that moved out, keeping their ids by
-adoption). Every bundled plugin surfaces its commands in the Plugins menu and
+Others worth reading for a pattern: `image-viewer` and `graph-viewer` each own
+their whole implementation and PROVIDE their pane (`graph-viewer` requires
+`image-viewer`, because a graph is painted with the same rasterizer); `review`
+is the reference use of `setCommentMarks` and `setLineBlocks` (and requires
+`git` for its classes); `chroma` is an external-highlighter example;
+`symfony-lsp` downloads and updates its own server binary; `todo`,
+`local-history` and `git` are core features that moved out, keeping their ids
+by adoption. Every bundled plugin surfaces its commands in the Plugins menu and
 its knobs on its own settings page.
 
 The on-save options are persisted bool settings (each plugin's Settings page),
@@ -70,12 +46,37 @@ entries with separators.
 
 A plugin directory may hold more than the entry file: an optional
 `composer.json`, and — with one — a `src/` of its own classes and a `vendor/`
-of packages it depends on (see below).
+of packages it depends on (see below), and a `docs/` of its own
+documentation (see [Documenting your plugin](#documenting-your-plugin)).
 
 All three sources are scanned at startup, in that precedence order: a project
 plugin shadows a global one of the same directory name, and both shadow a
 bundled one — so you can override a bundled plugin by installing your own
 under the same name.
+
+## Documenting your plugin
+
+A plugin carries its own documentation: Markdown pages in a `docs/` folder
+beside its `plugin.php`, with `docs/README.md` as the front page.
+
+```
+my-plugin/
+├── plugin.php
+└── docs/
+    ├── README.md      # what it does, its settings, its keys
+    └── advanced.md    # linked from README.md
+```
+
+Once the plugin is installed — enabled or not — its page under **Settings →
+Plugins** gains a **Documentation** row that opens `docs/README.md` in the
+documentation window (`F1`), rendered like Porta's own guides, with the
+plugin's name in the breadcrumb. Links between your pages work there; a
+relative link out of your `docs/` — into the plugin's `src/`, say — is
+refused, and a web address opens in your browser.
+
+Every bundled plugin follows this layout, which makes them the examples to
+copy: what the plugin does first, then a `## Settings` table, then a `## Keys`
+table for every key it binds.
 
 ## `composer.json`: your own classes, and what you depend on
 
@@ -724,7 +725,7 @@ $api->registerTool(
 
 A tool is a verb something OUTSIDE the IDE may call — an agent connected
 through the bundled **mcp** plugin, which serves every registered tool over the
-Model Context Protocol ([Agents](agents.md)). Core only keeps the list, so your plugin offers tools
+Model Context Protocol ([Agents](../plugins/mcp/docs/README.md)). Core only keeps the list, so your plugin offers tools
 without requiring mcp; they are served whenever it is enabled.
 
 - The schema is the JSON Schema of the arguments, and it must be an `object`.

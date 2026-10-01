@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Help;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Tests\Support\DocsTree;
 
 /**
  * No documentation page may grow past a size an agent can read in one go.
@@ -22,20 +23,17 @@ final class DocsPageBudgetTest extends TestCase
 
     public function testNoDocsPageIsOverItsBudget(): void
     {
-        $docs = \dirname(__DIR__, levels: 3).'/docs';
+        $repo = \dirname(DocsTree::core());
 
         $pages = 0;
         $over = [];
-        $files = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($docs, \FilesystemIterator::SKIP_DOTS));
-        foreach ($files as $file) {
-            if (!$file instanceof \SplFileInfo || 'md' !== $file->getExtension()) {
-                continue;
-            }
+        foreach (DocsTree::pages() as $page) {
             ++$pages;
-            if ($file->getSize() <= self::BUDGET_BYTES) {
+            $size = (int) \filesize($page);
+            if ($size <= self::BUDGET_BYTES) {
                 continue;
             }
-            $over[] = \sprintf('%s (%d bytes)', \substr($file->getPathname(), \strlen($docs) + 1), $file->getSize());
+            $over[] = \sprintf('%s (%d bytes)', \substr($page, \strlen($repo) + 1), $size);
         }
 
         \sort($over);

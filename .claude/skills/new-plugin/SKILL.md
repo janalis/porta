@@ -36,7 +36,10 @@ Worked examples: `git show --stat b4506a85` (mcp), `006b7600` (symfony-lsp). The
    - Every unit must be used by this plugin.
    - A core unit only this plugin uses must move here (`CatalogCoverageTest::testNoCoreUnitServesASinglePlugin`).
 8. **Docs**:
-   - The bundled-plugin count and list in `docs/plugins.md`.
+   - `plugins/<name>/docs/README.md` — what it does, a `## Settings` table, a `## Keys` table for
+     every chord it binds (`DocsIndexTest::testEveryBundledPluginShipsItsOwnGuide`,
+     `KeybindingsDocTest` reads a plugin's keys from ITS docs, not `docs/keybindings.md`).
+   - A row linking it in `docs/README.md`'s **Bundled plugins** table (`DocsIndexTest`).
    - A row per new `PluginApi` method (`PluginApiDocTest`).
    - New test support in `docs/internals/testing.md`.
    - `src/Console/PortaCommand.php` if the CLI help names it.

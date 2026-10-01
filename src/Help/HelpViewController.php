@@ -7,6 +7,7 @@ namespace Porta\Help;
 use Porta\Container\AsEager;
 use Porta\Container\AsIdeService;
 use Porta\Editor\FindMode;
+use Porta\Event\HelpPageRequested;
 use Porta\I18n\Translator;
 use Porta\Input\HitTester;
 use Porta\Layout\ViewRegion;
@@ -24,6 +25,7 @@ use Porta\Workbench\View\ContributedView;
 use Porta\Workbench\View\ViewHost;
 use Porta\Workbench\View\ViewPointer;
 use Porta\Workbench\View\ViewRegistry;
+use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\Tui\Style\Style;
 use Symfony\Component\Tui\Tui;
 use Symfony\Component\Tui\Widget\AbstractWidget;
@@ -159,6 +161,14 @@ final class HelpViewController implements ContributedView
         }
         $this->page->refreshPage($path, $markdown);
         $this->host->invalidate();
+    }
+
+    /** A page asked for from outside the window — a plugin's docs, from its Settings page. */
+    #[AsEventListener]
+    public function onPageRequested(HelpPageRequested $event): void
+    {
+        $this->showPage($event->path);
+        $this->open();
     }
 
     /** Ctrl+F on the page: the window's own find bar, searching the page. */

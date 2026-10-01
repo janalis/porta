@@ -10,6 +10,7 @@ use Porta\Editor\BufferManager;
 use Porta\Editor\PreviewMode;
 use Porta\Help\HelpViewerActions;
 use Porta\Overlay\State\MenuOverlayController;
+use Porta\Plugin\Lifecycle\PluginInstaller;
 use Porta\Run\RunController;
 use Porta\Widget\BreadcrumbsWidget;
 use Porta\Widget\CodeEditorWidget;
@@ -61,12 +62,15 @@ final readonly class WidgetHooks
         private EditorArea $editorArea,
         private BufferManager $buffers,
         private string $docsDir,
+        private PluginInstaller $plugins,
     ) {}
 
     public function wire(): void
     {
         $this->editor->setCallbacks($this->editorCallbacks);
         $this->helpViewer->setDocsRoot($this->docsDir);
+        // Each plugin carries its own docs; Porta's pages link into them.
+        $this->helpViewer->setMoreRoots($this->plugins->docsRoots(...));
         $this->helpViewer->setHandler($this->helpViewerActions);
 
         $this->tabBar->setProvider($this->tabs->tabs(...));

@@ -571,6 +571,40 @@ final class PluginInstallerTest extends TestCase
         );
     }
 
+    /**
+     * Every installed copy's docs are a root the help browser may enter —
+     * shadowed ones included, since Porta's own pages link to the bundled
+     * copy — but the front page a plugin's Settings row opens is the copy
+     * that loads. A plugin without docs offers neither.
+     */
+    public function testDocsRootsCoverEveryCopyAndTheIndexIsTheCopyThatLoads(): void
+    {
+        $embedded = new TempProject([
+            'shadowed/plugin.php' => "<?php\n",
+            'shadowed/docs/README.md' => "# Bundled copy\n",
+            'bare/plugin.php' => "<?php\n",
+            'notes/plugin.php' => "<?php\n",
+            'notes/docs/usage.md' => "# A page, but no front page\n",
+        ]);
+        \mkdir($this->project->dir.'/.porta/plugins/shadowed/docs', permissions: 0o777, recursive: true);
+        \file_put_contents($this->project->dir.'/.porta/plugins/shadowed/plugin.php', data: "<?php\n");
+        \file_put_contents($this->project->dir.'/.porta/plugins/shadowed/docs/README.md', data: "# Project copy\n");
+        $installer = new PluginInstaller($this->project->dir, $this->global->dir, new Translator('en'), null, $embedded->dir);
+
+        $this->assertSame(
+            [
+                (string) \realpath($this->project->dir.'/.porta/plugins/shadowed/docs') => 'shadowed',
+                (string) \realpath($embedded->dir.'/notes/docs') => 'notes',
+                (string) \realpath($embedded->dir.'/shadowed/docs') => 'shadowed',
+            ],
+            $installer->docsRoots(),
+        );
+        $this->assertSame($this->project->dir.'/.porta/plugins/shadowed/docs/README.md', $installer->docsIndex('shadowed'), 'the copy that loads');
+        $this->assertNull($installer->docsIndex('bare'), 'no docs/ at all');
+        $this->assertNull($installer->docsIndex('notes'), 'docs/ without a front page offers no row');
+        $this->assertNull($installer->docsIndex('absent'));
+    }
+
     public function testInstalledListsBothScopesProjectFirst(): void
     {
         $installer = $this->installer();

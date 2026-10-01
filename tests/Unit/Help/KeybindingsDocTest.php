@@ -6,11 +6,17 @@ namespace Porta\Tests\Unit\Help;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\ActionCatalog;
+use Porta\Config\ConfigWarning;
 use Porta\Overlay\State\FindInFilesModal;
+use Porta\Plugin\Runtime\PluginLoader;
+use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginManifest;
+use Porta\Plugin\Runtime\PluginSettings;
+use Porta\Tests\Support\DocsTree;
 use Porta\Widget\EditorKeymap;
 use Porta\Widget\FindBarWidget;
 use Porta\Workbench\Menu\MenuModel;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 
 /**
  * `docs/keybindings.md` is what the in-app help (`F1`) renders, so a binding
@@ -95,21 +101,110 @@ final class KeybindingsDocTest extends TestCase
      */
     public function testEveryKeyAnySurfaceBindsForItselfAppearsInTheDoc(): void
     {
-        $doc = self::expandPairs(self::normalise((string) \file_get_contents(__DIR__.'/../../../docs/keybindings.md')));
-
+        $core = self::coreDoc();
         $missing = [];
         foreach (self::surfaceKeymaps() as $class => $keys) {
+            [$where, $doc] = self::ownerDoc($class);
             foreach ($keys as $id => $bound) {
                 foreach ($bound as $key) {
                     if (\in_array(self::normalise($key), self::CONVENTIONS, strict: true) || self::mentions($doc, $key)) {
                         continue;
                     }
-                    $missing[] = "{$class}: {$id} → {$key}";
+                    // A plugin's pane re-binds core's tab verbs under core's
+                    // own ids — the editor is detached while it holds the
+                    // slot — and a CORE verb's key is core's to document.
+                    if (\array_key_exists($id, ActionCatalog::ACTIONS) && self::mentions($core, $key)) {
+                        continue;
+                    }
+                    $missing[] = "{$class}: {$id} → {$key} (in {$where})";
                 }
             }
         }
 
-        $this->assertSame([], $missing, "a surface binds these for itself and docs/keybindings.md does not mention them:\n  ".\implode("\n  ", $missing));
+        $this->assertSame([], $missing, "a surface binds these for itself and the doc its owner keeps does not mention them:\n  ".\implode("\n  ", $missing));
+    }
+
+    /**
+     * A bundled plugin's command keys are documented in the PLUGIN's guide.
+     *
+     * The catalog gate above cannot see them — a plugin hands its keys to
+     * `registerCommand()`, not to {@see ActionCatalog} — and when plugins
+     * began carrying their own docs, six of them were binding eight chords
+     * between them (`Ctrl+Alt+A` analyses with PHPStan, `Ctrl+Alt+G` formats
+     * with Mago) that no page anywhere mentioned.
+     *
+     * The plugins are LOADED, every one of them, rather than grepped: a key
+     * can come from a shared base class (`registerAnalysis()` takes the
+     * analyzers' keys as an argument), and only the registration says which
+     * plugin ended up owning it.
+     */
+    public function testEveryKeyAPluginCommandBindsAppearsInThatPluginsGuide(): void
+    {
+        $plugins = DocsTree::plugins();
+        $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
+        $root = \dirname(__DIR__, levels: 3);
+        new PluginLoader($root.'/tests', null, new PluginSettings($root.'/tests', []), $root.'/plugins', enabled: \array_keys($plugins))->loadInto($manager);
+        foreach (\array_keys($plugins) as $name) {
+            $this->assertTrue(
+                $manager->hasPlugin($name),
+                "{$name} loaded, so its keys were read: ".\implode('; ', \array_map(static fn (ConfigWarning $w): string => \strtr($w->key, $w->params), $manager->warnings)),
+            );
+        }
+        $this->assertNotSame([], $manager->defaultKeys, 'the plugins bind keys at all, so an empty sweep is a broken one');
+
+        $missing = [];
+        foreach ($manager->defaultKeys as $id => $keys) {
+            $plugin = \explode(':', $id, limit: 2)[0];
+            $doc = self::expandPairs(self::normalise(self::pluginDocText($plugin)));
+            foreach ($keys as $key) {
+                if (self::mentions($doc, $key)) {
+                    continue;
+                }
+                $missing[] = "{$id} → {$key}";
+            }
+        }
+
+        $this->assertSame([], $missing, "a plugin command binds these and the plugin's docs/ does not mention them:\n  ".\implode("\n  ", $missing));
+    }
+
+    /**
+     * The doc a key-binding class answers to, and what to call it in a
+     * failure: its plugin's guide when the class is a plugin's, else
+     * `docs/keybindings.md`.
+     *
+     * @return array{0: string, 1: string} [where, the normalised doc text]
+     */
+    private static function ownerDoc(string $class): array
+    {
+        $root = \dirname(__DIR__, levels: 3);
+        foreach (self::sourceRoots($root) as $prefix => $directory) {
+            if ('Porta\\' === $prefix || !\str_starts_with($class, $prefix)) {
+                continue;
+            }
+            // A plugin's source root is `plugins/<name>/src`.
+            $plugin = \basename(\dirname($directory));
+
+            return ["plugins/{$plugin}/docs", self::expandPairs(self::normalise(self::pluginDocText($plugin)))];
+        }
+
+        return ['docs/keybindings.md', self::coreDoc()];
+    }
+
+    /** `docs/keybindings.md`, normalised for {@see mentions()}. */
+    private static function coreDoc(): string
+    {
+        return self::expandPairs(self::normalise((string) \file_get_contents(DocsTree::core().'/keybindings.md')));
+    }
+
+    /** Every page of $plugin's own docs, as one text. */
+    private static function pluginDocText(string $plugin): string
+    {
+        $text = '';
+        foreach (DocsTree::pagesUnder(DocsTree::plugins()[$plugin] ?? '') as $page) {
+            $text .= \file_get_contents($page)."\n";
+        }
+
+        return $text;
     }
 
     /**
@@ -450,10 +545,19 @@ final class KeybindingsDocTest extends TestCase
      * inside `f10`, `f11` and `f12`. The boundary is "not preceded by a chord
      * character or a `+`, and not followed by one", which is what makes the
      * match a whole chord rather than the head of a longer one.
+     *
+     * And only inside a code span, where every doc writes its chords. A bare
+     * letter key matched in prose otherwise: the review view's `s` read as
+     * documented by the "s" of "it's", so deleting the view's whole key table
+     * failed nothing.
      */
     private static function mentions(string $normalisedDoc, string $key): bool
     {
-        return 1 === \preg_match('~(?<![a-z0-9+])'.\preg_quote(self::normalise($key), delimiter: '~').'(?![a-z0-9])~', $normalisedDoc);
+        // A backtick right after a modifier's `+` is the chord's own key (`Ctrl+\``),
+        // not the end of the span.
+        \preg_match_all('~`((?:[^`]|(?<=[a-z]\+)`)*)`~', $normalisedDoc, $spans);
+
+        return 1 === \preg_match('~(?<![a-z0-9+])'.\preg_quote(self::normalise($key), delimiter: '~').'(?![a-z0-9])~', \implode(' ', $spans[1]));
     }
 
     /**

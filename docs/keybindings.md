@@ -35,7 +35,7 @@ nothing.
 | `F1` | Open the documentation browser (these guides, fully rendered; see the Help viewer table below) |
 | `Ctrl+Shift+A` | Find Action (command palette) |
 | `Ctrl+Shift+E` | Search Everywhere |
-| `Ctrl+,` | Settings (inside: `Ctrl+F` finds a setting — or filters the Keybindings list in place, `R` resets the selected row, `2` jumps to Keybindings, `[`/`]` change a value, `Tab` switches pane) |
+| `Ctrl+,` | Settings (inside: `Ctrl+F` finds a setting — or filters the Keybindings list in place, `R` resets the selected row, `2` jumps to Keybindings and `1` back to General, `[`/`]` change a value, `Tab` switches pane) |
 | `Ctrl+Alt+D` | Git view (changes, staging, history) |
 | `Ctrl+\`` / `Alt+F12` | Toggle the integrated terminal |
 | `Ctrl+Shift+\`` / `Alt+F11` | Open a new terminal session |
@@ -46,7 +46,6 @@ nothing.
 | `Alt+9` | Notification log — every flash the status bar showed and you missed |
 | `Alt+D` | Dismiss the newest notification (the top card) |
 | `Ctrl+Alt+H` | Local history |
-| `Ctrl+Alt+Y` / `Ctrl+Alt+U` | Keep / put back the change Claude Code proposes (see [Agents](agents.md)) |
 | `Ctrl+Alt+Z` | Undo the last multi-file refactoring, across every file it touched (`Ctrl+Z` is per file); refuses and names the file if anything changed since |
 
 ## Files and buffers
@@ -192,6 +191,7 @@ replaces in the bar, and neither surface can have both.
 | `Ctrl+Shift+F5` | Restart the debugger *(while a session runs)* |
 | `Ctrl+Shift+F8` | Edit the breakpoint's condition, hit count or log message |
 | `Ctrl+Shift+F9` | Add a watch expression |
+| `e` | Edit the selected variable's value *(in the Debug panel's Variables)* |
 | `Alt+F9` | Run to the caret's line *(while paused)* |
 | `F7` / `Shift+F7` | Next / previous merge conflict *(when not debugging)* |
 | `Alt+M` | Resolve the conflict under the caret (ours / theirs / both) |
@@ -269,69 +269,20 @@ the rendered page. A link to another Markdown file opens that file's tab,
 with the preview keeping the keys; `Backspace` walks back through the files
 followed that way. Any other file opens in the editor.
 
-## Image viewer
+## Plugin keys
 
-When an image tab is active:
-
-| Key | Action |
-| --- | --- |
-| `=` / `-` | Zoom in / out (also `Ctrl+wheel`, anchored at the pointer) |
-| `0` / `f` | Fit to window |
-| `1` | Actual size |
-| Arrows / `Shift+arrows` | Pan |
-
-## Graph viewer
-
-When a `.dot`, `.gv` or PlantUML tab is active. The zoom keys match the image
-viewer's, but zooming in re-renders the graph at a higher resolution rather
-than magnifying pixels — see [the editor guide](editor.md#graph-viewer).
-
-| Key | Action |
-| --- | --- |
-| `=` / `-` | Zoom in / out (also `Ctrl+wheel`, anchored at the pointer) |
-| `0` / `f` | Fit to window |
-| `1` | Actual size |
-| Arrows / `Shift+arrows` | Pan (also the wheel, or dragging) |
-| `n` / `p` | Select the next / previous node, framing it and naming it in the status bar |
-| `/` | Find a node by name — a filterable list of every node with its in/out degree; picking one selects it and pans to it |
-| `v` | Toggle bitmap / cell rendering — the picture `dot` draws, or node labels as real terminal text, which stays readable when the bitmap's type is a few pixels tall (no effect on a PlantUML picture, which has no layout to draw from) |
-
-## Git view
-
-The view window `Ctrl+Alt+D` opens; `Tab` cycles panes and `Esc` closes.
-[The git guide](git.md#the-git-view-ctrlaltd) has the whole workflow.
-
-| Key | Action |
-| --- | --- |
-| `1` / `2` | Changes tab / History tab |
-| `Space` | Stage or unstage — the selected file in Changes, the hunk or selection in the diff |
-| `d` / `Delete` | Discard the selected file's changes (inline confirm) |
-| `v` | Start a line range in the diff, then `Space` stages just those lines |
-| `c` | Cycle diff context (git default → ±10 lines → whole file) |
-| `s` | Toggle unified / side-by-side (persisted) |
-| `w` | Toggle hide-whitespace (persisted) |
-| `Ctrl+C` | Copy the selected diff lines |
-| `Ctrl+Enter` | Commit the staged changes |
-| `Alt+M` | Toggle amend, prefilling the last commit's message |
-| `Enter` | In History, switch between the commit list and its file list |
-| `f` / `p` / `Shift+P` | Fetch / pull / push |
-
-## Review view
-
-The `review` plugin's view window (**Review → Show Review**); `Tab` cycles
-panes and `Esc` closes. [The review guide](review.md#the-review-view) has the
-whole workflow.
-
-| Key | Action |
-| --- | --- |
-| `Enter` | In the list, show the entry; in the file pane, open the file at the caret's line |
-| `r` | Reply to the thread (the selected one, or the one the caret is in) |
-| `x` | Resolve or reopen that thread |
-| `c` | In the list, comment on the review itself; in the file pane, start a thread on the caret's line |
-| `o` | Open the thread's line in the editor |
-| `s` | Show or hide resolved conversations — the toolbar toggle on the file pane, kept like the git view's |
-| `F5` / `Shift+R` | Re-read the review |
-| `Ctrl+Enter` | Send what the reply box holds |
+A bundled plugin's keys are in its own guide, beside what they do:
+the [Git view](../plugins/git/docs/README.md#keys),
+the [Review view](../plugins/review/docs/README.md#keys),
+the [image](../plugins/image-viewer/docs/README.md#keys) and
+[graph](../plugins/graph-viewer/docs/README.md#keys) viewers,
+[agent changes](../plugins/mcp/docs/README.md#keys), and the analyzers'
+and formatters' run commands — [Mago](../plugins/mago/docs/README.md#keys),
+[PHPStan](../plugins/phpstan/docs/README.md#keys),
+[Psalm](../plugins/psalm/docs/README.md#keys),
+[PHP CS Fixer](../plugins/php-cs-fixer/docs/README.md#keys) and
+[PHPantom](../plugins/phpantom/docs/README.md#keys). Every one of them is
+rebindable here like a core key.
 
 ## Mouse
 

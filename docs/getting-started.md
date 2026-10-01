@@ -51,7 +51,7 @@ ln -s "$PWD/bin/porta" ~/.local/bin/porta
 Once Porta runs, **Settings → Command line** does the same from inside it —
 installs, updates or removes the `porta` link, and Porta as git's difftool and
 mergetool. From a shell, `porta --git-setup` makes it git's tools — see
-[the git guide](git.md#as-gits-difftool-and-mergetool).
+[the git guide](../plugins/git/docs/README.md#as-gits-difftool-and-mergetool).
 
 ## Language server
 
@@ -64,9 +64,12 @@ server. The IDE looks for one in this order:
    {"lsp": "php phpactor.phar language-server"}
    ```
 2. The `PORTA_LSP` environment variable (same format)
-3. An enabled **language-server plugin**. **phpantom** (`phpantom_lsp`) serves
-   PHP out of the box; enable the bundled **phpactor** plugin under
-   Settings → Plugins to use `phpactor language-server` instead. Each resolves
+3. An enabled **language-server plugin**. [**phpantom**](../plugins/phpantom/docs/README.md)
+   (`phpantom_lsp`) serves PHP out of the box; enable the bundled
+   [**phpactor**](../plugins/phpactor/docs/README.md) plugin under
+   Settings → Plugins to use `phpactor language-server` instead, and
+   [**symfony-lsp**](../plugins/symfony-lsp/docs/README.md) for Twig, YAML,
+   XML and the rest of a Symfony project. Each resolves
    its binary from the plugin's `binary` setting, then your `PATH`.
 4. `typescript-language-server` / `pyright` on your `PATH` for JS/TS and Python.
 
@@ -109,7 +112,7 @@ configuration. Add `/.porta/` to your project's `.gitignore`.
 - [Editor features](editor.md)
 - [Keybindings](keybindings.md)
 - [Search & navigation](search-navigation.md)
-- [Git integration](git.md)
+- [Git integration](../plugins/git/docs/README.md)
 - [Running & the terminal](run-and-terminal.md)
 - [Debugger](debugger.md)
 - [Configuration](configuration.md)

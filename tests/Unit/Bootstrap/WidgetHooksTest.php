@@ -53,6 +53,7 @@ final class WidgetHooksTest extends TestCase
         $helpViewer = Services::resolve($this->ide, HelpViewerWidget::class);
 
         $this->assertNotNull(Probe::get($helpViewer, 'docsRoot'));
+        $this->assertNotNull(Probe::get($helpViewer, 'moreRoots'));
         $this->assertNotNull(Probe::get($helpViewer, 'handler'));
     }
 

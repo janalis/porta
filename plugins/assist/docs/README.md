@@ -194,7 +194,7 @@ server, so share only what you would let them use.
   their name at the end of the line and their selection tinted. A file someone
   else is in gets a `✦` on its tab and tree row.
 - **Agents count as participants.** An agent at work on either side, such as
-  one connected through the [mcp plugin](agents.md), shows the same way.
+  one connected through the [mcp plugin](../../mcp/docs/README.md), shows the same way.
   **Participants** lists it, and you can follow it.
 - **Undo is your own.** <kbd>Ctrl+Z</kbd> takes back only your own changes,
   even when others have typed since.

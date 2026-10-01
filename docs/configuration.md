@@ -260,7 +260,7 @@ section per language.
   removed from here: the `porta` command (a symlink, `~/.local/bin/porta`
   unless one is already on your `PATH`; a `porta` put there some other way is
   shown and left alone), Porta as [git's difftool and
-  mergetool](git.md#as-gits-difftool-and-mergetool), and — for the phar —
+  mergetool](../plugins/git/docs/README.md#as-gits-difftool-and-mergetool), and — for the phar —
   updating Porta itself (`--self-update`, run in the background). A removal
   takes two presses.
 - **Plugins** — install (git URL or local path, project or global scope) and
@@ -292,7 +292,7 @@ The IDE writes a `.porta/` directory into the project you open:
 | `.porta/recent-files.json` | The files this project has had open, newest first, capped at 32 — what `Ctrl+E` offers below the open tabs |
 | `.porta/layout.json` | Pane proportions (sidebar widths, bottom-panel height, git view splits, the editor's share beside a live preview) — hand-editable |
 | `.porta/history/` | Local-history snapshots (see below) |
-| `.porta/reviews/` | Local code reviews an agent writes and you answer — see [review.md](review.md#local-reviews-the-format-an-agent-writes) |
+| `.porta/reviews/` | Local code reviews an agent writes and you answer — see [review.md](../plugins/review/docs/README.md#local-reviews-the-format-an-agent-writes) |
 | `.porta/plugins/` | Installed project-scope plugins |
 | `enabledPlugins` (in `.porta.json`) | Bundled plugins to load. When the key is ABSENT, `image-viewer`, `graph-viewer`, `todo` and `local-history` are on by default; an explicit list (even `[]`) replaces that default entirely, so a list written before one of them existed silently leaves it off — TODO scanning and local-history snapshots are the two that go quiet |
 

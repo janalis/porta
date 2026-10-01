@@ -251,8 +251,9 @@ arranged by its `PreviewMode`: Editor, Split or Preview.
   routers hit-test, and `members()` with the focus ring's stops.
 - **The markdown page.** `Widget/MarkdownPageWidget` is the documentation's
   page — navigation bar, links, history, find — and both the help browser and
-  the markdown preview extend it. They differ in their tree (the docs, the
-  project) and in what a link to another page does, which is the handler's:
+  the markdown preview extend it. They differ in their tree (the docs — plus
+  every installed plugin's own `docs/`, via `setMoreRoots()` — and the project)
+  and in what a link to another page does, which is the handler's:
   `Help/HelpViewerActions` renders it in place, `Help/MarkdownPreviewActions`
   opens that file's tab. A click on the page's text, away from a link, is
   reported with the source line its block starts on (`RenderedDoc::$origins`,

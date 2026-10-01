@@ -304,6 +304,25 @@ plugin's catalog; one that core uses, or that two plugins share, lives in core.
 every catalog gate iterates the sets through `tests/Support/Catalogs`, so a
 plugin that grows a `translations/` dir is gated from its first commit.
 
+## A plugin's docs are its own tree
+
+A plugin's guide is `docs/README.md` beside its entry file, found by convention
+like its catalog — no `PluginApi` verb. Unlike the catalog it is read from
+EVERY installed copy, enabled or not: `PluginInstaller::docsRoots()` lists each
+copy's `docs/` and `WidgetHooks` hands that closure to the help browser
+(`MarkdownPageWidget::setMoreRoots()`), which re-asks it per navigation so a
+live install is reachable. A link must resolve inside Porta's `docs/` or one of
+those trees; anything else — the plugin's own `src/` included — is refused.
+The Settings page's Documentation row reads `docsIndex()` (the copy that
+loads) and raises `HelpPageRequested`, which `HelpViewController` alone
+answers.
+
+Every bundled plugin must ship one and be linked from `docs/README.md`
+(`DocsIndexTest`), and `KeybindingsDocTest` holds a plugin's keys — its
+surfaces' and its commands', the plugins loaded to read them — to that
+plugin's docs, not to `docs/keybindings.md`. `tests/Support/DocsTree` is the
+one walk over both trees.
+
 ## Panes and viewers
 
 `registerViewer(id, claims)` says which files are mine; `registerPane(id,

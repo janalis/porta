@@ -237,4 +237,10 @@ git process, a test run — is not stopped by that, since the IDE cannot tell
 whose it was.
 
 A plugin author offers a tool with `registerTool()`; see
-[Plugins](plugins.md#offering-a-tool-to-agents).
+[Plugins](../../../docs/plugins.md#offering-a-tool-to-agents).
+
+## Keys
+
+| Key | Action |
+| --- | --- |
+| `Ctrl+Alt+Y` / `Ctrl+Alt+U` | Keep / put back the change Claude Code proposes |

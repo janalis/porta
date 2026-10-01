@@ -669,6 +669,40 @@ final class PluginInstaller
         return $plugins;
     }
 
+    /**
+     * Every installed plugin's own documentation folder (`<plugin>/docs`),
+     * resolved, keyed to the plugin's name — shadowed copies included, since
+     * Porta's docs link to the bundled copy whichever one loads.
+     *
+     * @return array<string, string> docs dir => plugin name
+     */
+    public function docsRoots(): array
+    {
+        $roots = [];
+        foreach ($this->installed() as $plugin) {
+            $docs = $plugin['dir'].'/docs';
+            if (!\is_dir($docs)) {
+                continue;
+            }
+            // Unresolved when realpath() cannot (a phar:// path, inside the phar).
+            $resolved = \realpath($docs);
+            $roots[$resolved ? $resolved : $docs] ??= $plugin['name'];
+        }
+
+        return $roots;
+    }
+
+    /** The front page of $name's documentation — in the copy that loads — or null when it ships none. */
+    public function docsIndex(string $name): ?string
+    {
+        $plugin = \array_find($this->installed(), static fn (array $plugin): bool => $name === $plugin['name']);
+        if (null === $plugin || !\is_file($plugin['dir'].'/docs/README.md')) {
+            return null;
+        }
+
+        return $plugin['dir'].'/docs/README.md';
+    }
+
     /** The scope's root directory (project root or global base), or null when the global base is unknown. */
     private function rootFor(InstallScope $scope): ?string
     {

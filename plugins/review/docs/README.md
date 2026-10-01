@@ -83,6 +83,22 @@ A reply, a resolve and a new comment go to the forge, or to the local review's
 files. The review is then read again, so what you see is what the forge
 recorded.
 
+## Keys
+
+The Review view (**Review → Show Review**); `Tab` cycles
+panes and `Esc` closes.
+
+| Key | Action |
+| --- | --- |
+| `Enter` | In the list, show the entry; in the file pane, open the file at the caret's line |
+| `r` | Reply to the thread (the selected one, or the one the caret is in) |
+| `x` | Resolve or reopen that thread |
+| `c` | In the list, comment on the review itself; in the file pane, start a thread on the caret's line |
+| `o` | Open the thread's line in the editor |
+| `s` | Show or hide resolved conversations — the toolbar toggle on the file pane, kept like the git view's |
+| `F5` / `Shift+R` | Re-read the review |
+| `Ctrl+Enter` | Send what the reply box holds |
+
 ## In the editor
 
 A thread shows on the line it is about **now**:
@@ -161,7 +177,7 @@ A prompt that has an agent review your uncommitted changes this way:
 
 ### Through the IDE, with the mcp plugin
 
-With the [mcp plugin](agents.md) on, an agent connected to the running IDE
+With the [mcp plugin](../../mcp/docs/README.md) on, an agent connected to the running IDE
 has `review_threads`, `review_reply`, `review_resolve` and `review_comment`.
 They work on whichever review the IDE shows — a pull or merge request as
 well as a local one — and go through the same path as the view, so a reply

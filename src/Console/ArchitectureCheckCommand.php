@@ -177,6 +177,7 @@ final class ArchitectureCheckCommand extends Command
         'GraphViewer>Widget',
         'Help>Container',
         'Help>Editor',
+        'Help>Event',
         'Help>Input',
         'Help>Layout',
         'Help>Support',

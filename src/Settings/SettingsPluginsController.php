@@ -6,6 +6,7 @@ namespace Porta\Settings;
 
 use Porta\Config\CommandRegistry;
 use Porta\Config\ConfigScope;
+use Porta\Event\HelpPageRequested;
 use Porta\I18n\Translator;
 use Porta\Plugin\Api\PluginApi;
 use Porta\Plugin\Lifecycle\InstallOutcome;
@@ -16,6 +17,7 @@ use Porta\Plugin\Lifecycle\ToolInstaller;
 use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Plugin\Runtime\ToolInstallOffers;
 use Porta\Workbench\Notifier;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 /**
  * The Plugins section of the settings view: the shared scope choice,
@@ -64,6 +66,9 @@ final class SettingsPluginsController
         // settings tests stand; the container always autowires it. Only a
         // SELF-installing plugin reaches for it.
         private readonly ?CommandRegistry $commands = null,
+        // Trailing for the same reason: the Documentation row asks the help
+        // window for the plugin's page through it.
+        private readonly ?EventDispatcherInterface $events = null,
     ) {}
 
     /** @return list<SettingsRow> */
@@ -202,7 +207,26 @@ final class SettingsPluginsController
             );
         }
 
-        return $rows;
+        // A plugin that ships its own docs offers them last, after its knobs
+        // and buttons — a disabled one too, which is when reading what it
+        // does is most useful.
+        return [...$rows, ...$this->docsRow($name)];
+    }
+
+    /** @return list<SettingsRow> the Documentation row, when $name ships a guide */
+    private function docsRow(string $name): array
+    {
+        if (null === $this->installer->docsIndex($name)) {
+            return [];
+        }
+
+        return [new SettingsRow(
+            key: 'pluginDocs',
+            label: $this->translator->trans('Documentation'),
+            kind: SettingsRowKind::Action,
+            value: $this->translator->trans('Open'),
+            restart: false,
+        )];
     }
 
     /** Route a plugin settings-page edit: the Enabled toggle or a plugin setting. */
@@ -248,6 +272,15 @@ final class SettingsPluginsController
         if ('pluginInstallBinary' === $key) {
             $this->armed = null;
             $this->installBinary($name);
+
+            return;
+        }
+        if ('pluginDocs' === $key) {
+            $this->armed = null;
+            $docs = $this->installer->docsIndex($name);
+            if (null !== $docs) {
+                $this->events?->dispatch(new HelpPageRequested($docs));
+            }
 
             return;
         }

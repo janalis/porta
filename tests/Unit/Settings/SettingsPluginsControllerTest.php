@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Config\ConfigFiles;
 use Porta\Config\ConfigScope;
+use Porta\Event\HelpPageRequested;
 use Porta\I18n\Translator;
 use Porta\Plugin\Api\PluginApi;
 use Porta\Plugin\Lifecycle\PluginInstaller;
@@ -51,6 +52,8 @@ final class SettingsPluginsControllerTest extends TestCase
     private CommandRegistry $commands;
     /** @var list<string> plugin command ids the self-install button ran */
     private array $commandsRun = [];
+    /** @var list<string> the pages a Documentation row asked the help window for */
+    private array $helpPages = [];
 
     private function controller(): SettingsPluginsController
     {
@@ -73,6 +76,11 @@ final class SettingsPluginsControllerTest extends TestCase
         $this->installerTool = new ToolInstaller($this->project->dir, $this->managerBinaries);
         $this->commands = new CommandRegistry();
         $this->commandsRun = [];
+        $this->helpPages = [];
+        $events = new EventDispatcher();
+        $events->addListener(HelpPageRequested::class, function (HelpPageRequested $event): void {
+            $this->helpPages[] = $event->path;
+        });
 
         return new SettingsPluginsController(
             new PluginInstaller($this->project->dir, $this->global->dir, new Translator('en'), null, $this->embeddedDir, $this->composerBinary),
@@ -86,6 +94,7 @@ final class SettingsPluginsControllerTest extends TestCase
             $scope,
             new SettingsProvenance($files),
             $this->commands,
+            $events,
         );
     }
 
@@ -164,6 +173,39 @@ final class SettingsPluginsControllerTest extends TestCase
         $controller->change('pluginInfo:bundled', 'Built-in'); // inert
         $this->assertSame([], $this->lifecycle->deactivated);
         $this->assertDirectoryExists($embedded->dir.'/bundled');
+        $this->embeddedDir = null;
+    }
+
+    /**
+     * A plugin that ships its own guide offers it on its page, last — a
+     * disabled one too, which is when reading what it does is most useful —
+     * and the row asks the help window for the page rather than opening it
+     * itself.
+     */
+    public function testAPluginsOwnDocsAreOfferedOnItsPageAndOpenInTheHelpWindow(): void
+    {
+        $embedded = new TempProject([
+            'documented/plugin.php' => "<?php\n",
+            'documented/docs/README.md' => "# Documented\n",
+            'bare/plugin.php' => "<?php\n",
+        ]);
+        $this->embeddedDir = $embedded->dir;
+        $controller = $this->controller();
+        $this->lifecycle->names = ['documented', 'bare'];
+        $this->lifecycle->disabledNames = ['documented'];
+
+        $docs = \array_last($controller->pluginRows('documented'));
+        $this->assertSame('pluginDocs', $docs->key);
+        $this->assertSame(SettingsRowKind::Action, $docs->kind);
+        $this->assertSame('Documentation', $docs->label);
+        $this->assertSame('Open', $docs->value, 'an Action shows its value as the button caption');
+        $this->assertNotContains('pluginDocs', \array_column($controller->pluginRows('bare'), 'key'), 'no guide, no row');
+
+        $controller->changePlugin('documented', 'pluginDocs', 'Open');
+        $this->assertSame([$embedded->dir.'/documented/docs/README.md'], $this->helpPages);
+
+        $controller->changePlugin('bare', 'pluginDocs', 'Open'); // a stale row: the guide went away
+        $this->assertCount(1, $this->helpPages, 'nothing to open asks for nothing');
         $this->embeddedDir = null;
     }
 

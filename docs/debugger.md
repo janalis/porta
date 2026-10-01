@@ -71,7 +71,7 @@ A resizable bottom panel opens with the session:
   every stop and frame switch; `Delete` removes the selected watch, and
   structured results expand like variables. Evaluation errors render dimmed.
 - **Variables** — scopes with lazily-expanded children; `Enter`/click
-  expands one level.
+  expands one level, and `e` edits the selected variable's value.
 
 `Debug: Evaluate Expression` in the palette (paused only) evaluates a
 one-shot expression against the current frame and flashes the result.

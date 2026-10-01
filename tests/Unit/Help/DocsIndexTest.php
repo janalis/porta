@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Help;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Tests\Support\DocsTree;
 
 /**
- * Every documentation page must be reachable from the index above it.
+ * Every documentation page must be reachable from the index above it — a
+ * bundled plugin's own guide included, from Porta's front page.
  *
  * Not a tidiness rule: `docs/` is what the in-IDE F1 browser renders, and
  * `docs/README.md` is its hard-coded home page. A page nothing links to exists
@@ -25,27 +27,57 @@ final class DocsIndexTest extends TestCase
 {
     public function testEveryPageIsLinkedFromTheIndexAboveIt(): void
     {
-        $docs = \dirname(__DIR__, levels: 3).'/docs';
+        $docs = DocsTree::core();
+        // A plugin's docs root hangs off Porta's own front page, by the
+        // relative path the browser resolves from it.
+        $roots = [$docs => null];
+        foreach (DocsTree::plugins() as $name => $dir) {
+            $roots[$dir] = '../plugins/'.$name.'/docs/README.md';
+        }
 
         $unlinked = [];
-        foreach (self::pages($docs) as $page) {
-            $folder = \dirname($page);
-            // A folder's own index is linked from its PARENT's, by the relative
-            // path the browser resolves: `(internals/README.md)`.
-            [$index, $target] = 'README.md' === \basename($page)
-                ? [\dirname($folder).'/README.md', \basename($folder).'/README.md']
-                : [$folder.'/README.md', \basename($page)];
+        foreach ($roots as $root => $fromHome) {
+            foreach (DocsTree::pagesUnder($root) as $page) {
+                $folder = \dirname($page);
+                // A folder's own index is linked from its PARENT's, by the
+                // relative path the browser resolves: `(internals/README.md)`.
+                [$index, $target] = 'README.md' === \basename($page)
+                    ? [\dirname($folder).'/README.md', \basename($folder).'/README.md']
+                    : [$folder.'/README.md', \basename($page)];
 
-            if ($folder === $docs && 'README.md' === \basename($page)) {
-                continue; // the root index is the browser's home; nothing above it
-            }
-            if (!\is_file($index) || !\str_contains((string) \file_get_contents($index), '('.$target.')')) {
-                $unlinked[] = \substr($page, \strlen($docs) + 1);
+                if ($folder === $root && 'README.md' === \basename($page)) {
+                    if (null === $fromHome) {
+                        continue; // the root index is the browser's home; nothing above it
+                    }
+                    [$index, $target] = [$docs.'/README.md', $fromHome];
+                }
+                if (!\is_file($index) || !\str_contains((string) \file_get_contents($index), '('.$target.')')) {
+                    $unlinked[] = self::relative($page);
+                }
             }
         }
 
         \sort($unlinked);
-        $this->assertSame([], $unlinked, 'unreachable from the F1 browser — add a row to the README.md beside it');
+        $this->assertSame([], $unlinked, 'unreachable from the F1 browser — add a row to the README.md beside it (a plugin\'s docs/README.md: to docs/README.md\'s Bundled plugins table)');
+    }
+
+    /**
+     * Every bundled plugin documents itself, in its own `docs/README.md`.
+     *
+     * A plugin is a feature somebody turns on from a list of names; the page
+     * is where that list leads (Settings → Plugins → Documentation, and the
+     * front page's Bundled plugins table). Without this, the next plugin
+     * would ship as a name and nothing else — which is what nine of the
+     * seventeen were when plugins started carrying their own docs.
+     */
+    public function testEveryBundledPluginShipsItsOwnGuide(): void
+    {
+        $plugins = DocsTree::plugins();
+        $this->assertGreaterThanOrEqual(17, \count($plugins), 'the bundled plugins were found, not skipped');
+
+        $undocumented = \array_keys(\array_filter($plugins, static fn (string $dir): bool => !\is_file($dir.'/README.md')));
+
+        $this->assertSame([], $undocumented, 'these bundled plugins have no docs/README.md');
     }
 
     /**
@@ -59,15 +91,16 @@ final class DocsIndexTest extends TestCase
      * modal does not bind, found the same day.
      *
      * Anchors are stripped and external schemes skipped: this checks the file
-     * exists, not that a heading inside it does.
+     * exists, not that a heading inside it does. And it must exist INSIDE a
+     * docs tree — Porta's or a plugin's — because that is all the browser
+     * opens: a link to a directory or to source code resolves on disk and is
+     * refused on click.
      */
     public function testEveryRelativeLinkPointsAtAFileThatExists(): void
     {
-        $docs = \dirname(__DIR__, levels: 3).'/docs';
-
         $checked = 0;
         $dead = [];
-        foreach (self::pages($docs) as $page) {
+        foreach (DocsTree::pages() as $page) {
             $matches = [];
             \preg_match_all('~\]\(([^)#][^)]*)\)~', (string) \file_get_contents($page), $matches);
             foreach ($matches[1] as $link) {
@@ -79,10 +112,11 @@ final class DocsIndexTest extends TestCase
                     continue;
                 }
                 ++$checked;
-                if (\file_exists(\dirname($page).'/'.$target)) {
+                $resolved = \realpath(\dirname($page).'/'.$target);
+                if (false !== $resolved && \is_file($resolved) && self::insideATree($resolved)) {
                     continue;
                 }
-                $dead[] = \substr($page, \strlen($docs) + 1).' → '.$link;
+                $dead[] = self::relative($page).' → '.$link;
             }
         }
 
@@ -93,28 +127,26 @@ final class DocsIndexTest extends TestCase
         $this->assertSame([], $dead, "docs link to files that do not exist — the F1 browser offers a page it cannot open:\n  ".\implode("\n  ", $dead));
     }
 
-    /** @return list<string> every .md under docs/, at any depth */
-    private static function pages(string $docs): array
+    /**
+     * Whether $file sits in a tree the browser will open: Porta's docs or a
+     * plugin's. A link to anywhere else exists on disk and is refused on
+     * click all the same, which is no better than a dead one.
+     */
+    private static function insideATree(string $file): bool
     {
-        $pages = [];
-        $walk = static function (string $dir) use (&$walk, &$pages): void {
-            foreach ((array) \scandir($dir) as $entry) {
-                if (!\is_string($entry) || \str_starts_with($entry, '.')) {
-                    continue;
-                }
-                $path = $dir.'/'.$entry;
-                if (\is_dir($path)) {
-                    $walk($path);
-
-                    continue;
-                }
-                if (\str_ends_with($entry, '.md')) {
-                    $pages[] = $path;
-                }
+        foreach ([DocsTree::core(), ...\array_values(DocsTree::plugins())] as $root) {
+            $root = \realpath($root);
+            if (false !== $root && \str_starts_with($file, $root.'/')) {
+                return true;
             }
-        };
-        $walk($docs);
+        }
 
-        return $pages;
+        return false;
+    }
+
+    /** $page as the repository names it, for a failure a reader can open. */
+    private static function relative(string $page): string
+    {
+        return \substr($page, \strlen(\dirname(DocsTree::core())) + 1);
     }
 }

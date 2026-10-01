@@ -15,6 +15,7 @@ use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\Document;
 use Porta\Editor\OpenFocus;
 use Porta\Event\BufferRepointRequested;
+use Porta\Event\HelpPageRequested;
 use Porta\Help\HelpViewController;
 use Porta\Help\HelpViewerActions;
 use Porta\Help\MarkdownPreviewActions;
@@ -45,6 +46,7 @@ use Porta\Widget\MarkdownPreviewWidget;
 use Porta\Workbench\EditorArea;
 use Porta\Workbench\Notifier;
 use Porta\Workbench\View\ViewRegistry;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Render\Renderer;
@@ -1058,6 +1060,29 @@ final class IdeHelpersTest extends TestCase
         $this->assertSame($editor, $viewer->path(), 'reopening keeps the page');
         $window->toggle();
         $this->assertFalse($views->isOpen('help'), 'toggle closes it');
+    }
+
+    /**
+     * A plugin's Settings page asks for its guide by event: the window opens
+     * on that page — over Settings, which is where the request came from —
+     * and an already-open window navigates in place.
+     */
+    public function testAPageRequestedFromOutsideOpensTheWindowOnIt(): void
+    {
+        $guide = (string) \realpath($this->project->write('plugins/demo/docs/README.md', "# Demo guide\n"));
+        $other = (string) \realpath($this->project->write('plugins/demo/docs/usage.md', "# Usage\n"));
+        $views = Services::resolve($this->ide, ViewRegistry::class);
+        $viewer = Services::resolve($this->ide, HelpViewerWidget::class);
+        $events = Services::resolve($this->ide, EventDispatcherInterface::class);
+
+        $views->open('settings');
+        $events->dispatch(new HelpPageRequested($guide));
+        $this->assertTrue($views->isOpen('help'), 'the window opened');
+        $this->assertSame($guide, $viewer->path(), 'on the page asked for, not the front page');
+
+        $events->dispatch(new HelpPageRequested($other));
+        $this->assertTrue($views->isOpen('help'));
+        $this->assertSame($other, $viewer->path(), 'an open window navigates in place');
     }
 
     /**

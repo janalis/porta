@@ -28,7 +28,7 @@ Git support is silently disabled outside a git working tree.
   has no row to mark.
 - The **current branch** in the status bar. Its `▾` says it opens a menu, on a left click as on a right one.
 - **Merge-conflict navigation and resolution** — see
-  [editor.md](editor.md#merge-conflicts).
+  [editor.md](../../../docs/editor.md#merge-conflicts).
 
 ## Command palette operations
 
@@ -90,6 +90,25 @@ list; the diff pane is read-only here. `1` returns to Changes.
 The view covers changes, staging (including line-level), commit/amend and
 history browsing. History loads 200 commits at a time — moving past the last
 loaded commit pulls in the next page.
+
+## Keys
+
+The view window `Ctrl+Alt+D` opens; `Tab` cycles panes and `Esc` closes.
+
+| Key | Action |
+| --- | --- |
+| `1` / `2` | Changes tab / History tab |
+| `Space` | Stage or unstage — the selected file in Changes, the hunk or selection in the diff |
+| `d` / `Delete` | Discard the selected file's changes (inline confirm) |
+| `v` | Start a line range in the diff, then `Space` stages just those lines |
+| `c` | Cycle diff context (git default → ±10 lines → whole file) |
+| `s` | Toggle unified / side-by-side (persisted) |
+| `w` | Toggle hide-whitespace (persisted) |
+| `Ctrl+C` | Copy the selected diff lines |
+| `Ctrl+Enter` | Commit the staged changes |
+| `Alt+M` | Toggle amend, prefilling the last commit's message |
+| `Enter` | In History, switch between the commit list and its file list |
+| `f` / `p` / `Shift+P` | Fetch / pull / push |
 
 ## As git's difftool and mergetool
 
@@ -187,4 +206,4 @@ line's commit without turning the mode on.
 ## Code review
 
 Pull and merge request threads — and local reviews an agent leaves — are the
-`review` plugin's: see [review.md](review.md).
+`review` plugin's: see [review.md](../../review/docs/README.md).
