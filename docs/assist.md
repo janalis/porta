@@ -141,6 +141,19 @@ separately: in **Participants**, pick the guest, then **Let them type in
 shared terminals** (or **Stop them typing**). Until then, a key typed in the
 tab is refused with a message saying so.
 
+## Running the host's configurations
+
+**Assist: Run on the Host…** lists the host's run configurations: the current
+file, the composer scripts, the Makefile targets. A guest picks one and it
+runs on the host, in the host's terminal panel. Its terminal is shared, so
+everyone sees what it prints, and the host is told who ran it.
+
+**Guests cannot run anything by default.** A run executes on the host's
+machine, so the host lets each guest separately: in **Participants**, pick the
+guest, then **Let them run the run configurations** (or **Stop them running**).
+A guest only ever picks a configuration the host offers. It cannot send a
+command of its own.
+
 ## Sharing a server
 
 A project's dev server (`php -S localhost:8000`, `symfony serve`) runs on
@@ -191,4 +204,3 @@ server, so share only what you would let them use.
 - **Eight guests by default.** **Most guests at once** raises it. The editor
   has eight caret colours, so past eight the colours repeat. The name beside
   each caret still tells people apart.
-- **Run configurations are not shared.** Share the terminal a run is in instead.
