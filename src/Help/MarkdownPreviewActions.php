@@ -10,6 +10,7 @@ use Porta\Editor\FindMode;
 use Porta\Editor\OpenFocus;
 use Porta\I18n\Translator;
 use Porta\Support\DocsUrlOpener;
+use Porta\Support\Files;
 use Porta\Support\ProjectPaths;
 use Porta\Widget\FindBarWidget;
 use Porta\Widget\HelpViewerHandler;
@@ -84,7 +85,7 @@ final readonly class MarkdownPreviewActions implements HelpViewerHandler
     #[\Override]
     public function labelFor(string $path): string
     {
-        return \realpath($path) === \realpath($this->paths->root().'/README.md')
+        return Files::canonical($path) === Files::canonical($this->paths->root().'/README.md')
             ? \basename($this->paths->root())
             : \basename($path, suffix: '.md');
     }

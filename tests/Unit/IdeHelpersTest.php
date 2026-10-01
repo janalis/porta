@@ -36,6 +36,7 @@ use Porta\Support\PerfCollector;
 use Porta\Support\ProjectPaths;
 use Porta\Tests\Support\AwaitsGit;
 use Porta\Tests\Support\BootsIde;
+use Porta\Tests\Support\PharFixture;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\Services;
@@ -1083,6 +1084,31 @@ final class IdeHelpersTest extends TestCase
         $events->dispatch(new HelpPageRequested($other));
         $this->assertTrue($views->isOpen('help'));
         $this->assertSame($other, $viewer->path(), 'an open window navigates in place');
+    }
+
+    /**
+     * Inside the phar realpath() answers false for every page, and the
+     * front-page test compared two falses: every page there was crumbed
+     * "Documentation".
+     */
+    public function testInsideThePharOnlyTheFrontPageIsNamedDocumentation(): void
+    {
+        $phar = PharFixture::root();
+        // The IDE's own handler, rooted in the phar instead.
+        $ide = Probe::get(Services::resolve($this->ide, HelpViewerWidget::class), 'handler');
+        $actions = new HelpViewerActions(
+            Probe::get($ide, 'bufferService'),
+            Probe::get($ide, 'navigator'),
+            Probe::get($ide, 'docsUrls'),
+            Probe::get($ide, 'notifier'),
+            Probe::get($ide, 'translator'),
+            Probe::get($ide, 'window'),
+            $phar.'/docs',
+        );
+
+        $this->assertSame('Documentation', $actions->labelFor($phar.'/docs/README.md'));
+        $this->assertSame('Documentation', $actions->labelFor($phar.'/docs/./README.md'), 'the front page however it is spelled');
+        $this->assertSame('guide', $actions->labelFor($phar.'/docs/guide.md'));
     }
 
     /**

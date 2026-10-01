@@ -145,7 +145,7 @@ final class HelpViewController implements ContributedView
     /** Show the docs page at $path in the window, replacing what it shows. */
     public function showPage(string $path): void
     {
-        $path = ($resolved = \realpath($path)) ? $resolved : $path;
+        $path = Files::canonical($path);
         if (!\is_file($path) || !\is_readable($path)) {
             $this->notifier->error($this->translator->trans('Cannot read %file%', ['%file%' => $this->paths->relative($path)]));
 

@@ -79,6 +79,7 @@ Roughly 700 duplicated lines once collapsed onto these.
 | `DrainsPeer` | `drainPeer()`: read a socket pair's far end from a loop watcher — polling it inside `await()` moves one 8 KB macOS socket buffer per turn |
 | `Previews` | `alone($ide)`: show the active previewed file's preview alone, with the keys — the viewer tab a test about an SVG or graph PANE used to open |
 | `DocsTree` | `core()`, `plugins()`, `pages()`: Porta's docs and every bundled plugin's own `docs/`, the one walk the doc gates share |
+| `PharFixture` | `root()`: a real committed phar (`phar:///…/porta.phar`) with docs and a plugin tree — `realpath()` answers false for every path in one, and Porta ships as one |
 | `CallsTools` | `callTool($api, $id, $args)`: run a `registerTool()` handler in its own fiber, as the mcp server does, pumping the loop until it answers; a throw is rethrown |
 | `TalksAssist` (plugins/assist) | the other end of a shared session: `askIn()` a host IDE as a guest (through the relay, when the invite names one), or `listen()` / `acceptGuest()` for a guest IDE; `say()` / `expect($type)` speak the wire, `share()`, `command()`, `api()` drive the IDE under test |
 

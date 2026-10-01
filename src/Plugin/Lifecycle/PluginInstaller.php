@@ -684,9 +684,7 @@ final class PluginInstaller
             if (!\is_dir($docs)) {
                 continue;
             }
-            // Unresolved when realpath() cannot (a phar:// path, inside the phar).
-            $resolved = \realpath($docs);
-            $roots[$resolved ? $resolved : $docs] ??= $plugin['name'];
+            $roots[Files::canonical($docs)] ??= $plugin['name'];
         }
 
         return $roots;

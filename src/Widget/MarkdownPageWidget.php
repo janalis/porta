@@ -10,6 +10,7 @@ use Porta\Help\MarkdownRenderer;
 use Porta\Help\RenderedDoc;
 use Porta\Search\FindTarget;
 use Porta\Support\AnsiText;
+use Porta\Support\Files;
 use Porta\Support\IntMath;
 use Porta\Ui\ClickZones;
 use Porta\Ui\Glyphs;
@@ -82,8 +83,7 @@ abstract class MarkdownPageWidget extends EditorPaneWidget implements FindTarget
 
     public function setDocsRoot(string $dir): void
     {
-        $resolved = \realpath($dir);
-        $this->docsRoot = $resolved ? $resolved : $dir;
+        $this->docsRoot = Files::canonical($dir);
         $this->tree = null === $this->path ? null : $this->treeOf($this->path);
     }
 
@@ -109,8 +109,7 @@ abstract class MarkdownPageWidget extends EditorPaneWidget implements FindTarget
     // @mago-expect lint:no-boolean-flag-parameter -- the bool IS the one difference between a new page and a new text for the same page.
     protected function adopt(string $path, string $markdown, bool $fromTop): void
     {
-        $resolved = \realpath($path);
-        $this->path = $resolved ? $resolved : $path;
+        $this->path = Files::canonical($path);
         $this->tree = $this->treeOf($this->path);
         $this->markdown = $markdown;
         $this->doc = null;
@@ -435,8 +434,7 @@ abstract class MarkdownPageWidget extends EditorPaneWidget implements FindTarget
             return [$root, null];
         }
         foreach (null === $this->moreRoots ? [] : ($this->moreRoots)() as $dir => $name) {
-            $resolved = \realpath($dir);
-            $dir = $resolved ? $resolved : $dir;
+            $dir = Files::canonical($dir);
             if (\str_starts_with($path, $dir.'/')) {
                 return [$dir, $name];
             }
@@ -535,12 +533,12 @@ abstract class MarkdownPageWidget extends EditorPaneWidget implements FindTarget
 
             return;
         }
-        $resolved = \realpath(\str_starts_with($target, '/') ? $target : \dirname((string) $this->path).'/'.$target);
+        $resolved = Files::resolve(\str_starts_with($target, '/') ? $target : \dirname((string) $this->path).'/'.$target);
         // Containment mirrors hierarchyCrumbs(): a target must resolve inside
         // the docs root or one of the plugins' docs trees, so a link that
         // escapes (an absolute path, a ../ chain into a plugin's src/) is not
         // a doc target.
-        if (false === $resolved || !\is_file($resolved) || null === $this->treeOf($resolved)) {
+        if (null === $resolved || !\is_file($resolved) || null === $this->treeOf($resolved)) {
             $this->docs()?->missingTarget($target);
 
             return;

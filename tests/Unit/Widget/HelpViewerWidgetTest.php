@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Tests\Support\PharFixture;
 use Porta\Tests\Support\RecordingHelpViewerHandler;
 use Porta\Tests\Support\TempProject;
 use Porta\Ui\Glyphs;
@@ -236,6 +237,55 @@ final class HelpViewerWidgetTest extends TestCase
         $viewer->handleInput("\r");
 
         $this->assertSame(['missing:../plugins/late/docs/README.md', 'help:README.md'], $handler->events);
+    }
+
+    /**
+     * Porta ships as a phar, where realpath() answers false for every path:
+     * every link was refused there, Porta's own docs included. Inside the
+     * phar a link resolves by its segments, the plugin tree included, and the
+     * containment still holds.
+     */
+    public function testLinksAreFollowedInsideThePhar(): void
+    {
+        $phar = PharFixture::root();
+        $viewer = new HelpViewerWidget();
+        $viewer->setFocused(true);
+        $handler = new RecordingHelpViewerHandler();
+        $handler->onOpenHelp = static function (string $path) use ($viewer): void {
+            $viewer->refreshPage($path, (string) \file_get_contents($path));
+        };
+        $viewer->setHandler($handler);
+        $viewer->setDocsRoot($phar.'/docs');
+        $viewer->setMoreRoots(static fn (): array => [$phar.'/plugins/demo/docs' => 'demo']);
+        $viewer->refreshPage($phar.'/docs/README.md', (string) \file_get_contents($phar.'/docs/README.md'));
+        $this->screen($viewer);
+
+        $viewer->handleInput("\t"); // Guide
+        $viewer->handleInput("\r");
+        $this->assertSame($phar.'/docs/guide.md', $viewer->path(), 'a sibling page opens');
+        $this->assertStringContainsString('README › guide', $this->screen($viewer)[0]);
+
+        $viewer->handleInput("\t"); // ./README.md
+        $viewer->handleInput("\r");
+        $this->assertSame($phar.'/docs/README.md', $viewer->path(), 'a ./ link resolves');
+        $this->screen($viewer); // a page's links exist once it has rendered
+
+        $viewer->handleInput("\t");
+        $viewer->handleInput("\t"); // Demo, in the plugin's tree
+        $viewer->handleInput("\r");
+        $this->assertSame($phar.'/plugins/demo/docs/README.md', $viewer->path(), "a plugin's guide opens");
+        $this->assertStringContainsString('README › demo', $this->screen($viewer)[0]);
+
+        $viewer->handleInput("\t"); // ../../../docs/README.md
+        $viewer->handleInput("\r");
+        $this->assertSame($phar.'/docs/README.md', $viewer->path(), 'and leads back home');
+        $this->screen($viewer);
+
+        foreach (\range(1, end: 3) as $_) {
+            $viewer->handleInput("\t"); // Outside
+        }
+        $viewer->handleInput("\r");
+        $this->assertSame(['help:guide.md', 'help:README.md', 'help:README.md', 'help:README.md', 'missing:../outside.md'], $handler->events, 'outside every tree is still refused');
     }
 
     public function testTabCyclesLinksHighlightsAndScrollsIntoView(): void

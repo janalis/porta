@@ -9,6 +9,7 @@ use Porta\Editor\BufferService;
 use Porta\Editor\OpenFocus;
 use Porta\I18n\Translator;
 use Porta\Support\DocsUrlOpener;
+use Porta\Support\Files;
 use Porta\Widget\HelpViewerHandler;
 use Porta\Workbench\Notifier;
 
@@ -67,7 +68,9 @@ final readonly class HelpViewerActions implements HelpViewerHandler
     #[\Override]
     public function labelFor(string $path): string
     {
-        return \realpath($path) === \realpath($this->docsDir.'/README.md')
+        // Compared resolved, and never false === false: inside the phar
+        // realpath() fails for every page, which named them all Documentation.
+        return Files::canonical($path) === Files::canonical($this->docsDir.'/README.md')
             ? $this->translator->trans('Documentation')
             : \basename($path, suffix: '.md');
     }

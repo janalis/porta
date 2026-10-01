@@ -49,6 +49,51 @@ final class Files
     }
 
     /**
+     * $path with its `.` and `..` resolved, symlinks too — or null when
+     * nothing is there.
+     *
+     * `realpath()` where it can, and it cannot inside a phar: it answers false
+     * for every `phar://` path, so a caller that trusts it alone treats each
+     * page of the bundled docs as missing — the help browser refused every
+     * link in the phar for exactly that reason. A path behind a stream
+     * wrapper is resolved by its segments instead (a wrapper has no symlinks
+     * to follow), and must still exist.
+     */
+    public static function resolve(string $path): ?string
+    {
+        $real = \realpath($path);
+        if (false !== $real) {
+            return $real;
+        }
+        // Absolute behind the wrapper, as every phar path Porta builds from
+        // __DIR__ is: a relative one's leading `..` has nothing to cancel.
+        $wrapped = [];
+        if (1 !== \preg_match('~^([a-z][a-z0-9+.-]*://)(/.*)$~i', $path, $wrapped)) {
+            return null;
+        }
+        /** @var list<string> $segments */
+        $segments = [];
+        foreach (\explode('/', $wrapped[2]) as $segment) {
+            if ('..' === $segment) {
+                \array_pop($segments);
+            }
+            if ('' === $segment || '.' === $segment || '..' === $segment) {
+                continue;
+            }
+            $segments[] = $segment;
+        }
+        $resolved = $wrapped[1].'/'.\implode('/', $segments);
+
+        return \file_exists($resolved) ? $resolved : null;
+    }
+
+    /** {@see resolve()}, keeping $path as given when nothing is there to resolve. */
+    public static function canonical(string $path): string
+    {
+        return self::resolve($path) ?? $path;
+    }
+
+    /**
      * Each immediate subdirectory's $name file, in name order —
      * `glob("$dir/*\/$name")` as a directory walk.
      *
