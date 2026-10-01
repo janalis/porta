@@ -41,7 +41,7 @@ Everything a plugin's object needs is therefore hand-passed. That is what
 `Translator`, the `Support/Scheduler`, the `ViewerTabHandler`, the
 `Ui/Graphics/TerminalGraphics` channel) handed to a pane
 factory. `Workbench/View/ViewServices` is the same idea one size up — eight
-members for a whole full-screen view. **Growing either is how "my pane needs one
+members for a whole view window. **Growing either is how "my pane needs one
 more thing from core" becomes visible in review**, and both should stay hard to
 add to. The same argument governs `Plugin/Runtime/PluginRuntime`, the surface
 the action verbs reach.
@@ -236,7 +236,7 @@ committed.
 `Editor/PaneRegistrar`, `Workbench/View/ViewRegistrar` and
 `Workbench/Menu/MenuRegistrar` each drain everything at the `Ide` constructor
 tail AND one plugin's slice on a live toggle, so enabling a plugin mid-session
-builds its panes, its full-screen view and its top-level menus without a
+builds its panes, its view and its top-level menus without a
 restart. Before that, all three were one-shot: a first-time enable committed a
 pane whose widget was never built (the file fell silently to the text path), a
 view nothing could open, and a menu that never appeared — and a disable left a

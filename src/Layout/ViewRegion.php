@@ -9,9 +9,9 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
 use Symfony\Component\Tui\Widget\ContainerWidget;
 
 /**
- * One full-screen view's slice of the workspace: a sidebar, a drag separator
- * and a content pane, inside the horizontal area that replaces the editor in
- * `main` while the view is open.
+ * One view's content: a sidebar, a drag separator and a content pane, inside
+ * the horizontal area its window holds while the view is open
+ * ({@see \Porta\Workbench\View\ViewWindow}).
  *
  * Both sides are containers, which is what makes the shape general. The two
  * views core shipped were mirror images of each other — git had a container
@@ -54,7 +54,7 @@ final class ViewRegion
         return $this->panes;
     }
 
-    /** The horizontal area mounted into `main`; the view never fills this itself. */
+    /** The horizontal area the view window holds; the view never fills this itself. */
     public function area(): ContainerWidget
     {
         return $this->area;

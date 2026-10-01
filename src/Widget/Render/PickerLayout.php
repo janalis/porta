@@ -6,8 +6,11 @@ namespace Porta\Widget\Render;
 
 use Porta\I18n\BaseDirection;
 use Porta\I18n\Bidi;
+use Porta\Overlay\Region\CloseButton;
 use Porta\Overlay\Region\ModalBox;
+use Porta\Overlay\Region\WindowPlacement;
 use Porta\Overlay\State\SearchModalState;
+use Porta\Overlay\State\WindowFrame;
 use Porta\Search\Everywhere\SearchHit;
 use Porta\Search\Everywhere\SearchRow;
 use Porta\Support\AnsiText;
@@ -26,11 +29,13 @@ use Symfony\Component\Tui\Style\Style;
  * Lays the three centered picker surfaces out into framed, styled rows: the
  * list overlay, Search Everywhere and the mini prompt.
  *
- * Pure and static: each takes the surface's state plus the paintable bounds and
- * returns the rows, the placement and the {@see ModalBox} geometry every
- * hit-test reads — the box is *returned* rather than written back, which is what
- * lets this live in the stateless render tier while {@see
- * \Porta\Overlay\State\OverlayHost} keeps owning the state and storing the box.
+ * Static: each takes the surface's state, its {@see WindowFrame} and the
+ * paintable bounds and returns the rows, the placement and the
+ * {@see ModalBox} geometry every hit-test reads — the box is *returned*
+ * rather than written back, so {@see \Porta\Overlay\State\OverlayHost}
+ * keeps owning the state and storing the box. The frame places the box, so a
+ * picker moves and resizes as every window does; what it sizes by default is
+ * the content's.
  */
 final class PickerLayout
 {
@@ -40,6 +45,9 @@ final class PickerLayout
      * asked of a server; it is a sieve over rows already on screen.
      */
     private const string FILTER_GLYPH = '≡';
+
+    /** The narrowest list a resize may leave: room for a label and its hint. */
+    private const int MIN_INNER_WIDTH = 20;
 
     /**
      * @param array{int, int, int, int}                                                                                                                             $bounds
@@ -51,11 +59,12 @@ final class PickerLayout
         array $bounds,
         array $overlay,
         Styles $styles,
-        bool $closeHovered,
+        WindowFrame $frame,
         string $emptyMessage = '',
         string $placeholder = '',
         BaseDirection $direction = BaseDirection::Ltr,
         int $fieldRows = FieldBox::ROWS,
+        CloseButton $closeButton = CloseButton::Standard,
     ): array {
         [$boundTop, $boundLeft, $boundBottom, $boundRight] = $bounds;
         $columns = $boundRight - $boundLeft;
@@ -68,9 +77,6 @@ final class PickerLayout
         // keeps its height while the filter narrows it, padding what the
         // filter took, so it never re-centres under the reader.
         $boxRows = \max(1, \min(\count($overlay['items']), $rows - 6 - $fieldRows, PopupMetrics::PICKER_ROWS));
-        $maxItems = \min($boxRows, \max(1, \count($items)));
-        $windowStart = IntMath::clamp($selected - $maxItems + 1, 0, \count($items) - $maxItems);
-        $visible = \array_slice($items, $windowStart, $maxItems);
 
         $width = AnsiUtils::visibleWidth($overlay['title']) + 8; // the frame's title-bar chrome (corners, hint, ×) needs its room
         // Measured over the UNFILTERED list, and over all of it rather than the
@@ -93,6 +99,17 @@ final class PickerLayout
         // keystroke that emptied the list.
         $width = \max($width, AnsiUtils::visibleWidth($emptyMessage) + 2, AnsiUtils::visibleWidth($placeholder) + 2 + FieldBox::CHROME_COLS + 2);
         $width = \min($width, $columns - PopupMetrics::CENTERED_MARGIN, PopupMetrics::CENTERED_MAX_INNER);
+
+        // Placed at its tallest — the frame, the filter and its tee over the
+        // whole list's rows — so its top stays put and it shrinks from the
+        // bottom as the filter narrows; a resize sets that tallest height.
+        $chrome = ModalFrame::CHROME_ROWS + $fieldRows + ModalFrame::SECTION_ROWS;
+        $place = $frame->place($bounds, $width + ModalFrame::CHROME_COLS, $chrome + $boxRows, WindowPlacement::UpperThird, self::MIN_INNER_WIDTH + ModalFrame::CHROME_COLS, $chrome + 1);
+        $width = $place->width - ModalFrame::CHROME_COLS;
+        $boxRows = $place->rows - $chrome;
+        $maxItems = \min($boxRows, \max(1, \count($items)));
+        $windowStart = IntMath::clamp($selected - $maxItems + 1, 0, \count($items) - $maxItems);
+        $visible = \array_slice($items, $windowStart, $maxItems);
 
         $content = [];
         foreach ($visible as $i => $item) {
@@ -122,10 +139,9 @@ final class PickerLayout
             $content[] = $styles->merge(Role::PopupRow, Role::CompletionHint)->apply(AnsiText::truncate(' '.$emptyMessage, $width, pad: true, ellipsis: ''));
         }
         // Rows the filter took are not padded back: the box is PLACED as if
-        // they were ({@see PopupMetrics::centered()} over the whole list's height), so its
-        // top stays put and it shrinks from the bottom — nothing under the
-        // reader's eye moves, and no blank rows stand in for the missing ones.
-        $missing = \max(0, $boxRows - \count($content));
+        // they were (above), so its top stays put and it shrinks from the
+        // bottom — nothing under the reader's eye moves, and no blank rows
+        // stand in for the missing ones.
         // The filter field is there from the start, a combobox's input: a
         // placeholder says typing narrows the list before the first key, and
         // the box keeps one height instead of growing three rows and
@@ -143,14 +159,15 @@ final class PickerLayout
             $fieldRows,
             $styles,
         );
+        $hot = $frame->hot();
         $popup = [
-            ModalFrame::titleBar($overlay['title'], $width + ModalFrame::CHROME_COLS, $styles, $closeHovered),
+            ModalFrame::titleBar($overlay['title'], $width + ModalFrame::CHROME_COLS, $styles, $hot, $closeButton),
             // The filter and the list are two zones of one box, a tee between
             // them, as Find in Files' fields and preview are.
-            ...ModalFrame::wrapSections([$header, $content], $width, $styles, overflow: ListOverflow::of($windowStart, \count($visible), $selected, \count($items))),
+            ...ModalFrame::wrapSections([$header, $content], $width, $styles, $hot, overflow: ListOverflow::of($windowStart, \count($visible), $selected, \count($items))),
         ];
 
-        [$top, $col] = PopupMetrics::centered($bounds, \count($popup) + $missing, $width + ModalFrame::CHROME_COLS);
+        [$top, $col] = [$place->top, $place->col];
         $box = new ModalBox(
             $top,
             $col,
@@ -159,6 +176,7 @@ final class PickerLayout
             headerRows: \count($header) + ModalFrame::CHROME_ROWS_TOP + ModalFrame::SECTION_ROWS,
             windowStart: $windowStart,
             count: \count($visible),
+            closeButton: $closeButton,
         );
 
         return ['rows' => $popup, 'top' => $top, 'col' => $col, 'width' => $width + ModalFrame::CHROME_COLS, 'box' => $box];
@@ -173,11 +191,12 @@ final class PickerLayout
         array $bounds,
         SearchModalState $search,
         Styles $styles,
-        bool $closeHovered,
+        WindowFrame $frame,
         CaretVisibility $caret,
         string $placeholder = '',
         BaseDirection $direction = BaseDirection::Ltr,
         int $fieldRows = FieldBox::ROWS,
+        CloseButton $closeButton = CloseButton::Standard,
     ): array {
         [$boundTop, $boundLeft, $boundBottom, $boundRight] = $bounds;
         $columns = $boundRight - $boundLeft;
@@ -187,9 +206,6 @@ final class PickerLayout
         // narrowing query pads the rows it drops rather than shrinking the box
         // and re-centring it under the reader.
         $boxRows = \max(0, \min(\max(\count($search->rows), $search->tallest), $rows - 6 - $fieldRows, PopupMetrics::PICKER_ROWS));
-        $maxRows = \max(1, \min($boxRows, \count($search->rows)));
-        $windowStart = IntMath::clamp($search->selected - $maxRows + 1, 0, \max(0, \count($search->rows) - $maxRows));
-        $visible = \array_slice($search->rows, $windowStart, $maxRows);
 
         // The modal owns the caret while open, wherever pane focus sits — but
         // only the TOPMOST surface renders it (the prompt wins): two markers
@@ -211,6 +227,18 @@ final class PickerLayout
         // "no results" today, which is luck rather than a guarantee.
         $width = \max($width, AnsiUtils::visibleWidth($search->emptyMessage) + 2);
         $width = \min($width, $columns - PopupMetrics::CENTERED_MARGIN, PopupMetrics::CENTERED_MAX_INNER);
+
+        // Placed as the whole box would stand at its tallest: the frame, the
+        // query and its tee over $boxRows of list — a category naming the tee
+        // shortens what is drawn, never where it sits; the box shrinks from
+        // the bottom as the query narrows (see layoutList()).
+        $chrome = ModalFrame::CHROME_ROWS + $fieldRows + ModalFrame::SECTION_ROWS;
+        $place = $frame->place($bounds, $width + ModalFrame::CHROME_COLS, $chrome + $boxRows, WindowPlacement::UpperThird, self::MIN_INNER_WIDTH + ModalFrame::CHROME_COLS, $chrome + 1);
+        $width = $place->width - ModalFrame::CHROME_COLS;
+        $boxRows = $place->rows - $chrome;
+        $maxRows = \max(1, \min($boxRows, \count($search->rows)));
+        $windowStart = IntMath::clamp($search->selected - $maxRows + 1, 0, \max(0, \count($search->rows) - $maxRows));
+        $visible = \array_slice($search->rows, $windowStart, $maxRows);
 
         // No legend: the title bar already names what is being searched.
         $query = FieldBox::field(
@@ -263,18 +291,13 @@ final class PickerLayout
         if (!$merged) {
             \array_unshift($legends, '');
         }
+        $hot = $frame->hot();
         $framed = [
-            ModalFrame::titleBar($search->title, $width + ModalFrame::CHROME_COLS, $styles, $closeHovered),
-            ...ModalFrame::wrapSections($sections, $width, $styles, overflow: self::searchOverflow($search, $windowStart, \count($visible)), legends: $legends),
+            ModalFrame::titleBar($search->title, $width + ModalFrame::CHROME_COLS, $styles, $hot, $closeButton),
+            ...ModalFrame::wrapSections($sections, $width, $styles, $hot, overflow: self::searchOverflow($search, $windowStart, \count($visible)), legends: $legends),
         ];
-        // Not padded: placed as if it were — the top stays, the box shrinks
-        // from the bottom as the query narrows (see layoutList()).
-        // Placed as the whole box would stand at its tallest: the frame, the
-        // query and its tee over $boxRows of list — a category naming the tee
-        // shortens what is drawn, never where it sits.
-        $missing = \max(0, ModalFrame::CHROME_ROWS + $fieldRows + ModalFrame::SECTION_ROWS + $boxRows - \count($framed));
 
-        [$top, $col] = PopupMetrics::centered($bounds, \count($framed) + $missing, $width + ModalFrame::CHROME_COLS);
+        [$top, $col] = [$place->top, $place->col];
         $box = new ModalBox(
             $top,
             $col,
@@ -284,6 +307,7 @@ final class PickerLayout
             headerRows: $fieldRows + ModalFrame::CHROME_ROWS_TOP + ModalFrame::SECTION_ROWS - ($merged ? 1 : 0),
             windowStart: $windowStart,
             count: \count($visible),
+            closeButton: $closeButton,
         );
 
         return ['rows' => $framed, 'top' => $top, 'col' => $col, 'width' => $width + ModalFrame::CHROME_COLS, 'box' => $box];
@@ -295,13 +319,17 @@ final class PickerLayout
      *
      * @return array{rows: list<string>, top: int, col: int, width: int, box: ModalBox}
      */
-    public static function layoutPrompt(array $bounds, array $prompt, Styles $styles, bool $closeHovered, int $fieldRows = FieldBox::ROWS): array
+    public static function layoutPrompt(array $bounds, array $prompt, Styles $styles, WindowFrame $frame, int $fieldRows = FieldBox::ROWS, CloseButton $closeButton = CloseButton::Standard): array
     {
         [, $boundLeft, , $boundRight] = $bounds;
         $columns = $boundRight - $boundLeft;
 
         $text = ' '.$prompt['label'].': '.$prompt['value']->value();
         $innerWidth = \min($columns - PopupMetrics::CENTERED_MARGIN, \max(30, AnsiUtils::visibleWidth($text) + 2 + FieldBox::CHROME_COLS));
+        // One field tall, whatever a resize asks: its handles widen it only.
+        $rows = $fieldRows + ModalFrame::CHROME_ROWS;
+        $place = $frame->place($bounds, $innerWidth + ModalFrame::CHROME_COLS, $rows, WindowPlacement::UpperThird, self::MIN_INNER_WIDTH + ModalFrame::CHROME_COLS, $rows, maxRows: $rows);
+        $innerWidth = $place->width - ModalFrame::CHROME_COLS;
         // The prompt is a framed modal like its siblings: the frame's title
         // bar carries the label, the Esc hint and the ×, so the boxed field
         // needs no legend. It always takes the keys; a destructive prompt's
@@ -310,12 +338,13 @@ final class PickerLayout
         // search overlays.
         $state = $prompt['danger'] ? FieldState::Danger : FieldState::Focused;
         $field = FieldBox::field(new FieldSpec(''), $prompt['value'], $state, CaretVisibility::Shown, $innerWidth, $fieldRows, $styles);
+        $hot = $frame->hot();
         $framed = [
-            ModalFrame::titleBar($prompt['label'], $innerWidth + ModalFrame::CHROME_COLS, $styles, closeHovered: $closeHovered),
-            ...ModalFrame::wrap($field, $innerWidth, $styles),
+            ModalFrame::titleBar($prompt['label'], $innerWidth + ModalFrame::CHROME_COLS, $styles, $hot, $closeButton),
+            ...ModalFrame::wrap($field, $innerWidth, $styles, $hot),
         ];
-        [$top, $col] = PopupMetrics::centered($bounds, \count($framed), $innerWidth + ModalFrame::CHROME_COLS);
-        $box = new ModalBox($top, $col, $innerWidth + ModalFrame::CHROME_COLS, $fieldRows + ModalFrame::CHROME_ROWS, headerRows: ModalFrame::CHROME_ROWS_TOP, windowStart: 0, count: 1);
+        [$top, $col] = [$place->top, $place->col];
+        $box = new ModalBox($top, $col, $innerWidth + ModalFrame::CHROME_COLS, $rows, headerRows: ModalFrame::CHROME_ROWS_TOP, windowStart: 0, count: 1, closeButton: $closeButton);
 
         return ['rows' => $framed, 'top' => $top, 'col' => $col, 'width' => $innerWidth + ModalFrame::CHROME_COLS, 'box' => $box];
     }

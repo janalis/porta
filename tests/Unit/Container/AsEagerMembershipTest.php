@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Container;
 
 use Porta\Editor\PreviewFeeder;
 use Porta\Editor\StructureFollowsCaret;
+use Porta\Help\HelpViewController;
 use Porta\Input\TooltipRouter;
 use Porta\Layout\ChromeHeight;
 use Porta\Layout\PreviewSplit;
@@ -16,6 +17,7 @@ use Porta\Overlay\Presenter\FrameJoins;
 use Porta\Overlay\Presenter\PickerModalPresenter;
 use Porta\Overlay\Presenter\ToastPresenter;
 use Porta\Overlay\Presenter\TooltipPresenter;
+use Porta\Overlay\Presenter\ViewWindowPresenter;
 use Porta\Overlay\Presenter\WelcomeModalController;
 use Porta\Overlay\State\MenuOverlayController;
 use Porta\Settings\SettingsViewController;
@@ -51,7 +53,9 @@ final class AsEagerMembershipTest extends ContainerTestCase
         $ordered = [
             ResponsiveLayout::class, // 600
             SettingsViewController::class, // 500
+            HelpViewController::class, // 450 — the Documentation window registers itself
             WelcomeModalController::class, // 400
+            ViewWindowPresenter::class, // 390 — the view window, under every floating surface
             FindModalPresenter::class, // 300 — find →
             PickerModalPresenter::class, // 200 — picker →
             ToastPresenter::class, // 100 — toast

@@ -137,4 +137,43 @@ final class MenuOverlayHostTraitTest extends TestCase
         $this->assertSame('..........', $lines[0], 'the menu layer cleared');
         $this->assertSame('..MMM.....', $lines[1], 'the modal layer stayed');
     }
+
+    /** A view window is the lowest layer, over its own dim; a picker's dim then dims it too. */
+    public function testTheWindowLayerCompositesUnderEveryOtherOverItsOwnDim(): void
+    {
+        $host = $this->host();
+        $host->setWindowBackdrop(true);
+        $host->setWindowOverlay([['row' => 0, 'col' => 0, 'width' => 6, 'segment' => 'WWWWWW']]);
+        $host->setModalOverlay([['row' => 0, 'col' => 4, 'width' => 4, 'segment' => 'MMMM']]);
+
+        $lines = $host->render(new RenderContext(10, 2));
+
+        $this->assertSame('WWWWMMMM..', AnsiUtils::stripAnsiCodes($lines[0]), 'the picker covers the window where they overlap');
+        $this->assertStringStartsWith("\x1b[2m", $lines[1], 'the pane beneath the window renders faint');
+        $this->assertMatchesRegularExpression('/\x1b\[0mWWWW/', $lines[0], 'the window composites bright over its dim');
+
+        $host->setModalBackdrop(true);
+        $this->assertMatchesRegularExpression('/\x1b\[2m[^\n]*WWWW/', $host->render(new RenderContext(10, 2))[0], 'a picker\'s dim dims the window under it too');
+
+        $host->setWindowBackdrop(false);
+        $host->setModalBackdrop(false);
+        $this->assertStringNotContainsString("\x1b[2m", $host->render(new RenderContext(10, 2))[1], 'clearing both restores the pane');
+    }
+
+    public function testTheWindowSettersRepaintOnlyOnAChange(): void
+    {
+        $host = $this->host();
+        $spans = [['row' => 0, 'col' => 0, 'width' => 1, 'segment' => 'W']];
+        $host->render(new RenderContext(10, 2));
+        $host->setWindowOverlay($spans);
+        $revision = $host->getRenderRevision();
+        $host->setWindowOverlay($spans);
+        $host->setWindowBackdrop(false);
+        $this->assertSame($revision, $host->getRenderRevision(), 'the same spans, the same dim: no repaint');
+        $host->setWindowBackdrop(true);
+        $this->assertGreaterThan($revision, $host->getRenderRevision(), 'a changed dim repaints');
+        $revision = $host->getRenderRevision();
+        $host->setWindowOverlay([]);
+        $this->assertGreaterThan($revision, $host->getRenderRevision(), 'changed spans repaint');
+    }
 }

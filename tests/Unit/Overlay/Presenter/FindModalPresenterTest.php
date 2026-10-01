@@ -46,7 +46,7 @@ final class FindModalPresenterTest extends TestCase
         $this->editor = new CodeEditorWidget();
 
         return new FindModalPresenter(
-            new OverlayDelivery($this->renderer, new MenuOverlayPanes([$this->pane], static fn (): array => []), $this->tui),
+            new OverlayDelivery($this->renderer, new MenuOverlayPanes([$this->pane]), $this->tui),
             $this->editor,
             new ScreenDensity(),
             frameHooks: $this->tui,

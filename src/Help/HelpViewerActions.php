@@ -6,52 +6,49 @@ namespace Porta\Help;
 
 use Porta\Editor\BufferNavigator;
 use Porta\Editor\BufferService;
-use Porta\Editor\FindMode;
 use Porta\Editor\OpenFocus;
 use Porta\I18n\Translator;
 use Porta\Support\DocsUrlOpener;
-use Porta\Widget\FindBarWidget;
 use Porta\Widget\HelpViewerHandler;
-use Porta\Widget\HelpViewerWidget;
-use Porta\Widget\ViewerTabHandler;
 use Porta\Workbench\Notifier;
-use Symfony\Component\Tui\Tui;
 
-/** The IDE-side implementation of the help viewer's link and tab hooks. */
+/**
+ * The IDE-side implementation of the help viewer's link and tab hooks. The
+ * pages live in the Documentation window ({@see HelpViewController}), so a
+ * page link turns the window's page and Ctrl+F opens the window's own find
+ * bar; anything that reaches past the window — a file link, a tab verb —
+ * closes it first, as a menu command does.
+ */
 final readonly class HelpViewerActions implements HelpViewerHandler
 {
-    use DelegatesTabVerbs;
-
     public function __construct(
         private BufferService $bufferService,
         private BufferNavigator $navigator,
         private DocsUrlOpener $docsUrls,
         private Notifier $notifier,
         private Translator $translator,
-        private FindBarWidget $findBar,
-        private HelpViewerWidget $helpViewer,
-        private Tui $tui,
+        private HelpViewController $window,
         private string $docsDir,
     ) {}
 
-    /** Open the find bar on the docs page (the viewer is its own FindTarget). */
+    /** Ctrl+F on the page: the window's own find bar. */
     #[\Override]
     public function openFind(): void
     {
-        $this->findBar->open($this->helpViewer, FindMode::Find);
-        $this->tui->setFocus($this->findBar);
-        $this->tui->requestRender();
+        $this->window->openFind();
     }
 
     #[\Override]
     public function openHelp(string $path): void
     {
-        $this->bufferService->showHelpPage($path);
+        $this->window->showPage($path);
     }
 
+    /** A link to a file that is not a doc page: it opens in the editor, so the window gives way. */
     #[\Override]
     public function openFile(string $path): void
     {
+        $this->window->close();
         $this->bufferService->openFile($path, focus: OpenFocus::Editor);
     }
 
@@ -81,8 +78,41 @@ final readonly class HelpViewerActions implements HelpViewerHandler
         $this->notifier->flash($this->translator->trans('Nowhere to go back to'));
     }
 
-    private function tabs(): ViewerTabHandler
+    /** The tab verbs act on the editor's tabs, behind the window: it closes first. */
+    #[\Override]
+    public function cycleBuffer(int $offset): void
     {
-        return $this->navigator;
+        $this->window->close();
+        $this->navigator->cycleBuffer($offset);
+    }
+
+    /** Alt+W on the page closes the window, as it closed the help tab. */
+    #[\Override]
+    public function closeBuffer(): void
+    {
+        $this->window->close();
+    }
+
+    #[\Override]
+    public function openGotoFile(): void
+    {
+        $this->window->close();
+        $this->navigator->openGotoFile();
+    }
+
+    #[\Override]
+    public function saveAll(): void
+    {
+        $this->navigator->saveAll();
+    }
+
+    /** A doc page has no source to reveal. */
+    #[\Override]
+    public function revealSource(int $line, int $byteCol): void {}
+
+    #[\Override]
+    public function viewChanged(): void
+    {
+        $this->navigator->viewChanged();
     }
 }

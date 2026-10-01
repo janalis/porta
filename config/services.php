@@ -308,6 +308,13 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
         ->factory([PropertyFactory::class, 'read'])
         ->args([service(WorkspaceLayout::class), 'main'])
         ->tag('porta.chrome_root');
+    // The view window's frame holds the open view's region, which a chrome
+    // sweep must reach as it reached it under `main`.
+    $services
+        ->set('porta.widget.window_frame', ContainerWidget::class)
+        ->factory([PropertyFactory::class, 'read'])
+        ->args([service(WorkspaceLayout::class), 'windowFrame'])
+        ->tag('porta.chrome_root');
     $services
         ->set('porta.widget.separator', SeparatorWidget::class)
         ->factory([PropertyFactory::class, 'read'])

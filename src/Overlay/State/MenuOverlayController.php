@@ -144,7 +144,7 @@ final class MenuOverlayController implements FloatingRegions
             $this->menuShadowRegion = null;
             // Clear every mode's pane set: clearing a detached widget is harmless
             // and a dropdown may close across a view swap.
-            $this->clearOverlays($this->panes->all());
+            $this->clearOverlays($this->panes->current());
 
             return;
         }
@@ -197,7 +197,7 @@ final class MenuOverlayController implements FloatingRegions
             $this->contextMenuDropdown = null;
             $this->contextShadowRegion = null;
             // Clear every mode's pane set: a menu may close across a view swap.
-            $this->clearOverlays($this->panes->all());
+            $this->clearOverlays($this->panes->current());
 
             return;
         }

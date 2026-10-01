@@ -11,6 +11,8 @@ use Porta\Ide;
 use Porta\Onboarding\OnboardingState;
 use Porta\Overlay\Presenter\WelcomeModalController;
 use Porta\Overlay\Region\DropdownRegion;
+use Porta\Overlay\Region\ModalBox;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
@@ -410,11 +412,11 @@ final class WelcomeScreenTest extends TestCase
 
     /**
      * The modal behaviors, end to end through the real mouse routing: a
-     * title-bar drag moves the box, an outside click and a right-press are
-     * swallowed without dismissing, the app menu still opens (and renders
-     * above the box), and the title bar's × closes for real.
+     * title-bar drag moves the box, a right-press is swallowed, the app menu
+     * still opens (and renders above the box), and the title bar's close
+     * button closes for real.
      */
-    public function testTheModalDragsSwallowsOutsideClicksAndClosesOnTheCross(): void
+    public function testTheModalDragsAndClosesOnTheCross(): void
     {
         $project = new TempProject(['a.php' => "<?php\nreturn 1;\n"]);
 
@@ -428,19 +430,15 @@ final class WelcomeScreenTest extends TestCase
                 $tui->tick();
                 $this->assertInstanceOf(DropdownRegion::class, $this->modalRegion($ide), 'still open');
 
-                // A click outside the box (the tree pane, top-left) is swallowed too.
-                $tui->handleInput("\x1b[<0;2;3M");
-                $tui->handleInput("\x1b[<0;2;3m");
-                $tui->tick();
-                $this->assertNotNull($this->modalRegion($ide), 'an outside click does not dismiss');
-
                 // Drag by the title bar: press, move left two columns and
                 // down two rows, release. On a 24-row terminal the box fills
                 // the pane union's height, so the vertical component clamps —
                 // the horizontal move is the proof the drag ran.
-                $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $region->col + 3, $region->top + 1));
-                $tui->handleInput(\sprintf("\x1b[<32;%d;%dM", $region->col + 1, $region->top + 2 + 1));
-                $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $region->col + 1, $region->top + 2 + 1));
+                // The press is mid-bar, clear of the close button at either end.
+                $grab = $region->col + 10;
+                $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $grab + 1, $region->top + 1));
+                $tui->handleInput(\sprintf("\x1b[<32;%d;%dM", $grab - 1, $region->top + 2 + 1));
+                $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $grab - 1, $region->top + 2 + 1));
                 $tui->tick();
                 $moved = $this->modalRegion($ide);
                 $this->assertSame($region->col - 2, $moved->col, 'the box followed the drag');
@@ -454,11 +452,12 @@ final class WelcomeScreenTest extends TestCase
                 $tui->handleInput("\x1b"); // close the menu again
                 $tui->tick();
 
-                // The title bar's × closes the modal for real. The region is
-                // one column wider than the box (its shadow band), so the ×
-                // sits at region width − 3.
-                $after = $this->modalRegion($ide);
-                $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $after->col + $after->width - 3 + 1, $after->top + 1));
+                // The title bar's close button closes the modal for real: at
+                // the box's left on macOS, its right elsewhere — the box knows.
+                $box = Probe::get(Services::resolve($ide, WelcomeModalController::class), 'box');
+                $this->assertInstanceOf(ModalBox::class, $box);
+                $close = $box->closeButton->leads() ? $box->col + 1 : $box->col + $box->width - 2;
+                $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $close + 1, $box->startRow + 1));
                 $tui->tick();
             },
             240 => function ($tui, $terminal, Ide $ide): void {
@@ -468,6 +467,30 @@ final class WelcomeScreenTest extends TestCase
         ]);
 
         $this->assertStringContainsString('Welcome to Porta', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+    }
+
+    /** A click on the workspace beside the modal closes it, as it closes every window. */
+    public function testAClickBesideTheModalClosesIt(): void
+    {
+        $project = new TempProject(['a.php' => "<?php\nreturn 1;\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                120 => function (Tui $tui, VirtualTerminal $terminal, object $ide): void {
+                    $this->frame($tui);
+                    $region = $this->modalRegion($ide);
+                    $this->assertGreaterThan(1, $region->col, 'room beside the box to click');
+
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $region->col - 1, $region->top + 4));
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $region->col - 1, $region->top + 4));
+
+                    $this->assertFalse(Services::resolve($ide, WelcomeModalController::class)->isOpen());
+                },
+            ],
+            columns: 120,
+        );
     }
 
     public function testHoveringAndWheelingReachThePane(): void

@@ -63,8 +63,9 @@ final class SettingsRowLayoutTest extends TestCase
 
     /**
      * A boxed control is three rows, a checkbox one, and the first item of
-     * each fieldset carries its legend's row — so scrolling to it shows its
-     * legend too. A run of the same fieldset is one group, one legend.
+     * each fieldset carries its legend's three rows (blank, rule, blank) —
+     * so scrolling to it shows its legend too. A run of the same fieldset is
+     * one group, one legend.
      */
     public function testHeightsCountBoxesCheckboxesAndLegends(): void
     {
@@ -81,7 +82,7 @@ final class SettingsRowLayoutTest extends TestCase
         );
 
         $this->assertTrue($layout->boxed);
-        $this->assertSame([3, 4, 3, 4, 3], $layout->heights, 'a checkbox is a box too: its legend and three rows');
+        $this->assertSame([3, 6, 3, 6, 3], $layout->heights, 'a checkbox is a box too: its legend\'s three rows and its own three');
         $this->assertSame([null, 'Editor', null, 'Server', null], $layout->legends);
         $this->assertSame(24, $layout->control, 'one width for the page: the text field\'s, the widest');
     }
@@ -98,7 +99,7 @@ final class SettingsRowLayoutTest extends TestCase
         );
 
         $this->assertFalse($layout->boxed, '20 columns less the label leaves no room for a box');
-        $this->assertSame([2, 1], $layout->heights, 'the legend still takes its row');
+        $this->assertSame([4, 1], $layout->heights, 'the legend still takes its three rows');
         $this->assertLessThanOrEqual(20 - SettingsRowLayout::LABEL_CHROME - $layout->label, $layout->control);
     }
 
@@ -115,7 +116,7 @@ final class SettingsRowLayoutTest extends TestCase
         );
 
         $this->assertFalse($layout->boxed);
-        $this->assertSame([2, 1], $layout->heights);
+        $this->assertSame([4, 1], $layout->heights);
     }
 
     /** Mirrored, only a label ending in punctuation takes a mark, and the mark costs the column nothing. */

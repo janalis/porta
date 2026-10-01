@@ -112,7 +112,8 @@ final class IdeLiveViewPluginsTest extends TestCase
                                 ) {}
 
                                 public function viewId(): string { return 'demo-view'; }
-                                public function ownsMainArea(): bool { return true; }
+                                public function hostsWindow(): bool { return true; }
+                                public function title(): string { return 'Demo'; }
                                 public function isOpen(): bool { return $this->open; }
 
                                 public function open(): void

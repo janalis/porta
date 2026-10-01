@@ -20,14 +20,13 @@ final class TabListProviderTest extends TestCase
     {
         $buffers = new BufferManager();
         $buffers->open('/p/src/Demo.php', '<?php');
-        $buffers->openPane('/p/docs/README.md', 'help', '# docs');
         $graph = $buffers->openPane('/p/.porta/architecture.dot', 'graph', 'digraph {}');
         $graph->title = 'Project Architecture';
         $buffers->openPane('/p/other.dot', 'graph', 'digraph {}'); // untitled graph tab keeps its basename
 
         $names = \array_column(new TabListProvider($buffers, new Translator('en'), new ProjectPaths('/'), TestAgentPresence::create())->tabs(), 'name');
 
-        $this->assertSame(['Demo.php', 'Documentation', 'Project Architecture', 'other.dot'], $names);
+        $this->assertSame(['Demo.php', 'Project Architecture', 'other.dot'], $names);
     }
 
     public function testAPinnedTabCarriesThePinGlyphBeforeItsName(): void
@@ -99,16 +98,13 @@ final class TabListProviderTest extends TestCase
     /**
      * The shared names are shared on purpose.
      *
-     * Every help page is one "Documentation" tab by design, and a titled
-     * buffer shows the title it was given. Neither is a path, so neither has a
-     * parent directory to be qualified with — and qualifying them would undo a
-     * decision rather than resolve an accident.
+     * A titled buffer shows the title it was given. That is not a path, so it
+     * has no parent directory to be qualified with — and qualifying it would
+     * undo a decision rather than resolve an accident.
      */
     public function testDeliberatelySharedTitlesAreNotTakenForACollision(): void
     {
         $buffers = new BufferManager();
-        $buffers->openPane('/p/docs/README.md', 'help', '# docs');
-        $buffers->openPane('/p/docs/internals/README.md', 'help', '# more');
         $one = $buffers->openPane('/p/a/architecture.dot', 'graph', 'digraph {}');
         $two = $buffers->openPane('/p/b/architecture.dot', 'graph', 'digraph {}');
         $one->title = 'Project Architecture';
@@ -116,7 +112,7 @@ final class TabListProviderTest extends TestCase
 
         $names = \array_column(new TabListProvider($buffers, new Translator('en'), new ProjectPaths('/'), TestAgentPresence::create())->tabs(), 'name');
 
-        $this->assertSame(['Documentation', 'Documentation', 'Project Architecture', 'Project Architecture'], $names);
+        $this->assertSame(['Project Architecture', 'Project Architecture'], $names);
     }
 
     /** The pin glyph still leads: it marks the tab, the qualifier describes the file. */
@@ -182,12 +178,10 @@ final class TabListProviderTest extends TestCase
     {
         $buffers = new BufferManager();
         $buffers->open('/p/src/deep/Name.php', '<?php')->pinned = true;
-        $buffers->openPane('/p/docs/README.md', 'help', '# docs');
 
         $tips = \array_column(new TabListProvider($buffers, new Translator('en'), new ProjectPaths('/p'), TestAgentPresence::create())->tabs(), 'tooltip');
 
         $this->assertSame("src/deep/Name.php\nPinned: kept open, with no ×", $tips[0]);
-        $this->assertSame('Documentation', $tips[1], 'a help page is its title, not a path');
     }
 
     public function testATabShowsTheAgentsAtWorkOnItsFileInTheirColours(): void

@@ -7,9 +7,13 @@ namespace Porta\Overlay\Presenter;
 use Porta\Container\AsEager;
 use Porta\Container\AsIdeService;
 use Porta\Onboarding\WelcomeSteps;
+use Porta\Overlay\Region\CloseButton;
 use Porta\Overlay\Region\DropdownRegion;
 use Porta\Overlay\Region\ModalBox;
-use Porta\Support\IntMath;
+use Porta\Overlay\Region\WindowPlacement;
+use Porta\Overlay\Region\WindowZone;
+use Porta\Overlay\State\WindowControls;
+use Porta\Overlay\State\WindowFrame;
 use Porta\Ui\FrameHooks;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\MenuBarWidget;
@@ -35,18 +39,17 @@ use Symfony\Component\Tui\Widget\FocusableInterface;
  * into the frame's content area; nothing is swapped in the widget tree.
  *
  * Modality: while open, the keyboard is captured whole (the input
- * dispatcher's modal branch) and every mouse press inside or outside the box
- * is swallowed — an outside click neither dismisses (the × and Esc do that;
- * accidental clicks must not dump the onboarding context) nor reaches the
- * panes beneath. Only the menu bar stays reachable, by routing order.
+ * dispatcher's modal branch). A press outside the box closes it, as it closes
+ * every floating window, and never reaches the panes beneath; the menu bar
+ * stays reachable, by routing order.
  *
  * Geometry is computed from the previous frame's pane-rect union — rows
  * outside it (the menu bar, the status bar) are not overlay hosts and would
  * simply not paint, so clamping to it is correctness, not polish. The rects
  * do not exist at first-run open time (no frame has rendered), so a
  * {@see FrameHooks::onBeforeFrame} hook lays the box out as soon as they do and
- * re-clamps it when a resize moves them; drag positions are session-only —
- * reopening re-centers.
+ * re-clamps it when a resize moves them. It moves and resizes as every window
+ * does ({@see WindowFrame}); both are session-only — reopening re-centers.
  *
  * Like the view controllers it replaces, it attaches itself to
  * {@see \Porta\Workbench\View\ViewRegistry} in its constructor and has no inbound service
@@ -64,25 +67,18 @@ final class WelcomeModalController implements ContributedView
     /** The tallest content window — past this the cards scroll. */
     private const int MAX_INNER_HEIGHT = 18;
 
+    /** The content window's floors: a narrower or shorter box has no card left to read. */
+    private const int MIN_INNER_WIDTH = 20;
+
+    private const int MIN_INNER_HEIGHT = 5;
+
     private bool $open = false;
 
-    /** Box top/left; null while auto-centered (recomputed until dragged). */
-    private ?int $top = null;
-    private ?int $col = null;
+    /** Where the user moved the box and how big they made it. */
+    private readonly WindowFrame $frame;
 
-    /** @var array{rowOffset: int, colOffset: int}|null a title-bar drag in progress */
-    private ?array $drag = null;
-
-    /** True while a corner drag is resizing the box. */
-    private bool $resizing = false;
-
-    /** User inner-size overrides from a corner drag; null = auto (session-only, reset on reopen). */
-    private ?int $userInnerWidth = null;
-    private ?int $userInnerHeight = null;
-
-    private bool $closeHovered = false;
-
-    private bool $cornerHovered = false;
+    /** Which end of the title bar the × sits at: the platform's. */
+    private readonly CloseButton $closeButton;
 
     private ?ModalBox $box = null;
 
@@ -102,8 +98,11 @@ final class WelcomeModalController implements ContributedView
         ViewRegistry $views,
         ?Styles $styles = null,
         ?FrameHooks $frameHooks = null,
+        ?WindowControls $controls = null,
     ) {
         $this->initStyles($styles);
+        $this->frame = new WindowFrame();
+        $this->closeButton = $controls->closeButton ?? CloseButton::Standard;
         $views->register($this);
         $this->welcome
             ->onExit($this->close(...))
@@ -118,9 +117,15 @@ final class WelcomeModalController implements ContributedView
     }
 
     #[\Override]
-    public function ownsMainArea(): bool
+    public function hostsWindow(): bool
     {
         return false;
+    }
+
+    #[\Override]
+    public function title(): string
+    {
+        return $this->welcome->title();
     }
 
     #[\Override]
@@ -130,7 +135,7 @@ final class WelcomeModalController implements ContributedView
     }
 
     /**
-     * None: WelcomeMouseRouter holds THIS controller, so the reference cannot
+     * None: ModalWindowRouter holds THIS controller, so the reference cannot
      * run the other way — and it does not need to. The modal is app-modal, so
      * MouseRouter answers it in its own branch before any view dispatch.
      */
@@ -192,14 +197,7 @@ final class WelcomeModalController implements ContributedView
         $this->menuBar->close();
         // Reopening re-centers deliberately: a dragged position goes stale
         // across terminal sizes and this is a transient surface.
-        $this->top = null;
-        $this->col = null;
-        $this->drag = null;
-        $this->resizing = false;
-        $this->userInnerWidth = null;
-        $this->userInnerHeight = null;
-        $this->closeHovered = false;
-        $this->cornerHovered = false;
+        $this->frame->reset();
         $this->box = null;
         $this->shadowRegion = null;
 
@@ -223,8 +221,7 @@ final class WelcomeModalController implements ContributedView
         $this->open = false;
         $this->box = null;
         $this->shadowRegion = null;
-        $this->drag = null;
-        $this->resizing = false;
+        $this->frame->cancel();
         $this->menuBar->close();
         // Clear every mode's pane set: the modal may close across a view swap.
         $this->delivery->clearModal();
@@ -248,9 +245,9 @@ final class WelcomeModalController implements ContributedView
     }
 
     /**
-     * A left press while the modal is open. The × closes; the rest of the
-     * title bar arms a drag; a content cell selects its card; anywhere else —
-     * inside or out — is swallowed without dismissing.
+     * A left press while the modal is open. The × and a press outside the box
+     * close it; the title bar and the frame's edges arm a move or a resize; a
+     * content cell selects its card.
      */
     public function clickAt(int $row, int $col): bool
     {
@@ -258,30 +255,13 @@ final class WelcomeModalController implements ContributedView
         if (!$this->open || null === $box) {
             return false;
         }
-        if ($box->closeHit($row, $col)) {
+        $zone = $this->frame->press($box, $row, $col);
+        if (WindowZone::Close === $zone || WindowZone::Outside === $zone) {
             $this->close();
 
             return true;
         }
-        if ($box->resizeHit($row, $col)) {
-            // Freeze the position (a resize keeps the top-left anchored),
-            // then track the pointer as the new bottom-right corner.
-            $this->top = $box->startRow;
-            $this->col = $box->col;
-            $this->resizing = true;
-
-            return true;
-        }
-        if ($row === $box->startRow && $box->contains($row, $col)) {
-            // Freeze the auto-centered position into an absolute one, then
-            // capture the grab offset so the box moves with the pointer.
-            $this->top = $box->startRow;
-            $this->col = $box->col;
-            $this->drag = ['rowOffset' => $row - $box->startRow, 'colOffset' => $col - $box->col];
-
-            return true;
-        }
-        if ($box->contains($row, $col)) {
+        if (WindowZone::Content === $zone) {
             $this->tui->setFocus($this->welcome);
             $this->welcome->handleClick($row - $box->windowTop());
             $this->compose();
@@ -297,17 +277,12 @@ final class WelcomeModalController implements ContributedView
         if (!$this->open || null === $box) {
             return false;
         }
-        $closeHovered = $box->closeHit($row, $col);
-        $closeChanged = $closeHovered !== $this->closeHovered;
-        $this->closeHovered = $closeHovered;
-        $cornerHovered = $box->resizeHit($row, $col);
-        $cornerChanged = $cornerHovered !== $this->cornerHovered;
-        $this->cornerHovered = $cornerHovered;
+        $frameChanged = $this->frame->hover($box, $row, $col);
 
         $contentRow = $row - $box->windowTop();
         $inContent = $box->contains($row, $col) && $contentRow >= 0 && $contentRow < $box->count;
         $rowChanged = $this->welcome->hoverRow($inContent ? $contentRow : -1);
-        $changed = $closeChanged || $cornerChanged || $rowChanged;
+        $changed = $frameChanged || $rowChanged;
 
         if ($changed) {
             $this->compose();
@@ -333,34 +308,14 @@ final class WelcomeModalController implements ContributedView
     }
 
     /**
-     * Continue (or finish, on release) whichever drag is armed: a corner
-     * resize tracks the pointer as the box's new bottom-right corner, a
-     * title-bar move tracks it with the grab offset. Clamping (position to
-     * the pane union, size to the 20×5 floors and the union's extent)
-     * happens in compose, the single geometry authority.
+     * Continue (or finish, on release) whichever drag is armed — a move or a
+     * resize, both {@see WindowFrame}'s; compose clamps the result.
      */
     // @mago-expect lint:no-boolean-flag-parameter -- the bool IS the domain here, not a hidden second responsibility.
     public function continueDragTo(int $row, int $col, bool $release): bool
     {
-        if ($this->resizing) {
-            $this->userInnerWidth = $col - ($this->col ?? 0) + 1 - ModalFrame::CHROME_COLS;
-            $this->userInnerHeight = $row - ($this->top ?? 0) + 1 - ModalFrame::CHROME_ROWS;
-            if ($release) {
-                $this->resizing = false;
-            }
-            $this->compose();
-            $this->tui->requestRender();
-
-            return true;
-        }
-        $drag = $this->drag;
-        if (null === $drag) {
+        if (!$this->frame->dragTo($row, $col, $release)) {
             return false;
-        }
-        $this->top = $row - $drag['rowOffset'];
-        $this->col = $col - $drag['colOffset'];
-        if ($release) {
-            $this->drag = null;
         }
         $this->compose();
         $this->tui->requestRender();
@@ -371,8 +326,7 @@ final class WelcomeModalController implements ContributedView
     /** A fresh press anywhere disarms a stale drag (the router's cancel sweep). */
     public function cancelDrag(): void
     {
-        $this->drag = null;
-        $this->resizing = false;
+        $this->frame->cancel();
     }
 
     /**
@@ -418,30 +372,26 @@ final class WelcomeModalController implements ContributedView
         // last one off. A Symfony project adds a sixth card, which overflows
         // this window by design: the widget's followHeights() scrolls the
         // selection into view, so navigating down reveals what the fold hides.
-        $innerWidth = \max(20, \min($this->userInnerWidth ?? self::MAX_INNER_WIDTH, $boundRight - $boundLeft - PopupMetrics::CENTERED_MARGIN));
-        $innerHeight = \max(5, \min($this->userInnerHeight ?? self::MAX_INNER_HEIGHT, $boundBottom - $boundTop - ModalFrame::CHROME_ROWS));
-        $width = $innerWidth + ModalFrame::CHROME_COLS;
+        $place = $this->frame->place(
+            $bounds,
+            \min(self::MAX_INNER_WIDTH, $boundRight - $boundLeft - PopupMetrics::CENTERED_MARGIN) + ModalFrame::CHROME_COLS,
+            \min(self::MAX_INNER_HEIGHT, $boundBottom - $boundTop - ModalFrame::CHROME_ROWS) + ModalFrame::CHROME_ROWS,
+            WindowPlacement::UpperThird,
+            self::MIN_INNER_WIDTH + ModalFrame::CHROME_COLS,
+            self::MIN_INNER_HEIGHT + ModalFrame::CHROME_ROWS,
+        );
+        [$top, $col, $width, $rows] = [$place->top, $place->col, $place->width, $place->rows];
+        $innerWidth = $width - ModalFrame::CHROME_COLS;
+        $innerHeight = $rows - ModalFrame::CHROME_ROWS;
         $content = \array_values($this->welcome->render(new RenderContext($innerWidth, $innerHeight)));
+        $hot = $this->frame->hot();
         $panel = [
-            ModalFrame::titleBar($this->welcome->title(), $width, $this->styles, $this->closeHovered),
-            ...ModalFrame::wrap($content, $innerWidth, $this->styles, resizeCornerHot: $this->cornerHovered || $this->resizing),
+            ModalFrame::titleBar($this->welcome->title(), $width, $this->styles, $hot, closeButton: $this->closeButton),
+            ...ModalFrame::wrap($content, $innerWidth, $this->styles, $hot),
         ];
-        $rows = \count($panel);
-
-        // Auto-center (a third down, like the pickers) until a drag freezes an
-        // absolute position; clamp either into the pane union.
-        [$centerTop, $centerCol] = PopupMetrics::centered($bounds, $rows, $width);
-        $top = $this->top ?? $centerTop;
-        $col = $this->col ?? $centerCol;
-        $top = IntMath::clamp($top, $boundTop, \max($boundTop, $boundBottom - $rows));
-        $col = IntMath::clamp($col, $boundLeft, \max($boundLeft, $boundRight - $width));
-        if (null !== $this->top || null !== $this->col) {
-            $this->top = $top;
-            $this->col = $col;
-        }
 
         $this->delivery->deliverModal([['rows' => $panel, 'top' => $top, 'col' => $col, 'width' => $width]]);
-        $this->box = new ModalBox($top, $col, $width, $rows, headerRows: ModalFrame::CHROME_ROWS_TOP, windowStart: 0, count: $innerHeight);
+        $this->box = new ModalBox($top, $col, $width, $rows, headerRows: ModalFrame::CHROME_ROWS_TOP, windowStart: 0, count: $innerHeight, closeButton: $this->closeButton);
         $this->shadowRegion = DropdownRegion::shadowClamped($top, $col, $width, $rows, $bounds, shown: $this->delivery->shown());
     }
 }

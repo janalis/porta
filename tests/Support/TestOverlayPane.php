@@ -21,7 +21,13 @@ final class TestOverlayPane extends AbstractWidget implements MenuOverlayHost
 {
     use MenuOverlayHostTrait {
         setModalBackdrop as private traitSetModalBackdrop;
+        setWindowBackdrop as private traitSetWindowBackdrop;
     }
+
+    /** @var list<array{row: int, col: int, width: int, segment: string}> the last pushed window spans */
+    public array $windowSpans = [];
+
+    public bool $windowDimmed = false;
 
     /** @var list<array{row: int, col: int, width: int, segment: string}> the last pushed modal spans */
     public array $modalSpans = [];
@@ -33,6 +39,17 @@ final class TestOverlayPane extends AbstractWidget implements MenuOverlayHost
     public array $tooltipSpans = [];
 
     public bool $backdrop = false;
+
+    public function setWindowOverlay(array $spans): void
+    {
+        $this->windowSpans = $spans;
+    }
+
+    public function setWindowBackdrop(bool $on): void
+    {
+        $this->windowDimmed = $on;
+        $this->traitSetWindowBackdrop($on);
+    }
 
     public function setModalOverlay(array $spans): void
     {

@@ -534,7 +534,7 @@ final class Ide
 
             // Last: the initial file and the restored session decide what the
             // editor shows, and both claim focus. Welcome has to come after so
-            // it owns the main area, and so Esc reveals a settled editor.
+            // it takes focus over them, and so Esc reveals a settled editor.
             $this->showWelcomeOnFirstRun();
 
             $this->tui->run();
@@ -543,7 +543,7 @@ final class Ide
             // up. The loop has stopped, so a listener that schedules work is a
             // no-op — that is the contract IdeShuttingDown documents.
             $this->service(EventDispatcherInterface::class)->dispatch(new IdeShuttingDown($this->rootDir));
-            // Then: closing the full-screen views cancels their timers (the
+            // Then: closing the view windows cancels their timers (the
             // git view's 2s status-poll repeat) so nothing re-arms below.
             $this->service(ViewRegistry::class)->closeAll();
             $this->writeLastFrame();

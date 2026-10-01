@@ -35,8 +35,9 @@ use Symfony\Component\Tui\Widget\ContainerWidget;
  * their assembly, the Tui Z-order, and the tab-strip position surgery. The
  * editor area's children are set by the RTL-aware pane ordering, not here.
  *
- * A full-screen view's own sidebar/separator/content is NOT here — that is
- * {@see ViewRegions}, minted at runtime. This class knew the git widgets by
+ * A view's own sidebar/separator/content is NOT here — that is
+ * {@see ViewRegions}, minted at runtime. What is here is where an open one is
+ * attached: {@see $windowFrame}, inside a host the frame never draws. This class knew the git widgets by
  * name and stacked them into `git-left` at construction, which is the one place
  * core layout named a view's contents.
  */
@@ -50,6 +51,18 @@ final class WorkspaceLayout
     public readonly ContainerWidget $editorBody;
 
     public readonly SeparatorWidget $separator;
+
+    /**
+     * Where the open view window's region is attached. It sits in a HIDDEN
+     * host at the end of the tree: attached, so the region's widgets keep
+     * their context, their focus and their theme, but never laid out by the
+     * frame — the window presenter renders it into the floating window
+     * before each frame, which is also what records its widgets' rects at
+     * their screen cells ({@see \Porta\Overlay\Presenter\ViewWindowPresenter}).
+     */
+    public readonly ContainerWidget $windowFrame;
+
+    private readonly ContainerWidget $windowHost;
 
     /** The rules under the menu bar and above the status bar. */
     public readonly EdgeRuleWidget $topRule;
@@ -87,6 +100,9 @@ final class WorkspaceLayout
         $this->topRule = LayoutWidgets::edgeRule($this->styles, $density, 'top-rule');
         $this->bottomRule = LayoutWidgets::edgeRule($this->styles, $density, 'bottom-rule');
         $this->main = LayoutWidgets::container('main', new Style(direction: Direction::Horizontal, gap: 0));
+        $this->windowFrame = LayoutWidgets::container('window-frame', new Style());
+        $this->windowHost = LayoutWidgets::container('window-host', new Style(hidden: true));
+        $this->windowHost->add($this->windowFrame);
     }
 
     /** The floating chrome Z-order: later adds composite over earlier ones. */
@@ -102,7 +118,8 @@ final class WorkspaceLayout
             ->add($this->terminalPanel)
             ->add($this->contextMenu)
             ->add($this->bottomRule)
-            ->add($this->statusBar);
+            ->add($this->statusBar)
+            ->add($this->windowHost);
     }
 
     /**

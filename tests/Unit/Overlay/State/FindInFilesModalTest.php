@@ -16,11 +16,11 @@ use Porta\Ui\CaretVisibility;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\Density;
 use Porta\Ui\Glyphs;
+use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\FieldBox;
 use Porta\Widget\Render\ModalFrame;
 use Porta\Widget\Render\PopupMetrics;
-use Porta\Widget\Render\TabCloseGlyph;
 use Porta\Widget\Support\OptionTagState;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Keybindings;
@@ -133,9 +133,9 @@ final class FindInFilesModalTest extends TestCase
         $this->assertStringContainsString('other/B.php', $screen);
         $this->assertStringContainsString('foo one', $screen, 'match rows render');
         $this->assertStringContainsString('Alt+⏎ Find window · Alt+S Scope', $screen, 'the footer legend names the keys');
-        $this->assertSame(1, \substr_count($screen, needle: 'Esc'), 'Esc once, in the title bar: the footer does not repeat it');
+        $this->assertStringNotContainsString('Esc', $screen, 'Esc closes every window, so no bar spells it out');
         $this->assertStringNotContainsString('Close', $screen, 'the Close word is retired — Esc/outside-click dismiss');
-        $this->assertStringContainsString('Esc', $screen, 'the title carries the dismiss hint');
+        $this->assertStringContainsString(Glyphs::WINDOW_CLOSE, $screen, 'the title bar carries the close button');
     }
 
     public function testEmptyAndSearchingStates(): void
@@ -622,7 +622,7 @@ final class FindInFilesModalTest extends TestCase
         $this->assertTrue($closed);
     }
 
-    /** A corner drag resizes the box: wider/taller, floored at 48 wide × 3 preview rows, reset on open. */
+    /** A corner drag resizes the box: wider/taller, floored at 48 wide × 1 preview row, reset on open. */
     public function testACornerDragResizesTheBoxAndOpenResets(): void
     {
         $modal = $this->modal();
@@ -652,15 +652,15 @@ final class FindInFilesModalTest extends TestCase
         $grown = $modal->lastBox();
         $this->assertInstanceOf(ModalBox::class, $grown);
         $this->assertSame($box->width + 10, $grown->width, 'the width followed the pointer');
-        $this->assertSame(11, $grown->count, 'one more preview row — the 24-row screen budget caps the second');
+        $this->assertSame(12, $grown->count, 'two more preview rows: the bottom edge followed the pointer');
 
-        // Dragging into the header pins at the floors (48 inner, 3 preview rows).
+        // Dragging into the header pins at the floors (48 inner, 1 preview row).
         $this->assertTrue($modal->continueDragTo($box->startRow, $box->col, release: true));
         $this->screen($modal);
         $floor = $modal->lastBox();
         $this->assertInstanceOf(ModalBox::class, $floor);
         $this->assertSame(48 + 4, $floor->width, 'inner width floored at 48 (+ chrome)');
-        $this->assertSame(3, $floor->count, 'the preview floor');
+        $this->assertSame(1, $floor->count, 'the preview floor');
         $this->assertFalse($modal->continueDragTo(0, 0, release: false), 'the release disarmed the resize');
 
         // A fresh open re-derives the size — overrides are session-only.
@@ -756,17 +756,19 @@ final class FindInFilesModalTest extends TestCase
         $box = $modal->lastBox();
         $this->assertInstanceOf(ModalBox::class, $box);
 
-        // The direction matters, not just "it changed": the × starts dim and
+        // The direction matters, not just "it changed": the ☒ starts dim and
         // only the pointer lights it, never the reverse.
         $styles = Styles::dark();
-        $this->assertStringContainsString(TabCloseGlyph::inactive($styles), $normalBar, 'the × starts dim, not hot');
-        $this->assertStringNotContainsString(TabCloseGlyph::hovered($styles), $normalBar);
+        $resting = $styles->of(Role::Gutter)->apply(Glyphs::WINDOW_CLOSE);
+        $lit = $styles->of(Role::DiagErrorDim)->apply(Glyphs::WINDOW_CLOSE);
+        $this->assertStringContainsString($resting, $normalBar, 'the ☒ starts dim, not hot');
+        $this->assertStringNotContainsString($lit, $normalBar);
 
         $this->assertTrue($modal->hoverAt($box->startRow, $box->col + $box->width - 2), 'onto the ×');
         $hoveredBar = $this->compose($modal)[$box->startRow];
         $this->assertNotSame($normalBar, $hoveredBar, 'the × restyled under the pointer');
-        $this->assertStringContainsString(TabCloseGlyph::hovered($styles), $hoveredBar, 'hovering the × brightens it');
-        $this->assertStringNotContainsString(TabCloseGlyph::inactive($styles), $hoveredBar);
+        $this->assertStringContainsString($lit, $hoveredBar, 'hovering the ☒ darkens it');
+        $this->assertStringNotContainsString($resting, $hoveredBar);
 
         $this->assertTrue($modal->hoverAt($box->startRow + 2, $box->col + 3), 'off the ×');
     }
@@ -1338,28 +1340,6 @@ final class FindInFilesModalTest extends TestCase
         $this->assertSame(0, $box->startRow, 'the floor kept startRow at 0, not negative');
     }
 
-    public function testUserPositionOverrideRequiresBothCoordinates(): void
-    {
-        $modal = $this->modal();
-        $modal->open('Find in Files');
-        $this->screen($modal);
-        $box = $modal->lastBox();
-        $this->assertInstanceOf(ModalBox::class, $box);
-        $centeredRow = $box->startRow;
-        $centeredCol = $box->col;
-
-        // Arm a move, drag, but release with only ONE coordinate surviving by
-        // resetting the other via a fresh open — a half-set override must not
-        // freeze the position; the modal should recenter.
-        Probe::set($modal, 'userRow', 5);
-        Probe::set($modal, 'userCol', null);
-        $this->screen($modal);
-        $half = $modal->lastBox();
-        $this->assertInstanceOf(ModalBox::class, $half);
-        $this->assertSame($centeredRow, $half->startRow, 'a null userCol keeps the layout centered, ignoring a stray userRow');
-        $this->assertSame($centeredCol, $half->col);
-    }
-
     public function testTitleBarDragClampsAtTheBottomRightPaneEdgeToo(): void
     {
         $modal = $this->modal();
@@ -1387,10 +1367,14 @@ final class FindInFilesModalTest extends TestCase
         $this->assertInstanceOf(ModalBox::class, $box);
 
         $modal->clickAt($box->startRow + $box->rows - 1, $box->col + $box->width - 1);
-        $relRow = $box->startRow + 20; // comfortably above the max(3, ...) floor
-        $modal->continueDragTo($relRow, $box->col, release: false);
+        $relRow = $box->startRow + 18; // comfortably above the floor, inside the 24-row bounds
+        $modal->continueDragTo($relRow, $box->col + $box->width - 1, release: false);
+        $this->screen($modal);
+        $grown = $modal->lastBox();
+        $this->assertInstanceOf(ModalBox::class, $grown);
 
-        $this->assertSame(\max(3, $relRow - $box->startRow + 1 - 11), Probe::get($modal, 'userRows'), 'userRows follows relRow - startRow + 1 - 11 exactly');
+        $this->assertSame($relRow - $box->startRow + 1, $grown->rows, 'the bottom border lands on the pointer row exactly');
+        $this->assertSame($box->startRow, $grown->startRow, 'a bottom-edge resize keeps the top where it was');
     }
 
     public function testBoxWidthBaselineFormulaWithNoPreviewContent(): void
@@ -1475,7 +1459,7 @@ final class FindInFilesModalTest extends TestCase
         $this->screen($modal);
         $grown = $modal->lastBox();
         $this->assertInstanceOf(ModalBox::class, $grown);
-        $this->assertSame(100 - PopupMetrics::CENTERED_MARGIN, $grown->width - ModalFrame::CHROME_COLS, 'a huge user width still clamps to columns - CENTERED_MARGIN');
+        $this->assertSame(100, $grown->width, 'a huge user width still clamps to the bounds');
     }
 
     public function testReplaceHintTextMatchesThePreviewStateExactly(): void

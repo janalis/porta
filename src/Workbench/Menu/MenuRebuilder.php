@@ -10,7 +10,7 @@ use Porta\Container\AsIdeService;
 use Porta\I18n\Translator;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Widget\MenuBarWidget;
-use Porta\Workbench\View\ViewRegistry;
+use Porta\Workbench\View\ViewCommandGate;
 
 /**
  * Rebuilds the application menu bar. The menu bakes translated, colored
@@ -26,7 +26,7 @@ final readonly class MenuRebuilder
         private EditorCommandTarget $editor,
         private LiveKeybindings $keybindings,
         private Translator $translator,
-        private ViewRegistry $views,
+        private ViewCommandGate $gate,
         private PluginManager $plugins,
         private MenuContributions $contributions,
     ) {}
@@ -38,7 +38,7 @@ final readonly class MenuRebuilder
             $this->editor,
             $this->keybindings->current(),
             $this->translator,
-            fn (): ?string => $this->views->activeId(),
+            $this->gate->before(...),
             $this->plugins->menuSpecs(MenuSurface::Plugins),
             $this->contributions->all(),
         ));

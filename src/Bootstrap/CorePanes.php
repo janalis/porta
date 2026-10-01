@@ -13,7 +13,6 @@ use Porta\Help\MarkdownPreviewActions;
 use Porta\I18n\Translator;
 use Porta\Support\Files;
 use Porta\Support\ProjectPaths;
-use Porta\Widget\HelpViewerWidget;
 use Porta\Widget\MarkdownPreviewWidget;
 use Porta\Widget\TextPreviewWidget;
 
@@ -42,7 +41,6 @@ final readonly class CorePanes
 
     public function __construct(
         private EditorPanes $panes,
-        private HelpViewerWidget $helpViewer,
         private TextPreviewWidget $textPreview,
         private MarkdownPreviewWidget $markdownPreview,
         private PreviewRoutes $previews,
@@ -54,7 +52,6 @@ final readonly class CorePanes
 
     public function register(): void
     {
-        $this->panes->register($this->helpViewer, $this->loadText(...));
         $this->panes->register($this->textPreview, $this->loadPreview(...));
         // A preview is fed the editor's text, so its loader is only the path a
         // pane has to have — nothing routes a markdown file to it as a viewer.

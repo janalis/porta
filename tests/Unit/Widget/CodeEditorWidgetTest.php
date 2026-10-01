@@ -1492,9 +1492,14 @@ final class CodeEditorWidgetTest extends TestCase
                 return 'welcome';
             }
 
-            public function ownsMainArea(): bool
+            public function hostsWindow(): bool
             {
                 return false;
+            }
+
+            public function title(): string
+            {
+                return '';
             }
 
             public function isOpen(): bool

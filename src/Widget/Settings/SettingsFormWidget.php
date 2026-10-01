@@ -308,8 +308,8 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
      * browser's `<label>` toggles on the first click; making it wait read as
      * a dead control.
      *
-     * Rows the render drew nothing on — the title, a legend, the padding, the
-     * footer — are nobody's: {@see $rowOwner} is what was drawn, not the list
+     * Rows the render drew nothing on — the title and its blank row, a legend
+     * and its margins, the padding, the footer — are nobody's: {@see $rowOwner} is what was drawn, not the list
      * arithmetic, which is how a click on the footer once selected the setting
      * BELOW the window.
      */
@@ -475,27 +475,33 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         if ($rows <= 0) {
             return []; // no pane, no lines — never more than the allotted rows
         }
-        // The window the items get: the pane less the title and the footer.
-        $window = \max(1, $rows - 2);
+        // The window the items get: the pane less the title, the blank row
+        // under it and the footer.
+        $window = \max(1, $rows - 3);
         $layout = SettingsRowLayout::measure($this->rows, $width, $this->density->current(), $this->direction());
         $scroll = $this->list->followHeights($layout->heights, $window);
         $this->lastPage = $this->list->countFitting($layout->heights, $scroll, $window);
 
-        $lines = [HeaderRenderer::title($this->titleLine(), $width, $this->styles)];
-        $this->rowOwner = [null];
+        // The page title is a heading too, with a blank row under it; it opens
+        // the pane, so it needs none above.
+        $lines = [HeaderRenderer::title($this->titleLine(), $width, $this->styles), AnsiText::blank($width)];
+        $this->rowOwner = [null, null];
         $this->controls = [];
         $this->tips = [];
         $this->drawnWidth = $width;
-        for ($i = $scroll; $i < \count($this->rows) && \count($lines) <= $window; ++$i) {
+        // The title and its blank row, then the window: the footer's row is
+        // the first past it.
+        $footer = 2 + $window;
+        for ($i = $scroll; $i < \count($this->rows) && \count($lines) < $footer; ++$i) {
             foreach ($this->item($i, $layout, $width, \count($lines)) as [$line, $owner]) {
-                if (\count($lines) > $window) {
+                if (\count($lines) >= $footer) {
                     break; // the last item may be cut; its rest is a scroll away
                 }
                 $lines[] = $line;
                 $this->rowOwner[] = $owner;
             }
         }
-        while (\count($lines) <= $window) {
+        while (\count($lines) < $footer) {
             $lines[] = AnsiText::blank($width);
             $this->rowOwner[] = null;
         }
@@ -506,9 +512,10 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
     }
 
     /**
-     * One item's screen rows, each paired with its owner: the legend rule if
-     * the item opens a fieldset (nobody's), then the control's rows with the
-     * label, the modified marker and the detail on the control's middle row.
+     * One item's screen rows, each paired with its owner: the legend rule
+     * between two blank rows if the item opens a fieldset (all nobody's), then
+     * the control's rows with the label, the modified marker and the detail on
+     * the control's middle row.
      *
      * @return list<array{string, int|null}>
      */
@@ -518,7 +525,9 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         $out = [];
         $legend = $layout->legends[$index] ?? null;
         if (null !== $legend) {
+            $out[] = [AnsiText::blank($width), null];
             $out[] = [Rule::horizontal($width, $this->styles, $legend), null];
+            $out[] = [AnsiText::blank($width), null];
         }
         $control = $this->control($row, $index, $layout);
         $middle = \intdiv(\count($control), num2: 2); // the label sits on the value row

@@ -7,6 +7,7 @@ namespace Porta\Settings;
 use Porta\Container\AsEager;
 use Porta\Event\SettingsRowsStale;
 use Porta\Event\SettingsSectionRequested;
+use Porta\I18n\Translator;
 use Porta\Layout\ViewRegion;
 use Porta\Layout\ViewRegions;
 use Porta\Widget\Settings\KeybindingsListWidget;
@@ -54,6 +55,7 @@ final class SettingsViewController implements ContributedView
         private readonly ShadowedWriteWarning $shadowed,
         ViewRegistry $views,
         private readonly ListboxOpener $listbox,
+        private readonly Translator $translator = new Translator('en'),
     ) {
         // Minted, like git's. The nav is this view's fixed half, so it goes
         // into the sidebar once here — it used to be handed to PaneLayout as a
@@ -90,9 +92,15 @@ final class SettingsViewController implements ContributedView
     }
 
     #[\Override]
-    public function ownsMainArea(): bool
+    public function hostsWindow(): bool
     {
         return true;
+    }
+
+    #[\Override]
+    public function title(): string
+    {
+        return $this->translator->trans('Settings');
     }
 
     #[\Override]

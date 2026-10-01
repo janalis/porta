@@ -19,6 +19,7 @@ use Porta\Support\ProjectPaths;
 use Porta\Support\Scheduler;
 use Porta\Ui\ShortcutFormatter;
 use Porta\Workbench\Menu\EditorCommandTarget;
+use Porta\Workbench\View\ViewCommandGate;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Tui;
@@ -60,12 +61,20 @@ final readonly class SearchEverywhereFactory
         // application map.
         private EditorCommandTarget $editor,
         private Keybindings $ideKeys,
+        // A command picked here reaches past an open view window as a menu
+        // item does: one that acts on the editor closes the window first.
+        private ?ViewCommandGate $gate = null,
     ) {}
 
     /** Why the symbol sources have nobody to ask — their note in place of "no results" — or null when a server is up. */
     private function noServer(): ?string
     {
         return $this->lsp->isInitialized() ? null : $this->translator->trans('No language server');
+    }
+
+    private function beforeRun(string $id): void
+    {
+        $this->gate?->before('i', $id);
     }
 
     /** An action's primary key, formatted as everywhere else, or '' when it has none. */
@@ -143,7 +152,7 @@ final readonly class SearchEverywhereFactory
     {
         return new SearchEverywhereController(
             $this->overlay,
-            [new ActionsSource($this->commands, $this->shortcutOf(...))],
+            [new ActionsSource($this->commands, $this->shortcutOf(...), $this->beforeRun(...))],
             [],
             $this->buffers,
             $this->tui,
@@ -197,7 +206,7 @@ final readonly class SearchEverywhereFactory
             $this->overlay,
             [
                 new FilesSource($this->files, $this->paths, $openFile),
-                new ActionsSource($this->commands, $this->shortcutOf(...)),
+                new ActionsSource($this->commands, $this->shortcutOf(...), $this->beforeRun(...)),
                 // Last of the categories (SearchCategory::Settings orders 5th):
                 // a setting is never what you meant when you typed a filename,
                 // and this is the one source that answers a query about the IDE

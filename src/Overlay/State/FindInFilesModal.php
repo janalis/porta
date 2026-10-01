@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Porta\Overlay\State;
 
 use Porta\I18n\Translator;
+use Porta\Overlay\Region\CloseButton;
 use Porta\Overlay\Region\ModalBox;
-use Porta\Overlay\Region\ModalHotspot;
+use Porta\Overlay\Region\WindowPlacement;
+use Porta\Overlay\Region\WindowZone;
 use Porta\Search\CaseMode;
 use Porta\Search\MatchMode;
 use Porta\Search\SearchOption;
@@ -14,7 +16,6 @@ use Porta\Search\SearchPattern;
 use Porta\Search\TokenScope;
 use Porta\Search\WordMode;
 use Porta\Support\AnsiText;
-use Porta\Support\IntMath;
 use Porta\Ui\CaretVisibility;
 use Porta\Ui\ClickZones;
 use Porta\Ui\CursorStyle;
@@ -136,33 +137,8 @@ final class FindInFilesModal
     /** hovered zone name ('regex'|'case'|'word'|'preserve'|'tokens'|'find_window') or null */
     private ?string $hovered = null;
 
-    /** The frame affordance under the pointer (× brightens, the corner heavies), or null. */
-    private ?ModalHotspot $hotspot = null;
-
-    /** True while a corner drag is resizing the box. */
-    private bool $resizing = false;
-
-    /** @var array{rowOffset: int, colOffset: int}|null a title-bar move drag in progress */
-    private ?array $moving = null;
-
-    /**
-     * User size override from a corner drag; null = auto (session-only, reset
-     * on open). $userRows is the preview WINDOW's row count (the frame chrome
-     * is not included); a corner drag writes both components together, so one
-     * null check covers the pair.
-     */
-    private ?int $userWidth = null;
-
-    private ?int $userRows = null;
-
-    /**
-     * User position override from a title-bar drag; null = centered
-     * (session-only, reset on open). A drag writes both components and the
-     * composite clamps both, so one null check covers the pair.
-     */
-    private ?int $userRow = null;
-
-    private ?int $userCol = null;
+    /** Where the user moved the box and how big they made it (session-only, reset on open). */
+    private readonly WindowFrame $frame;
 
     /** display-row index tinted under the pointer; visual only, never the selection — you type into the query field while it rests. */
     private ?int $hoveredRow = null;
@@ -177,8 +153,11 @@ final class FindInFilesModal
         ?Styles $styles = null,
         ?CursorStyle $cursorStyle = null,
         ?Translator $translator = null,
+        /** Which end of the title bar the × sits at: the platform's. */
+        private readonly CloseButton $closeButton = CloseButton::Standard,
     ) {
         $this->initStyles($styles);
+        $this->frame = new WindowFrame();
         $this->translator = $translator ?? new Translator('en');
         $this->optionZones = new ClickZones();
         $this->sideZones = new ClickZones();
@@ -199,15 +178,9 @@ final class FindInFilesModal
 
     public function open(string $title): void
     {
-        // Session-only, like the Welcome modal's drag position: a reopen
-        // re-derives the size from content.
-        $this->userWidth = null;
-        $this->userRows = null;
-        $this->userRow = null;
-        $this->userCol = null;
-        $this->moving = null;
-        $this->resizing = false;
-        $this->hotspot = null;
+        // Session-only, like the Welcome modal's: a reopen re-derives the size
+        // from content.
+        $this->frame->reset();
         $this->open = true;
         $this->title = $title;
         $this->query->clear();
@@ -569,20 +542,32 @@ final class FindInFilesModal
         }
         [$boundTop, $boundLeft, $boundBottom, $boundRight] = $bounds;
         $columns = $boundRight - $boundLeft;
-        $rows = $boundBottom - $boundTop;
 
         // On a compact screen the three boxed fields would eat the preview:
         // each takes its one-row form ({@see FieldBox::rowsFor()}). Hit-testing
         // recovers the height drawn from the box's own geometry
         // ({@see fieldHeight()}).
         $fieldRows = FieldBox::rowsFor($density);
-        // Everything but the preview: the frame and its tees (8), the footer
-        // (1), and the three fields and the options band, each $fieldRows.
-        $maxPreview = \max(1, \min(\count($this->displayRows), $rows - 9 - (4 * $fieldRows), $this->userRows ?? PopupMetrics::FIND_PREVIEW_ROWS));
+        // Everything but the preview: the frame (4), its two tees, the footer,
+        // and the three fields and the options band, each $fieldRows.
+        $chrome = ModalFrame::CHROME_ROWS + 3 + (4 * $fieldRows);
+        // The content decides the box until the user sizes it: the preview
+        // shows what there is, up to its comfortable height and two rows
+        // short of the bounds; a resized box keeps its size and pads.
+        $preview = \max(1, \min(\count($this->displayRows), $boundBottom - $boundTop - 2 - $chrome, PopupMetrics::FIND_PREVIEW_ROWS));
+        $visible = \array_slice($this->displayRows, $this->windowStart($preview), $preview);
+        $place = $this->frame->place(
+            $bounds,
+            $this->boxWidth($columns, $visible, $fieldRows) + ModalFrame::CHROME_COLS,
+            $chrome + $preview,
+            WindowPlacement::UpperThird,
+            PopupMetrics::FIND_MIN_WIDTH + ModalFrame::CHROME_COLS,
+            $chrome + 1,
+        );
+        $maxPreview = $place->rows - $chrome;
         $windowStart = $this->windowStart($maxPreview);
         $visible = \array_slice($this->displayRows, $windowStart, $maxPreview);
-
-        $width = $this->boxWidth($columns, $visible, $fieldRows);
+        $width = $place->width - ModalFrame::CHROME_COLS;
 
         $fields = $this->headerRows($width, $focused, $fieldRows);
         // Box rows: title bar, pad, find, replace, options, mask, tee, then
@@ -628,24 +613,19 @@ final class FindInFilesModal
                 $this->styles,
             );
         }
+        // A box the user made taller than the list pads it, rather than
+        // shrinking back under the pointer.
+        $previewRows = [...$previewRows, ...\array_fill(0, \max(0, $maxPreview - \count($previewRows)), value: '')];
         $previewIndex = ModalFrame::CHROME_ROWS_TOP + \count($fields) + 1; // + the tee above the preview
         $footerIndex = $previewIndex + \count($previewRows) + 1; // + the tee above the footer
 
+        $hot = $this->frame->hot();
         $popup = [
-            ModalFrame::titleBar($this->title.'  '.$this->statusText(), $width + ModalFrame::CHROME_COLS, $this->styles, ModalHotspot::Close === $this->hotspot),
-            ...ModalFrame::wrapSections([$fields, $previewRows, [$this->footerRow($width)]], $width, $this->styles, resizeCornerHot: ModalHotspot::ResizeCorner === $this->hotspot || $this->resizing),
+            ModalFrame::titleBar($this->title.'  '.$this->statusText(), $place->width, $this->styles, $hot, closeButton: $this->closeButton),
+            ...ModalFrame::wrapSections([$fields, $previewRows, [$this->footerRow($width)]], $width, $this->styles, $hot),
         ];
-        // Centered a third down (the pickers' placement) until a title-bar
-        // drag freezes an absolute position; either clamps into the bounds —
-        // rows outside the pane union would simply not paint.
-        $boxWidth = $width + ModalFrame::CHROME_COLS;
-        [$startRow, $col] = PopupMetrics::centered($bounds, \count($popup), $boxWidth);
-        if (null !== $this->userRow && null !== $this->userCol) {
-            $startRow = IntMath::clamp($this->userRow, $boundTop, \max($boundTop, $boundBottom - \count($popup)));
-            $col = IntMath::clamp($this->userCol, $boundLeft, \max($boundLeft, $boundRight - $boxWidth));
-            $this->userRow = $startRow;
-            $this->userCol = $col;
-        }
+        $boxWidth = $place->width;
+        [$startRow, $col] = [$place->top, $place->col];
 
         $this->box = new ModalBox(
             $startRow,
@@ -657,6 +637,7 @@ final class FindInFilesModal
             count: \count($visible),
             optionsRow: $startRow + $optionsIndex,
             footerRow: $startRow + $footerIndex,
+            closeButton: $this->closeButton,
         );
 
         return ['rows' => $popup, 'top' => $startRow, 'col' => $col];
@@ -709,12 +690,8 @@ final class FindInFilesModal
         }
 
         // Inner width; the frame adds a rail and a padding column each side.
-        // A corner-drag override replaces the content-driven width (and its
-        // comfort cap, FIND_MAX_INNER — user intent wins), still floored/clamped.
-        if (null !== $this->userWidth) {
-            return \max(PopupMetrics::FIND_MIN_WIDTH, \min($this->userWidth, $columns - PopupMetrics::CENTERED_MARGIN));
-        }
-
+        // A resized box replaces it ({@see WindowFrame}) — user intent wins
+        // over the comfort cap, FIND_MAX_INNER.
         return \min($width, $columns - PopupMetrics::CENTERED_MARGIN, PopupMetrics::FIND_MAX_INNER);
     }
 
@@ -1039,29 +1016,14 @@ final class FindInFilesModal
             return false;
         }
         $box = $this->box;
-        if (null !== $box && $box->resizeHit($relRow, $relCol)) {
-            $this->resizing = true;
-
-            return true;
-        }
-        if (null !== $box && $box->closeHit($relRow, $relCol)) {
+        $zone = null === $box ? WindowZone::Outside : $this->frame->press($box, $relRow, $relCol);
+        if (null === $box || WindowZone::Close === $zone || WindowZone::Outside === $zone) {
             $this->fireClose();
 
             return true;
         }
-        if (null !== $box && $relRow === $box->startRow && $box->contains($relRow, $relCol)) {
-            // A title-bar press arms a move drag: freeze the centered position
-            // into an absolute one, then capture the grab offset.
-            $this->userRow = $box->startRow;
-            $this->userCol = $box->col;
-            $this->moving = ['rowOffset' => $relRow - $box->startRow, 'colOffset' => $relCol - $box->col];
-
-            return true;
-        }
-        if (null === $box || $relCol < $box->col || $relCol >= ($box->col + $box->width)) {
-            $this->fireClose();
-
-            return true;
+        if (WindowZone::Content !== $zone) {
+            return true; // the title bar or an edge: a move or a resize is armed
         }
         $innerCol = $box->innerCol($relCol);
         $field = $this->fieldAt($box, $relRow - $box->optionsRow);
@@ -1097,38 +1059,15 @@ final class FindInFilesModal
     }
 
     /**
-     * Continue (or finish, on release) whichever drag is armed. A corner
-     * resize maps the pointer back to the inner width and the preview-window
-     * rows (the box's 11 chrome rows — title, pad, four fields, two tees,
-     * footer, pad, border — subtracted), floored at 48×3; a title-bar move
-     * tracks it with the grab offset, clamped at the next composite. False
-     * when nothing is armed, so the router chain falls through.
+     * Continue (or finish, on release) whichever drag is armed — a move or a
+     * resize, both {@see WindowFrame}'s; the next layout clamps the result.
+     * False when nothing is armed, so the router chain falls through.
      */
     // @mago-expect lint:no-boolean-flag-parameter -- the bool IS the domain here, not a hidden second responsibility.
     public function continueDragTo(int $relRow, int $relCol, bool $release): bool
     {
-        $box = $this->box;
-        if (null === $box) {
+        if (!$this->frame->dragTo($relRow, $relCol, $release)) {
             return false;
-        }
-        if ($this->resizing) {
-            $this->userWidth = $relCol - $box->col + 1 - ModalFrame::CHROME_COLS;
-            $this->userRows = \max(3, $relRow - $box->startRow + 1 - 11);
-            if ($release) {
-                $this->resizing = false;
-            }
-            ($this->invalidate)();
-
-            return true;
-        }
-        $moving = $this->moving;
-        if (null === $moving) {
-            return false;
-        }
-        $this->userRow = $relRow - $moving['rowOffset'];
-        $this->userCol = $relCol - $moving['colOffset'];
-        if ($release) {
-            $this->moving = null;
         }
         ($this->invalidate)();
 
@@ -1138,8 +1077,7 @@ final class FindInFilesModal
     /** A fresh press anywhere disarms a stale drag (the router's cancel sweep). */
     public function cancelDrag(): void
     {
-        $this->resizing = false;
-        $this->moving = null;
+        $this->frame->cancel();
     }
 
     /**
@@ -1187,14 +1125,8 @@ final class FindInFilesModal
             return false;
         }
         $box = $this->box;
-        $hotspot = match (true) {
-            null !== $box && $box->closeHit($relRow, $relCol) => ModalHotspot::Close,
-            null !== $box && $box->resizeHit($relRow, $relCol) => ModalHotspot::ResizeCorner,
-            default => null,
-        };
-        $closeChanged = $hotspot !== $this->hotspot;
+        $closeChanged = $this->frame->hover($box, $relRow, $relCol);
         if ($closeChanged) {
-            $this->hotspot = $hotspot;
             ($this->invalidate)();
         }
         if (null !== $box && self::onOptions($box, $relRow)) {

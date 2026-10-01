@@ -89,9 +89,6 @@ final readonly class SessionRestorer
     {
         $buffers = [];
         foreach ($this->buffers->all() as $buffer) {
-            if ('help' === $buffer->paneId) {
-                continue; // a restored help path would reopen as editable source
-            }
             $buffers[] =
                 [
                     'path' => $buffer->path,

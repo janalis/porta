@@ -84,7 +84,7 @@ final class MouseRouter
         private readonly BufferManager $buffers,
         private readonly BufferService $bufferService,
         private readonly ViewRegistry $views,
-        private readonly WelcomeMouseRouter $welcome,
+        private readonly ModalWindowRouter $windows,
         private readonly BidiTui $bidi,
         private readonly GutterClickRouter $gutter,
         #[LayoutSlot('separator')]
@@ -111,10 +111,10 @@ final class MouseRouter
         $editorRect = $this->hit->rect($this->panes->editor);
         $sepRect = $this->hit->rect($this->separator);
 
-        // While a full view (git or settings) owns the main area, the
-        // tree/tabs/editor (and the menu bar inside the editor pane) are
-        // detached — but the renderer still holds their last-frame rects. Null
-        // them so no stale-rect branch routes events to an invisible widget.
+        // While a view window is open the tree, tabs and editor stay mounted
+        // behind it, dimmed — and out of reach: the window is modal, so a press
+        // beside it closes it rather than landing on them. Null their rects so
+        // no branch below routes an event to them.
         if ($this->views->isAnyOpen()) {
             $treeRect = null;
             $tabsRect = null;
@@ -132,8 +132,8 @@ final class MouseRouter
 
         if ($mouse->wheel) {
             // The Welcome modal is app-modal: every wheel is its while open.
-            if ($this->welcome->isModalOpen()) {
-                $this->welcome->wheel(new WheelGesture($mouse, WheelAxis::Vertical, WheelStep::rows($mouse)));
+            if ($this->windows->isModalOpen()) {
+                $this->windows->wheel(new WheelGesture($mouse, WheelAxis::Vertical, WheelStep::rows($mouse)));
                 $this->tui->requestRender();
 
                 return;
@@ -161,8 +161,8 @@ final class MouseRouter
             || $this->continueDockTabDrag($mouse)
             || $this->treeDrag->continueDrag($mouse, $treeRect, $editorRect)
             || $this->pointers->of($this->views->activeId())->continueDrag($mouse)
-            || $this->welcome->continueDrag($mouse)
-            || $this->continueFindModalDrag($mouse)
+            || $this->windows->continueDrag($mouse)
+            || $this->continueWindowDrag($mouse)
             || $this->layout->continueResizeDrag($mouse, $treeRect, $viewLeftRect)
         ) {
             return;
@@ -171,7 +171,7 @@ final class MouseRouter
         // Right-click opens a context menu for whichever pane is under the pointer
         // — swallowed while the Welcome modal is open (no context menus over it).
         if ($mouse->isRightPress()) {
-            if (!$this->welcome->isModalOpen()) {
+            if (!$this->windows->isModalOpen()) {
                 $this->rightClick->route($mouse, $treeRect, $tabsRect, $editorRect);
             }
 
@@ -189,8 +189,8 @@ final class MouseRouter
         $this->paneDrag = null;
         $this->treeDrag->cancel();
         $this->pointers->of($this->views->activeId())->cancelDrag();
-        $this->welcome->cancelDrag();
-        $this->panes->editor->cancelFindModalDrag();
+        $this->windows->cancelDrag();
+        $this->panes->editor->cancelWindowDrags();
         $this->layout->cancelDrags();
 
         // The toast stack floats above every modal: its × dismisses, a card
@@ -241,17 +241,17 @@ final class MouseRouter
     }
 
     /**
-     * Continue an armed Find-in-Files drag (corner resize or title-bar move)
-     * in screen coordinates — the modal floats over the whole workspace, so
-     * no pane clamps the pointer; the modal's own layout clamps the box.
-     * False when nothing is armed.
+     * Continue an armed move or resize of Find in Files or a picker in screen
+     * coordinates — they float over the whole workspace, so no pane clamps
+     * the pointer; each window's frame clamps its box. False when nothing is
+     * armed.
      */
-    private function continueFindModalDrag(MouseEvent $mouse): bool
+    private function continueWindowDrag(MouseEvent $mouse): bool
     {
         if (!$mouse->isLeftDrag() && !$mouse->isLeftRelease()) {
             return false;
         }
-        if (!$this->panes->editor->continueFindModalDrag($mouse->row, $mouse->col, $mouse->isLeftRelease())) {
+        if (!$this->panes->editor->continueWindowDrag($mouse->row, $mouse->col, $mouse->isLeftRelease())) {
             return false;
         }
         $this->tui->requestRender();
@@ -404,8 +404,8 @@ final class MouseRouter
      */
     private function handleModalPopupClick(MouseEvent $mouse, ?WidgetRect $editorRect, FullView $fullViewOpen = FullView::Closed): bool
     {
-        // The completion popup is unreachable while a full view (git/settings)
-        // owns the main area (the editor is detached); only the menus below
+        // The completion popup is unreachable while a view window covers the
+        // editor; only the menus below
         // can claim the click. The floating pickers get their screen-coords
         // branch after the menus — dropdowns paint above them.
         if (
@@ -496,9 +496,11 @@ final class MouseRouter
             return true;
         }
 
-        // The Welcome modal, after the menus (the menu bar stays reachable over
-        // it): ×/drag/select inside the box, swallowed everywhere else.
-        return $this->welcome->press($mouse);
+        // The Welcome modal, then the view window's frame, after the menus
+        // (the menu bar stays reachable over both): the ×, a drag or a click
+        // outside. A press on the view window's content falls through to the
+        // view's own pointer, below.
+        return $this->windows->press($mouse);
     }
 
     /** A left press on the panes, tried front-to-back; the editor is the final target. */

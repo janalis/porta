@@ -76,6 +76,34 @@ final class OverlayDelivery
     }
 
     /**
+     * Push a view window's boxes through every current pane's window slot —
+     * the lowest floating layer, so a picker opened over it floats above —
+     * dimming the panes beneath. The modal slot is left alone: a picker
+     * open over the window keeps its own box and dim.
+     *
+     * @param list<array{rows: list<string>, top: int, col: int, width: int, ltr?: bool}> $boxes
+     */
+    public function deliverWindow(array $boxes): void
+    {
+        $mirrored = $this->translator->isRtl();
+        foreach ($this->panes->current() as $pane) {
+            $pane->setWindowOverlay($mirrored ? [] : $this->spans($boxes, $this->renderer->getWidgetRect($pane)));
+            $pane->setWindowBackdrop(true);
+        }
+        $this->onLayer($this->layer->setWindow($mirrored ? $this->spans($boxes, FloatingLayer::rect()) : []));
+    }
+
+    /** Clear the window slot and its backdrop on every pane. */
+    public function clearWindow(): void
+    {
+        foreach ($this->panes->current() as $pane) {
+            $pane->setWindowOverlay([]);
+            $pane->setWindowBackdrop(false);
+        }
+        $this->onLayer($this->layer->setWindow([]));
+    }
+
+    /**
      * Push the boxes through every current pane's modal span slot, dimming
      * the panes beneath them. A box marked `ltr` is verbatim, never mirrored,
      * and casts its shadow as it would left-to-right.
@@ -95,7 +123,7 @@ final class OverlayDelivery
     /** Clear the modal slot and the backdrop on every pane set. */
     public function clearModal(): void
     {
-        foreach ($this->panes->all() as $pane) {
+        foreach ($this->panes->current() as $pane) {
             $pane->setModalOverlay([]);
             $pane->setModalBackdrop(false);
         }
@@ -120,7 +148,7 @@ final class OverlayDelivery
     /** Clear the toast slot on every pane set. */
     public function clearToast(): void
     {
-        foreach ($this->panes->all() as $pane) {
+        foreach ($this->panes->current() as $pane) {
             $pane->setToastOverlay([]);
         }
         $this->onLayer($this->layer->setToast([]));
@@ -145,7 +173,7 @@ final class OverlayDelivery
     /** Clear the tooltip slot on every pane set. */
     public function clearTooltip(): void
     {
-        foreach ($this->panes->all() as $pane) {
+        foreach ($this->panes->current() as $pane) {
             $pane->setTooltipOverlay([]);
         }
         $this->onLayer($this->layer->setTooltip([]));

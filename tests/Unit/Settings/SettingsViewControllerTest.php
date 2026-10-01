@@ -25,7 +25,6 @@ use Porta\Highlight\NoHighlightPlugins;
 use Porta\Highlight\TerminalThemeFactory;
 use Porta\I18n\Translator;
 use Porta\Input\HitTester;
-use Porta\Layout\EditorAreaPanes;
 use Porta\Layout\ViewRegions;
 use Porta\Lsp\BufferReopener;
 use Porta\Lsp\FormatOnSave;
@@ -96,8 +95,10 @@ use Porta\Workbench\Menu\ListboxOpener;
 use Porta\Workbench\Menu\MenuContributions;
 use Porta\Workbench\Menu\MenuRebuilder;
 use Porta\Workbench\Notifier;
+use Porta\Workbench\View\ViewCommandGate;
 use Porta\Workbench\View\ViewHost;
 use Porta\Workbench\View\ViewRegistry;
+use Porta\Workbench\View\ViewWindow;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Keybindings;
@@ -245,7 +246,7 @@ final class SettingsViewControllerTest extends TestCase
             $editor,
             $liveKeys,
             new Translator('en'),
-            new ViewRegistry(),
+            new ViewCommandGate(new ViewRegistry(), new MenuContributions()),
             new PluginManager(new EventDispatcher(), $this->pluginSettings ?? new PluginSettings($this->project->dir, [], null, $scope)),
             new MenuContributions(),
         );
@@ -331,18 +332,8 @@ final class SettingsViewControllerTest extends TestCase
             $this->keymapList,
             $regions,
             $this->host = new ViewHost(
-                $this->main,
+                new ViewWindow($this->main),
                 $menuBar,
-                new readonly class($editWidget) implements EditorAreaPanes {
-                    public function __construct(
-                        private ContainerWidget $editWidget,
-                    ) {}
-
-                    public function orderedEditorPanes(): array
-                    {
-                        return [$this->editWidget];
-                    }
-                },
                 $editorArea,
                 $this->tui,
             ),
@@ -387,7 +378,7 @@ final class SettingsViewControllerTest extends TestCase
                 $this->tui,
                 $renderer,
                 $menuBar,
-                new MenuOverlayController($renderer, $menuBar, $this->contextMenu, new MenuOverlayPanes([$this->form], static fn (): array => [])),
+                new MenuOverlayController($renderer, $menuBar, $this->contextMenu, new MenuOverlayPanes([$this->form])),
                 $this->contextMenu,
             ),
         );
@@ -537,12 +528,13 @@ final class SettingsViewControllerTest extends TestCase
         $this->assertStringContainsString('LSP server', $screen, 'the language section also shows its LSP server row');
 
         // Actuate the indent-style row (auto → spaces) → persists to the languages block.
-        // Pane row 0 is the title, rows 1-3 the boxed "Save changes to" lead
-        // SettingsScopeRow prepends, row 4 the Indentation legend, so Indent
-        // style's label row is pane row 6: the first click on its label moves
-        // the selection onto it, the second steps it.
-        $this->form->handleClick(6, 0);
-        $this->form->handleClick(6, 0);
+        // Pane rows 0-1 are the title and its blank row, rows 2-4 the boxed
+        // "Save changes to" lead SettingsScopeRow prepends, rows 5-7 the
+        // Indentation legend between its blank rows, so Indent style's label
+        // row is pane row 9: the first click on its label moves the selection
+        // onto it, the second steps it.
+        $this->form->handleClick(9, 0);
+        $this->form->handleClick(9, 0);
         $this->assertSame('spaces', IdeConfig::load($this->project->dir)->languages['php']['indentStyle']);
     }
 
@@ -729,12 +721,13 @@ final class SettingsViewControllerTest extends TestCase
         $controller = $this->controller();
         $controller->open();
 
-        // Pane rows 1-3 are the boxed "Save changes to" lead and row 4 the
-        // Editing legend, so General's first own row, the Auto-pairs
-        // checkbox, is pane row 5 — one click selects and toggles it, as a
+        // Pane rows 0-1 are the title and its blank row, rows 2-4 the boxed
+        // "Save changes to" lead and rows 5-7 the Editing legend between its
+        // blank rows, so General's first own row, the Auto-pairs checkbox,
+        // begins at pane row 8 — one click selects and toggles it, as a
         // label does (default true → false).
         $this->form->render(new RenderContext(80, 24));
-        $this->form->handleClick(5, 0);
+        $this->form->handleClick(8, 0);
         $this->assertFalse(IdeConfig::load($this->project->dir)->settings['autoPairs']);
     }
 
@@ -796,7 +789,7 @@ final class SettingsViewControllerTest extends TestCase
         $controller->open();
         $this->nav->handleInput("\x1b");
         $this->assertFalse($controller->isOpen());
-        $this->assertSame(['edit-stub'], $this->ids($this->main));
+        $this->assertSame([], $this->ids($this->main), 'the window holds nothing once closed');
         $this->assertSame($this->editorWidget, $this->tui->getFocus(), 'close restores focus to the editor area');
 
         $controller = $this->controller();
@@ -925,7 +918,7 @@ final class SettingsViewControllerTest extends TestCase
     {
         $controller = $this->controller();
 
-        $this->assertTrue($controller->ownsMainArea());
+        $this->assertTrue($controller->hostsWindow());
     }
 
     public function testOpenIsIdempotentAndDoesNotResetAnAlreadyOpenView(): void

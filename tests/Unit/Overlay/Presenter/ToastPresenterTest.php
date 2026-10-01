@@ -51,7 +51,7 @@ final class ToastPresenterTest extends TestCase
         $this->toasts = new ToastCenter($this->scheduler, $this->tui);
 
         return new ToastPresenter(
-            new OverlayDelivery($this->renderer, new MenuOverlayPanes([$this->pane], static fn (): array => []), $this->tui),
+            new OverlayDelivery($this->renderer, new MenuOverlayPanes([$this->pane]), $this->tui),
             $this->toasts,
             frameHooks: $this->tui,
             ideKeys: new Keybindings(['ide_notifications' => ['alt+9']]),
@@ -252,7 +252,7 @@ final class ToastPresenterTest extends TestCase
         $scheduler = new FakeScheduler();
         $toasts = new ToastCenter($scheduler, $this->tui);
         new ToastPresenter(
-            new OverlayDelivery($this->renderer, new MenuOverlayPanes([$this->pane], static fn (): array => []), $this->tui),
+            new OverlayDelivery($this->renderer, new MenuOverlayPanes([$this->pane]), $this->tui),
             $toasts,
         );
 

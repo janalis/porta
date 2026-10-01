@@ -16,7 +16,8 @@ use Porta\Widget\TerminalPanelWidget;
 /**
  * The chrome roots ChromeInvalidator sweeps on a live theme/locale/cursor/
  * tab-position switch declare themselves with #[AsChromeRoot] (plus the one
- * getter service porta.widget.main tagged at its def). This test builds the
+ * getter services porta.widget.main and porta.widget.window_frame tagged at
+ * their defs). This test builds the
  * container and asserts the `porta.chrome_root` tagged set is exactly the
  * expected roots, so dropping the attribute from a widget — which would
  * silently stop that widget recoloring on a theme switch — fails loudly here.
@@ -40,9 +41,10 @@ final class ChromeRootMembershipTest extends ContainerTestCase
             StatusBarWidget::class,
             TerminalPanelWidget::class,
             'porta.widget.main',
+            'porta.widget.window_frame',
         ];
         \sort($expected);
 
-        $this->assertSame($expected, $actual, 'every chrome root must carry #[AsChromeRoot] (or the porta.widget.main tag)');
+        $this->assertSame($expected, $actual, 'every chrome root must carry #[AsChromeRoot] (or the porta.widget.main and porta.widget.window_frame tags)');
     }
 }

@@ -46,7 +46,7 @@ final class ListboxOpenerTest extends TestCase
             $this->tui,
             $this->renderer,
             $menuBar,
-            new MenuOverlayController($this->renderer, $menuBar, $this->menu, new MenuOverlayPanes([], static fn (): array => [])),
+            new MenuOverlayController($this->renderer, $menuBar, $this->menu, new MenuOverlayPanes([])),
             $this->menu,
         );
     }

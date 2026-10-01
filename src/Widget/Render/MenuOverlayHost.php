@@ -19,6 +19,19 @@ interface MenuOverlayHost
     public function setMenuOverlay(array $spans): void;
 
     /**
+     * A view window's spans (Settings, Git, Review), the lowest floating
+     * layer: every modal, toast, tooltip and menu composites over a window —
+     * a picker opened from one floats above it.
+     *
+     * @param list<array{row: int, col: int, width: int, segment: string}> $spans
+     */
+    public function setWindowOverlay(array $spans): void;
+
+    /** Whether this pane renders faint beneath the window spans (the window's backdrop dim). */
+    // @mago-expect lint:no-boolean-flag-parameter -- the bool IS the domain here, not a hidden second responsibility.
+    public function setWindowBackdrop(bool $on): void;
+
+    /**
      * Floating modal spans (the Welcome modal), composited *under* the menu
      * spans so an open dropdown still renders above the modal.
      *

@@ -8,14 +8,19 @@ use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
-use Porta\Editor\BufferService;
+use Porta\Help\HelpViewController;
 use Porta\History\SessionRestorer;
 use Porta\Ide;
+use Porta\Overlay\Presenter\ViewWindowPresenter;
+use Porta\Overlay\Region\ModalBox;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
+use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\Toasts;
+use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Render\WidgetRect;
@@ -23,15 +28,17 @@ use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 
 /**
- * The F1 help browser: docs render styled in the help viewer (no markdown
- * syntax on screen), Tab cycles the links, Enter/click follows, Backspace
- * goes back, and the help tab coexists with normal buffers.
+ * The F1 help browser: docs render styled in the Documentation window (no
+ * markdown syntax on screen), Tab cycles the links, Enter/click follows,
+ * Backspace goes back, and the window keeps its page across closing and
+ * reopening — no tab is ever opened for it.
  */
 final class IdeDocsTest extends TestCase
 {
     use ClearsPortaLsp;
     use PreservesPath;
     use RunsIde;
+    use ScreenReads;
 
     protected function setUp(): void
     {
@@ -65,7 +72,7 @@ final class IdeDocsTest extends TestCase
                     $this->assertStringNotContainsString('](', $screen);
                     $this->assertStringNotContainsString('**', $screen);
                     $this->assertStringContainsString('Key  Guide', $screen, 'the table renders aligned');
-                    $this->assertStringContainsString('Documentation', $screen, 'the help tab is in the tab bar, titled Documentation');
+                    $this->assertStringContainsString('Documentation', $screen, 'the window is titled Documentation');
 
                     // Typing does not edit anything — there is no document behind the page.
                     $tui->handleInput('x');
@@ -89,18 +96,11 @@ final class IdeDocsTest extends TestCase
                     // history exhausted
                     $this->awaitPainted($tui, $terminal, 'Nowhere to go back to');
                     $this->assertStringContainsString('Nowhere to go back to', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
-                    // Ctrl+Right cycles back to the code tab and Ctrl+Left returns.
-                    $tui->handleInput("\x1b[1;5C");
-                    $this->awaitPainted($tui, $terminal, '<?php');
-                    $this->assertStringContainsString('<?php', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the editor pane swapped back in');
-                    $tui->handleInput("\x1b[1;5D");
-                    $this->awaitPainted($tui, $terminal, 'Guides');
-                    $this->assertStringContainsString('Guides', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'and the help tab returns rendered');
                 },
                 900 => function (Tui $tui, $terminal, Ide $ide): void {
                     $this->frame($tui);
-                    // Re-focus the pane with a click on a blank body row, then
-                    // follow the link again: still ONE help tab, page swapped in place.
+                    // Re-focus the page with a click on a blank body row, then
+                    // follow the link again: no tab opens, the page swaps in place.
                     $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('help-viewer'));
                     $this->assertInstanceOf(WidgetRect::class, $rect, 'the help viewer pane is laid out');
@@ -109,15 +109,16 @@ final class IdeDocsTest extends TestCase
                     $tui->handleInput("\r"); // the focused link is still [Editor] (restored by the earlier back)
                     $this->frame($tui);
                     $paths = \array_map(static fn (Buffer $b): string => $b->path, Services::resolve($ide, BufferManager::class)->all());
-                    $this->assertCount(2, $paths, 'navigation reuses the single help tab (a.php + Documentation)');
+                    $this->assertCount(1, $paths, 'the docs open no tab: only a.php');
                     $this->assertStringEndsWith('editor.md', (string) $tui->getById('help-viewer')->path(), 'the page swapped in place');
 
-                    // A round trip through the code tab must not wipe the trail.
-                    $tui->handleInput("\x1b[1;5C"); // ctrl+right → a.php
+                    // Closing the window (Esc) and reopening it (F1) must not wipe the trail.
+                    $tui->handleInput("\x1b");
                     $this->frame($tui);
-                    $tui->handleInput("\x1b[1;5D"); // ctrl+left → back to the help tab
+                    $this->assertFalse(Services::resolve($ide, ViewRegistry::class)->isOpen('help'), 'Esc closed the window');
+                    $tui->handleInput("\x1bOP");
                     $this->frame($tui);
-                    $this->assertStringEndsWith('editor.md', (string) $tui->getById('help-viewer')->path(), 'the navigated page survived the tab switch');
+                    $this->assertStringEndsWith('editor.md', (string) $tui->getById('help-viewer')->path(), 'the navigated page survived closing the window');
                     $rect = $renderer->getWidgetRect($tui->getById('help-viewer'));
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + 2, $rect->row + 1)); // the ‹ arrow
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $rect->col + 2, $rect->row + 1));
@@ -126,12 +127,12 @@ final class IdeDocsTest extends TestCase
                 },
                 1200 => function (Tui $tui, $terminal): void {
                     $this->frame($tui);
-                    // F10 then ↓: the app-menu dropdown composites OVER the help viewer.
+                    // F10 then ↓: the app-menu dropdown composites OVER the docs window.
                     $tui->handleInput("\x1b[21~");
                     $tui->handleInput("\x1b[B");
                     $this->frame($tui);
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
-                    $this->assertStringContainsString('Save File', $screen, 'the File dropdown is visible over the help pane');
+                    $this->assertStringContainsString('Save File', $screen, 'the File dropdown is visible over the docs window');
                     $tui->handleInput("\x1b");
                 },
             ],
@@ -165,22 +166,23 @@ final class IdeDocsTest extends TestCase
                         what: 'the editor to open its file',
                     );
 
-                    // F1 over the settings view closes it and shows the docs.
+                    // F1 over the Settings window swaps it for the docs.
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                     $this->frame($tui);
                     $tui->handleInput("\x1bOP");
                     $this->frame($tui);
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
-                    $this->assertStringContainsString('Guides', $screen, 'the docs replaced the settings view');
+                    $this->assertStringContainsString('Guides', $screen, 'the docs replaced the Settings window');
 
                     // Click the [Editor] link inside the table: the row reads
-                    // ' F1   Editor' at doc line 7 (the H1 rule is line 1), one
-                    // header row above the body, link text from column 6 —
-                    // derive the screen position from the pane's rect.
+                    // ' F1   Editor' at doc line 7 (the H1 rule is line 1), two
+                    // header rows above the body (the bar and its rule), link
+                    // text from column 6 — derive the screen position from
+                    // the pane's rect.
                     $rect = Services::resolve($ide, Renderer::class)
                         ->getWidgetRect($tui->getById('help-viewer'));
                     $this->assertInstanceOf(WidgetRect::class, $rect, 'the help viewer pane is laid out');
-                    [$linkCol, $linkRow] = [$rect->col + 6 + 1, $rect->row + 1 + 7 + 1]; // 0-based rect → 1-based SGR
+                    [$linkCol, $linkRow] = [$rect->col + 6 + 1, $rect->row + 2 + 7 + 1]; // 0-based rect → 1-based SGR
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $linkCol, $linkRow));
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $linkCol, $linkRow));
                     $this->frame($tui);
@@ -233,7 +235,7 @@ final class IdeDocsTest extends TestCase
                     );
                     $this->assertStringContainsString('https://example.com/x', $written(), 'the opener shim wrote the URL it was handed');
 
-                    // Quit-time session excludes the help tab (asserted after the run).
+                    // Quit-time session holds no docs page (asserted after the run).
                     Services::resolve($ide, SessionRestorer::class)
                         ->save();
                 },
@@ -243,7 +245,7 @@ final class IdeDocsTest extends TestCase
 
         $session = \json_decode((string) \file_get_contents($project->path('.porta/session.json')), associative: true);
         $paths = \array_column($session['buffers'] ?? [], 'path');
-        $this->assertNotContains(\realpath($docs->path('README.md')), $paths, 'help tabs never restore (they would reopen as source)');
+        $this->assertNotContains(\realpath($docs->path('README.md')), $paths, 'the docs are never a buffer to restore');
         $this->assertNotEmpty(\array_filter($paths, static fn (string $p): bool => \str_ends_with($p, 'a.php')), 'the code tab persists');
 
         $this->addToAssertionCount(1);
@@ -321,13 +323,12 @@ final class IdeDocsTest extends TestCase
                     // what gives the header its folder crumb — a flat browser
                     // would leave the whole section unreachable.
                     $docs = \dirname(__DIR__, levels: 2).'/docs';
-                    $buffers = Services::resolve($ide, BufferService::class);
-                    $this->assertInstanceOf(BufferService::class, $buffers, 'the IDE exposes a BufferService');
+                    $window = Services::resolve($ide, HelpViewController::class);
 
-                    $buffers->showHelpPage($docs.'/internals/README.md');
-                    $this->awaitPainted($tui, $terminal, 'Settled questions');
+                    $window->showPage($docs.'/internals/README.md');
+                    $this->awaitPainted($tui, $terminal, 'How Porta is built');
 
-                    $buffers->showHelpPage($docs.'/internals/decisions.md');
+                    $window->showPage($docs.'/internals/decisions.md');
                     $this->awaitPainted($tui, $terminal, 'measured and rejected');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringNotContainsString('# Settled questions', $screen, 'rendered, not source');
@@ -347,14 +348,14 @@ final class IdeDocsTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                300 => function (Tui $tui, $terminal): void {
+                300 => function (Tui $tui, $terminal, Ide $ide): void {
                     $tui->handleInput("\x1bOP"); // F1 → the docs page
                     $this->frame($tui);
                     $this->assertSame('help-viewer', $tui->getFocus()?->getId(), 'the docs page is focused');
 
                     $tui->handleInput("\x06"); // ctrl+f
                     $this->frame($tui);
-                    $this->assertSame('find-bar', $tui->getFocus()?->getId(), 'Ctrl+F opens the find bar over the docs');
+                    $this->assertSame('help-find', $tui->getFocus()?->getId(), 'Ctrl+F opens the window\'s own find bar');
 
                     foreach (\str_split('manual') as $ch) {
                         $tui->handleInput($ch);
@@ -367,6 +368,122 @@ final class IdeDocsTest extends TestCase
                     $tui->handleInput("\x1b"); // esc closes the bar
                     $this->frame($tui);
                     $this->assertSame('help-viewer', $tui->getFocus()?->getId(), 'closing returns focus to the docs page');
+                    $this->assertTrue(Services::resolve($ide, ViewRegistry::class)->isOpen('help'), 'and leaves the window open');
+                },
+            ],
+            docsDir: $docs->dir,
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    /**
+     * The window's own pointer and focus: the wheel scrolls the page, a click
+     * on the find bar focuses it, F6 moves between the bar and the page, and
+     * closing the window with the bar open closes the bar too.
+     */
+    public function testTheDocsWindowsPointerAndFocusRing(): void
+    {
+        $docs = new TempProject([
+            'README.md' => "# Guides\n\n".\str_repeat("A line of manual prose.\n\n", times: 40),
+        ]);
+        $project = new TempProject(['a.php' => "<?php\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                300 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
+                    $views = Services::resolve($ide, ViewRegistry::class);
+                    $views->open('help');
+                    $views->open('help'); // already open: nothing changes
+                    $this->frame($tui);
+                    $page = $tui->getById('help-viewer');
+                    $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($page);
+                    $this->assertInstanceOf(WidgetRect::class, $rect);
+
+                    // The wheel over the page scrolls it; sideways it is not the page's.
+                    $tui->handleInput(\sprintf("\x1b[<65;%d;%dM", $rect->col + 5, $rect->row + 5));
+                    $this->frame($tui);
+                    $this->assertStringNotContainsString('Guides', \implode("\n", $this->screenGrid($tui, $terminal)), 'scrolled past the heading');
+                    $tui->handleInput(\sprintf("\x1b[<67;%d;%dM", $rect->col + 5, $rect->row + 5));
+
+                    // Ctrl+F, then F6 back and forth between the bar and the page.
+                    $tui->handleInput("\x06");
+                    $this->frame($tui);
+                    $this->assertSame('help-find', $tui->getFocus()?->getId());
+                    $tui->handleInput("\x1b[17~");
+                    $this->assertSame('help-viewer', $tui->getFocus()?->getId(), 'F6 to the page');
+                    $tui->handleInput("\x1b[17~");
+                    $this->assertSame('help-find', $tui->getFocus()?->getId(), 'and back to the bar');
+
+                    // A click on the bar focuses it; a hover over one of its
+                    // buttons lights it, and moving off clears it.
+                    $tui->handleInput("\x1b[17~");
+                    $this->frame($tui);
+                    $bar = $tui->getById('help-find');
+                    $find = Services::resolve($ide, Renderer::class)->getWidgetRect($bar);
+                    $this->assertInstanceOf(WidgetRect::class, $find);
+                    $button = null;
+                    for ($row = 0; $row < $find->rows && null === $button; ++$row) {
+                        for ($col = 0; $col < $find->columns && null === $button; ++$col) {
+                            $button = $bar->hoverAt($row, $col) ? [$row, $col] : null;
+                        }
+                    }
+                    $this->assertNotNull($button, 'the bar has a button to light');
+                    $bar->clearHover();
+                    $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $find->col + $button[1] + 1, $find->row + $button[0] + 1));
+                    $this->assertFalse($bar->hoverAt($find->row + $button[0] - $find->row, $button[1]), 'the pointer already lit it');
+                    $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $rect->col + 5, $rect->row + 8));
+                    $this->assertTrue($bar->hoverAt($button[0], $button[1]), 'moving off cleared it');
+                    $bar->clearHover();
+
+                    // A press on the window's padding, beside both, is nobody's.
+                    $box = Services::resolve($ide, ViewWindowPresenter::class)->box();
+                    $this->assertInstanceOf(ModalBox::class, $box);
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $box->col + 10, $box->startRow + 1 + 1));
+                    $this->assertTrue($views->isOpen('help'), 'the padding is the window: it stays open');
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $find->col + 3, $find->row + 1));
+                    $this->assertSame('help-find', $tui->getFocus()?->getId(), 'the click focused the bar');
+
+                    // A click on the page focuses it.
+                    $this->frame($tui);
+                    $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($page);
+                    $this->assertInstanceOf(WidgetRect::class, $rect);
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + 5, $rect->row + 6));
+                    $this->assertSame('help-viewer', $tui->getFocus()?->getId(), 'the click focused the page');
+
+                    // Closing the window with the bar open closes the bar with it.
+                    $tui->handleInput("\x1bOP"); // F1 toggles it shut
+                    $this->assertFalse($views->isOpen('help'));
+                    $views->open('help');
+                    $this->frame($tui);
+                    $this->assertSame('help-viewer', $tui->getFocus()?->getId(), 'reopened on the page, the bar gone');
+                    $tui->handleInput("\x1b[17~");
+                    $this->assertSame('help-viewer', $tui->getFocus()?->getId(), 'with no bar, F6 stays on the page');
+                },
+            ],
+            docsDir: $docs->dir,
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    /** Docs with no front page: F1 opens no empty window, and says why. */
+    public function testF1WithNoFrontPageOpensNothing(): void
+    {
+        $docs = new TempProject(['editor.md' => "# Editor guide\n"]);
+        $project = new TempProject(['a.php' => "<?php\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                300 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
+                    $tui->handleInput("\x1bOP");
+
+                    $this->assertFalse(Services::resolve($ide, ViewRegistry::class)->isOpen('help'));
+                    $this->assertStringContainsString('Cannot read', Toasts::last($ide));
                 },
             ],
             docsDir: $docs->dir,

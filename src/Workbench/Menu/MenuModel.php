@@ -168,7 +168,7 @@ final class MenuModel
     ];
 
     /**
-     * @param (\Closure(): ?string)|null $activeView  while a view is active, only its {@see VIEW_SAFE} items stay enabled
+     * @param (\Closure(string, string): void)|null $beforeRun called with an item's scope and id before it runs (the open view's gate)
      * @param list<PluginMenuSpec>              $pluginSpecs runtime plugin entries — a Plugins menu between Code and Run when non-empty
      * @param list<MenuContribution>            $contributions top-level menus core does not own; each is placed after its `after` title
      *
@@ -179,26 +179,17 @@ final class MenuModel
         EditorCommandTarget $editor,
         Keybindings $ideKeys,
         Translator $translator,
-        ?\Closure $activeView = null,
+        ?\Closure $beforeRun = null,
         array $pluginSpecs = [],
         array $contributions = [],
     ): array {
-        $viewSafe = self::VIEW_SAFE;
-        foreach ($contributions as $contribution) {
-            if ('' === $contribution->viewId) {
-                continue;
-            }
-
-            $viewSafe[$contribution->viewId] = [...($viewSafe[$contribution->viewId] ?? []), ...$contribution->viewSafe];
-        }
-
         $menus = [];
         foreach (self::DEFS as $title => $specs) {
-            $menus[] = new Menu($translator->trans($title), self::items($specs, $commands, $editor, $ideKeys, $translator, $activeView, $viewSafe));
+            $menus[] = new Menu($translator->trans($title), self::items($specs, $commands, $editor, $ideKeys, $translator, $beforeRun));
             if ('Code' === $title && [] !== $pluginSpecs) {
                 $menus[] = new Menu(
                     $translator->trans('Plugins'),
-                    self::items(self::groupByPlugin($pluginSpecs), $commands, $editor, $ideKeys, $translator, $activeView, $viewSafe),
+                    self::items(self::groupByPlugin($pluginSpecs), $commands, $editor, $ideKeys, $translator, $beforeRun),
                 );
             }
             foreach ($contributions as $contribution) {
@@ -207,7 +198,7 @@ final class MenuModel
                 }
                 $menus[] = new Menu(
                     $translator->trans($contribution->title),
-                    self::items($contribution->items, $commands, $editor, $ideKeys, $translator, $activeView, $viewSafe),
+                    self::items($contribution->items, $commands, $editor, $ideKeys, $translator, $beforeRun),
                 );
             }
         }
@@ -252,9 +243,8 @@ final class MenuModel
      * in the File menu, so skipping it would render them adjacent — hence a
      * separator that follows a separator, or trails the list, is dropped.
      *
-     * @param list<string|PluginMenuSpec>   $specs
-     * @param (\Closure(): ?string)|null    $activeView
-     * @param array<string, list<string>>   $viewSafe the ids each open view leaves enabled
+     * @param list<string|PluginMenuSpec>          $specs
+     * @param (\Closure(string, string): void)|null $beforeRun called with an item's scope and id before it runs
      *
      * @return list<MenuItem>
      */
@@ -264,8 +254,7 @@ final class MenuModel
         EditorCommandTarget $editor,
         Keybindings $ideKeys,
         Translator $translator,
-        ?\Closure $activeView = null,
-        array $viewSafe = self::VIEW_SAFE,
+        ?\Closure $beforeRun = null,
     ): array {
         $items = [];
         foreach ($specs as $entry) {
@@ -284,7 +273,7 @@ final class MenuModel
             }
             $items[] = self::SEP === $spec
                 ? MenuItem::separator()
-                : self::item($spec, $commands, $editor, $ideKeys, $translator, $activeView, $viewSafe, $when);
+                : self::item($spec, $commands, $editor, $ideKeys, $translator, $beforeRun, $when);
         }
         while ([] !== $items && $items[\count($items) - 1]->separator) {
             \array_pop($items);
@@ -300,22 +289,8 @@ final class MenuModel
     private const array FILE_SCOPED_IDE = ['reformat', 'ide_local_history', 'git_stage', 'git_blame'];
 
     /**
-     * The only commands that stay enabled while a full view is active — one
-     * list per view, keyed by the id the view supplies. Everything else
-     * targets the detached editor/tree and would act invisibly. Git keeps its
-     * own verbs live; Settings only the ways out; `ide_welcome` is in every
-     * list, not just Welcome's: a user who followed a Welcome step into
-     * Settings must still be able to get back.
-     */
-    private const array VIEW_SAFE = [
-        'settings' => ['ide_quit', 'ide_settings', 'ide_command_palette', 'ide_help', 'ide_welcome'],
-        'welcome' => ['ide_quit', 'ide_welcome', 'ide_command_palette', 'ide_help'],
-    ];
-
-    /**
-     * @param (\Closure(): ?string)|null      $activeView
-     * @param array<string, list<string>>     $viewSafe   the ids each open view leaves enabled
-     * @param (\Closure(): bool)|null         $pluginWhen a plugin item's own enabled gate, ANDed with the view gating
+     * @param (\Closure(string, string): void)|null $beforeRun  called with the item's scope and id before it runs
+     * @param (\Closure(): bool)|null               $pluginWhen a plugin item's own enabled gate
      */
     private static function item(
         string $spec,
@@ -323,8 +298,7 @@ final class MenuModel
         EditorCommandTarget $editor,
         Keybindings $ideKeys,
         Translator $translator,
-        ?\Closure $activeView,
-        array $viewSafe,
+        ?\Closure $beforeRun,
         ?\Closure $pluginWhen = null,
     ): MenuItem {
         [$scope, $id] = \explode(':', $spec, limit: 2);
@@ -334,17 +308,14 @@ final class MenuModel
                 : ActionCatalog::label($id),
         );
         $shortcut = KeyHints::key($id, $editor->getKeybindings(), $ideKeys);
-        $run = 'i' === $scope
-            ? static fn () => $commands->run($id)
-            : static fn () => $editor->runAction($id);
+        $run = static function () use ($scope, $id, $commands, $editor, $beforeRun): void {
+            if (null !== $beforeRun) {
+                $beforeRun($scope, $id);
+            }
+            'i' === $scope ? $commands->run($id) : $editor->runAction($id);
+        };
 
-        $requiresFile = self::requiresOpenFile($scope, $id);
-        $isEnabled = null === $activeView && !$requiresFile
-            ? null
-            : static fn (): bool => match (true) {
-                null !== $activeView && null !== ($activeViewId = $activeView()) => 'i' === $scope && \in_array($id, $viewSafe[$activeViewId] ?? [], strict: true),
-                default => !$requiresFile || null !== $editor->getFilePath(),
-            };
+        $isEnabled = self::requiresOpenFile($scope, $id) ? static fn (): bool => null !== $editor->getFilePath() : null;
         if ('i' === $scope) {
             // A core command's OWN `when` gate, which this item used to ignore:
             // only a plugin item's was ever composed in, so the Run menu offered

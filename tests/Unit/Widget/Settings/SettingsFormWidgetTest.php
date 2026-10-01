@@ -41,7 +41,7 @@ final class SettingsFormWidgetTest extends TestCase
     private function body(array $rendered): array
     {
         return \array_values(\array_filter(
-            \array_slice($rendered, offset: 1, length: -1),
+            \array_slice($rendered, offset: 2, length: -1),
             static fn (string $line): bool => 1 !== \preg_match('/^\s*─ |[╭╮╰╯┏┓┗┛╔╗╚╝]/u', AnsiUtils::stripAnsiCodes($line)),
         ));
     }
@@ -158,7 +158,7 @@ final class SettingsFormWidgetTest extends TestCase
         $this->assertSame([], $changes, 'a button has no value to step back');
 
         $widget->handleInput("\r"); // Enter actuates
-        $widget->handleClick(2, 0); // so does a click on the selected item
+        $widget->handleClick(3, 0); // so does a click on the selected item's label
         $this->assertSame(
             [
                 ['pluginRemove:project:demo', 'Remove'],
@@ -230,12 +230,12 @@ final class SettingsFormWidgetTest extends TestCase
     public function testFocusedSelectionIsHighlightedAndMovesWithArrows(): void
     {
         $widget = $this->widget();
-        $rendered = $widget->render(new RenderContext(60, 8));
+        $rendered = $widget->render(new RenderContext(60, 9));
         $this->assertStringContainsString("\x1b[48;5;31m", $this->body($rendered)[0], 'row 0 selected + focused');
 
         $widget->handleInput("\x1b[B"); // down
         $this->assertSame(1, Probe::object($widget, 'list')->selected());
-        $rendered = $widget->render(new RenderContext(60, 8));
+        $rendered = $widget->render(new RenderContext(60, 9));
         $this->assertStringNotContainsString("\x1b[48;5;31m", $this->body($rendered)[0]);
         $this->assertStringContainsString("\x1b[48;5;31m", $this->body($rendered)[1], 'the highlight followed');
 
@@ -363,21 +363,21 @@ final class SettingsFormWidgetTest extends TestCase
      * A click SELECTS; only a click on the already-selected row actuates.
      *
      * The first click used to mutate outright, so a stray click on this screen
-     * toggled a setting or armed a plugin removal. Pane row 0 is the title,
-     * then three boxed checkboxes (rows 1-9); Theme's label sits on its box's
-     * middle row, pane row 11.
+     * toggled a setting or armed a plugin removal. Pane rows 0-1 are the title
+     * and its blank row, then three boxed checkboxes (rows 2-10); Theme's label
+     * sits on its box's middle row, pane row 12.
      */
     public function testAFirstClickSelectsWithoutChangingAnything(): void
     {
         $widget = $this->widget($changes);
         $widget->render(new RenderContext(60, 20)); // a click lands on what was drawn
 
-        $widget->handleClick(11, 0); // Theme's label
+        $widget->handleClick(12, 0); // Theme's label
 
         $this->assertSame(3, Probe::object($widget, 'list')->selected(), 'the click moved the selection');
         $this->assertSame([], $changes, 'and changed nothing');
 
-        $widget->handleClick(11, 0); // the same row, now selected
+        $widget->handleClick(12, 0); // the same row, now selected
 
         $this->assertSame([['theme', 'light']], $changes, 'the second click actuates');
     }
@@ -393,12 +393,12 @@ final class SettingsFormWidgetTest extends TestCase
         $widget = $this->widget($changes);
         $widget->render(new RenderContext(60, 20));
 
-        $widget->handleClick(5, 0); // pane row 5 = the second setting's label, a checkbox's middle row
+        $widget->handleClick(6, 0); // pane row 6 = the second setting's label, a checkbox's middle row
 
         $this->assertSame(1, Probe::object($widget, 'list')->selected());
         $this->assertSame([['relativeLineNumbers', true]], $changes, 'selected and toggled at once');
 
-        $widget->handleClick(4, 25); // the box's own top border: every row of the box is its target
+        $widget->handleClick(5, 25); // the box's own top border: every row of the box is its target
         $this->assertCount(2, $changes);
     }
 
@@ -408,12 +408,12 @@ final class SettingsFormWidgetTest extends TestCase
         $widget->setRows([new SettingsRow('sticky', 'Sticky scroll', SettingsRowKind::Bool, false, false, disabled: true)], 'T');
         $screen = \array_map(AnsiUtils::stripAnsiCodes(...), $widget->render(new RenderContext(60, 8)));
 
-        $widget->handleClick(2, 0);
-        $widget->handleClick(2, 0);
+        $widget->handleClick(3, 0);
+        $widget->handleClick(3, 0);
 
         $this->assertSame([], $changes);
-        $this->assertMatchesRegularExpression('/^\s+╭┄┄┄╮/u', $screen[1], 'and says so: its box is dashed');
-        $this->assertMatchesRegularExpression('/Sticky scroll\s+┆   ┆/u', $screen[2]);
+        $this->assertMatchesRegularExpression('/^\s+╭┄┄┄╮/u', $screen[2], 'and says so: its box is dashed');
+        $this->assertMatchesRegularExpression('/Sticky scroll\s+┆   ┆/u', $screen[3]);
     }
 
     public function testAClickOnTheTitleOrPastTheLastRowDoesNothing(): void
@@ -525,7 +525,7 @@ final class SettingsFormWidgetTest extends TestCase
      */
     public function testASelectedTextRowKeepsItsForegroundPastTheRail(): void
     {
-        $row = $this->body($this->textWidget()->render(new RenderContext(60, 4)))[0];
+        $row = $this->body($this->textWidget()->render(new RenderContext(60, 5)))[0];
 
         $this->assertStringContainsString("\x1b[39m\x1b[38;5;231m phpactor", $row);
     }
@@ -538,7 +538,7 @@ final class SettingsFormWidgetTest extends TestCase
 
         $widget->handleInput('-');
         $widget->handleInput('x');
-        $this->assertStringContainsString('phpactor-x', AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(60, 6))[2]));
+        $this->assertStringContainsString('phpactor-x', AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(60, 7))[3]));
 
         $widget->handleInput("\x7f"); // backspace
         $widget->handleInput("\r"); // Enter commits
@@ -598,9 +598,9 @@ final class SettingsFormWidgetTest extends TestCase
     {
         $widget = $this->textWidget($changes);
         $widget->render(new RenderContext(60, 10));
-        $widget->handleClick(5, 0); // pane row 5 = the empty text row's value row (each box is three): selects it
+        $widget->handleClick(6, 0); // pane row 6 = the empty text row's value row (title, blank, then boxes of three): selects it
         $this->assertNull(Probe::get($widget, 'editing'), 'the first click only selects');
-        $widget->handleClick(4, 30); // the second, on its box's top border, opens the editor
+        $widget->handleClick(5, 30); // the second, on its box's top border, opens the editor
         $this->assertNotNull(Probe::get($widget, 'editing'));
         $this->assertSame(1, Probe::object($widget, 'list')->selected());
 
@@ -701,7 +701,7 @@ final class SettingsFormWidgetTest extends TestCase
             new SettingsRow(key: 'lspServer', label: 'LSP server', kind: SettingsRowKind::Text, value: 'phpactor', restart: false),
         ]);
 
-        $screen = AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(60, 5))[2]);
+        $screen = AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(60, 6))[3]);
 
         $this->assertStringContainsString('phpactor', $screen);
         $this->assertStringNotContainsString('Z', $screen, 'the stale editor from before setRows() must not render');
@@ -756,14 +756,14 @@ final class SettingsFormWidgetTest extends TestCase
             $rows[] = new SettingsRow(key: "t{$i}", label: "Toggle {$i}", kind: SettingsRowKind::Bool, value: false, restart: false);
         }
         $widget->setRows($rows);
-        $widget->render(new RenderContext(60, 6)); // 1 title + 4 settings + the legend
+        $widget->render(new RenderContext(60, 7)); // the title and its blank row, 4 rows of settings, the legend
 
-        $widget->handleClick(5, 0); // the legend
-        $widget->handleClick(5, 0); // again — on an already-selected row this ACTUATES
+        $widget->handleClick(6, 0); // the legend
+        $widget->handleClick(6, 0); // again — on an already-selected row this ACTUATES
 
         $this->assertSame(0, Probe::object($widget, 'list')->selected(), 'the legend is not a setting');
         $this->assertSame([], $changes, 'and clicking it writes no config');
-        $this->assertFalse($widget->hoverRow(5), 'nor does it tint a row that was never drawn');
+        $this->assertFalse($widget->hoverRow(6), 'nor does it tint a row that was never drawn');
     }
 
     public function testClickActuatesAChoiceRowByExactlyOneStep(): void
@@ -772,7 +772,7 @@ final class SettingsFormWidgetTest extends TestCase
         $widget->setRows([new SettingsRow(key: 'theme', label: 'Theme', kind: SettingsRowKind::Choice, value: 'dark', restart: false, options: ['dark', 'mid', 'light'])]);
 
         $widget->render(new RenderContext(60, 8)); // the clicks land on what was drawn
-        $widget->handleClick(2, 0); // the selected item's label row, left of the select: a click actuates it
+        $widget->handleClick(3, 0); // the selected item's label row, left of the select: a click actuates it
 
         $this->assertSame([['theme', 'mid']], $changes, 'a click steps by exactly one option, not two');
     }
@@ -853,7 +853,7 @@ final class SettingsFormWidgetTest extends TestCase
         $widget->setFocused(true);
         $widget->setRows($rows);
 
-        // A ten-row pane: a title, eight settings and a footer.
+        // A ten-row pane: a title, its blank row, seven rows of settings and a footer.
         $this->assertTrue($this->hasSettingRow($widget->render(new RenderContext(60, 10)), 'Setting 0'));
         $this->assertFalse($this->hasSettingRow($widget->render(new RenderContext(60, 10)), 'Setting 20'), 'row 20 is below the fold to begin with');
 
@@ -906,7 +906,7 @@ final class SettingsFormWidgetTest extends TestCase
 
     public function testBlankPaddingRowsContinueRatherThanStoppingTheLoop(): void
     {
-        $lines = $this->widget()->render(new RenderContext(60, 20)); // 5 boxes (15 rows) + 3 blank
+        $lines = $this->widget()->render(new RenderContext(60, 20)); // title + blank, 5 boxes (15 rows), 2 blank, the footer
 
         $this->assertStringContainsString('Inline diagnostics', AnsiUtils::stripAnsiCodes($this->body($lines)[0]), 'the first real row still renders after the loop keeps going past index bounds');
         $this->assertCount(20, $lines);
@@ -926,7 +926,7 @@ final class SettingsFormWidgetTest extends TestCase
             new SettingsRow(key: 'c', label: 'Sticky', kind: SettingsRowKind::Bool, value: true, restart: false),
         ]);
 
-        $rendered = $widget->render(new RenderContext(60, 10));
+        $rendered = $widget->render(new RenderContext(60, 11));
 
         foreach ([0, 1, 2] as $i) {
             $this->assertStringStartsWith('  ', AnsiUtils::stripAnsiCodes($this->body($rendered)[$i]), 'an unmarked row leaves the marker column blank');
@@ -1052,7 +1052,7 @@ final class SettingsFormWidgetTest extends TestCase
         $widget->setRows([new SettingsRow(key: 'k', label: 'A very long label that will not fit', kind: SettingsRowKind::Text, value: \str_repeat('x', times: 100), restart: false)]);
         $widget->handleInput("\r"); // edit: the caret sits at the end of 100 x's
 
-        $screen = AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(20, 4))[1]);
+        $screen = AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(20, 4))[2]);
 
         // Truncation would keep the LEFT edge (the label); scroll-to-caret
         // keeps the caret (the tail of the value) in view instead.
@@ -1065,7 +1065,7 @@ final class SettingsFormWidgetTest extends TestCase
         $widget = new SettingsFormWidget(new Translator('en'));
         $widget->setRows([new SettingsRow(key: 'k', label: 'A very long label that will not fit at all', kind: SettingsRowKind::Bool, value: true, restart: false)]);
 
-        $screen = AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(20, 4))[1]);
+        $screen = AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(20, 4))[2]);
 
         $this->assertStringStartsWith('  A very long', $screen, 'not being edited: the left edge (marker column, then label) is kept, not scrolled');
     }
@@ -1082,10 +1082,10 @@ final class SettingsFormWidgetTest extends TestCase
         $widget = $this->textWidget();
         $widget->setFocused(true);
         $widget->handleInput("\r");
-        $focused = $widget->render(new RenderContext(60, 4))[1];
+        $focused = $widget->render(new RenderContext(60, 5))[2];
 
         $widget->setFocused(false);
-        $unfocused = $widget->render(new RenderContext(60, 4))[1];
+        $unfocused = $widget->render(new RenderContext(60, 5))[2];
 
         $this->assertNotSame($focused, $unfocused, 'the caret visibility marker must differ between focused and unfocused edit');
     }
@@ -1100,7 +1100,7 @@ final class SettingsFormWidgetTest extends TestCase
         $widget = new SettingsFormWidget(new Translator('en'));
         $widget->setRows([new SettingsRow(key: 'k', label: 'K', kind: SettingsRowKind::Text, value: 'set', restart: false, hint: 'auto: none')]);
 
-        $screen = AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(60, 5))[2]);
+        $screen = AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(60, 6))[3]);
 
         $this->assertStringContainsString('set', $screen);
         $this->assertStringContainsString('auto: none', $screen, 'the hint survives a row that has a value');
@@ -1118,7 +1118,7 @@ final class SettingsFormWidgetTest extends TestCase
             new SettingsRow(key: 'e', label: 'Action', kind: SettingsRowKind::Action, value: 'Go', restart: false, hint: 'action hint'),
         ]);
 
-        $screen = AnsiUtils::stripAnsiCodes(\implode("\n", $widget->render(new RenderContext(80, 16))));
+        $screen = AnsiUtils::stripAnsiCodes(\implode("\n", $widget->render(new RenderContext(80, 17))));
 
         foreach (['bool hint', 'choice hint', 'int hint', 'text hint', 'action hint'] as $hint) {
             $this->assertStringContainsString($hint, $screen, $hint.' must reach the screen');
@@ -1153,15 +1153,15 @@ final class SettingsFormWidgetTest extends TestCase
         $widget = $this->widget(); // the selection starts on item 0
         $widget->render(new RenderContext(60, 20)); // the pointer lands on what was drawn
 
-        $this->assertTrue($widget->hoverRow(5), 'hovering another item tints it');
-        $this->assertFalse($widget->hoverRow(4), 'another row of the same item: no change');
+        $this->assertTrue($widget->hoverRow(6), 'hovering another item tints it');
+        $this->assertFalse($widget->hoverRow(5), 'another row of the same item: no change');
         $lines = $widget->render(new RenderContext(60, 20));
         $this->assertStringContainsString("\x1b[48;5;236m", $this->body($lines)[1], 'the hovered item sits on RowHighlightBg (body() keeps one label row per item)');
         $this->assertStringNotContainsString("\x1b[48;5;236m", $this->body($lines)[0], 'the selection keeps its own shade');
 
         $this->assertTrue($widget->hoverRow(99), 'past the rows the tint clears (a change)');
         $this->assertFalse($widget->clearHover(), 'already clear');
-        $widget->hoverRow(1);
+        $widget->hoverRow(2);
         $this->assertTrue($widget->clearHover());
         $this->assertStringNotContainsString("\x1b[48;5;236m", \implode('', $widget->render(new RenderContext(60, 12))));
     }
@@ -1195,7 +1195,7 @@ final class SettingsFormWidgetTest extends TestCase
 
         $shown = \implode("\n", \array_map(
             static fn (string $line): string => AnsiUtils::stripAnsiCodes(Bidi::reorder($line, BaseDirection::Rtl)),
-            $this->body($widget->render(new RenderContext(58, 4))),
+            $this->body($widget->render(new RenderContext(58, 5))),
         ));
 
         $this->assertMatchesRegularExpression('/[^ ]  Markdown/u', $shown, 'two columns part the control from the label');
@@ -1218,7 +1218,7 @@ final class SettingsFormWidgetTest extends TestCase
             AttachedStyles::attach($widget);
             $widget->setRows([new SettingsRow('sticky', $label, SettingsRowKind::Bool, true, false)], 'T');
 
-            $line = AnsiUtils::stripAnsiCodes($this->body($widget->render(new RenderContext(58, 4)))[0]);
+            $line = AnsiUtils::stripAnsiCodes($this->body($widget->render(new RenderContext(58, 5)))[0]);
             $control = \mb_strpos($line, needle: '✓', encoding: 'UTF-8');
             $this->assertNotFalse($control, 'the row drew its checkbox');
             $widths[$locale] = AnsiUtils::visibleWidth(\mb_substr($line, start: 0, length: $control, encoding: 'UTF-8'));
@@ -1275,7 +1275,7 @@ final class SettingsFormWidgetTest extends TestCase
         AttachedStyles::attach($widget);
         $widget->setRows([new SettingsRow('lsp', 'שרת LSP', SettingsRowKind::Bool, true, false)], 'T');
 
-        $line = $this->body($widget->render(new RenderContext(56, 4)))[0];
+        $line = $this->body($widget->render(new RenderContext(56, 5)))[0];
         $mirrored = AnsiUtils::stripAnsiCodes(Bidi::reorder($line, BaseDirection::Rtl));
 
         // Under RTL the label sits at the right and the control to its left, so
@@ -1297,7 +1297,7 @@ final class SettingsFormWidgetTest extends TestCase
         AttachedStyles::attach($widget);
         $widget->setRows([$row], $translator->trans('Interface'));
 
-        $line = $this->body($widget->render(new RenderContext(58, 4)))[0];
+        $line = $this->body($widget->render(new RenderContext(58, 5)))[0];
         $mirrored = AnsiUtils::stripAnsiCodes(Bidi::reorder($line, BaseDirection::Rtl));
 
         $this->assertStringContainsString($expected, $mirrored, 'the value reads as one intact block');
@@ -1361,7 +1361,7 @@ final class SettingsFormWidgetTest extends TestCase
             new SettingsRow('theme', $translator->trans('Theme'), SettingsRowKind::Choice, 'dark', false, ['dark', 'light']),
         ], $translator->trans('Interface'));
 
-        $row = $this->body($widget->render(new RenderContext(58, 4)))[0];
+        $row = $this->body($widget->render(new RenderContext(58, 5)))[0];
         $mirrored = Bidi::reorder($row, BaseDirection::Rtl);
 
         $this->assertStringNotContainsString("\u{200E}", $mirrored, 'no mark reaches the terminal');

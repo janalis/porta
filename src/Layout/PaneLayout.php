@@ -9,18 +9,17 @@ use Porta\I18n\PaneReorder;
 use Porta\I18n\Translator;
 use Porta\Ui\BidiTui;
 use Porta\Ui\PaneSegmenter;
-use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 use Symfony\Component\Tui\Widget\ContainerWidget;
 
 /**
- * The RTL-aware pane ordering for the three horizontal areas (editor, git,
- * settings): owns their canonical LTR pane lists, arranges each area's
+ * The RTL-aware pane ordering for the horizontal areas (the editor's and
+ * every view's): owns their canonical LTR pane lists, arranges each area's
  * children in the active writing direction, and re-mirrors everything on a
  * live locale switch (including the per-pane bidi reorder seam on BidiTui).
  */
 #[AsIdeService]
-final class PaneLayout implements EditorAreaPanes
+final class PaneLayout
 {
     /** @var list<AbstractWidget> */
     private readonly array $editorPanes;
@@ -34,23 +33,10 @@ final class PaneLayout implements EditorAreaPanes
         private readonly BidiTui $bidi,
         private readonly PaneSegmenter $segmenter,
         private readonly PaneReorder $reorder,
-        private readonly ViewRegistry $views,
         private readonly ViewRegions $regions,
         private readonly PreviewSplit $previewSplit,
     ) {
         $this->editorPanes = $layout->editorPanes();
-    }
-
-    /**
-     * The editor area's panes in visual order: reversed (sidebar on the right)
-     * for RTL locales. The swapped-in views restore this order on close.
-     *
-     * @return list<AbstractWidget>
-     */
-    #[\Override]
-    public function orderedEditorPanes(): array
-    {
-        return $this->order($this->currentEditorPanes());
     }
 
     public function arrangeEditorArea(): void
@@ -58,30 +44,18 @@ final class PaneLayout implements EditorAreaPanes
         $this->setPanes($this->layout->main, $this->currentEditorPanes());
     }
 
-    /**
-     * Drop the file-tree sidebar from the editor area (narrow terminal). The
-     * swapped-in views pick the collapsed list up through
-     * {@see orderedEditorPanes()} when they restore the editor area.
-     */
+    /** Drop the file-tree sidebar from the editor area (narrow terminal). */
     public function collapseSidebar(): void
     {
         $this->sidebarCollapsed = true;
-        $this->rearrangeEditorAreaIfOwning();
+        $this->arrangeEditorArea();
     }
 
     /** Restore the file-tree sidebar (the terminal is wide enough again). */
     public function expandSidebar(): void
     {
         $this->sidebarCollapsed = false;
-        $this->rearrangeEditorAreaIfOwning();
-    }
-
-    /** Re-arrange the main container only while the editor area owns it (not a swapped-in view). */
-    private function rearrangeEditorAreaIfOwning(): void
-    {
-        if (!$this->views->isAnyOpen()) {
-            $this->arrangeEditorArea();
-        }
+        $this->arrangeEditorArea();
     }
 
     /**
@@ -96,21 +70,28 @@ final class PaneLayout implements EditorAreaPanes
     }
 
     /**
-     * Order every minted view region's panes. Read at call time rather than
-     * captured in the constructor: a region exists once its view has minted
-     * one, and a plugin's view mints after this service is built.
+     * Order every minted view region's panes: left to right in every locale.
+     * A view is drawn in a floating window, and a mirrored frame mirrors a
+     * floating surface across the row — pane order included — where the
+     * editor layout's panes keep their places and only their text reads the
+     * other way. Read at call time rather than captured in the constructor: a
+     * region exists once its view has minted one, and a plugin's view mints
+     * after this service is built.
      */
     public function arrangeViewAreas(): void
     {
         foreach ($this->regions->all() as $region) {
-            $this->setPanes($region->area(), $region->panes());
+            $region->area()->clear();
+            foreach ($region->panes() as $pane) {
+                $region->area()->add($pane);
+            }
         }
     }
 
     /**
-     * Mirror the horizontal layouts for the active writing direction: the git
-     * and settings areas always, and the editor layout when it currently owns
-     * the main container (a swapped-in view restores in order when it closes).
+     * Mirror the horizontal layouts for the active writing direction: every
+     * view's area, and the editor layout, which stays mounted under an open
+     * view window.
      * A no-op until a view has minted a region — the boot-time applyAll()
      * fires before any view controller exists, and build time already ordered
      * the containers for the persisted locale.
@@ -131,9 +112,7 @@ final class PaneLayout implements EditorAreaPanes
         // on the leading side, its preview on the trailing one.
         $this->previewSplit->setMirrored($this->translator->isRtl());
         $this->arrangeViewAreas();
-        if (!$this->views->isAnyOpen()) {
-            $this->arrangeEditorArea();
-        }
+        $this->arrangeEditorArea();
     }
 
     /**

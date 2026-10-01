@@ -105,7 +105,7 @@ trait ReadsSettingsForm
         // is the run of shaded rows, read as one.
         $lines = Paint::lines($form, new RenderContext($columns, $rows));
         $item = [];
-        foreach (\array_slice($lines, offset: 1, length: -1) as $line) {
+        foreach (\array_slice($lines, offset: 2, length: -1) as $line) {
             if (!\str_contains($line, "\x1b[48;5;")) {
                 if ([] !== $item) {
                     break;

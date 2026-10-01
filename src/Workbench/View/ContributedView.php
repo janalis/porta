@@ -9,7 +9,8 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
 use Symfony\Component\Tui\Widget\FocusableInterface;
 
 /**
- * A view that can take over the workspace: its identity, its lifecycle and its
+ * A view that opens over the workspace — in the view window, or as a
+ * floating surface of its own: its identity, its lifecycle, its title and its
  * focus ring.
  *
  * Identity is a STRING the view supplies, not an enum case core declares. The
@@ -18,10 +19,11 @@ use Symfony\Component\Tui\Widget\FocusableInterface;
  * that used to range over `WorkspaceView::cases()` now ranges over what has
  * registered.
  *
- * {@see ownsMainArea()} moved here from the enum for the same reason: whether a
- * view detaches the editor or floats over it is a fact about the view, and the
- * Welcome modal — which floats, so "is the editor detached?" must not count it
- * — is the one that proves the distinction is real rather than decorative.
+ * {@see hostsWindow()} moved here from the enum for the same reason: whether a
+ * view opens in the view window or draws its own floating surface is a fact
+ * about the view, and the Welcome modal — which draws its own, so "is a view
+ * window open?" must not count it — is the one that proves the distinction is
+ * real rather than decorative.
  */
 interface ContributedView
 {
@@ -29,10 +31,15 @@ interface ContributedView
     public function viewId(): string;
 
     /**
-     * Whether opening this view DETACHES the editor layout, rather than
-     * floating over a workspace that stays mounted behind it.
+     * Whether this view opens in the view window — a movable, resizable
+     * window over the editor layout, which stays mounted and dimmed behind
+     * it — rather than drawing a floating surface of its own (the Welcome
+     * modal). Only one window-hosted view is open at a time.
      */
-    public function ownsMainArea(): bool;
+    public function hostsWindow(): bool;
+
+    /** The window's title-bar text, already translated. */
+    public function title(): string;
 
     public function isOpen(): bool;
 

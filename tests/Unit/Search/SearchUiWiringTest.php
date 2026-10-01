@@ -143,7 +143,7 @@ final class SearchUiWiringTest extends TestCase
                 $tui,
                 $renderer = new Renderer(new StyleSheet()),
                 $menuBar = new MenuBarWidget(),
-                new MenuOverlayController($renderer, $menuBar, $this->scopeList = new ContextMenu(), new MenuOverlayPanes([], static fn (): array => [])),
+                new MenuOverlayController($renderer, $menuBar, $this->scopeList = new ContextMenu(), new MenuOverlayPanes([])),
                 $this->scopeList,
             ),
         );

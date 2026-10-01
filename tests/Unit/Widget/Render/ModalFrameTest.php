@@ -4,23 +4,28 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit\Widget\Render;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Porta\Overlay\Region\CloseButton;
+use Porta\Overlay\Region\WindowZone;
 use Porta\Ui\Glyphs;
+use Porta\Ui\Role;
+use Porta\Ui\Theme\HighContrastTheme;
+use Porta\Ui\Theme\MonochromeTheme;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\ModalFrame;
-use Porta\Widget\Render\TabCloseGlyph;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
- * The pooled modal frame: every row exactly the requested width, the × pinned
- * at the box's right edge, the hint yielding on narrow boxes, and the wrap
- * rails enforcing the content width in one place.
+ * The pooled modal frame: every row exactly the requested width, the close
+ * button pinned at the box's edge, and the wrap rails enforcing the content
+ * width in one place.
  */
 final class ModalFrameTest extends TestCase
 {
-    private function plainBar(string $title, int $width, bool $closeHovered = false, string $hint = 'Esc'): string
+    private function plainBar(string $title, int $width, ?WindowZone $hot = null): string
     {
-        return AnsiUtils::stripAnsiCodes(ModalFrame::titleBar($title, $width, Styles::dark(), $closeHovered, $hint));
+        return AnsiUtils::stripAnsiCodes(ModalFrame::titleBar($title, $width, Styles::dark(), $hot));
     }
 
     public function testTheTitleBarIsExactlyTheRequestedWidth(): void
@@ -32,15 +37,15 @@ final class ModalFrameTest extends TestCase
         }
     }
 
-    public function testTheBarCarriesCornersTitleHintAndClose(): void
+    public function testTheBarCarriesCornersTitleAndClose(): void
     {
         $bar = $this->plainBar('Welcome', 24);
 
-        $this->assertSame('╭ Welcome ─────── Esc ×╮', $bar, 'the full bar layout');
+        $this->assertSame('╭─ Welcome ───────────☒╮', $bar, 'the full bar layout: the rule into both corners, no Esc spelled out');
         $this->assertSame(24, \mb_strwidth($bar));
     }
 
-    /** The × sits at width − 2 in every layout — the geometry ModalBox::closeHit mirrors. */
+    /** The ☒ sits at width − 2 in every layout — the geometry ModalBox::closeHit mirrors. */
     public function testTheCloseGlyphSitsAtTheCloseOffset(): void
     {
         foreach ([
@@ -50,41 +55,17 @@ final class ModalFrameTest extends TestCase
         ] as [$title, $width]) {
             $bar = $this->plainBar($title, $width);
 
-            $this->assertSame(Glyphs::CLOSE, \mb_substr($bar, $width - 2, length: 1), "width {$width}");
+            $this->assertSame(Glyphs::WINDOW_CLOSE, \mb_substr($bar, $width - 2, length: 1), "width {$width}");
             $this->assertSame(Glyphs::MODAL_TOP_RIGHT, \mb_substr($bar, $width - 1, length: 1));
         }
     }
 
-    /** room==8 exactly is the boundary: still wide enough to keep the hint. */
-    public function testRoomExactlyAtTheHintThresholdKeepsTheHint(): void
+    /** A title too long for the box yields to the chrome, never the button. */
+    public function testALongTitleYieldsToTheChrome(): void
     {
-        $bar = $this->plainBar('Setup', 18); // room = 18-6-4 = 8
-        $this->assertStringContainsString('Esc', $bar);
+        $bar = $this->plainBar('Settings and more', 14);
 
-        $dropped = $this->plainBar('Setup', 17); // room = 7: one column under
-        $this->assertStringNotContainsString('Esc', $dropped);
-    }
-
-    /** An explicitly empty hint must not itself steal a column from room. */
-    public function testAnEmptyHintReservesNoSeparatorColumn(): void
-    {
-        $withEmptyHint = $this->plainBar('Setup', 18, hint: '');
-        $withDefaultHint = $this->plainBar('Setup', 18);
-
-        // Same box width either way, but the empty-hint bar has one more fill
-        // column where the "Esc" hint and its separator would have sat.
-        $this->assertSame(18, \mb_strwidth($withEmptyHint));
-        $this->assertStringNotContainsString('Esc', $withEmptyHint);
-        $this->assertSame(\mb_substr_count($withEmptyHint, needle: '─'), \mb_substr_count($withDefaultHint, needle: '─') + 4, 'the reclaimed hint+separator+chrome columns become fill');
-    }
-
-    /** A narrow box drops the hint before it crushes the title. */
-    public function testTheHintYieldsOnANarrowBox(): void
-    {
-        $bar = $this->plainBar('Setup', 14);
-
-        $this->assertStringNotContainsString('Esc', $bar);
-        $this->assertStringContainsString('Setup', $bar);
+        $this->assertSame('╭─ Settin… ─☒╮', $bar);
         $this->assertSame(14, \mb_strwidth($bar));
     }
 
@@ -105,14 +86,14 @@ final class ModalFrameTest extends TestCase
     public function testHoveringTheCloseBrightensIt(): void
     {
         $normal = ModalFrame::titleBar('Welcome', 24, Styles::dark());
-        $hovered = ModalFrame::titleBar('Welcome', 24, Styles::dark(), closeHovered: true);
+        $hovered = ModalFrame::titleBar('Welcome', 24, Styles::dark(), hot: WindowZone::Close);
 
-        $this->assertNotSame($normal, $hovered, 'the × restyles under the pointer');
+        $this->assertNotSame($normal, $hovered, 'the ☒ restyles under the pointer');
         $this->assertSame(AnsiUtils::stripAnsiCodes($normal), AnsiUtils::stripAnsiCodes($hovered), 'same text, different shade');
-        // Direction, not just difference: hovered must be the hover face every ×
-        // wears, not merely "a different one" (which the active variant would be).
-        $this->assertStringContainsString(TabCloseGlyph::hovered(Styles::dark()), $hovered);
-        $this->assertStringContainsString(TabCloseGlyph::inactive(Styles::dark()), $normal);
+        // Direction, not just difference: hovered darkens to the deep red, with
+        // no fill behind it, and the resting ☒ is the faint one.
+        $this->assertStringContainsString(Styles::dark()->of(Role::DiagErrorDim)->apply(Glyphs::WINDOW_CLOSE), $hovered);
+        $this->assertStringContainsString(Styles::dark()->of(Role::Gutter)->apply(Glyphs::WINDOW_CLOSE), $normal);
     }
 
     public function testWrapPadsRailsTheContentAndClosesTheBox(): void
@@ -170,5 +151,79 @@ final class ModalFrameTest extends TestCase
         $this->assertSame(1 + ModalFrame::CHROME_ROWS, 1 + \count($body), 'title bar + body = content + chrome rows');
         $this->assertSame(8 + ModalFrame::CHROME_COLS, AnsiUtils::visibleWidth($body[0]));
         $this->assertSame('x', \trim(AnsiUtils::stripAnsiCodes($body[ModalFrame::CHROME_ROWS_TOP - 1]), characters: ' │'), 'content starts CHROME_ROWS_TOP below the box top');
+    }
+
+    /**
+     * Each resize handle heavies under the pointer, and only it: the frame of
+     * a 6-wide, one-row box, as plain text, with $zone hot.
+     *
+     * @return iterable<string, array{WindowZone, list<string>}>
+     */
+    public static function hotHandles(): iterable
+    {
+        yield 'nothing hot' => [WindowZone::Content, ['╭─  ☒╮', '│    │', '│ x  │', '│    │', '╰────╯']];
+        yield 'the top-left corner' => [WindowZone::TopLeft, ['┏─  ☒╮', '│    │', '│ x  │', '│    │', '╰────╯']];
+        yield 'the top-right corner' => [WindowZone::TopRight, ['╭─  ☒┓', '│    │', '│ x  │', '│    │', '╰────╯']];
+        yield 'the left rail' => [WindowZone::Left, ['╭─  ☒╮', '┃    │', '┃ x  │', '┃    │', '╰────╯']];
+        yield 'the right rail' => [WindowZone::Right, ['╭─  ☒╮', '│    ┃', '│ x  ┃', '│    ┃', '╰────╯']];
+        yield 'the bottom border' => [WindowZone::Bottom, ['╭─  ☒╮', '│    │', '│ x  │', '│    │', '╰━━━━╯']];
+        yield 'the bottom-left corner' => [WindowZone::BottomLeft, ['╭─  ☒╮', '│    │', '│ x  │', '│    │', '┗────╯']];
+        yield 'the bottom-right corner' => [WindowZone::BottomRight, ['╭─  ☒╮', '│    │', '│ x  │', '│    │', '╰────┛']];
+    }
+
+    /** @param list<string> $expected */
+    #[DataProvider('hotHandles')]
+    public function testOnlyTheHotHandleHeavies(WindowZone $hot, array $expected): void
+    {
+        $rows = [ModalFrame::titleBar('', 6, Styles::dark(), $hot), ...ModalFrame::wrap(['x'], 2, Styles::dark(), $hot)];
+
+        $this->assertSame($expected, \array_map(AnsiUtils::stripAnsiCodes(...), $rows));
+    }
+
+    public function testAHotHandleIsBrightAndBold(): void
+    {
+        $hot = ModalFrame::wrap(['x'], 2, Styles::dark(), WindowZone::Left)[1];
+
+        $this->assertStringContainsString(Styles::dark()->of(Role::Bright)->withBold()->apply(Glyphs::MODAL_GRAB_VERTICAL), $hot);
+    }
+
+    public function testOnALeftClosePlatformTheCloseLeadsTheTitleBar(): void
+    {
+        $bar = AnsiUtils::stripAnsiCodes(ModalFrame::titleBar('Settings', 24, Styles::dark(), closeButton: CloseButton::Mac));
+
+        $this->assertSame('╭⊗───── Settings ──────╮', $bar, 'the button first, the title in the middle, the rule into the corner');
+        $this->assertSame(24, AnsiUtils::visibleWidth($bar));
+
+        $narrow = AnsiUtils::stripAnsiCodes(ModalFrame::titleBar('Settings', 16, Styles::dark(), closeButton: CloseButton::Mac));
+        $this->assertSame('╭⊗─ Settings ──╮', $narrow, 'too little fill to centre it: the title leads');
+        $this->assertSame(16, AnsiUtils::visibleWidth($narrow));
+    }
+
+    public function testTheMacButtonIsRedAndDarkensUnderThePointer(): void
+    {
+        $red = Styles::dark()->of(Role::DiagError);
+        $resting = ModalFrame::titleBar('Settings', 24, Styles::dark(), closeButton: CloseButton::Mac);
+        $hovered = ModalFrame::titleBar('Settings', 24, Styles::dark(), WindowZone::Close, closeButton: CloseButton::Mac);
+
+        $this->assertStringContainsString($red->apply(Glyphs::WINDOW_CLOSE_MAC), $resting, 'red at rest');
+        $this->assertStringContainsString(Styles::dark()->of(Role::DiagErrorDim)->apply(Glyphs::WINDOW_CLOSE_MAC), $hovered, 'darkened under the pointer, with no fill');
+    }
+
+    /** Without colour there is no deep red: the hover dims, so it still reads. */
+    public function testWithoutColourTheHoverDims(): void
+    {
+        $plain = new Styles(MonochromeTheme::definition());
+        $hovered = ModalFrame::titleBar('Settings', 24, $plain, WindowZone::Close);
+
+        $this->assertStringContainsString($plain->of(Role::Gutter)->withDim()->apply(Glyphs::WINDOW_CLOSE), $hovered);
+    }
+
+    /** High contrast's deep red is its red: the hover dims instead, so it still reads. */
+    public function testAThemeWithOneRedDarkensByDimming(): void
+    {
+        $contrast = new Styles(HighContrastTheme::definition());
+        $hovered = ModalFrame::titleBar('Settings', 24, $contrast, WindowZone::Close, closeButton: CloseButton::Mac);
+
+        $this->assertStringContainsString($contrast->of(Role::DiagError)->withDim()->apply(Glyphs::WINDOW_CLOSE_MAC), $hovered);
     }
 }

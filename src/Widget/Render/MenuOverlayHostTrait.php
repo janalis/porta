@@ -23,6 +23,12 @@ trait MenuOverlayHostTrait
     /** @var list<array{row: int, col: int, width: int, segment: string}> floating dropdown spans to overlay */
     private array $menuOverlay = [];
 
+    /** @var list<array{row: int, col: int, width: int, segment: string}> a view window's spans, under every other layer */
+    private array $windowOverlay = [];
+
+    /** Whether this pane renders faint beneath the window spans. */
+    private bool $windowBackdrop = false;
+
     /** @var list<array{row: int, col: int, width: int, segment: string}> floating modal spans, under the dropdowns */
     private array $modalOverlay = [];
 
@@ -45,6 +51,28 @@ trait MenuOverlayHostTrait
             return;
         }
         $this->menuOverlay = $spans;
+        $this->invalidate();
+    }
+
+    /**
+     * @param list<array{row: int, col: int, width: int, segment: string}> $spans
+     */
+    public function setWindowOverlay(array $spans): void
+    {
+        if ($spans === $this->windowOverlay) {
+            return; // see setMenuOverlay — the repaint-loop guard
+        }
+        $this->windowOverlay = $spans;
+        $this->invalidate();
+    }
+
+    // @mago-expect lint:no-boolean-flag-parameter -- the bool IS the domain here, not a hidden second responsibility.
+    public function setWindowBackdrop(bool $on): void
+    {
+        if ($on === $this->windowBackdrop) {
+            return;
+        }
+        $this->windowBackdrop = $on;
         $this->invalidate();
     }
 
@@ -118,10 +146,12 @@ trait MenuOverlayHostTrait
     }
 
     /**
-     * Composite the floating layers: the backdrop dim first (the pane's own
-     * rows go faint), then the modal spans bright over it, then the toasts
-     * (readable over a dimmed modal), then the tooltip card, then the menu
-     * dropdowns brightest — an open menu always renders above everything.
+     * Composite the floating layers: a view window over its own backdrop dim
+     * first, then the modal backdrop dim (the pane's rows — and a window
+     * under a picker — go faint), then the modal spans bright over it, then
+     * the toasts (readable over a dimmed modal), then the tooltip card, then
+     * the menu dropdowns brightest — an open menu always renders above
+     * everything.
      *
      * @param list<string> $lines
      *
@@ -129,6 +159,10 @@ trait MenuOverlayHostTrait
      */
     protected function withMenuOverlay(array $lines, int $width): array
     {
+        if ($this->windowBackdrop) {
+            $lines = \array_map(AnsiText::dim(...), $lines);
+        }
+        $lines = MenuOverlay::apply($lines, $this->windowOverlay, $width);
         if ($this->modalBackdrop) {
             $lines = \array_map(AnsiText::dim(...), $lines);
         }

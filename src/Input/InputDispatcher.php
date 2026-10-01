@@ -16,6 +16,7 @@ use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ContextMenu;
 use Porta\Widget\MenuBarWidget;
 use Porta\Workbench\Notifier;
+use Porta\Workbench\View\ViewCommandGate;
 use Symfony\Component\Tui\Event\InputEvent;
 use Symfony\Component\Tui\Tui;
 
@@ -42,6 +43,7 @@ final readonly class InputDispatcher
         private Notifier $notifier,
         private Translator $translator,
         private TooltipCenter $tooltips,
+        private ?ViewCommandGate $gate = null,
     ) {}
 
     public function dispatch(InputEvent $event): void
@@ -129,6 +131,9 @@ final readonly class InputDispatcher
             }
 
             $event->stopPropagation();
+            // A key reaches past an open view window as the menu does: one
+            // that acts on the editor behind closes the window first.
+            $this->gate?->before('i', $id);
             $this->commands->run($id);
 
             return;

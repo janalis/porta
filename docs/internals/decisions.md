@@ -52,6 +52,17 @@ manual re-dump. Authoritative mode stays a CI-install concern.
 
 ## Structure
 
+**Hosting a view's region off-tree, or inside a widget's own render — rejected.**
+Off-tree, a widget has no context: no rect to hit-test, no focus, no theme, no
+render requests. Rendered inside a tree widget's `render()`, it lands in the
+layout's measuring pass with position tracking off, so no rect is recorded. The
+region stays attached under a hidden host and is rendered before each frame
+(`ViewWindowPresenter`).
+
+*Re-opens on:* symfony/tui gaining real layers (positioned children with tracked
+rects), or the renderer's resting position stack changing — `ViewWindowPresenterTest`
+fails first.
+
 **The extraction audit is closed.** Six rounds measured every candidate against
 one test: a method may be extracted when it *exclusively* owns its dependencies
 (counted inside the method versus across the file) and touches none of the

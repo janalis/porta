@@ -20,6 +20,7 @@ use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\ViewWindowCells;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
@@ -37,6 +38,7 @@ final class IdeSettingsThemeTest extends TestCase
     use PreservesPath;
     use RunsIde;
     use ScreenReads;
+    use ViewWindowCells;
 
     private ?string $portaHomeToRestore = null;
 
@@ -95,7 +97,7 @@ final class IdeSettingsThemeTest extends TestCase
                     // then the mouse steps below exercise the routing.
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                 },
-                200 => function (Tui $tui, VirtualTerminal $terminal): void {
+                200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     // A bare tick() is not a frame, and every assertion below
                     // reads the ACCUMULATED output — so without a real paint
                     // they were reading whatever the boot happened to leave.
@@ -105,48 +107,48 @@ final class IdeSettingsThemeTest extends TestCase
                     $this->assertStringContainsString('General', $screen, 'the nav sidebar lists sections');
                     $this->assertStringContainsString('Languages', $screen);
                     $this->assertStringContainsString('Auto-pairs', $screen, 'General content shown');
-                    // Toggle Auto-pairs in the content pane. Screen row
-                    // 8: the menu bar (1) and the rule under it (2), the title
-                    // row (3), the boxed "Save changes to" chooser that leads
-                    // every page that writes a file (4-6), the Editing legend
-                    // (7), then this checkbox. Every row below counts the rule.
+                    // Toggle Auto-pairs in the content pane. Region row 8:
+                    // the page title (0) and the blank row under it (1), the
+                    // boxed "Save changes to" chooser that leads every page
+                    // that writes a file (2-4), the Editing heading between
+                    // its blank rows (5-7), then this checkbox.
                     //
                     // Once: a checkbox toggles on the click that selects it,
                     // as a label does — every other kind of row waits for a
                     // second.
-                    $tui->handleInput("\x1b[<0;40;8M");
-                    $tui->handleInput("\x1b[<0;40;8m");
+                    $tui->handleInput(self::windowSgr($ide, 0, 8, 39));
+                    $tui->handleInput(self::windowSgr($ide, 0, 8, 39, release: true));
                     // Hover the nav sidebar (a tint).
-                    $tui->handleInput("\x1b[<35;5;4M");
+                    $tui->handleInput(self::windowSgr($ide, 35, 1, 4));
                 },
-                300 => function (Tui $tui): void {
+                300 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     // frame(), not tick(): the click below is hit-tested against
                     // the rects the LAST RENDER produced.
                     $this->frame($tui);
                     // Click the 'Keybindings' entry in the nav (screen row 6, after
                     // General + Interface + Highlighting).
-                    $tui->handleInput("\x1b[<0;5;6M");
-                    $tui->handleInput("\x1b[<0;5;6m");
+                    $tui->handleInput(self::windowSgr($ide, 0, 3, 4));
+                    $tui->handleInput(self::windowSgr($ide, 0, 3, 4, release: true));
                 },
-                400 => function (Tui $tui, VirtualTerminal $terminal): void {
+                400 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $this->awaitPainted($tui, $terminal, 'actions');
                     $this->assertSame('settings-nav', $tui->getFocus()?->getId(), 'clicking the nav focuses it');
                     // Hover + wheel + click the keybindings list (content pane), a nav miss too.
-                    $tui->handleInput("\x1b[<35;40;6M"); // hover a list row (nav clears)
-                    $tui->handleInput("\x1b[<65;40;6M"); // wheel down over the list
-                    $tui->handleInput("\x1b[<0;40;6M"); // click a list row
-                    $tui->handleInput("\x1b[<0;40;6m");
+                    $tui->handleInput(self::windowSgr($ide, 35, 3, 39)); // hover a list row (nav clears)
+                    $tui->handleInput(self::windowSgr($ide, 65, 3, 39)); // wheel down over the list
+                    $tui->handleInput(self::windowSgr($ide, 0, 3, 39)); // click a list row
+                    $tui->handleInput(self::windowSgr($ide, 0, 3, 39, release: true));
                 },
-                500 => function (Tui $tui): void {
+                500 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $this->frame($tui);
                     // Select PHP in the nav (screen row 10, after Interface +
                     // Highlighting + Keybindings + Command line + Plugins and
                     // the Languages header) → the content shows its indent
                     // rows.
-                    $tui->handleInput("\x1b[<0;5;10M");
-                    $tui->handleInput("\x1b[<0;5;10m");
+                    $tui->handleInput(self::windowSgr($ide, 0, 7, 4));
+                    $tui->handleInput(self::windowSgr($ide, 0, 7, 4, release: true));
                 },
-                600 => function (Tui $tui, VirtualTerminal $terminal): void {
+                600 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $this->awaitPainted($tui, $terminal, 'Indent style');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('LSP server', $screen, 'and its LSP server row');
@@ -154,29 +156,31 @@ final class IdeSettingsThemeTest extends TestCase
                     // Switching pages CLAMPS the selection rather than resetting
                     // it, so which row a language page opens on depends on where
                     // the previous page left it — and "click twice" then means
-                    // one step or two. Screen row 12 is Indent size's label: a
+                    // one step or two. Region row 12 is Indent size's label: a
                     // select, and a single click on its LABEL only selects (a
                     // click on its box would drop its list).
-                    $tui->handleInput("\x1b[<0;40;12M");
-                    $tui->handleInput("\x1b[<0;40;12m");
-                    // Now step indent style (auto → spaces). Screen row 9: the
-                    // page title (3), the boxed "Save changes to" chooser that
-                    // leads every page writing a file (4-6), the Indentation
-                    // legend (7), then this box, its label on its middle row.
+                    $tui->handleInput(self::windowSgr($ide, 0, 12, 39));
+                    $tui->handleInput(self::windowSgr($ide, 0, 12, 39, release: true));
+                    // Now step indent style (auto → spaces). Region row 9: the
+                    // page title and its blank row (0-1), the boxed "Save
+                    // changes to" chooser that leads every page writing a file
+                    // (2-4), the Indentation heading between its blank rows
+                    // (5-7), then this box (8-10), its label on its middle row.
                     // Two clicks on the label: select, then the forward step.
-                    $tui->handleInput("\x1b[<0;40;9M");
-                    $tui->handleInput("\x1b[<0;40;9m");
-                    $tui->handleInput("\x1b[<0;40;9M");
-                    $tui->handleInput("\x1b[<0;40;9m");
-                    // Edit the LSP server row: the label row of the box after
-                    // indent size (10-12) and the Language server legend (14),
-                    // screen row 16. TWO clicks: the first selects, and only a
+                    $tui->handleInput(self::windowSgr($ide, 0, 9, 39));
+                    $tui->handleInput(self::windowSgr($ide, 0, 9, 39, release: true));
+                    $tui->handleInput(self::windowSgr($ide, 0, 9, 39));
+                    $tui->handleInput(self::windowSgr($ide, 0, 9, 39, release: true));
+                    // Edit the LSP server row: after indent size (11-13) and the
+                    // Language server heading between its blank rows (14-16),
+                    // the label row of its box (17-19), region row 18. TWO
+                    // clicks: the first selects, and only a
                     // click on the already-selected row opens the editor — a
                     // single click no longer mutates whatever it lands on.
-                    $tui->handleInput("\x1b[<0;40;16M");
-                    $tui->handleInput("\x1b[<0;40;16m");
-                    $tui->handleInput("\x1b[<0;40;16M");
-                    $tui->handleInput("\x1b[<0;40;16m");
+                    $tui->handleInput(self::windowSgr($ide, 0, 18, 39));
+                    $tui->handleInput(self::windowSgr($ide, 0, 18, 39, release: true));
+                    $tui->handleInput(self::windowSgr($ide, 0, 18, 39));
+                    $tui->handleInput(self::windowSgr($ide, 0, 18, 39, release: true));
                     foreach (\str_split('my-ls --stdio') as $char) {
                         $tui->handleInput($char);
                     }
@@ -184,7 +188,7 @@ final class IdeSettingsThemeTest extends TestCase
                     $tui->handleInput("\x1b[21~"); // F10 arms the app menu OVER the settings view
                     $tui->handleInput("\x1b[B"); // ↓ drops File
                 },
-                700 => function (Tui $tui, VirtualTerminal $terminal): void {
+                700 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $this->awaitPainted($tui, $terminal, 'Settings…');
                     $tui->handleInput("\x1b[<35;5;3M"); // hover a dropdown row: the menu rides along
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
@@ -192,8 +196,10 @@ final class IdeSettingsThemeTest extends TestCase
                     $this->assertStringContainsString('Save File', $screen);
                 },
             ],
-            // The screen rows above count the boxed controls: a roomy screen.
-            rows: 30,
+            // The rows above count the boxed controls: a roomy screen, tall
+            // enough that the window (80% of it) holds what the full-screen
+            // view did on 30.
+            rows: 40,
         );
 
         $this->assertFalse(IdeConfig::load($project->dir)->settings['autoPairs'], 'the General toggle persisted');
@@ -259,7 +265,8 @@ final class IdeSettingsThemeTest extends TestCase
     {
         \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\n"]);
-        // A seeded percent must be applied at startup (25% of 160 cols = 40).
+        // A seeded percent is a share of the WINDOW's inner width: on a
+        // 160-column terminal the window is 128 wide, 124 inside, so 25% is 31.
         if (!\is_dir($project->path('.porta'))) {
             \mkdir($project->path('.porta'), permissions: 0o777, recursive: true);
         }
@@ -272,18 +279,18 @@ final class IdeSettingsThemeTest extends TestCase
                 300 => static function ($tui, $terminal, Ide $ide): void {
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                 },
-                600 => function (Tui $tui): void {
+                600 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $this->frame($tui);
-                    $this->assertSame(40, $tui->getById('settings-nav')->width(), 'the seeded percent applied at startup');
-                    // Drag the settings separator (SGR col 41 with a 40-wide nav) in to col 31.
-                    $tui->handleInput("\x1b[<0;41;6M"); // arm on the separator
-                    $tui->handleInput("\x1b[<32;31;6M"); // drag left
-                    $tui->handleInput("\x1b[<0;31;6m"); // release
+                    $this->assertSame(31, $tui->getById('settings-nav')->width(), 'the seeded percent applied to the window');
+                    // Drag the separator (region column 31, after the 31-wide nav) in to column 21.
+                    $tui->handleInput(self::windowSgr($ide, 0, 3, 31)); // arm on the separator
+                    $tui->handleInput(self::windowSgr($ide, 32, 3, 21)); // drag left
+                    $tui->handleInput(self::windowSgr($ide, 0, 3, 21, release: true));
                 },
                 900 => function ($tui) use ($project): void {
-                    $this->assertSame(30, $tui->getById('settings-nav')->width(), 'the drag resized the sidebar');
+                    $this->assertSame(21, $tui->getById('settings-nav')->width(), 'the drag resized the sidebar');
                     $layout = \json_decode((string) \file_get_contents($project->path('.porta/layout.json')), associative: true);
-                    $this->assertSame(19, $layout['viewSidebarWidthPercent']['settings'], 'saved as a percentage (round(30/160))');
+                    $this->assertSame(17, $layout['viewSidebarWidthPercent']['settings'], 'saved as a share of the window (round(21/124))');
                 },
             ],
         );

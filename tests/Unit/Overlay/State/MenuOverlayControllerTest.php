@@ -43,7 +43,7 @@ final class MenuOverlayControllerTest extends TestCase
 
         $menuBar = new MenuBarWidget();
         $contextMenu = new ContextMenu();
-        $panes = new MenuOverlayPanes([$pane], static fn (): array => []);
+        $panes = new MenuOverlayPanes([$pane]);
         $controller = new MenuOverlayController($this->renderer, $menuBar, $contextMenu, $panes);
 
         // If the constructor's initStyles() call were removed, $this->styles
@@ -87,7 +87,7 @@ final class MenuOverlayControllerTest extends TestCase
             $this->renderer,
             new MenuBarWidget(),
             $contextMenu,
-            new MenuOverlayPanes([$pane], static fn (): array => []),
+            new MenuOverlayPanes([$pane]),
             new Translator('he'),
             tui: $this->tui,
             layer: $layer,
@@ -140,7 +140,7 @@ final class MenuOverlayControllerTest extends TestCase
             $this->renderer,
             new MenuBarWidget(),
             $contextMenu,
-            new MenuOverlayPanes([$pane], static fn (): array => []),
+            new MenuOverlayPanes([$pane]),
             $translator,
             tui: $this->tui,
             layer: new FloatingLayer(),
@@ -174,7 +174,7 @@ final class MenuOverlayControllerTest extends TestCase
             $this->renderer,
             new MenuBarWidget(),
             $contextMenu,
-            new MenuOverlayPanes([$pane], static fn (): array => []),
+            new MenuOverlayPanes([$pane]),
             new Translator('he'),
             tui: $this->tui,
             layer: new FloatingLayer(),
@@ -201,7 +201,7 @@ final class MenuOverlayControllerTest extends TestCase
         $this->tui->add($pane);
         $this->frame();
         $contextMenu = new ContextMenu();
-        $controller = new MenuOverlayController($this->renderer, new MenuBarWidget(), $contextMenu, new MenuOverlayPanes([$pane], static fn (): array => []));
+        $controller = new MenuOverlayController($this->renderer, new MenuBarWidget(), $contextMenu, new MenuOverlayPanes([$pane]));
 
         $contextMenu->openListbox([new MenuItem('dark', '', null), new MenuItem('light', '', null), new MenuItem('high', '', null)], 0, 20);
         $controller->setContextAnchor(23, 10, above: 20); // the select occupies rows 20-22
@@ -235,7 +235,7 @@ final class MenuOverlayControllerTest extends TestCase
         $this->tui->add($pane);
         $this->frame();
         $contextMenu = new ContextMenu();
-        $controller = new MenuOverlayController($this->renderer, new MenuBarWidget(), $contextMenu, new MenuOverlayPanes([$pane], static fn (): array => []));
+        $controller = new MenuOverlayController($this->renderer, new MenuBarWidget(), $contextMenu, new MenuOverlayPanes([$pane]));
         $items = \array_map(static fn (int $i): MenuItem => new MenuItem("Item {$i}", '', null), \range(0, end: 29));
         $rows = static fn (): array => \array_map(AnsiUtils::stripAnsiCodes(...), $pane->render(new RenderContext(100, 24)));
 
@@ -269,7 +269,7 @@ final class MenuOverlayControllerTest extends TestCase
         $this->tui->add($menuBar);
         $this->tui->add($pane);
         $this->frame();
-        $controller = new MenuOverlayController($this->renderer, $menuBar, new ContextMenu(), new MenuOverlayPanes([$pane], static fn (): array => []));
+        $controller = new MenuOverlayController($this->renderer, $menuBar, new ContextMenu(), new MenuOverlayPanes([$pane]));
 
         $menuBar->arm();
         $controller->refreshMenu();
@@ -295,7 +295,7 @@ final class MenuOverlayControllerTest extends TestCase
         $this->tui->add($menuBar);
         $this->tui->add($pane);
         $this->frame(30, 8);
-        $controller = new MenuOverlayController($this->renderer, $menuBar, new ContextMenu(), new MenuOverlayPanes([$pane], static fn (): array => []));
+        $controller = new MenuOverlayController($this->renderer, $menuBar, new ContextMenu(), new MenuOverlayPanes([$pane]));
         // The pane's rect spans rows 1-8: the box gets eight rows, six items.
         $screen = static fn (): array => \array_map(AnsiUtils::stripAnsiCodes(...), $pane->render(new RenderContext(30, 8)));
 
@@ -336,7 +336,7 @@ final class MenuOverlayControllerTest extends TestCase
         $this->tui->add($pane);
         $this->frame(30, 12);
         $contextMenu = new ContextMenu();
-        $controller = new MenuOverlayController($this->renderer, $menuBar, $contextMenu, new MenuOverlayPanes([$pane], static fn (): array => []), frameHooks: $this->tui, tui: $this->tui);
+        $controller = new MenuOverlayController($this->renderer, $menuBar, $contextMenu, new MenuOverlayPanes([$pane]), frameHooks: $this->tui, tui: $this->tui);
         $pending = fn (): bool => (bool) Probe::get($this->tui, 'renderRequested');
         $this->tui->processRender(); // the frame adding the widgets asked for
 
@@ -387,7 +387,7 @@ final class MenuOverlayControllerTest extends TestCase
         $this->tui->add($menuBar);
         $this->tui->add($pane);
         $this->frame(24, 12);
-        $controller = new MenuOverlayController($this->renderer, $menuBar, $contextMenu, new MenuOverlayPanes([$pane], static fn (): array => []));
+        $controller = new MenuOverlayController($this->renderer, $menuBar, $contextMenu, new MenuOverlayPanes([$pane]));
         $topRow = static fn (): string => AnsiUtils::stripAnsiCodes($pane->render(new RenderContext(24, 11))[0]);
 
         $menuBar->open(0);

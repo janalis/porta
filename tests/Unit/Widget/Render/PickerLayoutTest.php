@@ -9,6 +9,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\I18n\BaseDirection;
 use Porta\I18n\Bidi;
 use Porta\Overlay\State\SearchModalState;
+use Porta\Overlay\State\WindowFrame;
 use Porta\Search\Everywhere\SearchCategory;
 use Porta\Search\Everywhere\SearchHit;
 use Porta\Search\Everywhere\SearchRow;
@@ -75,7 +76,7 @@ final class PickerLayoutTest extends TestCase
                 'onPick' => static fn (): null => null,
             ],
             $this->styles(),
-            closeHovered: false,
+            frame: new WindowFrame(),
             emptyMessage: $message,
         );
 
@@ -154,7 +155,7 @@ final class PickerLayoutTest extends TestCase
                 'onPick' => static fn (): null => null,
             ],
             $this->styles(),
-            closeHovered: false,
+            frame: new WindowFrame(),
             emptyMessage: $emptyMessage,
         );
     }
@@ -178,7 +179,7 @@ final class PickerLayoutTest extends TestCase
     public function testATeeSeparatesTheQueryFromTheResults(): void
     {
         $state = new SearchModalState('Go to File', new TextField(), static function (): void {}, static function (): void {}, static function (): void {}, 'none');
-        $out = PickerLayout::layoutSearch([0, 0, 24, 100], $state, $this->styles(), closeHovered: false, caret: CaretVisibility::Hidden, fieldRows: 1);
+        $out = PickerLayout::layoutSearch([0, 0, 24, 100], $state, $this->styles(), frame: new WindowFrame(), caret: CaretVisibility::Hidden, fieldRows: 1);
         $plain = \array_map(AnsiUtils::stripAnsiCodes(...), $out['rows']);
 
         $this->assertMatchesRegularExpression('/^├─+┤$/u', $plain[3], 'title bar, padding, the one-row query, then the tee');
@@ -196,7 +197,7 @@ final class PickerLayoutTest extends TestCase
             SearchRow::header('Files'),
             SearchRow::hit(new SearchHit(SearchCategory::Files, 'a.php', '', $noop)),
         ];
-        $out = PickerLayout::layoutSearch([0, 0, 24, 100], $state, $this->styles(), closeHovered: false, caret: CaretVisibility::Hidden, fieldRows: 1);
+        $out = PickerLayout::layoutSearch([0, 0, 24, 100], $state, $this->styles(), frame: new WindowFrame(), caret: CaretVisibility::Hidden, fieldRows: 1);
         $plain = \array_map(AnsiUtils::stripAnsiCodes(...), $out['rows']);
 
         $this->assertMatchesRegularExpression('/^├─ Classes ─+┤$/u', $plain[3], 'title bar, padding, the query, then its tee, named');
@@ -262,7 +263,7 @@ final class PickerLayoutTest extends TestCase
             $message,
         );
 
-        $out = PickerLayout::layoutSearch([0, 0, 24, 100], $state, $this->styles(), closeHovered: false, caret: CaretVisibility::Hidden);
+        $out = PickerLayout::layoutSearch([0, 0, 24, 100], $state, $this->styles(), frame: new WindowFrame(), caret: CaretVisibility::Hidden);
 
         $this->assertContains(
             $message,
@@ -314,7 +315,7 @@ final class PickerLayoutTest extends TestCase
                 'onPick' => static fn (): null => null,
             ],
             $this->styles(),
-            closeHovered: false,
+            frame: new WindowFrame(),
             emptyMessage: 'no matches',
         );
 
@@ -335,7 +336,7 @@ final class PickerLayoutTest extends TestCase
             [0, 0, 24, $columns],
             $state,
             $this->styles(),
-            closeHovered: false,
+            frame: new WindowFrame(),
             caret: CaretVisibility::Hidden,
         );
 
@@ -365,7 +366,7 @@ final class PickerLayoutTest extends TestCase
         $state->rows = $rows;
         $state->widest = 200; // as wide as the bounds allow
 
-        return PickerLayout::layoutSearch([0, 0, 24, $columns], $state, $this->styles(), closeHovered: false, caret: CaretVisibility::Hidden, placeholder: 'Type to search…');
+        return PickerLayout::layoutSearch([0, 0, 24, $columns], $state, $this->styles(), frame: new WindowFrame(), caret: CaretVisibility::Hidden, placeholder: 'Type to search…');
     }
 
     /**
@@ -423,7 +424,7 @@ final class PickerLayoutTest extends TestCase
         ];
         $state->selected = 1;
         $state->widest = 60;
-        $rows = PickerLayout::layoutSearch([0, 0, 24, 100], $state, $this->styles(), closeHovered: false, caret: CaretVisibility::Hidden)['rows'];
+        $rows = PickerLayout::layoutSearch([0, 0, 24, 100], $state, $this->styles(), frame: new WindowFrame(), caret: CaretVisibility::Hidden)['rows'];
         $plain = \array_map(AnsiUtils::stripAnsiCodes(...), $rows);
         $line = static fn (string $needle): int => \array_key_first(\array_filter($plain, static fn (string $r): bool => \str_contains($r, $needle)));
 
@@ -445,7 +446,7 @@ final class PickerLayoutTest extends TestCase
             [0, 0, 24, 100],
             ['title' => 'Many', 'items' => $items, 'selected' => 0, 'hovered' => null, 'filter' => new TextField(), 'onPick' => static fn (): null => null],
             $this->styles(),
-            closeHovered: false,
+            frame: new WindowFrame(),
         );
         $plain = \array_map(AnsiUtils::stripAnsiCodes(...), $out['rows']);
 
@@ -457,7 +458,7 @@ final class PickerLayoutTest extends TestCase
             [0, 0, 24, 100],
             ['title' => 'Many', 'items' => $items, 'selected' => 29, 'hovered' => null, 'filter' => new TextField(), 'onPick' => static fn (): null => null],
             $this->styles(),
-            closeHovered: false,
+            frame: new WindowFrame(),
         );
         $plain = \array_map(AnsiUtils::stripAnsiCodes(...), $out['rows']);
         $this->assertStringContainsString('▲', $plain[1]);
@@ -468,7 +469,7 @@ final class PickerLayoutTest extends TestCase
             [0, 0, 24, 100],
             ['title' => 'Few', 'items' => \array_slice($items, offset: 0, length: 3), 'selected' => 0, 'hovered' => null, 'filter' => new TextField(), 'onPick' => static fn (): null => null],
             $this->styles(),
-            closeHovered: false,
+            frame: new WindowFrame(),
         );
         $this->assertMatchesRegularExpression('/╰─+╯/u', AnsiUtils::stripAnsiCodes(\array_last($few['rows'])), 'a list that fits has no count');
 
@@ -476,7 +477,7 @@ final class PickerLayoutTest extends TestCase
             [0, 0, 24, 9],
             ['title' => 'M', 'items' => $items, 'selected' => 12, 'hovered' => null, 'filter' => new TextField(), 'onPick' => static fn (): null => null],
             $this->styles(),
-            closeHovered: false,
+            frame: new WindowFrame(),
         );
         $this->assertSame(
             [$narrow['width']],
@@ -502,7 +503,7 @@ final class PickerLayoutTest extends TestCase
                 'onPick' => static fn (): null => null,
             ],
             $this->styles(),
-            closeHovered: false,
+            frame: new WindowFrame(),
         );
         $row = static fn (string $label): string => \array_first(\array_filter($out['rows'], static fn (string $r): bool => \str_contains(AnsiUtils::stripAnsiCodes($r), $label)));
 
@@ -532,7 +533,7 @@ final class PickerLayoutTest extends TestCase
                     'onPick' => static fn (): null => null,
                 ],
                 $this->styles(),
-                closeHovered: false,
+                frame: new WindowFrame(),
                 direction: $direction,
             );
             $row = \array_first(\array_filter($out['rows'], static fn (string $r): bool => \str_contains(AnsiUtils::stripAnsiCodes($r), 'Fine')));
@@ -563,7 +564,7 @@ final class PickerLayoutTest extends TestCase
                 'onPick' => static fn (): null => null,
             ],
             $this->styles(),
-            closeHovered: false,
+            frame: new WindowFrame(),
             direction: BaseDirection::Rtl,
         );
         $row = \array_first(\array_filter($out['rows'], static fn (string $r): bool => \str_contains(AnsiUtils::stripAnsiCodes($r), '←') || \str_contains(AnsiUtils::stripAnsiCodes($r), '→')));
@@ -591,7 +592,7 @@ final class PickerLayoutTest extends TestCase
                 'onPick' => static fn (): null => null,
             ],
             $this->styles(),
-            closeHovered: false,
+            frame: new WindowFrame(),
         );
         $row = static fn (string $label): string => \array_first(\array_filter($out['rows'], static fn (string $r): bool => \str_contains(AnsiUtils::stripAnsiCodes($r), $label)));
 

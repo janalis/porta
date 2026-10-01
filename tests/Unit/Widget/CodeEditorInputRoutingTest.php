@@ -8,8 +8,11 @@ use PHPUnit\Framework\TestCase;
 use Porta\Editor\CommentSyntax;
 use Porta\Editor\CompletionItem;
 use Porta\Editor\SnippetTabStop;
+use Porta\Overlay\Region\ModalBox;
 use Porta\Tests\Support\FakeEditorCompletion;
 use Porta\Tests\Support\Probe;
+use Porta\Ui\CaretVisibility;
+use Porta\Ui\Density;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\EditorCallbacks;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -121,17 +124,20 @@ final class CodeEditorInputRoutingTest extends TestCase
         $this->assertSame("<?php\n", $editor->getDocument()->getText(), 'the claimed keystroke must not also reach the editing verbs');
     }
 
-    // --- cancelFindModalDrag / clearSnippetSession pass-throughs ---------------
+    // --- cancelWindowDrags / clearSnippetSession pass-throughs ---------------
 
-    public function testCancelFindModalDragDisarmsAnArmedDrag(): void
+    public function testCancelWindowDragsDisarmsAnArmedDrag(): void
     {
         $editor = $this->editor();
         $editor->findModal->open('demo');
-        Probe::set($editor->findModal, 'resizing', true);
+        $editor->findModal->layout([0, 0, 24, 100], CaretVisibility::Shown, Density::Roomy);
+        $box = $editor->findModal->lastBox();
+        $this->assertInstanceOf(ModalBox::class, $box);
+        $editor->findModal->clickAt($box->startRow, $box->col + 2); // arm a title-bar move
 
-        $editor->cancelFindModalDrag();
+        $editor->cancelWindowDrags();
 
-        $this->assertFalse(Probe::get($editor->findModal, 'resizing'), 'cancelFindModalDrag must reach findModal->cancelDrag() and clear resizing');
+        $this->assertFalse($editor->findModal->continueDragTo(10, 10, release: false), 'cancelWindowDrags must reach findModal->cancelDrag() and disarm the move');
     }
 
     public function testClearSnippetSessionActuallyClearsIt(): void

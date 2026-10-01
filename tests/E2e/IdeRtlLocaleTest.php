@@ -205,8 +205,9 @@ final class IdeRtlLocaleTest extends TestCase
             $lines = $renderer->renderFrame($root, $columns, $rows)->toArray();
             $runs = $segmenter->segment($root, $columns, $rows);
             $regions = $segmenter->segmentRegions($columns, $rows);
+            $surfaces = $segmenter->surfaces($columns, $rows);
             foreach ($lines as $row => $line) {
-                $frozen = $reorder->freezeRow($reorder->reorderRow($line, $runs[$row], $regions[$row]));
+                $frozen = $reorder->freezeRow($reorder->reorderRow($line, $runs[$row], $regions[$row], $surfaces[$row]));
                 $this->assertSame($columns, AnsiUtils::visibleWidth($frozen), "row {$row} kept its width");
                 if (1 === \preg_match('/[\x{0590}-\x{05FF}]/u', AnsiUtils::stripAnsiCodes($frozen))) {
                     $this->assertStringContainsString(
@@ -559,9 +560,13 @@ final class IdeRtlLocaleTest extends TestCase
                     $rows = $terminal->getRows();
                     $lines = $renderer->renderFrame($root, $columns, $rows)->toArray();
                     $runs = $segmenter->segment($root, $columns, $rows);
+                    // Settings floats in its window: stamped from the floating
+                    // layer over the reordered panes, as the frame does.
+                    $regions = $segmenter->segmentRegions($columns, $rows);
+                    $surfaces = $segmenter->surfaces($columns, $rows);
                     $screen = '';
                     foreach ($lines as $row => $line) {
-                        $screen .= AnsiUtils::stripAnsiCodes($reorder->reorderRow($line, $runs[$row]))."\n";
+                        $screen .= AnsiUtils::stripAnsiCodes($reorder->reorderRow($line, $runs[$row], $regions[$row], $surfaces[$row]))."\n";
                     }
 
                     $this->assertMatchesRegularExpression('/[│┃] dark\s+▾ [│┃]/u', $screen, 'the theme value reads as one intact select');

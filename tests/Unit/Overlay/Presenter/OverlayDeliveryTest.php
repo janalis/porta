@@ -49,7 +49,7 @@ final class OverlayDeliveryTest extends TestCase
 
         return new OverlayDelivery(
             $this->renderer,
-            new MenuOverlayPanes([$this->pane, $this->detachedPane], static fn (): array => []),
+            new MenuOverlayPanes([$this->pane, $this->detachedPane]),
             $this->tui,
         );
     }
@@ -99,6 +99,27 @@ final class OverlayDeliveryTest extends TestCase
         $this->assertSame([], $this->pane->modalSpans);
         $this->assertFalse($this->pane->backdrop);
         $this->assertFalse($this->detachedPane->backdrop, 'the clear sweep reaches every pane set');
+    }
+
+    /** A view window rides its own slot and dim, under the modal's: a picker opened over it keeps both. */
+    public function testDeliverWindowUsesItsOwnSlotAndDimUnderTheModals(): void
+    {
+        $delivery = $this->delivery();
+        $this->frame();
+
+        $delivery->deliverModal([['rows' => ['PICK'], 'top' => 3, 'col' => 4, 'width' => 4]]);
+        $delivery->deliverWindow([['rows' => ['WIN', 'DOW'], 'top' => 2, 'col' => 4, 'width' => 3]]);
+        $this->assertContains(2, \array_column($this->pane->windowSpans, 'row'), 'the window sliced into the pane');
+        $this->assertTrue($this->pane->windowDimmed, 'and dims it');
+        $this->assertTrue($this->detachedPane->windowDimmed, 'every pane, rect or not');
+        $this->assertNotSame([], $this->pane->modalSpans, 'the picker over it kept its own slot');
+
+        $delivery->clearWindow();
+        $this->assertSame([], $this->pane->windowSpans);
+        $this->assertFalse($this->pane->windowDimmed);
+        $this->assertFalse($this->detachedPane->windowDimmed, 'the clear sweep reaches every pane');
+        $this->assertNotSame([], $this->pane->modalSpans, 'and leaves the picker alone');
+        $this->assertTrue($this->pane->backdrop);
     }
 
     public function testDeliverToastUsesTheToastSlotAndNeverDims(): void
@@ -172,7 +193,7 @@ final class OverlayDeliveryTest extends TestCase
     {
         $this->assertSame(BaseDirection::Ltr, $this->delivery()->shown());
 
-        $mirrored = new OverlayDelivery($this->renderer, new MenuOverlayPanes([$this->pane], static fn (): array => []), $this->tui, translator: new Translator('he'));
+        $mirrored = new OverlayDelivery($this->renderer, new MenuOverlayPanes([$this->pane]), $this->tui, translator: new Translator('he'));
         $this->assertSame(BaseDirection::Rtl, $mirrored->shown());
         $this->assertSame(BaseDirection::Ltr, $mirrored->shown(verbatim: true));
     }
@@ -189,7 +210,7 @@ final class OverlayDeliveryTest extends TestCase
         $this->tui->requestRender(force: true);
         $this->tui->processRender();
         $layer = new FloatingLayer();
-        $delivery = new OverlayDelivery($this->renderer, new MenuOverlayPanes([$this->pane], static fn (): array => []), $this->tui, translator: new Translator('he'), layer: $layer);
+        $delivery = new OverlayDelivery($this->renderer, new MenuOverlayPanes([$this->pane]), $this->tui, translator: new Translator('he'), layer: $layer);
         $box = ['rows' => ['abc', 'def', 'ghi'], 'top' => 2, 'col' => 10, 'width' => 3];
         // The cell's own background: the last SGR before it sets one (a plain
         // cell after a shadow re-emits the shadow's SGR, then resets it).
@@ -227,7 +248,7 @@ final class OverlayDeliveryTest extends TestCase
         $this->delivery();
         $this->tui->requestRender(force: true);
         $this->tui->processRender();
-        $delivery = new OverlayDelivery($this->renderer, new MenuOverlayPanes([$this->pane], static fn (): array => []), $this->tui, translator: new Translator('he'), layer: new FloatingLayer());
+        $delivery = new OverlayDelivery($this->renderer, new MenuOverlayPanes([$this->pane]), $this->tui, translator: new Translator('he'), layer: new FloatingLayer());
         $box = ['rows' => ['toast'], 'top' => 1, 'col' => 2, 'width' => 5];
 
         $delivery->deliverToast([$box]);
@@ -247,7 +268,7 @@ final class OverlayDeliveryTest extends TestCase
         $box = ['rows' => ['toast'], 'top' => 1, 'col' => 2, 'width' => 5];
         foreach (['en' => false, 'he' => true] as $locale => $mirrored) {
             $layer = new FloatingLayer();
-            $delivery = new OverlayDelivery($this->renderer, new MenuOverlayPanes([$this->pane], static fn (): array => []), $this->tui, translator: new Translator($locale), layer: $layer);
+            $delivery = new OverlayDelivery($this->renderer, new MenuOverlayPanes([$this->pane]), $this->tui, translator: new Translator($locale), layer: $layer);
 
             $delivery->deliverToast([$box]);
             $this->assertSame($mirrored, [] === $this->pane->toastSpans, "{$locale}: the toast's pane spans");
@@ -261,6 +282,11 @@ final class OverlayDeliveryTest extends TestCase
             $delivery->clearToast();
             $delivery->clearTooltip();
             $this->assertStringNotContainsString('toast', \implode('', $layer->rows(12, 3)), "{$locale}: both cleared");
+            $delivery->deliverWindow([$box]);
+            $this->assertSame($mirrored, [] === $this->pane->windowSpans, "{$locale}: the window's pane spans");
+            $this->assertSame($mirrored, \str_contains($layer->rows(12, 3)[1], 'toast'), "{$locale}: the window on the layer");
+            $delivery->clearWindow();
+            $this->assertStringNotContainsString('toast', \implode('', $layer->rows(12, 3)), "{$locale}: the window cleared");
         }
     }
 

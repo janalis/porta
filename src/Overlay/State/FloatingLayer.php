@@ -21,13 +21,17 @@ use Symfony\Component\Tui\Render\WidgetRect;
  * instead, in screen coordinates, and {@see \Porta\I18n\PaneReorder} stamps
  * them over panes that have lost nothing.
  *
- * The slots stack as the panes' do: modal, toast, tooltip, then the menus.
+ * The slots stack as the panes' do: a view window, then modal, toast,
+ * tooltip, then the menus.
  * Each setter says whether anything changed, so the caller can ask for the
  * frame that a pane would have asked for by invalidating itself.
  */
 #[AsIdeService]
 final class FloatingLayer
 {
+    /** @var list<array{row: int, col: int, width: int, segment: string}> */
+    private array $window = [];
+
     /** @var list<array{row: int, col: int, width: int, segment: string}> */
     private array $modal = [];
 
@@ -44,6 +48,14 @@ final class FloatingLayer
     public static function rect(): WidgetRect
     {
         return new WidgetRect(row: 0, col: 0, rows: \PHP_INT_MAX, columns: \PHP_INT_MAX);
+    }
+
+    /** @param list<array{row: int, col: int, width: int, segment: string}> $spans */
+    public function setWindow(array $spans): bool
+    {
+        [$changed, $this->window] = [$spans !== $this->window, $spans];
+
+        return $changed;
     }
 
     /** @param list<array{row: int, col: int, width: int, segment: string}> $spans */
@@ -87,7 +99,7 @@ final class FloatingLayer
     public function rows(int $columns, int $rows): array
     {
         $lines = \array_fill(0, \max(0, $rows), \str_repeat(' ', \max(0, $columns)));
-        foreach ([$this->modal, $this->toast, $this->tooltip, $this->menu] as $spans) {
+        foreach ([$this->window, $this->modal, $this->toast, $this->tooltip, $this->menu] as $spans) {
             $lines = MenuOverlay::apply($lines, $spans, $columns);
         }
 

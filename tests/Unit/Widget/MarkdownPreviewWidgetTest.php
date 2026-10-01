@@ -61,7 +61,7 @@ final class MarkdownPreviewWidgetTest extends TestCase
 
         $rows = $this->drawn($pane, 60, 6);
         $this->assertStringContainsString('README › docs › guide', $rows[0], 'the breadcrumb walks the project, like the docs tree');
-        $this->assertSame(' Guide', \rtrim($rows[1]), 'a column of margin, away from the divider');
+        $this->assertSame(' Guide', \rtrim($rows[2]), 'a column of margin, away from the divider');
         $this->assertSame('markdown', $pane->paneId());
         $this->assertSame('', $pane->statusRight(), 'the editor\'s legend stays beside it');
     }
@@ -72,14 +72,14 @@ final class MarkdownPreviewWidgetTest extends TestCase
         $pane->show('/p/a.md', self::longDoc());
         $this->drawn($pane, 40, 6);
         $pane->handleInput("\x1b[6~"); // PageDown
-        $scrolled = $this->drawn($pane, 40, 6)[1];
+        $scrolled = $this->drawn($pane, 40, 6)[2];
         $this->assertNotSame('Title', \trim($scrolled), 'a page down moved the view');
 
         $pane->show('/p/a.md', self::longDoc('Renamed'));
-        $this->assertSame($scrolled, $this->drawn($pane, 40, 6)[1], 'an edit keeps the reader where they were');
+        $this->assertSame($scrolled, $this->drawn($pane, 40, 6)[2], 'an edit keeps the reader where they were');
 
         $pane->show('/p/b.md', self::longDoc('Other'));
-        $this->assertSame('Other', \trim($this->drawn($pane, 40, 6)[1]), 'another file starts from its top');
+        $this->assertSame('Other', \trim($this->drawn($pane, 40, 6)[2]), 'another file starts from its top');
     }
 
     public function testTheSameTextForTheSameFileIsNotRedrawn(): void
@@ -108,7 +108,7 @@ final class MarkdownPreviewWidgetTest extends TestCase
         $pane->handleInput("\t"); // the first link
         $pane->handleInput("\r"); // follow it
         $this->assertSame(['help:other.md'], $this->handler->events);
-        $this->assertStringContainsString('Other', $this->drawn($pane, 80, 8)[1]);
+        $this->assertStringContainsString('Other', $this->drawn($pane, 80, 8)[2]);
 
         $pane->handleInput("\x7f"); // Backspace
         $this->assertSame(['help:other.md', 'help:guide.md'], $this->handler->events, 'back to the page the link was followed from');
@@ -134,7 +134,7 @@ final class MarkdownPreviewWidgetTest extends TestCase
         $pane = new MarkdownPreviewWidget();
         $pane->show('/p/a.md', '# A');
 
-        $this->assertNotSame(' ', $this->drawn($pane, 1, 3)[1]);
+        $this->assertNotSame(' ', $this->drawn($pane, 1, 3)[2]);
     }
 
     public function testAClickOnThePageSendsTheCaretToTheWordInTheText(): void
@@ -147,7 +147,7 @@ final class MarkdownPreviewWidgetTest extends TestCase
         $pane->press($row('some words'), (int) \strpos($rows[$row('some words')], needle: 'here,') + 2);
         $pane->press($row('some words'), (int) \strpos($rows[$row('some words')], needle: 'more.') + 1);
         $pane->press($row('some words'), (int) \strpos($rows[$row('some words')], needle: 'words') + 5); // the space after it
-        $pane->press(1, 3); // the heading
+        $pane->press(2, 3); // the heading
         $pane->press($row('last'), (int) \strpos($rows[$row('last')], needle: 'last'));
 
         $this->assertSame(
@@ -178,13 +178,13 @@ final class MarkdownPreviewWidgetTest extends TestCase
         $this->drawn($pane, 80, 6);
         $pane->handleInput("\x1b[6~");
         $pane->handleInput("\x1b[6~"); // two pages down
-        $top = \trim($this->drawn($pane, 80, 6)[1]);
+        $top = \trim($this->drawn($pane, 80, 6)[2]);
         $this->assertStringStartsWith('Block', $top, 'the view starts at a block');
 
         $narrow = $this->drawn($pane, 30, 6);
 
-        $this->assertStringStartsWith(\explode(' ', $top)[0].' '.\explode(' ', $top)[1], \trim($narrow[1]), 'the block that was at the top still is, rewrapped');
-        $this->assertSame(\trim($this->drawn($pane, 80, 6)[1]), $top, 'and back at the first width');
+        $this->assertStringStartsWith(\explode(' ', $top)[0].' '.\explode(' ', $top)[1], \trim($narrow[2]), 'the block that was at the top still is, rewrapped');
+        $this->assertSame(\trim($this->drawn($pane, 80, 6)[2]), $top, 'and back at the first width');
     }
 
     public function testFollowingTheCaretBringsItsBlockIntoViewAndLeavesAVisibleOneAlone(): void
@@ -197,13 +197,13 @@ final class MarkdownPreviewWidgetTest extends TestCase
         $pane->followSource(40, 3); // "Paragraph 20."
         $rows = \array_map(\trim(...), $this->drawn($pane, 40, 8));
         $this->assertContains('Paragraph 20.', $rows);
-        $this->assertSame('Paragraph 20.', $rows[3], 'a third of the page above it, for what leads in');
+        $this->assertSame('Paragraph 20.', $rows[4], 'a third of the page above it, for what leads in');
 
         $pane->followSource(38, 0); // "Paragraph 19.", already on screen: the view stays
         $this->assertSame($rows, \array_map(\trim(...), $this->drawn($pane, 40, 8)));
 
         $pane->followSource(0, 0); // back to the title
-        $this->assertSame('Title', \trim($this->drawn($pane, 40, 8)[1]));
+        $this->assertSame('Title', \trim($this->drawn($pane, 40, 8)[2]));
     }
 
     public function testAWrappedBlockIsShownFromItsFirstRow(): void

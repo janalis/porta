@@ -143,7 +143,7 @@ final readonly class TabListProvider
     /** The file the tab holds, in full, and what its pin and its dot mean. */
     private function tooltip(Buffer $b): string
     {
-        $lines = ['help' === $b->paneId ? $this->translator->trans('Documentation') : $this->paths->relative($b->path)];
+        $lines = [$this->paths->relative($b->path)];
         if ($b->pinned) {
             $lines[] = $this->translator->trans('Pinned: kept open, with no ×');
         }
@@ -162,16 +162,12 @@ final readonly class TabListProvider
     /** Whether this buffer's title came from its path, and so can be qualified with more of it. */
     private function isPathDerived(Buffer $b): bool
     {
-        return 'help' !== $b->paneId && null === $b->title;
+        return null === $b->title;
     }
 
-    /** Help pages share one "Documentation" tab name; a titled buffer (the architecture graph) shows its translated title; everything else its basename. */
+    /** A titled buffer (the architecture graph) shows its translated title; everything else its basename. */
     private function title(Buffer $b): string
     {
-        if ('help' === $b->paneId) {
-            return $this->translator->trans('Documentation');
-        }
-
         return null !== $b->title ? $this->translator->trans($b->title) : \basename($b->path);
     }
 }

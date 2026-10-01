@@ -246,7 +246,7 @@ map, and wins over `PORTA_LSP`.
 
 ## The Settings view (`Ctrl+,`)
 
-A full-screen view with a resizable sidebar: **General**, **Interface**,
+A window over the editor — movable, resizable, closed by Esc — with a resizable sidebar: **General**, **Interface**,
 **Highlighting**, **Keybindings**, **Command line**, **Plugins**, and one
 section per language.
 

@@ -91,6 +91,28 @@ final class SourcesTest extends TestCase
         $source->cancel(); // no-op for a synchronous source
     }
 
+    /** A picked command reaches past an open view as a menu item does: the gate is asked first, with its id. */
+    public function testAPickedActionAsksTheGateBeforeItRuns(): void
+    {
+        $order = [];
+        $registry = new CommandRegistry();
+        $registry->add(
+            'save',
+            static function () use (&$order): void {
+                $order[] = 'run';
+            },
+            label: 'Save File',
+        );
+        $source = new ActionsSource($registry, beforeRun: static function (string $id) use (&$order): void {
+            $order[] = 'gate:'.$id;
+        });
+
+        $hits = $this->collect(static fn (\Closure $emit) => $source->query('save', $emit));
+        ($hits[0]->activate)();
+
+        $this->assertSame(['gate:save', 'run'], $order);
+    }
+
     /** What can run is listed first; a greyed command follows, even when it scores higher. */
     public function testActionsSourceListsGreyedCommandsLast(): void
     {

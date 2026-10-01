@@ -16,6 +16,7 @@ use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Porta\Ui\Sgr;
 use Porta\Ui\Theme\Styles;
+use Porta\Widget\Render\Rule;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -37,7 +38,8 @@ use Symfony\Component\Tui\Render\RenderContext;
 abstract class MarkdownPageWidget extends EditorPaneWidget implements FindTarget
 {
     /** The clickable navigation header occupies the first rendered row. */
-    private const int HEADER_ROWS = 1;
+    /** The navigation bar, and the rule that parts it from the page — the line under the app menu, drawn the same way. */
+    private const int HEADER_ROWS = 2;
 
     protected ?string $path = null;
     protected string $markdown = '';
@@ -264,7 +266,8 @@ abstract class MarkdownPageWidget extends EditorPaneWidget implements FindTarget
             $this->followLine = null;
         }
 
-        $lines = [$this->headerLine($cols)];
+        // A one-row pane keeps its navigation bar and gives up the rule.
+        $lines = \array_slice([$this->headerLine($cols), Rule::horizontal($cols, $this->styles)], offset: 0, length: $rows);
         for ($row = 0; $row < ($rows - self::HEADER_ROWS); ++$row) {
             $lineNo = $this->scrollTop + $row;
             $line = $this->searchHighlight($this->highlight($this->doc->lines[$lineNo] ?? '', $lineNo), $lineNo);

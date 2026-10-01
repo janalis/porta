@@ -193,8 +193,25 @@ final class CodeEditorOverlaysTest extends TestCase
 
         // The drag delegates still relay (armed by a corner press).
         $this->assertTrue($editor->findModal->clickAt($box->startRow + $box->rows - 1, $box->col + $box->width - 1));
-        $this->assertTrue($editor->continueFindModalDrag($box->startRow + $box->rows, $box->col + $box->width + 2, true));
-        $editor->cancelFindModalDrag();
+        $this->assertTrue($editor->continueWindowDrag($box->startRow + $box->rows, $box->col + $box->width + 2, true));
+        $editor->cancelWindowDrags();
+    }
+
+    /** The editor relays a picker's move or resize as it does Find in Files', and its fresh-press sweep drops one. */
+    public function testThePickersDragsRelayThroughTheEditorToo(): void
+    {
+        $editor = new CodeEditorWidget();
+        $editor->openListOverlay('Pick', [['label' => 'a', 'hint' => '', 'value' => 'a']], static function (): void {});
+        $box = $editor->layoutPickers([0, 0, 24, 100])[0];
+        $this->assertFalse($editor->continueWindowDrag(5, 5, release: false), 'nothing armed yet');
+
+        $editor->handlePickerClick($box['top'], $box['col'] + 4); // the title bar
+        $editor->cancelWindowDrags();
+        $this->assertFalse($editor->continueWindowDrag(5, 5, release: false), 'the sweep reached the picker');
+
+        $editor->handlePickerClick($box['top'], $box['col'] + 4);
+        $this->assertTrue($editor->continueWindowDrag($box['top'] + 2, $box['col'] + 4, release: true), 'the move relayed');
+        $this->assertSame($box['top'] + 2, $editor->layoutPickers([0, 0, 24, 100])[0]['top']);
     }
 
     /** Opening any picker closes the Find-in-Files modal — one writer per frame on the shared span slot. */

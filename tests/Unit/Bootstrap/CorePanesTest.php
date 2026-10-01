@@ -17,25 +17,43 @@ use Porta\Widget\TextPreviewWidget;
 
 final class CorePanesTest extends TestCase
 {
-    public function testRegisterWiresTheHelpViewerLoaderIntoEditorPanes(): void
+    public function testRegisterWiresTheTextLoaderIntoTheMarkdownPane(): void
     {
-        [$panes, $helpViewer] = $this->registered();
+        [$panes] = $this->registered();
 
-        $project = new TempProject(['help.md' => "# Hi\n"]);
+        $project = new TempProject(['notes.md' => "# Hi\n"]);
 
-        $this->assertSame("# Hi\n", $panes->load($helpViewer->paneId(), $project->path('help.md')));
+        $this->assertSame("# Hi\n", $panes->load(MarkdownPreviewWidget::PANE_ID, $project->path('notes.md')));
     }
 
-    public function testAMissingHelpPageIsAnEmptyStringNotAWarning(): void
+    public function testAMissingPageIsAnEmptyStringNotAWarning(): void
     {
-        [$panes, $helpViewer] = $this->registered();
+        [$panes] = $this->registered();
 
-        $this->assertSame('', $panes->load($helpViewer->paneId(), '/does/not/exist.md'));
+        $this->assertSame('', $panes->load(MarkdownPreviewWidget::PANE_ID, '/does/not/exist.md'));
+    }
+
+    /** A file that is not text is refused rather than rendered as mojibake. */
+    public function testAPageThatIsNotTextIsRefused(): void
+    {
+        [$panes] = $this->registered();
+        $project = new TempProject(['binary.md' => "\xff\xfe\x00# not text"]);
+
+        $this->expectExceptionMessageIsOrContains('Not a UTF-8 text file');
+        $panes->load(MarkdownPreviewWidget::PANE_ID, $project->path('binary.md'));
+    }
+
+    /** The docs open in their own window, never as an editor pane. */
+    public function testTheHelpViewerIsNotAnEditorPane(): void
+    {
+        [$panes] = $this->registered();
+
+        $this->assertNull($panes->paneFor(new HelpViewerWidget()->paneId()));
     }
 
     public function testMarkdownIsPreviewedByTheMarkdownPaneWhateverTheCaseOfItsExtension(): void
     {
-        [$panes, , $routes] = $this->registered();
+        [$panes, $routes] = $this->registered();
 
         $this->assertInstanceOf(MarkdownPreviewWidget::class, $panes->paneFor(MarkdownPreviewWidget::PANE_ID));
         $this->assertSame(MarkdownPreviewWidget::PANE_ID, $routes->previewFor('/p/README.md'));
@@ -43,11 +61,10 @@ final class CorePanesTest extends TestCase
         $this->assertNull($routes->previewFor('/p/app.php'), 'only markdown is core\'s to preview');
     }
 
-    /** @return array{EditorPanes, HelpViewerWidget, PreviewRoutes} */
+    /** @return array{EditorPanes, PreviewRoutes} */
     private function registered(): array
     {
         $panes = new EditorPanes();
-        $helpViewer = new HelpViewerWidget();
         $routes = new PreviewRoutes(new class implements ViewerProviderSource {
             public function viewerFor(string $path): ?string
             {
@@ -59,8 +76,8 @@ final class CorePanesTest extends TestCase
                 return null;
             }
         });
-        new CorePanes($panes, $helpViewer, new TextPreviewWidget(new Translator()), new MarkdownPreviewWidget(), $routes, new Translator())->register();
+        new CorePanes($panes, new TextPreviewWidget(new Translator()), new MarkdownPreviewWidget(), $routes, new Translator())->register();
 
-        return [$panes, $helpViewer, $routes];
+        return [$panes, $routes];
     }
 }

@@ -59,8 +59,10 @@ use Porta\Highlight\TempestHighlightProvider;
 use Porta\I18n\Translator;
 use Porta\Input\EditorActionRouter;
 use Porta\Lsp\DocumentScopes;
+use Porta\Overlay\Region\CloseButton;
 use Porta\Overlay\State\FindInFilesModal;
 use Porta\Overlay\State\OverlayHost;
+use Porta\Overlay\State\WindowControls;
 use Porta\Search\Everywhere\SearchOverlay;
 use Porta\Search\Everywhere\SearchRow;
 use Porta\Support\AnsiText;
@@ -247,6 +249,7 @@ final class CodeEditorWidget extends AbstractWidget implements
         private readonly OccurrenceHighlights $occurrences = new OccurrenceHighlights(),
         /** The server's scopes, for every language the offline PHP scan cannot read. */
         private readonly DocumentScopes $documentScopes = new DocumentScopes(),
+        ?WindowControls $controls = null,
     ) {
         $this->initStyles($styles);
         $this->callbacks = new EditorCallbacks();
@@ -255,8 +258,8 @@ final class CodeEditorWidget extends AbstractWidget implements
         $this->decorations = new DecorationStore($this->invalidate(...));
         // Injected when the container builds it, so the pickers outlive this
         // widget being detached; direct construction (tests) still gets one.
-        $this->overlayHost = $overlayHost ?? new OverlayHost(null, $this->styles, $this->cursorStyle);
-        $this->findModal = new FindInFilesModal($this->invalidate(...), $this->styles, $this->cursorStyle, $this->translator);
+        $this->overlayHost = $overlayHost ?? new OverlayHost(null, $this->styles, $this->cursorStyle, controls: $controls);
+        $this->findModal = new FindInFilesModal($this->invalidate(...), $this->styles, $this->cursorStyle, $this->translator, $controls->closeButton ?? CloseButton::Standard);
         $this->document = new Document('');
         $this->highlighter = $this->placeholderHighlighter();
         $this->foldModel = new FoldModel($this->document);
@@ -1123,16 +1126,20 @@ final class CodeEditorWidget extends AbstractWidget implements
         return $this->overlayHost->layout($bounds);
     }
 
-    /** Continue an armed Find-in-Files drag — corner resize or title-bar move (editor-relative coords). */
-    public function continueFindModalDrag(int $relRow, int $relCol, bool $release): bool
+    /**
+     * Continue an armed move or resize of Find in Files or the topmost picker
+     * (screen coords); false when neither has one armed.
+     */
+    public function continueWindowDrag(int $row, int $col, bool $release): bool
     {
-        return $this->findModal->continueDragTo($relRow, $relCol, $release);
+        return $this->findModal->continueDragTo($row, $col, $release) || $this->overlayHost->continueDragTo($row, $col, $release);
     }
 
-    /** Disarm a stale Find-in-Files drag (the router's fresh-press sweep). */
-    public function cancelFindModalDrag(): void
+    /** Disarm a stale move or resize of Find in Files or a picker (the router's fresh-press sweep). */
+    public function cancelWindowDrags(): void
     {
         $this->findModal->cancelDrag();
+        $this->overlayHost->cancelDrag();
     }
 
     /** Cancel any active snippet session (e.g. before an external edit). */

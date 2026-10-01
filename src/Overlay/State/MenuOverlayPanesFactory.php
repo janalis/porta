@@ -6,7 +6,6 @@ namespace Porta\Overlay\State;
 
 use Porta\Editor\EditorPanes;
 use Porta\Layout\PreviewSplit;
-use Porta\Layout\ViewRegions;
 use Porta\Layout\WorkspaceLayout;
 use Porta\Widget\BreadcrumbsWidget;
 use Porta\Widget\CodeEditorWidget;
@@ -14,24 +13,20 @@ use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\DockTabsWidget;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\FindBarWidget;
-use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\TabBarWidget;
 use Porta\Widget\TerminalPanelWidget;
-use Porta\Workbench\View\ViewRegistry;
-use Symfony\Component\Tui\Widget\AbstractWidget;
 
 /**
- * Assembles the {@see MenuOverlayPanes} value from the autowired widgets, the
- * layout's separators and the view registry — the pane lists and view-open
- * closures a dumped container definition cannot express directly.
+ * Assembles the {@see MenuOverlayPanes} value from the autowired widgets and
+ * the layout's separators — the pane list a dumped container definition
+ * cannot express directly.
  */
 final readonly class MenuOverlayPanesFactory
 {
     public function __construct(
         private FileTreeWidget $tree,
         private WorkspaceLayout $layout,
-        private ViewRegions $regions,
         private TabBarWidget $tabBar,
         private CodeEditorWidget $editor,
         private EditorPanes $panes,
@@ -41,30 +36,8 @@ final readonly class MenuOverlayPanesFactory
         private ResultsPanelWidget $resultsPanel,
         private TerminalPanelWidget $terminalPanel,
         private DebugPanelWidget $debugPanel,
-        private ViewRegistry $views,
         private PreviewSplit $previewSplit,
     ) {}
-
-    /**
-     * The open view's panes: whatever it stacked in its region, in visual
-     * order, minus anything that cannot host a dropdown.
-     *
-     * Two lists stood here, one per view core knew, each naming that view's
-     * widgets. A view's panes are whatever is in its region — which it fills
-     * itself, per mode — so the answer is computed when the question is asked.
-     *
-     * @return list<AbstractWidget&MenuOverlayHost>
-     */
-    private function openViewPanes(): array
-    {
-        $region = $this->regions->find((string) $this->views->activeId());
-        if (null === $region) {
-            return [];
-        }
-        $widgets = [...$region->sidebar()->all(), $region->separator(), ...$region->content()->all()];
-
-        return \array_values(\array_filter($widgets, static fn (AbstractWidget $widget): bool => $widget instanceof MenuOverlayHost));
-    }
 
     public function create(): MenuOverlayPanes
     {
@@ -86,7 +59,6 @@ final readonly class MenuOverlayPanesFactory
                 $this->terminalPanel,
                 $this->debugPanel,
             ],
-            $this->openViewPanes(...),
             $this->panes,
             // The edge rules sit under whichever view is open; the app menu's
             // dropdown hangs from its bar across the top one. They take rows

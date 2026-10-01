@@ -61,4 +61,24 @@ final class GlyphsWidthTest extends TestCase
         // case above vacuously pass.
         $this->assertGreaterThan(50, \iterator_count(self::glyphs()));
     }
+
+    /**
+     * A window's close button is one column in EVERY terminal: never East
+     * Asian Ambiguous, which a terminal set for CJK draws two wide. The circled
+     * letter ⓧ was, and pushed a title bar a column out on a real screen; the
+     * frame's box glyphs are Ambiguous too, but every TUI draws those narrow.
+     */
+    public function testTheCloseButtonsAreNarrowInEveryTerminal(): void
+    {
+        if (!\class_exists(\IntlChar::class)) {
+            $this->markTestSkipped('the intl extension reads the Unicode width property');
+        }
+        foreach ([Glyphs::WINDOW_CLOSE, Glyphs::WINDOW_CLOSE_MAC] as $glyph) {
+            $this->assertContains(
+                \IntlChar::getIntPropertyValue(\mb_ord($glyph), \IntlChar::PROPERTY_EAST_ASIAN_WIDTH),
+                [\IntlChar::EA_NEUTRAL, \IntlChar::EA_NARROW, \IntlChar::EA_HALFWIDTH],
+                $glyph.' is narrow whatever the terminal',
+            );
+        }
+    }
 }

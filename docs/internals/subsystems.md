@@ -286,7 +286,7 @@ Hit-testing uses the renderer's per-widget rects via `Input/HitTester`, whose
 
 Satellites carry the parts that need no drag state: `WheelRouter` (all wheel
 routing), `ContextMenuRouter` (all right-click routing), `HoverRouter`,
-`ClickCounter`, `ZoomGesture`, `WelcomeMouseRouter`. The per-view ones live with
+`ClickCounter`, `ZoomGesture`, `ModalWindowRouter`. The per-view ones live with
 their views — the git plugin's `GitMouseRouter`, `Settings\SettingsMouseRouter` — because the
 view carries them: `ContributedView::pointer()` is what `ViewRegistry::register()`
 wires into `ViewPointers`, so a view and its pointer arrive together or not at
@@ -308,7 +308,12 @@ while an isolated notch steps the ladder. The opening notch of a gesture is
 necessarily a rung, since nothing can know a burst has begun until its second
 notch.
 
-## Full-screen views
+## View windows
+
+Settings, Git, Review and the docs open in **the view window**: a framed,
+movable, resizable window over the editor layout, which stays mounted and
+dimmed behind it. It opens centred at 80% of the workspace, and only one view
+is open at a time.
 
 `Workbench/View/ViewRegistry` keys `ContributedView`s by a **string id the view
 supplies**. It was an enum, and the enum was the reason a view had to be known
@@ -316,9 +321,30 @@ at compile time — adding one meant editing `WorkspaceView`, which a plugin
 cannot do. Everything that ranged over `WorkspaceView::cases()` now ranges over
 what has registered.
 
-`ownsMainArea()` moved onto the interface for the same reason, and Welcome is
-what proves the distinction is real: it is *active* without *detaching* the main
-area, so `isAnyOpen()` and `isAttached()` count only main-area-owning views.
+`hostsWindow()` moved onto the interface for the same reason, and Welcome is
+what proves the distinction is real: it is *active* without being a view window
+— it draws its own floating surface — so `isAnyOpen()` counts only window views.
+`title()` is the window's title-bar text.
+
+**The region is a live widget tree, drawn floating.** A view's region (sidebar,
+separator, content) holds focusable widgets with carets, clickable panes and a
+draggable divider, so it cannot be drawn off-tree as the Welcome card list is:
+a detached widget has no context (no theme, no focus, no render requests) and
+no rect (no hit-test). It stays attached, in a host the frame never lays out —
+`WorkspaceLayout::$windowFrame`, inside a `hidden` container the renderer drops
+before layout — and `Overlay/Presenter/ViewWindowPresenter` renders it before
+each frame through the tree renderer itself. Between frames the renderer's
+position stack rests at the screen origin, and the frame container is padded
+to the window's inner origin, so every widget records its rect at the cells it
+is seen at: the views' pointer routers, the divider drag and the select lists
+hit-test it unchanged. The padding is cut off, the rows framed, and delivered
+to the window slot. `PaneSegmenter` skips the hidden host; under RTL the
+window publishes one floating region for its box and one per pane, so each
+pane mirrors within its own cells.
+
+A view's sidebar percentage is a share of the **window's** inner width:
+`LayoutController::fitViewSidebar()` re-takes it whenever the window opens or
+its width changes.
 
 A view carries everything it needs to be driven:
 
@@ -331,9 +357,8 @@ A view carries everything it needs to be driven:
   `cycleFocus` returns **false**, so `FocusCoordinator` falls through to the
   editor ring while the dispatcher's modal branch swallows keys.
 
-`Workbench/View/ViewHost` does the main-area swap — clear, add the region,
-restore the editor panes in RTL-aware order — once for every view.
-`Layout/ViewRegions` mints the region: a compiled slot cannot reach a view core
+`Workbench/View/ViewHost` opens a view's region in `ViewWindow` and gives the
+workspace back, once for every view. `Layout/ViewRegions` mints the region: a compiled slot cannot reach a view core
 does not know at build time, and the container is built before any plugin PHP
 runs.
 
@@ -346,8 +371,8 @@ git view is the proof that this carries a real one — see
 **A contributed view arrives and leaves live.** `ViewRegistrar::registerFor()`
 builds one plugin's views on enable and `forget()` retracts them on disable, so
 the factory runs once per *activation* rather than once per process. Retraction
-closes an open view first (the editor takes the workspace back, and the view
-gets to cancel its own timers), then un-mints the region — the next enable
+closes an open view first (its window closes, and the view gets to cancel its
+own timers), then un-mints the region — the next enable
 mints fresh containers, because reusing one would hand the new view the dead
 one's children. `LayoutController::forgetView()` drops the cached
 `SidebarResizeState` at the same moment, or a later drag would resize widgets
@@ -363,26 +388,40 @@ Every modal floats over the whole workspace on one per-pane span path: spans
 pushed through `setModalOverlay` plus a backdrop dim, presented by
 `BidiTui::onBeforeFrame` hooks. The Welcome modal, Find in Files, and the
 pickers (the centered list overlay, Search Everywhere, the mini prompt) all use
-it.
+it; the view window has a slot of its own below them (`setWindowOverlay`, its
+own dim), so a picker or a menu opened over a window floats above it.
+
+**Every floating window is one kind of window.** `Overlay/State/WindowFrame` is
+the single move-and-resize state machine: the title bar moves a box, every
+edge and corner but the title bar's own edge resizes it, the handle under the
+pointer draws heavy, and `place()` clamps the box into the workspace. Each
+window asks it once per layout for its box — the content decides the default
+size (80%, centred, for a view window; the content's, a third down, for the
+others) — and hit-tests through `ModalBox::zoneAt()`. A press on the close
+button or beside the window closes it, and Esc does; the bars do not spell Esc
+out. The close button is the platform's (`Overlay/State/WindowControls`): a red
+`⊗` leading the title bar on macOS, with the title centred, and a `☒` ending it
+elsewhere; under the pointer it darkens. `Input/ModalWindowRouter` answers for
+the Welcome modal and the view window's frame; the pickers and Find in Files
+answer through `OverlayHost` and the editor's `continueWindowDrag()`.
 
 `Overlay/` is organised by a strict three-tier rule, and a new floating feature
 lands one class in each:
 
 - **`State/`** — the mutable per-surface model (open, selection, query). Never
   returns `string[]`.
-- **`Presenter/`** — the eagerly-resolved per-frame span producer. All five
+- **`Presenter/`** — the eagerly-resolved per-frame span producer. All six
   share `OverlayDelivery`: pane-union bounds with the pre-first-frame retry, the
-  per-pane slice loop for the span slots, and the all-panes clear sweep.
-  Delivery targets current panes and clearing targets all of them, because a
-  surface may close across a view swap.
+  per-pane slice loop for the span slots, and the clear sweep. Every surface
+  lands on the editor layout's panes, which stay mounted under a view window.
 - **`Region/`** — pure geometry and hit-test value objects.
 
 Each presenter keeps its own gate, state source and clear-once guard. **That
 guard is the invariant that lets five writers share the span slots without
 clobbering each other — do not centralise it.**
 
-The slots composite bottom to top: modal (with the backdrop dim), toast,
-**tooltip**, menu. The tooltip is the fifth surface: `State/TooltipCenter`
+The slots composite bottom to top: the view window (with its own dim), modal
+(with the backdrop dim), toast, **tooltip**, menu. The tooltip is the fifth surface: `State/TooltipCenter`
 (the dwell, keyed on the element and not the pointer), `Presenter/TooltipPresenter`
 (no shadow — it sits flush against what it explains) and
 `Region/TooltipPlacement` (below, above, right, left, first with room).
@@ -424,16 +463,18 @@ checks the text beside an open menu.
 invariant and is cross-cutting — the editor renders there too — so it is not
 overlay-owned. Do not collapse it into `Overlay/`.
 
-`OverlayHost` owns picker state, layout and hit-testing in screen space. Opening
-any floating surface closes the others. Pickers are fixed-centered, not
-draggable, and the open modal owns the caret. That precedence has one spelling:
+`OverlayHost` owns picker state, layout and hit-testing in screen space, and a
+`WindowFrame` per picker. Opening any floating surface closes the others.
+Pickers move and resize as every window does, and the open modal owns the
+caret. That precedence has one spelling:
 `topmostSurface()` — prompt, then search, then list — and its click, hover and
 move dispatchers. `moveSelection` skips the prompt, which has no selection, so a
 wheel with both open moves the list.
 
 A picker behaves like a dialog with a combobox:
 - **Clicks.** A click inside the box that lands on no item (a header, the field,
-  the frame) is swallowed. Only the × and a click outside dismiss.
+  the frame) is swallowed. Only the close button and a click outside dismiss;
+  the title bar moves the box and its edges resize it.
 - **Fields.** Every field and prompt takes `TextField::editKey()`: ←/→,
   Home/End, Delete and Ctrl+W, the settings form's caret keys.
 - **Lists.** PgUp/PgDn move a box's worth of rows and stop at the ends, and Tab
@@ -444,7 +485,8 @@ A picker behaves like a dialog with a combobox:
   (`SearchModalState::$widest`, the unfiltered items). They are placed as if
   as tall as the whole list (`$tallest`), so the top stays put and the box
   shrinks from the bottom as the query narrows. Nothing re-centres, and no
-  blank rows stand in for the missing ones.
+  blank rows stand in for the missing ones. A resize sets that width and that
+  tallest height; the prompt is one field tall whatever a resize asks.
 - **Streaming.** Rows for the query already answered keep the selected hit
   wherever it moved (`rowsFor`), and a new query selects its best match.
 - **Pending sources.** An async category not yet answered shows its header over

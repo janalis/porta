@@ -41,7 +41,7 @@ final readonly class HoverRouter
         private MenuBarWidget $menuBar,
         private ContextMenu $contextMenu,
         private MenuOverlayController $overlay,
-        private WelcomeMouseRouter $welcome,
+        private ModalWindowRouter $windows,
         private ViewPointers $pointers,
         private ViewRegistry $views,
         #[LayoutSlot('separator')]
@@ -86,7 +86,10 @@ final readonly class HoverRouter
         // workspace beneath is dimmed, so its pane tints would be invisible
         // anyway. The menu bar keeps first refusal, like the other modals.
         if ($this->panes->editor->isAnyPickerOpen()) {
-            if (!$this->handleMenuHover($mouse) && $this->panes->editor->handlePickerHover($mouse->row, $mouse->col)) {
+            // A pointer the menu takes has left the picker: say so, or its
+            // close button stays lit under the dropdown.
+            $miss = $this->handleMenuHover($mouse);
+            if ($this->panes->editor->handlePickerHover($miss ? -1 : $mouse->row, $miss ? -1 : $mouse->col)) {
                 $this->tui->requestRender();
             }
 
@@ -97,7 +100,8 @@ final readonly class HoverRouter
         // coordinates); the workspace beneath is dimmed, so its pane tints
         // would be invisible anyway. The menu bar keeps first refusal.
         if ($this->panes->editor->isFindModalOpen()) {
-            if (!$this->handleMenuHover($mouse) && $this->panes->editor->findModal->hoverAt($mouse->row, $mouse->col)) {
+            $miss = $this->handleMenuHover($mouse);
+            if ($this->panes->editor->findModal->hoverAt($miss ? -1 : $mouse->row, $miss ? -1 : $mouse->col)) {
                 $this->tui->requestRender();
             }
 
@@ -106,10 +110,8 @@ final readonly class HoverRouter
 
         // The Welcome modal floats over whatever is beneath it and is modal, so
         // it owns hover next: the menu bar keeps first refusal, then the box.
-        if ($this->welcome->isModalOpen()) {
-            if (!$this->handleMenuHover($mouse)) {
-                $this->welcome->hover($mouse);
-            }
+        if ($this->windows->isModalOpen()) {
+            $this->handleMenuHover($mouse) ? $this->windows->leave() : $this->windows->hover($mouse);
 
             return;
         }
@@ -118,26 +120,35 @@ final readonly class HoverRouter
         // clickable cell under the pointer underlines.
         $this->updateStatusHover($mouse);
 
-        // An open view owns its hover targets exclusively; the tree/editor
-        // targets are detached while it is swapped in. The menu bar rides along
-        // into any view, so it gets first refusal before the region. Two
-        // identical branches — one per view core happened to know — collapse
-        // into one because the pointer is looked up, not held.
+        // An open view window owns its hover targets exclusively; the
+        // tree/editor behind it are out of reach. The menu bar rides along
+        // over any window, so it gets first refusal, then the window's frame
+        // (its × and resize handles light), then the region.
         if (null !== $view && $this->views->isAnyOpen()) {
-            if (!$this->handleMenuHover($mouse)) {
-                // The region's divider is core's, like its drag (MouseRouter
-                // arms that for every view): every view's column thickens
-                // under the pointer, without the view having to remember to.
-                $region = $this->regions->find($view);
-                if (null !== $region) {
-                    $this->updateSeparatorHover($mouse, $region->separator());
-                }
-                $this->pointers->of($view)->hover($mouse);
-            }
+            $this->hoverViewWindow($mouse, $view);
 
             return;
         }
         $this->handleMainHover($mouse, $editorRect);
+    }
+
+    /** The open view window's hover: the menu's if it takes the pointer, else the frame's, the divider's and the view's. */
+    private function hoverViewWindow(MouseEvent $mouse, string $view): void
+    {
+        if ($this->handleMenuHover($mouse)) {
+            $this->windows->leave(); // the menu took the pointer: nothing on the window stays lit
+
+            return;
+        }
+        $this->windows->hover($mouse);
+        // The region's divider is core's, like its drag (MouseRouter arms that
+        // for every view): every view's column thickens under the pointer,
+        // without the view having to remember to.
+        $region = $this->regions->find($view);
+        if (null !== $region) {
+            $this->updateSeparatorHover($mouse, $region->separator());
+        }
+        $this->pointers->of($view)->hover($mouse);
     }
 
     /**

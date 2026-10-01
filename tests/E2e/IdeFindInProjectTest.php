@@ -14,6 +14,7 @@ use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Porta\Ui\Glyphs;
 use Porta\Widget\DockPanelWidget;
 use Porta\Workbench\Dock\BottomDock;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -800,8 +801,8 @@ final class IdeFindInProjectTest extends TestCase
                 $row = $box->startRow + $box->rows - 1 + 1;
                 $col = $box->col + $box->width - 1 + 1;
                 $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $col, $row)); // press the corner
-                $tui->handleInput(\sprintf("\x1b[<32;%d;%dM", $col + 6, $row + 1)); // drag out
-                $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $col + 6, $row + 1)); // release
+                $tui->handleInput(\sprintf("\x1b[<32;%d;%dM", $col + 6, $row)); // drag out, along the row
+                $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $col + 6, $row)); // release
                 $this->frame($tui);
 
                 $grown = $editor->findModal->lastBox();
@@ -809,10 +810,11 @@ final class IdeFindInProjectTest extends TestCase
                 $this->assertSame($box->width + 6, $grown->width, 'the drag widened the box through the router');
                 $this->assertTrue($editor->isFindModalOpen(), 'resizing never dismissed it');
 
-                // Now drag it by the title bar: press left of the ×, move
-                // down two rows, release — the box follows, still open.
+                // Now drag it by the title bar: press its middle (clear of
+                // the close button at either end), move down two rows,
+                // release — the box follows, still open.
                 $barRow = $grown->startRow + 1;
-                $barCol = $grown->col + 2 + 1;
+                $barCol = $grown->col + \intdiv($grown->width, num2: 2) + 1;
                 $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $barCol, $barRow));
                 $tui->handleInput(\sprintf("\x1b[<32;%d;%dM", $barCol, $barRow + 2));
                 $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $barCol, $barRow + 2));
@@ -829,7 +831,7 @@ final class IdeFindInProjectTest extends TestCase
                 // (which is dimmed beneath it) — the reason it is span-
                 // delivered instead of composited inside the editor pane.
                 $barRow2 = $movedBox->startRow + 1;
-                $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $movedBox->col + 2 + 1, $barRow2));
+                $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $movedBox->col + 4 + 1, $barRow2));
                 $tui->handleInput(\sprintf("\x1b[<32;%d;%dM", 3, $barRow2));
                 $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", 3, $barRow2));
                 $this->frame($tui);
@@ -842,12 +844,13 @@ final class IdeFindInProjectTest extends TestCase
                 $this->assertInstanceOf(WidgetRect::class, $treeRect);
                 $treeRows = Paint::lines($tui->getById('tree'), new RenderContext($treeRect->columns, $treeRect->rows));
                 $treeText = AnsiUtils::stripAnsiCodes(\implode("\n", $treeRows));
-                $this->assertStringContainsString('Find in Files', $treeText, "the modal's title bar paints over the tree pane");
+                $this->assertStringContainsString(Glyphs::MODAL_TOP_LEFT, $treeText, "the modal's title bar paints over the tree pane");
                 $this->assertStringContainsString("\x1b[2m", \implode('', $treeRows), 'the tree renders dimmed beneath the modal');
 
                 // A bare hover-move (mouse mode 1003) over the × routes to the
                 // floating modal in screen coordinates and brightens it.
-                $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $left->col + $left->width - 2 + 1, $left->startRow + 1));
+                $close = $left->closeButton->leads() ? $left->col + 1 : $left->col + $left->width - 2;
+                $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $close + 1, $left->startRow + 1));
                 $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $left->col + 3 + 1, $left->startRow + 3 + 1)); // and off it again
                 $tui->tick();
                 $this->assertTrue($editor->isFindModalOpen(), 'hovering never dismissed it');

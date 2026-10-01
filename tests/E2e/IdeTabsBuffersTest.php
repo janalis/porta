@@ -7,9 +7,11 @@ namespace Porta\Tests\E2e;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Config\IdeConfig;
+use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Editor\OpenFocus;
+use Porta\Editor\PreviewMode;
 use Porta\Ide;
 use Porta\Overlay\State\MenuOverlayController;
 use Porta\Settings\SettingsController;
@@ -396,6 +398,7 @@ final class IdeTabsBuffersTest extends TestCase
             'A.php' => "<?php\n",
             'B.php' => "<?php\n",
             'C.php' => "<?php\n",
+            'notes.md' => "# Notes\n",
             '.porta.json' => \json_encode(['settings' => ['tabBarPosition' => 'left']]),
         ]);
 
@@ -446,12 +449,17 @@ final class IdeTabsBuffersTest extends TestCase
                     $this->assertTrue($tui->getById('context-menu')->isOpen(), 'right-clicking a list row opened the tab menu');
                     $tui->handleInput("\x1b"); // Esc closes it
                 },
-                900 => function ($tui, $terminal, Ide $ide): void {
-                    // A content swap (the help viewer) lands inside the editor body,
-                    // not beside the vertical list in the horizontal editor pane.
-                    Services::resolve($ide, CommandRegistry::class)->run('ide_help');
+                900 => function ($tui, $terminal, Ide $ide) use ($project): void {
+                    // A content swap (a markdown file shown as its preview) lands
+                    // inside the editor body, not beside the vertical list in the
+                    // horizontal editor pane.
+                    $service = Services::resolve($ide, BufferService::class);
+                    $service->openFile($project->path('notes.md'), OpenFocus::Editor);
+                    $active = Services::resolve($ide, BufferManager::class)->active();
+                    $this->assertInstanceOf(Buffer::class, $active);
+                    $service->arrangePreview($active, PreviewMode::Preview);
                     $tui->tick();
-                    $this->assertContains($tui->getById('help-viewer'), $tui->getById('editor-body')->all(), 'the viewer swapped into the editor body slot');
+                    $this->assertContains($tui->getById('markdown-preview'), $tui->getById('editor-body')->all(), 'the preview swapped into the editor body slot');
                     $this->assertCount(2, $tui->getById('editor-pane')->all(), 'the editor pane keeps exactly the list and the body');
                 },
             ],

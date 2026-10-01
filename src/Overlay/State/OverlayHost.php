@@ -7,6 +7,7 @@ namespace Porta\Overlay\State;
 use Porta\Container\AsIdeService;
 use Porta\I18n\BaseDirection;
 use Porta\I18n\Translator;
+use Porta\Overlay\Region\CloseButton;
 use Porta\Overlay\Region\ModalBox;
 use Porta\Search\Everywhere\SearchHit;
 use Porta\Search\Everywhere\SearchRow;
@@ -56,8 +57,15 @@ final class OverlayHost
     private ?ModalBox $promptBox = null;
     private ?SearchModalState $search = null;
 
-    /** Which open surface's title-bar × is under the pointer, or null. */
-    private ?PickerSurface $closeHovered = null;
+    /** Where the user moved each picker and how big they made it, its lit handle and its drag. */
+    private readonly WindowFrame $listFrame;
+
+    private readonly WindowFrame $searchFrame;
+
+    private readonly WindowFrame $promptFrame;
+
+    /** Which end of a title bar the close button sits at: the platform's. */
+    private readonly CloseButton $closeButton;
     /** last-rendered search box, for mouse hit-testing */
     private ?ModalBox $searchBox = null;
 
@@ -74,8 +82,13 @@ final class OverlayHost
         ?CursorStyle $cursorStyle = null,
         ?Translator $translator = null,
         ?ScreenDensity $density = null,
+        ?WindowControls $controls = null,
     ) {
         $this->initStyles($styles);
+        $this->listFrame = new WindowFrame();
+        $this->searchFrame = new WindowFrame();
+        $this->promptFrame = new WindowFrame();
+        $this->closeButton = $controls->closeButton ?? CloseButton::Standard;
         $this->cursorStyle = $cursorStyle ?? new CursorStyle();
         $this->translator = $translator ?? new Translator('en');
         $this->density = $density ?? new ScreenDensity();
@@ -98,6 +111,9 @@ final class OverlayHost
         // A pick that reopens its own list — a checklist toggling in place —
         // gets the list back as it left it: the same filter, the picked row.
         $again = null !== $this->picked && $this->picked['title'] === $title ? $this->picked : null;
+        if (null === $again) {
+            $this->listFrame->reset(); // a fresh list opens at its own size, where lists open
+        }
         $overlay = ['title' => $title, 'items' => $items, 'selected' => 0, 'hovered' => null, 'filter' => $again['filter'] ?? new TextField(style: $this->cursorStyle), 'onPick' => $onPick];
         $overlay['selected'] = LiveRows::from($this->matching($overlay), 0, 1);
         if (null !== $again) {
@@ -122,6 +138,7 @@ final class OverlayHost
     public function openPrompt(string $label, string $initial, callable $onSubmit, bool $danger = false): void
     {
         $this->prompt = ['label' => $label, 'value' => new TextField($initial, $this->cursorStyle), 'onSubmit' => $onSubmit, 'danger' => $danger];
+        $this->promptFrame->reset();
         ($this->invalidate)();
     }
 
@@ -160,6 +177,7 @@ final class OverlayHost
     public function openSearch(string $title, \Closure $onQuery, \Closure $onPick, \Closure $onClose, string $emptyMessage = ''): void
     {
         $this->search = new SearchModalState($title, new TextField(style: $this->cursorStyle), $onQuery, $onPick, $onClose, $emptyMessage);
+        $this->searchFrame->reset();
         ($this->invalidate)();
     }
 
@@ -646,21 +664,59 @@ final class OverlayHost
         return $this->hoverClose(PickerSurface::Prompt, $this->promptBox, $relRow, $relCol);
     }
 
+    /** $surface's window: its geometry, its drag and its lit handle. */
+    private function frame(PickerSurface $surface): WindowFrame
+    {
+        return match ($surface) {
+            PickerSurface::ListOverlay => $this->listFrame,
+            PickerSurface::Search => $this->searchFrame,
+            PickerSurface::Prompt => $this->promptFrame,
+        };
+    }
+
+    /** $surface's box as last drawn, or null before it is. */
+    private function boxOf(PickerSurface $surface): ?ModalBox
+    {
+        return match ($surface) {
+            PickerSurface::ListOverlay => $this->overlayBox,
+            PickerSurface::Search => $this->searchBox,
+            PickerSurface::Prompt => $this->promptBox,
+        };
+    }
+
     /**
-     * Track whether $surface's title-bar × is under the pointer, brightening
-     * it like the tab strips' close glyph; returns whether that changed. One
-     * shared slot suffices — the surfaces are modal, never open together.
+     * Light the close button or the resize handle under the pointer on
+     * $surface's frame; returns whether that changed.
      */
     private function hoverClose(PickerSurface $surface, ?ModalBox $box, int $relRow, int $relCol): bool
     {
-        $hovered = null !== $box && $box->closeHit($relRow, $relCol) ? $surface : null;
-        if ($hovered === $this->closeHovered) {
+        if (!$this->frame($surface)->hover($box, $relRow, $relCol)) {
             return false;
         }
-        $this->closeHovered = $hovered;
         ($this->invalidate)();
 
         return true;
+    }
+
+    /** Follow an armed move or resize of the topmost picker; false when none is armed. */
+    // @mago-expect lint:no-boolean-flag-parameter -- the bool IS the domain here, not a hidden second responsibility.
+    public function continueDragTo(int $row, int $col, bool $release): bool
+    {
+        $surface = $this->topmostSurface();
+        if (null === $surface || !$this->frame($surface)->dragTo($row, $col, $release)) {
+            return false;
+        }
+        ($this->invalidate)();
+
+        return true;
+    }
+
+    /** A fresh press anywhere disarms a stale drag. */
+    public function cancelDrag(): void
+    {
+        $this->listFrame->cancel();
+        $this->searchFrame->cancel();
+        $this->promptFrame->cancel();
     }
 
     /**
@@ -830,6 +886,14 @@ final class OverlayHost
             return false;
         }
 
+        // The frame first, as every window's: the title bar arms a move and
+        // an edge a resize. The surface answers the press too — the ×, an
+        // item, a press outside — and swallows one on its frame.
+        $box = $this->boxOf($surface);
+        if (null !== $box) {
+            $this->frame($surface)->press($box, $row, $col);
+        }
+
         // Exhaustive over a NON-nullable subject: the null is hoisted out
         // above rather than answered by an arm, which is what lets this stay a
         // total match. Adding a PickerSurface case still breaks it here, which
@@ -913,11 +977,12 @@ final class OverlayHost
                     $bounds,
                     $this->overlay,
                     $this->styles,
-                    PickerSurface::ListOverlay === $this->closeHovered,
+                    $this->listFrame,
                     $this->translator->trans('no matches'),
                     $this->translator->trans('Type to filter'),
                     $this->direction(),
                     $fieldRows,
+                    $this->closeButton,
                 ),
                 $this->overlayBox,
             );
@@ -931,17 +996,18 @@ final class OverlayHost
                     $bounds,
                     $this->search,
                     $this->styles,
-                    PickerSurface::Search === $this->closeHovered,
+                    $this->searchFrame,
                     $caret,
                     $this->translator->trans('Type to search…'),
                     $this->direction(),
                     $fieldRows,
+                    $this->closeButton,
                 ),
                 $this->searchBox,
             );
         }
         if (null !== $this->prompt) {
-            $placed[] = $this->place(PickerLayout::layoutPrompt($bounds, $this->prompt, $this->styles, PickerSurface::Prompt === $this->closeHovered, $fieldRows), $this->promptBox);
+            $placed[] = $this->place(PickerLayout::layoutPrompt($bounds, $this->prompt, $this->styles, $this->promptFrame, $fieldRows, $this->closeButton), $this->promptBox);
         }
 
         return $placed;

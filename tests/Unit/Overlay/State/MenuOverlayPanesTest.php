@@ -13,51 +13,27 @@ use Symfony\Component\Tui\Render\RenderContext;
 
 final class MenuOverlayPanesTest extends TestCase
 {
-    public function testCurrentFallsBackToTheEditorPanesWhenNoViewIsOpen(): void
+    public function testTheRegisteredPanesJoinTheEditorsAndTheChrome(): void
     {
         $editorPane = new TestOverlayPane();
+        $rule = new TestOverlayPane();
         $registeredPane = self::registeredPane();
         $editorPanes = new EditorPanes();
         $editorPanes->register($registeredPane, static fn (string $path): string => '');
 
-        $panes = new MenuOverlayPanes([$editorPane], static fn (): array => [], $editorPanes);
+        $panes = new MenuOverlayPanes([$editorPane], $editorPanes, [$rule]);
 
         // Without $editorPanes (or with the coalesce reversed), only $editor
-        // itself would come back — the registered pane must ALSO be included.
-        $this->assertSame([$editorPane, $registeredPane], $panes->current());
+        // itself would come back — the registered pane must ALSO be included,
+        // or a dropdown opened over an image viewer stays painted after it closes.
+        $this->assertSame([$editorPane, $registeredPane, $rule], $panes->current());
     }
 
-    public function testCurrentPrefersTheOpenViewOverTheEditorPanes(): void
+    public function testNoRegisteredPanesIsJustTheEditorsAndTheChrome(): void
     {
         $editorPane = new TestOverlayPane();
-        $viewPane = new TestOverlayPane();
-        $panes = new MenuOverlayPanes([$editorPane], static fn (): array => [$viewPane]);
 
-        $this->assertSame([$viewPane], $panes->current());
-    }
-
-    public function testAllCombinesTheEditorAndOpenViewPanesRegardlessOfRegisteredPanes(): void
-    {
-        $editorPane = new TestOverlayPane();
-        $viewPane = new TestOverlayPane();
-        $panes = new MenuOverlayPanes([$editorPane], static fn (): array => [$viewPane]);
-
-        $this->assertSame([$editorPane, $viewPane], $panes->all());
-    }
-
-    public function testAllClearsTheRegisteredPanesADropdownCanOpenOver(): void
-    {
-        // current() hands a dropdown to the registered panes (the image and
-        // graph viewers); all() is what a closing menu clears, so leaving them
-        // out kept the last dropdown painted over a viewer after it closed.
-        $editorPane = new TestOverlayPane();
-        $viewPane = new TestOverlayPane();
-        $registeredPane = self::registeredPane();
-        $editorPanes = new EditorPanes();
-        $editorPanes->register($registeredPane, static fn (string $path): string => '');
-        $panes = new MenuOverlayPanes([$editorPane], static fn (): array => [$viewPane], $editorPanes);
-
-        $this->assertSame([$editorPane, $registeredPane, $viewPane], $panes->all());
+        $this->assertSame([$editorPane], new MenuOverlayPanes([$editorPane])->current());
     }
 
     private static function registeredPane(): EditorPaneWidget

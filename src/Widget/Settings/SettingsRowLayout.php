@@ -42,6 +42,12 @@ final readonly class SettingsRowLayout
     /** A text field's width, value or not: a field, not a label that grows. */
     private const int TEXT_FIELD = 24;
 
+    /**
+     * A section heading's rows: a blank row, the legend rule, a blank row —
+     * the heading stands apart from the fields above and below it.
+     */
+    public const int LEGEND_ROWS = 3;
+
     /** The modified marker's two columns before the label, and the gap's two after it. */
     public const int LABEL_CHROME = 4;
 
@@ -97,7 +103,7 @@ final readonly class SettingsRowLayout
             $legend = null !== $row->fieldset && $row->fieldset !== $previous ? $row->fieldset : null;
             $previous = $row->fieldset;
             $legends[] = $legend;
-            $heights[] = (null === $legend ? 0 : 1) + ($boxed ? FieldBox::ROWS : 1);
+            $heights[] = (null === $legend ? 0 : self::LEGEND_ROWS) + ($boxed ? FieldBox::ROWS : 1);
         }
 
         return new self($label, \min($needed, FieldBox::MAX_WIDTH, $room), $boxed, $heights, $legends);

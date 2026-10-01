@@ -15,7 +15,9 @@ use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\Document;
 use Porta\Editor\OpenFocus;
 use Porta\Event\BufferRepointRequested;
+use Porta\Help\HelpViewController;
 use Porta\Help\HelpViewerActions;
+use Porta\Help\MarkdownPreviewActions;
 use Porta\History\SessionRestorer;
 use Porta\History\SessionStore;
 use Porta\Ide;
@@ -39,6 +41,7 @@ use Porta\Tests\Support\Services;
 use Porta\Tests\Support\Toasts;
 use Porta\Ui\NonBlockingTerminal;
 use Porta\Widget\HelpViewerWidget;
+use Porta\Widget\MarkdownPreviewWidget;
 use Porta\Workbench\EditorArea;
 use Porta\Workbench\Notifier;
 use Porta\Workbench\View\ViewRegistry;
@@ -1015,100 +1018,75 @@ final class IdeHelpersTest extends TestCase
         $this->assertNull(Services::resolve($this->ide, Tui::class)->getById('editor')->getFilePath(), 'the empty push left no stack entry');
     }
 
-    public function testOpenHelpShowsARenderedTabAndSharesThePathWithSourceBuffers(): void
-    {
-        $readme = (string) \realpath($this->project->write('docs/README.md', "# Guides\n\n[Editor](editor.md)\n"));
-        $this->project->write('docs/editor.md', "# Editor guide\n");
-
-        /** @var \Porta\Editor\BufferService $buffers */
-        $buffers = Services::resolve($this->ide, BufferService::class);
-        /** @var \Porta\Widget\HelpViewerWidget $viewer */
-        $viewer = Services::resolve($this->ide, HelpViewerWidget::class);
-        /** @var \Porta\Editor\BufferManager $manager */
-        $manager = Services::resolve($this->ide, BufferManager::class);
-
-        $buffers->openHelp($readme);
-        $active = $manager->active();
-        $this->assertInstanceOf(Buffer::class, $active);
-        $this->assertSame('help', $active->paneId);
-        $this->assertSame($readme, $viewer->path(), 'the viewer shows the page');
-        $this->assertFalse($active->isDirty(), 'the backing document stays empty');
-        $this->assertFalse($buffers->saveBuffer($active), 'help tabs never save');
-
-        // Unreadable page → flash, no tab.
-        $buffers->openHelp($this->project->path('docs/nope.md'));
-        $this->assertSame($readme, $manager->active()?->path);
-
-        // A page that is not text is REFUSED by the pane's loader rather than
-        // rendered as mojibake — the same refusal every pane makes about a file
-        // its claim already accepted.
-        $binary = (string) \realpath($this->project->write('docs/binary.md', "\xff\xfe\x00# not text"));
-        $buffers->openHelp($binary);
-        $this->assertSame($readme, $manager->active()?->path, 'the corrupt page opened no tab');
-        $this->assertStringContainsString('Not a UTF-8 text file', Toasts::last($this->ide));
-
-        // A page changed on disk reloads through the filesystem poller.
-        \file_put_contents($readme, data: "# Guides v2\n");
-        \clearstatcache();
-        \touch($readme, \time() + 2);
-        $buffers->pollFilesystem();
-        $this->assertSame("# Guides v2\n", $manager->active()?->panePayload, 'the poller refreshed the page');
-
-        // The same path already open as SOURCE re-shows the text buffer.
-        $buffers->closeActiveBuffer();
-        $buffers->openFile($readme, focus: OpenFocus::Editor);
-        $buffers->openHelp($readme);
-        $this->assertNotSame('help', $manager->active()?->paneId, 'the editable source tab wins');
-    }
-
-    public function testHelpNavigationStaysInOneTabAndSurvivesTabSwitches(): void
+    /** The docs open in their own window, no tab: the page navigates in place and survives closing. */
+    public function testTheDocsOpenInTheirWindowAndNavigateInPlace(): void
     {
         $readme = (string) \realpath($this->project->write('docs/README.md', "# Guides\n\n[Editor](editor.md)\n"));
         $editor = (string) \realpath($this->project->write('docs/editor.md', "# Editor guide\n"));
-        $code = (string) \realpath($this->project->write('a.php', "<?php\n"));
 
-        /** @var \Porta\Editor\BufferService $buffers */
-        $buffers = Services::resolve($this->ide, BufferService::class);
+        $window = Services::resolve($this->ide, HelpViewController::class);
         /** @var \Porta\Widget\HelpViewerWidget $viewer */
         $viewer = Services::resolve($this->ide, HelpViewerWidget::class);
+        $views = Services::resolve($this->ide, ViewRegistry::class);
         /** @var \Porta\Editor\BufferManager $manager */
         $manager = Services::resolve($this->ide, BufferManager::class);
 
-        // In-place navigation: the viewer moves, no second help buffer appears.
-        $buffers->openHelp($readme);
-        $buffers->showHelpPage($editor);
-        $this->assertSame($editor, $viewer->path(), 'the viewer navigated in place');
-        $this->assertSame($readme, $manager->active()?->path, 'still the one help tab, keyed by the root page');
-        $this->assertCount(1, $manager->all());
+        $window->showPage($readme);
+        $window->open();
+        $this->assertTrue($views->isOpen('help'));
+        $this->assertSame($readme, $viewer->path(), 'the window shows the page');
+        $this->assertSame([], $manager->all(), 'and no tab was opened for it');
 
-        // An unreadable page flashes and leaves the viewer where it was.
-        $buffers->showHelpPage($this->project->path('docs/nope.md'));
+        $window->showPage($editor);
+        $this->assertSame($editor, $viewer->path(), 'the page navigated in place');
+
+        // An unreadable page flashes and leaves the window where it was.
+        $window->showPage($this->project->path('docs/nope.md'));
         $this->assertSame($editor, $viewer->path());
+        $this->assertStringContainsString('Cannot read', Toasts::last($this->ide));
 
-        // A round trip through a code tab keeps the navigated page and history.
-        $buffers->openFile($code, focus: OpenFocus::Editor);
-        $this->assertSame($editor, $viewer->path(), 'switching tabs no longer clears the viewer');
-        $buffers->openHelp($readme);
-        $this->assertSame($editor, $viewer->path(), 're-activating the help tab keeps the navigated page');
+        // A page that is not text is refused rather than rendered as mojibake.
+        $binary = (string) \realpath($this->project->write('docs/binary.md', "\xff\xfe\x00# not text"));
+        $window->showPage($binary);
+        $this->assertSame($editor, $viewer->path(), 'the corrupt page was not shown');
+        $this->assertStringContainsString('Not a UTF-8 text file', Toasts::last($this->ide));
 
-        // The poller only re-shows the root page when the viewer is on it.
-        \file_put_contents($readme, data: "# Guides v2\n");
-        \clearstatcache();
-        \touch($readme, \time() + 2);
-        $buffers->pollFilesystem();
-        $this->assertSame("# Guides v2\n", $manager->active()?->panePayload);
-        $this->assertSame($editor, $viewer->path(), 'a background root reload does not yank the navigated page');
+        // Closing and reopening keeps the navigated page and its history.
+        $window->close();
+        $this->assertFalse($views->isOpen('help'));
+        $window->open();
+        $this->assertSame($editor, $viewer->path(), 'reopening keeps the page');
+        $window->toggle();
+        $this->assertFalse($views->isOpen('help'), 'toggle closes it');
+    }
 
-        // Closing the help tab is what drops the viewer state.
-        $buffers->closeActiveBuffer();
-        $this->assertNull($viewer->path(), 'the history dies with the tab');
+    /**
+     * The markdown preview's tab verbs reach the editor's tab stack — the
+     * preview is a pane in it — and a viewer's buffer is never saved over the
+     * file it shows.
+     */
+    public function testThePreviewsTabVerbsReachTheTabStack(): void
+    {
+        $preview = Services::resolve($this->ide, MarkdownPreviewWidget::class);
+        $actions = Probe::get($preview, 'handler');
+        $this->assertInstanceOf(MarkdownPreviewActions::class, $actions);
+        /** @var \Porta\Editor\BufferManager $manager */
+        $manager = Services::resolve($this->ide, BufferManager::class);
+        $service = Services::resolve($this->ide, BufferService::class);
+        $service->openFile($this->project->write('one.php', "<?php\n"), focus: OpenFocus::Editor);
+        $service->openFile($this->project->write('two.php', "<?php\n"), focus: OpenFocus::Editor);
 
-        // closeTabsExcept clears it the same way.
-        $buffers->openHelp($readme);
-        $buffers->showHelpPage($editor);
-        $buffers->closeTabsExcept($code);
-        $this->assertNull($viewer->path(), 'closing the help tab via close-others clears the viewer');
-        $this->assertSame([$code], \array_map(static fn (Buffer $b): string => $b->path, $manager->all()));
+        $actions->cycleBuffer(-1);
+        $this->assertStringEndsWith('one.php', (string) $manager->active()?->path, 'cycled back a tab');
+        $actions->closeBuffer();
+        $this->assertStringEndsWith('two.php', (string) $manager->active()?->path, 'closed the active tab');
+        $actions->openGotoFile();
+        $this->assertTrue(Services::resolve($this->ide, Tui::class)->getById('editor')->isAnyPickerOpen(), 'the file picker opened');
+        $actions->viewChanged();
+        $actions->saveAll(); // nothing dirty: a silent sweep
+
+        $viewer = $manager->openPane($this->project->write('notes.md', "# Notes\n"), MarkdownPreviewWidget::PANE_ID, "# Notes\n");
+        $this->assertFalse($service->saveBuffer($viewer), 'a viewer never writes its empty backing document over the file');
     }
 
     public function testViewerHandlerHooksDelegateToTheBufferStack(): void
@@ -1121,8 +1099,13 @@ final class IdeHelpersTest extends TestCase
         $help = Probe::get($helpViewer, 'handler');
         $this->assertInstanceOf(HelpViewerActions::class, $help, 'the help viewer exposes its actions handler');
 
+        $views = Services::resolve($this->ide, ViewRegistry::class);
+        $window = Services::resolve($this->ide, HelpViewController::class);
+        $window->showPage($this->project->write('docs/README.md', "# Guides\n"));
+        $window->open();
         $help->openFile($file);
         $this->assertStringEndsWith('Hooked.php', (string) $tui->getById('editor')->getFilePath(), 'a plain-file link opens in the editor');
+        $this->assertFalse($views->isOpen('help'), 'and the docs window gave way to it');
 
         $help->missingTarget('ghost.md');
         $this->assertStringContainsString('Cannot read ghost.md', $flash(), 'a dangling link target flashes');
@@ -1133,9 +1116,18 @@ final class IdeHelpersTest extends TestCase
         $help->viewChanged();
 
         $help->saveAll(); // nothing dirty: a silent sweep
+        $window->open();
         $help->closeBuffer();
-        $buffers = Services::resolve($this->ide, BufferManager::class);
-        $this->assertNull($buffers->active(), 'the viewer close hook closed the only tab');
+        $this->assertFalse($views->isOpen('help'), 'Alt+W on the page closes the window');
+        $this->assertInstanceOf(Buffer::class, Services::resolve($this->ide, BufferManager::class)->active(), 'and leaves the editor\'s tabs alone');
+
+        $window->open();
+        $help->cycleBuffer(1);
+        $this->assertFalse($views->isOpen('help'), 'a tab verb reaches past the window: it closes first');
+        $window->open();
+        $help->openGotoFile();
+        $this->assertFalse($views->isOpen('help'));
+        $help->revealSource(1, 0); // a doc page has no source: nothing happens
 
         // The other half of this test used to reach the image viewer the same
         // way; it is a PLUGIN pane now, and that its handler arrives at all is

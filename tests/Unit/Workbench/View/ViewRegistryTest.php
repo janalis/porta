@@ -29,19 +29,19 @@ final class ViewRegistryTest extends TestCase
      */
     private function fakeView(
         string $id,
-        bool $ownsMainArea = true,
+        bool $hostsWindow = true,
         bool $hasRing = true,
         ?ViewPointer $pointer = null,
         ?ViewMenuSource $menus = null,
     ): ContributedView {
-        return new class($id, $ownsMainArea, $hasRing, $pointer, $menus) implements ContributedView {
+        return new class($id, $hostsWindow, $hasRing, $pointer, $menus) implements ContributedView {
             private bool $open = false;
 
             private readonly AbstractWidget&FocusableInterface $widget;
 
             public function __construct(
                 private readonly string $id,
-                private readonly bool $ownsMainArea,
+                private readonly bool $hostsWindow,
                 private readonly bool $hasRing,
                 private readonly ?ViewPointer $pointer,
                 private readonly ?ViewMenuSource $menus,
@@ -64,9 +64,14 @@ final class ViewRegistryTest extends TestCase
                 return $this->id;
             }
 
-            public function ownsMainArea(): bool
+            public function hostsWindow(): bool
             {
-                return $this->ownsMainArea;
+                return $this->hostsWindow;
+            }
+
+            public function title(): string
+            {
+                return '';
             }
 
             public function isOpen(): bool
@@ -165,12 +170,12 @@ final class ViewRegistryTest extends TestCase
 
     public function testAFloatingViewIsActiveWithoutDetachingTheMainArea(): void
     {
-        // The distinction ownsMainArea() exists for. Welcome is open — so it
+        // The distinction hostsWindow() exists for. Welcome is open — so it
         // owns focus and the menu's view-safe list — while the editor layout
         // stays mounted behind it, so every "is the editor detached?" guard
         // must still answer no.
         $views = new ViewRegistry();
-        $views->register($this->fakeView('welcome', ownsMainArea: false, hasRing: false));
+        $views->register($this->fakeView('welcome', hostsWindow: false, hasRing: false));
 
         $views->open('welcome');
 
@@ -186,7 +191,7 @@ final class ViewRegistryTest extends TestCase
     {
         $views = new ViewRegistry();
         $git = $this->fakeView('git');
-        $welcome = $this->fakeView('welcome', ownsMainArea: false, hasRing: false);
+        $welcome = $this->fakeView('welcome', hostsWindow: false, hasRing: false);
         $views->register($git);
         $views->register($welcome);
 

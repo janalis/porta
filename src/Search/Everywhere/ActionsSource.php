@@ -27,6 +27,8 @@ final readonly class ActionsSource implements SearchSource
     public function __construct(
         private CommandRegistry $commands,
         private ?\Closure $shortcutOf = null,
+        /** @var (\Closure(string): void)|null called with a command's id before it runs */
+        private ?\Closure $beforeRun = null,
     ) {}
 
     #[\Override]
@@ -46,6 +48,8 @@ final readonly class ActionsSource implements SearchSource
                 continue;
             }
             $run = $command['run'];
+            $id = $command['id'];
+            $beforeRun = $this->beforeRun;
             $hint = null === $this->shortcutOf ? '' : ($this->shortcutOf)($command['id']);
             $scored[] = [
                 $score,
@@ -53,7 +57,10 @@ final readonly class ActionsSource implements SearchSource
                     SearchCategory::Actions,
                     $command['label'],
                     $hint,
-                    static function () use ($run): void {
+                    static function () use ($run, $id, $beforeRun): void {
+                        if (null !== $beforeRun) {
+                            $beforeRun($id);
+                        }
                         $run();
                     },
                     enabled: $command['enabled'],

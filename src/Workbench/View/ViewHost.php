@@ -5,46 +5,36 @@ declare(strict_types=1);
 namespace Porta\Workbench\View;
 
 use Porta\Container\AsIdeService;
-use Porta\Container\LayoutSlot;
-use Porta\Layout\EditorAreaPanes;
 use Porta\Layout\ViewRegion;
 use Porta\Widget\MenuBarWidget;
 use Porta\Workbench\EditorArea;
 use Symfony\Component\Tui\Tui;
 use Symfony\Component\Tui\Widget\AbstractWidget;
-use Symfony\Component\Tui\Widget\ContainerWidget;
 use Symfony\Component\Tui\Widget\FocusableInterface;
 
 /**
- * The main-area swap, done once for every view.
- *
- * Taking over the workspace and giving it back was written out in each view
- * controller: close any open menu dropdown so its tracked hit region cannot go
- * stale across the swap, clear `main`, add the region — and in reverse, restore
- * the editor layout's panes in their RTL-aware order and hand focus back. Two
- * copies, identical line for line, and four constructor dependencies apiece
- * that exist for nothing else.
+ * Opening a view in the view window and giving the workspace back, done once
+ * for every view.
  *
  * A view keeps its own open()/close(), because only it knows whether it can
  * open at all — the git view refuses outside a repository — and what state to
- * set up once it has. What it no longer has to know is how the workspace is
- * assembled.
+ * set up once it has. What it does not have to know is where it is drawn: the
+ * editor layout stays mounted, dimmed behind the window
+ * ({@see ViewWindow}, drawn by {@see \Porta\Overlay\Presenter\ViewWindowPresenter}).
  */
 #[AsIdeService]
 final readonly class ViewHost
 {
     public function __construct(
-        #[LayoutSlot('main')]
-        private ContainerWidget $main,
+        private ViewWindow $window,
         private MenuBarWidget $menuBar,
-        private EditorAreaPanes $editArea,
         private EditorArea $editorArea,
         private Tui $tui,
         private ?ViewRegistry $views = null,
     ) {}
 
     /**
-     * Swap view $viewId's $region into the main area; every other view yields
+     * Open view $viewId's $region in the window; every other view yields
      * first — however this one came to open, through the registry or not (an
      * agent's proposal, a git tool launch).
      */
@@ -54,19 +44,17 @@ final readonly class ViewHost
         // The menu bar is global and full-width, so it stays put; only an open
         // dropdown has to go.
         $this->menuBar->close();
-        $this->main->clear();
-        $this->main->add($region->area());
+        $this->window->open($region, $viewId);
+        $this->tui->requestRender();
     }
 
-    /** Give the main area back to the editor layout and return focus to it. */
+    /** Close the window and return focus to the editor behind it. */
     public function restore(): void
     {
         $this->menuBar->close();
-        $this->main->clear();
-        foreach ($this->editArea->orderedEditorPanes() as $pane) {
-            $this->main->add($pane);
-        }
+        $this->window->close();
         $this->editorArea->focus();
+        $this->tui->requestRender();
     }
 
     /** Focus one of the view's own widgets. */

@@ -26,7 +26,6 @@ use Porta\Support\Files;
 use Porta\Support\ProjectPaths;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\FileTreeWidget;
-use Porta\Widget\HelpViewerWidget;
 use Porta\Widget\TextPreviewWidget;
 use Porta\Workbench\EditorArea;
 use Porta\Workbench\EditorSlot;
@@ -76,7 +75,6 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
         private readonly ProjectPaths $paths,
         private readonly Translator $translator,
         private readonly FilesystemReconciler $reconciler,
-        private readonly HelpViewerWidget $helpViewer,
         private readonly EventDispatcherInterface $dispatcher,
         private readonly FormatOnSave $formatOnSave,
         private readonly ViewerProviderSource $viewers,
@@ -384,54 +382,6 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
         $preview = $this->previews->previewFor($path);
 
         return null !== $preview && null !== $this->panes->paneFor($preview) ? $preview : null;
-    }
-
-    /**
-     * Open a documentation page into a rendered help-viewer tab: no LSP, no
-     * git marks — the raw markdown rides the buffer beside an empty document.
-     * A path already open as a normal text buffer just re-shows that source
-     * tab (developing Porta itself can have docs open both ways).
-     */
-    public function openHelp(string $path): void
-    {
-        $path = ($resolved = \realpath($path)) ? $resolved : $path;
-
-        if ($this->buffers->has($path)) {
-            /** @var Buffer $active */
-            $active = $this->buffers->setActive($path);
-            $this->showBuffer($active);
-            $this->focusEditorArea();
-            $this->tui->requestRender();
-
-            return;
-        }
-
-        if (!\is_file($path) || !\is_readable($path)) {
-            $this->notifier->error($this->translator->trans('Cannot read %file%', ['%file%' => $this->paths->relative($path)]));
-
-            return;
-        }
-
-        // Through the pane's own loader, like every other pane: a docs file that
-        // is not text is refused rather than rendered as mojibake.
-        $this->openInPane($path, 'help', OpenFocus::Editor);
-    }
-
-    /**
-     * Navigate the open help tab to another doc page in place: no new buffer,
-     * no tab switch — the viewer widget owns the page and its back/forward
-     * history, and the single help tab just keeps showing the widget.
-     */
-    public function showHelpPage(string $path): void
-    {
-        $path = ($resolved = \realpath($path)) ? $resolved : $path;
-        if (!\is_file($path) || !\is_readable($path)) {
-            $this->notifier->error($this->translator->trans('Cannot read %file%', ['%file%' => $this->paths->relative($path)]));
-
-            return;
-        }
-        $this->helpViewer->refreshPage($path, (string) \file_get_contents($path));
-        $this->tui->requestRender();
     }
 
     /** Focus the editor-pane content: the active tab's viewer or lone preview, else the editor. */

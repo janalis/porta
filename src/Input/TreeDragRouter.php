@@ -22,7 +22,7 @@ use Symfony\Component\Tui\Tui;
  * MouseRouter}, which is the class both of mago's ceilings are
  * bisected against — its parameter list and its cyclomatic complexity are the
  * floors, so anything added there has to displace something. The shape is
- * {@see \Porta\Workbench\Onboarding\WelcomeMouseRouter}'s: one `continueDrag()`
+ * {@see \Porta\Workbench\Onboarding\ModalWindowRouter}'s: one `continueDrag()`
  * in the router's `||` chain, one `cancel()` in its fresh-press sweep.
  */
 #[AsIdeService]

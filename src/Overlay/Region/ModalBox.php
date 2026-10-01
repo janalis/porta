@@ -6,10 +6,9 @@ namespace Porta\Overlay\Region;
 
 /**
  * A rendered modal's box geometry, recorded at composite time for mouse
- * hit-testing — the one shape behind what were four ad-hoc per-picker arrays
- * ({@see \Porta\Overlay\State\OverlayHost}, the find-in-files modal) plus the
- * Welcome modal. Rows/columns are in whatever space the owner rendered in
- * (editor-relative for the pickers, absolute for the Welcome modal); the owner
+ * hit-testing — the one shape behind every floating window: the pickers
+ * ({@see \Porta\Overlay\State\OverlayHost}), Find in Files, the Welcome modal
+ * and the view windows. Rows and columns are screen cells; the owner
  * hit-tests in that same space.
  *
  * The item window sits below $headerRows of chrome (the title bar, plus a
@@ -19,8 +18,9 @@ namespace Porta\Overlay\Region;
 final readonly class ModalBox
 {
     /**
-     * The close affordance's column span, measured back from the box's right
-     * edge: the `×` and the space before it, leaving the corner glyph out.
+     * The close affordance's column span, measured in from the box's edge on
+     * its {@see CloseButton}: the `×` and the space beside it, leaving the
+     * corner glyph out.
      */
     public const int CLOSE_OFFSET = 2;
 
@@ -40,6 +40,7 @@ final readonly class ModalBox
         public int $count,
         public int $optionsRow = -1,
         public int $footerRow = -1,
+        public CloseButton $closeButton = CloseButton::Standard,
     ) {}
 
     /** Whether the cell sits anywhere inside the box, borders included. */
@@ -77,13 +78,40 @@ final readonly class ModalBox
     /** Whether the cell hits the title bar's close `×` (checked before any item mapping). */
     public function closeHit(int $row, int $col): bool
     {
-        return $row === $this->startRow && $col >= ($this->col + $this->width - self::CLOSE_OFFSET - 1) && $col < ($this->col + $this->width - 1);
+        $first = $this->closeButton->leads() ? $this->col + 1 : $this->col + $this->width - self::CLOSE_OFFSET - 1;
+
+        return $row === $this->startRow && $col >= $first && $col < ($first + self::CLOSE_OFFSET);
     }
 
-    /** Whether the cell is the bottom-right corner — the resizable modals' grab. */
-    public function resizeHit(int $row, int $col): bool
+    /**
+     * The frame part under the cell: the × and the rest of the title bar, the
+     * two side rails, the bottom border and the four corners, the content
+     * inside, or outside the box altogether.
+     */
+    public function zoneAt(int $row, int $col): WindowZone
     {
-        return $row === ($this->startRow + $this->rows - 1) && $col === ($this->col + $this->width - 1);
+        if (!$this->contains($row, $col)) {
+            return WindowZone::Outside;
+        }
+        $left = $col === $this->col;
+        $right = $col === ($this->col + $this->width - 1);
+
+        return match (true) {
+            $this->closeHit($row, $col) => WindowZone::Close,
+            $row === $this->startRow => match (true) {
+                $left => WindowZone::TopLeft,
+                $right => WindowZone::TopRight,
+                default => WindowZone::Title,
+            },
+            $row === ($this->startRow + $this->rows - 1) => match (true) {
+                $left => WindowZone::BottomLeft,
+                $right => WindowZone::BottomRight,
+                default => WindowZone::Bottom,
+            },
+            $left => WindowZone::Left,
+            $right => WindowZone::Right,
+            default => WindowZone::Content,
+        };
     }
 
     /** The box as a floating region, for the RTL segmenter and region hit-tests. */

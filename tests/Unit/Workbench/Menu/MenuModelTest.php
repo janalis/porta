@@ -10,13 +10,11 @@ use Porta\Config\KeyDispatch;
 use Porta\Config\PaletteVisibility;
 use Porta\I18n\Translator;
 use Porta\Plugin\Runtime\PluginMenuSpec;
-use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Workbench\Menu\EditorCommandTarget;
 use Porta\Workbench\Menu\Menu;
 use Porta\Workbench\Menu\MenuContribution;
-use Porta\Workbench\Menu\MenuContributions;
 use Porta\Workbench\Menu\MenuItem;
 use Porta\Workbench\Menu\MenuModel;
 use Symfony\Component\Tui\Input\Keybindings;
@@ -184,21 +182,17 @@ final class MenuModelTest extends TestCase
         $this->assertSame([false, false], \array_map(static fn (MenuItem $i): bool => $i->separator, $menus[4]->items), 'a single plugin keeps a flat, separator-free list');
     }
 
-    public function testPluginWhenClosureGatesTheMenuItemOnTopOfViewGating(): void
+    public function testPluginWhenClosureGatesTheMenuItem(): void
     {
         $commands = new CommandRegistry();
         $commands->add('demo:hello', static function (): void {}, keyBound: KeyDispatch::Bound, label: 'Say Hello');
         $usable = false;
-        $settingsOpen = false;
 
         $menus = MenuModel::build(
             $commands,
             new CodeEditorWidget(),
             new Keybindings([]),
             new Translator('en'),
-            activeView: static function () use (&$settingsOpen): ?string {
-                return $settingsOpen ? 'settings' : null;
-            },
             pluginSpecs: [new PluginMenuSpec('demo', 'i:demo:hello', static function () use (&$usable): bool {
                 return $usable;
             })],
@@ -208,8 +202,6 @@ final class MenuModelTest extends TestCase
         $this->assertFalse($item->enabled(), 'unusable plugin → disabled');
         $usable = true;
         $this->assertTrue($item->enabled(), 'usable plugin → enabled');
-        $settingsOpen = true;
-        $this->assertFalse($item->enabled(), 'the settings-view gate still applies on top');
     }
 
     public function testTitlesAndItemsAreTranslated(): void
@@ -242,65 +234,6 @@ final class MenuModelTest extends TestCase
             ->add('git_stage', static function (): void {}, label: 'Git: Stage Current File')
             ->add('git_commit', static function (): void {}, label: 'Git: Commit…')
             ->add('git_blame', static function (): void {}, label: 'Git: Blame Current Line');
-    }
-
-    public function testAContributedViewsSafeListGatesWhileItsViewIsActive(): void
-    {
-        // The view-safe merge is what lets a CONTRIBUTED view gate the menus
-        // the way core's own do: its listed items stay usable while it owns
-        // the main area, everything else greys out.
-        $menus = MenuModel::build(
-            $this->gitCommands(),
-            new CodeEditorWidget(),
-            new Keybindings([]),
-            new Translator('en'),
-            activeView: static fn (): ?string => 'git',
-            contributions: [self::gitContribution()],
-        );
-
-        $this->assertTrue($this->item($menus, 'Git', 'Git: Commit…')->enabled(), "the contribution's viewSafe list is honored");
-        $this->assertFalse($this->item($menus, 'Git', 'Git: Stage Current File')->enabled(), 'an unlisted item is gated while the view is active');
-    }
-
-    public function testAViewlessContributionDoesNotStopLaterOnesFromJoiningTheSafeListMerge(): void
-    {
-        // The view-safe merge walks contributions in a separate loop from the
-        // one that skips a viewless entry when PLACING menus — a `continue`
-        // that regressed to `break` there would strand every contribution
-        // registered after a viewless one out of the merged safe list.
-        $viewless = new MenuContribution(title: 'Tools', after: 'Run', items: []);
-
-        $menus = MenuModel::build(
-            $this->gitCommands(),
-            new CodeEditorWidget(),
-            new Keybindings([]),
-            new Translator('en'),
-            activeView: static fn (): ?string => 'git',
-            contributions: [$viewless, self::gitContribution()],
-        );
-
-        $this->assertTrue($this->item($menus, 'Git', 'Git: Commit…')->enabled(), "the git contribution's viewSafe list still merged in");
-    }
-
-    public function testTwoContributionsToOneViewMergeTheirSafeLists(): void
-    {
-        // The ?? [] merge exists for exactly this: a second contribution to
-        // the same view EXTENDS its safe list — losing either half would
-        // silently grey out the other's items while the view is active.
-        $commands = $this->gitCommands()->add('git_extra', static function (): void {}, label: 'Git: Extra Verb');
-        $extension = new MenuContribution(title: 'Git Extras', after: 'Help', items: ['i:git_extra'], viewId: 'git', viewSafe: ['git_extra']);
-
-        $menus = MenuModel::build(
-            $commands,
-            new CodeEditorWidget(),
-            new Keybindings([]),
-            new Translator('en'),
-            activeView: static fn (): ?string => 'git',
-            contributions: [self::gitContribution(), $extension],
-        );
-
-        $this->assertTrue($this->item($menus, 'Git', 'Git: Commit…')->enabled(), "the first contribution's safe list survives the merge");
-        $this->assertTrue($this->item($menus, 'Git Extras', 'Git: Extra Verb')->enabled(), "the second's extends it");
     }
 
     public function testFileScopedItemsDisabledWhenNoFileOpen(): void
@@ -342,81 +275,56 @@ final class MenuModelTest extends TestCase
         $this->assertTrue($this->item($menus, 'Git', 'Git: Stage Current File')->enabled());
     }
 
-    public function testGitViewGreysOutEverythingButTheSafeCommands(): void
+    /**
+     * An open view greys nothing out: every item stays enabled, and each one
+     * asks the open view's gate before it runs — the gate, not the menu,
+     * decides whether the window closes first.
+     */
+    public function testEveryItemRunsThroughTheGateAndNoneGreysOut(): void
     {
         $editor = new CodeEditorWidget();
         $editor->openFile('x.php', "<?php\n");
-        $gitViewOpen = true;
-        $ideKeys = new Keybindings([]);
-        $commands = $this
-            ->gitCommands()
-            ->add('git_undo_commit', static function (): void {}, label: 'Git: Undo Last Commit')
-            ->add('ide_git', static function (): void {}, label: 'Git: Changes');
+        $ran = [];
+        $order = [];
+        $commands = $this->gitCommands()->add(
+            'ide_settings',
+            static function () use (&$order): void {
+                $order[] = 'run';
+            },
+            label: 'Settings…',
+        );
         $menus = MenuModel::build(
             $commands,
             $editor,
-            $ideKeys,
+            new Keybindings([]),
             new Translator('en'),
-            static function () use (&$gitViewOpen): ?string {
-                return $gitViewOpen ? 'git' : null;
+            static function (string $scope, string $id) use (&$ran, &$order): void {
+                $ran[] = $scope.':'.$id;
+                $order[] = 'gate';
             },
             contributions: [self::gitContribution()],
         );
 
-        // Open view: only the git-safe commands stay live, file open or not.
-        $this->assertFalse($this->item($menus, 'Edit', 'Undo')->enabled(), 'editor actions target the detached editor');
-        $this->assertFalse($this->item($menus, 'File', 'Save File')->enabled());
-        $this->assertFalse($this->item($menus, 'File', 'Go to File')->enabled(), 'even non-file-scoped IDE commands grey out');
-        $this->assertFalse($this->item($menus, 'Git', 'Git: Stage Current File')->enabled(), 'stage targets the editor file');
-        $this->assertTrue($this->item($menus, 'File', 'Quit')->enabled());
-        $this->assertTrue($this->item($menus, 'Git', 'Git: Changes')->enabled());
-        $this->assertTrue($this->item($menus, 'Git', 'Git: Commit…')->enabled());
-        $this->assertTrue($this->item($menus, 'Git', 'Git: Undo Last Commit')->enabled());
-        $this->assertTrue($this->item($menus, 'Help', 'Find Action')->enabled());
+        foreach ([
+            ['Edit', 'Undo'],
+            ['File', 'Save File'],
+            ['File', 'Go to File'],
+            ['Git',  'Git: Changes'],
+            ['File', 'Settings…'],
+        ] as [$menu, $label]) {
+            $this->assertTrue($this->item($menus, $menu, $label)->enabled(), $label.' stays enabled');
+        }
 
-        // Closed view: the same menus fall back to the file-scoped rules.
-        $gitViewOpen = false;
-        $this->assertTrue($this->item($menus, 'Edit', 'Undo')->enabled());
-        $this->assertTrue($this->item($menus, 'Git', 'Git: Stage Current File')->enabled());
-        $this->assertTrue($this->item($menus, 'File', 'Go to File')->enabled());
+        ($this->item($menus, 'File', 'Settings…')->run)();
+        ($this->item($menus, 'Edit', 'Undo')->run)();
+        $this->assertSame(['i:ide_settings', 'e:undo'], $ran, 'each item names its scope and id to the gate');
+        $this->assertSame(['gate', 'run', 'gate'], $order, 'the gate is asked before the command runs');
     }
 
     public function testSettingsIsListedInTheFileMenu(): void
     {
         $menus = $this->build(new CommandRegistry(), new CodeEditorWidget());
         $this->assertSame('Settings…', $this->item($menus, 'File', 'Settings…')->label);
-    }
-
-    public function testSettingsViewGreysOutEverythingButTheSafeCommands(): void
-    {
-        $editor = new CodeEditorWidget();
-        $editor->openFile('x.php', "<?php\n");
-        $settingsOpen = true;
-        $ideKeys = new Keybindings([]);
-        $commands = $this->gitCommands()->add('ide_settings', static function (): void {}, label: 'Settings…');
-        $menus = MenuModel::build(
-            $commands,
-            $editor,
-            $ideKeys,
-            new Translator('en'),
-            static function () use (&$settingsOpen): ?string {
-                return $settingsOpen ? 'settings' : null;
-            },
-            contributions: [self::gitContribution()],
-        );
-
-        // Open view: only the settings-safe commands stay live.
-        $this->assertFalse($this->item($menus, 'Edit', 'Undo')->enabled());
-        $this->assertFalse($this->item($menus, 'File', 'Save File')->enabled());
-        $this->assertFalse($this->item($menus, 'Git', 'Git: Changes')->enabled(), 'even the git-view command greys out here');
-        $this->assertTrue($this->item($menus, 'File', 'Settings…')->enabled());
-        $this->assertTrue($this->item($menus, 'File', 'Quit')->enabled());
-        $this->assertTrue($this->item($menus, 'Help', 'Find Action')->enabled());
-
-        // Closed view: the file-scoped rules apply again.
-        $settingsOpen = false;
-        $this->assertTrue($this->item($menus, 'Edit', 'Undo')->enabled());
-        $this->assertTrue($this->item($menus, 'Git', 'Git: Changes')->enabled());
     }
 
     public function testEditorItemRunsRunActionAndShowsShortcut(): void
@@ -494,37 +402,6 @@ final class MenuModelTest extends TestCase
             \array_any($file->items, static fn (MenuItem $i): bool => $i->separator),
             'File menu has at least one separator',
         );
-    }
-
-    /**
-     * The VIEW_SAFE map must leave a way out of every view it covers: the gate at
-     * MenuModel::item() reads `VIEW_SAFE[$active->name] ?? []`, so a new view
-     * with no entry silently disables every single menu item — the same
-     * silent-unreachable failure mode the settings-section order test guards.
-     */
-    public function testEveryViewSafeEntryLeavesAWayOut(): void
-    {
-        // This used to range over WorkspaceView::cases() in both directions.
-        // There is no enum to range over now — a view supplies its own id and
-        // registers — so what is left is the invariant that actually matters:
-        // a view whose entry is missing or empty greys out the WHOLE menu, and
-        // the user needs at minimum a way to quit and a way to run a command.
-        /** @var array<string, list<string>> $map */
-        $map = Probe::getStatic(MenuModel::class, 'VIEW_SAFE');
-
-        // Core's own, plus every contributed list — a contributor that named a
-        // view but left its list empty greys out its OWN menu the moment that
-        // view opens, which is the failure with no error message.
-        $registry = new MenuContributions();
-        $registry->register('git', self::gitContribution());
-        $map = [...$map, ...$registry->viewSafe()];
-
-        $this->assertSame(['settings', 'welcome', 'git'], \array_keys($map));
-        foreach ($map as $id => $safe) {
-            $this->assertNotSame([], $safe, $id.': an empty entry disables every menu item silently');
-            $this->assertContains('ide_quit', $safe, $id.': quitting stays reachable');
-            $this->assertContains('ide_command_palette', $safe, $id.': the palette stays reachable');
-        }
     }
 
     public function testSkippingAnItemDoesNotLeaveItsDividersDoubled(): void

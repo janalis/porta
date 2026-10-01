@@ -35,7 +35,7 @@ final class RecentFilesRecorderTest extends TestCase
         $store = new RecentFilesStore($project->dir);
         $recorder = new RecentFilesRecorder($store);
 
-        $recorder->onBufferSwitched(new BufferSwitched(new Buffer('/docs/editor.md', new Document(''), paneId: 'help')));
+        $recorder->onBufferSwitched(new BufferSwitched(new Buffer('/docs/editor.md', new Document(''), paneId: 'markdown')));
         $recorder->onBufferSwitched(new BufferSwitched(new Buffer('/logo.png', new Document(''), paneId: 'image')));
 
         $this->assertSame([], $store->paths);

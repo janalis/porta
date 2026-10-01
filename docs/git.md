@@ -41,8 +41,8 @@ All async and non-blocking:
 
 ## The Git view (`Ctrl+Alt+D`)
 
-A full-screen, GitHub-Desktop-style view that replaces the tree|editor
-area: a changes list + commit box on one side, a diff pane on the other.
+A GitHub-Desktop-style view in a window over the editor — movable,
+resizable, closed by Esc or a click beside it: a changes list + commit box on one side, a diff pane on the other.
 Status re-reads on every action and polls every 2 s while open. Two tabs:
 **Changes** (`1`) and **History** (`2`); `Tab` cycles panes; `Esc` closes.
 

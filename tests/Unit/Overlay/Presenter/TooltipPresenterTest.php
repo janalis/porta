@@ -45,7 +45,7 @@ final class TooltipPresenterTest extends TestCase
         $this->tooltips->setDelayMs(0);
 
         return new TooltipPresenter(
-            new OverlayDelivery($this->renderer, new MenuOverlayPanes([$this->pane], static fn (): array => []), $this->tui),
+            new OverlayDelivery($this->renderer, new MenuOverlayPanes([$this->pane]), $this->tui),
             $this->tooltips,
             frameHooks: $this->tui,
         );

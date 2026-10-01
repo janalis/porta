@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Widget;
 use PHPUnit\Framework\TestCase;
 use Porta\Tests\Support\RecordingHelpViewerHandler;
 use Porta\Tests\Support\TempProject;
+use Porta\Ui\Glyphs;
 use Porta\Ui\Sgr;
 use Porta\Widget\HelpViewerWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -64,6 +65,31 @@ final class HelpViewerWidgetTest extends TestCase
         $this->assertNull($viewer->path(), 'the page and its history die with the tab');
     }
 
+    /** Esc on the page closes its window — once the window has said how — and nothing else does. */
+    public function testEscRunsTheExitHookOnlyOnceOneIsSet(): void
+    {
+        $viewer = $this->viewer();
+        $viewer->handleInput("\x1b"); // no window yet: nothing to close, nothing breaks
+
+        $closed = 0;
+        $viewer->onExit(static function () use (&$closed): void {
+            ++$closed;
+        });
+        $viewer->handleInput('x');
+        $this->assertSame(0, $closed, 'another key is the page\'s');
+        $viewer->handleInput("\x1b");
+        $this->assertSame(1, $closed, 'Esc closes the window');
+    }
+
+    /** A rule parts the navigation bar from the page, as the one under the app menu parts it from the workspace. */
+    public function testARuleRunsUnderTheNavigationBar(): void
+    {
+        $viewer = $this->viewer();
+
+        $this->assertSame(\str_repeat(Glyphs::FRAME_HORIZONTAL, times: 60), $this->screen($viewer)[1], 'the full width, under the bar');
+        $this->assertCount(1, $this->screen($viewer, rows: 1), 'a one-row pane keeps its bar and gives up the rule');
+    }
+
     public function testRendersStyledPageAndScrolls(): void
     {
         $viewer = $this->viewer();
@@ -71,14 +97,14 @@ final class HelpViewerWidgetTest extends TestCase
 
         $this->assertStringContainsString('‹ ›', $screen[0], 'the navigation header leads');
         $this->assertStringContainsString('README', $screen[0], 'with the current page as its crumb');
-        $this->assertSame('Guides', \rtrim($screen[1]), 'the heading renders without markdown syntax');
-        $this->assertSame('══════', \rtrim($screen[2]), 'an H1 gets a title-width rule');
+        $this->assertSame('Guides', \rtrim($screen[2]), 'the heading renders without markdown syntax');
+        $this->assertSame('══════', \rtrim($screen[3]), 'an H1 gets a title-width rule');
         $this->assertStringNotContainsString('](', \implode("\n", $screen));
 
         $viewer->scrollBy(6);
         $this->assertStringNotContainsString('Guides', \implode("\n", $this->screen($viewer)));
         $viewer->scrollBy(-\PHP_INT_MAX);
-        $this->assertSame('Guides', \rtrim($this->screen($viewer)[1]));
+        $this->assertSame('Guides', \rtrim($this->screen($viewer)[2]));
         $viewer->scrollBy(\PHP_INT_MAX);
         $this->assertStringContainsString('Paragraph 30.', \implode("\n", $this->screen($viewer)), 'end clamps to the last page');
     }
@@ -116,7 +142,7 @@ final class HelpViewerWidgetTest extends TestCase
         $this->screen($viewer); // establish width
 
         $viewer->handleInput("\t");
-        $line = $viewer->render(new RenderContext(60, 10))[4] ?? '';
+        $line = $viewer->render(new RenderContext(60, 10))[5] ?? '';
         $this->assertStringContainsString("\x1b[48;5;31m", $line, 'the focused link is painted with the selection colors');
         $this->assertStringContainsString('Editor', AnsiUtils::stripAnsiCodes($line));
         $this->assertStringContainsString("Editor\x1b[0m and ", $line, 'the text after the focused link keeps its own (plain) style — no link-style bleed');
@@ -143,7 +169,7 @@ final class HelpViewerWidgetTest extends TestCase
         $viewer->handleInput("\t"); // focus the first link
 
         $viewer->setFocused(false);
-        $line = $viewer->render(new RenderContext(60, 10))[4] ?? '';
+        $line = $viewer->render(new RenderContext(60, 10))[5] ?? '';
         $this->assertStringContainsString("\x1b[48;5;237m", $line, 'a blurred pane dims the focused link (SelectedRowUnfocused)');
         $this->assertStringNotContainsString("\x1b[48;5;31m", $line, 'not the bright focused shade');
     }
@@ -264,7 +290,7 @@ final class HelpViewerWidgetTest extends TestCase
     {
         $viewer = $this->viewer();
         $this->assertFalse($viewer->clickAt(0, 0), 'nothing rendered yet — no spans to hit');
-        $this->assertFalse($viewer->clickAt(1, 0), 'no rendered page — a body click misses');
+        $this->assertFalse($viewer->clickAt(2, 0), 'no rendered page — a body click misses');
         $this->assertSame([], $viewer->render(new RenderContext(0, 0)), 'a zero-sized pane renders nothing');
     }
 
@@ -391,11 +417,11 @@ final class HelpViewerWidgetTest extends TestCase
         $viewer = $this->viewer();
         $this->screen($viewer);
 
-        $this->assertFalse($viewer->clickAt(1, 2), 'plain text is not a link');
+        $this->assertFalse($viewer->clickAt(2, 2), 'plain text is not a link');
         $this->assertFalse($viewer->clickAt(0, 30), 'header space between zones is inert');
 
         // Doc line 3 holds the links → body row 4 with the header offset.
-        $this->assertTrue($viewer->clickAt(4, 4), 'a click inside a link span follows it');
+        $this->assertTrue($viewer->clickAt(5, 4), 'a click inside a link span follows it');
         $this->assertSame(['help:editor.md'], $this->handler->events);
     }
 
@@ -550,7 +576,7 @@ final class HelpViewerWidgetTest extends TestCase
 
         $this->assertGreaterThan($before, $viewer->getRenderRevision(), 'refreshPage invalidates');
         // scrollTop = -1 would shift every body row down by one blank line.
-        $this->assertStringContainsString('Editor guide', \rtrim($this->screen($viewer)[1]), 'the heading is the very first body row');
+        $this->assertStringContainsString('Editor guide', \rtrim($this->screen($viewer)[2]), 'the heading is the very first body row');
     }
 
     public function testClearBumpsFindVersionForwardNotBackward(): void
@@ -572,7 +598,7 @@ final class HelpViewerWidgetTest extends TestCase
         $viewer->clear();
 
         $viewer->refreshPage($this->docs->path('README.md'), (string) \file_get_contents($this->docs->path('README.md')));
-        $this->assertStringContainsString('Guides', \rtrim($this->screen($viewer)[1]), 'scrollTop is exactly 0 after clear(), not -1');
+        $this->assertStringContainsString('Guides', \rtrim($this->screen($viewer)[2]), 'scrollTop is exactly 0 after clear(), not -1');
     }
 
     public function testRefreshThemeInvalidates(): void
@@ -602,15 +628,15 @@ final class HelpViewerWidgetTest extends TestCase
         $this->screen($viewer);
 
         // Doc line 3 holds the links; body row 4 with the header offset.
-        // clickAt(4, 4) hits inside "Editor" (established by the existing
+        // clickAt(5, 4) hits inside "Editor" (established by the existing
         // "click follows a link" test) — one column further must not.
-        $this->assertTrue($viewer->clickAt(4, 4), 'sanity: inside the span');
+        $this->assertTrue($viewer->clickAt(5, 4), 'sanity: inside the span');
         $lastCol = 4;
-        while ($viewer->clickAt(4, $lastCol)) {
+        while ($viewer->clickAt(5, $lastCol)) {
             ++$lastCol;
         }
         // $lastCol is now one past the span's last hit — endCol is exclusive.
-        $this->assertFalse($viewer->clickAt(4, $lastCol));
+        $this->assertFalse($viewer->clickAt(5, $lastCol));
     }
 
     public function testABodyClickSkipsANonMatchingSpanAndStillFindsALaterOneOnTheSameRow(): void
@@ -622,7 +648,7 @@ final class HelpViewerWidgetTest extends TestCase
         // LAST link ('gone', col 34) must still work even though scanning
         // it walks past Editor's (col 4) non-matching span first — proving
         // a miss on an earlier span doesn't abort the whole scan.
-        $this->assertTrue($viewer->clickAt(4, 35));
+        $this->assertTrue($viewer->clickAt(5, 35));
         $this->assertSame(['missing:missing.md'], $this->handler->events);
     }
 
@@ -692,7 +718,7 @@ final class HelpViewerWidgetTest extends TestCase
         $viewer->refreshTheme(); // drop any memo before checking styles are consulted fresh
         $screen = $this->screen($viewer); // stripAnsiCodes — content-only check
 
-        $this->assertStringContainsString('Guides', \rtrim($screen[1]));
+        $this->assertStringContainsString('Guides', \rtrim($screen[2]));
         // The plain, stripped screen must be identical regardless of the
         // bold/unbold ternary direction — this just proves the header still
         // renders sane content; the ANSI-level bold assertion lives below.
@@ -840,7 +866,7 @@ final class HelpViewerWidgetTest extends TestCase
         $this->screen($viewer);
         $viewer->handleInput("\t"); // focus "Editor"
 
-        $line = $viewer->render(new RenderContext(60, 10))[4];
+        $line = $viewer->render(new RenderContext(60, 10))[5];
         // Exactly: prefix, RESET, style-open, the link text, RESET, suffix — in that order.
         $this->assertMatchesRegularExpression('/^.*\x1b\[0m(?:\x1b\[[0-9;]*m)+Editor\x1b\[0m.*$/', $line);
     }
@@ -924,7 +950,7 @@ final class HelpViewerWidgetTest extends TestCase
         $this->addToAssertionCount(1); // reaching here without throwing is the assertion
     }
 
-    private const int HELP_HEADER_ROWS = 1;
+    private const int HELP_HEADER_ROWS = 2;
 
     public function testTheDocsPageTakesNoCaretsFromTheFindBar(): void
     {

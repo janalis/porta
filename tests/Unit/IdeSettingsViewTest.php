@@ -33,7 +33,8 @@ final class IdeSettingsViewTest extends TestCase
     private CommandRegistry $commands;
     private ContributedView $gitView;
     private SettingsViewController $settingsView;
-    private ContainerWidget $main;
+    /** The view window's frame, where an open view's region is attached. */
+    private ContainerWidget $window;
 
     private function boot(): void
     {
@@ -52,13 +53,13 @@ final class IdeSettingsViewTest extends TestCase
         $this->assertInstanceOf(ContributedView::class, $git, 'the git plugin registered its view');
         $this->gitView = $git;
         $this->settingsView = $views->find('settings');
-        $this->main = Services::resolve($this->ide, WorkspaceLayout::class)->main;
+        $this->window = Services::resolve($this->ide, WorkspaceLayout::class)->windowFrame;
     }
 
     /** @return list<string> */
-    private function mainIds(): array
+    private function windowIds(): array
     {
-        return \array_map(static fn (AbstractWidget $w): string => $w->getId(), $this->main->all());
+        return \array_map(static fn (AbstractWidget $w): string => $w->getId(), $this->window->all());
     }
 
     public function testSettingsCommandOpensAndTogglesTheView(): void
@@ -67,11 +68,11 @@ final class IdeSettingsViewTest extends TestCase
 
         $this->commands->run('ide_settings');
         $this->assertTrue($this->settingsView->isOpen());
-        $this->assertContains('settings-area', $this->mainIds());
+        $this->assertContains('settings-area', $this->windowIds());
 
         $this->commands->run('ide_settings'); // toggle closed
         $this->assertFalse($this->settingsView->isOpen());
-        $this->assertNotContains('settings-area', $this->mainIds(), 'the editor is restored');
+        $this->assertNotContains('settings-area', $this->windowIds(), 'the window is emptied');
     }
 
     public function testTheSettingsAndGitViewsAreMutuallyExclusive(): void
@@ -85,7 +86,7 @@ final class IdeSettingsViewTest extends TestCase
         $this->commands->run('ide_settings');
         $this->assertTrue($this->settingsView->isOpen());
         $this->assertFalse($this->gitView->isOpen(), 'git closed when settings opened');
-        $this->assertContains('settings-area', $this->mainIds());
+        $this->assertContains('settings-area', $this->windowIds());
 
         // Opening git closes settings.
         $this->commands->run('ide_git');

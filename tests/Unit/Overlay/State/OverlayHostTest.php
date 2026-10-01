@@ -16,10 +16,10 @@ use Porta\Tests\Support\DrivesOverlayHost;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TestTui;
 use Porta\Ui\CursorStyle;
+use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Porta\Ui\TextField;
 use Porta\Ui\Theme\Styles;
-use Porta\Widget\Render\TabCloseGlyph;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Style\CursorShape;
 
@@ -1041,7 +1041,7 @@ final class OverlayHostTest extends TestCase
         $this->assertSame(2, Probe::get($host, 'overlay')['selected']);
     }
 
-    public function testThePromptKeepsItsCaretVisibleAndShowsTheEscHint(): void
+    public function testThePromptKeepsItsCaretVisibleAndShowsTheCloseButton(): void
     {
         $host = $this->host();
         // A value far longer than the box: a plain truncate would clip the
@@ -1052,7 +1052,7 @@ final class OverlayHostTest extends TestCase
         $joined = \implode("\n", $lines);
 
         $this->assertStringContainsString(AnsiUtils::CURSOR_MARKER_PREFIX, $joined, 'the caret marker survived the truncation');
-        $this->assertStringContainsString('Esc', AnsiUtils::stripAnsiCodes($joined), 'the dismiss hint shows');
+        $this->assertStringContainsString(Glyphs::WINDOW_CLOSE, AnsiUtils::stripAnsiCodes($joined), 'the close button shows');
         $this->assertSame(\str_repeat(' ', times: 60), $lines[0], 'the prompt is centered, not on the top row');
         foreach ($lines as $line) {
             $this->assertSame(60, AnsiUtils::visibleWidth($line), 'every row fills its width');
@@ -1082,7 +1082,7 @@ final class OverlayHostTest extends TestCase
         $stripped = AnsiUtils::stripAnsiCodes($joined);
         $this->assertStringContainsString('Go to line', $stripped, 'the label titles the frame');
         $this->assertStringContainsString('42', $stripped, 'the value on the field row');
-        $this->assertStringContainsString('Esc', $stripped);
+        $this->assertStringContainsString(Glyphs::WINDOW_CLOSE, $stripped);
     }
 
     public function testSearchHoverTintsAHitWithoutMovingTheSelection(): void
@@ -1234,8 +1234,8 @@ final class OverlayHostTest extends TestCase
         $host->hoverAt($listBox->startRow, $listBox->col + $listBox->width - 2); // only the list's ×
         [$listPlaced, $searchPlaced, $promptPlaced] = $host->layout([0, 0, 24, 100]);
 
-        $hovered = TabCloseGlyph::hovered($styles);
-        $inactive = TabCloseGlyph::inactive($styles);
+        $hovered = $styles->of(Role::DiagErrorDim)->apply(Glyphs::WINDOW_CLOSE);
+        $inactive = $styles->of(Role::Gutter)->apply(Glyphs::WINDOW_CLOSE);
         $this->assertStringContainsString($hovered, $listPlaced['rows'][0], 'the hovered surface shows the hovered ×');
         $this->assertStringContainsString($inactive, $searchPlaced['rows'][0], 'search must stay inactive');
         $this->assertStringContainsString($inactive, $promptPlaced['rows'][0], 'the prompt must stay inactive');

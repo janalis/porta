@@ -26,7 +26,6 @@ use Porta\Widget\MenuBarWidget;
 use Porta\Widget\Support\TabBarPosition;
 use Porta\Widget\TabBarWidget;
 use Porta\Workbench\EditorArea;
-use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Style\StyleSheet;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
@@ -71,7 +70,6 @@ final class ResponsiveLayoutTest extends TestCase
                 }
             }),
             new PaneReorder(),
-            new ViewRegistry(),
             new ViewRegions(Styles::dark()),
             new PreviewSplit(Styles::dark()),
         );
@@ -112,7 +110,6 @@ final class ResponsiveLayoutTest extends TestCase
                 }
             }),
             new PaneReorder(),
-            new ViewRegistry(),
             $regions,
             new PreviewSplit(Styles::dark()),
         );
@@ -252,18 +249,15 @@ final class ResponsiveLayoutTest extends TestCase
         $this->assertSame(['editor-pane'], $this->mainIds());
     }
 
-    public function testCollapsedStateFlowsThroughOrderedEditorPanes(): void
+    /** The editor area is arranged whether or not a view window is open over it: it never leaves `main`. */
+    public function testCollapsingAndRestoringRearrangeMainDirectly(): void
     {
         $responsive = $this->responsive();
         $responsive->apply(40);
-
-        // A swapped-in view restoring the editor area reads the collapsed list.
-        $ids = \array_map(static fn (AbstractWidget $w): string => $w->getId(), $this->paneLayout->orderedEditorPanes());
-        $this->assertSame(['editor-pane'], $ids);
+        $this->assertSame(['editor-pane'], $this->mainIds());
 
         $responsive->apply(200);
-        $ids = \array_map(static fn (AbstractWidget $w): string => $w->getId(), $this->paneLayout->orderedEditorPanes());
-        $this->assertSame(['tree', 'separator', 'editor-pane'], $ids);
+        $this->assertSame(['tree', 'separator', 'editor-pane'], $this->mainIds());
     }
 
     public function testConstructionSelfRegistersOnTheRenderLoopsWidthHook(): void
@@ -342,7 +336,6 @@ final class ResponsiveLayoutTest extends TestCase
                 }
             }),
             new PaneReorder(),
-            new ViewRegistry(),
             $regions,
             new PreviewSplit(Styles::dark()),
         );
@@ -373,7 +366,6 @@ final class ResponsiveLayoutTest extends TestCase
                 }
             }),
             new PaneReorder(),
-            new ViewRegistry(),
             $regions,
             new PreviewSplit(Styles::dark()),
         );
@@ -391,7 +383,6 @@ final class ResponsiveLayoutTest extends TestCase
                 }
             }),
             new PaneReorder(),
-            new ViewRegistry(),
             $regions,
             new PreviewSplit(Styles::dark()),
         );
@@ -419,7 +410,6 @@ final class ResponsiveLayoutTest extends TestCase
                 }
             }),
             new PaneReorder(),
-            new ViewRegistry(),
             $regions,
             new PreviewSplit(Styles::dark()),
         );

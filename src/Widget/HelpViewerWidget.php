@@ -6,17 +6,45 @@ namespace Porta\Widget;
 
 use Porta\Container\AsIdeService;
 use Porta\Container\AsWidget;
+use Symfony\Component\Tui\Input\Key;
 
 /**
- * The help tab's pane: a documentation page ({@see MarkdownPageWidget}) whose
- * links walk the docs tree in place, with the back/forward history that walk
- * leaves. One help tab exists at most, and it keeps whatever page the reader
- * navigated to — which is why {@see show()} adopts a page only when empty.
+ * The Documentation window's page ({@see MarkdownPageWidget}): its links walk
+ * the docs tree in place, with the back/forward history that walk leaves, and
+ * it keeps whatever page the reader navigated to across the window closing and
+ * reopening. Esc closes the window, as it closes every window
+ * ({@see \Porta\Help\HelpViewController}).
  */
 #[AsIdeService]
 #[AsWidget('help-viewer')]
 final class HelpViewerWidget extends MarkdownPageWidget
 {
+    /** What Esc does on the page: close its window. */
+    private ?\Closure $onExit = null;
+
+    public function onExit(\Closure $exit): void
+    {
+        $this->onExit = $exit;
+    }
+
+    #[\Override]
+    public function handleInput(string $data): void
+    {
+        if (null !== $this->onExit && $this->getKeybindings()->matches($data, 'exit_view')) {
+            ($this->onExit)();
+
+            return;
+        }
+        parent::handleInput($data);
+    }
+
+    /** @return array<string, string[]> */
+    #[\Override]
+    protected static function getDefaultKeybindings(): array
+    {
+        return [...parent::getDefaultKeybindings(), 'exit_view' => [Key::ESCAPE]];
+    }
+
     #[\Override]
     public function paneId(): string
     {

@@ -13,7 +13,7 @@ use Porta\Ui\ScreenDensity;
 use Porta\Ui\Theme\Styles;
 
 /**
- * What core hands a contributed full-screen view, and nothing else.
+ * What core hands a contributed view, and nothing else.
  *
  * The {@see \Porta\Editor\PaneServices} argument, applied to a view: a plugin
  * class can never be a container service — the container is compiled and cached

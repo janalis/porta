@@ -34,6 +34,7 @@ use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Menu\MenuContributions;
 use Porta\Workbench\Menu\MenuRebuilder;
 use Porta\Workbench\Notifier;
+use Porta\Workbench\View\ViewCommandGate;
 use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Input\Keybindings;
@@ -68,7 +69,7 @@ final class SettingsKeymapControllerTest extends TestCase
             new CodeEditorWidget(),
             $this->live,
             new Translator('en'),
-            new ViewRegistry(),
+            new ViewCommandGate(new ViewRegistry(), new MenuContributions()),
             new PluginManager(new EventDispatcher(), new PluginSettings($rootDir, [])),
             new MenuContributions(),
         );

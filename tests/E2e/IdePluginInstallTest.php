@@ -16,6 +16,7 @@ use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\Toasts;
+use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\Process\ExecutableFinder;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
@@ -151,8 +152,13 @@ final class IdePluginInstallTest extends TestCase
                     $this->awaitPainted($tui, $terminal, 'installee says hi');
                     $this->assertStringContainsString('installee says hi', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the default key dispatched without a restart');
 
+                    // A plugin's key reaches past the Settings window as its menu
+                    // item would: not one of Settings' own, it closed the window.
+                    $this->assertFalse(Services::resolve($ide, ViewRegistry::class)->isOpen('settings'), "the plugin's key closed the Settings window first");
+
                     // A plugin that installs but fails to load flashes the loader's error.
-                    $tui->handleInput("\r"); // the install row is still selected
+                    $this->openPluginsSection($tui, $ide);
+                    $tui->handleInput("\r"); // the install row: Settings reopens where it was left
                     $this->type($tui, $project->path('plugin-src/broken'));
                     $tui->handleInput("\r");
                     $this->await(static fn (): bool => \str_contains(Toasts::last($ide), 'failed to load'));

@@ -39,7 +39,11 @@ final class FloatingLayerTest extends TestCase
         $layer->setTooltip([]);
         $this->assertSame('tost', $top(), 'then the toasts');
         $layer->setToast([]);
-        $this->assertSame('modl', $top(), 'the modal lowest');
+        $this->assertSame('modl', $top(), 'the modal over a view window');
+        $layer->setWindow($span('wind'));
+        $this->assertSame('modl', $top(), 'a picker floats above the window it opened over');
+        $layer->setModal([]);
+        $this->assertSame('wind', $top(), 'the window lowest');
     }
 
     public function testASpanLandsAtItsOwnScreenCell(): void
@@ -56,7 +60,7 @@ final class FloatingLayerTest extends TestCase
         $layer = new FloatingLayer();
         $spans = [['row' => 0, 'col' => 0, 'width' => 1, 'segment' => 'x']];
 
-        foreach (['setModal', 'setToast', 'setTooltip', 'setMenu'] as $setter) {
+        foreach (['setWindow', 'setModal', 'setToast', 'setTooltip', 'setMenu'] as $setter) {
             $this->assertTrue($layer->{$setter}($spans), "{$setter}: new spans");
             $this->assertFalse($layer->{$setter}($spans), "{$setter}: the same again");
             $this->assertTrue($layer->{$setter}([]), "{$setter}: cleared");

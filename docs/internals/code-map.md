@@ -34,12 +34,13 @@ Anything that composes features does not belong here.
 (`MenuBarWidget`, `ContextMenu`, `DockTabsWidget`, `ResultsPanelWidget`) live
 in `Widget/`.
 
-**`Workbench/View/`** — what a full-screen view is, for core's own and for a
-contributed one alike. Git's is a plugin's; Settings' and Welcome's are core's;
-nothing in this namespace can tell. `ContributedView` (a view supplies its own string id;
-there is no enum of views), `ViewRegistry` (the interlock — one view owns the
-main area at a time), `ViewHost` (the main-area swap, done once rather than
-per view), `ViewServices` (the seven members core hands a contributed view) and
+**`Workbench/View/`** — what a view window is, for core's own and for a
+contributed one alike. Git's is a plugin's; Settings', the docs' and Welcome's
+are core's; nothing in this namespace can tell. `ContributedView` (a view supplies its own string id;
+there is no enum of views), `ViewRegistry` (the interlock — one view open at a
+time), `ViewWindow` (the window's contents) and `ViewHost` (opening a view in it,
+done once rather than per view), `ViewCommandGate` (what a command does to an
+open view), `ViewServices` (the seven members core hands a contributed view) and
 `ViewRegistrar` (the `PaneRegistrar` twin that drains `registerView()`). The
 pointer seam is here too — `ViewPointer`, `ViewPointers`, `WheelGesture`,
 `WheelAxis` — because a view CARRIES its pointer (`ContributedView::pointer()`),

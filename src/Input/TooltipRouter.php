@@ -63,7 +63,7 @@ final class TooltipRouter
         private readonly MenuBarWidget $menuBar,
         private readonly ContextMenu $contextMenu,
         private readonly ToastCenter $toasts,
-        private readonly WelcomeMouseRouter $welcome,
+        private readonly ModalWindowRouter $windows,
         private readonly StatusBarWidget $statusBar,
         private readonly BottomDock $dock,
         private readonly DockTabsWidget $dockTabs,
@@ -122,7 +122,7 @@ final class TooltipRouter
         if ($this->panes->editor->isFindModalOpen()) {
             return $this->panes->editor->findModal->tooltipAt($mouse->row, $mouse->col);
         }
-        if ($this->panes->editor->isAnyPickerOpen() || $this->welcome->isModalOpen()) {
+        if ($this->panes->editor->isAnyPickerOpen() || $this->windows->isModalOpen()) {
             return null;
         }
 

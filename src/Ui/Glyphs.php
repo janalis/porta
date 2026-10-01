@@ -272,10 +272,25 @@ final class Glyphs
     // Same value as BRANCH_CURRENT — disjoint surfaces.
     public const string OPTION_CURRENT = '✓';
 
-    // The resizable modals' corner grab: the bottom-right corner heavies under
-    // the pointer (and while dragging), the PANE_DIVIDER → PANE_DIVIDER_ACTIVE
-    // thin/heavy convention — the affordance is the GLYPH, surviving --no-ansi.
+    // A floating window's resize handles: an edge or a corner heavies under
+    // the pointer (and while dragging it), the PANE_DIVIDER →
+    // PANE_DIVIDER_ACTIVE thin/heavy convention — the affordance is the GLYPH,
+    // surviving --no-ansi. The same values as the FIELD_FOCUS_* frame —
+    // disjoint surfaces (a field's border vs a window's).
     public const string MODAL_RESIZE_GRAB = '┛';
+
+    // A floating window's close button, the platform's: macOS draws a red
+    // circled cross at the title bar's left, everything else a boxed cross at
+    // its right. Both East Asian Neutral, so every terminal draws them one
+    // column wide — ⓧ, the circled LETTER x, is Ambiguous, and a terminal that
+    // draws those wide pushed the whole title bar a column out.
+    public const string WINDOW_CLOSE_MAC = '⊗';
+    public const string WINDOW_CLOSE = '☒';
+    public const string MODAL_GRAB_TOP_LEFT = '┏';
+    public const string MODAL_GRAB_TOP_RIGHT = '┓';
+    public const string MODAL_GRAB_BOTTOM_LEFT = '┗';
+    public const string MODAL_GRAB_HORIZONTAL = '━';
+    public const string MODAL_GRAB_VERTICAL = '┃';
 
     // The breadcrumb bar's scope separator (` › `-spaced when rendered):
     // guillemet-family like NAV_NEXT, deliberately lighter than the tree's

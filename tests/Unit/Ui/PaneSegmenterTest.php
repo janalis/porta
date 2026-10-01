@@ -7,6 +7,8 @@ namespace Porta\Tests\Unit\Ui;
 use PHPUnit\Framework\TestCase;
 use Porta\Overlay\Region\DropdownRegion;
 use Porta\Overlay\Region\FloatingRegions;
+use Porta\Tests\Support\Probe;
+use Porta\Tests\Support\TestOverlayPane;
 use Porta\Ui\LtrPane;
 use Porta\Ui\PaneSegmenter;
 use Porta\Widget\CodeEditorWidget;
@@ -15,9 +17,13 @@ use Porta\Widget\DockTabsWidget;
 use Porta\Widget\EditorPaneWidget;
 use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\TerminalPanelWidget;
+use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Render\WidgetRect;
+use Symfony\Component\Tui\Style\Style;
 use Symfony\Component\Tui\Style\StyleSheet;
+use Symfony\Component\Tui\Terminal\VirtualTerminal;
+use Symfony\Component\Tui\Tui;
 use Symfony\Component\Tui\Widget\ContainerWidget;
 
 final class PaneSegmenterTest extends TestCase
@@ -315,5 +321,39 @@ final class PaneSegmenterTest extends TestCase
 
         $this->assertSame([['start' => 0, 'width' => 6, 'ltr' => true]], $panes[0], 'the pane spans the row, undisturbed');
         $this->assertSame([['start' => 2, 'width' => 3, 'ltr' => false]], $regions[0], 'the surface is its own layer');
+    }
+
+    /**
+     * The view window's region sits in a hidden host: rendered into the
+     * window, with rects at its screen cells, but never a pane of the frame.
+     * Walked as one, its left-to-right code pane would claim the columns of
+     * the pane it floats over.
+     */
+    public function testSegmentSkipsAHiddenHostWhoseWidgetsHaveRects(): void
+    {
+        $renderer = new Renderer(new StyleSheet());
+        $tui = new Tui(terminal: new VirtualTerminal(columns: 10, rows: 2), renderer: $renderer);
+        $pane = new TestOverlayPane();
+        $tui->add($pane);
+        $host = new ContainerWidget();
+        $host->setStyle(new Style(hidden: true));
+        $frame = new ContainerWidget();
+        $code = new CodeEditorWidget();
+        $frame->add($code);
+        $host->add($frame);
+        $tui->add($host);
+        $tui->requestRender(force: true);
+        $tui->processRender();
+        $renderer->renderWidgetLines($frame, new RenderContext(4, 2)); // as the window presenter does
+        $this->assertInstanceOf(WidgetRect::class, $renderer->getWidgetRect($code), 'the hidden code pane has a rect');
+
+        $runs = new PaneSegmenter($renderer, new class implements FloatingRegions {
+            public function regions(): array
+            {
+                return [];
+            }
+        })->segment(Probe::get($tui, 'root'), 10, 2);
+
+        $this->assertSame([['start' => 0, 'width' => 10, 'ltr' => false]], $runs[0], 'the visible pane owns the row; the hidden code pane claims nothing');
     }
 }

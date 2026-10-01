@@ -298,7 +298,7 @@ than magnifying pixels — see [the editor guide](editor.md#graph-viewer).
 
 ## Git view
 
-The full-screen view `Ctrl+Alt+D` opens; `Tab` cycles panes and `Esc` closes.
+The view window `Ctrl+Alt+D` opens; `Tab` cycles panes and `Esc` closes.
 [The git guide](git.md#the-git-view-ctrlaltd) has the whole workflow.
 
 | Key | Action |
@@ -318,7 +318,7 @@ The full-screen view `Ctrl+Alt+D` opens; `Tab` cycles panes and `Esc` closes.
 
 ## Review view
 
-The `review` plugin's full-screen view (**Review → Show Review**); `Tab` cycles
+The `review` plugin's view window (**Review → Show Review**); `Tab` cycles
 panes and `Esc` closes. [The review guide](review.md#the-review-view) has the
 whole workflow.
 

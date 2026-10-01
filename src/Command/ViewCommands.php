@@ -52,7 +52,6 @@ final readonly class ViewCommands implements CommandProvider
         private LastEditNavigator $lastEdit,
         private FileTreeWidget $tree,
         private Tui $tui,
-        private string $docsDir,
     ) {}
 
     #[\Override]
@@ -143,10 +142,7 @@ final readonly class ViewCommands implements CommandProvider
             )
             ->add(
                 'ide_help',
-                function (): void {
-                    $this->views->closeAll();
-                    $this->bufferService->openHelp($this->docsDir.'/README.md');
-                },
+                fn () => $this->views->toggle('help'),
                 keyBound: KeyDispatch::Bound,
             );
     }

@@ -222,9 +222,14 @@ final class PluginApiTest extends TestCase
                 return 'vcs';
             }
 
-            public function ownsMainArea(): bool
+            public function hostsWindow(): bool
             {
                 return true;
+            }
+
+            public function title(): string
+            {
+                return '';
             }
 
             public function isOpen(): bool

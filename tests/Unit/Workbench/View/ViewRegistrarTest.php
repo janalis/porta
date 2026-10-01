@@ -10,7 +10,6 @@ use Porta\Editor\BufferManager;
 use Porta\Editor\EditorPanes;
 use Porta\I18n\Translator;
 use Porta\Input\HitTester;
-use Porta\Layout\EditorAreaPanes;
 use Porta\Layout\LayoutController;
 use Porta\Layout\PreviewSplit;
 use Porta\Layout\ViewRegion;
@@ -38,6 +37,7 @@ use Porta\Workbench\View\ViewPointer;
 use Porta\Workbench\View\ViewRegistrar;
 use Porta\Workbench\View\ViewRegistry;
 use Porta\Workbench\View\ViewServices;
+use Porta\Workbench\View\ViewWindow;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Style\StyleSheet;
 use Symfony\Component\Tui\Widget\AbstractWidget;
@@ -61,7 +61,6 @@ final class ViewRegistrarTest extends TestCase
 
     private TempProject $project;
     private ContainerWidget $main;
-    private CodeEditorWidget $editorPane;
 
     /** @param list<array{plugin: string, id: string, factory: \Closure}> $views */
     private function registrar(array $views, ViewRegistry $registry, ViewRegions $regions): ViewRegistrar
@@ -72,8 +71,6 @@ final class ViewRegistrarTest extends TestCase
         $translator = new Translator('en');
         $tree = new FileTreeWidget($this->project->dir);
         $this->main = new ContainerWidget();
-        $this->editorPane = new CodeEditorWidget();
-        $editorPane = $this->editorPane;
 
         $reported = &$this->reported;
         $source = new class($views, $reported) implements ContributedViewSource {
@@ -99,18 +96,8 @@ final class ViewRegistrarTest extends TestCase
             $registry,
             $regions,
             new ViewHost(
-                $this->main,
+                new ViewWindow($this->main),
                 new MenuBarWidget(),
-                new readonly class($editorPane) implements EditorAreaPanes {
-                    public function __construct(
-                        private CodeEditorWidget $pane,
-                    ) {}
-
-                    public function orderedEditorPanes(): array
-                    {
-                        return [$this->pane];
-                    }
-                },
                 new EditorArea(new BufferManager(), new CodeEditorWidget(), new EditorPanes(), $tui),
                 $tui,
             ),
@@ -151,9 +138,14 @@ final class ViewRegistrarTest extends TestCase
                 return $this->id;
             }
 
-            public function ownsMainArea(): bool
+            public function hostsWindow(): bool
             {
                 return true;
+            }
+
+            public function title(): string
+            {
+                return '';
             }
 
             public function isOpen(): bool
@@ -384,7 +376,7 @@ final class ViewRegistrarTest extends TestCase
         $this->assertNull($regions->find('vcs'));
         $this->assertCount(1, $this->reported);
         $this->assertSame('acme', $this->reported[0]['plugin']);
-        $this->assertContains($this->editorPane, $this->main->all(), 'the editor layout got the main area back by hand');
+        $this->assertSame([], $this->main->all(), 'the window was emptied by hand');
     }
 
     public function testForgetRetractsAMatchThatFollowsAnotherPluginsView(): void

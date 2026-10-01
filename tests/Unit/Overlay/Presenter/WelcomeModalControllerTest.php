@@ -94,7 +94,7 @@ final class WelcomeModalControllerTest extends TestCase
         );
 
         return new WelcomeModalController(
-            new OverlayDelivery($this->renderer, new MenuOverlayPanes([$this->pane], static fn (): array => []), $this->tui),
+            new OverlayDelivery($this->renderer, new MenuOverlayPanes([$this->pane]), $this->tui),
             $this->welcome,
             new WelcomeSteps(
                 new Translator('en'),
@@ -318,6 +318,27 @@ final class WelcomeModalControllerTest extends TestCase
         $this->assertFalse($controller->isOpen(), 'the × closed the modal');
     }
 
+    /** Closing in the middle of a drag drops it: the pointer's next drag is the workspace's, not a closed box's. */
+    public function testClosingDropsADragInProgress(): void
+    {
+        $controller = $this->controller();
+        $this->frame(80);
+        $controller->open();
+        $region = $controller->region();
+        $this->assertInstanceOf(DropdownRegion::class, $region);
+        $controller->clickAt($region->top, $region->col + 10); // arm a move
+
+        $controller->close(); // Esc, mid-drag
+
+        $this->assertFalse($controller->continueDragTo(10, 10, release: false), 'a closed modal swallows no drag');
+    }
+
+    public function testTheModalIsTitledByItsWidget(): void
+    {
+        $this->assertSame($this->controller()->title(), $this->welcome->title());
+        $this->assertNotSame('', $this->welcome->title());
+    }
+
     public function testATitleBarDragMovesAndClampsTheBox(): void
     {
         $controller = $this->controller();
@@ -346,8 +367,8 @@ final class WelcomeModalControllerTest extends TestCase
         // are computed FROM $top/$col), so a clamp() bound that's wrong in
         // the same direction the shadow math folds back would still pass
         // them. Pin the literal, independently-known numbers too.
-        $this->assertSame(2, Probe::get($controller, 'top'), 'literal clamped row: boundBottom(24) - box rows(22)');
-        $this->assertSame(4, Probe::get($controller, 'col'), 'literal clamped column: boundRight(80) - box width(76)');
+        $this->assertSame(2, $pinned->top, 'literal clamped row: boundBottom(24) - box rows(22)');
+        $this->assertSame(4, $pinned->col, 'literal clamped column: boundRight(80) - box width(76)');
         $this->assertFalse($controller->continueDragTo(0, 0, release: false), 'the release disarmed the drag');
     }
 
@@ -416,7 +437,7 @@ final class WelcomeModalControllerTest extends TestCase
         $this->assertFalse($controller->continueDragTo(10, 10, release: false), 'the drag was disarmed');
     }
 
-    public function testAContentClickSelectsItsCardAndAnOutsideClickIsSwallowed(): void
+    public function testAContentClickSelectsItsCardAndAnOutsideClickCloses(): void
     {
         $lifecycle = new FakePluginLifecycle();
         $controller = $this->controllerWith($lifecycle);
@@ -431,8 +452,8 @@ final class WelcomeModalControllerTest extends TestCase
         $controller->handleKey("\r");
         $this->assertSame([[RecommendedPlugin::LanguageServer->value, true]], $lifecycle->toggled, 'the click selected the second card');
 
-        $this->assertTrue($controller->clickAt(0, 0), 'an outside click is swallowed');
-        $this->assertTrue($controller->isOpen(), 'and does not dismiss');
+        $this->assertTrue($controller->clickAt(0, 0), 'an outside click is consumed');
+        $this->assertFalse($controller->isOpen(), 'and closes the modal, as it closes every window');
     }
 
     public function testClicksAreNotConsumedWhileClosed(): void
@@ -561,7 +582,7 @@ final class WelcomeModalControllerTest extends TestCase
         $editArea = new EditorArea(new BufferManager(), new CodeEditorWidget(), new EditorPanes(), $this->tui);
 
         new WelcomeModalController(
-            new OverlayDelivery($this->renderer, new MenuOverlayPanes([$this->pane], static fn (): array => []), $this->tui),
+            new OverlayDelivery($this->renderer, new MenuOverlayPanes([$this->pane]), $this->tui),
             $this->welcome,
             new WelcomeSteps(
                 new Translator('en'),
@@ -599,7 +620,7 @@ final class WelcomeModalControllerTest extends TestCase
         $this->views = new ViewRegistry();
         $editArea = new EditorArea(new BufferManager(), new CodeEditorWidget(), new EditorPanes(), $this->tui);
         $controller = new WelcomeModalController(
-            new OverlayDelivery($this->renderer, new MenuOverlayPanes([$this->pane], static fn (): array => []), $this->tui),
+            new OverlayDelivery($this->renderer, new MenuOverlayPanes([$this->pane]), $this->tui),
             $this->welcome,
             new WelcomeSteps(
                 new Translator('en'),

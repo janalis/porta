@@ -9,9 +9,9 @@ use Porta\Workbench\Menu\ViewMenuSources;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 
 /**
- * The view interlock: at most one view owns the main area at a time, and
- * everything that needs "is a full view open?" asks here instead of holding a
- * controller.
+ * The view interlock: at most one view is open at a time — one view window,
+ * or the Welcome modal — and everything that needs "is a view window open?"
+ * asks here instead of holding a controller.
  *
  * Keyed by the id a view supplies, so registering is the whole of adding one.
  * The predecessor kept two CONCRETE controller fields beside its map — for
@@ -78,26 +78,27 @@ final class ViewRegistry
     }
 
     /**
-     * Whether any view owns the main area.
+     * Whether a view window is open — the editor layout behind it is then out
+     * of the pointer's reach.
      *
-     * Callers that only need "is the editor layout detached?" ask this rather
-     * than OR-ing individual views, so adding a view does not mean hunting down
-     * every guard that would otherwise grow a term. A view that floats instead
-     * of detaching says so itself ({@see ContributedView::ownsMainArea()}).
+     * Callers that only need that ask this rather than OR-ing individual
+     * views, so adding a view does not mean hunting down every guard that
+     * would otherwise grow a term. A view that draws its own floating surface
+     * instead says so itself ({@see ContributedView::hostsWindow()}).
      */
     public function isAnyOpen(): bool
     {
-        return \array_any($this->views, static fn (ContributedView $view): bool => $view->ownsMainArea() && $view->isOpen());
+        return \array_any($this->views, static fn (ContributedView $view): bool => $view->hostsWindow() && $view->isOpen());
     }
 
     /**
      * The open view, of ANY kind — the floating Welcome modal included.
      *
      * Deliberately not the same question as {@see isAnyOpen()}: focus and the
-     * menu's view-safe command list care that a view is up at all, while the
-     * layout cares only whether the editor got detached. Welcome is open and
-     * does not detach, and conflating the two silently gives it the editor's
-     * focus ring and the editor's menu.
+     * command gate care that a view is up at all, while the pointer routing
+     * cares only whether a view window covers the editor. Welcome is open and
+     * is no view window, and conflating the two silently gives it the
+     * editor's focus ring.
      */
     public function activeView(): ?ContributedView
     {
@@ -110,7 +111,7 @@ final class ViewRegistry
         return null;
     }
 
-    /** The open view's id — what the menu model keys its view-safe command list by. */
+    /** The open view's id — what the command gate keys a view's own commands by. */
     public function activeId(): ?string
     {
         return $this->activeView()?->viewId();
@@ -160,7 +161,7 @@ final class ViewRegistry
         }
     }
 
-    /** The open view's focus target, or null when the editor layout owns the main area. */
+    /** The open view's focus target, or null when no view is open. */
     public function focusTarget(): ?AbstractWidget
     {
         return $this->activeView()?->focusTarget();

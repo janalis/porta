@@ -124,7 +124,9 @@ final class SettingsFormBehaviourTest extends TestCase
                     );
                 },
             ],
-            rows: 12,
+            // A short screen, but room for the title, its blank row and the
+            // first heading's margins over the page's first rows.
+            rows: 16,
         );
     }
 

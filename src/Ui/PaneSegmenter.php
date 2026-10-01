@@ -129,7 +129,9 @@ final readonly class PaneSegmenter
      */
     private function collectLeaves(AbstractWidget $widget, array &$out): void
     {
-        if (null === $widget->getContext()) {
+        // A hidden widget is never laid out: the view window's host is one,
+        // and the region it holds is drawn floating, not as panes.
+        if (null === $widget->getContext() || true === $widget->getStyle()?->getHidden()) {
             return;
         }
         if ($widget instanceof ContainerWidget) {

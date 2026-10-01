@@ -90,6 +90,16 @@ final class LayoutController
         $this->treeResize = new SidebarResizeState($tree);
     }
 
+    /**
+     * The width each view's sidebar percentage is a share of: its window's
+     * inner width, once the window has told us ({@see fitViewSidebar()}).
+     * A view's sidebar sits in a window, not across the terminal, so a
+     * share of the terminal would overflow a narrowed window.
+     *
+     * @var array<string, int>
+     */
+    private array $viewBasis = [];
+
     /** The resize state for a view's region, or null when it declared no resizable sidebar. */
     private function viewResize(string $id): ?SidebarResizeState
     {
@@ -127,12 +137,14 @@ final class LayoutController
         }
 
         // Plain width fields: safe to set even while a view's widgets are detached.
-        foreach ($this->sidebarResizes() as $state) {
+        if (null !== $this->treeResize->widthPercent) {
+            $this->applyPercent($this->treeResize->sidebar, $this->treeResize->widthPercent, $cols);
+        }
+        foreach ($this->viewResizes as $id => $state) {
             if (null === $state->widthPercent) {
                 continue;
             }
-
-            $this->applyPercent($state->sidebar, $state->widthPercent, $cols);
+            $this->applyPercent($state->sidebar, $state->widthPercent, $this->viewBasis[$id] ?? $cols);
         }
         if (null !== $this->panelRestoreRows) {
             // Maximised, and the terminal just changed size: re-take the new
@@ -144,6 +156,20 @@ final class LayoutController
         }
         if (null !== $this->bottomPanelHeightPercent) {
             $this->resizeBottomPanels($this->clampPanel((int) \round(($this->bottomPanelHeightPercent * $rows) / 100), $rows, $this->panelChrome()));
+        }
+    }
+
+    /**
+     * View $id's window now has $innerWidth columns inside: re-take its
+     * sidebar's share of them. The window presenter calls this as the window
+     * opens and whenever a resize changes its width.
+     */
+    public function fitViewSidebar(string $id, int $innerWidth): void
+    {
+        $this->viewBasis[$id] = $innerWidth;
+        $state = $this->viewResize($id);
+        if (null !== $state && null !== $state->widthPercent) {
+            $this->applyPercent($state->sidebar, $state->widthPercent, $innerWidth);
         }
     }
 
@@ -165,8 +191,8 @@ final class LayoutController
         if ($this->continueSidebarResize($mouse, $treeRect, $this->treeResize)) {
             return true;
         }
-        foreach ($this->viewResizes as $state) {
-            if ($this->continueSidebarResize($mouse, $viewLeftRect, $state)) {
+        foreach ($this->viewResizes as $id => $state) {
+            if ($this->continueSidebarResize($mouse, $viewLeftRect, $state, $this->viewBasis[$id] ?? null)) {
                 return true;
             }
         }
@@ -200,13 +226,13 @@ final class LayoutController
      * Apply one armed sidebar's drag: resize on left-drag/release, persist on
      * release, and disarm on release. Returns true when it consumed the event.
      */
-    private function continueSidebarResize(MouseEvent $mouse, ?WidgetRect $rect, SidebarResizeState $state): bool
+    private function continueSidebarResize(MouseEvent $mouse, ?WidgetRect $rect, SidebarResizeState $state, ?int $basis = null): bool
     {
         if (ResizeState::Idle === $state->resizing || !($mouse->isLeftDrag() || $mouse->isLeftRelease())) {
             return false;
         }
         if (null !== $rect) {
-            $cols = $this->tui->getTerminal()->getColumns();
+            $cols = $basis ?? $this->tui->getTerminal()->getColumns();
             $state->sidebar->setWidth($this->clampSidebarWidth($state->sidebar, $this->widthToPointer($mouse, $rect), $cols));
             $this->tui->requestRender();
             if ($mouse->isLeftRelease() && $state->sidebar->width() !== $state->startWidth) {
@@ -360,7 +386,7 @@ final class LayoutController
     {
         $state = $this->viewResize($id);
         if (null !== $state) {
-            $this->nudgeSidebarWidth($state, $delta);
+            $this->nudgeSidebarWidth($state, $delta, $this->viewBasis[$id] ?? null);
         }
     }
 
@@ -466,9 +492,9 @@ final class LayoutController
     }
 
     /** Shared keyboard-nudge path: clamp like the drags do, persist, repaint. */
-    private function nudgeSidebarWidth(SidebarResizeState $state, int $delta): void
+    private function nudgeSidebarWidth(SidebarResizeState $state, int $delta, ?int $basis = null): void
     {
-        $cols = $this->tui->getTerminal()->getColumns();
+        $cols = $basis ?? $this->tui->getTerminal()->getColumns();
         $state->sidebar->setWidth($this->clampSidebarWidth($state->sidebar, $state->sidebar->width() + $delta, $cols));
         $this->commitPercent($state->sidebar->width(), $cols, $state->widthPercent);
         $this->tui->requestRender();
@@ -481,7 +507,7 @@ final class LayoutController
      */
     public function forgetView(string $id): void
     {
-        unset($this->viewResizes[$id]);
+        unset($this->viewResizes[$id], $this->viewBasis[$id]);
     }
 
     /** A fresh left-press ends any armed resize drag. */

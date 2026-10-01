@@ -122,9 +122,15 @@ final class SettingsSearchSourceTest extends TestCase
             }
 
             #[\Override]
-            public function ownsMainArea(): bool
+            public function hostsWindow(): bool
             {
                 return true;
+            }
+
+            #[\Override]
+            public function title(): string
+            {
+                return '';
             }
 
             #[\Override]

@@ -101,7 +101,8 @@ only the box and a column either side of it toggle.
 A toast's frame says its severity by shape: double (`FieldState::Danger`) for
 an error, heavy for a warning, rounded for the rest, so a failure never looks
 like a success in monochrome. A hovered `×` is `TabCloseGlyph::hovered()`,
-underlined as well as bright, on a toast as on a tab or a modal.
+underlined as well as bright, on a toast as on a tab. A window's close button
+is its own (below).
 
 Pointing at a card stops its timer (`ToastCenter::hoverAt`, measured on an
 injectable clock) and moving away restarts it with the time it had left, never
@@ -116,6 +117,25 @@ live keymap:
 - when the stack does not fit, the last card that does gets `+N more · Alt+9`.
 
 Every entry in the notification log carries its glyph, Info's `◦` included.
+
+## Windows: one frame, the platform's close button
+
+Every floating window — a picker, Find in Files, Welcome, a view window —
+wears `ModalFrame`'s frame and moves and resizes through `WindowFrame`:
+
+- **The title bar is the platform's.** On macOS a red `⊗` leads it and the
+  title sits in the middle (`╭⊗─── Title ───╮`); elsewhere the title leads and
+  a `☒` ends it (`╭─ Title ────☒╮`). The rule runs unbroken into both corners
+  and up to the button — a space beside either reads as a break. Both glyphs
+  are East Asian Neutral, one column in every terminal (`GlyphsWidthTest`); no
+  window spells Esc out, every one closes on it.
+- **The button darkens under the pointer**, to the theme's deep red with no
+  fill; a theme with one red, and monochrome, dim it instead.
+- **Every edge but the title bar's is a handle.** At rest it is the frame;
+  under the pointer, or dragged, it draws heavy and bright (`MODAL_GRAB_*`).
+- **Sizes.** A view window opens centred at 80% of the workspace; every other
+  window at its content's size, a third of the way down. A move or resize
+  lasts until the window closes.
 
 ## Rules: one tint, one helper
 
