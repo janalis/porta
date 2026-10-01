@@ -27,6 +27,7 @@ final class PluginObservableContractTest extends TestCase
         'AgentLeft',
         'ChangeProposed',
         'CommandRunRequested',
+        'DebugStatusChanged',
         'DiffToolLaunched',
         'FileDeleted',
         'FileRenamed',

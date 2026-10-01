@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Run;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Plugin\Api\Runs;
 use Porta\Run\RunController;
 use Porta\Terminal\TerminalSession;
 use Porta\Terminal\TerminalSessions;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestRunController;
+use Porta\Tests\Support\TestRuns;
 use Porta\Tests\Support\TestTui;
 use Porta\Widget\TerminalPanelWidget;
 use Symfony\Component\Tui\Tui;
@@ -68,7 +68,7 @@ final class BackgroundRunTest extends TestCase
         $exit = null;
 
         // Through the plugin's facade: {@see Runs::start()} is the way in a plugin has.
-        new Runs($this->runs)->start('agent', self::php('echo "hello from the run in ", getcwd(), "\n"; exit(3);'), static function (int $code) use (&$exit): void {
+        TestRuns::create($this->runs)->start('agent', self::php('echo "hello from the run in ", getcwd(), "\n"; exit(3);'), static function (int $code) use (&$exit): void {
             $exit = $code;
         });
 
@@ -85,7 +85,7 @@ final class BackgroundRunTest extends TestCase
 
         $this->assertSame(3, $exit);
         $this->assertSame(3, $session->process?->exitCode());
-        $output = new Runs($this->runs)->output('agent');
+        $output = TestRuns::create($this->runs)->output('agent');
         $this->assertNotNull($output);
         $this->assertFalse($output['running']);
         $this->assertSame(3, $output['exitCode']);
@@ -123,6 +123,6 @@ final class BackgroundRunTest extends TestCase
 
     public function testTheConfigurationsAreTheRunMenus(): void
     {
-        $this->assertContains('composer test', \array_column(new Runs($this->runs)->configurations(), 'label'));
+        $this->assertContains('composer test', \array_column(TestRuns::create($this->runs)->configurations(), 'label'));
     }
 }

@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Run;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Plugin\Api\Runs;
 use Porta\Run\RunController;
 use Porta\Terminal\TerminalSession;
 use Porta\Terminal\TerminalSessions;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestRunController;
+use Porta\Tests\Support\TestRuns;
 use Porta\Tests\Support\TestTui;
 use Porta\Widget\TerminalPanelWidget;
 
@@ -47,7 +47,7 @@ final class SharedTerminalTest extends TestCase
 
     public function testATabIsReadAsItPrintsAndTypedInto(): void
     {
-        $runs = new Runs($this->runs);
+        $runs = TestRuns::create($this->runs);
         $runs->start('cat', [\PHP_BINARY, '-r', 'echo "ready in ", getcwd(), "\n"; while (false !== ($l = fgets(STDIN))) { echo "got ", $l; }']);
         $this->await(static fn (): bool => \str_contains((string) $runs->scrollback('run:cat'), 'ready'), what: 'the run to start');
         $this->assertSame([['id' => 'run:cat', 'title' => 'cat', 'running' => true]], $runs->terminals());
@@ -75,7 +75,7 @@ final class SharedTerminalTest extends TestCase
 
     public function testAMirroredTabShowsWhatItIsFedAndHandsItsKeysOn(): void
     {
-        $runs = new Runs($this->runs);
+        $runs = TestRuns::create($this->runs);
         $mine = $this->sessions->create('shell:1', 'zsh 1');
         $typed = [];
         $runs->mirror('assist:shell:1', 'Hal\'s zsh', static function (string $bytes) use (&$typed): void {

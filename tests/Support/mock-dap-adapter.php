@@ -17,7 +17,8 @@ declare(strict_types=1);
  *  - configurationDone → `stopped` at the first breakpoint, or `terminated`.
  *  - threads / stackTrace / scopes / variables → scripted data; a stackTrace
  *    while the current line is >= 90 responds with an error (error-path hook).
- *  - next/stepIn/stepOut → advance one line, `stopped {reason: step}`.
+ *  - next/stepIn/stepOut → advance one line, say which ("step: next") on the
+ *    console, `stopped {reason: step}`.
  *  - continue → next breakpoint or `terminated` + `exited`.
  *  - evaluate → $x: 42 with a bump counter ("42#n", re-eval observable);
  *    $arr: a variablesReference container; anything else errors.
@@ -175,6 +176,8 @@ foreach (readFrames($in) as $message) {
         case 'stepOut':
             respond($out, $message);
             ++$currentLine;
+            // Which step it was, on the debuggee's output: the three move alike otherwise.
+            event($out, 'output', ['category' => 'console', 'output' => 'step: '.$message['command']."\n"]);
             event($out, 'stopped', ['reason' => 'step', 'threadId' => 1]);
             break;
 

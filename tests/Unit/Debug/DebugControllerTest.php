@@ -36,6 +36,7 @@ use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\Presence;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TestBottomDock;
+use Porta\Tests\Support\TestRuns;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\ResultsPanelWidget;
@@ -1178,5 +1179,69 @@ final class DebugControllerTest extends TestCase
         $this->assertStringContainsString('Evaluate needs a paused debugger', $this->flashed());
         $this->assertFalse(EditorState::promptOpen($this->editor), 'the guard stops before a prompt ever opens');
         $this->assertNotContains('evaluate', $this->client->commands());
+    }
+
+    public function testAPluginReadsAndStepsThePausedSessionThroughTheDebuggerFacade(): void
+    {
+        $controller = $this->controller();
+        $debugger = TestRuns::create(debug: $controller)->debugger(); // as a plugin reaches it
+        $delivered = null;
+        $collect = static function (array $scopes) use (&$delivered): void {
+            $delivered = $scopes;
+        };
+        $this->assertSame(['idle', null, []], [$debugger->status(), $debugger->stoppedAt(), $debugger->frames()]);
+        $debugger->variables(1, $collect);
+        $this->assertSame([], $delivered, 'no session: nothing to read');
+
+        $this->pauseAtBreakpoint($controller);
+        $this->assertSame('paused', $debugger->status());
+        $this->assertSame(['path' => '/p/prog.php', 'line' => 2], $debugger->stoppedAt());
+        $this->assertSame(
+            [['id' => 1, 'name' => '{main}', 'path' => '/p/prog.php', 'line' => 2], ['id' => 2, 'name' => 'require', 'path' => '/p/other.php', 'line' => 0]],
+            $debugger->frames(),
+            'innermost first, absolute paths, 0-based lines',
+        );
+
+        // Every scope, in order, delivered once the LAST of them has arrived.
+        $this->client->responses['scopes'] = [
+            ['scopes' => [['name' => 'Locals', 'variablesReference' => 1000], ['name' => 'Registers', 'variablesReference' => 0], ['name' => 'Globals', 'variablesReference' => 2000]]],
+            null,
+        ];
+        unset($this->client->responses['variables']);
+        $delivered = null;
+        $debugger->variables(1, $collect);
+        $this->client->respond('variables', ['variables' => [['name' => '$x', 'value' => '42', 'variablesReference' => 1001]]]);
+        $this->assertNull($delivered, 'one scope still to come');
+        $this->client->respond('variables', ['variables' => [['name' => '$argv', 'value' => 'array(1)', 'variablesReference' => 7]]]);
+        $this->assertSame(
+            [
+                ['scope' => 'Locals', 'variables' => [['name' => '$x', 'value' => '42']]],
+                ['scope' => 'Registers', 'variables' => []],
+                ['scope' => 'Globals', 'variables' => [['name' => '$argv', 'value' => 'array(1)']]],
+            ],
+            $delivered,
+        );
+        // Nothing to fetch: at once.
+        $this->client->responses['scopes'] = [['scopes' => [['name' => 'Registers', 'variablesReference' => 0]]], null];
+        $debugger->variables(1, $collect);
+        $this->assertSame([['scope' => 'Registers', 'variables' => []]], $delivered);
+
+        // The step verbs are the Run menu's: each resumes, so each waits for a stop.
+        foreach ([$debugger->stepOver(...), $debugger->stepIn(...), $debugger->stepOut(...), $debugger->continue(...)] as $verb) {
+            $verb();
+            $this->client->emit('stopped', ['reason' => 'step', 'threadId' => 1]);
+        }
+        $this->assertSame(['next', 'stepIn', 'stepOut', 'continue'], \array_values(\array_filter($this->client->commands(), static fn (string $c): bool => \in_array(
+            $c,
+            ['next', 'stepIn', 'stepOut', 'continue'],
+            strict: true,
+        ))));
+        $this->client->emit('continued', []);
+        $this->assertSame(['running', null, []], [$debugger->status(), $debugger->stoppedAt(), $debugger->frames()]);
+        $delivered = null;
+        $debugger->variables(1, $collect);
+        $this->assertSame([], $delivered, 'running: no frame to read, the adapter not asked');
+        $debugger->stop();
+        $this->assertContains('disconnect', $this->client->commands());
     }
 }

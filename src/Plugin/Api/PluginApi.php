@@ -1334,7 +1334,7 @@ final class PluginApi
      */
     public function runs(): Runs
     {
-        return new Runs($this->manager->runtime()->runs);
+        return $this->manager->runtime()->runs;
     }
 
     /**

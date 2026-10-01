@@ -115,6 +115,66 @@ final class DebugController implements DebugSessionObserver, StatusSegment
         return null !== $this->session && DebugState::Paused === $this->session->state();
     }
 
+    /** @return array{path: string, line: int}|null where the session is paused: absolute path, 0-based line */
+    public function stoppedAt(): ?array
+    {
+        $path = $this->state->stoppedPath();
+        $line = $this->state->stoppedLine();
+
+        return null === $path || null === $line ? null : ['path' => $path, 'line' => $line];
+    }
+
+    /**
+     * The paused stack, innermost first: absolute paths, 0-based lines.
+     * Empty unless paused.
+     *
+     * @return list<array{id: int, name: string, path: string, line: int}>
+     */
+    public function frames(): array
+    {
+        return $this->isPaused() ? \array_values($this->frames) : [];
+    }
+
+    /**
+     * Every scope of a paused frame with its variables, delivered once all
+     * have arrived — in the adapter's scope order. Empty unless paused.
+     *
+     * @param \Closure(list<array{scope: string, variables: list<array{name: string, value: string}>}>): void $deliver
+     */
+    public function frameVariables(int $frameId, \Closure $deliver): void
+    {
+        $session = $this->session;
+        if (null === $session || !$this->isPaused()) {
+            $deliver([]);
+
+            return;
+        }
+        $session->scopes($frameId, static function (array $scopes) use ($session, $deliver): void {
+            $result = [];
+            $waiting = 0;
+            foreach ($scopes as $index => $scope) {
+                $result[$index] = ['scope' => $scope['name'], 'variables' => []];
+                $waiting += $scope['variablesReference'] > 0 ? 1 : 0;
+            }
+            if (0 === $waiting) {
+                $deliver(\array_values($result));
+
+                return;
+            }
+            foreach ($scopes as $index => $scope) {
+                if ($scope['variablesReference'] <= 0) {
+                    continue;
+                }
+                $session->variables($scope['variablesReference'], static function (array $variables) use (&$result, &$waiting, $index, $deliver): void {
+                    $result[$index]['variables'] = \array_map(static fn (array $variable): array => ['name' => $variable['name'], 'value' => $variable['value']], $variables);
+                    if (0 === --$waiting) {
+                        $deliver(\array_values($result));
+                    }
+                });
+            }
+        });
+    }
+
     /**
      * The status-bar cell: '⏸ path:line' when paused, '▶ debug' while running,
      * and nothing at all when idle.

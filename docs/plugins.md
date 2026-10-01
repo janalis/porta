@@ -312,6 +312,7 @@ never firing.
 | `ChangeProposed` | `string $path`, `string $proposedPath` — a fact you may `emit()`: an agent proposed new text for a file and waits for the user's verdict. `$path` is the file on disk, `$proposedPath` a temporary copy of the proposal with the same file name. The bundled git plugin answers with its side-by-side comparison |
 | `AgentEditing` | `string $path`, `string $previousText` — a fact you may `emit()`: an agent is about to change a file for the first time since it connected, and this is what the file held. `local-history` keeps it as a snapshot |
 | `ToolsChanged` | — the tools plugins offer with `registerTool()` changed under a live enable or disable. Never at boot. Whatever serves them re-reads `tools()` |
+| `DebugStatusChanged` | — the debug session started, paused, resumed or ended. It carries nothing: read the session with `runs()->debugger()` |
 | `FileRewritten` | `string $path`, `string $previousText` — a refactoring rewrote a file that had no open buffer. The payload is what the write REPLACED: the new content is on disk already, and the old exists nowhere else. Not a save, and no `BufferSaved` fires for it |
 
 Four rules govern the list, and they are enforced by a test rather than by
@@ -797,6 +798,31 @@ $runs->start('phpunit', ['vendor/bin/phpunit'], function (int $code) use ($runs)
 | `write(string $id, string $bytes): bool` | Type into a terminal's process; false without such a tab or a process running in it |
 | `mirror(string $id, string $title, ?\Closure $onInput)` | A terminal tab whose process runs elsewhere (someone else's): made once, retitled after, shown behind the tab in front. It shows what `feed()` gives it; the keys typed into it go to `$onInput`, already encoded as a terminal sends them |
 | `feed(string $id, string $bytes)` | Output for a mirrored tab, shown as though its process printed it |
+| `debugger(): Debugger` | The debugger the Run menu starts; see below |
+
+`debugger()` reads the debug session and steps it, as the Run menu does. Paths
+are absolute and lines 0-based. Listen to `DebugStatusChanged` with `on()` to
+know when to read it again: it fires as a session starts, pauses, resumes and
+ends.
+
+```php
+$api->on(DebugStatusChanged::class, function () use ($api): void {
+    $debugger = $api->runs()->debugger();
+    if ('paused' === $debugger->status()) {
+        $top = $debugger->frames()[0];
+        $debugger->variables($top['id'], function (array $scopes): void { /* … */ });
+    }
+});
+```
+
+| Method | Purpose |
+| --- | --- |
+| `status(): string` | `idle` with no session, else `running` or `paused` |
+| `stoppedAt(): ?array` | `['path' => …, 'line' => …]` where it is paused; null when it is not |
+| `frames(): list<array>` | The paused stack, innermost first, as `['id' => int, 'name' => …, 'path' => …, 'line' => int]`; empty unless paused |
+| `variables(int $frameId, \Closure $deliver)` | That frame's scopes and their variables, `$deliver(list<array{scope: string, variables: list<array{name: string, value: string}>}>)` once all have arrived; empty unless paused |
+| `continue()` / `stepOver()` / `stepIn()` / `stepOut()` | Step it as the Run menu does. Not paused, the user is told so and nothing happens |
+| `stop()` | End the session |
 
 ### Asking about the code
 

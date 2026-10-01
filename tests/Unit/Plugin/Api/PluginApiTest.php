@@ -54,6 +54,7 @@ use Porta\Tests\Support\TestBottomDock;
 use Porta\Tests\Support\TestDockTools;
 use Porta\Tests\Support\TestLspQuery;
 use Porta\Tests\Support\TestRunController;
+use Porta\Tests\Support\TestRuns;
 use Porta\Tests\Support\TestTui;
 use Porta\Tests\Support\TestWorkspaceEditor;
 use Porta\Tree\FileStatuses;
@@ -108,6 +109,7 @@ final class PluginApiTest extends TestCase
     private ViewRegistry $views;
     private EventDispatcher $events;
     private RunController $runs;
+
     private FakePluginLifecycle $lifecycle;
 
     private function api(Presence $wired = Presence::With): PluginApi
@@ -144,7 +146,7 @@ final class PluginApiTest extends TestCase
                     new FileTreeWidget(\sys_get_temp_dir()),
                     TestLspQuery::create(),
                     new BufferSaver($this->buffers, $this->events = new EventDispatcher()),
-                    $this->runs = TestRunController::create(tui: $tui),
+                    TestRuns::create($this->runs = TestRunController::create(tui: $tui)),
                     TestWorkspaceEditor::create($this->buffers),
                 ),
             );
@@ -494,7 +496,7 @@ final class PluginApiTest extends TestCase
                 tree: new FileTreeWidget(\sys_get_temp_dir()),
                 lspQuery: TestLspQuery::create(),
                 saver: new BufferSaver(new BufferManager(), new EventDispatcher()),
-                runs: TestRunController::create(),
+                runs: TestRuns::create(),
                 workspaceEditor: TestWorkspaceEditor::create(),
             ),
         );
@@ -1089,7 +1091,7 @@ final class PluginApiTest extends TestCase
             new FileTreeWidget(\sys_get_temp_dir()),
             TestLspQuery::create(),
             new BufferSaver(new BufferManager(), new EventDispatcher()),
-            TestRunController::create(),
+            TestRuns::create(),
             TestWorkspaceEditor::create(),
         ));
         $api = new PluginApi('demo', $manager, '/p', new PluginSettings('/p', [], null, self::projectScope('/p')));
@@ -1138,7 +1140,7 @@ final class PluginApiTest extends TestCase
             $tree,
             TestLspQuery::create(),
             new BufferSaver(new BufferManager(), new EventDispatcher()),
-            TestRunController::create(),
+            TestRuns::create(),
             TestWorkspaceEditor::create(),
         ));
         $api = new PluginApi('demo', $manager, $project->dir, new PluginSettings($project->dir, [], null, self::projectScope($project->dir)));
@@ -1265,7 +1267,7 @@ final class PluginApiTest extends TestCase
             new FileTreeWidget(\sys_get_temp_dir()),
             TestLspQuery::create(),
             new BufferSaver(new BufferManager(), new EventDispatcher()),
-            TestRunController::create(),
+            TestRuns::create(),
             TestWorkspaceEditor::create(),
         ));
 

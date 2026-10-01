@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Plugin\Api;
 
+use Porta\Debug\DebugController;
 use Porta\Run\RunController;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
@@ -23,7 +24,14 @@ final readonly class Runs
 
     public function __construct(
         private RunController $runs,
+        private DebugController $debug,
     ) {}
+
+    /** The debugger the Run menu starts: its state, its stack, its step verbs. See {@see Debugger}. */
+    public function debugger(): Debugger
+    {
+        return new Debugger($this->debug);
+    }
 
     /**
      * What the Run menu would offer right now: the active PHP file, the

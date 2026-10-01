@@ -19,8 +19,8 @@ use Porta\I18n\Translator;
 use Porta\Lsp\LspQuery;
 use Porta\Lsp\WorkspaceEditor;
 use Porta\Plugin\Api\PluginApi;
+use Porta\Plugin\Api\Runs;
 use Porta\Plugin\Lifecycle\PluginLifecycleOps;
-use Porta\Run\RunController;
 use Porta\Support\Clipboard;
 use Porta\Tree\FileStatusSink;
 use Porta\Widget\FileTreeWidget;
@@ -63,7 +63,7 @@ final readonly class PluginRuntime
         public FileTreeWidget $tree,
         public LspQuery $lspQuery,
         public BufferSaver $saver,
-        public RunController $runs,
+        public Runs $runs,
         public WorkspaceEditor $workspaceEditor,
     ) {}
 }

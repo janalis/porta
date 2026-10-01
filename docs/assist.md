@@ -154,6 +154,20 @@ guest, then **Let them run the run configurations** (or **Stop them running**).
 A guest only ever picks a configuration the host offers. It cannot send a
 command of its own.
 
+## Debugging together
+
+When the host debugs, every guest is told where the debugger stopped and gets
+a toast. Guests who join while it is paused are told too. **Assist: Host's
+Debugger** shows the host's stack, with **Resume Program**, **Step Over**,
+**Step Into** and **Step Out** above it. Picking a frame opens its file at its
+line and lists its variables. Picking a variable copies its value.
+
+Any guest can look. **Stepping is off by default**, because it drives a
+program on the host's machine. The host lets each guest separately: in
+**Participants**, pick the guest, then **Let them step the debugger** (or
+**Stop them stepping**). A guest following the host already sees each stop,
+since the host's editor goes to the stopped line.
+
 ## Sharing a server
 
 A project's dev server (`php -S localhost:8000`, `symfony serve`) runs on
