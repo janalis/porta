@@ -192,6 +192,33 @@ final class AnsiText
     }
 
     /**
+     * A finished frame row with every control byte the IDE did not put there
+     * as styling taken out: colour (SGR), a hyperlink (OSC 8) and the
+     * hardware-cursor marker are the only sequences a row carries to the
+     * terminal; any other escape — and any other C0 or C1 control — is
+     * dropped, its printable rest left as text.
+     *
+     * The last line of defence, not the only one: a file name, a branch, a
+     * toast or a peer's name reaches a row as text, and text with an OSC 52
+     * in it would otherwise write the user's clipboard, or a `2J` clear the
+     * screen, by being SHOWN.
+     */
+    public static function inert(string $line): string
+    {
+        // The marker after its ESC, from the vendor's own prefix: `_pi:c;` and a shape.
+        $marker = \preg_quote(\substr(AnsiUtils::CURSOR_MARKER_PREFIX, offset: 1), delimiter: '/');
+
+        // A sequence the IDE writes is captured and put back; anything else
+        // the pattern meets — a lone ESC, a control — matches with no capture
+        // and goes. No callback: this runs on every row that changed.
+        return (string) \preg_replace(
+            '/(\x1b(?:\[[0-9;:]*m|\]8;[^\x07\x1b]*(?:\x07|\x1b\\\\)|'.$marker.'\d+\x07))|[\x00-\x1f\x7f]|\xc2[\x80-\x9f]/',
+            replacement: '$1',
+            subject: $line,
+        );
+    }
+
+    /**
      * $text without its hardware-cursor markers (every shape). The pattern is
      * built from the vendor's own prefix, so a marker change upstream cannot
      * leave a stale literal matching nothing.

@@ -55,6 +55,16 @@ Porta wrapped them in `Support/AnsiSlice`; the wrapper went with that fix. The
 marked-line cases in `AnsiTextTest` and `OverlayCompositorTest` fail on the old
 vendor, so a regression upstream shows up there.
 
+**A row reaches the terminal inert.** Text is shown, never obeyed: a file
+name, a branch, a toast or a peer's name can carry an escape (a repository can
+hold a file named with one), and an OSC 52 in it would write the user's
+clipboard just by being on screen. `BidiTui` runs every finished row through
+`AnsiText::inert()` before the write. It keeps colour (SGR), hyperlinks (OSC 8)
+and the cursor marker, and drops every other control. A sequence a widget
+needs beyond those three is written to the terminal between frames, as the
+kitty graphics commands are, never inside a row. Unchanged rows are sent as
+the last frame sent them, so only changed rows pay for the filter.
+
 **Styled text as markup.** `Styles::format()` renders Symfony Console's formatter markup against the
 active theme. It lives in `Ui/Markup`: `MarkupParser` is Console's own tag
 grammar and escaping, and `StyleSpec` maps a tag onto a tui `Style`.

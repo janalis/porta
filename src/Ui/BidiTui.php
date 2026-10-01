@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Ui;
 
 use Porta\I18n\PaneReorder;
+use Porta\Support\AnsiText;
 use Porta\Support\Clocks;
 use Porta\Support\PerfCollector;
 use Porta\Support\Scheduler;
@@ -71,6 +72,9 @@ final class BidiTui extends Tui implements FrameHooks
 
     /** @var (\Closure(list<string>): void)|null handed every frame's final lines */
     private ?\Closure $frameSink = null;
+
+    /** @var array<string, string> the last frame's rows as sent, by the row as painted — {@see forTerminal()} is not run again on an unchanged one */
+    private array $sent = [];
 
     /** @var (\Closure(list<string>): list<string>)|null the finished frame's last touch, {@see setFrameJoin()} */
     private ?\Closure $frameJoin = null;
@@ -550,7 +554,16 @@ final class BidiTui extends Tui implements FrameHooks
         // the TAB_WIDTH spaces every vendor measure counted it as: sent raw,
         // the terminal jumped to its own eighth-column stop and a row with a
         // tab in it (a search hit, a diff line) ran past its width.
-        $screenWriter->writeFrame(new ArrayLineBuffer(\array_map(self::forTerminal(...), $lines)));
+        // Most rows are the last frame's: those are sent as they were then,
+        // and only a changed row is prepared again.
+        $sent = [];
+        $rows = [];
+        foreach ($lines as $line) {
+            $sent[$line] ??= $this->sent[$line] ?? self::forTerminal($line);
+            $rows[] = $sent[$line];
+        }
+        $this->sent = $sent;
+        $screenWriter->writeFrame(new ArrayLineBuffer($rows));
         $t2 = null !== $clock ? Clocks::seconds($clock) : 0.0;
 
         $this->framePainted($t1 - $t0, $t2 - $t1b, $t1b - $t1);
@@ -559,7 +572,7 @@ final class BidiTui extends Tui implements FrameHooks
     /** One finished row as the terminal must receive it. */
     private static function forTerminal(string $line): string
     {
-        return KittyPlaceholders::expand(\str_replace("\t", \str_repeat(' ', times: AnsiUtils::TAB_WIDTH), $line));
+        return KittyPlaceholders::expand(AnsiText::inert(\str_replace("\t", \str_repeat(' ', times: AnsiUtils::TAB_WIDTH), $line)));
     }
 
     /** The trailing-edge wakeup: the cap window elapsed, repaint the pending state. */

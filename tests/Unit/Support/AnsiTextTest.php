@@ -450,4 +450,16 @@ final class AnsiTextTest extends TestCase
             );
         }
     }
+
+    public function testARowKeepsItsStylingAndLosesEveryOtherControl(): void
+    {
+        $styled = "a\x1b[38;5;1mred\x1b[4:3m\x1b[0m \x1b]8;;https://x\x1b\\link\x1b]8;;\x07 ".AnsiUtils::CURSOR_MARKER_PREFIX."2\x07";
+        $this->assertSame($styled, AnsiText::inert($styled), 'colour, a link and the cursor marker are the IDE\'s own');
+
+        $this->assertSame(
+            'e]52;c;QQ==x [2J  c _pi:c;xy',
+            AnsiText::inert("e\x1b]52;c;QQ==\x07x \x1b[2J \u{009B} c\x01\x7f \x1b_pi:c;x\x07y"),
+            'a clipboard write, a clear screen, a C1 CSI, other controls, a marker that is not one: text',
+        );
+    }
 }
