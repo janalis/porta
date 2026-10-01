@@ -9,9 +9,11 @@ use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Editor\OpenFocus;
 use Porta\Filesystem\ProjectLocation;
+use Porta\Filesystem\RemoteFilesystem;
 use Porta\Ide;
 use Porta\Lsp\LspSessionPool;
 use Porta\Tests\Support\ClearsPortaLsp;
+use Porta\Tests\Support\FakeRemoteTransport;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
@@ -40,7 +42,7 @@ final class IdeRemoteProjectTest extends TestCase
     public function testTheTreeListsTheServerAndAnOpenedFileIsFetchedEditedAndUploaded(): void
     {
         \putenv('PATH=/nonexistent');
-        $server = new TempProject(['README.md' => "# served\n", 'src/App.php' => "<?php\n"]);
+        $server = new TempProject(['README.md' => "# served\n\n\n\n\n", 'src/App.php' => "<?php\n\n\n// the line a search found\n"]);
         $cache = new TempProject([
             ProjectLocation::MARKER => '{"url": "ssh://example.org/srv/app"}',
             '.porta/plugins/fakeremote/plugin.php' => \sprintf(<<<'PHP'
@@ -73,13 +75,31 @@ final class IdeRemoteProjectTest extends TestCase
             200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($cache): void {
                 Services::resolve($ide, BufferService::class)->openFile($cache->path('README.md'), focus: OpenFocus::Editor);
                 $this->await(static fn (): bool => null !== Services::resolve($ide, BufferManager::class)->get((string) \realpath($cache->path('README.md'))));
-                $this->assertSame("# served\n", $tui->getById('editor')->getDocument()->getText(), 'the content, not the placeholder');
+                $this->assertSame("# served\n\n\n\n\n", $tui->getById('editor')->getDocument()->getText(), 'the content, not the placeholder');
                 $tui->handleInput('X');
                 $tui->handleInput("\x13"); // ctrl+s
             },
             300 => function () use ($server): void {
-                $this->await(static fn (): bool => "X# served\n" === \file_get_contents($server->path('README.md')));
-                $this->assertSame("X# served\n", \file_get_contents($server->path('README.md')), 'the save reached the server');
+                $this->await(static fn (): bool => "X# served\n\n\n\n\n" === \file_get_contents($server->path('README.md')));
+                $this->assertSame("X# served\n\n\n\n\n", \file_get_contents($server->path('README.md')), 'the save reached the server');
+            },
+            // A search hit opens its file and jumps to the line, in that order.
+            // While the file is still on its way, the jump must not move the
+            // caret of the file in front — and must not be lost either.
+            400 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($cache): void {
+                $transport = Probe::get(Services::resolve($ide, RemoteFilesystem::class), 'transport');
+                $this->assertInstanceOf(FakeRemoteTransport::class, $transport, 'the project plugin serves the fake');
+                $buffers = Services::resolve($ide, BufferManager::class);
+                $readme = $buffers->active();
+                Services::resolve($ide, RemoteFilesystem::class)->listed((string) \realpath($cache->path('src')));
+                $transport->hold = true;
+                Services::resolve($ide, BufferService::class)->openFile($cache->path('src/App.php'), focus: OpenFocus::Editor);
+                $tui->getById('editor')->jumpTo(3, 0);
+                $this->assertSame(0, $readme?->document->cursorLine, 'the file in front kept its caret');
+
+                $transport->release();
+                $this->await(static fn (): bool => \str_ends_with((string) $buffers->active()?->path, 'src/App.php'));
+                $this->assertSame(3, $tui->getById('editor')->getDocument()->cursorLine, 'the jump landed in the file once it was here');
             },
         ]);
 

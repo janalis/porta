@@ -18,7 +18,9 @@ use Symfony\Component\Filesystem\Filesystem;
  * waits in {@see $held} until {@see release()} — so a test can look at the
  * IDE while a fetch or an upload is still on its way. {@see $calls} records
  * every verb with its path, in order. {@see $fail} makes the next verb (or
- * the next one on a given path) answer that error instead.
+ * the next one on a given path) answer that error instead. {@see $walks}
+ * turns on the optional walk, and a command "runs on the server" with `sh`
+ * in its directory.
  */
 final class FakeRemoteTransport extends RemoteTransport
 {
@@ -34,6 +36,9 @@ final class FakeRemoteTransport extends RemoteTransport
     public array $fail = [];
 
     public bool $closed = false;
+
+    /** Whether this server answers {@see walk()} — off by default, as a transport that cannot walk is. */
+    public bool $walks = false;
 
     public function __construct(
         public readonly string $root,
@@ -102,6 +107,45 @@ final class FakeRemoteTransport extends RemoteTransport
 
             return null;
         });
+    }
+
+    #[\Override]
+    public function walk(string $path, array $skip, \Closure $done): bool
+    {
+        if (!$this->walks) {
+            return false;
+        }
+        $this->answer('walk', $path, $done, function () use ($path, $skip): array {
+            $entries = [];
+            $walk = function (string $relative) use (&$walk, &$entries, $path, $skip): void {
+                $names = \scandir($this->at(\ltrim($path.'/'.$relative, characters: '/')));
+                foreach (\array_diff(false === $names ? [] : $names, ['.', '..']) as $name) {
+                    $child = '' === $relative ? $name : $relative.'/'.$name;
+                    $isDir = \is_dir($this->at(\ltrim($path.'/'.$child, characters: '/')));
+                    if ($isDir && \in_array($name, $skip, strict: true)) {
+                        continue;
+                    }
+                    $entries[] = new RemoteEntry($child, $isDir, $this->stamp(\ltrim($path.'/'.$child, characters: '/')));
+                    if ($isDir) {
+                        $walk($child);
+                    }
+                }
+            };
+            $walk('');
+
+            return $entries;
+        });
+
+        return true;
+    }
+
+    /** The command, run in the server's directory — `sh` standing in for the server's own. */
+    #[\Override]
+    public function remoteCommand(array $argv): array
+    {
+        $this->calls[] = 'run '.$argv[0];
+
+        return ['sh', '-c', 'cd -- "$1" && shift && exec "$@"', 'sh', $this->root, ...$argv];
     }
 
     #[\Override]

@@ -15,6 +15,7 @@ use Porta\Filesystem\RemoteStamp;
 use Porta\Filesystem\RemoteTransport;
 use Porta\Filesystem\RemoteTransportSource;
 use Porta\I18n\Translator;
+use Porta\Search\FileIndex;
 use Porta\Tests\Support\FakeRemoteTransport;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestTui;
@@ -96,6 +97,7 @@ final class LocalFilesystemTest extends TestCase
             new Notifier(new StatusBarWidget(), TestTui::create()),
             new Translator('en'),
             new BufferManager(),
+            new FileIndex($cache->dir),
         );
         $spec = new RemoteSpec('ssh', 'h', '/srv');
         $files = new ProjectFiles(new ProjectLocation($spec), $remote($spec), new LocalFilesystem());

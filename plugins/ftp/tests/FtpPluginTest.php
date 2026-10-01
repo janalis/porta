@@ -12,19 +12,34 @@ use Porta\Plugin\Api\PluginApi;
 use Porta\Plugin\Api\RemoteProjectPlugin;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginSettings;
+use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\PreservesPortaHome;
+use Porta\Tests\Support\Probe;
+use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\TestPluginRuntime;
+use Porta\Ui\CaretVisibility;
+use Porta\Ui\TextField;
+use Porta\Widget\CodeEditorWidget;
+use Porta\Widget\StatusBarWidget;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 
 /** The plugin serves ftp:// and ftps:// projects with the password `porta ftp` kept. */
 final class FtpPluginTest extends TestCase
 {
     use PreservesPortaHome;
+    use StatusReads;
+
+    private CodeEditorWidget $editor;
+    private StatusBarWidget $status;
 
     private function plugin(): RemoteProjectPlugin
     {
         $settings = new PluginSettings('/p', ['ftp' => ['binary' => '/opt/bin/curl']]);
         $manager = new PluginManager(new EventDispatcher(), $settings);
+        $this->editor = new CodeEditorWidget();
+        $this->status = new StatusBarWidget();
+        $manager->wireRuntime(TestPluginRuntime::create($this->editor, $this->status));
         $api = new PluginApi('ftp', $manager, '/p', $settings);
         $plugin = require \dirname(__DIR__).'/plugin.php';
         $this->assertInstanceOf(RemoteProjectPlugin::class, $plugin, 'the ftp plugin opens remote projects');
@@ -50,6 +65,70 @@ final class FtpPluginTest extends TestCase
         $this->assertInstanceOf(FtpTransport::class, $anonymous);
         $this->assertNotContains('--netrc-file', $anonymous->command([], 'u'));
         $this->assertNull($plugin->remoteTransport(new RemoteSpec('ssh', 'example.org', '/')), 'not its scheme');
+    }
+
+    /**
+     * Opened from inside Porta there was no terminal to ask on: the server's
+     * refusal asks, masked — once, not at every refusal — and keeps what is
+     * typed where `porta ftp` would have.
+     */
+    public function testARefusedLoginAsksForThePasswordOnceAndKeepsIt(): void
+    {
+        $home = new TempProject();
+        \putenv('PORTA_HOME='.$home->dir);
+        $spec = new RemoteSpec('ftp', 'example.org', '/site', 'me');
+        $transport = $this->plugin()->remoteTransport($spec);
+        $this->assertInstanceOf(FtpTransport::class, $transport, 'its scheme');
+        $refused = Probe::get($transport, 'refused');
+        $this->assertInstanceOf(\Closure::class, $refused, 'the plugin listens for a refused login');
+
+        $refused();
+        $this->assertTrue(EditorState::promptOpen($this->editor), 'asked');
+        /** @var array{label: string, value: TextField} $prompt */
+        $prompt = Probe::get(Probe::object($this->editor, 'overlayHost'), 'prompt');
+        $this->assertSame('Password for me@example.org', $prompt['label']);
+        foreach (\str_split('s3cret') as $key) {
+            $this->editor->handleInput($key);
+        }
+        $this->assertSame('••••••', $prompt['value']->render(CaretVisibility::Hidden), 'never shown');
+        $this->editor->handleInput("\r");
+
+        $this->assertStringContainsString('password s3cret', (string) \file_get_contents(Credentials::file($home->dir, $spec)));
+        $this->assertSame('Password kept — the server is asked again shortly', $this->flashText($this->status));
+
+        $refused(); // the kept one was wrong: asked again
+        $this->assertTrue(EditorState::promptOpen($this->editor));
+        $this->editor->handleInput("\x1b"); // and dismissed
+        $refused();
+        $this->assertFalse(EditorState::promptOpen($this->editor), 'not again until a password is given');
+    }
+
+    public function testAnAnonymousLoginHasNothingToAsk(): void
+    {
+        $home = new TempProject();
+        \putenv('PORTA_HOME='.$home->dir);
+        $transport = $this->plugin()->remoteTransport(new RemoteSpec('ftp', 'example.org', '/'));
+        $refused = Probe::get((object) $transport, 'refused');
+        $this->assertInstanceOf(\Closure::class, $refused, 'the plugin listens for a refused login');
+
+        $refused();
+
+        $this->assertFalse(EditorState::promptOpen($this->editor));
+    }
+
+    public function testAPasswordThatCannotBeKeptSaysSo(): void
+    {
+        $home = new TempProject(['.porta' => 'a file, not a directory']);
+        \putenv('PORTA_HOME='.$home->dir);
+        $transport = $this->plugin()->remoteTransport(new RemoteSpec('ftp', 'example.org', '/', 'me'));
+        $refused = Probe::get((object) $transport, 'refused');
+        $this->assertInstanceOf(\Closure::class, $refused, 'the plugin listens for a refused login');
+
+        $refused();
+        $this->editor->handleInput('x');
+        $this->editor->handleInput("\r");
+
+        $this->assertStringContainsString('Cannot keep the password in', $this->flashText($this->status));
     }
 
     public function testWithoutAHomeThereIsNoPasswordToRead(): void

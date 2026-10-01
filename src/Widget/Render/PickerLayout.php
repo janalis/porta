@@ -324,7 +324,7 @@ final class PickerLayout
         [, $boundLeft, , $boundRight] = $bounds;
         $columns = $boundRight - $boundLeft;
 
-        $text = ' '.$prompt['label'].': '.$prompt['value']->value();
+        $text = ' '.$prompt['label'].': '.$prompt['value']->render(CaretVisibility::Hidden);
         $innerWidth = \min($columns - PopupMetrics::CENTERED_MARGIN, \max(30, AnsiUtils::visibleWidth($text) + 2 + FieldBox::CHROME_COLS));
         // One field tall, whatever a resize asks: its handles widen it only.
         $rows = $fieldRows + ModalFrame::CHROME_ROWS;

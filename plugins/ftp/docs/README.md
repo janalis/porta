@@ -19,9 +19,11 @@ command line. A password that does not log in is not kept.
 `ftps://` means explicit TLS (`AUTH TLS` on the FTP port), which is what most
 servers that offer TLS speak.
 
-You can also open one from inside Porta with **File → Open Remote Project…**.
-For an account with a password, log in with `porta ftp` first; the IDE uses the
-password kept then.
+You can also open one from inside Porta with **File → Open Remote Project…**
+(`Ctrl+Alt+Shift+O`). When the server refuses the login, Porta asks for the
+password, with the characters shown as bullets, and keeps it the way
+`porta ftp` does. The server is asked again within half a minute. Dismiss the
+question and it is not asked again until Porta restarts.
 
 ## How the project is kept
 
@@ -29,6 +31,9 @@ The project is kept in `~/.porta/remote/`, as a cache:
 
 - A directory is listed the first time the tree shows it. Every file in it
   appears at once, but as an empty placeholder.
+- Soon after the project opens, the whole tree is listed, one directory at a
+  time and leaving out `vendor/`, `node_modules/` and `.git/`, so Go to File
+  finds a file in a directory you never expanded.
 - A file is fetched the first time you open it.
 - A save writes the cache, then sends the file to the server in the
   background. It is uploaded under a temporary name and renamed over the real
@@ -38,7 +43,8 @@ The project is kept in `~/.porta/remote/`, as a cache:
 
 Saves are refused when the file changed on the server since you fetched it,
 and saving again overwrites. Quitting while changes are still on their way
-asks twice.
+asks twice. The status bar shows the server, and `⇡2` while two changes are
+still on their way.
 
 ## Server requirements
 
@@ -50,6 +56,8 @@ is listed.
 
 Language servers, **Run**, the terminal, the debugger and the analysers stay
 off for a remote project. The cache holds what you opened, not the project.
+FTP cannot run commands on the server, so Find in Files searches only the
+files you have opened.
 
 ## Settings
 

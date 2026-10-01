@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Editor;
 
+use Porta\Ui\TextEcho;
+
 /**
  * What the editing-verb dispatcher ({@see EditorActions}) needs from the
  * widget hosting it: repaint/notify plumbing, the prompt and jump primitives,
@@ -18,7 +20,7 @@ interface EditorHost
     public function notifyChange(): void;
 
     // @mago-expect lint:no-boolean-flag-parameter -- the bool IS the domain here, not a hidden second responsibility.
-    public function openPrompt(string $label, string $initial, callable $onSubmit, bool $danger = false): void;
+    public function openPrompt(string $label, string $initial, callable $onSubmit, bool $danger = false, TextEcho $echo = TextEcho::Visible): void;
 
     public function jumpTo(int $line, int $utf16Col): void;
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Search;
 
+use Porta\Filesystem\RemoteFilesystem;
 use Porta\Support\AsyncProcess;
 use Porta\Support\Files;
 use Symfony\Component\Finder\Finder;
@@ -41,6 +42,7 @@ final class ProjectSearch
 
     public function __construct(
         private readonly string $rootDir,
+        private readonly ?RemoteFilesystem $remote = null,
     ) {}
 
     /** Whether the last search hit a pattern the engine could not finish. */
@@ -106,6 +108,10 @@ final class ProjectSearch
         foreach (self::EXCLUDES as $dir) {
             \array_splice($command, offset: 1, length: 0, replacement: ['--exclude-dir='.$dir]);
         }
+        // A remote project's cache holds only what was opened: its grep runs
+        // on the server, where every file is — named `grep` there, since the
+        // path found here is this machine's.
+        $command = $this->remote?->remoteCommand(['grep', ...\array_slice($command, offset: 1)]) ?? $command;
 
         // A grep that cannot answer hands the search to the built-in engine.
         // Linux's posix_spawn refuses an unrunnable binary outright; macOS

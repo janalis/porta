@@ -3130,6 +3130,14 @@
         <source>Open remote project (user@host:/path or URL)</source>
         <target>Apri progetto remoto (utente@host:/percorso o URL)</target>
       </trans-unit>
+      <trans-unit id="1102">
+        <source>This project is on %host%: a file is fetched when you open it, and sent back when you save it</source>
+        <target>Questo progetto è su %host%: un file viene scaricato quando lo apri e rinviato quando lo salvi</target>
+      </trans-unit>
+      <trans-unit id="1103">
+        <source>%count% change on its way to %host%|%count% changes on their way to %host%</source>
+        <target>%count% modifica in viaggio verso %host%|%count% modifiche in viaggio verso %host%</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

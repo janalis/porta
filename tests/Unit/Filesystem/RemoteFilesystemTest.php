@@ -9,15 +9,20 @@ use Porta\Editor\BufferManager;
 use Porta\Filesystem\ProjectLocation;
 use Porta\Filesystem\RemoteFilesystem;
 use Porta\Filesystem\RemoteSpec;
+use Porta\Filesystem\RemoteStamp;
 use Porta\Filesystem\RemoteTransport;
 use Porta\Filesystem\RemoteTransportSource;
 use Porta\I18n\Translator;
+use Porta\Search\FileIndex;
 use Porta\Tests\Support\FakeRemoteTransport;
+use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestTui;
+use Porta\Ui\Glyphs;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Notifier;
+use Porta\Workbench\StatusTone;
 use Symfony\Component\Filesystem\Filesystem;
 
 /**
@@ -27,6 +32,7 @@ use Symfony\Component\Filesystem\Filesystem;
  */
 final class RemoteFilesystemTest extends TestCase
 {
+    use PumpsLoop;
     use StatusReads;
 
     private TempProject $server;
@@ -64,6 +70,31 @@ final class RemoteFilesystemTest extends TestCase
             new Notifier($this->status, TestTui::create()),
             new Translator('en'),
             $this->buffers,
+            new FileIndex($this->cache->dir),
+        );
+    }
+
+    private function filesWith(FileIndex $index): RemoteFilesystem
+    {
+        $transport = $this->transport;
+
+        return new RemoteFilesystem(
+            new ProjectLocation(new RemoteSpec('ssh', 'example.org', '/srv/app')),
+            $this->cache->dir,
+            new readonly class($transport) implements RemoteTransportSource {
+                public function __construct(
+                    private RemoteTransport $transport,
+                ) {}
+
+                public function remoteTransport(RemoteSpec $spec): RemoteTransport
+                {
+                    return $this->transport;
+                }
+            },
+            new Notifier($this->status, TestTui::create()),
+            new Translator('en'),
+            $this->buffers,
+            $index,
         );
     }
 
@@ -81,6 +112,7 @@ final class RemoteFilesystemTest extends TestCase
             new Notifier($this->status, TestTui::create()),
             new Translator('en'),
             $this->buffers,
+            new FileIndex($this->cache->dir),
         );
     }
 
@@ -390,6 +422,7 @@ final class RemoteFilesystemTest extends TestCase
             new Notifier($this->status, TestTui::create()),
             new Translator('en'),
             $this->buffers,
+            new FileIndex($this->cache->dir),
         );
         $files->listed($this->cache->dir); // before any plugin: wanted
         $source->transport = $this->transport;
@@ -714,6 +747,7 @@ final class RemoteFilesystemTest extends TestCase
             new Notifier($this->status, TestTui::create()),
             new Translator('en'),
             $this->buffers,
+            new FileIndex($this->cache->dir),
         )->listed($this->cache->dir);
         $files = $this->noTransport();
 
@@ -749,6 +783,7 @@ final class RemoteFilesystemTest extends TestCase
             new Notifier($this->status, TestTui::create()),
             new Translator('en'),
             $this->buffers,
+            new FileIndex($this->cache->dir),
         );
 
         $this->assertFalse($files->listed($this->cache->dir));
@@ -785,6 +820,201 @@ final class RemoteFilesystemTest extends TestCase
 
         $this->assertTrue($files->listed($this->cache->dir));
         $this->assertSame([], $this->transport->calls);
+    }
+
+    /**
+     * A saved buffer looks saved; the status bar is the one place an upload
+     * still on its way shows — and the last thing the server refused, until
+     * it next says yes.
+     */
+    public function testTheStatusBarSaysWhereTheProjectIsAndWhatIsStillOnItsWay(): void
+    {
+        $files = $this->files();
+
+        [$cell] = $files->statusCells();
+        $this->assertSame(Glyphs::REMOTE.' example.org', $cell->text);
+        $this->assertSame(StatusTone::Subtle, $cell->tone);
+        $this->assertStringContainsString('This project is on example.org', (string) $cell->tooltip);
+
+        $this->transport->hold = true;
+        $files->dumpFile($this->cache->path('a.txt'), 'a');
+        $this->assertSame('1 change on its way to example.org', $files->statusCells()[0]->tooltip);
+        $files->dumpFile($this->cache->path('b.txt'), 'b');
+        [$cell] = $files->statusCells();
+        $this->assertSame(Glyphs::REMOTE.' example.org '.Glyphs::UPLOADING.'2', $cell->text);
+        $this->assertSame(StatusTone::Active, $cell->tone);
+        $this->assertSame('2 changes on their way to example.org', $cell->tooltip);
+        $this->transport->release();
+    }
+
+    /** The last refusal stays visible until the server next says yes — to a listing, a fetch or an upload. */
+    public function testARefusalStaysOnTheCellUntilTheServerNextAnswersYes(): void
+    {
+        $files = $this->files();
+        $refuse = function (string $path) use ($files): void {
+            $this->transport->fail[$path] = 'denied';
+            $files->dumpFile($this->cache->path($path), 'x');
+            $this->assertSame(StatusTone::Accent, $files->statusCells()[0]->tone);
+            $this->assertSame("This project is on example.org: a file is fetched when you open it, and sent back when you save it\ndenied", $files->statusCells()[0]->tooltip);
+        };
+
+        $refuse('a.txt');
+        $files->listed($this->cache->dir);
+        $this->assertSame(StatusTone::Subtle, $files->statusCells()[0]->tone, 'a listing is a yes');
+
+        $refuse('b.txt');
+        $files->available($this->cache->path('README.md'), static fn (): null => null);
+        $this->assertSame(StatusTone::Subtle, $files->statusCells()[0]->tone, 'a fetch is a yes');
+
+        $this->transport->fail['README.md'] = 'gone';
+        $files->listed($this->cache->path('src'));
+        $files->available($this->cache->path('src/App.php'), static fn (): null => null);
+        $refuse('c.txt');
+        $files->dumpFile($this->cache->path('d.txt'), 'd');
+        $this->assertSame(StatusTone::Subtle, $files->statusCells()[0]->tone, 'an upload is a yes');
+    }
+
+    /**
+     * The poll's first round asks for the whole tree, so go-to-file finds a
+     * file in a directory nobody expanded — landed as placeholders a chunk
+     * per loop turn, then handed to the index go-to-file reads.
+     */
+    public function testTheFirstPollWalksTheWholeTreeIntoTheCache(): void
+    {
+        for ($i = 0; $i < 600; ++$i) {
+            $this->server->write('deep/many/f'.$i.'.php', '');
+        }
+        $this->server->write('deep/one/Needle.php', '<?php');
+        $this->server->write('vendor/lib/Skipped.php', '<?php');
+        $this->server->write('.porta/state.json', '{}');
+        $this->server->write('.porta.json', '{"theirs": true}');
+        $this->transport->walks = true;
+        $index = new FileIndex($this->cache->dir);
+        $files = $this->filesWith($index);
+        $this->assertSame([], $index->search('Needle', 5), 'nothing here yet — and the index has looked');
+
+        $files->poll();
+        $this->assertFileDoesNotExist($this->cache->path('deep/one/Needle.php'), 'the last of 600+ lands on a later turn');
+        $this->await(fn (): bool => \is_file($this->cache->path('deep/one/Needle.php')));
+
+        $this->assertSame('', \file_get_contents($this->cache->path('deep/one/Needle.php')), 'a placeholder');
+        $this->assertFalse($files->available($this->cache->path('deep/one/Needle.php'), static fn (): null => null), 'fetched when opened');
+        $this->assertSame(['deep/one/Needle.php'], $index->search('Needle', 5), 'and go-to-file sees it');
+        $this->assertDirectoryDoesNotExist($this->cache->path('vendor'), 'what go-to-file leaves out is not walked');
+        $this->assertFileDoesNotExist($this->cache->path('.porta/state.json'));
+        $this->assertFileDoesNotExist($this->cache->path('.porta.json'), 'the server\'s settings are not this copy\'s');
+        $this->assertFileExists($this->cache->path('README.md'), 'and what comes after it in the walk still lands');
+        $this->assertSame(['walk '], \array_values(\array_filter($this->transport->calls, static fn (string $call): bool => \str_starts_with($call, 'walk'))));
+
+        $this->transport->calls = [];
+        $files->poll();
+        $this->assertNotContains('walk ', $this->transport->calls, 'once a session; listings after that');
+    }
+
+    public function testAWalkLeavesAloneWhatHasAChangeOfOursOnItsWay(): void
+    {
+        $this->transport->walks = true;
+        $files = $this->files();
+        $this->transport->hold = true;
+        $files->dumpFile($this->cache->path('README.md'), 'mine');
+        $files->poll();
+        $this->transport->held = \array_reverse($this->transport->held);
+
+        $this->transport->release();
+        $this->pump(0.05);
+
+        $this->assertSame('mine', \file_get_contents($this->cache->path('README.md')));
+    }
+
+    public function testAWalkThatFailsSaysSo(): void
+    {
+        $this->transport->walks = true;
+        $this->transport->fail[''] = 'find: not found';
+        $files = $this->files();
+
+        $files->poll();
+
+        $this->assertSame('Cannot read / from the server: find: not found', $this->flashText($this->status));
+    }
+
+    public function testATransportThatCannotWalkIsLeftToItsListings(): void
+    {
+        $files = $this->files();
+        $files->listed($this->cache->dir);
+        $this->transport->calls = [];
+
+        $files->poll();
+
+        $this->assertSame(['list '], $this->transport->calls);
+        $bare = new class extends RemoteTransport {
+            public function list(string $path, \Closure $done): void {}
+
+            public function fetch(string $path, \Closure $done): void {}
+
+            public function put(string $path, string $bytes, ?RemoteStamp $expected, \Closure $done): void {}
+
+            public function mkdir(string $path, \Closure $done): void {}
+
+            public function rename(string $from, string $to, \Closure $done): void {}
+
+            public function remove(string $path, bool $isDir, \Closure $done): void {}
+
+            public function close(): void {}
+        };
+        $this->assertFalse($bare->walk('', [], static function (): void {}), 'walking is optional, and off unless a transport says');
+        $this->assertNull($bare->remoteCommand(['grep']), 'so is running a command there');
+    }
+
+    /**
+     * A listing the server refused is asked again half a minute later — a
+     * server down for a moment, or a password given since, lists on its own.
+     */
+    public function testARefusedListingIsAskedAgainHalfAMinuteLater(): void
+    {
+        $files = $this->files();
+        $this->transport->fail[''] = 'Access denied';
+        $files->listed($this->cache->dir);
+
+        for ($i = 1; $i < 10; ++$i) {
+            $files->poll();
+        }
+        $this->assertFileDoesNotExist($this->cache->path('README.md'), 'not before');
+
+        $files->poll();
+
+        $this->assertFileExists($this->cache->path('README.md'));
+    }
+
+    /**
+     * What the server said is kept for the next session — after a walk, a
+     * move, a made directory and a removal alike — so a placeholder is never
+     * read as an empty file, and a fetched file is not fetched again.
+     */
+    public function testWhatWasLearntSurvivesARestart(): void
+    {
+        $this->server->write('deep/one/A.php', '<?php');
+        $this->transport->walks = true;
+        $files = $this->files();
+        $files->poll();
+        $this->await(fn (): bool => \is_file($this->cache->path('deep/one/A.php')));
+        $this->assertFalse($this->files()->available($this->cache->path('deep/one/A.php'), static fn (): null => null), 'walked: a placeholder, next session too');
+
+        $files->listed($this->cache->dir);
+        $files->available($this->cache->path('README.md'), static fn (): null => null);
+        $files->rename($this->cache->path('README.md'), $this->cache->path('READ.md'));
+        $files->mkdir($this->cache->path('made'));
+        $files->remove($this->cache->path('empty.txt'));
+
+        $index = (string) \file_get_contents($this->cache->path('.porta/remote-index.json'));
+        $this->assertStringContainsString('"READ.md"', $index, 'moved');
+        $this->assertStringNotContainsString('"README.md"', $index);
+        $this->assertStringContainsString('"made"', $index, 'made');
+        $this->assertStringNotContainsString('"empty.txt"', $index, 'removed');
+    }
+
+    public function testALocalProjectHasNoCell(): void
+    {
+        $this->assertSame([], $this->files(spec: null)->statusCells());
     }
 
     public function testClosingClosesTheTransport(): void

@@ -8,6 +8,7 @@ use Porta\Editor\CommentSyntax;
 use Porta\Editor\EditorHost;
 use Porta\Editor\StatementSyntax;
 use Porta\Input\TextInput;
+use Porta\Ui\TextEcho;
 
 /**
  * Records every EditorHost call through the given recorder closure (so a test
@@ -35,7 +36,7 @@ final class FakeEditorHost implements EditorHost
         ($this->recorder)('notifyChange', []);
     }
 
-    public function openPrompt(string $label, string $initial, callable $onSubmit, bool $danger = false): void
+    public function openPrompt(string $label, string $initial, callable $onSubmit, bool $danger = false, TextEcho $echo = TextEcho::Visible): void
     {
         ($this->recorder)('openPrompt', [$label, $initial, $onSubmit]);
     }

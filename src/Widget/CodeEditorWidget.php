@@ -76,6 +76,7 @@ use Porta\Ui\Glyphs;
 use Porta\Ui\KeyHints;
 use Porta\Ui\LtrPane;
 use Porta\Ui\Role;
+use Porta\Ui\TextEcho;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\CaretPopupRenderer;
 use Porta\Widget\Render\CaretSide;
@@ -512,10 +513,10 @@ final class CodeEditorWidget extends AbstractWidget implements
      * Open a single-line input prompt (go to line, rename symbol).
      */
     #[\Override]
-    public function openPrompt(string $label, string $initial, callable $onSubmit, bool $danger = false): void
+    public function openPrompt(string $label, string $initial, callable $onSubmit, bool $danger = false, TextEcho $echo = TextEcho::Visible): void
     {
         $this->closeSiblingFloaters();
-        $this->overlayHost->openPrompt($label, $initial, $onSubmit, $danger);
+        $this->overlayHost->openPrompt($label, $initial, $onSubmit, $danger, $echo);
     }
 
     /**

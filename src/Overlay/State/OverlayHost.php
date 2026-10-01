@@ -14,6 +14,7 @@ use Porta\Search\Everywhere\SearchRow;
 use Porta\Ui\CaretVisibility;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\ScreenDensity;
+use Porta\Ui\TextEcho;
 use Porta\Ui\TextField;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\FieldBox;
@@ -135,9 +136,9 @@ final class OverlayHost
      * border ({@see \Porta\Widget\Render\FieldState::Danger}), so a
      * destructive question never reads like a rename, colour or not.
      */
-    public function openPrompt(string $label, string $initial, callable $onSubmit, bool $danger = false): void
+    public function openPrompt(string $label, string $initial, callable $onSubmit, bool $danger = false, TextEcho $echo = TextEcho::Visible): void
     {
-        $this->prompt = ['label' => $label, 'value' => new TextField($initial, $this->cursorStyle), 'onSubmit' => $onSubmit, 'danger' => $danger];
+        $this->prompt = ['label' => $label, 'value' => new TextField($initial, $this->cursorStyle, echo: $echo), 'onSubmit' => $onSubmit, 'danger' => $danger];
         $this->promptFrame->reset();
         ($this->invalidate)();
     }

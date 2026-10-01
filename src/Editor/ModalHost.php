@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Editor;
 
+use Porta\Ui\TextEcho;
+
 /**
  * The two floating input surfaces a feature can raise over the editor pane: a
  * pick-one list and a single-line prompt. Implemented by the editor widget,
@@ -29,5 +31,5 @@ interface ModalHost
      * Open a single-line input prompt (go to line, rename symbol).
      */
     // @mago-expect lint:no-boolean-flag-parameter -- the bool IS the domain here, not a hidden second responsibility.
-    public function openPrompt(string $label, string $initial, callable $onSubmit, bool $danger = false): void;
+    public function openPrompt(string $label, string $initial, callable $onSubmit, bool $danger = false, TextEcho $echo = TextEcho::Visible): void;
 }

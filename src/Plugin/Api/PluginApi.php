@@ -26,6 +26,7 @@ use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Settings\SettingsRowKind;
 use Porta\Support\ProjectPaths;
 use Porta\Ui\Markup\Markup;
+use Porta\Ui\TextEcho;
 use Porta\Workbench\Dock\ToolRun;
 use Porta\Workbench\Menu\MenuContribution;
 use Porta\Workbench\Menu\MenuSurface;
@@ -1162,14 +1163,15 @@ final class PluginApi
 
     /**
      * Ask the user for one line of text, pre-filled with $initial. `$onSubmit`
-     * receives what they typed; cancelling calls nothing.
+     * receives what they typed; cancelling calls nothing. `TextEcho::Masked`
+     * draws a bullet per character — a password, which is never shown.
      *
      * @param \Closure(string): void $onSubmit
      */
-    public function prompt(string $label, string $initial, \Closure $onSubmit): void
+    public function prompt(string $label, string $initial, \Closure $onSubmit, TextEcho $echo = TextEcho::Visible): void
     {
         $runtime = $this->manager->runtime();
-        $runtime->modals->openPrompt($label, $initial, $onSubmit);
+        $runtime->modals->openPrompt($label, $initial, $onSubmit, echo: $echo);
     }
 
     /**

@@ -69,6 +69,38 @@ abstract class RemoteTransport
     abstract public function remove(string $path, bool $isDir, \Closure $done): void;
 
     /**
+     * Every entry under directory $path, in one answer — not descending into
+     * a directory named in $skip — each named by its path relative to $path.
+     * What fills the cache with the whole tree, so go-to-file finds a file
+     * nobody expanded the directory of.
+     *
+     * Optional: a transport that cannot answers false, and $done is never
+     * called; the tree then fills as directories are shown.
+     *
+     * @param list<string>                             $skip directory names, matched at any depth
+     * @param \Closure(list<RemoteEntry>|string): void $done
+     */
+    public function walk(string $path, array $skip, \Closure $done): bool
+    {
+        return false;
+    }
+
+    /**
+     * $argv as a command line that runs it on the server, in the project's
+     * directory there, or null when this transport cannot run anything. What
+     * lets Find in Files grep the server's files rather than the cache, which
+     * holds only the ones opened.
+     *
+     * @param list<string> $argv
+     *
+     * @return list<string>|null
+     */
+    public function remoteCommand(array $argv): ?array
+    {
+        return null;
+    }
+
+    /**
      * Stop what is in flight: the project is closing, and its callbacks need
      * not run. {@see CommandTransport} does it for a transport of processes.
      */

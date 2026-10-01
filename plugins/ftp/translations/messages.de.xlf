@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">
+  <file source-language="en" target-language="de" datatype="plaintext" original="messages">
+    <body>
+      <trans-unit id="1">
+        <source>Password for %user%@%host%</source>
+        <target>Passwort für %user%@%host%</target>
+      </trans-unit>
+      <trans-unit id="2">
+        <source>Cannot keep the password in %dir%</source>
+        <target>Das Passwort kann nicht in %dir% gespeichert werden</target>
+      </trans-unit>
+      <trans-unit id="3">
+        <source>Password kept — the server is asked again shortly</source>
+        <target>Passwort gespeichert — der Server wird gleich erneut gefragt</target>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

@@ -15,6 +15,7 @@ use Porta\Tests\Support\PreservesPortaHome;
 use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestTui;
+use Porta\Ui\TextEcho;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Notifier;
 use Symfony\Component\Filesystem\Filesystem;
@@ -59,7 +60,7 @@ final class ScratchFilesTest extends TestCase
                     $this->onPick = $onPick(...);
                 }
 
-                public function openPrompt(string $label, string $initial, callable $onSubmit, bool $danger = false): void {}
+                public function openPrompt(string $label, string $initial, callable $onSubmit, bool $danger = false, TextEcho $echo = TextEcho::Visible): void {}
             },
             new class($opened) implements FileOpener {
                 /** @param list<array{string, OpenFocus}> $opened */

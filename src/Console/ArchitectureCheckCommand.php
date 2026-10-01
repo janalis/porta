@@ -148,7 +148,9 @@ final class ArchitectureCheckCommand extends Command
         'Event>Widget',
         'Filesystem>Container',
         'Filesystem>Editor', // the remote poll re-lists the directories holding an open buffer first
+        'Filesystem>Search', // a walk of a remote tree refreshes what go-to-file reads
         'Filesystem>Support',
+        'Filesystem>Ui', // the status cell's glyphs
         'Filesystem>Workbench', // a remote fetch or upload that fails says so
         'FtpPlugin>Config', // PortaHome: where passwords and caches are kept
         'FtpPlugin>Filesystem', // the transport core asks for, and the spec it serves

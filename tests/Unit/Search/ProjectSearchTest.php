@@ -5,12 +5,24 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Search;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Editor\BufferManager;
+use Porta\Filesystem\ProjectLocation;
+use Porta\Filesystem\RemoteFilesystem;
+use Porta\Filesystem\RemoteSpec;
+use Porta\Filesystem\RemoteTransport;
+use Porta\Filesystem\RemoteTransportSource;
+use Porta\I18n\Translator;
+use Porta\Search\FileIndex;
 use Porta\Search\ProjectSearch;
 use Porta\Search\SearchOptions;
+use Porta\Tests\Support\FakeRemoteTransport;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\TestTui;
+use Porta\Widget\StatusBarWidget;
+use Porta\Workbench\Notifier;
 
 final class ProjectSearchTest extends TestCase
 {
@@ -57,6 +69,62 @@ final class ProjectSearchTest extends TestCase
             'vendor/lib/C.php' => "<?php\n// needle in vendor is excluded\n",
             'README.md' => "no match\n",
         ]);
+    }
+
+    /**
+     * A remote project's cache holds only what was opened; its grep runs on
+     * the server, so a file nobody fetched is found — with the same paths a
+     * local search answers.
+     */
+    public function testARemoteProjectIsSearchedOnTheServer(): void
+    {
+        $server = new TempProject(['src/Deep.php' => "<?php\n// needle here\n", 'vendor/x.php' => 'needle']);
+        $cache = new TempProject(['src/Deep.php' => '']);
+        $transport = new FakeRemoteTransport($server->dir);
+        $remote = new RemoteFilesystem(
+            new ProjectLocation(new RemoteSpec('ssh', 'example.org', '/srv')),
+            $cache->dir,
+            new readonly class($transport) implements RemoteTransportSource {
+                public function __construct(
+                    private RemoteTransport $transport,
+                ) {}
+
+                public function remoteTransport(RemoteSpec $spec): RemoteTransport
+                {
+                    return $this->transport;
+                }
+            },
+            new Notifier(new StatusBarWidget(), TestTui::create()),
+            new Translator('en'),
+            new BufferManager(),
+            new FileIndex($cache->dir),
+        );
+
+        $results = $this->awaitSearch(new ProjectSearch($cache->dir, $remote), 'needle');
+
+        $this->assertSame(
+            [['path' => 'src/Deep.php', 'line' => 1]],
+            \array_map(static fn (array $r): array => ['path' => $r['path'], 'line' => $r['line']], $results),
+            'vendor/ is left out there as here',
+        );
+        $this->assertSame(['run grep'], $transport->calls);
+        $this->assertNull(
+            new RemoteFilesystem(
+                new ProjectLocation(),
+                $cache->dir,
+                new readonly class implements RemoteTransportSource {
+                    public function remoteTransport(RemoteSpec $spec): ?RemoteTransport
+                    {
+                        return null;
+                    }
+                },
+                new Notifier(new StatusBarWidget(), TestTui::create()),
+                new Translator('en'),
+                new BufferManager(),
+                new FileIndex($cache->dir),
+            )->remoteCommand(['grep']),
+            'a local project runs its commands here',
+        );
     }
 
     public function testGrepSearchFindsMatchesAndExcludesVendor(): void

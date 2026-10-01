@@ -18,7 +18,9 @@ use Porta\Filesystem\RemoteStamp;
  *
  * The password is in a netrc file only this user can read
  * ({@see Credentials}), never on a command line another user's `ps` would
- * show. A directory is listed with MLSD, whose sizes and times are exact and
+ * show. The file is looked for at each call, so a password given while the
+ * project is open is used from the next one; a login the server refuses is
+ * said to $refused, which can ask for one. A directory is listed with MLSD, whose sizes and times are exact and
  * in UTC — the same clock as the MDTM a file's stamp is read from, so a
  * listing and a fetch agree on when a file changed. A server without MLSD
  * says so instead of being half-understood.
@@ -30,17 +32,22 @@ use Porta\Filesystem\RemoteStamp;
  */
 final class FtpTransport extends CommandTransport
 {
+    /** What curl answers when the server refuses the login. */
+    private const int LOGIN_DENIED = 67;
+
     /** The name a file is uploaded under before it is renamed over the real one. */
     private const string PARTIAL = '.porta-upload';
 
     /**
-     * @param string|null $netrc the credentials file; null logs in anonymously
-     * @param string      $curl  the curl binary
+     * @param string|null             $netrc   where the credentials file is, or will be; none there logs in anonymously
+     * @param string                  $curl    the curl binary
+     * @param (\Closure(): void)|null $refused told when the server refuses the login
      */
     public function __construct(
         private readonly RemoteSpec $spec,
         private readonly ?string $netrc,
         private readonly string $curl = 'curl',
+        private readonly ?\Closure $refused = null,
     ) {}
 
     #[\Override]
@@ -83,6 +90,68 @@ final class FtpTransport extends CommandTransport
             }
             $this->upload($path, $bytes, $done);
         });
+    }
+
+    /**
+     * FTP lists one directory at a time, so the whole tree is listed
+     * directory by directory, one after another — a server limits how many
+     * connections it takes — and answered at once when the last is in.
+     */
+    #[\Override]
+    public function walk(string $path, array $skip, \Closure $done): bool
+    {
+        $this->walkFrom([''], $path, $skip, [], $done);
+
+        return true;
+    }
+
+    /**
+     * @param list<string>                             $pending directories still to list, relative to $root
+     * @param list<string>                             $skip
+     * @param list<RemoteEntry>                        $found
+     * @param \Closure(list<RemoteEntry>|string): void $done
+     */
+    private function walkFrom(array $pending, string $root, array $skip, array $found, \Closure $done): void
+    {
+        $dir = \array_shift($pending);
+        if (null === $dir) {
+            $done($found);
+
+            return;
+        }
+        $this->list(self::join($root, $dir), function (array|string $entries) use ($pending, $root, $skip, $found, $dir, $done): void {
+            if (\is_string($entries)) {
+                $done($entries);
+
+                return;
+            }
+            foreach (self::listed($entries) as $entry) {
+                if ($entry->isDir && \in_array($entry->name, $skip, strict: true)) {
+                    continue;
+                }
+                $relative = self::join($dir, $entry->name);
+                $found[] = new RemoteEntry($relative, $entry->isDir, $entry->stamp);
+                if ($entry->isDir) {
+                    $pending[] = $relative;
+                }
+            }
+            $this->walkFrom($pending, $root, $skip, $found, $done);
+        });
+    }
+
+    /**
+     * @param array<mixed> $entries what {@see list()} answers on success
+     *
+     * @return list<RemoteEntry>
+     */
+    private static function listed(array $entries): array
+    {
+        return \array_values(\array_filter($entries, static fn (mixed $entry): bool => $entry instanceof RemoteEntry));
+    }
+
+    private static function join(string $dir, string $name): string
+    {
+        return '' === $dir ? $name : $dir.'/'.$name;
     }
 
     #[\Override]
@@ -132,7 +201,7 @@ final class FtpTransport extends CommandTransport
      */
     public function command(array $options, string $url): array
     {
-        $auth = null === $this->netrc ? [] : ['--netrc-file', $this->netrc];
+        $auth = null !== $this->netrc && \is_file($this->netrc) ? ['--netrc-file', $this->netrc] : [];
         $tls = 'ftps' === $this->spec->scheme ? ['--ssl-reqd'] : [];
 
         return [$this->curl, '--silent', '--show-error', ...$auth, ...$tls, ...$options, '--', $url];
@@ -190,7 +259,7 @@ final class FtpTransport extends CommandTransport
         $name = self::PARTIAL.'-'.\basename($path);
         $partial = (\str_contains($path, '/') ? \dirname($path).'/' : '').$name;
         $options = ['--ftp-create-dirs', '--upload-file', '-', '--quote', '-RNFR '.$name, '--quote', '-RNTO '.\basename($path)];
-        $this->guarded([$path], $done, fn () => $this->run($this->command($options, $this->url($partial)), $bytes, function (int $code, string $out, string $err) use ($path, $done): void {
+        $this->guarded([$path], $done, fn () => $this->exec($this->command($options, $this->url($partial)), $bytes, function (int $code, string $out, string $err) use ($path, $done): void {
             if (0 !== $code) {
                 $done(self::failure($code, $err));
 
@@ -266,7 +335,23 @@ final class FtpTransport extends CommandTransport
      */
     private function curl(array $options, string $url, \Closure $done): void
     {
-        $this->run($this->command($options, $url), null, $done);
+        $this->exec($this->command($options, $url), null, $done);
+    }
+
+    /**
+     * Run a curl, and say so when the server refused the login.
+     *
+     * @param list<string>                         $command
+     * @param \Closure(int, string, string): void $done
+     */
+    private function exec(array $command, ?string $stdin, \Closure $done): void
+    {
+        $this->run($command, $stdin, function (int $code, string $out, string $err) use ($done): void {
+            if (self::LOGIN_DENIED === $code && null !== $this->refused) {
+                ($this->refused)();
+            }
+            $done($code, $out, $err);
+        });
     }
 
     /**

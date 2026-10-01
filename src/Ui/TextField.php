@@ -58,6 +58,7 @@ final readonly class TextField
         string $value = '',
         ?CursorStyle $style = null,
         private PastedNewlines $pastedNewlines = PastedNewlines::Join,
+        private TextEcho $echo = TextEcho::Visible,
     ) {
         $this->style = $style ?? new CursorStyle();
         $this->line = new Line($value, \strlen($value));
@@ -228,20 +229,30 @@ final readonly class TextField
     public function render(CaretVisibility $cursor, ?int $width = null): string
     {
         $shown = CaretVisibility::Shown === $cursor;
-        // Newlines (multiline query/replace) show as a visible ⏎ so the row stays one line.
-        $display = \str_replace("\n", replace: '⏎', subject: $this->line->getText());
+        $display = $this->shown($this->line->getText());
         if (!$shown) {
             return $display;
         }
         // The marker goes AT the caret, which is why the caret had to become a
         // real offset: pinning it to the tail is what made every consumer
         // append-only.
-        $before = \str_replace("\n", replace: '⏎', subject: \substr($this->line->getText(), offset: 0, length: $this->line->getCursor()));
+        $before = $this->shown(\substr($this->line->getText(), offset: 0, length: $this->line->getCursor()));
         $caret = AnsiUtils::visibleWidth($before);
         if (null !== $width) {
             return AnsiText::caretWindow($display, $caret, $width, $this->style->marker());
         }
 
         return $before.$this->style->marker().\substr($display, \strlen($before));
+    }
+
+    /**
+     * $text as drawn: newlines (multiline query/replace) as a visible ⏎ so
+     * the row stays one line, and a masked field's characters as bullets.
+     */
+    private function shown(string $text): string
+    {
+        return TextEcho::Masked === $this->echo
+            ? \str_repeat(Glyphs::MASKED, \max(0, (int) \grapheme_strlen($text)))
+            : \str_replace("\n", replace: '⏎', subject: $text);
     }
 }

@@ -6,10 +6,13 @@ namespace Porta\Tests\Unit\Ui;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Porta\Tests\Support\Probe;
 use Porta\Ui\CaretVisibility;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\PastedNewlines;
+use Porta\Ui\TextEcho;
 use Porta\Ui\TextField;
+use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Style\CursorShape;
@@ -354,5 +357,30 @@ final class TextFieldTest extends TestCase
 
         $this->assertFalse($field->editKey("\x1b[200~\n\x1b[201~", new Keybindings()));
         $this->assertSame('keep', $field->value());
+    }
+
+    /** A password: a bullet per character typed — a grapheme, not a byte — and the value untouched. */
+    public function testAMaskedFieldDrawsABulletPerCharacter(): void
+    {
+        $field = new TextField('pä🇫🇷', echo: TextEcho::Masked);
+
+        $this->assertSame('pä🇫🇷', $field->value());
+        $this->assertSame('•••', $field->render(CaretVisibility::Hidden));
+        $this->assertSame('', new TextField('', echo: TextEcho::Masked)->render(CaretVisibility::Hidden), 'nothing typed, nothing drawn');
+        $field->moveLeft();
+        $this->assertSame('••'.new CursorStyle()->marker().'•', $field->render(CaretVisibility::Shown));
+        $this->assertSame("a\nb", new TextField("a\nb", pastedNewlines: PastedNewlines::Keep)->value(), 'unmasked, as it was');
+        $this->assertSame('a⏎b', new TextField("a\nb")->render(CaretVisibility::Hidden));
+    }
+
+    /** The prompt a plugin opens for a password is masked all the way to the field. */
+    public function testAMaskedPromptKeepsItsValueOffTheScreen(): void
+    {
+        $editor = new CodeEditorWidget();
+        $editor->openPrompt('Password', 'secret', static function (): void {}, echo: TextEcho::Masked);
+
+        /** @var array{value: TextField} $prompt */
+        $prompt = Probe::get(Probe::object($editor, 'overlayHost'), 'prompt');
+        $this->assertSame('••••••', $prompt['value']->render(CaretVisibility::Hidden));
     }
 }

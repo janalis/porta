@@ -1007,7 +1007,7 @@ Actions (from handlers/hooks):
 | `replaceDocument(string $text)` | Replace the active text buffer's whole content as ONE undoable edit; no-op on an identical text, a viewer tab, or nothing open |
 | `trans(string $id, array $params = [])` | Translate through the IDE's catalogs and your own — see [Translating your strings](#translating-your-strings); an unknown string passes through |
 | `pick(string $title, array $items, \Closure $onPick)` | Ask the user to choose from `value => label`, or from full rows (`['label' => …, 'hint' => …, 'value' => …]`) when the list needs a dimmed second column |
-| `prompt(string $label, string $initial, \Closure $onSubmit)` | Ask the user for one line of text |
+| `prompt(string $label, string $initial, \Closure $onSubmit, TextEcho $echo = TextEcho::Visible)` | Ask the user for one line of text; `TextEcho::Masked` draws bullets, for a password |
 | `activeFile(): ?string` | Absolute path of the focused buffer |
 | `selectedFiles(): list<string>` | The files selected in the project tree, in tree order, directories left out. One is the ordinary case — the tree always has its cursor row selected — so a command that acts on a set checks the count and says what it wanted |
 | `documentText(): ?string` | Full text of the focused buffer |

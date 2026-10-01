@@ -65,6 +65,13 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
      */
     private const string ARCHITECTURE_FILENAME = 'architecture.dot';
 
+    /**
+     * How many lines the stand-in for a file still being fetched has: a jump
+     * past them clamps, and the file is not yet here to say how long it is.
+     * Fifty thousand blank lines build in under 10 ms.
+     */
+    private const int STAND_IN_LINES = 50_000;
+
     public function __construct(
         private readonly BufferManager $buffers,
         private readonly CodeEditorWidget $editor,
@@ -96,6 +103,14 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
      * @var array<string, float>
      */
     private array $lastOverwritePress = [];
+
+    /**
+     * The blank documents standing in for files still being fetched, by path
+     * — {@see openWhenFetched()}.
+     *
+     * @var array<string, Document>
+     */
+    private array $standIns = [];
 
     /**
      * The project tree's Enter/click. Focus moves to the editor, which is what
@@ -171,7 +186,7 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
         // A remote file whose content was never fetched is an empty
         // placeholder: opening it now would show nothing, and a save would
         // write that nothing back. The open is asked again once it is here.
-        if (!$this->buffers->has($path) && !$this->fs->available($path, fn () => $this->openFile($path, $focus, $as))) {
+        if (!$this->buffers->has($path) && !$this->openWhenFetched($path, $focus, $as)) {
             return;
         }
         if (OpenFocus::Background === $focus && null !== $this->buffers->active()) {
@@ -249,6 +264,36 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
             $this->focusEditorArea();
         }
         $this->tui->requestRender();
+    }
+
+    /**
+     * Whether $path's content is here to open now. When it is still on its way
+     * from a server, the editor shows a blank stand-in until it lands — the
+     * {@see showBuffer()} move for a pane, for the same reason: every caller
+     * jumps right after opening (a search hit, a bookmark, a debugger frame),
+     * and that jump must not move the caret of the file in front. The line it
+     * lands on in the stand-in is carried to the file once it opens. A fetch
+     * that answers at once has opened the file already, and needs none.
+     */
+    private function openWhenFetched(string $path, OpenFocus $focus, OpenAs $as): bool
+    {
+        $opened = false;
+        $ready = $this->fs->available($path, function () use ($path, $focus, $as, &$opened): void {
+            $opened = true;
+            $standIn = $this->standIns[$path] ?? null;
+            unset($this->standIns[$path]);
+            $this->openFile($path, $focus, $as);
+            if (null !== $standIn && $standIn->cursorLine > 0 && $this->buffers->active()?->path === $path) {
+                $this->editor->jumpTo($standIn->cursorLine, 0);
+            }
+        });
+        // A background open changes nothing in front: there is no jump to catch.
+        if (!$ready && !$opened && OpenFocus::Background !== $focus) {
+            $this->standIns[$path] = new Document(\str_repeat("\n", self::STAND_IN_LINES));
+            $this->editor->showDocument('', $this->standIns[$path]);
+        }
+
+        return $ready;
     }
 
     /**

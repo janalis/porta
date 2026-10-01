@@ -261,6 +261,30 @@ file cannot be uploaded into a directory whose `mkdir` has not landed.
 - `pending()` counts what is unsent, and `UnsavedChangesGuard` makes quitting
   and switching ask twice on it.
 
+**The whole tree is walked once a session.** The first poll after the tree's
+own listings asks the transport's optional `walk()` for every entry. Like
+`FileIndex`, it skips `vendor/`, `node_modules/` and `.git/`. The entries land
+as placeholders `WALK_CHUNK` per loop turn, then `FileIndex::refresh()`, so
+go-to-file finds an unexpanded file. `RemoteIndex` saves on request, not per
+entry, or the walk would be quadratic.
+
+**Search runs on the server where it can.** `ProjectSearch` hands its `grep`
+argv to `RemoteFilesystem::remoteCommand()`. ssh wraps it to run in the
+project's directory there; FTP cannot, and the grep runs on the cache.
+
+**An open that waits for a fetch shows a stand-in.** Every navigation calls
+`openFile()` and then `jumpTo()`. `BufferService::openWhenFetched()` puts a
+blank 50,000-line document in the editor, as `showBuffer()` does for a pane,
+so the jump cannot move the caret of the file in front. The line it lands on
+is carried to the file when it opens.
+
+**What the user cannot see otherwise is on the status bar.** `RemoteFilesystem`
+is a `StatusSegment`: `⇅ host`, plus `⇡N` while N changes are unsent,
+highlighted after a refusal until the server next answers yes. A listing the
+server refused is asked again `RETRY_POLLS` later, so a password given since
+(the ftp plugin asks with a masked `PluginApi::prompt()`) or a server back up
+lists on its own.
+
 **Plugins activate after the tree is first built.** So `listed()` with no
 transport yet remembers the directory, and `Ide::run()` defers one `poll()` that
 lists it. After that, `poll()` runs on a `POLL_SECONDS` timer. It re-lists the

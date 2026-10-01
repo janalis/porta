@@ -20,6 +20,8 @@ final class RemoteIndexTest extends TestCase
         $index->directory('src');
         $index->file('src/A.php', new RemoteStamp(12, 34), fetched: true);
         $index->file('B.php', new RemoteStamp(5, 6), fetched: false);
+        $this->assertNull(new RemoteIndex($dir->path('index.json'))->get('src'), 'nothing is written before a save');
+        $index->save();
 
         $again = new RemoteIndex($dir->path('index.json'));
         $this->assertSame(['dir' => true, 'size' => 0, 'mtime' => 0, 'fetched' => true], $again->get('src'));
@@ -41,6 +43,7 @@ final class RemoteIndexTest extends TestCase
         $index->file('srcx.php', new RemoteStamp(1, 1), fetched: true);
 
         $index->move('src', 'lib');
+        $index->save();
         $this->assertNotNull(new RemoteIndex($dir->path('index.json'))->get('lib/A.php'), 'a move is saved');
 
         $this->assertNull($index->get('src/A.php'));
@@ -49,6 +52,7 @@ final class RemoteIndexTest extends TestCase
         $this->assertNotNull($index->get('srcx.php'), 'a sibling sharing the prefix is not under it');
 
         $index->forget('lib');
+        $index->save();
 
         $this->assertNull($index->get('lib'));
         $this->assertNull($index->get('lib/A.php'));
@@ -72,9 +76,13 @@ final class RemoteIndexTest extends TestCase
     public function testRecordingFirstStillKeepsWhatWasSaved(): void
     {
         $dir = new TempProject();
-        new RemoteIndex($dir->path('index.json'))->directory('kept');
+        $first = new RemoteIndex($dir->path('index.json'));
+        $first->directory('kept');
+        $first->save();
 
-        new RemoteIndex($dir->path('index.json'))->directory('added');
+        $second = new RemoteIndex($dir->path('index.json'));
+        $second->directory('added');
+        $second->save();
 
         $this->assertNotNull(new RemoteIndex($dir->path('index.json'))->get('kept'));
     }

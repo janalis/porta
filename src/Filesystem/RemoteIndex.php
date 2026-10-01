@@ -16,6 +16,10 @@ use Symfony\Component\Filesystem\Filesystem;
  * placeholder is never mistaken for an empty file after a restart. A path it
  * does not know was never the server's — something made here, which nothing
  * fetches over.
+ *
+ * Changes are kept in memory until {@see save()}: a walk of the whole tree
+ * records thousands of paths, and writing the file for each would make that
+ * quadratic.
  */
 final class RemoteIndex
 {
@@ -70,14 +74,12 @@ final class RemoteIndex
                 $this->entries[$moved] = $entry;
             }
         }
-        $this->save();
     }
 
     /** $relative, and everything under it, is gone. */
     public function forget(string $relative): void
     {
         $this->entries = \array_filter($this->entries(), static fn (string $known): bool => null === self::moved($known, $relative, $relative), \ARRAY_FILTER_USE_KEY);
-        $this->save();
     }
 
     /** $relative re-rooted from $from to $to, or null when it is not $from or under it. */
@@ -91,10 +93,10 @@ final class RemoteIndex
     {
         $this->entries();
         $this->entries[$relative] = $entry;
-        $this->save();
     }
 
-    private function save(): void
+    /** Write what changed since the last save. */
+    public function save(): void
     {
         JsonFile::write($this->fs, $this->file, $this->entries ?? []);
     }

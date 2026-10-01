@@ -62,6 +62,14 @@ final class Glyphs
     // breakpoint, nor ●, the dirty dot it may sit next to.
     public const string AGENT = '✦';
 
+    // A remote project, in the status bar: files go both ways between here
+    // and the server. ⇡ counts what is still on its way up. Both are
+    // East-Asian-neutral — one column everywhere, unlike ↑, which is ambiguous.
+    public const string REMOTE = '⇅';
+    // A character of a password, in a masked field.
+    public const string MASKED = '•';
+    public const string UPLOADING = '⇡';
+
     // The action a server marks as the one it would pick — a quick fix's
     // isPreferred — leading its label in the list.
     public const string PREFERRED = '★';

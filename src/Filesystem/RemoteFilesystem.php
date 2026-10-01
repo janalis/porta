@@ -7,7 +7,14 @@ namespace Porta\Filesystem;
 use Porta\Container\AsIdeService;
 use Porta\Editor\BufferManager;
 use Porta\I18n\Translator;
+use Porta\Search\FileIndex;
+use Porta\Ui\Glyphs;
 use Porta\Workbench\Notifier;
+use Porta\Workbench\StatusCell;
+use Porta\Workbench\StatusSegment;
+use Porta\Workbench\StatusTone;
+use Revolt\EventLoop;
+use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
 use Symfony\Component\Filesystem\Filesystem;
 
 /**
@@ -31,13 +38,23 @@ use Symfony\Component\Filesystem\Filesystem;
  * machine's to use.
  */
 #[AsIdeService]
-final class RemoteFilesystem implements ProjectFilesystem
+#[AsTaggedItem(priority: 240)]
+final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
 {
     private const string INDEX = '.porta/remote-index.json';
     public const float POLL_SECONDS = 3.0;
     /** How many directories one poll re-lists. */
     private const int POLL_BATCH = 2;
     private const string SLOT = 'remote';
+    /**
+     * What a walk of the whole tree does not descend into: what go-to-file
+     * leaves out by default ({@see FileIndex}), and Porta's own state.
+     */
+    private const array WALK_SKIP = ['.git', 'node_modules', 'vendor', '.idea', '.vscode', '.porta'];
+    /** How many polls — half a minute — before a directory the server refused is asked again. */
+    private const int RETRY_POLLS = 10;
+    /** How many walked entries land per loop turn: the loop renders between them. */
+    private const int WALK_CHUNK = 500;
 
     private readonly RemoteIndex $index;
     private readonly ChangeQueue $queue;
@@ -59,11 +76,18 @@ final class RemoteFilesystem implements ProjectFilesystem
     /** @var array<string, true> paths whose next upload overwrites what the server has */
     private array $force = [];
     private ?RemoteTransport $transport = null;
+    /** The last thing the server refused, until it next answers yes. */
+    private ?string $trouble = null;
     /** Whether "no plugin serves this" was said: once is enough. */
     private bool $complained = false;
     /** @var array<string, true> directories asked for before a transport was there: the first poll lists them */
     private array $wanted = [];
     private int $pollCursor = 0;
+    /** Whether the whole tree was asked for this session. */
+    private bool $walked = false;
+    private int $polls = 0;
+    /** @var array<string, int> directories the server refused to list, and the poll that asks again */
+    private array $retry = [];
     private readonly string $realRoot;
 
     public function __construct(
@@ -73,6 +97,7 @@ final class RemoteFilesystem implements ProjectFilesystem
         private readonly Notifier $notifier,
         private readonly Translator $translator,
         private readonly BufferManager $buffers,
+        private readonly FileIndex $files,
         private readonly Filesystem $fs = new Filesystem(),
     ) {
         $this->realRoot = ($resolved = \realpath($rootDir)) ? $resolved : $rootDir;
@@ -148,6 +173,7 @@ final class RemoteFilesystem implements ProjectFilesystem
         $this->seal($source);
         if (null !== $source && null !== $target) {
             $this->index->move($source, $target);
+            $this->index->save();
             $this->listed = self::movedKeys($this->listed, $source, $target);
             $this->change($target, fn (RemoteTransport $transport, \Closure $next) => $transport->rename($source, $target, $this->reporting($target, $next)));
 
@@ -185,6 +211,51 @@ final class RemoteFilesystem implements ProjectFilesystem
         }
     }
 
+    /**
+     * Where the project is, in the status bar — and what a save there does
+     * not show by itself: that it has not reached the server yet. A saved
+     * buffer looks saved; this is the only place an upload still on its way
+     * is visible. The last refusal stays until the server next answers yes.
+     */
+    #[\Override]
+    public function statusCells(): array
+    {
+        $spec = $this->location->remote;
+        if (null === $spec) {
+            return [];
+        }
+        $pending = $this->queue->pending();
+        $text = Glyphs::REMOTE.' '.$spec->host.(0 === $pending ? '' : ' '.Glyphs::UPLOADING.$pending);
+        $tooltip = 0 === $pending
+            ? $this->translator->trans('This project is on %host%: a file is fetched when you open it, and sent back when you save it', ['%host%' => $spec->host])
+            : $this->translator->trans('%count% change on its way to %host%|%count% changes on their way to %host%', ['%count%' => $pending, '%host%' => $spec->host]);
+
+        return [new StatusCell(
+            $text,
+            match (true) {
+                null !== $this->trouble => StatusTone::Accent,
+                0 !== $pending => StatusTone::Active,
+                default => StatusTone::Subtle,
+            },
+            tooltip: null === $this->trouble ? $tooltip : $tooltip."\n".$this->trouble,
+        )];
+    }
+
+    /**
+     * $argv run on the server, in the project's directory there — or null
+     * when the project is not remote, no plugin serves it yet, or its
+     * transport cannot run commands: the caller then runs it here, on the
+     * cache.
+     *
+     * @param list<string> $argv
+     *
+     * @return list<string>|null
+     */
+    public function remoteCommand(array $argv): ?array
+    {
+        return $this->transport()?->remoteCommand($argv);
+    }
+
     #[\Override]
     public function pending(): int
     {
@@ -207,13 +278,21 @@ final class RemoteFilesystem implements ProjectFilesystem
         if ([] !== $this->listing || null === $transport) {
             return;
         }
+        ++$this->polls;
+        foreach ($this->retry as $dir => $due) {
+            if ($due > $this->polls) {
+                continue;
+            }
+            unset($this->retry[$dir]);
+            $this->wanted[$dir] = true;
+        }
         $wanted = \array_keys($this->wanted);
         $this->wanted = [];
         foreach ($wanted as $dir) {
             $this->listed[$dir] = true;
             $this->list($transport, $dir);
         }
-        if ([] !== $wanted) {
+        if ([] !== $wanted || $this->walk($transport)) {
             return;
         }
         $dirs = [];
@@ -235,6 +314,54 @@ final class RemoteFilesystem implements ProjectFilesystem
     }
 
     /**
+     * Ask, once a session, for the whole tree — the poll's first round after
+     * what the tree was waiting on. Whether it was asked: a transport that
+     * cannot walk leaves the poll to its listings.
+     */
+    private function walk(RemoteTransport $transport): bool
+    {
+        if ($this->walked) {
+            return false;
+        }
+        $this->walked = true;
+
+        return $transport->walk('', self::WALK_SKIP, function (array|string $answer): void {
+            if (\is_string($answer)) {
+                $this->cannotRead('', $answer);
+
+                return;
+            }
+            /** @var list<RemoteEntry> $answer */
+            $this->landWalked($answer);
+        });
+    }
+
+    /**
+     * Land a walk's entries a chunk per loop turn — a project's tree can be
+     * tens of thousands of placeholders — then let go-to-file see them. Only
+     * adds: what went is a listing's to remove, and a path with a change of
+     * ours on its way is left alone.
+     *
+     * @param list<RemoteEntry> $entries
+     */
+    private function landWalked(array $entries): void
+    {
+        foreach (\array_splice($entries, offset: 0, length: self::WALK_CHUNK) as $entry) {
+            if (!self::syncable($entry->name) || $this->queue->touches($entry->name)) {
+                continue;
+            }
+            $entry->isDir ? $this->landDirectory($entry->name) : $this->landFile($entry->name, $entry->stamp);
+        }
+        $this->index->save();
+        if ([] === $entries) {
+            $this->files->refresh();
+
+            return;
+        }
+        EventLoop::defer(fn () => $this->landWalked($entries));
+    }
+
+    /**
      * List $relative on the server. Never twice at once: listed() marks a
      * directory before it asks, and a poll waits for its last round.
      */
@@ -244,12 +371,18 @@ final class RemoteFilesystem implements ProjectFilesystem
         $transport->list($relative, function (array|string $answer) use ($relative): void {
             unset($this->listing[$relative]);
             if (\is_string($answer)) {
-                unset($this->listed[$relative]); // asked again the next time the tree shows it
+                // Asked again the next time the tree shows it, or half a
+                // minute from now: a server down for a moment, or a password
+                // given since, lists on its own.
+                unset($this->listed[$relative]);
+                $this->retry[$relative] = $this->polls + self::RETRY_POLLS;
                 $this->cannotRead($relative, $answer);
 
                 return;
             }
             /** @var list<RemoteEntry> $answer */
+            $this->trouble = null;
+            unset($this->retry[$relative]);
             $this->reconcile($relative, $answer);
         });
     }
@@ -286,6 +419,7 @@ final class RemoteFilesystem implements ProjectFilesystem
                 $this->index->forget($relative);
             }
         }
+        $this->index->save();
     }
 
     private function landDirectory(string $relative): void
@@ -306,7 +440,11 @@ final class RemoteFilesystem implements ProjectFilesystem
         }
         $known = \is_file($path) ? $this->index->stamp($relative) : null;
         if (!\is_file($path)) {
-            $this->fs->dumpFile($path, '');
+            // touch(), not dumpFile(): a walk lands thousands of these, and
+            // an empty file needs no write-then-rename to be whole. Its
+            // directory is here: a listing is of one that is, and a walk
+            // names a directory before what it holds.
+            $this->fs->touch($path);
         }
         $changed = null !== $known && !$stamp->equals($known);
         // An empty file is all there is to fetch of one.
@@ -342,8 +480,10 @@ final class RemoteFilesystem implements ProjectFilesystem
             if ($this->queue->touches($relative)) {
                 return; // a change of ours is on its way: the server's copy is not the latest
             }
+            $this->trouble = null;
             $this->fs->dumpFile($this->absolute($relative), $answer->bytes);
             $this->index->file($relative, $answer->stamp, fetched: true);
+            $this->index->save();
             $then();
         });
     }
@@ -420,8 +560,10 @@ final class RemoteFilesystem implements ProjectFilesystem
     private function uploaded(string $relative, RemoteStamp|string|null $answer): void
     {
         if ($answer instanceof RemoteStamp) {
+            $this->trouble = null;
             unset($this->force[$relative]);
             $this->index->file($relative, $answer, fetched: true);
+            $this->index->save();
 
             return;
         }
@@ -437,6 +579,7 @@ final class RemoteFilesystem implements ProjectFilesystem
     private function mkdirs(string $relative): void
     {
         $this->index->directory($relative);
+        $this->index->save();
         $this->listed[$relative] = true; // a directory we made holds what we put in it
         $this->change($relative, fn (RemoteTransport $transport, \Closure $next) => $transport->mkdir($relative, $this->reporting($relative, $next)));
     }
@@ -444,6 +587,7 @@ final class RemoteFilesystem implements ProjectFilesystem
     private function removeRemote(string $relative, bool $isDir): void
     {
         $this->index->forget($relative);
+        $this->index->save();
         $this->change($relative, fn (RemoteTransport $transport, \Closure $next) => $transport->remove($relative, $isDir, $this->reporting($relative, $next)));
     }
 
@@ -517,11 +661,13 @@ final class RemoteFilesystem implements ProjectFilesystem
 
     private function cannotRead(string $relative, string $error): void
     {
+        $this->trouble = $error;
         $this->notifier->error($this->translator->trans('Cannot read %file% from the server: %error%', self::about($relative, $error)), slot: self::SLOT);
     }
 
     private function cannotChange(string $relative, string $error): void
     {
+        $this->trouble = $error;
         $this->notifier->error($this->translator->trans('Cannot change %file% on the server: %error%', self::about($relative, $error)), slot: self::SLOT);
     }
 
