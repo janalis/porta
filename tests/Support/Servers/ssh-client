@@ -1,0 +1,40 @@
+#!/usr/bin/env -S php -n
+<?php
+
+// The near end of the ssh stand-in: called as SshTransport calls ssh —
+// `ssh -o … [-p port] -- host 'remote command'` — it sends the command and
+// its stdin to ssh-server on 127.0.0.1:<port> and exits with what the
+// command printed and exited with. A server that is not there is ssh's own
+// failure: exit 255 and the line ssh prints.
+
+declare(strict_types=1);
+
+$args = array_slice($argv, 1);
+$port = 22;
+while ([] !== $args && '--' !== $args[0]) {
+    $option = array_shift($args);
+    if ('-p' === $option) {
+        $port = (int) array_shift($args);
+    } elseif ('-o' === $option || '-l' === $option) {
+        array_shift($args);
+    }
+}
+array_shift($args); // --
+$host = (string) preg_replace("/^.*@/", "", (string) array_shift($args));
+$command = implode(' ', $args);
+
+$stdin = (string) stream_get_contents(STDIN);
+$socket = @stream_socket_client('tcp://127.0.0.1:'.$port, $errno, $errstr, 5);
+if (false === $socket) {
+    fwrite(STDERR, "ssh: connect to host $host port $port: Connection refused\n");
+    exit(255);
+}
+fwrite($socket, json_encode(['command' => $command, 'stdin' => base64_encode($stdin)])."\n");
+$reply = json_decode((string) fgets($socket), true);
+if (!is_array($reply)) {
+    fwrite(STDERR, "Connection to $host closed by remote host.\n");
+    exit(255);
+}
+fwrite(STDOUT, (string) base64_decode((string) $reply['out'], true));
+fwrite(STDERR, (string) base64_decode((string) $reply['err'], true));
+exit((int) $reply['code']);

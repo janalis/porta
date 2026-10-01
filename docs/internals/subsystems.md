@@ -978,11 +978,15 @@ where this side is (only on news or a due heartbeat), then reads the board.
 - `RemotePresenceBoard`: the SERVER's `.porta/presence/`, through a transport
   of its own from `RemoteTransportSource` — not `RemoteFilesystem`'s, which
   keeps it private, and an ssh one shares its ControlMaster anyway. One
-  listing per look, a fetch only for a file whose `RemoteStamp` moved. ssh:
+  listing per look, a fetch only for a file whose `RemoteStamp` moved — and
+  once more `SETTLE` (2 s) after a new stamp is first seen: a stamp is whole
+  seconds and a size, so a caret one line down within the same second keeps
+  it. Functional tests hold both transports to this over real servers
+  (`DummyServer`, see `testing.md`). ssh:
   3 s / 15 s; FTP: 10 s / 30 s. No transport yet is "nobody", not "lost".
 
-Liveness reads ONLY this machine's clock: a beacon is alive while its `beat`
-keeps changing as seen here (`STALE_BEATS` = 3 heartbeats), so skewed clocks
+Liveness reads ONLY this machine's clock: a beacon is alive while it keeps
+changing as seen here — its `beat`, or a caret moved within the same beat (`STALE_BEATS` = 3 heartbeats), so skewed clocks
 do not matter. A beacon quiet for `FORGET` (600 s), or seen for the first time
 with a beat that old, is withdrawn by whoever reads it. A read that fails
 is a lost link: carets go (`AgentLeft`), the roster goes `outOfTouch()`, the

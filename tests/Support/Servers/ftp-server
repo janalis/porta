@@ -1,0 +1,271 @@
+#!/usr/bin/env php
+<?php
+
+// A small but real FTP server, for tests that run the real curl against
+// it: `php ftp-server <root> <port> <port-file> [password]`.
+//
+// It serves <root> as `/` — nothing outside it is reachable — to one client
+// at a time, in passive mode only (EPSV, PASV). <port> 0 picks a free one;
+// the port it listens on is written to <port-file> once it accepts. With a
+// password, every login must give it; without, any login is let in.
+//
+// Answers the commands curl sends for what FtpTransport asks — listing with
+// MLSD, fetching with SIZE/MDTM/RETR, storing, MKD/RMD/DELE, RNFR/RNTO — and
+// refuses the rest with 502, as a server that does not implement them does.
+
+declare(strict_types=1);
+
+[, $root, $port, $portFile] = $argv;
+$password = $argv[4] ?? null;
+$root = rtrim((string) realpath($root), '/');
+
+$server = stream_socket_server('tcp://127.0.0.1:'.$port, $errno, $errstr);
+if (false === $server) {
+    fwrite(STDERR, "cannot listen: $errstr\n");
+    exit(1);
+}
+file_put_contents($portFile, (string) parse_url('tcp://'.stream_socket_get_name($server, false), PHP_URL_PORT));
+
+while (true) {
+    $client = @stream_socket_accept($server, -1);
+    if (false === $client) {
+        continue;
+    }
+    stream_set_timeout($client, 10);
+    new FtpSession($client, $root, $password)->serve();
+    @fclose($client);
+}
+
+final class FtpSession
+{
+    private string $cwd = '/';
+    private bool $in = false;
+    /** @var resource|null */
+    private $passive;
+    private ?string $renaming = null;
+    private int $restart = 0;
+
+    /** @param resource $control */
+    public function __construct(
+        private $control,
+        private readonly string $root,
+        private readonly ?string $password,
+    ) {}
+
+    public function serve(): void
+    {
+        $this->reply(220, 'porta test ftp');
+        while (false !== ($line = fgets($this->control))) {
+            $line = rtrim($line, "\r\n");
+            [$verb, $argument] = array_pad(explode(' ', $line, 2), 2, '');
+            $verb = strtoupper($verb);
+            if ('QUIT' === $verb) {
+                $this->reply(221, 'bye');
+
+                return;
+            }
+            if (!$this->in && !in_array($verb, ['USER', 'PASS', 'FEAT', 'SYST', 'OPTS'], true)) {
+                $this->reply(530, 'log in first');
+
+                continue;
+            }
+            $this->command($verb, $argument);
+        }
+    }
+
+    private function command(string $verb, string $argument): void
+    {
+        switch ($verb) {
+            case 'USER':
+                $this->reply(331, 'password');
+                break;
+            case 'PASS':
+                if (null !== $this->password && $argument !== $this->password) {
+                    $this->reply(530, 'Login incorrect');
+                    break;
+                }
+                $this->in = true;
+                $this->reply(230, 'in');
+                break;
+            case 'SYST':
+                $this->reply(215, 'UNIX Type: L8');
+                break;
+            case 'FEAT':
+                fwrite($this->control, "211-Features\r\n MLSD\r\n SIZE\r\n MDTM\r\n EPSV\r\n UTF8\r\n211 End\r\n");
+                break;
+            case 'OPTS':
+            case 'TYPE':
+            case 'NOOP':
+                $this->reply(200, 'ok');
+                break;
+            case 'PWD':
+                $this->reply(257, '"'.$this->cwd.'" is the current directory');
+                break;
+            case 'CWD':
+                $target = $this->virtual($argument);
+                if (!is_dir($this->real($target))) {
+                    $this->reply(550, 'no such directory');
+                    break;
+                }
+                $this->cwd = $target;
+                $this->reply(250, 'ok');
+                break;
+            case 'CDUP':
+                $this->cwd = $this->virtual('..');
+                $this->reply(250, 'ok');
+                break;
+            case 'EPSV':
+                $this->open();
+                $this->reply(229, 'Entering Extended Passive Mode (|||'.$this->passivePort().'|)');
+                break;
+            case 'PASV':
+                $this->open();
+                $port = $this->passivePort();
+                $this->reply(227, sprintf('Entering Passive Mode (127,0,0,1,%d,%d)', $port >> 8, $port & 255));
+                break;
+            case 'SIZE':
+                $file = $this->real($this->virtual($argument));
+                is_file($file) ? $this->reply(213, (string) filesize($file)) : $this->reply(550, 'no such file');
+                break;
+            case 'MDTM':
+                $file = $this->real($this->virtual($argument));
+                is_file($file) ? $this->reply(213, gmdate('YmdHis', (int) filemtime($file))) : $this->reply(550, 'no such file');
+                break;
+            case 'REST':
+                $this->restart = (int) $argument;
+                $this->reply(350, 'restarting at '.$this->restart);
+                break;
+            case 'MLSD':
+            case 'LIST':
+            case 'NLST':
+                $this->listing($verb, '' === $argument || str_starts_with($argument, '-') ? $this->cwd : $this->virtual($argument));
+                break;
+            case 'RETR':
+                $file = $this->real($this->virtual($argument));
+                if (!is_file($file)) {
+                    $this->reply(550, 'no such file');
+                    break;
+                }
+                $this->transfer(static function ($data) use ($file): void {
+                    fwrite($data, (string) file_get_contents($file));
+                });
+                break;
+            case 'STOR':
+                $file = $this->real($this->virtual($argument));
+                if (!is_dir(dirname($file))) {
+                    $this->reply(553, 'no such directory');
+                    break;
+                }
+                $this->transfer(static function ($data) use ($file): void {
+                    file_put_contents($file, stream_get_contents($data));
+                });
+                break;
+            case 'MKD':
+                $dir = $this->real($this->virtual($argument));
+                !file_exists($dir) && @mkdir($dir) ? $this->reply(257, '"'.$this->virtual($argument).'" created') : $this->reply(550, 'cannot create');
+                break;
+            case 'RMD':
+                @rmdir($this->real($this->virtual($argument))) ? $this->reply(250, 'removed') : $this->reply(550, 'cannot remove');
+                break;
+            case 'DELE':
+                $file = $this->real($this->virtual($argument));
+                is_file($file) && unlink($file) ? $this->reply(250, 'deleted') : $this->reply(550, 'no such file');
+                break;
+            case 'RNFR':
+                $from = $this->real($this->virtual($argument));
+                $this->renaming = file_exists($from) ? $from : null;
+                null === $this->renaming ? $this->reply(550, 'no such file') : $this->reply(350, 'ready');
+                break;
+            case 'RNTO':
+                $from = $this->renaming;
+                $this->renaming = null;
+                null !== $from && rename($from, $this->real($this->virtual($argument))) ? $this->reply(250, 'renamed') : $this->reply(550, 'cannot rename');
+                break;
+            default:
+                $this->reply(502, $verb.' not implemented');
+        }
+    }
+
+    /** @param 'MLSD'|'LIST'|'NLST' $verb */
+    private function listing(string $verb, string $dir): void
+    {
+        $real = $this->real($dir);
+        if (!is_dir($real)) {
+            $this->reply(550, 'no such directory');
+
+            return;
+        }
+        $lines = [];
+        foreach (array_diff((array) scandir($real), ['.', '..']) as $name) {
+            $path = $real.'/'.$name;
+            $lines[] = match ($verb) {
+                'NLST' => $name,
+                'MLSD' => sprintf('type=%s;size=%d;modify=%s; %s', is_dir($path) ? 'dir' : 'file', is_dir($path) ? 0 : filesize($path), gmdate('YmdHis', (int) filemtime($path)), $name),
+                default => sprintf('%s 1 owner group %d Jan 01 00:00 %s', is_dir($path) ? 'drwxr-xr-x' : '-rw-r--r--', filesize($path), $name),
+            };
+        }
+        $this->transfer(static function ($data) use ($lines): void {
+            fwrite($data, implode('', array_map(static fn (string $line): string => $line."\r\n", $lines)));
+        });
+    }
+
+    /** @param \Closure(resource): void $move */
+    private function transfer(\Closure $move): void
+    {
+        if (null === $this->passive) {
+            $this->reply(425, 'use EPSV first');
+
+            return;
+        }
+        $this->reply(150, 'opening data connection');
+        $data = @stream_socket_accept($this->passive, 10);
+        fclose($this->passive);
+        $this->passive = null;
+        if (false === $data) {
+            $this->reply(425, 'no data connection');
+
+            return;
+        }
+        $move($data);
+        fclose($data);
+        $this->restart = 0;
+        $this->reply(226, 'done');
+    }
+
+    private function open(): void
+    {
+        if (null !== $this->passive) {
+            fclose($this->passive);
+        }
+        $this->passive = stream_socket_server('tcp://127.0.0.1:0') ?: null;
+    }
+
+    private function passivePort(): int
+    {
+        return (int) parse_url('tcp://'.stream_socket_get_name($this->passive, false), PHP_URL_PORT);
+    }
+
+    /** $path, absolute and normalised, against the current directory — never above `/`. */
+    private function virtual(string $path): string
+    {
+        $parts = [];
+        foreach (explode('/', str_starts_with($path, '/') ? $path : $this->cwd.'/'.$path) as $segment) {
+            if ('' === $segment || '.' === $segment) {
+                continue;
+            }
+            '..' === $segment ? array_pop($parts) : ($parts[] = $segment);
+        }
+
+        return '/'.implode('/', $parts);
+    }
+
+    private function real(string $virtual): string
+    {
+        return '/' === $virtual ? $this->root : $this->root.$virtual;
+    }
+
+    private function reply(int $code, string $text): void
+    {
+        fwrite($this->control, $code.' '.$text."\r\n");
+    }
+}

@@ -1,0 +1,48 @@
+#!/usr/bin/env php
+<?php
+
+// The far end of the ssh stand-in: `php ssh-server <root> <port> <port-file>`.
+//
+// What ssh does for SshTransport — run a command line on the server with a
+// login shell and hand back its output, its errors and its exit code — over
+// a real socket, so a test can take the server away and bring it back. Each
+// connection is one request, a JSON line {command, stdin} (stdin base64),
+// answered with a JSON line {out, err, code} (base64 both); the command runs
+// with `sh -c` in <root>, one at a time. No encryption and no login: this is
+// the process and network boundary, not ssh's protocol. <port> 0 picks a free
+// one, written to <port-file> once it accepts.
+
+declare(strict_types=1);
+
+[, $root, $port, $portFile] = $argv;
+
+$server = stream_socket_server('tcp://127.0.0.1:'.$port, $errno, $errstr);
+if (false === $server) {
+    fwrite(STDERR, "cannot listen: $errstr\n");
+    exit(1);
+}
+file_put_contents($portFile, (string) parse_url('tcp://'.stream_socket_get_name($server, false), PHP_URL_PORT));
+
+while (true) {
+    $client = @stream_socket_accept($server, -1);
+    if (false === $client) {
+        continue;
+    }
+    stream_set_timeout($client, 30);
+    $request = json_decode((string) fgets($client), true);
+    if (!is_array($request) || !is_string($request['command'] ?? null)) {
+        fclose($client);
+
+        continue;
+    }
+    $process = proc_open(['sh', '-c', $request['command']], [['pipe', 'r'], ['pipe', 'w'], ['pipe', 'w']], $pipes, $root);
+    fwrite($pipes[0], (string) base64_decode((string) ($request['stdin'] ?? ''), true));
+    fclose($pipes[0]);
+    $out = (string) stream_get_contents($pipes[1]);
+    $err = (string) stream_get_contents($pipes[2]);
+    fclose($pipes[1]);
+    fclose($pipes[2]);
+    $code = proc_close($process);
+    fwrite($client, json_encode(['out' => base64_encode($out), 'err' => base64_encode($err), 'code' => $code])."\n");
+    fclose($client);
+}

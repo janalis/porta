@@ -18,15 +18,25 @@ use Porta\Filesystem\RemoteTransportSource;
  *
  * Through a transport of its own from the plugin serving the project — an
  * ssh one shares the project's connection (ControlMaster), an FTP one makes
- * one per call anyway — and with as few calls as it can: a listing per look, and a fetch only for a
- * beacon whose stamp moved since the last; the rest are remembered. A
+ * one per call anyway — and with as few calls as it can: a listing per look,
+ * and a fetch only for a beacon whose stamp moved since the last (and once
+ * more as it settles, {@see self::SETTLE}); the rest are remembered. A
  * transport not there yet (no enabled plugin serves the scheme) is not
  * "out of touch": nothing is written, nobody is read, and the next look asks
  * again.
  */
 final class RemotePresenceBoard extends PresenceBoard
 {
-    /** @var array<string, array{stamp: RemoteStamp, beacon: ?Beacon}> file => what was fetched of it */
+    /**
+     * How long, in seconds, a stamp is not trusted to mean "unchanged" after
+     * it was first seen. A stamp is a size and a time in whole SECONDS: a
+     * beacon rewritten in the same second, to the same size — a caret one
+     * line down — has the stamp it had. So a new stamp is fetched once more
+     * when it has had this long to settle; after that, it is the file's.
+     */
+    public const float SETTLE = 2.0;
+
+    /** @var array<string, array{stamp: RemoteStamp, beacon: ?Beacon, seen: float, settled: bool}> file => what was fetched of it, when its stamp was first seen, and whether it was fetched again since */
     private array $known = [];
 
     /** Whether the directory is known to be there. */
@@ -34,9 +44,13 @@ final class RemotePresenceBoard extends PresenceBoard
 
     private ?RemoteTransport $transport = null;
 
+    /**
+     * @param (\Closure(): float)|null $clock seconds, this machine's; microtime by default
+     */
     public function __construct(
         private readonly RemoteSpec $spec,
         private readonly RemoteTransportSource $transports,
+        private readonly ?\Closure $clock = null,
     ) {}
 
     #[\Override]
@@ -148,17 +162,25 @@ final class RemotePresenceBoard extends PresenceBoard
             }
             $done($beacons);
         };
+        $now = null === $this->clock ? \microtime(true) : ($this->clock)();
         foreach ($files as $file => $stamp) {
-            if (\array_key_exists($file, $this->known) && $this->known[$file]['stamp']->equals($stamp)) {
+            $known = $this->known[$file] ?? null;
+            $same = null !== $known && $known['stamp']->equals($stamp);
+            if (null !== $known && $same && ($known['settled'] || ($now - $known['seen']) < self::SETTLE)) {
                 continue;
             }
             ++$waiting;
-            $transport->fetch($this->path($file), function (RemoteFile|string $fetched) use ($file, $stamp, &$waiting, $answer): void {
+            $transport->fetch($this->path($file), function (RemoteFile|string $fetched) use ($file, $stamp, $known, $same, $now, &$waiting, $answer): void {
                 --$waiting;
                 // One that could not be fetched — withdrawn since the listing,
                 // say — is no beacon, and is asked again next time.
                 if ($fetched instanceof RemoteFile) {
-                    $this->known[$file] = ['stamp' => $stamp, 'beacon' => Beacon::fromJson($fetched->bytes)];
+                    $this->known[$file] = [
+                        'stamp' => $stamp,
+                        'beacon' => Beacon::fromJson($fetched->bytes),
+                        'seen' => null !== $known && $same ? $known['seen'] : $now,
+                        'settled' => $same,
+                    ];
                 }
                 $answer();
             });

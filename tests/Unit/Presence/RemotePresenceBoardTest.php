@@ -24,6 +24,8 @@ final class RemotePresenceBoardTest extends TestCase
     /** How many times the plugins were asked for a transport. */
     private int $asked = 0;
 
+    private float $now = 1_000.0;
+
     // @mago-expect lint:no-boolean-flag-parameter -- whether a plugin serves the scheme is the one fact a case varies
     private function board(string $scheme = 'ssh', bool $served = true): RemotePresenceBoard
     {
@@ -31,19 +33,23 @@ final class RemotePresenceBoardTest extends TestCase
         $this->transport = new FakeRemoteTransport($this->server->dir);
         $transport = $served ? $this->transport : null;
 
-        return new RemotePresenceBoard(new RemoteSpec($scheme, 'example.org', '/srv'), new class($transport, $this->asked) implements RemoteTransportSource {
-            public function __construct(
-                private readonly ?RemoteTransport $transport,
-                private int &$asked,
-            ) {}
+        return new RemotePresenceBoard(
+            new RemoteSpec($scheme, 'example.org', '/srv'),
+            new class($transport, $this->asked) implements RemoteTransportSource {
+                public function __construct(
+                    private readonly ?RemoteTransport $transport,
+                    private int &$asked,
+                ) {}
 
-            public function remoteTransport(RemoteSpec $spec): ?RemoteTransport
-            {
-                ++$this->asked;
+                public function remoteTransport(RemoteSpec $spec): ?RemoteTransport
+                {
+                    ++$this->asked;
 
-                return $this->transport;
-            }
-        });
+                    return $this->transport;
+                }
+            },
+            fn (): float => $this->now,
+        );
     }
 
     private static function beacon(string $id, string $name = 'Ada'): Beacon
@@ -110,6 +116,35 @@ final class RemotePresenceBoardTest extends TestCase
         $this->assertSame(1, $this->asked, 'the transport is asked for once');
         $board->close();
         $this->assertTrue($this->transport->closed);
+    }
+
+    public function testARewriteThatKeepsTheStampIsCaughtOnceTheStampHasSettled(): void
+    {
+        $board = $this->board();
+        $file = PresenceBoard::DIR.'/aaaaaaaaaaaaaaaa.json';
+        $this->server->write($file, new Beacon('aaaaaaaaaaaaaaaa', 'Ada', 'ssh', 'a.php', 1, 0, -1, 0, 1)->toJson());
+        \touch($this->server->path($file), mtime: 1_700_000_000);
+        $this->assertSame([1], self::lines(self::read($board)));
+
+        // The caret one line down, in the same second: same size, same time.
+        $this->server->write($file, new Beacon('aaaaaaaaaaaaaaaa', 'Ada', 'ssh', 'a.php', 2, 0, -1, 0, 1)->toJson());
+        \touch($this->server->path($file), mtime: 1_700_000_000);
+        $this->now += RemotePresenceBoard::SETTLE - 0.1;
+        $this->transport->calls = [];
+        $this->assertSame([1], self::lines(self::read($board)), 'not settled yet: what was fetched stands');
+        $this->assertSame(['list .porta/presence'], $this->transport->calls);
+        $this->now += 0.1;
+        $this->assertSame([2], self::lines(self::read($board)), 'settled: fetched once more, and the rewrite is caught');
+        $this->transport->calls = [];
+        $this->now += 60.0;
+        $this->assertSame([2], self::lines(self::read($board)));
+        $this->assertSame(['list .porta/presence'], $this->transport->calls, 'and never again while the stamp holds');
+    }
+
+    /** @param list<Beacon>|string $read */
+    private static function lines(array|string $read): array
+    {
+        return \is_string($read) ? [$read] : \array_map(static fn (Beacon $b): int => $b->line, $read);
     }
 
     public function testAnAnswerHeldBackIsWaitedForAndOneThatFailsIsAskedAgain(): void

@@ -226,6 +226,23 @@ final class PresenceSyncTest extends TestCase
         $this->assertFileDoesNotExist($this->project->path(PresenceBoard::DIR.'/'.self::ADA.'.json'), 'quiet for ten minutes: taken off the board');
     }
 
+    public function testACaretMovedWithinTheSameBeatIsASignOfLifeToo(): void
+    {
+        $sync = $this->sync();
+        $beat = \time();
+        $this->peer(self::ADA, 'Ada', beat: $beat);
+        $sync->tick();
+        $this->now += 15.0;
+        $this->peer(self::ADA, 'Ada', line: 2, beat: $beat);
+        $sync->tick();
+        $this->now += 15.0;
+        $sync->tick();
+        $this->assertSame(['Ada'], $this->roster(), 'quiet for fifteen seconds since she moved, not thirty');
+        $this->now += 0.1;
+        $sync->tick();
+        $this->assertSame([], $this->roster());
+    }
+
     public function testALostLinkKeepsTheOthersAsLastSeenUntilItIsBack(): void
     {
         $sync = $this->sync();
@@ -300,12 +317,15 @@ final class PresenceSyncTest extends TestCase
         foreach (Probe::get($sync, 'timers') as $timer) {
             $this->assertFalse(EventLoop::isReferenced($timer), 'a look never keeps the loop alive');
         }
+        $this->peer(self::ADA, 'Ada');
         $sync->tick();
         $this->assertInstanceOf(Beacon::class, $this->mine($sync));
+        $this->shown();
 
         $sync->stop();
         $this->assertSame([], Probe::get($sync, 'timers'));
         $this->assertNull($this->mine($sync));
+        $this->assertSame(['-peer:'.self::ADA], $this->shown(), 'the others\' carets go with it: nothing of theirs outlives this side');
     }
 
     public function testARemoteProjectSharesTheServersBoardAndNeverLooksTwiceAtOnce(): void

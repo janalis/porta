@@ -24,10 +24,11 @@ use Revolt\EventLoop;
  * Each look ({@see tick()}) first says where this side is — only when that
  * changed, or every heartbeat when it did not — then reads what the others
  * said. Nobody's clock is trusted but this one's: a beacon is alive while
- * its beat keeps CHANGING, as this side sees it, so two machines a minute
- * apart still see each other. One quiet for {@see self::STALE_BEATS}
- * heartbeats is gone; one quiet for {@see self::FORGET} seconds is taken off
- * the board by whoever notices, so a crashed instance does not linger there.
+ * it keeps CHANGING — its beat, or anything else in it — as this side sees
+ * it, so two machines a minute apart still see each other. One quiet for
+ * {@see self::STALE_BEATS} heartbeats is gone; one quiet for
+ * {@see self::FORGET} seconds is taken off the board by whoever notices, so
+ * a crashed instance does not linger there.
  *
  * A board that cannot be read is a lost link, not an empty room: the others
  * stay in the roster as last seen ({@see Participants::outOfTouch()}), their
@@ -115,13 +116,16 @@ final class PresenceSync
         }
     }
 
-    /** Stop looking, and take this side off the board: it is leaving. */
+    /** Stop looking, take this side off the board, and the others' carets off the screen: it is leaving. */
     public function stop(): void
     {
         foreach ($this->timers as $timer) {
             EventLoop::cancel($timer);
         }
         $this->timers = [];
+        foreach (\array_keys($this->shown) as $id) {
+            $this->hide($id);
+        }
         $this->withdraw();
         $this->board->close();
     }
@@ -194,7 +198,9 @@ final class PresenceSync
             $known = $this->heard[$beacon->id] ?? null;
             // Back from a lost link, every beat seen counts as fresh: the
             // silence was this side's.
-            $seen = null !== $known && !$back && $known['beacon']->beat === $beacon->beat ? $known['seen'] : $now;
+            // Anything it says anew is a sign of life — a beat, or a caret
+            // moved within the same second as the last beat.
+            $seen = null !== $known && !$back && $known['beacon']->toJson() === $beacon->toJson() ? $known['seen'] : $now;
             // Never seen before, and its writer says it has not written for
             // longer than anyone waits: long gone, whatever the clocks say.
             $ancient = null === $known && (\time() - $beacon->beat) > self::FORGET;
