@@ -3162,6 +3162,10 @@
         <source>Participants</source>
         <target>משתתפים</target>
       </trans-unit>
+      <trans-unit id="1111">
+        <source>[%name%] stopped %times% times and is not started again — change its settings or restart Porta</source>
+        <target>[%name%] נעצר %times% פעמים ולא יופעל שוב — שנו את ההגדרות שלו או הפעילו מחדש את Porta</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

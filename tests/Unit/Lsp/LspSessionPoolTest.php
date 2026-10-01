@@ -9,16 +9,20 @@ use Porta\Editor\Document;
 use Porta\Event\LspStatusChanged;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspSessionPool;
+use Porta\Support\Backoff;
 use Porta\Support\Outcome;
 use Porta\Tests\Support\FakeLspClient;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\Presence;
 use Porta\Tests\Support\Probe;
+use Porta\Tests\Support\PumpsLoop;
 use Revolt\EventLoop;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 
 final class LspSessionPoolTest extends TestCase
 {
+    use PumpsLoop;
+
     /** @var list<array{command: list<string>, client: FakeLspClient}> every client the pool built */
     private array $clients = [];
     private FixedActiveFile $activeFile;
@@ -169,26 +173,164 @@ final class LspSessionPoolTest extends TestCase
         $this->assertSame('failed', $pool->statusFor('/tmp/proj/a.php'));
     }
 
-    public function testASuccessResetsTheRetryBudgetAndAMidSessionDeathRelaunches(): void
+    public function testADeathSoonAfterComingUpStillCountsAndAStableServerEarnsAFreshBudget(): void
     {
         $pool = $this->pool(self::SERVERS);
         $this->clientOutcome = Outcome::Failed;
         $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 1); // failure 1
-        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 2); // failure 2 — one attempt left
-
         $this->clientOutcome = Outcome::Ok;
-        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 3);
-        $this->assertCount(3, $this->clients);
-        $this->assertSame('php-ls', $pool->statusFor('/tmp/proj/a.php'), 'recovered');
+        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 2);
+        $this->assertSame('php-ls', $pool->statusFor('/tmp/proj/a.php'), 'up');
 
-        // Mid-session death: the same start callback fires a second time.
-        $onReady = $this->clients[2]['client']->lastOnReady;
+        $this->die(1); // failure 2: it was not up long enough to have earned anything
+        $this->assertSame([2], \array_values(Probe::get($pool, 'startFailures')));
+        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 3);
+        $this->assertCount(3, $this->clients, 'one attempt was left');
+
+        // This one stays up past STABLE before it dies: a fresh slate.
+        $upSince = Probe::get($pool, 'upSince');
+        $this->assertIsArray($upSince);
+        Probe::set($pool, 'upSince', \array_map(static fn (float $t): float => $t - LspSessionPool::STABLE, $upSince));
+        $this->die(2);
+        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 4);
+        $this->assertCount(4, $this->clients, 'evicted with a fresh budget');
+        $this->assertSame([1], \array_values(Probe::get($pool, 'startFailures')), 'only the failure that came after');
+        $pool->stop();
+    }
+
+    public function testAServerThatDiesWhileUpIsLaunchedAgainAndToldEveryFileItHadOpen(): void
+    {
+        $pool = $this->pool(self::SERVERS);
+        $pool->notifyDidOpen('/tmp/proj/a.php', 'a', 'php', 1);
+        $pool->notifyDidOpen('/tmp/proj/b.php', 'b', 'php', 1);
+        $pool->notifyDidOpen('/tmp/proj/c.php', 'c', 'php', 1);
+
+        $this->die(0);
+        $edited = new Document('a, edited while it was down');
+        $pool->scheduleDidChange($edited, static fn (): string => '/tmp/proj/a.php', static function (): void {});
+        $pool->notifyDidClose('/tmp/proj/c.php');
+        $pool->scheduleDidChange(new Document('never opened'), static fn (): string => '/tmp/proj/z.php', static function (): void {});
+        $this->pump(Backoff::after(0) - 0.3);
+        $this->assertCount(1, $this->clients, 'not at once: after its backoff');
+
+        $this->pump(0.5);
+        $this->assertCount(2, $this->clients, 'relaunched after the first backoff');
+
+        $opened = \array_map(
+            static fn (array $n): array => [$n['params']['textDocument']['uri'], $n['params']['textDocument']['text']],
+            \array_values(\array_filter($this->clients[1]['client']->notifications, static fn (array $n): bool => 'textDocument/didOpen' === $n['method'])),
+        );
+        $this->assertSame(
+            [
+                ['file:///tmp/proj/a.php', 'a, edited while it was down'],
+                ['file:///tmp/proj/b.php', 'b'],
+            ],
+            $opened,
+            'as they are now, and not what was closed meanwhile',
+        );
+        $this->assertSame('php-ls', $pool->statusFor('/tmp/proj/a.php'));
+        $pool->stop();
+    }
+
+    public function testADidOpenDuringTheBackoffLaunchesAtOnceAndTheRestFollowWithoutRepeats(): void
+    {
+        $pool = $this->pool(self::SERVERS);
+        $pool->notifyDidOpen('/tmp/proj/a.php', 'a', 'php', 1);
+        $this->die(0);
+
+        $pool->notifyDidOpen('/tmp/proj/a.php', 'a again', 'php', 2);
+        $this->assertCount(2, $this->clients);
+        $this->pump(Backoff::after(0) + 0.2);
+
+        $this->assertCount(2, $this->clients, 'no second launch');
+        $opens = \array_filter($this->clients[1]['client']->notifications, static fn (array $n): bool => 'textDocument/didOpen' === $n['method']);
+        $this->assertCount(1, $opens, 'told once');
+        $pool->stop();
+    }
+
+    public function testStoppingCancelsAPendingRelaunch(): void
+    {
+        $pool = $this->pool(self::SERVERS);
+        $pool->notifyDidOpen('/tmp/proj/a.php', 'a', 'php', 1);
+        $this->die(0);
+
+        $pool->stop();
+        $this->pump(Backoff::after(0) + 0.2);
+
+        $this->assertCount(1, $this->clients);
+    }
+
+    public function testADeadServerTakesItsFindingsAndItsProgressWithIt(): void
+    {
+        $published = [];
+        $progress = [];
+        $pool = $this->pool(self::SERVERS, Presence::Without);
+        $pool->configure(
+            self::SERVERS,
+            static function (string $line): void {},
+            static function (array $params, string $owner) use (&$published): void {
+                $published[] = [$owner, $params['uri'], \count($params['diagnostics'])];
+            },
+            static fn (array $edit): bool => false,
+            null,
+            static function (array $params) use (&$progress): void {
+                $progress[] = [$params['token'], $params['value']['kind']];
+            },
+        );
+        $pool->notifyDidOpen('/tmp/proj/a.php', 'a', 'php', 1);
+        $client = $this->clients[0]['client'];
+        $client->notificationHandlers['textDocument/publishDiagnostics'](['uri' => 'file:///tmp/proj/a.php', 'diagnostics' => [['message' => 'x']]]);
+        $report = $client->notificationHandlers['$/progress'];
+        foreach ([[1, 'begin'], [2, 'begin'], [2, 'end']] as [$id, $kind]) {
+            $report(['token' => $id, 'value' => ['kind' => $kind, 'title' => 'Indexing']]);
+        }
+        $report(['value' => ['kind' => 'begin']]);
+
+        $this->die(0);
+
+        $this->assertSame(
+            [
+                ['php-ls', 'file:///tmp/proj/a.php', 1],
+                ['php-ls', 'file:///tmp/proj/a.php', 0],
+            ],
+            $published,
+        );
+        $this->assertSame('begin', $progress[0][1]);
+        $this->assertSame("php-ls\0null\0".'1', $progress[0][0], 'tokens are the server\'s own, kept apart from any other\'s');
+        $this->assertSame([$progress[0][0], 'end'], \array_last($progress), 'what it never ended is ended for it');
+        $this->assertCount(4, $progress, 'and only that');
+        $pool->stop();
+    }
+
+    public function testAServerThatKeepsFailingSaysSoOnceAndIsNotStartedAgain(): void
+    {
+        $messages = [];
+        $pool = $this->pool(self::SERVERS, Presence::Without);
+        $pool->configure(
+            self::SERVERS,
+            static function (string $line): void {},
+            static function (array $params): void {},
+            static fn (array $edit): bool => false,
+            static function (array $params) use (&$messages): void {
+                $messages[] = $params;
+            },
+        );
+        $this->clientOutcome = Outcome::Failed;
+        foreach ([1, 2, 3, 4] as $version) {
+            $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', $version);
+        }
+
+        $this->assertCount(3, $this->clients);
+        $this->assertSame([], Probe::get($pool, 'relaunches'), 'a server that never came up is not relaunched behind anyone\'s back');
+        $this->assertSame([['type' => 1, 'message' => '[php-ls] stopped 3 times and is not started again — change its settings or restart Porta']], $messages);
+    }
+
+    /** The server behind client $index dies: its start callback fires again, Failed. */
+    private function die(int $index): void
+    {
+        $onReady = $this->clients[$index]['client']->lastOnReady;
         $this->assertNotNull($onReady);
         $onReady(Outcome::Failed);
-        $this->assertSame('failed', $pool->statusFor('/tmp/proj/a.php'));
-
-        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 4);
-        $this->assertCount(4, $this->clients, 'the death evicted the slot with a FRESH budget — the success reset the count');
     }
 
     /**

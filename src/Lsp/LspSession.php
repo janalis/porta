@@ -136,14 +136,30 @@ final class LspSession
 
     // --- requests -----------------------------------------------------------
 
+    /**
+     * Ask the server — or, with none any more (it failed to start, or died),
+     * hear so on the next tick: a caller holding this session from before
+     * must never wait for an answer nobody will send.
+     */
     public function request(string $method, mixed $params, callable $onResult): void
     {
-        $this->client?->request($method, $params, $onResult);
+        if (null === $this->client) {
+            EventLoop::queue($onResult(...), null, ['code' => -32_800, 'message' => 'The language server stopped']);
+
+            return;
+        }
+        $this->client->request($method, $params, $onResult);
     }
 
+    /** With no server any more, what waits runs on the next tick — and a request in it fails then. */
     public function whenReady(callable $action): void
     {
-        $this->client?->whenReady($action);
+        if (null === $this->client) {
+            EventLoop::queue($action(...));
+
+            return;
+        }
+        $this->client->whenReady($action);
     }
 
     /**
@@ -178,6 +194,17 @@ final class LspSession
                 'text' => $text,
             ],
         ]));
+    }
+
+    /**
+     * What the server was told is open, as it was last told it: what a
+     * relaunched server is to be told again.
+     *
+     * @return array<string, string> path => text
+     */
+    public function openDocuments(): array
+    {
+        return $this->syncedText;
     }
 
     public function notifyDidClose(string $path): void

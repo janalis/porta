@@ -3162,6 +3162,10 @@
         <source>Participants</source>
         <target>Partecipanti</target>
       </trans-unit>
+      <trans-unit id="1111">
+        <source>[%name%] stopped %times% times and is not started again — change its settings or restart Porta</source>
+        <target>[%name%] si è fermato %times% volte e non verrà riavviato — cambia le sue impostazioni o riavvia Porta</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

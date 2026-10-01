@@ -35,6 +35,9 @@ final class JsonRpcTransport
     /** @var (callable(string): void)|null */
     private $logger;
 
+    /** @var (\Closure(): void)|null the owner's "the peer is gone", fired once — by EOF or by a write that cannot land */
+    private ?\Closure $gone = null;
+
     /**
      * @param list<string> $command  e.g. ['phpactor', 'language-server']
      * @param string       $peerName how log lines name the child ("LSP server", "debug adapter")
@@ -64,6 +67,8 @@ final class JsonRpcTransport
     public function start(callable $onMessage, ?callable $onEof = null): bool
     {
         if ([] === $this->command || '' === $this->command[0]) {
+            $this->log('cannot start the '.$this->peerName.': no command is set');
+
             return false; // a malformed command setting must not crash proc_open
         }
         $descriptors = [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
@@ -73,6 +78,8 @@ final class JsonRpcTransport
         // @mago-expect lint:no-error-control-operator -- proc_open on a nonexistent/unusable binary emits a spawn ("posix_spawn() failed") warning that guarding the inputs cannot reliably prevent; the false return is handled below.
         $process = @\proc_open($this->command, $descriptors, $pipes, $cwd);
         if (!\is_resource($process)) {
+            $this->log(\sprintf('cannot start the %s: %s could not be run', $this->peerName, $this->command[0]));
+
             return false;
         }
 
@@ -87,8 +94,9 @@ final class JsonRpcTransport
         \stream_set_blocking($this->stderr, enable: false);
         $this->writer = new NonBlockingWriter($this->stdin, $this->onWriteError(...), $this->maxWriteBuffer);
 
-        $this->stdoutWatcher = EventLoop::onReadable($this->stdout, function () use ($onMessage, $onEof): void {
-            $this->drainStdout($onMessage, $onEof);
+        $this->gone = null === $onEof ? null : \Closure::fromCallable($onEof);
+        $this->stdoutWatcher = EventLoop::onReadable($this->stdout, function () use ($onMessage): void {
+            $this->drainStdout($onMessage);
         });
         $this->stderrWatcher = EventLoop::onReadable($this->stderr, function (): void {
             /** @var resource $stderr */
@@ -115,6 +123,7 @@ final class JsonRpcTransport
 
     public function stop(): void
     {
+        $this->gone = null; // a deliberate stop is not the peer going
         if (null !== $this->stdoutWatcher) {
             EventLoop::cancel($this->stdoutWatcher);
             $this->stdoutWatcher = null;
@@ -136,18 +145,14 @@ final class JsonRpcTransport
                 \fclose($pipe);
             }
             if (\is_resource($process)) {
-                \proc_terminate($process);
-                ProcessReaper::closeWhenDead($process);
+                ProcessReaper::terminate($process);
             }
             $this->process = null;
         }
     }
 
-    /**
-     * @param callable(array<array-key, mixed>): void $onMessage
-     * @param (callable(): void)|null                 $onEof
-     */
-    private function drainStdout(callable $onMessage, ?callable $onEof): void
+    /** @param callable(array<array-key, mixed>): void $onMessage */
+    private function drainStdout(callable $onMessage): void
     {
         if (!\is_resource($this->stdout)) {
             return;
@@ -156,35 +161,54 @@ final class JsonRpcTransport
         if (!\is_string($data) || '' === $data) {
             if (\feof($this->stdout)) {
                 $this->log($this->peerName.' closed its stdout');
-                if (null !== $this->stdoutWatcher) {
-                    EventLoop::cancel($this->stdoutWatcher);
-                    $this->stdoutWatcher = null;
-                }
-                // stderr dies with the peer too: left armed it would spin on
-                // every tick of an EOF'd pipe (and anchor the transport) until
-                // an owner stop() that an abandoned client never issues.
-                if (null !== $this->stderrWatcher) {
-                    EventLoop::cancel($this->stderrWatcher);
-                    $this->stderrWatcher = null;
-                }
-                if (null !== $onEof) {
-                    $onEof();
-                }
+                $this->gone();
             }
 
             return;
         }
 
         foreach ($this->framer->feed($data) as $message) {
-            $onMessage($message);
+            // The frames after a throwing one were read off the pipe already:
+            // dropped with it, their replies would leave requests waiting
+            // forever. So each is handled, and what threw is thrown again on
+            // the loop's next tick — where its error handler still hears it.
+            try {
+                $onMessage($message);
+            } catch (\Throwable $error) {
+                EventLoop::queue(static fn () => throw $error);
+            }
+        }
+    }
+
+    /**
+     * The peer is gone: stop listening — stderr too, which left armed would
+     * spin on every tick of a dead pipe and anchor the transport until an
+     * owner stop() an abandoned client never issues — and tell the owner,
+     * once.
+     */
+    private function gone(): void
+    {
+        if (null !== $this->stdoutWatcher) {
+            EventLoop::cancel($this->stdoutWatcher);
+            $this->stdoutWatcher = null;
+        }
+        if (null !== $this->stderrWatcher) {
+            EventLoop::cancel($this->stderrWatcher);
+            $this->stderrWatcher = null;
+        }
+        $gone = $this->gone;
+        $this->gone = null;
+        if (null !== $gone) {
+            $gone();
         }
     }
 
     /**
      * A stdin write failed (dead peer) or the outbound queue overflowed
-     * (wedged peer). Terminating the child converges both on the existing
-     * stdout-EOF path, so the owner's close handling fires exactly like any
-     * peer crash.
+     * (wedged peer). Either way nothing sent from now on lands, so the peer
+     * is gone NOW — not when an EOF comes, which a wedged child that shrugs
+     * off SIGTERM never sends. The owner hears it as any crash and stops the
+     * transport, whose reap ends the child however stubborn it is.
      */
     private function onWriteError(string $reason): void
     {
@@ -192,6 +216,7 @@ final class JsonRpcTransport
         if (\is_resource($this->process)) {
             \proc_terminate($this->process);
         }
+        $this->gone();
     }
 
     private function log(string $line): void

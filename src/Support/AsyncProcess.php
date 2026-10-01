@@ -243,8 +243,7 @@ final class AsyncProcess
         $this->watchers = [];
         $this->cancelTimeout();
         if (\is_resource($this->process)) {
-            \proc_terminate($this->process);
-            $this->closeWhenDead($this->process);
+            ProcessReaper::terminate($this->process);
         }
         $this->process = null;
     }

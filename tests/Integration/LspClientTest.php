@@ -689,4 +689,190 @@ final class LspClientTest extends TestCase
         $this->await(static fn (): bool => \count(EventLoop::getIdentifiers()) <= $baseline, 5.0, 'the EOF path to cancel both pipe watchers');
         $this->assertCount($baseline, EventLoop::getIdentifiers(), 'no watcher survives the peer');
     }
+
+    public function testARequestWaitingWhenTheServerDiesFailsInsteadOfWaitingForever(): void
+    {
+        $client = $this->readyClient();
+        $answers = [];
+        $client->request('porta/never', [], static function (mixed $result, ?array $error) use (&$answers): void {
+            $answers[] = $error;
+        });
+
+        $process = Probe::get(Probe::get($client, 'transport'), 'process');
+        \assert(\is_resource($process), description: 'a live process while the client is up');
+        \proc_terminate($process, signal: 9);
+
+        $this->await(static function () use (&$answers): bool {
+            return [] !== $answers;
+        }, what: 'the waiting request to fail');
+        $this->assertSame([['code' => -32_800, 'message' => 'The language server stopped']], $answers);
+    }
+
+    public function testStopFailsWhatWaitsAndWhatWaitedForReadyRunsAndFailsInTurn(): void
+    {
+        $client = $this->client('deaf-lsp-server.php');
+        $client->start(static function (): void {});
+        $answers = [];
+        $client->whenReady(static function () use ($client, &$answers): void {
+            $client->request('textDocument/hover', [], static function (mixed $result, ?array $error) use (&$answers): void {
+                $answers[] = $error['message'] ?? null;
+            });
+        });
+
+        $client->stop();
+        $this->assertSame([], $answers, 'never from inside stop()');
+
+        $this->await(static function () use (&$answers): bool {
+            return [] !== $answers;
+        }, what: 'the request queued for ready to run and fail');
+        $this->assertSame(['The language server stopped'], $answers);
+
+        $late = null;
+        $client->request('textDocument/hover', [], static function (mixed $result, ?array $error) use (&$late): void {
+            $late = $error['message'] ?? null;
+        });
+        $client->whenReady(static function () use (&$late): void {
+            $late .= ' then ran';
+        });
+        $this->await(static function () use (&$late): bool {
+            return null !== $late && \str_ends_with($late, ' then ran');
+        }, what: 'a request after stop to fail at once');
+        $this->assertSame('The language server stopped then ran', $late);
+    }
+
+    public function testARequestNobodyAnswersFailsAndIsCancelledAtTheServer(): void
+    {
+        $log = [];
+        $client = new LspClient(
+            [\PHP_BINARY, __DIR__.'/../Support/mock-lsp-server.php'],
+            \dirname(__DIR__, levels: 2),
+            static function (string $line) use (&$log): void {
+                $log[] = $line;
+            },
+            requestTimeout: 0.2,
+        );
+        $this->clients[] = $client;
+        $ready = false;
+        $client->start(static function (Outcome $ok) use (&$ready): void {
+            $ready = $ok->isOk();
+        });
+        $this->await(static function () use (&$ready): bool {
+            return $ready;
+        }, what: 'the handshake');
+        $error = null;
+        $client->request('porta/never', [], static function (mixed $result, ?array $answer) use (&$error): void {
+            $error = $answer;
+        });
+
+        $this->await(static function () use (&$error): bool {
+            return null !== $error;
+        }, what: 'the deadline');
+
+        $this->assertSame(['code' => -32_800, 'message' => 'The language server did not answer in 0.2 seconds'], $error);
+        $this->assertContains('porta/never got no answer in 0.2 seconds', $log);
+        $this->assertTrue($client->isInitialized, 'one slow answer is not a dead server');
+    }
+
+    public function testAnAnsweredRequestLeavesNoDeadlineBehind(): void
+    {
+        $client = $this->readyClient();
+        $baseline = \count(EventLoop::getIdentifiers());
+        $done = false;
+        $client->request('textDocument/completion', ['textDocument' => ['uri' => 'file:///tmp/x.php'], 'position' => ['line' => 0, 'character' => 0]], static function () use (&$done): void {
+            $done = true;
+        });
+        $this->assertCount($baseline + 1, EventLoop::getIdentifiers(), 'a deadline while it waits');
+
+        $this->await(static function () use (&$done): bool {
+            return $done;
+        }, what: 'the answer');
+
+        $this->assertCount($baseline, EventLoop::getIdentifiers(), 'and none once answered');
+    }
+
+    public function testAServerThatNeverAnswersInitializeFailsToStartOnce(): void
+    {
+        $outcomes = [];
+        $client = new LspClient(
+            [\PHP_BINARY, __DIR__.'/../Support/deaf-lsp-server.php'],
+            \dirname(__DIR__, levels: 2),
+            initializeTimeout: 0.2,
+        );
+        $this->clients[] = $client;
+        $client->start(static function (Outcome $ok) use (&$outcomes): void {
+            $outcomes[] = $ok;
+        });
+
+        $this->await(static function () use (&$outcomes): bool {
+            return [] !== $outcomes;
+        }, what: 'the initialize deadline');
+        $client->stop(); // its stopped-error must not count as a second failure
+        $this->pump(0.1);
+
+        $this->assertSame([Outcome::Failed], $outcomes);
+    }
+
+    public function testAWriteThatCannotLandIsADeadServerAtOnce(): void
+    {
+        $outcomes = [];
+        $client = new LspClient(
+            [\PHP_BINARY, __DIR__.'/../Support/deaf-lsp-server.php'],
+            \dirname(__DIR__, levels: 2),
+            maxWriteBuffer: 65_536,
+        );
+        $this->clients[] = $client;
+        $client->start(static function (Outcome $ok) use (&$outcomes): void {
+            $outcomes[] = $ok;
+        });
+
+        $client->notify('porta/blob', ['data' => \str_repeat('a', times: 65_536)]);
+        $client->notify('porta/blob', ['data' => \str_repeat('b', times: 65_536)]);
+
+        $this->assertSame([Outcome::Failed], $outcomes, 'no waiting for an EOF a wedged server may never send');
+    }
+
+    public function testAnEditThatThrowsIsStillAnsweredAsNotApplied(): void
+    {
+        $log = \tempnam(\sys_get_temp_dir(), prefix: 'lsplog');
+        $this->assertNotFalse($log);
+        try {
+            $client = new LspClient([\PHP_BINARY, __DIR__.'/../Support/logging-lsp-server.php', $log], \dirname(__DIR__, levels: 2));
+            $this->clients[] = $client;
+            $ready = false;
+            $client->start(static function () use (&$ready): void {
+                $ready = true;
+            });
+            $this->await(static function () use (&$ready): bool {
+                return $ready;
+            }, what: 'the handshake');
+            $client->onApplyEdit(static fn (array $edit): bool => throw new \RuntimeException('the disk is full'));
+
+            try {
+                Probe::invoke($client, 'handleMessage', ['jsonrpc' => '2.0', 'id' => 7, 'method' => 'workspace/applyEdit', 'params' => ['edit' => []]]);
+                $this->fail('the error still reaches whoever handles errors');
+            } catch (\RuntimeException $thrown) {
+                $this->assertSame('the disk is full', $thrown->getMessage());
+            }
+
+            $reply = '{"jsonrpc":"2.0","id":7,"result":{"applied":false,"failureReason":"the disk is full"}}';
+            $this->await(static fn (): bool => \str_contains((string) \file_get_contents($log), $reply), what: 'the server to be answered');
+            $this->assertStringContainsString($reply, (string) \file_get_contents($log));
+        } finally {
+            \unlink($log);
+        }
+    }
+
+    private function readyClient(): LspClient
+    {
+        $client = $this->client();
+        $ready = false;
+        $client->start(static function (Outcome $ok) use (&$ready): void {
+            $ready = $ok->isOk();
+        });
+        $this->await(static function () use (&$ready): bool {
+            return $ready;
+        }, what: 'the handshake');
+
+        return $client;
+    }
 }

@@ -11,6 +11,7 @@ use Porta\Support\JsonRpcTransport;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\TempProject;
+use Revolt\EventLoop;
 
 final class JsonRpcTransportTest extends TestCase
 {
@@ -63,5 +64,48 @@ final class JsonRpcTransportTest extends TestCase
 
         $this->assertCount(1, $lines, 'the transport wires the framer overflow into its logger');
         $this->assertStringContainsString('chatty peer overflowed the read buffer', $lines[0]);
+    }
+
+    public function testAHandlerThatThrowsLosesNoFrameReadWithIt(): void
+    {
+        $project = new TempProject();
+        $frames = JsonRpcFramer::encode(['id' => 1]).JsonRpcFramer::encode(['id' => 2]);
+        $transport = new JsonRpcTransport([\PHP_BINARY, '-r', 'echo '.\var_export($frames, return: true).'; sleep(5);'], $project->dir, 'peer');
+        $seen = [];
+        $errors = [];
+        EventLoop::setErrorHandler(static function (\Throwable $error) use (&$errors): void {
+            $errors[] = $error->getMessage();
+        });
+        try {
+            $this->assertTrue($transport->start(static function (array $message) use (&$seen): void {
+                $seen[] = $message['id'];
+                if (1 === $message['id']) {
+                    throw new \RuntimeException('handler broke');
+                }
+            }));
+            $this->await(static function () use (&$seen, &$errors): bool {
+                return 2 === \count($seen) && [] !== $errors;
+            }, what: 'both frames and the error');
+        } finally {
+            EventLoop::setErrorHandler(null);
+            $transport->stop();
+        }
+
+        $this->assertSame([1, 2], $seen);
+        $this->assertSame(['handler broke'], $errors, 'what threw is still heard');
+    }
+
+    public function testACommandThatCannotRunIsLogged(): void
+    {
+        $project = new TempProject();
+        $lines = [];
+        $log = static function (string $line) use (&$lines): void {
+            $lines[] = $line;
+        };
+
+        $this->assertFalse(new JsonRpcTransport(['/no/such/porta-server'], $project->dir, 'LSP server', $log)->start(static function (): void {}));
+        $this->assertFalse(new JsonRpcTransport([], $project->dir, 'LSP server', $log)->start(static function (): void {}));
+
+        $this->assertSame(['cannot start the LSP server: /no/such/porta-server could not be run', 'cannot start the LSP server: no command is set'], $lines);
     }
 }

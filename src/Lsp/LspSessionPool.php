@@ -9,9 +9,11 @@ use Porta\Editor\ActiveFileProvider;
 use Porta\Editor\Document;
 use Porta\Event\LspStatusChanged;
 use Porta\I18n\Translator;
+use Porta\Support\Backoff;
 use Porta\Support\Outcome;
 use Porta\Support\ProjectPaths;
 use Psr\EventDispatcher\EventDispatcherInterface;
+use Revolt\EventLoop;
 
 /**
  * Routes LSP traffic to per-language sessions. Servers are declared once via
@@ -44,11 +46,38 @@ final class LspSessionPool
     private array $sessions = [];
     /** @var array<string, string> server signature => 'starting…' | server name | 'failed' */
     private array $statuses = [];
-    /** @var array<string, int> server signature => failed starts since the last reconfigure/success */
+    /** @var array<string, int> server signature => failures since the last reconfigure, or since it last stayed up */
     private array $startFailures = [];
 
-    /** Failed starts per signature before the failure goes STICKY (until a reconfigure). */
+    /** Failures per signature before the failure goes STICKY (until a reconfigure). */
     private const int MAX_START_ATTEMPTS = 3;
+
+    /**
+     * Seconds a server must have been up for its death to wipe its slate.
+     * One that comes up and falls over at the first file it is shown would
+     * otherwise earn fresh retries on every start, and crash-loop for good.
+     */
+    public const float STABLE = 60.0;
+
+    /** @var array<string, float> server signature => when it came up (hrtime seconds) */
+    private array $upSince = [];
+
+    /**
+     * A server that died while up, waiting out its backoff before it is
+     * launched again and told about the files it had open.
+     *
+     * A file edited meanwhile is held as its live document, so it is told
+     * as it is when the server is back, not as it was when it died.
+     *
+     * @var array<string, array{timer: string, documents: array<string, string|Document>}> server signature => relaunch
+     */
+    private array $relaunches = [];
+
+    /** @var array<string, array<string, true>> server signature => progress tokens begun and not ended */
+    private array $progress = [];
+
+    /** @var array<string, array<string, true>> server signature => URIs it has published diagnostics for */
+    private array $published = [];
 
     private bool $disabled = false;
     private bool $configured = false;
@@ -151,6 +180,7 @@ final class LspSessionPool
         $this->sessions = [];
         $this->statuses = [];
         $this->startFailures = [];
+        $this->upSince = [];
         $this->servers = $servers;
     }
 
@@ -177,6 +207,10 @@ final class LspSessionPool
 
     public function stop(): void
     {
+        foreach ($this->relaunches as $relaunch) {
+            EventLoop::cancel($relaunch['timer']);
+        }
+        $this->relaunches = [];
         foreach ($this->sessions as $session) {
             $session->stop();
         }
@@ -402,6 +436,9 @@ final class LspSessionPool
 
     public function notifyDidClose(string $path): void
     {
+        foreach (\array_keys($this->relaunches) as $signature) {
+            unset($this->relaunches[$signature]['documents'][$path]);
+        }
         foreach ($this->sessionsFor($path) as $session) {
             $session->notifyDidClose($path);
         }
@@ -432,6 +469,7 @@ final class LspSessionPool
 
     public function notifyFullChange(string $path, Document $document): void
     {
+        $this->heldWhileDown($path, $document);
         foreach ($this->sessionsFor($path) as $session) {
             $session->notifyFullChange($path, $document);
         }
@@ -443,6 +481,7 @@ final class LspSessionPool
      */
     public function scheduleDidChange(Document $doc, \Closure $resolvePath, \Closure $afterSync): void
     {
+        $this->heldWhileDown($resolvePath(), $doc);
         // Each session debounces on its own timer and diffs against what IT
         // was last told, which is the only baseline that can be right when
         // one server does incremental sync and another does not.
@@ -570,6 +609,7 @@ final class LspSessionPool
         $onLog = $this->onLog;
         $onShowMessage = $this->onShowMessage;
         $onDiagnostics = $this->onDiagnostics;
+        $onProgress = $this->onProgress;
         $session->start(
             $server['command'],
             null === $onLog ? static function (string $line): void {} : static fn (string $line) => $onLog('['.$server['name'].'] '.$line),
@@ -578,28 +618,21 @@ final class LspSessionPool
             // publish would make every server share one slot again.
             null === $onDiagnostics
                 ? static function (array $params): void {}
-                : static fn (array $params) => $onDiagnostics($params, $server['name']),
+                : function (array $params) use ($onDiagnostics, $server, $signature): void {
+                    // Remembered, so a server that dies takes its findings with it.
+                    if (\is_string($params['uri'] ?? null)) {
+                        $this->published[$signature][$params['uri']] = true;
+                    }
+                    $onDiagnostics($params, $server['name']);
+                },
             $this->onApplyEdit ?? static fn (array $edit): bool => false,
-            function (Outcome $ok) use ($server, $signature): void {
+            function (Outcome $ok) use ($server, $signature, $session): void {
                 // @mago-expect lint:no-else-clause -- the dispatch below runs in BOTH branches, so an early return would skip it and a guard would duplicate it
                 if ($ok->isOk()) {
-                    // A server that came up earns fresh retries for its next
-                    // incident (this same callback fires again on a
-                    // mid-session death).
-                    unset($this->startFailures[$signature]);
+                    $this->upSince[$signature] = \hrtime(true) / 1e9;
                     $this->statuses[$signature] = $server['name'];
                 } else {
-                    $attempts = ($this->startFailures[$signature] ?? 0) + 1;
-                    $this->startFailures[$signature] = $attempts;
-                    $this->statuses[$signature] = $this->translator->trans('failed');
-                    // Evict so the next didOpen relaunches — a dead server
-                    // used to stay dead until a settings edit. Bounded:
-                    // past MAX_START_ATTEMPTS the failure goes sticky, so a
-                    // crash-looping binary is not respawned on every buffer
-                    // switch for the rest of the session.
-                    if ($attempts < self::MAX_START_ATTEMPTS) {
-                        unset($this->sessions[$signature]);
-                    }
+                    $this->failed($server, $signature, $session);
                 }
                 $this->dispatcher?->dispatch(new LspStatusChanged());
             },
@@ -619,8 +652,123 @@ final class LspSessionPool
                     }
                     $onShowMessage($params);
                 },
-            $this->onProgress,
+            null === $onProgress
+                ? null
+                : function (array $params) use ($onProgress, $signature): void {
+                    // Each server's tokens apart — two servers both saying "1"
+                    // are two tasks — and remembered, to end them if it dies.
+                    if (!\is_string($params['token'] ?? null) && !\is_int($params['token'] ?? null)) {
+                        return;
+                    }
+                    $token = $signature."\0".$params['token'];
+                    $value = \is_array($params['value'] ?? null) ? $params['value'] : [];
+                    $kind = \is_string($value['kind'] ?? null) ? $value['kind'] : '';
+                    if ('begin' === $kind) {
+                        $this->progress[$signature][$token] = true;
+                    }
+                    if ('end' === $kind) {
+                        unset($this->progress[$signature][$token]);
+                    }
+                    $onProgress(['token' => $token] + $params);
+                },
         );
+    }
+
+    /**
+     * A server failed to start, or died. Its findings and its progress go
+     * with it. One that was UP — a death, not a failed start — is launched
+     * again after its backoff and told about every file it had open, since
+     * nothing else would reopen them: the next didOpen only brings its own
+     * file. Past MAX_START_ATTEMPTS the failure is sticky, and said once.
+     *
+     * @param array{command: list<string>, name: string, initializationOptions?: array<string, mixed>} $server
+     */
+    private function failed(array $server, string $signature, LspSession $session): void
+    {
+        $upSince = $this->upSince[$signature] ?? null;
+        unset($this->upSince[$signature]);
+        if (null !== $upSince && ((\hrtime(true) / 1e9) - $upSince) >= self::STABLE) {
+            unset($this->startFailures[$signature]);
+        }
+        $attempts = ($this->startFailures[$signature] ?? 0) + 1;
+        $this->startFailures[$signature] = $attempts;
+        $this->statuses[$signature] = $this->translator->trans('failed');
+        $this->forget($signature);
+        if ($attempts >= self::MAX_START_ATTEMPTS) {
+            if (null !== $this->onShowMessage) {
+                ($this->onShowMessage)([
+                    'type' => 1,
+                    'message' => $this->translator->trans('[%name%] stopped %times% times and is not started again — change its settings or restart Porta', [
+                        '%name%' => $server['name'],
+                        '%times%' => $attempts,
+                    ]),
+                ]);
+            }
+
+            return;
+        }
+        // Evicted, so the next didOpen launches it again.
+        unset($this->sessions[$signature]);
+        if (null === $upSince) {
+            return;
+        }
+        $documents = $session->openDocuments();
+        $timer = EventLoop::unreference(EventLoop::delay(Backoff::after($attempts - 1), function () use ($server, $signature): void {
+            $documents = $this->relaunches[$signature]['documents'] ?? [];
+            unset($this->relaunches[$signature]);
+            if ($this->disabled) {
+                return;
+            }
+            if (null === ($this->sessions[$signature] ?? null)) {
+                $this->startSession($server, $signature);
+            }
+            $relaunched = $this->sessions[$signature] ?? null;
+            if (null === $relaunched) {
+                return;
+            }
+            foreach ($documents as $path => $text) {
+                if (\array_key_exists($path, $relaunched->openDocuments())) {
+                    continue;
+                }
+                $relaunched->notifyDidOpen($path, \is_string($text) ? $text : $text->getText(), ProjectPaths::languageId($path), 0);
+            }
+        }));
+        $this->relaunches[$signature] = ['timer' => $timer, 'documents' => $documents];
+    }
+
+    /** An edit to $path while its server is down is kept, for when it is back. */
+    private function heldWhileDown(?string $path, Document $document): void
+    {
+        foreach (\array_keys($this->relaunches) as $signature) {
+            if (null === $path || !\array_key_exists($path, $this->relaunches[$signature]['documents'])) {
+                continue;
+            }
+            $this->relaunches[$signature]['documents'][$path] = $document;
+        }
+    }
+
+    /** Clear what a gone server left on screen: its diagnostics and its progress. */
+    private function forget(string $signature): void
+    {
+        $name = null;
+        foreach ($this->servers as $list) {
+            foreach ($list as $candidate) {
+                $name = self::signature($candidate) === $signature ? $candidate['name'] : $name;
+            }
+        }
+        $published = $this->published[$signature] ?? [];
+        $progress = $this->progress[$signature] ?? [];
+        unset($this->published[$signature], $this->progress[$signature]);
+        if (null !== $this->onDiagnostics && null !== $name) {
+            foreach (\array_keys($published) as $uri) {
+                ($this->onDiagnostics)(['uri' => $uri, 'diagnostics' => []], $name);
+            }
+        }
+        if (null !== $this->onProgress) {
+            foreach (\array_keys($progress) as $token) {
+                ($this->onProgress)(['token' => $token, 'value' => ['kind' => 'end']]);
+            }
+        }
     }
 
     /** @param array{command: list<string>, name: string, initializationOptions?: array<string, mixed>} $server */

@@ -83,6 +83,29 @@ final class LspSessionTest extends TestCase
         $this->assertFalse($session->isActive());
     }
 
+    public function testWithNoServerAnyMoreARequestFailsAndWhatWaitsRunsOnTheNextTick(): void
+    {
+        $client = new FakeLspClient();
+        $client->startOutcome = Outcome::Failed;
+        $session = $this->session($client);
+        $this->start($session);
+        $heard = [];
+
+        $session->request('textDocument/hover', [], static function (mixed $result, ?array $error) use (&$heard): void {
+            $heard[] = [$result, $error];
+        });
+        $session->whenReady(static function () use (&$heard): void {
+            $heard[] = 'ran';
+        });
+        $this->assertSame([], $heard, 'not from inside the call');
+
+        $this->await(static function () use (&$heard): bool {
+            return 2 === \count($heard);
+        }, what: 'both');
+        $this->assertSame([[null, ['code' => -32_800, 'message' => 'The language server stopped']], 'ran'], $heard);
+        $this->assertSame([], $client->requests, 'nothing reached the stopped client');
+    }
+
     public function testStartUsesInjectedClientAndReportsState(): void
     {
         $client = new FakeLspClient();

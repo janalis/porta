@@ -3162,6 +3162,10 @@
         <source>Participants</source>
         <target>参加者</target>
       </trans-unit>
+      <trans-unit id="1111">
+        <source>[%name%] stopped %times% times and is not started again — change its settings or restart Porta</source>
+        <target>[%name%] は %times% 回停止したため、再起動しません — 設定を変更するか Porta を再起動してください</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

@@ -7,6 +7,7 @@ namespace Porta\Lsp;
 use Porta\Support\JsonRpcTransport;
 use Porta\Support\NonBlockingWriter;
 use Porta\Support\Outcome;
+use Revolt\EventLoop;
 
 /**
  * Minimal asynchronous Language Server Protocol client.
@@ -18,11 +19,28 @@ use Porta\Support\Outcome;
  */
 final class LspClient implements LspClientInterface
 {
+    /** Seconds a request may go unanswered before it fails — and is cancelled at the server. */
+    public const float REQUEST_TIMEOUT = 30.0;
+
+    /** Seconds a server has to answer `initialize` before it counts as failed to start. */
+    public const float INITIALIZE_TIMEOUT = 30.0;
+
+    /** JSON-RPC's code for a request cancelled before its answer — here, one nobody answered. */
+    private const int CANCELLED = -32_800;
+
     private readonly JsonRpcTransport $transport;
 
     private int $nextId = 1;
     /** @var array<int, callable(mixed, ?array): void> id => callback(result, error) */
     private array $pending = [];
+
+    /** @var array<int, string> id => the timer that fails the request when no answer comes */
+    private array $deadlines = [];
+
+    /** Stopped, or dead: from here on every request fails at once and nothing waits for a ready that cannot come. */
+    private bool $stopped = false;
+
+    private bool $failureReported = false;
 
     /** @var array<string, callable(array): void> notification method => handler */
     private array $notificationHandlers = [];
@@ -52,6 +70,8 @@ final class LspClient implements LspClientInterface
         ?callable $logger = null,
         int $maxWriteBuffer = NonBlockingWriter::DEFAULT_LIMIT,
         private readonly ?array $initializationOptions = null,
+        private readonly float $requestTimeout = self::REQUEST_TIMEOUT,
+        private readonly float $initializeTimeout = self::INITIALIZE_TIMEOUT,
     ) {
         $this->logger = $logger;
         $this->transport = new JsonRpcTransport($command, $rootDir, 'LSP server', $logger, $maxWriteBuffer);
@@ -86,6 +106,15 @@ final class LspClient implements LspClientInterface
     #[\Override]
     public function start(callable $onReady): void
     {
+        // Failure is reported ONCE, whichever way it came — a timed-out
+        // initialize whose server then dies must not count as two failed starts.
+        $onReady = function (Outcome $outcome) use ($onReady): void {
+            if ($this->failureReported) {
+                return;
+            }
+            $this->failureReported = !$outcome->isOk();
+            $onReady($outcome);
+        };
         $started = $this->transport->start(
             function (array $message): void {
                 /** @var array{id?: mixed, method?: string, result?: mixed, error?: array<array-key, mixed>, params?: array{items?: array<array-key, mixed>, edit?: array<array-key, mixed>}} $message */
@@ -98,27 +127,30 @@ final class LspClient implements LspClientInterface
                 // handshake can never complete; after initialize it is a
                 // mid-session death, and the status must flip from the
                 // server's name to "failed" rather than keep advertising a
-                // dead process — the session drops its client on the second
-                // Failed and the pool's status write is idempotent, which is
-                // what makes reusing $onReady for both phases safe. stop()
-                // cancels the watcher first, so a deliberate shutdown never
-                // lands here, and the transport fires EOF at most once.
+                // dead process. $onReady reports a failure once, however it
+                // came, which is what makes reusing it for both phases safe.
+                // stop() cancels the watcher first, so a deliberate shutdown
+                // never lands here, and the transport fires EOF at most once.
                 $this->log($this->isInitialized ? 'server exited' : 'server exited before initialize completed');
-                // Feature requests gate on this; a dead server must decline
-                // them like an unserved language, not swallow them silently.
-                $this->isInitialized = false;
+                // Feature requests gate on isInitialized; a dead server must
+                // decline them like an unserved language, and fail every
+                // request still waiting on it rather than leave it waiting.
+                $this->stop();
                 $onReady(Outcome::Failed);
             },
         );
         if (!$started) {
+            $this->stop();
             $onReady(Outcome::Failed);
 
             return;
         }
 
-        $this->request(
+        $this->send(['jsonrpc' => '2.0', 'id' => $this->nextId, 'method' => 'initialize', 'params' => $this->initializeParams()]);
+        $this->await(
+            $this->nextId++,
+            $this->initializeTimeout,
             'initialize',
-            $this->initializeParams(),
             function (mixed $result, ?array $error) use ($onReady): void {
                 if (null !== $error) {
                     $this->log('initialize failed: '.(string) \json_encode($error));
@@ -302,6 +334,16 @@ final class LspClient implements LspClientInterface
 
             return;
         }
+        if ($this->stopped) {
+            // Ready will never come. What waited runs anyway, on the next
+            // tick: a request in it then fails at once — its caller hears
+            // "stopped" rather than nothing, ever.
+            EventLoop::queue(static function () use ($action): void {
+                $action();
+            });
+
+            return;
+        }
         $this->whenReady[] = $action;
     }
 
@@ -311,9 +353,41 @@ final class LspClient implements LspClientInterface
     #[\Override]
     public function request(string $method, mixed $params, callable $onResult): void
     {
+        if ($this->stopped) {
+            EventLoop::queue($onResult(...), null, self::stoppedError());
+
+            return;
+        }
         $id = $this->nextId++;
-        $this->pending[$id] = $onResult;
         $this->send(['jsonrpc' => '2.0', 'id' => $id, 'method' => $method, 'params' => $params]);
+        $this->await($id, $this->requestTimeout, $method, $onResult);
+    }
+
+    /**
+     * Wait for the answer to request $id — for at most $timeout seconds,
+     * after which it fails, and the server is told to stop working on it.
+     *
+     * @param callable(mixed, ?array): void $onResult
+     */
+    private function await(int $id, float $timeout, string $method, callable $onResult): void
+    {
+        $this->pending[$id] = $onResult;
+        $this->deadlines[$id] = EventLoop::unreference(EventLoop::delay($timeout, function () use ($id, $timeout, $method): void {
+            $callback = $this->pending[$id] ?? null;
+            unset($this->pending[$id], $this->deadlines[$id]);
+            if (null === $callback) {
+                return;
+            }
+            $this->log(\sprintf('%s got no answer in %s seconds', $method, $timeout));
+            $this->notify('$/cancelRequest', ['id' => $id]);
+            $callback(null, ['code' => self::CANCELLED, 'message' => \sprintf('The language server did not answer in %s seconds', $timeout)]);
+        }));
+    }
+
+    /** @return array{code: int, message: string} */
+    private static function stoppedError(): array
+    {
+        return ['code' => self::CANCELLED, 'message' => 'The language server stopped'];
     }
 
     #[\Override]
@@ -334,7 +408,24 @@ final class LspClient implements LspClientInterface
 
         $this->isInitialized = false;
         $this->serverCapabilities = [];
+        $this->stopped = true;
+        foreach ($this->deadlines as $timer) {
+            EventLoop::cancel($timer);
+        }
+        $this->deadlines = [];
+        // Everything still waiting hears it, on the next tick — never from
+        // inside stop(), whose caller is mid-teardown: a request fails, and
+        // an action that was waiting for ready runs and fails in turn.
+        $waiting = $this->pending;
         $this->pending = [];
+        foreach ($waiting as $callback) {
+            EventLoop::queue($callback(...), null, self::stoppedError());
+        }
+        $ready = $this->whenReady;
+        $this->whenReady = [];
+        foreach ($ready as $action) {
+            EventLoop::queue($action(...));
+        }
     }
 
     private function send(array $message): void
@@ -351,7 +442,11 @@ final class LspClient implements LspClientInterface
         if (($message['id'] ?? null) !== null && ($message['method'] ?? null) === null) {
             $id = (int) $message['id'];
             $callback = $this->pending[$id] ?? null;
-            unset($this->pending[$id]);
+            $deadline = $this->deadlines[$id] ?? null;
+            if (null !== $deadline) {
+                EventLoop::cancel($deadline);
+            }
+            unset($this->pending[$id], $this->deadlines[$id]);
             if (null !== $callback) {
                 $callback($message['result'] ?? null, $message['error'] ?? null);
             }
@@ -362,14 +457,22 @@ final class LspClient implements LspClientInterface
         // Request from the server: answer with a sane default so it does not hang
         // (an id-bearing message without a method already returned above).
         if (($message['id'] ?? null) !== null) {
-            $result = match ($message['method']) {
-                'workspace/configuration' => \array_fill(0, \count($message['params']['items'] ?? [null]), value: null),
-                'window/workDoneProgress/create', 'client/registerCapability', 'client/unregisterCapability' => null,
-                'workspace/applyEdit' => [
-                    'applied' => null !== $this->applyEditHandler && ($this->applyEditHandler)($message['params']['edit'] ?? []),
-                ],
-                default => null,
-            };
+            // Answered whatever happens: a server waiting on applyEdit waits
+            // for THIS reply, and an edit that threw was not applied.
+            try {
+                $result = match ($message['method']) {
+                    'workspace/configuration' => \array_fill(0, \count($message['params']['items'] ?? [null]), value: null),
+                    'window/workDoneProgress/create', 'client/registerCapability', 'client/unregisterCapability' => null,
+                    'workspace/applyEdit' => [
+                        'applied' => null !== $this->applyEditHandler && ($this->applyEditHandler)($message['params']['edit'] ?? []),
+                    ],
+                    default => null,
+                };
+            } catch (\Throwable $error) {
+                $this->send(['jsonrpc' => '2.0', 'id' => $message['id'], 'result' => ['applied' => false, 'failureReason' => $error->getMessage()]]);
+
+                throw $error;
+            }
             $this->send(['jsonrpc' => '2.0', 'id' => $message['id'], 'result' => $result]);
 
             return;
