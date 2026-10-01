@@ -1215,12 +1215,25 @@ final class DebugControllerTest extends TestCase
         $this->client->respond('variables', ['variables' => [['name' => '$argv', 'value' => 'array(1)', 'variablesReference' => 7]]]);
         $this->assertSame(
             [
-                ['scope' => 'Locals', 'variables' => [['name' => '$x', 'value' => '42']]],
+                ['scope' => 'Locals', 'variables' => [['name' => '$x', 'value' => '42', 'reference' => 1001]]],
                 ['scope' => 'Registers', 'variables' => []],
-                ['scope' => 'Globals', 'variables' => [['name' => '$argv', 'value' => 'array(1)']]],
+                ['scope' => 'Globals', 'variables' => [['name' => '$argv', 'value' => 'array(1)', 'reference' => 7]]],
             ],
             $delivered,
         );
+        // What a variable holds, by its reference; a reference of 0 holds nothing, asked of nobody.
+        $held = null;
+        $hold = static function (array $variables) use (&$held): void {
+            $held = $variables;
+        };
+        $debugger->children(7, $hold);
+        $this->client->respond('variables', ['variables' => [['name' => '0', 'value' => "'a'", 'variablesReference' => 0]]]);
+        $this->assertSame([['name' => '0', 'value' => "'a'", 'reference' => 0]], $held);
+        $asked = \count($this->client->requests);
+        $debugger->children(0, $hold);
+        $this->assertSame([], $held);
+        $this->assertCount($asked, $this->client->requests, 'nothing to open: the adapter not asked');
+
         // Nothing to fetch: at once.
         $this->client->responses['scopes'] = [['scopes' => [['name' => 'Registers', 'variablesReference' => 0]]], null];
         $debugger->variables(1, $collect);
@@ -1241,6 +1254,9 @@ final class DebugControllerTest extends TestCase
         $delivered = null;
         $debugger->variables(1, $collect);
         $this->assertSame([], $delivered, 'running: no frame to read, the adapter not asked');
+        $held = null;
+        $debugger->children(7, $hold);
+        $this->assertSame([], $held, 'running: nothing held to open');
         $debugger->stop();
         $this->assertContains('disconnect', $this->client->commands());
     }

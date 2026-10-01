@@ -139,7 +139,7 @@ final class DebugController implements DebugSessionObserver, StatusSegment
      * Every scope of a paused frame with its variables, delivered once all
      * have arrived — in the adapter's scope order. Empty unless paused.
      *
-     * @param \Closure(list<array{scope: string, variables: list<array{name: string, value: string}>}>): void $deliver
+     * @param \Closure(list<array{scope: string, variables: list<array{name: string, value: string, reference: int}>}>): void $deliver
      */
     public function frameVariables(int $frameId, \Closure $deliver): void
     {
@@ -166,13 +166,43 @@ final class DebugController implements DebugSessionObserver, StatusSegment
                     continue;
                 }
                 $session->variables($scope['variablesReference'], static function (array $variables) use (&$result, &$waiting, $index, $deliver): void {
-                    $result[$index]['variables'] = \array_map(static fn (array $variable): array => ['name' => $variable['name'], 'value' => $variable['value']], $variables);
+                    $result[$index]['variables'] = self::shown($variables);
                     if (0 === --$waiting) {
                         $deliver(\array_values($result));
                     }
                 });
             }
         });
+    }
+
+    /**
+     * A variable's children — an array's items, an object's properties — by
+     * the reference it was delivered with (0: it has none). Empty unless
+     * paused.
+     *
+     * @param \Closure(list<array{name: string, value: string, reference: int}>): void $deliver
+     */
+    public function children(int $reference, \Closure $deliver): void
+    {
+        $session = $this->session;
+        if (null === $session || !$this->isPaused() || $reference <= 0) {
+            $deliver([]);
+
+            return;
+        }
+        $session->variables($reference, static fn (array $variables) => $deliver(self::shown($variables)));
+    }
+
+    /**
+     * Variables as a plugin is handed them: a non-zero reference opens one.
+     *
+     * @param list<array{name: string, value: string, variablesReference: int}> $variables
+     *
+     * @return list<array{name: string, value: string, reference: int}>
+     */
+    private static function shown(array $variables): array
+    {
+        return \array_map(static fn (array $variable): array => ['name' => $variable['name'], 'value' => $variable['value'], 'reference' => $variable['variablesReference']], $variables);
     }
 
     /**

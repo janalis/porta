@@ -81,6 +81,7 @@ final class ArchitectureCheckCommand extends Command
         'AssistPlugin>Overlay', // the toast severities its notices pick
         'AssistPlugin>Plugin',
         'AssistPlugin>Support',
+        'AssistPlugin>Ui', // the ellipsis that marks a host's variable as holding more
         'AssistPlugin>Workbench',
         'Bootstrap>Config',
         'Bootstrap>Container',

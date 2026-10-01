@@ -820,7 +820,8 @@ $api->on(DebugStatusChanged::class, function () use ($api): void {
 | `status(): string` | `idle` with no session, else `running` or `paused` |
 | `stoppedAt(): ?array` | `['path' => …, 'line' => …]` where it is paused; null when it is not |
 | `frames(): list<array>` | The paused stack, innermost first, as `['id' => int, 'name' => …, 'path' => …, 'line' => int]`; empty unless paused |
-| `variables(int $frameId, \Closure $deliver)` | That frame's scopes and their variables, `$deliver(list<array{scope: string, variables: list<array{name: string, value: string}>}>)` once all have arrived; empty unless paused |
+| `variables(int $frameId, \Closure $deliver)` | That frame's scopes and their variables, `$deliver(list<array{scope: string, variables: list<array{name: string, value: string, reference: int}>}>)` once all have arrived; empty unless paused. A non-zero `reference` marks a variable that holds more |
+| `children(int $reference, \Closure $deliver)` | What that variable holds, an array's items or an object's properties, `$deliver(list<array{name: string, value: string, reference: int}>)`; empty unless paused |
 | `continue()` / `stepOver()` / `stepIn()` / `stepOut()` | Step it as the Run menu does. Not paused, the user is told so and nothing happens |
 | `stop()` | End the session |
 

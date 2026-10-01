@@ -52,11 +52,22 @@ final readonly class Debugger
      * A paused frame's scopes and their variables, delivered once all have
      * arrived from the adapter; empty unless paused.
      *
-     * @param \Closure(list<array{scope: string, variables: list<array{name: string, value: string}>}>): void $deliver
+     * @param \Closure(list<array{scope: string, variables: list<array{name: string, value: string, reference: int}>}>): void $deliver
      */
     public function variables(int $frameId, \Closure $deliver): void
     {
         $this->debug->frameVariables($frameId, $deliver);
+    }
+
+    /**
+     * What a variable holds — an array's items, an object's properties — by
+     * the non-zero `reference` it was delivered with; empty unless paused.
+     *
+     * @param \Closure(list<array{name: string, value: string, reference: int}>): void $deliver
+     */
+    public function children(int $reference, \Closure $deliver): void
+    {
+        $this->debug->children($reference, $deliver);
     }
 
     /** Resume a paused session. */
