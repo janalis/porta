@@ -5,7 +5,7 @@ Porta is extensible with small PHP plugins: a directory containing a
 hooks through a stable API. Plugins run in-process on the shared event loop
 and are trusted code, like composer scripts.
 
-Sixteen plugins ship **bundled with Porta** ([`plugins/`](../plugins/) in the
+Seventeen plugins ship **bundled with Porta** ([`plugins/`](../plugins/) in the
 package). Bundled plugins are governed by the `enabledPlugins` list; when your
 `.porta.json` has no such key, a small default set (the two viewers plus
 `todo`, `local-history` and `git`) is enabled — an explicit list (even an
@@ -23,6 +23,8 @@ The others: `image-viewer` and `graph-viewer` (the inline viewers — each
 owns its whole implementation and PROVIDES its pane; disable one and its files
 open as text instead, and note that `graph-viewer` requires `image-viewer`
 because a graph is painted with the same rasterizer),
+`assist` (working on one project together, live — a host shares, guests join,
+everyone edits the same files and sees each other's carets: [assist.md](assist.md)),
 `review` (pull request, merge request and local-agent review conversations —
 [review.md](review.md); it requires `git` for its classes, and is the
 reference use of `setCommentMarks` and `setLineBlocks`),
@@ -305,7 +307,7 @@ never firing.
 | `MergeToolLaunched` | `string $local`, `string $remote`, `string $base`, `string $merged` — launched as git's mergetool (`porta --merge`); `$merged` is the file to resolve. Core sets the exit code from what is left in it at quit |
 | `QuitRequested` | — a COMMAND you may `emit()`: quit the way Ctrl+Q does (unsaved buffers still ask). The git plugin ends a difftool session with it |
 | `CommandRunRequested` | `string $command` — a COMMAND you may `emit()`: run a command by id, a core action's (`ide_save`) or another plugin's (`local-history:recent_changes`), as the palette would. With nothing answering to the id — its plugin disabled — the user is told so. The way one plugin reaches another's verb without depending on it |
-| `AgentActivity` | `string $agent`, `string $name`, `string $path`, `AgentActivityKind $kind` (`Reading`/`Editing`), `int $line`, `int $column`, `float $fadeAfter` — a fact you may `emit()`: an agent is at work on a file. Core shows it — a caret in the agent's colour with its name at the end of the line, a ✦ on the file's tab and tree row — until `$fadeAfter` seconds pass with no new report. The position is 0-based line and byte column; a negative line marks the file with no caret. The mcp plugin sends it for every tool that reads or edits |
+| `AgentActivity` | `string $agent`, `string $name`, `string $path`, `AgentActivityKind $kind` (`Reading`/`Editing`), `int $line`, `int $column`, `float $fadeAfter`, `int $anchorLine = -1`, `int $anchorColumn = 0` — a fact you may `emit()`: an agent is at work on a file. Core shows it — a caret in the agent's colour with its name at the end of the line, a ✦ on the file's tab and tree row — until `$fadeAfter` seconds pass with no new report. The position is 0-based line and byte column; a negative line marks the file with no caret. A non-negative `$anchorLine` makes the text from the anchor to the caret its selection, tinted in its colour. The mcp plugin sends it for every tool that reads or edits |
 | `AgentLeft` | `string $agent` — a fact you may `emit()`: everything `AgentActivity` showed for that agent goes at once |
 | `ChangeProposed` | `string $path`, `string $proposedPath` — a fact you may `emit()`: an agent proposed new text for a file and waits for the user's verdict. `$path` is the file on disk, `$proposedPath` a temporary copy of the proposal with the same file name. The bundled git plugin answers with its side-by-side comparison |
 | `AgentEditing` | `string $path`, `string $previousText` — a fact you may `emit()`: an agent is about to change a file for the first time since it connected, and this is what the file held. `local-history` keeps it as a snapshot |
@@ -768,6 +770,11 @@ $why = $buffers->save($path);             // null once saved
 | `open(string $path): ?string` | Open a file as a text tab BEHIND the one in front — no tab comes forward, no focus moves — so it can be changed where the user sees it without being taken there. Null once it is open as text, else why not (not a file, an image, too large) |
 | `selection(string $path): ?array` | What is selected in it: `['line', 'column', 'endLine', 'endColumn', 'text']`, 0-based line and byte column as `caretPosition()` gives them, the start first. Null when nothing is |
 | `edit(string $path, int $line, int $column, int $endLine, int $endColumn, string $text): ?string` | Replace a range with `$text`, in the same 0-based lines and byte columns, the end exclusive; an empty range inserts. It is ONE undo step and it is not saved; the editor and the language server hear of it. Null once applied, else why not: not open as text, or not a range of the document |
+| `edits(string $path, array $edits): ?string` | Several `['line', 'column', 'endLine', 'endColumn', 'text']` ranges at once, each in the text as it is now, in document order and not overlapping — still ONE undo step. Null once applied, else why not, and then nothing was |
+| `version(string $path): ?int` | A number that changes whenever the buffer's text does, to read the text only when there is something new; null when it is not open as text |
+| `delegateHistory(string $path, \Closure $undo, \Closure $redo): bool` | Answer Ctrl+Z and redo in that buffer yourself (each closure says whether it changed anything) — for a shared session, where undo takes back only the user's own edits. The buffer's own history is forgotten. False when it is not open as text |
+| `reclaimHistory(string $path)` | Give the buffer its own undo back, from that moment on |
+| `makeReadOnly(string $path): bool` / `makeWritable(string $path)` | Refuse the user's keystrokes that would change the buffer (the caret, the selection and copy still work, and a flash says why), or allow them again. Edits from code still land |
 | `save(string $path): ?string` | Save it as Ctrl+S does — local history, the language servers and `onFileSaved` all hear of it. Null once saved (or with nothing to save), else why not. A file that **changed on disk** under the edits is refused, never overwritten: the keyboard asks the user to press Ctrl+S again, and a plugin cannot ask for them |
 
 ### Running a task

@@ -15,6 +15,7 @@ non-blocking event loop.
 | [Search & navigation](search-navigation.md) | Go to file/symbol/test, find in file, Find in Files, problems panel |
 | [Git](git.md) | Gutter markers, palette operations, the Git view (staging, commits, history) |
 | [Code review](review.md) | Pull and merge request threads, and local reviews from an agent — in a view, in the diff and in the editor |
+| [Assist](assist.md) | Work on one project together, live: share it, let others in, edit the same files at once, follow each other |
 | [Agents (MCP)](agents.md) | Let an agent such as Claude Code read your buffers and diagnostics, open files and make undoable edits in the running IDE |
 | [Run & terminal](run-and-terminal.md) | Run configurations, the integrated terminal |
 | [Debugger](debugger.md) | DAP adapters, breakpoints, stepping, the debug panel |

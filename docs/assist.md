@@ -1,0 +1,122 @@
+# Assist: working together, live
+
+The bundled `assist` plugin lets several people work in one project at
+the same time, the way VS Code Live Share and PhpStorm Code With Me do.
+One person, the **host**, shares the project they have open. Others, the
+**guests**, join from their own Porta. Everyone edits the same files at once
+and sees each other's carets and selections. Anyone can follow anyone.
+
+The host's copy is the one that counts:
+
+- A guest needs no checkout of their own.
+- A guest's saves and file operations are asked of the host, who carries them out.
+
+Enable it under **Settings ▸ Plugins**, or add `"assist"` to `enabledPlugins`
+in `.porta.json`.
+
+## Sharing a project
+
+1. Run **Assist: Share This Project** from the palette or the Plugins menu.
+2. Porta starts listening and copies the invite to the clipboard, for example
+   `porta assist 127.0.0.1:52814#4f3a…`. Send it to the people you want in.
+3. When someone joins, the host is asked: **Let them edit**, **Let them read
+   along**, or **Turn them away**.
+
+While sharing, the status bar shows `⇄` and how many are in. Click it to:
+
+- follow someone;
+- copy the invite again;
+- open **Participants**, where the host can change what a guest may do or
+  remove them;
+- stop sharing.
+
+**Assist: Stop Sharing** ends the session for everyone.
+
+By default the host only accepts connections **from its own machine**
+(`127.0.0.1`). This is deliberate: the invite's token is the only key, and
+the connection is not encrypted. To work across machines, use one of these:
+
+- **An SSH tunnel.** The guest runs `ssh -L 52814:127.0.0.1:52814 host`, then
+  joins `127.0.0.1:52814#…`.
+- **A VPN such as Tailscale.** Set **Accept guests from** to `0.0.0.0` and
+  share the host's VPN address.
+
+## Joining
+
+Run the invite in a terminal:
+
+```
+porta assist 127.0.0.1:52814#4f3a…
+```
+
+Add `--name` to choose the name the others see. Without it, Porta uses your
+login name.
+
+1. The host is asked to let you in.
+2. Once you are in, a copy of the host's project is brought up to date under
+   `~/.porta/assist/`.
+3. Porta opens on that copy, connected to the session.
+
+What the copy holds:
+
+- **Which files.** What git shows (tracked files, and untracked ones that are
+  not ignored), plus `vendor/` so your own language server can resolve the
+  dependencies. Outside a git repository, every file except `node_modules/`.
+- **What stays with the host.** The host's `.git/`, `.porta/` and `.porta.json`
+  are never sent.
+- **Joining again.** It fetches only what changed since last time.
+
+**Assist: Join a Session…** inside Porta copies the command for you to run.
+A session opens in its own Porta window because it is its own project.
+
+In a session, as a guest:
+
+- **Opening a file** asks the host for it. The host's text, unsaved edits
+  included, replaces what your copy had.
+- **What you type** reaches everyone who has the file open, and theirs
+  reaches you.
+- **Saving** asks the host to save, so the file lands on the host's disk.
+  Everyone with the same text is marked saved too.
+- **Creating, renaming or deleting a file** asks the host to do it. Files that
+  change on the host, through a save, a checkout or a pull, are fetched again.
+- **Reading along** (when the host chose read-only) makes the shared files
+  refuse your keystrokes, with a message saying why. The caret, selection and
+  copy still work.
+- **If the connection drops**, the shared files go read-only and Porta keeps
+  trying to reconnect. When it gets back in, it carries on from the host's copy.
+- **Assist: Leave the Session** ends it for you. The copy stays on disk for you
+  to keep.
+- **Closing Porta** keeps the session. Opening the copy again rejoins it, as
+  long as the host is still sharing.
+
+## Carets, undo and following
+
+- **Carets and selections.** Everyone's caret shows in their own colour, with
+  their name at the end of the line and their selection tinted. A file someone
+  else is in gets a `✦` on its tab and tree row.
+- **Agents count as participants.** An agent at work on either side, such as
+  one connected through the [mcp plugin](agents.md), shows the same way.
+  **Participants** lists it, and you can follow it.
+- **Undo is your own.** <kbd>Ctrl+Z</kbd> takes back only your own changes,
+  even when others have typed since.
+- **Following someone.** **Assist: Follow Someone**, or a name in the status
+  bar's menu, makes your editor go wherever that person's caret goes, across
+  files too. Moving your own caret stops following.
+
+## Settings
+
+| Setting | Default | What it does |
+| --- | --- | --- |
+| Your name in a session | your login name | The name the others see beside your caret |
+| Accept guests from | `127.0.0.1` | `127.0.0.1`: this machine only (reach it through a tunnel or VPN). `0.0.0.0`: the whole network |
+| Port to share on | `0` | `0` picks a free port each time |
+| Largest file to share (MB) | `4` | Bigger files stay on the host |
+
+## Limits
+
+- **Four guests at most.** That is as many as the editor has colours to tell
+  apart.
+- **No shared language server.** Each guest's language server runs on their
+  own copy.
+- **No shared terminal or run configurations.**
+- **Follow moves your caret, not your exact scroll position.**
