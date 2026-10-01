@@ -9,6 +9,7 @@ use Porta\Editor\BufferManager;
 use Porta\Editor\EditorTextAccess;
 use Porta\Editor\FileOpener;
 use Porta\Editor\OpenFocus;
+use Porta\Filesystem\RemoteFilesystem;
 use Porta\History\RecentFilesStore;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspSessionPool;
@@ -64,6 +65,9 @@ final readonly class SearchEverywhereFactory
         // A command picked here reaches past an open view window as a menu
         // item does: one that acts on the editor closes the window first.
         private ?ViewCommandGate $gate = null,
+        // A remote project's text search greps the server, as Find in Files
+        // does: the cache holds only what was opened.
+        private ?RemoteFilesystem $remote = null,
     ) {}
 
     /** Why the symbol sources have nobody to ask — their note in place of "no results" — or null when a server is up. */
@@ -216,7 +220,7 @@ final readonly class SearchEverywhereFactory
             [
                 new WorkspaceSymbolSource($searchSymbols, SearchCategory::Classes, [5, 10, 11, 23], $this->paths, $openFile, $jumpTo, $this->noServer(...)),
                 new WorkspaceSymbolSource($searchSymbols, SearchCategory::Symbols, [], $this->paths, $openFile, $jumpTo, $this->noServer(...)),
-                new TextSource(new ProjectSearch($this->paths->root()), $this->paths, $openFile, $jumpTo),
+                new TextSource(new ProjectSearch($this->paths->root(), $this->remote), $this->paths, $openFile, $jumpTo),
             ],
             $this->buffers,
             $this->tui,

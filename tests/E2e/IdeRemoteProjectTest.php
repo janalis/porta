@@ -12,6 +12,9 @@ use Porta\Filesystem\ProjectLocation;
 use Porta\Filesystem\RemoteFilesystem;
 use Porta\Ide;
 use Porta\Lsp\LspSessionPool;
+use Porta\Search\Everywhere\SearchEverywhereFactory;
+use Porta\Search\Everywhere\TextSource;
+use Porta\Settings\SettingsSearchLauncher;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\FakeRemoteTransport;
 use Porta\Tests\Support\PreservesPath;
@@ -68,6 +71,14 @@ final class IdeRemoteProjectTest extends TestCase
         $this->runIde($cache, null, [
             100 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($cache): void {
                 $this->assertTrue(Probe::get(Services::resolve($ide, LspSessionPool::class), 'disabled'), 'no language server over a cache of what was opened');
+                // Not in the locator; Settings' search is the service that holds it.
+                $factory = Probe::object(Services::resolve($ide, SettingsSearchLauncher::class), 'pickers');
+                $this->assertInstanceOf(SearchEverywhereFactory::class, $factory, 'the launcher builds its pickers with the factory');
+                $text = \array_first(\array_filter(
+                    Probe::get($factory->create(), 'asyncSources'),
+                    static fn (object $source): bool => $source instanceof TextSource,
+                ));
+                $this->assertSame(Services::resolve($ide, RemoteFilesystem::class), Probe::get(Probe::object($text, 'search'), 'remote'), 'Search Everywhere greps the server too');
                 $this->awaitPainted($tui, $terminal, 'README.md');
                 $this->assertStringContainsString('src', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the server\'s directory is in the tree');
                 $this->assertSame('', \file_get_contents($cache->path('README.md')), 'listed, not fetched');
