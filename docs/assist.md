@@ -141,6 +141,23 @@ separately: in **Participants**, pick the guest, then **Let them type in
 shared terminals** (or **Stop them typing**). Until then, a key typed in the
 tab is refused with a message saying so.
 
+## Sharing a server
+
+A project's dev server (`php -S localhost:8000`, `symfony serve`) runs on
+the host. **Assist: Share a Server** asks the host for its port. Every guest
+can then reach it on their own machine: a toast gives the address, for
+example `http://127.0.0.1:8000`. The guest gets the same port number when it
+is free on their machine, and another one when it is not. **Assist: Shared
+Servers** lists the shared servers and copies an address.
+
+Each connection a guest opens there is carried through the session, so it is
+encrypted like the rest. It reaches only the port the host shared, on the
+host's own machine: a guest cannot name another port or another address.
+Guests who join later get the shared servers too. Running **Assist: Share a
+Server** again lists what is shared: pick one to stop sharing it, which closes
+its connections. Any guest, reading along or editing, can use a shared
+server, so share only what you would let them use.
+
 ## Carets, undo and following
 
 - **Carets and selections.** Everyone's caret shows in their own colour, with
