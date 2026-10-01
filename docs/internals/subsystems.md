@@ -270,7 +270,10 @@ entry, or the walk would be quadratic.
 
 **Search runs on the server where it can.** `ProjectSearch` hands its `grep`
 argv to `RemoteFilesystem::remoteCommand()`. ssh wraps it to run in the
-project's directory there; FTP cannot, and the grep runs on the cache.
+project's directory there; FTP cannot, and the grep runs on the cache. A hit
+can be in a file never fetched, so Replace All fetches those first
+(`ProjectSearchController::fetchedForReplace()`) and runs once the last one
+lands; replacing over the empty placeholder would skip them in silence.
 
 **An open that waits for a fetch shows a stand-in.** Every navigation calls
 `openFile()` and then `jumpTo()`. `BufferService::openWhenFetched()` puts a

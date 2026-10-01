@@ -4,10 +4,19 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Support;
 
+use Porta\Editor\BufferManager;
+use Porta\Filesystem\ProjectLocation;
 use Porta\Filesystem\RemoteEntry;
 use Porta\Filesystem\RemoteFile;
+use Porta\Filesystem\RemoteFilesystem;
+use Porta\Filesystem\RemoteSpec;
 use Porta\Filesystem\RemoteStamp;
 use Porta\Filesystem\RemoteTransport;
+use Porta\Filesystem\RemoteTransportSource;
+use Porta\I18n\Translator;
+use Porta\Search\FileIndex;
+use Porta\Widget\StatusBarWidget;
+use Porta\Workbench\Notifier;
 use Symfony\Component\Filesystem\Filesystem;
 
 /**
@@ -152,6 +161,32 @@ final class FakeRemoteTransport extends RemoteTransport
     public function close(): void
     {
         $this->closed = true;
+    }
+
+    /**
+     * A remote project at $cacheDir served by this fake — what a test needs
+     * when the remote filesystem is a collaborator, not the thing tested.
+     */
+    public function filesystem(string $cacheDir, ?StatusBarWidget $status = null): RemoteFilesystem
+    {
+        return new RemoteFilesystem(
+            new ProjectLocation(new RemoteSpec('ssh', 'example.org', '/srv')),
+            $cacheDir,
+            new readonly class($this) implements RemoteTransportSource {
+                public function __construct(
+                    private RemoteTransport $transport,
+                ) {}
+
+                public function remoteTransport(RemoteSpec $spec): RemoteTransport
+                {
+                    return $this->transport;
+                }
+            },
+            new Notifier($status ?? new StatusBarWidget(), TestTui::create()),
+            new Translator('en'),
+            new BufferManager(),
+            new FileIndex($cacheDir),
+        );
     }
 
     /** Answer everything held, in the order it was asked. */

@@ -3138,6 +3138,10 @@
         <source>%count% change on its way to %host%|%count% changes on their way to %host%</source>
         <target>%count% Änderung unterwegs zu %host%|%count% Änderungen unterwegs zu %host%</target>
       </trans-unit>
+      <trans-unit id="1104">
+        <source>Fetching %count% file from the server — the replace runs once it is here|Fetching %count% files from the server — the replace runs once they are here</source>
+        <target>%count% Datei wird vom Server geholt — das Ersetzen läuft, sobald sie da ist|%count% Dateien werden vom Server geholt — das Ersetzen läuft, sobald sie da sind</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

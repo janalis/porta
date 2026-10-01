@@ -81,24 +81,7 @@ final class ProjectSearchTest extends TestCase
         $server = new TempProject(['src/Deep.php' => "<?php\n// needle here\n", 'vendor/x.php' => 'needle']);
         $cache = new TempProject(['src/Deep.php' => '']);
         $transport = new FakeRemoteTransport($server->dir);
-        $remote = new RemoteFilesystem(
-            new ProjectLocation(new RemoteSpec('ssh', 'example.org', '/srv')),
-            $cache->dir,
-            new readonly class($transport) implements RemoteTransportSource {
-                public function __construct(
-                    private RemoteTransport $transport,
-                ) {}
-
-                public function remoteTransport(RemoteSpec $spec): RemoteTransport
-                {
-                    return $this->transport;
-                }
-            },
-            new Notifier(new StatusBarWidget(), TestTui::create()),
-            new Translator('en'),
-            new BufferManager(),
-            new FileIndex($cache->dir),
-        );
+        $remote = $transport->filesystem($cache->dir);
 
         $results = $this->awaitSearch(new ProjectSearch($cache->dir, $remote), 'needle');
 

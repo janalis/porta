@@ -3138,6 +3138,10 @@
         <source>%count% change on its way to %host%|%count% changes on their way to %host%</source>
         <target>%count% 件の変更を %host% へ送信中</target>
       </trans-unit>
+      <trans-unit id="1104">
+        <source>Fetching %count% file from the server — the replace runs once it is here|Fetching %count% files from the server — the replace runs once they are here</source>
+        <target>サーバーから %count% 件のファイルを取得中 — 届いたら置換します</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

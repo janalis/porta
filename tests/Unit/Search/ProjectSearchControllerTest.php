@@ -9,6 +9,8 @@ use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
 use Porta\Editor\Document;
 use Porta\Editor\DocumentReplacer;
+use Porta\Filesystem\LocalFilesystem;
+use Porta\Filesystem\RemoteFilesystem;
 use Porta\History\SearchHistoryStore;
 use Porta\History\SearchPrefsStore;
 use Porta\History\SearchScopeStore;
@@ -23,9 +25,11 @@ use Porta\Search\SearchScopeResolver;
 use Porta\Search\SearchTabState;
 use Porta\Search\TokenClassifier;
 use Porta\Support\ProjectPaths;
+use Porta\Tests\Support\FakeRemoteTransport;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
+use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestBottomDock;
 use Porta\Ui\CaretVisibility;
@@ -49,6 +53,7 @@ use Symfony\Component\Tui\Tui;
 final class ProjectSearchControllerTest extends TestCase
 {
     use PumpsLoop;
+    use StatusReads;
 
     private ResultsPanelWidget $panel;
     private CodeEditorWidget $editor;
@@ -56,11 +61,11 @@ final class ProjectSearchControllerTest extends TestCase
     private BufferManager $buffers;
     private StatusBarWidget $statusBar;
 
-    private function controller(string $rootDir): ProjectSearchController
+    private function controller(string $rootDir, ?RemoteFilesystem $remote = null): ProjectSearchController
     {
         $this->panel = new ResultsPanelWidget();
         $this->editor = new CodeEditorWidget();
-        $projectSearch = new ProjectSearch($rootDir);
+        $projectSearch = new ProjectSearch($rootDir, $remote);
         $this->buffers = new BufferManager();
         $buffers = $this->buffers;
         $tui = new Tui(terminal: new VirtualTerminal(columns: 100, rows: 20));
@@ -82,6 +87,7 @@ final class ProjectSearchControllerTest extends TestCase
             new SearchScopeResolver($buffers, $this->editor, new ProjectPaths($rootDir)),
             new LanguageFilter(new TokenClassifier(), $projectSearch, new ProjectPaths($rootDir)),
             new SearchScopeStore($rootDir),
+            $remote ?? new LocalFilesystem(),
         );
     }
 
@@ -368,6 +374,55 @@ final class ProjectSearchControllerTest extends TestCase
     private function searchOptions(ProjectSearchController $controller): SearchOptions
     {
         return Probe::get($controller, 'searchOptions');
+    }
+
+    /**
+     * A remote search runs on the server and finds files never fetched: their
+     * placeholder is empty here, and a replace over it would skip them in
+     * silence. They are fetched first, and the replace runs — once — when the
+     * last one lands, reaching the server as any save does.
+     */
+    public function testAReplaceOverFilesNeverFetchedFetchesThemFirst(): void
+    {
+        $server = new TempProject(['a.php' => "<?php // needle\n", 'b.php' => "<?php // needle\n"]);
+        $cache = new TempProject();
+        $transport = new FakeRemoteTransport($server->dir);
+        $remote = $transport->filesystem($cache->dir);
+        $remote->listed($cache->dir);
+        $controller = $this->controller($cache->dir, $remote);
+        $controller->open();
+        $controller->search('needle');
+        $this->awaitModalShows('b.php');
+        $transport->hold = true;
+
+        $controller->replaceAll('found');
+
+        $this->assertSame('', \file_get_contents($cache->path('a.php')), 'not yet: nothing to replace in');
+        $this->assertSame('Fetching 2 files from the server — the replace runs once they are here', $this->flashText($this->statusBar));
+        $transport->release();
+
+        $this->assertSame("<?php // found\n", \file_get_contents($server->path('a.php')), 'replaced, and sent');
+        $this->assertSame("<?php // found\n", \file_get_contents($server->path('b.php')));
+        $this->assertCount(1, \array_filter($transport->calls, static fn (string $call): bool => 'put a.php' === $call), 'once');
+    }
+
+    /** A fetch that answers at once runs the replace from inside the first try — and only there, and says what it did. */
+    public function testAReplaceWhoseFetchesAnswerAtOnceRunsOnce(): void
+    {
+        $server = new TempProject(['a.php' => "<?php // needle\n"]);
+        $cache = new TempProject();
+        $transport = new FakeRemoteTransport($server->dir);
+        $remote = $transport->filesystem($cache->dir);
+        $remote->listed($cache->dir);
+        $controller = $this->controller($cache->dir, $remote);
+        $controller->open();
+        $controller->search('needle');
+        $this->awaitModalShows('a.php');
+
+        $controller->replaceAll('more needle');
+
+        $this->assertSame("<?php // more needle\n", \file_get_contents($server->path('a.php')), 'once — a second pass would say "more more needle"');
+        $this->assertSame('Replaced in 1 file', $this->flashText($this->statusBar), 'not a stale "fetching" over it');
     }
 
     public function testReplaceAllRewritesAnOpenBufferInMemoryWithoutTouchingExcludedMatches(): void

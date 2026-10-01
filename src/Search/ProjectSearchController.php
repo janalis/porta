@@ -52,6 +52,9 @@ final class ProjectSearchController
     /** @var list<ResultRow> */
     private array $lastSearchResults = [];
 
+    /** Which try at a replace is the current one — {@see fetchedForReplace()}. */
+    private int $replaceGeneration = 0;
+
     /** True while showResultsPane binds its own tab — suppresses the adopt-on-bind hook. */
     private bool $promoting = false;
 
@@ -363,6 +366,9 @@ final class ProjectSearchController
      */
     public function replaceAll(string $replacement, array $excluded = []): void
     {
+        if (!$this->fetchedForReplace($replacement, $excluded)) {
+            return;
+        }
         // A multiline query's matches span lines, so the per-kept-line rewrite
         // can't apply — replace over each matched file's whole text instead
         // (no per-occurrence exclude for multiline queries).
@@ -438,6 +444,55 @@ final class ProjectSearchController
         }
 
         $this->finishReplace($touched);
+    }
+
+    /**
+     * Whether every file the replace rewrites on disk is here to read. A
+     * remote project's search runs on the server, so it finds files whose
+     * content was never fetched — their placeholder is empty, and a replace
+     * over it would skip them without a word. Those are fetched first, and
+     * the replace runs again once the last one lands.
+     *
+     * Each try is a generation, and only the newest may go on. A fetch that
+     * answers at once runs its retry inside this very loop, which replaces:
+     * the outer call must then neither replace again nor say it is still
+     * fetching, over the toast that says what was replaced.
+     *
+     * @param list<int> $excluded
+     */
+    private function fetchedForReplace(string $replacement, array $excluded): bool
+    {
+        $generation = ++$this->replaceGeneration;
+        $paths = [];
+        foreach (\array_unique(\array_column($this->lastSearchResults, 'path')) as $relPath) {
+            $abs = $this->paths->absolute($relPath);
+            if (null === ($this->buffers->get($abs) ?? $this->buffers->get(($real = \realpath($abs)) ? $real : $abs))) {
+                $paths[] = $abs;
+            }
+        }
+        // Each landing asks again for all of them — with itself, since the
+        // latest ask for a path is the one its fetch answers — and the last
+        // to land finds them all here.
+        $again = function () use ($replacement, $excluded, $generation, $paths, &$again): void {
+            if ($generation === $this->replaceGeneration && \array_all($paths, fn (string $path): bool => $this->fs->available($path, $again))) {
+                $this->replaceAll($replacement, $excluded);
+            }
+        };
+        $missing = \count(\array_filter($paths, fn (string $path): bool => !$this->fs->available($path, $again)));
+        if ($generation !== $this->replaceGeneration) {
+            return false; // a fetch that answered at once has run the replace, and said so
+        }
+        if (0 === $missing) {
+            return true;
+        }
+        $this->notifier->flash(
+            $this->translator->trans('Fetching %count% file from the server — the replace runs once it is here|Fetching %count% files from the server — the replace runs once they are here', [
+                '%count%' => $missing,
+            ]),
+            4.0,
+        );
+
+        return false;
     }
 
     /** Replace every match of a multiline query across matched files' whole text. */
