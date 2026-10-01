@@ -36,6 +36,19 @@ final readonly class CodeIntelligence
     ) {}
 
     /**
+     * The language servers this IDE starts, one per language — the first it
+     * would ask — with the argv that launches each and the initialization
+     * options it is given: for a plugin that runs one the same way on someone
+     * else's behalf, a collaborator's, say. Keyed by language id.
+     *
+     * @return array<string, array{command: list<string>, name: string, initializationOptions?: array<string, mixed>}>
+     */
+    public function languageServers(): array
+    {
+        return $this->query->primaryServers();
+    }
+
+    /**
      * What every source — language servers and analyser plugins alike — has
      * said about the OPEN buffers, merged the way the Problems panel shows it.
      * One file with `$path`, every open one without. A file with no open

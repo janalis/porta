@@ -98,6 +98,22 @@ In a session, as a guest:
 - **Closing Porta** keeps the session. Opening the copy again rejoins it, as
   long as the host is still sharing.
 
+## Language servers
+
+A guest needs no language server of their own. Each language the host has
+a server for is served to the guest by the host. When the guest's editor
+starts one, Porta runs `porta assist-lsp <language>` in its place. That
+bridge asks the host, which starts its own server for the language, with its
+own settings, on its own files.
+
+Go-to-definition, hover, completion and diagnostics all answer from the
+host's project. The file names are moved between the guest's copy and the
+host's project on the way, so a jump lands in the guest's copy.
+
+A guest reading along may not run the server's commands, because what they
+do, they do to the host's files. A guest's servers stop when they leave or are
+removed, and when sharing stops.
+
 ## Carets, undo and following
 
 - **Carets and selections.** Everyone's caret shows in their own colour, with
@@ -128,6 +144,4 @@ In a session, as a guest:
   that share: after **Assist: Stop Sharing**, an old invite no longer works.
 - **Four guests at most.** That is as many as the editor has colours to tell
   apart.
-- **No shared language server.** Each guest's language server runs on their
-  own copy.
 - **No shared terminal or run configurations.**

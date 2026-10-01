@@ -45,6 +45,16 @@ final class LspQuery
     ) {}
 
     /** @param \Closure(list<array{path: string, line: int, column: int, text: string}>, ?string): void $onDone */
+    /**
+     * @return array<string, array{command: list<string>, name: string, initializationOptions?: array<string, mixed>}>
+     *
+     * @see LspSessionPool::primaryServers()
+     */
+    public function primaryServers(): array
+    {
+        return $this->lsp->primaryServers();
+    }
+
     public function definition(string $path, int $line, int $column, \Closure $onDone): void
     {
         $this->locations('textDocument/definition', $path, $line, $column, [], $onDone);

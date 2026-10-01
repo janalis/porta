@@ -154,6 +154,27 @@ final class LspSessionPool
         $this->servers = $servers;
     }
 
+    /**
+     * The server each language is configured to start first — its argv,
+     * name and initialization options — for whatever needs to run one of its
+     * own, the same way. The catch-all '*' entry is left out: it names no
+     * language.
+     *
+     * @return array<string, array{command: list<string>, name: string, initializationOptions?: array<string, mixed>}>
+     */
+    public function primaryServers(): array
+    {
+        $primaries = [];
+        foreach ($this->servers as $languageId => $servers) {
+            if ('*' === $languageId) {
+                continue;
+            }
+            $primaries[$languageId] = $servers[0];
+        }
+
+        return $primaries;
+    }
+
     public function stop(): void
     {
         foreach ($this->sessions as $session) {

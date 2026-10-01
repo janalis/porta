@@ -205,4 +205,28 @@ final class CodeIntelligenceTest extends TestCase
         );
         $this->assertSame("!<?php\nclass A {}\n", $buffer->document->getText(), 'the user\'s keystroke, and nothing else');
     }
+
+    public function testTheServersAreTheFirstEachLanguageStarts(): void
+    {
+        $code = $this->code();
+        $this->pool->configure(
+            [
+                'php' => [['command' => ['php-ls', '--stdio'], 'name' => 'php-ls', 'initializationOptions' => ['a' => 1]], ['command' => ['extra'], 'name' => 'extra']],
+                'twig' => [['command' => ['twig-ls'], 'name' => 'twig-ls']],
+                '*' => [['command' => ['any'], 'name' => 'any']],
+            ],
+            static function (string $line): void {},
+            static function (array $params): void {},
+            static fn (array $edit): bool => false,
+        );
+
+        $this->assertSame(
+            [
+                'php' => ['command' => ['php-ls', '--stdio'], 'name' => 'php-ls', 'initializationOptions' => ['a' => 1]],
+                'twig' => ['command' => ['twig-ls'], 'name' => 'twig-ls'],
+            ],
+            $code->languageServers(),
+            'the first of each, and no catch-all',
+        );
+    }
 }
