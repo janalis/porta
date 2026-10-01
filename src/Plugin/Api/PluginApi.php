@@ -1298,9 +1298,11 @@ final class PluginApi
     }
 
     /**
-     * The caret position in the active text file (0-based line and byte column).
+     * The caret position in the active text file (0-based line and byte
+     * column), and the first line the editor shows of it — where the user is
+     * looking, which the caret alone does not say.
      *
-     * @return array{line: int, column: int}|null
+     * @return array{line: int, column: int, top: int}|null
      */
     public function caretPosition(): ?array
     {
@@ -1310,7 +1312,7 @@ final class PluginApi
         }
         $document = $runtime->editor->getDocument();
 
-        return ['line' => $document->cursorLine, 'column' => $document->cursorCol];
+        return ['line' => $document->cursorLine, 'column' => $document->cursorCol, 'top' => $runtime->editor->viewport()->vScroll];
     }
 
     /**
@@ -1427,11 +1429,19 @@ final class PluginApi
         $this->manager->runtime()->files->openFile($path, focus: OpenFocus::Editor);
     }
 
-    /** Move the caret (0-based line, UTF-16 column) in the active file. */
-    public function jumpTo(int $line, int $column = 0): void
+    /**
+     * Move the caret (0-based line, UTF-16 column) in the active file and
+     * scroll it into view — or, given $top, scroll so the editor shows that
+     * line first: where someone else is looking, say. The view snaps back to
+     * the caret the next time the caret moves, as after a wheel scroll.
+     */
+    public function jumpTo(int $line, int $column = 0, ?int $top = null): void
     {
         $runtime = $this->manager->runtime();
         $runtime->editor->jumpTo($line, $column);
+        if (null !== $top) {
+            $runtime->editor->scrollBy($top - $runtime->editor->viewport()->vScroll);
+        }
         $runtime->tui->requestRender();
     }
 

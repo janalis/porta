@@ -938,14 +938,14 @@ Actions (from handlers/hooks):
 | `activeFile(): ?string` | Absolute path of the focused buffer |
 | `selectedFiles(): list<string>` | The files selected in the project tree, in tree order, directories left out. One is the ordinary case — the tree always has its cursor row selected — so a command that acts on a set checks the count and says what it wanted |
 | `documentText(): ?string` | Full text of the focused buffer |
-| `caretPosition(): ?array` | `['line' => …, 'column' => …]` (0-based) |
+| `caretPosition(): ?array` | `['line' => …, 'column' => …, 'top' => …]` (0-based); `top` is the first line the editor shows |
 | `openBuffers(): OpenBuffers` | The open buffers — which are open and edited, their text, saving one; see [Working with open buffers](#working-with-open-buffers) |
 | `runs(): Runs` | The Run menu's tasks and the terminal runs a plugin starts; see [Running a task](#running-a-task) |
 | `codeIntelligence(): CodeIntelligence` | What the IDE knows about the code — see [Asking about the code](#asking-about-the-code) |
 | `tools(): list<array>` | Every tool every running plugin registered, in load order: `plugin`, `id`, `description`, `inputSchema`, `handler`, `effect`. For a plugin that serves them; re-read on `ToolsChanged` |
 | `insertAtCaret(string $text)` | Insert at the caret |
 | `openFile(string $path)` | Open a file in the editor |
-| `jumpTo(int $line, int $column = 0)` | Move the caret (0-based) |
+| `jumpTo(int $line, int $column = 0, ?int $top = null)` | Move the caret (0-based); with `$top`, scroll so the editor shows that line first — the next caret move snaps the view back |
 | `setDiagnostics(string $path, array $diagnostics)` | Publish editor diagnostics; each item is `['line' => int (0-based), 'message' => string, 'severity' => 1–4 (optional, 1 = error), 'column' => int (optional)]`. An empty list clears **this plugin's** findings for the file and leaves everyone else's — a language server publishing on every keystroke and an analyser publishing on every save no longer overwrite each other. |
 | `setFileStatuses(array $statuses)` | Publish the working tree's per-FILE version-control status for the file tree — `[absolute path => 'added'\|'modified'\|'deleted']`. The map REPLACES whole, so a file leaving it is how "back to unmodified" is said; an empty array clears every mark. |
 | `setLineAnnotations(array $byLine)` | Show a dim trailing note after lines of the ACTIVE document — `[0-based line => string]`. Replaces only YOUR plugin's notes, so an empty array clears yours; a line two plugins annotate shows both. Takes no path: the editor drops annotations on every document show, so re-publish from `onBufferSwitched` to keep them. |

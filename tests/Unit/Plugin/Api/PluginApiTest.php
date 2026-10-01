@@ -539,13 +539,15 @@ final class PluginApiTest extends TestCase
         $this->editor->getDocument()->setCursor(1, 2);
         $this->assertSame('/p/a.php', $api->activeFile());
         $this->assertSame("hello\nworld\n", $api->documentText());
-        $this->assertSame(['line' => 1, 'column' => 2], $api->caretPosition());
+        $this->assertSame(['line' => 1, 'column' => 2, 'top' => 0], $api->caretPosition());
 
         $api->insertAtCaret('XY');
         $this->assertSame("hello\nwoXYrld\n", $this->editor->getDocument()->getText());
 
         $api->jumpTo(0, 1);
-        $this->assertSame(['line' => 0, 'column' => 1], $api->caretPosition());
+        $this->assertSame(['line' => 0, 'column' => 1, 'top' => 0], $api->caretPosition());
+        $api->jumpTo(0, 1, top: 1);
+        $this->assertSame(['line' => 0, 'column' => 1, 'top' => 1], $api->caretPosition(), 'the view shows line 1 first, the caret where it was put');
 
         $api->openFile('/p/b.php');
         $this->assertSame([['path' => '/p/b.php', 'focus' => true]], $this->files->opened);

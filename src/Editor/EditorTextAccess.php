@@ -11,8 +11,9 @@ namespace Porta\Editor;
  *
  * This is the public plugin surface, so it is deliberately the smallest set
  * that supports the documented plugin verbs — read the file and its text,
- * insert at the caret, jump to a position. A plugin holding the widget itself
- * could reach ninety more methods, none of them API.
+ * insert at the caret, jump to a position, see and set what the view shows.
+ * A plugin holding the widget itself could reach ninety more methods, none
+ * of them API.
  */
 interface EditorTextAccess extends ActiveDocumentProvider
 {
@@ -26,4 +27,10 @@ interface EditorTextAccess extends ActiveDocumentProvider
      * Move the cursor to an LSP position and scroll it into view.
      */
     public function jumpTo(int $line, int $utf16Col): void;
+
+    /** What the view shows: the first line, above all. */
+    public function viewport(): EditorViewport;
+
+    /** Scroll the view by $delta lines without moving the caret. */
+    public function scrollBy(int $delta): void;
 }

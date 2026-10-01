@@ -110,7 +110,8 @@ In a session, as a guest:
   even when others have typed since.
 - **Following someone.** **Assist: Follow Someone**, or a name in the status
   bar's menu, makes your editor go wherever that person's caret goes, across
-  files too. Moving your own caret stops following.
+  files too, scrolled to show what they see. Moving your own caret stops
+  following.
 
 ## Settings
 
@@ -130,4 +131,3 @@ In a session, as a guest:
 - **No shared language server.** Each guest's language server runs on their
   own copy.
 - **No shared terminal or run configurations.**
-- **Follow moves your caret, not your exact scroll position.**
