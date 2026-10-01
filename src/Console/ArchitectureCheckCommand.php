@@ -76,6 +76,7 @@ final class ArchitectureCheckCommand extends Command
         'AssistPlugin>Config', // `porta assist` enables the plugin in the copy: the default list, and home
         'AssistPlugin>Event',
         'AssistPlugin>Install', // `porta assist` opens this very Porta on the copy
+        'AssistPlugin>Onboarding', // …with the first-run card marked seen: the host set the project up
         'AssistPlugin>Overlay', // the toast severities its notices pick
         'AssistPlugin>Plugin',
         'AssistPlugin>Support',
