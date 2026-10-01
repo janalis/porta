@@ -18,7 +18,7 @@ in `.porta.json`.
 
 1. Run **Assist: Share This Project** from the palette or the Plugins menu.
 2. Porta starts listening and copies the invite to the clipboard, for example
-   `porta assist 127.0.0.1:52814#4f3a…`. Send it to the people you want in.
+   `porta assist 127.0.0.1:52814#4f3a….9c1e…`. Send it to the people you want in.
 3. When someone joins, the host is asked: **Let them edit**, **Let them read
    along**, or **Turn them away**.
 
@@ -32,9 +32,15 @@ While sharing, the status bar shows `⇄` and how many are in. Click it to:
 
 **Assist: Stop Sharing** ends the session for everyone.
 
-By default the host only accepts connections **from its own machine**
-(`127.0.0.1`). This is deliberate: the invite's token is the only key, and
-the connection is not encrypted. To work across machines, use one of these:
+**The session is encrypted.** Each share makes a fresh TLS certificate, and
+the invite carries its fingerprint after the dot. A guest only talks to the
+host whose certificate matches, so nobody on the way can read the session or
+stand in for the host. The token before the dot is what gets a guest asked
+in at all, so share the invite only with the people you mean to let in.
+
+By default the host still only accepts connections **from its own machine**
+(`127.0.0.1`), so opening it to a network is a choice you make. To work across
+machines, use one of these:
 
 - **An SSH tunnel.** The guest runs `ssh -L 52814:127.0.0.1:52814 host`, then
   joins `127.0.0.1:52814#…`.
@@ -46,8 +52,11 @@ the connection is not encrypted. To work across machines, use one of these:
 Run the invite in a terminal:
 
 ```
-porta assist 127.0.0.1:52814#4f3a…
+porta assist 127.0.0.1:52814#4f3a….9c1e…
 ```
+
+If the host on the other end presents a different certificate, Porta refuses
+to join and says so.
 
 Add `--name` to choose the name the others see. Without it, Porta uses your
 login name.
@@ -114,6 +123,8 @@ In a session, as a guest:
 
 ## Limits
 
+- **Each share is a new invite.** Its certificate and token last as long as
+  that share: after **Assist: Stop Sharing**, an old invite no longer works.
 - **Four guests at most.** That is as many as the editor has colours to tell
   apart.
 - **No shared language server.** Each guest's language server runs on their
