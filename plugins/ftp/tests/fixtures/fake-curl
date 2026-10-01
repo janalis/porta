@@ -1,0 +1,115 @@
+#!/usr/bin/env php
+<?php
+
+// curl against an FTP server that is a local directory: just the options
+// FtpTransport sends, answered the way curl answers them — the same exit
+// codes and the same stderr lines. A URL's path is the directory itself
+// (`%2F` first, then the absolute path), so a test points the spec at a
+// temporary directory and this serves it.
+//
+// FAKE_CURL_LOG, when set, gets the arguments, one per line, then a blank one.
+// FAKE_FTP_PASSWORD, when set, is the only password the netrc may hold.
+
+$args = array_slice($argv, 1);
+if (false !== ($log = getenv('FAKE_CURL_LOG')) && '' !== $log) {
+    file_put_contents($log, implode("\n", $args)."\n\n", FILE_APPEND);
+}
+
+$opt = ['quote' => [], 'netrc' => null, 'mlsd' => false, 'head' => false, 'upload' => false, 'list' => false, 'output' => null, 'createDirs' => false, 'url' => ''];
+for ($i = 0; $i < count($args); ++$i) {
+    switch ($args[$i]) {
+        case '--netrc-file': $opt['netrc'] = $args[++$i]; break;
+        case '--quote': $opt['quote'][] = $args[++$i]; break;
+        case '-X': $opt['mlsd'] = 'MLSD' === $args[++$i]; break;
+        case '--head': $opt['head'] = true; break;
+        case '--upload-file': $opt['upload'] = true; ++$i; break;
+        case '--list-only': $opt['list'] = true; break;
+        case '--output': $opt['output'] = $args[++$i]; break;
+        case '--ftp-create-dirs': $opt['createDirs'] = true; break;
+        case '--': $opt['url'] = $args[++$i]; break;
+    }
+}
+
+function fail(int $code, string $message): never
+{
+    fwrite(STDERR, "curl: ($code) $message\n");
+    exit($code);
+}
+
+$expected = getenv('FAKE_FTP_PASSWORD');
+if (false !== $expected && '' !== $expected) {
+    $netrc = null === $opt['netrc'] ? '' : (string) file_get_contents($opt['netrc']);
+    preg_match('/password ("(?:[^"\\\\]|\\\\.)*"|\S+)/', $netrc, $m);
+    $given = isset($m[1]) ? ('"' === $m[1][0] ? stripcslashes(substr($m[1], 1, -1)) : $m[1]) : '';
+    if ($given !== $expected) {
+        fail(67, 'Access denied: 530');
+    }
+}
+
+$url = preg_replace('#^ftp://[^/]+/#', '', $opt['url']);
+$isDir = '' === $url || str_ends_with($url, '/');
+$segments = array_map('rawurldecode', array_values(array_filter(explode('/', $url), static fn ($s) => '' !== $s)));
+$path = '/' === ($segments[0] ?? '') ? '/'.implode('/', array_slice($segments, 1)) : (getenv('HOME').'/'.implode('/', $segments));
+$path = '/' === $path ? $path : rtrim($path, '/');
+
+function resolve(string $p, string $cwd): string
+{
+    return str_starts_with($p, '/') ? $p : rtrim($cwd, '/').'/'.$p;
+}
+
+function quoteCommands(array $commands, string $cwd): void
+{
+    $from = null;
+    foreach ($commands as $command) {
+        $optional = str_starts_with($command, '*');
+        [$verb, $arg] = explode(' ', ltrim($command, '*'), 2) + [1 => ''];
+        $target = resolve($arg, $cwd);
+        $ok = match ($verb) {
+            'MKD' => !file_exists($target) && @mkdir($target),
+            'RMD' => is_dir($target) && @rmdir($target),
+            'DELE' => is_file($target) && @unlink($target),
+            'RNFR' => file_exists($target) && ($from = $target) !== null,
+            'RNTO' => null !== $from && @rename($from, $target),
+            default => false,
+        };
+        if (!$ok && !$optional) {
+            fail(21, 'QUOT command failed with 550');
+        }
+    }
+}
+
+$home = (string) getenv('HOME');
+quoteCommands(array_values(array_filter($opt['quote'], static fn ($c) => !str_starts_with($c, '-'))), $home);
+
+$out = '';
+if ($opt['upload']) {
+    if (!is_dir(dirname($path))) {
+        $opt['createDirs'] ? mkdir(dirname($path), recursive: true) : fail(9, 'Server denied you to change to the given directory');
+    }
+    if (false === @file_put_contents($path, stream_get_contents(STDIN))) {
+        fail(25, 'Failed FTP upload: 553');
+    }
+} elseif ($opt['head']) {
+    is_file($path) || fail(19, 'Given file does not exist');
+    clearstatcache();
+    $out = 'Last-Modified: '.gmdate('D, d M Y H:i:s', (int) filemtime($path))." GMT\r\nContent-Length: ".filesize($path)."\r\nAccept-ranges: bytes\r\n";
+} elseif ($isDir) {
+    is_dir($path) || fail(9, 'Server denied you to change to the given directory');
+    if ($opt['mlsd']) {
+        $out = "type=cdir;modify=20240101000000; .\r\ntype=pdir;modify=20240101000000; ..\r\n";
+        foreach (array_diff(scandir($path), ['.', '..']) as $name) {
+            $file = $path.'/'.$name;
+            $out .= sprintf("type=%s;size=%d;modify=%s;UNIX.mode=0644; %s\r\n", is_dir($file) ? 'dir' : 'file', is_dir($file) ? 0 : filesize($file), gmdate('YmdHis', (int) filemtime($file)), $name);
+        }
+    } else {
+        $out = implode("\r\n", array_diff(scandir($path), ['.', '..']))."\r\n";
+    }
+} else {
+    is_file($path) || fail(78, 'RETR response: 550');
+    $out = (string) file_get_contents($path);
+}
+
+quoteCommands(array_values(array_map(static fn ($c) => substr($c, 1), array_filter($opt['quote'], static fn ($c) => str_starts_with($c, '-')))), $isDir ? $path : dirname($path));
+
+null === $opt['output'] ? fwrite(STDOUT, $out) : file_put_contents($opt['output'], $out);
+exit(0);

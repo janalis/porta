@@ -30,6 +30,8 @@ plugin's guide also opens from its page under **Settings → Plugins**.
 | [Code review](../plugins/review/docs/README.md) | Pull and merge request threads, and local reviews from an agent — in a view, in the diff and in the editor |
 | [Assist](../plugins/assist/docs/README.md) | Work on one project together, live: share it, let others in, edit the same files at once, follow each other |
 | [Agents (MCP)](../plugins/mcp/docs/README.md) | Let an agent such as Claude Code read your buffers and diagnostics, open files and make undoable edits in the running IDE |
+| [SSH](../plugins/ssh/docs/README.md) | Open a project that lives on a server over ssh: browse, edit, save |
+| [FTP](../plugins/ftp/docs/README.md) | Open a project on an FTP or FTPS server: browse, edit, save |
 | [Local history](../plugins/local-history/docs/README.md) | A snapshot on every save, independent of git: compare, restore, recover deleted files |
 | [Image viewer](../plugins/image-viewer/docs/README.md) | Images and SVG drawings as pictures — zoom, pan, pixel-exact where the terminal allows |
 | [Graph viewer](../plugins/graph-viewer/docs/README.md) | Graphviz and PlantUML diagrams drawn beside their source, the project's architecture graph |

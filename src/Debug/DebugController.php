@@ -10,6 +10,7 @@ use Porta\Event\DebugFrameSelected;
 use Porta\Event\DebugStatusChanged;
 use Porta\Event\DebugVariableEditRequested;
 use Porta\Event\DebugWatchRemovalRequested;
+use Porta\Filesystem\LocalOnly;
 use Porta\I18n\Translator;
 use Porta\Support\ProjectPaths;
 use Porta\Terminal\TerminalSessions;
@@ -68,6 +69,7 @@ final class DebugController implements DebugSessionObserver, StatusSegment
         private readonly TerminalSessions $sessions,
         private readonly BottomDock $dock,
         private readonly InlineValues $inlineValues,
+        private readonly ?LocalOnly $localOnly = null,
     ) {
         // Only the variable expansion stays a closure: it is
         // continuation-passing — the widget hands in the channel the answer
@@ -317,6 +319,9 @@ final class DebugController implements DebugSessionObserver, StatusSegment
     /** Shift+F9: launch the active file under its language's debug adapter. */
     public function startForCurrentFile(): void
     {
+        if (true === $this->localOnly?->refused()) {
+            return;
+        }
         if ($this->isActive()) {
             $this->notifier->flash($this->translator->trans('Debugger already running — stop it first (Ctrl+F2)'));
 

@@ -3094,6 +3094,42 @@
         <source>%key% pause</source>
         <target>%key% pausa</target>
       </trans-unit>
+      <trans-unit id="1093">
+        <source>Fetching %file%…</source>
+        <target>Recupero di %file%…</target>
+      </trans-unit>
+      <trans-unit id="1094">
+        <source>Cannot read %file% from the server: %error%</source>
+        <target>Impossibile leggere %file% dal server: %error%</target>
+      </trans-unit>
+      <trans-unit id="1095">
+        <source>Cannot change %file% on the server: %error%</source>
+        <target>Impossibile modificare %file% sul server: %error%</target>
+      </trans-unit>
+      <trans-unit id="1096">
+        <source>%file% changed on the server — save again to overwrite</source>
+        <target>%file% è cambiato sul server — salva di nuovo per sovrascrivere</target>
+      </trans-unit>
+      <trans-unit id="1097">
+        <source>No enabled plugin opens %scheme%:// projects</source>
+        <target>Nessun plugin attivo apre progetti %scheme%://</target>
+      </trans-unit>
+      <trans-unit id="1098">
+        <source>Still sending changes to the server. %repeat%</source>
+        <target>Modifiche ancora in invio al server. %repeat%</target>
+      </trans-unit>
+      <trans-unit id="1099">
+        <source>This project is on %host%: running it needs it on this machine</source>
+        <target>Questo progetto è su %host%: per eseguirlo deve essere su questa macchina</target>
+      </trans-unit>
+      <trans-unit id="1100">
+        <source>Open Remote Project…</source>
+        <target>Apri progetto remoto…</target>
+      </trans-unit>
+      <trans-unit id="1101">
+        <source>Open remote project (user@host:/path or URL)</source>
+        <target>Apri progetto remoto (utente@host:/percorso o URL)</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

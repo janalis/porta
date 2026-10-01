@@ -51,6 +51,16 @@ final readonly class FileCommands implements CommandProvider
                 },
                 keyBound: KeyDispatch::Bound,
             )
+            ->add(
+                'ide_open_remote_project',
+                function (): void {
+                    // The prompt is the editor's too: the same hop as above.
+                    if ($this->bufferService->ensureTextEditorActive()) {
+                        $this->projects->openRemote();
+                    }
+                },
+                keyBound: KeyDispatch::Bound,
+            )
             ->add('copy_path', fn () => $this->references->copyPath(), keyBound: KeyDispatch::Bound)
             ->add('copy_reference', fn () => $this->references->copyReference(), keyBound: KeyDispatch::Bound)
             ->add('reformat', fn () => $this->refactor->requestReformat())

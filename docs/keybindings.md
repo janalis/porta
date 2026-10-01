@@ -58,6 +58,7 @@ nothing.
 | `Ctrl+Alt+Shift+C` | Copy a reference to the caret — the enclosing symbol (`App\Svc::run`), or `path:line` when there is none |
 | `Ctrl+Alt+Shift+S` | New scratch file — pick a language, get an empty buffer in `<home>/.porta/scratches/` |
 | `Ctrl+Shift+O` | Open project — pick one you have opened before, or type a path. The current session ends the way a quit does (buffers saved, session written) and the IDE reopens on the new root |
+| `Ctrl+Alt+Shift+O` | Open remote project — type `user@host:/path` or an `ssh://`, `sftp://`, `ftp://` or `ftps://` URL; the [SSH](../plugins/ssh/docs/README.md) and [FTP](../plugins/ftp/docs/README.md) plugins serve it. Open Project's path prompt takes the same |
 | `Ctrl+Shift+N` / `Ctrl+P` | Go to file (fuzzy finder) |
 | `Ctrl+E` | Recent files popup (`Ctrl+E` again cycles, `Enter` opens, and typing filters) |
 | `Ctrl+←` / `Ctrl+→` | Previous / next editor tab |

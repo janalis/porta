@@ -7,6 +7,8 @@ namespace Porta\Workbench;
 use Porta\Config\PortaHome;
 use Porta\Container\AsIdeService;
 use Porta\Event\ProjectOpenRequested;
+use Porta\Filesystem\ProjectLocation;
+use Porta\Filesystem\RemoteSpec;
 use Porta\History\RecentProjectsStore;
 use Porta\I18n\Translator;
 use Porta\Widget\CodeEditorWidget;
@@ -59,7 +61,12 @@ final readonly class ProjectSwitcher
                 continue;
             }
 
-            $items[] = ['label' => \basename($root), 'hint' => self::tilde($root), 'value' => $root];
+            // A remote project's root is its cache, a hash deep in ~/.porta:
+            // what a person knows it by is the server it mirrors.
+            $remote = ProjectLocation::forRoot($root)->remote;
+            $items[] = null === $remote
+                ? ['label' => \basename($root), 'hint' => self::tilde($root), 'value' => $root]
+                : ['label' => $remote->name(), 'hint' => $remote->label(), 'value' => $root];
         }
         if ([] === $items) {
             $this->prompt();
@@ -75,6 +82,20 @@ final readonly class ProjectSwitcher
                 return;
             }
             $this->requestOpen($root);
+        });
+    }
+
+    /**
+     * Ask where a server's project is — `user@host:/path`, or an `ssh://`,
+     * `sftp://`, `ftp://` or `ftps://` URL — and open it.
+     */
+    public function openRemote(): void
+    {
+        $this->editor->openPrompt($this->translator->trans('Open remote project (user@host:/path or URL)'), '', function (string $location): void {
+            $location = \trim($location);
+            if ('' !== $location) {
+                $this->requestOpen($location);
+            }
         });
     }
 
@@ -96,9 +117,20 @@ final readonly class ProjectSwitcher
      */
     private function requestOpen(string $path): void
     {
-        $expanded = self::expand($path);
-        $root = ($real = \realpath($expanded)) ? $real : $expanded;
-        if (!\is_dir($root)) {
+        // A URL is a server's before anything looks at it here: is_dir() on
+        // `ftp://…` is PHP's own FTP client, connecting — the IDE froze on it.
+        // A bare `host:path` is checked here first, and a local directory
+        // wins a name both could be.
+        $url = \str_contains($path, '://');
+        $expanded = $url ? $path : self::expand($path);
+        $real = $url ? false : \realpath($expanded);
+        $root = false === $real ? $expanded : $real;
+        $remote = !$url && \is_dir($root) ? null : RemoteSpec::parse($path);
+        $home = PortaHome::base();
+        if (null !== $remote && null !== $home) {
+            $root = ProjectLocation::prepare($remote, $home);
+        }
+        if (null === $remote && $url || !\is_dir($root)) {
             $this->notifier->flash($this->translator->trans('Not a directory: %path%', ['%path%' => $path]));
 
             return;

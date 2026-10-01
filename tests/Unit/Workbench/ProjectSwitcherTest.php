@@ -7,10 +7,13 @@ namespace Porta\Tests\Unit\Workbench;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
 use Porta\Event\ProjectOpenRequested;
+use Porta\Filesystem\ProjectLocation;
+use Porta\Filesystem\RemoteSpec;
 use Porta\History\RecentProjectsStore;
 use Porta\I18n\Translator;
 use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\PreservesPortaHome;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestTui;
@@ -195,6 +198,91 @@ final class ProjectSwitcherTest extends TestCase
         $this->editor->handleInput("\r");
 
         $this->assertSame([(string) \realpath($target)], $this->requested);
+    }
+
+    private function type(string $text): void
+    {
+        foreach (\mb_str_split($text) as $ch) {
+            $this->editor->handleInput($ch);
+        }
+        $this->editor->handleInput("\r");
+    }
+
+    /**
+     * A server's project opens at its cache — made the first time, marked as
+     * the server's — from the remote prompt, and from the path prompt too.
+     */
+    public function testARemoteLocationOpensItsCache(): void
+    {
+        $switcher = $this->switcher();
+
+        $switcher->openRemote();
+        $this->type('deploy@example.org:/srv/app');
+
+        $this->assertCount(1, $this->requested);
+        $this->assertSame('ssh://deploy@example.org/srv/app', ProjectLocation::forRoot($this->requested[0])->remote?->url());
+        $this->assertStringStartsWith((string) \realpath($this->home->dir).'/.porta/remote/', $this->requested[0]);
+
+        $switcher->open();
+        $this->type('ftp://example.org/pub');
+        $this->assertSame('ftp', ProjectLocation::forRoot($this->requested[1])->remote?->scheme);
+    }
+
+    /** A local directory wins a name that could also be a server's. */
+    public function testALocalDirectoryWinsOverARemoteReading(): void
+    {
+        $switcher = $this->switcher();
+        $local = $this->home->dir.'/host:path';
+        \mkdir($local, permissions: 0o755, recursive: true);
+
+        $switcher->openRemote();
+        $this->type($local);
+
+        $this->assertSame([(string) \realpath($local)], $this->requested);
+    }
+
+    /**
+     * A URL no transport serves is refused without being looked at: is_dir()
+     * on `http://…` is PHP's own HTTP client, which would hang the IDE on a
+     * server that does not answer. The host here does not resolve — were it
+     * looked up, this test would wait on DNS.
+     */
+    public function testAUrlNoTransportServesIsRefusedUnlooked(): void
+    {
+        $switcher = $this->switcher();
+
+        $switcher->openRemote();
+        $this->type('http://porta-test.invalid/');
+
+        $this->assertSame([], $this->requested);
+        $this->assertStringContainsString('Not a directory: http://porta-test.invalid/', $this->flashText($this->statusBar));
+    }
+
+    public function testAnEmptyRemoteLocationRequestsNothing(): void
+    {
+        $switcher = $this->switcher();
+
+        $switcher->openRemote();
+        $this->type('  ');
+
+        $this->assertSame([], $this->requested);
+        $this->assertSame('', $this->flashText($this->statusBar), 'blank is not a location to refuse');
+    }
+
+    /** A recent remote project is listed by the server it mirrors, not by its cache's path. */
+    public function testARecentRemoteProjectIsListedByItsServer(): void
+    {
+        $home = new TempProject();
+        $cache = ProjectLocation::prepare(new RemoteSpec('ssh', 'example.org', '/srv/app', 'deploy'), $home->dir);
+        $local = new TempProject(['composer.json' => '{}']);
+        $switcher = $this->switcher($local->dir, $cache);
+
+        $switcher->open();
+
+        /** @var array{items: list<array{label: string, hint: string, value: string}>} $list */
+        $list = Probe::get(Probe::get($this->editor, 'overlayHost'), 'overlay');
+        $this->assertSame(['label' => 'app', 'hint' => 'deploy@example.org:/srv/app', 'value' => $cache], $list['items'][0], 'most recent first');
+        $this->assertSame(\basename($local->dir), $list['items'][1]['label'], 'a local one by its folder');
     }
 
     /**

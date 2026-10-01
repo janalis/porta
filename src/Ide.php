@@ -26,6 +26,8 @@ use Porta\Event\DiffToolLaunched;
 use Porta\Event\IdeReady;
 use Porta\Event\IdeShuttingDown;
 use Porta\Event\MergeToolLaunched;
+use Porta\Filesystem\ProjectLocation;
+use Porta\Filesystem\RemoteFilesystem;
 use Porta\History\BookmarkPersistence;
 use Porta\History\RecentProjectsStore;
 use Porta\History\SessionRestorer;
@@ -154,7 +156,9 @@ final class Ide
             $config,
             $this->ansi ? Ansi::Enabled : Ansi::Disabled,
             $this->lspCommand,
-            $this->lspDisabled ? LspMode::Disabled : LspMode::Enabled,
+            // A remote project's cache holds what was opened, not the project:
+            // a language server over it would report every class missing.
+            $this->lspDisabled || ProjectLocation::forRoot($this->rootDir)->isRemote() ? LspMode::Disabled : LspMode::Enabled,
             $this->docsDir,
         );
         $locator = $this->container->get('porta.ide');
@@ -423,6 +427,13 @@ final class Ide
         // the terminal-state refresher keeps its own tick-counting 1s cadence.
         $watcher = EventLoop::repeat(0.25, $this->bufferService->pollFilesystemSlice(...));
         $refresher = EventLoop::repeat(1.0, $this->terminalRefresher->tick(...));
+        // A remote project's server is asked, much more slowly, what changed
+        // there; for a local project each tick returns at once.
+        $remote = $this->service(RemoteFilesystem::class);
+        $remotePoll = EventLoop::repeat(RemoteFilesystem::POLL_SECONDS, $remote->poll(...));
+        // …and once at once: the tree was built before the plugins that reach
+        // the server activated, so its first listing waits for this.
+        $remoteFirst = EventLoop::defer($remote->poll(...));
         // Deferred, so it runs once tui->run() has started the terminal: the
         // answers come back as INPUT, which needs raw mode and the stdin
         // watcher. A pane paints half-blocks until they have arrived.
@@ -551,6 +562,9 @@ final class Ide
             $this->perf->stop();
             EventLoop::cancel($watcher);
             EventLoop::cancel($refresher);
+            EventLoop::cancel($remotePoll);
+            EventLoop::cancel($remoteFirst);
+            $remote->close();
             EventLoop::cancel($graphicsProbe);
             foreach ($signals as $signal) {
                 EventLoop::cancel($signal);

@@ -22,6 +22,7 @@ use Porta\Plugin\Api\DisposablePlugin;
 use Porta\Plugin\Api\PluginApi;
 use Porta\Plugin\Api\PluginException;
 use Porta\Plugin\Api\PortaPlugin;
+use Porta\Plugin\Api\RemoteProjectPlugin;
 use Porta\Plugin\Api\ServerRole;
 use Porta\Plugin\Api\ToolCaller;
 use Porta\Plugin\Api\ToolEffect;
@@ -599,6 +600,18 @@ final class PluginManager implements
         }
 
         return $adapters;
+    }
+
+    /**
+     * The active plugins that open projects on a server, by name, in load
+     * order — what {@see PluginRemoteTransports} asks.
+     *
+     * @return array<string, RemoteProjectPlugin>
+     */
+    public function remoteProjectPlugins(): array
+    {
+        /** @var array<string, RemoteProjectPlugin> */
+        return \array_filter($this->instances, static fn (PortaPlugin $plugin): bool => $plugin instanceof RemoteProjectPlugin);
     }
 
     /**

@@ -9,6 +9,7 @@ use Porta\Config\ConfigFiles;
 use Porta\Config\ConfigScope;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferSaver;
+use Porta\Filesystem\ProjectLocation;
 use Porta\I18n\Translator;
 use Porta\Plugin\Api\AbstractPlugin;
 use Porta\Plugin\Api\AbstractToolPlugin;
@@ -258,6 +259,24 @@ final class AbstractToolPluginTest extends TestCase
 
         $plugin->callRelease();
         $this->assertNotNull($plugin->callAcquire($api), 'released, so it runs again');
+    }
+
+    /**
+     * A remote project's cache holds what was opened, not the project: a
+     * tool that reads the project would read placeholders. Refused before
+     * the slot or the binary is looked at, so nothing is left held.
+     */
+    public function testARemoteProjectIsNotTheToolsToRun(): void
+    {
+        $project = new TempProject(['vendor/bin/demo' => "#!/bin/sh\n", ProjectLocation::MARKER => '{"url": "ssh://example.org/srv/app"}']);
+        \chmod($project->path('vendor/bin/demo'), permissions: 0o755);
+        $this->project = $project;
+        $api = $this->api();
+        $plugin = $this->plugin();
+        $this->activate($plugin, $api);
+
+        $this->assertNull($plugin->callAcquire($api));
+        $this->assertSame('This project is on example.org: running it needs it on this machine', $this->flashText($this->status));
     }
 
     public function testPathOnlyToolsGetTheirOwnMissingMessage(): void

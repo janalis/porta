@@ -226,6 +226,71 @@ the document saved and re-stamps it, because otherwise the poller reloads
 identical content and flashes "Reloaded" after every format. Size is compared
 before content, since a project-wide replace deliberately diverges from disk.
 
+## Remote projects
+
+A remote project is opened like any other, at a local directory: its cache,
+`~/.porta/remote/<id>/<name>`. What makes it remote is `.porta/remote.json`,
+the marker `Filesystem/ProjectLocation` reads, which holds the server's URL and
+never a password. Everything that keys on `$rootDir` — the stores, the buffers,
+`ProjectPaths`, `Lsp/Uri` — is untouched, because the root is still a path
+here.
+
+**The cache is the server's tree as far as anyone looked.**
+
+- The tree's walk calls `ProjectFilesystem::listed()` for each directory it
+  shows. The first time, that lists the directory on the server.
+- Every file in the listing lands as an **empty placeholder**. So the tree,
+  its change poll, quick-open and the reconciler all work on the cache with no
+  remote awareness.
+- `BufferService::openFile()` asks `available()` before reading. A placeholder
+  is fetched, and the open is asked again from the callback.
+- `.porta/remote-index.json` (`RemoteIndex`) records which paths are
+  placeholders. A restart never mistakes one for an empty file.
+
+**Changes go through `Filesystem/ChangeQueue`, one at a time, in order.** A
+file cannot be uploaded into a directory whose `mkdir` has not landed.
+
+- An upload carries the bytes it was queued with. A later save replaces them
+  while it waits, so a burst of saves sends once or twice.
+- A rename or delete of the path **seals** the waiting upload: it still sends,
+  because the server takes the same steps the cache took, but a later save
+  there is a new file's.
+- An upload sends the stamp the file was fetched at. The transport refuses
+  the write when the server's copy moved, the next save overwrites, and the
+  toast says so.
+- `pending()` counts what is unsent, and `UnsavedChangesGuard` makes quitting
+  and switching ask twice on it.
+
+**Plugins activate after the tree is first built.** So `listed()` with no
+transport yet remembers the directory, and `Ide::run()` defers one `poll()` that
+lists it. After that, `poll()` runs on a `POLL_SECONDS` timer. It re-lists the
+directories of open buffers first and then the rest in turn. A fetched file
+whose stamp moved is fetched again, and the ordinary reconciler reloads it or
+flags it as changed under the edit.
+
+**What runs the project here is refused.** The cache holds what was opened, not
+the project:
+
+- `Ide` boots with `LspMode::Disabled`.
+- `Filesystem/LocalOnly` gates Run, terminals and the debugger.
+- `AbstractToolPlugin::acquire()` refuses the analysers and formatters.
+
+**Transports are plugins'.**
+
+- A `RemoteProjectPlugin` answers `remoteTransport(RemoteSpec)`, and
+  `Plugin/Runtime/PluginRemoteTransports` asks each active one in load order.
+- `ssh` drives `ssh` with a shared ControlMaster connection, running POSIX
+  `sh` scripts on the server.
+- `ftp` drives `curl` against MLSD/MDTM, keeping the password in a 0600 netrc.
+- `porta ssh` and `porta ftp` are `Plugin/Api/OpenRemoteCommand`. They answer
+  what needs a terminal, prepare the cache and open Porta on it.
+  **File → Open Remote Project…** (`ProjectSwitcher::openRemote()`) does the
+  same from inside.
+
+**Never stat a URL.** `is_dir('ftp://…')` and `is_dir('http://…')` are PHP's
+own network clients, so the switcher treats anything with `://` as a server's
+before any filesystem call touches it.
+
 ## The editor slot and live previews
 
 The editor body is breadcrumbs, the find bar, then ONE content slot, and

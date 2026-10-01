@@ -15,6 +15,8 @@ use Porta\Event\BufferSwitched;
 use Porta\Event\DiagnosticsChanged;
 use Porta\Event\PreviewModeRequested;
 use Porta\Event\TreeFileActivated;
+use Porta\Filesystem\LocalFilesystem;
+use Porta\Filesystem\ProjectFilesystem;
 use Porta\I18n\Translator;
 use Porta\Lsp\BufferReopener;
 use Porta\Lsp\FormatOnSave;
@@ -35,7 +37,6 @@ use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Clock\NativeClock;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
-use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -83,7 +84,7 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
         private readonly PreviewFeeder $feeder,
         private readonly EditorArea $editorArea,
         private readonly EditorSlot $slot,
-        private readonly Filesystem $fs = new Filesystem(),
+        private readonly ProjectFilesystem $fs = new LocalFilesystem(),
         private readonly ClockInterface $clock = new NativeClock(),
     ) {}
 
@@ -167,6 +168,12 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
     public function openFile(string $path, OpenFocus $focus = OpenFocus::Keep, OpenAs $as = OpenAs::Viewer): void
     {
         $path = ($resolved = \realpath($path)) ? $resolved : $path;
+        // A remote file whose content was never fetched is an empty
+        // placeholder: opening it now would show nothing, and a save would
+        // write that nothing back. The open is asked again once it is here.
+        if (!$this->buffers->has($path) && !$this->fs->available($path, fn () => $this->openFile($path, $focus, $as))) {
+            return;
+        }
         if (OpenFocus::Background === $focus && null !== $this->buffers->active()) {
             $this->openBehind($path);
 

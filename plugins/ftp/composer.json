@@ -1,0 +1,24 @@
+{
+    "name": "porta/ftp",
+    "description": "Open a project that lives on an FTP or FTPS server: browse, edit and save its files as though they were here",
+    "type": "porta-plugin",
+    "license": "MIT",
+    "require": {
+        "php": ">=8.5",
+        "symfony/console": "^8.2",
+        "symfony/process": "^8.2"
+    },
+    "autoload": {
+        "psr-4": {
+            "Porta\\FtpPlugin\\": "src/"
+        }
+    },
+    "extra": {
+        "porta": {
+            "api": 1,
+            "commands": {
+                "ftp": "Porta\\FtpPlugin\\Console\\OpenCommand"
+            }
+        }
+    }
+}

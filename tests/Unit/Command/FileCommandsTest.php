@@ -128,4 +128,22 @@ final class FileCommandsTest extends TestCase
             $this->closeIde($ide);
         }
     }
+
+    /** The remote prompt is the editor's too: the same hop back from a viewer tab. */
+    public function testOpeningARemoteProjectFromAViewerTabStillShowsThePrompt(): void
+    {
+        $ide = $this->boot();
+        try {
+            $buffers = Services::resolve($ide, BufferManager::class);
+            Services::resolve($ide, BufferService::class)->openFile($this->project->path('a.php'));
+            $buffers->openPane('a.png', 'image', payload: null);
+
+            Services::resolve($ide, CommandRegistry::class)->run('ide_open_remote_project');
+
+            $this->assertNotTrue($buffers->active()?->isViewer(), 'hopped back to a text tab');
+            $this->assertTrue(EditorState::promptOpen(Services::resolve($ide, CodeEditorWidget::class)), 'and the prompt is up');
+        } finally {
+            $this->closeIde($ide);
+        }
+    }
 }

@@ -304,6 +304,37 @@ surface resolves from the code editor widget's rect, and a viewer pane detaches
 that widget — so a viewer-scoped command there is gated on exactly the state
 that hides it.
 
+## Remote projects
+
+**A cache behind the filesystem seam, not virtual paths.** Opening a project on
+a server keeps `$rootDir` a local directory, the cache, and puts the server
+behind `Filesystem/ProjectFilesystem`.
+
+The alternatives were measured against what reads the root:
+
+- **Virtual `sftp://` paths everywhere.** About 62 `$rootDir` consumers and 57
+  `ProjectPaths` users `realpath()` it, and so do `Lsp/Uri`, the buffer keys
+  and every store.
+- **PHP stream wrappers.** These are a process-wide global. `realpath()` fails
+  on them. And they are synchronous: the tree's per-entry `is_dir` would cost
+  a round trip each, on the loop that renders.
+- **An sshfs/FUSE mount.** It needs software installed, and grep and a
+  language server over a network mount are slow.
+
+**Unfetched files are empty placeholders**, so listing-only code (the tree's
+poll, quick-open, the reconciler) needed no change. Only the readers of
+content ask `available()`.
+
+**An upload carries its bytes from when it was queued.** It does not read the
+file at its turn. A save followed by a rename before the upload ran found
+nothing to send, and the rename after it failed on the server.
+
+**Run, terminals, the debugger, language servers and tool plugins are refused
+on a remote project.** The cache holds what was opened, not the project.
+
+*Re-opens on:* remote execution (a transport that can run a command there),
+which would make Run and a language server over ssh possible.
+
 ## Events
 
 **Seven closure wirings were measured and left alone.** `OverlayWidget`'s

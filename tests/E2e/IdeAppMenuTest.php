@@ -448,7 +448,9 @@ final class IdeAppMenuTest extends TestCase
     {
         \putenv('PATH=/nonexistent');
         $project = new TempProject([
-            'A.php' => "<?php\necho 1;\n",
+            // Indented past the File dropdown, which floats over the editor's
+            // first columns and widens with its longest entry.
+            'A.php' => "<?php\n".\str_repeat(' ', times: 24)."echo 1;\n",
             'zmarker.php' => "<?php\n",
         ]);
 
@@ -463,7 +465,7 @@ final class IdeAppMenuTest extends TestCase
                     $this->assertNotNull($this->rowOf($before, 'zmarker'), 'tree lists zmarker.php before the menu opens');
                     // The File dropdown floats over the TREE columns now, so the
                     // row-stability marker must live outside its footprint: use
-                    // the editor's text (col ~38, untouched by the dropdown).
+                    // the editor's text (col ~62, untouched by the dropdown).
                     $markerRow = $this->rowOf($before, 'echo 1;');
                     $this->assertNotNull($markerRow, 'editor content visible before the menu opens');
 

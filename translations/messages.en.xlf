@@ -3094,6 +3094,42 @@
         <source>%key% pause</source>
         <target>%key% pause</target>
       </trans-unit>
+      <trans-unit id="1093">
+        <source>Fetching %file%…</source>
+        <target>Fetching %file%…</target>
+      </trans-unit>
+      <trans-unit id="1094">
+        <source>Cannot read %file% from the server: %error%</source>
+        <target>Cannot read %file% from the server: %error%</target>
+      </trans-unit>
+      <trans-unit id="1095">
+        <source>Cannot change %file% on the server: %error%</source>
+        <target>Cannot change %file% on the server: %error%</target>
+      </trans-unit>
+      <trans-unit id="1096">
+        <source>%file% changed on the server — save again to overwrite</source>
+        <target>%file% changed on the server — save again to overwrite</target>
+      </trans-unit>
+      <trans-unit id="1097">
+        <source>No enabled plugin opens %scheme%:// projects</source>
+        <target>No enabled plugin opens %scheme%:// projects</target>
+      </trans-unit>
+      <trans-unit id="1098">
+        <source>Still sending changes to the server. %repeat%</source>
+        <target>Still sending changes to the server. %repeat%</target>
+      </trans-unit>
+      <trans-unit id="1099">
+        <source>This project is on %host%: running it needs it on this machine</source>
+        <target>This project is on %host%: running it needs it on this machine</target>
+      </trans-unit>
+      <trans-unit id="1100">
+        <source>Open Remote Project…</source>
+        <target>Open Remote Project…</target>
+      </trans-unit>
+      <trans-unit id="1101">
+        <source>Open remote project (user@host:/path or URL)</source>
+        <target>Open remote project (user@host:/path or URL)</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

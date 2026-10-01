@@ -32,6 +32,7 @@ final class MenuModel
     private const array DEFS = [
         'File' => [
             'i:ide_open_project',
+            'i:ide_open_remote_project',
             self::SEP,
             'e:save',
             'e:save_all',

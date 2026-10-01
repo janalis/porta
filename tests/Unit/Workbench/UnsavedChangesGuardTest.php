@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Workbench;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
+use Porta\Filesystem\ProjectFilesystem;
 use Porta\I18n\Translator;
 use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TestTui;
@@ -29,18 +30,74 @@ final class UnsavedChangesGuardTest extends TestCase
     private StatusBarWidget $statusBar;
     private MockClock $clock;
 
-    private function guard(): UnsavedChangesGuard
+    private function guard(int $unsent = 0): UnsavedChangesGuard
     {
         $this->buffers = new BufferManager();
         $this->statusBar = new StatusBarWidget();
         $this->clock = new MockClock();
+        $files = new readonly class($unsent) implements ProjectFilesystem {
+            public function __construct(
+                private int $unsent,
+            ) {}
+
+            public function available(string $path, \Closure $then): bool
+            {
+                return true;
+            }
+
+            public function listed(string $dir): bool
+            {
+                return true;
+            }
+
+            public function dumpFile(string $path, string $content): void {}
+
+            public function mkdir(string $path): void {}
+
+            public function rename(string $from, string $to, bool $overwrite = false): void {}
+
+            public function remove(string $path): void {}
+
+            public function copy(string $source, string $target): void {}
+
+            public function pending(): int
+            {
+                return $this->unsent;
+            }
+        };
 
         return new UnsavedChangesGuard(
             $this->buffers,
             new Notifier($this->statusBar, TestTui::create()),
             new Translator('en'),
             $this->clock,
+            $files,
         );
+    }
+
+    /**
+     * A save that has not reached a remote project's server yet is lost by
+     * quitting as surely as an unsaved edit — the buffer says it is saved,
+     * which is exactly why it has to be said.
+     */
+    public function testChangesStillOnTheirWayToTheServerAskTwice(): void
+    {
+        $guard = $this->guard(unsent: 2);
+
+        $this->assertFalse($guard->confirmed('quit', 'press again'));
+        $this->assertSame('Still sending changes to the server. press again', $this->flashText($this->statusBar));
+        $this->assertTrue($guard->confirmed('quit', 'press again'));
+    }
+
+    /** Unsaved edits are the bigger news, and the message keeps counting them. */
+    public function testUnsavedEditsAreNamedFirstWhenBothAreTrue(): void
+    {
+        $guard = $this->guard(unsent: 1);
+        $this->dirty();
+
+        $guard->confirmed('quit', 'press again');
+
+        $this->assertStringContainsString('1 file has', $this->flashText($this->statusBar));
     }
 
     private function dirty(): void

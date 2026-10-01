@@ -10,6 +10,8 @@ use Porta\Editor\ChangeMarkKind;
 use Porta\Editor\DiagnosticSeverity;
 use Porta\Event\TreeDropRequested;
 use Porta\Event\TreeFileActivated;
+use Porta\Filesystem\LocalFilesystem;
+use Porta\Filesystem\ProjectFilesystem;
 use Porta\I18n\Translator;
 use Porta\Layout\ResizableSidebar;
 use Porta\Support\AnsiText;
@@ -165,6 +167,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
         ?Styles $styles = null,
         private readonly ?FileDecorations $fileDecorations = null,
         private readonly Translator $translator = new Translator('en'),
+        private readonly ProjectFilesystem $files = new LocalFilesystem(),
         private readonly ?EventDispatcherInterface $events = null,
     ) {
         $this->width = $width;
@@ -1005,6 +1008,9 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
 
     private function walk(string $dir, int $depth): void
     {
+        // A remote directory nobody listed yet is empty in the cache: this
+        // starts its listing, and the poll below sees the entries arrive.
+        $this->files->listed($dir);
         $mtime = \is_dir($dir) ? (int) \filemtime($dir) : -1; // before the scandir it vouches for
         $scanned = \is_dir($dir) ? \scandir($dir) : false;
         $entries = $scanned ? $scanned : [];

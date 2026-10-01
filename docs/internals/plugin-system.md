@@ -17,7 +17,8 @@ Earlier sources shadow later ones by directory name. Project and global plugins
 are **opt-out** — loaded unless named in `disabledPlugins`. Bundled ones follow
 `enabledPlugins`: when the key is absent
 `IdeConfig::DEFAULT_ENABLED_PLUGINS` applies, so the viewers, TODO scan, local
-history and git blame work on a fresh install while the rest stay off.
+history, git blame and opening a project over ssh or FTP work on a fresh
+install while the rest stay off.
 
 An explicit list **replaces** the default, even an empty one. That is why
 `PortaJsonWriter::persistBundled*` materialises the default before editing:

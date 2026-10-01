@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Plugin\Api;
 
+use Porta\Filesystem\ProjectLocation;
 use Porta\Overlay\State\ToastSeverity;
 use Porta\Support\AsyncProcess;
 use Symfony\Component\Process\ExecutableFinder;
@@ -74,9 +75,19 @@ abstract class AbstractToolPlugin extends AbstractPlugin
         return fn (): bool => null !== $this->binary($api);
     }
 
-    /** Take the single-flight slot and resolve the binary, or flash why not and return null. */
+    /**
+     * Take the single-flight slot and resolve the binary, or flash why not and
+     * return null. A remote project is a why not: its cache holds what was
+     * opened, not the project the tool needs to read.
+     */
     protected function acquire(PluginApi $api): ?string
     {
+        $remote = ProjectLocation::forRoot($api->projectRoot())->remote;
+        if (null !== $remote) {
+            $api->flash($api->trans('This project is on %host%: running it needs it on this machine', ['%host%' => $remote->host]), 4.0);
+
+            return null;
+        }
         if ($this->running) {
             $api->flash($api->trans('%tool%: already running', ['%tool%' => $this->name()]));
 

@@ -129,6 +129,9 @@ final class ActionCatalog
         // All, which takes one fewer modifier rather than one more.
         'ide_new_scratch' => ['label' => 'New Scratch File', 'keys' => ['ctrl+alt+shift+s']],
         'ide_open_project' => ['label' => 'Open Project…', 'keys' => ['ctrl+shift+o']],
+        // Open Project's chord with one more modifier: it is the same verb,
+        // aimed at a server. Ctrl+Alt+O is the editor's Organize Imports.
+        'ide_open_remote_project' => ['label' => 'Open Remote Project…', 'keys' => ['ctrl+alt+shift+o']],
         'ide_undo_refactoring' => ['label' => 'Undo Last Refactoring', 'keys' => ['ctrl+alt+z']],
         // IDE scope, not the editor keymap: the point of this one is to be
         // available while a VIEWER holds the pane and the editor is detached.

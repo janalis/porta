@@ -13,6 +13,7 @@ use Porta\Debug\ExceptionFilterStore;
 use Porta\Debug\InlineValues;
 use Porta\Debug\ProcessDapClientFactory;
 use Porta\Debug\WatchStore;
+use Porta\Filesystem\LocalOnly;
 use Porta\I18n\Translator;
 use Porta\Lsp\InlineValueRequest;
 use Porta\Lsp\LspSessionPool;
@@ -33,7 +34,7 @@ use Symfony\Component\EventDispatcher\EventDispatcher;
  */
 final class TestDebugController
 {
-    public static function create(string $root = '/p'): DebugController
+    public static function create(string $root = '/p', ?LocalOnly $localOnly = null): DebugController
     {
         $tui = TestTui::create(100, 24);
         $editor = new CodeEditorWidget();
@@ -64,6 +65,7 @@ final class TestDebugController
             $sessions,
             TestBottomDock::create($tui, $terminalPanel, new ResultsPanelWidget(), $panel, sessions: $sessions),
             new InlineValues(new InlineValueRequest(new LspSessionPool(\sys_get_temp_dir(), new FixedActiveFile(), new Translator())), $editor->decorations, $tui, $editor),
+            $localOnly,
         );
     }
 }

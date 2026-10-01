@@ -238,6 +238,43 @@ classes and its `requires`' are loadable when it runs. Only the plugins shipped
 with Porta are asked — a project's `.porta/plugins/` never runs from a shell
 prompt — and whether a project enabled the plugin does not matter.
 
+### Opening projects on a server
+
+A plugin that reaches a kind of server can open projects there, the way the
+bundled `ssh` and `ftp` plugins do. Core keeps the cache, decides what to fetch
+and when, orders the uploads and owns every conflict. The plugin only moves
+bytes. It implements `Porta\Plugin\Api\RemoteProjectPlugin` beside
+`AbstractPlugin`:
+
+```php
+return new class('webdav') extends AbstractPlugin implements RemoteProjectPlugin {
+    public function activate(PluginApi $api): void {}
+
+    public function remoteTransport(RemoteSpec $spec): ?RemoteTransport
+    {
+        return 'ftps' === $spec->scheme ? new MyTransport($spec) : null;
+    }
+};
+```
+
+The transport extends `Porta\Filesystem\RemoteTransport`:
+
+- **Verbs:** `list`, `fetch`, `put` (with the stamp the file must still have),
+  `mkdir`, `rename`, `remove`, and `close` when the project closes.
+- **Answers:** each verb answers once, through its callback, from the event
+  loop. A failure is the string a person is shown.
+- **Paths:** paths are relative to the project's directory on the server, and
+  `RemoteSpec::remotePath()` makes them the server's.
+- **Processes:** a transport that drives a command-line tool extends
+  `Porta\Filesystem\CommandTransport`. It gets `run()`, `failure()` and
+  `close()`.
+
+Opening one from a shell is a console command (above) extending
+`Porta\Plugin\Api\OpenRemoteCommand`. You give it `schemes()` and
+`connect()`, which is whatever needs a person at a terminal: a password, a host
+key. The base reads the location, makes the cache with
+`ProjectLocation::prepare()` and opens Porta on it.
+
 ## Putting a command in a menu
 
 `addMenuItem()` takes an optional surface:

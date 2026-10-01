@@ -82,6 +82,24 @@ A subdirectory there costs nothing in the graph — `composer arch` attributes a
 file by the first segment after `Porta\`, so `Porta\GitPlugin\Process\Foo` is a
 `GitPlugin` file exactly as `Porta\GitPlugin\Foo` was.
 
+**`Filesystem/`** — where the project's files really live. `ProjectFilesystem`
+is the seam the editor, the tree, the tree verbs and project-wide replace write
+and read-gate through. It has three implementations:
+
+- `LocalFilesystem`, which is Symfony's verbs.
+- `RemoteFilesystem`, a server's project through its cache.
+- `ProjectFiles`, the alias that picks one of the two at boot from
+  `ProjectLocation`.
+
+The rest of this namespace:
+
+- **The remote engine:** `RemoteIndex`, `ChangeQueue` and the
+  `RemoteSpec`/`RemoteStamp`/`RemoteEntry`/`RemoteFile` value objects.
+- **The plugin contract:** `RemoteTransport`, which plugins implement, and
+  `CommandTransport`, the shared base for transports that drive a
+  command-line tool.
+- **`LocalOnly`:** the gate in front of what runs the project here.
+
 **`Install/`** — Porta outside the IDE: the `porta` link on `PATH`
 (`CommandLink`), git's difftool/mergetool config (`GitToolSetup`) and the
 running binary (`PortaBinary`). Shared by `Console/` (`--git-setup`) and the

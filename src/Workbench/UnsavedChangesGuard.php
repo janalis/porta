@@ -6,6 +6,8 @@ namespace Porta\Workbench;
 
 use Porta\Container\AsIdeService;
 use Porta\Editor\BufferManager;
+use Porta\Filesystem\LocalFilesystem;
+use Porta\Filesystem\ProjectFilesystem;
 use Porta\I18n\Translator;
 use Porta\Support\Clocks;
 use Psr\Clock\ClockInterface;
@@ -39,12 +41,14 @@ final class UnsavedChangesGuard
         private readonly Notifier $notifier,
         private readonly Translator $translator,
         private readonly ClockInterface $clock,
+        private readonly ProjectFilesystem $files = new LocalFilesystem(),
     ) {}
 
     /**
-     * Whether $verb may proceed: true with nothing dirty, or on a second ask
-     * within the window. Otherwise it flashes what would be lost and returns
-     * false.
+     * Whether $verb may proceed: true with nothing dirty and nothing still on
+     * its way to a remote project's server, or on a second ask within the
+     * window. Otherwise it flashes what would be lost and returns false — a
+     * save that has not been uploaded yet is lost as surely as an unsaved edit.
      *
      * @param string $verb   an id for the window, so two different verbs cannot
      *                       confirm each other
@@ -54,7 +58,8 @@ final class UnsavedChangesGuard
     public function confirmed(string $verb, string $repeat): bool
     {
         $dirty = $this->buffers->dirtyCount();
-        if (0 === $dirty) {
+        $unsent = $this->files->pending();
+        if (0 === $dirty && 0 === $unsent) {
             return true;
         }
         $now = Clocks::seconds($this->clock);
@@ -63,6 +68,11 @@ final class UnsavedChangesGuard
         }
 
         $this->lastRefusal[$verb] = $now;
+        if (0 === $dirty) {
+            $this->notifier->flash($this->translator->trans('Still sending changes to the server. %repeat%', ['%repeat%' => $repeat]), 3.0);
+
+            return false;
+        }
         $noun = $this->translator->trans('1 file has|%count% files have', ['%count%' => $dirty]);
         $this->notifier->flash($this->translator->trans('Unsaved changes — %noun% edits. %repeat%', [
             '%noun%' => $noun,

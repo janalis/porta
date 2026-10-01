@@ -1,0 +1,801 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Porta\Tests\Unit\Filesystem;
+
+use PHPUnit\Framework\TestCase;
+use Porta\Editor\BufferManager;
+use Porta\Filesystem\ProjectLocation;
+use Porta\Filesystem\RemoteFilesystem;
+use Porta\Filesystem\RemoteSpec;
+use Porta\Filesystem\RemoteTransport;
+use Porta\Filesystem\RemoteTransportSource;
+use Porta\I18n\Translator;
+use Porta\Tests\Support\FakeRemoteTransport;
+use Porta\Tests\Support\StatusReads;
+use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\TestTui;
+use Porta\Widget\StatusBarWidget;
+use Porta\Workbench\Notifier;
+use Symfony\Component\Filesystem\Filesystem;
+
+/**
+ * A server's project through its cache: what is listed lands as placeholders,
+ * what is opened is fetched, and what changes here reaches the server in the
+ * order it was made — refused when the server's copy moved underneath.
+ */
+final class RemoteFilesystemTest extends TestCase
+{
+    use StatusReads;
+
+    private TempProject $server;
+    private TempProject $cache;
+    private FakeRemoteTransport $transport;
+    private StatusBarWidget $status;
+    private BufferManager $buffers;
+
+    protected function setUp(): void
+    {
+        $this->server = new TempProject(['src/App.php' => "<?php // server\n", 'README.md' => "# hi\n", 'empty.txt' => '']);
+        $this->cache = new TempProject();
+        $this->transport = new FakeRemoteTransport($this->server->dir);
+        $this->status = new StatusBarWidget();
+        $this->buffers = new BufferManager();
+    }
+
+    private function files(?RemoteSpec $spec = new RemoteSpec('ssh', 'example.org', '/srv/app')): RemoteFilesystem
+    {
+        $transport = $this->transport;
+
+        return new RemoteFilesystem(
+            new ProjectLocation($spec),
+            $this->cache->dir,
+            new readonly class($transport) implements RemoteTransportSource {
+                public function __construct(
+                    private ?RemoteTransport $transport,
+                ) {}
+
+                public function remoteTransport(RemoteSpec $spec): ?RemoteTransport
+                {
+                    return $this->transport;
+                }
+            },
+            new Notifier($this->status, TestTui::create()),
+            new Translator('en'),
+            $this->buffers,
+        );
+    }
+
+    private function noTransport(): RemoteFilesystem
+    {
+        return new RemoteFilesystem(
+            new ProjectLocation(new RemoteSpec('ftp', 'example.org', '/')),
+            $this->cache->dir,
+            new readonly class implements RemoteTransportSource {
+                public function remoteTransport(RemoteSpec $spec): ?RemoteTransport
+                {
+                    return null;
+                }
+            },
+            new Notifier($this->status, TestTui::create()),
+            new Translator('en'),
+            $this->buffers,
+        );
+    }
+
+    public function testListingADirectoryLandsItsEntriesAsPlaceholders(): void
+    {
+        $files = $this->files();
+
+        $this->assertFalse($files->listed($this->cache->dir), 'the first look starts a listing');
+        $this->assertTrue($files->listed($this->cache->dir), 'and the second knows it is under way');
+
+        $this->assertDirectoryExists($this->cache->path('src'));
+        $this->assertSame('', \file_get_contents($this->cache->path('README.md')), 'a file lands empty until it is opened');
+        $this->assertFileDoesNotExist($this->cache->path('src/App.php'), 'a directory below is listed only when shown');
+        $this->assertSame(['list '], $this->transport->calls);
+    }
+
+    public function testOpeningAPlaceholderFetchesItThenAsksAgain(): void
+    {
+        $files = $this->files();
+        $files->listed($this->cache->dir);
+        $opened = 0;
+
+        $this->assertFalse($files->available($this->cache->path('README.md'), static function () use (&$opened): void {
+            ++$opened;
+        }));
+
+        $this->assertSame(1, $opened, 'the open is asked again once the content is here');
+        $this->assertSame("# hi\n", \file_get_contents($this->cache->path('README.md')));
+        $this->assertTrue($files->available($this->cache->path('README.md'), static fn (): null => null), 'and fetched once only');
+        $this->assertStringContainsString('Fetching README.md', $this->flashText($this->status));
+    }
+
+    public function testAnEmptyFileOnTheServerIsAlreadyAllThereIs(): void
+    {
+        $files = $this->files();
+        $files->listed($this->cache->dir);
+
+        $this->assertTrue($files->available($this->cache->path('empty.txt'), static fn (): null => null));
+        $this->assertNotContains('fetch empty.txt', $this->transport->calls);
+    }
+
+    public function testWhatTheServerNeverNamedIsReadAsItIs(): void
+    {
+        $files = $this->files();
+        $made = $this->cache->write('local.txt', 'mine');
+
+        $this->assertTrue($files->available($made, static fn (): null => null));
+        $this->assertTrue($files->available($this->cache->path('.porta/session.json'), static fn (): null => null), 'Porta\'s own state is never the server\'s');
+        $this->assertTrue($files->available('/elsewhere/file.txt', static fn (): null => null));
+        $this->assertTrue($files->listed('/elsewhere'));
+        $this->assertSame([], $this->transport->calls);
+    }
+
+    public function testTheLatestAskForAFetchInFlightIsTheOneAnswered(): void
+    {
+        $files = $this->files();
+        $files->listed($this->cache->dir);
+        $this->transport->hold = true;
+        $answered = [];
+
+        $files->available($this->cache->path('README.md'), static function () use (&$answered): void {
+            $answered[] = 'first';
+        });
+        $files->available($this->cache->path('README.md'), static function () use (&$answered): void {
+            $answered[] = 'second';
+        });
+        $this->transport->release();
+
+        $this->assertSame(['second'], $answered);
+        $this->assertSame(['list ', 'fetch README.md'], $this->transport->calls, 'one fetch, not two');
+    }
+
+    public function testAFailedFetchSaysSoAndNeverOpens(): void
+    {
+        $files = $this->files();
+        $files->listed($this->cache->dir);
+        $this->transport->fail['README.md'] = 'permission denied';
+
+        $files->available($this->cache->path('README.md'), function (): never {
+            $this->fail('a failed fetch must not open the placeholder');
+        });
+
+        $this->assertSame('Cannot read README.md from the server: permission denied', $this->flashText($this->status));
+        $this->assertFalse($files->available($this->cache->path('README.md'), static fn (): null => null), 'still a placeholder: the next open fetches again');
+    }
+
+    public function testAFailedListingIsAskedAgainNextTime(): void
+    {
+        $files = $this->files();
+        $this->transport->fail[''] = 'no route to host';
+
+        $files->listed($this->cache->dir);
+
+        $this->assertSame('Cannot read / from the server: no route to host', $this->flashText($this->status));
+        $this->assertFalse($files->listed($this->cache->dir), 'the root is listed again when the tree next shows it');
+    }
+
+    public function testASaveUploadsWhatWasFetched(): void
+    {
+        $files = $this->files();
+        $files->listed($this->cache->dir);
+        $files->available($this->cache->path('README.md'), static fn (): null => null);
+
+        $files->dumpFile($this->cache->path('README.md'), "# changed\n");
+
+        $this->assertSame("# changed\n", \file_get_contents($this->server->path('README.md')));
+        $this->assertSame(0, $files->pending());
+    }
+
+    public function testSavesWhileAnUploadIsQueuedRideTheSameUpload(): void
+    {
+        $files = $this->files();
+        $files->listed($this->cache->dir);
+        $files->available($this->cache->path('README.md'), static fn (): null => null);
+        $this->transport->hold = true;
+
+        $files->mkdir($this->cache->path('docs')); // something ahead of it in the queue
+        $files->dumpFile($this->cache->path('README.md'), 'one');
+        $files->dumpFile($this->cache->path('README.md'), 'two');
+        $files->dumpFile($this->cache->path('README.md'), 'three');
+        $this->assertSame(2, $files->pending());
+
+        $this->transport->release();
+        $this->transport->release(); // the upload asked once the mkdir answered
+
+        $this->assertSame('three', \file_get_contents($this->server->path('README.md')), 'the file as it was when its turn came');
+        $this->assertCount(1, \array_filter($this->transport->calls, static fn (string $call): bool => 'put README.md' === $call));
+        $this->assertSame(0, $files->pending());
+    }
+
+    public function testAnUploadOverAServerChangeIsRefusedThenTheNextSaveOverwrites(): void
+    {
+        $files = $this->files();
+        $files->listed($this->cache->dir);
+        $files->available($this->cache->path('README.md'), static fn (): null => null);
+        $this->server->write('README.md', "# someone else, longer\n");
+
+        $files->dumpFile($this->cache->path('README.md'), 'mine');
+
+        $this->assertSame("# someone else, longer\n", \file_get_contents($this->server->path('README.md')), 'theirs is kept');
+        $this->assertSame('README.md changed on the server — save again to overwrite', $this->flashText($this->status));
+
+        $files->dumpFile($this->cache->path('README.md'), 'mine');
+
+        $this->assertSame('mine', \file_get_contents($this->server->path('README.md')));
+    }
+
+    public function testAFailedUploadSaysSo(): void
+    {
+        $files = $this->files();
+        $this->transport->fail['new.txt'] = 'disk full';
+
+        $files->dumpFile($this->cache->path('new.txt'), 'x');
+
+        $this->assertSame('Cannot change new.txt on the server: disk full', $this->flashText($this->status));
+        $this->assertSame(0, $files->pending(), 'and the queue moves on');
+    }
+
+    public function testAFileMadeHereIsSentWithoutAStampToCheck(): void
+    {
+        $files = $this->files();
+
+        $files->dumpFile($this->cache->path('deep/new.txt'), 'new');
+
+        $this->assertSame('new', \file_get_contents($this->server->path('deep/new.txt')));
+    }
+
+    /**
+     * The server takes the same steps the cache took, in order: a file saved
+     * and then renamed before its upload ran is uploaded under its old name
+     * and then renamed — reading the file at its turn found nothing there,
+     * and the rename after it failed on the server.
+     */
+    public function testAFileRenamedBeforeItsUploadRanStillArrives(): void
+    {
+        $files = $this->files();
+        $this->transport->hold = true;
+        $files->mkdir($this->cache->path('a'));
+        $files->dumpFile($this->cache->path('b.txt'), 'x');
+        $files->rename($this->cache->path('b.txt'), $this->cache->path('c.txt'));
+        $files->dumpFile($this->cache->path('b.txt'), 'a new b');
+
+        $this->transport->release();
+
+        $this->assertSame(['mkdir a', 'put b.txt', 'rename b.txt c.txt', 'put b.txt'], $this->transport->calls);
+        $this->assertSame('x', \file_get_contents($this->server->path('c.txt')));
+        $this->assertSame('a new b', \file_get_contents($this->server->path('b.txt')), 'the save after the rename is a new file, not the old upload');
+        $this->assertSame(0, $files->pending());
+    }
+
+    public function testAnUploadWhosePathWentStillSaysWhenItFails(): void
+    {
+        $files = $this->files();
+        $this->transport->hold = true;
+        $files->mkdir($this->cache->path('a'));
+        $files->dumpFile($this->cache->path('b.txt'), 'x');
+        $files->remove($this->cache->path('b.txt'));
+        $this->transport->fail['b.txt'] = 'quota exceeded';
+
+        $this->transport->release();
+
+        $this->assertSame('Cannot change b.txt on the server: quota exceeded', $this->flashText($this->status));
+        $this->assertSame(0, $files->pending());
+    }
+
+    /** A renamed placeholder is still a placeholder: its content was never here, at either name. */
+    public function testARenamedPlaceholderIsFetchedUnderItsNewName(): void
+    {
+        $files = $this->files();
+        $files->listed($this->cache->dir);
+        $files->listed($this->cache->path('src'));
+
+        $files->rename($this->cache->path('src'), $this->cache->path('lib'));
+
+        $this->assertFalse($files->available($this->cache->path('lib/App.php'), static fn (): null => null));
+        $this->assertSame("<?php // server\n", \file_get_contents($this->cache->path('lib/App.php')));
+    }
+
+    /** What an upload answers is what the next save is checked against — not the stamp it was first fetched at. */
+    public function testSavesInARowEachReachTheServer(): void
+    {
+        $files = $this->files();
+        $files->listed($this->cache->dir);
+        $files->available($this->cache->path('README.md'), static fn (): null => null);
+
+        $files->dumpFile($this->cache->path('README.md'), 'a longer first save');
+        $files->dumpFile($this->cache->path('README.md'), 'second');
+
+        $this->assertSame('second', \file_get_contents($this->server->path('README.md')));
+        $this->assertStringNotContainsString('changed on the server', $this->flashText($this->status), 'no conflict with our own upload');
+    }
+
+    /** Buffers carry resolved paths; the cache may have been opened through a symlink. Both are the project. */
+    public function testThePathsOfThisProjectAreItsOwnHoweverSpelled(): void
+    {
+        $files = $this->files();
+        $files->listed($this->cache->dir);
+        $resolved = (string) \realpath($this->cache->dir);
+        $alias = $this->cache->alias();
+
+        $this->assertFalse($files->available($resolved.'/README.md', static fn (): null => null), 'resolved: a placeholder');
+        $this->assertTrue($files->available($this->cache->dir.'x/README.md', static fn (): null => null), 'a sibling sharing the prefix is not inside');
+        $this->assertTrue($files->listed($alias.'/src'), 'a spelling it was not opened with is not inside either');
+    }
+
+    public function testAPathThatClimbsOutIsNeverSent(): void
+    {
+        $files = $this->files();
+        $this->cache->write('a/.keep', '');
+
+        $files->dumpFile($this->cache->path('a/../b.txt'), 'x');
+
+        $this->assertSame([], $this->transport->calls);
+    }
+
+    /** A slow server gets no second round of listings while the first is still out. */
+    public function testThePollWaitsForTheLastRoundToAnswer(): void
+    {
+        $this->server->write('a/x', '');
+        $this->server->write('b/x', '');
+        $files = $this->files();
+        foreach (['', 'a', 'b'] as $dir) {
+            $files->listed($this->cache->path($dir));
+        }
+        $this->transport->calls = [];
+        $this->transport->hold = true;
+
+        $files->poll();
+        $files->poll();
+
+        $this->assertSame(['list ', 'list a'], $this->transport->calls);
+        $this->transport->release();
+    }
+
+    /** Two directories a round — each once, though two open files share one. */
+    public function testAPollListsTwoDirectoriesEachOnce(): void
+    {
+        $this->server->write('a/x', '');
+        $this->server->write('b/x', '');
+        $files = $this->files();
+        foreach (['', 'a', 'b'] as $dir) {
+            $files->listed($this->cache->path($dir));
+        }
+        $this->buffers->open($this->cache->path('README.md'), '');
+        $this->buffers->open($this->cache->path('empty.txt'), '');
+        $this->transport->calls = [];
+
+        $files->poll();
+
+        $this->assertSame(['list ', 'list a'], $this->transport->calls);
+    }
+
+    public function testADirectoryIsNeverListedTwiceAtOnce(): void
+    {
+        $source = new class implements RemoteTransportSource {
+            public ?RemoteTransport $transport = null;
+
+            public function remoteTransport(RemoteSpec $spec): ?RemoteTransport
+            {
+                return $this->transport;
+            }
+        };
+        $files = new RemoteFilesystem(
+            new ProjectLocation(new RemoteSpec('ssh', 'example.org', '/srv/app')),
+            $this->cache->dir,
+            $source,
+            new Notifier($this->status, TestTui::create()),
+            new Translator('en'),
+            $this->buffers,
+        );
+        $files->listed($this->cache->dir); // before any plugin: wanted
+        $source->transport = $this->transport;
+        $this->transport->hold = true;
+
+        $files->poll(); // lists what was wanted, then the listed ones in turn — the root again
+
+        $this->assertSame(['list '], $this->transport->calls);
+        $this->transport->release();
+    }
+
+    public function testPortasOwnFilesOnTheServerAreNotTheCaches(): void
+    {
+        $this->server->write('.porta.json', '{"theirs": true}');
+        $this->server->write('.porta/session.json', '{}');
+        $files = $this->files();
+
+        $files->listed($this->cache->dir);
+
+        $this->assertFileDoesNotExist($this->cache->path('.porta.json'));
+        $this->assertFileDoesNotExist($this->cache->path('.porta/session.json'));
+        $this->assertFileExists($this->cache->path('README.md'), 'and the rest of the listing still lands');
+    }
+
+    public function testASaveThenARemoveBeforeItsTurnLeavesNothing(): void
+    {
+        $files = $this->files();
+        $this->transport->hold = true;
+        $files->mkdir($this->cache->path('a'));
+        $files->dumpFile($this->cache->path('a/b.txt'), 'x');
+        $files->remove($this->cache->path('a'));
+
+        $this->transport->release();
+
+        $this->assertDirectoryDoesNotExist($this->server->path('a'));
+        $this->assertSame(['mkdir a', 'put a/b.txt', 'rmdir a'], $this->transport->calls);
+    }
+
+    public function testAMadeDirectoryReachesTheServerAndIsKnownListed(): void
+    {
+        $files = $this->files();
+
+        $files->mkdir($this->cache->path('docs'));
+
+        $this->assertDirectoryExists($this->server->path('docs'));
+        $this->assertTrue($files->listed($this->cache->path('docs')), 'nothing to list in a directory we made');
+    }
+
+    public function testARenameMovesTheFileOnTheServerAndKeepsWhatWasFetched(): void
+    {
+        $files = $this->files();
+        $files->listed($this->cache->dir);
+        $files->listed($this->cache->path('src'));
+        $files->available($this->cache->path('src/App.php'), static fn (): null => null);
+
+        $files->rename($this->cache->path('src'), $this->cache->path('lib'));
+
+        $this->assertFileExists($this->server->path('lib/App.php'));
+        $this->assertDirectoryDoesNotExist($this->server->path('src'));
+        $this->assertTrue($files->available($this->cache->path('lib/App.php'), static fn (): null => null), 'its content came along: no fetch');
+        $this->assertTrue($files->listed($this->cache->path('lib')), 'and so did its listing');
+    }
+
+    public function testARenameIntoPortasOwnStateRemovesItFromTheServer(): void
+    {
+        $files = $this->files();
+        $files->listed($this->cache->dir);
+
+        $files->rename($this->cache->path('README.md'), $this->cache->path('.porta/README.md'));
+
+        $this->assertFileDoesNotExist($this->server->path('README.md'));
+        $this->assertContains('remove README.md', $this->transport->calls);
+    }
+
+    public function testARenameOutOfPortasOwnStateUploadsIt(): void
+    {
+        $files = $this->files();
+        $this->cache->write('.porta/notes.md', 'notes');
+
+        $files->rename($this->cache->path('.porta/notes.md'), $this->cache->path('notes.md'));
+
+        $this->assertSame('notes', \file_get_contents($this->server->path('notes.md')));
+    }
+
+    public function testARenameEntirelyOutsideIsNotTheServersBusiness(): void
+    {
+        $files = $this->files();
+        $outside = new TempProject(['a.txt' => 'a']);
+
+        $files->rename($outside->path('a.txt'), $outside->path('b.txt'));
+
+        $this->assertFileExists($outside->path('b.txt'));
+        $this->assertSame([], $this->transport->calls);
+    }
+
+    public function testRemovingAFileAndADirectory(): void
+    {
+        $files = $this->files();
+        $files->listed($this->cache->dir);
+
+        $files->remove($this->cache->path('README.md'));
+        $files->remove($this->cache->path('src'));
+
+        $this->assertFileDoesNotExist($this->server->path('README.md'));
+        $this->assertDirectoryDoesNotExist($this->server->path('src'));
+        $this->assertSame(['list ', 'remove README.md', 'rmdir src'], $this->transport->calls);
+        $this->assertFileDoesNotExist($this->cache->path('README.md'), 'gone here too');
+        $this->assertDirectoryDoesNotExist($this->cache->path('src'));
+    }
+
+    public function testCopyingAFetchedFileUploadsTheCopy(): void
+    {
+        $files = $this->files();
+        $files->listed($this->cache->dir);
+        $files->available($this->cache->path('README.md'), static fn (): null => null);
+
+        $files->copy($this->cache->path('README.md'), $this->cache->path('COPY.md'));
+
+        $this->assertSame("# hi\n", \file_get_contents($this->server->path('COPY.md')));
+        $this->assertContains('put COPY.md', $this->transport->calls);
+        $this->assertNotContains('fetch COPY.md', $this->transport->calls);
+    }
+
+    public function testCopyingAPlaceholderCopiesTheServersOriginal(): void
+    {
+        $files = $this->files();
+        $files->listed($this->cache->dir);
+
+        $files->copy($this->cache->path('README.md'), $this->cache->path('COPY.md'));
+
+        $this->assertSame("# hi\n", \file_get_contents($this->server->path('COPY.md')));
+        $this->assertSame("# hi\n", \file_get_contents($this->cache->path('COPY.md')), 'the copy here has the content too');
+        $this->assertTrue($files->available($this->cache->path('COPY.md'), static fn (): null => null));
+    }
+
+    public function testCopyingADirectoryMakesItAndCopiesWhatItHolds(): void
+    {
+        $files = $this->files();
+        $files->listed($this->cache->dir);
+        $files->listed($this->cache->path('src'));
+
+        $files->copy($this->cache->path('src'), $this->cache->path('src2'));
+
+        $this->assertSame("<?php // server\n", \file_get_contents($this->server->path('src2/App.php')));
+        $this->assertContains('mkdir src2', $this->transport->calls);
+    }
+
+    public function testACopyWhoseOriginalCannotBeReadSaysSo(): void
+    {
+        $files = $this->files();
+        $files->listed($this->cache->dir);
+        $this->transport->fail['README.md'] = 'gone';
+
+        $files->copy($this->cache->path('README.md'), $this->cache->path('COPY.md'));
+
+        $this->assertSame('Cannot read COPY.md from the server: gone', $this->flashText($this->status));
+        $this->assertSame(0, $files->pending());
+    }
+
+    public function testACopyThatCannotBeWrittenSaysSo(): void
+    {
+        $files = $this->files();
+        $files->listed($this->cache->dir);
+        $this->transport->fail['COPY.md'] = 'read-only';
+
+        $files->copy($this->cache->path('README.md'), $this->cache->path('COPY.md'));
+
+        $this->assertSame('Cannot change COPY.md on the server: read-only', $this->flashText($this->status));
+        $this->assertSame(0, $files->pending(), 'and the queue moves on');
+    }
+
+    public function testAStructuralChangeThatFailsSaysSo(): void
+    {
+        $files = $this->files();
+        $this->transport->fail['docs'] = 'denied';
+
+        $files->mkdir($this->cache->path('docs'));
+
+        $this->assertSame('Cannot change docs on the server: denied', $this->flashText($this->status));
+    }
+
+    public function testTheServersChangesReachTheCacheOnTheNextListing(): void
+    {
+        $files = $this->files();
+        $files->listed($this->cache->dir);
+        $files->available($this->cache->path('README.md'), static fn (): null => null);
+        $this->server->write('README.md', "# edited there, longer\n");
+        $this->server->write('NEW.md', 'new');
+        \unlink($this->server->path('empty.txt'));
+        new Filesystem()->remove($this->server->path('src'));
+        $this->server->write('src', 'now a file');
+
+        $files->poll();
+
+        $this->assertSame("# edited there, longer\n", \file_get_contents($this->cache->path('README.md')), 'a fetched file is fetched again');
+        $this->assertFileExists($this->cache->path('NEW.md'));
+        $this->assertFileDoesNotExist($this->cache->path('empty.txt'), 'what went there goes here');
+        $this->assertFileExists($this->cache->path('src'));
+        $this->assertDirectoryDoesNotExist($this->cache->path('src'), 'a directory that became a file');
+        $this->assertStringNotContainsString('empty.txt', (string) \file_get_contents($this->cache->path('.porta/remote-index.json')), 'and the index forgets it');
+    }
+
+    public function testADirectoryThatWasAFileHereBecomesOne(): void
+    {
+        $files = $this->files();
+        $this->cache->write('src', 'stale');
+
+        $files->listed($this->cache->dir);
+
+        $this->assertDirectoryExists($this->cache->path('src'));
+    }
+
+    public function testTheListingLeavesAloneWhatHasAChangeOfOursOnItsWay(): void
+    {
+        $files = $this->files();
+        $files->listed($this->cache->dir);
+        $files->available($this->cache->path('README.md'), static fn (): null => null);
+        $this->transport->hold = true;
+        $files->dumpFile($this->cache->path('README.md'), 'mine, not sent yet');
+        \unlink($this->server->path('README.md'));
+        $files->poll();
+        $this->transport->held = \array_reverse($this->transport->held); // the listing answers before the upload
+
+        $this->transport->release();
+
+        $this->assertSame('mine, not sent yet', \file_get_contents($this->cache->path('README.md')), 'not taken for something the server deleted');
+    }
+
+    public function testAFetchThatLandsAfterALocalChangeIsDropped(): void
+    {
+        $files = $this->files();
+        $files->listed($this->cache->dir);
+        $this->transport->hold = true;
+        $files->available($this->cache->path('README.md'), function (): never {
+            $this->fail('the server\'s copy is stale by the time it lands');
+        });
+        $files->dumpFile($this->cache->path('README.md'), 'mine');
+
+        $this->transport->release();
+
+        $this->assertSame('mine', \file_get_contents($this->cache->path('README.md')));
+    }
+
+    public function testThePollPrefersTheDirectoriesOfOpenFilesAndSkipsWhileAListingRuns(): void
+    {
+        $files = $this->files();
+        $files->listed($this->cache->dir);
+        $files->listed($this->cache->path('src'));
+        $this->buffers->open($this->cache->path('src/App.php'), '');
+        $this->buffers->open('/elsewhere/x.php', '');
+        $this->transport->calls = [];
+        $this->transport->hold = true;
+
+        $files->poll();
+        $files->poll(); // a listing is still out: nothing more is asked
+
+        $this->assertSame(['list src', 'list '], $this->transport->calls);
+        $this->transport->release();
+    }
+
+    public function testThePollWalksTheListedDirectoriesInTurn(): void
+    {
+        foreach (['a', 'b', 'c', 'd'] as $dir) {
+            $this->server->write($dir.'/x', '');
+        }
+        $files = $this->files();
+        $files->listed($this->cache->dir);
+        foreach (['a', 'b', 'c', 'd'] as $dir) {
+            $files->listed($this->cache->path($dir));
+        }
+        $this->transport->calls = [];
+
+        $files->poll();
+        $files->poll();
+        $files->poll();
+
+        $this->assertSame(['list ', 'list a', 'list b', 'list c', 'list d', 'list '], $this->transport->calls);
+    }
+
+    public function testAPollWithNothingShownListsNothing(): void
+    {
+        $files = $this->files();
+
+        $files->poll();
+
+        $this->assertSame([], $this->transport->calls);
+    }
+
+    public function testWithNoPluginForTheSchemeItSaysSoOnceAndTheCacheIsAllThereIs(): void
+    {
+        $files = $this->noTransport();
+        $this->cache->write('a.txt', 'kept');
+
+        $this->assertFalse($files->listed($this->cache->dir));
+        $this->assertSame('', $this->flashText($this->status), 'at boot no plugin has activated yet: not news');
+        $files->dumpFile($this->cache->path('a.txt'), 'changed');
+        $files->mkdir($this->cache->path('d'));
+        $files->rename($this->cache->path('d'), $this->cache->path('e'));
+        $files->remove($this->cache->path('e'));
+        $files->copy($this->cache->path('a.txt'), $this->cache->path('b.txt'));
+        $files->poll();
+
+        $this->assertSame('changed', \file_get_contents($this->cache->path('b.txt')), 'the cache still changes');
+        $this->assertSame(0, $files->pending());
+    }
+
+    public function testAPlaceholderCannotBeOpenedWithoutATransport(): void
+    {
+        new RemoteFilesystem(
+            new ProjectLocation(new RemoteSpec('ssh', 'example.org', '/srv/app')),
+            $this->cache->dir,
+            new readonly class($this->transport) implements RemoteTransportSource {
+                public function __construct(
+                    private RemoteTransport $transport,
+                ) {}
+
+                public function remoteTransport(RemoteSpec $spec): RemoteTransport
+                {
+                    return $this->transport;
+                }
+            },
+            new Notifier($this->status, TestTui::create()),
+            new Translator('en'),
+            $this->buffers,
+        )->listed($this->cache->dir);
+        $files = $this->noTransport();
+
+        $this->assertFalse($files->available($this->cache->path('README.md'), function (): never {
+            $this->fail('nothing can fetch it');
+        }));
+        $this->assertSame('No enabled plugin opens ftp:// projects', $this->flashText($this->status));
+        $this->status->flash('', 0.0);
+        $files->available($this->cache->path('README.md'), static fn (): null => null);
+        $this->assertSame('', $this->flashText($this->status), 'said once');
+    }
+
+    /**
+     * The tree is first built before plugins activate, so its first ask
+     * finds no transport. The directory is remembered, and listed by the
+     * first poll once a plugin answers — Ide runs one as soon as the loop
+     * starts.
+     */
+    public function testADirectoryAskedForBeforeAnyPluginIsListedByTheFirstPoll(): void
+    {
+        $source = new class implements RemoteTransportSource {
+            public ?RemoteTransport $transport = null;
+
+            public function remoteTransport(RemoteSpec $spec): ?RemoteTransport
+            {
+                return $this->transport;
+            }
+        };
+        $files = new RemoteFilesystem(
+            new ProjectLocation(new RemoteSpec('ssh', 'example.org', '/srv/app')),
+            $this->cache->dir,
+            $source,
+            new Notifier($this->status, TestTui::create()),
+            new Translator('en'),
+            $this->buffers,
+        );
+
+        $this->assertFalse($files->listed($this->cache->dir));
+        $files->poll();
+        $this->assertFileDoesNotExist($this->cache->path('README.md'), 'still no plugin');
+
+        $source->transport = $this->transport;
+        $files->poll();
+
+        $this->assertFileExists($this->cache->path('README.md'));
+        $this->assertTrue($files->listed($this->cache->dir));
+    }
+
+    public function testTheIndexOutlivesTheSession(): void
+    {
+        $files = $this->files();
+        $files->listed($this->cache->dir);
+        $files->available($this->cache->path('README.md'), static fn (): null => null);
+
+        $again = $this->files();
+
+        $this->assertTrue($again->available($this->cache->path('README.md'), static fn (): null => null), 'fetched last session');
+        $again->listed($this->cache->dir);
+        $this->assertNotContains('fetch README.md', \array_slice($this->transport->calls, offset: 2), 'and not fetched again when listed again');
+        $this->assertTrue($again->available($this->cache->path('README.md'), static fn (): null => null), 'still fetched after the listing');
+    }
+
+    public function testALocalProjectIsNeverTheServers(): void
+    {
+        $files = $this->files(spec: null);
+
+        $files->dumpFile($this->cache->path('a.txt'), 'x');
+        $files->poll();
+
+        $this->assertTrue($files->listed($this->cache->dir));
+        $this->assertSame([], $this->transport->calls);
+    }
+
+    public function testClosingClosesTheTransport(): void
+    {
+        $files = $this->files();
+        $files->close();
+        $this->assertFalse($this->transport->closed, 'never asked for: nothing to close');
+
+        $files->listed($this->cache->dir);
+        $files->close();
+
+        $this->assertTrue($this->transport->closed);
+    }
+}

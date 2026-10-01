@@ -6,6 +6,8 @@ namespace Porta\Search;
 
 use Porta\Editor\BufferManager;
 use Porta\Editor\DocumentReplacer;
+use Porta\Filesystem\LocalFilesystem;
+use Porta\Filesystem\ProjectFilesystem;
 use Porta\History\SearchHistoryStore;
 use Porta\History\SearchPrefsStore;
 use Porta\History\SearchScopeStore;
@@ -19,7 +21,6 @@ use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\Dock\DockToolTab;
 use Porta\Workbench\Dock\ResultsPanelMode;
 use Porta\Workbench\Notifier;
-use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -69,7 +70,7 @@ final class ProjectSearchController
         private readonly SearchScopeResolver $scopes,
         private readonly LanguageFilter $languageFilter,
         private readonly SearchScopeStore $scopeStore,
-        private readonly Filesystem $fs = new Filesystem(),
+        private readonly ProjectFilesystem $fs = new LocalFilesystem(),
     ) {
         $this->searchOptions = new SearchOptions();
     }

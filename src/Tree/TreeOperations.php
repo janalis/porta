@@ -12,6 +12,8 @@ use Porta\Event\FileDeleted;
 use Porta\Event\FileRenamed;
 use Porta\Event\TreeDropRequested;
 use Porta\Event\WorkingTreeChanged;
+use Porta\Filesystem\LocalFilesystem;
+use Porta\Filesystem\ProjectFilesystem;
 use Porta\I18n\Translator;
 use Porta\Search\ProjectSearchController;
 use Porta\Search\SearchActions;
@@ -26,7 +28,6 @@ use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\Filesystem\Exception\IOException;
 use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
-use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -61,7 +62,7 @@ final class TreeOperations
         private readonly ProjectPaths $paths,
         private readonly EventDispatcherInterface $events,
         private readonly TreePathClipboard $treeClipboard,
-        private readonly Filesystem $fs = new Filesystem(),
+        private readonly ProjectFilesystem $fs = new LocalFilesystem(),
     ) {}
 
     /**
@@ -454,7 +455,7 @@ final class TreeOperations
 
             return;
         }
-        $taken = \array_values(\array_filter($moving, fn (string $path): bool => $this->fs->exists($targetDir.'/'.\basename($path))));
+        $taken = \array_values(\array_filter($moving, static fn (string $path): bool => \file_exists($targetDir.'/'.\basename($path))));
         if ([] === $taken) {
             $this->moveEach($moving, $targetDir, $copy);
 
@@ -555,17 +556,17 @@ final class TreeOperations
             // this makes the copy refuse the same way, through the same toast.
             //
             // The guard is the whole permission, which is why `copy()` below
-            // still passes `overwriteNewerFiles: true`: past this line either
-            // the target is free, or the answer was yes — and then a target
-            // NEWER than its source is exactly the one that must still go.
-            if (!$overwrite && $this->fs->exists($target)) {
+            // overwrites newer files (see {@see ProjectFilesystem::copy()}):
+            // past this line either the target is free, or the answer was
+            // yes — and then a target NEWER than its source must still go.
+            if (!$overwrite && \file_exists($target)) {
                 throw new IOException(\sprintf('%s already exists', $target));
             }
             // A copy reads from DISK, so an unsaved edit would be missing from
             // the copy while staying in the original — the same surprise as
             // losing it, wearing a different face.
             $this->saveDirtyUnder(($resolved = \realpath($source)) ? $resolved : $source);
-            \is_dir($source) ? $this->fs->mirror($source, $target) : $this->fs->copy($source, $target, overwriteNewerFiles: true);
+            $this->fs->copy($source, $target);
             $this->tree->refresh();
             $this->tui->setFocus($this->tree);
             $this->notifier->success($this->translator->trans('Copied %name%', ['%name%' => $name]));

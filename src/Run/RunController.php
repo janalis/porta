@@ -8,6 +8,7 @@ use Porta\Container\AsIdeService;
 use Porta\Event\TerminalRevealRequested;
 use Porta\Event\TerminalSessionCloseRequested;
 use Porta\Event\TerminalSessionCycleRequested;
+use Porta\Filesystem\LocalOnly;
 use Porta\I18n\Translator;
 use Porta\Terminal\PtyProcess;
 use Porta\Terminal\TerminalKeyEncoder;
@@ -63,10 +64,14 @@ final class RunController
         private readonly Translator $translator,
         private readonly string $rootDir,
         private readonly TerminalSessions $sessions,
+        private readonly ?LocalOnly $localOnly = null,
     ) {}
 
     public function openRunMenu(): void
     {
+        if (true === $this->localOnly?->refused()) {
+            return;
+        }
         $tasks = $this->runConfigs->discover($this->editor->getFilePath());
         if ([] === $tasks) {
             $this->notifier->flash($this->translator->trans('Nothing to run (no PHP file, composer scripts, or Makefile)'));
@@ -116,6 +121,11 @@ final class RunController
      */
     public function runInBackground(array $command, string $title, ?\Closure $onExit = null): void
     {
+        if (true === $this->localOnly?->refused()) {
+            $onExit?->__invoke(-1);
+
+            return;
+        }
         $shown = $this->sessions->active();
         $session = $this->sessionFor($title);
         if (null !== $onExit) {
@@ -135,6 +145,9 @@ final class RunController
 
     public function runLast(): void
     {
+        if (true === $this->localOnly?->refused()) {
+            return;
+        }
         if (null === $this->lastRun) {
             $this->notifier->flash($this->translator->trans('No previous run — press Ctrl+Shift+R to pick one'));
 
@@ -180,6 +193,9 @@ final class RunController
     /** Ctrl+Shift+` (or Alt+F11): spawn another interactive shell session. */
     public function newTerminalSession(): void
     {
+        if (true === $this->localOnly?->refused()) {
+            return;
+        }
         $shellEnv = \getenv('SHELL');
         $shell = $shellEnv ? $shellEnv : '/bin/sh';
         $session = $this->sessions->create('shell:'.++$this->shellCounter, \basename($shell).' '.$this->shellCounter);

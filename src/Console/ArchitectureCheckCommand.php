@@ -118,6 +118,7 @@ final class ArchitectureCheckCommand extends Command
         'Debug>Container',
         'Debug>Editor',
         'Debug>Event',
+        'Debug>Filesystem', // the debugger runs the project here: LocalOnly refuses a remote one
         // Inline debug values: the LSP says WHERE the variables are, the debug
         // adapter says what they hold. One side has to know the other, and it
         // is this one — the debugger knows WHEN the join means anything, and
@@ -132,6 +133,7 @@ final class ArchitectureCheckCommand extends Command
         'Editor>Config',
         'Editor>Container',
         'Editor>Event',
+        'Editor>Filesystem',
         'Editor>Highlight',
         'Editor>History',
         'Editor>Lsp',
@@ -144,6 +146,13 @@ final class ArchitectureCheckCommand extends Command
         'Event>Ui',
         'Event>Workbench',
         'Event>Widget',
+        'Filesystem>Container',
+        'Filesystem>Editor', // the remote poll re-lists the directories holding an open buffer first
+        'Filesystem>Support',
+        'Filesystem>Workbench', // a remote fetch or upload that fails says so
+        'FtpPlugin>Config', // PortaHome: where passwords and caches are kept
+        'FtpPlugin>Filesystem', // the transport core asks for, and the spec it serves
+        'FtpPlugin>Plugin',
         // The graph-viewer plugin's own classes (plugins/graph-viewer/src): the
         // architecture scanner reaches core's AsyncProcess and JsonFile. A
         // plugin depending on core is the allowed direction — core depending on
@@ -264,8 +273,11 @@ final class ArchitectureCheckCommand extends Command
         'Plugin>Debug',
         'Plugin>Editor',
         'Plugin>Event',
+        'Plugin>Filesystem', // a RemoteProjectPlugin hands core the transport for its scheme
         'Plugin>Highlight',
+        'Plugin>Install', // OpenRemoteCommand opens this very Porta on the cache
         'Plugin>Lsp',
+        'Plugin>Onboarding', // …with the first-run card marked seen: the server's project is set up there
         'Plugin>Overlay',
         'Plugin>Run', // Plugin\Api\Runs: the Run menu's tasks and background runs
         'Plugin>Search',
@@ -290,6 +302,7 @@ final class ArchitectureCheckCommand extends Command
         'ReviewPlugin>Workbench',
         'Run>Event',
         'Run>Container',
+        'Run>Filesystem', // runs and terminals run the project here: LocalOnly refuses a remote one
         'Run>Support',
         'Run>Terminal',
         'Run>Widget',
@@ -298,6 +311,7 @@ final class ArchitectureCheckCommand extends Command
         'Search>Container',
         'Search>Editor',
         'Search>Event',
+        'Search>Filesystem',
         'Search>Highlight',
         'Search>History',
         'Search>Lsp',
@@ -327,6 +341,9 @@ final class ArchitectureCheckCommand extends Command
         'Settings>Ui',
         'Settings>Widget',
         'Settings>Workbench',
+        'SshPlugin>Config', // PortaHome: where shared connections and caches are kept
+        'SshPlugin>Filesystem', // the transport core asks for, and the spec it serves
+        'SshPlugin>Plugin',
         'Support>Container',
         'Support>Ui',
         // The symfony-lsp plugin's one core reach: Argv::split for the
@@ -341,6 +358,7 @@ final class ArchitectureCheckCommand extends Command
         'Tree>Container',
         'Tree>Editor',
         'Tree>Event',
+        'Tree>Filesystem',
         'Tree>Search',
         'Tree>Support',
         'Tree>Widget',
@@ -356,6 +374,7 @@ final class ArchitectureCheckCommand extends Command
         'Widget>Container',
         'Widget>Debug',
         'Widget>Editor',
+        'Widget>Filesystem', // the tree asks a remote directory to be listed when it shows it
         'Widget>Help',
         // The find bar recalls the PROJECT search's query history rather than
         // keeping a second one; one list of what you looked for in this
@@ -379,6 +398,7 @@ final class ArchitectureCheckCommand extends Command
         'Workbench>Config',
         'Workbench>Container',
         'Workbench>Editor',
+        'Workbench>Filesystem', // quitting asks twice while changes are still on their way to a server
         'Workbench>History', // ProjectSwitcher reads the recent-projects list
         'Workbench>Event',
         'Workbench>Input',

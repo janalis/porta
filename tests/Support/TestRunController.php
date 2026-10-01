@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Support;
 
+use Porta\Filesystem\LocalOnly;
 use Porta\I18n\Translator;
 use Porta\Run\RunConfigs;
 use Porta\Run\RunController;
@@ -22,8 +23,14 @@ use Symfony\Component\Tui\Tui;
  */
 final class TestRunController
 {
-    public static function create(string $root = '/p', ?Tui $tui = null, ?TerminalSessions $sessions = null, ?TerminalPanelWidget $panel = null, ?CodeEditorWidget $editor = null): RunController
-    {
+    public static function create(
+        string $root = '/p',
+        ?Tui $tui = null,
+        ?TerminalSessions $sessions = null,
+        ?TerminalPanelWidget $panel = null,
+        ?CodeEditorWidget $editor = null,
+        ?LocalOnly $localOnly = null,
+    ): RunController {
         $tui ??= TestTui::create(100, 24);
 
         return new RunController(
@@ -36,6 +43,7 @@ final class TestRunController
             new Translator('en'),
             $root,
             $sessions ?? new TerminalSessions(),
+            $localOnly,
         );
     }
 }
