@@ -243,6 +243,14 @@ final class DapSession
         $this->step('continue');
     }
 
+    /** Ask a running program to stop where it is; the adapter's `stopped` says where. */
+    public function pause(): void
+    {
+        if (DebugState::Running === $this->state) {
+            $this->client->request('pause', ['threadId' => $this->threadId ?? 1]);
+        }
+    }
+
     /**
      * The paused stack, delivered as 0-based frames (empty on error).
      *

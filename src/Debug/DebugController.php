@@ -398,6 +398,17 @@ final class DebugController implements DebugSessionObserver, StatusSegment
         $this->session?->continueRun();
     }
 
+    /** Stop a running program where it is. */
+    public function pause(): void
+    {
+        if (!$this->isActive() || $this->isPaused()) {
+            $this->notifier->flash($this->translator->trans('No running debugger to pause'));
+
+            return;
+        }
+        $this->session?->pause();
+    }
+
     /**
      * Whether a step verb can act, saying so when it cannot.
      *

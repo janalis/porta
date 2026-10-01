@@ -121,6 +121,7 @@ final class MenuModel
             'i:debug_step_into',
             'i:debug_step_out',
             'i:debug_continue',
+            'i:debug_pause',
             'i:debug_run_to_cursor',
             'i:debug_stop',
             'i:debug_restart',

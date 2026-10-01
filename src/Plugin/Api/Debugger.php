@@ -76,6 +76,12 @@ final readonly class Debugger
         $this->debug->continueRun();
     }
 
+    /** Stop a running session where it is; the next `DebugStatusChanged` says where. */
+    public function pause(): void
+    {
+        $this->debug->pause();
+    }
+
     public function stepOver(): void
     {
         $this->debug->stepOver();

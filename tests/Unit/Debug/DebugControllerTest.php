@@ -1260,4 +1260,35 @@ final class DebugControllerTest extends TestCase
         $debugger->stop();
         $this->assertContains('disconnect', $this->client->commands());
     }
+
+    public function testPauseStopsARunningProgramWhereItIsAndOnlyThen(): void
+    {
+        $controller = $this->controller();
+        $debugger = TestRuns::create(debug: $controller)->debugger();
+        $debugger->pause();
+        $this->assertStringContainsString('No running debugger to pause', $this->flashed(), 'no session');
+
+        // Starting: not running yet, so nothing is asked — and nothing said.
+        $this->client->responses['stackTrace'] = [['stackFrames' => [['id' => 1, 'name' => '{main}', 'source' => ['path' => '/p/prog.php'], 'line' => 3]]], null];
+        $this->client->responses['scopes'] = [['scopes' => []], null];
+        $controller->startForCurrentFile();
+        $debugger->pause();
+        $this->assertNotContains('pause', $this->client->commands(), 'still starting');
+
+        $this->client->respond('initialize', ['supportsConfigurationDoneRequest' => true]);
+        $this->client->respond('launch');
+        $this->assertSame('running', $debugger->status());
+        $debugger->pause();
+        $this->assertContains('pause', $this->client->commands());
+        $this->client->emit('stopped', ['reason' => 'pause', 'threadId' => 1]);
+        $this->assertSame(['paused', ['path' => '/p/prog.php', 'line' => 2]], [$debugger->status(), $debugger->stoppedAt()]);
+
+        // The first refusal taken down, so this one is seen to be said again.
+        $this->statusBar->withdrawFlash('No running debugger to pause');
+        $this->assertStringNotContainsString('No running debugger to pause', $this->flashed());
+        $asked = \count($this->client->requests);
+        $debugger->pause();
+        $this->assertCount($asked, $this->client->requests, 'paused already: nothing asked');
+        $this->assertStringContainsString('No running debugger to pause', $this->flashed());
+    }
 }

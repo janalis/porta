@@ -35,6 +35,7 @@ final readonly class DebugCommands implements CommandProvider
             ->add('debug_step_into', fn () => $this->debug->stepIn(), keyBound: KeyDispatch::Bound, when: $paused)
             ->add('debug_step_out', fn () => $this->debug->stepOut(), keyBound: KeyDispatch::Bound, when: $paused)
             ->add('debug_continue', fn () => $this->debug->continueRun(), keyBound: KeyDispatch::Bound, when: $paused)
+            ->add('debug_pause', fn () => $this->debug->pause(), keyBound: KeyDispatch::Bound, when: fn (): bool => $this->debug->isActive() && !$this->debug->isPaused())
             ->add('debug_run_to_cursor', fn () => $this->debug->runToCursor(), keyBound: KeyDispatch::Bound, when: $paused)
             ->add('debug_stop', fn () => $this->debug->stop(), keyBound: KeyDispatch::Bound, when: $active)
             ->add('debug_restart', fn () => $this->debug->restart(), keyBound: KeyDispatch::Bound, when: $active)

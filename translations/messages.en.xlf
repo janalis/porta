@@ -3082,6 +3082,14 @@
         <source>This file is read-only</source>
         <target>This file is read-only</target>
       </trans-unit>
+      <trans-unit id="1090">
+        <source>Pause Program</source>
+        <target>Pause Program</target>
+      </trans-unit>
+      <trans-unit id="1091">
+        <source>No running debugger to pause</source>
+        <target>No running debugger to pause</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

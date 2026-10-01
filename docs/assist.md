@@ -159,7 +159,8 @@ command of its own.
 When the host debugs, every guest is told where the debugger stopped and gets
 a toast. Guests who join while it is paused are told too. **Assist: Host's
 Debugger** shows the host's stack, with **Resume Program**, **Step Over**,
-**Step Into** and **Step Out** above it. Picking a frame opens its file at its
+**Step Into** and **Step Out** above it. While the program runs, it offers
+**Pause Program** instead. Picking a frame opens its file at its
 line and lists its variables. A variable that holds more, an array or an
 object, is marked `…`, and picking it lists what it holds. Picking any other
 variable copies its value.

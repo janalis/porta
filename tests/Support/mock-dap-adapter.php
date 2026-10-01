@@ -19,7 +19,9 @@ declare(strict_types=1);
  *    while the current line is >= 90 responds with an error (error-path hook).
  *  - next/stepIn/stepOut → advance one line, say which ("step: next") on the
  *    console, `stopped {reason: step}`.
- *  - continue → next breakpoint or `terminated` + `exited`.
+ *  - continue → next breakpoint, else `terminated` + `exited` — unless the
+ *    program holds a `// keep running` line: then it runs on until paused.
+ *  - pause → `stopped {reason: pause}` where it is.
  *  - evaluate → $x: 42 with a bump counter ("42#n", re-eval observable);
  *    $arr: a variablesReference container; anything else errors.
  *  - disconnect → response, then exit.
@@ -193,10 +195,15 @@ foreach (readFrames($in) as $message) {
             if (null !== $next) {
                 $currentLine = $next;
                 event($out, 'stopped', ['reason' => 'breakpoint', 'threadId' => 1]);
-            } else {
+            } elseif (!str_contains((string) @file_get_contents($program), '// keep running')) {
                 event($out, 'terminated');
                 event($out, 'exited', ['exitCode' => 0]);
             }
+            break;
+
+        case 'pause':
+            respond($out, $message);
+            event($out, 'stopped', ['reason' => 'pause', 'threadId' => 1]);
             break;
 
         case 'setExceptionBreakpoints':

@@ -187,6 +187,7 @@ replaces in the bar, and neither surface can have both.
 | `Ctrl+F8` | Toggle a breakpoint (also: click the gutter) |
 | `F8` / `F7` / `Shift+F8` | Step over / into / out *(while paused)* |
 | `F9` | Resume *(while paused)* |
+| `Ctrl+F9` | Pause the program where it is *(while it runs)* |
 | `Ctrl+F2` | Stop the debugger *(while a session runs)* |
 | `Ctrl+Shift+F5` | Restart the debugger *(while a session runs)* |
 | `Ctrl+Shift+F8` | Edit the breakpoint's condition, hit count or log message |
