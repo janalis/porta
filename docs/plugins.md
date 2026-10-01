@@ -791,6 +791,12 @@ $runs->start('phpunit', ['vendor/bin/phpunit'], function (int $code) use ($runs)
 | `configurations(): list<array>` | What the Run menu would offer now — the active PHP file, composer scripts, Makefile targets — as `['label' => …, 'command' => list<string>]` |
 | `start(string $title, array $command, ?\Closure $onExit = null)` | Run `$command` in the `run:<title>` terminal session. The tab appears, but the panel is not opened and focus stays where the user left it. A run of the same title already going is replaced. `$onExit(int $code)` gets the exit code, or `-1` when the run is replaced or closed before it ends |
 | `output(string $title): ?array` | What that run printed, as plain text (its last 400 lines), whether it is still `running`, and its `exitCode` once it ended by itself; null when there has been no such run |
+| `terminals(): list<array>` | Every terminal tab — a shell, a run, the debugger's output — as `['id' => 'shell:1' \| 'run:<title>' \| …, 'title' => …, 'running' => bool]` |
+| `scrollback(string $id): ?string` | What a terminal shows, as it would be printed again — colours kept, lines ended with CR LF; null without such a tab |
+| `watch(string $id, ?\Closure $onOutput): bool` | Read a terminal's output as its process prints it — raw bytes, escape sequences and all — until called again with null; false without such a tab |
+| `write(string $id, string $bytes): bool` | Type into a terminal's process; false without such a tab or a process running in it |
+| `mirror(string $id, string $title, ?\Closure $onInput)` | A terminal tab whose process runs elsewhere (someone else's): made once, retitled after, shown behind the tab in front. It shows what `feed()` gives it; the keys typed into it go to `$onInput`, already encoded as a terminal sends them |
+| `feed(string $id, string $bytes)` | Output for a mirrored tab, shown as though its process printed it |
 
 ### Asking about the code
 

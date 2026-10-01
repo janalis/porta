@@ -114,6 +114,20 @@ A guest reading along may not run the server's commands, because what they
 do, they do to the host's files. A guest's servers stop when they leave or are
 removed, and when sharing stops.
 
+## Sharing a terminal
+
+**Assist: Share a Terminal** lets the host pick one of their terminal tabs:
+a shell, or a run. Every guest gets a tab for it, marked `⇄`, showing what it
+shows now and then what it prints. Guests who join later get it too. Picking
+the same terminal again stops sharing it. The guests' tabs stay open, marked
+"(ended)".
+
+**A shared terminal is read-only for guests by default.** Typing into it is
+the host's shell running whatever is typed, so the host lets each guest type
+separately: in **Participants**, pick the guest, then **Let them type in
+shared terminals** (or **Stop them typing**). Until then, a key typed in the
+tab is refused with a message saying so.
+
 ## Carets, undo and following
 
 - **Carets and selections.** Everyone's caret shows in their own colour, with
@@ -144,4 +158,4 @@ removed, and when sharing stops.
   that share: after **Assist: Stop Sharing**, an old invite no longer works.
 - **Four guests at most.** That is as many as the editor has colours to tell
   apart.
-- **No shared terminal or run configurations.**
+- **Run configurations are not shared.** Share the terminal a run is in instead.

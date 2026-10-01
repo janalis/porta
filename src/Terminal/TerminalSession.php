@@ -12,6 +12,15 @@ namespace Porta\Terminal;
  */
 final class TerminalSession
 {
+    /**
+     * Where the keys typed into a session WITHOUT a process go — a terminal
+     * shown here whose process runs elsewhere, a collaborator's — or null
+     * when they go nowhere.
+     *
+     * @var (\Closure(string): void)|null receives the encoded bytes
+     */
+    public ?\Closure $input = null;
+
     public function __construct(
         public readonly string $id,
         public string $title,

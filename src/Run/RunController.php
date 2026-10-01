@@ -43,6 +43,14 @@ final class RunController
      */
     private array $waiting = [];
 
+    /**
+     * Who else reads a session's output as it arrives, by session id — a
+     * terminal shared with collaborators.
+     *
+     * @var array<string, \Closure(string): void>
+     */
+    private array $watchers = [];
+
     public function __construct(
         private readonly RunConfigs $runConfigs,
         private readonly TerminalPanelWidget $terminalPanel,
@@ -239,11 +247,8 @@ final class RunController
         $process = new PtyProcess($command, $this->rootDir, columns: 100, rows: 24);
         $process
             ->onOutput(function (string $chunk) use ($session): void {
-                $session->buffer->feed($chunk);
-                if ($session === $this->sessions->active()) {
-                    $this->terminalPanel->refresh();
-                }
-                $this->tui->requestRender();
+                $this->received($session, $chunk);
+                ($this->watchers[$session->id] ?? null)?->__invoke($chunk);
             })
             ->onExit(function (int $code) use ($session): void {
                 $session->title = \sprintf('%s (%d)', $session->title, $code);
@@ -315,13 +320,97 @@ final class RunController
         $this->tui->requestRender();
     }
 
-    /** Forward panel keystrokes to the active session's process (terminal key encoding applied). */
+    /**
+     * Forward panel keystrokes to the active session's process (terminal key
+     * encoding applied) — or, for a session whose process runs elsewhere, to
+     * whoever relays them there.
+     */
     public function forwardInput(string $data): void
     {
         $bytes = $this->terminalKeys->encode($data);
-        if ('' !== $bytes) {
-            $this->sessions->active()?->process?->write($bytes);
+        $active = $this->sessions->active();
+        if ('' === $bytes || null === $active) {
+            return;
         }
+        null === $active->process ? ($active->input ?? static function (string $bytes): void {})($bytes) : $active->process->write($bytes);
+    }
+
+    /** @return list<array{id: string, title: string, running: bool}> every terminal tab, in tab order */
+    public function terminals(): array
+    {
+        return \array_map(static fn (TerminalSession $session): array => ['id' => $session->id, 'title' => $session->title, 'running' => $session->isRunning()], $this->sessions->sessions);
+    }
+
+    /** What $id shows, as it would be printed again (colours kept, CR LF line ends), or null without such a tab. */
+    public function scrollback(string $id): ?string
+    {
+        $session = $this->sessions->find($id);
+
+        return null === $session ? null : \implode("\r\n", $session->buffer->lines);
+    }
+
+    /** Type $bytes into $id's process; false without such a tab, or a process running in it. */
+    public function write(string $id, string $bytes): bool
+    {
+        $process = $this->sessions->find($id)?->process;
+        if (null === $process || !$process->isRunning()) {
+            return false;
+        }
+        $process->write($bytes);
+
+        return true;
+    }
+
+    /** Read $id's output as it arrives — or stop, with null. False when there is no such session. */
+    public function watch(string $id, ?\Closure $onOutput): bool
+    {
+        if (null === $this->sessions->find($id)) {
+            return false;
+        }
+        unset($this->watchers[$id]);
+        if (null !== $onOutput) {
+            $this->watchers[$id] = $onOutput;
+        }
+
+        return true;
+    }
+
+    /**
+     * The `$id` session for a terminal whose process runs elsewhere: made
+     * the first time, retitled after — behind the tab in front, as a run in
+     * the background is. Its output is what {@see feed()} gives it; the keys
+     * typed into it go to $onInput.
+     *
+     * @param (\Closure(string): void)|null $onInput
+     */
+    public function mirror(string $id, string $title, ?\Closure $onInput): void
+    {
+        $shown = $this->sessions->active();
+        $session = $this->sessions->find($id) ?? $this->sessions->create($id, $title);
+        $session->title = $title;
+        $session->input = $onInput;
+        if (null !== $shown) {
+            $this->sessions->makeActive($shown);
+        }
+        $this->tui->requestRender();
+    }
+
+    /** Output for $id, as though its process printed it. */
+    public function feed(string $id, string $bytes): void
+    {
+        $session = $this->sessions->find($id);
+        if (null !== $session) {
+            $this->received($session, $bytes);
+        }
+    }
+
+    private function received(TerminalSession $session, string $bytes): void
+    {
+        $session->buffer->feed($bytes);
+        if ($session === $this->sessions->active()) {
+            $this->terminalPanel->refresh();
+        }
+        $this->tui->requestRender();
     }
 
     /** Stop every session's process (app shutdown). */

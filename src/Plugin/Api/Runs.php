@@ -70,4 +70,62 @@ final readonly class Runs
             'output' => \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $lines)),
         ];
     }
+
+    /**
+     * Every terminal tab — a shell, a run, the debugger's output — by its id
+     * (`shell:N`, `run:<title>`, …), its title and whether a process is
+     * running in it.
+     *
+     * @return list<array{id: string, title: string, running: bool}>
+     */
+    public function terminals(): array
+    {
+        return $this->runs->terminals();
+    }
+
+    /**
+     * What a terminal shows, as it would be printed again — colours kept,
+     * lines ended with CR LF — or null when there is no such tab.
+     */
+    public function scrollback(string $id): ?string
+    {
+        return $this->runs->scrollback($id);
+    }
+
+    /**
+     * Read a terminal's output as its process prints it — raw bytes, escape
+     * sequences and all — until called again with null. False when there is
+     * no such tab.
+     *
+     * @param (\Closure(string): void)|null $onOutput
+     */
+    public function watch(string $id, ?\Closure $onOutput): bool
+    {
+        return $this->runs->watch($id, $onOutput);
+    }
+
+    /** Type $bytes into a terminal's process. False when there is no such tab, or no process running in it. */
+    public function write(string $id, string $bytes): bool
+    {
+        return $this->runs->write($id, $bytes);
+    }
+
+    /**
+     * A terminal tab whose process runs elsewhere — someone else's, say:
+     * made once, retitled after, behind the tab in front. It shows what
+     * {@see feed()} gives it, and the keys typed into it go to `$onInput`
+     * (none, with null).
+     *
+     * @param (\Closure(string): void)|null $onInput
+     */
+    public function mirror(string $id, string $title, ?\Closure $onInput): void
+    {
+        $this->runs->mirror($id, $title, $onInput);
+    }
+
+    /** Output for a mirrored terminal, shown as though its process printed it. */
+    public function feed(string $id, string $bytes): void
+    {
+        $this->runs->feed($id, $bytes);
+    }
 }
