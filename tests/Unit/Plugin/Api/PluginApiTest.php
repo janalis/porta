@@ -53,6 +53,7 @@ use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestBottomDock;
 use Porta\Tests\Support\TestDockTools;
 use Porta\Tests\Support\TestLspQuery;
+use Porta\Tests\Support\TestParticipants;
 use Porta\Tests\Support\TestRunController;
 use Porta\Tests\Support\TestRuns;
 use Porta\Tests\Support\TestTui;
@@ -148,6 +149,7 @@ final class PluginApiTest extends TestCase
                     new BufferSaver($this->buffers, $this->events = new EventDispatcher()),
                     TestRuns::create($this->runs = TestRunController::create(tui: $tui)),
                     TestWorkspaceEditor::create($this->buffers),
+                    TestParticipants::create(),
                 ),
             );
         }
@@ -503,6 +505,7 @@ final class PluginApiTest extends TestCase
                 saver: new BufferSaver(new BufferManager(), new EventDispatcher()),
                 runs: TestRuns::create(),
                 workspaceEditor: TestWorkspaceEditor::create(),
+                participants: TestParticipants::create(),
             ),
         );
         $api = new PluginApi('demo', $manager, $project->dir, $settings);
@@ -1098,6 +1101,7 @@ final class PluginApiTest extends TestCase
             new BufferSaver(new BufferManager(), new EventDispatcher()),
             TestRuns::create(),
             TestWorkspaceEditor::create(),
+            TestParticipants::create(),
         ));
         $api = new PluginApi('demo', $manager, '/p', new PluginSettings('/p', [], null, self::projectScope('/p')));
         $api->registerListTool('todo', 'TODO');
@@ -1147,6 +1151,7 @@ final class PluginApiTest extends TestCase
             new BufferSaver(new BufferManager(), new EventDispatcher()),
             TestRuns::create(),
             TestWorkspaceEditor::create(),
+            TestParticipants::create(),
         ));
         $api = new PluginApi('demo', $manager, $project->dir, new PluginSettings($project->dir, [], null, self::projectScope($project->dir)));
 
@@ -1274,6 +1279,7 @@ final class PluginApiTest extends TestCase
             new BufferSaver(new BufferManager(), new EventDispatcher()),
             TestRuns::create(),
             TestWorkspaceEditor::create(),
+            TestParticipants::create(),
         ));
 
         return new PluginApi('demo', $manager, '/p', new PluginSettings('/p', [], null, self::projectScope('/p')));

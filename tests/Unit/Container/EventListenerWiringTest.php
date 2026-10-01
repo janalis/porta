@@ -299,6 +299,10 @@ final class EventListenerWiringTest extends TestCase
             // An agent's first edit of a file, with what it held: a recovery
             // fact, and recovery is local-history's, registered at runtime.
             'AgentEditing',
+            // The roster changed. Core shows it by pulling the roster, not by
+            // hearing itself: these are for plugins, through on().
+            'ParticipantJoined',
+            'ParticipantLeft',
         ];
 
         $dispatcher = $this->dispatcher();

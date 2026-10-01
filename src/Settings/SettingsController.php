@@ -10,14 +10,13 @@ use Porta\Container\AsIdeService;
 use Porta\Editor\DiagnosticMessageMode;
 use Porta\Editor\EditorDisplayOptions;
 use Porta\Editor\LineNumberMode;
-use Porta\Editor\PreviewRoutes;
 use Porta\I18n\Translator;
 use Porta\Overlay\State\TooltipCenter;
+use Porta\Presence\Identity;
 use Porta\Search\FileIndex;
 use Porta\Ui\Graphics\PixelRatio;
 use Porta\Ui\Theme\Theme;
 use Porta\Widget\BreadcrumbsWidget;
-use Porta\Widget\MarkdownPreviewWidget;
 use Porta\Workbench\Notifier;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
@@ -59,7 +58,7 @@ final class SettingsController
         BreadcrumbsWidget $breadcrumbs,
         FileIndex $files,
         TooltipCenter $tooltips,
-        PreviewRoutes $previews,
+        Identity $identity,
     ) {
         $this->descriptors = [
             // --- Interface (the "Interface" settings page) ---
@@ -211,16 +210,6 @@ final class SettingsController
                 'restart' => false,
                 'apply' => static fn (int|bool|string $v) => (bool) $v ? $applier->enableFormatOnSave() : $applier->disableFormatOnSave(),
             ],
-            // Files opened AFTER the change follow it, as the viewer plugins'
-            // own SVG and PlantUML toggles do: an open tab keeps its preview.
-            'markdownPreview' => [
-                'label' => 'Markdown preview',
-                'kind' => SettingsRowKind::Bool,
-                'group' => 'general',
-                'fieldset' => 'Editing',
-                'restart' => false,
-                'apply' => static fn (int|bool|string $v) => $previews->enable(MarkdownPreviewWidget::PANE_ID, (bool) $v),
-            ],
             'searchIncludeVendor' => [
                 'label' => 'Search vendor/ files',
                 'kind' => SettingsRowKind::Bool,
@@ -228,6 +217,24 @@ final class SettingsController
                 'fieldset' => 'Search',
                 'restart' => false,
                 'apply' => static fn (int|bool|string $v) => $files->setIncludeVendor((bool) $v),
+            ],
+            // Who this side is to the others on the project — other Porta
+            // instances on the same files, and a session's collaborators.
+            'displayName' => [
+                'label' => 'Your name',
+                'kind' => SettingsRowKind::Text,
+                'group' => 'general',
+                'fieldset' => 'Participants',
+                'restart' => false,
+                'apply' => static fn (int|bool|string $v) => $identity->rename((string) $v),
+            ],
+            'sharePresence' => [
+                'label' => 'Show others where I am',
+                'kind' => SettingsRowKind::Bool,
+                'group' => 'general',
+                'fieldset' => 'Participants',
+                'restart' => false,
+                'apply' => static fn (int|bool|string $v) => $identity->share((bool) $v),
             ],
         ];
     }

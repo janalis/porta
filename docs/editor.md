@@ -825,3 +825,40 @@ expands the fold at the caret; **Fold All** / **Unfold All** in the palette
 collapse and restore the whole file — with a language server attached the
 fold regions come from `foldingRange` (real syntax), otherwise from a brace
 scan.
+
+## Participants
+
+Open the same project in two Porta instances — two windows on one folder, or
+two people opening the same directory on a server over ssh or FTP — and each
+shows the other at work: a caret in their colour with their name beside it,
+their selection tinted, and a `✦` on the tab and tree row of the file they
+have open. The status bar counts them (`⚇ 2`); hover it for their names and
+the name they see you by, click it to jump to the file someone is in.
+Collaborators in an assist session are listed in the same roster.
+
+Each instance leaves a small file in `.porta/presence/`: this folder's, or,
+for a remote project, the server project's own `.porta/presence/`, the one
+place everybody who opens that directory reaches. It holds your name, the file
+you have open (relative to the project) and your caret, and nothing else. It
+is looked at every second on a local disk, every 3 seconds over ssh and every
+10 over FTP, and rewritten only when you move — or every 5, 15 or 30 seconds
+to say you are still there.
+
+- **Someone quits.** On a local disk they are gone at once. A server is not
+  told: they leave after three missed heartbeats (45 seconds over ssh, 90
+  over FTP).
+- **Someone's link drops.** Same: three missed heartbeats, and they leave.
+- **Your link drops.** The others are not gone, you have lost sight of them:
+  they stay in the roster as last seen, marked `⌁`, with no caret — and come
+  back as they are as soon as the server answers. If it does not answer for
+  a minute, they are taken out of the roster too. The others stop hearing
+  from you meanwhile, so your first good look tells them where you are again.
+  The same applies to an assist guest who lost the host.
+- **A crashed instance** leaves its file behind; whoever sees it go quiet for
+  ten minutes deletes it.
+
+Set your name under **Settings → General → Participants** (`displayName`;
+empty uses your login name). Turn off **Show others where I am**
+(`sharePresence`) to see the others without being seen. This shows who is
+where — it does not share unsaved text: two people saving the same file still
+meet the usual "changed on disk" check. To edit together, use assist.

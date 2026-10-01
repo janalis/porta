@@ -60,6 +60,7 @@ final class TestPluginRuntime
             new BufferSaver($buffers, new EventDispatcher()),
             TestRuns::create(),
             TestWorkspaceEditor::create(),
+            TestParticipants::create(),
         );
     }
 }

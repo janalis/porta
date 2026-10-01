@@ -21,6 +21,7 @@ use Porta\Lsp\WorkspaceEditor;
 use Porta\Plugin\Api\PluginApi;
 use Porta\Plugin\Api\Runs;
 use Porta\Plugin\Lifecycle\PluginLifecycleOps;
+use Porta\Presence\Participants;
 use Porta\Support\Clipboard;
 use Porta\Tree\FileStatusSink;
 use Porta\Widget\FileTreeWidget;
@@ -65,5 +66,6 @@ final readonly class PluginRuntime
         public BufferSaver $saver,
         public Runs $runs,
         public WorkspaceEditor $workspaceEditor,
+        public Participants $participants,
     ) {}
 }

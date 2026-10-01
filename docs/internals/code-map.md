@@ -100,6 +100,13 @@ The rest of this namespace:
   command-line tool.
 - **`LocalOnly`:** the gate in front of what runs the project here.
 
+**`Presence/`** — who else is at work on the project. `Participants` is the
+roster and its status cell, fed by sources: `PresenceSync` for other Porta
+instances on the same files, plugins through `Plugin/Api/PluginParticipants`.
+`PresenceBoard` (`LocalPresenceBoard`, `RemotePresenceBoard`) is where the
+instances leave their `Beacon`s; `Identity` is the name they see. It depends on
+`Filesystem/` for the remote board's transport, never the other way.
+
 **`Install/`** — Porta outside the IDE: the `porta` link on `PATH`
 (`CommandLink`), git's difftool/mergetool config (`GitToolSetup`) and the
 running binary (`PortaBinary`). Shared by `Console/` (`--git-setup`) and the

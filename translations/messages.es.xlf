@@ -3050,10 +3050,6 @@
         <source>Preview Only</source>
         <target>Solo vista previa</target>
       </trans-unit>
-      <trans-unit id="1082">
-        <source>Markdown preview</source>
-        <target>Vista previa de Markdown</target>
-      </trans-unit>
       <trans-unit id="1083">
         <source>Display pixel ratio</source>
         <target>Relación de píxeles de la pantalla</target>
@@ -3141,6 +3137,30 @@
       <trans-unit id="1104">
         <source>Fetching %count% file from the server — the replace runs once it is here|Fetching %count% files from the server — the replace runs once they are here</source>
         <target>Descargando %count% archivo del servidor — el reemplazo se hará cuando llegue|Descargando %count% archivos del servidor — el reemplazo se hará cuando lleguen</target>
+      </trans-unit>
+      <trans-unit id="1105">
+        <source>Your name</source>
+        <target>Tu nombre</target>
+      </trans-unit>
+      <trans-unit id="1106">
+        <source>Show others where I am</source>
+        <target>Mostrar a los demás dónde estoy</target>
+      </trans-unit>
+      <trans-unit id="1107">
+        <source>Also at work here: %names%</source>
+        <target>También trabajando aquí: %names%</target>
+      </trans-unit>
+      <trans-unit id="1108">
+        <source>They see you as %name%</source>
+        <target>Te ven como %name%</target>
+      </trans-unit>
+      <trans-unit id="1109">
+        <source>The link to some of them is lost: shown as last seen, for a minute at most</source>
+        <target>Se perdió el enlace con algunos: se muestran como se vieron por última vez, un minuto como mucho</target>
+      </trans-unit>
+      <trans-unit id="1110">
+        <source>Participants</source>
+        <target>Participantes</target>
       </trans-unit>
     </body>
   </file>

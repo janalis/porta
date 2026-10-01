@@ -69,6 +69,10 @@ final class Glyphs
     // A character of a password, in a masked field.
     public const string MASKED = '•';
     public const string UPLOADING = '⇡';
+    // Others at work on the project, in the status bar, and ⌁ beside the
+    // count while the link to some of them is lost. Both East-Asian-neutral.
+    public const string PARTICIPANTS = '⚇';
+    public const string OUT_OF_TOUCH = '⌁';
 
     // The action a server marks as the one it would pick — a quick fix's
     // isPreferred — leading its label in the list.

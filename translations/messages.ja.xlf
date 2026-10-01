@@ -3050,10 +3050,6 @@
         <source>Preview Only</source>
         <target>プレビューのみ</target>
       </trans-unit>
-      <trans-unit id="1082">
-        <source>Markdown preview</source>
-        <target>Markdown プレビュー</target>
-      </trans-unit>
       <trans-unit id="1083">
         <source>Display pixel ratio</source>
         <target>画面のピクセル比</target>
@@ -3141,6 +3137,30 @@
       <trans-unit id="1104">
         <source>Fetching %count% file from the server — the replace runs once it is here|Fetching %count% files from the server — the replace runs once they are here</source>
         <target>サーバーから %count% 件のファイルを取得中 — 届いたら置換します</target>
+      </trans-unit>
+      <trans-unit id="1105">
+        <source>Your name</source>
+        <target>あなたの名前</target>
+      </trans-unit>
+      <trans-unit id="1106">
+        <source>Show others where I am</source>
+        <target>自分の居場所を他の人に表示</target>
+      </trans-unit>
+      <trans-unit id="1107">
+        <source>Also at work here: %names%</source>
+        <target>ここで作業中の他の人: %names%</target>
+      </trans-unit>
+      <trans-unit id="1108">
+        <source>They see you as %name%</source>
+        <target>相手にはあなたが %name% と表示されます</target>
+      </trans-unit>
+      <trans-unit id="1109">
+        <source>The link to some of them is lost: shown as last seen, for a minute at most</source>
+        <target>一部の人との接続が切れました: 最後に見た状態で最大1分間表示します</target>
+      </trans-unit>
+      <trans-unit id="1110">
+        <source>Participants</source>
+        <target>参加者</target>
       </trans-unit>
     </body>
   </file>

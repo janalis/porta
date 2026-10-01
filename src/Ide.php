@@ -41,6 +41,7 @@ use Porta\Lsp\LspSessionPool;
 use Porta\Onboarding\OnboardingState;
 use Porta\Overlay\State\TooltipCenter;
 use Porta\Plugin\Lifecycle\PluginLifecycle;
+use Porta\Presence\PresenceSync;
 use Porta\Run\RunController;
 use Porta\Search\SearchUiWiring;
 use Porta\Settings\SettingsController;
@@ -434,6 +435,12 @@ final class Ide
         // …and once at once: the tree was built before the plugins that reach
         // the server activated, so its first listing waits for this.
         $remoteFirst = EventLoop::defer($remote->poll(...));
+        // The other Porta instances on this project, through the board they
+        // share. Not for a git tool run: that is nobody at work here.
+        $presence = $this->service(PresenceSync::class);
+        if (null === $this->tool) {
+            $presence->start();
+        }
         // Deferred, so it runs once tui->run() has started the terminal: the
         // answers come back as INPUT, which needs raw mode and the stdin
         // watcher. A pane paints half-blocks until they have arrived.
@@ -565,6 +572,7 @@ final class Ide
             EventLoop::cancel($remotePoll);
             EventLoop::cancel($remoteFirst);
             $remote->close();
+            $presence->stop();
             EventLoop::cancel($graphicsProbe);
             foreach ($signals as $signal) {
                 EventLoop::cancel($signal);

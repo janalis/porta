@@ -1330,6 +1330,17 @@ final class PluginApi
     }
 
     /**
+     * The people this plugin brought to the project, in core's roster beside
+     * the other Porta instances on the same files — and the user's own name,
+     * as the others see it. See {@see PluginParticipants}. An action method:
+     * it throws during `activate()`.
+     */
+    public function participants(): PluginParticipants
+    {
+        return new PluginParticipants($this->pluginName, $this->manager->runtime()->participants);
+    }
+
+    /**
      * The Run menu's tasks and the terminal sessions they run in, for a
      * plugin that starts one and reads what it printed — see {@see Runs}. An
      * action method: it throws during `activate()`.

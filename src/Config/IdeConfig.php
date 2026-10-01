@@ -41,20 +41,24 @@ final readonly class IdeConfig
         'breadcrumbs' => true,
         'autoPairs' => true,
         'formatOnSave' => false,
-        'markdownPreview' => true,
         'searchIncludeVendor' => false,
         'cursorShape' => 'bar',
         'pixelRatio' => 'auto',
         'tabBarPosition' => 'top',
         'tooltips' => true,
         'tooltipDelay' => 500,
+        'displayName' => '',
+        'sharePresence' => true,
     ];
 
     /**
      * Superseded setting keys: silently skipped at load, so a stale value in
      * an older .porta.json never warns. `editorConfig` was the "Respect
      * .editorconfig" toggle — .editorconfig is always honored now, superseded
-     * per language by the indent settings. `relativeLineNumbers` and
+     * per language by the indent settings. `markdownPreview` turned
+     * Markdown's preview off for files opened after it; the Editor / Split /
+     * Preview toggles over a previewed file say that per file now. Both carry
+     * nothing any more. `relativeLineNumbers` and
      * `inlineDiagnostics` were booleans that grew into choices
      * (`lineNumbers`, `diagnosticMessages`): still read, and migrated.
      *
@@ -68,6 +72,7 @@ final readonly class IdeConfig
      */
     public const array LEGACY_SETTINGS = [
         'editorConfig',
+        'markdownPreview',
         'relativeLineNumbers',
         'inlineDiagnostics',
         'gitShowBranch',
@@ -87,15 +92,15 @@ final readonly class IdeConfig
     /**
      * The stripped-on-write subset of {@see self::LEGACY_SETTINGS}
      * ({@see PortaJsonWriter::persistSetting}): only keys core itself
-     * obsoleted. `editorConfig` carries no information any more and drops on
-     * any write; a SUPERSEDED_BY key drops only when its successor is being
+     * obsoleted. `editorConfig` and `markdownPreview` carry no information any
+     * more and drop on any write; a SUPERSEDED_BY key drops only when its successor is being
      * written, so the preference it still encodes is never destroyed before
      * the successor records it. The eight git* keys are deliberately in
      * neither list: their values belong to the git plugin's one-time adoption,
      * which may not have run yet (plugin disabled, project not reopened) —
      * stripping them on an unrelated write would destroy what it adopts.
      */
-    public const array OBSOLETE_SETTINGS = ['editorConfig'];
+    public const array OBSOLETE_SETTINGS = ['editorConfig', 'markdownPreview'];
 
     /** legacy key => the successor whose write retires it. */
     public const array SUPERSEDED_BY = ['relativeLineNumbers' => 'lineNumbers', 'inlineDiagnostics' => 'diagnosticMessages'];

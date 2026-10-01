@@ -35,6 +35,7 @@ use Porta\Tests\Support\RecordingDiagnosticsSink;
 use Porta\Tests\Support\RecordingFileOpener;
 use Porta\Tests\Support\TestDockTools;
 use Porta\Tests\Support\TestLspQuery;
+use Porta\Tests\Support\TestParticipants;
 use Porta\Tests\Support\TestRuns;
 use Porta\Tests\Support\TestTui;
 use Porta\Tests\Support\TestWorkspaceEditor;
@@ -89,6 +90,7 @@ final class PluginManagerTest extends TestCase
                 new BufferSaver(new BufferManager(), new EventDispatcher()),
                 TestRuns::create(),
                 TestWorkspaceEditor::create(),
+                TestParticipants::create(),
             ),
         );
 

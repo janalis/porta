@@ -955,6 +955,47 @@ An agent's edit never takes the user's screen: `OpenFocus::Background` opens
 the file behind the active tab, and `DocumentReplacer::replaceRange` keeps the
 buffer's caret and selection, shifted with their text.
 
+## Participants and presence
+
+Other Porta instances on the same files, and a plugin's collaborators, are
+one roster: `Presence/Participants`, a `StatusSegment` (`⚇ N`, the names
+and "they see you as" on hover, a click lists them, each opening its file).
+Each SOURCE replaces its own list whole (`set()`), and the diff is what fires
+`ParticipantJoined`/`ParticipantLeft`. `outOfTouch()` keeps a source's people
+as last seen (`⌁`, accent tone) and arms a `Scheduler` timer; a `set()` within
+`Participants::GRACE` (60 s) calls it off, else the timer empties the source.
+A plugin reaches it through `PluginApi::participants()` →
+`Plugin/Api/PluginParticipants` (`set`, `outOfTouch`, `yourName`), under
+`plugin:<name>`, which `PluginManager::deactivate()` empties.
+
+`Presence/PresenceSync` is the instances' source. `Ide::run()` starts it
+(never in a git tool run) and stops it in the teardown. Each tick it says
+where this side is (only on news or a due heartbeat), then reads the board.
+`PresenceBoard` is chosen once, like `ProjectFiles`:
+
+- `LocalPresenceBoard`: `<root>/.porta/presence/<id>.json`, written beside
+  and renamed over; answers at once. 1 s tick, 5 s heartbeat.
+- `RemotePresenceBoard`: the SERVER's `.porta/presence/`, through a transport
+  of its own from `RemoteTransportSource` — not `RemoteFilesystem`'s, which
+  keeps it private, and an ssh one shares its ControlMaster anyway. One
+  listing per look, a fetch only for a file whose `RemoteStamp` moved. ssh:
+  3 s / 15 s; FTP: 10 s / 30 s. No transport yet is "nobody", not "lost".
+
+Liveness reads ONLY this machine's clock: a beacon is alive while its `beat`
+keeps changing as seen here (`STALE_BEATS` = 3 heartbeats), so skewed clocks
+do not matter. A beacon quiet for `FORGET` (600 s), or seen for the first time
+with a beat that old, is withdrawn by whoever reads it. A read that fails
+is a lost link: carets go (`AgentLeft`), the roster goes `outOfTouch()`, the
+next publish is forced, and the first good read counts every beat as fresh —
+the silence was this side's. Carets are `AgentActivity` under `peer:<id>`
+with a day-long fade (this class says when they leave), so they render
+exactly as agents' do (above). `Beacon::fromJson` trusts nothing: a fixed id
+shape (it names a file), names through `Beacon::clean` (no `\p{Cc}\p{Cf}`,
+40 characters), and relative paths without `.`/`..`.
+
+On quit, a local beacon is unlinked synchronously; a remote one cannot be,
+because the loop has stopped. The others drop it after three heartbeats.
+
 ## i18n and RTL
 
 `I18n/Translator` wraps `symfony/translation`. **The English source string is

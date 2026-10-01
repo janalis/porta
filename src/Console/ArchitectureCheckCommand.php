@@ -281,6 +281,7 @@ final class ArchitectureCheckCommand extends Command
         'Plugin>Lsp',
         'Plugin>Onboarding', // …with the first-run card marked seen: the server's project is set up there
         'Plugin>Overlay',
+        'Plugin>Presence', // PluginParticipants: a plugin's people in core's roster
         'Plugin>Run', // Plugin\Api\Runs: the Run menu's tasks and background runs
         'Plugin>Search',
         'Plugin>Settings',
@@ -289,6 +290,16 @@ final class ArchitectureCheckCommand extends Command
         'Plugin>Ui', // flash()/notify() take a Ui\Markup\Markup, the value a styled message travels as
         'Plugin>Widget',
         'Plugin>Workbench',
+        // Who else is at work on the project: the board other Porta instances
+        // share (on this disk, or the server's through a transport of its own),
+        // their carets shown as agents', and the roster's status cell.
+        'Presence>Container',
+        'Presence>Editor',
+        'Presence>Event',
+        'Presence>Filesystem',
+        'Presence>Support',
+        'Presence>Ui',
+        'Presence>Workbench',
         // The review plugin's own code (plugins/review/src). ReviewPlugin>GitPlugin
         // is the second cross-plugin edge, declared by `requires: ["git"]`: it
         // borrows the git plugin's process runner and diff model, never its
@@ -336,6 +347,7 @@ final class ArchitectureCheckCommand extends Command
         // same live-apply pattern.
         'Settings>Overlay',
         'Settings>Plugin',
+        'Settings>Presence', // the name and presence settings, applied live
         // The "Search vendor/ files" toggle applies straight to the shared
         // FileIndex — the SettingsController's live-apply pattern.
         'Settings>Search',

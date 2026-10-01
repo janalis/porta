@@ -3050,10 +3050,6 @@
         <source>Preview Only</source>
         <target>תצוגה מקדימה בלבד</target>
       </trans-unit>
-      <trans-unit id="1082">
-        <source>Markdown preview</source>
-        <target>תצוגה מקדימה של Markdown</target>
-      </trans-unit>
       <trans-unit id="1083">
         <source>Display pixel ratio</source>
         <target>יחס הפיקסלים של המסך</target>
@@ -3141,6 +3137,30 @@
       <trans-unit id="1104">
         <source>Fetching %count% file from the server — the replace runs once it is here|Fetching %count% files from the server — the replace runs once they are here</source>
         <target>מאחזר קובץ אחד מהשרת — ההחלפה תרוץ כשיגיע|מאחזר %count% קבצים מהשרת — ההחלפה תרוץ כשיגיעו</target>
+      </trans-unit>
+      <trans-unit id="1105">
+        <source>Your name</source>
+        <target>השם שלך</target>
+      </trans-unit>
+      <trans-unit id="1106">
+        <source>Show others where I am</source>
+        <target>להראות לאחרים איפה אני</target>
+      </trans-unit>
+      <trans-unit id="1107">
+        <source>Also at work here: %names%</source>
+        <target>עובדים כאן גם: %names%</target>
+      </trans-unit>
+      <trans-unit id="1108">
+        <source>They see you as %name%</source>
+        <target>הם רואים אותך כ־%name%</target>
+      </trans-unit>
+      <trans-unit id="1109">
+        <source>The link to some of them is lost: shown as last seen, for a minute at most</source>
+        <target>הקשר עם חלקם אבד: מוצגים כפי שנראו לאחרונה, דקה לכל היותר</target>
+      </trans-unit>
+      <trans-unit id="1110">
+        <source>Participants</source>
+        <target>משתתפים</target>
       </trans-unit>
     </body>
   </file>

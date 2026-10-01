@@ -26,6 +26,7 @@ use Porta\Plugin\Api\RemoteProjectPlugin;
 use Porta\Plugin\Api\ServerRole;
 use Porta\Plugin\Api\ToolCaller;
 use Porta\Plugin\Api\ToolEffect;
+use Porta\Presence\Participants;
 use Porta\Search\TokenSpanProvider;
 use Porta\Workbench\Dock\DockToolSource;
 use Porta\Workbench\Menu\ContributedMenuSource;
@@ -384,6 +385,8 @@ final class PluginManager implements
         }
         unset($this->pluginListeners[$name]);
         $this->settings->removeFor($name);
+        // Its collaborators leave with it: nothing would ever take them out.
+        $this->runtime?->participants->set(Participants::pluginSource($name), []);
         if (\count($this->tools) !== $toolCount) {
             $this->events->dispatch(new ToolsChanged());
         }

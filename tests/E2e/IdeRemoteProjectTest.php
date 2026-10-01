@@ -12,6 +12,8 @@ use Porta\Filesystem\ProjectLocation;
 use Porta\Filesystem\RemoteFilesystem;
 use Porta\Ide;
 use Porta\Lsp\LspSessionPool;
+use Porta\Presence\Beacon;
+use Porta\Presence\PresenceBoard;
 use Porta\Search\Everywhere\SearchEverywhereFactory;
 use Porta\Search\Everywhere\TextSource;
 use Porta\Settings\SettingsSearchLauncher;
@@ -93,6 +95,15 @@ final class IdeRemoteProjectTest extends TestCase
             300 => function () use ($server): void {
                 $this->await(static fn (): bool => "X# served\n\n\n\n\n" === \file_get_contents($server->path('README.md')));
                 $this->assertSame("X# served\n\n\n\n\n", \file_get_contents($server->path('README.md')), 'the save reached the server');
+                // Where this side is, on the server's board, for whoever else
+                // opens the same directory: the file relative, never the cache.
+                $mine = static function () use ($server): ?Beacon {
+                    $files = \glob($server->path(PresenceBoard::DIR.'/*.json'));
+
+                    return false === $files || [] === $files ? null : Beacon::fromJson((string) \file_get_contents($files[0]));
+                };
+                $this->await(static fn (): bool => 'README.md' === $mine()?->path, what: 'this side\'s beacon on the server');
+                $this->assertSame('ssh', $mine()?->via);
             },
             // A search hit opens its file and jumps to the line, in that order.
             // While the file is still on its way, the jump must not move the

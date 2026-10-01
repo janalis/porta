@@ -30,6 +30,7 @@ use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestDockTools;
 use Porta\Tests\Support\TestLspQuery;
+use Porta\Tests\Support\TestParticipants;
 use Porta\Tests\Support\TestRuns;
 use Porta\Tests\Support\TestTui;
 use Porta\Tests\Support\TestWorkspaceEditor;
@@ -154,6 +155,7 @@ final class AbstractAnalyzerPluginTest extends TestCase
             new BufferSaver(new BufferManager(), new EventDispatcher()),
             TestRuns::create(),
             TestWorkspaceEditor::create(),
+            TestParticipants::create(),
         ));
 
         return new PluginApi('demo', $this->manager, $this->project->dir, $settings);

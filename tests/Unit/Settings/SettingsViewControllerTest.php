@@ -16,7 +16,6 @@ use Porta\Config\PortaJsonWriter;
 use Porta\Debug\DebugAdapters;
 use Porta\Editor\BufferManager;
 use Porta\Editor\EditorPanes;
-use Porta\Editor\PreviewRoutes;
 use Porta\Event\SettingsSectionRequested;
 use Porta\Highlight\ColorMode;
 use Porta\Highlight\HighlightPreferences;
@@ -41,6 +40,7 @@ use Porta\Plugin\Lifecycle\ToolInstaller;
 use Porta\Plugin\Runtime\PluginHost;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginSettings;
+use Porta\Presence\Identity;
 use Porta\Search\FileIndex;
 use Porta\Settings\LiveSettingsApplier;
 use Porta\Settings\Section\CommandLineSection;
@@ -234,7 +234,7 @@ final class SettingsViewControllerTest extends TestCase
             new BreadcrumbsWidget(),
             new FileIndex($this->project->dir),
             new TooltipCenter(new FakeScheduler(), $this->tui),
-            new PreviewRoutes(new PluginManager(new EventDispatcher(), new PluginSettings($this->project->dir, []))),
+            new Identity(),
         );
         $bootKeys = new Keybindings([]);
         $keysHost = new PluginHost(IdeConfig::load($this->project->dir), new EventDispatcher(), $this->project->dir);

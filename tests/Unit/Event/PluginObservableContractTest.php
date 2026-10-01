@@ -38,6 +38,8 @@ final class PluginObservableContractTest extends TestCase
         'IdeShuttingDown',
         'LocaleChanged',
         'MergeToolLaunched',
+        'ParticipantJoined',
+        'ParticipantLeft',
         'QuitRequested',
         'ThemeChanged',
         'ToolsChanged',
