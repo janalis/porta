@@ -51,7 +51,7 @@ final class JsonRpcTransport
     ) {
         $this->logger = $logger;
         $this->framer = new JsonRpcFramer(function (string $reason): void {
-            $this->log($this->peerName.' overflowed the read buffer: '.$reason);
+            $this->log($this->peerName.' sent what cannot be read: '.$reason);
         });
     }
 

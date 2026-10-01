@@ -363,9 +363,11 @@ final class LspSessionPool
      * An EMPTY owner is "whoever serves the active file" — what a caller that
      * never asked {@see requestAll()} has, and the single-server behaviour
      * this method replaced. A non-empty owner naming a server that has since
-     * gone (a failed relaunch, a reconfigure) is a silent no-op instead: the
-     * thing being resolved cannot exist any more either, and handing it to
-     * another server would be asking it about an id that means something else.
+     * gone (a failed relaunch, a reconfigure) is answered with an error on
+     * the next tick instead: the thing being resolved cannot exist any more
+     * either, handing it to another server would be asking it about an id
+     * that means something else — and a caller waiting for an answer must
+     * still get one.
      */
     public function requestTo(string $owner, string $method, mixed $params, callable $onResult): void
     {
@@ -378,7 +380,13 @@ final class LspSessionPool
             // key can be empty it would send the request twice.
             return;
         }
-        ($this->sessions[$owner] ?? null)?->request($method, $params, $onResult);
+        $session = $this->sessions[$owner] ?? null;
+        if (null === $session) {
+            EventLoop::queue($onResult(...), null, ['code' => -32_002, 'message' => 'That language server is no longer running']);
+
+            return;
+        }
+        $session->request($method, $params, $onResult);
     }
 
     /**

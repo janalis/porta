@@ -78,19 +78,27 @@ final class JsonRpcFramerTest extends TestCase
 
     public function testCorruptHeaderBlockIsDroppedAndTheStreamResyncs(): void
     {
-        $framer = new JsonRpcFramer();
+        $said = [];
+        $framer = new JsonRpcFramer(static function (string $why) use (&$said): void {
+            $said[] = $why;
+        });
         $data = "X-Garbage: yes\r\n\r\n".JsonRpcFramer::encode(['ok' => true]);
 
         $this->assertSame([['ok' => true]], $framer->feed($data));
+        $this->assertSame(['a header block with no Content-Length — dropped'], $said);
     }
 
-    public function testNonArrayJsonBodiesAreSkipped(): void
+    public function testNonArrayJsonBodiesAreSkippedAndSaidSo(): void
     {
-        $framer = new JsonRpcFramer();
+        $said = [];
+        $framer = new JsonRpcFramer(static function (string $why) use (&$said): void {
+            $said[] = $why;
+        });
         $body = '"just a string"';
         $data = 'Content-Length: '.\strlen($body)."\r\n\r\n".$body.JsonRpcFramer::encode(['ok' => 1]);
 
         $this->assertSame([['ok' => 1]], $framer->feed($data));
+        $this->assertSame(['a 15-byte frame that is not a JSON object — dropped'], $said);
     }
 
     public function testAHeaderlessFloodIsDiscardedAtTheCapAndTheStreamResyncs(): void

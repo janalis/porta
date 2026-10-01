@@ -77,6 +77,7 @@ final class JsonRpcFramer
             $m = [];
             if (!\preg_match('/Content-Length:\s*(\d+)/i', $headers, $m)) {
                 // Corrupt frame; drop the header block and resync.
+                $this->overflow('a header block with no Content-Length — dropped');
                 $this->offset = $headerEnd + 4;
                 continue;
             }
@@ -101,9 +102,14 @@ final class JsonRpcFramer
 
             /** @var array<array-key, mixed>|scalar|null $message */
             $message = \json_decode($body, associative: true);
-            if (\is_array($message)) {
-                $messages[] = $message;
+            if (!\is_array($message)) {
+                // A Content-Length that was wrong reads part of a frame as
+                // this one: what it held — maybe an answer something waits
+                // for — is lost, and a trace of that is the least owed.
+                $this->overflow(\sprintf('a %d-byte frame that is not a JSON object — dropped', $length));
+                continue;
             }
+            $messages[] = $message;
         }
     }
 

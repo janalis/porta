@@ -63,7 +63,7 @@ final class JsonRpcTransportTest extends TestCase
         $framer->feed(\str_repeat('x', JsonRpcFramer::MAX_FRAME + 1));
 
         $this->assertCount(1, $lines, 'the transport wires the framer overflow into its logger');
-        $this->assertStringContainsString('chatty peer overflowed the read buffer', $lines[0]);
+        $this->assertStringContainsString('chatty peer sent what cannot be read', $lines[0]);
     }
 
     public function testAHandlerThatThrowsLosesNoFrameReadWithIt(): void

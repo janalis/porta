@@ -960,8 +960,8 @@ final class LspSessionPoolTest extends TestCase
         $this->assertTrue($this->clients[1]['client']->isInitialized, 'the other one IS, which is what makes this a real distinction');
     }
 
-    /** A follow-up to a server that has since gone is a no-op, not a crash. */
-    public function testAFollowUpToAServerThatIsGoneIsANoOp(): void
+    /** A follow-up to a server that has since gone is answered with an error, and asks nobody else. */
+    public function testAFollowUpToAServerThatIsGoneFailsAndGoesToNobodyElse(): void
     {
         $pool = $this->pool(self::TWO_ON_PHP);
         $pool->notifyDidOpen('/tmp/proj/a.php', '<?php', 'php', 1);
@@ -970,8 +970,15 @@ final class LspSessionPoolTest extends TestCase
             $built['client']->requests = [];
         }
 
-        $pool->requestTo('a server that never existed', 'completionItem/resolve', [], static function (mixed $r, ?array $e): void {});
+        $error = null;
+        $pool->requestTo('a server that never existed', 'completionItem/resolve', [], static function (mixed $r, ?array $e) use (&$error): void {
+            $error = $e;
+        });
         $this->assertNull($pool->capabilityOf('a server that never existed', 'completionProvider'));
+        $this->await(static function () use (&$error): bool {
+            return null !== $error;
+        }, what: 'the answer');
+        $this->assertSame(['code' => -32_002, 'message' => 'That language server is no longer running'], $error);
 
         foreach ($this->clients as $built) {
             $this->assertSame([], $built['client']->requests, 'nobody else was handed it either');
