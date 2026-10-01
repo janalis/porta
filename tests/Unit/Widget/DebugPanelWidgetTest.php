@@ -342,6 +342,15 @@ final class DebugPanelWidgetTest extends TestCase
         );
     }
 
+    public function testARunningProgramIsOfferedPauseAndStopAlone(): void
+    {
+        $panel = new DebugPanelWidget(ideKeys: self::shippedKeys());
+        $panel->open('a.php');
+        $panel->setSessionState(DebugState::Running, null);
+
+        $this->assertSame('running…  Ctrl+F9 pause · Ctrl+F2 stop', $panel->statusText());
+    }
+
     public function testStatusTextConcatenatesStatusAndStepLegendInExactOrder(): void
     {
         $panel = new DebugPanelWidget(ideKeys: self::shippedKeys());

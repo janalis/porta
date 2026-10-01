@@ -3090,6 +3090,10 @@
         <source>No running debugger to pause</source>
         <target>Aucun débogueur en cours à mettre en pause</target>
       </trans-unit>
+      <trans-unit id="1092">
+        <source>%key% pause</source>
+        <target>%key% pause</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

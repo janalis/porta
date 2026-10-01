@@ -126,9 +126,12 @@ final class DebugPanelWidget extends DockPanelWidget implements FocusableInterfa
             DebugState::Terminated => $this->translator->trans('terminated'),
         };
 
-        // From the live keymap: every step key here is rebindable.
+        // From the live keymap: every step key here is rebindable. A running
+        // program can only be paused or stopped, so that is all it offers.
         $legend = KeyHints::legend(
-            ['debug_step_over' => '%key% over', 'debug_step_into' => '%key% into', 'debug_step_out' => '%key% out', 'debug_continue' => '%key% resume', 'debug_stop' => '%key% stop'],
+            DebugState::Running === $this->state
+                ? ['debug_pause' => '%key% pause', 'debug_stop' => '%key% stop']
+                : ['debug_step_over' => '%key% over', 'debug_step_into' => '%key% into', 'debug_step_out' => '%key% out', 'debug_continue' => '%key% resume', 'debug_stop' => '%key% stop'],
             fn (string $message, string $key): string => $this->translator->trans($message, ['%key%' => $key]),
             ' · ',
             $this->ideKeys,

@@ -3090,6 +3090,10 @@
         <source>No running debugger to pause</source>
         <target>一時停止できる実行中のデバッガーはありません</target>
       </trans-unit>
+      <trans-unit id="1092">
+        <source>%key% pause</source>
+        <target>%key% 一時停止</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
