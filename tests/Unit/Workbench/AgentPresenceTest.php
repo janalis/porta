@@ -136,13 +136,14 @@ final class AgentPresenceTest extends TestCase
         $this->assertSame(0, $presence->in('/p/c.php')[0]['slot'], 'a slot left free is handed out again');
     }
 
-    public function testAFifthAgentSharesAColour(): void
+    public function testANinthAgentSharesAColour(): void
     {
         $presence = $this->presence();
-        foreach (['a', 'b', 'c', 'd', 'e'] as $agent) {
+        $agents = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'];
+        foreach ($agents as $agent) {
             $presence->onAgentActivity(self::at($agent, $agent, '/p/'.$agent.'.php'));
         }
 
-        $this->assertSame([0, 1, 2, 3, 0], \array_map(static fn (string $agent): int => $presence->in('/p/'.$agent.'.php')[0]['slot'], ['a', 'b', 'c', 'd', 'e']));
+        $this->assertSame([0, 1, 2, 3, 4, 5, 6, 7, 0], \array_map(static fn (string $agent): int => $presence->in('/p/'.$agent.'.php')[0]['slot'], $agents));
     }
 }

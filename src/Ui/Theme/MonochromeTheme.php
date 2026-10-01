@@ -57,6 +57,10 @@ final class MonochromeTheme
                 Role::Agent2->selector() => new Style(reverse: true, underline: true),
                 Role::Agent3->selector() => new Style(reverse: true, underline: true),
                 Role::Agent4->selector() => new Style(reverse: true, underline: true),
+                Role::Agent5->selector() => new Style(reverse: true, underline: true),
+                Role::Agent6->selector() => new Style(reverse: true, underline: true),
+                Role::Agent7->selector() => new Style(reverse: true, underline: true),
+                Role::Agent8->selector() => new Style(reverse: true, underline: true),
                 // The :focus variant merges over the base rule, so it must
                 // cancel the unfocused dim explicitly.
                 '.list::selected' => new Style(dim: true, reverse: true),

@@ -796,7 +796,7 @@ An agent connected through the mcp plugin is SHOWN by core, told by events:
 the plugin emits `AgentActivity` (who, which file, reading or editing, where,
 how long to stay) from each tool, and `AgentLeft` when its client goes.
 `Workbench/AgentPresence` keeps who is on which file, hands each agent a colour
-slot (`Role::Agent1`–`Agent4`) and one fade timer per (agent, file) through the
+slot (`Role::Agent1`–`Agent8`) and one fade timer per (agent, file) through the
 `Scheduler`. It PUSHES each caret to the editor's decoration store as a report
 moves it (`EditorDecorationSink::setRemoteCaret`, keyed by file and agent, not
 cleared on a tab switch); in between, `DecorationStore::remapForEdit` shifts

@@ -74,6 +74,10 @@ final class ThemeLockTest extends TestCase
         yield 'agent-2' => [Role::Agent2, new Style(background: 130, color: 231)];
         yield 'agent-3' => [Role::Agent3, new Style(background: 91, color: 231)];
         yield 'agent-4' => [Role::Agent4, new Style(background: 29, color: 231)];
+        yield 'agent-5' => [Role::Agent5, new Style(background: 124, color: 231)];
+        yield 'agent-6' => [Role::Agent6, new Style(background: 162, color: 231)];
+        yield 'agent-7' => [Role::Agent7, new Style(background: 37, color: 231)];
+        yield 'agent-8' => [Role::Agent8, new Style(background: 100, color: 231)];
         yield 'breakpoint' => [Role::Breakpoint, new Style(color: 203)];
         yield 'debug-line-bg' => [Role::DebugLineBg, new Style(background: 52)];
         yield 'tab-accent' => [Role::TabAccent, new Style(color: 110)];
@@ -146,6 +150,10 @@ final class ThemeLockTest extends TestCase
         yield 'agent-2' => [Role::Agent2, new Style(background: 215, color: 16)];
         yield 'agent-3' => [Role::Agent3, new Style(background: 183, color: 16)];
         yield 'agent-4' => [Role::Agent4, new Style(background: 120, color: 16)];
+        yield 'agent-5' => [Role::Agent5, new Style(background: 210, color: 16)];
+        yield 'agent-6' => [Role::Agent6, new Style(background: 87, color: 16)];
+        yield 'agent-7' => [Role::Agent7, new Style(background: 228, color: 16)];
+        yield 'agent-8' => [Role::Agent8, new Style(background: 218, color: 16)];
         yield 'breakpoint' => [Role::Breakpoint, new Style(color: 160)];
         yield 'debug-line-bg' => [Role::DebugLineBg, new Style(background: 224)];
         yield 'tab-accent' => [Role::TabAccent, new Style(color: 25)];
@@ -274,6 +282,10 @@ final class ThemeLockTest extends TestCase
             Role::Agent2,
             Role::Agent3,
             Role::Agent4,
+            Role::Agent5,
+            Role::Agent6,
+            Role::Agent7,
+            Role::Agent8,
         ];
         foreach (Role::cases() as $role) {
             if (\in_array($role, $mapped, strict: true)) {
@@ -313,10 +325,29 @@ final class ThemeLockTest extends TestCase
 
     public function testEveryAgentGetsItsOwnColourAndMonochromeStillShowsTheCaret(): void
     {
-        $this->assertSame([Role::Agent1, Role::Agent2, Role::Agent3, Role::Agent4, Role::Agent1], \array_map(Role::agent(...), [0, 1, 2, 3, 4]), 'a fifth agent shares the first colour');
+        $this->assertSame([Role::Agent1, Role::Agent2, Role::Agent3, Role::Agent4, Role::Agent5, Role::Agent6, Role::Agent7, Role::Agent8, Role::Agent1], \array_map(Role::agent(...), [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+        ]), 'a ninth agent shares the first colour');
         foreach ([DarkTheme::definition(), LightTheme::definition(), HighContrastTheme::definition()] as $theme) {
-            $backgrounds = \array_map(static fn (Role $role): string => \json_encode($theme->of($role)->getAnsiRestore()), [Role::Agent1, Role::Agent2, Role::Agent3, Role::Agent4]);
-            $this->assertCount(4, \array_unique($backgrounds), 'four agents, four colours');
+            $backgrounds = \array_map(static fn (Role $role): string => \json_encode($theme->of($role)->getAnsiRestore()), [
+                Role::Agent1,
+                Role::Agent2,
+                Role::Agent3,
+                Role::Agent4,
+                Role::Agent5,
+                Role::Agent6,
+                Role::Agent7,
+                Role::Agent8,
+            ]);
+            $this->assertCount(8, \array_unique($backgrounds), 'eight agents, eight colours');
         }
         $this->assertEquals(new Style(reverse: true, underline: true), MonochromeTheme::definition()->of(Role::Agent3));
     }

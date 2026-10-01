@@ -164,12 +164,14 @@ tab is refused with a message saying so.
 | Accept guests from | `127.0.0.1` | `127.0.0.1`: this machine only (reach it through a tunnel or VPN). `0.0.0.0`: the whole network |
 | Port to share on | `0` | `0` picks a free port each time |
 | Relay to share through | empty | `host:port` of a `porta assist-relay` for guests who cannot reach this machine. Empty: guests connect directly |
+| Most guests at once | `8` | More can join than there are caret colours. Past eight, the colours repeat |
 | Largest file to share (MB) | `4` | Bigger files stay on the host |
 
 ## Limits
 
 - **Each share is a new invite.** Its certificate and token last as long as
   that share: after **Assist: Stop Sharing**, an old invite no longer works.
-- **Four guests at most.** That is as many as the editor has colours to tell
-  apart.
+- **Eight guests by default.** **Most guests at once** raises it. The editor
+  has eight caret colours, so past eight the colours repeat. The name beside
+  each caret still tells people apart.
 - **Run configurations are not shared.** Share the terminal a run is in instead.

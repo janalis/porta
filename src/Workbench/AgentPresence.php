@@ -35,7 +35,7 @@ use Symfony\Component\Tui\Tui;
 final class AgentPresence
 {
     /** How many agent colours the themes define. */
-    public const int SLOTS = 4;
+    public const int SLOTS = 8;
 
     /** @var array<string, int> agent => colour slot */
     private array $slots = [];
