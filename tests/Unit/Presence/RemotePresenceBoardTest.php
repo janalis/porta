@@ -111,7 +111,11 @@ final class RemotePresenceBoardTest extends TestCase
         $this->assertSame(['Ada', 'Bo, moved'], self::names(self::read($board)));
         $this->assertSame(['list .porta/presence', 'fetch .porta/presence/bbbbbbbbbbbbbbbb.json'], $this->transport->calls);
 
-        $board->withdraw('aaaaaaaaaaaaaaaa');
+        $answered = false;
+        $board->withdraw('aaaaaaaaaaaaaaaa', static function () use (&$answered): void {
+            $answered = true;
+        });
+        $this->assertTrue($answered, 'told when the server answered');
         $this->assertSame(['Bo, moved'], self::names(self::read($board)));
         $this->assertSame(1, $this->asked, 'the transport is asked for once');
         $board->close();
@@ -183,9 +187,14 @@ final class RemotePresenceBoardTest extends TestCase
 
         $this->assertSame([], self::read($board));
         $this->assertSame('no transport', self::publish($board, self::beacon('aaaaaaaaaaaaaaaa')));
-        $board->withdraw('aaaaaaaaaaaaaaaa');
+        $answered = false;
+        $board->withdraw('aaaaaaaaaaaaaaaa', static function () use (&$answered): void {
+            $answered = true;
+        });
+        $this->assertTrue($answered, 'nobody to ask: answered at once');
+        $board->withdraw('aaaaaaaaaaaaaaaa'); // and nobody to tell
         $board->close();
-        $this->assertSame(3, $this->asked, 'asked again each time: a plugin may serve it later — and none to close');
+        $this->assertSame(4, $this->asked, 'asked again each time: a plugin may serve it later — and none to close');
     }
 
     public function testFtpIsAskedLessOftenThanSsh(): void

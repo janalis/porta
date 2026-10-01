@@ -55,7 +55,11 @@ final class LocalPresenceBoardTest extends TestCase
         $this->assertSame(['Ada again', 'Bo'], \array_map(static fn (Beacon $b): string => $b->name, $read), 'one each, the last said; what is not a beacon is skipped');
 
         $board->withdraw('aaaaaaaaaaaaaaaa');
-        $board->withdraw('aaaaaaaaaaaaaaaa');
+        $answered = false;
+        $board->withdraw('aaaaaaaaaaaaaaaa', static function () use (&$answered): void {
+            $answered = true;
+        });
+        $this->assertTrue($answered, 'answered at once, gone or not');
         $board->close();
         $this->assertSame(['Bo'], \array_map(static fn (Beacon $b): string => $b->name, (array) self::read($board)));
         $this->assertSame(['via' => 'local', 'tick' => 1.0, 'heartbeat' => 5.0], $board->cadence());

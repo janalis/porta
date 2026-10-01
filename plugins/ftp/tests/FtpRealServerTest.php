@@ -13,9 +13,9 @@ use Porta\Filesystem\RemoteStamp;
 use Porta\FtpPlugin\Credentials;
 use Porta\FtpPlugin\FtpTransport;
 use Porta\Tests\Support\DummyServer;
-use Porta\Tests\Support\ExercisesPresence;
 use Porta\Tests\Support\ExercisesTransport;
 use Porta\Tests\Support\PresencePeer;
+use Porta\Tests\Support\ProvesPresenceOverAServer;
 use Porta\Tests\Support\TempProject;
 
 /**
@@ -30,7 +30,7 @@ use Porta\Tests\Support\TempProject;
 #[Large]
 final class FtpRealServerTest extends TestCase
 {
-    use ExercisesPresence;
+    use ProvesPresenceOverAServer;
     use ExercisesTransport;
 
     private TempProject $root;
@@ -99,28 +99,14 @@ final class FtpRealServerTest extends TestCase
         $this->assertIsArray($this->answer(fn (\Closure $done) => $this->transport(Credentials::file($home->dir, $this->spec))->list('', $done)), 'with it, in');
     }
 
-    public function testTwoPortaInstancesOnTheServerSeeEachOther(): void
+    private function server(): DummyServer
     {
-        [$ada, $bo] = $this->peers();
-
-        $this->assertTwoInstancesSeeEachOther($ada, $bo);
-        $this->assertCount(2, (array) \glob($this->root->path('.porta/presence/*.json')), 'on the server, beside the project: one each');
+        return $this->server;
     }
 
-    public function testALostServerKeepsTheOthersAsLastSeen(): void
+    private function heartbeat(): float
     {
-        [$ada, $bo] = $this->peers();
-        $this->assertTwoInstancesSeeEachOther($ada, $bo);
-
-        $this->assertALostServerKeepsTheOthersAsLastSeen($ada, $bo, $this->server);
-    }
-
-    public function testOneWhoGoesQuietIsGone(): void
-    {
-        [$ada, $bo] = $this->peers();
-        $this->assertTwoInstancesSeeEachOther($ada, $bo);
-
-        $this->assertOneWhoGoesQuietIsGone($ada, $bo, 30.0);
+        return 30.0;
     }
 
     /** @return array{PresencePeer, PresencePeer} */

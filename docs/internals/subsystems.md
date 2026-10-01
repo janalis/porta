@@ -964,6 +964,10 @@ Each SOURCE replaces its own list whole (`set()`), and the diff is what fires
 `ParticipantJoined`/`ParticipantLeft`. `outOfTouch()` keeps a source's people
 as last seen (`⌁`, accent tone) and arms a `Scheduler` timer; a `set()` within
 `Participants::GRACE` (60 s) calls it off, else the timer empties the source.
+What it shows changing dispatches `ParticipantsChanged`, which
+`StatusBarRefreshListener` turns into `invalidate()`: a frame skips
+`beforeRender()` under a cached subtree, so a bare render request would leave
+the cell as it was (`StatusBarRefreshListenerTest` shows the trap).
 A plugin reaches it through `PluginApi::participants()` →
 `Plugin/Api/PluginParticipants` (`set`, `outOfTouch`, `yourName`), under
 `plugin:<name>`, which `PluginManager::deactivate()` empties.
@@ -997,8 +1001,11 @@ exactly as agents' do (above). `Beacon::fromJson` trusts nothing: a fixed id
 shape (it names a file), names through `Beacon::clean` (no `\p{Cc}\p{Cf}`,
 40 characters), and relative paths without `.`/`..`.
 
-On quit, a local beacon is unlinked synchronously; a remote one cannot be,
-because the loop has stopped. The others drop it after three heartbeats.
+On quit, `stop()` withdraws this side's beacon. The loop has already
+stopped, so for a remote board `stop()` runs it again — one suspension, for
+at most `LEAVE_WAIT` (2 s) — until the board answers. The Tui's ticker is off
+by then, so nothing paints meanwhile. A local board answers synchronously and
+is never waited for.
 
 ## i18n and RTL
 

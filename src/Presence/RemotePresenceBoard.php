@@ -95,10 +95,18 @@ final class RemotePresenceBoard extends PresenceBoard
     }
 
     #[\Override]
-    public function withdraw(string $id): void
+    public function withdraw(string $id, ?\Closure $done = null): void
     {
         unset($this->known[self::file($id)]);
-        $this->transport()?->remove($this->path(self::file($id)), false, static function (): void {});
+        $transport = $this->transport();
+        if (null === $transport) {
+            $done?->__invoke();
+
+            return;
+        }
+        $transport->remove($this->path(self::file($id)), false, static function () use ($done): void {
+            $done?->__invoke();
+        });
     }
 
     /**

@@ -105,6 +105,41 @@ trait ShowsPresenceInTheIde
                 );
                 Assert::assertFalse(Services::resolve($ide, Participants::class)->isOutOfTouch(PresenceSync::SOURCE));
             },
+            // Ada closes her file — her caret goes — and then quits, so that
+            // nothing else changes on screen: the status bar repaints only
+            // what is marked dirty, and the roster has to mark it.
+            400 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($ada, $look): void {
+                $ada->buffers->close((string) $ada->buffers->active()?->path);
+                $this->look($ada);
+                $look($ide);
+                $this->await(
+                    function () use ($tui, $terminal): bool {
+                        $this->frame($tui);
+
+                        return !\str_contains(AnsiUtils::stripAnsiCodes(\implode("\n", $this->screenGrid($tui, $terminal))), Glyphs::AGENT.' Ada');
+                    },
+                    timeout: 20.0,
+                    what: 'Ada\'s caret gone with her file',
+                );
+                $ada->sync->stop();
+                $look($ide);
+                $this->await(
+                    function () use ($tui, $terminal): bool {
+                        $this->frame($tui);
+
+                        return !\str_contains(AnsiUtils::stripAnsiCodes(\implode("\n", $this->screenGrid($tui, $terminal))), Glyphs::PARTICIPANTS);
+                    },
+                    timeout: 20.0,
+                    what: 'the participant count gone from the status bar once Ada quit',
+                );
+                Assert::assertSame([], Services::resolve($ide, Participants::class)->all());
+            },
         ]);
+
+        $names = [];
+        foreach ((array) \glob($board.'/*.json') as $file) {
+            $names[] = Beacon::fromJson((string) \file_get_contents((string) $file))?->name;
+        }
+        Assert::assertSame([], $names, 'quitting took the IDE\'s user off the server, before the session ended — Ada had gone already');
     }
 }

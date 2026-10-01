@@ -10,6 +10,7 @@ use Porta\Editor\FileOpener;
 use Porta\Editor\OpenFocus;
 use Porta\Event\ParticipantJoined;
 use Porta\Event\ParticipantLeft;
+use Porta\Event\ParticipantsChanged;
 use Porta\I18n\Translator;
 use Porta\Support\ProjectPaths;
 use Porta\Support\Scheduler;
@@ -20,7 +21,6 @@ use Porta\Workbench\StatusSegment;
 use Porta\Workbench\StatusTone;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
-use Symfony\Component\Tui\Tui;
 
 /**
  * Everyone else at work on this project, whoever found them: another Porta
@@ -50,7 +50,6 @@ final class Participants implements StatusSegment
         private readonly EventDispatcherInterface $events,
         private readonly Scheduler $scheduler,
         private readonly Translator $translator,
-        private readonly Tui $tui,
         private readonly FileOpener $opener,
         private readonly EditorTextAccess $editor,
         private readonly ProjectPaths $paths,
@@ -77,7 +76,7 @@ final class Participants implements StatusSegment
      */
     public function set(string $source, array $participants): void
     {
-        $this->found($source);
+        $found = $this->found($source);
         $before = $this->sources[$source] ?? [];
         $now = [];
         foreach ($participants as $participant) {
@@ -94,7 +93,9 @@ final class Participants implements StatusSegment
         foreach (\array_diff_key($now, $before) as $id => $came) {
             $this->events->dispatch(new ParticipantJoined($source.'/'.$id, $came->name, $came->via));
         }
-        $this->tui->requestRender();
+        if ($found || self::shown($before) !== self::shown($now)) {
+            $this->events->dispatch(new ParticipantsChanged());
+        }
     }
 
     /** $source's link is lost: its people stay as last seen, for {@see self::GRACE} seconds at most. */
@@ -106,7 +107,7 @@ final class Participants implements StatusSegment
         $this->lost[$source] = $this->scheduler->delay(self::GRACE, function () use ($source): void {
             $this->set($source, []);
         });
-        $this->tui->requestRender();
+        $this->events->dispatch(new ParticipantsChanged());
     }
 
     /** @return list<Participant> everyone, source by source */
@@ -179,13 +180,29 @@ final class Participants implements StatusSegment
         }
     }
 
-    /** $source is in touch: whatever was going to take its people out is called off. */
-    private function found(string $source): void
+    /** $source is in touch: whatever was going to take its people out is called off. Whether it was out of touch. */
+    private function found(string $source): bool
     {
         $timer = $this->lost[$source] ?? null;
-        if (null !== $timer) {
-            $this->scheduler->cancel($timer);
-            unset($this->lost[$source]);
+        if (null === $timer) {
+            return false;
         }
+        $this->scheduler->cancel($timer);
+        unset($this->lost[$source]);
+
+        return true;
+    }
+
+    /**
+     * What the roster shows of $participants — the cell, its tooltip, its
+     * menu — so a list said again unchanged is not a change.
+     *
+     * @param array<string, Participant> $participants
+     *
+     * @return list<array{string, string, string, ?string, int}>
+     */
+    private static function shown(array $participants): array
+    {
+        return \array_values(\array_map(static fn (Participant $p): array => [$p->id, $p->name, $p->via, $p->path, $p->line], $participants));
     }
 }

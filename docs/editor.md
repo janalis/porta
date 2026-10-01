@@ -844,9 +844,10 @@ is looked at every second on a local disk, every 3 seconds over ssh and every
 10 over FTP, and rewritten only when you move — or every 5, 15 or 30 seconds
 to say you are still there.
 
-- **Someone quits.** On a local disk they are gone at once. A server is not
-  told: they leave after three missed heartbeats (45 seconds over ssh, 90
-  over FTP).
+- **Someone quits.** Their file is deleted on the way out, so the others see
+  them go at their next look. On a server, quitting waits up to two seconds
+  for it to answer; a server that does not leaves the file behind, and they
+  leave after three missed heartbeats (45 seconds over ssh, 90 over FTP).
 - **Someone's link drops.** Same: three missed heartbeats, and they leave.
 - **Your link drops.** The others are not gone, you have lost sight of them:
   they stay in the roster as last seen, marked `⌁`, with no caret — and come

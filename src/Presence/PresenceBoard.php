@@ -40,8 +40,14 @@ abstract class PresenceBoard
      */
     abstract public function read(\Closure $done): void;
 
-    /** Take beacon $id off the board — this instance's own when it leaves, or one long gone quiet. Best effort: nobody waits for it. */
-    abstract public function withdraw(string $id): void;
+    /**
+     * Take beacon $id off the board — this instance's own when it leaves, or
+     * one long gone quiet. Best effort: $done is told when the board
+     * answered, whether or not the beacon went.
+     *
+     * @param (\Closure(): void)|null $done
+     */
+    abstract public function withdraw(string $id, ?\Closure $done = null): void;
 
     /** Let go of whatever the board holds open: the project is closing, and nothing in flight is waited for. */
     public function close(): void {}

@@ -13,6 +13,7 @@ use Porta\Filesystem\RemoteTransportSource;
 use Porta\Workbench\AgentActivityKind;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Revolt\EventLoop;
+use Revolt\EventLoop\Suspension;
 
 /**
  * The other Porta instances on this project, found through the
@@ -44,6 +45,9 @@ final class PresenceSync
 
     /** How long, in seconds, before a beacon nobody refreshed is taken off the board. */
     public const int FORGET = 600;
+
+    /** How long, at most, leaving waits for the board to answer, in seconds. */
+    public const float LEAVE_WAIT = 2.0;
 
     /** What the roster knows this source by. */
     public const string SOURCE = 'presence';
@@ -82,6 +86,12 @@ final class PresenceSync
     /** Whether the board answered nothing but trouble since its last good read. */
     private bool $lost = false;
 
+    /** Whether the board answered this side's leaving — or leaving stopped waiting. */
+    private bool $answered = false;
+
+    /** @var Suspension<mixed>|null what leaving waits on, while it does */
+    private ?Suspension $leaving = null;
+
     /** @var list<string> the loop's timers */
     private array $timers = [];
 
@@ -116,7 +126,17 @@ final class PresenceSync
         }
     }
 
-    /** Stop looking, take this side off the board, and the others' carets off the screen: it is leaving. */
+    /**
+     * Stop looking, take the others' carets off the screen, and this side off
+     * the board: it is leaving.
+     *
+     * Called once the IDE's loop has stopped, which is too late for a server
+     * to hear anything: so the loop is run again here, for at most
+     * {@see self::LEAVE_WAIT} seconds, until the board answers — the others
+     * then see this side go at their next look, not three heartbeats later.
+     * The screen is already let go of, so nothing it runs meanwhile paints.
+     * A board that answers at once (this disk's) is not waited for at all.
+     */
     public function stop(): void
     {
         foreach ($this->timers as $timer) {
@@ -126,7 +146,15 @@ final class PresenceSync
         foreach (\array_keys($this->shown) as $id) {
             $this->hide($id);
         }
-        $this->withdraw();
+        $this->answered = false;
+        $this->withdraw($this->answered(...));
+        if (!$this->answered) {
+            $this->leaving = EventLoop::getSuspension();
+            $timeout = EventLoop::delay(self::LEAVE_WAIT, $this->answered(...));
+            $this->leaving->suspend();
+            EventLoop::cancel($timeout);
+            $this->leaving = null;
+        }
         $this->board->close();
     }
 
@@ -316,13 +344,31 @@ final class PresenceSync
         return null === $relative || \str_starts_with($relative, '.porta/') ? null : $relative;
     }
 
-    private function withdraw(): void
+    /**
+     * The board answered, or leaving waited long enough — whichever comes
+     * first resumes, once: the other may still fire in the same turn, and
+     * finds it done.
+     */
+    private function answered(): void
+    {
+        if ($this->answered) {
+            return;
+        }
+        $this->answered = true;
+        $this->leaving?->resume();
+    }
+
+    /** @param (\Closure(): void)|null $done told once the board answered, or at once when nothing of this side is on it */
+    private function withdraw(?\Closure $done = null): void
     {
         $this->said = null;
-        if ($this->onBoard) {
-            $this->onBoard = false;
-            $this->board->withdraw($this->id);
+        if (!$this->onBoard) {
+            $done?->__invoke();
+
+            return;
         }
+        $this->onBoard = false;
+        $this->board->withdraw($this->id, $done);
     }
 
     private function now(): float

@@ -75,6 +75,18 @@ trait ExercisesPresence
         Assert::assertSame(['Ada' => 2], $bo->sees(), 'and found again when the server is back');
     }
 
+    private function assertOneWhoQuitsIsGoneAtOnce(PresencePeer $ada, PresencePeer $bo, DummyServer $server): void
+    {
+        $ada->sync->stop();
+        $this->look($bo);
+        Assert::assertSame([], $bo->sees(), 'Ada quit: gone at Bo\'s next look, not three heartbeats later');
+
+        $server->stop();
+        $started = \microtime(true);
+        $bo->sync->stop();
+        Assert::assertLessThan(PresenceSync::LEAVE_WAIT + 1.0, \microtime(true) - $started, 'a server that is not there does not hold the quit up');
+    }
+
     private function assertOneWhoGoesQuietIsGone(PresencePeer $ada, PresencePeer $bo, float $heartbeat): void
     {
         $this->look($bo);

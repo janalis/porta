@@ -60,11 +60,12 @@ final class LocalPresenceBoard extends PresenceBoard
     }
 
     #[\Override]
-    public function withdraw(string $id): void
+    public function withdraw(string $id, ?\Closure $done = null): void
     {
         $file = $this->dir.'/'.self::file($id);
         if (\is_file($file)) {
             \unlink($file);
         }
+        $done?->__invoke();
     }
 }

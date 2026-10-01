@@ -345,7 +345,36 @@ final class PresenceSyncTest extends TestCase
         $this->assertSame('ftp', $mine?->via);
         $this->assertSame([10.0], [Probe::get($sync, 'board')->cadence()['tick']]);
 
+        $transport->calls = [];
+        $transport->hold = true;
+        $release = EventLoop::delay(0.05, $transport->release(...));
+        $started = \microtime(true);
         $sync->stop();
+        EventLoop::cancel($release);
+        $this->assertLessThan(PresenceSync::LEAVE_WAIT, \microtime(true) - $started, 'waited for the answer, not the time limit');
+        $this->assertSame(['remove .porta/presence/'.Probe::get($sync, 'id').'.json'], $transport->calls);
+        $this->assertSame([self::ADA.'.json'], \array_values(\array_diff((array) \scandir($server->path(PresenceBoard::DIR)), ['.', '..'])), 'off the server before the session ends');
         $this->assertTrue($transport->closed);
+    }
+
+    public function testLeavingWaitsForAServerThatNeverAnswersOnlySoLong(): void
+    {
+        $server = new TempProject();
+        $transport = new FakeRemoteTransport($server->dir);
+        $sync = $this->sync(new ProjectLocation(new RemoteSpec('ssh', 'example.org', '/srv')), $transport);
+        $sync->tick();
+        $transport->hold = true;
+
+        $started = \microtime(true);
+        $sync->stop();
+
+        $this->assertGreaterThanOrEqual(PresenceSync::LEAVE_WAIT, \microtime(true) - $started);
+        $this->assertLessThan(PresenceSync::LEAVE_WAIT + 1.0, \microtime(true) - $started);
+        $this->assertTrue($transport->closed, 'what was in flight is let go');
+
+        // The answer, late: leaving no longer waits, and it must not resume
+        // a suspension nobody waits on any more.
+        $transport->release();
+        $this->assertSame([], $transport->held);
     }
 }

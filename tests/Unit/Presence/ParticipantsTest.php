@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Presence;
 use PHPUnit\Framework\TestCase;
 use Porta\Event\ParticipantJoined;
 use Porta\Event\ParticipantLeft;
+use Porta\Event\ParticipantsChanged;
 use Porta\Presence\Identity;
 use Porta\Presence\Participant;
 use Porta\Presence\Participants;
@@ -42,7 +43,7 @@ final class ParticipantsTest extends TestCase
         $this->identity = new Identity();
         $this->identity->rename('Me');
 
-        return TestParticipants::create($this->events, $this->scheduler, null, $this->opener, $this->editor, $rootDir, $this->identity);
+        return TestParticipants::create($this->events, $this->scheduler, $this->opener, $this->editor, $rootDir, $this->identity);
     }
 
     /** @return list<string> */
@@ -75,6 +76,25 @@ final class ParticipantsTest extends TestCase
         $this->assertSame([], $participants->all());
         $this->assertSame([], $participants->statusCells());
         $this->assertSame('plugin:assist', Participants::pluginSource('assist'));
+    }
+
+    public function testTheStatusBarIsToldOnlyWhenWhatItShowsChanged(): void
+    {
+        $participants = $this->participants();
+        $changes = fn (): int => \count($this->events->take(ParticipantsChanged::class));
+
+        $participants->set('presence', [new Participant('a', 'Ada', 'local')]);
+        $this->assertSame(1, $changes(), 'someone came');
+        $participants->set('presence', [new Participant('a', 'Ada', 'local')]);
+        $this->assertSame(0, $changes(), 'the same list said again, every look: nothing to repaint');
+        $participants->set('presence', [new Participant('a', 'Ada', 'local', '/project/a.php', 3)]);
+        $this->assertSame(1, $changes(), 'she opened a file: the menu says where');
+        $participants->outOfTouch('presence');
+        $this->assertSame(1, $changes(), 'lost: the cell is marked');
+        $participants->set('presence', [new Participant('a', 'Ada', 'local', '/project/a.php', 3)]);
+        $this->assertSame(1, $changes(), 'found again with the same people: the mark goes');
+        $participants->set('presence', []);
+        $this->assertSame(1, $changes());
     }
 
     public function testALostLinkKeepsItsPeopleAsLastSeenThenLetsThemGo(): void

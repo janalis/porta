@@ -11,7 +11,6 @@ use Porta\Support\ProjectPaths;
 use Porta\Widget\CodeEditorWidget;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\EventDispatcher\EventDispatcher;
-use Symfony\Component\Tui\Tui;
 
 /**
  * The roster with doubles for what it reaches: a recording opener, a
@@ -22,7 +21,6 @@ final class TestParticipants
     public static function create(
         ?EventDispatcherInterface $events = null,
         ?FakeScheduler $scheduler = null,
-        ?Tui $tui = null,
         ?RecordingFileOpener $opener = null,
         ?CodeEditorWidget $editor = null,
         string $rootDir = '/project',
@@ -32,7 +30,6 @@ final class TestParticipants
             $events ?? new EventDispatcher(),
             $scheduler ?? new FakeScheduler(),
             new Translator('en'),
-            $tui ?? TestTui::create(),
             $opener ?? new RecordingFileOpener(),
             $editor ?? new CodeEditorWidget(),
             new ProjectPaths($rootDir),
