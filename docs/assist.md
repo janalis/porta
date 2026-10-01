@@ -185,6 +185,11 @@ server, so share only what you would let them use.
   bar's menu, makes your editor go wherever that person's caret goes, across
   files too, scrolled to show what they see. Moving your own caret stops
   following.
+- **Asking everyone to follow you.** **Assist: Ask Everyone to Follow Me**
+  (also in the status bar's menu) works from the host or any guest. Everyone
+  else starts following you and is taken to where you are straight away,
+  with a toast saying who asked. Each of them stops following the same way:
+  by moving their own caret.
 
 ## Settings
 
