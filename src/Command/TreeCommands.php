@@ -41,7 +41,7 @@ final readonly class TreeCommands implements CommandProvider
     /**
      * Kept OUT of the command palette, unlike almost everything else here.
      *
-     * All three are gated on the tree holding focus, and opening the palette
+     * All of them are gated on the tree holding focus, and opening the palette
      * takes it — so a palette entry for them could never run. An item that is
      * always listed and never works is worse than no item.
      */
@@ -53,7 +53,10 @@ final readonly class TreeCommands implements CommandProvider
             ->add('tree_copy', $this->operations->copySelection(...), keyBound: KeyDispatch::Bound, inPalette: PaletteVisibility::Hidden, when: $this->treeHasFocus(...))
             // Also gated on there being something to paste, so ctrl+v with an
             // empty clipboard falls through rather than being swallowed.
-            ->add('tree_paste', $this->operations->pasteIntoSelection(...), keyBound: KeyDispatch::Bound, inPalette: PaletteVisibility::Hidden, when: $this->canPaste(...));
+            ->add('tree_paste', $this->operations->pasteIntoSelection(...), keyBound: KeyDispatch::Bound, inPalette: PaletteVisibility::Hidden, when: $this->canPaste(...))
+            ->add('tree_delete', $this->operations->deleteSelection(...), keyBound: KeyDispatch::Bound, inPalette: PaletteVisibility::Hidden, when: $this->treeHasFocus(...))
+            ->add('tree_new', $this->operations->newInSelection(...), keyBound: KeyDispatch::Bound, inPalette: PaletteVisibility::Hidden, when: $this->treeHasFocus(...))
+            ->add('tree_rename', $this->operations->renameSelection(...), keyBound: KeyDispatch::Bound, inPalette: PaletteVisibility::Hidden, when: $this->treeHasFocus(...));
     }
 
     private function treeHasFocus(): bool

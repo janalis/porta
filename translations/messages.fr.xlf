@@ -3234,6 +3234,26 @@
         <source>The drop failed: %reason%</source>
         <target>Le dépôt a échoué : %reason%</target>
       </trans-unit>
+      <trans-unit id="1130">
+        <source>Tree: Delete</source>
+        <target>Arborescence : supprimer</target>
+      </trans-unit>
+      <trans-unit id="1131">
+        <source>Delete %count% files? (y/N)</source>
+        <target>Supprimer %count% fichiers ? (y/N)</target>
+      </trans-unit>
+      <trans-unit id="1132">
+        <source>Tree: New…</source>
+        <target>Arborescence : nouveau…</target>
+      </trans-unit>
+      <trans-unit id="1133">
+        <source>Tree: Rename…</source>
+        <target>Arborescence : renommer…</target>
+      </trans-unit>
+      <trans-unit id="1134">
+        <source>New</source>
+        <target>Nouveau</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

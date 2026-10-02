@@ -151,6 +151,10 @@ final class ActionCatalog
         // Move the active tab left/right (Ctrl+Left/Right switch tabs).
         'move_tab_left' => ['label' => 'Move Tab Left', 'keys' => ['ctrl+shift+left']],
         'move_tab_right' => ['label' => 'Move Tab Right', 'keys' => ['ctrl+shift+right']],
+        // The tab menu's two, reachable without it. PhpStorm leaves both
+        // unbound; W is close, and each adds a modifier for a wider sweep.
+        'close_other_tabs' => ['label' => 'Close Other Tabs', 'keys' => ['ctrl+alt+w']],
+        'close_all_tabs' => ['label' => 'Close All Tabs', 'keys' => ['ctrl+alt+shift+w']],
         'find' => ['label' => 'Find in File'],
         'replace' => ['label' => 'Replace in File'],
         'goto_file' => ['label' => 'Go to File'],
@@ -266,6 +270,8 @@ final class ActionCatalog
         'debug_run_to_cursor' => ['label' => 'Run to Cursor', 'keys' => ['alt+f9']],
         'debug_stop' => ['label' => 'Stop Debugger', 'keys' => ['ctrl+f2']],
         'debug_restart' => ['label' => 'Restart Debugger', 'keys' => ['ctrl+shift+f5']],
+        // PhpStorm's Evaluate Expression.
+        'debug_evaluate' => ['label' => 'Debug: Evaluate Expression', 'keys' => ['alt+f8']],
         // Adoptable, unlike ide_settings and ide_welcome beside it: the git
         // view is IMPLEMENTED by the bundled git plugin, and outside a
         // repository that plugin registers neither the view nor this verb. The
@@ -310,6 +316,15 @@ final class ActionCatalog
         'tree_cut' => ['label' => 'Tree: Cut', 'keys' => ['ctrl+x']],
         'tree_copy' => ['label' => 'Tree: Copy', 'keys' => ['ctrl+c']],
         'tree_paste' => ['label' => 'Tree: Paste', 'keys' => ['ctrl+v']],
+        // Delete, as in every file manager — asked first, and gated on the
+        // tree like the three above, so the editor's Delete still deletes text.
+        'tree_delete' => ['label' => 'Tree: Delete', 'keys' => ['delete']],
+        // PhpStorm's New… is Alt+Insert; a Mac keyboard has no Insert, so
+        // Ctrl+N — free everywhere, and only the tree's while it has focus.
+        'tree_new' => ['label' => 'Tree: New…', 'keys' => ['alt+insert', 'ctrl+n']],
+        // Shift+F6 renames in PhpStorm whatever has focus: the symbol in the
+        // editor (rename_symbol, EditorKeymap), the file here — by focus.
+        'tree_rename' => ['label' => 'Tree: Rename…', 'keys' => ['shift+f6']],
         // Ide-scope, not tree-scope: it works from wherever the caret is, which
         // is the whole point — Alt+F1 is PhpStorm's "Select In".
         'tree_select_opened_file' => ['label' => 'Select Opened File in Tree', 'keys' => ['alt+f1']],

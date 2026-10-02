@@ -106,6 +106,9 @@ settings.
 | `Ctrl+PageDown` / `Ctrl+PageUp` | Next / previous terminal session (`Ctrl+Shift+W` closes one) |
 | `Alt+1` | Focus the project tree |
 | `Ctrl+X` / `Ctrl+C` / `Ctrl+V` | **In the file tree**: cut / copy / paste the selected files. The same chords move text in the editor — which you get depends on what has focus |
+| `Delete` (`Cmd+Backspace` on a Mac) | **In the file tree**: delete the selected files, or the folder under the cursor — after a y/N question |
+| `Alt+Insert` / `Ctrl+N` | **In the file tree**: new file or folder in the selected folder |
+| `Shift+F6` | **In the file tree**: rename the selected file or folder (in the editor it renames the symbol) |
 | `Alt+6` | Problems panel |
 | `Alt+9` | Notification log — every flash the status bar showed and you missed |
 | `Alt+D` | Dismiss the newest notification (the top card) |
@@ -128,6 +131,7 @@ settings.
 | `Ctrl+←` / `Ctrl+→` | Previous / next editor tab |
 | `Ctrl+Shift+←` / `Ctrl+Shift+→` | Move the active tab left / right |
 | `Ctrl+F4` / `Alt+W` | Close the active buffer (unsaved changes prompt) |
+| `Ctrl+Alt+W` / `Ctrl+Alt+Shift+W` | Close the other tabs / close all tabs (unsaved changes prompt) |
 | `Ctrl+Alt+X` | Reopen the active tab as text (for a file a viewer plugin claimed) |
 
 ## Editing
@@ -253,6 +257,7 @@ replaces in the bar, and neither surface can have both.
 | `F9` | Resume *(while paused)* |
 | `Ctrl+F9` | Pause the program where it is *(while it runs)* |
 | `Ctrl+F2` | Stop the debugger *(while a session runs)* |
+| `Alt+F8` | Evaluate an expression *(while paused)* |
 | `Ctrl+Shift+F5` | Restart the debugger *(while a session runs)* |
 | `Ctrl+Shift+F8` | Edit the breakpoint's condition, hit count or log message |
 | `Ctrl+Shift+F9` | Add a watch expression |

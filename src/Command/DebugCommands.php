@@ -39,7 +39,7 @@ final readonly class DebugCommands implements CommandProvider
             ->add('debug_run_to_cursor', fn () => $this->debug->runToCursor(), keyBound: KeyDispatch::Bound, when: $paused)
             ->add('debug_stop', fn () => $this->debug->stop(), keyBound: KeyDispatch::Bound, when: $active)
             ->add('debug_restart', fn () => $this->debug->restart(), keyBound: KeyDispatch::Bound, when: $active)
-            ->add('debug_evaluate', fn () => $this->debug->evaluatePrompt(), label: 'Debug: Evaluate Expression', when: $paused)
+            ->add('debug_evaluate', fn () => $this->debug->evaluatePrompt(), keyBound: KeyDispatch::Bound, when: $paused)
             ->add('debug_exception_breakpoints', fn () => $this->debug->exceptionBreakpointsOverlay(), label: 'Debug: Exception Breakpoints', when: $active);
     }
 }

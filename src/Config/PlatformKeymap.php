@@ -48,6 +48,9 @@ final class PlatformKeymap
         'copy_path' => ['super+shift+c', 'ctrl+shift+c'],
         'tree_copy' => ['super+c', 'ctrl+c'],
         'tree_cut' => ['super+x', 'ctrl+x'],
+        // Finder's Cmd+Backspace: the key labelled delete sends Backspace,
+        // and Delete itself is fn+delete on a Mac keyboard.
+        'tree_delete' => ['super+backspace', 'delete'],
     ];
 
     /**

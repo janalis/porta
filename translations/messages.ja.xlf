@@ -3234,6 +3234,26 @@
         <source>The drop failed: %reason%</source>
         <target>ドロップに失敗しました: %reason%</target>
       </trans-unit>
+      <trans-unit id="1130">
+        <source>Tree: Delete</source>
+        <target>ツリー: 削除</target>
+      </trans-unit>
+      <trans-unit id="1131">
+        <source>Delete %count% files? (y/N)</source>
+        <target>%count% 個のファイルを削除しますか? (y/N)</target>
+      </trans-unit>
+      <trans-unit id="1132">
+        <source>Tree: New…</source>
+        <target>ツリー: 新規…</target>
+      </trans-unit>
+      <trans-unit id="1133">
+        <source>Tree: Rename…</source>
+        <target>ツリー: 名前を変更…</target>
+      </trans-unit>
+      <trans-unit id="1134">
+        <source>New</source>
+        <target>新規</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

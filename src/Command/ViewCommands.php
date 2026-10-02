@@ -110,9 +110,9 @@ final readonly class ViewCommands implements CommandProvider
                         $this->bufferService->closeTabsExcept($active->path);
                     }
                 },
-                label: 'Close Other Tabs',
+                keyBound: KeyDispatch::Bound,
             )
-            ->add('close_all_tabs', fn () => $this->bufferService->closeTabsExcept(null), label: 'Close All Tabs')
+            ->add('close_all_tabs', fn () => $this->bufferService->closeTabsExcept(null), keyBound: KeyDispatch::Bound)
             ->add('ide_notifications', fn () => $this->workbench->showNotificationLog(), keyBound: KeyDispatch::Bound, label: 'Notification Log')
             ->add('ide_dismiss_toast', fn () => $this->workbench->dismissToast(), keyBound: KeyDispatch::Bound, label: 'Dismiss Notification')
             ->add('ide_lsp_log', fn () => $this->workbench->showLspLog(), label: 'LSP: Show Server Log')

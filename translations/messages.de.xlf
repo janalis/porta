@@ -3234,6 +3234,26 @@
         <source>The drop failed: %reason%</source>
         <target>Ablegen fehlgeschlagen: %reason%</target>
       </trans-unit>
+      <trans-unit id="1130">
+        <source>Tree: Delete</source>
+        <target>Baum: löschen</target>
+      </trans-unit>
+      <trans-unit id="1131">
+        <source>Delete %count% files? (y/N)</source>
+        <target>%count% Dateien löschen? (y/N)</target>
+      </trans-unit>
+      <trans-unit id="1132">
+        <source>Tree: New…</source>
+        <target>Baum: neu…</target>
+      </trans-unit>
+      <trans-unit id="1133">
+        <source>Tree: Rename…</source>
+        <target>Baum: umbenennen…</target>
+      </trans-unit>
+      <trans-unit id="1134">
+        <source>New</source>
+        <target>Neu</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

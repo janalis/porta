@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Editor;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Editor\OpenFocus;
@@ -187,5 +188,19 @@ final class CloseTabsToTheSideTest extends TestCase
 
         $this->assertSame(['a.php', 'c.php'], $this->tabs());
         $this->assertStringContainsString('unsaved tab kept open', Toasts::last($this->ide));
+    }
+
+    /** The tab menu's Close Others and Close All, from the keyboard. */
+    public function testCtrlAltWClosesTheOthersAndWithShiftTheLot(): void
+    {
+        $this->withFourTabs();
+        $tui = Services::resolve($this->ide, Tui::class);
+        $buffers = Services::resolve($this->ide, BufferManager::class);
+
+        $tui->handleInput("\x1b\x17"); // Ctrl+Alt+W
+        $this->assertSame([$this->openedPath('d.php')], \array_map(static fn (Buffer $buffer): string => $buffer->path, $buffers->all()), 'the active tab stays');
+
+        $tui->handleInput("\x1b[119;8u"); // Ctrl+Alt+Shift+W, as a kitty-protocol terminal sends it
+        $this->assertSame([], $buffers->all());
     }
 }

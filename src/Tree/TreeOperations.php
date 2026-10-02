@@ -159,6 +159,54 @@ final class TreeOperations
         }
     }
 
+    /**
+     * PhpStorm's Alt+Insert: a small picker of what to create, in the folder
+     * the selected row means — the project root on a tree with nothing in it.
+     */
+    public function newInSelection(): void
+    {
+        $node = $this->tree->selectedNode() ?? new FileTreeNode($this->paths->root(), '', isDir: true, depth: 0);
+        $items = [
+            ['label' => $this->translator->trans('New File…'), 'hint' => '', 'value' => 'file'],
+            ['label' => $this->translator->trans('New Folder…'), 'hint' => '', 'value' => 'folder'],
+        ];
+        $this->tui->setFocus($this->editor);
+        $this->editor->openListOverlay($this->translator->trans('New'), $items, function (string $what) use ($node): void {
+            'folder' === $what ? $this->treeNewFolder($node) : $this->treeNewFile($node);
+        });
+        $this->tui->requestRender();
+    }
+
+    /** Rename the row under the cursor, from the keyboard. */
+    public function renameSelection(): void
+    {
+        $node = $this->tree->selectedNode();
+        if (null !== $node) {
+            $this->treeRename($node);
+        }
+    }
+
+    /**
+     * Delete what the tree has selected, from the keyboard — the same rule a
+     * drag takes: the row under the cursor, or, when it is one of several
+     * selected files, all of them. A folder always goes alone.
+     */
+    public function deleteSelection(): void
+    {
+        $node = $this->tree->selectedNode();
+        if (null === $node) {
+            return;
+        }
+        $selected = $this->tree->selectedPaths();
+        if ($node->isDir || !\in_array($node->path, $selected, strict: true)) {
+            $this->confirmDelete([$node->path]);
+
+            return;
+        }
+        // The row under the cursor first, then the rest of the selection.
+        $this->confirmDelete([$node->path, ...\array_values(\array_diff($selected, [$node->path]))]);
+    }
+
     public function pasteIntoSelection(): void
     {
         $node = $this->tree->selectedNode();
@@ -362,33 +410,58 @@ final class TreeOperations
 
     private function treeDelete(FileTreeNode $node): void
     {
-        $path = $node->path;
-        $this->promptName($this->translator->trans('Delete %name%? (y/N)', ['%name%' => $node->name]), '', danger: true, onSubmit: function (string $answer) use ($path): void {
+        $this->confirmDelete([$node->path]);
+    }
+
+    /**
+     * One question for the whole set, then one working-tree announcement for
+     * it — the batch a multi-file drop already runs as.
+     *
+     * @param non-empty-list<string> $paths
+     */
+    private function confirmDelete(array $paths): void
+    {
+        $question = 1 === \count($paths)
+            ? $this->translator->trans('Delete %name%? (y/N)', ['%name%' => \basename($paths[0])])
+            : $this->translator->trans('Delete %count% files? (y/N)', ['%count%' => \count($paths)]);
+        $this->promptName($question, '', danger: true, onSubmit: function (string $answer) use ($paths): void {
             if (!\in_array(\strtolower(\trim($answer)), ['y', 'yes'], strict: true)) {
                 $this->tui->setFocus($this->tree);
 
                 return;
             }
-            // buffers are keyed by realpath()
-            $resolved = \realpath($path);
-            $key = $resolved ? $resolved : $path;
-            $this->withFs($this->translator->trans('Cannot delete %file%', ['%file%' => $this->paths->relative($path)]), function () use ($path, $key): void {
-                // Read before it goes: the text a recovery restores, the open
-                // buffer's when there is one — unsaved edits are the user's too.
-                $buffer = $this->buffers->get($key);
-                $previous = null !== $buffer && !$buffer->isViewer() ? $buffer->document->getText() : Files::textOf($path);
-                $this->fs->remove($path);
-                // $key was resolved before the removal, which is the only time
-                // it could be — the same reason the rename above resolves early.
-                $this->events->dispatch(new FileDeleted($key, $previous));
-                if ($this->buffers->has($key)) {
-                    $next = $this->buffers->close($key);
-                    null !== $next ? $this->bufferService->showBuffer($next) : $this->editor->showDocument('', new Document(''));
-                }
-                $this->tree->refresh();
-                $this->tui->setFocus($this->tree);
-                $this->notifier->flash($this->translator->trans('Deleted %file%', ['%file%' => $this->paths->relative($path)]));
-            });
+            ++$this->batch;
+
+            try {
+                \array_map($this->deleteOne(...), $paths);
+            } finally {
+                --$this->batch;
+                $this->announceWorkingTree();
+            }
+        });
+    }
+
+    private function deleteOne(string $path): void
+    {
+        // buffers are keyed by realpath()
+        $resolved = \realpath($path);
+        $key = $resolved ? $resolved : $path;
+        $this->withFs($this->translator->trans('Cannot delete %file%', ['%file%' => $this->paths->relative($path)]), function () use ($path, $key): void {
+            // Read before it goes: the text a recovery restores, the open
+            // buffer's when there is one — unsaved edits are the user's too.
+            $buffer = $this->buffers->get($key);
+            $previous = null !== $buffer && !$buffer->isViewer() ? $buffer->document->getText() : Files::textOf($path);
+            $this->fs->remove($path);
+            // $key was resolved before the removal, which is the only time
+            // it could be — the same reason the rename above resolves early.
+            $this->events->dispatch(new FileDeleted($key, $previous));
+            if ($this->buffers->has($key)) {
+                $next = $this->buffers->close($key);
+                null !== $next ? $this->bufferService->showBuffer($next) : $this->editor->showDocument('', new Document(''));
+            }
+            $this->tree->refresh();
+            $this->tui->setFocus($this->tree);
+            $this->notifier->flash($this->translator->trans('Deleted %file%', ['%file%' => $this->paths->relative($path)]));
         });
     }
 
