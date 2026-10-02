@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit\Terminal;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Porta\Terminal\TerminalBuffer;
 use Porta\Tests\Support\RendersWidget;
@@ -229,6 +230,83 @@ final class TerminalBufferTest extends TestCase
 
         $this->assertStringContainsString("\x1b[31mred", $b->lines[0]);
         $this->assertSame('textred', AnsiUtils::stripAnsiCodes($b->lines[0]));
+    }
+
+    /** @return iterable<string, array{string, list<string>}> */
+    public static function malformedEscapes(): iterable
+    {
+        yield 'CSI broken by a newline' => ["a\x1b[\nafter", ['a[', 'after', 'more']];
+        yield 'nF broken by a newline' => ["a\x1b(\nb", ['a(', 'b', 'more']];
+        yield 'ESC before a C0 byte' => ["a\x1b\x01b", ['ab', 'more']];
+    }
+
+    /** @param list<string> $rows */
+    #[DataProvider('malformedEscapes')]
+    public function testAMalformedEscapeIsDroppedNotStashed(string $chunk, array $rows): void
+    {
+        $b = new TerminalBuffer();
+        $b->feed($chunk);
+        $b->feed("\nmore");
+
+        $this->assertSame($rows, \array_map(AnsiUtils::stripAnsiCodes(...), $this->rows($b->lines)), 'output keeps flowing past the broken escape');
+    }
+
+    /** @return iterable<string, array{string, string}> */
+    public static function splitEscapes(): iterable
+    {
+        yield 'bare ESC' => ["x\x1b", '[31mred'];
+        yield 'CSI parameters' => ["x\x1b[1;", '31mred'];
+        yield 'CSI intermediate' => ["x\x1b[1 ", 'qred'];
+        yield 'nF' => ["x\x1b(", 'Bred'];
+        yield 'nF, two intermediates' => ["x\x1b( ", 'Bred'];
+        yield 'nF, lowest intermediate' => ["x\x1b ", 'Fred'];
+        yield 'nF, highest intermediate' => ["x\x1b/", 'Ared'];
+        yield 'OSC' => ["x\x1b]0;title", "\x07red"];
+    }
+
+    #[DataProvider('splitEscapes')]
+    public function testAnUnfinishedEscapeAtTheChunkEndIsStashed(string $first, string $second): void
+    {
+        $b = new TerminalBuffer();
+        $b->feed($first);
+        $b->feed($second);
+
+        $this->assertSame('xred', AnsiUtils::stripAnsiCodes($b->lines[0]), 'the halves joined into one sequence');
+    }
+
+    public function testAnUnterminatedOscPastTheCapStopsBeingHeld(): void
+    {
+        $b = new TerminalBuffer();
+        $b->feed("\x1b]0;".\str_repeat('x', times: 65_533)); // 65_537 bytes: one past
+        $b->feed("\nvisible");
+
+        $this->assertSame('visible', AnsiUtils::stripAnsiCodes($b->lines[\count($b->lines) - 1]));
+    }
+
+    public function testAnUnterminatedOscAtTheCapIsHeld(): void
+    {
+        $b = new TerminalBuffer();
+        $b->feed("\x1b]0;".\str_repeat('x', times: 65_532)); // exactly 65_536 bytes
+        $b->feed("\x07visible");
+
+        $this->assertSame(['visible'], \array_map(AnsiUtils::stripAnsiCodes(...), $this->rows($b->lines)), 'held until the terminator, then swallowed whole');
+    }
+
+    public function testColourWithNoTextAfterItStaysBounded(): void
+    {
+        $b = new TerminalBuffer();
+        $b->feed(\str_repeat("\x1b[1m", times: 10_000).'x');
+
+        $this->assertLessThan(1100, \strlen($b->lines[0]));
+        $this->assertSame('x', AnsiUtils::stripAnsiCodes($b->lines[0]));
+    }
+
+    public function testColourUpToTheCapStillAccumulates(): void
+    {
+        $b = new TerminalBuffer();
+        $b->feed(\str_repeat("\x1b[1m", times: 256)."\x1b[4mx"); // 1024 bytes held, then one more
+
+        $this->assertSame(1024 + 4 + 1, \strlen($b->lines[0]));
     }
 
     public function testClear(): void

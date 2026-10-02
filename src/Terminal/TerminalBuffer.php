@@ -20,6 +20,17 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
  */
 final class TerminalBuffer
 {
+    /** The longest unfinished escape held across chunks; an OSC/DCS past it is malformed or hostile. */
+    private const int MAX_PENDING = 65_536;
+
+    private const int MAX_PENDING_SGR = 1024;
+
+    /** CSI parameter and intermediate bytes (0x20-0x3F): what may precede its final byte. */
+    private const string CSI_BODY = " !\"#$%&'()*+,-./0123456789:;<=>?";
+
+    /** nF intermediate bytes (0x20-0x2F). */
+    private const string NF_BODY = " !\"#$%&'()*+,-./";
+
     /** @var string[] committed + current line (last element is the line under construction) */
     public private(set) array $lines = [''];
     private int $col = 0;
@@ -92,11 +103,18 @@ final class TerminalBuffer
 
             if ("\x1b" === $ch) {
                 $seq = AnsiUtils::extractAnsiCode($data, $i);
-                if (null === $seq) {
-                    // Possibly an escape split across chunks; stash and wait.
+                if (null === $seq && self::unfinished(\substr($data, $i))) {
+                    // An escape split across chunks; stash and wait.
                     $this->pending = \substr($data, $i);
 
                     return;
+                }
+                if (null === $seq) {
+                    // Malformed for good (or past the cap): stashing it would
+                    // swallow every later chunk and grow without bound. Drop the
+                    // ESC and read on.
+                    ++$i;
+                    continue;
                 }
                 $this->handleEscape($seq['code']);
                 $i += $seq['length'];
@@ -125,13 +143,39 @@ final class TerminalBuffer
         }
     }
 
+    /**
+     * Whether $tail (starting at an ESC that did not parse) can still become a
+     * sequence once more bytes arrive — the only case worth stashing.
+     */
+    private static function unfinished(string $tail): bool
+    {
+        $len = \strlen($tail);
+        if ($len > self::MAX_PENDING) {
+            return false;
+        }
+        if (1 === $len) {
+            return true;
+        }
+
+        return match (true) {
+            '[' === $tail[1] => (2 + \strspn($tail, self::CSI_BODY, offset: 2)) === $len,
+            \in_array($tail[1], [']', 'P', '_', '^', 'X'], strict: true) => true, // no terminator yet
+            // nF: intermediates only so far. Any other byte after ESC is a
+            // two-byte form the parser would have taken, or garbage.
+            default => (1 + \strspn($tail, self::NF_BODY, offset: 1)) === $len,
+        };
+    }
+
     private function handleEscape(string $code): void
     {
         // SGR (colour) — defer and prepend to the next text so it styles what
         // follows even across a carriage-return overwrite. A full reset
         // collapses the accumulated state to keep it bounded.
         if (\str_ends_with($code, 'm') && \str_starts_with($code, "\x1b[")) {
-            $this->pendingSgr = Sgr::RESET === $code || "\x1b[m" === $code ? $code : $this->pendingSgr.$code;
+            // Colour with no text after it still accumulates; past the cap the
+            // newest code stands alone rather than growing without bound.
+            $reset = Sgr::RESET === $code || "\x1b[m" === $code || \strlen($this->pendingSgr) > self::MAX_PENDING_SGR;
+            $this->pendingSgr = $reset ? $code : $this->pendingSgr.$code;
 
             return;
         }
