@@ -8,6 +8,7 @@ use Porta\Config\ActionCatalog;
 use Porta\Config\CommandRegistry;
 use Porta\Config\LiveKeybindings;
 use Porta\Container\AsIdeService;
+use Porta\Event\KeymapChanged;
 use Porta\I18n\Translator;
 use Porta\Overlay\Presenter\WelcomeModalController;
 use Porta\Overlay\State\OverlayHost;
@@ -17,6 +18,7 @@ use Porta\Widget\ContextMenu;
 use Porta\Widget\MenuBarWidget;
 use Porta\Workbench\Notifier;
 use Porta\Workbench\View\ViewCommandGate;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Tui\Event\InputEvent;
 use Symfony\Component\Tui\Tui;
 
@@ -44,6 +46,7 @@ final readonly class InputDispatcher
         private Translator $translator,
         private TooltipCenter $tooltips,
         private ?ViewCommandGate $gate = null,
+        private ?EventDispatcherInterface $events = null,
     ) {}
 
     public function dispatch(InputEvent $event): void
@@ -63,6 +66,13 @@ final readonly class InputDispatcher
         }
 
         $this->tooltips->dismiss();
+
+        // A Cmd chord's first arrival proves the terminal forwards it: from
+        // then on its action leads with it, and the menus' and the chrome's
+        // key hints must say so.
+        if ($this->keybindings->noteInput($data)) {
+            $this->events?->dispatch(new KeymapChanged($this->keybindings->platform()));
+        }
 
         // Escape abandons a file-tree drag in flight. Deliberately NOT swallowed:
         // the drag is a mouse gesture with the button still held, and Escape's

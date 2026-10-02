@@ -58,6 +58,7 @@ final class ContainerDebugCommand extends Command
     private const array ENV_DEFAULTS = [
         'PORTA_LOCALE' => 'en',
         'PORTA_SYSTEM_LOCALE' => 'en',
+        'PORTA_HOST_KEYMAP' => 'linux',
         'PORTA_ANSI' => '1',
         'PORTA_THEME' => 'dark',
         'PORTA_LSP_COMMAND' => '',

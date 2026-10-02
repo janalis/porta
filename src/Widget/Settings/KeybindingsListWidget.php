@@ -291,9 +291,14 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
         $rows = \max(1, $context->getRows() > 0 ? $context->getRows() : 12);
         $this->lastRows = $rows;
 
-        $title = $this->filtering
-            ? $this->translator->trans('Keybindings — %shown% of %count% · ⏎ to rebind', ['%shown%' => \count($this->shown), '%count%' => \count($this->rows)])
-            : $this->translator->trans('Keybindings — %count% actions · ⏎ to rebind · Ctrl+F to filter · Del to reset', ['%count%' => \count($this->rows)]);
+        $title = match (true) {
+            $this->filtering => $this->translator->trans('Keybindings — %shown% of %count% · ⏎ to rebind', ['%shown%' => \count($this->shown), '%count%' => \count($this->rows)]),
+            // The Mac keyboard's "delete" key sends Backspace, so the macOS
+            // keymap leads with it; the hint names the key that keymap leads with.
+            Key::BACKSPACE === ($this->getKeybindings()->getBindings('reset_binding')[0] ?? null)
+                => $this->translator->trans('Keybindings — %count% actions · ⏎ to rebind · Ctrl+F to filter · ⌫ to reset', ['%count%' => \count($this->rows)]),
+            default => $this->translator->trans('Keybindings — %count% actions · ⏎ to rebind · Ctrl+F to filter · Del to reset', ['%count%' => \count($this->rows)]),
+        };
         $lines = [HeaderRenderer::title($title, $width, $this->styles)];
         if ($this->filtering) {
             $focused = $this->isFocused();
@@ -378,7 +383,10 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
             'rebind' => [Key::ENTER],
             // Delete, not Backspace: Backspace belongs to the filter field,
             // and a key that erases a query on one row and an override on the
-            // next is the kind of overload people learn to distrust.
+            // next is the kind of overload people learn to distrust. The
+            // macOS keymap adds Backspace all the same (PlatformKeymap): the
+            // Mac has no Delete key, and the filter takes Backspace first
+            // while it is open, so the overload never arises.
             'reset_binding' => [Key::DELETE],
             // Ctrl+F is the settings view's find key on its other two panes,
             // and it was DEAD here — the exact shape the nav's own comment

@@ -74,6 +74,7 @@ use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\ReadsSettingsForm;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestCompletionController;
+use Porta\Tests\Support\TestLiveKeybindings;
 use Porta\Tests\Support\TestTui;
 use Porta\Tests\Support\TestWorkspaceLayout;
 use Porta\Ui\BidiTui;
@@ -220,6 +221,7 @@ final class SettingsViewControllerTest extends TestCase
             self::formatOnSave(),
             TestCompletionController::idle($editor),
             PixelGraphics::ratio(),
+            TestLiveKeybindings::create(),
             true,
         );
         $settings = new SettingsController(

@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Settings;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\KeymapPlatform;
+use Porta\Config\LiveKeybindings;
 use Porta\Editor\BufferManager;
 use Porta\Editor\EditorPanes;
 use Porta\Editor\InlayHintMode;
+use Porta\Event\KeymapChanged;
 use Porta\Event\LocaleChanged;
 use Porta\Highlight\ColorMode;
 use Porta\Highlight\TerminalThemeFactory;
@@ -23,6 +26,7 @@ use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\PixelGraphics;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TestCompletionController;
+use Porta\Tests\Support\TestLiveKeybindings;
 use Porta\Tests\Support\TestTui;
 use Porta\Tests\Support\TestWorkspaceLayout;
 use Porta\Ui\CursorStyle;
@@ -52,6 +56,7 @@ final class LiveSettingsApplierTest extends TestCase
         ?TabBarWidget $tabBar = null,
         CodeEditorWidget $editor = new CodeEditorWidget(),
         EventDispatcher $dispatcher = new EventDispatcher(),
+        ?LiveKeybindings $keys = null,
     ): LiveSettingsApplier {
         $this->formatOnSave = self::buildFormatOnSave();
 
@@ -69,6 +74,7 @@ final class LiveSettingsApplierTest extends TestCase
             $this->formatOnSave,
             TestCompletionController::idle($editor),
             PixelGraphics::ratio(),
+            $keys ?? TestLiveKeybindings::create(),
             true,
         );
     }
@@ -106,6 +112,22 @@ final class LiveSettingsApplierTest extends TestCase
         $applier->disableFormatOnSave();
 
         $this->assertFalse($this->formatOnSave->isEnabled());
+    }
+
+    public function testApplyKeymapPlatformSwitchesTheLiveMapAndSaysSo(): void
+    {
+        $dispatcher = new EventDispatcher();
+        $changes = [];
+        $dispatcher->addListener(KeymapChanged::class, static function (KeymapChanged $event) use (&$changes): void {
+            $changes[] = $event->platform;
+        });
+        $keys = TestLiveKeybindings::create();
+        $applier = $this->applier(dispatcher: $dispatcher, keys: $keys);
+
+        $applier->applyKeymapPlatform('macos');
+
+        $this->assertSame(['backspace', 'delete'], $keys->getBindings('reset_binding'));
+        $this->assertSame([KeymapPlatform::MacOs], $changes, 'the menus rebuild their labels on this');
     }
 
     public function testApplyInlayHintsSwitchesTheEditorsMode(): void
@@ -179,6 +201,7 @@ final class LiveSettingsApplierTest extends TestCase
             $this->formatOnSave,
             TestCompletionController::idle(),
             PixelGraphics::ratio(),
+            TestLiveKeybindings::create(),
             true,
         );
         $editorPane = Probe::get($workspaceLayout, 'editorPane');

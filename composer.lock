@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "49264c3ae3e17fdd8768a3cb334030fe",
+    "content-hash": "f79e153042707444cdaa0038898e06bf",
     "packages": [
         {
             "name": "composer/semver",
@@ -1965,16 +1965,16 @@
         },
         {
             "name": "symfony/tui",
-            "version": "8.2.x-dev",
+            "version": "dev-super-modifier",
             "source": {
                 "type": "git",
-                "url": "https://github.com/symfony/tui.git",
-                "reference": "fa0b189a6164a80704ebf0fe19f2d10ec30c24dc"
+                "url": "https://github.com/phcorp/tui.git",
+                "reference": "2ca42f82777f865dd625203ec64a9565eb236aea"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/tui/zipball/fa0b189a6164a80704ebf0fe19f2d10ec30c24dc",
-                "reference": "fa0b189a6164a80704ebf0fe19f2d10ec30c24dc",
+                "url": "https://api.github.com/repos/phcorp/tui/zipball/2ca42f82777f865dd625203ec64a9565eb236aea",
+                "reference": "2ca42f82777f865dd625203ec64a9565eb236aea",
                 "shasum": ""
             },
             "require": {
@@ -1988,7 +1988,6 @@
                 "league/commonmark": "^2.9",
                 "tempest/highlight": "^2.16"
             },
-            "default-branch": true,
             "type": "library",
             "autoload": {
                 "psr-4": {
@@ -1998,7 +1997,6 @@
                     "/Tests/"
                 ]
             },
-            "notification-url": "https://packagist.org/downloads/",
             "license": [
                 "MIT"
             ],
@@ -2021,27 +2019,9 @@
                 "tui"
             ],
             "support": {
-                "source": "https://github.com/symfony/tui/tree/8.2"
+                "source": "https://github.com/phcorp/tui/tree/super-modifier"
             },
-            "funding": [
-                {
-                    "url": "https://symfony.com/sponsor",
-                    "type": "custom"
-                },
-                {
-                    "url": "https://github.com/fabpot",
-                    "type": "github"
-                },
-                {
-                    "url": "https://github.com/nicolas-grekas",
-                    "type": "github"
-                },
-                {
-                    "url": "https://tidelift.com/funding/github/packagist/symfony/symfony",
-                    "type": "tidelift"
-                }
-            ],
-            "time": "2026-09-30T16:20:02+00:00"
+            "time": "2026-10-02T00:11:18+00:00"
         },
         {
             "name": "symfony/var-exporter",
@@ -5949,9 +5929,18 @@
             "time": "2026-06-15T15:31:57+00:00"
         }
     ],
-    "aliases": [],
+    "aliases": [
+        {
+            "package": "symfony/tui",
+            "version": "dev-super-modifier",
+            "alias": "8.2.x-dev",
+            "alias_normalized": "8.2.9999999.9999999-dev"
+        }
+    ],
     "minimum-stability": "dev",
-    "stability-flags": {},
+    "stability-flags": {
+        "symfony/tui": 20
+    },
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {

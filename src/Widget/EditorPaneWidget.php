@@ -49,6 +49,16 @@ abstract class EditorPaneWidget extends AbstractWidget implements FocusableInter
         $this->handler = $handler;
     }
 
+    /**
+     * Whether this pane matches $action itself — one of its own default keys,
+     * not one the IDE-wide map merely passes it. The keymap page asks, to know
+     * whether a rebind reaches a widget that follows the live keymap.
+     */
+    public function bindsAction(string $action): bool
+    {
+        return \array_key_exists($action, static::getDefaultKeybindings());
+    }
+
     /** The routing id this pane answers to — the same id a viewer claim returns ('image', 'graph', 'help'). */
     abstract public function paneId(): string;
 

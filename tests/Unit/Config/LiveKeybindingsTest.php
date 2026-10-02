@@ -4,16 +4,21 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit\Config;
 
+use PHPUnit\Framework\Attributes\RequiresMethod;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\ActionRegistry;
 use Porta\Config\CommandRegistry;
 use Porta\Config\IdeConfig;
 use Porta\Config\KeybindingsFactory;
+use Porta\Config\KeymapPlatform;
 use Porta\Config\LiveKeybindings;
 use Porta\Plugin\Runtime\PluginHost;
 use Porta\Tests\Support\PreservesPortaHome;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\TestLiveKeybindings;
 use Symfony\Component\EventDispatcher\EventDispatcher;
+use Symfony\Component\Tui\Input\Key;
+use Symfony\Component\Tui\Input\Keybindings;
 
 /**
  * The rebuildable keybindings holder: a live plugin toggle re-merges the map
@@ -113,5 +118,61 @@ final class LiveKeybindingsTest extends TestCase
         $live->rebuild();
         $this->assertSame($parser, $live->current()->getParser(), 'the kitty-negotiated parser rides through every rebuild');
         $this->assertNotSame([], $live->current()->all(), 'the IDE defaults are in the rebuilt map');
+    }
+
+    public function testAPlatformSwitchRebuildsTheMapAndHandsItToEveryObserver(): void
+    {
+        $project = new TempProject([]);
+        $live = TestLiveKeybindings::create($project->dir, KeymapPlatform::Linux);
+        $handed = [];
+        $live->onRebuild(static function (Keybindings $keys) use (&$handed): void {
+            $handed[] = $keys;
+        });
+        $this->assertSame([], $live->getBindings('reset_binding'), 'Linux keeps the list\'s own Delete');
+
+        $live->usePlatform('macos');
+
+        $this->assertSame(KeymapPlatform::MacOs, $live->platform());
+        $this->assertSame(['backspace', 'delete'], $live->getBindings('reset_binding'));
+        $this->assertCount(1, $handed);
+        $this->assertSame($live->current(), $handed[0], 'the observer gets the map that is now live');
+
+        $live->usePlatform('auto');
+        $this->assertSame(KeymapPlatform::Linux, $live->platform(), 'auto is the detected platform again');
+        $this->assertSame([], $live->getBindings('reset_binding'));
+    }
+
+    public function testAPlainKeyIsNoEvidenceOfAnything(): void
+    {
+        $project = new TempProject([]);
+        $live = TestLiveKeybindings::create($project->dir, KeymapPlatform::MacOs);
+        $rebuilt = false;
+        $live->onRebuild(static function () use (&$rebuilt): void {
+            $rebuilt = true;
+        });
+
+        $this->assertFalse($live->noteInput('c'));
+        $this->assertFalse($live->noteInput("\x1b[99;5u"), 'ctrl+c');
+        $this->assertFalse($live->noteInput("\x1b[<0;3;4M"), 'a mouse press parses to nothing');
+        $this->assertFalse($rebuilt);
+    }
+
+    #[RequiresMethod(Key::class, 'super')]
+    public function testACmdChordLeadsItsActionOnceItArrives(): void
+    {
+        $project = new TempProject([]);
+        $live = TestLiveKeybindings::create($project->dir, KeymapPlatform::MacOs);
+        $this->assertSame(['ctrl+c', 'super+c'], $live->getBindings('copy'), 'Ctrl leads until Cmd is proven');
+
+        $this->assertTrue($live->noteInput("\x1b[99;9u"), 'the first Cmd+C rebuilds');
+        $this->assertSame(['super+c', 'ctrl+c'], $live->getBindings('copy'));
+        $this->assertSame(['ctrl+z', 'super+z'], $live->getBindings('undo'), 'only the chord that arrived');
+
+        $this->assertFalse($live->noteInput("\x1b[99;9u"), 'once per chord');
+        $this->assertTrue($live->noteInput("\x1b[122::119;10u"), 'Cmd+Shift+Z as Ghostty sends it on AZERTY');
+        $this->assertSame(['super+shift+z', 'ctrl+shift+z'], $live->getBindings('redo'));
+
+        $live->rebuild();
+        $this->assertSame(['super+c', 'ctrl+c'], $live->getBindings('copy'), 'what arrived survives a plain rebuild');
     }
 }

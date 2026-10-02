@@ -19,6 +19,7 @@ use Porta\Tests\Support\RendersWidget;
 use Porta\Widget\Settings\KeybindingsListWidget;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\RenderContext;
 
 final class KeybindingsListWidgetTest extends TestCase
@@ -426,6 +427,38 @@ final class KeybindingsListWidgetTest extends TestCase
         $widget->handleInput("\x1b[3~"); // Delete, with nothing listening
 
         $this->addToAssertionCount(1);
+    }
+
+    /**
+     * The Mac's "delete" key sends Backspace, and it has no Delete key short
+     * of fn+delete — so on the macOS keymap Backspace resets, and the title
+     * says so. Backspace still edits the filter while the filter is open:
+     * the field is asked first, which is what keeps the overload harmless.
+     */
+    public function testOnTheMacKeymapBackspaceResetsOutsideTheFilterOnly(): void
+    {
+        $resets = [];
+        $widget = $this->widget();
+        $widget->setKeybindings(new Keybindings(['reset_binding' => ['backspace', 'delete']]));
+        $widget->onReset(static function (string $action) use (&$resets): void {
+            $resets[] = $action;
+        });
+        $this->assertStringContainsString('Keybindings — '.\count($this->rows()).' actions · ⏎ to rebind · Ctrl+F to filter · ⌫ to reset', $this->plain($widget->render(new RenderContext(120, 8))));
+
+        $widget->handleInput("\x7f");
+        $this->assertSame(['save'], $resets, 'Backspace resets the selected row');
+
+        $widget->handleInput('/');
+        $widget->handleInput('d');
+        $widget->handleInput('u');
+        $widget->handleInput("\x7f");
+        $this->assertSame(['save'], $resets, 'while filtering, Backspace edits the query');
+        $this->assertStringContainsString('d', $this->plain($widget->render(new RenderContext(90, 8))));
+    }
+
+    public function testElsewhereTheTitleNamesDel(): void
+    {
+        $this->assertStringContainsString('Del to reset', $this->plain($this->widget()->render(new RenderContext(90, 8))));
     }
 
     /** Delete is not Backspace: Backspace belongs to the filter field, and overloading it would make both untrustworthy. */

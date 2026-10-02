@@ -404,29 +404,74 @@ final class SettingsKeymapControllerTest extends TestCase
         $this->assertSame('n', $byAction['test_pane_step']->binding, "the pane's own key wins over the ide-scope default");
     }
 
-    public function testAWidgetScopeRebindSaysItAppliesOnRestart(): void
+    public function testARebindOfAnActionTheEditorMatchesIsLive(): void
     {
-        // Two scopes, two truths. An IDE-scope action (save) is dispatched from
-        // the map rebuild() swaps, so it is live. A widget-scope one is matched
-        // against the keymap the WIDGET merged from the boot WidgetContext —
-        // vendor-owned, final, and holding the instance handed to the Tui at
-        // startup — so it lands on the next launch. Both are persisted; only
-        // one takes effect now, and the flash has to say which.
+        // The editor merges its keys from the boot WidgetContext, so before it
+        // followed the live map an editor rebind landed on the next launch.
+        // Now every rebuilt map is handed to it (KeymapFollowers).
         $project = new TempProject();
         $controller = $this->controller($project->dir, $status = new StatusBarWidget(), new Keybindings());
 
         $controller->rebind('duplicate_line', "\x1b[24~"); // F12
 
-        $this->assertSame(['f12'], IdeConfig::load($project->dir)->keymap['duplicate_line'], 'persisted either way');
-        $this->assertStringContainsString('Rebound Duplicate Line or Selection to F12 · applies on restart', $this->flashText($status));
+        $this->assertSame(['f12'], IdeConfig::load($project->dir)->keymap['duplicate_line']);
+        $this->assertStringContainsString('Rebound Duplicate Line or Selection to F12', $this->flashText($status));
+        $this->assertStringNotContainsString('applies on restart', $this->flashText($status));
     }
 
-    public function testAPluginPanesRebindSaysTheSame(): void
+    public function testARebindOfAnIdeScopeActionThatIsNoCommandIsLive(): void
     {
-        // A pane's actions are widget-scope by construction — the pane binds
-        // them — so a plugin author's rebind carries the note too. Nothing
-        // declares it at IDE scope, and nothing can: registerActions() takes no
-        // keys, deliberately.
+        // Copy Path is matched against the IDE map itself, which rebuild()
+        // swaps — live, though no key-bound command carries it.
+        $project = new TempProject();
+        $controller = $this->controller($project->dir, $status = new StatusBarWidget(), new Keybindings());
+
+        $controller->rebind('copy_path', "\x1b[24~");
+
+        $this->assertStringContainsString('Rebound Copy Path to F12', $this->flashText($status));
+        $this->assertStringNotContainsString('applies on restart', $this->flashText($status));
+    }
+
+    public function testARebindOfAnActionOnlyAPaneMatchesIsLiveToo(): void
+    {
+        $project = new TempProject(['.porta/plugins/demo/plugin.php' => <<<'PHP'
+                <?php
+                return new class('demo') extends \Porta\Plugin\Api\AbstractPlugin {
+                    public function activate(\Porta\Plugin\Api\PluginApi $api): void
+                    {
+                        $api->registerActions(['test_pane_step' => 'Demo: Step']);
+                    }
+                };
+                PHP]);
+        $panes = new EditorPanes();
+        $panes->register(new TestPane('demo'), static fn (): string => '');
+        $controller = $this->controller($project->dir, $status = new StatusBarWidget(), new Keybindings(), $panes);
+        $this->host->ensureLoaded();
+
+        $controller->rebind('test_pane_step', "\x1b[24~");
+
+        $this->assertStringContainsString('Rebound Demo: Step to F12', $this->flashText($status));
+        $this->assertStringNotContainsString('applies on restart', $this->flashText($status));
+    }
+
+    public function testARebindNoFollowingWidgetMatchesSaysItAppliesOnRestart(): void
+    {
+        // The terminal panel matches its own keys against the map it merged
+        // from the boot context, and does not follow the live one: persisted
+        // now, fired on the next launch — and the flash has to say so.
+        $project = new TempProject();
+        $controller = $this->controller($project->dir, $status = new StatusBarWidget(), new Keybindings());
+
+        $controller->rebind('terminal_next_session', "\x1b[24~");
+
+        $this->assertSame(['f12'], IdeConfig::load($project->dir)->keymap['terminal_next_session'], 'persisted either way');
+        $this->assertStringContainsString('applies on restart', $this->flashText($status));
+    }
+
+    public function testADeclaredActionNothingMatchesSaysTheSame(): void
+    {
+        // registerActions() takes no keys, deliberately: an action no pane
+        // binds has nowhere live to land.
         $project = new TempProject(['.porta/plugins/hex/plugin.php' => <<<'PHP'
                 <?php
                 return new class('hex') extends \Porta\Plugin\Api\AbstractPlugin {
@@ -442,5 +487,18 @@ final class SettingsKeymapControllerTest extends TestCase
         $controller->rebind('hex_next_field', "\x1b[24~");
 
         $this->assertStringContainsString('Rebound Hex: Next Field to F12 · applies on restart', $this->flashText($status));
+    }
+
+    public function testResettingAnEditorActionNamesTheKeyThatFiresNow(): void
+    {
+        // An editor action has no catalog key: the flash used to read
+        // "Reset … to " with nothing after it.
+        $project = new TempProject();
+        $controller = $this->controller($project->dir, $status = new StatusBarWidget(), new Keybindings());
+        $controller->rebind('duplicate_line', "\x1b[24~");
+
+        $controller->resetBinding('duplicate_line');
+
+        $this->assertStringContainsString('Reset Duplicate Line or Selection to Ctrl+D', $this->flashText($status));
     }
 }

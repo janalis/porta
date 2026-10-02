@@ -4,14 +4,17 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit\Config;
 
+use PHPUnit\Framework\Attributes\RequiresMethod;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\ActionRegistry;
 use Porta\Config\ConfigWarning;
 use Porta\Config\IdeConfig;
 use Porta\Config\KeybindingsFactory;
+use Porta\Config\KeymapPlatform;
 use Porta\Plugin\Runtime\PluginHost;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\EventDispatcher\EventDispatcher;
+use Symfony\Component\Tui\Input\Key;
 
 /**
  * The keymap's membership check lives here rather than in {@see IdeConfig},
@@ -31,12 +34,12 @@ final class KeybindingsFactoryTest extends TestCase
         PHP;
 
     /** @return array{KeybindingsFactory, PluginHost} */
-    private function factory(TempProject $project): array
+    private function factory(TempProject $project, string $hostKeymap = 'linux'): array
     {
         $config = IdeConfig::load($project->dir);
         $host = new PluginHost($config, new EventDispatcher(), $project->dir);
 
-        return [new KeybindingsFactory($host, $config, new ActionRegistry($host->manager)), $host];
+        return [new KeybindingsFactory($host, $config, new ActionRegistry($host->manager), $hostKeymap), $host];
     }
 
     public function testAPluginPanesActionIsBindableFromPortaJson(): void
@@ -109,5 +112,32 @@ final class KeybindingsFactoryTest extends TestCase
 
         $this->assertSame(['f2'], $keys->getBindings('save'));
         $this->assertSame(['f3'], $keys->getBindings('find'));
+    }
+
+    public function testThePlatformIsTheSettingsElseTheDetectedOne(): void
+    {
+        [$mac] = $this->factory(new TempProject([]), 'macos');
+        $this->assertSame(KeymapPlatform::MacOs, $mac->platform());
+        $this->assertSame(['backspace', 'delete'], $mac->create()->getBindings('reset_binding'), 'the Mac keymap is laid over the defaults');
+
+        [$overSsh] = $this->factory(new TempProject(['.porta.json' => \json_encode(['settings' => ['keymapPlatform' => 'macos']])]), 'linux');
+        $this->assertSame(KeymapPlatform::MacOs, $overSsh->platform(), 'the setting beats detection');
+        $this->assertSame(KeymapPlatform::Windows, $overSsh->platform('windows'), 'a fresher setting beats the boot one');
+        $this->assertSame([], $overSsh->create(platform: 'linux')->getBindings('reset_binding'));
+
+        [$odd] = $this->factory(new TempProject([]), 'beos');
+        $this->assertSame(KeymapPlatform::Linux, $odd->platform(), 'an unknown detection is Linux');
+    }
+
+    #[RequiresMethod(Key::class, 'super')]
+    public function testTheUsersKeymapWinsOverThePlatforms(): void
+    {
+        [$factory] = $this->factory(new TempProject(['.porta.json' => \json_encode(['keymap' => ['copy' => 'cmd+k']])]), 'macos');
+
+        $keys = $factory->create();
+
+        $this->assertSame(['super+k'], $keys->getBindings('copy'), 'written as cmd, read as super');
+        $this->assertSame(['ctrl+x', 'super+x'], $keys->getBindings('cut'), 'the rest of the Mac keymap stands');
+        $this->assertSame(['super+x', 'ctrl+x'], $factory->create(arrived: ['super+x'])->getBindings('cut'));
     }
 }

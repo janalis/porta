@@ -49,6 +49,9 @@
              needs no per-project config file (which would perturb the git and
              file-tree fixtures). -->
         <env name="PORTA_HOME" value="./tests/Support/fixtures/home" force="true"/>
+        <!-- The keymap follows the platform typed on: a Mac would lay its own
+             over every boot, and a golden made there would fail on Linux. -->
+        <env name="PORTA_KEYMAP_PLATFORM" value="linux" force="true"/>
         <!-- The bundled plugins load only in scenarios that opt in via putenv. -->
         <env name="PORTA_EMBEDDED_PLUGINS" value="/nonexistent" force="true"/>
     </php>

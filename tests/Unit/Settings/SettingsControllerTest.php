@@ -8,6 +8,8 @@ use PHPUnit\Framework\TestCase;
 use Porta\Config\ConfigFiles;
 use Porta\Config\ConfigScope;
 use Porta\Config\IdeConfig;
+use Porta\Config\KeymapPlatform;
+use Porta\Config\LiveKeybindings;
 use Porta\Config\PortaJsonWriter;
 use Porta\Editor\BufferManager;
 use Porta\Editor\DiagnosticMessageMode;
@@ -46,6 +48,7 @@ use Porta\Tests\Support\Services;
 use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestCompletionController;
+use Porta\Tests\Support\TestLiveKeybindings;
 use Porta\Tests\Support\TestTui;
 use Porta\Tests\Support\TestWorkspaceLayout;
 use Porta\Tests\Support\Toasts;
@@ -68,6 +71,8 @@ use Symfony\Component\Tui\Tui;
 
 final class SettingsControllerTest extends TestCase
 {
+    private LiveKeybindings $keys;
+
     use PreservesPath;
     use StatusReads;
 
@@ -140,6 +145,7 @@ final class SettingsControllerTest extends TestCase
             $this->formatOnSave = self::formatOnSave(),
             TestCompletionController::idle($editor),
             PixelGraphics::ratio(),
+            $this->keys = TestLiveKeybindings::create($rootDir),
             true,
         );
 
@@ -206,7 +212,7 @@ final class SettingsControllerTest extends TestCase
         $byKey = \array_column($rows, null, 'key');
 
         $this->assertSame(
-            ['autoPairs', 'formatOnSave', 'searchIncludeVendor', 'displayName', 'sharePresence'],
+            ['autoPairs', 'formatOnSave', 'keymapPlatform', 'searchIncludeVendor', 'displayName', 'sharePresence'],
             \array_column($rows, 'key'),
             'General holds editor behavior (the viewer-tool paths live on their plugins\' pages now); appearance moved to Interface',
         );
@@ -261,6 +267,20 @@ final class SettingsControllerTest extends TestCase
         $this->assertFalse($byKey['inlayHints']->restart, 'a mode switch applies live');
         $this->assertTrue($byKey['stickyScroll']->value);
         $this->assertSame(SettingsRowKind::Bool, $byKey['breadcrumbs']->kind);
+    }
+
+    public function testTheKeymapRowSwitchesThePlatformLive(): void
+    {
+        $project = new TempProject();
+        $controller = $this->controller($project->dir, new CodeEditorWidget(), new StatusBarWidget());
+        $row = \array_column($controller->formRows(), null, 'key')['keymapPlatform'];
+        $this->assertSame(['auto', 'macos', 'windows', 'linux'], $row->options);
+        $this->assertFalse($row->restart, 'a keymap switch applies live');
+
+        $controller->changeSetting('keymapPlatform', 'macos');
+
+        $this->assertSame(KeymapPlatform::MacOs, $this->keys->platform());
+        $this->assertSame('macos', $this->written($project)['settings']['keymapPlatform'] ?? null);
     }
 
     /** The tooltip rows: a switch and a stepped delay, both applied to the one tooltip live. */

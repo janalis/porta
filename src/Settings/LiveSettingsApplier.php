@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Porta\Settings;
 
+use Porta\Config\LiveKeybindings;
 use Porta\Editor\EditorPanes;
 use Porta\Editor\InlayHintMode;
 use Porta\Event\CursorShapeChanged;
+use Porta\Event\KeymapChanged;
 use Porta\Event\LocaleChanged;
 use Porta\Event\TabBarPositionChanged;
 use Porta\Event\ThemeChanged;
@@ -51,6 +53,7 @@ final readonly class LiveSettingsApplier
         private FormatOnSave $formatOnSave,
         private CompletionController $completion,
         private PixelRatio $pixelRatio,
+        private LiveKeybindings $keys,
         private bool $ansi,
     ) {}
 
@@ -150,5 +153,15 @@ final readonly class LiveSettingsApplier
         $this->tabBar->setPosition($position);
         $this->workspaceLayout->setTabBarPosition($position);
         $this->dispatcher->dispatch(new TabBarPositionChanged($position));
+    }
+
+    /**
+     * Live keymap switch: another platform's default keys, the user's own
+     * keymap still on top. `auto` goes back to the platform detected at boot.
+     */
+    public function applyKeymapPlatform(string $value): void
+    {
+        $this->keys->usePlatform($value);
+        $this->dispatcher->dispatch(new KeymapChanged($this->keys->platform()));
     }
 }

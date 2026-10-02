@@ -1,6 +1,6 @@
 {
     "general": [
-        " General — 6 settings",
+        " General — 7 settings",
         "",
         "                          ┏━━━━━━━━━━━━━━━━━━━━━━━━┓",
         "  Save changes to         ┃ .porta.json          ▾ ┃ · for this session",
@@ -14,13 +14,13 @@
         "                          ╭───╮",
         "  Format on save (LSP)    │   │",
         "                          ╰───╯",
+        "                          ╭────────────────────────╮",
+        "  Keymap                  │ auto                 ▾ │",
+        "                          ╰────────────────────────╯",
         "",
         "─ Search ─────────────────────────────────────────────────────────────────────────────────────────────────────",
         "",
         "                          ╭───╮",
-        "  Search vendor/ files    │   │",
-        "                          ╰───╯",
-        "",
         " ⏎ edit · ←/→ change · r reset · Ctrl+F find · Tab panes · 2 keybindings"
     ],
     "interface": [

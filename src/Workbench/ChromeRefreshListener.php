@@ -6,6 +6,7 @@ namespace Porta\Workbench;
 
 use Porta\Container\ListenerPriority;
 use Porta\Event\CursorShapeChanged;
+use Porta\Event\KeymapChanged;
 use Porta\Event\LocaleChanged;
 use Porta\Event\TabBarPositionChanged;
 use Porta\Event\ThemeChanged;
@@ -27,7 +28,7 @@ final readonly class ChromeRefreshListener
     ) {}
 
     #[AsEventListener(priority: ListenerPriority::CHROME_SWEEP)]
-    public function onSettingApplied(ThemeChanged|LocaleChanged|CursorShapeChanged|TabBarPositionChanged $event): void
+    public function onSettingApplied(ThemeChanged|LocaleChanged|CursorShapeChanged|TabBarPositionChanged|KeymapChanged $event): void
     {
         $this->chrome->invalidateAll();
         // The Welcome modal's frame and content are composited spans, not tree

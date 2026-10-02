@@ -3198,6 +3198,14 @@
         <source>The debug adapter stopped unexpectedly</source>
         <target>Der Debug-Adapter wurde unerwartet beendet</target>
       </trans-unit>
+      <trans-unit id="1120">
+        <source>Keybindings — %count% actions · ⏎ to rebind · Ctrl+F to filter · ⌫ to reset</source>
+        <target>Tastenkürzel — %count% Aktionen · ⏎ zum Neubelegen · Ctrl+F zum Filtern · ⌫ zum Zurücksetzen</target>
+      </trans-unit>
+      <trans-unit id="1121">
+        <source>Keymap</source>
+        <target>Tastaturbelegung</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

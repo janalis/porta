@@ -15,6 +15,70 @@ for problems, run/debug, bookmarks, the menu, panes and the context menu, so a
 Mac with the default keyboard setting will feel like several of them do
 nothing.
 
+## macOS: Cmd keys
+
+On a Mac the main shortcuts also answer to `Cmd`. Every key in the tables
+below keeps working, and these chords are added:
+
+| Cmd key | Action | Cmd key | Action |
+| --- | --- | --- | --- |
+| `Cmd+C` | Copy (editor and file tree) | `Cmd+F` | Find in file |
+| `Cmd+X` | Cut (editor and file tree) | `Cmd+R` | Replace in file |
+| `Cmd+A` | Select all | `Cmd+D` | Duplicate line or selection |
+| `Cmd+Z` | Undo | `Cmd+/` | Toggle comment |
+| `Cmd+Shift+Z` | Redo | `Cmd+L` | Go to line |
+| `Cmd+S` | Save | `Cmd+E` | Recent files |
+| `Cmd+Alt+S` | Save all | `Cmd+Shift+C` | Copy path |
+
+`Cmd+V` is not among them on purpose: the terminal turns it into a paste of
+the system clipboard, which lands at every caret like `Ctrl+V` does and joins
+the paste history. On the keymap page in **Settings → Keybindings**, the Mac's
+`delete` key (`⌫`) resets an action to its default.
+
+A terminal only passes a Cmd chord on when it speaks the Kitty keyboard
+protocol and does not keep the chord for itself. **Terminal.app never passes
+one on, and iTerm2 keeps nearly all of them**; Ghostty, kitty and WezTerm each
+keep a few. Menus and hints therefore name the `Ctrl` key until a Cmd chord has
+actually reached Porta, and from then on name that chord. To hand a chord to
+Porta, unbind it in the terminal — or, in Ghostty (and cmux, which reads the
+same settings), make it *performable*, so it still copies when the terminal has
+a selection of its own:
+
+```
+# Ghostty: ~/.config/ghostty/config — cmux: ~/Library/Application Support/com.cmuxterm.app/config.ghostty
+keybind = performable:super+c=copy_to_clipboard
+keybind = super+a=unbind
+keybind = super+f=unbind
+keybind = super+d=unbind
+```
+
+In other terminals, remove the chord from the terminal's own key settings.
+
+Write Cmd chords as `cmd+…` (or `super+…`) in a custom keymap. The macOS
+keymap applies on its own on a Mac; the **Keymap** setting (`keymapPlatform`)
+picks another platform's, or the Mac's when you reach a Linux machine over SSH
+from a Mac keyboard.
+
+## Windows and Linux: keys the terminal keeps
+
+A terminal keeps some chords for itself, and Porta never sees them. Where one
+of those is a Porta key, the action gains a second key the terminal passes on,
+and the hints name that one:
+
+| Action | Windows | Linux | Kept by |
+| --- | --- | --- | --- |
+| Show quick fixes | `Alt+I` (and `Alt+Enter`) | `Alt+Enter` | Windows Terminal: `Alt+Enter` is full screen |
+| Paste from history | `Alt+Y` (and `Ctrl+Shift+V`) | `Alt+Y` (and `Ctrl+Shift+V`) | every major terminal: `Ctrl+Shift+V` is its paste |
+| Git: Push | `Alt+K` (and `Ctrl+Shift+K`) | `Alt+K` (and `Ctrl+Shift+K`) | Windows Terminal and Konsole: clear the screen |
+
+Without the Kitty keyboard protocol a terminal cannot tell `Ctrl+Shift+K` from
+`Ctrl+K` at all, which is one more reason the `Alt` keys lead. Other chords a
+terminal keeps — `Ctrl+Shift+F`, `Ctrl+Shift+T`, `Ctrl+Shift+N` and `Ctrl+-` in
+GNOME Terminal and Konsole, `Ctrl+Shift+A`, `Ctrl+Shift+F` and `Ctrl+,` in
+Windows Terminal — have no free key to move to; reach those actions from the
+menu bar or **Find Action**, or remove the chord from the terminal's own key
+settings.
+
 ## Application
 
 | Key | Action |
@@ -332,12 +396,12 @@ Override any action in `.porta.json` (project root):
 Action ids are listed in `Porta\Config\ActionCatalog::ACTIONS` (they match
 the tables above); unknown ids are reported in the status bar at startup.
 Plugin commands are rebindable through their namespaced id
-(`"php-cs-fixer:fix": ["ctrl+alt+f"]`). Keymap changes apply on the next
-launch; **Settings → Keybindings** writes the same block for you after
-capturing a keypress.
+(`"php-cs-fixer:fix": ["ctrl+alt+f"]`). Changes made in the file apply on the
+next launch; **Settings → Keybindings** writes the same block for you after
+capturing a keypress, and applies it at once.
 
-On that page, `Enter` captures a new key and **`Del` puts the action back to
-its shipped default**, removing its line from the file — and dropping the whole
+On that page, `Enter` captures a new key and **`Del` (`⌫` on a Mac) puts the
+action back to its shipped default**, at once, removing its line from the file — and dropping the whole
 `keymap` block once its last line goes. Rows a config file overrides are drawn
 in the modified colour, so the ones you have changed are the ones you can pick
 out. This matters beyond tidiness: an override is a *pin*. Whatever the file

@@ -153,6 +153,7 @@ catalog validation and bind if the plugin loads.
 | `methodSeparators` | `false` | A rule between members of a class |
 | `showWhitespace` | `false` | Render spaces and tabs as glyphs |
 | `tabBarPosition` | `"top"` | Where the editor tab strip sits: `top`, `bottom`, `left` or `right` |
+| `keymapPlatform` | `"auto"` | Whose shortcut conventions the default keymap follows: `auto` (the platform you type on — macOS, Windows, including WSL and Windows Terminal, or Linux), `macos` (adds the `Cmd` chords — see [Keybindings](keybindings.md#macos-cmd-keys)), `windows` or `linux` (each adds keys for the chords its terminals keep — see [Keybindings](keybindings.md#windows-and-linux-keys-the-terminal-keeps)). Set it when the IDE runs somewhere other than your keyboard, as over SSH. Your own `keymap` entries always win |
 | `searchIncludeVendor` | `false` | Let Find in Files and Go to File descend into `vendor/` |
 | `formatOnSave` | `false` | Format via the language server before each Ctrl+S save (single-file saves only; a 2s timeout saves unformatted with a flash) |
 | `pixelRatio` | `"auto"` | What a 100% zoom means in the image and graph viewers, on a terminal that draws pixels: one document pixel per logical pixel of the display, as a browser shows it. `auto` asks the system (the backing scale on macOS, `GDK_SCALE` or `QT_SCALE_FACTOR` on Linux, and 1 over SSH, where the screen is another machine's); `1`, `1.25`, `1.5`, `2` or `3` names it |
@@ -314,4 +315,5 @@ git; restore any snapshot with `Ctrl+Alt+H`.
 | Variable | Effect |
 | --- | --- |
 | `PORTA_LSP` | LSP server command (same format as the `lsp` config key) |
+| `PORTA_KEYMAP_PLATFORM` | `macos`, `windows` or `linux`: the platform the `auto` keymap takes for the one you type on, instead of detecting it — for a shell profile on a server you reach from several machines |
 | `PORTA_HOME` | Overrides the home directory used for global plugins (`~/.porta/plugins`) and scratch files (`~/.porta/scratches`) |

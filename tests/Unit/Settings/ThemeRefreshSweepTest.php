@@ -20,6 +20,7 @@ use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\PixelGraphics;
 use Porta\Tests\Support\TestCompletionController;
+use Porta\Tests\Support\TestLiveKeybindings;
 use Porta\Tests\Support\TestTui;
 use Porta\Tests\Support\TestWorkspaceLayout;
 use Porta\Ui\CursorStyle;
@@ -92,6 +93,7 @@ final class ThemeRefreshSweepTest extends TestCase
             self::formatOnSave(),
             TestCompletionController::idle(),
             PixelGraphics::ratio(),
+            TestLiveKeybindings::create(),
             true,
         );
     }
@@ -180,6 +182,7 @@ final class ThemeRefreshSweepTest extends TestCase
             self::formatOnSave(),
             TestCompletionController::idle(),
             PixelGraphics::ratio(),
+            TestLiveKeybindings::create(),
             true,
         );
 
@@ -219,6 +222,7 @@ final class ThemeRefreshSweepTest extends TestCase
             self::formatOnSave(),
             TestCompletionController::idle(),
             PixelGraphics::ratio(),
+            TestLiveKeybindings::create(),
             false, // ansi disabled
         );
 
@@ -310,6 +314,7 @@ final class ThemeRefreshSweepTest extends TestCase
             self::formatOnSave(),
             TestCompletionController::idle(),
             PixelGraphics::ratio(),
+            TestLiveKeybindings::create(),
             true,
         );
 

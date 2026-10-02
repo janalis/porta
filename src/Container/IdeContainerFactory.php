@@ -6,6 +6,7 @@ namespace Porta\Container;
 
 use Composer\InstalledVersions;
 use Porta\Config\IdeConfig;
+use Porta\Config\KeymapPlatform;
 use Porta\I18n\SystemLocale;
 use Porta\Ide;
 use Symfony\Component\Config\ConfigCache;
@@ -61,6 +62,7 @@ final readonly class IdeContainerFactory
         $_ENV['PORTA_ROOT_DIR'] = $rootDir;
         $_ENV['PORTA_LOCALE'] = (string) ($config->settings['language'] ?? 'auto');
         $_ENV['PORTA_SYSTEM_LOCALE'] = SystemLocale::fromEnvironment(\getenv(), \extension_loaded('intl') ? \Locale::getDefault() : '');
+        $_ENV['PORTA_HOST_KEYMAP'] = KeymapPlatform::detect(\PHP_OS_FAMILY, \getenv())->value;
         $_ENV['PORTA_ANSI'] = Ansi::Enabled === $ansi ? '1' : '0';
         $_ENV['PORTA_THEME'] = (string) ($config->settings['theme'] ?? 'dark');
         $_ENV['PORTA_LSP_COMMAND'] = $lspCommand ?? ''; // '' resolves to null via env(default::…)

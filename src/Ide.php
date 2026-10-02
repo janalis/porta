@@ -60,6 +60,7 @@ use Porta\Ui\TerminalRestorer;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\FileTreeWidget;
 use Porta\Workbench\EditorArea;
+use Porta\Workbench\KeymapFollowers;
 use Porta\Workbench\Menu\MenuRebuilder;
 use Porta\Workbench\Menu\MenuRegistrar;
 use Porta\Workbench\Notifier;
@@ -208,6 +209,10 @@ final class Ide
         $this->editorArea = $this->service(EditorArea::class);
 
         $this->buildEditorArea();
+        // Before applyAll() below, which rebuilds the keymap for the platform
+        // setting: from the first rebuild on, the widgets that match keys
+        // themselves must be handed the live map.
+        $this->service(KeymapFollowers::class)->wire();
 
         // The resize/layout controller, the menu/context overlay compositor
         // and the tree operations.

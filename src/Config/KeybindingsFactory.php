@@ -11,8 +11,9 @@ use Symfony\Component\Tui\Input\KeyParser;
 /**
  * Builds the immutable Keybindings map: IDE defaults, overlaid with plugin
  * default keys (which is why creating it forces the plugin load), overlaid
- * with the user's .porta.json keymap. Registered as the container's
- * Keybindings factory.
+ * with the platform's keymap ({@see PlatformKeymap}), overlaid with the
+ * user's .porta.json keymap. Registered as the container's Keybindings
+ * factory.
  */
 final class KeybindingsFactory
 {
@@ -20,6 +21,8 @@ final class KeybindingsFactory
         private readonly PluginHost $plugins,
         private readonly IdeConfig $config,
         private readonly ActionRegistry $actions,
+        /** The platform detected at boot ({@see KeymapPlatform::detect()}), which the `keymapPlatform` setting may override. */
+        private readonly string $hostKeymap = KeymapPlatform::Linux->value,
     ) {}
 
     /** @var array<string, true> ids already reported — rebuild() re-runs this on every keymap edit */
@@ -28,13 +31,33 @@ final class KeybindingsFactory
     /**
      * @param ?KeyParser                        $parser LiveKeybindings::rebuild() threads the live parser through (the kitty negotiation lives on it); null builds the boot default
      * @param ?array<string, list<string>>      $keymap a fresher user keymap than the boot config's (LiveKeybindings re-reads .porta.json); null uses the boot snapshot
+     * @param ?string                           $platform a fresher `keymapPlatform` setting than the boot config's; null uses the boot snapshot
+     * @param list<string>                      $arrived  the Cmd chords that have reached the IDE ({@see PlatformKeymap::overrides()})
      */
-    public function create(?KeyParser $parser = null, ?array $keymap = null): Keybindings
+    public function create(?KeyParser $parser = null, ?array $keymap = null, ?string $platform = null, array $arrived = []): Keybindings
     {
         $this->plugins->ensureLoaded();
         $keymap ??= $this->config->keymap;
+        $parser ??= new KeyParser();
 
-        return new Keybindings(\array_merge(ActionCatalog::ideDefaults(), $this->plugins->manager->defaultKeys, $this->known($keymap)), $parser);
+        return new Keybindings(\array_merge(
+            ActionCatalog::ideDefaults(),
+            $this->plugins->manager->defaultKeys,
+            PlatformKeymap::parsesSuper($parser) ? PlatformKeymap::overrides($this->platform($platform), $arrived) : PlatformKeymap::withoutCmd($this->platform($platform)),
+            $this->known($keymap),
+        ), $parser);
+    }
+
+    /**
+     * The platform whose keymap applies: the `keymapPlatform` setting — the
+     * one given, else the boot config's — or the detected one for `auto`.
+     */
+    public function platform(?string $setting = null): KeymapPlatform
+    {
+        return KeymapPlatform::resolve(
+            $setting ?? (string) ($this->config->settings['keymapPlatform'] ?? KeymapPlatform::AUTO),
+            KeymapPlatform::tryFrom($this->hostKeymap) ?? KeymapPlatform::Linux,
+        );
     }
 
     /**

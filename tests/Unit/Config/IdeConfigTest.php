@@ -829,6 +829,16 @@ final class IdeConfigTest extends TestCase
         $this->assertSame([0, 1], \array_keys($config->keymap['save']), 'reindexed from 0');
     }
 
+    public function testCmdIsTheSuperModifier(): void
+    {
+        // What a Mac user writes; the key parser only knows `super`.
+        $project = new TempProject(['.porta.json' => \json_encode([
+            'keymap' => ['save' => ['cmd+s', 'shift+CMD+s', 'cmd', 'ctrl+cmdx']],
+        ])]);
+
+        $this->assertSame(['super+s', 'shift+super+s', 'cmd', 'ctrl+cmdx'], IdeConfig::load($project->dir)->keymap['save'], 'only a cmd MODIFIER is renamed');
+    }
+
     public function testMalformedHighlightBlockWarnsAndFallsBackWithoutCrashing(): void
     {
         $project = new TempProject(['.porta.json' => \json_encode(['highlight' => 'not-an-object'])]);

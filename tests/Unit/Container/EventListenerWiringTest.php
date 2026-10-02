@@ -14,6 +14,7 @@ use Porta\Event\BufferSwitched;
 use Porta\Event\CursorShapeChanged;
 use Porta\Event\IdeReady;
 use Porta\Event\IdeShuttingDown;
+use Porta\Event\KeymapChanged;
 use Porta\Event\LocaleChanged;
 use Porta\Event\PluginObservable;
 use Porta\Event\TabBarPositionChanged;
@@ -186,7 +187,7 @@ final class EventListenerWiringTest extends TestCase
     {
         $dispatcher = $this->dispatcher();
 
-        foreach ([ThemeChanged::class, LocaleChanged::class] as $event) {
+        foreach ([ThemeChanged::class, LocaleChanged::class, KeymapChanged::class] as $event) {
             $listeners = $dispatcher->getListeners($event);
             $first = \reset($listeners);
             $last = \end($listeners);

@@ -3198,6 +3198,14 @@
         <source>The debug adapter stopped unexpectedly</source>
         <target>デバッグアダプターが予期せず停止しました</target>
       </trans-unit>
+      <trans-unit id="1120">
+        <source>Keybindings — %count% actions · ⏎ to rebind · Ctrl+F to filter · ⌫ to reset</source>
+        <target>キーバインド — %count% 件 · ⏎ で再割り当て · Ctrl+F で絞り込み · ⌫ で既定に戻す</target>
+      </trans-unit>
+      <trans-unit id="1121">
+        <source>Keymap</source>
+        <target>キーマップ</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

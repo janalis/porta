@@ -33,6 +33,7 @@ final readonly class IdeConfig
         'theme' => 'dark',
         'diagnosticMessages' => 'inline',
         'inlayHints' => 'inline',
+        'keymapPlatform' => 'auto',
         'lineNumbers' => 'absolute',
         'stickyScroll' => true,
         'indentGuides' => true,
@@ -129,6 +130,7 @@ final readonly class IdeConfig
         'lineNumbers' => ['off', 'absolute', 'relative'],
         'diagnosticMessages' => ['none', 'inline', 'menu'],
         'inlayHints' => ['none', 'inline', 'tooltip'],
+        'keymapPlatform' => ['auto', 'macos', 'windows', 'linux'],
         'cursorShape' => ['bar', 'block', 'underline'],
         'pixelRatio' => ['auto', '1', '1.25', '1.5', '2', '3'],
         'tabBarPosition' => ['top', 'bottom', 'left', 'right'],
@@ -368,7 +370,11 @@ final readonly class IdeConfig
                 $warnings[] = new ConfigWarning('Keymap action "%action%" in %file% must map to a key or list of keys', ['%action%' => $action, '%file%' => $label]);
                 continue;
             }
-            $keymap[$action] = \array_values(\array_map(strval(...), $keys));
+            // `cmd+s` is what a Mac user writes; the parser's name for it is `super`.
+            $keymap[$action] = \array_values(\array_map(
+                static fn (mixed $key): string => (string) \preg_replace(pattern: '/(^|\+)cmd(?=\+)/i', replacement: '$1super', subject: \strval($key)),
+                $keys,
+            ));
         }
 
         return $keymap;

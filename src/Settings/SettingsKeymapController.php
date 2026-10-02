@@ -17,6 +17,8 @@ use Porta\Editor\EditorKeymapProvider;
 use Porta\Editor\EditorPanes;
 use Porta\I18n\Translator;
 use Porta\Ui\ShortcutFormatter;
+use Porta\Widget\EditorKeymap;
+use Porta\Widget\EditorPaneWidget;
 use Porta\Workbench\Menu\MenuRebuilder;
 use Porta\Workbench\Notifier;
 use Symfony\Component\Tui\Input\KeyParser;
@@ -26,10 +28,10 @@ use Symfony\Component\Tui\Input\KeyParser;
  * rebindable action with its current binding, and persists a rebind into
  * .porta.json's keymap block. A rebind applies LIVE: the persisted file is
  * re-merged through {@see LiveKeybindings::rebuild()} and the menus rebake
- * their shortcut labels. (Widget-level defaults still resolve through each
- * widget's own merged keymap, which reads the boot context instance — the
- * IDE-level dispatch and labels are what go live here — and a rebind that lands
- * on that side of the line says "applies on restart" rather than pretending.)
+ * their shortcut labels, and the editor and the registered panes are handed the
+ * rebuilt map. (A widget outside that set merges its keys from the boot context
+ * instance, so a rebind that lands there says "applies on restart" rather than
+ * pretending.)
  */
 final readonly class SettingsKeymapController
 {
@@ -141,16 +143,20 @@ final readonly class SettingsKeymapController
             $this->menuRebuilder->rebuild();
         }
         $saved = SettingsFlash::savedSuffix($this->translator, $persisted);
-        // Two dispatch paths, and only one of them re-reads the rebuilt map:
-        // `InputDispatcher` matches every key-bound COMMAND against it before
-        // any widget sees the key, and IDE-scope catalog actions ride the same
-        // map — those go live. Everything else is matched by the WIDGET,
-        // against the keymap it merged from the boot WidgetContext (vendor-
-        // owned, final, holding the instance handed to the Tui at startup):
-        // every pure editor action, and every pane action a plugin declares.
-        // Persisting it is real and it fires on the next launch — saying so
-        // beats a flash that claims a rebind the next keypress will not honour.
-        $live = null !== (ActionCatalog::ACTIONS[$action]['keys'] ?? null) || \in_array($action, $this->commands->keyBoundIds(), strict: true);
+        // Who matches the key decides whether the rebind is live. The rebuilt
+        // map reaches `InputDispatcher` (every key-bound COMMAND, and the
+        // IDE-scope catalog actions riding the same map) and the widgets that
+        // follow it — the editor and every registered pane (see
+        // LiveKeybindings). Any other widget merged its keys from the boot
+        // WidgetContext (vendor-owned, final, holding the instance handed to
+        // the Tui at startup): the terminal panel's and the lists' own keys.
+        // Persisting those is real and they fire on the next launch — saying
+        // so beats a flash claiming a rebind the next keypress will not honour.
+        $live =
+            null !== (ActionCatalog::ACTIONS[$action]['keys'] ?? null)
+            || \in_array($action, $this->commands->keyBoundIds(), strict: true)
+            || \array_key_exists($action, EditorKeymap::defaults())
+            || \array_any($this->panes->all(), static fn (EditorPaneWidget $pane): bool => $pane->bindsAction($action));
         $note = $persisted && !$live ? ' · '.$this->translator->trans('applies on restart') : '';
         $overruled = $persisted ? $this->layerOverruling($action, $token) : null;
         if (null !== $overruled) {
@@ -222,7 +228,10 @@ final readonly class SettingsKeymapController
             $this->translator
                 ->markup('Reset %action% to <info>%key%</>', [
                     '%action%' => $this->translator->trans($this->actions->label($action)),
-                    '%key%' => ShortcutFormatter::format(ActionCatalog::ACTIONS[$action]['keys'][0] ?? ''),
+                    // What fires now, read after the rebuild: an editor or pane
+                    // action has no catalog key, and a platform keymap may lead
+                    // with another key than the catalog's.
+                    '%key%' => ShortcutFormatter::format($this->effectiveBinding($action)),
                 ])
                 ->append(SettingsFlash::savedSuffix($this->translator, $removed)),
         );

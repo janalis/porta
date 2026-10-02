@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Workbench\Menu;
 
+use Porta\Event\KeymapChanged;
 use Porta\Event\LocaleChanged;
 use Porta\Event\ThemeChanged;
 use Porta\I18n\BaseDirection;
@@ -32,6 +33,13 @@ final readonly class MenuLayoutRefreshListener
 
     #[AsEventListener]
     public function onThemeChanged(ThemeChanged $event): void
+    {
+        $this->menuRebuilder->rebuild();
+    }
+
+    /** The shortcut column names keys from the keymap, which has just changed under it. */
+    #[AsEventListener]
+    public function onKeymapChanged(KeymapChanged $event): void
     {
         $this->menuRebuilder->rebuild();
     }

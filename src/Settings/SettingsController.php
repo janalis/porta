@@ -210,6 +210,15 @@ final class SettingsController
                 'restart' => false,
                 'apply' => static fn (int|bool|string $v) => (bool) $v ? $applier->enableFormatOnSave() : $applier->disableFormatOnSave(),
             ],
+            'keymapPlatform' => [
+                'label' => 'Keymap',
+                'kind' => SettingsRowKind::Choice,
+                'group' => 'general',
+                'fieldset' => 'Editing',
+                'restart' => false,
+                'apply' => static fn (int|bool|string $v) => $applier->applyKeymapPlatform((string) $v),
+                'options' => ['auto', 'macos', 'windows', 'linux'],
+            ],
             'searchIncludeVendor' => [
                 'label' => 'Search vendor/ files',
                 'kind' => SettingsRowKind::Bool,
