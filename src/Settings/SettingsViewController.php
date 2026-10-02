@@ -73,12 +73,14 @@ final class SettingsViewController implements ContributedView
             ->onFocusNext($this->focusContent(...))
             ->onExit($exit);
         $this->form
+            ->onCrumb($this->selectSection(...))
             ->onChange($this->changeSetting(...))
             ->onReset($this->resetSetting(...))
             ->onOpenChoice($this->openChoice(...))
             ->onFocusNext($this->focusNav(...))
             ->onExit($exit);
         $this->keymapList
+            ->onCrumb($this->selectSection(...))
             ->onRebind($this->rebind(...))
             ->onReset($this->resetBinding(...))
             ->onFocusNext($this->focusNav(...))
@@ -202,7 +204,7 @@ final class SettingsViewController implements ContributedView
             $this->region->content()->add($this->keymapList);
         }
         if ('keybindings' !== $id) {
-            $this->form->setRows($this->rowsForSection(), $this->nav->activeLabel());
+            $this->form->setRows($this->rowsForSection(), $this->nav->trailFor($this->section));
             $this->region->content()->add($this->form);
         }
         if ($followFocus) {
@@ -265,7 +267,7 @@ final class SettingsViewController implements ContributedView
     {
         $this->provenance->invalidate();
         $rows = $this->rowsForSection();
-        $this->form->setRows($rows, $this->nav->activeLabel());
+        $this->form->setRows($rows, $this->nav->trailFor($this->section));
         $warn($this->rowFor($rows, $key));
     }
 
@@ -331,7 +333,7 @@ final class SettingsViewController implements ContributedView
             return;
         }
         if ('plugins' === $this->section || \str_starts_with($this->section, 'plugin:')) {
-            $this->form->setRows($this->rowsForSection(), $this->nav->activeLabel());
+            $this->form->setRows($this->rowsForSection(), $this->nav->trailFor($this->section));
             $this->host->invalidate();
         }
     }

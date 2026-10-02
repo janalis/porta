@@ -53,7 +53,7 @@ final class KeybindingsListWidgetTest extends TestCase
 
     public function testRendersLabelsFormattedShortcutsAndUnbound(): void
     {
-        $screen = $this->plain($this->widget()->render(new RenderContext(60, 8)));
+        $screen = $this->plain($this->widget()->render(new RenderContext(100, 8)));
 
         $this->assertStringContainsString('3 actions', $screen);
         $this->assertStringContainsString('Save', $screen);
@@ -132,15 +132,17 @@ final class KeybindingsListWidgetTest extends TestCase
         $widget = $this->widget();
         $widget->render(new RenderContext(60, 8)); // establish scroll
 
-        $widget->handleClick(2); // row 0 is header; render row 2 → index 1
+        $widget->handleClick(1); // the rule under the title is nobody's
+        $this->assertSame('save', $this->selectedAction($widget));
+        $widget->handleClick(3); // rows 0-1 are the title and its rule; render row 3 → index 1
         $this->assertSame('duplicate_line', $this->selectedAction($widget));
         $this->assertNull(Probe::get($widget, 'capturingIndex'), 'first click only selects');
 
-        $widget->handleClick(2); // click the selected row again arms capture
+        $widget->handleClick(3); // click the selected row again arms capture
         $this->assertNotNull(Probe::get($widget, 'capturingIndex'));
 
         // A click while capturing selects (does not re-arm on a different row).
-        $widget->handleClick(1);
+        $widget->handleClick(2);
         $this->assertSame('save', $this->selectedAction($widget));
 
         $widget->handleClick(99); // dead space
@@ -151,10 +153,10 @@ final class KeybindingsListWidgetTest extends TestCase
     {
         $widget = $this->widget();
         $widget->setFocused(false);
-        $this->assertTrue($widget->hoverRow(2));
+        $this->assertTrue($widget->hoverRow(3));
         $rendered = $widget->render(new RenderContext(60, 8));
-        $this->assertStringContainsString("\x1b[48;5;236m", $rendered[2], 'hovered row tinted');
-        $this->assertFalse($widget->hoverRow(2), 'same row: no change');
+        $this->assertStringContainsString("\x1b[48;5;236m", $rendered[3], 'hovered row tinted');
+        $this->assertFalse($widget->hoverRow(3), 'same row: no change');
         $this->assertTrue($widget->clearHover());
     }
 
@@ -283,11 +285,39 @@ final class KeybindingsListWidgetTest extends TestCase
         $this->assertCount(12, $lines);
     }
 
-    public function testTitleConcatenatesALeadingSpaceBeforeTheTranslatedText(): void
+    public function testTheTitleIsThePagesTrailAndItsHintGivesWay(): void
     {
-        $screen = $this->plain($this->widget()->render(new RenderContext(60, 8)));
+        $lines = \array_map(AnsiUtils::stripAnsiCodes(...), $this->widget()->render(new RenderContext(60, 8)));
 
-        $this->assertStringStartsWith(' Keybindings', $screen);
+        $this->assertStringStartsWith(' Settings › Keybindings Ctrl+F to filter · ⏎ to rebind', $lines[0], 'the trail keeps its room; the hint is cut from its end');
+        $this->assertSame(60, \mb_strwidth($lines[0]));
+        $this->assertSame(\str_repeat('─', times: 60), $lines[1], 'a rule under the title, as under the form\'s');
+        $this->assertStringEndsWith(
+            'Ctrl+F to filter · ⏎ to rebind · Del to reset · 3 actions ',
+            AnsiUtils::stripAnsiCodes($this->widget()->render(new RenderContext(100, 8))[0]),
+            'a wide pane holds the whole hint',
+        );
+    }
+
+    public function testASettingsCrumbOpensItsPageAndTintsUnderThePointer(): void
+    {
+        $opened = [];
+        $widget = $this->widget();
+        $widget->onCrumb(static function (string $id) use (&$opened): void {
+            $opened[] = $id;
+        });
+        $widget->render(new RenderContext(60, 8)); // ' Settings › Keybindings ' — pills [0,10) [11,24)
+
+        $this->assertTrue($widget->hoverCrumb(3), 'Settings is a link');
+        $this->assertStringContainsString("\x1b[48;5;240m", $widget->render(new RenderContext(60, 8))[0]);
+        $this->assertFalse($widget->hoverCrumb(4), 'still the same link');
+        $this->assertTrue($widget->hoverCrumb(15), 'the page shown is no link: the tint goes');
+        $this->assertStringNotContainsString("\x1b[48;5;240m", $widget->render(new RenderContext(60, 8))[0]);
+
+        $widget->handleClick(0, 15);
+        $widget->handleClick(0, 3);
+        $this->assertSame(['general'], $opened, 'only the Settings crumb asks for a page');
+        $this->assertSame('save', $this->selectedAction($widget), 'a title click selects no row');
     }
 
     public function testAnUnboundActionsRightColumnWidthIsExactlyOneNotZeroOrTwo(): void
@@ -299,7 +329,7 @@ final class KeybindingsListWidgetTest extends TestCase
         $widget->setRows([new KeybindingRow('a', \str_repeat('X', times: 50), '')]);
 
         // width=10: labelWidth = max(0, 10 - 1 - 2) = 7 → truncated label ' XXXXX…'.
-        $line = AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(10, 4))[1]);
+        $line = AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(10, 4))[2]);
 
         $this->assertSame('▎XXXXX… — ', $line);
     }
@@ -309,7 +339,7 @@ final class KeybindingsListWidgetTest extends TestCase
         $widget = new KeybindingsListWidget(new Translator('en'));
         $widget->setRows([new KeybindingRow('a', 'Save', 'ctrl+s')]);
 
-        $line = AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(30, 4))[1]);
+        $line = AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(30, 4))[2]);
 
         $this->assertStringStartsWith('▎Save', $line);
         $this->assertStringEndsWith('Ctrl+S ', $line);
@@ -443,7 +473,7 @@ final class KeybindingsListWidgetTest extends TestCase
         $widget->onReset(static function (string $action) use (&$resets): void {
             $resets[] = $action;
         });
-        $this->assertStringContainsString('Keybindings — '.\count($this->rows()).' actions · ⏎ to rebind · Ctrl+F to filter · ⌫ to reset', $this->plain($widget->render(new RenderContext(120, 8))));
+        $this->assertStringContainsString('Ctrl+F to filter · ⏎ to rebind · ⌫ to reset · '.\count($this->rows()).' actions', $this->plain($widget->render(new RenderContext(120, 8))));
 
         $widget->handleInput("\x7f");
         $this->assertSame(['save'], $resets, 'Backspace resets the selected row');
@@ -579,7 +609,7 @@ final class KeybindingsListWidgetTest extends TestCase
         ]);
 
         $columns = [];
-        foreach (\array_slice($widget->render(new RenderContext(52, 6)), offset: 1, length: 4) as $line) {
+        foreach (\array_slice($widget->render(new RenderContext(52, 7)), offset: 2, length: 4) as $line) {
             $mirrored = AnsiUtils::stripAnsiCodes(Bidi::reorder($line, BaseDirection::Rtl));
             $columns[] = \mb_strpos($mirrored, needle: 'Ctrl+S', encoding: 'UTF-8');
         }
@@ -600,7 +630,7 @@ final class KeybindingsListWidgetTest extends TestCase
             $widget = new KeybindingsListWidget(new Translator($locale));
             AttachedStyles::attach($widget);
             $widget->setRows([new KeybindingRow('a', 'Quit', 'Ctrl+S', false)]);
-            $line = $widget->render(new RenderContext(52, 4))[1];
+            $line = $widget->render(new RenderContext(52, 4))[2];
             $shown = AnsiUtils::stripAnsiCodes('he' === $locale ? Bidi::reorder($line, BaseDirection::Rtl) : $line);
             $columns[$locale] = \mb_strpos($shown, needle: 'Ctrl+S', encoding: 'UTF-8');
             $width = AnsiUtils::visibleWidth($shown);
@@ -616,7 +646,7 @@ final class KeybindingsListWidgetTest extends TestCase
         AttachedStyles::attach($widget);
         $widget->setRows([new KeybindingRow('a', 'הגדרות', 'Ctrl+,', false)]);
 
-        $mirrored = AnsiUtils::stripAnsiCodes(Bidi::reorder($widget->render(new RenderContext(52, 4))[1], BaseDirection::Rtl));
+        $mirrored = AnsiUtils::stripAnsiCodes(Bidi::reorder($widget->render(new RenderContext(52, 4))[2], BaseDirection::Rtl));
 
         $this->assertStringContainsString('Ctrl+,', $mirrored);
     }
@@ -632,7 +662,7 @@ final class KeybindingsListWidgetTest extends TestCase
         AttachedStyles::attach($widget);
         $widget->setRows([new KeybindingRow('cursor_left', 'סמן שמאלה', 'left', false)]);
 
-        $mirrored = AnsiUtils::stripAnsiCodes(Bidi::reorder($widget->render(new RenderContext(52, 4))[1], BaseDirection::Rtl));
+        $mirrored = AnsiUtils::stripAnsiCodes(Bidi::reorder($widget->render(new RenderContext(52, 4))[2], BaseDirection::Rtl));
 
         $this->assertStringContainsString('←', $mirrored);
         $this->assertStringNotContainsString('→', $mirrored);
@@ -645,7 +675,7 @@ final class KeybindingsListWidgetTest extends TestCase
         AttachedStyles::attach($widget);
         $widget->setRows([new KeybindingRow('a', 'הצג TODO', 'Ctrl+S', false)]);
 
-        $mirrored = AnsiUtils::stripAnsiCodes(Bidi::reorder($widget->render(new RenderContext(52, 4))[1], BaseDirection::Rtl));
+        $mirrored = AnsiUtils::stripAnsiCodes(Bidi::reorder($widget->render(new RenderContext(52, 4))[2], BaseDirection::Rtl));
 
         $chord = \mb_strpos($mirrored, needle: 'Ctrl+S', encoding: 'UTF-8');
         $tail = \mb_strpos($mirrored, needle: 'TODO', encoding: 'UTF-8');
@@ -702,5 +732,32 @@ final class KeybindingsListWidgetTest extends TestCase
         $widget->handleInput("\x1b[200~sav\x1b[201~");
 
         $this->assertSame('save', Probe::get($widget, 'filter')->value());
+    }
+
+    /** With the filter open, its box sits under the title's rule and the list starts under the box. */
+    public function testTheFilterBoxSitsUnderTheRuleAndTheListUnderIt(): void
+    {
+        $widget = $this->widget();
+        $widget->handleInput('/');
+        $lines = \array_map(AnsiUtils::stripAnsiCodes(...), $widget->render(new RenderContext(60, 12)));
+
+        $this->assertSame(\str_repeat('─', times: 60), $lines[1]);
+        $this->assertStringStartsWith('┏', \ltrim($lines[2]), 'the boxed field, three rows on a roomy screen');
+        $this->assertStringStartsWith('┗', \ltrim($lines[4]));
+        $this->assertStringContainsString('Save', $lines[5], 'the first action right under it');
+
+        $widget->handleClick(6);
+        $this->assertSame('duplicate_line', $this->selectedAction($widget), 'and a click maps under the box');
+    }
+
+    public function testAHoveredCrumbRepaintsTheTitle(): void
+    {
+        $widget = $this->widget();
+        $widget->render(new RenderContext(60, 8));
+        $before = $widget->getRenderRevision();
+
+        $widget->hoverCrumb(3);
+
+        $this->assertGreaterThan($before, $widget->getRenderRevision());
     }
 }

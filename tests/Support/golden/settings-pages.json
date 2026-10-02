@@ -1,7 +1,7 @@
 {
     "general": [
-        " General — 7 settings",
-        "",
+        " Settings › General                                                                                7 settings",
+        "──────────────────────────────────────────────────────────────────────────────────────────────────────────────",
         "                          ┏━━━━━━━━━━━━━━━━━━━━━━━━┓",
         "  Save changes to         ┃ .porta.json          ▾ ┃ · for this session",
         "                          ┗━━━━━━━━━━━━━━━━━━━━━━━━┛",
@@ -24,8 +24,8 @@
         " ⏎ edit · ←/→ change · r reset · Ctrl+F find · Tab panes · 2 keybindings"
     ],
     "interface": [
-        " Interface — 16 settings",
-        "",
+        " Settings › Interface                                                                             16 settings",
+        "──────────────────────────────────────────────────────────────────────────────────────────────────────────────",
         "                       ┏━━━━━━━━━━━━━━━━━━━━━━━━┓",
         "  Save changes to      ┃ .porta.json          ▾ ┃ · for this session",
         "                       ┗━━━━━━━━━━━━━━━━━━━━━━━━┛",
@@ -48,8 +48,8 @@
         " ⏎ edit · ←/→ change · r reset · Ctrl+F find · Tab panes · 2 keybindings"
     ],
     "highlighting": [
-        " Highlighting — 2 settings",
-        "",
+        " Settings › Highlighting                                                                           2 settings",
+        "──────────────────────────────────────────────────────────────────────────────────────────────────────────────",
         "                       ┏━━━━━━━━━━━━━━━━━━━━━━━━━━┓",
         "  Save changes to      ┃ .porta.json            ▾ ┃ · for this session",
         "                       ┗━━━━━━━━━━━━━━━━━━━━━━━━━━┛",
@@ -72,8 +72,8 @@
         " ⏎ edit · ←/→ change · r reset · Ctrl+F find · Tab panes · 2 keybindings"
     ],
     "commandLine": [
-        " Command line — 3 settings",
-        "",
+        " Settings › Command line                                                                           3 settings",
+        "──────────────────────────────────────────────────────────────────────────────────────────────────────────────",
         "",
         "─ The porta command ──────────────────────────────────────────────────────────────────────────────────────────",
         "",
@@ -96,8 +96,8 @@
         " ⏎ edit · ←/→ change · r reset · Ctrl+F find · Tab panes · 2 keybindings"
     ],
     "lang:php": [
-        " PHP — 7 settings",
-        "",
+        " Settings › Languages › PHP                                                                        7 settings",
+        "──────────────────────────────────────────────────────────────────────────────────────────────────────────────",
         "                        ┏━━━━━━━━━━━━━━━━━━━━━━━━┓",
         "  Save changes to       ┃ .porta.json          ▾ ┃ · for this session",
         "                        ┗━━━━━━━━━━━━━━━━━━━━━━━━┛",
@@ -120,8 +120,8 @@
         " ⏎ edit · ←/→ change · r reset · Ctrl+F find · Tab panes · 2 keybindings"
     ],
     "plugins": [
-        " Plugins — 2 settings",
-        "",
+        " Settings › Plugins                                                                                2 settings",
+        "──────────────────────────────────────────────────────────────────────────────────────────────────────────────",
         "                   ┏━━━━━━━━━━━━━━━━━━━━━━━━┓",
         "  Save changes to  ┃ .porta.json          ▾ ┃ · for this session · new plugins install here too",
         "                   ┗━━━━━━━━━━━━━━━━━━━━━━━━┛",

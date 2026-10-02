@@ -25,9 +25,9 @@ use Porta\Widget\PaneNavigationCallbacks;
 use Porta\Widget\Render\FieldBox;
 use Porta\Widget\Render\FieldSpec;
 use Porta\Widget\Render\FieldState;
-use Porta\Widget\Render\HeaderRenderer;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
+use Porta\Widget\Render\Rule;
 use Porta\Widget\Support\ArrowScrollTrait;
 use Porta\Widget\Support\FillsPaneTrait;
 use Porta\Widget\Support\HoverTrait;
@@ -93,7 +93,40 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
         $this->initStyles($styles);
         $this->filter = new TextField(style: $cursorStyle);
         $this->list = new ListSelection();
+        // This page is always where it is, so it says its own trail.
+        $this->header = new CrumbHeader();
+        $this->header->set([
+            ['label' => $translator->trans('Settings'), 'id' => 'general'],
+            ['label' => $translator->trans('Keybindings'), 'id' => 'keybindings'],
+        ]);
         $this->addStyleClass('list'); // the theme's .list::selected(:focus) rules style the selection
+    }
+
+    /** The page's trail, drawn as the title row. */
+    private readonly CrumbHeader $header;
+
+    /**
+     * A crumb of the title row that names another page was clicked: the
+     * callback gets that page's id.
+     *
+     * @param callable(string): void $callback
+     */
+    public function onCrumb(callable $callback): self
+    {
+        $this->header->onCrumb($callback);
+
+        return $this;
+    }
+
+    /** Tint the link crumb at column $col of the title row, or none (null); returns whether that changed. */
+    public function hoverCrumb(?int $col): bool
+    {
+        if (!$this->header->hover($col)) {
+            return false;
+        }
+        $this->invalidate();
+
+        return true;
     }
 
     /** @param callable(string, string): void $callback */
@@ -208,9 +241,17 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
         }
     }
 
-    /** A click selects the row; a click on the already-selected row arms capture. */
-    public function handleClick(int $relRow): void
+    /**
+     * A click selects the row; a click on the already-selected row arms
+     * capture. On the title row, a crumb naming another page goes there.
+     */
+    public function handleClick(int $relRow, int $relCol = 0): void
     {
+        if (0 === $relRow) {
+            $this->header->click($relCol);
+
+            return;
+        }
         $index = $this->rowIndexAt($relRow);
         if (null === $index) {
             return;
@@ -265,10 +306,10 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
         return false;
     }
 
-    /** The title, plus the boxed filter field while it is showing. */
+    /** The title and the rule under it, plus the boxed filter field while it is showing. */
     private function headerRows(): int
     {
-        return $this->filtering ? 1 + FieldBox::rowsFor($this->density->current()) : 1;
+        return $this->filtering ? 2 + FieldBox::rowsFor($this->density->current()) : 2;
     }
 
     private function armCapture(): void
@@ -291,15 +332,19 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
         $rows = \max(1, $context->getRows() > 0 ? $context->getRows() : 12);
         $this->lastRows = $rows;
 
-        $title = match (true) {
-            $this->filtering => $this->translator->trans('Keybindings — %shown% of %count% · ⏎ to rebind', ['%shown%' => \count($this->shown), '%count%' => \count($this->rows)]),
+        $hint = match (true) {
+            $this->filtering => $this->translator->trans('%shown% of %count% · ⏎ to rebind', ['%shown%' => \count($this->shown), '%count%' => \count($this->rows)]),
             // The Mac keyboard's "delete" key sends Backspace, so the macOS
             // keymap leads with it; the hint names the key that keymap leads with.
-            Key::BACKSPACE === ($this->getKeybindings()->getBindings('reset_binding')[0] ?? null)
-                => $this->translator->trans('Keybindings — %count% actions · ⏎ to rebind · Ctrl+F to filter · ⌫ to reset', ['%count%' => \count($this->rows)]),
-            default => $this->translator->trans('Keybindings — %count% actions · ⏎ to rebind · Ctrl+F to filter · Del to reset', ['%count%' => \count($this->rows)]),
+            Key::BACKSPACE === ($this->getKeybindings()->getBindings('reset_binding')[0] ?? null) => $this->translator->trans('Ctrl+F to filter · ⏎ to rebind · ⌫ to reset · %count% actions', [
+                '%count%' => \count($this->rows),
+            ]),
+            default => $this->translator->trans('Ctrl+F to filter · ⏎ to rebind · Del to reset · %count% actions', ['%count%' => \count($this->rows)]),
         };
-        $lines = [HeaderRenderer::title($title, $width, $this->styles)];
+        // The trail and its hint, then the rule the form draws under its own.
+        // The hint gives way to the trail from its end, so the key that is
+        // hardest to guess, Ctrl+F, leads it and the count trails it.
+        $lines = [$this->header->render($width, $this->styles, $hint), Rule::horizontal($width, $this->styles)];
         if ($this->filtering) {
             $focused = $this->isFocused();
             \array_push($lines, ...FieldBox::field(
@@ -308,7 +353,7 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
                 FieldState::of($focused),
                 $focused ? CaretVisibility::Shown : CaretVisibility::Hidden,
                 $width,
-                $this->headerRows() - 1,
+                $this->headerRows() - 2,
                 $this->styles,
             ));
         }

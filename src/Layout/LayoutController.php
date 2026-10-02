@@ -480,15 +480,19 @@ final class LayoutController
      * The chrome rows a roomy screen adds: the horizontal tab strips' rows
      * past their first ({@see TabStripRenderer::rowsFor()}) — the dock's,
      * and the editor's unless it sits at the side, where it takes columns
-     * instead — and the rules at the workspace's top and bottom edges
-     * ({@see \Porta\Widget\EdgeRuleWidget}); none on a compact one.
+     * instead — the rules at the workspace's top and bottom edges
+     * ({@see \Porta\Widget\EdgeRuleWidget}), and the rule under the
+     * navigation bar ({@see \Porta\Widget\BreadcrumbsWidget}); none on a
+     * compact one. Plus, on any screen, the navigation bar's own row: every
+     * open file has one, so a ceiling that leaves the editor its rows has to
+     * leave that one too.
      */
     private function chromeRows(int $rows): int
     {
         $density = Density::of($rows);
         $strips = $this->tabBar->position()->isSide() ? 1 : 2;
 
-        return ($strips * (TabStripRenderer::rowsFor($density) - 1)) + (Density::Roomy === $density ? 2 : 0);
+        return ($strips * (TabStripRenderer::rowsFor($density) - 1)) + (Density::Roomy === $density ? 3 : 0) + 1;
     }
 
     /** Shared keyboard-nudge path: clamp like the drags do, persist, repaint. */

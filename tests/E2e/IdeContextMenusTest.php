@@ -297,10 +297,10 @@ final class IdeContextMenusTest extends TestCase
             [
                 200 => static function ($tui): void {
                     $tui->tick();
-                    $tui->handleInput("\x1b[<0;39;3M"); // press line 0 col 0
-                    $tui->handleInput("\x1b[<32;44;3M"); // drag to col 5
-                    $tui->handleInput("\x1b[<0;44;3m"); // release → "hello" selected
-                    $tui->handleInput("\x1b[<2;46;3M"); // right-click in the editor
+                    $tui->handleInput("\x1b[<0;39;4M"); // press line 0 col 0
+                    $tui->handleInput("\x1b[<32;44;4M"); // drag to col 5
+                    $tui->handleInput("\x1b[<0;44;4m"); // release → "hello" selected
+                    $tui->handleInput("\x1b[<2;46;4M"); // right-click in the editor
                 },
                 300 => function ($tui): void {
                     $this->assertTrue($tui->getById('context-menu')->isOpen(), 'right-click opened the editor menu');
@@ -330,7 +330,7 @@ final class IdeContextMenusTest extends TestCase
                 200 => static function ($tui): void {
                     $tui->tick();
                     $tui->getById('editor')->getDocument()->setCursor(0, 0);
-                    $tui->handleInput("\x1b[<2;40;4M"); // right-click on line 1, no selection
+                    $tui->handleInput("\x1b[<2;40;5M"); // right-click on line 1, no selection
                 },
                 300 => function ($tui): void {
                     $this->assertTrue($tui->getById('context-menu')->isOpen());
@@ -363,7 +363,7 @@ final class IdeContextMenusTest extends TestCase
                 },
                 300 => function ($tui): void {
                     $this->assertTrue($tui->getById('menu')->isOpen());
-                    $tui->handleInput("\x1b[<2;45;3M"); // right-click the editor
+                    $tui->handleInput("\x1b[<2;45;4M"); // right-click the editor
                 },
                 400 => function ($tui): void {
                     $this->assertFalse($tui->getById('menu')->isOpen(), 'right-click closed the application menu');
@@ -1108,7 +1108,7 @@ final class IdeContextMenusTest extends TestCase
             [
                 200 => static function ($tui): void {
                     $tui->tick();
-                    $tui->handleInput("\x1b[<2;45;3M"); // open the editor menu
+                    $tui->handleInput("\x1b[<2;45;4M"); // open the editor menu
                 },
                 300 => function ($tui): void {
                     $this->assertTrue($tui->getById('context-menu')->isOpen());

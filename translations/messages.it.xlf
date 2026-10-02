@@ -146,10 +146,6 @@
         <source>Indent style</source>
         <target>Stile di indentazione</target>
       </trans-unit>
-      <trans-unit id="67">
-        <source>Keybindings — %count% actions · ⏎ to rebind</source>
-        <target>Scorciatoie — %count% azioni · Invio per riassegnare</target>
-      </trans-unit>
       <trans-unit id="68">
         <source>LSP is set via --lsp; the settings change was not applied</source>
         <target>LSP è impostato tramite --lsp; la modifica delle impostazioni non è stata applicata</target>
@@ -923,12 +919,12 @@
         <target>Non hai ancora copiato nulla</target>
       </trans-unit>
       <trans-unit id="829">
-        <source>Keybindings — %shown% of %count% · ⏎ to rebind</source>
-        <target>Scorciatoie — %shown% di %count% · ⏎ per riassegnare</target>
+        <source>%shown% of %count% · ⏎ to rebind</source>
+        <target>%shown% di %count% · ⏎ per riassegnare</target>
       </trans-unit>
       <trans-unit id="830">
-        <source>Keybindings — %count% actions · ⏎ to rebind · Ctrl+F to filter · Del to reset</source>
-        <target>Scorciatoie — %count% azioni · ⏎ per riassegnare · Ctrl+F per filtrare · Canc per ripristinare</target>
+        <source>Ctrl+F to filter · ⏎ to rebind · Del to reset · %count% actions</source>
+        <target>Ctrl+F per filtrare · ⏎ per riassegnare · Canc per ripristinare · %count% azioni</target>
       </trans-unit>
       <trans-unit id="831">
         <source>No file open · press %key% to open a file</source>
@@ -3199,8 +3195,8 @@
         <target>L’adattatore di debug si è fermato inaspettatamente</target>
       </trans-unit>
       <trans-unit id="1120">
-        <source>Keybindings — %count% actions · ⏎ to rebind · Ctrl+F to filter · ⌫ to reset</source>
-        <target>Scorciatoie — %count% azioni · ⏎ per riassegnare · Ctrl+F per filtrare · ⌫ per ripristinare</target>
+        <source>Ctrl+F to filter · ⏎ to rebind · ⌫ to reset · %count% actions</source>
+        <target>Ctrl+F per filtrare · ⏎ per riassegnare · ⌫ per ripristinare · %count% azioni</target>
       </trans-unit>
       <trans-unit id="1121">
         <source>Keymap</source>

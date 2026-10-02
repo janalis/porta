@@ -11,6 +11,7 @@ use Porta\Tests\Support\AttachedStyles;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RendersWidget;
 use Porta\Ui\Glyphs;
+use Porta\Ui\ScreenDensity;
 use Porta\Widget\Settings\SettingsNavWidget;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -66,21 +67,22 @@ final class SettingsNavWidgetTest extends TestCase
         $this->assertNotSame(\implode('', $first), \implode('', $second), 'the moved shade recolors the rows');
     }
 
-    public function testRendersSectionsHeaderAndLanguages(): void
+    public function testRendersPagesAndFoldersAsATree(): void
     {
         $screen = $this->plain($this->widget()->render(new RenderContext(24, 20)));
 
-        $this->assertStringContainsString('General', $screen);
+        $this->assertMatchesRegularExpression('/^▌  General\s*$/mu', $screen, 'a page sits where a folder\'s name does, past the blank its triangle would take');
         $this->assertStringContainsString('Keybindings', $screen);
-        $this->assertStringContainsString('Plugins', $screen);
-        $this->assertMatchesRegularExpression('/^─ Languages ─+$/mu', $screen, 'a heading is a legend rule, the form\'s fieldset shape');
+        $this->assertMatchesRegularExpression('/^ ▾ Plugins\s*$/mu', $screen, 'Plugins is a folder, the file tree\'s shape');
+        $this->assertMatchesRegularExpression('/^ ▾ Languages\s*$/mu', $screen);
+        $this->assertMatchesRegularExpression('/^ {4}PHP\s*$/mu', $screen, 'a language indents inside its folder');
         $this->assertStringContainsString('PHP', $screen);
         $this->assertStringContainsString('TypeScript', $screen);
         $this->assertStringContainsString('Twig', $screen);
         $this->assertSame('general', $this->widget()->selectedId(), 'opens on General');
     }
 
-    public function testArrowNavigationSkipsTheHeaderAndFires(): void
+    public function testArrowNavigationWalksTheTreeAndFiresForPages(): void
     {
         $widget = $this->widget($selected);
 
@@ -97,11 +99,14 @@ final class SettingsNavWidgetTest extends TestCase
         $this->assertSame('commandLine', $widget->selectedId());
 
         $widget->handleInput("\x1b[B"); // → Plugins
-        $widget->handleInput("\x1b[B"); // skips the Languages header → PHP
+        $widget->handleInput("\x1b[B"); // → the Languages folder, which is no page
+        $this->assertNull($widget->selectedId());
+        $widget->handleInput("\x1b[B"); // → PHP
         $this->assertSame('lang:php', $widget->selectedId());
-        $this->assertSame(['interface', 'highlighting', 'keybindings', 'commandLine', 'plugins', 'lang:php'], $selected);
+        $this->assertSame(['interface', 'highlighting', 'keybindings', 'commandLine', 'plugins', 'lang:php'], $selected, 'the folder fired nothing');
 
-        $widget->handleInput("\x1b[A"); // back up, skipping the Languages header → Plugins
+        $widget->handleInput("\x1b[A");
+        $widget->handleInput("\x1b[A"); // back up through the folder → Plugins
         $this->assertSame('plugins', $widget->selectedId());
     }
 
@@ -111,24 +116,30 @@ final class SettingsNavWidgetTest extends TestCase
         $widget->handleInput("\x1b[A"); // already at the top
         $this->assertSame('general', $widget->selectedId());
 
-        for ($i = 0; $i < 20; ++$i) {
+        for ($i = 0; $i < 30; ++$i) {
             $widget->handleInput("\x1b[B");
         }
         $this->assertSame('lang:dotenv', $widget->selectedId(), 'stops at the last language');
     }
 
-    public function testClickSelectsAndTheHeaderIsInert(): void
+    public function testClickSelectsAndAFolderClickFlipsIt(): void
     {
         $widget = $this->widget($selected);
         $widget->render(new RenderContext(24, 20)); // establish scroll
 
-        $widget->handleClick(3); // Keybindings (row 3, after the new Highlighting row)
+        $widget->handleClick(3); // Keybindings
         $this->assertSame('keybindings', $widget->selectedId());
 
-        $widget->handleClick(6); // the Languages header → no-op
-        $this->assertSame('keybindings', $widget->selectedId());
-        $this->assertSame(['keybindings'], $selected, 'the header fires nothing');
+        $widget->handleClick(6); // the Languages folder: selected, and closed
+        $this->assertNull($widget->selectedId());
+        $this->assertSame(['keybindings'], $selected, 'the folder is no page: it fires nothing');
+        $this->assertMatchesRegularExpression('/^▌▸ Languages\s*$/mu', $this->plain($widget->render(new RenderContext(24, 20))));
 
+        $widget->handleClick(7); // where PHP was: nothing is drawn there now
+        $this->assertNull($widget->selectedId());
+
+        $widget->handleClick(6); // open it again
+        $widget->render(new RenderContext(24, 20));
         $widget->handleClick(7); // PHP
         $this->assertSame('lang:php', $widget->selectedId());
         $widget->handleClick(99); // dead space
@@ -141,8 +152,8 @@ final class SettingsNavWidgetTest extends TestCase
         $widget->setPluginEntries(['phpstan', 'mago']);
 
         $screen = $this->plain($widget->render(new RenderContext(24, 24)));
-        $this->assertStringContainsString('   phpstan', $screen, 'plugin sub-items indent like languages');
-        $this->assertMatchesRegularExpression('/Plugins\s*\n\s{3}phpstan\s*\n\s{3}mago/', $screen, 'they sit right under the Plugins section');
+        $this->assertStringContainsString('    phpstan', $screen, 'plugin pages indent like languages');
+        $this->assertMatchesRegularExpression('/▾ Plugins\s*\n\s{4}phpstan\s*\n\s{4}mago/', $screen, 'they sit right inside the Plugins folder');
 
         $widget->setActive('plugin:mago');
         $this->assertSame('plugin:mago', $widget->selectedId());
@@ -176,7 +187,8 @@ final class SettingsNavWidgetTest extends TestCase
         $this->assertTrue($widget->hoverRow(7)); // hover PHP
         $rendered = $widget->render(new RenderContext(24, 20));
         $this->assertStringContainsString("\x1b[48;5;236m", $rendered[7], 'hovered language tinted');
-        $this->assertTrue($widget->hoverRow(6), 'hovering the header clears the language tint');
+        $this->assertTrue($widget->hoverRow(6), 'the Languages folder takes the tint from PHP');
+        $this->assertTrue($widget->clearHover());
         $this->assertFalse($widget->clearHover(), 'already cleared');
     }
 
@@ -204,8 +216,8 @@ final class SettingsNavWidgetTest extends TestCase
         $widget = $this->widget();
         $widget->setWidth(30);
         $this->assertSame(30, $widget->width());
-        $widget->setWidth(5); // clamped up
-        $this->assertSame(14, $widget->width());
+        $widget->setWidth(5); // clamped up to the widest row, `   Command line`
+        $this->assertSame(15, $widget->width());
         $this->assertTrue($widget->expandVertically(false)->isVerticallyExpanded());
 
         $widget->setMenuOverlay([['row' => 0, 'col' => 0, 'width' => 8, 'segment' => "\x1b[7mDROP\x1b[0m"]]);
@@ -231,13 +243,13 @@ final class SettingsNavWidgetTest extends TestCase
     public function testTheNarrowestWidthFitsEveryRowItDraws(): void
     {
         $widget = $this->widget();
-        $this->assertSame(14, $widget->minWidth(), 'a bare install drags exactly as far as it always did');
+        $this->assertSame(15, $widget->minWidth(), '`   Command line`, past the blank a folder\'s triangle takes');
 
         $widget->setPluginEntries(['git', 'symfony-lsp', 'local-history']);
 
-        $this->assertSame(16, $widget->minWidth(), '   local-history, indented');
+        $this->assertSame(17, $widget->minWidth(), '    local-history, indented inside its folder');
         $rows = $this->navRows($widget, $widget->minWidth());
-        $this->assertContains('   local-history', $rows, 'and at that width it is spelled out, not elided');
+        $this->assertContains('    local-history', $rows, 'and at that width it is spelled out, not elided');
     }
 
     /**
@@ -250,8 +262,8 @@ final class SettingsNavWidgetTest extends TestCase
         $widget = new SettingsNavWidget(new Translator('fr'));
         AttachedStyles::attach($widget);
 
-        $this->assertSame(19, $widget->minWidth());
-        $this->assertContains(' Raccourcis clavier', $this->navRows($widget, 19));
+        $this->assertSame(21, $widget->minWidth());
+        $this->assertContains('   Raccourcis clavier', $this->navRows($widget, 21));
     }
 
     /**
@@ -267,7 +279,7 @@ final class SettingsNavWidgetTest extends TestCase
         $widget = $this->widget();
         $widget->setPluginEntries(['a-plugin-with-a-truly-preposterous-name']);
 
-        $this->assertSame(24, $widget->minWidth());
+        $this->assertSame(26, $widget->minWidth());
     }
 
     /** The nav's rows at $width x $rows, ANSI stripped and right-trimmed. @return list<string> */
@@ -300,7 +312,7 @@ final class SettingsNavWidgetTest extends TestCase
 
         $this->assertSame('', \trim($rows[0]), 'nothing is clipped above yet, so the top edge stays blank');
         $this->assertStringContainsString(Glyphs::SCROLL_DOWN, \end($rows), 'and the bottom says there is more');
-        $this->assertContains('▌General', $rows, 'the list itself still starts where it did');
+        $this->assertContains('▌  General', $rows, 'the list itself still starts where it did');
     }
 
     /**
@@ -334,7 +346,7 @@ final class SettingsNavWidgetTest extends TestCase
     {
         $widget = $this->widget();
         $widget->setPluginEntries(['phpantom', 'mago', 'tempest', 'chroma', 'image-viewer', 'graph-viewer', 'local-history', 'git', 'symfony-lsp']);
-        for ($i = 0; $i < 27; ++$i) {
+        for ($i = 0; $i < 40; ++$i) {
             $widget->handleInput("\x1b[B"); // to the last entry, dragging the window with it
         }
 
@@ -358,7 +370,7 @@ final class SettingsNavWidgetTest extends TestCase
         $rows = $this->navRows($widget, 22, rows: $count);
 
         $this->assertStringNotContainsString(Glyphs::SCROLL_DOWN, \implode('', $rows));
-        $this->assertSame('▌General', $rows[0]);
+        $this->assertSame('▌  General', $rows[0]);
         $this->assertSame(' '.$this->lastEntryLabel($widget), \rtrim((string) \end($rows)), 'and the last entry is drawn, not traded for a marker');
     }
 
@@ -367,7 +379,7 @@ final class SettingsNavWidgetTest extends TestCase
         /** @var list<array{id: string|null, label: string, kind: mixed}> $entries */
         $entries = Probe::get($widget, 'entries');
 
-        return '  '.$entries[\count($entries) - 1]['label'];
+        return '   '.$entries[\count($entries) - 1]['label'];
     }
 
     /** A list that fits keeps every row for entries — the edges cost nothing when there is nothing to say. */
@@ -377,7 +389,7 @@ final class SettingsNavWidgetTest extends TestCase
 
         $rows = $this->navRows($widget, 22, rows: 40);
 
-        $this->assertSame('▌General', $rows[0], 'the first entry is on the first row');
+        $this->assertSame('▌  General', $rows[0], 'the first entry is on the first row');
         $this->assertStringNotContainsString(Glyphs::SCROLL_DOWN, \implode('', $rows));
         $this->assertStringNotContainsString(Glyphs::SCROLL_UP, \implode('', $rows));
     }
@@ -504,7 +516,7 @@ final class SettingsNavWidgetTest extends TestCase
 
         $rows = $this->navRows($widget, 24, rows: 6);
         $this->assertSame('commandLine', $widget->selectedId(), 'the entry just past the window');
-        $this->assertSame('▌Command line', $rows[4], 'drawn: the window followed it');
+        $this->assertSame('▌  Command line', $rows[4], 'drawn: the window followed it');
     }
 
     /** And hover takes the same path, so it was wrong in the same way. */
@@ -533,5 +545,211 @@ final class SettingsNavWidgetTest extends TestCase
         $row = $this->painted($widget, new RenderContext(300, 5))[0];
         $this->assertSame($widget->width(), AnsiUtils::visibleWidth($row));
         $this->assertStringContainsString('MMM', $row);
+    }
+
+    /** A nav on a screen of $terminalRows, the density every chrome row asks. */
+    private function navOnScreen(int $terminalRows, ?array &$selected = null): SettingsNavWidget
+    {
+        $selected = [];
+        $density = new ScreenDensity();
+        $density->observe($terminalRows);
+        $widget = new SettingsNavWidget(new Translator('en'), density: $density);
+        AttachedStyles::attach($widget);
+        $widget->setFocused(true);
+        $widget->onSelect(static function (string $id) use (&$selected): void {
+            $selected[] = $id;
+        });
+
+        return $widget;
+    }
+
+    /**
+     * A roomy screen runs a rule between every two rows; the rules are
+     * nobody's, so a click or the pointer on one picks nothing.
+     */
+    public function testARoomyScreenRulesBetweenEveryRow(): void
+    {
+        $widget = $this->navOnScreen(40, $selected);
+
+        $rows = $this->navRows($widget, 20, rows: 60);
+
+        $this->assertSame(['▌  General', \str_repeat('─', times: 20), '   Interface', \str_repeat('─', times: 20)], \array_slice($rows, offset: 0, length: 4));
+        $this->assertSame('    Dotenv', \rtrim($rows[2 * (\count(Probe::get($widget, 'entries')) - 1)]), 'the last row');
+        $this->assertSame('', $rows[(2 * \count(Probe::get($widget, 'entries'))) - 1], 'and no rule after it');
+
+        $widget->handleClick(1);
+        $this->assertSame([], $selected, 'a rule is no row');
+        $this->assertFalse($widget->hoverRow(1), 'and tints nothing');
+        $widget->handleClick(2);
+        $this->assertSame(['interface'], $selected);
+    }
+
+    public function testACompactScreenGivesTheRulesTheirRowsBack(): void
+    {
+        $widget = $this->navOnScreen(24);
+
+        $this->assertSame(['▌  General', '   Interface'], \array_slice($this->navRows($widget, 20, rows: 30), offset: 0, length: 2));
+    }
+
+    /** Each row costs two lines with its rule, so the window counts rows, not lines. */
+    public function testARuledListThatOverflowsKeepsTheSelectionInView(): void
+    {
+        $widget = $this->navOnScreen(40);
+        $widget->setActive('lang:twig');
+
+        $rows = $this->navRows($widget, 20, rows: 12);
+
+        $this->assertStringContainsString(Glyphs::SCROLL_UP, $rows[0]);
+        $this->assertContains('▌   Twig', $rows, 'the selection is drawn');
+        $this->assertCount(12, $rows);
+        $this->assertStringContainsString(Glyphs::SCROLL_DOWN, \end($rows), 'Dotenv is still below');
+    }
+
+    public function testADensityFlipRepaints(): void
+    {
+        $density = new ScreenDensity();
+        $widget = new SettingsNavWidget(new Translator('en'), density: $density);
+        $widget->render(new RenderContext(20, 30));
+        $widget->beforeRender();
+        $before = $widget->getRenderRevision();
+
+        $density->observe(24);
+        $widget->beforeRender();
+
+        $this->assertGreaterThan($before, $widget->getRenderRevision(), 'the cached pane would keep its rules otherwise');
+    }
+
+    /** The file tree's keys: ← closes or steps out, → opens, Enter flips. */
+    public function testAFolderOpensAndClosesByTheTreesKeys(): void
+    {
+        $widget = $this->widget($selected);
+        $widget->setPluginEntries(['git']);
+        $widget->setActive('plugin:git');
+
+        $widget->handleInput("\x1b[D"); // ← from inside: out onto the folder
+        $this->assertSame('plugins', $widget->selectedId());
+        $this->assertSame(['plugins'], $selected, 'Plugins is a page: stepping onto it shows it');
+
+        $widget->handleInput("\x1b[D"); // ← on the open folder: it closes
+        $this->assertDoesNotMatchRegularExpression('/git/', $this->plain($widget->render(new RenderContext(24, 30))));
+        $this->assertMatchesRegularExpression('/^▌▸ Plugins\s*$/mu', $this->plain($widget->render(new RenderContext(24, 30))));
+
+        $widget->handleInput("\x1b[C"); // → opens it
+        $this->assertStringContainsString('git', $this->plain($widget->render(new RenderContext(24, 30))));
+        $widget->handleInput("\r"); // Enter flips it shut
+        $this->assertStringNotContainsString('git', $this->plain($widget->render(new RenderContext(24, 30))));
+        $widget->handleInput(' '); // and Space open again
+        $this->assertStringContainsString('git', $this->plain($widget->render(new RenderContext(24, 30))));
+
+        $widget->handleInput("\x1b[B"); // → git
+        $widget->handleInput("\x1b[C"); // → on a page does nothing
+        $widget->handleInput("\r");
+        $this->assertSame('plugin:git', $widget->selectedId());
+        $widget->setActive('general');
+        $widget->handleInput("\x1b[D"); // ← on a top-level page does nothing
+        $this->assertSame('general', $widget->selectedId());
+    }
+
+    /** Closing the folder the cursor is in leaves it on the folder, never on a hidden row. */
+    public function testClosingAFolderOverTheCursorLeavesItOnTheFolder(): void
+    {
+        $widget = $this->widget();
+        $widget->setActive('lang:php');
+        $widget->render(new RenderContext(24, 30));
+
+        $widget->handleClick(6); // the Languages folder: selected and closed
+
+        $this->assertNull($widget->selectedId());
+        $widget->handleInput("\x1b[B"); // nothing below a closed last folder
+        $this->assertNull($widget->selectedId());
+    }
+
+    /** A page reached from the search or the header is never left hidden in a closed folder. */
+    public function testSetActiveOpensTheFolderItsPageIsIn(): void
+    {
+        $widget = $this->widget();
+        $widget->render(new RenderContext(24, 30));
+        $widget->handleClick(6); // close Languages
+
+        $widget->setActive('lang:css');
+
+        $this->assertSame('lang:css', $widget->selectedId());
+        $this->assertContains('▌   CSS', $this->navRows($widget, 24, rows: 30));
+    }
+
+    public function testATrailNamesThePageAndWhereItLeads(): void
+    {
+        $widget = $this->widget();
+        $widget->setPluginEntries(['git']);
+
+        $this->assertSame([['label' => 'Settings', 'id' => 'general'], ['label' => 'Interface', 'id' => 'interface']], $widget->trailFor('interface'));
+        $this->assertSame([['label' => 'Settings', 'id' => 'general'], ['label' => 'Plugins', 'id' => 'plugins'], ['label' => 'git', 'id' => 'plugin:git']], $widget->trailFor('plugin:git'));
+        $this->assertSame(
+            [['label' => 'Settings', 'id' => 'general'], ['label' => 'Languages', 'id' => null], ['label' => 'PHP', 'id' => 'lang:php']],
+            $widget->trailFor('lang:php'),
+            'Languages is no page to go to',
+        );
+        $this->assertSame([['label' => 'Settings', 'id' => 'general']], $widget->trailFor('bogus'));
+        $this->assertSame('Paramètres', new SettingsNavWidget(new Translator('fr'))->trailFor('general')[0]['label'], 'translated');
+    }
+
+    /** A folder wears the tree's accent, except where the selection shades it. */
+    public function testAFolderWearsTheTreesAccentUntilSelected(): void
+    {
+        $widget = $this->widget();
+        $widget->setFocused(false);
+        $rows = $widget->render(new RenderContext(24, 30));
+
+        $this->assertStringContainsString("\x1b[38;5;110m", $rows[5], 'Plugins, at rest');
+        $this->assertStringNotContainsString("\x1b[38;5;110m", $rows[1], 'a page does not');
+        $this->assertStringStartsWith('▎', AnsiUtils::stripAnsiCodes($rows[0]), 'the cursor of a nav without the keys');
+
+        $widget->setActive('plugins');
+        $this->assertStringNotContainsString("\x1b[38;5;110m", $widget->render(new RenderContext(24, 30))[5], 'selected, the selection shades it');
+    }
+
+    /** A key that changes nothing repaints nothing. */
+    public function testAFolderKeyThatChangesNothingDoesNotRepaint(): void
+    {
+        $widget = $this->widget();
+        $widget->setActive('plugins');
+        $before = $widget->getRenderRevision();
+
+        $widget->handleInput("\x1b[C"); // → on an open folder
+        $this->assertSame($before, $widget->getRenderRevision());
+
+        $widget->setActive('general');
+        $before = $widget->getRenderRevision();
+        $widget->handleInput("\r"); // Enter on a page
+        $widget->handleInput("\x1b[C");
+        $this->assertSame($before, $widget->getRenderRevision());
+    }
+
+    /** n rows ruled take 2n − 1 lines: exactly that many is no overflow, one fewer is. */
+    public function testARuledListOverflowsExactlyWhenItsLinesDoNotFit(): void
+    {
+        $widget = $this->navOnScreen(40);
+        $lines = (2 * \count(Probe::get($widget, 'entries'))) - 1;
+
+        $fits = $this->navRows($widget, 20, rows: $lines);
+        $this->assertStringNotContainsString(Glyphs::SCROLL_DOWN, \implode('', $fits));
+        $this->assertSame('    Dotenv', \end($fits));
+
+        $over = $this->navRows($widget, 20, rows: $lines - 1);
+        $this->assertStringContainsString(Glyphs::SCROLL_DOWN, (string) \end($over));
+    }
+
+    /** The window counts rows: on twelve lines, five rows and their rules between ▲ and ▼. */
+    public function testARuledWindowHoldsAsManyRowsAsItsLinesAllow(): void
+    {
+        $widget = $this->navOnScreen(40);
+        $widget->setActive('lang:twig');
+
+        $rows = $this->navRows($widget, 20, rows: 12);
+
+        $this->assertSame('▌   Twig', $rows[9], 'the selection, the fifth row in the window');
+        $this->assertSame('    SCSS', $rows[1], 'the first');
+        $this->assertSame(\str_repeat('─', times: 20), $rows[10], 'a rule under it');
+        $this->assertStringContainsString(Glyphs::SCROLL_DOWN, $rows[11]);
     }
 }

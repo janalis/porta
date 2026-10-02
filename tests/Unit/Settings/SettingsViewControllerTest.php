@@ -483,7 +483,7 @@ final class SettingsViewControllerTest extends TestCase
         $this->assertSame($this->keymapList, $controller->focusTarget());
 
         $screen = \implode("\n", $this->keymapList->render(new RenderContext(80, 20)));
-        $this->assertStringContainsString('actions', $screen, 'the keybindings list is populated');
+        $this->assertStringContainsString('Move Caret Up', $screen, 'the keybindings list is populated');
     }
 
     public function testNavSelectingInterfaceShowsTheAppearanceRowsAndPersists(): void
@@ -1224,5 +1224,29 @@ final class SettingsViewControllerTest extends TestCase
         $controller->onSectionRequested(new SettingsSectionRequested('keybindings'));
 
         $this->assertSame($this->nav, $this->host->focused(), 'the nav kept the keyboard');
+    }
+
+    /**
+     * The page header is the page's trail, and a crumb naming another page
+     * goes there — the same control as the editor's navigation bar.
+     */
+    public function testThePageHeaderIsATrailWhoseCrumbsLeadToTheirPages(): void
+    {
+        $this->controller();
+        $this->sectionEvents->dispatch(new SettingsSectionRequested('lang:php'));
+
+        $title = AnsiUtils::stripAnsiCodes($this->form->render(new RenderContext(60, 10))[0]);
+        $this->assertStringStartsWith(' Settings › Languages › PHP ', $title);
+
+        $this->form->handleClick(0, 14); // 'Languages': a heading, no page
+        $this->assertSame('lang:php', $this->nav->selectedId());
+        $this->form->handleClick(0, 3); // 'Settings'
+        $this->assertSame('general', $this->nav->selectedId());
+        $this->assertStringStartsWith(' Settings › General ', AnsiUtils::stripAnsiCodes($this->form->render(new RenderContext(60, 10))[0]));
+
+        $this->sectionEvents->dispatch(new SettingsSectionRequested('keybindings'));
+        $this->keymapList->render(new RenderContext(60, 10)); // the click maps against the drawn trail
+        $this->keymapList->handleClick(0, 3);
+        $this->assertSame('general', $this->nav->selectedId(), 'the keybindings page\'s Settings crumb too');
     }
 }

@@ -92,9 +92,9 @@ final class IdeLayoutFocusTest extends TestCase
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $grabCol, $top - 4)); // release
                 },
                 320 => function ($tui) use ($project): void {
-                    $this->assertSame(16, Probe::get($tui->getById('terminal'), 'visibleRows'), 'panel grew by the drag (clamped at rows-8)');
+                    $this->assertSame(15, Probe::get($tui->getById('terminal'), 'visibleRows'), 'panel grew by the drag (clamped at rows-8, less the navigation bar\'s row)');
                     $layout = \json_decode((string) \file_get_contents($project->path('.porta/layout.json')), associative: true);
-                    $this->assertSame(67, $layout['bottomPanelHeightPercent'], 'saved as a percentage (round(16/24))');
+                    $this->assertSame(63, $layout['bottomPanelHeightPercent'], 'saved as a percentage (round(15/24))');
                 },
             ],
         );
@@ -354,7 +354,7 @@ final class IdeLayoutFocusTest extends TestCase
                     $before = $panel->visibleRows();
 
                     $tui->handleInput("\x1b[39;6u"); // ctrl+shift+'
-                    $this->assertSame(24 - 6, $panel->visibleRows(), 'the panel takes the screen, less the frame');
+                    $this->assertSame(24 - 6 - 1, $panel->visibleRows(), 'the panel takes the screen, less the frame and the navigation bar');
                     $this->assertGreaterThan($before, $panel->visibleRows());
 
                     $tui->handleInput("\x1b[39;6u"); // and back
@@ -369,25 +369,26 @@ final class IdeLayoutFocusTest extends TestCase
                     $tui->handleInput("\x1b[39;6u"); // maximise
                     $tui->handleInput("\x1b[23;2~"); // shift+F11
                     $shrunk = $panel->visibleRows();
-                    // Not 17. A nudge is an ordinary resize and keeps the
-                    // ordinary ceiling (rows-8), which sits below the maximised
+                    // Not 16. A nudge is an ordinary resize and keeps the
+                    // ordinary ceiling (rows-8, less the navigation bar's
+                    // row), which sits below the maximised
                     // height — so the first press off a maximised panel lands
                     // on that ceiling rather than one row down. Leaving
                     // maximised mode puts you back in the normal range, which
                     // is what the press was asking for.
-                    $this->assertSame(24 - 8, $shrunk);
+                    $this->assertSame(24 - 8 - 1, $shrunk);
 
                     $tui->handleInput("\x1b[39;6u"); // maximise again, not "restore"
-                    $this->assertSame(24 - 6, $panel->visibleRows());
+                    $this->assertSame(24 - 6 - 1, $panel->visibleRows());
                     $tui->handleInput("\x1b[39;6u");
                     $this->assertSame($shrunk, $panel->visibleRows(), 'back to the hand-chosen height');
 
                     $this->assertFileExists($project->dir.'/.porta/layout.json');
                     $layout = \json_decode((string) \file_get_contents($project->dir.'/.porta/layout.json'), associative: true);
-                    // The hand-chosen 16 of 24 rows, not the maximised 18:
+                    // The hand-chosen 15 of 24 rows, not the maximised 17:
                     // maximising is a thing you are doing now, not a layout you
                     // chose, so it never reaches the file.
-                    $this->assertSame(67, $layout['bottomPanelHeightPercent']);
+                    $this->assertSame(63, $layout['bottomPanelHeightPercent']);
                 },
             ],
             rows: 24,

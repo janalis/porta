@@ -146,10 +146,6 @@
         <source>Indent style</source>
         <target>Indent style</target>
       </trans-unit>
-      <trans-unit id="67">
-        <source>Keybindings — %count% actions · ⏎ to rebind</source>
-        <target>Keybindings — %count% actions · ⏎ to rebind</target>
-      </trans-unit>
       <trans-unit id="68">
         <source>LSP is set via --lsp; the settings change was not applied</source>
         <target>LSP is set via --lsp; the settings change was not applied</target>
@@ -923,12 +919,12 @@
         <target>Nothing copied yet</target>
       </trans-unit>
       <trans-unit id="829">
-        <source>Keybindings — %shown% of %count% · ⏎ to rebind</source>
-        <target>Keybindings — %shown% of %count% · ⏎ to rebind</target>
+        <source>%shown% of %count% · ⏎ to rebind</source>
+        <target>%shown% of %count% · ⏎ to rebind</target>
       </trans-unit>
       <trans-unit id="830">
-        <source>Keybindings — %count% actions · ⏎ to rebind · Ctrl+F to filter · Del to reset</source>
-        <target>Keybindings — %count% actions · ⏎ to rebind · Ctrl+F to filter · Del to reset</target>
+        <source>Ctrl+F to filter · ⏎ to rebind · Del to reset · %count% actions</source>
+        <target>Ctrl+F to filter · ⏎ to rebind · Del to reset · %count% actions</target>
       </trans-unit>
       <trans-unit id="831">
         <source>No file open · press %key% to open a file</source>
@@ -3199,8 +3195,8 @@
         <target>The debug adapter stopped unexpectedly</target>
       </trans-unit>
       <trans-unit id="1120">
-        <source>Keybindings — %count% actions · ⏎ to rebind · Ctrl+F to filter · ⌫ to reset</source>
-        <target>Keybindings — %count% actions · ⏎ to rebind · Ctrl+F to filter · ⌫ to reset</target>
+        <source>Ctrl+F to filter · ⏎ to rebind · ⌫ to reset · %count% actions</source>
+        <target>Ctrl+F to filter · ⏎ to rebind · ⌫ to reset · %count% actions</target>
       </trans-unit>
       <trans-unit id="1121">
         <source>Keymap</source>

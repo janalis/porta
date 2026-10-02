@@ -204,8 +204,10 @@ final readonly class HoverRouter
         // The breadcrumbs are a strip too: each crumb is a click target, so
         // each crumb tints. The bar renders no rows without a scope, so a
         // stale rect is possible — the crumb hit-test itself is the guard.
+        // Only row 0 holds crumbs; the rule under it tints nothing.
         $crumbRect = $this->hit->rect($this->panes->breadcrumbs);
         $crumbRel = null !== $crumbRect && $crumbRect->contains($mouse->row, $mouse->col) ? $crumbRect->toRelative($mouse->row, $mouse->col) : null;
+        $crumbRel = null !== $crumbRel && 0 === $crumbRel['row'] ? $crumbRel : null;
         $crumbsChanged = null !== $crumbRel ? $this->panes->breadcrumbs->hoverAt($crumbRel['col']) : $this->panes->breadcrumbs->clearHover();
 
         // The find bar's option tags. It renders zero rows when closed and the

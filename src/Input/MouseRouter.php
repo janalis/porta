@@ -95,6 +95,7 @@ final class MouseRouter
         private readonly ToastCenter $toasts,
         private readonly WheelRouter $wheel,
         private readonly StatusBarClickRouter $statusClick,
+        private readonly BreadcrumbsClickRouter $crumbClick,
     ) {
         $this->clicks = new ClickCounter();
     }
@@ -657,24 +658,8 @@ final class MouseRouter
             return true;
         }
 
-        // Breadcrumbs click: jump the caret to the clicked scope's declaration.
-        // The bar renders zero rows without a trail (help/image tabs,
-        // structureless files) but the renderer keeps its last non-empty rect,
-        // so the click only counts when a segment is actually under the
-        // pointer — otherwise it falls through to whatever now owns the row.
-        $rel = $this->hit->hit($this->panes->breadcrumbs, $mouse->row, $mouse->col);
-        // A previewed file's arrangement toggles share the bar's right end.
-        if (null !== $rel && $this->panes->breadcrumbs->pressToggle($rel['col'])) {
-            $this->tui->requestRender();
-
-            return true;
-        }
-        $line = null === $rel ? null : $this->panes->breadcrumbs->lineAtColumn($rel['col']);
-        if (null !== $line) {
-            $this->tui->setFocus($this->panes->editor);
-            $this->panes->editor->jumpTo($line, 0);
-            $this->tui->requestRender();
-
+        // Navigation bar click: a toggle, a path crumb or a scope crumb.
+        if ($this->crumbClick->route($mouse)) {
             return true;
         }
 

@@ -10,8 +10,11 @@ use Porta\Event\SettingsSearchRequested;
 use Porta\I18n\Translator;
 use Porta\Layout\ResizableSidebar;
 use Porta\Support\AnsiText;
+use Porta\Ui\Density;
 use Porta\Ui\Glyphs;
 use Porta\Ui\ListSelection;
+use Porta\Ui\Role;
+use Porta\Ui\ScreenDensity;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\HoverableList;
 use Porta\Widget\PaneNavigationCallbacks;
@@ -19,6 +22,8 @@ use Porta\Widget\Render\EdgeIndicator;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Porta\Widget\Render\Rule;
+use Porta\Widget\Render\SelectionBar;
+use Porta\Widget\Render\TreeRow;
 use Porta\Widget\Support\ArrowScrollTrait;
 use Porta\Widget\Support\FillsPaneTrait;
 use Porta\Widget\Support\HoverTrait;
@@ -37,14 +42,19 @@ use Symfony\Component\Tui\Widget\KeybindingsTrait;
 use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
 
 /**
- * The settings view's left navigation sidebar: the {@see SECTIONS} rows, one
- * indented sub-row per installed plugin under Plugins, then a
- * (non-selectable) Languages header followed by one row per configurable
- * language. Selecting a row (arrow/click) fires onSelect with its id
- * ('general' | 'interface' | 'highlighting' | 'keybindings' | 'commandLine' | 'plugins' |
- * 'plugin:<name>' | 'lang:<id>'); the header is skipped. Self-sizing so the
- * sidebar can be dragged wider/narrower — and {@see minWidth()} measures the
- * rows rather than naming a number, because the row set here grows.
+ * The settings view's left navigation sidebar, a tree in the file tree's
+ * shape: the {@see SECTIONS} pages, then a Plugins folder — a page itself —
+ * holding one page per installed plugin, then a Languages folder holding one
+ * per configurable language. A folder opens and closes as a tree's does (←,
+ * →, Enter or a click). Selecting a page (arrow/click) fires onSelect with
+ * its id ('general' | 'interface' | 'highlighting' | 'keybindings' |
+ * 'commandLine' | 'plugins' | 'plugin:<name>' | 'lang:<id>'); the Languages
+ * folder is no page, so landing on it fires nothing and the page stays.
+ *
+ * On a roomy screen a rule runs between every two rows; on a compact one the
+ * rules give their rows back. Self-sizing so the sidebar can be dragged
+ * wider/narrower — and {@see minWidth()} measures the rows rather than
+ * naming a number, because the row set here grows.
  *
  * @phpstan-type Entry array{id: string|null, label: string, kind: NavEntryKind}
  */
@@ -68,14 +78,12 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
         'highlighting' => 'Highlighting',
         'keybindings' => 'Keybindings',
         'commandLine' => 'Command line',
-        'plugins' => 'Plugins',
     ];
 
     /**
      * The floor under {@see minWidth()}'s measurement — what this nav was
      * allowed to be when the number was a literal 14, kept so a bare install
-     * (whose widest row is `   JavaScript`, 13 columns) drags exactly as far
-     * as it always did.
+     * drags exactly as far as it always did.
      */
     private const int NARROWEST = 14;
 
@@ -85,30 +93,38 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
      * minWidth OUTSIDE its max-ratio and neighbour caps, so a minimum derived
      * from content with no bound of its own would let one long plugin name
      * win against the terminal's own width. 24 is what {@see PanelWidth}
-     * asks for a side panel generally; past it, rows truncate as before.
+     * asks for a side panel generally, and the tree's disclosure column adds
+     * two to every row: Italian's `   Scorciatoie da tastiera` is 26. Past
+     * it, rows truncate as before.
      */
-    private const int WIDEST_MINIMUM = 24;
+    private const int WIDEST_MINIMUM = 26;
 
     /** @var list<Entry> */
     private array $entries;
 
+    /** @var array<string, bool> each folder ('plugins', 'languages') and whether it is open */
+    private array $expanded = ['plugins' => true, 'languages' => true];
+
+    /** @var list<int> the entries a closed folder does not hide, in order — what the list navigates */
+    private array $visible = [];
+
     /** @var list<string>|null rendered-lines memo — the flex-0 side pane renders twice per frame otherwise */
     private ?array $memoLines = null;
 
-    /** @var array{int, int, int} the [revision, width, rows] the memo was rendered for */
-    private array $memoKey = [-1, -1, -1];
+    /** @var array{int, int, int, ?Density} the [revision, width, rows, density] the memo was rendered for */
+    private array $memoKey = [-1, -1, -1, null];
 
-    /** Non-entry rows the last render put above the list: the ▲ slot, or none. */
-    private int $indicatorRows = 0;
+    /** @var array<int, int> which visible row each screen row of the last render drew; dividers and blanks own none */
+    private array $rowOwner = [];
 
-    /** Entry rows the last render actually drew, so the trailing ▼ is not mistaken for one. */
-    private int $bodyRows = 0;
+    /** The density the last render drew for, so a flip repaints. */
+    private ?Density $drawnDensity = null;
 
-    /** @var array<int, int> the ▲/▼ rows the last render drew, and the entry a click on each selects */
+    /** @var array<int, int> the ▲/▼ rows the last render drew, and the visible row a click on each selects */
     private array $indicatorTargets = [];
     private readonly ListSelection $list;
 
-    /** @var (callable(string): void)|null selection moved to this entry id */
+    /** @var (callable(string): void)|null selection moved to this page id */
     private $onSelect;
 
     public function __construct(
@@ -119,21 +135,21 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
         // it: section selection is a callback because the view owns it, while
         // the picker is nobody's in particular.
         private readonly ?EventDispatcherInterface $events = null,
+        // The rules between rows are drawn only on a roomy screen, and a nav
+        // built bare has no screen to ask, so it draws none.
+        private readonly ?ScreenDensity $density = null,
     ) {
         $this->width = $width;
         $this->initStyles($styles);
         $this->entries = $this->buildEntries([]);
         $this->list = new ListSelection();
+        $this->refreshVisible();
         $this->addStyleClass('list'); // the theme's .list::selected(:focus) rules style the selection
     }
 
     /**
-     * The nav rows: sections, one sub-item per active plugin under Plugins,
-     * then the Languages header and its rows.
-     *
-     * There is no "Version control" header any more. Git's page was a core
-     * section with a hardcoded row here; git is a plugin, so its settings are
-     * its own page under Plugins, reached the same way every other plugin's is.
+     * The nav rows: the top-level pages, the Plugins folder with one page per
+     * active plugin, then the Languages folder and its pages.
      *
      * @param list<string> $pluginNames
      *
@@ -144,13 +160,12 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
         $entries = [];
         foreach (self::SECTIONS as $id => $label) {
             $entries[] = ['id' => $id, 'label' => $label, 'kind' => NavEntryKind::Section];
-            if ('plugins' === $id) {
-                foreach ($pluginNames as $name) {
-                    $entries[] = ['id' => 'plugin:'.$name, 'label' => $name, 'kind' => NavEntryKind::Plugin];
-                }
-            }
         }
-        $entries[] = ['id' => null, 'label' => 'Languages', 'kind' => NavEntryKind::Header];
+        $entries[] = ['id' => 'plugins', 'label' => 'Plugins', 'kind' => NavEntryKind::Folder];
+        foreach ($pluginNames as $name) {
+            $entries[] = ['id' => 'plugin:'.$name, 'label' => $name, 'kind' => NavEntryKind::Plugin];
+        }
+        $entries[] = ['id' => null, 'label' => 'Languages', 'kind' => NavEntryKind::Folder];
         foreach (LanguageCatalog::LANGUAGES as $id => $name) {
             $entries[] = ['id' => 'lang:'.$id, 'label' => $name, 'kind' => NavEntryKind::Language];
         }
@@ -159,9 +174,64 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
     }
 
     /**
-     * Rebuild the per-plugin sub-items (a plugin was installed or removed),
+     * The folder key of a folder entry: 'plugins' or 'languages'.
+     *
+     * @param Entry $entry
+     */
+    private static function folderKey(array $entry): string
+    {
+        return $entry['id'] ?? 'languages';
+    }
+
+    /**
+     * Rebuild which entries show — every one a closed folder does not hide —
+     * keeping the cursor on the entry it was on, or on its folder when that
+     * folder just closed over it.
+     */
+    private function refreshVisible(): void
+    {
+        $current = $this->visible[$this->list->selected()] ?? 0;
+        $this->visible = [];
+        foreach ($this->entries as $index => $entry) {
+            $folder = $entry['kind']->folder();
+            if (null === $folder || $this->expanded[$folder]) {
+                $this->visible[] = $index;
+            }
+        }
+        $this->list->select($this->positionOf($current) ?? $this->positionOf($this->folderOf($current)) ?? 0);
+    }
+
+    /** The visible row showing entry $index, or null when a closed folder hides it. */
+    private function positionOf(?int $index): ?int
+    {
+        $position = null === $index ? false : \array_search($index, $this->visible, strict: true);
+
+        return false === $position ? null : $position;
+    }
+
+    /** The entry index of the folder entry $index sits in, or null at the top level. */
+    private function folderOf(int $index): ?int
+    {
+        $folder = $this->entries[$index]['kind']->folder();
+        if (null === $folder) {
+            return null;
+        }
+
+        return \array_find_key($this->entries, static fn (array $entry): bool => NavEntryKind::Folder === $entry['kind'] && self::folderKey($entry) === $folder);
+    }
+
+    /** @return Entry */
+    private function selectedEntry(): array
+    {
+        // Indexed, not searched: the visible list always holds the top-level
+        // rows, and the selection is always clamped into it.
+        return $this->entries[$this->visible[$this->list->selected()]];
+    }
+
+    /**
+     * Rebuild the per-plugin pages (a plugin was installed or removed),
      * keeping the selection on the same id — or falling back to the Plugins
-     * section when the selected plugin just vanished.
+     * page when the selected plugin just vanished.
      *
      * @param list<string> $names
      */
@@ -169,6 +239,8 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
     {
         $selected = $this->selectedId();
         $this->entries = $this->buildEntries($names);
+        $this->visible = [];
+        $this->refreshVisible();
         $ids = \array_column($this->entries, 'id');
         $this->setActive(null !== $selected && \in_array($selected, $ids, strict: true) ? $selected : 'plugins');
         $this->invalidate();
@@ -176,22 +248,17 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
 
     /**
      * The narrowest this may be dragged: wide enough to READ every row it
-     * draws, not a number frozen against the rows it drew once.
-     *
-     * 14 was right in July, when the nav held three sections and the language
-     * catalogue and its widest row was `   JavaScript` at 13. Since then
-     * Interface and Highlighting arrived, and every installed plugin became a
-     * sub-row under Plugins — `   local-history` needs 16 — so dragging to
-     * the floor cut names the sidebar exists to name. Translated rows make it
-     * worse than the English screen shows: French renders Keybindings as
-     * `Raccourcis clavier`, 19 columns.
+     * draws, not a number frozen against the rows it drew once. Every
+     * installed plugin is a row, and translated rows make it worse than the
+     * English screen shows: French renders Keybindings as `Raccourcis
+     * clavier`, 19 columns.
      */
     #[\Override]
     public function minWidth(): int
     {
         $widest = 0;
         foreach ($this->entries as $entry) {
-            $widest = \max($widest, AnsiUtils::visibleWidth($this->rowText($entry)));
+            $widest = \max($widest, AnsiUtils::visibleWidth($this->rowText($entry, SelectionBar::None)));
         }
 
         return \max(self::NARROWEST, \min($widest, self::WIDEST_MINIMUM));
@@ -216,30 +283,57 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
         return $this;
     }
 
-    /** The id of the currently selected entry ('general' | 'keybindings' | 'plugins' | 'plugin:<name>' | 'lang:<id>'). */
     /**
-     * The selected entry's display label — the form's page title.
+     * The page $id's trail for the page header: `Settings › Interface`,
+     * `Settings › Plugins › git`, `Settings › Languages › PHP`. Each crumb
+     * carries the page it leads to — Settings leads to General, Languages to
+     * none, being no page.
      *
      * Section names are translated here and plugin/language names deliberately
      * are not (they are identifiers the user typed or installed), which is the
      * same rule the nav renders by.
+     *
+     * @return list<array{label: string, id: ?string}>
      */
-    public function activeLabel(): string
+    public function trailFor(string $id): array
     {
-        // Indexed, not searched: the entry list is never empty and the
-        // selection is always clamped into it, so there is no "no selection"
-        // case to invent a fallback for.
-        $entry = $this->entries[$this->list->selected()];
+        $trail = [['label' => $this->translator->trans('Settings'), 'id' => 'general']];
+        foreach ($this->entries as $index => $entry) {
+            if ($entry['id'] !== $id) {
+                continue;
+            }
+            $folder = $this->folderOf($index);
+            if (null !== $folder) {
+                $trail[] = ['label' => $this->label($this->entries[$folder]), 'id' => $this->entries[$folder]['id']];
+            }
+            $trail[] = ['label' => $this->label($entry), 'id' => $id];
+        }
 
-        return NavEntryKind::Section === $entry['kind'] ? $this->translator->trans($entry['label']) : $entry['label'];
+        return $trail;
     }
 
+    /**
+     * An entry's display name: section and folder names translated, plugin
+     * and language names as they are.
+     *
+     * @param Entry $entry
+     */
+    private function label(array $entry): string
+    {
+        return \in_array($entry['kind'], [NavEntryKind::Section, NavEntryKind::Folder], strict: true) ? $this->translator->trans($entry['label']) : $entry['label'];
+    }
+
+    /** The id of the entry under the cursor ('general' | 'keybindings' | 'plugins' | 'plugin:<name>' | 'lang:<id>'), or null on the Languages folder. */
     public function selectedId(): ?string
     {
-        return $this->entries[$this->list->selected()]['id'] ?? null;
+        return $this->selectedEntry()['id'];
     }
 
-    /** Highlight the entry with this id (the controller syncs the active section). */
+    /**
+     * Put the cursor on the page with this id (the controller syncs the
+     * active section), opening its folder first: a page reached from the
+     * search, the page keys or the header is never left hidden.
+     */
     public function setActive(string $id): void
     {
         foreach ($this->entries as $i => $entry) {
@@ -247,7 +341,12 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
                 continue;
             }
 
-            $this->list->select($i);
+            $folder = $entry['kind']->folder();
+            if (null !== $folder && !$this->expanded[$folder]) {
+                $this->expanded[$folder] = true;
+                $this->refreshVisible();
+            }
+            $this->list->select($this->positionOf($i) ?? 0);
             $this->invalidate();
 
             return;
@@ -278,104 +377,104 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
             return;
         }
         if ($kb->matches($data, 'move_up')) {
-            $this->moveTo($this->prevSelectable($this->list->selected()));
+            $this->moveTo(\max(0, $this->list->selected() - 1));
 
             return;
         }
         if ($kb->matches($data, 'move_down')) {
-            $this->moveTo($this->nextSelectable($this->list->selected()));
+            $this->moveTo(\min(\count($this->visible) - 1, $this->list->selected() + 1));
+
+            return;
+        }
+        if ($kb->matches($data, 'collapse')) {
+            $this->collapse();
+
+            return;
+        }
+        if ($kb->matches($data, 'expand')) {
+            $this->setFolderOpen(true);
+
+            return;
+        }
+        if ($kb->matches($data, 'toggle')) {
+            $this->setFolderOpen(!$this->isOpenFolder($this->selectedEntry()));
         }
     }
 
     /**
-     * A click selects (and fires) the entry under the pointer; the header is
-     * inert. A drawn ▲/▼ selects the first entry hidden past its edge: the
-     * selection is the only viewport this list has, and a step of a few rows
-     * from a cursor mid-window would not have moved the window at all.
+     * ← as in the tree: an open folder closes; a page inside a folder steps
+     * out onto it.
      */
-    public function handleClick(int $relRow): void
+    private function collapse(): void
     {
-        $target = $this->indicatorTargets[$relRow] ?? null;
-        if (null !== $target) {
-            $this->moveTo($target);
+        $entry = $this->selectedEntry();
+        if ($this->isOpenFolder($entry)) {
+            $this->setFolderOpen(false);
 
             return;
         }
-        $index = $this->rowIndexAt($relRow);
-        if (null !== $index && NavEntryKind::Header !== $this->entries[$index]['kind']) {
-            $this->moveTo($index);
+        $folder = $this->folderOf($this->visible[$this->list->selected()]);
+        if (null !== $folder) {
+            $this->moveTo((int) $this->positionOf($folder));
+        }
+    }
+
+    /** @param Entry $entry */
+    private function isOpenFolder(array $entry): bool
+    {
+        return NavEntryKind::Folder === $entry['kind'] && $this->expanded[self::folderKey($entry)];
+    }
+
+    /** Open or close the folder under the cursor; a page is left as it is. */
+    // @mago-expect lint:no-boolean-flag-parameter -- open or closed is the folder's one state, not a second responsibility.
+    private function setFolderOpen(bool $open): void
+    {
+        $entry = $this->selectedEntry();
+        if (NavEntryKind::Folder !== $entry['kind'] || $this->isOpenFolder($entry) === $open) {
+            return;
+        }
+        $this->expanded[self::folderKey($entry)] = $open;
+        $this->refreshVisible();
+        $this->invalidate();
+    }
+
+    /**
+     * A click selects (and fires) the row under the pointer, and a folder
+     * opens or closes as in the tree; a rule between rows is nobody's. A
+     * drawn ▲/▼ selects the first row hidden past its edge: the selection is
+     * the only viewport this list has, and a step of a few rows from a
+     * cursor mid-window would not have moved the window at all.
+     */
+    public function handleClick(int $relRow): void
+    {
+        $edge = $this->indicatorTargets[$relRow] ?? null;
+        $target = $edge ?? $this->rowOwner[$relRow] ?? null;
+        if (null === $target) {
+            return;
+        }
+        $this->moveTo($target);
+        if (null === $edge) {
+            $this->setFolderOpen(!$this->isOpenFolder($this->selectedEntry()));
         }
     }
 
     #[\Override]
     public function hoverRow(int $relRow): bool
     {
-        $index = $this->rowIndexAt($relRow);
-
-        return $this->setHovered(null !== $index && NavEntryKind::Header !== $this->entries[$index]['kind'] ? $index : null);
+        return $this->setHovered($this->rowOwner[$relRow] ?? null);
     }
 
-    private function moveTo(int $index): void
+    /** Move the cursor to visible row $position; a page there is shown. */
+    private function moveTo(int $position): void
     {
-        if ($index !== $this->list->selected()) {
-            $this->list->select($index);
+        if ($position !== $this->list->selected()) {
+            $this->list->select($position);
             $this->invalidate();
         }
-        $id = $this->entries[$index]['id'] ?? null;
+        $id = $this->selectedEntry()['id'];
         if (null !== $id && null !== $this->onSelect) {
             ($this->onSelect)($id);
         }
-    }
-
-    private function prevSelectable(int $from): int
-    {
-        for ($i = $from - 1; $i >= 0; --$i) {
-            if (NavEntryKind::Header !== $this->entries[$i]['kind']) {
-                return $i;
-            }
-        }
-
-        return $from;
-    }
-
-    private function nextSelectable(int $from): int
-    {
-        $count = \count($this->entries);
-        for ($i = $from + 1; $i < $count; ++$i) {
-            if (NavEntryKind::Header !== $this->entries[$i]['kind']) {
-                return $i;
-            }
-        }
-
-        return $from;
-    }
-
-    /**
-     * The entry under a widget-relative row, or null when that row holds no
-     * entry.
-     *
-     * The count of non-entry rows above the list is not a constant: {@see
-     * render()} reserves its first line for the ▲ indicator as soon as the
-     * entries outnumber the pane, and reserves it even when nothing is scrolled
-     * yet — the line is blank then, not absent. Counting from the top of the
-     * PANE rather than the top of the LIST put every click and hover one row
-     * low, so choosing a category selected the one below it.
-     */
-    private function rowIndexAt(int $relRow): ?int
-    {
-        // The TRAILING indicator row is not an entry. `indicatorRows` counts
-        // only the leading ▲, while an overflowing render reserves the last row
-        // for ▼ as well — and `ListSelection::rowIndexAt()` bounds by the total
-        // entry count, not by what is visible, so a click on ▼ mapped to
-        // `scroll + budget`: the first entry BELOW the window, which is exactly
-        // the entry whose existence puts the ▼ there. Clicking "scroll down"
-        // navigated to a page you could not see, and hover tinted a row that is
-        // never drawn.
-        if ($relRow >= ($this->indicatorRows + $this->bodyRows)) {
-            return null;
-        }
-
-        return $this->list->rowIndexAt($relRow, \count($this->entries), $this->indicatorRows);
     }
 
     /**
@@ -395,21 +494,31 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
     }
 
     /**
-     * One row's text before truncation.
+     * One row's text before truncation and shading, the tree's shape: the
+     * bar, the indent, the disclosure (two blanks on a page), the name.
      *
      * Shared with {@see minWidth()} deliberately: a bound that measures rows
      * the render does not draw is a bound that drifts the moment either side
-     * changes. Language and plugin rows indent under their category and keep
-     * their own names — those are identifiers the user typed or installed,
-     * not prose to translate.
+     * changes.
      *
      * @param Entry $entry
      */
-    private function rowText(array $entry): string
+    private function rowText(array $entry, SelectionBar $bar): string
     {
-        return \in_array($entry['kind'], [NavEntryKind::Language, NavEntryKind::Plugin], strict: true)
-            ? '   '.$entry['label']
-            : ' '.$this->translator->trans($entry['label']);
+        $depth = null === $entry['kind']->folder() ? 0 : 1;
+        $expanded = NavEntryKind::Folder === $entry['kind'] ? $this->isOpenFolder($entry) : null;
+
+        return TreeRow::text($bar, $depth, $expanded, $this->label($entry));
+    }
+
+    #[\Override]
+    public function beforeRender(): void
+    {
+        // A cached pane is not rendered again on its own: a density flip has
+        // to invalidate it, or the rules stay as they were.
+        if ($this->drawnDensity !== $this->density?->current()) {
+            $this->invalidate();
+        }
     }
 
     #[\Override]
@@ -417,62 +526,75 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
     {
         $width = $this->panelColumns($context);
         $rows = \max(1, $context->getRows() > 0 ? $context->getRows() : 12);
+        $density = $this->density?->current();
+        $this->drawnDensity = $density;
 
         // The FileTreeWidget idiom: this flex-0 side pane is rendered twice
         // per frame (intrinsic measure + real pass); one memo serves both.
-        $key = [$this->getRenderRevision(), $width, $rows];
+        $key = [$this->getRenderRevision(), $width, $rows, $density];
         if (null !== $this->memoLines && $key === $this->memoKey) {
             return $this->memoLines;
         }
         $this->memoKey = $key;
 
+        // A rule between every two rows on a roomy screen: each row then
+        // costs two lines but the last, which needs no rule after it.
+        $ruled = Density::Roomy === $density;
+        $count = \count($this->visible);
+        $needed = $ruled ? (2 * $count) - 1 : $count;
         // A list that scrolls has to SAY so. This one is a finite, complete
-        // menu of destinations — five sections, one row per installed plugin,
-        // then the language catalogue — so a reader reasonably takes what is
-        // drawn for all of it. With nine plugins installed it is 28 rows, and
-        // on a 24-row terminal the last six simply were not there. The
-        // vertical tab strip has marked its overflow this way since it was
-        // written; nothing else in the IDE did.
-        $overflow = $rows > 2 && \count($this->entries) > $rows;
-        // Remembered for the hit test, which runs between frames and cannot
-        // recompute it: the pattern {@see \Porta\Widget\FileTreeWidget} uses
-        // for a render-time measurement a later click needs.
-        $this->indicatorRows = $overflow ? 1 : 0;
+        // menu of destinations, so a reader reasonably takes what is drawn
+        // for all of it; with nine plugins installed it overflowed a 24-row
+        // terminal and its last rows simply were not there.
+        $overflow = $rows > 2 && $needed > $rows;
         $budget = $overflow ? $rows - 2 : $rows;
-        $this->bodyRows = $budget;
         $this->indicatorTargets = [];
-        $scroll = $this->list->follow($budget);
+        $this->rowOwner = [];
+        $scroll = $this->list->follow($ruled ? \intdiv($budget + 1, num2: 2) : $budget);
         $lines = [];
         if ($overflow) {
-            $lines[] = $scroll > 0 ? $this->indicatorRow(Glyphs::SCROLL_UP, 0, $this->prevSelectable($scroll), $width) : AnsiText::blank($width);
+            $lines[] = $scroll > 0 ? $this->indicatorRow(Glyphs::SCROLL_UP, 0, $scroll - 1, $width) : AnsiText::blank($width);
         }
-        for ($row = 0; $row < $budget; ++$row) {
-            $index = $scroll + $row;
-            $entry = $this->entries[$index] ?? null;
-            if (null === $entry) {
-                $lines[] = AnsiText::blank($width);
-                continue;
+        $position = $scroll;
+        $top = \count($lines);
+        while ((\count($lines) - $top) < $budget && $position < $count) {
+            if ($ruled && $position > $scroll) {
+                $lines[] = Rule::horizontal($width, $this->styles);
+                if ((\count($lines) - $top) >= $budget) {
+                    break;
+                }
             }
-
-            if (NavEntryKind::Header === $entry['kind']) {
-                // The form's fieldset legend: a heading reads as one by its
-                // shape, where dim bold was a shade the monochrome theme lost.
-                $lines[] = Rule::horizontal($width, $this->styles, $this->translator->trans($entry['label']));
-                continue;
-            }
-
-            // Focus in the form leaves the quarter bar on the page it shows.
-            $selected = $index === $this->list->selected();
-            $text = $this->barred(AnsiText::truncate($this->rowText($entry), $width, pad: true), $selected);
-            $lines[] = $this->shadeRow($text, $selected, $index === $this->hoveredIndex);
+            $this->rowOwner[\count($lines)] = $position;
+            $lines[] = $this->row($position, $width);
+            ++$position;
+        }
+        while ((\count($lines) - $top) < $budget) {
+            $lines[] = AnsiText::blank($width);
         }
         if ($overflow) {
-            $lines[] = ($scroll + $budget) < \count($this->entries)
-                ? $this->indicatorRow(Glyphs::SCROLL_DOWN, $rows - 1, $this->nextSelectable($scroll + $budget - 1), $width)
+            $lines[] = $position < $count
+                ? $this->indicatorRow(Glyphs::SCROLL_DOWN, $rows - 1, $position, $width)
                 : AnsiText::blank($width);
         }
 
         return $this->memoLines = $lines;
+    }
+
+    /**
+     * Visible row $position, shaded as the tree shades its rows: a folder
+     * in the accent, the hover tint under the pointer, the selection over
+     * both. Focus in the form leaves the quarter bar on the page it shows.
+     */
+    private function row(int $position, int $width): string
+    {
+        $entry = $this->entries[$this->visible[$position]];
+        $selected = $position === $this->list->selected();
+        $text = AnsiText::truncate($this->rowText($entry, SelectionBar::of($selected, $this->isFocused())), $width, pad: true);
+        if (NavEntryKind::Folder === $entry['kind'] && !$selected) {
+            $text = $this->styles->of(Role::TabAccent)->apply($text);
+        }
+
+        return $this->shadeRow($text, $selected, $position === $this->hoveredIndex);
     }
 
     /** @return array<string, string[]> */
@@ -481,6 +603,11 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
         return [
             'move_up' => [Key::UP],
             'move_down' => [Key::DOWN],
+            // The tree's own keys for a folder: ← closes it (or steps out
+            // of it), → opens it, Enter or Space flips it.
+            'collapse' => [Key::LEFT],
+            'expand' => [Key::RIGHT],
+            'toggle' => [Key::ENTER, Key::SPACE],
             'focus_next_pane' => [Key::TAB],
             // Same key on both of the view's stops. Tab lands here, and a Ctrl+F
             // that works on one pane and not the other is the kind of dead key

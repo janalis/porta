@@ -64,7 +64,7 @@ final class IdeViewWindowTest extends TestCase
     {
         $this->frame($tui);
         Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
-        $this->awaitPainted($tui, $terminal, 'General — ');
+        $this->awaitPainted($tui, $terminal, 'Settings › General ');
         $box = Services::resolve($ide, ViewWindowPresenter::class)->box();
         $this->assertInstanceOf(ModalBox::class, $box);
 
@@ -94,7 +94,7 @@ final class IdeViewWindowTest extends TestCase
                     $grid = $this->screenGrid($tui, $terminal);
                     $this->assertStringContainsString('Settings', $grid[$box->startRow], 'the view names its window');
                     $this->assertStringNotContainsString('Esc', $grid[$box->startRow], 'Esc closes it; the bar does not spell it out');
-                    $this->assertStringContainsString('General — ', \implode("\n", $grid), 'the view is drawn inside');
+                    $this->assertStringContainsString('Settings › General ', \implode("\n", $grid), 'the view is drawn inside');
                 },
             ],
             columns: 120,
@@ -118,7 +118,7 @@ final class IdeViewWindowTest extends TestCase
 
                     self::click($tui, $row, $col);
 
-                    $this->awaitPainted($tui, $terminal, 'Interface — ');
+                    $this->awaitPainted($tui, $terminal, 'Settings › Interface ');
                 },
             ],
             columns: 120,
@@ -149,7 +149,7 @@ final class IdeViewWindowTest extends TestCase
                     $this->assertFalse($views->isOpen('settings'), 'a click on the workspace beside it');
 
                     $this->await(
-                        fn (): bool => !\str_contains(\implode("\n", $this->screenGrid($tui, $terminal)), 'General — '),
+                        fn (): bool => !\str_contains(\implode("\n", $this->screenGrid($tui, $terminal)), 'Settings › General '),
                         what: 'the window to leave the screen',
                     );
                 },

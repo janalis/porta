@@ -10,7 +10,8 @@ use Symfony\Component\Tui\Style\Style;
 
 /**
  * The shading of an item in a chrome bar — a tab in any of the four strips, a
- * menu-bar title — by its {@see TabState}: the active one bright and bold on
+ * menu-bar title, a crumb of the navigation bar ({@see CrumbBar}) — by its
+ * {@see TabState}: the active one bright and bold on
  * {@see Role::TabActiveBg}, the one under the pointer on the bar-chrome hover
  * shade, the rest subtle on the bar's own background.
  *
@@ -18,9 +19,7 @@ use Symfony\Component\Tui\Style\Style;
  * preventing, so the active/hovered shades are resolved once here. Only the
  * *rest* background differs between bars (the tab strips sit on {@see Role::Toolbar},
  * the menu-bar titles on {@see Role::HeaderBar}), so it is the one parameter.
- * The modal-list counterpart is {@see ModalRowStyle}; breadcrumbs deliberately
- * keep their own current/ancestor foreground and merely add the hover
- * background, so they do not route through here.
+ * The modal-list counterpart is {@see ModalRowStyle}.
  */
 final class BarChromeStyle
 {

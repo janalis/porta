@@ -8,31 +8,36 @@ use Porta\Container\AsWidget;
 use Porta\Editor\PreviewMode;
 use Porta\Event\PreviewModeRequested;
 use Porta\I18n\Translator;
-use Porta\Support\AnsiText;
 use Porta\Ui\ClickZones;
-use Porta\Ui\Glyphs;
-use Porta\Ui\Role;
+use Porta\Ui\Density;
+use Porta\Ui\ScreenDensity;
 use Porta\Ui\Theme\Styles;
 use Porta\Ui\Tooltip;
 use Porta\Ui\TooltipProvider;
+use Porta\Widget\Render\CrumbBar;
 use Porta\Widget\Render\FieldBox;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
+use Porta\Widget\Render\Rule;
 use Porta\Widget\Support\ColumnHover;
 use Porta\Widget\Support\OptionTagState;
 use Porta\Widget\Support\ProviderFingerprint;
 use Porta\Widget\Support\StylesDefault;
 use Psr\EventDispatcher\EventDispatcherInterface;
-use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
-use Symfony\Component\Tui\Style\Style;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 
 /**
- * One-line breadcrumbs bar under the tabs showing the caret's structural path
- * (`Namespace › Class › method`). Content comes from a provider closure so it
- * tracks the caret for free on every frame. Renders zero rows (no bar) when the
- * caret is not inside any scope, so a structureless file keeps its full editor.
+ * The navigation bar under the tabs: where the caret is, from the project
+ * root down — `src › Http › UserController.php › UserController › store` —
+ * drawn by {@see CrumbBar} as pills, the current scope lit like the active
+ * tab. Content comes from a provider closure so it tracks the caret for free
+ * on every frame. A folder or the file reveals itself in the tree when
+ * clicked; a scope moves the caret to it. Renders zero rows (no bar) when
+ * there is nothing to show, so a viewer tab keeps its full pane.
+ *
+ * On a roomy screen a rule under the bar closes it off from the editor; on a
+ * compact one the rule gives its row back, as the workspace edges do.
  *
  * A file with a live preview also gets the arrangement toggles at the bar's
  * right end — ` Editor [Split] Preview ` — and so always has the bar: those
@@ -47,7 +52,7 @@ final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost,
     use ColumnHover;
     use MenuOverlayHostTrait;
 
-    /** @use ProviderFingerprint<list<array{label: string, line: int}>> */
+    /** @use ProviderFingerprint<list<array{label: string, line: ?int, path?: ?string}>> */
     use ProviderFingerprint;
     use StylesDefault;
 
@@ -68,6 +73,10 @@ final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost,
         ?Styles $styles = null,
         private readonly Translator $translator = new Translator('en'),
         private readonly ?EventDispatcherInterface $events = null,
+        // Trailing and optional, as the widget rule has it: the rule under
+        // the bar is drawn only on a roomy screen, and a bar built bare has
+        // no screen to ask, so it draws none.
+        private readonly ?ScreenDensity $density = null,
     ) {
         $this->initStyles($styles);
         $this->toggleZones = new ClickZones();
@@ -100,14 +109,14 @@ final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost,
         return $this->visible;
     }
 
-    /** The ` › ` scope separator, dimmed (visible width 3). */
-    private function separator(): string
-    {
-        return $this->styles->of(Role::Gutter)->apply(' '.Glyphs::BREADCRUMB_SEPARATOR.' ');
-    }
+    /** @var array<int, array{start: int, width: int}> each drawn crumb's columns in the last render, by its index in the trail */
+    private array $zones = [];
 
-    /** @var list<array{start: int, width: int, line: int}> segment layout from the last render, for hit-testing */
-    private array $lastLayout = [];
+    /** @var list<array{label: string, line: ?int, path?: ?string}> the trail the last render drew, for the click */
+    private array $drawn = [];
+
+    /** The density the last render drew for, so a flip repaints. */
+    private ?Density $drawnDensity = null;
 
     /** @var list<array{start: int, width: int, key: string, text: string}> what the last render hid or cut, where it would have been */
     private array $tips = [];
@@ -136,86 +145,68 @@ final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost,
         /** @var ?PreviewMode $mode */
         $mode = null !== $this->previewProvider ? ($this->previewProvider)() : null;
         $this->refreshFingerprint([$this->trailCrumbs(), $mode?->name]);
+        if (null !== $this->drawnDensity && $this->drawnDensity !== $this->density?->current()) {
+            $this->invalidate();
+        }
     }
 
     #[\Override]
     public function render(RenderContext $context): array
     {
-        $this->lastLayout = [];
+        $this->zones = [];
         $this->tips = [];
         $this->toggleZones->clear();
-        $crumbs = $this->trailCrumbs();
+        $this->drawnDensity = $this->density?->current();
+        $this->drawn = $this->trailCrumbs();
         /** @var ?PreviewMode $mode */
         $mode = null !== $this->previewProvider ? ($this->previewProvider)() : null;
-        if ([] === $crumbs && null === $mode) {
-            return []; // no scope, no preview → no bar (the editor keeps the row)
+        if ([] === $this->drawn && null === $mode) {
+            return []; // nothing to show → no bar (the pane keeps the row)
         }
 
         $columns = $context->getColumns();
         $toggles = null === $mode ? '' : $this->toggles($mode, $columns);
-        $trail = $columns - AnsiUtils::visibleWidth($toggles);
-        $content = [] === $crumbs ? ' ' : $this->trail($crumbs, $trail);
+        $bar = CrumbBar::render($this->crumbs($this->drawn), $columns, $this->styles, $this->hoverCol, $toggles);
+        $this->zones = $bar['zones'];
+        $this->tips = $bar['tips'];
+        $rows = [$bar['line']];
+        if (Density::Roomy === $this->drawnDensity) {
+            $rows[] = Rule::horizontal($columns, $this->styles);
+        }
 
-        return [$this->styles->of(Role::Toolbar)->apply(AnsiText::truncate($content, $trail, pad: true).$toggles)];
+        return $rows;
     }
 
     /**
-     * The scope trail to draw — none while the Interface setting hides it. The
+     * The trail as {@see CrumbBar} draws it: the file — the last crumb with a
+     * path — keeps a bright foreground, the seam between where the file is
+     * and where in it the caret is.
+     *
+     * @param list<array{label: string, line: ?int, path?: ?string}> $trail
+     *
+     * @return list<array{label: string, emphasis: bool}>
+     */
+    private function crumbs(array $trail): array
+    {
+        $file = \array_key_last(\array_filter($trail, static fn (array $crumb): bool => null !== ($crumb['path'] ?? null)));
+        $crumbs = [];
+        foreach ($trail as $i => $crumb) {
+            $crumbs[] = ['label' => $crumb['label'], 'emphasis' => $i === $file];
+        }
+
+        return $crumbs;
+    }
+
+    /**
+     * The trail to draw — none while the Interface setting hides it. The
      * visible gate is load-bearing: the provider tokenizes the whole file, and
      * a hidden trail must cost nothing, per frame included.
      *
-     * @return list<array{label: string, line: int}>
+     * @return list<array{label: string, line: ?int, path?: ?string}>
      */
     private function trailCrumbs(): array
     {
         return $this->visible && null !== $this->provider ? ($this->provider)() : [];
-    }
-
-    /**
-     * The crumbs laid out in $columns, from the right, recording each one's
-     * columns for the click and the hover.
-     *
-     * @param non-empty-list<array{label: string, line: int}> $crumbs
-     */
-    private function trail(array $crumbs, int $columns): string
-    {
-        [$first, $room] = self::window(\array_column($crumbs, 'label'), $columns - 1);
-        $content = ' '; // a leading space; the bar background wraps the padded row
-        $col = 1;
-        if ($first > 0) {
-            // The ancestors that did not fit, said once: the trail is cut at
-            // its root end, never at the scope the caret is in.
-            $content .= $this->styles->of(Role::Muted)->apply(Glyphs::ELLIPSIS).$this->separator();
-            $this->tips[] = [
-                'start' => 1,
-                'width' => 1,
-                'key' => 'lead',
-                'text' => \implode(' '.Glyphs::BREADCRUMB_SEPARATOR.' ', \array_column(\array_slice($crumbs, offset: 0, length: $first), 'label')),
-            ];
-            $col += self::LEAD_WIDTH;
-        }
-        $last = \count($crumbs) - 1;
-        foreach (\array_slice($crumbs, $first, preserve_keys: true) as $i => $crumb) {
-            if ($i > $first) {
-                $content .= $this->separator();
-                $col += 3;
-            }
-            // Alone and still too wide, the current crumb keeps both ends.
-            $label = $i === $last ? AnsiText::elideMiddle($crumb['label'], $room) : $crumb['label'];
-            $width = AnsiUtils::visibleWidth($label);
-            $this->lastLayout[] = ['start' => $col, 'width' => $width, 'line' => $crumb['line']];
-            if ($label !== $crumb['label']) {
-                $this->tips[] = ['start' => $col, 'width' => $width, 'key' => 'current', 'text' => $crumb['label']];
-            }
-            // Bar chrome, so the pointer tints with BarHoverBg (not a list
-            // row's RowHighlightBg) under whichever foreground the crumb has,
-            // and underlines it: a crumb is a link.
-            $hovered = null !== $this->hoverCol && $this->hoverCol >= $col && $this->hoverCol < ($col + $width);
-            $content .= $this->crumbStyle($i === $last, $hovered)->apply($label);
-            $col += $width;
-        }
-
-        return $content;
     }
 
     /**
@@ -281,50 +272,6 @@ final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost,
         return true;
     }
 
-    /** `… › `: what stands for the ancestors the bar had no room for. */
-    private const int LEAD_WIDTH = 4;
-
-    /**
-     * Which crumbs fit in $room columns, laid out from the right: the first
-     * one drawn, and the room left for the last. The current scope is always
-     * drawn; each ancestor joins only while it, its separator and — when
-     * ancestors remain beyond it — the `… › ` lead still fit.
-     *
-     * @param list<string> $labels
-     *
-     * @return array{int, int}
-     */
-    private static function window(array $labels, int $room): array
-    {
-        $first = \count($labels) - 1;
-        $used = AnsiUtils::visibleWidth($labels[$first]);
-        while ($first > 0) {
-            $next = $used + 3 + AnsiUtils::visibleWidth($labels[$first - 1]);
-            if (($next + ($first > 1 ? self::LEAD_WIDTH : 0)) > $room) {
-                break;
-            }
-            --$first;
-            $used = $next;
-        }
-
-        return [$first, \max(1, $room - ($first > 0 ? self::LEAD_WIDTH : 0))];
-    }
-
-    /**
-     * A crumb's shading: the current scope is bright and bold, the ancestors
-     * muted, and the one under the pointer takes the bar-chrome hover shade
-     * under whichever of those foregrounds it already had, underlined.
-     */
-    private function crumbStyle(bool $current, bool $hovered): Style
-    {
-        return match (true) {
-            $current && $hovered => $this->styles->merge(Role::BarHoverBg, Role::Emphasis)->withBold()->withUnderline(),
-            $current => $this->styles->of(Role::Emphasis)->withBold(),
-            $hovered => $this->styles->merge(Role::BarHoverBg, Role::Muted)->withUnderline(),
-            default => $this->styles->of(Role::Muted),
-        };
-    }
-
     /**
      * Tint the crumb or toggle under the pointer (visual only). Stores the
      * column; change at item granularity — a toggle resolves below zero, so it
@@ -337,23 +284,25 @@ final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost,
         return $this->storeHover($col, null === $toggle ? $this->crumbIndexAt($col) : -1 - (int) $toggle);
     }
 
-    /** The jump line of the crumb at column $col of the last render, or null. */
+    /** The jump line of the scope crumb at column $col of the last render, or null. */
     public function lineAtColumn(int $col): ?int
     {
         $index = $this->crumbIndexAt($col);
 
-        return null !== $index ? $this->lastLayout[$index]['line'] : null;
+        return null !== $index ? $this->drawn[$index]['line'] : null;
     }
 
-    /** Index into the last render's segment layout at column $col, or null between/past the crumbs. */
+    /** The folder or file of the path crumb at column $col of the last render, or null. */
+    public function pathAtColumn(int $col): ?string
+    {
+        $index = $this->crumbIndexAt($col);
+
+        return null !== $index ? $this->drawn[$index]['path'] ?? null : null;
+    }
+
+    /** Index into the last render's trail of the crumb drawn at column $col, or null between/past the crumbs. */
     private function crumbIndexAt(int $col): ?int
     {
-        foreach ($this->lastLayout as $index => $entry) {
-            if ($col >= $entry['start'] && $col < ($entry['start'] + $entry['width'])) {
-                return $index;
-            }
-        }
-
-        return null;
+        return CrumbBar::at($this->zones, $col);
     }
 }

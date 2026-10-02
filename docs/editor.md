@@ -59,10 +59,14 @@ tool plugin's findings, and a line where no server is running yet.
 
 ### Breadcrumbs
 
-The bar under the tabs names the scopes containing the caret —
-`Namespace › Class › method` — and each crumb is clickable. When the bar is too
-narrow for the whole trail it drops scopes from the outside in, behind a
-leading `… ›`, so the scope the caret is in is always shown.
+The bar under the tabs says where the caret is, from the project root down:
+the file's folders, the file, then the scopes containing the caret —
+`src › Http › UserController.php › UserController › store`. Each crumb is
+clickable: a folder or the file is revealed in the tree, a scope moves the
+caret to its declaration. The scope you are in is lit like the active tab. When
+the bar is too narrow for the whole trail it drops crumbs from the root end,
+behind a leading `… ›`, so the scope the caret is in is always shown. On a
+screen of 30 rows or more a rule separates the bar from the code.
 
 PHP is scanned offline, so it is instant and correct with no language server
 running at all. Other languages use the server's own `textDocument/documentSymbol`

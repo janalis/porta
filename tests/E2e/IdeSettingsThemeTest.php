@@ -108,7 +108,7 @@ final class IdeSettingsThemeTest extends TestCase
                     $this->assertStringContainsString('Languages', $screen);
                     $this->assertStringContainsString('Auto-pairs', $screen, 'General content shown');
                     // Toggle Auto-pairs in the content pane. Region row 8:
-                    // the page title (0) and the blank row under it (1), the
+                    // the page title (0) and the rule under it (1), the
                     // boxed "Save changes to" chooser that leads every page
                     // that writes a file (2-4), the Editing heading between
                     // its blank rows (5-7), then this checkbox.
@@ -118,20 +118,23 @@ final class IdeSettingsThemeTest extends TestCase
                     // second.
                     $tui->handleInput(self::windowSgr($ide, 0, 8, 39));
                     $tui->handleInput(self::windowSgr($ide, 0, 8, 39, release: true));
-                    // Hover the nav sidebar (a tint).
-                    $tui->handleInput(self::windowSgr($ide, 35, 1, 4));
+                    // Hover the nav sidebar (a tint): Interface. With a rule
+                    // under every row the nav overflows, so its row 0 is the
+                    // ▲ slot, General row 1, its rule row 2.
+                    $tui->handleInput(self::windowSgr($ide, 35, 3, 4));
                 },
                 300 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     // frame(), not tick(): the click below is hit-tested against
                     // the rects the LAST RENDER produced.
                     $this->frame($tui);
-                    // Click the 'Keybindings' entry in the nav (screen row 6, after
-                    // General + Interface + Highlighting).
-                    $tui->handleInput(self::windowSgr($ide, 0, 3, 4));
-                    $tui->handleInput(self::windowSgr($ide, 0, 3, 4, release: true));
+                    // Click the 'Keybindings' entry in the nav: region row 7,
+                    // after the ▲ slot and General, Interface and
+                    // Highlighting, each with the rule under it.
+                    $tui->handleInput(self::windowSgr($ide, 0, 7, 4));
+                    $tui->handleInput(self::windowSgr($ide, 0, 7, 4, release: true));
                 },
                 400 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
-                    $this->awaitPainted($tui, $terminal, 'actions');
+                    $this->awaitPainted($tui, $terminal, 'Ctrl+F to filter');
                     $this->assertSame('settings-nav', $tui->getFocus()?->getId(), 'clicking the nav focuses it');
                     // Hover + wheel + click the keybindings list (content pane), a nav miss too.
                     $tui->handleInput(self::windowSgr($ide, 35, 3, 39)); // hover a list row (nav clears)
@@ -141,12 +144,12 @@ final class IdeSettingsThemeTest extends TestCase
                 },
                 500 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $this->frame($tui);
-                    // Select PHP in the nav (screen row 10, after Interface +
-                    // Highlighting + Keybindings + Command line + Plugins and
-                    // the Languages header) → the content shows its indent
-                    // rows.
-                    $tui->handleInput(self::windowSgr($ide, 0, 7, 4));
-                    $tui->handleInput(self::windowSgr($ide, 0, 7, 4, release: true));
+                    // Select PHP in the nav: region row 15, after the ▲ slot, General,
+                    // Interface, Highlighting, Keybindings, Command line, the
+                    // Plugins folder and the Languages folder, each with its
+                    // rule → the content shows its indent rows.
+                    $tui->handleInput(self::windowSgr($ide, 0, 15, 4));
+                    $tui->handleInput(self::windowSgr($ide, 0, 15, 4, release: true));
                 },
                 600 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $this->awaitPainted($tui, $terminal, 'Indent style');
@@ -162,7 +165,7 @@ final class IdeSettingsThemeTest extends TestCase
                     $tui->handleInput(self::windowSgr($ide, 0, 12, 39));
                     $tui->handleInput(self::windowSgr($ide, 0, 12, 39, release: true));
                     // Now step indent style (auto → spaces). Region row 9: the
-                    // page title and its blank row (0-1), the boxed "Save
+                    // page title and its rule (0-1), the boxed "Save
                     // changes to" chooser that leads every page writing a file
                     // (2-4), the Indentation heading between its blank rows
                     // (5-7), then this box (8-10), its label on its middle row.

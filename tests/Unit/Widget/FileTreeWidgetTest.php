@@ -914,4 +914,21 @@ final class FileTreeWidgetTest extends TestCase
         $this->assertSame($widget->width(), AnsiUtils::visibleWidth($row));
         $this->assertStringContainsString('MMM', $row);
     }
+
+    /** A folder says whether it is open by its triangle, and a file keeps the triangle's columns blank. */
+    public function testAFolderRowSaysOpenOrClosedAndAFileLinesUpWithIt(): void
+    {
+        $project = new TempProject(['open/a.php' => "<?php\n", 'shut/b.php' => "<?php\n", 'c.php' => "<?php\n"]);
+        $tree = new FileTreeWidget($project->dir);
+        $tree->revealPath($project->path('open/a.php'));
+        $tree->beforeRender();
+
+        // Past the selection bar's column, which marks what reveal picked.
+        $rows = \array_map(static fn (string $row): string => \mb_substr(\rtrim(AnsiUtils::stripAnsiCodes($row)), start: 1), $tree->render(new RenderContext(30, 8)));
+
+        $this->assertContains('▾ open/', $rows);
+        $this->assertContains('   a.php', $rows, 'a file inside, past the blank its triangle would take');
+        $this->assertContains('▸ shut/', $rows);
+        $this->assertContains('  c.php', $rows);
+    }
 }

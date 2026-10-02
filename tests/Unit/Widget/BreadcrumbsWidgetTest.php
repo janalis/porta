@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
+use Porta\I18n\Translator;
 use Porta\Tests\Support\RendersWidget;
+use Porta\Ui\ScreenDensity;
 use Porta\Widget\BreadcrumbsWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -80,14 +82,15 @@ final class BreadcrumbsWidgetTest extends TestCase
     {
         $bar = new BreadcrumbsWidget();
         $bar->setProvider(static fn (): array => [
-            ['label' => 'App', 'line' => 1], // ' App' → cols 1..3
-            ['label' => 'Ctrl', 'line' => 4], // after ' › ' → cols 7..10
+            ['label' => 'App', 'line' => 1], // pill ' App ' → cols 0..4
+            ['label' => 'Ctrl', 'line' => 4], // after the '›' at 5 → pill cols 6..11
         ]);
         $bar->render(new RenderContext(80, 1));
 
         $this->assertSame(1, $bar->lineAtColumn(2), 'inside the first crumb');
         $this->assertSame(4, $bar->lineAtColumn(8), 'inside the second crumb');
-        $this->assertNull($bar->lineAtColumn(0), 'the leading space is not a crumb');
+        $this->assertSame(1, $bar->lineAtColumn(0), 'the pill padding is part of the crumb: it is where the tint shows');
+        $this->assertSame(4, $bar->lineAtColumn(11), 'so is the trailing padding');
         $this->assertNull($bar->lineAtColumn(5), 'the separator gap is not a crumb');
         $this->assertNull($bar->lineAtColumn(70), 'past the last crumb');
     }
@@ -170,7 +173,7 @@ final class BreadcrumbsWidgetTest extends TestCase
         $bar->beforeRender();
         $bar->render(new RenderContext(80, 1));
 
-        // ' App › Widget › render' — 'App' spans cols 1-3, 'Widget' 7-12.
+        // ' App › Widget › render ' — the 'App' pill spans cols 0-4, 'Widget' 6-13.
         $this->assertTrue($bar->hoverAt(7), 'the pointer landed on a crumb');
         $this->assertFalse($bar->hoverAt(8), 'still the same crumb → no change');
         $this->assertTrue($bar->hoverAt(5), 'the separator is not a crumb: the tint clears');
@@ -206,8 +209,8 @@ final class BreadcrumbsWidgetTest extends TestCase
         $bar->hoverAt(16); // 'render' — the current scope
         $line = $bar->render(new RenderContext(80, 1))[0];
 
-        $this->assertStringContainsString("\x1b[48;5;240m", $line, 'hover shade');
-        $this->assertStringContainsString("\x1b[1m", $line, 'the current scope stays bold under the pointer');
+        $this->assertStringContainsString("\x1b[48;5;238m\x1b[1m \x1b[4mrender", $line, 'the current scope stays lit and bold under the pointer, and underlines: it is a link too');
+        $this->assertStringNotContainsString("\x1b[48;5;240m", $line, 'the active shade wins over the hover shade, as on a tab');
     }
 
     public function testAChangedTrailDropsAStaleTint(): void
@@ -257,12 +260,12 @@ final class BreadcrumbsWidgetTest extends TestCase
 
         $line = $bar->render(new RenderContext(80, 1))[0];
 
-        // The current+hovered crumb gets Emphasis fg (255) + BarHoverBg (240) + bold
-        // + the link underline, in that fixed order, applied together — not the
-        // shade on one crumb and the bold on another.
-        $this->assertStringContainsString("\x1b[38;5;255m\x1b[48;5;240m\x1b[1m\x1b[4mrender", $line);
-        $this->assertStringNotContainsString("\x1b[48;5;240m\x1b[1mApp", $line, 'a non-current, non-hovered crumb must not pick up the hover+bold combo');
-        $this->assertStringNotContainsString("\x1b[48;5;240m\x1b[1mWidget", $line, 'a non-current, non-hovered crumb must not pick up the hover+bold combo');
+        // The current+hovered crumb is the active tab's shade — Bright (231)
+        // on TabActiveBg (238), bold — with the link underline on its label,
+        // applied together: not the shade on one crumb and the bold on another.
+        $this->assertStringContainsString("\x1b[38;5;231m\x1b[48;5;238m\x1b[1m \x1b[4mrender", $line);
+        $this->assertStringNotContainsString("\x1b[48;5;238m\x1b[1m App", $line, 'a non-current crumb must not be lit');
+        $this->assertStringNotContainsString("\x1b[48;5;238m\x1b[1m Widget", $line, 'a non-current crumb must not be lit');
     }
 
     /**
@@ -276,9 +279,9 @@ final class BreadcrumbsWidgetTest extends TestCase
         $bar = new BreadcrumbsWidget();
         $bar->setProvider(self::trail(...)); // App › Widget › render
 
-        $line = AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(20, 1))[0]);
+        $line = AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(21, 1))[0]);
 
-        $this->assertSame(' … › Widget › render', $line);
+        $this->assertSame(' … › Widget › render ', $line);
         $this->assertNull($bar->lineAtColumn(2), 'the … is no crumb');
         $this->assertSame(self::trail()[1]['line'], $bar->lineAtColumn(5), 'Widget, where it is drawn now');
     }
@@ -288,10 +291,10 @@ final class BreadcrumbsWidgetTest extends TestCase
     {
         $bar = new BreadcrumbsWidget();
         $bar->setProvider(self::trail(...)); // App › Widget › render
-        $bar->render(new RenderContext(18, 1)); // ' … › render'
+        $bar->render(new RenderContext(18, 1)); // ' … › render '
 
         $lead = $bar->tooltipAt(0, 1);
-        $this->assertSame(['crumbs:lead', 'App › Widget', 1, 2], [$lead?->key, $lead?->text, $lead?->colStart, $lead?->colEnd]);
+        $this->assertSame(['crumbs:lead', 'App › Widget', 0, 3], [$lead?->key, $lead?->text, $lead?->colStart, $lead?->colEnd], 'the whole ` … ` pill');
         $this->assertNull($bar->tooltipAt(0, 6), 'render is drawn whole');
         $this->assertNull($bar->tooltipAt(1, 1), 'one row');
 
@@ -305,8 +308,8 @@ final class BreadcrumbsWidgetTest extends TestCase
         $bar = new BreadcrumbsWidget();
         $bar->setProvider(self::trail(...));
 
-        $this->assertSame(' App › Widget › render', AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(22, 1))[0]));
-        $this->assertSame(' … › Widget › render ', AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(21, 1))[0]));
+        $this->assertSame(' App › Widget › render ', AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(23, 1))[0]));
+        $this->assertSame(' … › Widget › render  ', AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(22, 1))[0]));
         // Widget alone would fit at 18; with the lead App's absence needs, it does not.
         $this->assertSame(' … › render       ', AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(18, 1))[0]));
     }
@@ -329,7 +332,7 @@ final class BreadcrumbsWidgetTest extends TestCase
         $line = AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(16, 1))[0]);
 
         $this->assertSame(16, \mb_strwidth($line));
-        $this->assertMatchesRegularExpression('/^ … › handl.*….*uest$/u', $line);
+        $this->assertMatchesRegularExpression('/^ … › hand.*….*uest $/u', $line);
     }
 
     public function testHoveringExactlyOnePastACrumbsWidthDoesNotHoverIt(): void
@@ -338,11 +341,11 @@ final class BreadcrumbsWidgetTest extends TestCase
         $bar->setProvider(static fn (): array => [['label' => 'App', 'line' => 0], ['label' => 'Widget', 'line' => 4]]);
         $bar->render(new RenderContext(80, 1));
 
-        // 'Widget' spans columns [7, 13) — col 13 is one past its last column.
-        $bar->hoverAt(13);
+        // The 'Widget' pill spans columns [6, 14) — col 14 is one past its last column.
+        $bar->hoverAt(14);
         $line = $bar->render(new RenderContext(80, 1))[0];
         $this->assertStringNotContainsString("\x1b[48;5;240m", $line, 'one column past the crumb is not on the crumb');
-        $this->assertNull($bar->lineAtColumn(13), 'crumbIndexAt must not treat the boundary column as inside the crumb');
+        $this->assertNull($bar->lineAtColumn(14), 'crumbIndexAt must not treat the boundary column as inside the crumb');
     }
 
     public function testSeparatorAdvancesTheColumnByItsFullThreeCharWidth(): void
@@ -351,10 +354,10 @@ final class BreadcrumbsWidgetTest extends TestCase
         $bar->setProvider(static fn (): array => [['label' => 'AB', 'line' => 0], ['label' => 'CD', 'line' => 1]]);
         $bar->render(new RenderContext(80, 1));
 
-        // 'AB' occupies cols [1,3); the separator ' › ' is exactly 3 cols wide,
-        // so 'CD' must start at col 6, not col 5.
-        $this->assertNull($bar->lineAtColumn(5), 'the last column of the separator is not a crumb');
-        $this->assertSame(1, $bar->lineAtColumn(6), 'the second crumb starts right after the full-width separator');
+        // The ' AB ' pill occupies cols [0,4) and the '›' col 4, so the ' CD '
+        // pill must start at col 5 — its label at 6, three columns after AB's.
+        $this->assertNull($bar->lineAtColumn(4), 'the separator is not a crumb');
+        $this->assertSame(1, $bar->lineAtColumn(5), 'the second crumb starts right after the separator');
     }
 
     public function testACrumbIsAsWideAsItIsDrawn(): void
@@ -365,8 +368,8 @@ final class BreadcrumbsWidgetTest extends TestCase
         $bar->setProvider(static fn (): array => [['label' => "Cafe\u{0301}", 'line' => 0], ['label' => 'Menu', 'line' => 1]]);
         $bar->render(new RenderContext(80, 1));
 
-        $this->assertNull($bar->lineAtColumn(7), 'the separator after a four-column crumb');
-        $this->assertSame(1, $bar->lineAtColumn(8), 'the next crumb starts where it is drawn');
+        $this->assertNull($bar->lineAtColumn(6), 'the separator after a four-column crumb');
+        $this->assertSame(1, $bar->lineAtColumn(7), 'the next crumb starts where it is drawn');
     }
 
     public function testARelabelUnderAStillPointerKeepsTheTint(): void
@@ -378,7 +381,7 @@ final class BreadcrumbsWidgetTest extends TestCase
         });
         $bar->beforeRender();
         $bar->render(new RenderContext(80, 1));
-        $bar->hoverAt(2); // over the first crumb 'App' (cols 1-3)
+        $bar->hoverAt(2); // over the first crumb's pill ' App ' (cols 0-4)
 
         // A relabel that keeps the same shape: the pointer still sits on the
         // first crumb, so its tint must stay without a fresh motion event.
@@ -387,5 +390,84 @@ final class BreadcrumbsWidgetTest extends TestCase
         $line = $bar->render(new RenderContext(80, 1))[0];
 
         $this->assertStringContainsString("\x1b[48;5;240m", $line, 'the first crumb stays tinted through a downstream relabel');
+    }
+
+    /** @return list<array{label: string, line: ?int, path?: ?string}> */
+    private static function pathTrail(): array
+    {
+        return [
+            ['label' => 'src', 'line' => null, 'path' => '/p/src'],
+            ['label' => 'Svc.php', 'line' => null, 'path' => '/p/src/Svc.php'],
+            ['label' => 'Svc', 'line' => 3, 'path' => null],
+        ];
+    }
+
+    public function testAPathCrumbRevealsItsPathAndAScopeCrumbJumps(): void
+    {
+        $bar = new BreadcrumbsWidget();
+        $bar->setProvider(self::pathTrail(...));
+        $bar->render(new RenderContext(80, 1)); // ' src › Svc.php › Svc ' — pills [0,5) [6,15) [16,21)
+
+        $this->assertSame('/p/src', $bar->pathAtColumn(2));
+        $this->assertNull($bar->lineAtColumn(2), 'a folder has no line to jump to');
+        $this->assertSame('/p/src/Svc.php', $bar->pathAtColumn(8));
+        $this->assertNull($bar->pathAtColumn(18), 'a scope reveals nothing');
+        $this->assertSame(3, $bar->lineAtColumn(18));
+        $this->assertNull($bar->pathAtColumn(5), 'the separator');
+    }
+
+    public function testTheFileCrumbKeepsABrightForegroundAtRest(): void
+    {
+        $bar = new BreadcrumbsWidget();
+        $bar->setProvider(self::pathTrail(...));
+
+        $line = $bar->render(new RenderContext(80, 1))[0];
+
+        // Emphasis (255) on the Toolbar strip (235): the seam between where
+        // the file is and where in it the caret is.
+        $this->assertStringContainsString("\x1b[38;5;255m\x1b[48;5;235m Svc.php ", $line);
+        $this->assertStringNotContainsString("\x1b[38;5;255m src ", $line, 'a folder is not the file');
+    }
+
+    public function testWithNoScopeTheFileIsTheCurrentCrumb(): void
+    {
+        $bar = new BreadcrumbsWidget();
+        $bar->setProvider(static fn (): array => \array_slice(self::pathTrail(), offset: 0, length: 2));
+
+        $line = $bar->render(new RenderContext(80, 1))[0];
+
+        $this->assertStringContainsString("\x1b[38;5;231m\x1b[48;5;238m\x1b[1m Svc.php ", $line, 'lit like the active tab');
+    }
+
+    /**
+     * A roomy screen rules the bar off from the editor; a compact one gives
+     * the row back. The rule is nobody's: only row 0 answers the pointer.
+     */
+    public function testARoomyScreenDrawsARuleUnderTheBar(): void
+    {
+        $density = new ScreenDensity();
+        $bar = new BreadcrumbsWidget(null, new Translator('en'), null, $density);
+        $bar->setProvider(self::trail(...));
+
+        $rows = $bar->render(new RenderContext(40, 2));
+        $this->assertCount(2, $rows);
+        $this->assertSame(\str_repeat('─', times: 40), AnsiUtils::stripAnsiCodes($rows[1]));
+        $this->assertNull($bar->tooltipAt(1, 1), 'the rule has no card');
+
+        $density->observe(24);
+        $bar->beforeRender();
+        $rev = $bar->getRenderRevision();
+        $this->assertCount(1, $bar->render(new RenderContext(40, 1)), 'compact: no rule');
+        $density->observe(40);
+        $bar->beforeRender();
+        $this->assertGreaterThan($rev, $bar->getRenderRevision(), 'a density flip repaints the bar');
+    }
+
+    public function testABareBarDrawsNoRule(): void
+    {
+        $bar = new BreadcrumbsWidget();
+        $bar->setProvider(self::trail(...));
+
+        $this->assertCount(1, $bar->render(new RenderContext(40, 2)), 'no screen to ask, no rule');
     }
 }

@@ -146,10 +146,6 @@
         <source>Indent style</source>
         <target>インデントスタイル</target>
       </trans-unit>
-      <trans-unit id="67">
-        <source>Keybindings — %count% actions · ⏎ to rebind</source>
-        <target>キーバインド — %count% 個のアクション · ⏎ で再割り当て</target>
-      </trans-unit>
       <trans-unit id="68">
         <source>LSP is set via --lsp; the settings change was not applied</source>
         <target>LSP は --lsp で設定されています。設定変更は適用されませんでした</target>
@@ -923,12 +919,12 @@
         <target>まだ何もコピーしていません</target>
       </trans-unit>
       <trans-unit id="829">
-        <source>Keybindings — %shown% of %count% · ⏎ to rebind</source>
-        <target>キーバインド — %count% 件中 %shown% 件 · ⏎ で再割り当て</target>
+        <source>%shown% of %count% · ⏎ to rebind</source>
+        <target>%count% 件中 %shown% 件 · ⏎ で再割り当て</target>
       </trans-unit>
       <trans-unit id="830">
-        <source>Keybindings — %count% actions · ⏎ to rebind · Ctrl+F to filter · Del to reset</source>
-        <target>キーバインド — %count% 件 · ⏎ で再割り当て · Ctrl+F で絞り込み · Del で既定に戻す</target>
+        <source>Ctrl+F to filter · ⏎ to rebind · Del to reset · %count% actions</source>
+        <target>Ctrl+F で絞り込み · ⏎ で再割り当て · Del で既定に戻す · %count% 件</target>
       </trans-unit>
       <trans-unit id="831">
         <source>No file open · press %key% to open a file</source>
@@ -3199,8 +3195,8 @@
         <target>デバッグアダプターが予期せず停止しました</target>
       </trans-unit>
       <trans-unit id="1120">
-        <source>Keybindings — %count% actions · ⏎ to rebind · Ctrl+F to filter · ⌫ to reset</source>
-        <target>キーバインド — %count% 件 · ⏎ で再割り当て · Ctrl+F で絞り込み · ⌫ で既定に戻す</target>
+        <source>Ctrl+F to filter · ⏎ to rebind · ⌫ to reset · %count% actions</source>
+        <target>Ctrl+F で絞り込み · ⏎ で再割り当て · ⌫ で既定に戻す · %count% 件</target>
       </trans-unit>
       <trans-unit id="1121">
         <source>Keymap</source>

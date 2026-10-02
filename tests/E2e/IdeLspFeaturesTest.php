@@ -1377,9 +1377,10 @@ final class IdeLspFeaturesTest extends TestCase
                     $tui->tick();
                     // Ctrl+Click the same word: editor pane starts at screen col 31
                     // (tree 30 + separator), gutter is 6 wide, so doc col ~3 of
-                    // line 1 (screen row 4, 1-based) is at 1-based col 41.
-                    $tui->handleInput("\x1b[<16;41;4M");
-                    $tui->handleInput("\x1b[<16;41;4m");
+                    // line 1 (screen row 5, 1-based, under the navigation bar)
+                    // is at 1-based col 41.
+                    $tui->handleInput("\x1b[<16;41;5M");
+                    $tui->handleInput("\x1b[<16;41;5m");
                 },
                 900 => function ($tui, $terminal, Ide $ide) use ($captureFile): void {
                     // The shim opener is an async subprocess: under load its

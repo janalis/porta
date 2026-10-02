@@ -118,15 +118,21 @@ final class IdeEditingTest extends TestCase
     {
         \putenv('PATH=/nonexistent');
         $code = "<?php\n\nnamespace App;\n\nclass Service\n{\n    public function handle(): void\n    {\n        \$x = 1;\n    }\n}\n";
-        $project = new TempProject(['Service.php' => $code]);
+        $project = new TempProject(['src/Service.php' => $code]);
+        $column = static function ($tui, string $label): int {
+            $plain = AnsiUtils::stripAnsiCodes(Paint::lines($tui->getById('breadcrumbs'), new RenderContext(120, 1))[0]);
+
+            return (int) \mb_strpos($plain, ' '.$label.' ', encoding: 'UTF-8') + 1;
+        };
 
         $this->runIde(
             $project,
-            $project->path('Service.php'),
+            $project->path('src/Service.php'),
             [
                 200 => function ($tui): void {
-                    // Caret at the very top is outside every scope → no bar.
-                    $this->assertSame([], Paint::lines($tui->getById('breadcrumbs'), new RenderContext(120, 1)));
+                    // Caret at the very top is outside every scope: the file is where you are.
+                    $plain = AnsiUtils::stripAnsiCodes(Paint::lines($tui->getById('breadcrumbs'), new RenderContext(120, 1))[0]);
+                    $this->assertSame(' src › Service.php ', \rtrim($plain).' ');
                     // Navigate into handle() with the keyboard (invalidates the editor → relayout).
                     for ($i = 0; $i < 8; ++$i) {
                         $tui->handleInput("\x1b[B"); // down to line 8 (the `$x` line)
@@ -134,19 +140,27 @@ final class IdeEditingTest extends TestCase
                 },
                 280 => function ($tui): void {
                     $plain = AnsiUtils::stripAnsiCodes(Paint::lines($tui->getById('breadcrumbs'), new RenderContext(120, 1))[0]);
-                    $this->assertStringContainsString('App › Service › handle', $plain, 'the scope path is shown');
+                    $this->assertStringContainsString('src › Service.php › App › Service › handle', $plain, 'the path, then the scope path');
                 },
-                340 => static function ($tui, $terminal, Ide $ide): void {
+                340 => static function ($tui, $terminal, Ide $ide) use ($column): void {
                     $tui->requestRender(force: true);
                     $tui->processRender();
                     $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('breadcrumbs'));
-                    // ' App'(1..3) › 'Service'(7..13) › 'handle'. Click 'Service' (col 8) →
-                    // jump to the class declaration (0-based line 4).
-                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + 8 + 1, $rect->row + 1));
+                    // Click 'Service' → jump to the class declaration (0-based line 4).
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + $column($tui, label: 'Service') + 1, $rect->row + 1));
                 },
-                420 => function ($tui): void {
+                420 => function ($tui, $terminal, Ide $ide) use ($column, $project): void {
                     $this->assertSame(4, $tui->getById('editor')->getDocument()->cursorLine, 'clicking the Service crumb jumped to the class declaration');
+                    $renderer = Services::resolve($ide, Renderer::class);
+                    $rect = $renderer->getWidgetRect($tui->getById('breadcrumbs'));
+                    // The bar's empty tail is no crumb: the press falls through.
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + $rect->columns - 2, $rect->row + 1));
+                    $this->assertSame(4, $tui->getById('editor')->getDocument()->cursorLine, 'past the trail, nothing moves');
+                    // Click 'src' → the folder is revealed and selected in the tree.
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + $column($tui, label: 'src') + 1, $rect->row + 1));
+                    $this->assertSame($project->path('src'), $tui->getById('tree')->selectedNode()?->path, 'a folder crumb reveals its folder');
+                    $this->assertSame(4, $tui->getById('editor')->getDocument()->cursorLine, 'and moves no caret');
                 },
             ],
         );

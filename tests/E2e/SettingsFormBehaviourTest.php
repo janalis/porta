@@ -78,7 +78,7 @@ final class SettingsFormBehaviourTest extends TestCase
                     $this->assertStringContainsString('┃ duplicate ', $screen);
                     $this->assertStringContainsString('Duplicate Line', $screen, 'the action it was typed for');
                     $this->assertStringNotContainsString('Move Caret Up', $screen, 'and not the 186 it was not');
-                    $this->assertMatchesRegularExpression('/Keybindings — \d+ of \d+/', $screen, 'the header counts what is left');
+                    $this->assertMatchesRegularExpression('/Settings › Keybindings +\d+ of \d+/', $screen, 'the header counts what is left');
                 },
             ],
         );

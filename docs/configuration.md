@@ -147,7 +147,7 @@ catalog validation and bind if the plugin loads.
 | `inlayHints` | `"inline"` | Where the language server's inlay hints (parameter names, types, reference counts) show: `none` (not requested at all), `inline` (dim text in the line) or `tooltip` (a card when the pointer rests on the word) |
 | `lineNumbers` | `"absolute"` | Gutter numbering: `off`, `absolute` or `relative`. Replaces `relativeLineNumbers`, which still loads and is retired the first time this one is written |
 | `autoPairs` | `true` | Auto-closing brackets and quotes |
-| `breadcrumbs` | `true` | The scope path bar above the editor. Off, a previewed file (Markdown, SVG, a diagram) still shows its `Editor` / `Split` / `Preview` toggles on that row |
+| `breadcrumbs` | `true` | The navigation bar above the editor: the file's path, then the scopes around the caret. Off, a previewed file (Markdown, SVG, a diagram) still shows its `Editor` / `Split` / `Preview` toggles on that row |
 | `stickyScroll` | `true` | Pin the enclosing scope headers to the top while scrolling |
 | `indentGuides` | `true` | Vertical rules at each indent level |
 | `methodSeparators` | `false` | A rule between members of a class |
@@ -251,8 +251,11 @@ map, and wins over `PORTA_LSP`.
 ## The Settings view (`Ctrl+,`)
 
 A window over the editor — movable, resizable, closed by Esc — with a resizable sidebar: **General**, **Interface**,
-**Highlighting**, **Keybindings**, **Command line**, **Plugins**, and one
-section per language.
+**Highlighting**, **Keybindings**, **Command line**, then a **Plugins** folder
+with a page per installed plugin and a **Languages** folder with a page per
+language. The folders open and close as the file tree's do (`←`, `→`, `Enter`
+or a click). Each page's header is its trail — `Settings › Plugins › git` —
+and a click on `Settings` or `Plugins` goes to that page.
 
 - **General** — the `settings` table above, edited live (theme and language
   switch immediately, including a full RTL re-layout for Hebrew).

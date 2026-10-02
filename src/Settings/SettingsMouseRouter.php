@@ -77,7 +77,7 @@ final readonly class SettingsMouseRouter implements ViewPointer
         }
         if (null !== ($rel = $this->hit->hit($this->keys, $mouse->row, $mouse->col))) {
             $this->tui->setFocus($this->keys);
-            $this->keys->handleClick($rel['row']);
+            $this->keys->handleClick($rel['row'], $rel['col']);
             $this->tui->requestRender();
 
             return true;
@@ -103,8 +103,20 @@ final readonly class SettingsMouseRouter implements ViewPointer
     #[\Override]
     public function hover(MouseEvent $mouse): void
     {
-        if ($this->hit->hover($mouse->row, $mouse->col, $this->nav, $this->form, $this->keys)) {
+        $rows = $this->hit->hover($mouse->row, $mouse->col, $this->nav, $this->form, $this->keys);
+        // The pages' title rows are trails whose links tint by column.
+        $formTitle = $this->form->hoverCrumb($this->titleColumn($this->form, $mouse));
+        $keysTitle = $this->keys->hoverCrumb($this->titleColumn($this->keys, $mouse));
+        if ($rows || $formTitle || $keysTitle) {
             $this->tui->requestRender();
         }
+    }
+
+    /** The pointer's column on $page's title row, or null when it is not on that row. */
+    private function titleColumn(SettingsFormWidget|KeybindingsListWidget $page, MouseEvent $mouse): ?int
+    {
+        $rel = $this->hit->hit($page, $mouse->row, $mouse->col);
+
+        return null !== $rel && 0 === $rel['row'] ? $rel['col'] : null;
     }
 }

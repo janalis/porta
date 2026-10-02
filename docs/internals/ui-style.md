@@ -261,12 +261,28 @@ settings form has none: column 0 is its modified marker, and its selection is
 the heavy control. The Welcome cards wear the full bar down every row of the
 selected card.
 
-The settings nav's headings are legends set into a rule (`Rule::horizontal`
-with a legend, the form's own). Its `▲`/`▼` edges (`EdgeIndicator`, shared with the vertical
+The settings nav is a tree in the file tree's shape: Plugins and Languages are
+folders, their rows drawn by `Widget/Render/TreeRow` (shared with the tree, so
+a folder looks and opens the same in both) and tinted `TabAccent`. On a roomy
+screen a `Rule` runs between every two rows; the rules own no row, so a click
+or hover on one does nothing. Its `▲`/`▼` edges (`EdgeIndicator`, shared with the vertical
 tab strip) are controls: a click selects the first entry hidden past that edge.
-The breadcrumbs bar is laid out from the right: ancestors drop behind one
-`… › `, and the current scope is middle-elided only when it is alone and still
-too wide.
+
+## Trails: the navigation bar and the settings headers
+
+The editor's navigation bar (`BreadcrumbsWidget`) and every settings page's
+title row (`Widget/Settings/CrumbHeader`) are one control,
+`Widget/Render/CrumbBar`: crumbs as ` label ` pills joined by a dim `›`, shaded
+by `BarChromeStyle` — the current crumb lit like the active tab, the hovered one
+on the tab hover shade with its label underlined. The pill's padding is part of
+its hit zone, as a tab's whole shape is. A trail is laid out from the right:
+crumbs drop from the root end behind one ` … ›`, and the current crumb is
+middle-elided only when it is alone and still too wide. A right-hand suffix (the
+preview toggles, a page's count or key hints) shares the row; in the settings
+headers the hint is what gives way, never the trail. A rule follows the row:
+under the editor's bar only on a roomy screen (counted by
+`LayoutController::chromeRows()`), under a settings header always, in place of
+the blank row it had.
 
 ## Sizing one: measure every row you draw
 

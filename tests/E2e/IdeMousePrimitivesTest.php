@@ -128,10 +128,11 @@ final class IdeMousePrimitivesTest extends TestCase
                 // Editor click: place the cursor on a lower line.
                 300 => function (Tui $tui): void {
                     $this->frame($tui); // a real frame, so widget rects exist
-                    // Menu bar owns row 0, tab bar row 1, so the editor content
-                    // starts at screen row 2; a click at screen row 4 lands on
-                    // document line 2 (col 45 -> past the gutter).
-                    $tui->handleInput("\x1b[<0;45;5M");
+                    // Menu bar owns row 0, tab bar row 1, the navigation bar
+                    // row 2, so the editor content starts at screen row 3; a
+                    // click at screen row 5 lands on document line 2 (col 45
+                    // -> past the gutter).
+                    $tui->handleInput("\x1b[<0;45;6M");
                 },
                 400 => function ($tui): void {
                     $editor = $tui->getById('editor');
@@ -139,15 +140,15 @@ final class IdeMousePrimitivesTest extends TestCase
                     $this->assertSame(2, $editor->getDocument()->cursorLine, 'click moved cursor');
                     // Horizontal wheel over the editor slides the view without
                     // moving the caret; shift+wheel-up brings it back.
-                    $tui->handleInput("\x1b[<67;45;6M");
+                    $tui->handleInput("\x1b[<67;45;7M");
                     $scroll = EditorState::scroll($editor);
                     $this->assertSame(6, $scroll->hScroll, 'wheel-right scrolled the editor sideways');
                     $this->assertSame(2, $editor->getDocument()->cursorLine, 'the caret stayed put');
-                    $tui->handleInput("\x1b[<68;45;6M");
+                    $tui->handleInput("\x1b[<68;45;7M");
                     $this->assertSame(0, $scroll->hScroll, 'shift+wheel-up scrolled back');
                     // Wheel down over the editor scrolls the viewport.
-                    $tui->handleInput("\x1b[<65;45;6M");
-                    $tui->handleInput("\x1b[<65;45;6M");
+                    $tui->handleInput("\x1b[<65;45;7M");
+                    $tui->handleInput("\x1b[<65;45;7M");
                 },
                 500 => function ($tui): void {
                     // After two wheel-down steps (6 lines) the top visible line is
@@ -323,9 +324,9 @@ final class IdeMousePrimitivesTest extends TestCase
             [
                 300 => static function ($tui): void {
                     $tui->tick();
-                    $tui->handleInput("\x1b[<0;39;3M"); // press at line 0, col 0
-                    $tui->handleInput("\x1b[<32;44;3M"); // drag to col 5
-                    $tui->handleInput("\x1b[<0;44;3m"); // release
+                    $tui->handleInput("\x1b[<0;39;4M"); // press at line 0, col 0
+                    $tui->handleInput("\x1b[<32;44;4M"); // drag to col 5
+                    $tui->handleInput("\x1b[<0;44;4m"); // release
                 },
                 400 => function ($tui): void {
                     $this->assertSame('hello', $tui->getById('editor')->getDocument()->getSelectedText());
@@ -347,9 +348,9 @@ final class IdeMousePrimitivesTest extends TestCase
             [
                 300 => static function ($tui): void {
                     $tui->tick();
-                    $tui->handleInput("\x1b[<0;40;3M"); // line 0, col 1
-                    $tui->handleInput("\x1b[<32;40;5M"); // drag down to line 2, col 1
-                    $tui->handleInput("\x1b[<0;40;5m");
+                    $tui->handleInput("\x1b[<0;40;4M"); // line 0, col 1
+                    $tui->handleInput("\x1b[<32;40;6M"); // drag down to line 2, col 1
+                    $tui->handleInput("\x1b[<0;40;6m");
                 },
                 400 => function ($tui): void {
                     $this->assertSame("bc\ndef\ng", $tui->getById('editor')->getDocument()->getSelectedText());
@@ -371,8 +372,8 @@ final class IdeMousePrimitivesTest extends TestCase
             [
                 300 => static function ($tui): void {
                     $tui->tick();
-                    $tui->handleInput("\x1b[<0;41;3M"); // press inside "hello"
-                    $tui->handleInput("\x1b[<0;41;3M"); // second press same cell -> word
+                    $tui->handleInput("\x1b[<0;41;4M"); // press inside "hello"
+                    $tui->handleInput("\x1b[<0;41;4M"); // second press same cell -> word
                 },
                 400 => function ($tui): void {
                     $this->assertSame('hello', $tui->getById('editor')->getDocument()->getSelectedText());
@@ -394,9 +395,9 @@ final class IdeMousePrimitivesTest extends TestCase
             [
                 300 => static function ($tui): void {
                     $tui->tick();
-                    $tui->handleInput("\x1b[<0;43;3M");
-                    $tui->handleInput("\x1b[<0;43;3M");
-                    $tui->handleInput("\x1b[<0;43;3M"); // third press -> whole line
+                    $tui->handleInput("\x1b[<0;43;4M");
+                    $tui->handleInput("\x1b[<0;43;4M");
+                    $tui->handleInput("\x1b[<0;43;4M"); // third press -> whole line
                 },
                 400 => function ($tui): void {
                     $this->assertSame('hello world', $tui->getById('editor')->getDocument()->getSelectedText());
@@ -418,8 +419,8 @@ final class IdeMousePrimitivesTest extends TestCase
             [
                 300 => static function ($tui): void {
                     $tui->tick();
-                    $tui->handleInput("\x1b[<0;39;3M"); // plain click -> caret at col 0
-                    $tui->handleInput("\x1b[<4;44;3M"); // Shift+click at col 5 -> extend
+                    $tui->handleInput("\x1b[<0;39;4M"); // plain click -> caret at col 0
+                    $tui->handleInput("\x1b[<4;44;4M"); // Shift+click at col 5 -> extend
                 },
                 400 => function ($tui): void {
                     $this->assertSame('hello', $tui->getById('editor')->getDocument()->getSelectedText());
@@ -463,9 +464,9 @@ final class IdeMousePrimitivesTest extends TestCase
             [
                 300 => function ($tui): void {
                     $tui->tick();
-                    $tui->handleInput("\x1b[<8;40;4M"); // Alt+Click adds a caret
+                    $tui->handleInput("\x1b[<8;40;5M"); // Alt+Click adds a caret
                     $this->assertTrue(EditorState::multiCaret($tui->getById('editor'))->hasMultiple());
-                    $tui->handleInput("\x1b[<0;39;3M"); // plain click collapses to one caret
+                    $tui->handleInput("\x1b[<0;39;4M"); // plain click collapses to one caret
                     $this->assertFalse(EditorState::multiCaret($tui->getById('editor'))->hasMultiple());
                 },
             ],
@@ -485,11 +486,11 @@ final class IdeMousePrimitivesTest extends TestCase
             [
                 300 => function ($tui): void {
                     $tui->tick();
-                    // Editor content starts at screen col 37 (SGR 38), row 2 (SGR 3);
+                    // Editor content starts at screen col 37 (SGR 38), row 3 (SGR 4) under the navigation bar;
                     // display col C is SGR 38+C. Alt+Shift (12) drag (44) release.
-                    $tui->handleInput("\x1b[<12;40;3M"); // press line 0, display col 1
-                    $tui->handleInput("\x1b[<44;42;5M"); // drag to line 2, display col 3
-                    $tui->handleInput("\x1b[<0;42;5m"); // release
+                    $tui->handleInput("\x1b[<12;40;4M"); // press line 0, display col 1
+                    $tui->handleInput("\x1b[<44;42;6M"); // drag to line 2, display col 3
+                    $tui->handleInput("\x1b[<0;42;6m"); // release
                     $this->assertTrue(EditorState::multiCaret($tui->getById('editor'))->hasMultiple(), 'rectangle spans 3 lines');
                     $tui->handleInput('X'); // type at every caret
                 },
@@ -709,8 +710,8 @@ final class IdeMousePrimitivesTest extends TestCase
                     $this->assertFalse($editor->changeMarkAt(0, 0), 'not on an unmarked one');
                     $this->assertFalse($editor->changeMarkAt(1, 1), 'nor in another column');
                     $tui->tick();
-                    $tui->handleInput("\x1b[<0;32;4M"); // the strip, line 1
-                    $tui->handleInput("\x1b[<0;32;4m");
+                    $tui->handleInput("\x1b[<0;32;5M"); // the strip, line 1
+                    $tui->handleInput("\x1b[<0;32;5m");
                 },
                 400 => function ($tui): void {
                     $this->assertSame([1], $tui->getById('editor')->decorations->breakpointLines, 'no git plugin: a breakpoint');
@@ -737,8 +738,8 @@ final class IdeMousePrimitivesTest extends TestCase
                     });
                     $editor->decorations->setVcsMarks([1 => ChangeMarkKind::Modified]);
                     $tui->tick();
-                    $tui->handleInput("\x1b[<0;32;4M"); // the strip, line 1
-                    $tui->handleInput("\x1b[<0;32;4m");
+                    $tui->handleInput("\x1b[<0;32;5M"); // the strip, line 1
+                    $tui->handleInput("\x1b[<0;32;5m");
                 },
                 400 => function ($tui) use (&$shownFrom): void {
                     $this->assertSame([1], $shownFrom, 'the change viewer ran, with the caret on the clicked line');
@@ -763,7 +764,7 @@ final class IdeMousePrimitivesTest extends TestCase
                     $editor->decorations->setBreakpointLines([1]);
                     $editor->decorations->setVcsMarks([0 => ChangeMarkKind::Modified]);
                     $tui->tick();
-                    $tui->handleInput("\x1b[<35;36;4M"); // the marker column, line 1
+                    $tui->handleInput("\x1b[<35;36;5M"); // the marker column, line 1
                 },
                 400 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $editor = $tui->getById('editor');
@@ -773,7 +774,7 @@ final class IdeMousePrimitivesTest extends TestCase
                     $this->assertStringNotContainsString('Breakpoint', AnsiUtils::stripAnsiCodes(\implode('', Paint::lines($tui->getById('status'), new RenderContext(160, 1)))));
                     $this->assertStringContainsString("\x1b[4m", \implode("\n", Paint::lines($editor, new RenderContext(80, 10))), 'the mark underlined');
                     $terminal->clearOutput();
-                    $tui->handleInput("\x1b[<35;32;3M"); // the change strip, line 0
+                    $tui->handleInput("\x1b[<35;32;4M"); // the change strip, line 0
                 },
                 500 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $editor = $tui->getById('editor');
@@ -781,11 +782,11 @@ final class IdeMousePrimitivesTest extends TestCase
                     // A card was just up, so the next one follows at once.
                     $this->awaitPainted($tui, $terminal, 'Modified');
                     $this->assertStringNotContainsString('click to see', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'no git plugin: no "click to see"');
-                    $tui->handleInput("\x1b[<35;60;3M"); // the code
+                    $tui->handleInput("\x1b[<35;60;4M"); // the code
                 },
                 600 => function ($tui): void {
                     $this->assertNull($tui->getById('editor')->decorations->gutterHover, 'off the marks: nothing pointed');
-                    $tui->handleInput("\x1b[<35;34;4M"); // the number column, line 1: no mark of its own
+                    $tui->handleInput("\x1b[<35;34;5M"); // the number column, line 1: no mark of its own
                 },
                 700 => function ($tui): void {
                     $this->assertNull($tui->getById('editor')->decorations->gutterHover, 'a number is not a mark');
@@ -813,7 +814,7 @@ final class IdeMousePrimitivesTest extends TestCase
                     $rows = Paint::lines($editor, new RenderContext(129, 22));
                     $row = \array_key_first(\array_filter($rows, static fn (string $r): bool => \str_ends_with(\rtrim(AnsiUtils::stripAnsiCodes($r)), '◈')));
                     $this->assertNotNull($row, 'the bookmark is on the stripe');
-                    $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", 31 + 129, 3 + $row)); // the stripe's column, that row
+                    $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", 31 + 129, 4 + $row)); // the stripe's column, that row
                 },
                 500 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $editor = $tui->getById('editor');

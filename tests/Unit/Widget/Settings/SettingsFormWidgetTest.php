@@ -1367,4 +1367,30 @@ final class SettingsFormWidgetTest extends TestCase
         $this->assertStringNotContainsString("\u{200E}", $mirrored, 'no mark reaches the terminal');
         $this->assertSame(58, AnsiUtils::visibleWidth($mirrored), 'and the row still fills its pane');
     }
+
+    /** The title row is the page's trail: a crumb naming another page tints under the pointer and goes there. */
+    public function testTheTitleTrailsLinksTintAndLeadToTheirPages(): void
+    {
+        $opened = [];
+        $widget = new SettingsFormWidget(new Translator('en'));
+        $widget->onCrumb(static function (string $id) use (&$opened): void {
+            $opened[] = $id;
+        });
+        $widget->setRows([new SettingsRow('sticky', 'Sticky scroll', SettingsRowKind::Bool, false, false)], [
+            ['label' => 'Settings', 'id' => 'general'],
+            ['label' => 'Interface', 'id' => 'interface'],
+        ]);
+        $title = AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(60, 10))[0]);
+        $this->assertSame(' Settings › Interface'.\str_repeat(' ', times: 29).'1 setting ', $title);
+
+        $before = $widget->getRenderRevision();
+        $this->assertTrue($widget->hoverCrumb(3), 'Settings is a link');
+        $this->assertGreaterThan($before, $widget->getRenderRevision(), 'and its tint repaints the row');
+        $this->assertStringContainsString("\x1b[48;5;240m", $widget->render(new RenderContext(60, 10))[0]);
+        $this->assertTrue($widget->hoverCrumb(14), 'off the link onto the page shown: the tint goes');
+        $this->assertFalse($widget->hoverCrumb(15), 'still no link');
+
+        $widget->handleClick(0, 3);
+        $this->assertSame(['general'], $opened);
+    }
 }

@@ -30,7 +30,6 @@ use Porta\Widget\PaneNavigationCallbacks;
 use Porta\Widget\Render\FieldBox;
 use Porta\Widget\Render\FieldSpec;
 use Porta\Widget\Render\FieldState;
-use Porta\Widget\Render\HeaderRenderer;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Porta\Widget\Render\Rule;
@@ -90,6 +89,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
     ) {
         $this->initStyles($styles);
         $this->list = new ListSelection();
+        $this->header = new CrumbHeader();
         $this->addStyleClass('list'); // the theme's .list::selected(:focus) rules style the selection
     }
 
@@ -125,8 +125,8 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
 
     /** The width the last render drew at: a tooltip spans the whole row. */
     private int $drawnWidth = 0;
-    /** The page title, shown in the header row. */
-    private string $title = '';
+    /** The page's trail, drawn as the title row. */
+    private readonly CrumbHeader $header;
     /** The row index whose text field is being edited inline, or null. */
     private ?int $editing = null;
     private ?TextField $editField = null;
@@ -176,14 +176,33 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
     }
 
     /**
-     * Replace the rows, clamping the selection into range.
+     * A crumb of the title row that names another page was clicked: the
+     * callback gets that page's id.
      *
-     * @param list<SettingsRow> $rows
+     * @param callable(string): void $callback
      */
-    public function setRows(array $rows, string $title = ''): void
+    public function onCrumb(callable $callback): self
+    {
+        $this->header->onCrumb($callback);
+
+        return $this;
+    }
+
+    /**
+     * Replace the rows, clamping the selection into range. The title is the
+     * page's trail, root first — or one plain name, a trail of itself.
+     *
+     * @param list<SettingsRow>                                $rows
+     * @param list<array{label: string, id: ?string}>|string $title
+     */
+    public function setRows(array $rows, array|string $title = ''): void
     {
         $this->rows = $rows;
-        $this->title = $title;
+        $this->header->set(match (true) {
+            \is_array($title) => $title,
+            '' === $title => [],
+            default => [['label' => $title, 'id' => null]],
+        });
         $this->list->clamp(\count($rows));
         $this->editing = null;
         $this->invalidate();
@@ -289,6 +308,17 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         return $this->setHovered($this->rowOwner[$relRow] ?? null);
     }
 
+    /** Tint the link crumb at column $col of the title row, or none (null); returns whether that changed. */
+    public function hoverCrumb(?int $col): bool
+    {
+        if (!$this->header->hover($col)) {
+            return false;
+        }
+        $this->invalidate();
+
+        return true;
+    }
+
     /**
      * A click SELECTS the item; a click on the already-selected item actuates
      * it — on its label as well as its control, the way an HTML <label>
@@ -308,13 +338,19 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
      * browser's `<label>` toggles on the first click; making it wait read as
      * a dead control.
      *
-     * Rows the render drew nothing on — the title and its blank row, a legend
+     * Rows the render drew nothing on — the rule under the title, a legend
      * and its margins, the padding, the footer — are nobody's: {@see $rowOwner} is what was drawn, not the list
      * arithmetic, which is how a click on the footer once selected the setting
-     * BELOW the window.
+     * BELOW the window. The title row is the page's trail, where a crumb
+     * naming another page goes there.
      */
     public function handleClick(int $relRow, int $relCol): void
     {
+        if (0 === $relRow) {
+            $this->header->click($relCol);
+
+            return;
+        }
         $index = $this->rowOwner[$relRow] ?? null;
         if (null === $index) {
             return;
@@ -475,22 +511,24 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         if ($rows <= 0) {
             return []; // no pane, no lines — never more than the allotted rows
         }
-        // The window the items get: the pane less the title, the blank row
-        // under it and the footer.
+        // The window the items get: the pane less the title, the rule under
+        // it and the footer.
         $window = \max(1, $rows - 3);
         $layout = SettingsRowLayout::measure($this->rows, $width, $this->density->current(), $this->direction());
         $scroll = $this->list->followHeights($layout->heights, $window);
         $this->lastPage = $this->list->countFitting($layout->heights, $scroll, $window);
 
-        // The page title is a heading too, with a blank row under it; it opens
-        // the pane, so it needs none above.
-        $lines = [HeaderRenderer::title($this->titleLine(), $width, $this->styles), AnsiText::blank($width)];
+        // The title row is the page's trail with its count at the right, and
+        // the rule under it closes it off, as under the editor's bar; it opens
+        // the pane, so it needs nothing above.
+        $count = $this->translator->trans('%count% setting|%count% settings', ['%count%' => \count($this->rows)]);
+        $lines = [$this->header->render($width, $this->styles, $count), Rule::horizontal($width, $this->styles)];
         $this->rowOwner = [null, null];
         $this->controls = [];
         $this->tips = [];
         $this->drawnWidth = $width;
-        // The title and its blank row, then the window: the footer's row is
-        // the first past it.
+        // The title and its rule, then the window: the footer's row is the
+        // first past it.
         $footer = 2 + $window;
         for ($i = $scroll; $i < \count($this->rows) && \count($lines) < $footer; ++$i) {
             foreach ($this->item($i, $layout, $width, \count($lines)) as [$line, $owner]) {
@@ -763,14 +801,6 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         $caption = (string) $row->value;
 
         return '' === $caption ? $row->label : $caption;
-    }
-
-    /** `<page> — N settings`, or just the count before a page has named itself. */
-    private function titleLine(): string
-    {
-        $count = $this->translator->trans('%count% setting|%count% settings', ['%count%' => \count($this->rows)]);
-
-        return '' === $this->title ? $count : $this->title.' — '.$count;
     }
 
     /**

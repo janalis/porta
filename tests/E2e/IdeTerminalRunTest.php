@@ -51,7 +51,7 @@ final class IdeTerminalRunTest extends TestCase
                     $tui->handleInput("\x1b[96;5u"); // ctrl+` opens the terminal (and focuses it)
                     $this->assertSame('terminal', $tui->getFocus()?->getId());
                     // Click into the editor: focus leaves the terminal.
-                    $tui->handleInput("\x1b[<0;40;3M");
+                    $tui->handleInput("\x1b[<0;40;4M"); // under the navigation bar
                     $this->assertSame('editor', $tui->getFocus()?->getId(), 'clicking the editor moved focus off the terminal');
                 },
                 360 => function (Tui $tui, $terminal, Ide $ide): void {

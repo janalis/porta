@@ -6,9 +6,11 @@ namespace Porta\Tests\Unit\Editor;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\BreadcrumbTrailProvider;
+use Porta\Editor\BufferManager;
 use Porta\Editor\CodeScopeKind;
 use Porta\Editor\Document;
 use Porta\Lsp\DocumentScopes;
+use Porta\Support\ProjectPaths;
 use Porta\Widget\CodeEditorWidget;
 
 /**
@@ -22,6 +24,7 @@ final class BreadcrumbTrailProviderTest extends TestCase
 {
     private CodeEditorWidget $editor;
     private DocumentScopes $scopes;
+    private BufferManager $buffers;
 
     private function provider(): BreadcrumbTrailProvider
     {
@@ -29,7 +32,9 @@ final class BreadcrumbTrailProviderTest extends TestCase
         // The widget chooses the scope source now, so the store goes to IT.
         $this->editor = new CodeEditorWidget(documentScopes: $this->scopes);
 
-        return new BreadcrumbTrailProvider($this->editor);
+        $this->buffers = new BufferManager();
+
+        return new BreadcrumbTrailProvider($this->editor, $this->buffers, new ProjectPaths('/p'));
     }
 
     public function testATypescriptBufferGetsATrailFromTheServersSymbols(): void
@@ -74,5 +79,43 @@ final class BreadcrumbTrailProviderTest extends TestCase
     public function testNoOpenFileHasNoTrail(): void
     {
         $this->assertSame([], $this->provider()->trail());
+    }
+
+    /**
+     * The trail starts where the file is: a crumb per folder from the
+     * project root down, then the file, each carrying the path a click
+     * reveals — then the scopes, as before.
+     */
+    public function testTheActiveFilesPathLeadsTheTrail(): void
+    {
+        $provider = $this->provider();
+        $this->buffers->open('/p/src/Http/Svc.php', '');
+
+        $this->assertSame(
+            [
+                ['label' => 'src', 'line' => null, 'path' => '/p/src'],
+                ['label' => 'Http', 'line' => null, 'path' => '/p/src/Http'],
+                ['label' => 'Svc.php', 'line' => null, 'path' => '/p/src/Http/Svc.php'],
+            ],
+            $provider->trail(),
+        );
+    }
+
+    public function testAFileOutsideTheProjectIsItsNameAlone(): void
+    {
+        $provider = $this->provider();
+        $this->buffers->open('/elsewhere/lib/Note.md', '');
+
+        $this->assertSame([['label' => 'Note.md', 'line' => null, 'path' => '/elsewhere/lib/Note.md']], $provider->trail());
+    }
+
+    public function testAViewerTabOrATitledBufferHasNoPath(): void
+    {
+        $provider = $this->provider();
+        $this->buffers->openPane('/p/logo.png', 'image', null);
+        $this->assertSame([], $provider->trail(), 'a viewer tab');
+
+        $this->buffers->open('/p/graph.svg', '')->title = 'Project Architecture';
+        $this->assertSame([], $provider->trail(), 'a titled buffer names no file the tree holds');
     }
 }

@@ -112,10 +112,13 @@ final class IdeAppMenuTest extends TestCase
                 },
                 300 => function (Tui $tui): void {
                     $this->assertTrue($tui->getById('menu')->isOpen());
-                    // The compact (24-row) bar is one row, and Edit's first
-                    // item, Undo, lands on it.
+                    // The compact (24-row) bar is one row; Edit's first item,
+                    // Undo, lands on the navigation bar under it, and the
+                    // next one on the find bar.
+                    $crumbs = AnsiUtils::stripAnsiCodes(Paint::lines($tui->getById('breadcrumbs'), new RenderContext(129, 1))[0]);
+                    $this->assertStringContainsString('Ctrl+Z', $crumbs, 'the dropdown composites over the navigation bar');
                     $row = AnsiUtils::stripAnsiCodes(Paint::lines($tui->getById('find-bar'), new RenderContext(129, 1))[0]);
-                    $this->assertStringContainsString('Ctrl+Z', $row, 'the dropdown composites over the find bar');
+                    $this->assertStringContainsString('Ctrl+', $row, 'and over the find bar');
                     $this->assertStringNotContainsString('Find', $row, 'and hides the field label it covers');
                 },
             ],
