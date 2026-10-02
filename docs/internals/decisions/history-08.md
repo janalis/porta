@@ -256,3 +256,15 @@ Weighed and left alone:
   injected into. Each reads it once per session (the tool base memoizes), so
   one session cannot disagree with itself.
 
+**`TunnelTest`'s catch-up was never load.** `testReadingWaitsWhileTheSessionIsBehind`
+kept aborting at the 10 s limit, 2 in 5 runs alone at load ~10. A trace showed
+every read returning exactly 8192 bytes: a non-blocking `fread` hands back one
+chunk however much it is asked for, and the await read once a turn — about
+1000 turns for the ~8 MB queue the 6x fix had made. That fix had made the
+abort likelier, not rarer. It now reads until the socket is empty each turn,
+and runs in ~1.2 s. `TalksAssist::drain()` reads the same way and was left
+alone: its inbox is shared by every peer a test swaps between, and draining
+eagerly moved one guest's messages into another's
+(`HostServersE2eTest` failed at once). Making that helper read eagerly needs a
+per-peer inbox first.
+
