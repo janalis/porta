@@ -901,8 +901,7 @@ final class CodeEditorWidget extends AbstractWidget implements
             // Bracketed paste: buffer chunks between ESC[200~ / ESC[201~
             $pastedText = $this->processBracketedPaste($data);
             if (null !== $pastedText) {
-                $this->document->insert($pastedText);
-                $this->notifyChange();
+                $this->actions->pasteFromTerminal($pastedText);
                 if ('' === $data) {
                     return;
                 }

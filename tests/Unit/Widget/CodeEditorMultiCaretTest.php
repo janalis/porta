@@ -573,6 +573,28 @@ final class CodeEditorMultiCaretTest extends TestCase
         $this->assertFalse($editor->getDocument()->hasSelection(), 'the primary selection is cleared too, not just the extras');
     }
 
+    /**
+     * The terminal's own paste — Cmd+V on a Mac — arrives as a bracketed
+     * paste, not as the paste key, and used to go straight into the document
+     * at the primary caret: three lines across three carets made nine lines
+     * at one of them. It lands where Ctrl+V would now.
+     */
+    public function testATerminalPasteGivesEachCaretItsOwnLine(): void
+    {
+        $editor = $this->editor("a\nb\nc\n");
+        $editor->getDocument()->setCursor(0, 1);
+        $editor->handleInput("\x1b[1;7B");
+        $editor->handleInput("\x1b[1;7B"); // three carets, one per line end
+
+        $editor->handleInput("\x1b[200~1\n2\n3\x1b[201~");
+
+        $this->assertSame("a1\nb2\nc3\n", $editor->getDocument()->getText());
+        $editor->handleInput("\x1b");
+        $editor->getDocument()->setCursor(3, 0);
+        $editor->handleInput("\x16"); // ctrl+v
+        $this->assertSame("a1\nb2\nc3\n1\n2\n3", $editor->getDocument()->getText(), 'the paste joined the clipboard, so Ctrl+V repeats it');
+    }
+
     public function testPasteInsertsTheExactClipboardTextAtEveryCaret(): void
     {
         $editor = $this->editor("a\na\n");

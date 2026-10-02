@@ -605,6 +605,19 @@ final readonly class EditorActions
     }
 
     /**
+     * A paste the TERMINAL made — a bracketed paste of the system clipboard,
+     * which is what Cmd+V is on a Mac and the terminal's own paste key
+     * everywhere else. It lands where `Ctrl+V` would, one line per caret
+     * included, and joins the clipboard ring, so `Ctrl+V` repeats it and the
+     * paste history lists it.
+     */
+    public function pasteFromTerminal(string $text): void
+    {
+        $this->clipboard->push($text);
+        $this->pasteText($text);
+    }
+
+    /**
      * PhpStorm's `Ctrl+Shift+V`: paste something you copied EARLIER.
      *
      * Newlines are shown as `⏎` rather than the entry being cut to its first

@@ -149,7 +149,8 @@ reload automatically within a second.
 - **Block copy and paste round-trip**: a column selection copies as one line
   per row, and pasting a block whose line count matches the caret count gives
   each caret its own line, top to bottom. A clipboard that does not match is
-  repeated whole at every caret, as before.
+  repeated whole at every caret, as before. The terminal's own paste (`Cmd+V`
+  on a Mac, `Ctrl+Shift+V` in most Linux terminals) lands the same way.
 - **Auto-closing brackets & quotes**: typing an opener inserts its pair,
   selections get wrapped, closers type over, and backspacing an empty pair
   removes both — toggleable (`autoPairs`).
@@ -211,7 +212,8 @@ reload automatically within a second.
   one at a glance instead of both reading as their first line. Re-copying
   something already in the list moves it back to the top rather than adding a
   duplicate, the history is one list across every buffer in the session, and
-  picking an entry also makes it what plain `Ctrl+V` pastes next.
+  picking an entry also makes it what plain `Ctrl+V` pastes next. A paste the
+  terminal makes from the system clipboard joins the list too.
 
 ## Live templates
 
