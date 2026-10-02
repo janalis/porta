@@ -847,7 +847,10 @@ earns a fresh budget, so one that falls over at its first file stops.
 **Nothing waits on a server forever.** `LspClient` fails every pending
 callback, and runs every `whenReady` action, on the next tick after a stop
 or death, so their requests fail too; a request unanswered in 30 s fails and
-is `$/cancelRequest`ed. A session with no client answers the same way. `reconfigure()` no-ops on an identical
+is `$/cancelRequest`ed. A session with no client answers the same way. A
+stopped server is sent `shutdown` and `exit` and given `EXIT_WITHIN` (1 s) to
+go on its own — saving its index — before it is terminated, then killed
+`ProcessReaper::GRACE` later if it ignores that. `reconfigure()` no-ops on an identical
 resolved map, so a provider-plugin setting the servers never see does not cost
 every language its warm session.
 

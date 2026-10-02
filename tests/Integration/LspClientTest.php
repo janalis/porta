@@ -875,4 +875,31 @@ final class LspClientTest extends TestCase
 
         return $client;
     }
+
+    public function testAServerToldToExitIsLetFinishSavingBeforeItIsEnded(): void
+    {
+        $saved = \tempnam(\sys_get_temp_dir(), prefix: 'lspsaved');
+        $this->assertNotFalse($saved);
+        \unlink($saved);
+        $client = new LspClient([\PHP_BINARY, __DIR__.'/../Support/flushing-lsp-server.php', $saved], \dirname(__DIR__, levels: 2));
+        $this->clients[] = $client;
+        $ready = false;
+        $client->start(static function () use (&$ready): void {
+            $ready = true;
+        });
+        $this->await(static function () use (&$ready): bool {
+            return $ready;
+        }, what: 'the handshake');
+
+        $client->stop();
+
+        try {
+            $this->await(static fn (): bool => \is_file($saved), timeout: 3.0, what: 'the server to finish saving');
+            $this->assertSame('saved', \file_get_contents($saved));
+        } finally {
+            if (\is_file($saved)) {
+                \unlink($saved);
+            }
+        }
+    }
 }

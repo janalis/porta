@@ -121,7 +121,8 @@ final class JsonRpcTransport
         $this->writer?->write(JsonRpcFramer::encode($message));
     }
 
-    public function stop(): void
+    /** Stop: watchers, pipes, the child — which, with $exitWithin, was asked to exit and gets that long to. */
+    public function stop(float $exitWithin = 0.0): void
     {
         $this->gone = null; // a deliberate stop is not the peer going
         if (null !== $this->stdoutWatcher) {
@@ -145,7 +146,7 @@ final class JsonRpcTransport
                 \fclose($pipe);
             }
             if (\is_resource($process)) {
-                ProcessReaper::terminate($process);
+                ProcessReaper::terminate($process, $exitWithin);
             }
             $this->process = null;
         }

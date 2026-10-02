@@ -22,6 +22,9 @@ final class LspClient implements LspClientInterface
     /** Seconds a request may go unanswered before it fails — and is cancelled at the server. */
     public const float REQUEST_TIMEOUT = 30.0;
 
+    /** Seconds a server told to exit has to do it its own way before it is terminated. */
+    public const float EXIT_WITHIN = 1.0;
+
     /** Seconds a server has to answer `initialize` before it counts as failed to start. */
     public const float INITIALIZE_TIMEOUT = 30.0;
 
@@ -397,12 +400,14 @@ final class LspClient implements LspClientInterface
     #[\Override]
     public function stop(): void
     {
-        if ($this->transport->isRunning()) {
-            // Best-effort polite shutdown (send() never throws), then terminate
+        $polite = $this->transport->isRunning();
+        if ($polite) {
+            // Best-effort polite shutdown (send() never throws): a server told
+            // to exit gets a moment to save what it keeps before it is ended.
             $this->send(['jsonrpc' => '2.0', 'id' => $this->nextId++, 'method' => 'shutdown', 'params' => null]);
             $this->send(['jsonrpc' => '2.0', 'method' => 'exit', 'params' => null]);
         }
-        $this->transport->stop();
+        $this->transport->stop($polite ? self::EXIT_WITHIN : 0.0);
 
         $this->isInitialized = false;
         $this->serverCapabilities = [];

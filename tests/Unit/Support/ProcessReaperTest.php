@@ -48,4 +48,20 @@ final class ProcessReaperTest extends TestCase
 
         return [$process, \proc_get_status($process)['pid']];
     }
+
+    public function testAChildAskedToExitHasItsMomentThenIsTerminated(): void
+    {
+        $pipes = [];
+        $process = \proc_open([\PHP_BINARY, '-r', 'echo "ready\n"; sleep(10);'], [1 => ['pipe', 'w']], $pipes);
+        $this->assertIsResource($process);
+        $this->assertSame("ready\n", \fgets($pipes[1]));
+        $pid = \proc_get_status($process)['pid'];
+
+        ProcessReaper::terminate($process, after: 0.5);
+
+        $this->pump(0.2);
+        $this->assertTrue(\posix_kill($pid, signal: 0), 'its moment first');
+        // Gone before the kill would come, at its moment plus the grace: it was terminated.
+        $this->await(static fn (): bool => false === \posix_kill($pid, signal: 0), timeout: ProcessReaper::GRACE - 0.3, what: 'the terminate after it');
+    }
 }
