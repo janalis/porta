@@ -130,6 +130,16 @@ final class OverlayHost
         $this->overlay = null;
     }
 
+    /** Dismiss the list overlay opened with $onPick — only that one, and only while it is open. */
+    public function withdrawList(callable $onPick): void
+    {
+        if (($this->overlay['onPick'] ?? null) !== $onPick) {
+            return;
+        }
+        $this->overlay = null;
+        ($this->invalidate)();
+    }
+
     /**
      * Open the single-line input prompt (go to line, rename symbol). A danger
      * prompt (delete confirmation) boxes its field with the double danger

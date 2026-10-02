@@ -28,6 +28,12 @@ interface ModalHost
     public function openListOverlay(string $title, array $items, callable $onPick): void;
 
     /**
+     * Close the list overlay opened with $onPick, when it is still the one
+     * open: the question it asks no longer stands. Another list is left be.
+     */
+    public function withdrawListOverlay(callable $onPick): void;
+
+    /**
      * Open a single-line input prompt (go to line, rename symbol).
      */
     // @mago-expect lint:no-boolean-flag-parameter -- the bool IS the domain here, not a hidden second responsibility.

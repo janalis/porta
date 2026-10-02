@@ -38,6 +38,11 @@ final class LspReconfigurerTest extends TestCase
                 {
                     return [];
                 }
+
+                public function missingServers(): array
+                {
+                    return [];
+                }
             },
             '/tmp/proj',
             $lspCommand,

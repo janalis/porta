@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Plugin\Runtime;
 
+use Porta\Plugin\Api\ServerNotFound;
 use Porta\Plugin\Api\ServerRole;
 
 /**
@@ -25,7 +26,7 @@ final readonly class LanguageServerMap
     ) {}
 
     /**
-     * @param list<array{plugin: string, languageId: string, name: string, role: ServerRole, resolve: \Closure(): (list<string>|null), initOptions: (\Closure(): array<string, mixed>)|null}> $declarations in load order
+     * @param list<array{plugin: string, languageId: string, name: string, role: ServerRole, resolve: \Closure(): (list<string>|ServerNotFound|null), initOptions: (\Closure(): array<string, mixed>)|null}> $declarations in load order
      *
      * @return array<string, non-empty-list<array{command: list<string>, name: string, initializationOptions?: array<string, mixed>}>>
      */
@@ -66,11 +67,36 @@ final readonly class LanguageServerMap
     }
 
     /**
+     * The declared servers whose binary is not there, by language — a
+     * resolver that throws is the failure {@see resolve()} reports, not this.
+     *
+     * @param list<array{plugin: string, languageId: string, name: string, role: ServerRole, resolve: \Closure(): (list<string>|ServerNotFound|null), initOptions: (\Closure(): array<string, mixed>)|null}> $declarations
+     *
+     * @return array<string, list<string>>
+     */
+    public function missing(array $declarations): array
+    {
+        $missing = [];
+        foreach ($declarations as $declaration) {
+            try {
+                $command = $declaration['resolve']();
+            } catch (\Throwable) {
+                continue;
+            }
+            if ($command instanceof ServerNotFound) {
+                $missing[$declaration['languageId']][] = $declaration['name'];
+            }
+        }
+
+        return $missing;
+    }
+
+    /**
      * One declaration resolved to a launch entry, or null when its binary is
      * not available — or its resolver threw, which is reported and treated as
      * unavailable rather than taking the whole map with it.
      *
-     * @param array{plugin: string, languageId: string, name: string, role: ServerRole, resolve: \Closure(): (list<string>|null), initOptions: (\Closure(): array<string, mixed>)|null} $declaration
+     * @param array{plugin: string, languageId: string, name: string, role: ServerRole, resolve: \Closure(): (list<string>|ServerNotFound|null), initOptions: (\Closure(): array<string, mixed>)|null} $declaration
      *
      * @return array{command: list<string>, name: string, initializationOptions?: array<string, mixed>}|null
      */
@@ -90,8 +116,8 @@ final readonly class LanguageServerMap
 
             return null;
         }
-        if (null === $command || [] === $command) {
-            return null; // the server's binary is not available
+        if (null === $command || [] === $command || $command instanceof ServerNotFound) {
+            return null; // not this server's to serve here, or its binary is not there
         }
         $entry = ['command' => \array_values($command), 'name' => $declaration['name']];
         if ([] !== $options) {

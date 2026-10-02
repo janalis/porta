@@ -23,6 +23,7 @@ use Porta\Plugin\Api\PluginApi;
 use Porta\Plugin\Api\PluginException;
 use Porta\Plugin\Api\PortaPlugin;
 use Porta\Plugin\Api\RemoteProjectPlugin;
+use Porta\Plugin\Api\ServerNotFound;
 use Porta\Plugin\Api\ServerRole;
 use Porta\Plugin\Api\ToolCaller;
 use Porta\Plugin\Api\ToolEffect;
@@ -72,7 +73,7 @@ final class PluginManager implements
     public private(set) array $defaultKeys = [];
     /** @var list<PluginMenuSpec> Plugins-menu entries */
     private array $menuSpecs = [];
-    /** @var list<array{plugin: string, languageId: string, name: string, role: ServerRole, resolve: \Closure(): (list<string>|null), initOptions: (\Closure(): array<string, mixed>)|null}> committed LSP providers, in load order */
+    /** @var list<array{plugin: string, languageId: string, name: string, role: ServerRole, resolve: \Closure(): (list<string>|ServerNotFound|null), initOptions: (\Closure(): array<string, mixed>)|null}> committed LSP providers, in load order */
     private array $languageServers = [];
     /** @var list<array{plugin: string, tool: string, available: \Closure(): bool, via: list<array{0: string, 1: string}>, describe: (\Closure(): string)|null}> committed install offers */
     private array $installers = [];
@@ -316,6 +317,12 @@ final class PluginManager implements
     public function languageServers(): array
     {
         return new LanguageServerMap($this->reportFailure(...))->resolve($this->languageServers);
+    }
+
+    #[\Override]
+    public function missingServers(): array
+    {
+        return new LanguageServerMap($this->reportFailure(...))->missing($this->languageServers);
     }
 
     /**

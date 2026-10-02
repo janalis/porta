@@ -455,7 +455,7 @@ final class PluginApiTest extends TestCase
             static fn () => $api->changeSetting('flag', true),
             static fn () => $api->showList('todo'),
             static fn () => $api->updateList('todo', []),
-            static fn () => $api->pick('t', [], static function (string $v): void {}),
+            static fn (): \Closure => $api->pick('t', [], static function (string $v): void {}),
             static fn () => $api->replaceDocument('x'),
             static fn (): string => $api->trans('x'),
             static fn () => $api->prompt('t', '', static function (string $v): void {}),
@@ -1160,6 +1160,17 @@ final class PluginApiTest extends TestCase
         $tree->clickRow(2, ClickIntent::Add);
 
         $this->assertSame(['a.php', 'b.php'], \array_map(basename(...), $api->selectedFiles()));
+    }
+
+    public function testAQuestionThatNoLongerStandsIsWithdrawn(): void
+    {
+        $api = $this->api();
+        $withdraw = $api->pick('Let Ana in?', ['y' => 'Yes'], static function (string $value): void {});
+        $this->assertTrue(EditorState::pickerOpen($this->editor));
+
+        $withdraw();
+
+        $this->assertFalse(EditorState::pickerOpen($this->editor), 'whoever asked went away: the list goes');
     }
 
     public function testAPluginMayAskTheUserSomething(): void

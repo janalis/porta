@@ -80,6 +80,11 @@ final class LspBootstrapperInboundTest extends TestCase
             {
                 return [];
             }
+
+            public function missingServers(): array
+            {
+                return [];
+            }
         };
 
         $bootstrapper = new LspBootstrapper(

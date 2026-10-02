@@ -3190,6 +3190,10 @@
         <source>Back in touch with %host%</source>
         <target>Di nuovo in contatto con %host%</target>
       </trans-unit>
+      <trans-unit id="1118">
+        <source>%name% not found</source>
+        <target>%name% non trovato</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

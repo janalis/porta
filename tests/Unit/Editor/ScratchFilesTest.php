@@ -60,6 +60,8 @@ final class ScratchFilesTest extends TestCase
                     $this->onPick = $onPick(...);
                 }
 
+                public function withdrawListOverlay(callable $onPick): void {}
+
                 public function openPrompt(string $label, string $initial, callable $onSubmit, bool $danger = false, TextEcho $echo = TextEcho::Visible): void {}
             },
             new class($opened) implements FileOpener {

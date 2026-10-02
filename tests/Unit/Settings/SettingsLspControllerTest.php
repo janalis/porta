@@ -65,6 +65,11 @@ final class SettingsLspControllerTest extends TestCase
             {
                 return [];
             }
+
+            public function missingServers(): array
+            {
+                return [];
+            }
         };
         $reconfigurer = new LspReconfigurer($pool, $reopener, $provider, $rootDir, $lspOverride);
 

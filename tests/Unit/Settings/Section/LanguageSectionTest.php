@@ -63,6 +63,11 @@ final class LanguageSectionTest extends TestCase
                 {
                     return [];
                 }
+
+                public function missingServers(): array
+                {
+                    return [];
+                }
             },
             $rootDir,
             null,

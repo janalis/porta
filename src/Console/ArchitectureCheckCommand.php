@@ -361,9 +361,11 @@ final class ArchitectureCheckCommand extends Command
         'SshPlugin>Plugin',
         'Support>Container',
         'Support>Ui',
-        // The symfony-lsp plugin's one core reach: Argv::split for the
-        // php-command setting. Its plugin.php (outside the namespace graph)
-        // does the PluginApi wiring.
+        // The symfony-lsp plugin's core reaches: ServerNotFound, so a claimed
+        // language with no binary is said rather than silent, and Argv::split
+        // for the php-command setting. Its plugin.php (outside the namespace
+        // graph) does the rest of the PluginApi wiring.
+        'SymfonyLsp>Plugin',
         'SymfonyLsp>Support',
         'Terminal>Support',
         'Terminal>Ui',

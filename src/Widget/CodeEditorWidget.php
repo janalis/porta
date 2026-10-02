@@ -388,6 +388,12 @@ final class CodeEditorWidget extends AbstractWidget implements
         $this->overlayHost->openList($title, $items, $onPick);
     }
 
+    #[\Override]
+    public function withdrawListOverlay(callable $onPick): void
+    {
+        $this->overlayHost->withdrawList($onPick);
+    }
+
     /**
      * Opening any floating surface closes the others — the same rule the full
      * views follow ({@see \Porta\Workbench\View\ViewRegistry}): the pickers share the pane span

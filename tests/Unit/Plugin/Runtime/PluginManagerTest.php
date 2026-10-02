@@ -22,6 +22,7 @@ use Porta\Plugin\Api\AbstractPlugin;
 use Porta\Plugin\Api\DisposablePlugin;
 use Porta\Plugin\Api\PluginApi;
 use Porta\Plugin\Api\PluginException;
+use Porta\Plugin\Api\ServerNotFound;
 use Porta\Plugin\Api\ServerRole;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginMenuSpec;
@@ -345,13 +346,24 @@ final class PluginManagerTest extends TestCase
         };
     }
 
+    public function testAResolverThatThrowsIsAFailureNotAMissingBinary(): void
+    {
+        $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
+        $api = new PluginApi('broken', $manager, '/p', new PluginSettings('/p', []));
+        $api->registerLanguageServer('php', 'broken-ls', static fn (): array => throw new \RuntimeException('no'));
+        $manager->commit($api);
+
+        $this->assertSame([], $manager->missingServers());
+    }
+
     public function testLanguageServersResolveWithFirstAvailableWinningTheLanguage(): void
     {
         $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
 
         // one registers a php server whose binary is missing (resolver null).
         $one = new PluginApi('one', $manager, '/p', new PluginSettings('/p', []));
-        $one->registerLanguageServer('php', 'one-ls', static fn (): ?array => null);
+        $one->registerLanguageServer('php', 'one-ls', static fn (): ServerNotFound => new ServerNotFound());
+        $one->registerLanguageServer('typescript', 'not-mine', static fn (): ?array => null);
         $manager->commit($one);
 
         // two provides an available php server and a typescript server.
@@ -373,6 +385,7 @@ final class PluginManagerTest extends TestCase
             $manager->languageServers(),
             'first available wins; a null resolver yields to the next provider',
         );
+        $this->assertSame(['php' => ['one-ls']], $manager->missingServers(), 'and the one that could not, named');
         $this->assertTrue($manager->providesLanguageServer('one'), 'a provider even with a missing binary');
         $this->assertTrue($manager->providesLanguageServer('two'));
         $this->assertFalse($manager->providesLanguageServer('nobody'));

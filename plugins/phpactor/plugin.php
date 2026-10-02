@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Porta\Plugin\Api\AbstractToolPlugin;
 use Porta\Plugin\Api\PluginApi;
+use Porta\Plugin\Api\ServerNotFound;
 
 /**
  * phpactor as a PHP language server. Registers `phpactor language-server` for
@@ -18,10 +19,10 @@ return new class('phpactor', 'phpactor') extends AbstractToolPlugin {
     public function activate(PluginApi $api): void
     {
         $this->registerBinarySetting($api, [['composer', 'phpactor/phpactor']]);
-        $api->registerLanguageServer('php', 'phpactor', function () use ($api): ?array {
+        $api->registerLanguageServer('php', 'phpactor', function () use ($api): array|ServerNotFound {
             $binary = $this->binary($api);
 
-            return null === $binary ? null : [$binary, 'language-server'];
+            return null === $binary ? new ServerNotFound() : [$binary, 'language-server'];
         });
     }
 };

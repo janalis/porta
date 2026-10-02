@@ -283,6 +283,11 @@ final class SettingsViewControllerTest extends TestCase
                 {
                     return [];
                 }
+
+                public function missingServers(): array
+                {
+                    return [];
+                }
             },
             $this->project->dir,
             null,

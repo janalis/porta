@@ -98,7 +98,7 @@ final class PluginApi
      * @var array<string, array{key: string, label: string, kind: string, default: bool|int|string, options: list<string>|null, hint: string|null, min: int|null, max: int|null, step: int|null}> by key
      */
     private array $settingDescriptors = [];
-    /** @var PluginBuffer<array{plugin: string, languageId: string, name: string, role: ServerRole, resolve: \Closure(): (list<string>|null), initOptions: (\Closure(): array<string, mixed>)|null}> */
+    /** @var PluginBuffer<array{plugin: string, languageId: string, name: string, role: ServerRole, resolve: \Closure(): (list<string>|ServerNotFound|null), initOptions: (\Closure(): array<string, mixed>)|null}> */
     private readonly PluginBuffer $languageServers;
     /** @var PluginBuffer<array{plugin: string, tool: string, available: \Closure(): bool, via: list<array{0: string, 1: string}>, describe: (\Closure(): string)|null}> */
     private readonly PluginBuffer $installers;
@@ -339,9 +339,10 @@ final class PluginApi
 
     /**
      * Provide a language server for $languageId (e.g. 'php'). $resolveCommand
-     * returns the launch argv, or null when the server binary is not available
-     * — so a missing binary leaves the language unserved (and the "install"
-     * hint shows) rather than launching a broken process. The resolver runs
+     * returns the launch argv; null when it does not serve the language here;
+     * or a {@see ServerNotFound} when it would and its binary is not there —
+     * which leaves the language unserved rather than launching a broken
+     * process, and names the server as not found on the status bar. The resolver runs
      * lazily whenever the LSP layer (re)configures, so it can read the current
      * `binary` setting; keep it side-effect-free (settings + discovery only).
      * Plugin servers sit below the user's `.porta.json`/`$PORTA_LSP`/`--lsp`
@@ -359,7 +360,7 @@ final class PluginApi
      * re-run on every (re)configure — read this plugin's settings in it and a
      * settings edit reaches the relaunched server. An empty array sends nothing.
      *
-     * @param \Closure(): (list<string>|null)         $resolveCommand
+     * @param \Closure(): (list<string>|ServerNotFound|null) $resolveCommand
      * @param (\Closure(): array<string, mixed>)|null $initializationOptions
      *
      * @throws PluginException
@@ -1148,10 +1149,16 @@ final class PluginApi
      * dimmed second column: a stash's date, a branch's tracking state. Both
      * spellings reach the same overlay.
      *
+     * What it answers withdraws the question: the list closes, when it is
+     * still the one open — say, when whoever the question was about went
+     * away before anyone answered. Ignore it otherwise.
+     *
      * @param array<string, string>|list<array{label: string, hint: string, value: string, checked?: bool, disabled?: bool, note?: bool}> $items in the order to show them
      * @param \Closure(string): void                                                        $onPick
+     *
+     * @return \Closure(): void withdraws the list
      */
-    public function pick(string $title, array $items, \Closure $onPick): void
+    public function pick(string $title, array $items, \Closure $onPick): \Closure
     {
         $runtime = $this->manager->runtime(); // activate()-phase gate
         $rows = [];
@@ -1159,6 +1166,8 @@ final class PluginApi
             $rows[] = \is_array($label) ? $label : ['label' => $label, 'hint' => '', 'value' => (string) $value];
         }
         $runtime->modals->openListOverlay($title, $rows, $onPick);
+
+        return static fn () => $runtime->modals->withdrawListOverlay($onPick);
     }
 
     /**
@@ -1738,7 +1747,7 @@ final class PluginApi
         return \array_values($this->settingDescriptors);
     }
 
-    /** @return list<array{plugin: string, languageId: string, name: string, role: ServerRole, resolve: \Closure(): (list<string>|null), initOptions: (\Closure(): array<string, mixed>)|null}> */
+    /** @return list<array{plugin: string, languageId: string, name: string, role: ServerRole, resolve: \Closure(): (list<string>|ServerNotFound|null), initOptions: (\Closure(): array<string, mixed>)|null}> */
     public function bufferedLanguageServers(): array
     {
         return $this->languageServers->all();

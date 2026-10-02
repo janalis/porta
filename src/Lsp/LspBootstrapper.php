@@ -43,6 +43,7 @@ final readonly class LspBootstrapper
 
             return;
         }
+        $this->lsp->missing($this->pluginServers->missingServers());
         $this->lsp->configure(
             ServerLocator::locateAll($this->rootDir, $this->lspCommand, $this->pluginServers->languageServers()),
             fn (string $line) => $this->log->append($line),

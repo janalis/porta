@@ -80,6 +80,9 @@ final class LspSessionPool
     private array $published = [];
 
     private bool $disabled = false;
+
+    /** @var array<string, list<string>> languageId => servers a plugin declares whose binary is not there */
+    private array $missing = [];
     private bool $configured = false;
 
     /** @var (\Closure(string): void)|null */
@@ -125,6 +128,17 @@ final class LspSessionPool
         $this->onShowMessage = $onShowMessage;
         $this->onProgress = $onProgress;
         $this->configured = true;
+    }
+
+    /**
+     * What plugins declare and cannot launch, by language, as
+     * {@see LanguageServerProvider::missingServers()} says it.
+     *
+     * @param array<string, list<string>> $missing
+     */
+    public function missing(array $missing): void
+    {
+        $this->missing = $missing;
     }
 
     public function disable(): void
@@ -229,7 +243,15 @@ final class LspSessionPool
         if (null === $key) {
             // PHP is the first-class language here, but bundled servers start
             // disabled — point at Settings rather than naming one plugin.
-            return null !== $path && 'php' === ProjectPaths::languageId($path) ? $this->translator->trans('none (enable a PHP server in Settings)') : $this->translator->trans('no server');
+            $language = null === $path ? 'php' : ProjectPaths::languageId($path);
+            $absent = $this->missing[$language][0] ?? null;
+
+            return match (true) {
+                // Enabled, and its binary not there: say that, not "enable one".
+                null !== $absent => $this->translator->trans('%name% not found', ['%name%' => $absent]),
+                null !== $path && 'php' === $language => $this->translator->trans('none (enable a PHP server in Settings)'),
+                default => $this->translator->trans('no server'),
+            };
         }
 
         return self::describe($this->servers[$key], $this->statuses);

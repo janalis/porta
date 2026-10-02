@@ -39,6 +39,7 @@ final readonly class LspReconfigurer
     public function relaunch(): void
     {
         $this->lsp->reload(ServerLocator::locateAll($this->rootDir, $this->lspCommand, $this->pluginServers->languageServers()));
+        $this->lsp->missing($this->pluginServers->missingServers());
         $this->reopener->reopenAllInLsp();
     }
 
@@ -49,6 +50,7 @@ final readonly class LspReconfigurer
         // re-opened either: the provider-setting hook fires for EVERY setting
         // of a provider plugin, so without the diff a palette toggle of
         // phpantom's fix-on-save would tear down and relaunch every server.
+        $this->lsp->missing($this->pluginServers->missingServers());
         if ($this->lsp->reconfigure(ServerLocator::locateAll($this->rootDir, $this->lspCommand, $this->pluginServers->languageServers()))) {
             $this->reopener->reopenAllInLsp();
         }

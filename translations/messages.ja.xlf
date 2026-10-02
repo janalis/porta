@@ -3190,6 +3190,10 @@
         <source>Back in touch with %host%</source>
         <target>%host% と再接続しました</target>
       </trans-unit>
+      <trans-unit id="1118">
+        <source>%name% not found</source>
+        <target>%name% が見つかりません</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

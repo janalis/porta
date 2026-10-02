@@ -106,11 +106,12 @@ final class IdePhpLspPluginsTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
-    public function testWithoutABinaryPhpantomSuggestsInstalling(): void
+    public function testWithoutABinaryPhpantomIsSaidToBeNotFound(): void
     {
         $embedded = $this->embeddedPhpantom();
         \putenv('PORTA_EMBEDDED_PLUGINS='.$embedded->dir);
-        // phpantom enabled but no binary configured and none on PATH → serves nothing.
+        // phpantom enabled but no binary configured and none on PATH → serves
+        // nothing, and the status bar names it: enabled, its binary not there.
         $project = new TempProject(['a.php' => "<?php\n", '.porta.json' => \json_encode(['enabledPlugins' => ['phpantom']])]);
 
         $this->runIde(
@@ -118,8 +119,8 @@ final class IdePhpLspPluginsTest extends TestCase
             $project->path('a.php'),
             [
                 300 => function (Tui $tui, VirtualTerminal $terminal): void {
-                    $this->awaitPainted($tui, $terminal, 'LSP:none (enable a PHP server in Settings)');
-                    $this->assertStringContainsString('LSP:none (enable a PHP server in Settings)', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    $this->awaitPainted($tui, $terminal, 'LSP:phpantom not found');
+                    $this->assertStringContainsString('LSP:phpantom not found', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
         );

@@ -42,6 +42,21 @@ final class OverlayHostTest extends TestCase
         $this->assertNotNull(Probe::get($host, 'overlay'), 'no crash without a tui');
     }
 
+    public function testAListIsWithdrawnOnlyByWhoOpenedItAndOnlyWhileOpen(): void
+    {
+        $host = new OverlayHost();
+        $first = static fn (): null => null;
+        $second = static fn (): null => null;
+        $host->openList('First', [['label' => 'a', 'hint' => '', 'value' => 'A']], $first);
+        $host->openList('Second', [['label' => 'b', 'hint' => '', 'value' => 'B']], $second);
+
+        $host->withdrawList($first);
+        $this->assertTrue($host->anyOpen(), 'another list since: left be');
+
+        $host->withdrawList($second);
+        $this->assertFalse($host->anyOpen(), 'its own: gone');
+    }
+
     public function testOpenPromptDefaultsToNotDanger(): void
     {
         $plain = $this->host();

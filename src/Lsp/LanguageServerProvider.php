@@ -19,4 +19,13 @@ interface LanguageServerProvider
      * @return array<string, non-empty-list<array{command: list<string>, name: string, initializationOptions?: array<string, mixed>}>>
      */
     public function languageServers(): array;
+
+    /**
+     * The servers a plugin declares and cannot launch — no binary found —
+     * by languageId: what the status bar names instead of "no server", so
+     * an enabled plugin's missing binary is not mistaken for none enabled.
+     *
+     * @return array<string, list<string>> languageId => server names
+     */
+    public function missingServers(): array;
 }

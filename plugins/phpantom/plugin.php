@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Porta\Plugin\Api\AbstractToolPlugin;
 use Porta\Plugin\Api\BinarySearch;
 use Porta\Plugin\Api\PluginApi;
+use Porta\Plugin\Api\ServerNotFound;
 
 /**
  * phpantom (github.com/PHPantom-dev/phpantom_lsp) as the default PHP language
@@ -30,10 +31,10 @@ return new class('phpantom', 'phpantom_lsp', BinarySearch::PathOnly) extends Abs
         ]);
         $api->registerSetting('autoFix', 'Fix on save', 'bool', false);
 
-        $api->registerLanguageServer('php', 'phpantom', function () use ($api): ?array {
+        $api->registerLanguageServer('php', 'phpantom', function () use ($api): array|ServerNotFound {
             $binary = $this->binary($api);
 
-            return null === $binary ? null : [$binary];
+            return null === $binary ? new ServerNotFound() : [$binary];
         });
 
         $api->registerCommand(

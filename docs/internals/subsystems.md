@@ -863,7 +863,9 @@ tie-break for each. Entries with an identical launch signature collapse to one
 session, both in `PluginManager` and again in the pool: telling one process a
 document opened twice is not a harmless duplicate. `statusFor()` reads
 `own +beside`, and names a failed one rather than hiding it behind the
-survivor.
+survivor. A language with no server but one a plugin declares and cannot
+launch reads `<name> not found` (`LanguageServerProvider::missingServers()`),
+not the "enable a server" hint: the plugin is enabled, its binary is not there.
 
 **The verbs whose answers are LISTS are merged.** `requestAll()` asks every
 session for the active file whose OWN capabilities advertise the method, and
