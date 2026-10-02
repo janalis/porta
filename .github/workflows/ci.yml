@@ -59,7 +59,7 @@ jobs:
           php-version: '8.5'
           coverage: none
           extensions: ${{ env.PHP_EXTENSIONS }}, intl
-      - uses: actions/cache@v5
+      - uses: actions/cache@v6
         with:
           path: ~/.composer/cache
           key: composer-${{ hashFiles('composer.lock') }}
@@ -102,7 +102,7 @@ jobs:
           # read as uncovered. It cannot be switched on at runtime, only here.
           ini-values: zend.assertions=1
           extensions: ${{ env.PHP_EXTENSIONS }}, ${{ matrix.extensions }}
-      - uses: actions/cache@v5
+      - uses: actions/cache@v6
         with:
           path: ~/.composer/cache
           key: composer-${{ hashFiles('composer.lock') }}
@@ -110,7 +110,7 @@ jobs:
       # The PHPUnit cache dir holds the result cache AND the shared test
       # container dump (tests/bootstrap.php pins PORTA_CACHE_DIR into it);
       # cold, every worker recompiles the container instead of sharing one.
-      - uses: actions/cache@v5
+      - uses: actions/cache@v6
         with:
           path: .phpunit.cache
           key: phpunit-${{ matrix.name }}-${{ github.run_id }}
@@ -142,7 +142,7 @@ jobs:
           # read as uncovered. It cannot be switched on at runtime, only here.
           ini-values: zend.assertions=1
           extensions: ${{ env.PHP_EXTENSIONS }}, intl
-      - uses: actions/cache@v5
+      - uses: actions/cache@v6
         with:
           path: ~/.composer/cache
           key: composer-${{ hashFiles('composer.lock') }}
@@ -180,7 +180,7 @@ jobs:
           # read as uncovered. It cannot be switched on at runtime, only here.
           ini-values: zend.assertions=1
           extensions: ${{ env.PHP_EXTENSIONS }}, intl
-      - uses: actions/cache@v5
+      - uses: actions/cache@v6
         with:
           path: ~/.composer/cache
           key: composer-${{ hashFiles('composer.lock') }}
@@ -188,7 +188,7 @@ jobs:
       # This is the ONE pass that sets PORTA_CONTAINER_CACHE=on (it is serial
       # per shard, so tests/bootstrap.php lets it reuse the dump) — cold, it
       # pays a container compile per shard instead of reading one.
-      - uses: actions/cache@v5
+      - uses: actions/cache@v6
         with:
           path: .phpunit.cache
           key: phpunit-coverage-plugins-${{ github.run_id }}
