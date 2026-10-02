@@ -552,8 +552,15 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
         $this->rowOwner = [];
         $scroll = $this->list->follow($ruled ? \intdiv($budget + 1, num2: 2) : $budget);
         $lines = [];
-        if ($overflow) {
-            $lines[] = $scroll > 0 ? $this->indicatorRow(Glyphs::SCROLL_UP, 0, $scroll - 1, $width) : AnsiText::blank($width);
+        // The ▲ row only once something IS above: at the top the list starts
+        // on row 0 — a blank there read as a stray empty line over General.
+        // Nothing moves when it scrolls: one entry down, the ▲ takes row 0 and
+        // the next entry stays on row 1.
+        if ($overflow && $scroll > 0) {
+            $lines[] = $this->indicatorRow(Glyphs::SCROLL_UP, 0, $scroll - 1, $width);
+        }
+        if ($overflow && 0 === $scroll) {
+            ++$budget;
         }
         $position = $scroll;
         $top = \count($lines);

@@ -310,9 +310,8 @@ final class SettingsNavWidgetTest extends TestCase
 
         $rows = $this->navRows($widget, 22, rows: 22);
 
-        $this->assertSame('', \trim($rows[0]), 'nothing is clipped above yet, so the top edge stays blank');
+        $this->assertSame('▌  General', $rows[0], 'nothing is clipped above yet: no ▲ row, and no blank one standing in for it');
         $this->assertStringContainsString(Glyphs::SCROLL_DOWN, \end($rows), 'and the bottom says there is more');
-        $this->assertContains('▌  General', $rows, 'the list itself still starts where it did');
     }
 
     /**
@@ -326,9 +325,6 @@ final class SettingsNavWidgetTest extends TestCase
         $widget->setPluginEntries(['phpantom', 'mago', 'tempest', 'chroma', 'image-viewer', 'graph-viewer', 'local-history', 'git', 'symfony-lsp']);
         $before = $this->navRows($widget, 22, rows: 22);
 
-        $widget->handleClick(0); // the blank top edge
-        $this->assertSame([], $selected, 'a blank edge does nothing');
-
         $widget->handleClick(21); // ▼
         $after = $this->navRows($widget, 22, rows: 22);
         $this->assertCount(1, $selected, 'the entry it revealed was selected, and fired');
@@ -338,7 +334,7 @@ final class SettingsNavWidgetTest extends TestCase
 
         $widget->handleClick(0); // ▲
         $this->navRows($widget, 22, rows: 22);
-        $this->assertSame('general', $widget->selectedId(), 'the one entry above the window');
+        $this->assertSame('interface', $widget->selectedId(), 'the nearest entry above the window');
     }
 
     /** Scrolled into the middle, both edges are clipped and both say so. */
@@ -473,7 +469,7 @@ final class SettingsNavWidgetTest extends TestCase
         $widget = $this->widget();
         $widget->setPluginEntries(['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta']);
         $rows = $widget->render(new RenderContext(24, 6));
-        $this->assertSame('', \trim(AnsiUtils::stripAnsiCodes($rows[0])), 'the first line is the reserved indicator slot');
+        $this->assertSame('▌  General', \trim(AnsiUtils::stripAnsiCodes($rows[0])), 'at the top, the first line is the first entry: no ▲ slot yet');
 
         $widget->handleClick(1);
 
@@ -515,8 +511,9 @@ final class SettingsNavWidgetTest extends TestCase
         $widget->handleClick(5); // the last row of a six-row pane: the ▼ itself
 
         $rows = $this->navRows($widget, 24, rows: 6);
-        $this->assertSame('commandLine', $widget->selectedId(), 'the entry just past the window');
-        $this->assertSame('▌  Command line', $rows[4], 'drawn: the window followed it');
+        $this->assertSame('plugins', $widget->selectedId(), 'the entry just past the window');
+        $this->assertStringStartsWith('▌', $rows[4], 'drawn: the window followed it');
+        $this->assertStringContainsString('Plugins', $rows[4]);
     }
 
     /** And hover takes the same path, so it was wrong in the same way. */

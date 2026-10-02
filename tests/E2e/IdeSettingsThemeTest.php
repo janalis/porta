@@ -119,19 +119,19 @@ final class IdeSettingsThemeTest extends TestCase
                     $tui->handleInput(self::windowSgr($ide, 0, 8, 39));
                     $tui->handleInput(self::windowSgr($ide, 0, 8, 39, release: true));
                     // Hover the nav sidebar (a tint): Interface. With a rule
-                    // under every row the nav overflows, so its row 0 is the
-                    // ▲ slot, General row 1, its rule row 2.
-                    $tui->handleInput(self::windowSgr($ide, 35, 3, 4));
+                    // under every row the nav overflows, but nothing is above
+                    // yet, so no ▲ row: General is row 0, its rule row 1.
+                    $tui->handleInput(self::windowSgr($ide, 35, 2, 4));
                 },
                 300 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     // frame(), not tick(): the click below is hit-tested against
                     // the rects the LAST RENDER produced.
                     $this->frame($tui);
-                    // Click the 'Keybindings' entry in the nav: region row 7,
-                    // after the ▲ slot and General, Interface and
-                    // Highlighting, each with the rule under it.
-                    $tui->handleInput(self::windowSgr($ide, 0, 7, 4));
-                    $tui->handleInput(self::windowSgr($ide, 0, 7, 4, release: true));
+                    // Click the 'Keybindings' entry in the nav: region row 6,
+                    // after General, Interface and Highlighting, each with the
+                    // rule under it.
+                    $tui->handleInput(self::windowSgr($ide, 0, 6, 4));
+                    $tui->handleInput(self::windowSgr($ide, 0, 6, 4, release: true));
                 },
                 400 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $this->awaitPainted($tui, $terminal, 'Ctrl+F to filter');
@@ -144,12 +144,12 @@ final class IdeSettingsThemeTest extends TestCase
                 },
                 500 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $this->frame($tui);
-                    // Select PHP in the nav: region row 15, after the ▲ slot, General,
+                    // Select PHP in the nav: region row 14, after General,
                     // Interface, Highlighting, Keybindings, Command line, the
                     // Plugins folder and the Languages folder, each with its
                     // rule → the content shows its indent rows.
-                    $tui->handleInput(self::windowSgr($ide, 0, 15, 4));
-                    $tui->handleInput(self::windowSgr($ide, 0, 15, 4, release: true));
+                    $tui->handleInput(self::windowSgr($ide, 0, 14, 4));
+                    $tui->handleInput(self::windowSgr($ide, 0, 14, 4, release: true));
                 },
                 600 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $this->awaitPainted($tui, $terminal, 'Indent style');
