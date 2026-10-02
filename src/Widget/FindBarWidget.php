@@ -257,7 +257,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface, M
             return;
         }
 
-        if ($kb->matches($data, 'select_all')) {
+        if ($kb->matches($data, 'select_all_matches')) {
             $this->selectAllMatches();
 
             return;
@@ -383,7 +383,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface, M
             'case' => $this->toggleMatchCase(),
             'prev' => $this->stepMatch(-1),
             'next' => $this->stepMatch(1),
-            'select_all' => $this->selectAllMatches(),
+            'select_all_matches' => $this->selectAllMatches(),
             'close' => $this->close(),
             'find' => $this->activeField = 0,
             'replace' => $this->activeField = 1,
@@ -431,7 +431,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface, M
                     : $this->translator->trans('⏎/F3 next  Shift+F3 prev  Alt+X .*  Alt+W \b  Esc')
             )
             .'  Alt+C Aa'
-            .(\array_key_exists('select_all', $buttons) ? '  Alt+⏎ '.Glyphs::FIND_SELECT_ALL : '');
+            .(\array_key_exists('select_all_matches', $buttons) ? '  Alt+⏎ '.Glyphs::FIND_SELECT_ALL : '');
 
         // The match position rides the Find box's bottom border, where it
         // lasts as long as the box does: out in the strip it was the first
@@ -805,7 +805,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface, M
      */
     private function buttons(): array
     {
-        $selectAll = null === $this->target?->replaceDocument ? [] : ['select_all' => Glyphs::FIND_SELECT_ALL];
+        $selectAll = null === $this->target?->replaceDocument ? [] : ['select_all_matches' => Glyphs::FIND_SELECT_ALL];
 
         return ['prev' => Glyphs::FIND_PREV, 'next' => Glyphs::FIND_NEXT, ...$selectAll, 'close' => Glyphs::CLOSE];
     }
@@ -890,7 +890,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface, M
             'replace_all' => ['alt+a'],
             // PhpStorm's key in its find bar; the editor's Alt+Enter (code
             // action) is not reached while the bar has the focus.
-            'select_all' => ['alt+enter'],
+            'select_all_matches' => ['alt+enter'],
             'delete_char_backward' => [Key::BACKSPACE],
             // The same chords the find-in-files modal recalls with, because it
             // is the same history.

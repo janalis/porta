@@ -17,6 +17,7 @@ use Porta\Tests\Support\TempProject;
 use Porta\Widget\FindBarWidget;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Style\CursorShape;
 
@@ -1286,6 +1287,25 @@ final class FindBarWidgetTest extends TestCase
         );
         $this->assertFalse($bar->isOpen(), 'the bar closes, so typing goes to the carets');
         $this->assertTrue($closed, 'through the close path that hands the focus back');
+    }
+
+    /**
+     * The bar's "select all matches" used to share the editor's `select_all`
+     * id, so anything that bound the editor's Select All — a user's keymap,
+     * the Mac's Cmd+A — rebound this button as well, and Ctrl+A in the find
+     * field selected every match and closed the bar.
+     */
+    public function testTheEditorsSelectAllIsNotTheBarsSelectAllMatches(): void
+    {
+        $target = new FakeFindTarget(new Document("foo x foo\n"));
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->setKeybindings(new Keybindings(['select_all' => ['ctrl+a', 'super+a']]));
+        $bar->open($target, mode: FindMode::Find, initialQuery: 'foo');
+
+        $bar->handleInput("\x01"); // ctrl+a
+
+        $this->assertNull($target->selected);
+        $this->assertTrue($bar->isOpen());
     }
 
     public function testSelectAllWithNothingMatchedLeavesTheBarOpen(): void

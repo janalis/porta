@@ -37,7 +37,7 @@ final class FindBarTooltip
             'case' => [$translator->trans('Match case'), 'toggle_case'],
             'prev' => [$translator->trans('Previous match'), 'find_prev'],
             'next' => [$translator->trans('Next match'), 'find_next'],
-            'select_all' => [$translator->trans('Select all matches'), 'select_all'],
+            'select_all_matches' => [$translator->trans('Select all matches'), 'select_all_matches'],
             default => [$translator->trans('Close'), 'close'],
         };
         $key = ShortcutFormatter::format($keys->getBindings($action)[0] ?? '');
