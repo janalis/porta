@@ -934,11 +934,11 @@ final class FileTreeWidgetTest extends TestCase
     }
 
     /**
-     * A roomy screen rules the tree as it rules the settings nav: under the
-     * project name and between every two entries, none after the last. A
-     * compact one keeps the dense tree.
+     * A roomy screen spaces the tree as it spaces the settings nav: a blank
+     * gap between every two entries, and a drawn rule only under the project
+     * name. A compact one keeps the dense tree.
      */
-    public function testARoomyScreenRulesBetweenEveryTwoRows(): void
+    public function testARoomyScreenRulesUnderTheNameAndSpacesTheRows(): void
     {
         $project = new TempProject(['a.php' => '', 'b.php' => '']);
         $density = new ScreenDensity();
@@ -946,7 +946,7 @@ final class FileTreeWidgetTest extends TestCase
 
         $rows = $this->rows($tree->render(new RenderContext(12, 8)));
         $rule = \str_repeat('─', times: 12);
-        $this->assertSame([$rule, '▎  a.php', $rule, '   b.php', '', '', ''], \array_map(\rtrim(...), \array_slice($rows, offset: 1)), 'a rule under the name, one between the two, none after');
+        $this->assertSame([$rule, '▎  a.php', '', '   b.php', '', '', ''], \array_map(\rtrim(...), \array_slice($rows, offset: 1)), 'a rule under the name, a transparent gap between the two');
 
         $tree->beforeRender();
         $before = $tree->getRenderRevision();

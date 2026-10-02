@@ -831,17 +831,18 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
         $this->rowTips = [];
 
         for ($row = 1; $row < $rows; ++$row) {
-            // On a roomy screen a rule runs under the header and between every
-            // two entries — the settings nav's shape, the tree it is drawn
-            // after. The rules own no entry, so a click on one does nothing.
+            // On a roomy screen a rule runs under the header, and a blank gap
+            // between every two entries — the settings nav's spacing. Neither
+            // owns an entry, so a click on one does nothing.
             $index = self::indexOfLine($row, $scroll, $ruled);
             $node = null === $index ? null : $this->visible[$index] ?? null;
             if (null === $node) {
-                // A rule line (odd) is drawn when the entry below it exists;
-                // `$row - 1` and `$row` halve alike on an odd line.
-                $lines[] = $ruled && 1 === ($row % 2) && \array_key_exists($scroll + \intdiv($row - 1, num2: 2), $this->visible)
-                    ? Rule::horizontal($width, $this->styles)
-                    : AnsiText::blank($width);
+                // Only the line under the project name is drawn; the gaps
+                // between entries are transparent — spacing, not a line.
+                $lines[] =
+                    $ruled && 1 === $row && [] !== $this->visible
+                        ? Rule::horizontal($width, $this->styles)
+                        : AnsiText::blank($width);
                 continue;
             }
 

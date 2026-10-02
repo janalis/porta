@@ -564,18 +564,18 @@ final class SettingsNavWidgetTest extends TestCase
      * A roomy screen runs a rule between every two rows; the rules are
      * nobody's, so a click or the pointer on one picks nothing.
      */
-    public function testARoomyScreenRulesBetweenEveryRow(): void
+    public function testARoomyScreenSpacesEveryTwoRows(): void
     {
         $widget = $this->navOnScreen(40, $selected);
 
         $rows = $this->navRows($widget, 20, rows: 60);
 
-        $this->assertSame(['▌  General', \str_repeat('─', times: 20), '   Interface', \str_repeat('─', times: 20)], \array_slice($rows, offset: 0, length: 4));
+        $this->assertSame(['▌  General', '', '   Interface', ''], \array_slice($rows, offset: 0, length: 4), 'a transparent gap between rows, not a drawn line');
         $this->assertSame('    Dotenv', \rtrim($rows[2 * (\count(Probe::get($widget, 'entries')) - 1)]), 'the last row');
-        $this->assertSame('', $rows[(2 * \count(Probe::get($widget, 'entries'))) - 1], 'and no rule after it');
+        $this->assertSame('', $rows[(2 * \count(Probe::get($widget, 'entries'))) - 1], 'and nothing after it');
 
         $widget->handleClick(1);
-        $this->assertSame([], $selected, 'a rule is no row');
+        $this->assertSame([], $selected, 'a gap is no row');
         $this->assertFalse($widget->hoverRow(1), 'and tints nothing');
         $widget->handleClick(2);
         $this->assertSame(['interface'], $selected);
@@ -746,7 +746,7 @@ final class SettingsNavWidgetTest extends TestCase
 
         $this->assertSame('▌   Twig', $rows[9], 'the selection, the fifth row in the window');
         $this->assertSame('    SCSS', $rows[1], 'the first');
-        $this->assertSame(\str_repeat('─', times: 20), $rows[10], 'a rule under it');
+        $this->assertSame('', $rows[10], 'a transparent gap under it');
         $this->assertStringContainsString(Glyphs::SCROLL_DOWN, $rows[11]);
     }
 }

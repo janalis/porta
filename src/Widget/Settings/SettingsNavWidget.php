@@ -21,7 +21,6 @@ use Porta\Widget\PaneNavigationCallbacks;
 use Porta\Widget\Render\EdgeIndicator;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
-use Porta\Widget\Render\Rule;
 use Porta\Widget\Render\SelectionBar;
 use Porta\Widget\Render\TreeRow;
 use Porta\Widget\Support\ArrowScrollTrait;
@@ -537,8 +536,8 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
         }
         $this->memoKey = $key;
 
-        // A rule between every two rows on a roomy screen: each row then
-        // costs two lines but the last, which needs no rule after it.
+        // A transparent gap between every two rows on a roomy screen: each row
+        // then costs two lines but the last, which needs no gap after it.
         $ruled = Density::Roomy === $density;
         $count = \count($this->visible);
         $needed = $ruled ? (2 * $count) - 1 : $count;
@@ -566,7 +565,7 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
         $top = \count($lines);
         while ((\count($lines) - $top) < $budget && $position < $count) {
             if ($ruled && $position > $scroll) {
-                $lines[] = Rule::horizontal($width, $this->styles);
+                $lines[] = AnsiText::blank($width); // a transparent gap, not a line
                 if ((\count($lines) - $top) >= $budget) {
                     break;
                 }
