@@ -125,4 +125,25 @@ final class CommandTransportTest extends TestCase
     {
         $this->assertFalse($this->transport()->refusesLogin('Permission denied'));
     }
+
+    public function testACommandThatCannotStartLetsTheNextInLineGo(): void
+    {
+        $transport = $this->transport();
+        $transport->atMost(1);
+        $answers = [];
+        $transport->exec([\PHP_BINARY, '-r', 'usleep(100000);'], null, static function (int $code) use (&$answers): void {
+            $answers[] = 'first '.$code;
+        });
+        $transport->exec(['/porta-no-such-binary'], null, static function (int $code) use (&$answers): void {
+            $answers[] = 'missing '.$code;
+        });
+        $transport->exec([\PHP_BINARY, '-r', 'echo 1;'], null, static function (int $code) use (&$answers): void {
+            $answers[] = 'last '.$code;
+        });
+
+        $this->await(static function () use (&$answers): bool {
+            return 3 === \count($answers);
+        }, what: 'all three, the one after the refusal too');
+        $this->assertEqualsCanonicalizing(['first 0', 'missing 127', 'last 0'], $answers, 'every one answered — the order of the first two is the free slot\'s, not the queue\'s');
+    }
 }

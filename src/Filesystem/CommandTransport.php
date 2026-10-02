@@ -59,6 +59,8 @@ abstract class CommandTransport extends RemoteTransport
         });
         if (!$started) {
             unset($this->running[$id]);
+            // Its slot is free: the next in line goes, or nothing ever would.
+            $this->next();
             $done(127, self::NOTHING, $command[0].': command not found');
         }
     }

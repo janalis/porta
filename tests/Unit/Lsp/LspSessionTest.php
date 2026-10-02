@@ -136,6 +136,32 @@ final class LspSessionTest extends TestCase
         );
     }
 
+    public function testAFileClosedAndReopenedWhileItStartsSendsItsEditAfterTheReopen(): void
+    {
+        $client = new FakeLspClient();
+        $client->deferReady = true;
+        $session = $this->session($client);
+        $this->start($session);
+        $session->notifyDidOpen('/p/a.php', 'one', 'php', 1);
+        $first = new Document('one');
+        $first->replaceAll('two');
+        $session->notifyFullChange('/p/a.php', $first);
+        $session->notifyDidClose('/p/a.php');
+        $session->notifyDidOpen('/p/a.php', 'reopened', 'php', 1);
+        $second = new Document('reopened');
+        $second->replaceAll('edited');
+        $session->notifyFullChange('/p/a.php', $second);
+
+        $client->ready();
+
+        $this->assertSame(
+            ['textDocument/didOpen', 'textDocument/didClose', 'textDocument/didOpen', 'textDocument/didChange'],
+            \array_column($client->notifications, 'method'),
+            'the edit after the reopen, not before the close',
+        );
+        $this->assertSame([['text' => 'edited']], \array_last($client->notifications)['params']['contentChanges']);
+    }
+
     public function testStartUsesInjectedClientAndReportsState(): void
     {
         $client = new FakeLspClient();

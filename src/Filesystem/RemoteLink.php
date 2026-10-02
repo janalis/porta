@@ -31,6 +31,9 @@ final class RemoteLink
     private bool $loginRefused = false;
     /** The timer that lists the root again, while the link is down. */
     private ?string $probe = null;
+
+    /** Whether the root is being listed right now: never twice at once — each is a login. */
+    private bool $probing = false;
     /** @var list<\Closure(): void> what waits for the link: each runs again once it is back */
     private array $waiting = [];
     /**
@@ -139,7 +142,12 @@ final class RemoteLink
 
     private function probe(RemoteTransport $transport): void
     {
+        if ($this->probing) {
+            return; // already asking: its answer is the one this would get
+        }
+        $this->probing = true;
         $transport->list('', function (array|string $answer) use ($transport): void {
+            $this->probing = false;
             if (null === $this->down) {
                 return; // closed meanwhile, or another listing got there first
             }

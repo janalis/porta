@@ -29,9 +29,15 @@ final class LspSession
      * file. One didChange waits for each — not one per debounce, each holding
      * the whole text, for as long as the server takes.
      *
-     * @var array<string, array{version: int, text: string}>
+     * Each holds the generation of the didChange queued for it: one closed and
+     * reopened meanwhile has a new one, so the old one, queued before the
+     * didClose, sends nothing in its place.
+     *
+     * @var array<string, array{version: int, text: string, generation: int}>
      */
     private array $beforeReady = [];
+
+    private int $generations = 0;
     private ?string $changeDebounce = null;
 
     /**
@@ -368,16 +374,18 @@ final class LspSession
 
             return;
         }
-        $waiting = \array_key_exists($path, $this->beforeReady);
-        $this->beforeReady[$path] = ['version' => $document->version, 'text' => $document->getText()];
-        if ($waiting) {
+        $waiting = $this->beforeReady[$path]['generation'] ?? null;
+        $generation = $waiting ?? ++$this->generations;
+        $this->beforeReady[$path] = ['version' => $document->version, 'text' => $document->getText(), 'generation' => $generation];
+        if (null !== $waiting) {
             return;
         }
-        $this->whenReady(function () use ($path, $uri): void {
+        $this->whenReady(function () use ($path, $uri, $generation): void {
             $change = $this->beforeReady[$path] ?? null;
-            unset($this->beforeReady[$path]);
-            // Closed meanwhile: what it was is nothing to the server now.
-            if (null !== $change) {
+            // Closed meanwhile — and maybe reopened, its edits queued after
+            // the didClose by a change of their own: not this one's to send.
+            if (null !== $change && $generation === $change['generation']) {
+                unset($this->beforeReady[$path]);
                 $this->client?->notify('textDocument/didChange', [
                     'textDocument' => ['uri' => $uri, 'version' => $change['version']],
                     'contentChanges' => [['text' => $change['text']]],

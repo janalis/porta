@@ -902,4 +902,25 @@ final class LspClientTest extends TestCase
             }
         }
     }
+
+    public function testARequestWhoseWriteKillsTheServerFailsAtOnce(): void
+    {
+        $client = new LspClient([\PHP_BINARY, __DIR__.'/../Support/deaf-lsp-server.php'], \dirname(__DIR__, levels: 2), maxWriteBuffer: 65_536);
+        $this->clients[] = $client;
+        $client->start(static function (): void {});
+        $answer = null;
+
+        $client->request('textDocument/hover', ['blob' => \str_repeat('x', times: 200_000)], static function (mixed $result, ?array $error) use (&$answer): void {
+            $answer = $error['message'] ?? null;
+        });
+
+        $this->await(
+            static function () use (&$answer): bool {
+                return null !== $answer;
+            },
+            timeout: 3.0,
+            what: 'the failure, not the 30-second deadline',
+        );
+        $this->assertSame('The language server stopped', $answer);
+    }
 }

@@ -204,7 +204,9 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
             $this->unsent = self::movedKeys($this->unsent, $source, $target);
             $this->change(
                 $target,
-                fn (RemoteTransport $transport, \Closure $answered) => $transport->rename($source, $target, $this->settled($target, $answered)),
+                // Not settled() — a rename moves the server's file, it does not
+                // send what the server refused of it: that stays unsent.
+                static fn (RemoteTransport $transport, \Closure $answered) => $transport->rename($source, $target, $answered),
                 fn (string $why) => $this->refused($target, $why),
             );
 

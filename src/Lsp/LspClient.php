@@ -149,9 +149,9 @@ final class LspClient implements LspClientInterface
             return;
         }
 
-        $this->send(['jsonrpc' => '2.0', 'id' => $this->nextId, 'method' => 'initialize', 'params' => $this->initializeParams()]);
+        $id = $this->nextId++;
         $this->await(
-            $this->nextId++,
+            $id,
             $this->initializeTimeout,
             'initialize',
             function (mixed $result, ?array $error) use ($onReady): void {
@@ -173,6 +173,7 @@ final class LspClient implements LspClientInterface
                 $onReady(Outcome::Ok);
             },
         );
+        $this->send(['jsonrpc' => '2.0', 'id' => $id, 'method' => 'initialize', 'params' => $this->initializeParams()]);
     }
 
     /**
@@ -362,8 +363,10 @@ final class LspClient implements LspClientInterface
             return;
         }
         $id = $this->nextId++;
-        $this->send(['jsonrpc' => '2.0', 'id' => $id, 'method' => $method, 'params' => $params]);
+        // Waiting first: a write that fails stops the client inside send(),
+        // and only what already waits hears it at once.
         $this->await($id, $this->requestTimeout, $method, $onResult);
+        $this->send(['jsonrpc' => '2.0', 'id' => $id, 'method' => $method, 'params' => $params]);
     }
 
     /**

@@ -1335,4 +1335,20 @@ final class RemoteFilesystemTest extends TestCase
         $this->assertCount(2, \array_filter($this->transport->calls, static fn (string $call): bool => 'walk ' === $call), 'walked again');
         $files->close();
     }
+
+    public function testARefusedChangeRenamedStaysUnsent(): void
+    {
+        $files = $this->files();
+        $this->server->write('a.txt', 'theirs');
+        $files->listed($this->cache->dir);
+        $files->available($this->cache->path('a.txt'), static fn (): null => null);
+        $this->transport->fail['a.txt'] = 'Disk quota exceeded';
+        $files->dumpFile($this->cache->path('a.txt'), 'mine');
+        $this->assertSame(1, $files->pending());
+
+        $files->rename($this->cache->path('a.txt'), $this->cache->path('b.txt'));
+
+        $this->assertSame('theirs', \file_get_contents($this->server->path('b.txt')), 'the server moved its own copy');
+        $this->assertSame(1, $files->pending(), 'what it refused is still only here');
+    }
 }

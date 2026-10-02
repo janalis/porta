@@ -139,4 +139,20 @@ final class RemoteLinkTest extends TestCase
         $link->reconnect($this->transport);
         $this->assertFalse($link->loginRefused(), 'back: nothing refused');
     }
+
+    public function testReconnectWhileTheRootIsBeingListedAsksOnce(): void
+    {
+        $link = $this->link();
+        $this->transport->down = 'gone';
+        $link->failed($this->transport, 'gone', static function (): void {}, static function (): void {});
+        $this->transport->hold = true;
+        $calls = \count($this->transport->calls);
+
+        $link->reconnect($this->transport);
+        $link->reconnect($this->transport);
+
+        $this->assertCount($calls + 1, $this->transport->calls, 'one listing at a time: each is a login');
+        $this->transport->release();
+        $link->close();
+    }
 }
