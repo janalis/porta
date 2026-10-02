@@ -264,9 +264,13 @@ selected card.
 The settings nav is a tree in the file tree's shape: Plugins and Languages are
 folders, their rows drawn by `Widget/Render/TreeRow` (shared with the tree, so
 a folder looks and opens the same in both) and tinted `TabAccent`. On a roomy
-screen a `Rule` runs between every two rows; the rules own no row, so a click
-or hover on one does nothing. Its `▲`/`▼` edges (`EdgeIndicator`, shared with the vertical
-tab strip) are controls: a click selects the first entry hidden past that edge.
+screen a `Rule` runs between every two rows in both — in the file tree under
+its project name too; the rules own no row, so a click or hover on one does
+nothing, and a window holds half the entries. Its `▲`/`▼` edges
+(`EdgeIndicator`, shared with the vertical tab strip) are controls: a click
+selects the first entry hidden past that edge. The `▲` row is drawn only once
+something is above: at the top of the list its row is the first entry's, never
+a blank.
 
 ## Trails: the navigation bar and the settings headers
 

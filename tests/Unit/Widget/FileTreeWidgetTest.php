@@ -20,6 +20,7 @@ use Porta\Tree\FileDecorations;
 use Porta\Tree\FileStatuses;
 use Porta\Tree\FileTreeNode;
 use Porta\Ui\Glyphs;
+use Porta\Ui\ScreenDensity;
 use Porta\Widget\FileTreeWidget;
 use Porta\Workbench\AgentActivityKind;
 use Symfony\Component\Clock\MockClock;
@@ -930,5 +931,104 @@ final class FileTreeWidgetTest extends TestCase
         $this->assertContains('   a.php', $rows, 'a file inside, past the blank its triangle would take');
         $this->assertContains('▸ shut/', $rows);
         $this->assertContains('  c.php', $rows);
+    }
+
+    /**
+     * A roomy screen rules the tree as it rules the settings nav: under the
+     * project name and between every two entries, none after the last. A
+     * compact one keeps the dense tree.
+     */
+    public function testARoomyScreenRulesBetweenEveryTwoRows(): void
+    {
+        $project = new TempProject(['a.php' => '', 'b.php' => '']);
+        $density = new ScreenDensity();
+        $tree = new FileTreeWidget($project->dir, density: $density);
+
+        $rows = $this->rows($tree->render(new RenderContext(12, 8)));
+        $rule = \str_repeat('─', times: 12);
+        $this->assertSame([$rule, '▎  a.php', $rule, '   b.php', '', '', ''], \array_map(\rtrim(...), \array_slice($rows, offset: 1)), 'a rule under the name, one between the two, none after');
+
+        $tree->beforeRender();
+        $before = $tree->getRenderRevision();
+        $density->observe(24); // compact now
+        $tree->beforeRender();
+        $this->assertGreaterThan($before, $tree->getRenderRevision(), 'the cached pane would keep its rules otherwise');
+        $this->assertSame(
+            ['▎  a.php', '   b.php', '', '', '', '', ''],
+            \array_map(\rtrim(...), \array_slice($this->rows($tree->render(new RenderContext(12, 8))), offset: 1)),
+            'dense: no rule anywhere, past the last entry either',
+        );
+    }
+
+    /** What is under the pointer is what is drawn there: a rule is no entry, an entry two rows down is the next one. */
+    public function testOnARuledTreeARowMeansTheEntryDrawnOnIt(): void
+    {
+        $project = new TempProject(['a.php' => '', 'b.php' => '', 'c.php' => '']);
+        $tree = new FileTreeWidget($project->dir, density: new ScreenDensity());
+        $tree->render(new RenderContext(20, 9));
+
+        $this->assertNull($tree->nodeAtRow(0), 'the header');
+        $this->assertNull($tree->nodeAtRow(1), 'the rule under it');
+        $this->assertSame('a.php', $tree->nodeAtRow(2)?->name);
+        $this->assertNull($tree->nodeAtRow(3), 'a rule between two');
+        $this->assertSame('b.php', $tree->nodeAtRow(4)?->name);
+        $this->assertSame('c.php', $tree->nodeAtRow(6)?->name);
+        $this->assertNull($tree->nodeAtRow(8), 'past the last');
+
+        $tree->clickRow(4);
+        $this->assertSame(4, $tree->selectedRow(), 'and back: the selected entry is on the row it was clicked on');
+        $this->assertFalse($tree->hoverRow(3), 'hovering a rule tints nothing');
+        $this->assertTrue($tree->hoverRow(6));
+    }
+
+    /** Ruled, a window holds half the entries — and a page turns exactly that many. */
+    public function testPagingARuledTreeShowsEveryFile(): void
+    {
+        $files = [];
+        $labels = [];
+        for ($i = 0; $i < 30; ++$i) {
+            $name = \sprintf('f%02d.php', $i);
+            $labels[] = $name;
+            $files[$name] = "<?php\n";
+        }
+        $project = new TempProject($files);
+        $tree = new FileTreeWidget($project->dir, density: new ScreenDensity());
+
+        self::assertPagingShowsEveryRow(
+            function () use ($tree): string {
+                $tree->beforeRender();
+
+                return $this->plain($tree->render(new RenderContext(30, 9)));
+            },
+            static fn () => $tree->handleInput("\x1b[6~"),
+            $labels,
+        );
+    }
+
+    public function testADragScrollsARuledWindowByWhatItHolds(): void
+    {
+        $files = [];
+        for ($i = 0; $i < 12; ++$i) {
+            $files[\sprintf('f%02d.php', $i)] = '';
+        }
+        $project = new TempProject($files);
+        $tree = new FileTreeWidget($project->dir, density: new ScreenDensity());
+        $tree->render(new RenderContext(20, 9)); // 4 entries a window
+
+        $this->assertTrue($tree->scrollDuringDrag(20));
+        $tree->render(new RenderContext(20, 9));
+        $this->assertSame('f11.php', $tree->nodeAtRow(8)?->name, 'the last entry, on the last line a 4-entry window draws');
+        $this->assertFalse($tree->scrollDuringDrag(1), 'and no further');
+
+        // An even pane: the header, then four rule-and-entry pairs and one row
+        // to spare — still four, not five.
+        $tree->render(new RenderContext(20, 10));
+        $tree->scrollDuringDrag(-20);
+        $tree->render(new RenderContext(20, 10));
+        $tree->scrollDuringDrag(20);
+        $tree->render(new RenderContext(20, 10));
+        $this->assertSame('f08.php', $tree->nodeAtRow(2)?->name, 'the window ends on f11 with four in it');
+        $this->assertSame('f11.php', $tree->nodeAtRow(8)?->name);
+        $this->assertSame(2, $tree->selectedRow(), 'the cursor came along to the first entry of the window: line 2, under the header and its rule');
     }
 }

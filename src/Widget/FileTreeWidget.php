@@ -18,17 +18,20 @@ use Porta\Support\AnsiText;
 use Porta\Tree\FileDecorations;
 use Porta\Tree\FileTreeNode;
 use Porta\Ui\ClickIntent;
+use Porta\Ui\Density;
 use Porta\Ui\Glyphs;
 use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
 use Porta\Ui\MultiSelection;
 use Porta\Ui\Role;
+use Porta\Ui\ScreenDensity;
 use Porta\Ui\Theme\Styles;
 use Porta\Ui\Tooltip;
 use Porta\Ui\TooltipProvider;
 use Porta\Widget\Render\HeaderRenderer;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
+use Porta\Widget\Render\Rule;
 use Porta\Widget\Render\SelectionBar;
 use Porta\Widget\Render\TreeRow;
 use Porta\Widget\Support\ArrowScrollTrait;
@@ -77,6 +80,13 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
     private readonly ListSelection $list;
     private readonly MultiSelection $selection;
     private int $lastRows = 24;
+
+    /**
+     * Whether the last render ruled its rows — what the screen SHOWS, which is
+     * what a click or a hover has to be mapped against, even if the density
+     * flipped since.
+     */
+    private bool $drawnRuled = false;
 
     /** Columns the name keeps for itself before the payload label stands down. */
     private const int DROP_LABEL_FLOOR = 8;
@@ -151,7 +161,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
      */
     private ?array $memoLines = null;
 
-    /** @var array{int, int, int}|null */
+    /** @var array{int, int, int, bool}|null */
     private ?array $memoKey = null;
 
     /**
@@ -169,6 +179,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
         private readonly ?FileDecorations $fileDecorations = null,
         private readonly Translator $translator = new Translator('en'),
         private readonly ProjectFilesystem $files = new LocalFilesystem(),
+        private readonly ?ScreenDensity $density = null,
         private readonly ?EventDispatcherInterface $events = null,
     ) {
         $this->width = $width;
@@ -207,7 +218,9 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
     /** The selected entry's widget-relative row (row 0 is the header). */
     public function selectedRow(): int
     {
-        return $this->list->selected() - $this->list->scroll() + 1;
+        $offset = $this->list->selected() - $this->list->scroll();
+
+        return $this->drawnRuled ? (2 * $offset) + 2 : $offset + 1;
     }
 
     /**
@@ -251,7 +264,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
      */
     public function nodeAt(int $relRow): ?FileTreeNode
     {
-        $index = $this->list->rowIndexAt($relRow, \count($this->visible));
+        $index = $this->indexAtRow($relRow);
         if (null === $index) {
             return null;
         }
@@ -279,7 +292,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
      */
     public function nodeAtRow(int $relRow): ?FileTreeNode
     {
-        $index = $this->list->rowIndexAt($relRow, \count($this->visible));
+        $index = $this->indexAtRow($relRow);
 
         return null === $index ? null : $this->visible[$index];
     }
@@ -424,8 +437,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
      */
     public function scrollDuringDrag(int $delta): bool
     {
-        // Row 0 is the header, so the window is one row shorter than the pane.
-        if (!$this->list->scrollWindow($delta, \count($this->visible), $this->lastRows - 1)) {
+        if (!$this->list->scrollWindow($delta, \count($this->visible), $this->windowEntries($this->lastRows, $this->drawnRuled))) {
             return false;
         }
         $this->invalidate();
@@ -586,14 +598,14 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
 
             return;
         }
-        // Row 0 is the header, so a page is one row SHORTER than the pane —
-        // the same budget render() gives follow() and scrollWindow() gets above.
+        // A page is what the window holds — {@see windowEntries()}, the same
+        // budget render() gives follow() and scrollWindow() gets above.
         // Paging by the full height scrolled one entry past the bottom of the
         // screen every press, and the entry you landed on had never been drawn.
         // No floor, for the reason scrollWindow() has none: a pane with no room
         // to draw an entry has no page to turn, and ListNavigation already
         // ignores a page of zero.
-        if (ListNavigation::handleKey($data, $kb, $this->list, $count, page: $this->lastRows - 1)) {
+        if (ListNavigation::handleKey($data, $kb, $this->list, $count, page: $this->windowEntries($this->lastRows, $this->drawnRuled))) {
             // Moving the cursor with no modifier collapses the selection to the
             // row under it: a pair is built deliberately, and a stale second
             // file surviving a walk through the tree is how a compare ends up
@@ -701,7 +713,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
      */
     public function clickRow(int $relRow, ClickIntent $intent = ClickIntent::Open): void
     {
-        $index = $this->list->rowIndexAt($relRow, \count($this->visible));
+        $index = $this->indexAtRow($relRow);
         if (null === $index) {
             return;
         }
@@ -734,7 +746,44 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
     #[\Override]
     public function hoverRow(int $relRow): bool
     {
-        return $this->setHovered($this->list->rowIndexAt($relRow, \count($this->visible)));
+        return $this->setHovered($this->indexAtRow($relRow));
+    }
+
+    /** Whether this screen rules the rows: a roomy one, as the settings nav does. */
+    private function ruled(): bool
+    {
+        return Density::Roomy === $this->density?->current();
+    }
+
+    /**
+     * How many entries a window of $rows holds: every row past the header, or
+     * — ruled — one in two, each entry with its rule above it.
+     */
+    // @mago-expect lint:no-boolean-flag-parameter -- ruled IS the one fact that halves the window
+    private function windowEntries(int $rows, bool $ruled): int
+    {
+        return $ruled ? \intdiv($rows - 1, num2: 2) : $rows - 1;
+    }
+
+    /** The entry a widget-relative row shows, as last drawn: null for the header, a rule, or past the end. */
+    private function indexAtRow(int $relRow): ?int
+    {
+        $index = self::indexOfLine($relRow, $this->list->scroll(), $this->drawnRuled);
+
+        return null !== $index && $index < \count($this->visible) ? $index : null;
+    }
+
+    /** The entry index line $line draws at $scroll, before bounds: null on the header and on a rule. */
+    // @mago-expect lint:no-boolean-flag-parameter -- ruled IS the one fact that decides which lines are entries
+    private static function indexOfLine(int $line, int $scroll, bool $ruled): ?int
+    {
+        if ($line < 1 || $ruled && 0 !== ($line % 2)) {
+            return null;
+        }
+
+        // Only even lines reach the ruled arm, where `- 1` and `- 2` halve alike:
+        // an equivalent mutant, not a gap.
+        return $ruled ? $scroll + \intdiv($line - 2, num2: 2) : $scroll + $line - 1;
     }
 
     /**
@@ -745,6 +794,11 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
     #[\Override]
     public function beforeRender(): void
     {
+        // A cached pane is not rendered again on its own: a density flip has
+        // to invalidate it, or the rules stay as they were.
+        if ($this->drawnRuled !== $this->ruled()) {
+            $this->invalidate();
+        }
         $marks = $this->fileDecorations?->snapshot() ?? [];
         if ($marks !== $this->fileMarks) {
             $this->fileMarks = $marks;
@@ -763,24 +817,31 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
         // Both per-frame calls (the intrinsic measure and the real pass) clamp
         // to the same effective width, so one memo entry serves them both; a
         // pure editor scroll leaves the revision untouched and both hit.
-        $key = [$this->getRenderRevision(), $width, $rows];
+        $ruled = $this->ruled();
+        $key = [$this->getRenderRevision(), $width, $rows, $ruled];
         if (null !== $this->memoLines && $key === $this->memoKey) {
             return $this->memoLines;
         }
+        $this->drawnRuled = $ruled;
 
-        // Row 0 is the header, so $rows - 1 entries are visible.
-        $scroll = $this->list->follow($rows - 1);
+        $scroll = $this->list->follow($this->windowEntries($rows, $ruled));
 
         $lines = [];
         $lines[] = HeaderRenderer::title(\basename($this->rootDir).'/', $width, $this->styles);
         $this->rowTips = [];
 
         for ($row = 1; $row < $rows; ++$row) {
-            $index = $scroll + $row - 1;
-            $node = $this->visible[$index] ?? null;
-
+            // On a roomy screen a rule runs under the header and between every
+            // two entries — the settings nav's shape, the tree it is drawn
+            // after. The rules own no entry, so a click on one does nothing.
+            $index = self::indexOfLine($row, $scroll, $ruled);
+            $node = null === $index ? null : $this->visible[$index] ?? null;
             if (null === $node) {
-                $lines[] = AnsiText::blank($width);
+                // A rule line (odd) is drawn when the entry below it exists;
+                // `$row - 1` and `$row` halve alike on an odd line.
+                $lines[] = $ruled && 1 === ($row % 2) && \array_key_exists($scroll + \intdiv($row - 1, num2: 2), $this->visible)
+                    ? Rule::horizontal($width, $this->styles)
+                    : AnsiText::blank($width);
                 continue;
             }
 
