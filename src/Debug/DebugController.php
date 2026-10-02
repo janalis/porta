@@ -718,6 +718,13 @@ final class DebugController implements DebugSessionObserver, StatusSegment
     }
 
     #[\Override]
+    public function onCrashed(): void
+    {
+        $this->notifier->error($this->translator->trans('The debug adapter stopped unexpectedly'), 5.0);
+        $this->onTerminated();
+    }
+
+    #[\Override]
     public function onError(string $message): void
     {
         $this->notifier->error($this->translator->trans('Could not start the debug adapter').' — '.$message, 5.0);

@@ -6,6 +6,8 @@ namespace Porta\Debug;
 
 use Porta\Support\JsonRpcTransport;
 use Porta\Support\NonBlockingWriter;
+use Porta\Support\PendingRequests;
+use Revolt\EventLoop;
 
 /**
  * Asynchronous Debug Adapter Protocol transport over a child process's stdio,
@@ -13,14 +15,24 @@ use Porta\Support\NonBlockingWriter;
  * Content-Length framing and pipe plumbing via {@see JsonRpcTransport}; only
  * the message envelope differs). Reverse requests (e.g. runInTerminal) are answered with a failure —
  * the initialize handshake advertises no support for them.
+ *
+ * Nothing waits on an adapter forever: a request unanswered in
+ * {@see REQUEST_TIMEOUT} fails, and when the adapter stops or dies every
+ * request still waiting fails on the next tick — as does one asked after.
  */
 final class DapClient implements DapClientInterface
 {
     private readonly JsonRpcTransport $transport;
 
+    /** Seconds a request may go unanswered before it fails. */
+    public const float REQUEST_TIMEOUT = 30.0;
+
+    /** Seconds a stopped adapter has to end what it debugs, and itself, before it is terminated. */
+    public const float EXIT_WITHIN = 1.0;
+
     private int $nextSeq = 1;
-    /** @var array<int, callable(array<string, mixed>, ?string): void> request seq => callback */
-    private array $pending = [];
+    /** @var PendingRequests<callable(array<string, mixed>, ?string): void> request seq => callback */
+    private readonly PendingRequests $pending;
     /** @var array<string, callable(array<string, mixed>): void> event name => handler */
     private array $eventHandlers = [];
     /** @var (callable(): void)|null */
@@ -28,8 +40,14 @@ final class DapClient implements DapClientInterface
     private bool $closed = false;
 
     /** @param list<string> $command */
-    public function __construct(array $command, string $rootDir, ?callable $logger = null, int $maxWriteBuffer = NonBlockingWriter::DEFAULT_LIMIT)
-    {
+    public function __construct(
+        array $command,
+        string $rootDir,
+        ?callable $logger = null,
+        int $maxWriteBuffer = NonBlockingWriter::DEFAULT_LIMIT,
+        private readonly float $requestTimeout = self::REQUEST_TIMEOUT,
+    ) {
+        $this->pending = new PendingRequests();
         $this->transport = new JsonRpcTransport($command, $rootDir, 'debug adapter', $logger, $maxWriteBuffer);
     }
 
@@ -39,11 +57,9 @@ final class DapClient implements DapClientInterface
         return $this->transport->start(
             $this->handleMessage(...),
             function (): void {
-                if (!$this->closed) {
-                    $this->closed = true;
-                    if (null !== $this->onClose) {
-                        ($this->onClose)();
-                    }
+                $this->fail();
+                if (null !== $this->onClose) {
+                    ($this->onClose)();
                 }
             },
         );
@@ -64,9 +80,19 @@ final class DapClient implements DapClientInterface
     #[\Override]
     public function request(string $command, array $arguments = [], ?callable $onResult = null): void
     {
+        if ($this->closed) {
+            if (null !== $onResult) {
+                EventLoop::queue($onResult(...), [], self::stopped());
+            }
+
+            return;
+        }
         $seq = $this->nextSeq++;
         if (null !== $onResult) {
-            $this->pending[$seq] = $onResult;
+            $timeout = $this->requestTimeout;
+            $this->pending->add($seq, $onResult, $timeout, static function (callable $callback) use ($command, $timeout): void {
+                $callback([], \sprintf('the debug adapter did not answer %s in %s seconds', $command, $timeout));
+            });
         }
         $this->send(['seq' => $seq, 'type' => 'request', 'command' => $command, 'arguments' => (object) $arguments]);
     }
@@ -80,8 +106,24 @@ final class DapClient implements DapClientInterface
     #[\Override]
     public function stop(): void
     {
-        $this->transport->stop();
-        $this->pending = [];
+        // A moment to act on what it was just sent — a disconnect that ends
+        // the debuggee — before it is ended itself.
+        $this->transport->stop(self::EXIT_WITHIN);
+        $this->fail();
+    }
+
+    /** Stopped or dead: everything still waiting fails, on the next tick, and so does anything asked from now on. */
+    private function fail(): void
+    {
+        $this->closed = true;
+        foreach ($this->pending->drain() as $callback) {
+            EventLoop::queue($callback(...), [], self::stopped());
+        }
+    }
+
+    private static function stopped(): string
+    {
+        return 'the debug adapter stopped';
     }
 
     /** @param array<array-key, mixed> $message */
@@ -90,9 +132,7 @@ final class DapClient implements DapClientInterface
         /** @var mixed $type */
         $type = $message['type'] ?? null;
         if ('response' === $type) {
-            $seq = \is_int($message['request_seq'] ?? null) ? $message['request_seq'] : -1;
-            $callback = $this->pending[$seq] ?? null;
-            unset($this->pending[$seq]);
+            $callback = $this->pending->take(\is_int($message['request_seq'] ?? null) ? $message['request_seq'] : -1);
             if (null !== $callback) {
                 /** @var array<string, mixed> $body */
                 $body = \is_array($message['body'] ?? null) ? $message['body'] : [];

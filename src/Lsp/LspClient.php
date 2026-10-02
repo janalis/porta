@@ -7,6 +7,7 @@ namespace Porta\Lsp;
 use Porta\Support\JsonRpcTransport;
 use Porta\Support\NonBlockingWriter;
 use Porta\Support\Outcome;
+use Porta\Support\PendingRequests;
 use Revolt\EventLoop;
 
 /**
@@ -34,11 +35,9 @@ final class LspClient implements LspClientInterface
     private readonly JsonRpcTransport $transport;
 
     private int $nextId = 1;
-    /** @var array<int, callable(mixed, ?array): void> id => callback(result, error) */
-    private array $pending = [];
 
-    /** @var array<int, string> id => the timer that fails the request when no answer comes */
-    private array $deadlines = [];
+    /** @var PendingRequests<callable(mixed, ?array): void> id => callback(result, error) */
+    private readonly PendingRequests $pending;
 
     /** Stopped, or dead: from here on every request fails at once and nothing waits for a ready that cannot come. */
     private bool $stopped = false;
@@ -77,6 +76,7 @@ final class LspClient implements LspClientInterface
         private readonly float $initializeTimeout = self::INITIALIZE_TIMEOUT,
     ) {
         $this->logger = $logger;
+        $this->pending = new PendingRequests();
         $this->transport = new JsonRpcTransport($command, $rootDir, 'LSP server', $logger, $maxWriteBuffer);
     }
 
@@ -374,15 +374,11 @@ final class LspClient implements LspClientInterface
      */
     private function await(int $id, float $timeout, string $method, callable $onResult): void
     {
-        $this->pending[$id] = $onResult;
-        $this->deadlines[$id] = EventLoop::unreference(EventLoop::delay($timeout, function () use ($id, $timeout, $method): void {
-            // Still waiting: an answer, or a stop, cancels this timer.
-            $callback = $this->pending[$id];
-            unset($this->pending[$id], $this->deadlines[$id]);
+        $this->pending->add($id, $onResult, $timeout, function (callable $callback) use ($id, $timeout, $method): void {
             $this->log(\sprintf('%s got no answer in %s seconds', $method, $timeout));
             $this->notify('$/cancelRequest', ['id' => $id]);
             $callback(null, ['code' => self::CANCELLED, 'message' => \sprintf('The language server did not answer in %s seconds', $timeout)]);
-        }));
+        });
     }
 
     /** @return array{code: int, message: string} */
@@ -412,16 +408,10 @@ final class LspClient implements LspClientInterface
         $this->isInitialized = false;
         $this->serverCapabilities = [];
         $this->stopped = true;
-        foreach ($this->deadlines as $timer) {
-            EventLoop::cancel($timer);
-        }
-        $this->deadlines = [];
         // Everything still waiting hears it, on the next tick — never from
         // inside stop(), whose caller is mid-teardown: a request fails, and
         // an action that was waiting for ready runs and fails in turn.
-        $waiting = $this->pending;
-        $this->pending = [];
-        foreach ($waiting as $callback) {
+        foreach ($this->pending->drain() as $callback) {
             EventLoop::queue($callback(...), null, self::stoppedError());
         }
         $ready = $this->whenReady;
@@ -443,13 +433,7 @@ final class LspClient implements LspClientInterface
     {
         // Response to one of our requests
         if (($message['id'] ?? null) !== null && ($message['method'] ?? null) === null) {
-            $id = (int) $message['id'];
-            $callback = $this->pending[$id] ?? null;
-            $deadline = $this->deadlines[$id] ?? null;
-            if (null !== $deadline) {
-                EventLoop::cancel($deadline);
-            }
-            unset($this->pending[$id], $this->deadlines[$id]);
+            $callback = $this->pending->take((int) $message['id']);
             if (null !== $callback) {
                 $callback($message['result'] ?? null, $message['error'] ?? null);
             }

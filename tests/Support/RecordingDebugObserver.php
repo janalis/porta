@@ -38,4 +38,9 @@ final readonly class RecordingDebugObserver implements DebugSessionObserver
     {
         ($this->recorder)("error:{$message}");
     }
+
+    public function onCrashed(): void
+    {
+        ($this->recorder)('crashed');
+    }
 }

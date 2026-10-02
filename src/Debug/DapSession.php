@@ -73,7 +73,8 @@ final class DapSession
         });
         $this->client->onEvent('terminated', $this->handleTerminated(...));
         $this->client->onEvent('exited', $this->handleTerminated(...));
-        $this->client->onClose($this->handleTerminated(...));
+        // The adapter gone before the session ended is a crash, and said as one.
+        $this->client->onClose($this->crashed(...));
 
         if (!$this->client->start()) {
             $this->state = DebugState::Terminated;
@@ -405,7 +406,7 @@ final class DapSession
             $this->client->request('disconnect', ['terminateDebuggee' => true]);
         }
         $this->handleTerminated();
-        $this->client->stop();
+        $this->client->stop(); // ended already, and stopped then: harmless again
     }
 
     /** The adapter announced its readiness for configuration: sync breakpoints. */
@@ -503,6 +504,18 @@ final class DapSession
         return $filters;
     }
 
+    private function crashed(): void
+    {
+        if ($this->terminationReported) {
+            return;
+        }
+        $this->tempBreakpoint = null;
+        $this->terminationReported = true;
+        $this->state = DebugState::Terminated;
+        $this->observer->onCrashed();
+        $this->client->stop();
+    }
+
     private function handleTerminated(): void
     {
         if ($this->terminationReported) {
@@ -512,5 +525,8 @@ final class DapSession
         $this->terminationReported = true;
         $this->state = DebugState::Terminated;
         $this->observer->onTerminated();
+        // Ended: so is its adapter, which would otherwise live on — holding
+        // its port, so the next session's could not take it.
+        $this->client->stop();
     }
 }

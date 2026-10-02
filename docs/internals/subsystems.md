@@ -915,7 +915,11 @@ deliberately never re-runs `ready()`.
 `Debug/DapClient` speaks the Debug Adapter Protocol over a child process's
 stdio. The whole wire layer — spawn, non-blocking pipes, watchers, the frame
 drain, write-error convergence, teardown — is `Support/JsonRpcTransport`, shared
-with `Lsp/LspClient`; each keeps only its envelope.
+with `Lsp/LspClient`; each keeps only its envelope. Both keep their unanswered
+requests in `Support/PendingRequests`: a request unanswered in 30 s fails, and
+when the peer stops or dies every one still waiting fails on the next tick. A
+session that ends stops its adapter — given a second to end the debuggee —
+and an adapter that dies first is reported as a crash (`onCrashed()`).
 
 `Debug/DapSession` is one launch's order-agnostic state machine: 0-based lines
 internally, 1-based on the wire, conditional and exception breakpoints,

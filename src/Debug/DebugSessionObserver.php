@@ -25,4 +25,7 @@ interface DebugSessionObserver
 
     /** The adapter failed to start or launch. */
     public function onError(string $message): void;
+
+    /** The adapter died in the middle of the session (fired instead of onTerminated). */
+    public function onCrashed(): void;
 }

@@ -209,20 +209,58 @@ final class DapClientTest extends TestCase
             return $closed;
         });
 
-        // The adapter is dead but the pipe resources still exist: the write fails and is logged.
-        $client->request('initialize');
-        $failed = static fn (array $log): bool => [] !== \array_filter($log, static fn (string $line): bool => \str_contains($line, 'write to debug adapter failed'));
-        $this->await(static function () use (&$failed, &$log): bool {
-            return $failed($log);
+        // The adapter is dead: nothing is written to it, and a request fails at once.
+        $answer = null;
+        $client->request('initialize', [], static function (array $body, ?string $error) use (&$answer): void {
+            $answer = $error;
+        });
+        $this->await(static function () use (&$answer): bool {
+            return null !== $answer;
         }, 2.0);
-        $this->assertTrue($failed($log), 'the failed write was logged (with its reason)');
+        $this->assertSame('the debug adapter stopped', $answer);
+        $this->assertSame([], \array_filter($log, static fn (string $line): bool => \str_contains($line, 'write to debug adapter failed')), 'nothing was written');
 
         $client->stop();
-        $client->request('initialize'); // closed stdin → silent no-op
+        $client->request('initialize'); // stopped, no callback → silent no-op
 
         // The internal reader guard: a drain after stop must not error.
         $transport = Probe::get($client, 'transport');
         Probe::invoke($transport, 'drainStdout', static function (): void {}, null);
         $this->assertFalse($client->isRunning());
+    }
+
+    public function testARequestNobodyAnswersFailsInsteadOfWaitingForever(): void
+    {
+        $client = new DapClient([\PHP_BINARY, __DIR__.'/../Support/mock-dap-adapter.php'], \dirname(__DIR__, levels: 2), requestTimeout: 0.2);
+        $this->clients[] = $client;
+        $this->assertTrue($client->start());
+        $answer = null;
+
+        $client->request('portaNever', [], static function (array $body, ?string $error) use (&$answer): void {
+            $answer = $error;
+        });
+
+        $this->await(static function () use (&$answer): bool {
+            return null !== $answer;
+        }, what: 'the deadline');
+        $this->assertSame('the debug adapter did not answer portaNever in 0.2 seconds', $answer);
+    }
+
+    public function testStoppingFailsWhatStillWaits(): void
+    {
+        $client = $this->client();
+        $this->assertTrue($client->start());
+        $answer = null;
+        $client->request('portaNever', [], static function (array $body, ?string $error) use (&$answer): void {
+            $answer = $error;
+        });
+
+        $client->stop();
+        $this->assertNull($answer, 'never from inside stop()');
+
+        $this->await(static function () use (&$answer): bool {
+            return null !== $answer;
+        }, what: 'the failure');
+        $this->assertSame('the debug adapter stopped', $answer);
     }
 }

@@ -195,7 +195,7 @@ final class DapSessionTest extends TestCase
         $this->assertSame(DebugState::Terminated, $session->state());
     }
 
-    public function testTransportCloseAloneReportsTermination(): void
+    public function testAnAdapterThatDiesBeforeTheSessionEndedIsACrash(): void
     {
         $client = new FakeDapClient();
         $session = $this->session($client);
@@ -204,7 +204,7 @@ final class DapSessionTest extends TestCase
         $client->respond('launch');
 
         $client->close(); // no preceding 'terminated'/'exited' event
-        $this->assertSame(['terminated'], $this->events);
+        $this->assertSame(['crashed'], $this->events, 'said as the crash it is');
         $this->assertSame(DebugState::Terminated, $session->state());
     }
 

@@ -3194,6 +3194,10 @@
         <source>%name% not found</source>
         <target>%name% introuvable</target>
       </trans-unit>
+      <trans-unit id="1119">
+        <source>The debug adapter stopped unexpectedly</source>
+        <target>L’adaptateur de débogage s’est arrêté de manière inattendue</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

@@ -282,6 +282,33 @@ final class DebugControllerTest extends TestCase
         );
     }
 
+    public function testAnAdapterThatDiesMidSessionIsSaidAndItsSessionEnds(): void
+    {
+        $controller = $this->controller();
+        $controller->startForCurrentFile();
+        $this->client->respond('initialize', []);
+        $this->client->respond('launch');
+
+        $this->client->close();
+
+        $this->assertStringContainsString('The debug adapter stopped unexpectedly', $this->flashed());
+        $this->assertStringNotContainsString('Could not start', $this->flashed(), 'it had started');
+        $this->assertFalse($controller->isActive());
+        $this->assertStringContainsString('terminated', $this->panel->statusText());
+    }
+
+    public function testASessionThatEndsStopsItsAdapter(): void
+    {
+        $controller = $this->controller();
+        $controller->startForCurrentFile();
+        $this->client->respond('initialize', []);
+        $this->client->respond('launch');
+
+        $this->client->emit('terminated', []);
+
+        $this->assertTrue($this->client->stopped, 'not left running, holding its port for the next session');
+    }
+
     public function testFailedAdapterSpawnAndLaunchErrorsFlash(): void
     {
         $controller = $this->controller();
