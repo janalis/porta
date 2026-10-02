@@ -29,6 +29,8 @@ use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Ui\Glyphs;
 use Porta\Widget\ContextMenu;
+use Porta\Workbench\Menu\MenuItem;
+use Porta\Workbench\ReopenRequest;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -375,7 +377,7 @@ final class IdeContextMenusTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
-    public function testRightClickOnHeaderOrEmptyTabStripOpensNothing(): void
+    public function testRightClickOnEmptyTreeOrEmptyTabStripOpensNothing(): void
     {
         \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "<?php\n"]);
@@ -386,10 +388,11 @@ final class IdeContextMenusTest extends TestCase
             [
                 200 => static function ($tui): void {
                     $tui->tick();
-                    $tui->handleInput("\x1b[<2;3;2M"); // tree header row → nodeAt() null
+                    // Below the last entry (the header has a menu of its own now).
+                    $tui->handleInput("\x1b[<2;3;10M");
                 },
                 250 => function ($tui): void {
-                    $this->assertFalse($tui->getById('context-menu')->isOpen(), 'the tree header targets no node');
+                    $this->assertFalse($tui->getById('context-menu')->isOpen(), 'the empty tree under its entries targets no node');
                     $tui->handleInput("\x1b[<2;150;2M"); // tab bar past the last tab → no index
                 },
                 300 => function ($tui): void {
@@ -1206,5 +1209,44 @@ final class IdeContextMenusTest extends TestCase
         foreach (\mb_str_split($text) as $char) {
             $tui->handleInput($char);
         }
+    }
+
+    /**
+     * The project name's own menu: the folders beside the project, to switch
+     * to one. Picking one ends this session and names it as the next — the
+     * reopen every project switch is.
+     */
+    public function testRightClickingTheProjectNameOffersTheProjectsBesideIt(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $project = new TempProject(['alpha.php' => "<?php\n"]);
+        $other = new TempProject(['b.php' => "<?php\n"]); // a sibling: both live in the temp dir
+
+        $this->runIde(
+            $project,
+            null,
+            [
+                200 => static function ($tui): void {
+                    $tui->handleInput("\x1b[<2;6;2M"); // right-press the project name (tree row 0)
+                },
+                280 => function ($tui, $terminal, Ide $ide) use ($project, $other): void {
+                    $menu = $tui->getById('context-menu');
+                    $this->assertTrue($menu->isOpen(), 'the project name has a menu');
+                    /** @var list<MenuItem> $items */
+                    $items = Probe::get($menu, 'items');
+                    $labels = \array_map(static fn (MenuItem $item): string => $item->label, $items);
+                    $this->assertContains(\basename($project->dir), $labels, 'this project, among them');
+                    $this->assertSame('Open Project…', \end($labels), 'and the switcher last');
+                    $pick = \array_first(\array_filter($items, static fn (MenuItem $item): bool => \basename($other->dir) === $item->label)) ?? null;
+                    $this->assertInstanceOf(MenuItem::class, $pick, 'the folder beside it is offered');
+
+                    ($pick->run)();
+
+                    $this->assertSame((string) \realpath($other->dir), Services::resolve($ide, ReopenRequest::class)->root(), 'this project closes and that one opens');
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
     }
 }

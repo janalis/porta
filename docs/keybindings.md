@@ -372,6 +372,9 @@ cursor, drag to select (double-click a word, triple-click a line,
 entries / tabs / menu items / panel rows, drag pane separators to resize,
 and right-click for a context menu. In the file tree, `Ctrl+Click` adds an
 entry to the selection and `Shift+Click` takes the range from the last one.
+Right-click the project name at the top of the tree for every folder beside
+the project: pick one to close this project and open that one (the same switch
+as `Ctrl+Shift+O`, unsaved edits and the trust question included).
 A results row, or a debugger frame, offers **Copy Path** and **Copy Relative
 Path** for the file it names, with whatever plugins add for a file.
 

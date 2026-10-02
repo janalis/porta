@@ -222,7 +222,9 @@ path name no file. `fileAt()` answers for it. `StatusBarClickRouter` counts
 presses there on `MouseRouter`'s own `ClickCounter` (passed in, never a second
 counter), and a double-click calls `FileTreeWidget::revealPath()`.
 `ContextMenuRouter` gives it its own menu: `tree_select_opened_file`, then the
-tree's `copyPathItems()`. That branch stays out of `statusMenuItems()`, which
+tree's `copyPathItems()`. The tree's project-name row has one too:
+`ProjectSwitcher::siblingItems()`, every folder beside the project (the current
+one ticked and greyed), then Open Project…; a pick is `openPath()`'s. That branch stays out of `statusMenuItems()`, which
 also serves LEFT clicks.
 
 Where a rule meets a sidebar's divider, the rule turns into it:

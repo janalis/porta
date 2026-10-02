@@ -23,6 +23,7 @@ use Porta\Tests\Support\TestTui;
 use Porta\Tests\Support\UntrustsProjects;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
+use Porta\Workbench\Menu\MenuItem;
 use Porta\Workbench\Notifier;
 use Porta\Workbench\ProjectSwitcher;
 use Porta\Workbench\UnsavedChangesGuard;
@@ -48,6 +49,8 @@ final class ProjectSwitcherTest extends TestCase
     private WorkspaceTrust $trust;
     private ?WorkspaceTrust $trustOverride = null;
     private bool $trustHere = false;
+    private ?string $rootOverride = null;
+    private ?TempProject $keep = null;
     private CodeEditorWidget $editor;
     private StatusBarWidget $statusBar;
     /** @var list<string> */
@@ -85,9 +88,17 @@ final class ProjectSwitcherTest extends TestCase
             $events,
             $this->guard = new UnsavedChangesGuard($this->buffers = new BufferManager(), $notifier, $translator, new MockClock()),
             $this->trust = $this->trustOverride ?? new WorkspaceTrust($this->home->dir),
-            IdeConfig::load($this->here->dir),
-            $this->here->dir,
+            IdeConfig::load($this->rootOverride ?? $this->here->dir),
+            $this->rootOverride ?? $this->here->dir,
         );
+    }
+
+    /** A switcher whose project is $root rather than a fresh one. */
+    private function switcherIn(string $root): ProjectSwitcher
+    {
+        $this->rootOverride = $root;
+
+        return $this->switcher();
     }
 
     public function testPickingARecentProjectRequestsItByRoot(): void
@@ -506,5 +517,93 @@ final class ProjectSwitcherTest extends TestCase
 
         $this->assertSame([], $this->requested);
         $this->assertStringContainsString('Could not save the answer', $this->flashText($this->statusBar));
+    }
+
+    /** @return list<string> the menu's labels, a separator as '-' */
+    private static function labels(array $items): array
+    {
+        return \array_map(static fn (MenuItem $item): string => $item->separator ? '-' : $item->label, $items);
+    }
+
+    /**
+     * Right-clicking the project name lists every folder beside it — the
+     * current one ticked and greyed — then the switcher itself, so the menu is
+     * never a dead end.
+     */
+    public function testTheSiblingsAreEveryFolderBesideTheProject(): void
+    {
+        $parent = new TempProject(['zeta/a' => '', 'Alpha/a' => '', 'web10/a' => '', 'web9/a' => '', '.hidden/a' => '', 'notes.txt' => '', 'here/composer.json' => '{}']);
+        $this->keep = $parent; // its destructor would remove the folders
+        $switcher = $this->switcherIn($parent->path('here'));
+
+        $items = $switcher->siblingItems();
+
+        $this->assertSame(['Alpha', 'here', 'web9', 'web10', 'zeta', '-', 'Open Project…'], self::labels($items), 'folders only, no dot-folders, in natural order');
+        $current = $items[1];
+        $this->assertTrue(null !== $current->isChecked && ($current->isChecked)(), 'the current one is ticked');
+        $this->assertFalse(null === $current->isEnabled || ($current->isEnabled)(), 'and not a place to go');
+        $this->assertNull($items[0]->isChecked, 'the others are not');
+
+        ($items[2]->run)(); // web9
+        $this->assertSame([(string) \realpath($parent->path('web9'))], $this->requested, 'picked: this project closes, that one opens');
+
+        ($items[6]->run)();
+        $this->assertTrue(EditorState::pickerOpen($this->editor) || EditorState::promptOpen($this->editor), 'Open Project… is the switcher');
+    }
+
+    public function testASiblingIsOpenedLikeAnyProject(): void
+    {
+        $parent = new TempProject(['other/a' => '', 'here/composer.json' => '{}']);
+        $this->keep = $parent;
+        $switcher = $this->switcherIn($parent->path('here'));
+        $this->buffers->open($parent->path('here/x.php'), "<?php\n")->document->insert('x');
+
+        ($switcher->siblingItems()[1]->run)(); // other
+
+        $this->assertSame([], $this->requested, 'unsaved edits hold it, as any switch');
+        $this->assertStringContainsString('Unsaved changes', $this->flashText($this->statusBar));
+    }
+
+    /** A remote project's parent is the cache: nothing beside it is a project. */
+    public function testARemoteProjectHasNoSiblings(): void
+    {
+        $home = new TempProject([]);
+        \putenv('PORTA_HOME='.$home->dir);
+        $root = ProjectLocation::prepare(RemoteSpec::parse('ftp://example.invalid/site') ?? throw new \LogicException('parsed'), $home->dir);
+        \mkdir(\dirname($root).'/stray');
+        $switcher = $this->switcherIn($root);
+
+        $this->assertSame(['Open Project…'], self::labels($switcher->siblingItems()));
+    }
+
+    /** A project opened through a link lists the folders beside where it really is. */
+    public function testALinkedProjectListsTheFoldersBesideItsRealPlace(): void
+    {
+        $real = new TempProject(['real/a' => '', 'neighbour/a' => '']);
+        $links = new TempProject(['decoy/a' => '']);
+        \symlink($real->path('real'), $links->path('via'));
+        $this->keep = $real;
+        $switcher = $this->switcherIn($links->path('via'));
+
+        $labels = self::labels($switcher->siblingItems());
+
+        $this->assertSame(['neighbour', 'real', '-', 'Open Project…'], $labels);
+        $this->assertTrue(($switcher->siblingItems()[1]->isChecked ?? static fn (): bool => false)(), 'the real one is the current one');
+    }
+
+    /** A parent that cannot be listed still shows where you are, and the way out. */
+    public function testAParentThatCannotBeListedOffersTheCurrentProjectAndTheSwitcher(): void
+    {
+        $parent = new TempProject(['here/composer.json' => '{}', 'other/a' => '']);
+        $this->keep = $parent;
+        $switcher = $this->switcherIn($parent->path('here'));
+        \chmod($parent->dir, permissions: 0o311); // enter, not list
+        try {
+            $labels = self::labels($switcher->siblingItems());
+        } finally {
+            \chmod($parent->dir, permissions: 0o755);
+        }
+
+        $this->assertSame(['here', '-', 'Open Project…'], $labels);
     }
 }

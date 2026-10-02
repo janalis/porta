@@ -16,6 +16,7 @@ use Porta\Workbench\Menu\ContextMenuBuilder;
 use Porta\Workbench\Menu\ContextMenuOpener;
 use Porta\Workbench\Menu\MenuItem;
 use Porta\Workbench\Menu\ViewMenuSources;
+use Porta\Workbench\ProjectSwitcher;
 use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Tui;
@@ -53,6 +54,7 @@ final readonly class ContextMenuRouter
         private ResultsPanelWidget $resultsPanel,
         private DebugPanelWidget $debugPanel,
         private ProjectPaths $paths,
+        private ProjectSwitcher $projects,
     ) {}
 
     public function route(MouseEvent $mouse, ?WidgetRect $treeRect, ?WidgetRect $tabsRect, ?WidgetRect $editorRect): void
@@ -97,8 +99,9 @@ final readonly class ContextMenuRouter
             $handled = true;
             $rel = $treeRect->toRelative($mouse->row, $mouse->col);
             $this->tui->setFocus($this->panes->tree);
-            $node = $this->panes->tree->nodeAt($rel['row']);
-            if (null === $node) {
+            // The project name: the folders beside it, to switch to one.
+            $node = 0 === $rel['row'] ? null : $this->panes->tree->nodeAt($rel['row']);
+            if (0 !== $rel['row'] && null === $node) {
                 $this->opener->flashNoMenu(); // below the last node
 
                 return;
@@ -106,9 +109,11 @@ final readonly class ContextMenuRouter
             // A FILE row also offers what plugins put on the file surface; a
             // directory does not (the surface names a file, and core's own
             // folder verbs are the ones that make sense there).
-            $items = $node->isDir
-                ? $this->treeOps->contextItems($node)
-                : [...$this->treeOps->contextItems($node), ...$this->contextItems->fileItems($node->path)];
+            $items = match (true) {
+                null === $node => $this->projects->siblingItems(),
+                $node->isDir => $this->treeOps->contextItems($node),
+                default => [...$this->treeOps->contextItems($node), ...$this->contextItems->fileItems($node->path)],
+            };
         }
         $stripCol = $this->hover->dockStripRelCol($mouse);
         if (!$handled && null !== $stripCol) {

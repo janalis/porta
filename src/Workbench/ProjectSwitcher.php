@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Workbench;
 
+use Porta\Config\ActionCatalog;
 use Porta\Config\IdeConfig;
 use Porta\Config\PortaHome;
 use Porta\Config\WorkspaceTrust;
@@ -14,6 +15,7 @@ use Porta\Filesystem\RemoteSpec;
 use Porta\History\RecentProjectsStore;
 use Porta\I18n\Translator;
 use Porta\Widget\CodeEditorWidget;
+use Porta\Workbench\Menu\MenuItem;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 /**
@@ -87,6 +89,44 @@ final readonly class ProjectSwitcher
             }
             $this->openPath($root);
         });
+    }
+
+    /**
+     * The right-click menu of the tree's project name: every folder beside
+     * this project — the current one ticked and greyed — then the switcher, so
+     * the menu is never a dead end. A pick is {@see openPath()}'s, unsaved
+     * edits, trust and all: this project closes, that one opens.
+     *
+     * Every folder, not only those that look like projects: a fresh checkout
+     * has nothing to recognise it by yet. A remote project's parent is the
+     * cache, where nothing beside it is a project.
+     *
+     * @return list<MenuItem>
+     */
+    public function siblingItems(): array
+    {
+        $root = ($real = \realpath($this->rootDir)) ? $real : $this->rootDir;
+        $items = [];
+        if (null === ProjectLocation::forRoot($this->rootDir)->remote) {
+            $parent = \dirname($root);
+            // @mago-expect lint:no-error-control-operator -- a parent that cannot be listed warns; the false return is what is answered below
+            $names = @\scandir($parent);
+            $folders = \array_filter(
+                false === $names ? [\basename($root)] : $names,
+                static fn (string $name): bool => !\str_starts_with($name, '.') && \is_dir($parent.'/'.$name),
+            );
+            \usort($folders, \strnatcasecmp(...));
+            foreach ($folders as $name) {
+                $path = $parent.'/'.$name;
+                $items[] = $path === $root
+                    ? new MenuItem($name, '', null, isEnabled: static fn (): bool => false, isChecked: static fn (): bool => true)
+                    : new MenuItem($name, '', fn () => $this->openPath($path));
+            }
+            $items[] = MenuItem::separator();
+        }
+        $items[] = new MenuItem($this->translator->trans(ActionCatalog::label('ide_open_project')), '', $this->open(...));
+
+        return $items;
     }
 
     /**
