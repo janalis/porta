@@ -278,15 +278,26 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
     private function openWhenFetched(string $path, OpenFocus $focus, OpenAs $as): bool
     {
         $opened = false;
-        $ready = $this->fs->available($path, function () use ($path, $focus, $as, &$opened): void {
-            $opened = true;
-            $standIn = $this->standIns[$path] ?? null;
-            unset($this->standIns[$path]);
-            $this->openFile($path, $focus, $as);
-            if (null !== $standIn && $standIn->cursorLine > 0 && $this->buffers->active()?->path === $path) {
-                $this->editor->jumpTo($standIn->cursorLine, 0);
-            }
-        });
+        $ready = $this->fs->available(
+            $path,
+            function () use ($path, $focus, $as, &$opened): void {
+                $opened = true;
+                $standIn = $this->standIns[$path] ?? null;
+                unset($this->standIns[$path]);
+                $this->openFile($path, $focus, $as);
+                if (null !== $standIn && $standIn->cursorLine > 0 && $this->buffers->active()?->path === $path) {
+                    $this->editor->jumpTo($standIn->cursorLine, 0);
+                }
+            },
+            function () use ($path, &$opened): void {
+                // It will not come: the blank goes, and what was in front is back
+                // — or, answered at once, none is put up.
+                $opened = true;
+                $standIn = $this->standIns[$path] ?? null;
+                unset($this->standIns[$path]);
+                \array_map($this->showBuffer(...), \array_filter([null === $standIn ? null : $this->buffers->active()]));
+            },
+        );
         // A background open changes nothing in front: there is no jump to catch.
         if (!$ready && !$opened && OpenFocus::Background !== $focus) {
             $this->standIns[$path] = new Document(\str_repeat("\n", self::STAND_IN_LINES));

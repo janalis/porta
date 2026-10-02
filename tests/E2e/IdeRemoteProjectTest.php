@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Editor\OpenFocus;
@@ -24,6 +25,7 @@ use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\Toasts;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
@@ -47,7 +49,7 @@ final class IdeRemoteProjectTest extends TestCase
     public function testTheTreeListsTheServerAndAnOpenedFileIsFetchedEditedAndUploaded(): void
     {
         \putenv('PATH=/nonexistent');
-        $server = new TempProject(['README.md' => "# served\n\n\n\n\n", 'src/App.php' => "<?php\n\n\n// the line a search found\n"]);
+        $server = new TempProject(['README.md' => "# served\n\n\n\n\n", 'src/App.php' => "<?php\n\n\n// the line a search found\n", 'src/Secret.php' => "<?php // not yours\n"]);
         $cache = new TempProject([
             ProjectLocation::MARKER => '{"url": "ssh://example.org/srv/app"}',
             '.porta/plugins/fakeremote/plugin.php' => \sprintf(<<<'PHP'
@@ -122,6 +124,23 @@ final class IdeRemoteProjectTest extends TestCase
                 $transport->release();
                 $this->await(static fn (): bool => \str_ends_with((string) $buffers->active()?->path, 'src/App.php'));
                 $this->assertSame(3, $tui->getById('editor')->getDocument()->cursorLine, 'the jump landed in the file once it was here');
+            },
+            // One the server will not send: the blank stand-in goes, and the
+            // file in front is back — not a blank that never fills.
+            500 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($cache): void {
+                $transport = Probe::get(Services::resolve($ide, RemoteFilesystem::class), 'transport');
+                $this->assertInstanceOf(FakeRemoteTransport::class, $transport);
+                $front = Services::resolve($ide, BufferManager::class)->active();
+                $this->assertInstanceOf(Buffer::class, $front);
+                $transport->fail['src/Secret.php'] = 'Permission denied';
+                $transport->hold = true;
+
+                Services::resolve($ide, BufferService::class)->openFile($cache->path('src/Secret.php'), focus: OpenFocus::Editor);
+                $this->assertNotSame($front->document, $tui->getById('editor')->getDocument(), 'a stand-in while it is asked for');
+                $transport->release();
+
+                $this->assertSame($front->document, $tui->getById('editor')->getDocument(), 'refused: the file in front, shown again');
+                $this->assertStringContainsString('Cannot read src/Secret.php from the server: Permission denied', Toasts::all($ide)[0] ?? '');
             },
         ]);
 

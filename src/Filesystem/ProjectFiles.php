@@ -22,9 +22,9 @@ final readonly class ProjectFiles implements ProjectFilesystem
     }
 
     #[\Override]
-    public function available(string $path, \Closure $then): bool
+    public function available(string $path, \Closure $then, ?\Closure $failed = null): bool
     {
-        return $this->files->available($path, $then);
+        return $this->files->available($path, $then, $failed);
     }
 
     #[\Override]

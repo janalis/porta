@@ -40,7 +40,7 @@ final class UnsavedChangesGuardTest extends TestCase
                 private int $unsent,
             ) {}
 
-            public function available(string $path, \Closure $then): bool
+            public function available(string $path, \Closure $then, ?\Closure $failed = null): bool
             {
                 return true;
             }

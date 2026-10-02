@@ -28,11 +28,15 @@ interface ProjectFilesystem
      * Whether $path's content can be read now. When it cannot (a remote file
      * not fetched yet), the fetch starts, false is returned, and $then runs
      * once the content is there — the caller's "try again". A failed fetch
-     * says so itself and never calls $then.
+     * says so itself and never calls $then; one that will not come — the
+     * server refused it, or nothing can reach the server — calls $failed, so
+     * whatever stood in for the file can go. A server merely out of reach
+     * is waited for, and then $then runs after all.
      *
-     * @param \Closure(): void $then
+     * @param \Closure(): void       $then
+     * @param (\Closure(): void)|null $failed
      */
-    public function available(string $path, \Closure $then): bool;
+    public function available(string $path, \Closure $then, ?\Closure $failed = null): bool;
 
     /**
      * Whether $dir's entries are known. When they are not, a listing starts

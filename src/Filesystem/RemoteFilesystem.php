@@ -71,7 +71,7 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
     private array $listed = [];
     /** @var array<string, true> listings in flight */
     private array $listing = [];
-    /** @var array<string, \Closure(): void> fetches in flight, and what runs when each lands */
+    /** @var array<string, array{then: \Closure(): void, failed: (\Closure(): void)|null}> fetches in flight: what runs when each lands, or will not */
     private array $fetching = [];
     /** @var array<string, int> uploads queued and not started, by path — a later save rides the same one */
     private array $uploading = [];
@@ -138,13 +138,13 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
     }
 
     #[\Override]
-    public function available(string $path, \Closure $then): bool
+    public function available(string $path, \Closure $then, ?\Closure $failed = null): bool
     {
         $relative = $this->relative($path);
         if (null === $relative || !$this->index->isPlaceholder($relative) || !\is_file($path)) {
             return true;
         }
-        $this->fetch($relative, $then);
+        $this->fetch($relative, $then, $failed);
 
         return false;
     }
@@ -535,27 +535,36 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
     }
 
     /** @param \Closure(): void $then */
-    private function fetch(string $relative, \Closure $then): void
+    /**
+     * @param \Closure(): void       $then
+     * @param (\Closure(): void)|null $failed
+     */
+    private function fetch(string $relative, \Closure $then, ?\Closure $failed = null): void
     {
         $transport = $this->transport();
         $alreadyFetching = \array_key_exists($relative, $this->fetching);
         if (null === $transport) {
             $this->complain();
+            $failed?->__invoke();
 
             return;
         }
-        $this->fetching[$relative] = $then; // the latest ask is the one answered
+        $this->fetching[$relative] = ['then' => $then, 'failed' => $failed]; // the latest ask is the one answered
         if ($alreadyFetching) {
             return;
         }
         $this->notifier->flash($this->translator->trans('Fetching %file%…', ['%file%' => $relative]), 2.0, self::SLOT);
         $transport->fetch($relative, function (RemoteFile|string $answer) use ($relative, $transport): void {
-            $then = $this->fetching[$relative];
+            ['then' => $then, 'failed' => $failed] = $this->fetching[$relative];
             unset($this->fetching[$relative]);
             if (\is_string($answer)) {
                 // Once the link is back the file is asked for again, and
                 // whoever was waiting for it — a tab, a stand-in — still is.
-                $this->link->failed($transport, $answer, fn () => $this->fetch($relative, $then), fn () => $this->cannotRead($relative, $answer));
+                // Refused, it never comes: whoever waited is told.
+                $this->link->failed($transport, $answer, fn () => $this->fetch($relative, $then, $failed), function () use ($relative, $answer, $failed): void {
+                    $this->cannotRead($relative, $answer);
+                    $failed?->__invoke();
+                });
 
                 return;
             }
