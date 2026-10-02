@@ -258,8 +258,21 @@ file cannot be uploaded into a directory whose `mkdir` has not landed.
 - An upload sends the stamp the file was fetched at. The transport refuses
   the write when the server's copy moved, the next save overwrites, and the
   toast says so.
-- `pending()` counts what is unsent, and `UnsavedChangesGuard` makes quitting
-  and switching ask twice on it.
+- `pending()` counts what is unsent — queued, or refused and kept — and
+  `UnsavedChangesGuard` makes quitting and switching ask twice on it.
+
+**A failed call is the link's or the server's — `Filesystem/RemoteLink` asks.**
+It lists the project's root. If that fails too, the link is down: the change
+waits at the head of the queue, a fetch or listing waits with it, `poll()`
+stops asking, and the root is listed again after `Support/Backoff` until it
+answers — then everything that waited goes again. If the root lists, the
+server refused: the change stays here **unsent**, never overwritten by a
+listing or fetch nor removed with its directory, until a save of it lands. A
+refused login (`RemoteTransport::refusesLogin()`) waits `LOGIN_PAUSE` instead,
+or until the transport calls `retryNow()` — the ftp plugin does once a
+password is kept — or the cell's **Reconnect Now**. A conflict is checked
+against the server's bytes first: an upload that landed and lost its answer
+with the link is adopted, not reported.
 
 **The whole tree is walked once a session.** The first poll after the tree's
 own listings asks the transport's optional `walk()` for every entry. Like
@@ -282,11 +295,10 @@ so the jump cannot move the caret of the file in front. The line it lands on
 is carried to the file when it opens.
 
 **What the user cannot see otherwise is on the status bar.** `RemoteFilesystem`
-is a `StatusSegment`: `⇅ host`, plus `⇡N` while N changes are unsent,
-highlighted after a refusal until the server next answers yes. A listing the
-server refused is asked again `RETRY_POLLS` later, so a password given since
-(the ftp plugin asks with a masked `PluginApi::prompt()`) or a server back up
-lists on its own.
+is a `StatusSegment`: `⇅ host`, `⌁` while the link is down, plus `⇡N` while N
+changes are unsent, highlighted while down, while anything is refused and
+kept, and after a refused read until the server next answers yes. A listing
+the server refused is asked again `RETRY_POLLS` later.
 
 **Plugins activate after the tree is first built.** So `listed()` with no
 transport yet remembers the directory, and `Ide::run()` defers one `poll()` that
@@ -307,8 +319,11 @@ the project:
 - A `RemoteProjectPlugin` answers `remoteTransport(RemoteSpec)`, and
   `Plugin/Runtime/PluginRemoteTransports` asks each active one in load order.
 - `ssh` drives `ssh` with a shared ControlMaster connection, running POSIX
-  `sh` scripts on the server.
-- `ftp` drives `curl` against MLSD/MDTM, keeping the password in a 0600 netrc.
+  `sh` scripts on the server. Keepalives retire a connection that died with
+  the network; an upload checks its byte count before it replaces the file.
+- `ftp` drives `curl` against MLSD/MDTM, keeping the password in a 0600 netrc,
+  two connections at a time (`CommandTransport::runAtMost()`), giving up on
+  a transfer that stalls.
 - `porta ssh` and `porta ftp` are `Plugin/Api/OpenRemoteCommand`. They answer
   what needs a terminal, prepare the cache and open Porta on it.
   **File → Open Remote Project…** (`ProjectSwitcher::openRemote()`) does the
@@ -820,10 +835,19 @@ launches separately rather than reusing whichever started first. An LSP-provider
 plugin supplies options via `registerLanguageServer()`'s optional closure,
 re-resolved on every (re)configure, and `LspClient` sends them in the
 `initialize` request; the config/env/`--lsp` override layers never carry any.
-A failed start — or a mid-session death, which reports through the same
-callback — evicts the session slot so the next `didOpen` relaunches, capped at
-three failed starts per signature (then sticky until a reconfigure); a
-successful start resets the budget. `reconfigure()` no-ops on an identical
+A failed start evicts the session slot so the next `didOpen` relaunches. A
+**death** of a server that was up — EOF, a write that cannot land, an
+`initialize` unanswered in 30 s — relaunches it after `Support/Backoff` and
+re-sends `didOpen` for every file it had open, as they are now; its
+diagnostics and `$/progress` (tokens kept per server) are cleared with it.
+Both count against three failures per signature, then the failure is sticky
+until a reconfigure and said once; only a server up for `STABLE` seconds
+earns a fresh budget, so one that falls over at its first file stops.
+
+**Nothing waits on a server forever.** `LspClient` fails every pending
+callback, and runs every `whenReady` action, on the next tick after a stop
+or death, so their requests fail too; a request unanswered in 30 s fails and
+is `$/cancelRequest`ed. A session with no client answers the same way. `reconfigure()` no-ops on an identical
 resolved map, so a provider-plugin setting the servers never see does not cost
 every language its warm session.
 
@@ -844,15 +868,15 @@ survivor.
 **The verbs whose answers are LISTS are merged.** `requestAll()` asks every
 session for the active file whose OWN capabilities advertise the method, and
 calls back once per answer as answers arrive — deliberately incremental,
-because `request()` has no timeout and waiting for the last answer would let
-one silent server hold the verb forever. Completion items, code actions and
+because waiting for the last answer would hold the verb for as long as the
+slowest server takes to answer — or to time out. Completion items, code actions and
 code lenses merge that way; each carries the server that offered it
 (`Lsp/ServerOwner`, a key inside the payload, taken off again before the
 payload goes back on the wire), because `completionItem/resolve`,
 `codeAction/resolve` and `workspace/executeCommand` are all second round trips
 that have to reach the same server. `requestTo()` is that half; an empty owner
-means "whoever serves the active file", and a named-but-gone one is a silent
-no-op. Each merging controller holds a GENERATION, because several servers
+means "whoever serves the active file", and a named-but-gone one answers an
+error on the next tick. Each merging controller holds a GENERATION, because several servers
 answer one keystroke at their own speeds and a late answer to a superseded
 request would put a list of the wrong things back on screen.
 
@@ -993,11 +1017,13 @@ where this side is (only on news or a due heartbeat), then reads the board.
 
 Liveness reads ONLY this machine's clock: a beacon is alive while it keeps
 changing as seen here — its `beat`, or a caret moved within the same beat (`STALE_BEATS` = 3 heartbeats), so skewed clocks
-do not matter. A beacon quiet for `FORGET` (600 s), or seen for the first time
-with a beat that old, is withdrawn by whoever reads it. A read that fails
+do not matter. A beacon quiet for `FORGET` (600 s) as seen here is withdrawn
+by whoever reads it; one seen for the first time counts as seen now, whatever
+its `beat` says — a peer whose clock is behind is not wiped. A read that fails
 is a lost link: carets go (`AgentLeft`), the roster goes `outOfTouch()`, the
-next publish is forced, and the first good read counts every beat as fresh —
-the silence was this side's. Carets are `AgentActivity` under `peer:<id>`
+next publish is forced, looks back off (`Support/Backoff`: each is a login),
+and the first good read counts every beat as fresh — the silence was this
+side's. Carets are `AgentActivity` under `peer:<id>`
 with a day-long fade (this class says when they leave), so they render
 exactly as agents' do (above). `Beacon::fromJson` trusts nothing: a fixed id
 shape (it names a file), names through `Beacon::clean` (no `\p{Cc}\p{Cf}`,

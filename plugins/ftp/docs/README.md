@@ -22,8 +22,11 @@ servers that offer TLS speak.
 You can also open one from inside Porta with **File → Open Remote Project…**
 (`Ctrl+Alt+Shift+O`). When the server refuses the login, Porta asks for the
 password, with the characters shown as bullets, and keeps it the way
-`porta ftp` does. The server is asked again within half a minute. Dismiss the
-question and it is not asked again until Porta restarts.
+`porta ftp` does, and asks the server again at once. Dismiss the question and
+it is asked again at the next refusal a minute or more later. A refused login
+is not retried on its own for five minutes — a server that counts refused
+logins may lock you out — unless you give the password or pick **Reconnect
+Now**.
 
 ## How the project is kept
 
@@ -45,6 +48,19 @@ Saves are refused when the file changed on the server since you fetched it,
 and saving again overwrites. Quitting while changes are still on their way
 asks twice. The status bar shows the server, and `⇡2` while two changes are
 still on their way.
+
+**When the server cannot be reached** — the network went, the server
+restarted — nothing you saved is lost. The status bar shows `⌁`, your saves
+wait in order, and Porta asks the server again, less and less often, until it
+answers; then everything that waited is sent, and a toast says you are back.
+Right-click the server in the status bar for **Reconnect Now**. A save the
+server itself refuses (no permission, a full disk) stays here: it is counted
+in `⇡`, never overwritten by the server's copy, and sent again when you next
+save it.
+
+Porta opens at most two connections to the server at once, so a host that
+limits connections per address is not refused into errors, and a transfer
+that stops moving for half a minute is given up and tried again.
 
 ## Server requirements
 
