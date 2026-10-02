@@ -81,7 +81,7 @@ final readonly class ProjectSwitcher
 
                 return;
             }
-            $this->requestOpen($root);
+            $this->openPath($root);
         });
     }
 
@@ -94,7 +94,7 @@ final readonly class ProjectSwitcher
         $this->editor->openPrompt($this->translator->trans('Open remote project (user@host:/path or URL)'), '', function (string $location): void {
             $location = \trim($location);
             if ('' !== $location) {
-                $this->requestOpen($location);
+                $this->openPath($location);
             }
         });
     }
@@ -105,17 +105,20 @@ final readonly class ProjectSwitcher
         $this->editor->openPrompt($this->translator->trans('Open project (path)'), '', function (string $path): void {
             $path = \trim($path);
             if ('' !== $path) {
-                $this->requestOpen($path);
+                $this->openPath($path);
             }
         });
     }
 
     /**
+     * Switch to the project at $path, as picking it here would — a folder
+     * dropped in from outside asks for exactly that ({@see ExternalDrop}).
+     *
      * Refuse here rather than at the far end. The reopen tears this session
      * down first, so a path that turns out not to be a directory would leave
      * the user with no IDE at all and a message they never saw.
      */
-    private function requestOpen(string $path): void
+    public function openPath(string $path): void
     {
         // A URL is a server's before anything looks at it here: is_dir() on
         // `ftp://…` is PHP's own FTP client, connecting — the IDE froze on it.

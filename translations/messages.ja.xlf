@@ -3202,6 +3202,38 @@
         <source>Keymap</source>
         <target>キーマップ</target>
       </trans-unit>
+      <trans-unit id="1122">
+        <source>Copy here</source>
+        <target>ここにコピー</target>
+      </trans-unit>
+      <trans-unit id="1123">
+        <source>Drop on a folder to copy into it</source>
+        <target>フォルダーの上にドロップしてコピー</target>
+      </trans-unit>
+      <trans-unit id="1124">
+        <source>%name% dropped</source>
+        <target>%name% をドロップしました</target>
+      </trans-unit>
+      <trans-unit id="1125">
+        <source>%count% items dropped</source>
+        <target>%count% 個の項目をドロップしました</target>
+      </trans-unit>
+      <trans-unit id="1126">
+        <source>Insert Path|Insert Paths</source>
+        <target>パスを挿入|パスを挿入</target>
+      </trans-unit>
+      <trans-unit id="1127">
+        <source>Opened %shown% of %count% files</source>
+        <target>%count% 個中 %shown% 個のファイルを開きました</target>
+      </trans-unit>
+      <trans-unit id="1128">
+        <source>Only files and folders can be dropped here</source>
+        <target>ここにドロップできるのはファイルとフォルダーだけです</target>
+      </trans-unit>
+      <trans-unit id="1129">
+        <source>The drop failed: %reason%</source>
+        <target>ドロップに失敗しました: %reason%</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

@@ -6,6 +6,7 @@ namespace Porta\Input;
 
 use Porta\Container\AsIdeService;
 use Porta\I18n\Translator;
+use Porta\Support\ProjectPaths;
 use Porta\Support\Scheduler;
 use Porta\Tree\TreeDragState;
 use Porta\Ui\Glyphs;
@@ -45,6 +46,19 @@ final class TreeDragRouter
     private ?string $scrollTimer = null;
     private ?string $springTimer = null;
     private ?string $springPath = null;
+
+    /**
+     * The folders this drag sprang open, in the order it opened them.
+     *
+     * A folder opened only to look inside closes again once the drag moves
+     * off it — Finder's spring-loaded folders, and what keeps a drag across a
+     * few folders from leaving the tree unfolded behind it. The ones on the
+     * way to where it lands stay open: they are what the user sees the drop
+     * arrive in.
+     *
+     * @var list<string>
+     */
+    private array $sprung = [];
 
     /** The in-flight hint this router put on the status bar, '' for none. */
     private string $announced = '';
@@ -93,12 +107,9 @@ final class TreeDragRouter
             );
             $this->statusBar->flash($this->announced);
         }
-        $drag->target = $this->dropDir($mouse, $treeRect);
-        $this->tree->setDropTarget($drag->target, $this->payloadLabel($drag));
-        $this->trackEdge($drag, $mouse, $treeRect);
-        $this->trackSpring($drag->target);
+        $this->track($drag, $mouse->row, $mouse->col, $treeRect);
         if ($mouse->isLeftRelease()) {
-            $this->disarm();
+            $this->disarm($drag->moved ? $drag->target : null);
             // A press and release on one spot is a CLICK: pay the toggle the
             // press deferred, and move nothing.
             $drag->moved ? $this->drop($drag, $mouse, $editorRect) : $this->tree->commitPress();
@@ -106,6 +117,36 @@ final class TreeDragRouter
         $this->tui->requestRender();
 
         return true;
+    }
+
+    /**
+     * A drag from OUTSIDE the IDE passing over the screen at ($row, $col) —
+     * kitty's drag-and-drop protocol reports the pointer, and nothing else
+     * does. The tree half of it is this router's own drag in every respect but
+     * the payload, which an outside drag does not show until it is dropped:
+     * the same highlight, edge scroll and spring-loaded folders.
+     *
+     * Returns the folder a drop here would land in, or null off the tree.
+     */
+    public function hoverExternal(int $row, int $col, ?WidgetRect $treeRect): ?string
+    {
+        // Fresh on every motion: an outside drag carries nothing from one to
+        // the next — its spring and its edge scroll live on this router.
+        $drag = new TreeDragState([]);
+        $this->drag = $drag;
+        $this->track($drag, $row, $col, $treeRect);
+
+        return $drag->target;
+    }
+
+    /**
+     * The outside drag left the window, or was dropped: forget it, closing the
+     * folders it sprang open except those on the way to $landed.
+     */
+    public function endExternal(?string $landed = null): void
+    {
+        $this->disarm($landed);
+        $this->tui->requestRender();
     }
 
     /**
@@ -140,12 +181,19 @@ final class TreeDragRouter
      * toggle. Folding the two together is the obvious simplification and it is
      * wrong — it makes clicking a folder stop expanding it, which is what the
      * tree's own click tests said the first time this was written that way.
+     *
+     * $landed is where the drag dropped, whose sprung ancestors stay open;
+     * null closes every folder the drag opened.
      */
-    private function disarm(): void
+    private function disarm(?string $landed = null): void
     {
         $this->drag = null;
         $this->stopScrolling();
         $this->stopSpring();
+        $this->collapseSprungOutside($landed);
+        // What stayed open is the user's tree now, not this drag's to close
+        // when the next one passes by.
+        $this->sprung = [];
         // The hint describes a drag that is happening; once it is not, sitting
         // out its remaining seconds would cover what the drop has to say —
         // which on a drop into the editor is the name of the file just opened.
@@ -156,6 +204,15 @@ final class TreeDragRouter
         $this->tree->setDropTarget(null);
     }
 
+    /** One motion of a drag: where it aims, the highlight, the edge scroll and the spring. */
+    private function track(TreeDragState $drag, int $row, int $col, ?WidgetRect $treeRect): void
+    {
+        $drag->target = $this->dropDir($row, $col, $treeRect);
+        $this->tree->setDropTarget($drag->target, $this->payloadLabel($drag));
+        $this->trackEdge($drag, $row, $col, $treeRect);
+        $this->trackSpring($drag->target);
+    }
+
     /**
      * Keep the tree scrolling while the pointer rests in an edge zone, and stop
      * the moment it does not.
@@ -163,11 +220,11 @@ final class TreeDragRouter
      * Re-armed from scratch on every motion so the tick always carries the
      * LATEST pointer, which is what it re-resolves the drop target from.
      */
-    private function trackEdge(TreeDragState $drag, MouseEvent $mouse, ?WidgetRect $treeRect): void
+    private function trackEdge(TreeDragState $drag, int $row, int $col, ?WidgetRect $treeRect): void
     {
         $this->stopScrolling();
-        if (0 !== $this->edgeDelta($mouse, $treeRect)) {
-            $this->armScroll($drag, $mouse, $treeRect);
+        if (0 !== $this->edgeDelta($row, $col, $treeRect)) {
+            $this->armScroll($drag, $row, $col, $treeRect);
         }
     }
 
@@ -179,16 +236,16 @@ final class TreeDragRouter
      * more row above this one, please"; the pane's last row means the same
      * downwards. A drag that has left the tree scrolls nothing.
      */
-    private function edgeDelta(MouseEvent $mouse, ?WidgetRect $treeRect): int
+    private function edgeDelta(int $row, int $col, ?WidgetRect $treeRect): int
     {
-        if (null === $treeRect || !$treeRect->contains($mouse->row, $mouse->col)) {
+        if (null === $treeRect || !$treeRect->contains($row, $col)) {
             return 0;
         }
-        $row = $treeRect->toRelative($mouse->row, $mouse->col)['row'];
+        $relRow = $treeRect->toRelative($row, $col)['row'];
 
         return match (true) {
-            $row <= 1 => -1,
-            $row >= ($treeRect->rows - 1) => 1,
+            $relRow <= 1 => -1,
+            $relRow >= ($treeRect->rows - 1) => 1,
             default => 0,
         };
     }
@@ -203,11 +260,11 @@ final class TreeDragRouter
      * cancelled by {@see disarm()}, so the one it was armed with is the only
      * one it can ever fire against.
      */
-    private function armScroll(TreeDragState $drag, MouseEvent $mouse, ?WidgetRect $treeRect): void
+    private function armScroll(TreeDragState $drag, int $row, int $col, ?WidgetRect $treeRect): void
     {
-        $this->scrollTimer = $this->clock->delay(self::SCROLL_INTERVAL, function () use ($drag, $mouse, $treeRect): void {
+        $this->scrollTimer = $this->clock->delay(self::SCROLL_INTERVAL, function () use ($drag, $row, $col, $treeRect): void {
             $this->scrollTimer = null;
-            $this->scrollTick($drag, $mouse, $treeRect);
+            $this->scrollTick($drag, $row, $col, $treeRect);
         });
     }
 
@@ -220,15 +277,15 @@ final class TreeDragRouter
      * point the highlight, and the drop, at the row the user just scrolled away
      * from.
      */
-    private function scrollTick(TreeDragState $drag, MouseEvent $mouse, ?WidgetRect $treeRect): void
+    private function scrollTick(TreeDragState $drag, int $row, int $col, ?WidgetRect $treeRect): void
     {
-        if (!$this->tree->scrollDuringDrag($this->edgeDelta($mouse, $treeRect))) {
+        if (!$this->tree->scrollDuringDrag($this->edgeDelta($row, $col, $treeRect))) {
             return;
         }
-        $drag->target = $this->dropDir($mouse, $treeRect);
+        $drag->target = $this->dropDir($row, $col, $treeRect);
         $this->tree->setDropTarget($drag->target, $this->payloadLabel($drag));
         $this->tui->requestRender();
-        $this->armScroll($drag, $mouse, $treeRect);
+        $this->armScroll($drag, $row, $col, $treeRect);
     }
 
     /**
@@ -237,14 +294,24 @@ final class TreeDragRouter
      * The highlight answers "where" and never "what", and on a multi-selection
      * drag the rows that are travelling may be scrolled off screen entirely —
      * so this is the only thing that says whether one file is moving or nine.
+     *
+     * A drag from outside carries nothing countable until it lands — the
+     * terminal hands the paths over on the drop — so it says what will happen
+     * instead.
      */
     private function payloadLabel(TreeDragState $drag): string
     {
-        return Glyphs::DROP_INTO
-        .' '
-        .$this->translator->trans(
-            '%count% file|%count% files',
-            ['%count%' => \count($drag->sources)],
+        return (
+            Glyphs::DROP_INTO
+            .' '
+            .(
+                [] === $drag->sources
+                    ? $this->translator->trans('Copy here')
+                    : $this->translator->trans(
+                        '%count% file|%count% files',
+                        ['%count%' => \count($drag->sources)],
+                    )
+            )
         );
     }
 
@@ -267,6 +334,7 @@ final class TreeDragRouter
             return;
         }
         $this->stopSpring();
+        $this->collapseSprungOutside($target);
         if (null === $target) {
             return;
         }
@@ -274,9 +342,23 @@ final class TreeDragRouter
         $this->springTimer = $this->clock->delay(self::SPRING_DELAY, function () use ($target): void {
             $this->springTimer = null;
             if ($this->tree->expandDuringDrag($target)) {
+                $this->sprung[] = $target;
                 $this->tui->requestRender();
             }
         });
+    }
+
+    /** Close every folder this drag sprang open that $target is not inside — all of them for null. */
+    private function collapseSprungOutside(?string $target): void
+    {
+        $holds = static fn (string $folder): bool => null !== $target && ProjectPaths::isUnder($target, $folder);
+        foreach ($this->sprung as $folder) {
+            if ($holds($folder)) {
+                continue;
+            }
+            $this->tree->collapseDuringDrag($folder);
+        }
+        $this->sprung = \array_values(\array_filter($this->sprung, $holds));
     }
 
     private function stopSpring(): void
@@ -297,10 +379,10 @@ final class TreeDragRouter
         $this->scrollTimer = null;
     }
 
-    private function dropDir(MouseEvent $mouse, ?WidgetRect $treeRect): ?string
+    private function dropDir(int $row, int $col, ?WidgetRect $treeRect): ?string
     {
-        return null !== $treeRect && $treeRect->contains($mouse->row, $mouse->col)
-            ? $this->tree->dropDirAt($treeRect->toRelative($mouse->row, $mouse->col)['row'])
+        return null !== $treeRect && $treeRect->contains($row, $col)
+            ? $this->tree->dropDirAt($treeRect->toRelative($row, $col)['row'])
             : null;
     }
 

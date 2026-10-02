@@ -45,6 +45,7 @@ final readonly class InputDispatcher
         private Notifier $notifier,
         private Translator $translator,
         private TooltipCenter $tooltips,
+        private PasteDrop $pasteDrop,
         private ?ViewCommandGate $gate = null,
         private ?EventDispatcherInterface $events = null,
     ) {}
@@ -90,6 +91,15 @@ final readonly class InputDispatcher
             $event->stopPropagation();
             $this->contextMenu->handleInput($data);
             $this->tui->requestRender();
+
+            return;
+        }
+
+        // A file dropped from outside arrives as a paste of its path. Ahead of
+        // the Welcome modal, which would swallow it, and of the pickers, which
+        // PasteDrop leaves alone so a path pasted into one stays text.
+        if (!$this->menuBar->isOpen() && $this->pasteDrop->take($data)) {
+            $event->stopPropagation();
 
             return;
         }

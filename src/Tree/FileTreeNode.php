@@ -19,4 +19,14 @@ final readonly class FileTreeNode
         public bool $isDir,
         public int $depth,
     ) {}
+
+    /**
+     * The folder this row means as a destination: itself, or a file's parent.
+     * PhpStorm's rule, and the one that makes a tree of files a target at all —
+     * a drag, a paste and a drop from outside all aim with it.
+     */
+    public function folder(): string
+    {
+        return $this->isDir ? $this->path : \dirname($this->path);
+    }
 }

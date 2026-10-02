@@ -22,6 +22,7 @@ use Porta\Support\Files;
 use Porta\Support\ProjectPaths;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\FileTreeWidget;
+use Porta\Workbench\DropConflict;
 use Porta\Workbench\Menu\MenuItem;
 use Porta\Workbench\Notifier;
 use Psr\EventDispatcher\EventDispatcherInterface;
@@ -201,20 +202,12 @@ final class TreeOperations
         if (!$copy) {
             $this->treeClipboard->clear();
         }
-        $this->events->dispatch(new TreeDropRequested($sources, $this->treeTargetDir($node), $copy));
-    }
-
-    /**
-     * Directory a new tree entry is created in: the node itself, or its parent.
-     */
-    private function treeTargetDir(FileTreeNode $node): string
-    {
-        return $node->isDir ? $node->path : \dirname($node->path);
+        $this->events->dispatch(new TreeDropRequested($sources, $node->folder(), $copy));
     }
 
     private function treeNewFile(FileTreeNode $node): void
     {
-        $dir = $this->treeTargetDir($node);
+        $dir = $node->folder();
         $this->promptName($this->translator->trans('New File'), '', function (string $name) use ($dir): void {
             if ('' === ($name = \trim($name))) {
                 return;
@@ -231,7 +224,7 @@ final class TreeOperations
 
     private function treeNewFolder(FileTreeNode $node): void
     {
-        $dir = $this->treeTargetDir($node);
+        $dir = $node->folder();
         $this->promptName($this->translator->trans('New Folder'), '', function (string $name) use ($dir): void {
             if ('' === ($name = \trim($name))) {
                 return;
@@ -420,7 +413,7 @@ final class TreeOperations
     #[AsEventListener]
     public function onTreeDropRequested(TreeDropRequested $event): void
     {
-        $this->dropOnto($event->sources, $event->targetDir, $event->copy);
+        $this->dropOnto($event->sources, $event->targetDir, $event->copy, $event->conflict);
     }
 
     /**
@@ -438,11 +431,17 @@ final class TreeOperations
      * 3. A name already taken is the user's decision, not ours — see
      *    {@see askThenMove()}.
      *
+     * Keep-both, a drop from outside the IDE, skips the first and the third:
+     * a file dropped into its own folder is how a duplicate is asked for, and
+     * a taken name is answered with a free one ({@see FreeName}). The second
+     * still holds — a folder mirrored into itself never finishes.
+     *
      * @param list<string> $sources
      */
-    private function dropOnto(array $sources, string $targetDir, bool $copy = false): void
+    private function dropOnto(array $sources, string $targetDir, bool $copy, DropConflict $conflict): void
     {
-        $moving = \array_values(\array_filter($sources, static fn (string $path): bool => \dirname($path) !== $targetDir));
+        $keepBoth = DropConflict::KeepBoth === $conflict;
+        $moving = $keepBoth ? $sources : \array_values(\array_filter($sources, static fn (string $path): bool => \dirname($path) !== $targetDir));
         if ([] === $moving) {
             return;
         }
@@ -455,9 +454,9 @@ final class TreeOperations
 
             return;
         }
-        $taken = \array_values(\array_filter($moving, static fn (string $path): bool => \file_exists($targetDir.'/'.\basename($path))));
+        $taken = $keepBoth ? [] : \array_values(\array_filter($moving, static fn (string $path): bool => \file_exists($targetDir.'/'.\basename($path))));
         if ([] === $taken) {
-            $this->moveEach($moving, $targetDir, $copy);
+            $this->moveEach($moving, $targetDir, $copy, conflict: $conflict);
 
             return;
         }
@@ -509,15 +508,20 @@ final class TreeOperations
     }
 
     /**
+     * The free name is taken per item, inside the loop: two sources sharing a
+     * basename must not both be handed the same `(2)`, and only the disk after
+     * the first copy knows the second needs a `(3)`.
+     *
      * @param list<string> $moving
      */
-    private function moveEach(array $moving, string $targetDir, bool $copy, bool $overwrite = false): void
+    private function moveEach(array $moving, string $targetDir, bool $copy, bool $overwrite = false, DropConflict $conflict = DropConflict::Ask): void
     {
         ++$this->batch;
 
         try {
             foreach ($moving as $path) {
-                $this->moveOne($path, $targetDir.'/'.\basename($path), $copy, $overwrite);
+                $target = DropConflict::KeepBoth === $conflict ? FreeName::for($path, $targetDir) : $targetDir.'/'.\basename($path);
+                $this->moveOne($path, $target, $copy, $overwrite);
             }
         } finally {
             --$this->batch;

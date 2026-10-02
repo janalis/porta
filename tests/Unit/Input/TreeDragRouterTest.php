@@ -613,6 +613,47 @@ final class TreeDragRouterTest extends TestCase
         $this->assertCount(1, $this->pending(self::SPRING_DWELL), 'the second drag armed its own dwell');
     }
 
+    /**
+     * A folder the drag sprang open stays open under a drop INSIDE it — the
+     * user watches the file arrive there — and closes again the moment the
+     * drag moves off it.
+     */
+    public function testASprungFolderStaysOpenForADropInsideIt(): void
+    {
+        $router = $this->router();
+        $src = $this->project->path('src');
+        $this->tree->clickRow(1); // collapse src/ — rows: 1 src/, 2 top.php
+        $router->arm([$this->project->path('top.php')]);
+        $router->continueDrag($this->drag(2, 1), self::rect(), null);
+        $this->clock->fire($this->pending(self::SPRING_DWELL)[0]);
+        $this->assertTrue(Probe::get($this->tree, 'expanded')[$src], 'sprung open — rows: 1 src/, 2 src/a.php, 3 top.php');
+
+        $router->continueDrag($this->drag(2, 2), self::rect(), null);
+        $router->continueDrag($this->release(2, 2), self::rect(), null);
+
+        $this->assertSame($src, $this->drops[0]->targetDir ?? null);
+        $this->assertTrue(Probe::get($this->tree, 'expanded')[$src], 'still open where the file landed');
+
+        $router->arm([$this->project->path('top.php')]);
+        $router->continueDrag($this->drag(2, 3), self::rect(), null);
+        $this->assertTrue(Probe::get($this->tree, 'expanded')[$src], 'the user\'s tree now: the next drag passing by leaves it open');
+    }
+
+    public function testASprungFolderClosesOnceTheDragMovesOffIt(): void
+    {
+        $router = $this->router();
+        $src = $this->project->path('src');
+        $this->tree->clickRow(1);
+        $router->arm([$this->project->path('src/a.php')]);
+        $router->continueDrag($this->drag(2, 1), self::rect(), null);
+        $this->clock->fire($this->pending(self::SPRING_DWELL)[0]);
+
+        $router->continueDrag($this->drag(2, 3), self::rect(), null); // top.php: the project root
+
+        $this->assertFalse(Probe::get($this->tree, 'expanded')[$src]);
+        $this->assertSame($this->project->path('top.php'), $this->tree->nodeAtRow(2)?->path, 'its rows are gone from the tree');
+    }
+
     /** A pointer off the tree cancels the dwell rather than leaving it counting. */
     public function testLeavingTheTreeCancelsTheDwell(): void
     {

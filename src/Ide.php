@@ -32,6 +32,7 @@ use Porta\History\BookmarkPersistence;
 use Porta\History\RecentProjectsStore;
 use Porta\History\SessionRestorer;
 use Porta\I18n\Translator;
+use Porta\Input\DragDropProtocol;
 use Porta\Input\InputDispatcher;
 use Porta\Layout\LayoutController;
 use Porta\Layout\PaneLayout;
@@ -322,6 +323,8 @@ final class Ide
         // replies arrive as input, and must not count as, or act as, keys.
         $this->graphics = $this->service(TerminalGraphics::class);
         $this->tui->addListener($this->graphics->onInput(...), priority: 2000);
+        // kitty's drag-and-drop exchange arrives as input too, an OSC apiece.
+        $this->tui->addListener($this->service(DragDropProtocol::class)->onInput(...), priority: 2000);
         // Last: hand the plugin handlers their live runtime seam and flash the
         // config/plugin load warnings, once every service they reach exists.
         $this->service(StartupWiring::class)->wire();
@@ -502,7 +505,9 @@ final class Ide
             // 1002's button-held drag, so we also see bare hover-moves for row
             // highlighting) and 1006 (SGR coordinates). VirtualTerminal records
             // these; tests feed synthetic seqs. Paired teardown is in the finally.
-            $this->tui->getTerminal()->write("\x1b[?1049h\x1b[?1000h\x1b[?1003h\x1b[?1006h");
+            // Last, kitty's drag-and-drop opt-in, ignored by every terminal
+            // that has no such protocol (see DragDropProtocol).
+            $this->tui->getTerminal()->write("\x1b[?1049h\x1b[?1000h\x1b[?1003h\x1b[?1006h".DragDropProtocol::OPT_IN);
             // Home the cursor the alternate screen just handed us. The first
             // frame is appended FROM the cursor, not written to an absolute
             // origin, and ScreenWriter's row bookkeeping starts from zero -- so

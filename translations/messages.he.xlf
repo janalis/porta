@@ -3202,6 +3202,38 @@
         <source>Keymap</source>
         <target>מפת מקשים</target>
       </trans-unit>
+      <trans-unit id="1122">
+        <source>Copy here</source>
+        <target>העתק לכאן</target>
+      </trans-unit>
+      <trans-unit id="1123">
+        <source>Drop on a folder to copy into it</source>
+        <target>שחרר על תיקייה כדי להעתיק אליה</target>
+      </trans-unit>
+      <trans-unit id="1124">
+        <source>%name% dropped</source>
+        <target>%name% שוחרר</target>
+      </trans-unit>
+      <trans-unit id="1125">
+        <source>%count% items dropped</source>
+        <target>%count% פריטים שוחררו</target>
+      </trans-unit>
+      <trans-unit id="1126">
+        <source>Insert Path|Insert Paths</source>
+        <target>הוסף נתיב|הוסף נתיבים</target>
+      </trans-unit>
+      <trans-unit id="1127">
+        <source>Opened %shown% of %count% files</source>
+        <target>נפתחו %shown% מתוך %count% קבצים</target>
+      </trans-unit>
+      <trans-unit id="1128">
+        <source>Only files and folders can be dropped here</source>
+        <target>ניתן לשחרר כאן רק קבצים ותיקיות</target>
+      </trans-unit>
+      <trans-unit id="1129">
+        <source>The drop failed: %reason%</source>
+        <target>השחרור נכשל: %reason%</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

@@ -3202,6 +3202,38 @@
         <source>Keymap</source>
         <target>Mappa tasti</target>
       </trans-unit>
+      <trans-unit id="1122">
+        <source>Copy here</source>
+        <target>Copia qui</target>
+      </trans-unit>
+      <trans-unit id="1123">
+        <source>Drop on a folder to copy into it</source>
+        <target>Rilascia su una cartella per copiarvi dentro</target>
+      </trans-unit>
+      <trans-unit id="1124">
+        <source>%name% dropped</source>
+        <target>%name% rilasciato</target>
+      </trans-unit>
+      <trans-unit id="1125">
+        <source>%count% items dropped</source>
+        <target>%count% elementi rilasciati</target>
+      </trans-unit>
+      <trans-unit id="1126">
+        <source>Insert Path|Insert Paths</source>
+        <target>Inserisci percorso|Inserisci percorsi</target>
+      </trans-unit>
+      <trans-unit id="1127">
+        <source>Opened %shown% of %count% files</source>
+        <target>Aperti %shown% file su %count%</target>
+      </trans-unit>
+      <trans-unit id="1128">
+        <source>Only files and folders can be dropped here</source>
+        <target>Qui si possono rilasciare solo file e cartelle</target>
+      </trans-unit>
+      <trans-unit id="1129">
+        <source>The drop failed: %reason%</source>
+        <target>Rilascio non riuscito: %reason%</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

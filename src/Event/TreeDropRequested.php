@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Event;
 
+use Porta\Workbench\DropConflict;
+
 /**
  * A file-tree drag was dropped onto a directory: move (or copy) these paths
  * into it.
@@ -22,6 +24,10 @@ namespace Porta\Event;
  * Paths are absolute and raw — the tree's own space, not realpath's. The
  * listener resolves them, because only it knows which of them still exist by
  * the time it runs.
+ *
+ * A drop from outside the IDE — a file dragged in from Finder — rides the same
+ * command with {@see DropConflict::KeepBoth}: its sources lie anywhere on disk,
+ * it always copies, and a taken name becomes `name (2)` rather than a question.
  */
 final readonly class TreeDropRequested
 {
@@ -30,5 +36,6 @@ final readonly class TreeDropRequested
         public array $sources,
         public string $targetDir,
         public bool $copy,
+        public DropConflict $conflict = DropConflict::Ask,
     ) {}
 }

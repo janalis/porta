@@ -363,12 +363,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
      */
     public function dropDirAt(int $relRow): ?string
     {
-        $node = $this->nodeAtRow($relRow);
-        if (null === $node) {
-            return null;
-        }
-
-        return $node->isDir ? $node->path : \dirname($node->path);
+        return $this->nodeAtRow($relRow)?->folder();
     }
 
     /**
@@ -456,6 +451,17 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
         $this->invalidate();
 
         return true;
+    }
+
+    /**
+     * Close a folder {@see expandDuringDrag()} opened, once the drag has moved
+     * off it — Finder's spring-loaded folders, closing behind the pointer.
+     */
+    public function collapseDuringDrag(string $path): void
+    {
+        $this->expanded[$path] = false;
+        $this->rebuild();
+        $this->invalidate();
     }
 
     /**

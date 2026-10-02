@@ -659,9 +659,41 @@ abandons the drag, and releasing without having moved is just a click.
   start. It stops at the ends of the tree.
 - **A collapsed folder opens if you rest on it** for about half a second, which
   is how you reach a row inside one without letting go. Moving on before that
-  leaves it shut.
+  leaves it shut, and moving off a folder that opened this way closes it again —
+  unless the drop lands inside it.
 - **Released over nothing** — the tab strip, the dock, the status bar — the drag
   says so rather than failing silently.
+
+### Dropping files from outside
+
+Drag files or folders in from Finder or any file manager. What happens depends
+on where they land:
+
+- **On the tree** — they are **copied** into that folder (a file row means its
+  folder; below the last row means the project root). Nothing is moved and
+  nothing asked: a name already taken gets a number, `Kernel (2).php`, the way
+  Finder keeps both. A folder is copied with everything in it.
+- **On an open file** — a picker asks whether to **insert the path** at the
+  cursor or **open** what was dropped.
+- **On the tab strip, an empty editor or the Welcome card** — files open in
+  tabs. A folder of this project is revealed in the tree; any other folder
+  becomes the project when nothing is open, and otherwise opens its files
+  (the first 20) beside what is there.
+- **On anything you type into** — a picker, a prompt, the find bar, Settings —
+  the paths are typed there as plain text, without the quoting the terminal
+  added for a shell. The built-in terminal is the exception: a shell wants the
+  quoting, so it gets the drop exactly as the terminal sent it.
+
+Only **kitty** (0.47 or later) tells Porta where the pointer is during a drag,
+so only there does the drop land under the pointer, folders spring open as you
+hover them in the tree, and they close again as you move off. Over an open file
+the caret follows the pointer, so *Insert Path* puts the path where you let go;
+move on without dropping and the caret goes back where it was. Every other
+terminal — Ghostty, iTerm2, WezTerm, Terminal — delivers a drop as a **paste of
+the paths** into whatever has focus, so there **focus is the drop zone**: the
+tree copies into its selected folder (`Alt+1` focuses it), the editor asks or
+opens. A drop is told from an ordinary paste by every pasted word being an
+existing absolute path; anything else pastes as text.
 
 ### Moving files without the mouse
 
