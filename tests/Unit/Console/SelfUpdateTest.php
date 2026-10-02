@@ -122,6 +122,7 @@ final class SelfUpdateTest extends TestCase
 
         [$command, $stdin] = $this->ran[1];
         $this->assertSame('curl', $command[0]);
+        $this->assertStringContainsString('--proto =https --proto-redir =https', \implode(' ', $command), 'never downgraded to plain http');
         $this->assertStringContainsString('Authorization: Bearer '.self::fake('secret'), (string) $stdin);
         $this->assertStringNotContainsString(self::fake('secret'), \implode(' ', $command), 'a token in argv is visible to every process list');
     }

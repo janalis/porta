@@ -198,7 +198,8 @@ final readonly class SelfUpdate
     {
         $token = $this->token();
 
-        return ($this->run)(['curl', '-fsSL', '--config', '-', ...$args], 'header = "Authorization: Bearer '.$token.'"'."\n");
+        // HTTPS only, redirects included: the token and the binary both ride it.
+        return ($this->run)(['curl', '-fsSL', '--proto', '=https', '--proto-redir', '=https', '--config', '-', ...$args], 'header = "Authorization: Bearer '.$token.'"'."\n");
     }
 
     private function token(): string
