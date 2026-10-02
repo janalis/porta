@@ -54,7 +54,28 @@ final class OpenCommandTest extends TestCase
         $netrc = (string) Credentials::find($this->home->dir, $spec);
         $this->assertStringContainsString('password secret', (string) \file_get_contents($netrc));
         $this->assertStringContainsString('Password for me@example.org', $tester->getDisplay());
-        $this->assertSame(['curl', '--silent', '--show-error', '--netrc-file', $netrc, '--ssl-reqd', '--list-only', '--output', '/dev/null', '--', 'ftp://example.org/%2F/site/'], $this->ran[0]);
+        $this->assertSame(
+            [
+                'curl',
+                '--silent',
+                '--show-error',
+                '--connect-timeout',
+                '10',
+                '--speed-limit',
+                '1',
+                '--speed-time',
+                '30',
+                '--netrc-file',
+                $netrc,
+                '--ssl-reqd',
+                '--list-only',
+                '--output',
+                '/dev/null',
+                '--',
+                'ftp://example.org/%2F/site/',
+            ],
+            $this->ran[0],
+        );
         $this->assertSame('ftps://me@example.org/site', ProjectLocation::forRoot((string) $this->opened)->remote?->url());
     }
 

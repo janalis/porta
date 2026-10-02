@@ -10,6 +10,7 @@ use Porta\Event\StatusCellsChanged;
 use Porta\I18n\Translator;
 use Porta\Search\FileIndex;
 use Porta\Ui\Glyphs;
+use Porta\Workbench\Menu\MenuItem;
 use Porta\Workbench\Notifier;
 use Porta\Workbench\StatusCell;
 use Porta\Workbench\StatusSegment;
@@ -38,6 +39,12 @@ use Symfony\Component\Filesystem\Filesystem;
  * `.porta/` and `.porta.json` stay on this machine: they are where Porta keeps
  * its state and settings for this copy, and the server's are not this
  * machine's to use.
+ *
+ * A failed call is first asked of the {@see RemoteLink}: while the link is
+ * down, the change that failed waits at the head of the queue, what was being
+ * read waits with it, and the poll stops asking. A change the server REFUSED
+ * stays here, unsent: no listing or fetch overwrites it, and the next save of
+ * it tries again.
  */
 #[AsIdeService]
 #[AsTaggedItem(priority: 240)]
@@ -91,6 +98,9 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
     /** @var array<string, int> directories the server refused to list, and the poll that asks again */
     private array $retry = [];
     private readonly string $realRoot;
+    private readonly RemoteLink $link;
+    /** @var array<string, string> changes the server refused, and why: here, not there, until saved again */
+    private array $unsent = [];
 
     public function __construct(
         private readonly ProjectLocation $location,
@@ -106,11 +116,24 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
         $this->realRoot = ($resolved = \realpath($rootDir)) ? $resolved : $rootDir;
         $this->index = new RemoteIndex($this->realRoot.'/'.self::INDEX, $fs);
         $this->queue = new ChangeQueue();
+        $host = $location->remote->host ?? '';
+        $this->link = new RemoteLink(
+            function (string $why) use ($host): void {
+                $this->notifier->warn($this->translator->trans('Lost %host% (%why%) — trying again', ['%host%' => $host, '%why%' => $why]), slot: self::SLOT);
+            },
+            function (array $root) use ($host): void {
+                $this->troubled(null);
+                $this->notifier->flash($this->translator->trans('Back in touch with %host%', ['%host%' => $host]), 2.5, self::SLOT);
+                $this->reconcile('', $root);
+            },
+            $this->cellChanged(...),
+        );
     }
 
     /** The project is closing: whatever the transport has in flight is not waited for. */
     public function close(): void
     {
+        $this->link->close();
         $this->transport?->close();
     }
 
@@ -178,7 +201,12 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
             $this->index->move($source, $target);
             $this->index->save();
             $this->listed = self::movedKeys($this->listed, $source, $target);
-            $this->change($target, fn (RemoteTransport $transport, \Closure $next) => $transport->rename($source, $target, $this->reporting($target, $next)));
+            $this->unsent = self::movedKeys($this->unsent, $source, $target);
+            $this->change(
+                $target,
+                fn (RemoteTransport $transport, \Closure $answered) => $transport->rename($source, $target, $this->settled($target, $answered)),
+                fn (string $why) => $this->refused($target, $why),
+            );
 
             return;
         }
@@ -228,20 +256,50 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
             return [];
         }
         $pending = $this->queue->pending();
-        $text = Glyphs::REMOTE.' '.$spec->host.(0 === $pending ? '' : ' '.Glyphs::UPLOADING.$pending);
-        $tooltip = 0 === $pending
-            ? $this->translator->trans('This project is on %host%: a file is fetched when you open it, and sent back when you save it', ['%host%' => $spec->host])
-            : $this->translator->trans('%count% change on its way to %host%|%count% changes on their way to %host%', ['%count%' => $pending, '%host%' => $spec->host]);
+        $count = $pending + \count($this->unsent);
+        $down = $this->link->down();
+        $text = Glyphs::REMOTE.' '.$spec->host.(null === $down ? '' : ' '.Glyphs::OUT_OF_TOUCH).(0 === $count ? '' : ' '.Glyphs::UPLOADING.$count);
+        $lines = [
+            0 === $pending
+                ? $this->translator->trans('This project is on %host%: a file is fetched when you open it, and sent back when you save it', ['%host%' => $spec->host])
+                : $this->translator->trans('%count% change on its way to %host%|%count% changes on their way to %host%', ['%count%' => $pending, '%host%' => $spec->host]),
+        ];
+        if (null !== $down) {
+            $lines[] = $this->link->loginRefused()
+                ? $this->translator->trans('%host% refused the login: %why% — right-click to try again', ['%host%' => $spec->host, '%why%' => $down])
+                : $this->translator->trans('Cannot reach %host%: %why% — trying again', ['%host%' => $spec->host, '%why%' => $down]);
+        }
+        if ([] !== $this->unsent) {
+            $lines[] = $this->translator->trans('%count% change the server refused is only here — save it again to retry|%count% changes the server refused are only here — save them again to retry', [
+                '%count%' => \count($this->unsent),
+            ]);
+        }
+        if (null !== $this->trouble && null === $down) {
+            $lines[] = $this->trouble;
+        }
 
         return [new StatusCell(
             $text,
             match (true) {
-                null !== $this->trouble => StatusTone::Accent,
+                null !== $down, null !== $this->trouble, [] !== $this->unsent => StatusTone::Accent,
                 0 !== $pending => StatusTone::Active,
                 default => StatusTone::Subtle,
             },
-            tooltip: null === $this->trouble ? $tooltip : $tooltip."\n".$this->trouble,
+            fn (): array => [new MenuItem($this->translator->trans('Reconnect Now'), '', $this->reconnect(...), isEnabled: fn (): bool => null !== $this->link->down())],
+            \implode("\n", $lines),
         )];
+    }
+
+    /**
+     * List the root now, rather than when the backoff says: the user asked,
+     * or the transport says what stopped it changed — a password was given.
+     */
+    public function reconnect(): void
+    {
+        $transport = $this->transport();
+        if (null !== $transport) {
+            $this->link->reconnect($transport);
+        }
     }
 
     /**
@@ -259,10 +317,11 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
         return $this->transport()?->remoteCommand($argv);
     }
 
+    /** Changes not on the server: on their way, or refused and kept here. */
     #[\Override]
     public function pending(): int
     {
-        return $this->queue->pending();
+        return $this->queue->pending() + \count($this->unsent);
     }
 
     /**
@@ -278,7 +337,9 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
     public function poll(): void
     {
         $transport = $this->transport();
-        if ([] !== $this->listing || null === $transport) {
+        // While the link is down only its probe asks: a poll would be one
+        // more failure — one more login, to a server that may count them.
+        if ([] !== $this->listing || null === $transport || null !== $this->link->down()) {
             return;
         }
         ++$this->polls;
@@ -328,9 +389,17 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
         }
         $this->walked = true;
 
-        return $transport->walk('', self::WALK_SKIP, function (array|string $answer): void {
+        return $transport->walk('', self::WALK_SKIP, function (array|string $answer) use ($transport): void {
             if (\is_string($answer)) {
-                $this->cannotRead('', $answer);
+                // Asked again: by the next poll once the link is back.
+                $this->link->failed(
+                    $transport,
+                    $answer,
+                    function (): void {
+                        $this->walked = false;
+                    },
+                    fn () => $this->cannotRead('', $answer),
+                );
 
                 return;
             }
@@ -350,7 +419,7 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
     private function landWalked(array $entries): void
     {
         foreach (\array_splice($entries, offset: 0, length: self::WALK_CHUNK) as $entry) {
-            if (!self::syncable($entry->name) || $this->queue->touches($entry->name)) {
+            if (!self::syncable($entry->name) || $this->ours($entry->name)) {
                 continue;
             }
             $entry->isDir ? $this->landDirectory($entry->name) : $this->landFile($entry->name, $entry->stamp);
@@ -371,15 +440,23 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
     private function list(RemoteTransport $transport, string $relative): void
     {
         $this->listing[$relative] = true;
-        $transport->list($relative, function (array|string $answer) use ($relative): void {
+        $transport->list($relative, function (array|string $answer) use ($relative, $transport): void {
             unset($this->listing[$relative]);
             if (\is_string($answer)) {
-                // Asked again the next time the tree shows it, or half a
-                // minute from now: a server down for a moment, or a password
-                // given since, lists on its own.
                 unset($this->listed[$relative]);
-                $this->retry[$relative] = $this->polls + self::RETRY_POLLS;
-                $this->cannotRead($relative, $answer);
+                $this->link->failed(
+                    $transport,
+                    $answer,
+                    function () use ($relative): void {
+                        $this->wanted[$relative] = true; // the first poll once the link is back
+                    },
+                    function () use ($relative, $answer): void {
+                        // Refused: asked again the next time the tree shows it,
+                        // or half a minute from now.
+                        $this->retry[$relative] = $this->polls + self::RETRY_POLLS;
+                        $this->cannotRead($relative, $answer);
+                    },
+                );
 
                 return;
             }
@@ -410,14 +487,14 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
                 continue;
             }
             $seen[$entry->name] = true;
-            if (!$this->queue->touches($relative)) {
+            if (!$this->ours($relative)) {
                 $entry->isDir ? $this->landDirectory($relative) : $this->landFile($relative, $entry->stamp);
             }
         }
         foreach (self::names($local) as $name) {
             $relative = self::join($dir, $name);
             $gone = !\array_key_exists($name, $seen) && self::syncable($relative);
-            if ($gone && !$this->queue->touches($relative) && null !== $this->index->get($relative)) {
+            if ($gone && !$this->ours($relative) && !$this->holdsUnsent($relative) && null !== $this->index->get($relative)) {
                 $this->fs->remove($local.'/'.$name);
                 $this->index->forget($relative);
             }
@@ -472,15 +549,17 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
             return;
         }
         $this->notifier->flash($this->translator->trans('Fetching %file%…', ['%file%' => $relative]), 2.0, self::SLOT);
-        $transport->fetch($relative, function (RemoteFile|string $answer) use ($relative): void {
+        $transport->fetch($relative, function (RemoteFile|string $answer) use ($relative, $transport): void {
             $then = $this->fetching[$relative];
             unset($this->fetching[$relative]);
             if (\is_string($answer)) {
-                $this->cannotRead($relative, $answer);
+                // Once the link is back the file is asked for again, and
+                // whoever was waiting for it — a tab, a stand-in — still is.
+                $this->link->failed($transport, $answer, fn () => $this->fetch($relative, $then), fn () => $this->cannotRead($relative, $answer));
 
                 return;
             }
-            if ($this->queue->touches($relative)) {
+            if ($this->ours($relative)) {
                 return; // a change of ours is on its way: the server's copy is not the latest
             }
             $this->troubled(null);
@@ -506,33 +585,50 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
         $id = ++$this->uploads;
         $this->uploading[$relative] = $id;
         $this->bytes[$id] = $bytes;
-        $this->change($relative, function (RemoteTransport $transport, \Closure $next) use ($relative, $id): void {
-            if (($this->uploading[$relative] ?? null) === $id) {
-                unset($this->uploading[$relative]);
-            }
-            $bytes = $this->bytes[$id];
-            unset($this->bytes[$id]);
-            $this->sending[$relative] = $id;
-            $expected = \array_key_exists($relative, $this->force) || \array_key_exists($id, $this->sealed) ? null : $this->index->stamp($relative);
-            $transport->put($relative, $bytes, $expected, function (RemoteStamp|string|null $answer) use ($relative, $id, $next): void {
+        $this->change(
+            $relative,
+            function (RemoteTransport $transport, \Closure $answered) use ($relative, $id): void {
+                // Taken on the first try: a save from now on is a new upload,
+                // and a try again after the link was lost sends the same bytes.
+                if (($this->uploading[$relative] ?? null) === $id) {
+                    unset($this->uploading[$relative]);
+                }
+                $bytes = $this->bytes[$id] ?? '';
+                $this->sending[$relative] = $id;
+                $expected = \array_key_exists($relative, $this->force) || \array_key_exists($id, $this->sealed) ? null : $this->index->stamp($relative);
+                $transport->put($relative, $bytes, $expected, function (RemoteStamp|string|null $answer) use ($relative, $id, $bytes, $answered, $transport): void {
+                    if (\is_string($answer)) {
+                        $answered($answer);
+
+                        return;
+                    }
+                    unset($this->bytes[$id]);
+                    if (($this->sending[$relative] ?? null) === $id) {
+                        unset($this->sending[$relative]);
+                    }
+                    // A path that moved since is the index's under its new name,
+                    // which the move already recorded: this stamp is the old one's.
+                    $sealed = \array_key_exists($id, $this->sealed);
+                    unset($this->sealed[$id]);
+                    if ($sealed) {
+                        $answered(null);
+
+                        return;
+                    }
+                    unset($this->unsent[$relative]);
+                    $this->uploaded($transport, $relative, $bytes, $answer, $answered);
+                });
+            },
+            function (string $why) use ($relative, $id): void {
+                unset($this->bytes[$id]);
                 if (($this->sending[$relative] ?? null) === $id) {
                     unset($this->sending[$relative]);
                 }
-                // A path that moved since is the index's under its new name,
-                // which the move already recorded: this stamp is the old one's.
                 $sealed = \array_key_exists($id, $this->sealed);
                 unset($this->sealed[$id]);
-                if (!$sealed) {
-                    $this->uploaded($relative, $answer);
-                }
-                // Sent without a stamp to check, so never refused as a
-                // conflict: a failure is all there is left to say.
-                if ($sealed && \is_string($answer)) {
-                    $this->cannotChange($relative, $answer);
-                }
-                $next();
-            });
-        });
+                $sealed ? $this->cannotChange($relative, $why) : $this->refused($relative, $why);
+            },
+        );
     }
 
     /**
@@ -557,26 +653,39 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
     }
 
     /**
-     * What the server answered an upload of $relative: its new stamp, a
-     * refusal because its copy changed, or why it failed.
+     * What the server answered an upload of $relative: its new stamp, or a
+     * refusal because its copy changed — which it may not have: an upload
+     * that landed and lost its answer with the link is tried again, and
+     * finds its own bytes there. Those are adopted, not called a conflict.
+     *
+     * @param \Closure(?string): void $answered
      */
-    private function uploaded(string $relative, RemoteStamp|string|null $answer): void
+    private function uploaded(RemoteTransport $transport, string $relative, string $bytes, ?RemoteStamp $answer, \Closure $answered): void
     {
-        if ($answer instanceof RemoteStamp) {
-            $this->troubled(null);
-            unset($this->force[$relative]);
-            $this->index->file($relative, $answer, fetched: true);
-            $this->index->save();
+        if (null !== $answer) {
+            $this->landed($relative, $answer);
+            $answered(null);
 
             return;
         }
-        if (\is_string($answer)) {
-            $this->cannotChange($relative, $answer);
+        $transport->fetch($relative, function (RemoteFile|string $there) use ($relative, $bytes, $answered): void {
+            $answered(null);
+            if ($there instanceof RemoteFile && $there->bytes === $bytes) {
+                $this->landed($relative, $there->stamp);
 
-            return;
-        }
-        $this->force[$relative] = true;
-        $this->notifier->warn($this->translator->trans('%file% changed on the server — save again to overwrite', ['%file%' => $relative]), slot: self::SLOT);
+                return;
+            }
+            $this->force[$relative] = true;
+            $this->notifier->warn($this->translator->trans('%file% changed on the server — save again to overwrite', ['%file%' => $relative]), slot: self::SLOT);
+        });
+    }
+
+    private function landed(string $relative, RemoteStamp $stamp): void
+    {
+        $this->troubled(null);
+        unset($this->force[$relative]);
+        $this->index->file($relative, $stamp, fetched: true);
+        $this->index->save();
     }
 
     private function mkdirs(string $relative): void
@@ -584,14 +693,22 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
         $this->index->directory($relative);
         $this->index->save();
         $this->listed[$relative] = true; // a directory we made holds what we put in it
-        $this->change($relative, fn (RemoteTransport $transport, \Closure $next) => $transport->mkdir($relative, $this->reporting($relative, $next)));
+        $this->change(
+            $relative,
+            fn (RemoteTransport $transport, \Closure $answered) => $transport->mkdir($relative, $this->settled($relative, $answered)),
+            fn (string $why) => $this->refused($relative, $why),
+        );
     }
 
     private function removeRemote(string $relative, bool $isDir): void
     {
         $this->index->forget($relative);
         $this->index->save();
-        $this->change($relative, fn (RemoteTransport $transport, \Closure $next) => $transport->remove($relative, $isDir, $this->reporting($relative, $next)));
+        $this->change(
+            $relative,
+            static fn (RemoteTransport $transport, \Closure $answered) => $transport->remove($relative, $isDir, $answered),
+            fn (string $why) => $this->cannotChange($relative, $why),
+        );
     }
 
     /**
@@ -613,44 +730,121 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
         null !== $source && $this->index->isPlaceholder($source) ? $this->copyRemote($source, $target) : $this->upload($target, (string) \file_get_contents($path));
     }
 
-    /** A copy of a file never fetched: read the server's original, and write it at $target there and here. */
+    /**
+     * A copy of a file never fetched: read the server's original, and write
+     * it at $target there and here. A refusal leaves nothing unsent: there is
+     * no content here that the server lacks, only a copy it would not make.
+     */
     private function copyRemote(string $source, string $target): void
     {
-        $this->change($target, function (RemoteTransport $transport, \Closure $next) use ($source, $target): void {
-            $transport->fetch($source, function (RemoteFile|string $answer) use ($transport, $target, $next): void {
-                if (\is_string($answer)) {
-                    $this->cannotRead($target, $answer);
-                    $next();
+        $read = false;
+        $this->change(
+            $target,
+            function (RemoteTransport $transport, \Closure $answered) use ($source, $target, &$read): void {
+                $transport->fetch($source, function (RemoteFile|string $answer) use ($transport, $target, $answered, &$read): void {
+                    $read = !\is_string($answer);
+                    if (\is_string($answer)) {
+                        $answered($answer);
 
-                    return;
-                }
-                $this->fs->dumpFile($this->absolute($target), $answer->bytes);
-                $transport->put($target, $answer->bytes, null, function (RemoteStamp|string|null $stamp) use ($target, $next): void {
-                    $this->uploaded($target, $stamp);
-                    $next();
+                        return;
+                    }
+                    $this->fs->dumpFile($this->absolute($target), $answer->bytes);
+                    // Sent with no stamp to check, so never refused as a conflict.
+                    $transport->put($target, $answer->bytes, null, function (RemoteStamp|string|null $stamp) use ($target, $answered): void {
+                        if (\is_string($stamp)) {
+                            $answered($stamp);
+
+                            return;
+                        }
+                        if (null !== $stamp) {
+                            $this->landed($target, $stamp);
+                        }
+                        $answered(null);
+                    });
                 });
-            });
-        });
+            },
+            function (string $why) use ($target, &$read): void {
+                $read ? $this->cannotChange($target, $why) : $this->cannotRead($target, $why);
+            },
+        );
     }
 
     /**
      * Queue a change for the server. Without a transport there is no server
      * to tell, and the queue moves straight on.
      *
-     * @param \Closure(RemoteTransport, \Closure(): void): void $change
+     * $attempt answers null once the server has it — or has answered for
+     * good — and a reason when the call failed. Then the queue holds: a link
+     * that is down waits at its head and tries $attempt again once it is
+     * back; a server that refused it has $refused told why, and the queue
+     * moves on. The queue moves on, too, when what ran threw: a stalled
+     * queue would keep every later change, and the quit, waiting forever.
+     *
+     * @param \Closure(RemoteTransport, \Closure(?string): void): void $attempt
+     * @param \Closure(string): void                                   $refused
      */
-    private function change(string $relative, \Closure $change): void
+    private function change(string $relative, \Closure $attempt, \Closure $refused): void
     {
-        $this->queue->add($relative, function (\Closure $next) use ($change): void {
+        $this->queue->add($relative, function (\Closure $next) use ($attempt, $refused): void {
             // The cell counts what is on its way: one fewer once answered.
-            $answered = function () use ($next): void {
+            $done = function () use ($next): void {
                 $next();
                 $this->cellChanged();
             };
             $transport = $this->transport();
-            null === $transport ? $answered() : $change($transport, $answered);
+            if (null === $transport) {
+                $done();
+
+                return;
+            }
+            $try = null;
+            $try = function () use ($transport, $attempt, $refused, $done, &$try): void {
+                $attempt($transport, function (?string $failure) use ($transport, $refused, $done, &$try): void {
+                    if (null === $failure) {
+                        $done();
+
+                        return;
+                    }
+                    $this->link->failed($transport, $failure, $try, static function () use ($refused, $failure, $done): void {
+                        try {
+                            $refused($failure);
+                        } finally {
+                            $done();
+                        }
+                    });
+                });
+            };
+            try {
+                $try();
+            } catch (\Throwable $error) {
+                $done();
+
+                throw $error;
+            }
         });
         $this->cellChanged();
+    }
+
+    /** A change the server refused: it stays here, unsent, and is said. */
+    private function refused(string $relative, string $why): void
+    {
+        $this->unsent[$relative] = $why;
+        $this->cannotChange($relative, $why);
+    }
+
+    /**
+     * Whether a change of ours to $relative is on its way or was refused —
+     * either way what the server says of it is not to be taken over it.
+     */
+    private function ours(string $relative): bool
+    {
+        return $this->queue->touches($relative) || \array_key_exists($relative, $this->unsent);
+    }
+
+    /** Whether anything unsent is at or under $relative: removing it would lose it. */
+    private function holdsUnsent(string $relative): bool
+    {
+        return \array_any(\array_keys($this->unsent), static fn (string $path): bool => null !== RemoteIndex::moved($path, $relative, $relative));
     }
 
     /** The last thing the server refused, or null once it answered yes: the cell says it, so a change is said. */
@@ -669,17 +863,20 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
     }
 
     /**
-     * @param \Closure(): void $next
+     * What a change's answer means for $relative before the queue hears it:
+     * landed, and anything refused of it before is sent now.
+     *
+     * @param \Closure(?string): void $answered
      *
      * @return \Closure(?string): void
      */
-    private function reporting(string $relative, \Closure $next): \Closure
+    private function settled(string $relative, \Closure $answered): \Closure
     {
-        return function (?string $error) use ($relative, $next): void {
-            if (null !== $error) {
-                $this->cannotChange($relative, $error);
+        return function (?string $error) use ($relative, $answered): void {
+            if (null === $error) {
+                unset($this->unsent[$relative]);
             }
-            $next();
+            $answered($error);
         };
     }
 
@@ -710,6 +907,7 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
         $spec = $this->location->remote;
         if (null === $this->transport && null !== $spec) {
             $this->transport = $this->transports->remoteTransport($spec);
+            $this->transport?->onRetry($this->reconnect(...));
         }
 
         return $this->transport;
@@ -791,15 +989,17 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
     }
 
     /**
-     * @param array<string, true> $keys
+     * @template T
      *
-     * @return array<string, true>
+     * @param array<string, T> $keys
+     *
+     * @return array<string, T>
      */
     private static function movedKeys(array $keys, string $from, string $to): array
     {
         $moved = [];
-        foreach (\array_keys($keys) as $key) {
-            $moved[RemoteIndex::moved($key, $from, $to) ?? $key] = true;
+        foreach ($keys as $key => $value) {
+            $moved[RemoteIndex::moved($key, $from, $to) ?? $key] = $value;
         }
 
         return $moved;

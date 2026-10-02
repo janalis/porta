@@ -51,6 +51,12 @@ final class FakeRemoteTransport extends RemoteTransport
     /** Whether this server answers {@see walk()} — off by default, as a transport that cannot walk is. */
     public bool $walks = false;
 
+    /** While set, the server cannot be reached: every verb answers this. */
+    public ?string $down = null;
+
+    /** The failure that means the login was refused. */
+    public const string LOGIN_DENIED = 'login denied';
+
     public function __construct(
         public readonly string $root,
     ) {}
@@ -58,7 +64,10 @@ final class FakeRemoteTransport extends RemoteTransport
     #[\Override]
     public function list(string $path, \Closure $done): void
     {
-        $this->answer('list', $path, $done, function () use ($path): array {
+        $this->answer('list', $path, $done, function () use ($path): array|string {
+            if (!\is_dir($this->at($path))) {
+                return $path.': no such directory';
+            }
             $entries = [];
             $names = \scandir($this->at($path));
             foreach (\array_diff(false === $names ? [] : $names, ['.', '..']) as $name) {
@@ -72,7 +81,9 @@ final class FakeRemoteTransport extends RemoteTransport
     #[\Override]
     public function fetch(string $path, \Closure $done): void
     {
-        $this->answer('fetch', $path, $done, fn (): RemoteFile => new RemoteFile((string) \file_get_contents($this->at($path)), $this->stamp($path)));
+        $this->answer('fetch', $path, $done, fn (): RemoteFile|string => \is_file($this->at($path))
+            ? new RemoteFile((string) \file_get_contents($this->at($path)), $this->stamp($path))
+            : $path.': no such file');
     }
 
     #[\Override]
@@ -165,16 +176,34 @@ final class FakeRemoteTransport extends RemoteTransport
         $this->closed = true;
     }
 
+    #[\Override]
+    public function refusesLogin(string $failure): bool
+    {
+        return self::LOGIN_DENIED === $failure;
+    }
+
+    /** What a plugin does once it is given a password: tell core to try now. */
+    public function passwordGiven(): void
+    {
+        $this->retryNow();
+    }
+
     /**
      * A remote project at $cacheDir served by this fake — what a test needs
      * when the remote filesystem is a collaborator, not the thing tested.
      */
     public function filesystem(string $cacheDir, ?StatusBarWidget $status = null, ?EventDispatcherInterface $events = null): RemoteFilesystem
     {
+        return self::over($this, new RemoteSpec('ssh', 'example.org', '/srv'), $cacheDir, $status, $events);
+    }
+
+    /** A remote project at $cacheDir served by $transport — a fake one, or a real one against a real server. */
+    public static function over(RemoteTransport $transport, RemoteSpec $spec, string $cacheDir, ?StatusBarWidget $status = null, ?EventDispatcherInterface $events = null): RemoteFilesystem
+    {
         return new RemoteFilesystem(
-            new ProjectLocation(new RemoteSpec('ssh', 'example.org', '/srv')),
+            new ProjectLocation($spec),
             $cacheDir,
-            new readonly class($this) implements RemoteTransportSource {
+            new readonly class($transport) implements RemoteTransportSource {
                 public function __construct(
                     private RemoteTransport $transport,
                 ) {}
@@ -222,7 +251,7 @@ final class FakeRemoteTransport extends RemoteTransport
     {
         $this->calls[] = $verb.' '.$path;
         $key = \array_key_exists($path, $this->fail) ? $path : '*';
-        $error = $this->fail[$key] ?? null;
+        $error = $this->fail[$key] ?? $this->down;
         unset($this->fail[$key]);
         $reply = static fn () => $done($error ?? $work());
         if ($this->hold) {

@@ -18,14 +18,21 @@ use Porta\Support\AsyncProcess;
  */
 abstract class CommandTransport extends RemoteTransport
 {
-    /** Long enough for a large file over a slow link; short enough that a dead one lets the queue go on. */
-    public const float TIMEOUT = 120.0;
+    /**
+     * Long enough for a large file over a slow link. A link that stalls is the
+     * tools' own to notice sooner — ssh's keepalives, curl's speed limit.
+     */
+    public const float TIMEOUT = 600.0;
 
     private const string NOTHING = '';
 
     /** @var array<int, AsyncProcess> */
     private array $running = [];
     private int $started = 0;
+    /** How many may run at once: a server may take only so many connections from one address. */
+    private int $limit = \PHP_INT_MAX;
+    /** @var list<array{list<string>, ?string, \Closure(int, string, string): void}> commands waiting for one of those */
+    private array $waiting = [];
 
     /**
      * Run $command, with $stdin as its input, and hand $done its exit code,
@@ -37,16 +44,36 @@ abstract class CommandTransport extends RemoteTransport
      */
     protected function run(array $command, ?string $stdin, \Closure $done): void
     {
+        if (\count($this->running) >= $this->limit) {
+            $this->waiting[] = [$command, $stdin, $done];
+
+            return;
+        }
         $id = ++$this->started;
         $process = new AsyncProcess($command, \sys_get_temp_dir(), $stdin, captureStderr: true, timeout: self::TIMEOUT);
         $this->running[$id] = $process;
         $started = $process->start(function (int $code, string $stdout) use ($id, $process, $done): void {
             unset($this->running[$id]);
+            $this->next();
             $done($code, $stdout, $process->errorOutput());
         });
         if (!$started) {
             unset($this->running[$id]);
             $done(127, self::NOTHING, $command[0].': command not found');
+        }
+    }
+
+    /** At most $limit commands at once; the rest wait their turn, in order. */
+    protected function runAtMost(int $limit): void
+    {
+        $this->limit = \max(1, $limit);
+    }
+
+    private function next(): void
+    {
+        $waiting = \array_shift($this->waiting);
+        if (null !== $waiting) {
+            $this->run(...$waiting);
         }
     }
 
@@ -69,6 +96,7 @@ abstract class CommandTransport extends RemoteTransport
     #[\Override]
     public function close(): void
     {
+        $this->waiting = [];
         foreach ($this->running as $process) {
             $process->cancel();
         }

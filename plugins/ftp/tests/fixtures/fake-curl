@@ -36,6 +36,30 @@ function fail(int $code, string $message): never
     exit($code);
 }
 
+// FAKE_FTP_DOWN, when set, is a server that cannot be reached.
+if (false !== getenv('FAKE_FTP_DOWN') && '' !== getenv('FAKE_FTP_DOWN')) {
+    fail(7, 'Failed to connect to example.org port 21');
+}
+
+// FAKE_CURL_TRACK, when set, names a counter of curls running at once; the
+// most ever seen is kept beside it, in `.max`. Each lingers a little, so
+// those that overlap are seen to.
+if (false !== ($track = getenv('FAKE_CURL_TRACK')) && '' !== $track) {
+    $count = static function (int $by) use ($track): int {
+        $lock = fopen($track.'.lock', 'c');
+        flock($lock, LOCK_EX);
+        $now = (int) @file_get_contents($track) + $by;
+        file_put_contents($track, (string) $now);
+        file_put_contents($track.'.max', (string) max($now, (int) @file_get_contents($track.'.max')));
+        flock($lock, LOCK_UN);
+
+        return $now;
+    };
+    $count(1);
+    usleep(150_000);
+    register_shutdown_function(static fn () => $count(-1));
+}
+
 $expected = getenv('FAKE_FTP_PASSWORD');
 if (false !== $expected && '' !== $expected) {
     $netrc = null === $opt['netrc'] ? '' : (string) file_get_contents($opt['netrc']);

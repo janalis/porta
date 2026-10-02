@@ -16,6 +16,7 @@ use Porta\Tests\Support\DummyServer;
 use Porta\Tests\Support\ExercisesTransport;
 use Porta\Tests\Support\PresencePeer;
 use Porta\Tests\Support\ProvesPresenceOverAServer;
+use Porta\Tests\Support\ProvesTheLinkOverAServer;
 use Porta\Tests\Support\TempProject;
 
 /**
@@ -31,6 +32,7 @@ use Porta\Tests\Support\TempProject;
 final class FtpRealServerTest extends TestCase
 {
     use ProvesPresenceOverAServer;
+    use ProvesTheLinkOverAServer;
     use ExercisesTransport;
 
     private TempProject $root;
@@ -97,6 +99,16 @@ final class FtpRealServerTest extends TestCase
 
         Credentials::store($home->dir, $this->spec, 'secret');
         $this->assertIsArray($this->answer(fn (\Closure $done) => $this->transport(Credentials::file($home->dir, $this->spec))->list('', $done)), 'with it, in');
+    }
+
+    private function remote(): FtpTransport
+    {
+        return $this->transport();
+    }
+
+    private function spec(): RemoteSpec
+    {
+        return $this->spec;
     }
 
     private function server(): DummyServer

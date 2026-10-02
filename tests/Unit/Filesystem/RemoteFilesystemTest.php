@@ -299,15 +299,24 @@ final class RemoteFilesystemTest extends TestCase
         $this->assertSame('mine', \file_get_contents($this->server->path('README.md')));
     }
 
-    public function testAFailedUploadSaysSo(): void
+    public function testAnUploadTheServerRefusesIsSaidAndKeptUntilItIsSavedAgain(): void
     {
         $files = $this->files();
         $this->transport->fail['new.txt'] = 'disk full';
 
         $files->dumpFile($this->cache->path('new.txt'), 'x');
+        $files->dumpFile($this->cache->path('other.txt'), 'o');
 
         $this->assertSame('Cannot change new.txt on the server: disk full', $this->flashText($this->status));
-        $this->assertSame(0, $files->pending(), 'and the queue moves on');
+        $this->assertSame('o', \file_get_contents($this->server->path('other.txt')), 'the queue moved on');
+        $this->assertSame(1, $files->pending(), 'but what was refused is still not on the server');
+        $this->assertSame('⇅ example.org ⇡1', $files->statusCells()[0]->text);
+        $this->assertContains('list ', $this->transport->calls, 'the link was checked: up, so a refusal');
+
+        $files->dumpFile($this->cache->path('new.txt'), 'x');
+
+        $this->assertSame(0, $files->pending());
+        $this->assertSame('x', \file_get_contents($this->server->path('new.txt')));
     }
 
     public function testAFileMadeHereIsSentWithoutAStampToCheck(): void
@@ -631,7 +640,7 @@ final class RemoteFilesystemTest extends TestCase
         $files->copy($this->cache->path('README.md'), $this->cache->path('COPY.md'));
 
         $this->assertSame('Cannot change COPY.md on the server: read-only', $this->flashText($this->status));
-        $this->assertSame(0, $files->pending(), 'and the queue moves on');
+        $this->assertSame(0, $files->pending(), 'and the queue moves on, with nothing of ours left unsent');
     }
 
     public function testAStructuralChangeThatFailsSaysSo(): void
@@ -890,30 +899,36 @@ final class RemoteFilesystemTest extends TestCase
     }
 
     /** The last refusal stays visible until the server next says yes — to a listing, a fetch or an upload. */
-    public function testARefusalStaysOnTheCellUntilTheServerNextAnswersYes(): void
+    public function testARefusedChangeStaysOnTheCellUntilItLands(): void
     {
         $files = $this->files();
-        $refuse = function (string $path) use ($files): void {
-            $this->transport->fail[$path] = 'denied';
-            $files->dumpFile($this->cache->path($path), 'x');
-            $this->assertSame(StatusTone::Accent, $files->statusCells()[0]->tone);
-            $this->assertSame("This project is on example.org: a file is fetched when you open it, and sent back when you save it\ndenied", $files->statusCells()[0]->tooltip);
-        };
+        $this->transport->fail['a.txt'] = 'denied';
+        $files->dumpFile($this->cache->path('a.txt'), 'x');
+        $refused = "This project is on example.org: a file is fetched when you open it, and sent back when you save it\n1 change the server refused is only here — save it again to retry\ndenied";
+        $this->assertSame(StatusTone::Accent, $files->statusCells()[0]->tone);
+        $this->assertSame($refused, $files->statusCells()[0]->tooltip);
 
-        $refuse('a.txt');
         $files->listed($this->cache->dir);
-        $this->assertSame(StatusTone::Subtle, $files->statusCells()[0]->tone, 'a listing is a yes');
-
-        $refuse('b.txt');
         $files->available($this->cache->path('README.md'), static fn (): null => null);
-        $this->assertSame(StatusTone::Subtle, $files->statusCells()[0]->tone, 'a fetch is a yes');
-
-        $this->transport->fail['README.md'] = 'gone';
-        $files->listed($this->cache->path('src'));
-        $files->available($this->cache->path('src/App.php'), static fn (): null => null);
-        $refuse('c.txt');
         $files->dumpFile($this->cache->path('d.txt'), 'd');
-        $this->assertSame(StatusTone::Subtle, $files->statusCells()[0]->tone, 'an upload is a yes');
+        $this->assertSame(StatusTone::Accent, $files->statusCells()[0]->tone, 'whatever else the server says yes to, that change is still not there');
+
+        $files->dumpFile($this->cache->path('a.txt'), 'x');
+        $this->assertSame(StatusTone::Subtle, $files->statusCells()[0]->tone, 'until it is');
+    }
+
+    public function testAReadTheServerRefusesStaysOnTheCellUntilTheServerNextAnswersYes(): void
+    {
+        $files = $this->files();
+        $this->transport->fail['README.md'] = 'denied';
+        $files->listed($this->cache->dir);
+        $files->available($this->cache->path('README.md'), static fn (): null => null);
+        $this->assertSame(StatusTone::Accent, $files->statusCells()[0]->tone);
+        $this->assertStringEndsWith("\ndenied", (string) $files->statusCells()[0]->tooltip);
+
+        $files->listed($this->cache->path('src'));
+
+        $this->assertSame(StatusTone::Subtle, $files->statusCells()[0]->tone, 'a listing is a yes');
     }
 
     /**
@@ -1069,5 +1084,222 @@ final class RemoteFilesystemTest extends TestCase
         $files->close();
 
         $this->assertTrue($this->transport->closed);
+    }
+
+    public function testAChangeMadeWhileTheServerIsUnreachableWaitsAndLandsOnceItIsBack(): void
+    {
+        $files = $this->files();
+        $files->listed($this->cache->dir);
+        $this->transport->fail['src'] = 'Permission denied';
+        $files->listed($this->cache->path('src')); // refused, with the link up: trouble on the cell
+        $this->assertSame(StatusTone::Accent, $files->statusCells()[0]->tone);
+        $this->transport->down = 'Network is unreachable';
+
+        $files->dumpFile($this->cache->path('README.md'), 'written offline');
+        $files->dumpFile($this->cache->path('more.txt'), 'and more');
+
+        $this->assertSame('Lost example.org (Network is unreachable) — trying again', $this->flashText($this->status));
+        $this->assertSame(2, $files->pending(), 'nothing dropped');
+        $cell = $files->statusCells()[0];
+        $this->assertSame('⇅ example.org '.Glyphs::OUT_OF_TOUCH.' ⇡2', $cell->text);
+        $this->server->write('THEIRS.md', 'made there meanwhile');
+        $this->assertStringContainsString('Cannot reach example.org: Network is unreachable — trying again', (string) $cell->tooltip);
+        $calls = \count($this->transport->calls);
+        $files->poll();
+        $this->assertCount($calls, $this->transport->calls, 'the poll asks nothing of a server that is not there');
+
+        $this->transport->down = null;
+        $this->await(static fn (): bool => 0 === $files->pending(), what: 'the backoff, then the changes');
+
+        $this->assertSame('written offline', \file_get_contents($this->server->path('README.md')));
+        $this->assertSame('and more', \file_get_contents($this->server->path('more.txt')));
+        $this->assertSame('Back in touch with example.org', $this->flashText($this->status));
+        $this->assertSame('⇅ example.org', $files->statusCells()[0]->text);
+        $this->assertSame(StatusTone::Subtle, $files->statusCells()[0]->tone, 'the root answered: the server says yes');
+        $this->assertFileExists($this->cache->path('THEIRS.md'), 'what changed meanwhile is seen at once, as the root is listed');
+        $files->close();
+    }
+
+    public function testStillDownTheRootIsAskedAgainLaterAndReconnectAsksNow(): void
+    {
+        $files = $this->files();
+        $this->transport->down = 'Connection timed out';
+        $files->listed($this->cache->dir);
+        $this->assertSame(0, $files->pending());
+        $this->assertSame(StatusTone::Accent, $files->statusCells()[0]->tone, 'down, with nothing on its way, is still news');
+        $files->dumpFile($this->cache->path('a.txt'), 'a');
+        $menu = $files->statusCells()[0]->menu;
+        $this->assertNotNull($menu);
+        $this->assertTrue($menu()[0]->enabled(), 'Reconnect Now, while down');
+
+        $this->await(fn (): bool => 4 <= \count(\array_filter($this->transport->calls, static fn (string $c): bool => 'list ' === $c)), what: 'a second probe');
+        $this->transport->down = null;
+        ($menu()[0]->run ?? static function (): void {})();
+
+        $this->assertSame(0, $files->pending(), 'at once, not after the next backoff');
+        $this->assertSame('a', \file_get_contents($this->server->path('a.txt')));
+        $this->assertFalse($menu()[0]->enabled());
+        $files->close();
+    }
+
+    public function testARefusedLoginIsNotAskedAgainUntilAPasswordIsGiven(): void
+    {
+        $files = $this->files();
+        $this->transport->down = FakeRemoteTransport::LOGIN_DENIED;
+        $files->dumpFile($this->cache->path('a.txt'), 'a');
+        $this->assertStringContainsString('example.org refused the login: login denied — right-click to try again', (string) $files->statusCells()[0]->tooltip);
+        $calls = \count($this->transport->calls);
+
+        $this->pump(1.5);
+        $this->assertCount($calls, $this->transport->calls, 'no login every second for a server that counts them');
+
+        $this->transport->down = null;
+        $this->transport->passwordGiven();
+
+        $this->assertSame(0, $files->pending());
+        $files->close();
+    }
+
+    public function testAnUploadThatLandedButLostItsAnswerIsNotTakenForAConflict(): void
+    {
+        $files = $this->files();
+        $files->listed($this->cache->dir);
+        $files->available($this->cache->path('README.md'), static fn (): null => null);
+        // The bytes reach the server; the answer is lost with the link.
+        $this->server->write('README.md', 'landed, and longer');
+        $this->transport->fail['README.md'] = 'Broken pipe';
+        $this->transport->down = 'Broken pipe';
+
+        $files->dumpFile($this->cache->path('README.md'), 'landed, and longer');
+        $this->transport->down = null;
+        $this->await(static fn (): bool => 0 === $files->pending(), what: 'the retry');
+
+        $this->assertSame('Back in touch with example.org', $this->flashText($this->status), 'no "changed on the server"');
+        $files->dumpFile($this->cache->path('README.md'), 'saved again');
+        $this->assertSame('saved again', \file_get_contents($this->server->path('README.md')), 'its stamp was adopted: the next save is no conflict');
+        $files->close();
+    }
+
+    public function testAConflictTheServerReallyHasIsStillOne(): void
+    {
+        $files = $this->files();
+        $files->listed($this->cache->dir);
+        $files->available($this->cache->path('README.md'), static fn (): null => null);
+        $this->server->write('README.md', 'theirs, different');
+
+        $files->dumpFile($this->cache->path('README.md'), 'mine');
+
+        $this->assertSame('README.md changed on the server — save again to overwrite', $this->flashText($this->status));
+    }
+
+    public function testWhatWasBeingReadWhenTheLinkWentIsReadOnceItIsBack(): void
+    {
+        $files = $this->files();
+        $files->listed($this->cache->dir);
+        $this->transport->down = 'Host is down';
+        $opened = false;
+
+        $files->available($this->cache->path('README.md'), static function () use (&$opened): void {
+            $opened = true;
+        });
+        $files->listed($this->cache->path('src'));
+        $this->assertFalse($opened);
+
+        $this->transport->down = null;
+        $files->reconnect();
+        $files->poll();
+
+        $this->assertTrue($opened, 'whoever waited for it still gets it');
+        $this->assertSame("# hi\n", \file_get_contents($this->cache->path('README.md')));
+        $this->assertFileExists($this->cache->path('src/App.php'), 'the listing asked again');
+        $files->close();
+    }
+
+    public function testADirectoryTheServerWouldNotMakeKeepsWhatWasPutInIt(): void
+    {
+        $files = $this->files();
+        $files->listed($this->cache->dir);
+        $this->transport->fail['docs'] = 'Permission denied';
+        $this->transport->fail['docs/guide.md'] = 'Permission denied';
+        $files->mkdir($this->cache->path('docs'));
+        $files->dumpFile($this->cache->path('docs/guide.md'), 'mine');
+
+        $files->poll();
+        $files->listed($this->cache->dir);
+
+        $this->assertSame('mine', \file_get_contents($this->cache->path('docs/guide.md')), 'not removed for being missing on the server');
+        $this->assertSame(2, $files->pending());
+    }
+
+    public function testClosingStopsAskingAndForgetsWhatWaited(): void
+    {
+        $files = $this->files();
+        $this->transport->down = 'Network is unreachable';
+        $files->dumpFile($this->cache->path('a.txt'), 'a');
+        $files->close();
+        $calls = \count($this->transport->calls);
+
+        $this->pump(1.3);
+
+        $this->assertCount($calls, $this->transport->calls);
+    }
+
+    public function testACopyOfAFileNeverFetchedIsMadeThereAndHere(): void
+    {
+        $files = $this->files();
+        $files->listed($this->cache->dir);
+
+        $files->copy($this->cache->path('README.md'), $this->cache->path('COPY.md'));
+
+        $this->assertSame(0, $files->pending());
+        $this->assertSame("# hi\n", \file_get_contents($this->server->path('COPY.md')));
+        $this->assertSame("# hi\n", \file_get_contents($this->cache->path('COPY.md')));
+        $this->server->write('COPY.md', 'theirs, and longer');
+        $files->dumpFile($this->cache->path('COPY.md'), 'mine');
+        $this->assertSame('COPY.md changed on the server — save again to overwrite', $this->flashText($this->status), 'its stamp was kept: a change of theirs is seen, not overwritten');
+    }
+
+    public function testARefusedFileInADirectoryTheServerLostIsKept(): void
+    {
+        $files = $this->files();
+        $files->listed($this->cache->dir);
+        $files->listed($this->cache->path('src'));
+        $this->transport->fail['src/New.php'] = 'Permission denied';
+        $files->dumpFile($this->cache->path('src/New.php'), 'mine');
+        new Filesystem()->remove($this->server->path('src'));
+
+        $files->listed($this->cache->dir);
+        $files->poll();
+
+        $this->assertSame('mine', \file_get_contents($this->cache->path('src/New.php')), 'its directory is not removed with it');
+    }
+
+    public function testARefusedDirectoryMadeLaterIsNoLongerUnsent(): void
+    {
+        $files = $this->files();
+        $this->transport->fail['docs'] = 'Permission denied';
+        $files->mkdir($this->cache->path('docs'));
+        $this->assertSame(1, $files->pending());
+
+        $files->mkdir($this->cache->path('docs'));
+
+        $this->assertSame(0, $files->pending());
+        $this->assertDirectoryExists($this->server->path('docs'));
+    }
+
+    public function testTheRootAnsweringAfterAnOutageIsAYes(): void
+    {
+        $files = $this->files();
+        $this->transport->fail['src'] = 'Permission denied';
+        $files->listed($this->cache->path('src'));
+        $this->transport->down = 'Network is unreachable';
+        $files->listed($this->cache->dir);
+        $this->assertSame(StatusTone::Accent, $files->statusCells()[0]->tone);
+
+        $this->transport->down = null;
+        $files->reconnect();
+
+        $this->assertSame(StatusTone::Subtle, $files->statusCells()[0]->tone, 'the old refusal is no longer the news');
+        $files->close();
     }
 }

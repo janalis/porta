@@ -3166,6 +3166,30 @@
         <source>[%name%] stopped %times% times and is not started again — change its settings or restart Porta</source>
         <target>[%name%] stopped %times% times and is not started again — change its settings or restart Porta</target>
       </trans-unit>
+      <trans-unit id="1112">
+        <source>Reconnect Now</source>
+        <target>Reconnect Now</target>
+      </trans-unit>
+      <trans-unit id="1113">
+        <source>%host% refused the login: %why% — right-click to try again</source>
+        <target>%host% refused the login: %why% — right-click to try again</target>
+      </trans-unit>
+      <trans-unit id="1114">
+        <source>Cannot reach %host%: %why% — trying again</source>
+        <target>Cannot reach %host%: %why% — trying again</target>
+      </trans-unit>
+      <trans-unit id="1115">
+        <source>%count% change the server refused is only here — save it again to retry|%count% changes the server refused are only here — save them again to retry</source>
+        <target>%count% change the server refused is only here — save it again to retry|%count% changes the server refused are only here — save them again to retry</target>
+      </trans-unit>
+      <trans-unit id="1116">
+        <source>Lost %host% (%why%) — trying again</source>
+        <target>Lost %host% (%why%) — trying again</target>
+      </trans-unit>
+      <trans-unit id="1117">
+        <source>Back in touch with %host%</source>
+        <target>Back in touch with %host%</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

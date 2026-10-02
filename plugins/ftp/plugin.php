@@ -31,8 +31,16 @@ use Porta\Ui\TextEcho;
 return new class('ftp') extends AbstractPlugin implements RemoteProjectPlugin {
     private ?PluginApi $api = null;
 
-    /** Whether the password was asked for and not given since: asked once, not at every refusal. */
-    private bool $asked = false;
+    /**
+     * When the password was last asked for and not given since: not again at
+     * every refusal, but again a minute later — the prompt may have been
+     * dismissed, and the next refusal is then a person trying again.
+     */
+    private ?float $asked = null;
+
+    private const float ASK_AGAIN = 60.0;
+
+    private ?FtpTransport $transport = null;
 
     public function activate(PluginApi $api): void
     {
@@ -48,17 +56,18 @@ return new class('ftp') extends AbstractPlugin implements RemoteProjectPlugin {
         }
         $binary = \trim((string) $this->api?->setting('binary'));
 
-        return new FtpTransport($spec, Credentials::file($home, $spec), '' === $binary ? 'curl' : $binary, fn () => $this->askPassword($spec, $home));
+        return $this->transport = new FtpTransport($spec, Credentials::file($home, $spec), '' === $binary ? 'curl' : $binary, fn () => $this->askPassword($spec, $home));
     }
 
     /** The server refused the login: ask for the password, once, and keep what is given. */
     private function askPassword(RemoteSpec $spec, string $home): void
     {
         $api = $this->api;
-        if ($this->asked || null === $spec->user || null === $api) {
-            return; // asked already, or an anonymous login there is nothing to ask for
+        $now = \hrtime(true) / 1e9;
+        if (null !== $this->asked && ($now - $this->asked) < self::ASK_AGAIN || null === $spec->user || null === $api) {
+            return; // asked just now, or an anonymous login there is nothing to ask for
         }
-        $this->asked = true;
+        $this->asked = $now;
         $label = $api->trans('Password for %user%@%host%', ['%user%' => $spec->user, '%host%' => $spec->host]);
         $api->prompt(
             $label,
@@ -69,8 +78,9 @@ return new class('ftp') extends AbstractPlugin implements RemoteProjectPlugin {
 
                     return;
                 }
-                $this->asked = false;
+                $this->asked = null;
                 $api->flash($api->trans('Password kept — the server is asked again shortly'));
+                $this->transport?->passwordGiven();
             },
             TextEcho::Masked,
         );

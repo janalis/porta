@@ -3166,6 +3166,30 @@
         <source>[%name%] stopped %times% times and is not started again — change its settings or restart Porta</source>
         <target>[%name%] נעצר %times% פעמים ולא יופעל שוב — שנו את ההגדרות שלו או הפעילו מחדש את Porta</target>
       </trans-unit>
+      <trans-unit id="1112">
+        <source>Reconnect Now</source>
+        <target>התחברות מחדש עכשיו</target>
+      </trans-unit>
+      <trans-unit id="1113">
+        <source>%host% refused the login: %why% — right-click to try again</source>
+        <target>%host% דחה את ההתחברות: %why% — לחצו לחיצה ימנית כדי לנסות שוב</target>
+      </trans-unit>
+      <trans-unit id="1114">
+        <source>Cannot reach %host%: %why% — trying again</source>
+        <target>אין גישה אל %host%: %why% — מנסים שוב</target>
+      </trans-unit>
+      <trans-unit id="1115">
+        <source>%count% change the server refused is only here — save it again to retry|%count% changes the server refused are only here — save them again to retry</source>
+        <target>שינוי אחד שהשרת דחה נמצא רק כאן — שמרו אותו שוב כדי לנסות שוב|%count% שינויים שהשרת דחה נמצאים רק כאן — שמרו אותם שוב כדי לנסות שוב</target>
+      </trans-unit>
+      <trans-unit id="1116">
+        <source>Lost %host% (%why%) — trying again</source>
+        <target>החיבור אל %host% אבד (%why%) — מנסים שוב</target>
+      </trans-unit>
+      <trans-unit id="1117">
+        <source>Back in touch with %host%</source>
+        <target>שוב בקשר עם %host%</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

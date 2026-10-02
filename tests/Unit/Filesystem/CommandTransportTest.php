@@ -75,7 +75,7 @@ final class CommandTransportTest extends TestCase
 
         $this->assertSame('Permission denied (publickey).', $transport::say(255, "Warning: something\nPermission denied (publickey).\n\n"));
         $this->assertSame('exit code 2', $transport::say(2, " \n"));
-        $this->assertSame('no answer in 120 seconds', $transport::say(-1, ''));
+        $this->assertSame('no answer in 600 seconds', $transport::say(-1, ''));
     }
 
     public function testClosingCancelsWhatIsInFlight(): void

@@ -33,6 +33,8 @@ final class FtpPluginTest extends TestCase
     private CodeEditorWidget $editor;
     private StatusBarWidget $status;
 
+    private RemoteProjectPlugin $pluginInstance;
+
     private function plugin(): RemoteProjectPlugin
     {
         $settings = new PluginSettings('/p', ['ftp' => ['binary' => '/opt/bin/curl']]);
@@ -45,6 +47,7 @@ final class FtpPluginTest extends TestCase
         $this->assertInstanceOf(RemoteProjectPlugin::class, $plugin, 'the ftp plugin opens remote projects');
         $plugin->activate($api);
         $manager->commit($api, $plugin);
+        $this->pluginInstance = $plugin;
 
         return $plugin;
     }
@@ -60,7 +63,10 @@ final class FtpPluginTest extends TestCase
         $transport = $plugin->remoteTransport($spec);
 
         $this->assertInstanceOf(FtpTransport::class, $transport);
-        $this->assertSame(['/opt/bin/curl', '--silent', '--show-error', '--netrc-file', $netrc, '--', 'u'], $transport->command([], 'u'));
+        $this->assertSame(
+            ['/opt/bin/curl', '--silent', '--show-error', '--connect-timeout', '10', '--speed-limit', '1', '--speed-time', '30', '--netrc-file', $netrc, '--', 'u'],
+            $transport->command([], 'u'),
+        );
         $anonymous = $plugin->remoteTransport(new RemoteSpec('ftps', 'example.org', '/'));
         $this->assertInstanceOf(FtpTransport::class, $anonymous);
         $this->assertNotContains('--netrc-file', $anonymous->command([], 'u'));
@@ -81,6 +87,10 @@ final class FtpPluginTest extends TestCase
         $this->assertInstanceOf(FtpTransport::class, $transport, 'its scheme');
         $refused = Probe::get($transport, 'refused');
         $this->assertInstanceOf(\Closure::class, $refused, 'the plugin listens for a refused login');
+        $retried = 0;
+        $transport->onRetry(static function () use (&$retried): void {
+            ++$retried;
+        });
 
         $refused();
         $this->assertTrue(EditorState::promptOpen($this->editor), 'asked');
@@ -95,12 +105,17 @@ final class FtpPluginTest extends TestCase
 
         $this->assertStringContainsString('password s3cret', (string) \file_get_contents(Credentials::file($home->dir, $spec)));
         $this->assertSame('Password kept — the server is asked again shortly', $this->flashText($this->status));
+        $this->assertSame(1, $retried, 'and it is: now, not after the pause a refused login waits');
 
         $refused(); // the kept one was wrong: asked again
         $this->assertTrue(EditorState::promptOpen($this->editor));
         $this->editor->handleInput("\x1b"); // and dismissed
         $refused();
-        $this->assertFalse(EditorState::promptOpen($this->editor), 'not again until a password is given');
+        $this->assertFalse(EditorState::promptOpen($this->editor), 'not at every refusal');
+
+        Probe::set($this->pluginInstance, 'asked', (\hrtime(true) / 1e9) - 61.0);
+        $refused();
+        $this->assertTrue(EditorState::promptOpen($this->editor), 'but a minute on, a refusal is someone trying again');
     }
 
     public function testAnAnonymousLoginHasNothingToAsk(): void

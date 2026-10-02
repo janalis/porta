@@ -25,6 +25,9 @@ namespace Porta\Filesystem;
  */
 abstract class RemoteTransport
 {
+    /** @var (\Closure(): void)|null core's: list the server again, now */
+    private ?\Closure $retry = null;
+
     /**
      * The entries of directory $path — not `.` and `..`.
      *
@@ -98,6 +101,34 @@ abstract class RemoteTransport
     public function remoteCommand(array $argv): ?array
     {
         return null;
+    }
+
+    /**
+     * Whether $failure, which this transport answered, is the server refusing
+     * the login. Core then asks again only after a long pause — or when this
+     * transport says what stopped it changed ({@see retryNow()}) — since a
+     * server that counts refused logins may lock the account out.
+     */
+    public function refusesLogin(string $failure): bool
+    {
+        return false;
+    }
+
+    /** Core's: what to run when {@see retryNow()} is called. */
+    final public function onRetry(\Closure $retry): void
+    {
+        $this->retry = $retry;
+    }
+
+    /**
+     * Tell core what kept the server away may be gone — a password was
+     * given — so it asks again now rather than when its backoff says.
+     */
+    final protected function retryNow(): void
+    {
+        if (null !== $this->retry) {
+            ($this->retry)();
+        }
     }
 
     /**

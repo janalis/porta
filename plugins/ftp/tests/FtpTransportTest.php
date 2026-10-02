@@ -116,7 +116,7 @@ final class FtpTransportTest extends TestCase
 
     public function testFetchingAMissingFileSaysWhy(): void
     {
-        $this->assertSame('curl: (19) Given file does not exist', $this->answer(fn (\Closure $done) => $this->transport->fetch('missing', $done)));
+        $this->assertSame('missing is not on the server', $this->answer(fn (\Closure $done) => $this->transport->fetch('missing', $done)));
     }
 
     public function testItWritesThroughAPartialNameAndAnswersTheNewStamp(): void
@@ -181,7 +181,23 @@ final class FtpTransportTest extends TestCase
         $transport = new FtpTransport(new RemoteSpec('ftps', 'example.org', '/srv/my site', 'me', 2121), $home->path('x.netrc'));
 
         $this->assertSame(
-            ['curl', '--silent', '--show-error', '--netrc-file', $home->path('x.netrc'), '--ssl-reqd', '--head', '--', 'ftp://example.org:2121/%2F/srv/my%20site/a.txt'],
+            [
+                'curl',
+                '--silent',
+                '--show-error',
+                '--connect-timeout',
+                '10',
+                '--speed-limit',
+                '1',
+                '--speed-time',
+                '30',
+                '--netrc-file',
+                $home->path('x.netrc'),
+                '--ssl-reqd',
+                '--head',
+                '--',
+                'ftp://example.org:2121/%2F/srv/my%20site/a.txt',
+            ],
             $transport->command(['--head'], $transport->url('a.txt')),
         );
         $this->assertNotContains('--netrc-file', new FtpTransport(new RemoteSpec('ftp', 'h', '/'), $home->path('none.netrc'))->command([], 'u'), 'no password kept: anonymous');
@@ -196,5 +212,58 @@ final class FtpTransportTest extends TestCase
         $this->assertSame('ftp://h/%2F/a/b.txt', $root->url('a/b.txt'));
         $this->assertSame('ftp://h/', $home->directoryUrl(''));
         $this->assertSame('ftp://h/site/', $home->directoryUrl('site'));
+    }
+
+    public function testAServerThatCannotBeAskedIsAFailureNeverAConflict(): void
+    {
+        \putenv('FAKE_FTP_DOWN=1');
+        try {
+            $answer = $this->answer(fn (\Closure $done) => $this->transport->put('README.md', 'mine', $this->stampOf($this->server, 'README.md'), $done));
+        } finally {
+            \putenv('FAKE_FTP_DOWN');
+        }
+
+        $this->assertSame('curl: (7) Failed to connect to example.org port 21', $answer, 'not null: that would have the next save overwrite blind');
+        $this->assertSame("# hi\n", \file_get_contents($this->server->path('README.md')));
+    }
+
+    public function testALoginRefusalIsKnownForOne(): void
+    {
+        $this->assertTrue($this->transport->refusesLogin('curl: (67) Access denied: 530'));
+        $this->assertFalse($this->transport->refusesLogin('curl: (7) Failed to connect to example.org port 21'));
+    }
+
+    public function testAPartialLeftBehindIsNeverListed(): void
+    {
+        $this->server->write('.porta-upload-0a1b2c3d-README.md', 'half');
+
+        $entries = $this->answer(fn (\Closure $done) => $this->transport->list('', $done));
+
+        $this->assertIsArray($entries);
+        $this->assertNotContains('.porta-upload-0a1b2c3d-README.md', \array_map(static fn (RemoteEntry $e): string => $e->name, $entries));
+    }
+
+    public function testNoMoreThanTwoConnectionsAtOnce(): void
+    {
+        $log = $this->server->path('curl.log');
+        \putenv('FAKE_CURL_LOG='.$log);
+        \putenv('FAKE_CURL_TRACK='.$this->server->path('running'));
+        try {
+            $answers = [];
+            foreach (['README.md', 'src/App.php', 'a name.txt', 'README.md'] as $path) {
+                $this->transport->fetch($path, static function (mixed $answer) use (&$answers): void {
+                    $answers[] = $answer;
+                });
+            }
+            $this->await(static function () use (&$answers): bool {
+                return 4 === \count($answers);
+            }, what: 'every fetch');
+        } finally {
+            \putenv('FAKE_CURL_LOG');
+            \putenv('FAKE_CURL_TRACK');
+        }
+
+        $this->assertContainsOnlyInstancesOf(RemoteFile::class, $answers);
+        $this->assertLessThanOrEqual(2, (int) \file_get_contents($this->server->path('running.max')));
     }
 }

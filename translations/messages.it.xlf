@@ -3166,6 +3166,30 @@
         <source>[%name%] stopped %times% times and is not started again — change its settings or restart Porta</source>
         <target>[%name%] si è fermato %times% volte e non verrà riavviato — cambia le sue impostazioni o riavvia Porta</target>
       </trans-unit>
+      <trans-unit id="1112">
+        <source>Reconnect Now</source>
+        <target>Riconnetti ora</target>
+      </trans-unit>
+      <trans-unit id="1113">
+        <source>%host% refused the login: %why% — right-click to try again</source>
+        <target>%host% ha rifiutato l’accesso: %why% — clic destro per riprovare</target>
+      </trans-unit>
+      <trans-unit id="1114">
+        <source>Cannot reach %host%: %why% — trying again</source>
+        <target>Impossibile raggiungere %host%: %why% — nuovo tentativo in corso</target>
+      </trans-unit>
+      <trans-unit id="1115">
+        <source>%count% change the server refused is only here — save it again to retry|%count% changes the server refused are only here — save them again to retry</source>
+        <target>%count% modifica rifiutata dal server è solo qui — salvala di nuovo per riprovare|%count% modifiche rifiutate dal server sono solo qui — salvale di nuovo per riprovare</target>
+      </trans-unit>
+      <trans-unit id="1116">
+        <source>Lost %host% (%why%) — trying again</source>
+        <target>Connessione a %host% persa (%why%) — nuovo tentativo in corso</target>
+      </trans-unit>
+      <trans-unit id="1117">
+        <source>Back in touch with %host%</source>
+        <target>Di nuovo in contatto con %host%</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

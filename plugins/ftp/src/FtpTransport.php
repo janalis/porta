@@ -35,8 +35,28 @@ final class FtpTransport extends CommandTransport
     /** What curl answers when the server refuses the login. */
     private const int LOGIN_DENIED = 67;
 
-    /** The name a file is uploaded under before it is renamed over the real one. */
-    private const string PARTIAL = '.porta-upload';
+    /** What curl answers when the file is not there: could not RETR it, or not found. */
+    private const array GONE = [19, 78];
+
+    /**
+     * The name a file is uploaded under before it is renamed over the real
+     * one, with this instance's own mark: two Portas writing one file never
+     * write one partial. Never listed: an upload cut off leaves one behind.
+     */
+    private const string PARTIAL = '.porta-upload-';
+
+    /**
+     * Connections at once. A shared host takes a few per address and answers
+     * the rest "421 too many connections": two leave room for presence, and
+     * for another Porta on the same project.
+     */
+    private const int CONNECTIONS = 2;
+
+    /** Seconds to connect, and to see a byte move, before curl gives up — a dead link is said, not waited out. */
+    private const string CONNECT_TIMEOUT = '10';
+    private const string STALL_TIMEOUT = '30';
+
+    private readonly string $mark;
 
     /**
      * @param string|null             $netrc   where the credentials file is, or will be; none there logs in anonymously
@@ -48,7 +68,22 @@ final class FtpTransport extends CommandTransport
         private readonly ?string $netrc,
         private readonly string $curl = 'curl',
         private readonly ?\Closure $refused = null,
-    ) {}
+    ) {
+        $this->mark = \bin2hex(\random_bytes(4));
+        $this->runAtMost(self::CONNECTIONS);
+    }
+
+    #[\Override]
+    public function refusesLogin(string $failure): bool
+    {
+        return \str_contains($failure, '('.self::LOGIN_DENIED.')');
+    }
+
+    /** A password was kept: the server is asked again now, not after the pause a refused login waits. */
+    public function passwordGiven(): void
+    {
+        $this->retryNow();
+    }
 
     #[\Override]
     public function list(string $path, \Closure $done): void
@@ -61,9 +96,9 @@ final class FtpTransport extends CommandTransport
     #[\Override]
     public function fetch(string $path, \Closure $done): void
     {
-        $this->stamp($path, function (RemoteStamp|string $stamp) use ($path, $done): void {
-            if (\is_string($stamp)) {
-                $done($stamp);
+        $this->stamp($path, function (RemoteStamp|string|null $stamp) use ($path, $done): void {
+            if (!$stamp instanceof RemoteStamp) {
+                $done($stamp ?? $path.' is not on the server');
 
                 return;
             }
@@ -81,9 +116,16 @@ final class FtpTransport extends CommandTransport
 
             return;
         }
-        $this->stamp($path, function (RemoteStamp|string $now) use ($path, $bytes, $expected, $done): void {
+        $this->stamp($path, function (RemoteStamp|string|null $now) use ($path, $bytes, $expected, $done): void {
+            // Not asked at all — the link, a 421 — is a failure to say, never
+            // a conflict: that would have the next save overwrite blind.
+            if (\is_string($now)) {
+                $done($now);
+
+                return;
+            }
             // Gone, or another size or time: changed since it was fetched.
-            if (\is_string($now) || !$now->equals($expected)) {
+            if (null === $now || !$now->equals($expected)) {
                 $done(null);
 
                 return;
@@ -203,8 +245,9 @@ final class FtpTransport extends CommandTransport
     {
         $auth = null !== $this->netrc && \is_file($this->netrc) ? ['--netrc-file', $this->netrc] : [];
         $tls = 'ftps' === $this->spec->scheme ? ['--ssl-reqd'] : [];
+        $limits = ['--connect-timeout', self::CONNECT_TIMEOUT, '--speed-limit', '1', '--speed-time', self::STALL_TIMEOUT];
 
-        return [$this->curl, '--silent', '--show-error', ...$auth, ...$tls, ...$options, '--', $url];
+        return [$this->curl, '--silent', '--show-error', ...$limits, ...$auth, ...$tls, ...$options, '--', $url];
     }
 
     /**
@@ -256,7 +299,7 @@ final class FtpTransport extends CommandTransport
      */
     private function upload(string $path, string $bytes, \Closure $done): void
     {
-        $name = self::PARTIAL.'-'.\basename($path);
+        $name = self::PARTIAL.$this->mark.'-'.\basename($path);
         $partial = (\str_contains($path, '/') ? \dirname($path).'/' : '').$name;
         $options = ['--ftp-create-dirs', '--upload-file', '-', '--quote', '-RNFR '.$name, '--quote', '-RNTO '.\basename($path)];
         $this->guarded([$path], $done, fn () => $this->exec($this->command($options, $this->url($partial)), $bytes, function (int $code, string $out, string $err) use ($path, $done): void {
@@ -265,7 +308,7 @@ final class FtpTransport extends CommandTransport
 
                 return;
             }
-            $this->stamp($path, $done);
+            $this->stamp($path, static fn (RemoteStamp|string|null $stamp) => $done($stamp ?? 'the file was not there once written'));
         }));
     }
 
@@ -311,9 +354,10 @@ final class FtpTransport extends CommandTransport
     }
 
     /**
-     * $path's stamp, from the SIZE and MDTM curl asks for with `--head`.
+     * $path's stamp, from the SIZE and MDTM curl asks for with `--head` — or
+     * null when it is not there.
      *
-     * @param \Closure(RemoteStamp|string): void $done
+     * @param \Closure(RemoteStamp|string|null): void $done
      */
     private function stamp(string $path, \Closure $done): void
     {
@@ -322,6 +366,7 @@ final class FtpTransport extends CommandTransport
             $size = 1 === \preg_match('/^Content-Length:\s*(\d+)/mi', $out, $length) ? (int) $length[1] : null;
             $time = 1 === \preg_match('/^Last-Modified:\s*(.+?)\s*$/mi', $out, $modified) ? \strtotime($modified[1]) : false;
             $done(match (true) {
+                \in_array($code, self::GONE, strict: true) => null,
                 0 !== $code => self::failure($code, $err),
                 null === $size || false === $time => 'the server did not say the size and time of the file',
                 default => new RemoteStamp($size, $time),
@@ -393,7 +438,7 @@ final class FtpTransport extends CommandTransport
                 $facts[\strtolower($pair[0])] = $pair[1] ?? '';
             }
             $type = \strtolower($facts['type'] ?? '');
-            if ('file' !== $type && 'dir' !== $type) {
+            if ('file' !== $type && 'dir' !== $type || \str_starts_with($parts[1], self::PARTIAL)) {
                 continue;
             }
             $entries[] = new RemoteEntry($parts[1], 'dir' === $type, new RemoteStamp((int) ($facts['size'] ?? 0), self::time($facts['modify'] ?? '')));
