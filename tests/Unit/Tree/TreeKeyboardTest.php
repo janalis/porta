@@ -126,6 +126,19 @@ final class TreeKeyboardTest extends TestCase
         $this->assertFileExists($this->project->path('src/B.php'), 'in the selected folder');
     }
 
+    public function testNewFileOnATakenNameRefusesInsteadOfEmptyingIt(): void
+    {
+        \file_put_contents($this->project->path('src/A.php'), data: "<?php\necho 1;\n");
+        $this->walkTo('src');
+
+        $this->tui()->handleInput(self::ALT_INSERT);
+        $this->type("\r"); // New File…
+        $this->type("A.php\r");
+
+        $this->assertSame("<?php\necho 1;\n", \file_get_contents($this->project->path('src/A.php')), 'the existing file keeps its content');
+        $this->assertStringStartsWith('Cannot create src/A.php', Toasts::last($this->ide));
+    }
+
     public function testCtrlNOffersANewFolderToo(): void
     {
         $this->walkTo('a.php');

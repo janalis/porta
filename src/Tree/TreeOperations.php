@@ -262,6 +262,10 @@ final class TreeOperations
             }
             $path = $dir.'/'.$name;
             $this->withFs($this->translator->trans('Cannot create %file%', ['%file%' => $this->paths->relative($path)]), function () use ($path): void {
+                // `dumpFile()` truncates: a taken name would come back empty.
+                if (\file_exists($path)) {
+                    throw new IOException(\sprintf('%s already exists', $path));
+                }
                 $this->fs->dumpFile($path, '');
                 $this->tree->refresh();
                 $this->bufferService->openFile($path, focus: OpenFocus::Editor);
