@@ -254,10 +254,6 @@ final readonly class OpenBuffers
      */
     public function move(string $from, string $to): ?string
     {
-        if (\file_exists($from) && !\is_dir(\dirname($to))) {
-            \mkdir(\dirname($to), recursive: true);
-        }
-
         return $this->workspace->applyWorkspaceEdit(['documentChanges' => [['kind' => 'rename', 'oldUri' => Uri::fromPath($from), 'newUri' => Uri::fromPath($to)]]])->refused;
     }
 

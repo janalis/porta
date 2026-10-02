@@ -251,7 +251,7 @@ final class AbstractToolPluginTest extends TestCase
      */
     public function testAToolThatRunsProjectCodeRefusesAnUntrustedProject(): void
     {
-        $tool = new class('demo', 'demo') extends AbstractToolPlugin {
+        $tool = static fn (): AbstractToolPlugin => new class('demo', 'demo') extends AbstractToolPlugin {
             public function activate(PluginApi $api): void
             {
                 $this->registerBinarySetting($api, [['composer', 'acme/demo']]);
@@ -268,13 +268,19 @@ final class AbstractToolPluginTest extends TestCase
                 return $this->acquire($api);
             }
         };
+        $trusted = $tool();
         $api = $this->api();
-        $this->activate($tool, $api);
+        $this->activate($trusted, $api);
         $api->changeSetting('binary', '/opt/custom/demo');
-        $this->assertSame('/opt/custom/demo', $tool->callAcquire($api), 'trusted: it runs');
+        $this->assertSame('/opt/custom/demo', $trusted->callAcquire($api), 'trusted: it runs');
 
         $this->untrustProjects();
-        $this->assertNull($tool->callAcquire($api));
+        $untrusted = $tool();
+        $this->project = new TempProject();
+        $api = $this->api();
+        $this->activate($untrusted, $api);
+        $api->changeSetting('binary', '/opt/custom/demo');
+        $this->assertNull($untrusted->callAcquire($api));
         $this->assertStringContainsString('demo runs code of the project\'s own: trust the project to use it', $this->flashText($this->status));
     }
 

@@ -36,6 +36,7 @@ final class TerminalBuffer
     private int $col = 0;
     private string $pending = ''; // incomplete escape sequence across chunk boundaries
     private string $pendingSgr = ''; // SGR emitted since the last text write, applied forward
+    private bool $discarding = false; // inside a string sequence past MAX_PENDING, dropped to its terminator
 
     /**
      * The current (last) line's visible width, tracked as it is built:
@@ -86,6 +87,7 @@ final class TerminalBuffer
         $this->curWidth = 0;
         $this->pending = '';
         $this->pendingSgr = '';
+        $this->discarding = false;
     }
 
     /**
@@ -93,6 +95,20 @@ final class TerminalBuffer
      */
     public function feed(string $data): void
     {
+        if ($this->discarding) {
+            // Inside a string sequence too long to hold: drop to its terminator.
+            $data = $this->pending.$data;
+            $this->pending = '';
+            $end = self::terminatorEnd($data);
+            if (null === $end) {
+                // An ESC last may be half of the `ESC \` that ends it.
+                $this->pending = \str_ends_with($data, "\x1b") ? "\x1b" : '';
+
+                return;
+            }
+            $this->discarding = false;
+            $data = \substr($data, $end);
+        }
         $data = $this->pending.$data;
         $this->pending = '';
         $len = \strlen($data);
@@ -103,9 +119,16 @@ final class TerminalBuffer
 
             if ("\x1b" === $ch) {
                 $seq = AnsiUtils::extractAnsiCode($data, $i);
-                if (null === $seq && self::unfinished(\substr($data, $i))) {
+                if (null === $seq && self::unfinished($data, $i)) {
                     // An escape split across chunks; stash and wait.
                     $this->pending = \substr($data, $i);
+
+                    return;
+                }
+                if (null === $seq && self::isStringSequence($data, $i)) {
+                    // Past the cap but still unterminated (an inline image, a
+                    // long clipboard write): swallowed to its end, never printed.
+                    $this->discarding = true;
 
                     return;
                 }
@@ -144,26 +167,48 @@ final class TerminalBuffer
     }
 
     /**
-     * Whether $tail (starting at an ESC that did not parse) can still become a
-     * sequence once more bytes arrive — the only case worth stashing.
+     * Whether the bytes from the ESC at $at on (which did not parse) can still
+     * become a sequence once more arrive — the only case worth stashing.
+     * Offsets, not a substring: a run of bare ESCs would copy the chunk's
+     * remainder once per byte.
      */
-    private static function unfinished(string $tail): bool
+    private static function unfinished(string $data, int $at): bool
     {
-        $len = \strlen($tail);
-        if ($len > self::MAX_PENDING) {
-            return false;
-        }
+        $len = \strlen($data) - $at;
         if (1 === $len) {
             return true;
         }
+        if ($len > self::MAX_PENDING) {
+            return false;
+        }
 
         return match (true) {
-            '[' === $tail[1] => (2 + \strspn($tail, self::CSI_BODY, offset: 2)) === $len,
-            \in_array($tail[1], [']', 'P', '_', '^', 'X'], strict: true) => true, // no terminator yet
+            '[' === $data[$at + 1] => (2 + \strspn($data, self::CSI_BODY, offset: $at + 2)) === $len,
+            self::isStringSequence($data, $at) => true, // no terminator yet
             // nF: intermediates only so far. Any other byte after ESC is a
             // two-byte form the parser would have taken, or garbage.
-            default => (1 + \strspn($tail, self::NF_BODY, offset: 1)) === $len,
+            default => (1 + \strspn($data, self::NF_BODY, offset: $at + 1)) === $len,
         };
+    }
+
+    /** OSC, DCS, APC, PM or SOS: ended by BEL or `ESC \`, however long. */
+    private static function isStringSequence(string $data, int $at): bool
+    {
+        return \in_array($data[$at + 1] ?? '', [']', 'P', '_', '^', 'X'], strict: true);
+    }
+
+    /**
+     * Just past the first BEL or `ESC \` in $data, or null when there is none.
+     * (Stopping AT the BEL instead is an equivalent mutant: a C0 byte left in
+     * front is ignored by the parser either way.)
+     */
+    private static function terminatorEnd(string $data): ?int
+    {
+        $bel = \strpos($data, needle: "\x07");
+        $st = \strpos($data, needle: "\x1b\\");
+        $ends = \array_filter([false === $bel ? null : $bel + 1, false === $st ? null : $st + 2], static fn (?int $end): bool => null !== $end);
+
+        return [] === $ends ? null : \min($ends);
     }
 
     private function handleEscape(string $code): void

@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Workbench;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Porta\Config\IdeConfig;
 use Porta\Config\WorkspaceTrust;
 use Porta\Editor\BufferManager;
 use Porta\Event\ProjectOpenRequested;
@@ -19,6 +20,7 @@ use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestTui;
+use Porta\Tests\Support\UntrustsProjects;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Notifier;
@@ -37,6 +39,7 @@ final class ProjectSwitcherTest extends TestCase
 {
     use PreservesPortaHome;
     use StatusReads;
+    use UntrustsProjects;
 
     private TempProject $home;
     private TempProject $here;
@@ -44,6 +47,7 @@ final class ProjectSwitcherTest extends TestCase
     private UnsavedChangesGuard $guard;
     private WorkspaceTrust $trust;
     private ?WorkspaceTrust $trustOverride = null;
+    private bool $trustHere = false;
     private CodeEditorWidget $editor;
     private StatusBarWidget $statusBar;
     /** @var list<string> */
@@ -54,6 +58,9 @@ final class ProjectSwitcherTest extends TestCase
         $this->home = new TempProject([]);
         \putenv('PORTA_HOME='.$this->home->dir);
         $this->here = new TempProject(['composer.json' => '{}']);
+        if ($this->trustHere) {
+            new WorkspaceTrust($this->home->dir)->trust($this->here->dir);
+        }
 
         $store = new RecentProjectsStore();
         foreach ($recent as $root) {
@@ -78,6 +85,7 @@ final class ProjectSwitcherTest extends TestCase
             $events,
             $this->guard = new UnsavedChangesGuard($this->buffers = new BufferManager(), $notifier, $translator, new MockClock()),
             $this->trust = $this->trustOverride ?? new WorkspaceTrust($this->home->dir),
+            IdeConfig::load($this->here->dir),
             $this->here->dir,
         );
     }
@@ -427,30 +435,57 @@ final class ProjectSwitcherTest extends TestCase
         $this->assertStringContainsString('Could not save the answer', $this->flashText($this->statusBar));
     }
 
-    /** From inside, either way: the answer is written, and the project reopens to apply it. */
-    public function testTrustingAndRestrictingTheCurrentProjectReopensIt(): void
+    /**
+     * From inside, either way: the answer is written, and the project reopens
+     * to apply it. Judged by what the SESSION loaded — the answers file is
+     * read by the next one.
+     */
+    public function testTrustingARestrictedSessionReopensItTrusted(): void
     {
+        $this->untrustProjects();
         $switcher = $this->switcher();
         $here = $this->here->dir;
+
+        $switcher->restrictCurrent();
+        $this->assertStringContainsString('restricted already', $this->flashText($this->statusBar));
+        $this->assertSame([], $this->requested, 'nothing to reopen for');
 
         $switcher->trustCurrent();
         $this->assertTrue($this->trust->isTrusted($here));
         $this->assertSame([$here], $this->requested);
+    }
+
+    public function testRestrictingATrustedSessionReopensItRestricted(): void
+    {
+        $this->untrustProjects();
+        $this->trustHere = true;
+        $switcher = $this->switcher();
+
         $switcher->trustCurrent();
         $this->assertStringContainsString('trusted already', $this->flashText($this->statusBar));
-        $this->assertSame([$here], $this->requested, 'nothing to reopen for');
+        $this->assertSame([], $this->requested);
 
         $switcher->restrictCurrent();
-        $this->assertFalse($this->trust->isTrusted($here));
-        $this->assertSame([$here, $here], $this->requested);
+        $this->assertFalse($this->trust->isTrusted($this->here->dir));
+        $this->assertSame([$this->here->dir], $this->requested);
+    }
+
+    /** No answer outranks PORTA_TRUSTED_FOLDERS: reopening would load it all again, silently. */
+    public function testAProjectTrustedByItsFolderIsNotReopenedForNothing(): void
+    {
+        $this->trustOverride = new WorkspaceTrust(null, [(string) \PORTA_TEST_TRUSTED_FOLDERS]);
+        $switcher = $this->switcher(); // the suite trusts the temp dir
+
         $switcher->restrictCurrent();
-        $this->assertStringContainsString('restricted already', $this->flashText($this->statusBar));
-        $this->assertSame([$here, $here], $this->requested);
+
+        $this->assertSame([], $this->requested);
+        $this->assertStringContainsString('PORTA_TRUSTED_FOLDERS trusts this project', $this->flashText($this->statusBar));
     }
 
     /** Reopening ends the session: unsaved edits hold it, and nothing is written meanwhile. */
     public function testADirtyBufferHoldsTheReopenAndTheAnswer(): void
     {
+        $this->untrustProjects();
         $switcher = $this->switcher();
         $this->buffers->open($this->here->path('a.php'), "<?php\n")->document->insert('x');
 
@@ -463,6 +498,7 @@ final class ProjectSwitcherTest extends TestCase
 
     public function testAnAnswerFromInsideThatCannotBeSavedReopensNothing(): void
     {
+        $this->untrustProjects();
         $this->trustOverride = new WorkspaceTrust('/dev/null');
         $switcher = $this->switcher();
 

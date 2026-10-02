@@ -3326,6 +3326,10 @@
         <source>Open This Project Restricted</source>
         <target>לפתוח את הפרויקט הזה במצב מוגבל</target>
       </trans-unit>
+      <trans-unit id="1153">
+        <source>PORTA_TRUSTED_FOLDERS trusts this project: take its folder out to restrict it</source>
+        <target>PORTA_TRUSTED_FOLDERS נותן אמון בפרויקט הזה: יש להוציא ממנו את התיקייה שלו כדי להגביל אותו</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

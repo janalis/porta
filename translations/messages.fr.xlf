@@ -3326,6 +3326,10 @@
         <source>Open This Project Restricted</source>
         <target>Ouvrir ce projet en mode restreint</target>
       </trans-unit>
+      <trans-unit id="1153">
+        <source>PORTA_TRUSTED_FOLDERS trusts this project: take its folder out to restrict it</source>
+        <target>PORTA_TRUSTED_FOLDERS approuve ce projet : retirez-en son dossier pour le restreindre</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Workbench;
 
+use Porta\Config\IdeConfig;
 use Porta\Config\PortaHome;
 use Porta\Config\WorkspaceTrust;
 use Porta\Container\AsIdeService;
@@ -43,6 +44,7 @@ final readonly class ProjectSwitcher
         private EventDispatcherInterface $events,
         private UnsavedChangesGuard $guard,
         private WorkspaceTrust $trust,
+        private IdeConfig $config,
         private string $rootDir,
     ) {}
 
@@ -164,11 +166,13 @@ final readonly class ProjectSwitcher
 
     /**
      * Trust the project this session is in, and reopen it so its own plugins
-     * and tools load — the way back from having opened it restricted.
+     * and tools load — the way back from having opened it restricted. Judged
+     * by what THIS session loaded, not by the answers file another window
+     * may have changed since.
      */
     public function trustCurrent(): void
     {
-        if ($this->trust->isTrusted($this->rootDir)) {
+        if ($this->config->trusted) {
             $this->notifier->flash($this->translator->trans('This project is trusted already'));
 
             return;
@@ -179,8 +183,15 @@ final readonly class ProjectSwitcher
     /** Stop trusting the project this session is in, and reopen it restricted. */
     public function restrictCurrent(): void
     {
-        if (!$this->trust->isTrusted($this->rootDir)) {
+        if (!$this->config->trusted) {
             $this->notifier->flash($this->translator->trans('This project is restricted already'));
+
+            return;
+        }
+        if ($this->trust->trustsFolderOf($this->rootDir)) {
+            // An answer cannot outrank PORTA_TRUSTED_FOLDERS: reopening would
+            // load it all again and say nothing.
+            $this->notifier->flash($this->translator->trans('PORTA_TRUSTED_FOLDERS trusts this project: take its folder out to restrict it'));
 
             return;
         }

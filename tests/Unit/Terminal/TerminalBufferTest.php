@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Terminal;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Porta\Terminal\TerminalBuffer;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RendersWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
@@ -269,24 +270,75 @@ final class TerminalBufferTest extends TestCase
     {
         $b = new TerminalBuffer();
         $b->feed($first);
+        $this->assertSame(\substr($first, offset: 1), Probe::get($b, 'pending'), 'held to be parsed whole');
         $b->feed($second);
 
         $this->assertSame('xred', AnsiUtils::stripAnsiCodes($b->lines[0]), 'the halves joined into one sequence');
     }
 
-    public function testAnUnterminatedOscPastTheCapStopsBeingHeld(): void
+    /**
+     * Past the cap it is no longer HELD (memory stays bounded) — but it is
+     * still a sequence: swallowed to its terminator, never printed. An inline
+     * image is kilobytes of base64 that has no business in the panel.
+     */
+    public function testAnOscPastTheCapIsSwallowedToItsTerminator(): void
     {
         $b = new TerminalBuffer();
-        $b->feed("\x1b]0;".\str_repeat('x', times: 65_533)); // 65_537 bytes: one past
-        $b->feed("\nvisible");
+        $b->feed("before\x1b]1337;File=".\str_repeat('x', times: 65_533)); // one past the cap
+        $b->feed(\str_repeat('y', times: 100_000)."\nstill inside");
+        $this->assertSame('', Probe::get($b, 'pending'), 'nothing held');
+        $b->feed("yy\x07after");
+        $b->feed(' and on');
 
-        $this->assertSame('visible', AnsiUtils::stripAnsiCodes($b->lines[\count($b->lines) - 1]));
+        $this->assertSame(['beforeafter and on'], \array_map(AnsiUtils::stripAnsiCodes(...), $this->rows($b->lines)), 'the body never printed, and what follows flows again');
+    }
+
+    public function testASwallowedSequenceMayEndOnAnStSplitAcrossChunks(): void
+    {
+        $b = new TerminalBuffer();
+        $b->feed("\x1b]52;c;".\str_repeat('x', times: 70_000));
+        $b->feed("zz\x1b");
+        $b->feed('\\after');
+
+        $this->assertSame(['after'], \array_map(AnsiUtils::stripAnsiCodes(...), $this->rows($b->lines)));
+    }
+
+    public function testTheFirstTerminatorEndsTheSwallowing(): void
+    {
+        $b = new TerminalBuffer();
+        $b->feed("\x1b]0;".\str_repeat('x', times: 70_000));
+        $b->feed("\x1b\\one\x07two");
+        $this->assertSame(['onetwo'], \array_map(AnsiUtils::stripAnsiCodes(...), $this->rows($b->lines)), 'ST first: "one" was after it, not inside');
+
+        $c = new TerminalBuffer();
+        $c->feed("\x1b]0;".\str_repeat('x', times: 70_000));
+        $c->feed("\x07one\x1b\\two");
+        $this->assertSame(['onetwo'], \array_map(AnsiUtils::stripAnsiCodes(...), $this->rows($c->lines)), 'BEL first: likewise');
+    }
+
+    public function testClearForgetsASwallowing(): void
+    {
+        $b = new TerminalBuffer();
+        $b->feed("\x1b]0;".\str_repeat('x', times: 70_000));
+        $b->clear();
+        $b->feed('fresh');
+
+        $this->assertSame(['fresh'], $this->rows($b->lines));
+    }
+
+    public function testARunOfBareEscapesIsDropped(): void
+    {
+        $b = new TerminalBuffer();
+        $b->feed(\str_repeat("\x1b\x01", times: 50_000).'z');
+
+        $this->assertSame(['z'], $this->rows($b->lines));
     }
 
     public function testAnUnterminatedOscAtTheCapIsHeld(): void
     {
         $b = new TerminalBuffer();
         $b->feed("\x1b]0;".\str_repeat('x', times: 65_532)); // exactly 65_536 bytes
+        $this->assertSame(65_536, \strlen((string) Probe::get($b, 'pending')), 'HELD — not swallowed: a split sequence is still parsed whole');
         $b->feed("\x07visible");
 
         $this->assertSame(['visible'], \array_map(AnsiUtils::stripAnsiCodes(...), $this->rows($b->lines)), 'held until the terminator, then swallowed whole');

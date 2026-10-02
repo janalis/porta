@@ -35,6 +35,9 @@ abstract class AbstractToolPlugin extends AbstractPlugin
     /** The single-flight slot: one run of this tool at a time. */
     private bool $running = false;
 
+    /** Whether the project may run code of its own — see {@see trusted()}. */
+    private ?bool $trusted = null;
+
     public function __construct(
         string $name,
         private readonly string $binaryName,
@@ -57,7 +60,7 @@ abstract class AbstractToolPlugin extends AbstractPlugin
             return $configured;
         }
         // A project's vendor/bin is the project's code: only once it is trusted.
-        if (BinarySearch::VendorBinThenPath === $this->search && self::trusted($api)) {
+        if (BinarySearch::VendorBinThenPath === $this->search && $this->trusted($api)) {
             $local = $api->projectRoot().'/vendor/bin/'.$this->binaryName;
             if (\is_file($local) && \is_executable($local)) {
                 return $local;
@@ -91,7 +94,7 @@ abstract class AbstractToolPlugin extends AbstractPlugin
 
             return null;
         }
-        if ($this->runsProjectCode() && !self::trusted($api)) {
+        if ($this->runsProjectCode() && !$this->trusted($api)) {
             $api->flash($api->trans('%tool% runs code of the project\'s own: trust the project to use it', ['%tool%' => $this->name()]), 4.0);
 
             return null;
@@ -122,9 +125,14 @@ abstract class AbstractToolPlugin extends AbstractPlugin
         return false;
     }
 
-    private static function trusted(PluginApi $api): bool
+    /**
+     * Asked once per session, like everything else that decides what a
+     * project may run: binary() answers every menu predicate, and the answer
+     * must not change under a session another window re-answered.
+     */
+    private function trusted(PluginApi $api): bool
     {
-        return WorkspaceTrust::fromEnvironment()->isTrusted($api->projectRoot());
+        return $this->trusted ??= WorkspaceTrust::fromEnvironment()->isTrusted($api->projectRoot());
     }
 
     /** Free the single-flight slot — call it from the process's exit callback (or after the last one in a chain). */

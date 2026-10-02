@@ -110,11 +110,12 @@ something to run:
   and `debug`, and every plugin setting naming a program or a command line
   (`binary`, `path`, `command`, `dotPath`, `ghBinary`, `svgConverter`, `args`,
   symfony-lsp's `php-command` and `runtime-indexing`, review's `hosts` and
-  `provider`…);
+  `provider`, an `outputDir`, mcp's `allow…` permissions for agents);
 - tools are found on your `PATH`, never in its `vendor/bin`;
 - phpstan, psalm and php-cs-fixer do not run at all — their own config files
   can execute the project's PHP, whichever binary reads them;
-- git ignores the repository's `core.fsmonitor`.
+- git ignores the repository's `core.fsmonitor`, and the filter and diff
+  drivers its `.gitattributes` name.
 
 **Trust This Project** and **Open This Project Restricted** in the command
 palette change the answer and reopen the project.

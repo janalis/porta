@@ -221,6 +221,26 @@ the sweeps found beside it, one commit each:
 - Local-history snapshots of 0600 files were left 0644.
 - Downloads followed redirects to plain http.
 
+The review of the round found the gate thinner than its claims, and each
+claim was then made true:
+
+- A text edit to a file nobody has open is now kept inside the project too, and
+  a `..` path is refused before the disk is consulted. `new/..` used to judge
+  as inside during validation, then delete the root once `new` existed.
+- git reads no attributes for an untrusted repository (`GIT_ATTR_SOURCE` = the
+  empty tree), because a `.gitattributes` filter's `clean` runs on a status
+  that re-hashes a file.
+- A guest may move, overwrite or delete only what the host offered. Renaming
+  `.env` to a listed name was fetching it in one more step.
+- The relay answers the server's `workspace/configuration` itself, and drops
+  `didChangeWorkspaceFolders`.
+- A pinned review `provider` picks the forge, never the host.
+- mcp's `allow…` flags and any `…Dir` setting are runnable keys too.
+- Trust/Restrict judge the session's `IdeConfig::$trusted`, not the file, and
+  do not reopen under `PORTA_TRUSTED_FOLDERS`.
+- An over-cap OSC is swallowed to its terminator, not printed.
+- symfony-lsp's `runtime-indexing` stays off untrusted, even when on globally.
+
 Weighed and left alone:
 
 - Any guest may read debugger variables. That is documented and tested
@@ -230,4 +250,9 @@ Weighed and left alone:
   by another user.
 - An OSC 8 link's URI body passes `AnsiText::inert()`.
 - Downloads are not signature-checked; that needs signing infrastructure.
+- Trust is still read through `WorkspaceTrust::fromEnvironment()` in the
+  config loader, the LSP locator, the legacy-key adopter, git and the tool
+  base. They run before the container exists, or are plugin code nothing is
+  injected into. Each reads it once per session (the tool base memoizes), so
+  one session cannot disagree with itself.
 

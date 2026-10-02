@@ -766,6 +766,14 @@ final class WorkspaceEditorTest extends TestCase
         yield 'renaming a file out' => [
             static fn (TempProject $in, TempProject $out): array => [['kind' => 'rename', 'oldUri' => Uri::fromPath($in->path('a.php')), 'newUri' => Uri::fromPath($out->path('a.php'))]],
         ];
+        // Judged on the disk BEFORE the edit, `new/..` would walk up to the root
+        // and be called inside — and once `new` exists, it IS the root.
+        yield 'deleting the root through a folder made first' => [
+            static fn (TempProject $in, TempProject $out): array => [
+                ['kind' => 'create', 'uri' => Uri::fromPath($in->path('new/x.php'))],
+                ['kind' => 'delete', 'uri' => Uri::fromPath($in->path('new/..')), 'options' => ['recursive' => true]],
+            ],
+        ];
         yield 'renaming a file in' => [
             static fn (TempProject $in, TempProject $out): array => [['kind' => 'rename', 'oldUri' => Uri::fromPath($out->path('keep.php')), 'newUri' => Uri::fromPath($in->path('keep.php'))]],
         ];
@@ -804,6 +812,27 @@ final class WorkspaceEditorTest extends TestCase
         $this->assertNotNull($this->workspaceEditor(root: $tree->path('nowhere'))->applyWorkspaceEdit($create($tree->path('app/new.php')))->refused, 'no project to stay inside');
         $this->assertFileDoesNotExist($tree->path('app-old/new.php'));
         $this->assertFileDoesNotExist($tree->path('app/new.php'));
+    }
+
+    /**
+     * A text edit to a file nobody has open is written on disk unseen — the
+     * server's doing, so it stays inside the project too. An OPEN buffer is
+     * the user's, wherever it lives, and takes the edit as before.
+     */
+    public function testATextEditOnDiskOutsideTheProjectIsSkippedAndAnOpenOneApplies(): void
+    {
+        $out = new TempProject(['rc' => "keep\n", 'open.php' => "<?php\nold\n"]);
+        $in = new TempProject(['a.php' => "<?php\nold\n"]);
+        $editor = $this->workspaceEditor(root: $in->dir);
+        $this->buffers->open((string) \realpath($out->path('open.php')), "<?php\nold\n");
+        $edit = static fn (string $path): array => [Uri::fromPath($path) => [self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 0]], 'evil ')]];
+
+        $outcome = $editor->applyWorkspaceEdit(['changes' => [...$edit($out->path('rc')), ...$edit((string) \realpath($out->path('open.php'))), ...$edit($in->path('a.php'))]]);
+
+        $this->assertSame("keep\n", \file_get_contents($out->path('rc')), 'nothing written out there');
+        $this->assertSame([(string) \realpath($out->path('rc'))], $outcome->skipped, 'and said so');
+        $this->assertSame(2, $outcome->touched, 'the open buffer and the project file took it');
+        $this->assertSame("evil <?php\nold\n", \file_get_contents($in->path('a.php')));
     }
 
     public function testAnOperationInsideTheProjectStillApplies(): void

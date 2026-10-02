@@ -21,6 +21,7 @@ use Porta\Workbench\Notifier;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Filesystem\Exception\IOException;
 use Symfony\Component\Filesystem\Filesystem;
+use Symfony\Component\Filesystem\Path;
 
 /**
  * Applies LSP WorkspaceEdit / TextEdit payloads to open buffers (and to files
@@ -266,6 +267,12 @@ final readonly class WorkspaceEditor
      */
     private function outside(string $path): bool
     {
+        // A `..` is judged against the disk as it is BEFORE the edit: through a
+        // folder an earlier operation creates, `new/..` walks up to the root
+        // here and is the root itself once applied. Only a plain path is judged.
+        if (Path::canonicalize($path) !== \rtrim($path, characters: '/')) {
+            return true;
+        }
         $root = \realpath($this->lsp->rootDir());
         $existing = $path;
         while (!\file_exists($existing) && !\is_link($existing) && \dirname($existing) !== $existing) {
@@ -346,6 +353,9 @@ final readonly class WorkspaceEditor
         $from = $this->pathOf($change['oldUri'] ?? null);
         $to = $this->pathOf($change['newUri'] ?? null);
         \assert(null !== $from && null !== $to, description: 'a rename with no usable path is refused before applying');
+        // The folder it goes into is made here, once the rename is judged —
+        // made before, a refused move would leave it behind, wherever it was.
+        $this->fs->mkdir(\dirname($to));
         $this->fs->rename($from, $to, overwrite: true);
         // Canonical both sides, per FileRenamed's contract. $from is already
         // gone, so its DIRECTORY is what resolves — the same trick
@@ -401,6 +411,14 @@ final readonly class WorkspaceEditor
             }
             $this->lsp->notifyFullChange($buffer->path, $buffer->document);
             ++$touched;
+
+            return;
+        }
+        // An open buffer is the user's, wherever it lives; a file written
+        // unseen on disk is the server's doing, and stays inside the project
+        // like its creates and deletes.
+        if ($this->outside($target)) {
+            $skipped[] = $target;
 
             return;
         }

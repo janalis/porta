@@ -39,12 +39,14 @@ final readonly class WorkspaceTrust
     private const array UNTRUSTED_KEYS = ['lsp', 'enabledPlugins'];
 
     /**
-     * A plugin setting that names a program, a command line, or where a token
-     * goes: `binary`, `path`, `command`, `dotPath`, `ghBinary`, `svgConverter`…
+     * A plugin setting that names a program, a command line, where a token
+     * goes or where files are written — `binary`, `path`, `command`, `dotPath`,
+     * `ghBinary`, `svgConverter`, `outputDir`… — or that lets an agent act:
+     * mcp's `allowRuns`, `allowFileOps`, `allowEdits`, `allowSave`.
      * Matched by shape, so a third-party plugin naming its own the same way is
      * covered too.
      */
-    private const string RUNNABLE_SETTING = '/(?:path|binary|command|converter)$/i';
+    private const string RUNNABLE_SETTING = '/(?:path|binary|command|converter|dir)$|^allow/i';
 
     /** Runnable plugin settings whose names do not say so. */
     private const array RUNNABLE_SETTINGS = ['plantuml', 'runtime-indexing', 'args', 'hosts', 'provider'];
@@ -66,6 +68,12 @@ final readonly class WorkspaceTrust
 
     public function isTrusted(string $rootDir): bool
     {
+        return $this->trustsFolderOf($rootDir) || \in_array(self::canonical($rootDir), $this->answers()['trusted'], strict: true);
+    }
+
+    /** Whether `PORTA_TRUSTED_FOLDERS` trusts $rootDir — which no answer outranks. */
+    public function trustsFolderOf(string $rootDir): bool
+    {
         $root = self::canonical($rootDir);
         foreach ($this->folders as $folder) {
             $folder = \rtrim(self::canonical($folder), characters: '/');
@@ -74,7 +82,7 @@ final readonly class WorkspaceTrust
             }
         }
 
-        return \in_array($root, $this->answers()['trusted'], strict: true);
+        return false;
     }
 
     /**

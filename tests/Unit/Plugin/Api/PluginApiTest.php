@@ -779,6 +779,8 @@ final class PluginApiTest extends TestCase
         $this->assertSame('b.php already exists', $files->move($at('moved/a.php'), $at('new/b.php')));
         $this->assertSame('nothing.php is not there to rename', $files->move($at('nothing.php'), $at('else.php')));
         $this->assertDirectoryDoesNotExist($at('else'), 'no folder made for a move that did not happen');
+        $this->assertStringContainsString('outside the project', (string) $files->move($at('dirty.php'), '/tmp/porta-never-'.\bin2hex(\random_bytes(4)).'/x.php'));
+        $this->assertSame([], \glob('/tmp/porta-never-*'), 'nor for one refused outside the project');
 
         $this->buffers->open($at('dirty.php'), "<?php\n")->document->insert('x');
         $this->assertStringContainsString('unsaved changes', (string) $files->delete($at('dirty.php')));
