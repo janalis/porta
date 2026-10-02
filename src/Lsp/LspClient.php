@@ -373,11 +373,9 @@ final class LspClient implements LspClientInterface
     {
         $this->pending[$id] = $onResult;
         $this->deadlines[$id] = EventLoop::unreference(EventLoop::delay($timeout, function () use ($id, $timeout, $method): void {
-            $callback = $this->pending[$id] ?? null;
+            // Still waiting: an answer, or a stop, cancels this timer.
+            $callback = $this->pending[$id];
             unset($this->pending[$id], $this->deadlines[$id]);
-            if (null === $callback) {
-                return;
-            }
             $this->log(\sprintf('%s got no answer in %s seconds', $method, $timeout));
             $this->notify('$/cancelRequest', ['id' => $id]);
             $callback(null, ['code' => self::CANCELLED, 'message' => \sprintf('The language server did not answer in %s seconds', $timeout)]);

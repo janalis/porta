@@ -1014,4 +1014,30 @@ final class LspSessionPoolTest extends TestCase
 
         return $pool;
     }
+
+    public function testARelaunchDueAfterTheServersWereDisabledLaunchesNothing(): void
+    {
+        $pool = $this->pool(self::SERVERS);
+        $pool->notifyDidOpen('/tmp/proj/a.php', 'a', 'php', 1);
+        $this->die(0);
+
+        $pool->disable();
+        $this->pump(Backoff::after(0) + 0.2);
+
+        $this->assertCount(1, $this->clients);
+    }
+
+    public function testARelaunchThatFailsToStartTellsItNothing(): void
+    {
+        $pool = $this->pool(self::SERVERS);
+        $pool->notifyDidOpen('/tmp/proj/a.php', 'a', 'php', 1);
+        $this->die(0);
+        $this->clientOutcome = Outcome::Failed;
+
+        $this->pump(Backoff::after(0) + 0.2);
+
+        $this->assertCount(2, $this->clients, 'tried');
+        $this->assertSame([], $this->clients[1]['client']->notifications, 'and with nothing up, nothing sent');
+        $pool->stop();
+    }
 }

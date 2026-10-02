@@ -421,4 +421,24 @@ final class PresenceSyncTest extends TestCase
         $this->assertInstanceOf(Beacon::class, $this->mine($sync));
         $this->assertFalse(Probe::get($sync, 'busy'), 'and the next look goes out');
     }
+
+    public function testALookThatThrowsLeavesTheNextOneFree(): void
+    {
+        $server = new TempProject();
+        $transport = new FakeRemoteTransport($server->dir);
+        $sync = $this->sync(new ProjectLocation(new RemoteSpec('ssh', 'example.org', '/srv')), $transport);
+        $transport->throws = new \LogicException('a bug in a transport');
+
+        try {
+            $sync->tick();
+            $this->fail('what threw is still heard');
+        } catch (\LogicException $error) {
+            $this->assertSame('a bug in a transport', $error->getMessage());
+        }
+
+        $this->assertFalse(Probe::get($sync, 'busy'), 'not frozen for the session');
+        $sync->tick();
+        $this->assertContains('list .porta/presence', $transport->calls);
+        $sync->stop();
+    }
 }

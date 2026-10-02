@@ -1302,4 +1302,37 @@ final class RemoteFilesystemTest extends TestCase
         $this->assertSame(StatusTone::Subtle, $files->statusCells()[0]->tone, 'the old refusal is no longer the news');
         $files->close();
     }
+
+    public function testAChangeThatThrowsDoesNotStallTheQueue(): void
+    {
+        $files = $this->files();
+        $this->transport->throws = new \LogicException('a bug in a transport');
+
+        try {
+            $files->dumpFile($this->cache->path('a.txt'), 'a');
+            $this->fail('what threw is still heard');
+        } catch (\LogicException $error) {
+            $this->assertSame('a bug in a transport', $error->getMessage());
+        }
+
+        $files->dumpFile($this->cache->path('b.txt'), 'b');
+        $this->assertSame('b', \file_get_contents($this->server->path('b.txt')), 'the queue moved on');
+    }
+
+    public function testAWalkLostWithTheLinkIsAskedForAgainOnceItIsBack(): void
+    {
+        $this->transport->walks = true;
+        $files = $this->files();
+        $files->listed($this->cache->dir);
+        $this->transport->down = 'Network is unreachable';
+        $files->poll();
+        $this->assertContains('walk ', $this->transport->calls);
+
+        $this->transport->down = null;
+        $files->reconnect();
+        $files->poll();
+
+        $this->assertCount(2, \array_filter($this->transport->calls, static fn (string $call): bool => 'walk ' === $call), 'walked again');
+        $files->close();
+    }
 }

@@ -102,7 +102,9 @@ final class PixelRatioTest extends TestCase
             $ratio = $this->ratio($query);
             $this->graphics->setPixelRatio(2.0); // what a failure must not keep
             $ratio->probe([], os: 'Darwin');
-            $this->pump(0.5);
+            // The query's answer, awaited: a fixed half second was too short for one
+            // under a loaded coverage run, and left the 2.0 set above in place.
+            $this->await(fn (): bool => 1.0 === $this->graphics->pixelRatio(), what: \implode(' ', $query));
 
             $this->assertSame(1.0, $this->graphics->pixelRatio(), \implode(' ', $query));
         }

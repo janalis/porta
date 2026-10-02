@@ -54,6 +54,9 @@ final class FakeRemoteTransport extends RemoteTransport
     /** While set, the server cannot be reached: every verb answers this. */
     public ?string $down = null;
 
+    /** When set, the next verb throws it instead of answering — a bug, not a server. */
+    public ?\Throwable $throws = null;
+
     /** The failure that means the login was refused. */
     public const string LOGIN_DENIED = 'login denied';
 
@@ -250,6 +253,11 @@ final class FakeRemoteTransport extends RemoteTransport
     private function answer(string $verb, string $path, \Closure $done, \Closure $work): void
     {
         $this->calls[] = $verb.' '.$path;
+        $throws = $this->throws;
+        $this->throws = null;
+        if (null !== $throws) {
+            throw $throws;
+        }
         $key = \array_key_exists($path, $this->fail) ? $path : '*';
         $error = $this->fail[$key] ?? $this->down;
         unset($this->fail[$key]);

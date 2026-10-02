@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Filesystem;
 use PHPUnit\Framework\TestCase;
 use Porta\Filesystem\CommandTransport;
 use Porta\Filesystem\RemoteStamp;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
 
 /** One short process per verb: its answer, its failure in words, and closing what is in flight. */
@@ -24,6 +25,11 @@ final class CommandTransportTest extends TestCase
             public function exec(array $command, ?string $stdin, \Closure $done): void
             {
                 $this->run($command, $stdin, $done);
+            }
+
+            public function atMost(int $limit): void
+            {
+                $this->runAtMost($limit);
             }
 
             public static function say(int $code, string $stderr): string
@@ -90,5 +96,33 @@ final class CommandTransportTest extends TestCase
         $this->pump(0.2);
 
         $this->assertFalse($answered);
+    }
+
+    public function testAtMostSoManyRunAtOnceAndTheRestWaitTheirTurnInOrder(): void
+    {
+        $transport = $this->transport();
+        $transport->atMost(1);
+        $order = [];
+        foreach (['one', 'two', 'three'] as $word) {
+            $transport->exec([\PHP_BINARY, '-r', 'usleep(50000); echo "'.$word.'";'], null, static function (int $code, string $out) use (&$order): void {
+                $order[] = $out;
+            });
+        }
+        $this->assertCount(1, Probe::get($transport, 'running'), 'one at a time');
+
+        $this->await(static function () use (&$order): bool {
+            return 3 === \count($order);
+        }, what: 'all three');
+
+        $this->assertSame(['one', 'two', 'three'], $order);
+        $transport->exec(['true'], null, static function (): void {});
+        $transport->atMost(0);
+        $transport->close();
+        $this->assertSame([], Probe::get($transport, 'waiting'), 'closing forgets what waited');
+    }
+
+    public function testAFailureIsNoRefusedLoginUnlessTheTransportKnowsOne(): void
+    {
+        $this->assertFalse($this->transport()->refusesLogin('Permission denied'));
     }
 }
