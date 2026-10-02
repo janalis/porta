@@ -85,7 +85,7 @@ final class UnsavedChangesGuardTest extends TestCase
         $guard = $this->guard(unsent: 2);
 
         $this->assertFalse($guard->confirmed('quit', 'press again'));
-        $this->assertSame('Still sending changes to the server. press again', $this->flashText($this->statusBar));
+        $this->assertSame('Some changes are not on the server yet. press again', $this->flashText($this->statusBar));
         $this->assertTrue($guard->confirmed('quit', 'press again'));
     }
 

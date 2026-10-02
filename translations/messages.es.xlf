@@ -3111,8 +3111,8 @@
         <target>Ningún plugin activado abre proyectos %scheme%://</target>
       </trans-unit>
       <trans-unit id="1098">
-        <source>Still sending changes to the server. %repeat%</source>
-        <target>Aún se están enviando cambios al servidor. %repeat%</target>
+        <source>Some changes are not on the server yet. %repeat%</source>
+        <target>Algunos cambios aún no están en el servidor. %repeat%</target>
       </trans-unit>
       <trans-unit id="1099">
         <source>This project is on %host%: running it needs it on this machine</source>

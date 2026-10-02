@@ -3111,8 +3111,8 @@
         <target>אין תוסף מופעל שפותח פרויקטים מסוג %scheme%://</target>
       </trans-unit>
       <trans-unit id="1098">
-        <source>Still sending changes to the server. %repeat%</source>
-        <target>שינויים עדיין נשלחים לשרת. %repeat%</target>
+        <source>Some changes are not on the server yet. %repeat%</source>
+        <target>חלק מהשינויים עדיין לא בשרת. %repeat%</target>
       </trans-unit>
       <trans-unit id="1099">
         <source>This project is on %host%: running it needs it on this machine</source>

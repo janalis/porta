@@ -3111,8 +3111,8 @@
         <target>%scheme%:// プロジェクトを開ける有効なプラグインがありません</target>
       </trans-unit>
       <trans-unit id="1098">
-        <source>Still sending changes to the server. %repeat%</source>
-        <target>まだサーバーに変更を送信中です。%repeat%</target>
+        <source>Some changes are not on the server yet. %repeat%</source>
+        <target>一部の変更はまだサーバーにありません。%repeat%</target>
       </trans-unit>
       <trans-unit id="1099">
         <source>This project is on %host%: running it needs it on this machine</source>
