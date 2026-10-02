@@ -46,6 +46,17 @@ final class DiagnosticLogTest extends TestCase
      * repo's `error.log` held twenty-one byte-identical traces and nothing that
      * placed any of them in time.
      */
+    public function testALogThatIsASymlinkIsNotWrittenThrough(): void
+    {
+        $outside = new TempProject(['.bashrc' => "export A=1\n"]);
+        $project = new TempProject(['.porta/keep' => '']);
+        \symlink($outside->path('.bashrc'), $project->path('.porta/error.log'));
+
+        DiagnosticLog::forRoot($project->dir, channel: 'error')->append('boom $(touch pwned)');
+
+        $this->assertSame("export A=1\n", \file_get_contents($outside->path('.bashrc')));
+    }
+
     public function testEachEntryIsDated(): void
     {
         $project = new TempProject();

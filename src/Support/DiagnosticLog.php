@@ -131,8 +131,8 @@ final class DiagnosticLog
     }
 
     /**
-     * Whether the log's directory exists — asked once per session, and again
-     * after a write has failed.
+     * Whether the log's directory exists and the log is not a link — asked
+     * once per session, and again after a write has failed.
      */
     private function directoryReady(): bool
     {
@@ -144,7 +144,10 @@ final class DiagnosticLog
             \mkdir($dir, permissions: 0o755, recursive: true);
         }
 
-        return $this->dirReady = \is_dir($dir);
+        // A log that is a symlink is not written through: `.porta/` comes with
+        // a cloned project, and `error.log -> ~/.bashrc` would have every error
+        // line — paths and names the project chose among them — appended there.
+        return $this->dirReady = \is_dir($dir) && !\is_link($this->path);
     }
 
     /**
