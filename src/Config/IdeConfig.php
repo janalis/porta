@@ -151,6 +151,7 @@ final readonly class IdeConfig
      * @param list<string>                                                                                                                   $enabledPlugins  bundled (embedded) plugin names to load — {@see DEFAULT_ENABLED_PLUGINS} unless the key is present (an explicit list, even empty, replaces the default)
      * @param array{default: string, languages: array<string, string>}                                                                      $highlight  the top-level `highlight` block: grammar name => backend id
      * @param list<ConfigWarning>                                                                                                            $warnings
+     * @param bool                                                                                                                           $trusted    whether the project's own say was believed — see {@see WorkspaceTrust}
      */
     private function __construct(
         public array $keymap,
@@ -162,6 +163,7 @@ final readonly class IdeConfig
         public array $enabledPlugins,
         public array $highlight,
         public array $warnings,
+        public bool $trusted = true,
     ) {}
 
     /**
@@ -180,16 +182,19 @@ final readonly class IdeConfig
     public static function load(string $rootDir): self
     {
         $files = ConfigFiles::for($rootDir);
+        $trusted = WorkspaceTrust::fromEnvironment()->isTrusted($rootDir);
         $warnings = [];
         $layers = [];
         foreach (ConfigScope::inPrecedenceOrder() as $scope) {
-            $layer = self::readLayer($files->path($scope), $files->label($scope), $warnings);
+            // An untrusted project's file is read minus what names something to run.
+            $restricted = ConfigScope::Project === $scope && !$trusted;
+            $layer = self::readLayer($files->path($scope), $files->label($scope), $warnings, $restricted);
             if (null !== $layer) {
                 $layers[] = $layer;
             }
         }
 
-        return self::merge($layers, $warnings);
+        return self::merge($layers, $warnings, $trusted);
     }
 
     /**
@@ -208,7 +213,8 @@ final readonly class IdeConfig
      *
      * @return array{keymap: array<string, list<string>>, settings: array<string, bool|int|string>, languages: array<string, array{indentStyle?: string, indentSize?: int|string, debug?: array{adapter?: string, launch?: array<string, mixed>}, runCommand?: string, templates?: array<string, string>}>, lsp: array<string, string>, plugins: array<string, array<string, bool|int|string>>, disabledPlugins: list<string>, enabledPlugins: ?list<string>, highlight: ?array{default: string, languages: array<string, string>}}|null
      */
-    private static function readLayer(?string $file, string $label, array &$warnings): ?array
+    // @mago-expect lint:no-boolean-flag-parameter -- restricted IS the one fact the trust decision hands the reader
+    private static function readLayer(?string $file, string $label, array &$warnings, bool $restricted): ?array
     {
         if (null === $file || !\is_file($file)) {
             return null;
@@ -224,6 +230,9 @@ final readonly class IdeConfig
             $warnings[] = new ConfigWarning('%file% is not valid JSON (%error%)', ['%file%' => $label, '%error%' => (string) $jsonError]);
 
             return null;
+        }
+        if ($restricted) {
+            $config = WorkspaceTrust::restricted($config);
         }
 
         /** @var array<string, string|int|list<string>> $keymapConfig */
@@ -269,7 +278,7 @@ final readonly class IdeConfig
      * @param list<array{keymap: array<string, list<string>>, settings: array<string, bool|int|string>, languages: array<string, array{indentStyle?: string, indentSize?: int|string, debug?: array{adapter?: string, launch?: array<string, mixed>}, runCommand?: string, templates?: array<string, string>}>, lsp: array<string, string>, plugins: array<string, array<string, bool|int|string>>, disabledPlugins: list<string>, enabledPlugins: ?list<string>, highlight: ?array{default: string, languages: array<string, string>}}> $layers
      * @param list<ConfigWarning> $warnings
      */
-    private static function merge(array $layers, array $warnings): self
+    private static function merge(array $layers, array $warnings, bool $trusted): self
     {
         $keymap = [];
         $settings = self::DEFAULT_SETTINGS;
@@ -314,6 +323,7 @@ final readonly class IdeConfig
             $enabled ?? self::DEFAULT_ENABLED_PLUGINS,
             $highlight ?? self::NO_HIGHLIGHT,
             $warnings,
+            $trusted,
         );
     }
 

@@ -3278,6 +3278,54 @@
         <source>Status Bar Menus</source>
         <target>Status Bar Menus</target>
       </trans-unit>
+      <trans-unit id="1141">
+        <source>%tool% runs code of the project's own: trust the project to use it</source>
+        <target>%tool% runs code of the project's own: trust the project to use it</target>
+      </trans-unit>
+      <trans-unit id="1142">
+        <source>This project is trusted already</source>
+        <target>This project is trusted already</target>
+      </trans-unit>
+      <trans-unit id="1143">
+        <source>This project is restricted already</source>
+        <target>This project is restricted already</target>
+      </trans-unit>
+      <trans-unit id="1144">
+        <source>Trust and Open</source>
+        <target>Trust and Open</target>
+      </trans-unit>
+      <trans-unit id="1145">
+        <source>its own plugins and tools run</source>
+        <target>its own plugins and tools run</target>
+      </trans-unit>
+      <trans-unit id="1146">
+        <source>Open Restricted</source>
+        <target>Open Restricted</target>
+      </trans-unit>
+      <trans-unit id="1147">
+        <source>nothing of the project's own runs</source>
+        <target>nothing of the project's own runs</target>
+      </trans-unit>
+      <trans-unit id="1148">
+        <source>Trust %project%?</source>
+        <target>Trust %project%?</target>
+      </trans-unit>
+      <trans-unit id="1149">
+        <source>Could not save the answer in ~/.porta/trusted-projects.json</source>
+        <target>Could not save the answer in ~/.porta/trusted-projects.json</target>
+      </trans-unit>
+      <trans-unit id="1150">
+        <source>Run it again to reopen the project, Ctrl+S to save</source>
+        <target>Run it again to reopen the project, Ctrl+S to save</target>
+      </trans-unit>
+      <trans-unit id="1151">
+        <source>Trust This Project</source>
+        <target>Trust This Project</target>
+      </trans-unit>
+      <trans-unit id="1152">
+        <source>Open This Project Restricted</source>
+        <target>Open This Project Restricted</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

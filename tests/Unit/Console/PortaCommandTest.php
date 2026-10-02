@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Console;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Porta\Config\WorkspaceTrust;
 use Porta\Console\PortaCommand;
 use Porta\Console\Workspace;
 use Porta\Container\Ansi;
@@ -26,7 +27,7 @@ final class PortaCommandTest extends TestCase
     /** What the fake IDE exits with. */
     private int $exitCode = 0;
 
-    private function command(Presence $interactive = Presence::With): PortaCommand
+    private function command(Presence $interactive = Presence::With, ?WorkspaceTrust $trust = null): PortaCommand
     {
         $this->launched = null;
 
@@ -38,6 +39,7 @@ final class PortaCommandTest extends TestCase
                 return $this->exitCode;
             },
             isInteractive: static fn (): bool => Presence::With === $interactive,
+            trust: $trust,
         );
     }
 
@@ -459,5 +461,59 @@ final class PortaCommandTest extends TestCase
 
         $this->assertSame(Command::FAILURE, $tester->execute(['--self-update' => true]));
         $this->assertStringContainsString('composer global update janalis/porta', \preg_replace('/\s+/', replacement: ' ', subject: $tester->getDisplay()) ?? '');
+    }
+
+    /** @return iterable<string, array{string, bool}> */
+    public static function trustAnswers(): iterable
+    {
+        yield 'yes' => ['y', true];
+        yield 'a stray Enter' => ['', false];
+        yield 'no' => ['n', false];
+    }
+
+    /**
+     * A project never answered for, holding something to run, is asked about
+     * before the IDE takes the terminal — and the answer is kept either way.
+     */
+    #[DataProvider('trustAnswers')]
+    public function testAProjectNeverAnsweredForIsAskedAboutBeforeLaunch(string $answer, bool $trusted): void
+    {
+        $home = new TempProject();
+        $trust = new WorkspaceTrust($home->dir);
+        $project = new TempProject(['.porta.json' => '{}']);
+        $tester = new CommandTester($this->command(trust: $trust));
+        $tester->setInputs([$answer]);
+
+        $this->assertSame(Command::SUCCESS, $tester->execute(['path' => [$project->dir]]));
+        $this->assertStringContainsString('Trust this project?', $tester->getDisplay());
+        $this->assertStringContainsString('can run code of its own', $tester->getDisplay(), 'what is being asked, said first');
+        $this->assertStringContainsString('opens restricted', $tester->getDisplay());
+        $this->assertNotNull($this->launched, 'launched either way');
+        $this->assertSame($trusted, $trust->isTrusted($project->dir));
+        $this->assertFalse($trust->shouldAsk($project->dir), 'answered: not asked again');
+    }
+
+    public function testAnAnswerThatCannotBeKeptSaysSoAndStillLaunches(): void
+    {
+        $project = new TempProject(['.porta.json' => '{}']);
+        $tester = new CommandTester($this->command(trust: new WorkspaceTrust('/dev/null')));
+        $tester->setInputs(['y']);
+
+        $tester->execute(['path' => [$project->dir]]);
+
+        $this->assertStringContainsString('could not save the answer', $tester->getDisplay());
+        $this->assertNotNull($this->launched);
+    }
+
+    public function testAGitToolLaunchNeverAsks(): void
+    {
+        $project = new TempProject(['.porta.json' => '{}', 'a.php' => '']);
+        $home = new TempProject();
+        $tester = new CommandTester($this->command(trust: new WorkspaceTrust($home->dir)));
+
+        $this->inDirectory($project->dir, static fn (): int => $tester->execute(['path' => ['/tmp/x_LOCAL_1.php', 'a.php'], '--diff' => true]));
+
+        $this->assertStringNotContainsString('Trust this project?', $tester->getDisplay());
+        $this->assertNotNull($this->launched);
     }
 }

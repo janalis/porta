@@ -13,8 +13,19 @@ Three sources, in precedence order:
 3. the plugins bundled in the Porta package at `<package>/plugins/`
    (`PORTA_EMBEDDED_PLUGINS` overrides)
 
-Earlier sources shadow later ones by directory name. Project and global plugins
-are **opt-out** — loaded unless named in `disabledPlugins`. Bundled ones follow
+Earlier sources shadow later ones by directory name. Global plugins are
+**opt-out** — loaded unless named in `disabledPlugins`. So are a project's, but
+only once the project is **trusted** (`Config/WorkspaceTrust`): loading one is
+running it, and a project is something one clones. An untrusted project opens
+restricted — its `.porta/plugins` are skipped, its `.porta.json` loses every key
+that names something to run (`WorkspaceTrust::restricted()`), tools are not
+taken from its `vendor/bin`, and a tool that executes its PHP (phpstan, psalm,
+php-cs-fixer: `AbstractToolPlugin::runsProjectCode()`) refuses. `porta` asks
+before the IDE boots, the project switcher asks before a switch, and the
+palette's Trust This Project / Open This Project Restricted change the answer
+and reopen. Answers live in `~/.porta/trusted-projects.json`;
+`PORTA_TRUSTED_FOLDERS` trusts every project under a folder (the suite sets it
+to the temp dir — a test of the untrusted path uses `UntrustsProjects`). Bundled ones follow
 `enabledPlugins`: when the key is absent
 `IdeConfig::DEFAULT_ENABLED_PLUGINS` applies, so the viewers, TODO scan, local
 history, git blame and opening a project over ssh or FTP work on a fresh

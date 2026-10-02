@@ -290,6 +290,19 @@ editor's stops and maps every column on that text (`DiffViewRenderer::shown()`,
 
 ## Plugin API
 
+**A project's plugins and runnable config wait for trust — kept.** Project
+plugins used to be opt-out, "trusted like composer scripts". But opening a
+clone ran its `plugin.php`, its `.porta.json` named the git binary and the
+language server, and the status poll ran both with nobody asking. Now an
+untrusted project opens restricted (`Config/WorkspaceTrust`). Trust is per
+project and asked once; `PORTA_TRUSTED_FOLDERS` exists for CI and the suite.
+The runnable-key filter matches by NAME (`…path|binary|command|converter`,
+plus a short list), so a third-party plugin's setting named that way is
+covered without a new descriptor flag. `PluginApi` did not grow a
+`projectTrusted()`: it sits at the method-count pin, and the one caller,
+`AbstractToolPlugin`, is core. *Re-opens on:* a plugin setting that runs
+something and cannot be named to match; that one would need the flag.
+
 **`registerWelcomeStep()` — designed and rejected.** The plugins worth
 recommending are exactly the ones that are OFF, so they have not loaded and
 cannot announce themselves. The only cards such a seam could produce are ones

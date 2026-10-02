@@ -37,6 +37,7 @@ final readonly class PluginLoader
     /**
      * @param list<string> $disabled plugin names skipped at boot (.porta.json `disabledPlugins`)
      * @param list<string> $enabled  bundled (embedded) plugin names opted in (.porta.json `enabledPlugins`); embedded plugins are off unless listed
+     * @param bool         $trusted  whether the project's own `.porta/plugins` may load — see {@see \Porta\Config\WorkspaceTrust}
      */
     public function __construct(
         private string $rootDir,
@@ -47,6 +48,7 @@ final readonly class PluginLoader
         private array $enabled = [],
         private ?TerminalTheme $syntaxTheme = null,
         private ?Translator $translator = null,
+        private bool $trusted = true,
     ) {}
 
     /**
@@ -156,8 +158,8 @@ final readonly class PluginLoader
     }
 
     /**
-     * Plugin entry files in precedence order — project, then global, then the
-     * plugins bundled with Porta — where a directory name seen earlier shadows
+     * Plugin entry files in precedence order — project (when trusted), then
+     * global, then the plugins bundled with Porta — where a directory name seen earlier shadows
      * later sources. Glob order keeps this deterministic. In a Porta dev
      * checkout the project and embedded dirs coincide; basename shadowing
      * makes that a natural dedup.
@@ -172,7 +174,8 @@ final readonly class PluginLoader
         $files = [];
 
         // Project then global: user-installed plugins, loaded by default (opt-out).
-        $optOut = [$this->rootDir.'/.porta/plugins', null !== $this->globalBase ? $this->globalBase.'/.porta/plugins' : null];
+        // A project's own only once it is trusted: loading one is running it.
+        $optOut = [$this->trusted ? $this->rootDir.'/.porta/plugins' : null, null !== $this->globalBase ? $this->globalBase.'/.porta/plugins' : null];
         foreach ($optOut as $dir) {
             if (null === $dir) {
                 continue;

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Plugin\Api;
 
+use Porta\Config\WorkspaceTrust;
 use Porta\Filesystem\ProjectLocation;
 use Porta\Overlay\State\ToastSeverity;
 use Porta\Support\AsyncProcess;
@@ -55,7 +56,8 @@ abstract class AbstractToolPlugin extends AbstractPlugin
         if ('' !== $configured) {
             return $configured;
         }
-        if (BinarySearch::VendorBinThenPath === $this->search) {
+        // A project's vendor/bin is the project's code: only once it is trusted.
+        if (BinarySearch::VendorBinThenPath === $this->search && self::trusted($api)) {
             $local = $api->projectRoot().'/vendor/bin/'.$this->binaryName;
             if (\is_file($local) && \is_executable($local)) {
                 return $local;
@@ -78,13 +80,19 @@ abstract class AbstractToolPlugin extends AbstractPlugin
     /**
      * Take the single-flight slot and resolve the binary, or flash why not and
      * return null. A remote project is a why not: its cache holds what was
-     * opened, not the project the tool needs to read.
+     * opened, not the project the tool needs to read. So is an untrusted one,
+     * for a tool that would run its code.
      */
     protected function acquire(PluginApi $api): ?string
     {
         $remote = ProjectLocation::forRoot($api->projectRoot())->remote;
         if (null !== $remote) {
             $api->flash($api->trans('This project is on %host%: running it needs it on this machine', ['%host%' => $remote->host]), 4.0);
+
+            return null;
+        }
+        if ($this->runsProjectCode() && !self::trusted($api)) {
+            $api->flash($api->trans('%tool% runs code of the project\'s own: trust the project to use it', ['%tool%' => $this->name()]), 4.0);
 
             return null;
         }
@@ -102,6 +110,21 @@ abstract class AbstractToolPlugin extends AbstractPlugin
         $this->running = true;
 
         return $binary;
+    }
+
+    /**
+     * Whether running the tool executes PHP of the project's choosing — a
+     * phpstan `bootstrapFiles`, a psalm autoloader, a `.php-cs-fixer.dist.php`
+     * — whichever binary runs. Such a tool does not run in an untrusted project.
+     */
+    protected function runsProjectCode(): bool
+    {
+        return false;
+    }
+
+    private static function trusted(PluginApi $api): bool
+    {
+        return WorkspaceTrust::fromEnvironment()->isTrusted($api->projectRoot());
     }
 
     /** Free the single-flight slot — call it from the process's exit callback (or after the last one in a chain). */

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Plugin\Api;
 
+use Porta\Config\WorkspaceTrust;
 use Porta\Support\JsonFile;
 
 /**
@@ -37,7 +38,10 @@ final readonly class LegacyCoreSettings
         private string $plugin,
         private array $renamed,
     ) {
-        $this->file = JsonFile::read($rootDir.'/.porta.json') ?? [];
+        $file = JsonFile::read($rootDir.'/.porta.json') ?? [];
+        // The pre-plugin keys named binaries too (`gitPath`, `dotPath`): an
+        // untrusted project's are not adopted.
+        $this->file = WorkspaceTrust::fromEnvironment()->isTrusted($rootDir) ? $file : WorkspaceTrust::restricted($file);
     }
 
     /**

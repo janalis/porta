@@ -3278,6 +3278,54 @@
         <source>Status Bar Menus</source>
         <target>Menu della barra di stato</target>
       </trans-unit>
+      <trans-unit id="1141">
+        <source>%tool% runs code of the project's own: trust the project to use it</source>
+        <target>%tool% esegue codice del progetto stesso: considera attendibile il progetto per usarlo</target>
+      </trans-unit>
+      <trans-unit id="1142">
+        <source>This project is trusted already</source>
+        <target>Questo progetto è già attendibile</target>
+      </trans-unit>
+      <trans-unit id="1143">
+        <source>This project is restricted already</source>
+        <target>Questo progetto è già limitato</target>
+      </trans-unit>
+      <trans-unit id="1144">
+        <source>Trust and Open</source>
+        <target>Considera attendibile e apri</target>
+      </trans-unit>
+      <trans-unit id="1145">
+        <source>its own plugins and tools run</source>
+        <target>i suoi plugin e strumenti vengono eseguiti</target>
+      </trans-unit>
+      <trans-unit id="1146">
+        <source>Open Restricted</source>
+        <target>Apri in modalità limitata</target>
+      </trans-unit>
+      <trans-unit id="1147">
+        <source>nothing of the project's own runs</source>
+        <target>nulla del progetto stesso viene eseguito</target>
+      </trans-unit>
+      <trans-unit id="1148">
+        <source>Trust %project%?</source>
+        <target>Considerare attendibile %project%?</target>
+      </trans-unit>
+      <trans-unit id="1149">
+        <source>Could not save the answer in ~/.porta/trusted-projects.json</source>
+        <target>Impossibile salvare la risposta in ~/.porta/trusted-projects.json</target>
+      </trans-unit>
+      <trans-unit id="1150">
+        <source>Run it again to reopen the project, Ctrl+S to save</source>
+        <target>Eseguilo di nuovo per riaprire il progetto, Ctrl+S per salvare</target>
+      </trans-unit>
+      <trans-unit id="1151">
+        <source>Trust This Project</source>
+        <target>Considera attendibile questo progetto</target>
+      </trans-unit>
+      <trans-unit id="1152">
+        <source>Open This Project Restricted</source>
+        <target>Apri questo progetto in modalità limitata</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

@@ -32,6 +32,7 @@ use Porta\Tests\Support\TestParticipants;
 use Porta\Tests\Support\TestRuns;
 use Porta\Tests\Support\TestTui;
 use Porta\Tests\Support\TestWorkspaceEditor;
+use Porta\Tests\Support\UntrustsProjects;
 use Porta\Tree\FileStatuses;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\FileTreeWidget;
@@ -64,6 +65,7 @@ final class AbstractToolPluginTest extends TestCase
     }
 
     use StatusReads;
+    use UntrustsProjects;
 
     private StatusBarWidget $status;
     private BufferManager $buffers;
@@ -224,6 +226,56 @@ final class AbstractToolPluginTest extends TestCase
         $missing = $this->plugin('demo', 'porta-nonexistent-tool');
         $this->activate($missing, $missingApi);
         $this->assertNull($missing->callBinary($missingApi));
+    }
+
+    /** An untrusted project's vendor/bin is the project's code: not run, whatever it is named. */
+    public function testAnUntrustedProjectsVendorShimIsNotTaken(): void
+    {
+        $this->untrustProjects();
+        $project = new TempProject(['vendor/bin/demo' => "#!/bin/sh\n"]);
+        \chmod($project->path('vendor/bin/demo'), permissions: 0o755);
+        $this->project = $project;
+        $api = $this->api();
+        $plugin = $this->plugin();
+        $this->activate($plugin, $api);
+
+        $this->assertNull($plugin->callBinary($api));
+        $api->changeSetting('binary', '/opt/custom/demo');
+        $this->assertSame('/opt/custom/demo', $plugin->callBinary($api), 'what the user configured still applies');
+    }
+
+    /**
+     * A tool that executes the project's PHP does not run in an untrusted
+     * project, whichever binary it is — and says why, where a missing binary
+     * would offer an install that fixes nothing.
+     */
+    public function testAToolThatRunsProjectCodeRefusesAnUntrustedProject(): void
+    {
+        $tool = new class('demo', 'demo') extends AbstractToolPlugin {
+            public function activate(PluginApi $api): void
+            {
+                $this->registerBinarySetting($api, [['composer', 'acme/demo']]);
+            }
+
+            #[\Override]
+            protected function runsProjectCode(): bool
+            {
+                return true;
+            }
+
+            public function callAcquire(PluginApi $api): ?string
+            {
+                return $this->acquire($api);
+            }
+        };
+        $api = $this->api();
+        $this->activate($tool, $api);
+        $api->changeSetting('binary', '/opt/custom/demo');
+        $this->assertSame('/opt/custom/demo', $tool->callAcquire($api), 'trusted: it runs');
+
+        $this->untrustProjects();
+        $this->assertNull($tool->callAcquire($api));
+        $this->assertStringContainsString('demo runs code of the project\'s own: trust the project to use it', $this->flashText($this->status));
     }
 
     public function testPathOnlySearchSkipsTheVendorShim(): void

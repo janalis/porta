@@ -3278,6 +3278,54 @@
         <source>Status Bar Menus</source>
         <target>ステータスバーのメニュー</target>
       </trans-unit>
+      <trans-unit id="1141">
+        <source>%tool% runs code of the project's own: trust the project to use it</source>
+        <target>%tool% はプロジェクト自身のコードを実行します：使うにはプロジェクトを信頼してください</target>
+      </trans-unit>
+      <trans-unit id="1142">
+        <source>This project is trusted already</source>
+        <target>このプロジェクトはすでに信頼されています</target>
+      </trans-unit>
+      <trans-unit id="1143">
+        <source>This project is restricted already</source>
+        <target>このプロジェクトはすでに制限されています</target>
+      </trans-unit>
+      <trans-unit id="1144">
+        <source>Trust and Open</source>
+        <target>信頼して開く</target>
+      </trans-unit>
+      <trans-unit id="1145">
+        <source>its own plugins and tools run</source>
+        <target>プロジェクト独自のプラグインとツールが動作します</target>
+      </trans-unit>
+      <trans-unit id="1146">
+        <source>Open Restricted</source>
+        <target>制限付きで開く</target>
+      </trans-unit>
+      <trans-unit id="1147">
+        <source>nothing of the project's own runs</source>
+        <target>プロジェクト独自のものは何も動作しません</target>
+      </trans-unit>
+      <trans-unit id="1148">
+        <source>Trust %project%?</source>
+        <target>%project% を信頼しますか？</target>
+      </trans-unit>
+      <trans-unit id="1149">
+        <source>Could not save the answer in ~/.porta/trusted-projects.json</source>
+        <target>~/.porta/trusted-projects.json に回答を保存できませんでした</target>
+      </trans-unit>
+      <trans-unit id="1150">
+        <source>Run it again to reopen the project, Ctrl+S to save</source>
+        <target>もう一度実行するとプロジェクトを開き直します。Ctrl+S で保存</target>
+      </trans-unit>
+      <trans-unit id="1151">
+        <source>Trust This Project</source>
+        <target>このプロジェクトを信頼</target>
+      </trans-unit>
+      <trans-unit id="1152">
+        <source>Open This Project Restricted</source>
+        <target>このプロジェクトを制限付きで開く</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

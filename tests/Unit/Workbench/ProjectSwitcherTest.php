@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit\Workbench;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Porta\Config\WorkspaceTrust;
 use Porta\Editor\BufferManager;
 use Porta\Event\ProjectOpenRequested;
 use Porta\Filesystem\ProjectLocation;
@@ -40,6 +42,8 @@ final class ProjectSwitcherTest extends TestCase
     private TempProject $here;
     private BufferManager $buffers;
     private UnsavedChangesGuard $guard;
+    private WorkspaceTrust $trust;
+    private ?WorkspaceTrust $trustOverride = null;
     private CodeEditorWidget $editor;
     private StatusBarWidget $statusBar;
     /** @var list<string> */
@@ -73,6 +77,7 @@ final class ProjectSwitcherTest extends TestCase
             $translator,
             $events,
             $this->guard = new UnsavedChangesGuard($this->buffers = new BufferManager(), $notifier, $translator, new MockClock()),
+            $this->trust = $this->trustOverride ?? new WorkspaceTrust($this->home->dir),
             $this->here->dir,
         );
     }
@@ -332,5 +337,138 @@ final class ProjectSwitcherTest extends TestCase
         $this->editor->handleInput("\r");
 
         $this->assertSame([], $this->requested, 'the switch still needs its own confirmation');
+    }
+
+    /** @return iterable<string, array{array<string, string>}> */
+    public static function projectsWithSomethingToRun(): iterable
+    {
+        yield 'a .porta.json' => [['.porta.json' => '{}']];
+        yield 'plugins of its own' => [['.porta/plugins/x/plugin.php' => '<?php']];
+        yield 'a vendor/bin' => [['vendor/bin/phpstan' => '#!/bin/sh']];
+    }
+
+    /**
+     * Opening a project is running it once it is trusted: one never answered
+     * for, holding something to run, is asked about before the switch — and
+     * the answer is kept, so the next switch there just goes.
+     *
+     * @param array<string, string> $files
+     */
+    #[DataProvider('projectsWithSomethingToRun')]
+    public function testAProjectNeverAnsweredForIsAskedAboutFirst(array $files): void
+    {
+        $other = new TempProject($files);
+        $switcher = $this->switcher($other->dir);
+        $root = (string) \realpath($other->dir);
+
+        $switcher->open();
+        $this->editor->handleInput("\r");
+        $this->assertSame([], $this->requested, 'not yet: asked first');
+        $this->assertTrue(EditorState::pickerOpen($this->editor), 'trust, or open restricted');
+        /** @var array{title: string, items: list<array{label: string, hint: string, value: string}>} $asked */
+        $asked = Probe::get(Probe::object($this->editor, 'overlayHost'), 'overlay');
+        $this->assertSame('Trust '.\basename($root).'?', $asked['title']);
+        $this->assertSame(
+            [
+                ['Trust and Open',  'its own plugins and tools run'],
+                ['Open Restricted', 'nothing of the project\'s own runs'],
+            ],
+            \array_map(static fn (array $item): array => [$item['label'], $item['hint']], $asked['items']),
+            'what each answer means, said beside it',
+        );
+        $this->editor->handleInput("\x1b[B");
+        $this->editor->handleInput("\r"); // Open Restricted
+
+        $this->assertSame([$root], $this->requested);
+        $this->assertFalse($this->trust->isTrusted($root));
+        $this->assertFalse($this->trust->shouldAsk($root), 'answered: not asked again');
+
+        $switcher->open();
+        $this->editor->handleInput("\r");
+        $this->assertSame([$root, $root], $this->requested, 'straight through the second time');
+    }
+
+    public function testTrustAndOpenTrustsTheProject(): void
+    {
+        $other = new TempProject(['.porta.json' => '{}']);
+        $switcher = $this->switcher($other->dir);
+
+        $switcher->open();
+        $this->editor->handleInput("\r");
+        $this->editor->handleInput("\r"); // Trust and Open
+
+        $this->assertSame([(string) \realpath($other->dir)], $this->requested);
+        $this->assertTrue($this->trust->isTrusted($other->dir));
+    }
+
+    public function testAProjectWithNothingToRunIsNotAskedAbout(): void
+    {
+        $other = new TempProject(['composer.json' => '{}']);
+        $switcher = $this->switcher($other->dir);
+
+        $switcher->open();
+        $this->editor->handleInput("\r");
+
+        $this->assertSame([(string) \realpath($other->dir)], $this->requested);
+        $this->assertFalse(EditorState::pickerOpen($this->editor), 'and nothing asked after the fact');
+    }
+
+    public function testAnAnswerThatCannotBeSavedOpensNothing(): void
+    {
+        $other = new TempProject(['.porta.json' => '{}']);
+        $this->trustOverride = new WorkspaceTrust('/dev/null');
+        $switcher = $this->switcher($other->dir);
+
+        $switcher->open();
+        $this->editor->handleInput("\r");
+        $this->editor->handleInput("\r");
+
+        $this->assertSame([], $this->requested);
+        $this->assertStringContainsString('Could not save the answer', $this->flashText($this->statusBar));
+    }
+
+    /** From inside, either way: the answer is written, and the project reopens to apply it. */
+    public function testTrustingAndRestrictingTheCurrentProjectReopensIt(): void
+    {
+        $switcher = $this->switcher();
+        $here = $this->here->dir;
+
+        $switcher->trustCurrent();
+        $this->assertTrue($this->trust->isTrusted($here));
+        $this->assertSame([$here], $this->requested);
+        $switcher->trustCurrent();
+        $this->assertStringContainsString('trusted already', $this->flashText($this->statusBar));
+        $this->assertSame([$here], $this->requested, 'nothing to reopen for');
+
+        $switcher->restrictCurrent();
+        $this->assertFalse($this->trust->isTrusted($here));
+        $this->assertSame([$here, $here], $this->requested);
+        $switcher->restrictCurrent();
+        $this->assertStringContainsString('restricted already', $this->flashText($this->statusBar));
+        $this->assertSame([$here, $here], $this->requested);
+    }
+
+    /** Reopening ends the session: unsaved edits hold it, and nothing is written meanwhile. */
+    public function testADirtyBufferHoldsTheReopenAndTheAnswer(): void
+    {
+        $switcher = $this->switcher();
+        $this->buffers->open($this->here->path('a.php'), "<?php\n")->document->insert('x');
+
+        $switcher->trustCurrent();
+
+        $this->assertSame([], $this->requested);
+        $this->assertFalse($this->trust->isTrusted($this->here->dir), 'not written either');
+        $this->assertStringContainsString('Unsaved changes', $this->flashText($this->statusBar));
+    }
+
+    public function testAnAnswerFromInsideThatCannotBeSavedReopensNothing(): void
+    {
+        $this->trustOverride = new WorkspaceTrust('/dev/null');
+        $switcher = $this->switcher();
+
+        $switcher->trustCurrent();
+
+        $this->assertSame([], $this->requested);
+        $this->assertStringContainsString('Could not save the answer', $this->flashText($this->statusBar));
     }
 }

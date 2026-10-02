@@ -92,6 +92,33 @@ none has to invent one. It starts from **the list already in effect**, not from
 the shipped default — otherwise turning one plugin off in a project would
 silently turn back on every plugin you had turned off globally.
 
+## Trusting a project
+
+A project can run code of its own: plugins in `.porta/plugins`, binaries and
+commands its `.porta.json` names, tools in its `vendor/bin`. Since a project is
+something you clone, Porta asks before it runs any of that. The first time you
+open a project holding one of them, `porta` asks whether to trust it; the
+project switcher asks the same before a switch. The answer is kept either way,
+in `~/.porta/trusted-projects.json`.
+
+An untrusted project opens **restricted**. Everything you configured globally
+still applies; what the project says is believed except where it names
+something to run:
+
+- its `.porta/plugins` are not loaded;
+- its `.porta.json` loses `lsp`, `enabledPlugins`, each `languages.<id>.runCommand`
+  and `debug`, and every plugin setting naming a program or a command line
+  (`binary`, `path`, `command`, `dotPath`, `ghBinary`, `svgConverter`, `args`,
+  symfony-lsp's `php-command` and `runtime-indexing`, review's `hosts` and
+  `provider`…);
+- tools are found on your `PATH`, never in its `vendor/bin`;
+- phpstan, psalm and php-cs-fixer do not run at all — their own config files
+  can execute the project's PHP, whichever binary reads them;
+- git ignores the repository's `core.fsmonitor`.
+
+**Trust This Project** and **Open This Project Restricted** in the command
+palette change the answer and reopen the project.
+
 ## `.porta.json`
 
 Per-project configuration, read from the project root. All keys are
@@ -319,4 +346,5 @@ git; restore any snapshot with `Ctrl+Alt+H`.
 | --- | --- |
 | `PORTA_LSP` | LSP server command (same format as the `lsp` config key) |
 | `PORTA_KEYMAP_PLATFORM` | `macos`, `windows` or `linux`: the platform the `auto` keymap takes for the one you type on, instead of detecting it — for a shell profile on a server you reach from several machines |
+| `PORTA_TRUSTED_FOLDERS` | `:`-separated folders whose every project is trusted without asking — for a CI box or a sandbox ([Trusting a project](#trusting-a-project)) |
 | `PORTA_HOME` | Overrides the home directory used for global plugins (`~/.porta/plugins`) and scratch files (`~/.porta/scratches`) |

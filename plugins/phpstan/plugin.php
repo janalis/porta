@@ -18,6 +18,12 @@ use Porta\Plugin\Api\PluginApi;
  * replaces these (and vice versa) — last writer wins.
  */
 return new class('phpstan', 'phpstan') extends AbstractAnalyzerPlugin {
+    #[\Override]
+    protected function runsProjectCode(): bool
+    {
+        return true; // its `bootstrapFiles` are PHP the project names
+    }
+
     public function activate(PluginApi $api): void
     {
         $this->registerBinarySetting($api, [['composer', 'phpstan/phpstan']]);

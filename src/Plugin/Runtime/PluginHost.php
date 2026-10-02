@@ -44,7 +44,17 @@ final class PluginHost
     ) {
         $this->settings = new PluginSettings($rootDir, $config->plugins, $writer, $scope);
         $this->manager = new PluginManager($events, $this->settings);
-        $this->loader = new PluginLoader($rootDir, PortaHome::base(), $this->settings, PluginLoader::embeddedDir(), $config->disabledPlugins, $config->enabledPlugins, $syntaxTheme, $translator);
+        $this->loader = new PluginLoader(
+            $rootDir,
+            PortaHome::base(),
+            $this->settings,
+            PluginLoader::embeddedDir(),
+            $config->disabledPlugins,
+            $config->enabledPlugins,
+            $syntaxTheme,
+            $translator,
+            $config->trusted,
+        );
     }
 
     /** Load and activate every plugin file exactly once per boot. */

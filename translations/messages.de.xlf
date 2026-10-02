@@ -3278,6 +3278,54 @@
         <source>Status Bar Menus</source>
         <target>Menüs der Statusleiste</target>
       </trans-unit>
+      <trans-unit id="1141">
+        <source>%tool% runs code of the project's own: trust the project to use it</source>
+        <target>%tool% führt Code des Projekts selbst aus: vertrauen Sie dem Projekt, um es zu nutzen</target>
+      </trans-unit>
+      <trans-unit id="1142">
+        <source>This project is trusted already</source>
+        <target>Diesem Projekt wird bereits vertraut</target>
+      </trans-unit>
+      <trans-unit id="1143">
+        <source>This project is restricted already</source>
+        <target>Dieses Projekt ist bereits eingeschränkt</target>
+      </trans-unit>
+      <trans-unit id="1144">
+        <source>Trust and Open</source>
+        <target>Vertrauen und öffnen</target>
+      </trans-unit>
+      <trans-unit id="1145">
+        <source>its own plugins and tools run</source>
+        <target>seine eigenen Plugins und Werkzeuge laufen</target>
+      </trans-unit>
+      <trans-unit id="1146">
+        <source>Open Restricted</source>
+        <target>Eingeschränkt öffnen</target>
+      </trans-unit>
+      <trans-unit id="1147">
+        <source>nothing of the project's own runs</source>
+        <target>nichts vom Projekt selbst läuft</target>
+      </trans-unit>
+      <trans-unit id="1148">
+        <source>Trust %project%?</source>
+        <target>%project% vertrauen?</target>
+      </trans-unit>
+      <trans-unit id="1149">
+        <source>Could not save the answer in ~/.porta/trusted-projects.json</source>
+        <target>Die Antwort konnte nicht in ~/.porta/trusted-projects.json gespeichert werden</target>
+      </trans-unit>
+      <trans-unit id="1150">
+        <source>Run it again to reopen the project, Ctrl+S to save</source>
+        <target>Erneut ausführen, um das Projekt neu zu öffnen, Ctrl+S zum Speichern</target>
+      </trans-unit>
+      <trans-unit id="1151">
+        <source>Trust This Project</source>
+        <target>Diesem Projekt vertrauen</target>
+      </trans-unit>
+      <trans-unit id="1152">
+        <source>Open This Project Restricted</source>
+        <target>Dieses Projekt eingeschränkt öffnen</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

@@ -63,6 +63,9 @@ final readonly class FileCommands implements CommandProvider
                 },
                 keyBound: KeyDispatch::Bound,
             )
+            // Palette-only: an answer given once, not a verb worth a chord.
+            ->add('ide_trust_project', fn () => $this->projects->trustCurrent(), label: 'Trust This Project')
+            ->add('ide_restrict_project', fn () => $this->projects->restrictCurrent(), label: 'Open This Project Restricted')
             // From the tree, the row under the cursor rather than the open file.
             ->add('copy_path', fn () => $this->references->copyPath($this->tree->focusedNode()?->path), keyBound: KeyDispatch::Bound)
             ->add('copy_reference', fn () => $this->references->copyReference(), keyBound: KeyDispatch::Bound)

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Console;
 
+use Porta\Config\WorkspaceTrust;
 use Porta\Container\Ansi;
 use Porta\Container\LspMode;
 use Porta\Container\ToolLaunch;
@@ -70,6 +71,8 @@ final class PortaCommand extends Command
     /** @var \Closure(list<string>, ?string): array{int, string} */
     private readonly \Closure $process;
 
+    private readonly WorkspaceTrust $trust;
+
     /**
      * @param (callable(Workspace, ?string, LspMode, Ansi, \Closure): int)|null $launch        defaults to booting a real {@see Ide}, returning its exit code; the
      *                                                                                         trailing closure is called between boot and run, so a crash can say
@@ -82,6 +85,7 @@ final class PortaCommand extends Command
      * @param string                                                            $version       the version this binary is (the phar's release tag)
      * @param string                                                            $phar          the phar running, '' when not one — only a phar can update itself
      * @param array<string, string|false>                                       $env           the environment, for a GitHub token
+     * @param WorkspaceTrust|null                                               $trust         whose answers decide what a project may run; defaults to the user's
      */
     public function __construct(
         ?callable $launch = null,
@@ -92,6 +96,7 @@ final class PortaCommand extends Command
         private readonly string $version = Ide::VERSION,
         private readonly string $phar = '',
         private readonly array $env = [],
+        ?WorkspaceTrust $trust = null,
     ) {
         parent::__construct();
         $this->launch = $launch ?? self::launchIde(...);
@@ -100,6 +105,7 @@ final class PortaCommand extends Command
         $this->isInteractive = $isInteractive ?? static fn (): bool => \stream_isatty(\STDIN) && \stream_isatty(\STDOUT);
         $this->git = $git ?? self::runGit(...);
         $this->process = $process ?? self::runProcess(...);
+        $this->trust = $trust ?? WorkspaceTrust::fromEnvironment();
     }
 
     /** @param list<string> $path */
@@ -175,6 +181,11 @@ final class PortaCommand extends Command
 
             return Command::FAILURE;
         }
+        // Before the IDE takes the terminal: the answer decides what loads.
+        // A git tool launch never asks — it only compares files, restricted.
+        if (null === $workspace->tool && $this->trust->shouldAsk($workspace->rootDir)) {
+            $this->askTrust($io, $workspace->rootDir);
+        }
         // --ansi/--no-ansi are Symfony's global options; they resolve into the
         // output decoration, which we thread to the IDE as its color mode.
         $booted = false;
@@ -207,6 +218,23 @@ final class PortaCommand extends Command
         }
 
         return $exitCode;
+    }
+
+    /**
+     * Ask, once per project, whether it may run code of its own — and keep the
+     * answer either way. No is the default: restricted is what a stranger's
+     * project should get from a stray Enter.
+     */
+    private function askTrust(SymfonyStyle $io, string $root): void
+    {
+        $io->writeln([
+            \sprintf('<comment>%s</comment> can run code of its own: its .porta/plugins, the binaries its .porta.json names, the tools in its vendor/bin.', $root),
+            'Untrusted, it opens restricted and none of that runs. You can change your mind from the palette (Trust This Project).',
+        ]);
+        $trusted = $io->confirm('Trust this project?', default: false);
+        if (!($trusted ? $this->trust->trust($root) : $this->trust->restrict($root))) {
+            $io->warning('porta: could not save the answer in ~/.porta/trusted-projects.json — you will be asked again.');
+        }
     }
 
     /** Why this combination of paths and modes cannot run, or null when it can. */

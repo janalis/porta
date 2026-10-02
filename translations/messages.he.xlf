@@ -3278,6 +3278,54 @@
         <source>Status Bar Menus</source>
         <target>תפריטי שורת המצב</target>
       </trans-unit>
+      <trans-unit id="1141">
+        <source>%tool% runs code of the project's own: trust the project to use it</source>
+        <target>%tool% מריץ קוד של הפרויקט עצמו: יש לתת אמון בפרויקט כדי להשתמש בו</target>
+      </trans-unit>
+      <trans-unit id="1142">
+        <source>This project is trusted already</source>
+        <target>כבר ניתן אמון בפרויקט הזה</target>
+      </trans-unit>
+      <trans-unit id="1143">
+        <source>This project is restricted already</source>
+        <target>הפרויקט הזה כבר מוגבל</target>
+      </trans-unit>
+      <trans-unit id="1144">
+        <source>Trust and Open</source>
+        <target>לתת אמון ולפתוח</target>
+      </trans-unit>
+      <trans-unit id="1145">
+        <source>its own plugins and tools run</source>
+        <target>התוספים והכלים שלו ירוצו</target>
+      </trans-unit>
+      <trans-unit id="1146">
+        <source>Open Restricted</source>
+        <target>לפתוח במצב מוגבל</target>
+      </trans-unit>
+      <trans-unit id="1147">
+        <source>nothing of the project's own runs</source>
+        <target>שום דבר של הפרויקט עצמו לא ירוץ</target>
+      </trans-unit>
+      <trans-unit id="1148">
+        <source>Trust %project%?</source>
+        <target>לתת אמון ב־%project%?</target>
+      </trans-unit>
+      <trans-unit id="1149">
+        <source>Could not save the answer in ~/.porta/trusted-projects.json</source>
+        <target>לא ניתן לשמור את התשובה ב־~/.porta/trusted-projects.json</target>
+      </trans-unit>
+      <trans-unit id="1150">
+        <source>Run it again to reopen the project, Ctrl+S to save</source>
+        <target>יש להריץ שוב כדי לפתוח מחדש את הפרויקט, Ctrl+S לשמירה</target>
+      </trans-unit>
+      <trans-unit id="1151">
+        <source>Trust This Project</source>
+        <target>לתת אמון בפרויקט הזה</target>
+      </trans-unit>
+      <trans-unit id="1152">
+        <source>Open This Project Restricted</source>
+        <target>לפתוח את הפרויקט הזה במצב מוגבל</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

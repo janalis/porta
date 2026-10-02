@@ -6,6 +6,7 @@ namespace Porta\Lsp;
 
 use Porta\Config\ConfigFiles;
 use Porta\Config\ConfigScope;
+use Porta\Config\WorkspaceTrust;
 use Porta\Support\Argv;
 use Porta\Support\JsonFile;
 use Symfony\Component\Process\ExecutableFinder;
@@ -53,8 +54,9 @@ final class ServerLocator
         }
 
         $files = ConfigFiles::for($rootDir);
+        // An untrusted project does not choose the command its server runs as.
         // @mago-expect analysis:mixed-assignment -- a raw config value, narrowed by single() and map()
-        $project = self::lspIn($files->path(ConfigScope::Project));
+        $project = WorkspaceTrust::fromEnvironment()->isTrusted($rootDir) ? self::lspIn($files->path(ConfigScope::Project)) : null;
         // @mago-expect analysis:mixed-assignment -- likewise
         $global = self::lspIn($files->path(ConfigScope::Global));
         // The project's single server is its whole answer; below it, the

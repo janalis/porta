@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Workbench;
 
 use Porta\Config\PortaHome;
+use Porta\Config\WorkspaceTrust;
 use Porta\Container\AsIdeService;
 use Porta\Event\ProjectOpenRequested;
 use Porta\Filesystem\ProjectLocation;
@@ -41,6 +42,7 @@ final readonly class ProjectSwitcher
         private Translator $translator,
         private EventDispatcherInterface $events,
         private UnsavedChangesGuard $guard,
+        private WorkspaceTrust $trust,
         private string $rootDir,
     ) {}
 
@@ -157,7 +159,77 @@ final readonly class ProjectSwitcher
             return;
         }
 
-        $this->events->dispatch(new ProjectOpenRequested($root));
+        $this->askTrustThenOpen($root);
+    }
+
+    /**
+     * Trust the project this session is in, and reopen it so its own plugins
+     * and tools load — the way back from having opened it restricted.
+     */
+    public function trustCurrent(): void
+    {
+        if ($this->trust->isTrusted($this->rootDir)) {
+            $this->notifier->flash($this->translator->trans('This project is trusted already'));
+
+            return;
+        }
+        $this->answerAndReopen(fn (): bool => $this->trust->trust($this->rootDir));
+    }
+
+    /** Stop trusting the project this session is in, and reopen it restricted. */
+    public function restrictCurrent(): void
+    {
+        if (!$this->trust->isTrusted($this->rootDir)) {
+            $this->notifier->flash($this->translator->trans('This project is restricted already'));
+
+            return;
+        }
+        $this->answerAndReopen(fn (): bool => $this->trust->restrict($this->rootDir));
+    }
+
+    /**
+     * Opening a project is running it, once it is trusted: one that has never
+     * been answered for, and holds something to run, is asked about first.
+     */
+    private function askTrustThenOpen(string $root): void
+    {
+        if (!$this->trust->shouldAsk($root)) {
+            $this->events->dispatch(new ProjectOpenRequested($root));
+
+            return;
+        }
+        $items = [
+            ['label' => $this->translator->trans('Trust and Open'), 'hint' => $this->translator->trans('its own plugins and tools run'), 'value' => 'trusted'],
+            ['label' => $this->translator->trans('Open Restricted'), 'hint' => $this->translator->trans('nothing of the project\'s own runs'), 'value' => 'restricted'],
+        ];
+        $this->editor->openListOverlay($this->translator->trans('Trust %project%?', ['%project%' => \basename($root)]), $items, function (string $answer) use ($root): void {
+            $saved = 'trusted' === $answer ? $this->trust->trust($root) : $this->trust->restrict($root);
+            if (!$saved) {
+                $this->notifier->error($this->translator->trans('Could not save the answer in ~/.porta/trusted-projects.json'));
+
+                return;
+            }
+            $this->events->dispatch(new ProjectOpenRequested($root));
+        });
+    }
+
+    /**
+     * Reopening ENDS this session, so it takes the confirm switching does —
+     * asked BEFORE the answer is written, so a refusal leaves nothing changed.
+     *
+     * @param \Closure(): bool $answer
+     */
+    private function answerAndReopen(\Closure $answer): void
+    {
+        if (!$this->guard->confirmed('reopen-project', $this->translator->trans('Run it again to reopen the project, Ctrl+S to save'))) {
+            return;
+        }
+        if (!$answer()) {
+            $this->notifier->error($this->translator->trans('Could not save the answer in ~/.porta/trusted-projects.json'));
+
+            return;
+        }
+        $this->events->dispatch(new ProjectOpenRequested($this->rootDir));
     }
 
     /** `~` is what a person types and what the hints show; nothing else expands it here. */

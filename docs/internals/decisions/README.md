@@ -287,3 +287,4 @@ its one-line row in [Settled questions](../decisions.md).
 - A mirrored frame's surfaces ride a layer of their own (2026-10-01)
 - Views open in a window, and every modal is one kind of window (2026-10-01)
 - The two coverage passes run at once (2026-10-02)
+- Opening a project no longer runs it (2026-10-02)

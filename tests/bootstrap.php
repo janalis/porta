@@ -30,10 +30,22 @@ define('PORTA_TEST_PRISTINE_PORTA_HOME', (string) getenv('PORTA_HOME'));
 // experiment — would silently reconfigure every later boot, and the failure
 // surfaces somewhere with no connection to the cause. Removing it here makes
 // that class of mystery impossible to carry between runs.
-$portaLeakedGlobalConfig = __DIR__.'/Support/fixtures/home/.porta/config.json';
-if (is_file($portaLeakedGlobalConfig)) {
-    unlink($portaLeakedGlobalConfig);
+// The trust answers are the same kind of file: one written there would trust a
+// project, or keep one restricted, for every later run.
+foreach (['config.json', 'trusted-projects.json'] as $portaLeaked) {
+    if (!is_file(__DIR__.'/Support/fixtures/home/.porta/'.$portaLeaked)) {
+        continue;
+    }
+    unlink(__DIR__.'/Support/fixtures/home/.porta/'.$portaLeaked);
 }
+
+// Every TempProject lives under the temp dir, and nearly every scenario writes
+// a `.porta.json` that enables a plugin or names a server: all of them are the
+// suite's own, so all of them are trusted. A test of the untrusted path builds
+// its own WorkspaceTrust, or clears this. putenv() so subprocesses inherit it.
+$portaTrustedFolders = (string) realpath(sys_get_temp_dir());
+define('PORTA_TEST_TRUSTED_FOLDERS', $portaTrustedFolders);
+putenv('PORTA_TRUSTED_FOLDERS='.$portaTrustedFolders);
 
 // Every Ide boot in the suite shares one container dump here instead of each
 // recompiling (~124 ms) or touching the developer's real ~/.cache/porta.

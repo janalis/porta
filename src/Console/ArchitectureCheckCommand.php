@@ -110,6 +110,7 @@ final class ArchitectureCheckCommand extends Command
         'Config>Editor',
         'Config>Plugin',
         'Config>Support',
+        'Console>Config', // PortaCommand asks whether to trust a project before the IDE boots (WorkspaceTrust)
         'Console>Container',
         'Console>Install',
         'Console>Plugin', // PluginCommands reads bundled manifests for `porta <name>`, and runs only a Plugin\Api\PluginCommand
@@ -173,6 +174,7 @@ final class ArchitectureCheckCommand extends Command
         // git — which is what the seven vanished `*>Git` entries above record.
         // What is left is a plugin reaching for core's toolkits, the allowed
         // direction, and the same set `Help` and `GraphViewer` already reach for.
+        'GitPlugin>Config', // an untrusted repository's own config may not name a program git runs (WorkspaceTrust)
         'GitPlugin>Editor', // the diff view paints and maps columns with the editor's tab stops
         'GitPlugin>Event',
         'GitPlugin>Highlight',

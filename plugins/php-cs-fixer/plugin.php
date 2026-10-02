@@ -18,6 +18,12 @@ use Porta\Plugin\Api\PluginApi;
  * binary is resolvable.
  */
 return new class('php-cs-fixer', 'php-cs-fixer') extends AbstractToolPlugin {
+    #[\Override]
+    protected function runsProjectCode(): bool
+    {
+        return true; // `.php-cs-fixer.dist.php` is PHP the project wrote
+    }
+
     public function activate(PluginApi $api): void
     {
         $this->registerBinarySetting($api, [['composer', 'friendsofphp/php-cs-fixer']]);

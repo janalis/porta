@@ -189,3 +189,45 @@ and both reports were whole every time (`28767/28767`, `11811/11811`).
 *Re-opens on:* a shard that fails only when the passes overlap and passes the
 same loop alone. Then the overlap is costing correctness, and
 `PORTA_SHARD_PROCESSES` is the knob to lower before the overlap goes.
+
+## Opening a project no longer runs it (2026-10-02)
+
+A security audit swept three surfaces: the network-facing code, opening an
+untrusted project, and terminal and file handling. The network edges held.
+Binds are loopback-only, every token check is `hash_equals`, assist pairs over
+SPAKE2 with certificate pinning, secrets are stored 0600, and every
+`proc_open` takes an argv array. Opening a clone did not hold:
+
+- `.porta/plugins/*/plugin.php` was `require`d at boot;
+- `.porta.json` named `plugins.git.path` and `lsp`, both spawned before any
+  keystroke;
+- a committed `vendor/bin/phpstan` ran on save;
+- phpstan, psalm and php-cs-fixer execute project PHP through their own config
+  files, whichever binary reads them.
+
+The fix is the trust gate (decisions.md, Plugin API). The same round fixed what
+the sweeps found beside it, one commit each:
+
+- New File truncated a taken name.
+- A malformed escape in run output froze the pane and grew memory without bound.
+- `str_contains($host, 'gitlab')` handed `GITLAB_TOKEN` to any look-alike host.
+- A PNG decompression bomb was decoded before its size was checked; libgd
+  allocates outside `memory_limit`, so only the header can stop it.
+- assist: a dangling symlink let a guest write outside the project, a read-only
+  guest could fetch a gitignored `.env`, and a guest could set the host
+  server's `initializationOptions` (symfony-lsp's name a PHP command).
+- LSP `WorkspaceEdit` create, rename and delete reached anywhere on disk.
+- `.porta/error.log` was written through a symlink.
+- Local-history snapshots of 0600 files were left 0644.
+- Downloads followed redirects to plain http.
+
+Weighed and left alone:
+
+- Any guest may read debugger variables. That is documented and tested
+  ("Any guest can look").
+- The MCP lock file is briefly 0644 before its chmod, but `~/.claude` is 0700.
+- The mcp socket pointer has no owner check; a test cannot make a socket owned
+  by another user.
+- An OSC 8 link's URI body passes `AnsiText::inert()`.
+- Downloads are not signature-checked; that needs signing infrastructure.
+

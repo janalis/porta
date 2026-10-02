@@ -19,6 +19,12 @@ use Porta\Plugin\Api\PluginApi;
  * last writer wins.
  */
 return new class('psalm', 'psalm') extends AbstractAnalyzerPlugin {
+    #[\Override]
+    protected function runsProjectCode(): bool
+    {
+        return true; // its autoloader and plugins are PHP the project names
+    }
+
     public function activate(PluginApi $api): void
     {
         $this->registerBinarySetting($api, [['composer', 'vimeo/psalm']]);
