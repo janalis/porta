@@ -337,7 +337,7 @@ never firing.
 | `ThemeChanged` | `string $theme` |
 | `LocaleChanged` | `string $locale` |
 | `GitCommitted` | — a commit was made from the git view |
-| `GitRemoteCompleted` | `string $operation` (`fetch`/`pull`/`push`), `bool $ok` |
+| `GitRemoteCompleted` | `string $operation` (`fetch`/`pull`/`push`, or `cancelled` when the user stopped one), `bool $ok` |
 | `WorkingTreeChanged` | — the working tree moved: a stage, stash, commit, reset or pull, or one of the file tree's own verbs (new file, new folder, move, copy, delete). It is defined by what a listener owes it — "recompute" — not by who moved the tree |
 | `FileDeleted` | `string $path`, `?string $previousText` — a file or directory was deleted (the tree, a refactoring, an agent). `$path` is canonical, resolved before the removal; a DIRECTORY carries its tree, so ask `ProjectPaths::isUnder()`. `$previousText` is what the file held — the open buffer's text, unsaved edits included — or null for a directory or a file too large to be text. `local-history` keeps it, so a deleted file is restorable from Recent Changes |
 | `FileRenamed` | `string $from`, `string $to` — both absolute and canonical; `$from` is already gone from disk. A DIRECTORY carries its whole tree, so anything you key by path should ask `ProjectPaths::moved()` rather than compare |
