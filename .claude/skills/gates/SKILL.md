@@ -9,7 +9,7 @@ The loop, cheapest first.
 composer fix                                                           # rector, THEN format — rector's output is what needs formatting
 composer check > /tmp/porta-quick.log 2>&1; echo "exit=$?"            # ~8s: every quick gate, run to the end; last line names each red one
 PORTA_TEST_PROCESSES=24 composer test:unit > /tmp/porta-unit.log 2>&1; echo "exit=$?"   # ~22s
-composer verify > /tmp/porta-verify.log 2>&1; echo "exit=$?"          # ~260s: the definition of done
+composer verify > /tmp/porta-verify.log 2>&1; echo "exit=$?"          # ~140–200s on a busy box (the old sequential chain took ~300–340s): the definition of done
 ```
 
 - **Run one file or folder** through the same script (paratest takes ONE path):
@@ -57,7 +57,8 @@ killing it, then kill that runner and re-run.
 | rector:check | `composer fix` (rector then format), then lint again |
 
 `composer check` is `verify:quick` without the stop at the first red; `verify` itself
-still stops, which is what a definition of done should do.
+still stops after a red static gate, then runs both coverage passes at once and names
+every red one.
 
 ## The lint rules agents trip most
 

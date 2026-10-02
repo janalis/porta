@@ -105,5 +105,6 @@
     <extensions>
         <bootstrap class="Porta\Tests\Support\LoopIsolationExtension"/>
         <bootstrap class="Porta\Tests\Support\EnvIsolationExtension"/>
+        <bootstrap class="Porta\Tests\Support\CoverageSweepExtension"/>
     </extensions>
 </phpunit>

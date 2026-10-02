@@ -82,11 +82,10 @@ final class VerifyGatesMatchCiTest extends TestCase
      */
     private static function reach(array $scripts, string $name): array
     {
-        $steps = $scripts[$name] ?? [];
         $out = [$name];
-        foreach (\is_array($steps) ? $steps : [$steps] as $step) {
-            $referenced = \substr($step, offset: 1);
-            if (!\str_starts_with($step, '@') || !\array_key_exists($referenced, $scripts)) {
+        foreach (self::steps($scripts, $name) as $step) {
+            $referenced = self::referenced($scripts, $step);
+            if (null === $referenced) {
                 continue; // a shell command, or `@php`/`@putenv` — not another gate
             }
             $out = [...$out, ...self::reach($scripts, $referenced)];
@@ -102,11 +101,37 @@ final class VerifyGatesMatchCiTest extends TestCase
      */
     private static function isChain(array $scripts, string $name): bool
     {
-        $steps = $scripts[$name] ?? [];
-        if (!\is_array($steps) || [] === $steps) {
+        $steps = self::steps($scripts, $name);
+        if ([] === $steps) {
             return false;
         }
 
-        return [] === \array_filter($steps, static fn (string $step): bool => !\array_key_exists(\substr($step, offset: 1), $scripts));
+        return [] === \array_filter($steps, static fn (string $step): bool => null === self::referenced($scripts, $step));
+    }
+
+    /**
+     * @param array<string, list<string>|string> $scripts
+     *
+     * @return list<string>
+     */
+    private static function steps(array $scripts, string $name): array
+    {
+        $steps = $scripts[$name] ?? [];
+
+        return \is_array($steps) ? $steps : [$steps];
+    }
+
+    /**
+     * The script a step runs: `@name`, or a chain handed to `bin/keep-going`,
+     * which runs that chain's steps itself — `coverage:check` runs its two
+     * passes at once through it, and they are still the gates CI runs.
+     *
+     * @param array<string, list<string>|string> $scripts
+     */
+    private static function referenced(array $scripts, string $step): ?string
+    {
+        $name = 1 === \preg_match('/^@php bin\/keep-going ([a-z:]+)/', $step, $match) ? $match[1] : \substr($step, offset: 1);
+
+        return \str_starts_with($step, '@') && \array_key_exists($name, $scripts) ? $name : null;
     }
 }

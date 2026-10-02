@@ -27,7 +27,7 @@ PORTA_SHARD_PROCESSES=4 nice -n 10`, or raise with `auto`; `contributing.md` has
 
 ## Definition of done — `composer verify` green
 
-Eight, stopping at the first failure; `verify:quick` is the first six, run as format, lint, analyze, rector, arch, duplication.
+Eight; `verify:quick` is the first six, run as format, lint, analyze, rector, arch, duplication, stopping at the first failure; then the two coverage passes, at once.
 
 - `composer format:check` clean; `composer rector:check` **no pending change** — skip, with why.
 - `composer lint` and `composer analyze` — **zero findings each** at any severity: the
@@ -37,7 +37,7 @@ Eight, stopping at the first failure; `verify:quick` is the first six, run as fo
   allowlist in the same commit; a vanished edge is removed from it.
 - `composer duplication` — **zero clones** tree-wide, no allowlist: share it, or say in
   the code why the copy is the honest shape.
-- `composer coverage:src` then `coverage:plugins` (= `coverage:check`) — **100% line coverage**
+- `composer coverage:src` and `coverage:plugins`, run at once (= `coverage:check`) — **100% line coverage**
   over `src/` AND every plugin's own `src/`, by its OWN tests. `composer test` is not a gate.
 
 ## Hard rules

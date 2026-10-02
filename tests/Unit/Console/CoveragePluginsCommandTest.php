@@ -214,6 +214,7 @@ final class CoveragePluginsCommandTest extends TestCase
 
         $line = $process->getCommandLine();
         $this->assertStringContainsString('pcov.enabled=1', $line);
+        $this->assertStringContainsString("'pcov.directory=plugins'", $line, 'pcov instruments only what the pass grades');
         $this->assertStringContainsString('vendor/bin/phpunit', $line);
         $this->assertStringContainsString("'--coverage-filter' 'plugins'", $line);
         $this->assertStringContainsString('plugins/git/tests', $line);

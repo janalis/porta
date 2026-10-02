@@ -78,3 +78,114 @@ darkens, with no fill: a red cell read as a hole cut in the frame.
 divider hidden), with a find bar of its own — the editor's sits behind the
 window. No help tab exists any more, which also retired the tab list's and the
 session's special cases for one.
+
+## The two coverage passes run at once (2026-10-02)
+
+`composer verify` ran its two coverage passes one after the other, though CI
+already split them into two jobs because they share no state. Measured at the
+defaults (8 processes, 12 shards) on a shared box at load 14–39, alternated
+A/B/C/D then D/C/B/A:
+
+| | run 1 | run 2 |
+| --- | --- | --- |
+| `coverage:src`, pcov over `.` (before) | 138.8s | 134.6s |
+| `coverage:src`, pcov over `src` | 124.6s | 129.6s |
+| `coverage:plugins` alone | 53.1s | 53.8s |
+| both at once | 151.0s | 144.3s |
+
+**Landed: `coverage:check` runs `coverage:parts` through `bin/keep-going
+--concurrent`.** Every step starts at once, and each one's output is printed
+whole, in chain order, once all have finished. Output stays deterministic, which
+was the reason parallel static gates were declined. `VerifyGatesMatchCiTest`
+follows a chain handed to `keep-going` the way it follows an `@` reference, and
+fails if `coverage:plugins` is dropped from the chain.
+
+**Landed: pcov watches only what each pass grades.** `coverage:src` used
+`pcov.directory=.` (excluding `vendor` and `tests`), and the shards did too, so
+each pass instrumented the other's code only to filter it out. With `src` and
+`plugins`: `coverage:src` −10s (totals `28767/28767` both ways), and the plugin
+pass 56.3 / 57.4s → 49.7 / 47.6s (`11811/11811` both ways). The bootstrap's
+container-cache-off reason is untouched: it is about which files land in a
+worker's data, not about pcov's window.
+
+**The overlap found a race.** Two of six overlapped runs failed one shard,
+`assist-hostfilese2e`, and the same shard both times. Run in a loop beside a
+`coverage:src`, it failed 1 in 7. `HostFilesE2eTest` took the guest's first
+`presence` message as Claude's, but the host's own caret is sent as presence too.
+On a loaded box its first sample lands after the welcome and arrives first. The
+test now skips the host's own caret, and 14 runs under the same load were green.
+Five graded `composer verify` runs before the cache and test fixes: 172 / 135 / 149 / 145 (the red one above, before the fix) / 157s, against ~190s for the two passes alone before.
+
+**Landed: `coverage:src` keeps the container cache on.** Measured at 8
+processes, alternated: off 139.7s, on 92.6 / 85.3s (a second off run, 189s, was
+taken at load 162 and is not counted). Both reports carried the same
+`28767/28767` over all 897 `src` files. history-01 recorded two reasons for the
+recompile. Neither has to hold for the gate now:
+
+- *every `src` file lands in some worker's data*: `--require=src` fails any
+  file absent from the report, and in a forced red, a copy of the report with
+  `src/Console/Workspace.php` cut out passed without it (exit 0) and failed with
+  it, naming the file.
+- *every worker's PathReducer base collapses to `src`*, or the Merger
+  (still `$first['basePath']` in php-code-coverage 14.3.2) drops a worker:
+  dropped data can only remove coverage. A file that vanishes fails
+  `--require`, and a line only that worker ran shows as uncovered. Either is red
+  at 100%. A false green is what the old reason guarded against, and it can no
+  longer happen.
+
+**And `--require=src` fired.** In a graded run, `src/Widget/Support/DebugRowKind.php`
+and `MatchJump.php` were absent from the report. The recompile had loaded every
+class inside some test. With the cache on, a class first loaded outside
+collection in every worker (by a data provider, say) never entered any worker's
+pcov data. The gate was red rather than falsely green, but it was flaky.
+`tests/Support/CoverageSweepExtension` brings back the first reason at the cost of one
+compile per worker: under `PORTA_COVERAGE_SWEEP=1` (set by `coverage:src`
+only, so `composer mutate`'s per-test map is not handed to one test), it loads
+every `src` class in a coverage window of its own, opened at the first
+`TestRunner\ExecutionStarted`. That event comes after coverage is initialised and
+before any test opens a window. The first version swept inside the first test's
+window, and review caught what that misses: PHPUnit discards a skipped, risky or
+incomplete test's data, and a file compiled in a discarded window never enters
+that worker's data again. A parallel coverage run over `tests/Unit/Help` with
+the cache on reported 195 `src` files without the sweep and 897 with it. A run
+whose only test skips reported 0 without it and 894 with it. The other 3 are the
+classes `tests/plugin-autoload.php` loads before PHPUnit starts, and every real
+run has them. A file whose path names no symbol stops the sweep, because
+it would otherwise escape it silently.
+
+The bootstrap's pcov sniff stays the default for scoped `composer coverage`
+runs, which no gate grades.
+
+**A coverage hole that was luck, not load.** Graded runs failed the plugin gate
+on `assist/src/Net/Connection.php:238-239`, the drain branch of `linger()`, while
+every test passed. `TransportTest` covered it by closing with a 600 KB message
+"past what the socket takes at once". Over loopback TCP it is not: the buffers
+autotune, and a fresh socket took between ~330 KB and all 600 KB at once (all of
+it in 85 of 200 tries). Then nothing was pending and nothing drained. The first
+fix, sending filler until a backlog existed, failed again in a graded run. Between
+the last filler and `close()`, the kernel moves bytes to the peer's receive buffer
+(an unread pair absorbs up to 3 MB). The flush inside `close()` then empties the
+backlog, and the drain hook it fires is the constructor's, not `linger()`'s.
+The test now uses a Unix socket pair, which holds a fixed 8192 bytes here in 200
+of 200 tries (~200 KB on Linux), with a 1 MB message. It asserts the backlog
+after `close()` as its precondition, and it reads from a loop watcher instead of
+between `await` turns. The branch was covered in 10 of 10 runs at load 43–78.
+
+**And its sibling in `TunnelTest`.** `testReadingWaitsWhileTheSessionIsBehind`
+queued 3x `Tunnel::HIGH_WATER` toward a peer that does not read, then asserted
+that reading was held back after `pump(0.2)`. At load ~200 it failed 1 in 26:
+the pair absorbed enough during the pump to bring the backlog under the mark, so
+reading rightly resumed. It now queues 6x, under the writer's 8 MiB limit, and
+asserts the backlog is still past the mark after the pump, so a recurrence names
+its cause. After the fix it passed 31 of 31 under the same load.
+
+**Where it ended.** The final tree, graded as five consecutive `composer verify`
+runs: all green, 182.8 / 205.1 / 197.5 / 155.0 / 137.9s, while another
+project's test runs held the box at load 196–324 on 16 cores. HEAD's chain,
+interleaved with new runs at comparable load (166–224): 302.6 / 339.6s,
+against 147.8 / 164.6 / 170.1s for the new chain. Roughly half the wall clock,
+and both reports were whole every time (`28767/28767`, `11811/11811`).
+
+*Re-opens on:* a shard that fails only when the passes overlap and passes the
+same loop alone. Then the overlap is costing correctness, and
+`PORTA_SHARD_PROCESSES` is the knob to lower before the overlap goes.

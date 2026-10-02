@@ -371,6 +371,12 @@ lifecycles).
 
 ## Testing and gates
 
+**The two coverage passes run at once — kept.** They share no state, and
+overlapped they cost ~145s against ~190s in sequence. `coverage:src` keeps the
+container cache on (~45s), safe because `--require=src` makes a lossy merge red. The one shard that failed
+only when they overlapped was a test race, and it is fixed. Lower
+`PORTA_SHARD_PROCESSES` before going back to sequence.
+
 **The `[loop-leak]` escalation is refused on evidence.** Three full serial runs
 reported 7, 8 and 7 lines, differing by exactly one test, because whether a
 0.15s debounce is still armed depends on where the loop happened to stop. A gate

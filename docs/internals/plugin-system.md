@@ -449,9 +449,10 @@ plugin: `plugins/tempest/plugin.php` has no tests of its own and is loaded by
 every booted IDE, so a per-plugin filter would drop it from every report and
 `--require=plugins` would fail a file that is fully covered.
 
-`composer coverage` also sets `pcov.directory` and `pcov.exclude` itself,
-because pcov has its own instrumentation window with a machine-level default,
-and a file outside it is never measured no matter what phpunit says.
+`composer coverage` and each shard also set `pcov.directory` themselves —
+`src` and `plugins`, what each pass grades — because pcov has its own
+instrumentation window with a machine-level default, and a file outside it is
+never measured no matter what phpunit says.
 
 **A plugin's code must therefore be 100% covered by its own tests.** A corollary
 worth knowing: a plugin file loaded by *another* plugin's tests enters the

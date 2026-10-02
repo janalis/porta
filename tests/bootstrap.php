@@ -54,9 +54,15 @@ $_ENV['PORTA_CACHE_DIR'] = $portaCacheDir;
 // Both reasons are about the PARALLEL `src` run. A caller that knows it is
 // neither parallel nor grading `src` — `composer coverage:plugins`, one serial
 // process filtered to `plugins/` — says so by setting the variable itself, and
-// then pays the container compile once instead of once per Ide boot. An
-// explicit value always wins; the pcov sniff is only the default for a run that
-// did not say.
+// then pays the container compile once instead of once per Ide boot. So does
+// `composer coverage:src`, ~45s faster: `CoverageSweepExtension` loads every
+// `src` class once per worker inside the first test's coverage window, which is
+// the first reason kept for one compile instead of ~458; and `--require=src`
+// fails a file absent from the report, so a worker's data lost in the merge
+// leaves a file absent or a line uncovered — red at 100% either way, never a
+// silent green. An explicit value always wins;
+// the pcov sniff is only the default for a run that did not say (a scoped
+// `composer coverage`, which no gate grades).
 if (false === getenv('PORTA_CONTAINER_CACHE') && '1' === ini_get('pcov.enabled')) {
     putenv('PORTA_CONTAINER_CACHE=off');
 }

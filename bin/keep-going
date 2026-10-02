@@ -9,9 +9,16 @@ declare(strict_types=1);
 // for `verify` but turns a lint finding plus a rector change into two rounds of
 // fix-and-rerun. The steps are read from composer.json so the chain is defined
 // once — `composer verify` still walks it, and VerifyGatesMatchCiTest with it.
+//
+// `--concurrent` starts every step at once and prints each one's output whole,
+// in chain order, once they have all finished. `coverage:check` uses it: its
+// two passes share no state (CI runs them as two jobs) and both wait far more
+// than they compute, so the pair costs the longer of the two, not their sum.
 
 $root = dirname(__DIR__);
-$chain = $argv[1] ?? 'verify:quick';
+$arguments = array_slice($argv, 1);
+$concurrent = in_array('--concurrent', $arguments, true);
+$chain = array_values(array_diff($arguments, ['--concurrent']))[0] ?? 'verify:quick';
 $composer = json_decode((string) file_get_contents($root.'/composer.json'), true);
 $steps = $composer['scripts'][$chain] ?? null;
 if (!is_array($steps)) {
@@ -20,12 +27,32 @@ if (!is_array($steps)) {
 }
 
 $binary = getenv('COMPOSER_BINARY') ?: 'composer';
+$command = static fn (string $script): string => escapeshellarg($binary).' run-script --no-interaction '.escapeshellarg($script);
+$scripts = array_map(static fn (string $step): string => ltrim($step, '@'), $steps);
 $failed = [];
-foreach ($steps as $step) {
-    $script = ltrim($step, '@');
-    passthru(escapeshellarg($binary).' run-script --no-interaction '.escapeshellarg($script), $status);
-    if (0 !== $status) {
-        $failed[] = $script;
+if ($concurrent) {
+    $running = [];
+    foreach ($scripts as $script) {
+        $log = tmpfile();
+        $process = proc_open($command($script), [0 => ['file', '/dev/null', 'r'], 1 => $log, 2 => $log], $pipes);
+        $running[$script] = [$process, $log];
+    }
+    echo 'keep-going: running '.implode(' and ', array_keys($running))." at once — each one's output follows when all have finished.\n";
+    foreach ($running as $script => [$process, $log]) {
+        $status = proc_close($process);
+        rewind($log);
+        echo "\n> {$script}\n";
+        fpassthru($log);
+        if (0 !== $status) {
+            $failed[] = $script;
+        }
+    }
+} else {
+    foreach ($scripts as $script) {
+        passthru($command($script), $status);
+        if (0 !== $status) {
+            $failed[] = $script;
+        }
     }
 }
 

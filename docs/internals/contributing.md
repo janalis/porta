@@ -18,7 +18,7 @@ composer fix            # rector, then format — the two fixers in the order th
 composer rector:check   # rector dry run — fails on any change it would still make
 composer arch           # the architecture ratchet
 composer duplication    # phpcpd — zero copy-paste clones, tree-wide
-composer verify         # all eight, cheapest first, stopping at the first failure
+composer verify         # all eight: the six static gates stopping at the first failure, then both coverage passes at once
 composer verify:quick   # the six fast ones, stopping at the first failure
 composer check          # the same six run to the end, then one line naming every red gate — the mid-work check
 composer flake:scan     # run the suite N times and name what failed at least once
@@ -46,7 +46,7 @@ flake class `testing.md` describes.
 | `PORTA_MUTATE_THREADS` | half the cores | `composer mutate`'s Infection step |
 
 Throttling a shared box means setting the first TWO: `coverage:check` runs both
-passes, and `PORTA_TEST_PROCESSES=4` alone still fans out three-quarter-core
+passes AT ONCE, and `PORTA_TEST_PROCESSES=4` alone still fans out three-quarter-core
 plugin shards behind it.
 
 **CI sets `PORTA_TEST_PROCESSES: auto` explicitly** (`.github/workflows/ci.yml`),
@@ -175,8 +175,8 @@ composer analyze > /tmp/x.log 2>&1; echo "exit=$?"
 
 ## Definition of done
 
-`composer verify` runs all eight and stops at the first failure — cheapest
-first, `coverage:check` last, because it runs the whole suite and so subsumes
+`composer verify` runs all eight, cheapest first, and the six static gates stop
+at the first failure — `coverage:check` last, because it runs the whole suite and so subsumes
 `composer test`. Running `composer test` *and* `coverage:check` ran that suite
 twice; over one session that repetition was 31% of 233 minutes of test
 execution. CI (`.github/workflows/ci.yml`) still calls the gates individually
@@ -353,6 +353,16 @@ ratios are trustworthy even where the absolutes are not:
 | `composer coverage:plugins` (sharded, what it costs now) | 20 |
 | `composer coverage:check` end to end | **~260** |
 
+Re-measured 2026-10-02 at the defaults (8 processes, 12 shards) on a box at load
+14–39, alternated: `coverage:src` 135–139s, `coverage:plugins` 53–54s, so ~190s
+run one after the other. The two passes now run **at once**
+(`bin/keep-going coverage:parts --concurrent`): they share no state — CI already
+runs them as two jobs — and both wait far more than they compute, so the pair
+costs ~145s. Each pass's output is printed whole, in chain order, once both have
+finished, and the last line names every red pass. pcov also watches only what
+each pass grades now (`src`, or `plugins`), worth ~10s and ~8s, and
+`coverage:src` keeps the container cache on (below), worth ~45s.
+
 Three things follow, and they are why `composer verify` is shaped the way it is.
 
 **The static gates are free.** All six cost 4s — 1% of `coverage:check`.
@@ -364,6 +374,11 @@ deterministic output.
 170s without coverage and 241s with. Part is instrumentation; part is
 `tests/bootstrap.php` turning the container cache off under pcov, so each of the
 suite's ~458 Ide boots recompiles instead of loading the shared dump.
+**`coverage:src` no longer pays the recompile** (2026-10-02): it sets
+`PORTA_CONTAINER_CACHE=on`, has `tests/Support/CoverageSweepExtension` load every
+`src` class once per worker inside coverage, and grades with `--require=src`, so
+a merge that loses a worker's data fails loudly instead of shrinking the denominator —
+139.7s → 92.6 / 85.3s, alternated, same `28767/28767`.
 
 **The plugins pass no longer pays that**, because it never needed it. Both
 reasons the flag exists — every worker compiling every `src` file so no file is

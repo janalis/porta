@@ -297,7 +297,9 @@ final class CoveragePluginsCommand extends Command
      * The real shard: one phpunit run under pcov, filtered to `plugins/`.
      *
      * pcov's flags are built here rather than inherited — this command runs
-     * without pcov, and `-d` settings do not cross a process boundary. The
+     * without pcov, and `-d` settings do not cross a process boundary. pcov
+     * watches `plugins` alone: the `src` lines every IDE boot runs would be
+     * instrumented only to be filtered out, at ~15% of the pass. The
      * container cache is left ON: the reasons `tests/bootstrap.php` turns it
      * off are the parallel `src` run's, and a shard is neither parallel nor
      * grading `src`.
@@ -312,7 +314,7 @@ final class CoveragePluginsCommand extends Command
                 '-d',
                 'pcov.enabled=1',
                 '-d',
-                'pcov.directory=.',
+                'pcov.directory=plugins',
                 '-d',
                 'pcov.exclude=#/(vendor|tests)/#',
                 'vendor/bin/phpunit',
