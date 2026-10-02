@@ -230,7 +230,8 @@ final readonly class OpenBuffers
 
     /**
      * Create a file holding $text — folders on the way included — as a file on
-     * disk, not opened. Null once created, else why not: it already exists.
+     * disk, not opened. Null once created, else why not: it already exists,
+     * or it is outside the project.
      */
     public function create(string $path, string $text = ''): ?string
     {
@@ -248,7 +249,8 @@ final readonly class OpenBuffers
     /**
      * Rename or move a file or folder; an open buffer under it follows, unsaved
      * edits and all. The folder it goes into is created. Null once moved, else
-     * why not: nothing there, or something already at $to.
+     * why not: nothing there, something already at $to, or either side
+     * outside the project.
      */
     public function move(string $from, string $to): ?string
     {
@@ -262,8 +264,9 @@ final readonly class OpenBuffers
     /**
      * Delete a FILE — its open buffer closes — handing what it held to
      * whoever keeps history ({@see \Porta\Event\FileDeleted}). Null once
-     * deleted, else why not: nothing there, a folder, or a buffer with unsaved
-     * edits, which are the user's and are not a plugin's to throw away.
+     * deleted, else why not: nothing there, a folder, outside the project, or
+     * a buffer with unsaved edits, which are the user's and are not a plugin's
+     * to throw away.
      */
     public function delete(string $path): ?string
     {

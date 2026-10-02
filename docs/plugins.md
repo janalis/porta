@@ -816,6 +816,7 @@ $why = $buffers->save($path);             // null once saved
 | `delegateHistory(string $path, \Closure $undo, \Closure $redo): bool` | Answer Ctrl+Z and redo in that buffer yourself (each closure says whether it changed anything) — for a shared session, where undo takes back only the user's own edits. The buffer's own history is forgotten. False when it is not open as text |
 | `reclaimHistory(string $path)` | Give the buffer its own undo back, from that moment on |
 | `makeReadOnly(string $path): bool` / `makeWritable(string $path)` | Refuse the user's keystrokes that would change the buffer (the caret, the selection and copy still work, and a flash says why), or allow them again. Edits from code still land |
+| `create(string $path, string $text = '')` / `move(string $from, string $to)` / `delete(string $path)`: `?string` | Make, move or remove a file the way a refactoring does — open buffers follow, history keeps what was deleted. Null once done, else why not. **Only inside the project**: a path outside it, or through a symlink leading out, is refused like a language server's would be |
 | `save(string $path): ?string` | Save it as Ctrl+S does — local history, the language servers and `onFileSaved` all hear of it. Null once saved (or with nothing to save), else why not. A file that **changed on disk** under the edits is refused, never overwritten: the keyboard asks the user to press Ctrl+S again, and a plugin cannot ask for them |
 
 ### Running a task

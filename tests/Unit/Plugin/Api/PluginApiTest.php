@@ -148,7 +148,7 @@ final class PluginApiTest extends TestCase
                     TestLspQuery::create(),
                     new BufferSaver($this->buffers, $this->events = new EventDispatcher()),
                     TestRuns::create($this->runs = TestRunController::create(tui: $tui)),
-                    TestWorkspaceEditor::create($this->buffers),
+                    TestWorkspaceEditor::create($this->buffers, \sys_get_temp_dir()),
                     TestParticipants::create(),
                 ),
             );

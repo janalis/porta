@@ -38,7 +38,7 @@ final class WorkspaceEditorTest extends TestCase
     private CodeEditorWidget $editor;
     private StatusBarWidget $statusBar;
 
-    private function workspaceEditor(?EventDispatcher $events = null): WorkspaceEditor
+    private function workspaceEditor(?EventDispatcher $events = null, ?string $root = null): WorkspaceEditor
     {
         $this->buffers = new BufferManager();
         $this->editor = new CodeEditorWidget();
@@ -46,7 +46,7 @@ final class WorkspaceEditorTest extends TestCase
         return new WorkspaceEditor(
             $this->buffers,
             $this->editor,
-            new LspSessionPool(\sys_get_temp_dir(), new FixedActiveFile(), new Translator('en')),
+            new LspSessionPool($root ?? \sys_get_temp_dir(), new FixedActiveFile(), new Translator('en')),
             $events ?? new EventDispatcher(),
             new RefactoringUndo(new BufferManager(), new EventDispatcher()),
             notifier: new Notifier($this->statusBar = new StatusBarWidget(), TestTui::create()),
@@ -754,6 +754,72 @@ final class WorkspaceEditorTest extends TestCase
 
         $this->assertTrue($outcome->isRefused());
         $this->assertStringContainsString($needle, (string) $outcome->refused);
+    }
+
+    /** @return \Generator<string, array{\Closure(TempProject, TempProject): list<array<string, mixed>>}> */
+    public static function operationsOutsideTheProject(): \Generator
+    {
+        yield 'deleting a file elsewhere' => [static fn (TempProject $in, TempProject $out): array => [['kind' => 'delete', 'uri' => Uri::fromPath($out->path('keep.php'))]]];
+        yield 'deleting the project itself' => [static fn (TempProject $in, TempProject $out): array => [['kind' => 'delete', 'uri' => Uri::fromPath($in->dir), 'options' => ['recursive' => true]]]];
+        yield 'creating a file elsewhere' => [static fn (TempProject $in, TempProject $out): array => [['kind' => 'create', 'uri' => Uri::fromPath($out->path('new.php'))]]];
+        yield 'creating through a link out' => [static fn (TempProject $in, TempProject $out): array => [['kind' => 'create', 'uri' => Uri::fromPath($in->path('link/new.php'))]]];
+        yield 'renaming a file out' => [
+            static fn (TempProject $in, TempProject $out): array => [['kind' => 'rename', 'oldUri' => Uri::fromPath($in->path('a.php')), 'newUri' => Uri::fromPath($out->path('a.php'))]],
+        ];
+        yield 'renaming a file in' => [
+            static fn (TempProject $in, TempProject $out): array => [['kind' => 'rename', 'oldUri' => Uri::fromPath($out->path('keep.php')), 'newUri' => Uri::fromPath($in->path('keep.php'))]],
+        ];
+    }
+
+    /**
+     * The server is a process the project may have chosen: its file
+     * operations stay inside the project, whatever URI it sends.
+     *
+     * @param \Closure(TempProject, TempProject): list<array<string, mixed>> $changes
+     */
+    #[DataProvider('operationsOutsideTheProject')]
+    public function testAnOperationOutsideTheProjectIsRefused(\Closure $changes): void
+    {
+        $out = new TempProject(['keep.php' => "<?php\n"]);
+        $in = new TempProject(['a.php' => "<?php\n"]);
+        \symlink($out->dir, $in->path('link'));
+
+        $outcome = $this->workspaceEditor(root: $in->dir)->applyWorkspaceEdit(['documentChanges' => $changes($in, $out)]);
+
+        $this->assertStringContainsString('outside the project', (string) $outcome->refused);
+        $this->assertSame(['keep.php'], \array_values(\array_diff((array) \scandir($out->dir), ['.', '..'])), 'nothing changed out there');
+        $this->assertFileExists($in->path('a.php'));
+    }
+
+    public function testTheEdgesOfTheProjectHoldToo(): void
+    {
+        $tree = new TempProject(['app/a.php' => "<?php\n", 'app-old/keep.php' => "<?php\n"]);
+        \symlink($tree->path('gone'), $tree->path('app/dangling'));
+        $create = static fn (string $path): array => ['documentChanges' => [['kind' => 'create', 'uri' => Uri::fromPath($path)]]];
+
+        $editor = $this->workspaceEditor(root: $tree->path('app'));
+        $this->assertNotNull($editor->applyWorkspaceEdit($create($tree->path('app-old/new.php')))->refused, 'a sibling that merely shares the prefix');
+        $this->assertNotNull($editor->applyWorkspaceEdit($create($tree->path('app/dangling/new.php')))->refused, 'through a dangling link');
+        $this->assertFileDoesNotExist($tree->path('gone/new.php'));
+        $this->assertNotNull($this->workspaceEditor(root: $tree->path('nowhere'))->applyWorkspaceEdit($create($tree->path('app/new.php')))->refused, 'no project to stay inside');
+        $this->assertFileDoesNotExist($tree->path('app-old/new.php'));
+        $this->assertFileDoesNotExist($tree->path('app/new.php'));
+    }
+
+    public function testAnOperationInsideTheProjectStillApplies(): void
+    {
+        $in = new TempProject(['a.php' => "<?php\n"]);
+
+        $outcome = $this->workspaceEditor(root: $in->dir)->applyWorkspaceEdit([
+            'documentChanges' => [
+                ['kind' => 'create', 'uri' => Uri::fromPath($in->path('New.php'))],
+                ['kind' => 'rename', 'oldUri' => Uri::fromPath($in->path('a.php')), 'newUri' => Uri::fromPath($in->path('b.php'))],
+            ],
+        ]);
+
+        $this->assertFalse($outcome->isRefused(), (string) $outcome->refused);
+        $this->assertFileExists($in->path('New.php'));
+        $this->assertFileExists($in->path('b.php'));
     }
 
     /** The options are what make a repeat run of the same refactoring survivable. */

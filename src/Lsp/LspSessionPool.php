@@ -108,6 +108,12 @@ final class LspSessionPool
         private readonly ?EventDispatcherInterface $dispatcher = null,
     ) {}
 
+    /** The project every session serves: where a server's file operations must stay. */
+    public function rootDir(): string
+    {
+        return $this->rootDir;
+    }
+
     /**
      * Declare the available servers and the shared inbound hooks. Sessions are
      * not started here — each launches on its language's first didOpen.

@@ -195,6 +195,9 @@ final readonly class WorkspaceEditor
         if (null === $path) {
             return 'a file to create has no usable path';
         }
+        if ($this->outside($path)) {
+            return \sprintf('%s is outside the project', $path);
+        }
         if ($this->present($path, $exists) && true !== ($options['overwrite'] ?? null) && true !== ($options['ignoreIfExists'] ?? null)) {
             return \sprintf('%s already exists', \basename($path));
         }
@@ -214,6 +217,11 @@ final readonly class WorkspaceEditor
         $to = $this->pathOf($change['newUri'] ?? null);
         if (null === $from || null === $to) {
             return 'a file to rename has no usable path';
+        }
+        foreach ([$from, $to] as $path) {
+            if ($this->outside($path)) {
+                return \sprintf('%s is outside the project', $path);
+            }
         }
         if (!$this->present($from, $exists)) {
             return \sprintf('%s is not there to rename', \basename($from));
@@ -238,12 +246,39 @@ final readonly class WorkspaceEditor
         if (null === $path) {
             return 'a file to delete has no usable path';
         }
+        if ($this->outside($path)) {
+            return \sprintf('%s is outside the project', $path);
+        }
         if (!$this->present($path, $exists) && true !== ($options['ignoreIfNotExists'] ?? null)) {
             return \sprintf('%s is not there to delete', \basename($path));
         }
         $exists[$path] = false;
 
         return null;
+    }
+
+    /**
+     * Whether a server's file operation would land outside the project. The
+     * server is a process the project may have chosen, and a delete is a
+     * recursive remove: `file:///Users/me` is a WorkspaceEdit away. Judged on
+     * the deepest part that exists, resolved — a symlink out counts as out,
+     * a dangling one too.
+     */
+    private function outside(string $path): bool
+    {
+        $root = \realpath($this->lsp->rootDir());
+        $existing = $path;
+        while (!\file_exists($existing) && !\is_link($existing) && \dirname($existing) !== $existing) {
+            $existing = \dirname($existing);
+        }
+        $real = \realpath($existing);
+
+        if (false === $root || false === $real) {
+            return true;
+        }
+
+        // The root itself is no server's to delete or rename either.
+        return $real === $root ? $existing === $path : !\str_starts_with($real, $root.'/');
     }
 
     /** @param array<string, bool> $exists */
