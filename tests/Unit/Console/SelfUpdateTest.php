@@ -240,6 +240,20 @@ final class SelfUpdateTest extends TestCase
         $this->assertSame('OLD PHAR', \file_get_contents($dir->path('porta.phar')));
     }
 
+    public function testACopyThatCannotBeMadeLeavesThePharAsItWas(): void
+    {
+        $dir = $this->installed();
+        \mkdir($dir->path('.porta.phar.new')); // where the copy would go: taken
+
+        try {
+            new SelfUpdate($this->runner(), [])->install('v1.3.0', $dir->path('porta.phar'), 'php');
+            $this->fail('the update went through');
+        } catch (\RuntimeException $e) {
+            $this->assertStringContainsString('could not be replaced (is the disk full?); nothing was changed.', $e->getMessage());
+        }
+        $this->assertSame('OLD PHAR', \file_get_contents($dir->path('porta.phar')));
+    }
+
     public function testATokenDownloadThatFailsIsReported(): void
     {
         $this->gh = false;

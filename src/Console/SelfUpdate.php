@@ -92,9 +92,16 @@ final readonly class SelfUpdate
                 throw new \RuntimeException('the downloaded phar does not run here; nothing was changed.');
             }
             $staged = $dir.'/.'.\basename($phar).'.new';
-            \copy($new, $staged);
-            \chmod($staged, \fileperms($phar) & 0o777);
-            \rename($staged, $phar);
+            // Checked whole beside the phar before it replaces it: a disk that
+            // filled mid-copy must leave the old phar, not a truncated new one.
+            // @mago-expect lint:no-error-control-operator -- a copy that fails warns as well as returning false; the checks below are what is reported
+            $copied = @\copy($new, $staged) && \hash_file('sha256', $staged) === $expected;
+            if (!$copied || !\chmod($staged, \fileperms($phar) & 0o777) || !\rename($staged, $phar)) {
+                // A copy that landed half-way goes too.
+                \array_map(\unlink(...), \array_filter([$staged], \is_file(...)));
+
+                throw new \RuntimeException(\sprintf('%s could not be replaced (is the disk full?); nothing was changed.', $phar));
+            }
         } finally {
             foreach ((array) \glob($scratch.'/*') as $file) {
                 \unlink((string) $file);
