@@ -3258,6 +3258,18 @@
         <source>Close Dock Tab</source>
         <target>סגור לשונית העגינה</target>
       </trans-unit>
+      <trans-unit id="1136">
+        <source>Close Tabs to the Left</source>
+        <target>סגור כרטיסיות משמאל</target>
+      </trans-unit>
+      <trans-unit id="1137">
+        <source>Close Tabs to the Right</source>
+        <target>סגור כרטיסיות מימין</target>
+      </trans-unit>
+      <trans-unit id="1138">
+        <source>Pin / Unpin Tab</source>
+        <target>הצמד / בטל הצמדת לשונית</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

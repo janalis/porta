@@ -3258,6 +3258,18 @@
         <source>Close Dock Tab</source>
         <target>Fermer l’onglet du dock</target>
       </trans-unit>
+      <trans-unit id="1136">
+        <source>Close Tabs to the Left</source>
+        <target>Fermer les onglets à gauche</target>
+      </trans-unit>
+      <trans-unit id="1137">
+        <source>Close Tabs to the Right</source>
+        <target>Fermer les onglets à droite</target>
+      </trans-unit>
+      <trans-unit id="1138">
+        <source>Pin / Unpin Tab</source>
+        <target>Épingler / détacher l’onglet</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

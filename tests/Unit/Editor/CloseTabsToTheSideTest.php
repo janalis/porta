@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Editor;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\CommandRegistry;
 use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
@@ -202,5 +203,24 @@ final class CloseTabsToTheSideTest extends TestCase
 
         $tui->handleInput("\x1b[119;8u"); // Ctrl+Alt+Shift+W, as a kitty-protocol terminal sends it
         $this->assertSame([], $buffers->all());
+    }
+
+    /** The tab menu's other verbs, as commands on the active tab — Find Action reaches them. */
+    public function testTheSideClosesAndThePinAreCommandsOnTheActiveTab(): void
+    {
+        $commands = Services::resolve($this->ide, CommandRegistry::class);
+        $commands->run('close_tabs_left'); // no tab open: nothing to aim at, nothing done
+        $service = $this->withFourTabs();
+        $service->openFile($this->project->path('b.php'), focus: OpenFocus::Editor);
+        $buffers = Services::resolve($this->ide, BufferManager::class);
+        $open = static fn (): array => \array_map(static fn (Buffer $buffer): string => \basename($buffer->path), $buffers->all());
+
+        $commands->run('toggle_pin_tab');
+        $this->assertTrue($service->isPinned($this->openedPath('b.php')));
+
+        $commands->run('close_tabs_right');
+        $this->assertSame(['a.php', 'b.php'], $open());
+        $commands->run('close_tabs_left');
+        $this->assertSame(['b.php'], $open());
     }
 }

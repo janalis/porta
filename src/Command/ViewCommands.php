@@ -14,6 +14,7 @@ use Porta\Editor\EditorDisplayOptions;
 use Porta\Editor\LastEditNavigator;
 use Porta\Editor\PreviewMode;
 use Porta\Editor\RecentLocationActions;
+use Porta\Editor\TabSide;
 use Porta\Layout\LayoutController;
 use Porta\Lsp\CodeLensController;
 use Porta\Lsp\FoldingController;
@@ -113,6 +114,11 @@ final readonly class ViewCommands implements CommandProvider
                 keyBound: KeyDispatch::Bound,
             )
             ->add('close_all_tabs', fn () => $this->bufferService->closeTabsExcept(null), keyBound: KeyDispatch::Bound)
+            // The tab menu's other verbs, for the active tab: in Find Action
+            // and bindable, though like PhpStorm they ship without a key.
+            ->add('close_tabs_left', fn () => $this->onActiveTab(fn (string $path) => $this->bufferService->closeTabsToTheSide($path, TabSide::Left)), label: 'Close Tabs to the Left')
+            ->add('close_tabs_right', fn () => $this->onActiveTab(fn (string $path) => $this->bufferService->closeTabsToTheSide($path, TabSide::Right)), label: 'Close Tabs to the Right')
+            ->add('toggle_pin_tab', fn () => $this->onActiveTab($this->bufferService->togglePinned(...)), label: 'Pin / Unpin Tab')
             ->add('ide_notifications', fn () => $this->workbench->showNotificationLog(), keyBound: KeyDispatch::Bound, label: 'Notification Log')
             ->add('ide_dismiss_toast', fn () => $this->workbench->dismissToast(), keyBound: KeyDispatch::Bound, label: 'Dismiss Notification')
             ->add('ide_lsp_log', fn () => $this->workbench->showLspLog(), label: 'LSP: Show Server Log')
@@ -199,5 +205,14 @@ final readonly class ViewCommands implements CommandProvider
         $on = !$this->display->codeLenses;
         $this->display->setCodeLenses($on);
         $on ? $this->lenses->requestCodeLenses() : $this->decorations->setCodeLenses([]);
+    }
+
+    /** @param callable(string): void $verb */
+    private function onActiveTab(callable $verb): void
+    {
+        $active = $this->buffers->active();
+        if (null !== $active) {
+            $verb($active->path);
+        }
     }
 }

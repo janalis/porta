@@ -133,7 +133,7 @@ settings.
 | `Ctrl+←` / `Ctrl+→` | Previous / next editor tab |
 | `Ctrl+Shift+←` / `Ctrl+Shift+→` | Move the active tab left / right |
 | `Ctrl+F4` / `Alt+W` | Close the active buffer (unsaved changes prompt) |
-| `Ctrl+Alt+W` / `Ctrl+Alt+Shift+W` | Close the other tabs / close all tabs (unsaved changes prompt) |
+| `Ctrl+Alt+W` / `Ctrl+Alt+Shift+W` | Close the other tabs / close all tabs (unsaved changes prompt). *Close Tabs to the Left/Right* and *Pin / Unpin Tab* have no default key — they are in Find Action, and bindable |
 | `Ctrl+Alt+X` | Reopen the active tab as text (for a file a viewer plugin claimed) |
 
 ## Editing
