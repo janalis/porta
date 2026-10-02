@@ -70,7 +70,9 @@ final class GlyphsWidthTest extends TestCase
      */
     public function testTheCloseButtonsAreNarrowInEveryTerminal(): void
     {
-        if (!\class_exists(\IntlChar::class)) {
+        // The extension, not `IntlChar::class`: without intl that names a
+        // class that does not exist, which GhostClassReferenceTest refuses.
+        if (!\extension_loaded('intl')) {
             $this->markTestSkipped('the intl extension reads the Unicode width property');
         }
         foreach ([Glyphs::WINDOW_CLOSE, Glyphs::WINDOW_CLOSE_MAC] as $glyph) {
