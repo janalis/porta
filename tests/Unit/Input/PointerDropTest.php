@@ -10,8 +10,10 @@ use Porta\Editor\BufferService;
 use Porta\Editor\Document;
 use Porta\Editor\OpenFocus;
 use Porta\Input\DragDropProtocol;
+use Porta\Input\DropTarget;
 use Porta\Input\EditorLayoutPanes;
 use Porta\Input\HitTester;
+use Porta\Input\PasteDrop;
 use Porta\Tests\Support\BootsIde;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
@@ -27,15 +29,16 @@ use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Tui;
 
 /**
- * kitty's drag-and-drop protocol, spoken byte for byte: the hover answers,
- * the spring-loaded folders, the data request and its chunks, and what each
- * zone does with what arrives.
+ * A drop that knows where it is. kitty's drag-and-drop protocol, spoken byte
+ * for byte: the hover answers, the spring-loaded folders, the caret following
+ * the drag, the data request and its chunks. And Ghostty's way: a paste of the
+ * paths, then the pointer that let them go.
  *
  * Coordinates are found on the rendered frame rather than written down: the
  * protocol speaks screen cells, and the tree's rows are wherever the layout
  * put them.
  */
-final class DragDropProtocolTest extends TestCase
+final class PointerDropTest extends TestCase
 {
     use BootsIde;
     use PumpsLoop;
@@ -142,7 +145,7 @@ final class DragDropProtocolTest extends TestCase
 
     public function testADropOnTheTabStripOpensTheFile(): void
     {
-        $panes = Probe::get(Services::resolve($this->ide, DragDropProtocol::class), 'panes');
+        $panes = Probe::get($this->dropTarget(), 'panes');
         $this->assertInstanceOf(EditorLayoutPanes::class, $panes);
         $rect = $this->hit()->rect($panes->tabBar);
         $this->assertInstanceOf(WidgetRect::class, $rect);
@@ -268,6 +271,81 @@ final class DragDropProtocolTest extends TestCase
         $this->assertSame('https://example.com/a', $typed, 'any text is text to a field');
     }
 
+    public function testAPastedDropLandsInTheTreeFolderUnderThePointer(): void
+    {
+        $this->tree()->revealPath($this->project->path('src/A.php'));
+        $this->tui()->setFocus($this->tree());
+        [$row, $col] = $this->treeCell('lib');
+
+        $this->paste($this->outside->path('x.php'));
+        $this->assertFileDoesNotExist($this->project->path('src/x.php'), 'held for the pointer');
+        $this->tui()->handleInput($this->motion($row, $col));
+
+        $this->assertFileExists($this->project->path('lib/x.php'), 'where it was let go, not the selected folder');
+        $this->assertFileDoesNotExist($this->project->path('src/x.php'));
+    }
+
+    public function testAPastedDropOnAnOpenFileInsertsWhereItWasLetGo(): void
+    {
+        $doc = $this->openLines();
+        $doc->setCursor(0, 0);
+        [$row, $col] = $this->textCell(2, 3);
+
+        $this->paste(\str_replace(search: ' ', replace: '\ ', subject: $this->outside->path('a b.txt')));
+        $this->tui()->handleInput($this->motion($row, $col));
+        $this->tui()->handleInput("\r"); // Insert Path
+
+        $this->assertSame('// '.$this->outside->path('a b.txt').'two', $doc->getLine(2));
+    }
+
+    public function testAPastedDropOverNoZoneFallsBackToTheFocus(): void
+    {
+        $this->tree()->revealPath($this->project->path('src/A.php'));
+        $this->tui()->setFocus($this->tree());
+
+        $this->paste($this->outside->path('x.php'));
+        $this->tui()->handleInput($this->motion($this->rows - 1, 0)); // the status bar
+
+        $this->assertFileExists($this->project->path('src/x.php'), 'the selected folder, as with no pointer at all');
+    }
+
+    public function testASecondPastedDropLetsTheFirstLandFirst(): void
+    {
+        $this->tree()->revealPath($this->project->path('src/A.php'));
+        $this->tui()->setFocus($this->tree());
+
+        $this->paste($this->outside->path('x.php'));
+        $this->paste(\str_replace(search: ' ', replace: '\ ', subject: $this->outside->path('a b.txt')));
+        $this->frame($this->tui()); // the first copy added a row: find lib where it is now
+        [$row, $col] = $this->treeCell('lib');
+        $this->tui()->handleInput($this->motion($row, $col));
+
+        $this->assertFileExists($this->project->path('src/x.php'), 'the first, by the focus, before the second took its place');
+        $this->assertFileExists($this->project->path('lib/a b.txt'), 'the second, under the pointer');
+    }
+
+    public function testAKeyAfterAPastedDropLetsTheDropLandFirst(): void
+    {
+        $this->tree()->revealPath($this->project->path('src/A.php'));
+        $this->tui()->setFocus($this->tree());
+
+        $this->paste($this->outside->path('x.php'));
+        $this->tui()->handleInput("\x1b[B");
+
+        $this->assertFileExists($this->project->path('src/x.php'), 'by the focus, before the key moved the selection');
+    }
+
+    public function testAPastedDropWithNoPointerLandsByTheFocusOnceTheWaitIsOver(): void
+    {
+        $this->tree()->revealPath($this->project->path('src/A.php'));
+        $this->tui()->setFocus($this->tree());
+
+        $this->paste($this->outside->path('x.php'));
+        $this->pump(PasteDrop::WAIT * 2);
+
+        $this->assertFileExists($this->project->path('src/x.php'));
+    }
+
     public function testTheWelcomeCardTakesADropAnywhere(): void
     {
         Services::resolve($this->ide, ViewRegistry::class)->open('welcome');
@@ -363,6 +441,17 @@ final class DragDropProtocolTest extends TestCase
         $this->send('t=r:x=1;'.\base64_encode('file://'.$path));
     }
 
+    private function paste(string $text): void
+    {
+        $this->tui()->handleInput("\x1b[200~".$text."\x1b[201~");
+    }
+
+    /** A bare pointer motion at a screen cell, as SGR reports it: 1-based. */
+    private function motion(int $row, int $col): string
+    {
+        return \sprintf("\x1b[<35;%d;%dM", $col + 1, $row + 1);
+    }
+
     private function send(string $body): void
     {
         $this->tui()->handleInput("\x1b]72;".$body."\x1b\\");
@@ -419,6 +508,14 @@ final class DragDropProtocolTest extends TestCase
         return [$rect->row + \intdiv($rect->rows, num2: 2), $rect->col + \intdiv($rect->columns, num2: 2)];
     }
 
+    private function dropTarget(): DropTarget
+    {
+        $target = Probe::get(Services::resolve($this->ide, DragDropProtocol::class), 'target');
+        $this->assertInstanceOf(DropTarget::class, $target);
+
+        return $target;
+    }
+
     private function tui(): Tui
     {
         return Services::resolve($this->ide, Tui::class);
@@ -427,7 +524,7 @@ final class DragDropProtocolTest extends TestCase
     private function hit(): HitTester
     {
         // Inlined into its consumers, so reached through one of them.
-        $hit = Probe::get(Services::resolve($this->ide, DragDropProtocol::class), 'hit');
+        $hit = Probe::get($this->dropTarget(), 'hit');
         $this->assertInstanceOf(HitTester::class, $hit);
 
         return $hit;

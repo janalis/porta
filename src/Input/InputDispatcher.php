@@ -61,12 +61,17 @@ final readonly class InputDispatcher
             if (!$mouse->isMove()) {
                 $this->tooltips->dismiss();
             }
+            // A file let go over the window: the paste of its paths came
+            // first, and this is where the pointer let it go.
+            $this->pasteDrop->landAt($mouse);
             $this->mouseRouter->route($mouse);
 
             return;
         }
 
         $this->tooltips->dismiss();
+        // A key after a held drop: the drop happened first, so it lands first.
+        $this->pasteDrop->settle();
 
         // A Cmd chord's first arrival proves the terminal forwards it: from
         // then on its action leads with it, and the menus' and the chrome's
@@ -97,7 +102,7 @@ final readonly class InputDispatcher
 
         // A file dropped from outside arrives as a paste of its path. Ahead of
         // the Welcome modal, which would swallow it, and of the pickers, which
-        // PasteDrop leaves alone so a path pasted into one stays text.
+        // it types into as text.
         if (!$this->menuBar->isOpen() && $this->pasteDrop->take($data)) {
             $event->stopPropagation();
 

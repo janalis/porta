@@ -9,8 +9,10 @@ use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Editor\OpenFocus;
 use Porta\Ide;
+use Porta\Input\PasteDrop;
 use Porta\Tests\Support\BootsIde;
 use Porta\Tests\Support\Probe;
+use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\Toasts;
@@ -34,6 +36,7 @@ use Symfony\Component\Tui\Tui;
 final class ExternalDropTest extends TestCase
 {
     use BootsIde;
+    use PumpsLoop;
 
     /** Where the dropped files come from: somewhere that is not the project. */
     private TempProject $outside;
@@ -273,9 +276,14 @@ final class ExternalDropTest extends TestCase
         return $ide;
     }
 
+    /**
+     * Paste, then let the wait for a pointer run out: these are the drops
+     * with no pointer report, which land by the focus ({@see PasteDrop}).
+     */
     private function paste(string $text): void
     {
         $this->tui()->handleInput("\x1b[200~".$text."\x1b[201~");
+        $this->pump(PasteDrop::WAIT * 2);
     }
 
     private function tui(): Tui

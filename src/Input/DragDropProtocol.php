@@ -5,15 +5,10 @@ declare(strict_types=1);
 namespace Porta\Input;
 
 use Porta\Container\AsIdeService;
-use Porta\Editor\BufferManager;
-use Porta\Editor\Document;
 use Porta\I18n\Translator;
-use Porta\Overlay\Presenter\WelcomeModalController;
-use Porta\Ui\BidiTui;
 use Porta\Workbench\DropZone;
 use Porta\Workbench\ExternalDrop;
 use Porta\Workbench\Notifier;
-use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\Tui\Event\InputEvent;
 use Symfony\Component\Tui\Tui;
 
@@ -36,9 +31,8 @@ use Symfony\Component\Tui\Tui;
  *   says the drop was taken, or `o=0` that it was not; `t=R` is the
  *   terminal's error instead of the data.
  *
- * Over an open file the caret follows the drag, so the drop inserts where it
- * was let go; a drag that moves on, leaves or lands elsewhere puts the caret
- * back where it was.
+ * Where each motion lands — the zone, the tree folder, the caret following
+ * the drag over an open file — is {@see DropTarget}'s.
  *
  * The opt-in rides the boot sequence ({@see OPT_IN}) and the opt-out the
  * teardown's; a terminal that does not speak OSC 72 ignores both, as every
@@ -63,25 +57,12 @@ final class DragDropProtocol
     /** @var array{zone: DropZone, folder: ?string, type: string, data: string}|null the drop whose data is arriving */
     private ?array $pending = null;
 
-    /** The tree folder the drag is over, from its last motion; null off the tree. */
-    private ?string $folder = null;
-
-    /** @var array{doc: Document, line: int, col: int, range: array{startLine: int, startCol: int, endLine: int, endCol: int}|null}|null the caret a drag over the text moved, to put back */
-    private ?array $caret = null;
-
     public function __construct(
         private readonly Tui $tui,
-        private readonly HitTester $hit,
-        private readonly EditorLayoutPanes $panes,
-        private readonly ViewRegistry $views,
-        private readonly WelcomeModalController $welcome,
-        private readonly BufferManager $buffers,
-        private readonly BidiTui $bidi,
-        private readonly TreeDragRouter $treeDrag,
+        private readonly DropTarget $target,
         private readonly ExternalDrop $drop,
         private readonly Notifier $notifier,
         private readonly Translator $translator,
-        private readonly string $rootDir,
     ) {}
 
     /** The input listener: takes every OSC 72 and passes everything else on. */
@@ -109,12 +90,11 @@ final class DragDropProtocol
     private function moved(int $col, int $row): void
     {
         if ($col < 0 || $row < 0) {
-            $this->treeDrag->endExternal();
-            $this->restoreCaret();
+            $this->target->leave();
 
             return;
         }
-        $zone = $this->target($row, $col);
+        $zone = $this->target->aim($row, $col);
         $this->write('t=m:o='.(null === $zone ? '0' : '1').(null === $zone ? '' : ';'.\implode(' ', self::TYPES)));
         $this->tui->requestRender();
     }
@@ -122,13 +102,8 @@ final class DragDropProtocol
     /** @param string $types the space-separated MIME list the drag offers */
     private function dropped(int $col, int $row, string $types): void
     {
-        $zone = $col < 0 || $row < 0 ? null : $this->target($row, $col);
-        // Below the last row is still the tree: the project root is the
-        // folder that holds everything shown there.
-        $folder = DropZone::Tree === $zone ? $this->folder ?? $this->rootDir : null;
-        $this->treeDrag->endExternal($folder);
-        // Landed in the text: the caret is where the insert goes now.
-        $this->caret = null;
+        $zone = $col < 0 || $row < 0 ? null : $this->target->aim($row, $col);
+        $folder = $this->target->land($zone);
         $offered = \preg_split('/\s+/', \trim($types), flags: \PREG_SPLIT_NO_EMPTY);
         $offered = false === $offered ? [] : $offered;
         $type = null;
@@ -185,89 +160,6 @@ final class DragDropProtocol
         $this->pending = null;
         $this->write('t=r:o=0');
         $this->notifier->warn($this->translator->trans('The drop failed: %reason%', ['%reason%' => $reason]));
-    }
-
-    /**
-     * The zone under a screen cell, or null where a drop does nothing: the
-     * dock, the status bar, the menu. A modal takes it whole wherever it lands
-     * — a picker or a view such as Settings types the paths into the field
-     * that has the keys, and the Welcome card opens them, for the empty editor
-     * it stands in for.
-     *
-     * Over the tree this is also the hover: the highlight and the spring follow
-     * the pointer from here. Anywhere else the outside drag is not over the
-     * tree, which is what ends its highlight.
-     */
-    private function target(int $row, int $screenCol): ?DropZone
-    {
-        $zone = $this->zoneAt($row, $screenCol);
-        $rel = DropZone::Editor === $zone ? $this->hit->hit($this->panes->editor, $row, $this->bidi->logicalColumn($row, $screenCol)) : null;
-        if (null === $rel) {
-            $this->restoreCaret();
-
-            return $zone;
-        }
-        $editor = $this->panes->editor;
-        $doc = $editor->getDocument();
-        $this->caret ??= ['doc' => $doc, 'line' => $doc->cursorLine, 'col' => $doc->cursorCol, 'range' => $doc->getSelectionRange()];
-        // A mouse press's placement, its empty selection dropped — not a
-        // click, which on the error stripe jumps and on a lens row runs it.
-        if ($rel['col'] < $editor->viewport()->stripeCol) {
-            $editor->beginSelectionAt($rel['row'], $rel['col']);
-            $doc->clearSelection();
-        }
-
-        return $zone;
-    }
-
-    /**
-     * Put back the caret — and the selection — a drag over the text moved.
-     * Into the document it was taken from, so a file switched away from
-     * meanwhile gets its own caret back for when it is shown again.
-     */
-    private function restoreCaret(): void
-    {
-        if (null === $this->caret) {
-            return;
-        }
-        ['doc' => $doc, 'line' => $line, 'col' => $col, 'range' => $range] = $this->caret;
-        $this->caret = null;
-        null === $range
-            ? $doc->setCursor($line, $col)
-            : $doc->setSelectionRange($range['startLine'], $range['startCol'], $range['endLine'], $range['endCol']);
-        $this->panes->editor->invalidate();
-    }
-
-    private function zoneAt(int $row, int $screenCol): ?DropZone
-    {
-        $this->folder = null;
-        if ($this->welcome->isOpen()) {
-            $this->treeDrag->endExternal();
-
-            return DropZone::Empty;
-        }
-        $col = $this->bidi->logicalColumn($row, $screenCol);
-        if ($this->views->isAnyOpen() || $this->panes->editor->isAnyPickerOpen()) {
-            $this->treeDrag->endExternal();
-
-            return DropZone::Text;
-        }
-        $treeRect = $this->hit->rect($this->panes->tree);
-        if (null !== $treeRect && $treeRect->contains($row, $col)) {
-            $this->folder = $this->treeDrag->hoverExternal($row, $col, $treeRect);
-
-            return DropZone::Tree;
-        }
-        $this->treeDrag->endExternal();
-        if (null !== $this->hit->hit($this->panes->tabBar, $row, $col)) {
-            return DropZone::Empty;
-        }
-        $pane = $this->panes->pane();
-        if (null === $this->hit->hit($this->panes->editor, $row, $col) && (null === $pane || null === $this->hit->hit($pane, $row, $col))) {
-            return null;
-        }
-
-        return null === $pane && null !== $this->buffers->active() ? DropZone::Editor : DropZone::Empty;
     }
 
     private function write(string $body): void
