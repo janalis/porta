@@ -106,6 +106,36 @@ final class LspSessionTest extends TestCase
         $this->assertSame([], $client->requests, 'nothing reached the stopped client');
     }
 
+    public function testEditsBeforeTheServerIsReadyGoAsOneChangeOfTheLatestText(): void
+    {
+        $client = new FakeLspClient();
+        $client->deferReady = true;
+        $session = $this->session($client);
+        $this->start($session);
+        $session->notifyDidOpen('/p/a.php', 'one', 'php', 1);
+        $document = new Document('one');
+        foreach (['two', 'three', 'four'] as $text) {
+            $document->replaceAll($text);
+            $session->notifyFullChange('/p/a.php', $document);
+        }
+        $session->notifyDidOpen('/p/b.php', 'b', 'php', 1);
+        $closed = new Document('gone soon');
+        $session->notifyFullChange('/p/b.php', $closed);
+        $session->notifyDidClose('/p/b.php');
+
+        $client->ready();
+
+        $changes = \array_values(\array_filter($client->notifications, static fn (array $n): bool => 'textDocument/didChange' === $n['method']));
+        $this->assertCount(1, $changes, 'one change, not one per edit');
+        $this->assertSame([['text' => 'four']], $changes[0]['params']['contentChanges'], 'the latest, whole');
+        $this->assertSame($document->version, $changes[0]['params']['textDocument']['version']);
+        $this->assertSame(
+            ['textDocument/didOpen', 'textDocument/didChange', 'textDocument/didOpen', 'textDocument/didClose'],
+            \array_column($client->notifications, 'method'),
+            'in order, and nothing for a file closed meanwhile',
+        );
+    }
+
     public function testStartUsesInjectedClientAndReportsState(): void
     {
         $client = new FakeLspClient();

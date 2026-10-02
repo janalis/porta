@@ -23,6 +23,15 @@ final class LspSession
     private ?LspClientInterface $client = null;
     /** @var array<string, string> path => last text synced to the server (incremental baseline) */
     private array $syncedText = [];
+
+    /**
+     * Changes made while the server is still starting: the latest, whole, per
+     * file. One didChange waits for each — not one per debounce, each holding
+     * the whole text, for as long as the server takes.
+     *
+     * @var array<string, array{version: int, text: string}>
+     */
+    private array $beforeReady = [];
     private ?string $changeDebounce = null;
 
     /**
@@ -209,7 +218,7 @@ final class LspSession
 
     public function notifyDidClose(string $path): void
     {
-        unset($this->syncedText[$path]);
+        unset($this->syncedText[$path], $this->beforeReady[$path]);
         $doc = Uri::textDocument($path);
         $this->whenReady(fn () => $this->client?->notify('textDocument/didClose', [
             'textDocument' => $doc,
@@ -318,12 +327,7 @@ final class LspSession
     {
         $text = $document->getText();
         $this->syncedText[$path] = $text;
-        $uri = Uri::fromPath($path);
-        $version = $document->version;
-        $this->whenReady(fn () => $this->client?->notify('textDocument/didChange', [
-            'textDocument' => ['uri' => $uri, 'version' => $version],
-            'contentChanges' => [['text' => $text]],
-        ]));
+        $this->queueChange($path, $document, [['text' => $text]]);
     }
 
     /**
@@ -342,12 +346,44 @@ final class LspSession
             ? [TextDiff::incrementalChange($old, $new)]
             : [['text' => $new]];
 
+        $this->queueChange($path, $document, $changes);
+    }
+
+    /**
+     * Tell the server $path changed — or, while it is still starting, keep
+     * only the latest whole text for when it is ready: what it does not know
+     * yet needs no history of how it got there.
+     *
+     * @param list<array<string, mixed>> $changes
+     */
+    private function queueChange(string $path, Document $document, array $changes): void
+    {
         $uri = Uri::fromPath($path);
-        $version = $document->version;
-        $this->whenReady(fn () => $this->client?->notify('textDocument/didChange', [
-            'textDocument' => ['uri' => $uri, 'version' => $version],
-            'contentChanges' => $changes,
-        ]));
+        if (null === $this->client || $this->isInitialized()) {
+            $version = $document->version;
+            $this->whenReady(fn () => $this->client?->notify('textDocument/didChange', [
+                'textDocument' => ['uri' => $uri, 'version' => $version],
+                'contentChanges' => $changes,
+            ]));
+
+            return;
+        }
+        $waiting = \array_key_exists($path, $this->beforeReady);
+        $this->beforeReady[$path] = ['version' => $document->version, 'text' => $document->getText()];
+        if ($waiting) {
+            return;
+        }
+        $this->whenReady(function () use ($path, $uri): void {
+            $change = $this->beforeReady[$path] ?? null;
+            unset($this->beforeReady[$path]);
+            // Closed meanwhile: what it was is nothing to the server now.
+            if (null !== $change) {
+                $this->client?->notify('textDocument/didChange', [
+                    'textDocument' => ['uri' => $uri, 'version' => $change['version']],
+                    'contentChanges' => [['text' => $change['text']]],
+                ]);
+            }
+        });
     }
 
     /** A single advertised server capability, null while no server is up (or none advertised). */

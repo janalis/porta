@@ -64,6 +64,9 @@ class FakeLspClient implements LspClientInterface
     /** The outcome start() reports — set Failed to exercise failure paths. */
     public Outcome $startOutcome = Outcome::Ok;
 
+    /** While true, start() leaves the server starting: {@see ready()} finishes it. */
+    public bool $deferReady = false;
+
     /** @var (callable(Outcome): void)|null the last start callback — invoke it again to simulate a mid-session death */
     public $lastOnReady;
 
@@ -76,12 +79,24 @@ class FakeLspClient implements LspClientInterface
 
             return;
         }
+        if ($this->deferReady) {
+            return;
+        }
+        $this->ready();
+    }
+
+    /** The initialize handshake done: what waited runs, and the start reports Ok. */
+    public function ready(): void
+    {
+        $onReady = $this->lastOnReady;
         $this->isInitialized = true;
         foreach ($this->queued as $action) {
             $action();
         }
         $this->queued = [];
-        $onReady($this->startOutcome);
+        if (null !== $onReady) {
+            $onReady($this->startOutcome);
+        }
     }
 
     public function whenReady(callable $action): void
