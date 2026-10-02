@@ -23,6 +23,7 @@ use Porta\Search\Everywhere\SearchEverywhereController;
 use Porta\Settings\SettingsController;
 use Porta\Widget\FileTreeWidget;
 use Porta\Workbench\Dock\BottomDock;
+use Porta\Workbench\Menu\ContextMenuOpener;
 use Porta\Workbench\View\ViewRegistry;
 use Porta\Workbench\WorkbenchActions;
 use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
@@ -53,6 +54,7 @@ final readonly class ViewCommands implements CommandProvider
         private LastEditNavigator $lastEdit,
         private FileTreeWidget $tree,
         private Tui $tui,
+        private ContextMenuOpener $menus,
     ) {}
 
     #[\Override]
@@ -133,6 +135,10 @@ final readonly class ViewCommands implements CommandProvider
             ->add('dock_next_panel', fn () => $this->dock->cycle(1), keyBound: KeyDispatch::Bound, when: fn (): bool => null !== $this->dock->visiblePanel())
             ->add('dock_prev_panel', fn () => $this->dock->cycle(-1), keyBound: KeyDispatch::Bound, when: fn (): bool => null !== $this->dock->visiblePanel())
             ->add('dock_close_tab', fn () => $this->dock->closeActive(), keyBound: KeyDispatch::Bound, when: fn (): bool => null !== $this->dock->visiblePanel())
+            // The two bars the keyboard could not reach, opened as menus where
+            // a click would: the breadcrumb trail, and the status bar's cells.
+            ->add('ide_navigation_bar', fn () => $this->menus->openNavigationBar(), keyBound: KeyDispatch::Bound)
+            ->add('ide_status_menus', fn () => $this->menus->openStatusMenus(), keyBound: KeyDispatch::Bound)
             ->add('ide_terminal_new', fn () => $this->run->newTerminalSession(), keyBound: KeyDispatch::Bound)
             ->add('ide_run', fn () => $this->run->openRunMenu(), keyBound: KeyDispatch::Bound);
         $this->registerPreview($commands);

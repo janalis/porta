@@ -3270,6 +3270,14 @@
         <source>Pin / Unpin Tab</source>
         <target>הצמד / בטל הצמדת לשונית</target>
       </trans-unit>
+      <trans-unit id="1139">
+        <source>Jump to Navigation Bar</source>
+        <target>קפוץ לסרגל הניווט</target>
+      </trans-unit>
+      <trans-unit id="1140">
+        <source>Status Bar Menus</source>
+        <target>תפריטי שורת המצב</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

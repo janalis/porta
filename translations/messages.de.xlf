@@ -3270,6 +3270,14 @@
         <source>Pin / Unpin Tab</source>
         <target>Tab anheften / lösen</target>
       </trans-unit>
+      <trans-unit id="1139">
+        <source>Jump to Navigation Bar</source>
+        <target>Zur Navigationsleiste springen</target>
+      </trans-unit>
+      <trans-unit id="1140">
+        <source>Status Bar Menus</source>
+        <target>Menüs der Statusleiste</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

@@ -3270,6 +3270,14 @@
         <source>Pin / Unpin Tab</source>
         <target>Fissa / sblocca scheda</target>
       </trans-unit>
+      <trans-unit id="1139">
+        <source>Jump to Navigation Bar</source>
+        <target>Vai alla barra di navigazione</target>
+      </trans-unit>
+      <trans-unit id="1140">
+        <source>Status Bar Menus</source>
+        <target>Menu della barra di stato</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

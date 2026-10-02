@@ -285,6 +285,17 @@ final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost,
     }
 
     /** The jump line of the scope crumb at column $col of the last render, or null. */
+    /**
+     * The trail as the last render drew it, crumb by crumb — the keyboard's
+     * way along it ({@see \Porta\Workbench\Menu\ContextMenuOpener::openNavigationBar()}).
+     *
+     * @return list<array{label: string, line: ?int, path?: ?string}>
+     */
+    public function trail(): array
+    {
+        return $this->drawn;
+    }
+
     public function lineAtColumn(int $col): ?int
     {
         $index = $this->crumbIndexAt($col);

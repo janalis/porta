@@ -3270,6 +3270,14 @@
         <source>Pin / Unpin Tab</source>
         <target>Fijar / desfijar pestaña</target>
       </trans-unit>
+      <trans-unit id="1139">
+        <source>Jump to Navigation Bar</source>
+        <target>Ir a la barra de navegación</target>
+      </trans-unit>
+      <trans-unit id="1140">
+        <source>Status Bar Menus</source>
+        <target>Menús de la barra de estado</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

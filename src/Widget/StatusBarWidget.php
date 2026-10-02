@@ -150,6 +150,17 @@ final class StatusBarWidget extends AbstractWidget implements TooltipProvider
     }
 
     /**
+     * Every cell offering a menu, as the last render drew them — the
+     * keyboard's way to the menus a click opens.
+     *
+     * @return list<StatusMenuSpan>
+     */
+    public function menus(): array
+    {
+        return $this->renderedMenus;
+    }
+
+    /**
      * The action a status cell at column $col runs on a LEFT click, or null
      * when nothing there is actionable.
      *
@@ -298,6 +309,33 @@ final class StatusBarWidget extends AbstractWidget implements TooltipProvider
         return \min(AnsiUtils::visibleWidth($left), self::LEFT_FLOOR, \intdiv($columns, num2: 2));
     }
 
+    /**
+     * Draw the cells that fit, left to right, keeping each one's span: an
+     * elided path used to cost the branch its click, and a flash every
+     * right-hand cell its own.
+     *
+     * @param list<array{text: string, menu: (\Closure(): list<MenuItem>)|null, tooltip?: ?string}> $drawn
+     *
+     * @return array{list<string>, int} the drawn cells, and the column after them
+     */
+    private function placeCells(array $drawn): array
+    {
+        $this->renderedMenus = [];
+        $at = 1; // the row's leading space
+        $parts = [];
+        foreach ($drawn as $cell) {
+            $width = AnsiUtils::visibleWidth($cell['text']);
+            $hovered = null !== $cell['menu'] && null !== $this->hoverCol && $this->hoverCol >= $at && $this->hoverCol < ($at + $width);
+            $parts[] = $hovered ? new Style(underline: true)->apply($cell['text']) : $cell['text'];
+            if (null !== $cell['menu']) {
+                $this->renderedMenus[] = new StatusMenuSpan($at, $at + $width, $cell['menu'], $cell['text']);
+            }
+            $at += $width + self::SEPARATOR_WIDTH;
+        }
+
+        return [$parts, $at];
+    }
+
     #[\Override]
     public function render(RenderContext $context): array
     {
@@ -347,20 +385,7 @@ final class StatusBarWidget extends AbstractWidget implements TooltipProvider
         $prefix = self::prefix(\array_column($drawn, 'text'));
         $file = AnsiText::elideMiddle($left, \max(0, $leftMax - AnsiUtils::visibleWidth($prefix)));
 
-        // Every cell drawn keeps its span — an elided path used to cost the
-        // branch its click, and a flash every right-hand cell its own.
-        $this->renderedMenus = [];
-        $at = 1; // the row's leading space
-        $parts = [];
-        foreach ($drawn as $cell) {
-            $width = AnsiUtils::visibleWidth($cell['text']);
-            $hovered = null !== $cell['menu'] && null !== $this->hoverCol && $this->hoverCol >= $at && $this->hoverCol < ($at + $width);
-            $parts[] = $hovered ? new Style(underline: true)->apply($cell['text']) : $cell['text'];
-            if (null !== $cell['menu']) {
-                $this->renderedMenus[] = new StatusMenuSpan($at, $at + $width, $cell['menu']);
-            }
-            $at += $width + self::SEPARATOR_WIDTH;
-        }
+        [$parts, $at] = $this->placeCells($drawn);
         $fileWidth = AnsiUtils::visibleWidth($file);
         $this->renderedFile =
             null !== $this->flash || null === $this->leftPath

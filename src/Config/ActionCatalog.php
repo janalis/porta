@@ -343,6 +343,10 @@ final class ActionCatalog
         // Shift+F10 is run-last (PhpStorm) and the Menu key never reaches the
         // parser, so the context menu opens on Ctrl+F10 (legacy-encodable).
         'show_context_menu' => ['label' => 'Show Context Menu', 'keys' => ['ctrl+f10']],
+        // PhpStorm's Jump to Navigation Bar, for the breadcrumb trail; End for
+        // the bar at the other end of the screen, the status bar's menus.
+        'ide_navigation_bar' => ['label' => 'Jump to Navigation Bar', 'keys' => ['alt+home']],
+        'ide_status_menus' => ['label' => 'Status Bar Menus', 'keys' => ['alt+end']],
         // Every modifier+arrow chord is taken and punctuation chords need the
         // kitty protocol; Shift+F11/F12 deliver everywhere and read as −/+.
         // PhpStorm's Maximize Tool Window, on PhpStorm's own chord. The

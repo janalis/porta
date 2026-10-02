@@ -10,6 +10,7 @@ use Porta\Overlay\State\MenuOverlayController;
 use Porta\Terminal\TerminalSessions;
 use Porta\Tree\TreeOperations;
 use Porta\Ui\BidiTui;
+use Porta\Widget\BreadcrumbsWidget;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ContextMenu;
 use Porta\Widget\DockTabsWidget;
@@ -17,6 +18,7 @@ use Porta\Widget\EditorPaneWidget;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\Render\PopupFrame;
+use Porta\Widget\StatusBarWidget;
 use Porta\Widget\Support\TabBarPosition;
 use Porta\Widget\TabBarWidget;
 use Porta\Widget\TerminalPanelWidget;
@@ -69,7 +71,64 @@ final readonly class ContextMenuOpener
         private TerminalSessions $sessions,
         private ViewMenuSources $viewMenus,
         private ViewRegistry $views,
+        private StatusBarWidget $statusBar,
+        private BreadcrumbsWidget $breadcrumbs,
     ) {}
+
+    /**
+     * PhpStorm's Jump to Navigation Bar (Alt+Home): the breadcrumb trail as a
+     * menu under the bar, each crumb doing what a click on it does — a folder
+     * or file is shown in the tree, a symbol is gone to. From the keyboard the
+     * focus follows, so the next key acts where you went.
+     */
+    public function openNavigationBar(): void
+    {
+        $rect = $this->renderer->getWidgetRect($this->breadcrumbs);
+        $trail = $this->breadcrumbs->trail();
+        if (null === $rect || [] === $trail) {
+            $this->flashNoMenu();
+
+            return;
+        }
+        $items = \array_map(fn (array $crumb): MenuItem => new MenuItem($crumb['label'], '', function () use ($crumb): void {
+            $path = $crumb['path'] ?? null;
+            if (null !== $path) {
+                $this->tree->revealPath($path);
+                $this->tui->setFocus($this->tree);
+
+                return;
+            }
+            if (null !== $crumb['line']) {
+                $this->tui->setFocus($this->editor);
+                $this->editor->jumpTo($crumb['line'], 0);
+            }
+        }), $trail);
+        $this->openAt($items, $rect->row + 1, $rect->col);
+    }
+
+    /**
+     * The status bar's menus from the keyboard: every cell's, in one menu,
+     * each group under the cell's own text — the branch's, a server's, a
+     * participant's — above the status bar as a click on one would open it.
+     */
+    public function openStatusMenus(): void
+    {
+        $rect = $this->renderer->getWidgetRect($this->statusBar);
+        $items = [];
+        foreach ($this->statusBar->menus() as $span) {
+            if ([] !== $items) {
+                $items[] = MenuItem::separator();
+            }
+            $items[] = new MenuItem($span->label(), '', null, isEnabled: static fn (): bool => false);
+            \array_push($items, ...($span->items)());
+        }
+        if (null === $rect || [] === $items) {
+            $this->flashNoMenu();
+
+            return;
+        }
+        $this->openAt($items, $rect->row, $rect->col + 1);
+    }
 
     /** Open the focused pane's context menu, or flash when the pane has none. */
     public function openForFocus(): void

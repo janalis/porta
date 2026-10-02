@@ -3270,6 +3270,14 @@
         <source>Pin / Unpin Tab</source>
         <target>Pin / Unpin Tab</target>
       </trans-unit>
+      <trans-unit id="1139">
+        <source>Jump to Navigation Bar</source>
+        <target>Jump to Navigation Bar</target>
+      </trans-unit>
+      <trans-unit id="1140">
+        <source>Status Bar Menus</source>
+        <target>Status Bar Menus</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

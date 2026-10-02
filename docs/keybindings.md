@@ -87,6 +87,8 @@ settings.
 | `Ctrl+T` | Switch focus between file tree and editor |
 | `F6` / `Ctrl+F6` | Cycle focus forward / backward across panes (in the git and settings views, cycles their panes) |
 | `Ctrl+F10` | Open the context menu for the focused pane (editor: at the caret; tree: at the selected node; image/help tab: the tab menu) |
+| `Alt+Home` | The breadcrumb trail as a menu: a folder or file is shown in the tree, a symbol is gone to |
+| `Alt+End` | The status bar's menus — the branch's, a remote server's, a participant's — in one menu |
 | `Shift+F11` / `Shift+F12` | Shrink / grow the focused pane (file tree, git and settings sidebars, the bottom panels, and the editor beside a live preview) |
 | `Ctrl+Shift+'` | Maximize the open bottom panel; press again to put it back at the height it had |
 | `Ctrl+Shift+L` | Cycle the line-number mode (absolute → relative → off) |

@@ -3270,6 +3270,14 @@
         <source>Pin / Unpin Tab</source>
         <target>Épingler / détacher l’onglet</target>
       </trans-unit>
+      <trans-unit id="1139">
+        <source>Jump to Navigation Bar</source>
+        <target>Aller à la barre de navigation</target>
+      </trans-unit>
+      <trans-unit id="1140">
+        <source>Status Bar Menus</source>
+        <target>Menus de la barre d’état</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

@@ -3270,6 +3270,14 @@
         <source>Pin / Unpin Tab</source>
         <target>タブのピン留め / 解除</target>
       </trans-unit>
+      <trans-unit id="1139">
+        <source>Jump to Navigation Bar</source>
+        <target>ナビゲーションバーへ移動</target>
+      </trans-unit>
+      <trans-unit id="1140">
+        <source>Status Bar Menus</source>
+        <target>ステータスバーのメニュー</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
