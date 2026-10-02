@@ -8,6 +8,7 @@ use PHPUnit\Framework\Assert;
 use Porta\Event\AgentActivity;
 use Porta\Event\AgentLeft;
 use Porta\Presence\PresenceSync;
+use Porta\Support\Backoff;
 
 /**
  * Presence over a real server: two Porta instances on one server project,
@@ -58,6 +59,7 @@ trait ExercisesPresence
         Assert::assertCount(1, $bo->events->take(AgentLeft::class), 'without her caret: where she was is not where she is');
 
         $server->start();
+        $bo->wait(Backoff::after(0)); // a lost server is looked at again after a backoff, not every tick
         $this->look($bo);
         Assert::assertFalse($bo->participants->isOutOfTouch(PresenceSync::SOURCE), 'back in touch');
         Assert::assertSame(['Ada' => 2], $bo->sees());
@@ -71,6 +73,7 @@ trait ExercisesPresence
         $bo->scheduler->fire();
         Assert::assertSame([], $bo->sees(), 'lost for longer than the grace: Ada is let go');
         $server->start();
+        $bo->wait(Backoff::after(0));
         $this->look($bo);
         Assert::assertSame(['Ada' => 2], $bo->sees(), 'and found again when the server is back');
     }

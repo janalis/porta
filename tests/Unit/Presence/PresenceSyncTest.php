@@ -205,8 +205,8 @@ final class PresenceSyncTest extends TestCase
         $sync = $this->sync();
         $this->peer(self::ADA, 'Ada', beat: 1);
         $sync->tick();
-        $this->assertSame([], $this->roster(), 'never seen, and silent for longer than anyone waits: long gone');
-        $this->assertFileDoesNotExist($this->project->path(PresenceBoard::DIR.'/'.self::ADA.'.json'), 'taken off the board');
+        $this->assertSame(['Ada'], $this->roster(), 'its writer\'s clock may be any distance from this one: first seen is seen now');
+        $this->assertFileExists($this->project->path(PresenceBoard::DIR.'/'.self::ADA.'.json'), 'and not wiped for being behind');
 
         $this->peer(self::ADA, 'Ada');
         $sync->tick();
@@ -376,5 +376,49 @@ final class PresenceSyncTest extends TestCase
         // a suspension nobody waits on any more.
         $transport->release();
         $this->assertSame([], $transport->held);
+    }
+
+    public function testWhileTheServerCannotBeReachedLooksAreSpacedOut(): void
+    {
+        $server = new TempProject();
+        $transport = new FakeRemoteTransport($server->dir);
+        $sync = $this->sync(new ProjectLocation(new RemoteSpec('ssh', 'example.org', '/srv')), $transport);
+        $transport->down = 'Network is unreachable';
+        $looks = static fn (): int => \count(\array_filter($transport->calls, static fn (string $call): bool => \str_starts_with($call, 'list ')));
+
+        $sync->tick();
+        $this->assertSame(1, $looks());
+        $this->now += 0.5;
+        $sync->tick();
+        $this->assertSame(1, $looks(), 'not every tick: each is a login');
+        $this->now += 0.6;
+        $sync->tick();
+        $this->assertSame(2, $looks(), 'a second later, yes');
+        $this->now += 1.5;
+        $sync->tick();
+        $this->assertSame(2, $looks(), 'and then two seconds after that, not one');
+
+        $transport->down = null;
+        $this->now += 0.6;
+        $sync->tick();
+        $this->now += 0.1;
+        $sync->tick();
+        $this->assertSame(4, $looks(), 'back: every tick again');
+        $sync->stop();
+    }
+
+    public function testALookThatThrowsIsNotTheLast(): void
+    {
+        $sync = $this->sync();
+        $this->buffers->open($this->root."/src/\xff.php", "x\n");
+
+        try {
+            $sync->tick();
+        } catch (\JsonException) {
+            $this->fail('a path that is not UTF-8 is shared, not thrown on');
+        }
+
+        $this->assertInstanceOf(Beacon::class, $this->mine($sync));
+        $this->assertFalse(Probe::get($sync, 'busy'), 'and the next look goes out');
     }
 }

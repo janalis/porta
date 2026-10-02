@@ -130,8 +130,10 @@ final class RemotePresenceBoard extends PresenceBoard
 
             return;
         }
-        $transport->mkdir($this->path(''), function () use ($transport, $then): void {
-            $this->made = true;
+        // A directory that could not be made is asked for again next time;
+        // meanwhile an upload makes it on its own way.
+        $transport->mkdir($this->path(''), function (?string $error) use ($transport, $then): void {
+            $this->made = null === $error;
             $then($transport);
         });
     }

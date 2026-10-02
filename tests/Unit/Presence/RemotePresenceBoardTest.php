@@ -175,10 +175,14 @@ final class RemotePresenceBoardTest extends TestCase
         $board = $this->board();
         $this->transport->fail['*'] = 'connection refused';
         $this->assertNull(self::publish($board, self::beacon('aaaaaaaaaaaaaaaa')), 'a failed mkdir is not the news: what follows it is');
-        $this->transport->fail['*'] = 'connection refused';
+        $this->transport->down = 'connection refused';
         $this->assertSame('connection refused', self::read($board), '…the listing is');
-        $this->transport->fail['*'] = 'disk full';
+        $this->transport->down = 'disk full';
         $this->assertSame('disk full', self::publish($board, self::beacon('aaaaaaaaaaaaaaaa')));
+        $this->transport->down = null;
+        $calls = \count($this->transport->calls);
+        self::publish($board, self::beacon('aaaaaaaaaaaaaaaa'));
+        $this->assertStringStartsWith('mkdir ', $this->transport->calls[$calls], 'a directory never made is asked for again');
     }
 
     public function testNoTransportYetIsNobodyNotALostLink(): void

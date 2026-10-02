@@ -10,6 +10,7 @@ use Porta\Event\AgentActivity;
 use Porta\Event\AgentLeft;
 use Porta\Filesystem\ProjectLocation;
 use Porta\Filesystem\RemoteTransportSource;
+use Porta\Support\Backoff;
 use Porta\Workbench\AgentActivityKind;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Revolt\EventLoop;
@@ -36,6 +37,8 @@ use Revolt\EventLoop\Suspension;
  * carets go — where they were is no longer where they are — and the next
  * good read puts them back. While the link is lost, the others are not
  * hearing this side either, so the first good look says where it is again.
+ * Looks are spaced out by a backoff meanwhile: each is a login, to a
+ * server that may count the ones that fail.
  */
 #[AsIdeService]
 final class PresenceSync
@@ -85,6 +88,12 @@ final class PresenceSync
 
     /** Whether the board answered nothing but trouble since its last good read. */
     private bool $lost = false;
+
+    /** How many reads in a row failed. */
+    private int $failures = 0;
+
+    /** While the link is lost: when the next look may go out, this machine's seconds. */
+    private float $retryAt = 0.0;
 
     /** Whether the board answered this side's leaving — or leaving stopped waiting. */
     private bool $answered = false;
@@ -161,19 +170,27 @@ final class PresenceSync
     /** One look: say where this side is, then read where the others are. Never two at once. */
     public function tick(): void
     {
-        if ($this->busy) {
+        if ($this->busy || $this->lost && $this->now() < $this->retryAt) {
             return;
         }
         $this->busy = true;
-        $this->say(function (): void {
-            $this->board->read(
-                /** @param list<Beacon>|string $beacons */
-                function (array|string $beacons): void {
-                    $this->busy = false;
-                    \is_string($beacons) ? $this->lose() : $this->heard($beacons);
-                },
-            );
-        });
+        // A look that throws must not be the last: busy would stay true, and
+        // presence frozen for the session.
+        try {
+            $this->say(function (): void {
+                $this->board->read(
+                    /** @param list<Beacon>|string $beacons */
+                    function (array|string $beacons): void {
+                        $this->busy = false;
+                        \is_string($beacons) ? $this->lose() : $this->heard($beacons);
+                    },
+                );
+            });
+        } catch (\Throwable $error) {
+            $this->busy = false;
+
+            throw $error;
+        }
     }
 
     /**
@@ -191,7 +208,7 @@ final class PresenceSync
             return;
         }
         $beacon = $this->beacon();
-        $news = \json_encode([$beacon->name, $beacon->path, $beacon->line, $beacon->column, $beacon->anchorLine, $beacon->anchorColumn], \JSON_THROW_ON_ERROR);
+        $news = \json_encode([$beacon->name, $beacon->path, $beacon->line, $beacon->column, $beacon->anchorLine, $beacon->anchorColumn], \JSON_THROW_ON_ERROR | \JSON_INVALID_UTF8_SUBSTITUTE);
         if ($news === $this->said && ($this->now() - $this->saidAt) < $this->board->cadence()['heartbeat']) {
             $then();
 
@@ -213,6 +230,7 @@ final class PresenceSync
         $stale = self::STALE_BEATS * $this->board->cadence()['heartbeat'];
         $back = $this->lost;
         $this->lost = false;
+        $this->failures = 0;
         if ($back) {
             // The others may have let this side go meanwhile: said again at once.
             $this->said = null;
@@ -228,11 +246,11 @@ final class PresenceSync
             // silence was this side's.
             // Anything it says anew is a sign of life — a beat, or a caret
             // moved within the same second as the last beat.
+            // Never seen before counts as seen now: its writer's clock says
+            // when it last wrote, and that clock may be any distance from
+            // this one — a live Porta must not be wiped for being behind.
             $seen = null !== $known && !$back && $known['beacon']->toJson() === $beacon->toJson() ? $known['seen'] : $now;
-            // Never seen before, and its writer says it has not written for
-            // longer than anyone waits: long gone, whatever the clocks say.
-            $ancient = null === $known && (\time() - $beacon->beat) > self::FORGET;
-            if ($ancient || ($now - $seen) > self::FORGET) {
+            if (($now - $seen) > self::FORGET) {
                 $this->board->withdraw($beacon->id);
 
                 continue;
@@ -256,6 +274,7 @@ final class PresenceSync
     /** The board could not be read: the others are as last seen, with no caret, until it can. */
     private function lose(): void
     {
+        $this->retryAt = $this->now() + Backoff::after($this->failures++);
         if ($this->lost) {
             return;
         }
@@ -271,7 +290,7 @@ final class PresenceSync
     private function show(string $id, Beacon $beacon): void
     {
         $path = null === $beacon->path ? null : $this->root.'/'.$beacon->path;
-        $caret = \json_encode([$beacon->name, $path, $beacon->line, $beacon->column, $beacon->anchorLine, $beacon->anchorColumn], \JSON_THROW_ON_ERROR);
+        $caret = \json_encode([$beacon->name, $path, $beacon->line, $beacon->column, $beacon->anchorLine, $beacon->anchorColumn], \JSON_THROW_ON_ERROR | \JSON_INVALID_UTF8_SUBSTITUTE);
         $was = $this->shown[$id] ?? null;
         if ($caret === $was) {
             return;

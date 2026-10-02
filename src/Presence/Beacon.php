@@ -73,7 +73,9 @@ final readonly class Beacon
                 'anchorCol' => $this->anchorColumn,
                 'beat' => $this->beat,
             ],
-            \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE,
+            // A path need not be UTF-8 on a Linux server; one that is not is
+            // shown with a replacement character rather than not shared at all.
+            \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE | \JSON_INVALID_UTF8_SUBSTITUTE,
         );
     }
 
