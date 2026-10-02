@@ -35,10 +35,10 @@ final readonly class ReferenceCopier
         private Translator $translator,
     ) {}
 
-    /** The active file's path, relative to the project root. */
-    public function copyPath(): void
+    /** $path — the active file's when null — relative to the project root. */
+    public function copyPath(?string $path = null): void
     {
-        $path = $this->editor->getFilePath();
+        $path ??= $this->editor->getFilePath();
         if (null === $path) {
             return;
         }

@@ -347,6 +347,21 @@ final class BottomDockTest extends TestCase
         $this->assertFalse($this->debug->isOpen(), 'the Debug × closes the panel for real');
     }
 
+    /** Ctrl+Shift+F4: the × of the tab on display, and only that one. */
+    public function testCloseActiveClosesTheTabOnDisplay(): void
+    {
+        $dock = $this->dock(new EventDispatcher());
+        $dock->closeActive(); // the dock hidden: nothing on display, nothing closed
+        $problems = $dock->showList(ResultsPanelMode::Problems, 'Problems', []);
+        $todo = $dock->showList(ResultsPanelMode::Notifications, 'Notifications', []);
+
+        $dock->closeActive();
+
+        $this->assertFalse($dock->isToolAlive($todo), 'the displayed tool closed');
+        $this->assertTrue($dock->isToolAlive($problems), 'its neighbour did not');
+        $this->assertSame($problems, $dock->activeTool(), 'and is shown in its place');
+    }
+
     public function testClosingTheDisplayedInstanceBindsItsNeighbour(): void
     {
         $events = new EventDispatcher();

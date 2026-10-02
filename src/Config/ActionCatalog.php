@@ -253,6 +253,9 @@ final class ActionCatalog
         'ide_terminal_new' => ['label' => 'New Terminal Session', 'keys' => ['ctrl+shift+`', 'alt+f11']],
         'dock_next_panel' => ['label' => 'Next Dock Panel', 'keys' => ['alt+page_down']],
         'dock_prev_panel' => ['label' => 'Previous Dock Panel', 'keys' => ['alt+page_up']],
+        // PhpStorm's Close Active Tab, for a tool window: the × of the dock
+        // tab on display. Esc only hides the dock; this closes the tab.
+        'dock_close_tab' => ['label' => 'Close Dock Tab', 'keys' => ['ctrl+shift+f4']],
         'terminal_next_session' => ['label' => 'Next Terminal'],
         'terminal_prev_session' => ['label' => 'Previous Terminal'],
         'terminal_close_session' => ['label' => 'Close Terminal Session'],

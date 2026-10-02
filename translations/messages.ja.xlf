@@ -3254,6 +3254,10 @@
         <source>New</source>
         <target>新規</target>
       </trans-unit>
+      <trans-unit id="1135">
+        <source>Close Dock Tab</source>
+        <target>ドックのタブを閉じる</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

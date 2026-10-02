@@ -3254,6 +3254,10 @@
         <source>New</source>
         <target>Nouveau</target>
       </trans-unit>
+      <trans-unit id="1135">
+        <source>Close Dock Tab</source>
+        <target>Fermer l’onglet du dock</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

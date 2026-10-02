@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Tree;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Editor\BufferService;
+use Porta\Editor\OpenFocus;
 use Porta\Event\WorkingTreeChanged;
 use Porta\Tests\Support\BootsIde;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\Services;
+use Porta\Tests\Support\Toasts;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\FileTreeWidget;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
@@ -35,6 +38,9 @@ final class TreeKeyboardTest extends TestCase
     private const string CTRL_N = "\x0e";
 
     private const string SHIFT_F6 = "\x1b[17;2~";
+
+    /** The kitty-protocol form: a plain terminal sends Ctrl+Shift+letter as Ctrl+letter. */
+    private const string CTRL_SHIFT_C = "\x1b[99;6u";
 
     protected function setUp(): void
     {
@@ -173,6 +179,21 @@ final class TreeKeyboardTest extends TestCase
 
         $this->assertFileExists($this->project->path('a.php'));
         $this->assertFileDoesNotExist($this->project->path('a.phpx'));
+    }
+
+    public function testCtrlShiftCCopiesTheSelectedRowsPath(): void
+    {
+        Services::resolve($this->ide, BufferService::class)->openFile($this->project->path('a.php'), OpenFocus::Keep);
+        $this->tui()->setFocus($this->tree());
+        $this->walkTo('b.php');
+
+        $this->tui()->handleInput(self::CTRL_SHIFT_C);
+
+        $this->assertSame('Copied b.php', Toasts::last($this->ide), 'the row, not the open file');
+
+        $this->tui()->setFocus($this->editor());
+        $this->tui()->handleInput(self::CTRL_SHIFT_C);
+        $this->assertSame('Copied a.php', Toasts::last($this->ide), 'and in the editor, the open file as before');
     }
 
     private function walkTo(string $relative): void

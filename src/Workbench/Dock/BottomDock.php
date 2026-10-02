@@ -258,6 +258,19 @@ final class BottomDock
         $this->reveal($next['tab'], $next['key']);
     }
 
+    /** The × of the tab on display, from the keyboard (Ctrl+Shift+F4). */
+    public function closeActive(): void
+    {
+        foreach ($this->aliveTabs() as $entry) {
+            if (!$entry['active']) {
+                continue;
+            }
+            $this->closeTab($entry['tab'], $entry['key']);
+
+            return;
+        }
+    }
+
     /** The strip's ×: close the tab for real — a session tab stops its process too. */
     public function closeTab(?DockTab $tab, string $key = ''): void
     {

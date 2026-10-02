@@ -126,6 +126,7 @@ final readonly class ViewCommands implements CommandProvider
             ->add('ide_terminal', fn () => $this->run->toggleTerminal(), keyBound: KeyDispatch::Bound)
             ->add('dock_next_panel', fn () => $this->dock->cycle(1), keyBound: KeyDispatch::Bound, when: fn (): bool => null !== $this->dock->visiblePanel())
             ->add('dock_prev_panel', fn () => $this->dock->cycle(-1), keyBound: KeyDispatch::Bound, when: fn (): bool => null !== $this->dock->visiblePanel())
+            ->add('dock_close_tab', fn () => $this->dock->closeActive(), keyBound: KeyDispatch::Bound, when: fn (): bool => null !== $this->dock->visiblePanel())
             ->add('ide_terminal_new', fn () => $this->run->newTerminalSession(), keyBound: KeyDispatch::Bound)
             ->add('ide_run', fn () => $this->run->openRunMenu(), keyBound: KeyDispatch::Bound);
         $this->registerPreview($commands);

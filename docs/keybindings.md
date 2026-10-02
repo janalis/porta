@@ -91,6 +91,7 @@ settings.
 | `Ctrl+Shift+'` | Maximize the open bottom panel; press again to put it back at the height it had |
 | `Ctrl+Shift+L` | Cycle the line-number mode (absolute → relative → off) |
 | `Alt+PageDown` / `Alt+PageUp` | Next / previous panel on the bottom dock |
+| `Ctrl+Shift+F4` | Close the bottom dock's tab on display — a results tab, or a terminal session (its process stops) |
 | `Alt+Z` | Toggle soft wrap (off by default; horizontal scroll is disabled while it is on) |
 | `Alt+V` | Toggle code vision — the server's "3 usages" lines above declarations (off by default) |
 | `Ctrl+Alt+V` | Step a previewed file (Markdown, SVG, a Graphviz or PlantUML diagram) through the text alone, the text beside its live preview, and the preview alone — the same as the `Editor` `Split` `Preview` toggles at the right of the breadcrumbs bar |
@@ -107,6 +108,7 @@ settings.
 | `Alt+1` | Focus the project tree |
 | `Ctrl+X` / `Ctrl+C` / `Ctrl+V` | **In the file tree**: cut / copy / paste the selected files. The same chords move text in the editor — which you get depends on what has focus |
 | `Delete` (`Cmd+Backspace` on a Mac) | **In the file tree**: delete the selected files, or the folder under the cursor — after a y/N question |
+| `Ctrl+Shift+C` | **In the file tree**: copy the selected row's path (elsewhere, the open file's) |
 | `Alt+Insert` / `Ctrl+N` | **In the file tree**: new file or folder in the selected folder |
 | `Shift+F6` | **In the file tree**: rename the selected file or folder (in the editor it renames the symbol) |
 | `Alt+6` | Problems panel |

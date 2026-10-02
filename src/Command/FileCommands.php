@@ -13,6 +13,7 @@ use Porta\Editor\OpenFocus;
 use Porta\Editor\ReferenceCopier;
 use Porta\Editor\ScratchFiles;
 use Porta\Lsp\RefactorController;
+use Porta\Widget\FileTreeWidget;
 use Porta\Workbench\ProjectSwitcher;
 use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
 
@@ -27,6 +28,7 @@ final readonly class FileCommands implements CommandProvider
         private ScratchFiles $scratches,
         private ReferenceCopier $references,
         private ProjectSwitcher $projects,
+        private FileTreeWidget $tree,
     ) {}
 
     #[\Override]
@@ -61,7 +63,8 @@ final readonly class FileCommands implements CommandProvider
                 },
                 keyBound: KeyDispatch::Bound,
             )
-            ->add('copy_path', fn () => $this->references->copyPath(), keyBound: KeyDispatch::Bound)
+            // From the tree, the row under the cursor rather than the open file.
+            ->add('copy_path', fn () => $this->references->copyPath($this->tree->focusedNode()?->path), keyBound: KeyDispatch::Bound)
             ->add('copy_reference', fn () => $this->references->copyReference(), keyBound: KeyDispatch::Bound)
             ->add('reformat', fn () => $this->refactor->requestReformat())
             ->add('ide_undo_refactoring', fn () => $this->refactor->undoLastRefactoring(), keyBound: KeyDispatch::Bound)

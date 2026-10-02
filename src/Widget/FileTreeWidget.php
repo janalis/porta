@@ -189,6 +189,21 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
         return $this->visible[$this->list->selected()] ?? null;
     }
 
+    /**
+     * The row the keyboard is on while the tree HAS the keys, else null — what
+     * a verb the editor shares aims at instead of the open file: Ctrl+Shift+C
+     * copies this row's path. The same key means the same verb on whichever
+     * thing you are looking at.
+     *
+     * Not Ctrl+Shift+F: a tree with no file open has the focus by default and
+     * its first folder selected, so "search the project" would quietly search
+     * one folder nobody picked. The row's menu has Find in Files… for that.
+     */
+    public function focusedNode(): ?FileTreeNode
+    {
+        return $this->isFocused() ? $this->selectedNode() : null;
+    }
+
     /** The selected entry's widget-relative row (row 0 is the header). */
     public function selectedRow(): int
     {
