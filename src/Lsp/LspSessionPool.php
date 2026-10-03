@@ -10,6 +10,7 @@ use Porta\Editor\Document;
 use Porta\Event\LspStatusChanged;
 use Porta\I18n\Translator;
 use Porta\Support\Backoff;
+use Porta\Support\OrphanGuard;
 use Porta\Support\Outcome;
 use Porta\Support\ProjectPaths;
 use Psr\EventDispatcher\EventDispatcherInterface;
@@ -106,6 +107,7 @@ final class LspSessionPool
         private readonly Translator $translator,
         private readonly ?\Closure $clientFactory = null,
         private readonly ?EventDispatcherInterface $dispatcher = null,
+        private readonly ?OrphanGuard $guard = null,
     ) {}
 
     /** The project every session serves: where a server's file operations must stay. */
@@ -636,7 +638,7 @@ final class LspSessionPool
     /** @param array{command: list<string>, name: string, initializationOptions?: array<string, mixed>} $server */
     private function startSession(array $server, string $signature): void
     {
-        $session = new LspSession($this->rootDir, $this->clientFactory);
+        $session = new LspSession($this->rootDir, $this->clientFactory, $this->guard);
         // Stored BEFORE start(): a synchronous failure (a spawn refusal, a
         // sync test fake) must be able to evict the very slot it occupies —
         // stored after, the assignment would resurrect the dead session.

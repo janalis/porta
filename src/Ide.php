@@ -50,6 +50,7 @@ use Porta\Settings\SettingsLanguageController;
 use Porta\Support\BootTrace;
 use Porta\Support\DiagnosticLog;
 use Porta\Support\FreezeWatchdog;
+use Porta\Support\OrphanGuard;
 use Porta\Support\PerfCollector;
 use Porta\Support\RevoltScheduler;
 use Porta\Ui\BidiTui;
@@ -508,6 +509,9 @@ final class Ide
             // Last, kitty's drag-and-drop opt-in, ignored by every terminal
             // that has no such protocol (see DragDropProtocol).
             $this->tui->getTerminal()->write("\x1b[?1049h\x1b[?1000h\x1b[?1003h\x1b[?1006h".DragDropProtocol::OPT_IN);
+            // Whatever this IDE starts ends with it, however it ends — a
+            // closed terminal, a crash, a kill — and not only its servers.
+            $this->service(OrphanGuard::class)->guardGroup($this->tui->getTerminal());
             // Home the cursor the alternate screen just handed us. The first
             // frame is appended FROM the cursor, not written to an absolute
             // origin, and ScreenWriter's row bookkeeping starts from zero -- so
@@ -567,49 +571,54 @@ final class Ide
 
             $this->tui->run();
         } finally {
-            // Observers first, while every service they might touch is still
-            // up. The loop has stopped, so a listener that schedules work is a
-            // no-op — that is the contract IdeShuttingDown documents.
-            $this->service(EventDispatcherInterface::class)->dispatch(new IdeShuttingDown($this->rootDir));
-            // Then: closing the view windows cancels their timers (the
-            // git view's 2s status-poll repeat) so nothing re-arms below.
-            $this->service(ViewRegistry::class)->closeAll();
-            $this->writeLastFrame();
-            $this->watchdog->stop();
-            $this->perf->stop();
-            EventLoop::cancel($watcher);
-            EventLoop::cancel($refresher);
-            EventLoop::cancel($remotePoll);
-            EventLoop::cancel($remoteFirst);
-            $remote->close();
-            $presence->stop();
-            EventLoop::cancel($graphicsProbe);
-            foreach ($signals as $signal) {
-                EventLoop::cancel($signal);
+            // The child processes are stopped whatever the rest of the teardown
+            // does: with the terminal gone under it, a write below can fail.
+            try {
+                // Observers first, while every service they might touch is still
+                // up. The loop has stopped, so a listener that schedules work is a
+                // no-op — that is the contract IdeShuttingDown documents.
+                $this->service(EventDispatcherInterface::class)->dispatch(new IdeShuttingDown($this->rootDir));
+                // Then: closing the view windows cancels their timers (the
+                // git view's 2s status-poll repeat) so nothing re-arms below.
+                $this->service(ViewRegistry::class)->closeAll();
+                $this->writeLastFrame();
+                $this->watchdog->stop();
+                $this->perf->stop();
+                EventLoop::cancel($watcher);
+                EventLoop::cancel($refresher);
+                EventLoop::cancel($remotePoll);
+                EventLoop::cancel($remoteFirst);
+                $remote->close();
+                $presence->stop();
+                EventLoop::cancel($graphicsProbe);
+                foreach ($signals as $signal) {
+                    EventLoop::cancel($signal);
+                }
+                if ($ownsErrorHandler) {
+                    EventLoop::setErrorHandler(null);
+                }
+                // Disable mouse reporting, then leave the alternate screen (restoring
+                // the pre-launch terminal). Guaranteed even if startup above threw.
+                // Images live in the terminal, not in the alternate screen: free them.
+                $this->graphics->release();
+                $this->service(PixelRatio::class)->release();
+                $this->tui->getTerminal()->write(TerminalRestorer::RESTORE);
+                $restorer->disarm();
+                if (null === $this->tool) {
+                    $this->sessionRestorer->save();
+                    $this->debugState->save();
+                    $this->bookmarkState->save();
+                }
+                if (ToolMode::Merge === $this->tool?->mode) {
+                    $this->exitCode = self::resolved($this->tool->editable()) ? 0 : 1;
+                }
+                $this->notifier->dismissAll(); // cancel pending toast timers — nothing may outlive the loop
+                $this->service(TooltipCenter::class)->dismiss(); // and a tooltip's dwell
+            } finally {
+                $this->lsp->stop();
+                $this->run->stop();
+                $this->debug->stop();
             }
-            if ($ownsErrorHandler) {
-                EventLoop::setErrorHandler(null);
-            }
-            // Disable mouse reporting, then leave the alternate screen (restoring
-            // the pre-launch terminal). Guaranteed even if startup above threw.
-            // Images live in the terminal, not in the alternate screen: free them.
-            $this->graphics->release();
-            $this->service(PixelRatio::class)->release();
-            $this->tui->getTerminal()->write(TerminalRestorer::RESTORE);
-            $restorer->disarm();
-            if (null === $this->tool) {
-                $this->sessionRestorer->save();
-                $this->debugState->save();
-                $this->bookmarkState->save();
-            }
-            if (ToolMode::Merge === $this->tool?->mode) {
-                $this->exitCode = self::resolved($this->tool->editable()) ? 0 : 1;
-            }
-            $this->notifier->dismissAll(); // cancel pending toast timers — nothing may outlive the loop
-            $this->service(TooltipCenter::class)->dismiss(); // and a tooltip's dwell
-            $this->lsp->stop();
-            $this->run->stop();
-            $this->debug->stop();
         }
     }
 

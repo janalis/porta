@@ -802,6 +802,8 @@ final class PluginApiTest extends TestCase
         };
 
         $code = $api->codeIntelligence();
+        $transport = $code->serverTransport(['command' => ['phpactor', 'language-server'], 'name' => 'phpactor'], '/p', 'phpactor (for Ana)');
+        $this->assertSame(['phpactor', 'language-server'], Probe::get($transport, 'command'), 'a server a plugin runs on someone else\'s behalf, run as the IDE runs its own');
         $code->definition('/p/a.php', 0, 0, $keep);
         $code->references('/p/a.php', 0, 0, $keep);
         $code->hover('/p/a.php', 0, 0, $keep);

@@ -8,6 +8,7 @@ use Porta\Editor\BufferManager;
 use Porta\Editor\DocumentReplacer;
 use Porta\Lsp\LspQuery;
 use Porta\Lsp\WorkspaceEditor;
+use Porta\Support\JsonRpcTransport;
 
 /**
  * What the IDE knows about the code, for a plugin: the diagnostics every
@@ -46,6 +47,19 @@ final readonly class CodeIntelligence
     public function languageServers(): array
     {
         return $this->query->primaryServers();
+    }
+
+    /**
+     * The transport that runs $server — one of {@see languageServers()} — the
+     * way this IDE runs its own, in $rootDir, and that ends with the IDE
+     * however the IDE ends, as the IDE's own servers do. Not started: its
+     * owner starts and stops it. $peerName is how its log lines name it.
+     *
+     * @param array{command: list<string>, ...} $server
+     */
+    public function serverTransport(array $server, string $rootDir, string $peerName): JsonRpcTransport
+    {
+        return $this->query->serverTransport($server, $rootDir, $peerName);
     }
 
     /**

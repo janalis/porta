@@ -6,6 +6,7 @@ namespace Porta\Lsp;
 
 use Porta\Support\JsonRpcTransport;
 use Porta\Support\NonBlockingWriter;
+use Porta\Support\OrphanGuard;
 use Porta\Support\Outcome;
 use Porta\Support\PendingRequests;
 use Revolt\EventLoop;
@@ -74,10 +75,11 @@ final class LspClient implements LspClientInterface
         private readonly ?array $initializationOptions = null,
         private readonly float $requestTimeout = self::REQUEST_TIMEOUT,
         private readonly float $initializeTimeout = self::INITIALIZE_TIMEOUT,
+        ?OrphanGuard $guard = null,
     ) {
         $this->logger = $logger;
         $this->pending = new PendingRequests();
-        $this->transport = new JsonRpcTransport($command, $rootDir, 'LSP server', $logger, $maxWriteBuffer);
+        $this->transport = new JsonRpcTransport($command, $rootDir, 'LSP server', $logger, $maxWriteBuffer, $guard);
     }
 
     #[\Override]

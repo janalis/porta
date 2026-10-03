@@ -8,6 +8,7 @@ use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\TestCase;
 use Porta\Support\JsonRpcFramer;
 use Porta\Support\JsonRpcTransport;
+use Porta\Support\OrphanGuard;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\TempProject;
@@ -48,6 +49,30 @@ final class JsonRpcTransportTest extends TestCase
         // the reaper's poll timer real time to reap it — $this->process being
         // cleared (an unconditional line) proves nothing about the OS process.
         $this->await(static fn (): bool => false === \posix_kill($pid, signal: 0), timeout: 3.0, what: 'the child to be reaped, not left a zombie');
+    }
+
+    /**
+     * A peer started with the guard ends with the IDE, though nothing ever
+     * stopped it: the IDE went — dropped here, killed in life — and the
+     * guard's pipe went with it.
+     */
+    public function testAGuardedPeerEndsWithTheIdeThoughNeverStopped(): void
+    {
+        $project = new TempProject();
+        $guard = new OrphanGuard();
+        $transport = new JsonRpcTransport([\PHP_BINARY, '-r', 'sleep(30);'], $project->dir, 'peer', guard: $guard);
+        $this->assertTrue($transport->start(static function (): void {}));
+        $process = Probe::get($transport, 'process');
+        \assert(\is_resource($process), description: 'the transport holds the spawned process');
+
+        // The IDE gone, however it went: the kernel closes the guard's pipe.
+        $pipe = Probe::get($guard, 'pipe');
+        \assert(\is_resource($pipe), description: 'the guard watches the peer');
+        \fclose($pipe);
+
+        $this->await(static fn (): bool => !\proc_get_status($process)['running'], timeout: 4.0, what: 'the peer to end with the guard');
+        \proc_close($process);
+        $transport->stop(); // its watchers, now the peer is gone
     }
 
     public function testAFramerOverflowReachesTheLoggerNamedForThePeer(): void

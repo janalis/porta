@@ -26,16 +26,18 @@ final class ProcessReaper
      * {@see GRACE} seconds later: a child that shrugs off a terminate would
      * otherwise outlive the IDE. With $after, the child was asked to exit and
      * has that long to do it its own way — a language server saving its
-     * index — before it is terminated at all.
+     * index — before it is terminated at all. $onReaped hears when it is
+     * gone for good — its pid free to be another process's.
      *
-     * @param resource $process
+     * @param resource                   $process
+     * @param (\Closure(int): void)|null $onReaped receives proc_get_status's exit code
      */
-    public static function terminate($process, float $after = 0.0): void
+    public static function terminate($process, float $after = 0.0, ?\Closure $onReaped = null): void
     {
         if ($after <= 0.0) {
             \proc_terminate($process);
         }
-        self::reap($process, null, \max(0.0, $after), \max(0.0, $after) + self::GRACE);
+        self::reap($process, $onReaped, \max(0.0, $after), \max(0.0, $after) + self::GRACE);
     }
 
     /**

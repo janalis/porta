@@ -19,6 +19,9 @@ final class JsonRpcTransport
 {
     /** @var resource|null */
     private $process;
+
+    /** The child's pid, for the {@see OrphanGuard}. */
+    private int $pid = 0;
     /** @var resource|null */
     private $stdin;
     /** @var resource|null */
@@ -48,6 +51,7 @@ final class JsonRpcTransport
         private readonly string $peerName,
         ?callable $logger = null,
         private readonly int $maxWriteBuffer = NonBlockingWriter::DEFAULT_LIMIT,
+        private readonly ?OrphanGuard $guard = null,
     ) {
         $this->logger = $logger;
         $this->framer = new JsonRpcFramer(function (string $reason): void {
@@ -84,6 +88,9 @@ final class JsonRpcTransport
         }
 
         $this->process = $process;
+        // Ended with the IDE however the IDE ends, until it is reaped here.
+        $this->pid = \proc_get_status($process)['pid'];
+        $this->guard?->watch($this->pid);
         /** @var array{0: resource, 1: resource, 2: resource} $pipes */
         [$this->stdin, $this->stdout, $this->stderr] = [$pipes[0], $pipes[1], $pipes[2]];
         // stdin non-blocking too: a peer that stops draining its stdin must
@@ -146,7 +153,17 @@ final class JsonRpcTransport
                 \fclose($pipe);
             }
             if (\is_resource($process)) {
-                ProcessReaper::terminate($process, $exitWithin);
+                $pid = $this->pid;
+                $guard = $this->guard;
+                ProcessReaper::terminate(
+                    $process,
+                    $exitWithin,
+                    null === $guard
+                        ? null
+                        : static function () use ($guard, $pid): void {
+                            $guard->forget($pid);
+                        },
+                );
             }
             $this->process = null;
         }

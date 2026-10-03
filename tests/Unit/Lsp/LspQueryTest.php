@@ -6,12 +6,16 @@ namespace Porta\Tests\Unit\Lsp;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
+use Porta\Editor\LineTextReader;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspQuery;
 use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\Uri;
+use Porta\Support\OrphanGuard;
+use Porta\Support\ProjectPaths;
 use Porta\Tests\Support\FakeLspClient;
 use Porta\Tests\Support\FixedActiveFile;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestLspQuery;
 
@@ -306,5 +310,24 @@ final class LspQueryTest extends TestCase
             $this->documents(),
             'lent once for the six questions, given back after the last',
         );
+    }
+
+    /**
+     * A server a plugin runs on someone else's behalf runs as the pool's own
+     * do: its command, in the root it is given, and guarded — it ends with
+     * the IDE however the IDE ends.
+     */
+    public function testAServerTransportIsGuardedAsThePoolsOwnAre(): void
+    {
+        $guard = new OrphanGuard();
+        $buffers = new BufferManager();
+        $query = new LspQuery(new LspSessionPool('/p', new FixedActiveFile(), new Translator('en')), $buffers, new LineTextReader($buffers), new ProjectPaths('/p'), $guard);
+
+        $transport = $query->serverTransport(['command' => ['phpactor', 'language-server'], 'name' => 'phpactor'], '/p/root', 'phpactor (for Ana)');
+
+        $this->assertSame($guard, Probe::get($transport, 'guard'));
+        $this->assertSame(['phpactor', 'language-server'], Probe::get($transport, 'command'));
+        $this->assertSame('/p/root', Probe::get($transport, 'rootDir'));
+        $this->assertSame('phpactor (for Ana)', Probe::get($transport, 'peerName'));
     }
 }

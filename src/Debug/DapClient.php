@@ -6,6 +6,7 @@ namespace Porta\Debug;
 
 use Porta\Support\JsonRpcTransport;
 use Porta\Support\NonBlockingWriter;
+use Porta\Support\OrphanGuard;
 use Porta\Support\PendingRequests;
 use Revolt\EventLoop;
 
@@ -46,9 +47,10 @@ final class DapClient implements DapClientInterface
         ?callable $logger = null,
         int $maxWriteBuffer = NonBlockingWriter::DEFAULT_LIMIT,
         private readonly float $requestTimeout = self::REQUEST_TIMEOUT,
+        ?OrphanGuard $guard = null,
     ) {
         $this->pending = new PendingRequests();
-        $this->transport = new JsonRpcTransport($command, $rootDir, 'debug adapter', $logger, $maxWriteBuffer);
+        $this->transport = new JsonRpcTransport($command, $rootDir, 'debug adapter', $logger, $maxWriteBuffer, $guard);
     }
 
     #[\Override]

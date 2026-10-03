@@ -32,6 +32,25 @@ stat it did not need. Durations there are compared in whole **microseconds**
 mantissa and a duration built from two of them lands a hair either side of the
 threshold it is meant to sit on.
 
+**No child outlives the IDE.** A language server, a debug adapter, a run, a
+terminal's shell or a plugin's process is a child, and a child outlives its
+parent unless something ends it. The quit's teardown stops them, but it leans
+on loop timers that never fire once the loop has stopped, and a closed
+terminal, a crash or a kill skip it outright — a quit left a stubborn server
+running, and a day's restarts left eighteen, each at most of a core.
+`Support/OrphanGuard` is one `/bin/sh` watcher per IDE, reading from a pipe
+only the IDE writes: the pid of each `JsonRpcTransport` child (`watch()` on
+start, `forget()` once reaped, so a reused pid is never taken for one) — a
+plugin's too, through `CodeIntelligence::serverTransport()` — and —
+`guardGroup()`, from `Ide::run()` on a real terminal — the IDE's own process
+group, when the IDE leads it as a shell's job does, which every other child
+joins unless it leaves on purpose. When the IDE ends, however it ends, the
+kernel closes the pipe; the watcher gives what is listed a second, then
+terminates it, then kills it, the group last. It ignores the hang-up,
+interrupt and terminate a closed terminal sends the whole group. The
+teardown's own stops run in a nested `finally`, so a write to a terminal that
+is gone cannot skip them.
+
 ## Rendering
 
 Widgets render to `string[]` measured in **display columns**

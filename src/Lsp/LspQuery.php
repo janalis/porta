@@ -7,6 +7,8 @@ namespace Porta\Lsp;
 use Porta\Container\AsIdeService;
 use Porta\Editor\BufferManager;
 use Porta\Editor\LineTextReader;
+use Porta\Support\JsonRpcTransport;
+use Porta\Support\OrphanGuard;
 use Porta\Support\ProjectPaths;
 
 /**
@@ -42,7 +44,20 @@ final class LspQuery
         private readonly BufferManager $buffers,
         private readonly LineTextReader $lines,
         private readonly ProjectPaths $paths,
+        private readonly ?OrphanGuard $orphans = null,
     ) {}
+
+    /**
+     * A transport that runs $server — one of {@see primaryServers()} — in
+     * $rootDir, guarded as the pool's own are: it ends with the IDE however
+     * the IDE ends. Not started.
+     *
+     * @param array{command: list<string>, ...} $server
+     */
+    public function serverTransport(array $server, string $rootDir, string $peerName): JsonRpcTransport
+    {
+        return new JsonRpcTransport($server['command'], $rootDir, $peerName, guard: $this->orphans);
+    }
 
     /** @param \Closure(list<array{path: string, line: int, column: int, text: string}>, ?string): void $onDone */
     /**

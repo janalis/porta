@@ -6,6 +6,7 @@ namespace Porta\Lsp;
 
 use Porta\Editor\Document;
 use Porta\Editor\TextDiff;
+use Porta\Support\OrphanGuard;
 use Porta\Support\Outcome;
 use Porta\Support\ProjectPaths;
 use Revolt\EventLoop;
@@ -60,6 +61,7 @@ final class LspSession
     public function __construct(
         private readonly string $rootDir,
         ?\Closure $clientFactory = null,
+        ?OrphanGuard $guard = null,
     ) {
         $this->clientFactory = $clientFactory ?? /**
          * @param list<string>              $command
@@ -70,6 +72,7 @@ final class LspSession
             $rootDir,
             $onLog,
             initializationOptions: $initializationOptions,
+            guard: $guard,
         );
     }
 
