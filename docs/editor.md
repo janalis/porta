@@ -832,6 +832,14 @@ triple-click a line, `Shift+Click` extends), wheel to scroll, click the
 gutter to toggle a breakpoint, drag pane separators to resize, and
 right-click for a context menu of common actions.
 
+On a terminal 30 rows or taller, the blank line between two rows of the file
+tree, the settings list or the side tabs is split between them: the pointer in
+its upper half is on the row above, in its lower half on the row below — and
+the half of a tab drawn into the line over the tab strip is that tab's. This
+needs a terminal that reports the mouse in pixels (Ghostty, kitty, WezTerm,
+foot and others); Porta asks, and elsewhere the blank line stays nobody's.
+`PORTA_PIXEL_MOUSE=off` keeps whole rows.
+
 ## Tooltips
 
 Rest the pointer on something whose meaning is a glyph, an abbreviation or a

@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Workbench;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Input\PixelPointer;
 use Porta\Workbench\TerminalStateRefresher;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\Tui\Event\InputEvent;
 use Symfony\Component\Tui\Terminal\TerminalInterface;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
@@ -74,7 +76,9 @@ final class TerminalStateRefresherTest extends TestCase
                 return $this->dispatcher;
             }
         };
-        $refresher = new TerminalStateRefresher(new Tui(terminal: $terminal), every: 3);
+        $tui = new Tui(terminal: $terminal);
+        $pointer = new PixelPointer($tui);
+        $refresher = new TerminalStateRefresher($tui, $pointer, every: 3);
 
         $refresher->tick();
         $refresher->tick();
@@ -89,12 +93,23 @@ final class TerminalStateRefresherTest extends TestCase
         $this->assertCount(2, $writes, 'and again on the 6th');
         $this->assertStringContainsString("\x1b[?2026l", TerminalStateRefresher::REASSERT, 'synchronized output unlatched');
         $this->assertStringContainsString("\x1b[?1003h", TerminalStateRefresher::REASSERT, 'mouse motion mode re-enabled');
+
+        // Once pixel reports are on, the re-assert ends with them: its
+        // `?1006h` alone would turn them back into cell reports.
+        $pointer->onInput(new InputEvent("\x1b[?1016;2\$y"));
+        $pointer->onInput(new InputEvent("\x1b[6;20;10t"));
+        $writes = [];
+        $refresher->tick();
+        $refresher->tick();
+        $refresher->tick();
+        $this->assertSame([TerminalStateRefresher::REASSERT.PixelPointer::ON], \array_slice($writes, -1), 'pixel reports re-asserted after the cell encoding');
     }
 
     public function testAVirtualTerminalIsNeverWrittenTo(): void
     {
         $terminal = new VirtualTerminal(columns: 80, rows: 24);
-        $refresher = new TerminalStateRefresher(new Tui(terminal: $terminal), every: 2);
+        $tui = new Tui(terminal: $terminal);
+        $refresher = new TerminalStateRefresher($tui, new PixelPointer($tui), every: 2);
 
         $refresher->tick();
         $refresher->tick();

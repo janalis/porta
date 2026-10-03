@@ -34,6 +34,7 @@ use Porta\History\SessionRestorer;
 use Porta\I18n\Translator;
 use Porta\Input\DragDropProtocol;
 use Porta\Input\InputDispatcher;
+use Porta\Input\PixelPointer;
 use Porta\Layout\LayoutController;
 use Porta\Layout\PaneLayout;
 use Porta\Layout\WorkspaceLayout;
@@ -324,6 +325,11 @@ final class Ide
         // replies arrive as input, and must not count as, or act as, keys.
         $this->graphics = $this->service(TerminalGraphics::class);
         $this->tui->addListener($this->graphics->onInput(...), priority: 2000);
+        // Ahead of the graphics probe: it reads the cell size from the reply
+        // the graphics probe swallows, and swallows its own mode report.
+        $pointer = $this->service(PixelPointer::class);
+        $this->tui->addListener($pointer->onInput(...), priority: 2100);
+        $this->bidiTui->onBeforeFrame($pointer->beforeFrame(...));
         // kitty's drag-and-drop exchange arrives as input too, an OSC apiece.
         $this->tui->addListener($this->service(DragDropProtocol::class)->onInput(...), priority: 2000);
         // Last: hand the plugin handlers their live runtime seam and flash the
@@ -456,6 +462,7 @@ final class Ide
         $graphicsProbe = EventLoop::defer(function (): void {
             $this->graphics->probe(\getenv());
             $this->service(PixelRatio::class)->probe(\getenv());
+            $this->service(PixelPointer::class)->probe(\getenv());
         });
 
         // Loop-stall detector: evidence for "the app froze" reports lands in

@@ -46,6 +46,7 @@ final readonly class InputDispatcher
         private Translator $translator,
         private TooltipCenter $tooltips,
         private PasteDrop $pasteDrop,
+        private HalfRows $halfRows,
         private ?ViewCommandGate $gate = null,
         private ?EventDispatcherInterface $events = null,
     ) {}
@@ -56,6 +57,8 @@ final readonly class InputDispatcher
 
         if (null !== ($mouse = MouseEvent::parse($data))) {
             $event->stopPropagation();
+            // In cells, on the row of the item a half row belongs to.
+            $mouse = $this->halfRows->resolve($mouse);
             // A press, a release or a wheel is the user acting, not reading:
             // the card goes. A bare move is the hover path's to judge.
             if (!$mouse->isMove()) {

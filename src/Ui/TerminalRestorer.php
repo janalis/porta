@@ -19,11 +19,11 @@ use Symfony\Component\Tui\Terminal\TerminalInterface;
 final class TerminalRestorer
 {
     /**
-     * Mouse reporting off (1000/1003/1006), kitty's drag-and-drop opt-out
+     * Mouse reporting off (1016/1000/1003/1006), kitty's drag-and-drop opt-out
      * (OSC 72 `t=A`, {@see DragDropProtocol}), then leave the
      * alternate screen.
      */
-    public const string RESTORE = "\x1b[?1000l\x1b[?1003l\x1b[?1006l".DragDropProtocol::OPT_OUT."\x1b[?1049l";
+    public const string RESTORE = "\x1b[?1016l\x1b[?1000l\x1b[?1003l\x1b[?1006l".DragDropProtocol::OPT_OUT."\x1b[?1049l";
 
     private ?TerminalInterface $terminal = null;
 

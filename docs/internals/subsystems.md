@@ -411,6 +411,28 @@ class docblock documents it.
 Hit-testing uses the renderer's per-widget rects via `Input/HitTester`, whose
 `contains()` is the shared pointer-in-rect predicate.
 
+**Half rows.** On a roomy screen a list's blank gap holds the halves of the
+rows beside it, and a workspace rule the outer half of a tab strip's or the
+settings nav's edge row (`RowBleed`, `RuleHalves`), so a pointer there is over
+whichever item that half is drawn for. `Input/PixelPointer` asks the terminal
+for pixel reports — DECRQM for mode 1016 and `CSI 16 t` for the cell size,
+deferred with the graphics probe, its listener at priority 2100 so it reads the
+size reply the graphics probe swallows — and turns the mode on only once both
+have answered: a terminal that ignored it would go on sending cells, read as
+pixels. A new terminal size asks for the cell size again (a font zoom changes
+both). Modes 1006 and 1016 are one setting in the terminal, the encoding: the
+`TerminalStateRefresher`'s blind `?1006h` turned pixel reports back into cells,
+read as pixels, and every click after it landed on the menu bar — so its
+re-assert ends with `PixelPointer::reassert()`, and anything else that
+re-enables the mouse modes has to as well. `InputDispatcher` then hands every report to `Input/HalfRows`, which
+converts it to cells and, where the half lies in a gap or beside an edge row,
+moves the event's row to the item's — before `route()`, so no router or widget
+changed. Cell reports, a compact screen and `PORTA_PIXEL_MOUSE=off` keep whole
+rows: a gap is then no item. Only the open view's widgets count; a closed one
+keeps its last rect, over whatever is drawn now. And nothing moves under a
+floating surface other than the open view's window — a menu over the tree's
+gaps lost every item on one to the row beside it.
+
 Satellites carry the parts that need no drag state: `WheelRouter` (all wheel
 routing), `ContextMenuRouter` (all right-click routing), `HoverRouter`,
 `ClickCounter`, `ZoomGesture`, `ModalWindowRouter`. The per-view ones live with

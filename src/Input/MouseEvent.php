@@ -30,6 +30,10 @@ final readonly class MouseEvent
         public bool $shift, // Shift held (SGR modifier bit 4)
         public bool $alt, // Alt/Option held (SGR modifier bit 8)
         public bool $ctrl, // Ctrl held (SGR modifier bit 16)
+        // Which half of its cell the pointer is in — true the lower, false the
+        // upper — when the terminal reports pixels ({@see PixelPointer}); null
+        // when it reports cells and cannot say.
+        public ?bool $lowerHalf = null,
     ) {}
 
     /**
@@ -72,6 +76,29 @@ final readonly class MouseEvent
     public function withColumn(int $col): self
     {
         return clone($this, ['col' => $col]);
+    }
+
+    /** A copy on a different screen row: a half row given to the item it belongs to. */
+    public function withRow(int $row): self
+    {
+        return clone($this, ['row' => $row]);
+    }
+
+    /**
+     * This event, parsed from a pixel report (SGR-Pixels, mode 1016), in the
+     * cells $width × $height pixels each it fell in — and which half of its
+     * cell it fell in.
+     */
+    public function inCells(int $width, int $height): self
+    {
+        $width = \max(1, $width);
+        $height = \max(1, $height);
+
+        return clone($this, [
+            'col' => \intdiv($this->col, $width),
+            'row' => \intdiv($this->row, $height),
+            'lowerHalf' => (2 * ($this->row % $height)) >= $height,
+        ]);
     }
 
     public function isLeftPress(): bool

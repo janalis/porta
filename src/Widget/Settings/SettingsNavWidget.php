@@ -458,6 +458,12 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
         }
     }
 
+    /** Whether widget row $relRow shows an entry, as last drawn — not a gap, an edge or past the end. */
+    public function hasEntryAt(int $relRow): bool
+    {
+        return \array_key_exists($relRow, $this->rowOwner);
+    }
+
     #[\Override]
     public function hoverRow(int $relRow): bool
     {

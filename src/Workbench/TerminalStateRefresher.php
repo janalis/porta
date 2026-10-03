@@ -5,13 +5,15 @@ declare(strict_types=1);
 namespace Porta\Workbench;
 
 use Porta\Container\AsIdeService;
+use Porta\Input\PixelPointer;
 use Symfony\Component\Tui\Tui;
 
 /**
  * Periodically re-asserts terminal state that external events can silently
  * break: a synchronized-output update (`?2026h`) latched open by an
  * interrupted frame write freezes the display, and an outside stop/resume or
- * terminal reset drops the SGR mouse modes. Both are idempotent to re-emit,
+ * terminal reset drops the SGR mouse modes — and pixel reports, when they
+ * are on ({@see PixelPointer::reassert()}). All are idempotent to re-emit,
  * so every ~30s the unlatch + mouse enables are written blind — invisible
  * when the state is healthy, self-healing when it is not. The alternate
  * screen (1049) is deliberately NOT re-entered: that would be disruptive.
@@ -25,6 +27,7 @@ final class TerminalStateRefresher
 
     public function __construct(
         private readonly Tui $tui,
+        private readonly PixelPointer $pointer,
         private readonly int $every = 30,
     ) {}
 
@@ -36,6 +39,7 @@ final class TerminalStateRefresher
         if (0 !== ($this->ticks % $this->every) || $terminal->isVirtual()) {
             return;
         }
-        $terminal->write(self::REASSERT);
+        // Pixel reports last: the `?1006h` before them would turn them off.
+        $terminal->write(self::REASSERT.$this->pointer->reassert());
     }
 }
