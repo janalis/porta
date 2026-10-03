@@ -28,6 +28,7 @@ use Porta\Tests\Support\TestBottomDock;
 use Porta\Tests\Support\TestDockTools;
 use Porta\Tests\Support\TestLspQuery;
 use Porta\Tests\Support\TestParticipants;
+use Porta\Tests\Support\TestProjectSwitcher;
 use Porta\Tests\Support\TestRuns;
 use Porta\Tests\Support\TestTui;
 use Porta\Tests\Support\TestWorkspaceEditor;
@@ -105,6 +106,7 @@ final class TodoScanTest extends TestCase
             TestRuns::create(),
             TestWorkspaceEditor::create(),
             TestParticipants::create(),
+            TestProjectSwitcher::create(),
         ));
 
         $api = new PluginApi('todo', $manager, $project->dir, $settings);

@@ -29,6 +29,7 @@ use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Dock\DockToolController;
 use Porta\Workbench\Menu\MenuFileContext;
 use Porta\Workbench\Notifier;
+use Porta\Workbench\ProjectSwitcher;
 use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\Tui\Tui;
 
@@ -67,5 +68,6 @@ final readonly class PluginRuntime
         public Runs $runs,
         public WorkspaceEditor $workspaceEditor,
         public Participants $participants,
+        public ProjectSwitcher $projects,
     ) {}
 }

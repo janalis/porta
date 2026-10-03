@@ -26,4 +26,24 @@ final class PortaHome
 
         return \is_string($base) && '' !== $base ? $base : null;
     }
+
+    /** `~` is what a person types and what the hints show; nothing else expands it. */
+    public static function expand(string $path): string
+    {
+        $home = self::base();
+        // `~` and `~/…` only: `~bob` is bob's home, which this is not.
+        if (null === $home || '~' !== $path && !\str_starts_with($path, '~/')) {
+            return $path;
+        }
+
+        return $home.\substr($path, offset: 1);
+    }
+
+    /** The inverse, for display: under home a path is shorter from `~`, and reads as a place. */
+    public static function tilde(string $path): string
+    {
+        $home = self::base();
+
+        return null !== $home && \str_starts_with($path, $home.'/') ? '~'.\substr($path, \strlen($home)) : $path;
+    }
 }

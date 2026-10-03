@@ -331,6 +331,7 @@ final class CatalogCoverageTest extends TestCase
         '/src/Editor/EditorStructural.php' => false, // the same, for the structure panel
         '/src/Run/RunConfigs.php' => false, // 'composer '.$name, 'make '.$target
         '/plugins/git/src/Command/GitCommands.php' => false, // stash subjects and branch names
+        '/plugins/git/src/Command/WorktreeCommands.php' => false, // worktree folder and branch names
         '/plugins/assist/plugin.php' => false, // 'localhost:'.$port, the host's shared servers
     ];
 

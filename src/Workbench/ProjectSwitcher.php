@@ -71,7 +71,7 @@ final readonly class ProjectSwitcher
             // what a person knows it by is the server it mirrors.
             $remote = ProjectLocation::forRoot($root)->remote;
             $items[] = null === $remote
-                ? ['label' => \basename($root), 'hint' => self::tilde($root), 'value' => $root]
+                ? ['label' => \basename($root), 'hint' => PortaHome::tilde($root), 'value' => $root]
                 : ['label' => $remote->name(), 'hint' => $remote->label(), 'value' => $root];
         }
         if ([] === $items) {
@@ -161,15 +161,19 @@ final readonly class ProjectSwitcher
      * Refuse here rather than at the far end. The reopen tears this session
      * down first, so a path that turns out not to be a directory would leave
      * the user with no IDE at all and a message they never saw.
+     *
+     * $repeat is the already-translated "do it again" clause the unsaved-
+     * changes refusal ends on. Only the caller knows what the user did: a
+     * plugin's worktree pick is not Ctrl+Shift+O. Null is this switcher's own.
      */
-    public function openPath(string $path): void
+    public function openPath(string $path, ?string $repeat = null): void
     {
         // A URL is a server's before anything looks at it here: is_dir() on
         // `ftp://…` is PHP's own FTP client, connecting — the IDE froze on it.
         // A bare `host:path` is checked here first, and a local directory
         // wins a name both could be.
         $url = \str_contains($path, '://');
-        $expanded = $url ? $path : self::expand($path);
+        $expanded = $url ? $path : PortaHome::expand($path);
         $real = $url ? false : \realpath($expanded);
         $root = false === $real ? $expanded : $real;
         $remote = !$url && \is_dir($root) ? null : RemoteSpec::parse($path);
@@ -197,7 +201,7 @@ final readonly class ProjectSwitcher
         // contents. So it needs the same confirm quitting has — and it belongs
         // HERE rather than beside the `stop()`, so nothing has begun tearing
         // down at the moment the user is told.
-        if (!$this->guard->confirmed('switch-project', $this->translator->trans('Ctrl+Shift+O again to switch project, Ctrl+S to save'))) {
+        if (!$this->guard->confirmed('switch-project', $repeat ?? $this->translator->trans('Ctrl+Shift+O again to switch project, Ctrl+S to save'))) {
             return;
         }
 
@@ -281,24 +285,5 @@ final readonly class ProjectSwitcher
             return;
         }
         $this->events->dispatch(new ProjectOpenRequested($this->rootDir));
-    }
-
-    /** `~` is what a person types and what the hints show; nothing else expands it here. */
-    private static function expand(string $path): string
-    {
-        $home = PortaHome::base();
-        if (null === $home || '~' !== ($path[0] ?? '')) {
-            return $path;
-        }
-
-        return $home.\substr($path, offset: 1);
-    }
-
-    /** The inverse, for display: a home-relative path is shorter and reads as a place. */
-    private static function tilde(string $path): string
-    {
-        $home = PortaHome::base();
-
-        return null !== $home && \str_starts_with($path, $home.'/') ? '~'.\substr($path, \strlen($home)) : $path;
     }
 }

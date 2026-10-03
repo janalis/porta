@@ -61,6 +61,7 @@ final class TestPluginRuntime
             TestRuns::create(),
             TestWorkspaceEditor::create(),
             TestParticipants::create(),
+            TestProjectSwitcher::create(),
         );
     }
 }

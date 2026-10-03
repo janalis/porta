@@ -148,7 +148,13 @@ integrations = ["symfony", "phpunit"]
 #                                sums the class. (Was 145 before git left
 #                                `src/`; 220 two rounds before that, 133 before
 #                                the graph viewer's click/drag-pan routing.)
-#   too-many-methods         87  Plugin/Api/PluginApi, 2026-10-01: participants()
+#   too-many-methods         88  Plugin/Api/PluginApi, 2026-10-03: openProject(),
+#                                so the git plugin can switch worktree — the
+#                                File › Open Project switch, guard and trust
+#                                included. No handle fits one verb, and an
+#                                emit()-able command event would open emit()
+#                                to commands; raised by decision, not drift.
+#                                87 before: participants()
 #                                hands out ONE handle (PluginParticipants:
 #                                set, outOfTouch, yourName) instead of three
 #                                methods — the openBuffers() shape. 86 before:
@@ -222,7 +228,10 @@ integrations = ["symfony", "phpunit"]
 #                                Agent5–8, 2026-10-01: a shared session takes
 #                                eight guests, each a colour of its own; a
 #                                ninth shares the first's)
-#   excessive-parameter-list 25  Plugin/Runtime/PluginRuntime, 2026-10-01: the
+#   excessive-parameter-list 26  Plugin/Runtime/PluginRuntime, 2026-10-03: the
+#                                ProjectSwitcher openProject() reaches, the
+#                                same decision as too-many-methods above.
+#                                25 before, 2026-10-01: the
 #                                participant roster is the one live seam a
 #                                plugin's people need, and it carries the
 #                                user's own name too, so it is +1 and not +2.
@@ -326,10 +335,10 @@ integrations = ["symfony", "phpunit"]
 # properties into Ui/Notifier trips too-many-properties and lint exits 1.
 [linter.rules]
 cyclomatic-complexity = { threshold = 145 }
-too-many-methods = { threshold = 87 }
+too-many-methods = { threshold = 88 }
 too-many-properties = { threshold = 31 }
 too-many-enum-cases = { threshold = 69 }
-excessive-parameter-list = { threshold = 25 }
+excessive-parameter-list = { threshold = 26 }
 kan-defect = { threshold = 8 }
 halstead = { effort-threshold = 19275, difficulty-threshold = 30, volume-threshold = 3236 }
 

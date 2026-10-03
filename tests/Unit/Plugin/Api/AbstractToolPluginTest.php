@@ -29,6 +29,7 @@ use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestDockTools;
 use Porta\Tests\Support\TestLspQuery;
 use Porta\Tests\Support\TestParticipants;
+use Porta\Tests\Support\TestProjectSwitcher;
 use Porta\Tests\Support\TestRuns;
 use Porta\Tests\Support\TestTui;
 use Porta\Tests\Support\TestWorkspaceEditor;
@@ -186,6 +187,7 @@ final class AbstractToolPluginTest extends TestCase
             TestRuns::create(),
             TestWorkspaceEditor::create(),
             TestParticipants::create(),
+            TestProjectSwitcher::create(),
         ));
 
         return new PluginApi($pluginName, $manager, $this->project->dir, $settings);

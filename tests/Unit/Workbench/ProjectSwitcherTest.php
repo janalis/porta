@@ -341,6 +341,39 @@ final class ProjectSwitcherTest extends TestCase
     }
 
     /**
+     * What the refusal tells the user to repeat is the CALLER's: a plugin's
+     * worktree pick is not Ctrl+Shift+O, and saying so would send them to a
+     * key that does something else.
+     */
+    public function testTheRefusalNamesWhatTheCallerSaysToRepeat(): void
+    {
+        $other = new TempProject(['composer.json' => '{}']);
+        $switcher = $this->switcher();
+        $this->buffers->open($this->here->path('a.php'), "<?php\n")->document->insert('x');
+
+        $switcher->openPath($other->dir, 'Pick it again to switch worktree');
+
+        $this->assertSame([], $this->requested);
+        $this->assertStringContainsString('Pick it again to switch worktree', $this->flashText($this->statusBar));
+        $this->assertStringNotContainsString('Ctrl+Shift+O', $this->flashText($this->statusBar));
+
+        $switcher->openPath($other->dir, 'Pick it again to switch worktree');
+
+        $this->assertSame([(string) \realpath($other->dir)], $this->requested, 'and repeating it goes through');
+    }
+
+    public function testWithNoClauseTheRefusalNamesItsOwnKey(): void
+    {
+        $other = new TempProject(['composer.json' => '{}']);
+        $switcher = $this->switcher();
+        $this->buffers->open($this->here->path('a.php'), "<?php\n")->document->insert('x');
+
+        $switcher->openPath($other->dir);
+
+        $this->assertStringContainsString('Ctrl+Shift+O again to switch project', $this->flashText($this->statusBar));
+    }
+
+    /**
      * And the confirm is per-VERB: a press that warned about QUITTING must not
      * arm a project switch. Two verbs sharing one window would make the second
      * press confirm something the first was never asked about.

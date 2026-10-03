@@ -1452,6 +1452,20 @@ final class PluginApi
     }
 
     /**
+     * Reopen the IDE on the project at $path — a git worktree, say. It is
+     * the File › Open Project switch: a refused path flashes and nothing
+     * happens, unsaved buffers hold it for a repeat, and an untrusted project
+     * is asked about. Then this session ends and the new one boots.
+     *
+     * $repeat is the clause the unsaved-changes refusal ends on, already
+     * translated: what the user does again to go through with it.
+     */
+    public function openProject(string $path, string $repeat): void
+    {
+        $this->manager->runtime()->projects->openPath($path, $repeat);
+    }
+
+    /**
      * Move the caret (0-based line, UTF-16 column) in the active file and
      * scroll it into view — or, given $top, scroll so the editor shows that
      * line first: where someone else is looking, say. The view snaps back to

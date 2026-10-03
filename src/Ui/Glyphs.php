@@ -205,6 +205,7 @@ final class Glyphs
 
     // Git.
     public const string BRANCH_CURRENT = '✓';
+    public const string WORKTREE = '❐'; // the status bar's branch cell, in a linked worktree
     public const string VCS_ADDED = '▎';
     public const string VCS_MODIFIED = '┆';
     public const string VCS_DELETED = '▁';

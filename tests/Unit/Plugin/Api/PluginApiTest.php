@@ -23,6 +23,7 @@ use Porta\Event\BufferSaved;
 use Porta\Event\BufferSaveRequested;
 use Porta\Event\ChangeProposed;
 use Porta\Event\GitRemoteCompleted;
+use Porta\Event\ProjectOpenRequested;
 use Porta\Event\ThemeChanged;
 use Porta\Event\WorkingTreeChanged;
 use Porta\Highlight\DarkTerminalTheme;
@@ -54,6 +55,7 @@ use Porta\Tests\Support\TestBottomDock;
 use Porta\Tests\Support\TestDockTools;
 use Porta\Tests\Support\TestLspQuery;
 use Porta\Tests\Support\TestParticipants;
+use Porta\Tests\Support\TestProjectSwitcher;
 use Porta\Tests\Support\TestRunController;
 use Porta\Tests\Support\TestRuns;
 use Porta\Tests\Support\TestTui;
@@ -150,8 +152,12 @@ final class PluginApiTest extends TestCase
                     TestRuns::create($this->runs = TestRunController::create(tui: $tui)),
                     TestWorkspaceEditor::create($this->buffers, \sys_get_temp_dir()),
                     TestParticipants::create(),
+                    TestProjectSwitcher::create($projectEvents = new EventDispatcher(), buffers: $this->buffers),
                 ),
             );
+            $projectEvents->addListener(ProjectOpenRequested::class, function (ProjectOpenRequested $e): void {
+                $this->reopened[] = $e->rootDir;
+            });
         }
 
         return new PluginApi('demo', $manager, '/p', new PluginSettings('/p', [], null, self::projectScope('/p')));
@@ -442,6 +448,7 @@ final class PluginApiTest extends TestCase
             $api->caretPosition(...),
             static fn () => $api->insertAtCaret('x'),
             static fn () => $api->openFile('/x'),
+            static fn () => $api->openProject('/x', 'again'),
             static fn () => $api->jumpTo(0),
             static fn () => $api->setDiagnostics('/x', []),
             static fn () => $api->setLineAnnotations([]),
@@ -506,6 +513,7 @@ final class PluginApiTest extends TestCase
                 runs: TestRuns::create(),
                 workspaceEditor: TestWorkspaceEditor::create(),
                 participants: TestParticipants::create(),
+                projects: TestProjectSwitcher::create(),
             ),
         );
         $api = new PluginApi('demo', $manager, $project->dir, $settings);
@@ -561,6 +569,24 @@ final class PluginApiTest extends TestCase
 
         $api->openFile('/p/b.php');
         $this->assertSame([['path' => '/p/b.php', 'focus' => true]], $this->files->opened);
+    }
+
+    /** @var list<string> the roots a switch asked the IDE to reopen on */
+    private array $reopened = [];
+
+    public function testOpenProjectIsTheProjectSwitchGuardAndAll(): void
+    {
+        $api = $this->api();
+        $other = new TempProject(['composer.json' => '{}']);
+        $this->buffers->open('/p/a.php', "<?php\n")->document->insert('x');
+
+        $api->openProject($other->dir, 'Pick it again');
+
+        $this->assertSame([], $this->reopened, 'an unsaved buffer holds it, as it holds File › Open Project');
+
+        $api->openProject($other->dir, 'Pick it again');
+
+        $this->assertSame([(string) \realpath($other->dir)], $this->reopened);
     }
 
     public function testRegisterToolBuffersAndValidates(): void
@@ -1106,6 +1132,7 @@ final class PluginApiTest extends TestCase
             TestRuns::create(),
             TestWorkspaceEditor::create(),
             TestParticipants::create(),
+            TestProjectSwitcher::create(),
         ));
         $api = new PluginApi('demo', $manager, '/p', new PluginSettings('/p', [], null, self::projectScope('/p')));
         $api->registerListTool('todo', 'TODO');
@@ -1156,6 +1183,7 @@ final class PluginApiTest extends TestCase
             TestRuns::create(),
             TestWorkspaceEditor::create(),
             TestParticipants::create(),
+            TestProjectSwitcher::create(),
         ));
         $api = new PluginApi('demo', $manager, $project->dir, new PluginSettings($project->dir, [], null, self::projectScope($project->dir)));
 
@@ -1295,6 +1323,7 @@ final class PluginApiTest extends TestCase
             TestRuns::create(),
             TestWorkspaceEditor::create(),
             TestParticipants::create(),
+            TestProjectSwitcher::create(),
         ));
 
         return new PluginApi('demo', $manager, '/p', new PluginSettings('/p', [], null, self::projectScope('/p')));
