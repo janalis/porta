@@ -34,6 +34,10 @@ final class OrphanGuard
      * one — until the pipe closes; then end whichever are still alive, the
      * group last of all, its own member included, since that is all that is
      * left to do.
+     *
+     * `kill -s TERM -- -<pgid>`, the POSIX spelling: Linux's /bin/sh is dash,
+     * whose kill reads `-TERM -- -<pgid>` as an illegal number and signals
+     * nothing — so the group outlived the IDE there, and only there.
      */
     private const string SCRIPT = <<<'SH'
         trap '' HUP INT TERM
@@ -49,11 +53,11 @@ final class OrphanGuard
         alive() { left=''; for pid in $pids; do kill -0 "$pid" 2>/dev/null && left="$left $pid"; done; pids=$left; [ -n "$pids" ]; }
         settle() { i=0; while [ "$i" -lt "$1" ] && alive; do sleep 0.1; i=$((i + 1)); done; }
         settle 10
-        [ -n "$group" ] && kill -TERM -- "-$group" 2>/dev/null
-        alive && kill -TERM $pids 2>/dev/null
+        [ -n "$group" ] && kill -s TERM -- "-$group" 2>/dev/null
+        alive && kill -s TERM $pids 2>/dev/null
         settle 20
-        alive && kill -KILL $pids 2>/dev/null
-        [ -n "$group" ] && kill -KILL -- "-$group" 2>/dev/null
+        alive && kill -s KILL $pids 2>/dev/null
+        [ -n "$group" ] && kill -s KILL -- "-$group" 2>/dev/null
         exit 0
         SH;
 
