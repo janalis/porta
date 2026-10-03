@@ -33,4 +33,19 @@ enum SelectionBar: string
             default => self::None,
         };
     }
+
+    /**
+     * A sidebar's bar — the file tree's and the settings nav's: the cursor
+     * wears none there, focused or not, its shade (and on a roomy screen the
+     * shade's halves in the gaps beside it) saying which entry is the current
+     * one. A row marked without being the cursor keeps its `│`.
+     */
+    public static function sidebar(bool $selected, bool $marked = false): self
+    {
+        return match (true) {
+            $selected => self::None,
+            $marked => self::Marked,
+            default => self::None,
+        };
+    }
 }

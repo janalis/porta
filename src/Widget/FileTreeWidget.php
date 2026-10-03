@@ -31,6 +31,7 @@ use Porta\Ui\TooltipProvider;
 use Porta\Widget\Render\HeaderRenderer;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
+use Porta\Widget\Render\RowBleed;
 use Porta\Widget\Render\Rule;
 use Porta\Widget\Render\SelectionBar;
 use Porta\Widget\Render\TreeRow;
@@ -48,6 +49,7 @@ use Symfony\Component\Clock\NativeClock;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
+use Symfony\Component\Tui\Style\Style;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 use Symfony\Component\Tui\Widget\FocusableInterface;
 use Symfony\Component\Tui\Widget\FocusableTrait;
@@ -829,6 +831,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
         $lines = [];
         $lines[] = HeaderRenderer::title(\basename($this->rootDir).'/', $width, $this->styles);
         $this->rowTips = [];
+        $shades = []; // each entry's style by line, for the roomy gaps to bleed
 
         for ($row = 1; $row < $rows; ++$row) {
             // On a roomy screen a rule runs under the header, and a blank gap
@@ -851,9 +854,9 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
             // and their meaning is the shape, not the colour.
             $marks = $this->marksFor($node);
             $marks .= $this->dropTrailing($node, $width - AnsiUtils::visibleWidth($marks));
-            // The first column is the selection bar: the cursor, focused or
-            // not, and a row marked without it are three different shapes.
-            $bar = SelectionBar::of($index === $this->list->selected(), $this->isFocused(), $this->selection->has($node->path));
+            // The first column marks a row picked without the cursor; the
+            // cursor itself is its shade, never a bar.
+            $bar = SelectionBar::sidebar($index === $this->list->selected(), $this->selection->has($node->path));
             $text = TreeRow::text($bar, $node->depth, $node->isDir ? $this->expanded[$node->path] ?? false : null, $node->name.($node->isDir ? '/' : ''));
             $room = \max(1, $width - AnsiUtils::visibleWidth($marks));
             $tip = $this->tipFor($node, AnsiUtils::visibleWidth($text) > $room);
@@ -863,20 +866,24 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
             $text = AnsiText::truncate($text, $room, pad: true).$marks;
 
             // Subtle hover background beneath the pointer keeps the dir/file foreground.
-            $lines[] = match (true) {
+            $style = match (true) {
                 // Above the cursor row: during a drag the pointer is what the
                 // eye follows, and the cursor is wherever the press left it.
-                $node->path === $this->dropTarget => $this->styles->of(Role::DropTargetRow)->apply($text),
-                $index === $this->list->selected() => $this->applyElement('selected', $text),
+                $node->path === $this->dropTarget => $this->styles->of(Role::DropTargetRow),
+                $index === $this->list->selected() => $this->resolveElement('selected'),
                 // A row selected but not under the cursor — the second file of
                 // a pair. The cursor keeps its own style above; without this
                 // the selection is invisible and the pair is a guess.
-                $this->selection->has($node->path) => $this->styles->of(Role::SelectedRowUnfocused)->apply($text),
-                $index === $this->hoveredIndex => ($node->isDir ? $this->styles->merge(Role::RowHighlightBg, Role::TabAccent) : $this->styles->of(Role::RowHighlightBg))->apply($text),
-                $node->isDir => $this->styles->of(Role::TabAccent)->apply($text),
-                default => $text,
+                $this->selection->has($node->path) => $this->styles->of(Role::SelectedRowUnfocused),
+                $index === $this->hoveredIndex => $node->isDir ? $this->styles->merge(Role::RowHighlightBg, Role::TabAccent) : $this->styles->of(Role::RowHighlightBg),
+                $node->isDir => $this->styles->of(Role::TabAccent),
+                default => new Style(), // a no-op apply: the row as built
             };
+            $shades[$row] = $style;
+            $lines[] = $style->apply($text);
         }
+        // Roomy, a shaded entry reaches halfway into the blank line on each side.
+        $lines = $ruled ? RowBleed::around($lines, $shades, $width) : $lines;
 
         // Composite against the tree's own line width ($width), not the context
         // width: the tree's rows are exactly $width wide, and a measuring layout

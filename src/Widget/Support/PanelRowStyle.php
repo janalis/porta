@@ -49,20 +49,28 @@ trait PanelRowStyle
      */
     private function shadeRow(string $text, bool $selected, bool $hovered): string
     {
+        $shade = $this->rowShade($selected, $hovered);
+
         return match (true) {
-            $selected => self::withForeground($this->resolveElement('selected'), $text),
-            $hovered => $this->styles->of(Role::RowHighlightBg)->apply($text),
-            default => $text,
+            null === $shade => $text,
+            $selected => self::withForeground($shade, $text),
+            default => $shade->apply($text),
         };
     }
 
     /** The row's resolved Style, for panels that build spans; the resting shade is the toolbar's. */
     private function rowStyle(bool $selected, bool $hovered): Style
     {
+        return $this->rowShade($selected, $hovered) ?? $this->styles->of(Role::Toolbar);
+    }
+
+    /** The selection rule, else the hover tint, else null: a row at rest wears nothing. */
+    private function rowShade(bool $selected, bool $hovered): ?Style
+    {
         return match (true) {
             $selected => $this->resolveElement('selected'),
             $hovered => $this->styles->of(Role::RowHighlightBg),
-            default => $this->styles->of(Role::Toolbar),
+            default => null,
         };
     }
 

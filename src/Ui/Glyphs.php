@@ -360,6 +360,14 @@ final class Glyphs
     public const string TAB_FOOT_DOWN_LEFT = '┒';
     public const string TAB_FOOT_DOWN_RIGHT = '┎';
 
+    // A shaded list row's shade reaching halfway into the roomy gap beside it
+    // (Widget/Render/RowBleed): the half block wears the row's background as
+    // its foreground. The full block is a gap both halves of which are the
+    // terminal's foreground — two reversed rows in the monochrome theme.
+    public const string HALF_UPPER = '▀';
+    public const string HALF_LOWER = '▄';
+    public const string HALF_BOTH = '█';
+
     // The status bar: ` │ ` between the left's cells, `▾` after a cell that
     // opens a menu (the select's own arrow), and `◦` leading a flash so a
     // message never reads as the file path it replaced.

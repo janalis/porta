@@ -21,6 +21,7 @@ use Porta\Widget\PaneNavigationCallbacks;
 use Porta\Widget\Render\EdgeIndicator;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
+use Porta\Widget\Render\RowBleed;
 use Porta\Widget\Render\SelectionBar;
 use Porta\Widget\Render\TreeRow;
 use Porta\Widget\Support\ArrowScrollTrait;
@@ -563,6 +564,7 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
         }
         $position = $scroll;
         $top = \count($lines);
+        $shades = []; // each row's style by line, for the roomy gaps to bleed
         while ((\count($lines) - $top) < $budget && $position < $count) {
             if ($ruled && $position > $scroll) {
                 $lines[] = AnsiText::blank($width); // a transparent gap, not a line
@@ -571,6 +573,7 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
                 }
             }
             $this->rowOwner[\count($lines)] = $position;
+            $shades[\count($lines)] = $this->rowShade($position === $this->list->selected(), $position === $this->hoveredIndex);
             $lines[] = $this->row($position, $width);
             ++$position;
         }
@@ -583,19 +586,21 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
                 : AnsiText::blank($width);
         }
 
-        return $this->memoLines = $lines;
+        // Roomy, a shaded row reaches halfway into the blank line on each
+        // side; the ▲/▼ rows are edges, not gaps, and keep their glyphs.
+        return $this->memoLines = $ruled ? RowBleed::around($lines, $shades, $width) : $lines;
     }
 
     /**
      * Visible row $position, shaded as the tree shades its rows: a folder
      * in the accent, the hover tint under the pointer, the selection over
-     * both. Focus in the form leaves the quarter bar on the page it shows.
+     * both. The selection is its shade alone, no bar, focused or not.
      */
     private function row(int $position, int $width): string
     {
         $entry = $this->entries[$this->visible[$position]];
         $selected = $position === $this->list->selected();
-        $text = AnsiText::truncate($this->rowText($entry, SelectionBar::of($selected, $this->isFocused())), $width, pad: true);
+        $text = AnsiText::truncate($this->rowText($entry, SelectionBar::sidebar($selected)), $width, pad: true);
         if (NavEntryKind::Folder === $entry['kind'] && !$selected) {
             $text = $this->styles->of(Role::TabAccent)->apply($text);
         }

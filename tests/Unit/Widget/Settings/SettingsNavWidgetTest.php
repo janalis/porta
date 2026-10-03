@@ -12,10 +12,13 @@ use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RendersWidget;
 use Porta\Ui\Glyphs;
 use Porta\Ui\ScreenDensity;
+use Porta\Ui\Theme\MonochromeTheme;
+use Porta\Ui\Theme\Styles;
 use Porta\Widget\Settings\SettingsNavWidget;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
+use Symfony\Component\Tui\Style\Style;
 
 final class SettingsNavWidgetTest extends TestCase
 {
@@ -71,7 +74,7 @@ final class SettingsNavWidgetTest extends TestCase
     {
         $screen = $this->plain($this->widget()->render(new RenderContext(24, 20)));
 
-        $this->assertMatchesRegularExpression('/^▌  General\s*$/mu', $screen, 'a page sits where a folder\'s name does, past the blank its triangle would take');
+        $this->assertMatchesRegularExpression('/^   General\s*$/mu', $screen, 'a page sits where a folder\'s name does, past the blank its triangle would take');
         $this->assertStringContainsString('Keybindings', $screen);
         $this->assertMatchesRegularExpression('/^ ▾ Plugins\s*$/mu', $screen, 'Plugins is a folder, the file tree\'s shape');
         $this->assertMatchesRegularExpression('/^ ▾ Languages\s*$/mu', $screen);
@@ -133,7 +136,7 @@ final class SettingsNavWidgetTest extends TestCase
         $widget->handleClick(6); // the Languages folder: selected, and closed
         $this->assertNull($widget->selectedId());
         $this->assertSame(['keybindings'], $selected, 'the folder is no page: it fires nothing');
-        $this->assertMatchesRegularExpression('/^▌▸ Languages\s*$/mu', $this->plain($widget->render(new RenderContext(24, 20))));
+        $this->assertMatchesRegularExpression('/^ ▸ Languages\s*$/mu', $this->plain($widget->render(new RenderContext(24, 20))));
 
         $widget->handleClick(7); // where PHP was: nothing is drawn there now
         $this->assertNull($widget->selectedId());
@@ -294,6 +297,22 @@ final class SettingsNavWidgetTest extends TestCase
     }
 
     /**
+     * The line the selection is drawn on, found by its shade: a sidebar's
+     * cursor wears no bar, so the focused selection's background is the one
+     * thing that says which row it is.
+     */
+    private function selectedLine(SettingsNavWidget $widget, int $width, int $rows): ?int
+    {
+        foreach ($widget->render(new RenderContext($width, $rows)) as $i => $line) {
+            if (\str_contains($line, "\x1b[48;5;31m")) {
+                return $i;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * A finite, complete menu of destinations that scrolls has to say so.
      *
      * Five sections, one row per installed plugin, then the language
@@ -310,7 +329,7 @@ final class SettingsNavWidgetTest extends TestCase
 
         $rows = $this->navRows($widget, 22, rows: 22);
 
-        $this->assertSame('▌  General', $rows[0], 'nothing is clipped above yet: no ▲ row, and no blank one standing in for it');
+        $this->assertSame('   General', $rows[0], 'nothing is clipped above yet: no ▲ row, and no blank one standing in for it');
         $this->assertStringContainsString(Glyphs::SCROLL_DOWN, \end($rows), 'and the bottom says there is more');
     }
 
@@ -329,7 +348,7 @@ final class SettingsNavWidgetTest extends TestCase
         $after = $this->navRows($widget, 22, rows: 22);
         $this->assertCount(1, $selected, 'the entry it revealed was selected, and fired');
         $this->assertStringContainsString(Glyphs::SCROLL_UP, $after[0], 'the window moved: the top is clipped now');
-        $this->assertStringStartsWith('▌', $after[20], 'and the revealed entry is the last one drawn');
+        $this->assertSame(20, $this->selectedLine($widget, 22, rows: 22), 'and the revealed entry is the last one drawn');
         $this->assertNotContains($after[20], $before, 'which was hidden before');
 
         $widget->handleClick(0); // ▲
@@ -366,7 +385,7 @@ final class SettingsNavWidgetTest extends TestCase
         $rows = $this->navRows($widget, 22, rows: $count);
 
         $this->assertStringNotContainsString(Glyphs::SCROLL_DOWN, \implode('', $rows));
-        $this->assertSame('▌  General', $rows[0]);
+        $this->assertSame('   General', $rows[0]);
         $this->assertSame(' '.$this->lastEntryLabel($widget), \rtrim((string) \end($rows)), 'and the last entry is drawn, not traded for a marker');
     }
 
@@ -385,7 +404,7 @@ final class SettingsNavWidgetTest extends TestCase
 
         $rows = $this->navRows($widget, 22, rows: 40);
 
-        $this->assertSame('▌  General', $rows[0], 'the first entry is on the first row');
+        $this->assertSame('   General', $rows[0], 'the first entry is on the first row');
         $this->assertStringNotContainsString(Glyphs::SCROLL_DOWN, \implode('', $rows));
         $this->assertStringNotContainsString(Glyphs::SCROLL_UP, \implode('', $rows));
     }
@@ -469,7 +488,7 @@ final class SettingsNavWidgetTest extends TestCase
         $widget = $this->widget();
         $widget->setPluginEntries(['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta']);
         $rows = $widget->render(new RenderContext(24, 6));
-        $this->assertSame('▌  General', \trim(AnsiUtils::stripAnsiCodes($rows[0])), 'at the top, the first line is the first entry: no ▲ slot yet');
+        $this->assertSame('General', \trim(AnsiUtils::stripAnsiCodes($rows[0])), 'at the top, the first line is the first entry: no ▲ slot yet');
 
         $widget->handleClick(1);
 
@@ -512,7 +531,7 @@ final class SettingsNavWidgetTest extends TestCase
 
         $rows = $this->navRows($widget, 24, rows: 6);
         $this->assertSame('plugins', $widget->selectedId(), 'the entry just past the window');
-        $this->assertStringStartsWith('▌', $rows[4], 'drawn: the window followed it');
+        $this->assertSame(4, $this->selectedLine($widget, 24, rows: 6), 'drawn: the window followed it');
         $this->assertStringContainsString('Plugins', $rows[4]);
     }
 
@@ -570,7 +589,11 @@ final class SettingsNavWidgetTest extends TestCase
 
         $rows = $this->navRows($widget, 20, rows: 60);
 
-        $this->assertSame(['▌  General', '', '   Interface', ''], \array_slice($rows, offset: 0, length: 4), 'a transparent gap between rows, not a drawn line');
+        $this->assertSame(
+            ['   General', \str_repeat('▀', times: 20), '   Interface', ''],
+            \array_slice($rows, offset: 0, length: 4),
+            'a transparent gap between rows, not a drawn line — but for the half of the selection under General',
+        );
         $this->assertSame('    Dotenv', \rtrim($rows[2 * (\count(Probe::get($widget, 'entries')) - 1)]), 'the last row');
         $this->assertSame('', $rows[(2 * \count(Probe::get($widget, 'entries'))) - 1], 'and nothing after it');
 
@@ -581,11 +604,60 @@ final class SettingsNavWidgetTest extends TestCase
         $this->assertSame(['interface'], $selected);
     }
 
+    /**
+     * Roomy, a shaded row reaches halfway into the gap on each side, so the
+     * selection and the hover read as shapes two lines tall: a half block in
+     * the row's background. Between the two, each keeps its own half.
+     */
+    public function testARoomyShadeReachesHalfwayIntoTheGapsBesideIt(): void
+    {
+        $widget = $this->navOnScreen(40);
+        $widget->render(new RenderContext(20, 60)); // the pointer finds what was drawn
+        $this->assertTrue($widget->hoverRow(2));
+
+        $lines = $widget->render(new RenderContext(20, 60));
+
+        $this->assertSame(new Style(color: 31, background: 236)->apply(\str_repeat('▀', times: 20)), $lines[1], 'the bottom half of the selection over the top half of the hover');
+        $this->assertSame(new Style(color: 236)->apply(\str_repeat('▀', times: 20)), $lines[3], 'the bottom half of the hover on a transparent gap');
+        $this->assertSame('', \trim(AnsiUtils::stripAnsiCodes($lines[5])), 'a gap between two rows at rest');
+        $this->assertStringNotContainsString(Glyphs::HALF_UPPER, AnsiUtils::stripAnsiCodes($lines[4]), 'the row itself is drawn as before');
+        $this->assertSame(20, AnsiUtils::visibleWidth($lines[4]), 'a row is the full width its halves are');
+    }
+
+    public function testACompactScreenHasNoGapToBleedInto(): void
+    {
+        $widget = $this->navOnScreen(24);
+        $widget->render(new RenderContext(20, 30));
+        $this->assertTrue($widget->hoverRow(1));
+
+        $drawn = \implode('', $this->navRows($widget, 20, rows: 30));
+
+        $this->assertStringNotContainsString(Glyphs::HALF_UPPER, $drawn);
+        $this->assertStringNotContainsString(Glyphs::HALF_LOWER, $drawn);
+    }
+
+    /** Monochrome: the reversed selection bleeds in the terminal's foreground, the underlined hover not at all. */
+    public function testMonochromeBleedsOnlyTheReversedSelection(): void
+    {
+        $density = new ScreenDensity();
+        $density->observe(40);
+        $widget = new SettingsNavWidget(new Translator('en'), styles: new Styles(MonochromeTheme::definition()), density: $density);
+        AttachedStyles::attach($widget, MonochromeTheme::definition());
+        $widget->setFocused(true);
+        $widget->render(new RenderContext(20, 60));
+        $this->assertTrue($widget->hoverRow(4));
+
+        $rows = $this->navRows($widget, 20, rows: 60);
+
+        $this->assertSame(\str_repeat('▀', times: 20), $rows[1], 'under the selection');
+        $this->assertSame(['', ''], [$rows[3], $rows[5]], 'an underline has no shade to reach with');
+    }
+
     public function testACompactScreenGivesTheRulesTheirRowsBack(): void
     {
         $widget = $this->navOnScreen(24);
 
-        $this->assertSame(['▌  General', '   Interface'], \array_slice($this->navRows($widget, 20, rows: 30), offset: 0, length: 2));
+        $this->assertSame(['   General', '   Interface'], \array_slice($this->navRows($widget, 20, rows: 30), offset: 0, length: 2));
     }
 
     /** Each row costs two lines with its rule, so the window counts rows, not lines. */
@@ -597,7 +669,7 @@ final class SettingsNavWidgetTest extends TestCase
         $rows = $this->navRows($widget, 20, rows: 12);
 
         $this->assertStringContainsString(Glyphs::SCROLL_UP, $rows[0]);
-        $this->assertContains('▌   Twig', $rows, 'the selection is drawn');
+        $this->assertSame('    Twig', $rows[(int) $this->selectedLine($widget, 20, rows: 12)], 'the selection is drawn');
         $this->assertCount(12, $rows);
         $this->assertStringContainsString(Glyphs::SCROLL_DOWN, \end($rows), 'Dotenv is still below');
     }
@@ -629,7 +701,7 @@ final class SettingsNavWidgetTest extends TestCase
 
         $widget->handleInput("\x1b[D"); // ← on the open folder: it closes
         $this->assertDoesNotMatchRegularExpression('/git/', $this->plain($widget->render(new RenderContext(24, 30))));
-        $this->assertMatchesRegularExpression('/^▌▸ Plugins\s*$/mu', $this->plain($widget->render(new RenderContext(24, 30))));
+        $this->assertMatchesRegularExpression('/^ ▸ Plugins\s*$/mu', $this->plain($widget->render(new RenderContext(24, 30))));
 
         $widget->handleInput("\x1b[C"); // → opens it
         $this->assertStringContainsString('git', $this->plain($widget->render(new RenderContext(24, 30))));
@@ -671,7 +743,7 @@ final class SettingsNavWidgetTest extends TestCase
         $widget->setActive('lang:css');
 
         $this->assertSame('lang:css', $widget->selectedId());
-        $this->assertContains('▌   CSS', $this->navRows($widget, 24, rows: 30));
+        $this->assertSame('    CSS', $this->navRows($widget, 24, rows: 30)[(int) $this->selectedLine($widget, 24, rows: 30)]);
     }
 
     public function testATrailNamesThePageAndWhereItLeads(): void
@@ -699,7 +771,7 @@ final class SettingsNavWidgetTest extends TestCase
 
         $this->assertStringContainsString("\x1b[38;5;110m", $rows[5], 'Plugins, at rest');
         $this->assertStringNotContainsString("\x1b[38;5;110m", $rows[1], 'a page does not');
-        $this->assertStringStartsWith('▎', AnsiUtils::stripAnsiCodes($rows[0]), 'the cursor of a nav without the keys');
+        $this->assertStringStartsWith('   General', AnsiUtils::stripAnsiCodes($rows[0]), 'the cursor of a nav without the keys wears no bar, only its shade');
 
         $widget->setActive('plugins');
         $this->assertStringNotContainsString("\x1b[38;5;110m", $widget->render(new RenderContext(24, 30))[5], 'selected, the selection shades it');
@@ -744,9 +816,12 @@ final class SettingsNavWidgetTest extends TestCase
 
         $rows = $this->navRows($widget, 20, rows: 12);
 
-        $this->assertSame('▌   Twig', $rows[9], 'the selection, the fifth row in the window');
+        $this->assertSame('    Twig', $rows[9], 'the selection, the fifth row in the window');
+        $this->assertSame(9, $this->selectedLine($widget, 20, rows: 12));
         $this->assertSame('    SCSS', $rows[1], 'the first');
-        $this->assertSame('', $rows[10], 'a transparent gap under it');
+        $this->assertSame(\str_repeat('▀', times: 20), $rows[10], 'the gap under it carries the bottom half of its shade');
+        $this->assertSame(\str_repeat('▄', times: 20), $rows[8], 'and the gap over it the top half');
+        $this->assertSame('', $rows[2], 'a gap between two rows at rest stays transparent');
         $this->assertStringContainsString(Glyphs::SCROLL_DOWN, $rows[11]);
     }
 }

@@ -257,8 +257,12 @@ content moves. The bar is a bare glyph that the row's shading paints: a colour
 of its own would reset the foreground the rest of the row needs. Shading still
 repeats the state, but the shape is the state, so the monochrome theme and
 `--no-ansi` read it (`NavigationReadabilityTest`). Panels using `PanelRowStyle`
-call `barred()` before shading; the tree, git's history (two sub-lists, one
-focus) and the vertical tab strip call `SelectionBar::of()` directly. The
+call `barred()` before shading; git's history (two sub-lists, one focus) and
+the vertical tab strip call `SelectionBar::of()` directly. The two sidebars,
+the tree and the settings nav, call `SelectionBar::sidebar()`: their cursor
+draws no bar, focused or not — its shade, and on a roomy screen the shade's
+halves, mark it — and only the tree's second pick keeps its `│`. Under
+`--no-ansi` a sidebar's cursor does not show. The
 settings form has none: column 0 is its modified marker, and its selection is
 the heavy control. The Welcome cards wear the full bar down every row of the
 selected card.
@@ -267,9 +271,14 @@ The settings nav is a tree in the file tree's shape: Plugins and Languages are
 folders, their rows drawn by `Widget/Render/TreeRow` (shared with the tree, so
 a folder looks and opens the same in both) and tinted `TabAccent`. On a roomy
 screen both leave a transparent gap — a blank line, not a drawn one — between
-every two rows; the file tree draws a `Rule` only under its project name. The
-gaps own no row, so a click or hover on one does nothing, and a window holds
-half the entries. Its `▲`/`▼` edges
+every two rows; the file tree draws a `Rule` only under its project name. A
+shaded row (selected, hovered, marked, a drop target) reaches halfway into the
+blank line on each side: `Widget/Render/RowBleed` draws `▄` above it and `▀`
+below in the row's background as a foreground, one `▀` of both colours between
+two shaded rows, and nothing where the theme shades without a background (the
+monochrome hover's underline). Only a blank line bleeds; a rule and the
+`▲`/`▼` rows keep their glyphs. The gaps own no row, so a click or hover
+on one does nothing, and a window holds half the entries. Its `▲`/`▼` edges
 (`EdgeIndicator`, shared with the vertical tab strip) are controls: a click
 selects the first entry hidden past that edge. The `▲` row is drawn only once
 something is above: at the top of the list its row is the first entry's, never

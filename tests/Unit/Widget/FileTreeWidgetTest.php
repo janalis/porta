@@ -27,6 +27,7 @@ use Symfony\Component\Clock\MockClock;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
+use Symfony\Component\Tui\Style\Style;
 
 final class FileTreeWidgetTest extends TestCase
 {
@@ -946,7 +947,7 @@ final class FileTreeWidgetTest extends TestCase
 
         $rows = $this->rows($tree->render(new RenderContext(12, 8)));
         $rule = \str_repeat('─', times: 12);
-        $this->assertSame([$rule, '▎  a.php', '', '   b.php', '', '', ''], \array_map(\rtrim(...), \array_slice($rows, offset: 1)), 'a rule under the name, a transparent gap between the two');
+        $this->assertSame([$rule, '   a.php', '', '   b.php', '', '', ''], \array_map(\rtrim(...), \array_slice($rows, offset: 1)), 'a rule under the name, a transparent gap between the two');
 
         $tree->beforeRender();
         $before = $tree->getRenderRevision();
@@ -954,10 +955,39 @@ final class FileTreeWidgetTest extends TestCase
         $tree->beforeRender();
         $this->assertGreaterThan($before, $tree->getRenderRevision(), 'the cached pane would keep its rules otherwise');
         $this->assertSame(
-            ['▎  a.php', '   b.php', '', '', '', '', ''],
+            ['   a.php', '   b.php', '', '', '', '', ''],
             \array_map(\rtrim(...), \array_slice($this->rows($tree->render(new RenderContext(12, 8))), offset: 1)),
             'dense: no rule anywhere, past the last entry either',
         );
+    }
+
+    /**
+     * Roomy, a shaded entry reaches halfway into the gap on each side — the
+     * settings nav's shape; the rule under the project name is a border, and
+     * keeps its line.
+     */
+    public function testARoomyShadeReachesIntoEveryGapBesideIt(): void
+    {
+        $project = new TempProject(['a.php' => '', 'b.php' => '', 'c.php' => '']);
+        $tree = new FileTreeWidget($project->dir, density: new ScreenDensity());
+        AttachedStyles::attach($tree);
+        $tree->setFocused(true);
+        $tree->render(new RenderContext(12, 9)); // the pointer finds what was drawn
+        $this->assertTrue($tree->hoverRow(6));
+
+        $lines = $tree->render(new RenderContext(12, 9));
+
+        $this->assertSame(\str_repeat('─', times: 12), AnsiUtils::stripAnsiCodes($lines[1]), 'the rule under the name: no half over the selected a.php');
+        $this->assertSame(\str_repeat('▀', times: 12), AnsiUtils::stripAnsiCodes($lines[3]), 'the bottom half of the selection');
+        $this->assertSame(new Style(color: 236)->apply(\str_repeat('▄', times: 12)), $lines[5], 'the top half of the hover over c.php');
+        $this->assertSame(new Style(color: 236)->apply(\str_repeat('▀', times: 12)), $lines[7], 'and its bottom half, past the last entry');
+        $this->assertSame('', \trim($lines[8]), 'a line touching no entry stays blank');
+
+        $tree->handleInput("\x1b[1;2B"); // Shift+↓: a.php marked, the cursor on b.php
+        $tree->clearHover();
+        $lines = $tree->render(new RenderContext(12, 9));
+        $this->assertStringContainsString("\x1b[48;5;237m", $lines[2], 'the marked a.php wears its shade');
+        $this->assertSame(new Style(color: 237, background: 31)->apply(\str_repeat('▀', times: 12)), $lines[3], 'and bleeds it, over the half of the cursor');
     }
 
     /** What is under the pointer is what is drawn there: a rule is no entry, an entry two rows down is the next one. */

@@ -38,4 +38,13 @@ final class SelectionBarTest extends TestCase
             $this->assertSame(1, \mb_strwidth($glyph), "{$glyph} is one column");
         }
     }
+
+    /** A sidebar's cursor wears no bar, focused or not; only a row marked without it does. */
+    public function testASidebarCursorWearsNoBar(): void
+    {
+        $this->assertSame(SelectionBar::None, SelectionBar::sidebar(true));
+        $this->assertSame(SelectionBar::None, SelectionBar::sidebar(true, marked: true), 'the cursor outranks its own mark');
+        $this->assertSame(SelectionBar::Marked, SelectionBar::sidebar(false, marked: true));
+        $this->assertSame(SelectionBar::None, SelectionBar::sidebar(false));
+    }
 }
