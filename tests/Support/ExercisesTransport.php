@@ -47,24 +47,41 @@ trait ExercisesTransport
     }
 
     /**
-     * Over a server holding `README.md` and `src/App.php`: a deep directory
-     * made at once, made again without complaint, a directory moved into one
-     * that does not exist yet, and directories with what they hold removed.
+     * Over a server holding `README.md` and `src/App.php`, every structural
+     * verb in turn — for a real server, met once. A fake one meets each verb
+     * in a test of its own: a fake server is a process per command, and one
+     * test running them all came near the ten-second limit on a loaded box.
      */
     private function assertTheStructuralVerbs(RemoteTransport $transport, TempProject $server): void
+    {
+        $this->assertDirectoriesAreMade($transport, $server);
+        $this->assertADirectoryIsMoved($transport, $server);
+        $this->assertDirectoriesAreRemovedWithWhatTheyHold($transport, $server);
+    }
+
+    /** A deep directory made at once, and made again without complaint. */
+    private function assertDirectoriesAreMade(RemoteTransport $transport, TempProject $server): void
     {
         Assert::assertNull($this->answer(static fn (\Closure $done) => $transport->mkdir('a/b/c', $done)));
         Assert::assertDirectoryExists($server->path('a/b/c'));
         Assert::assertNull($this->answer(static fn (\Closure $done) => $transport->mkdir('a/b', $done)), 'one already there is fine');
+    }
 
+    /** `src` moved into a directory that does not exist yet. */
+    private function assertADirectoryIsMoved(RemoteTransport $transport, TempProject $server): void
+    {
         Assert::assertNull($this->answer(static fn (\Closure $done) => $transport->rename('src', 'lib/src', $done)));
         Assert::assertFileExists($server->path('lib/src/App.php'));
+    }
 
-        Assert::assertNull($this->answer(static fn (\Closure $done) => $transport->remove('lib', true, $done)));
-        Assert::assertNull($this->answer(static fn (\Closure $done) => $transport->remove('a', true, $done)));
+    /** A directory removed with the directories and files it holds, and a file on its own. */
+    private function assertDirectoriesAreRemovedWithWhatTheyHold(RemoteTransport $transport, TempProject $server): void
+    {
+        $server->write('deep/er/x.txt', 'x');
+
+        Assert::assertNull($this->answer(static fn (\Closure $done) => $transport->remove('deep', true, $done)));
         Assert::assertNull($this->answer(static fn (\Closure $done) => $transport->remove('README.md', false, $done)));
-        Assert::assertDirectoryDoesNotExist($server->path('lib'));
-        Assert::assertDirectoryDoesNotExist($server->path('a'));
+        Assert::assertDirectoryDoesNotExist($server->path('deep'));
         Assert::assertFileDoesNotExist($server->path('README.md'));
     }
 }

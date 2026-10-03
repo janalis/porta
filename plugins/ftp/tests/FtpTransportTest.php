@@ -151,9 +151,19 @@ final class FtpTransportTest extends TestCase
         $this->assertIsString($this->answer(fn (\Closure $done) => $this->transport->put('file/under.txt', 'x', null, $done)));
     }
 
-    public function testDirectoriesAreMadeMovedAndRemovedWithWhatTheyHold(): void
+    public function testDirectoriesAreMade(): void
     {
-        $this->assertTheStructuralVerbs($this->transport, $this->server);
+        $this->assertDirectoriesAreMade($this->transport, $this->server);
+    }
+
+    public function testADirectoryIsMoved(): void
+    {
+        $this->assertADirectoryIsMoved($this->transport, $this->server);
+    }
+
+    public function testDirectoriesAreRemovedWithWhatTheyHold(): void
+    {
+        $this->assertDirectoriesAreRemovedWithWhatTheyHold($this->transport, $this->server);
     }
 
     public function testRemovalsThatFailSayWhy(): void
