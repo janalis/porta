@@ -31,6 +31,7 @@ use Porta\Workbench\Dock\DockTab;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
+use Symfony\Component\Tui\Style\Style;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 
 /**
@@ -73,7 +74,7 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverla
     /** The active index the strip window last followed, so a manual scroll survives parked frames. */
     private ?int $lastActive = null;
 
-    /** @var positive-int one row, or {@see TabStripRenderer::ROWS} for folder tabs */
+    /** @var positive-int one row, or {@see TabStripRenderer::EDGED_ROWS} on a roomy screen */
     private int $stripRows = 1;
 
     /** The panel focus the last render drew, so a focus change repaints the lid. */
@@ -127,7 +128,7 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverla
         }
     }
 
-    /** @param positive-int $rows the strip's height, from the terminal's ({@see TabStripRenderer::rowsFor()}) */
+    /** @param positive-int $rows the strip's height, from the terminal's ({@see TabStripRenderer::edgedRowsFor()}) */
     public function setStripRows(int $rows): void
     {
         if ($rows !== $this->stripRows) {
@@ -378,54 +379,56 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverla
             ];
         }
         $used = $strip['used'];
-        $folder = $this->stripRows > 1;
+        $roomy = $this->stripRows > 1;
 
         // The strip's top row doubles as the dock's height grab: under the
         // pointer its empty tail heavy-rules so the drag-to-resize reads. At
-        // rest a folder strip's grab is a rule, the dock's top edge; a compact
+        // rest a roomy strip's grab is a rule, the dock's top edge; a compact
         // strip's is blank. Every fill is one column, so no width moves.
         $fill = match (true) {
             $this->grabHovered => Glyphs::PANEL_RESIZE_GRAB,
-            $folder => Glyphs::FRAME_HORIZONTAL,
+            $roomy => Glyphs::FRAME_HORIZONTAL,
             default => ' ',
         };
         $room = \max(0, $columns - $used);
-        $grab = $this->styles->of($folder && !$this->grabHovered ? Role::Rule : Role::Toolbar)->apply(\str_repeat($fill, $room));
+        $grab = $this->styles->of($roomy && !$this->grabHovered ? Role::Rule : Role::Toolbar)->apply(\str_repeat($fill, $room));
 
-        // The active tool's status sits right-aligned on the tail: on a folder
+        // The active tool's status sits right-aligned on the tail: on a roomy
         // strip, level with the labels — between the grab above it and the
         // baseline below, which the tabs stand on. A compact strip's one row
         // is its grab until a status takes it.
         $whole = $status;
-        $status = '' === $status ? '' : $this->statusTail($status, $room, $folder ? ' ' : $fill);
+        $status = '' === $status ? '' : $this->statusTail($status, $room, $roomy ? ' ' : $fill, $roomy ? $this->styles->of(Role::Dim) : $this->styles->merge(Role::Toolbar, Role::Dim));
         // The status is cut from its tail — the key reminders — first, so the
         // whole of it is the tooltip where it lies; then the grab, where the
         // top row's tail is still bare.
         if ('' !== $whole && !\str_contains(AnsiUtils::stripAnsiCodes($status), $whole)) {
-            $this->tips[] = ['row' => $folder ? 1 : 0, 'rows' => 1, 'from' => $used, 'to' => $columns, 'key' => 'status', 'text' => $whole];
+            $this->tips[] = ['row' => $roomy ? 1 : 0, 'rows' => 1, 'from' => $used, 'to' => $columns, 'key' => 'status', 'text' => $whole];
         }
         $this->tips[] = ['row' => 0, 'rows' => 1, 'from' => $used, 'to' => $columns, 'key' => 'grab', 'text' => $this->translator->trans('Drag to resize the panel')];
+        $base = $roomy ? new Style() : $this->styles->of(Role::Toolbar);
         $rows = [];
         foreach ($strip['lines'] as $row => $line) {
             $tail = match (true) {
-                !$folder => '' === $status ? $grab : $status,
+                !$roomy => '' === $status ? $grab : $status,
                 0 === $row => $grab,
                 $row === $strip['footRow'] => Rule::horizontal($room, $this->styles),
                 default => $status,
             };
-            // A Toolbar-background base under the whole row, then the styled tabs.
-            $rows[] = $this->styles->of(Role::Toolbar)->apply(AnsiText::padRight($line.$tail, $columns));
+            // Compact, a Toolbar-background base under the whole row; roomy,
+            // the pills sit on the pane itself.
+            $rows[] = $base->apply(AnsiText::padRight($line.$tail, $columns));
         }
 
         return $rows;
     }
 
-    /** The status, right-aligned in $room columns over $fill. */
-    private function statusTail(string $status, int $room, string $fill): string
+    /** The status, right-aligned in $room columns over $fill, in $style. */
+    private function statusTail(string $status, int $room, string $fill, Style $style): string
     {
         $text = AnsiText::truncate($status, \max(0, $room - 2), pad: false);
         $pad = \max(0, $room - AnsiUtils::visibleWidth($text) - 1);
 
-        return \str_repeat($fill, $pad).$this->styles->merge(Role::Toolbar, Role::Dim)->apply($text);
+        return \str_repeat($fill, $pad).$style->apply($text);
     }
 }

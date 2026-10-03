@@ -155,7 +155,7 @@ final class IdeTabScrollTest extends TestCase
      * moves the list one folder tab, not three: the same distance on screen
      * as the one-row list's.
      */
-    public function testAWheelNotchMovesTheSideFolderTabsOneTab(): void
+    public function testAWheelNotchMovesTheSideTabsOneTab(): void
     {
         $project = new TempProject(
             self::files(self::TALL_FILES)
@@ -175,13 +175,13 @@ final class IdeTabScrollTest extends TestCase
                     $this->frame($tui);
                     /** @var TabBarWidget $tabs */
                     $tabs = $tui->getById('tabs');
-                    $this->assertSame(3, $tabs->tabAnchor(self::TALL_FILES - 1)['rows'] ?? null, 'forty rows: folder tabs');
+                    $this->assertSame(1, $tabs->tabAnchor(self::TALL_FILES - 1)['rows'] ?? null, 'forty rows: a tab is a row, with a gap under it');
                     $top = static fn (): ?int => $tabs->tabIndexAt(1, 3); // the first tab under the ▲ row
 
                     $before = $top();
                     self::wheel($tui, self::tabsRect($ide, $tui), 64);
                     $this->frame($tui);
-                    $this->assertSame($before - 1, $top(), 'one notch up, one folder tab');
+                    $this->assertSame($before - 1, $top(), 'one notch up, one tab');
                 },
             ],
             rows: 40,

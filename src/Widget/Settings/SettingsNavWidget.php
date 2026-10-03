@@ -538,7 +538,8 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
         $this->memoKey = $key;
 
         // A transparent gap between every two rows on a roomy screen: each row
-        // then costs two lines but the last, which needs no gap after it.
+        // then costs two lines but the last, which needs no gap after it. The
+        // first row's upper half is the frame's, drawn into the rule above.
         $ruled = Density::Roomy === $density;
         $count = \count($this->visible);
         $needed = $ruled ? (2 * $count) - 1 : $count;

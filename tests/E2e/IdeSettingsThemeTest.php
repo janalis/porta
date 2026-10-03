@@ -23,6 +23,8 @@ use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\ViewWindowCells;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
+use Symfony\Component\Tui\Render\Renderer;
+use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 
@@ -262,6 +264,37 @@ final class IdeSettingsThemeTest extends TestCase
         );
 
         $this->assertSame('high-contrast', IdeConfig::load($project->dir)->settings['theme'], 'the theme persisted');
+    }
+
+    /**
+     * The nav's selection reaches into the row over it: in the window, the
+     * window's own blank padding takes General's upper half, as the
+     * workspace rule takes it when the view is not in a window.
+     */
+    public function testTheNavsFirstRowBleedsIntoTheWindowsPadding(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                300 => static function ($tui, $terminal, Ide $ide): void {
+                    Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
+                },
+                600 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
+                    $this->frame($tui);
+                    $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($tui->getById('settings-nav'));
+                    $this->assertInstanceOf(WidgetRect::class, $rect);
+                    $grid = $this->screenGrid($tui, $terminal);
+                    $this->assertStringContainsString('General', \mb_substr($grid[$rect->row], $rect->col, $rect->columns), 'General on the nav\'s first row');
+                    $this->assertStringContainsString('▄', \mb_substr($grid[$rect->row - 1], $rect->col, $rect->columns), 'its upper half in the padding over it');
+                    $this->assertStringNotContainsString('▄', \mb_substr($grid[$rect->row - 1], $rect->col + $rect->columns), 'and nowhere past the nav');
+                },
+            ],
+            rows: 40,
+        );
     }
 
     public function testSettingsSidebarResizesAndPersists(): void

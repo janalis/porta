@@ -32,7 +32,6 @@ use Porta\Widget\Render\HeaderRenderer;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Porta\Widget\Render\RowBleed;
-use Porta\Widget\Render\Rule;
 use Porta\Widget\Render\SelectionBar;
 use Porta\Widget\Render\TreeRow;
 use Porta\Widget\Support\ArrowScrollTrait;
@@ -759,7 +758,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
 
     /**
      * How many entries a window of $rows holds: every row past the header, or
-     * — ruled — one in two, each entry with its rule above it.
+     * — ruled — one in two, each entry with its gap above it.
      */
     // @mago-expect lint:no-boolean-flag-parameter -- ruled IS the one fact that halves the window
     private function windowEntries(int $rows, bool $ruled): int
@@ -767,7 +766,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
         return $ruled ? \intdiv($rows - 1, num2: 2) : $rows - 1;
     }
 
-    /** The entry a widget-relative row shows, as last drawn: null for the header, a rule, or past the end. */
+    /** The entry a widget-relative row shows, as last drawn: null for the header, a gap, or past the end. */
     private function indexAtRow(int $relRow): ?int
     {
         $index = self::indexOfLine($relRow, $this->list->scroll(), $this->drawnRuled);
@@ -834,18 +833,15 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
         $shades = []; // each entry's style by line, for the roomy gaps to bleed
 
         for ($row = 1; $row < $rows; ++$row) {
-            // On a roomy screen a rule runs under the header, and a blank gap
-            // between every two entries — the settings nav's spacing. Neither
-            // owns an entry, so a click on one does nothing.
+            // On a roomy screen a blank gap runs under the header and between
+            // every two entries — the settings nav's spacing. No gap owns an
+            // entry, so a click on one does nothing.
             $index = self::indexOfLine($row, $scroll, $ruled);
             $node = null === $index ? null : $this->visible[$index] ?? null;
             if (null === $node) {
-                // Only the line under the project name is drawn; the gaps
-                // between entries are transparent — spacing, not a line.
-                $lines[] =
-                    $ruled && 1 === $row && [] !== $this->visible
-                        ? Rule::horizontal($width, $this->styles)
-                        : AnsiText::blank($width);
+                // Transparent — spacing, not a line — so the first entry's
+                // shade can reach into the gap over it as into the others.
+                $lines[] = AnsiText::blank($width);
                 continue;
             }
 

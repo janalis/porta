@@ -30,7 +30,7 @@ use Symfony\Component\Tui\Style\Style;
  * The single tab cell (` label ●× ` + divider) lives here too, as
  * {@see measureCell}/{@see renderCell}. The strips used to assemble their
  * cells two and three times over, and the git tabs measured theirs with
- * `mb_strwidth` and kept a click zone for a tab the pane had cut off. The shading is {@see TabStyle}'s; the windowing is
+ * `mb_strwidth` and kept a click zone for a tab the pane had cut off. The shading is {@see TabStyle}'s (compact) or {@see TabPillStyle}'s (roomy); the windowing is
  * {@see StripWindow}'s. Cell widths are display columns throughout: `width`
  * includes the divider, `closeOffset` is the ×'s column within the cell, and
  * both are consumed as click zones, so a line whose visible width disagrees
@@ -41,13 +41,27 @@ final class TabStripRenderer
     /** The × cell plus its trailing space — the close zone's clickable width. */
     public const int CLOSE_WIDTH = 2;
 
-    /** A folder-tab strip's height: the lid, the labels, then the baseline they stand on (mirrored at a bottom edge). */
-    public const int ROWS = 3;
+    /**
+     * A roomy strip's height: the labels, then the baseline the pills stand on
+     * (the other way round at a bottom edge). The pills' other halves are the
+     * frame's to draw, into the rule beside the strip
+     * ({@see \Porta\Overlay\Presenter\RuleHalves}).
+     */
+    public const int ROWS = 2;
 
-    /** @return positive-int the strip height the screen affords: folder tabs, or one row where it is {@see Density::Compact} */
+    /** A roomy strip that is its own top edge — the dock's, whose grab is a rule: that rule, the labels, the baseline. */
+    public const int EDGED_ROWS = 3;
+
+    /** @return positive-int the strip height the screen affords: pills, or one row where it is {@see Density::Compact} */
     public static function rowsFor(Density $density): int
     {
         return Density::Roomy === $density ? self::ROWS : 1;
+    }
+
+    /** @return positive-int {@see rowsFor()} for a strip that draws its own top edge */
+    public static function edgedRowsFor(Density $density): int
+    {
+        return Density::Roomy === $density ? self::EDGED_ROWS : 1;
     }
 
     /**
@@ -60,13 +74,14 @@ final class TabStripRenderer
      * The pointer on a tab's `×` lights the `×` alone, underlined: which of
      * the two a click would do is shown before it is done.
      *
-     * At {@see ROWS} rows each tab is a folder tab — its own rails, and a lid
-     * whose shape is its state: `╭─╮` for the rest, `┍━┑` for the active tab
-     * of a pane without focus, `┏━┓` and heavy rails for the active tab of the
-     * pane that has it — standing on a baseline that opens under the active
-     * tab ({@see TabShape::foot}). At a bottom edge the rows run the other way:
-     * the baseline over the labels, the lid the tab's bottom. One row is the
-     * compact strip, each cell closed by a divider. The caller pads the rows
+     * At {@see ROWS} rows each tab is a pill: its label row shaded as a file
+     * tree row is ({@see TabPillStyle} — the shown tab blue while $paneFocused,
+     * grey otherwise, the hovered one on the hover tint, the rest on nothing),
+     * standing on a baseline that holds its lower half, the line running on
+     * beside it; its upper half is drawn into the rule over the strip by the
+     * frame. At a bottom edge the rows run the other way. At
+     * {@see EDGED_ROWS} the strip draws that rule itself, over the labels.
+     * One row is the compact strip, each cell closed by a divider. The caller pads the rows
      * past `used`: the tail is its own (the dock's status and resize grab).
      *
      * @param list<array{label: string, active: bool, family?: string, marker?: string, closable?: bool}> $tabs
@@ -89,10 +104,12 @@ final class TabStripRenderer
         bool $paneFocused = false,
         ?int $hoverRow = null,
     ): array {
-        $folder = $rows >= self::ROWS;
-        $labelRow = $folder ? 1 : 0;
-        // A folder tab's two rails replace the compact cell's one divider.
-        $rails = $folder ? 2 : 1;
+        $pills = $rows >= self::ROWS;
+        // The labels sit under a rule of their own (the dock's), or under the
+        // frame's at a top edge, over it at a bottom one.
+        $labelRow = $rows >= self::EDGED_ROWS || $pills && StripEdge::Bottom === $edge ? 1 : 0;
+        // A compact cell ends with its divider; pills stand side by side.
+        $divider = $pills ? 0 : 1;
         /** @var list<array{tab: array{label: string, active: bool, family?: string, marker?: string, closable?: bool}, text: string, width: int, closeOffset: int|null, labelWidth: int}> $parts */
         $parts = [];
         $activeIndex = 0;
@@ -101,18 +118,18 @@ final class TabStripRenderer
                 $activeIndex = $i;
             }
             $cell = self::measureCell($tab['label'], $tab['marker'] ?? '', $tab['closable'] ?? true);
-            $cell['width'] += $rails - 1;
+            $cell['width'] -= 1 - $divider;
             $parts[] = ['tab' => $tab] + $cell;
         }
 
         $window = StripWindow::of(\array_column($parts, 'width'), $columns, $scroll, $activeIndex, $lastActive);
         $overflow = $window['overflow'];
         $start = $window['start'];
-        $zoneRows = $folder ? \range(start: 0, end: self::ROWS - 1) : [0];
+        $zoneRows = $pills ? \range(start: 0, end: \min($rows, self::EDGED_ROWS) - 1) : [0];
 
         $label = '';
-        $lid = '';
-        $foot = '';
+        $upper = '';
+        $lower = '';
         $used = 0;
         $last = $start;
         $hitMap = [];
@@ -127,8 +144,8 @@ final class TabStripRenderer
                 $prev = $styles->of(Role::Faint)->apply(Glyphs::SCROLL_PREV);
             }
             $label .= $prev;
-            $lid .= ' ';
-            $foot = Rule::horizontal(1, $styles);
+            $upper = Rule::horizontal(1, $styles);
+            $lower = Rule::horizontal(1, $styles);
             $used = 1;
         }
         foreach (\array_slice($parts, $start, preserve_keys: true) as $index => $part) {
@@ -137,22 +154,20 @@ final class TabStripRenderer
             }
             $tab = $part['tab'];
             $hovered = null !== $hoverCol && $hoverCol >= $used && $hoverCol < ($used + $part['width']);
-            $body = $used + ($folder ? 1 : 0); // past the tab's own left rail
-            $closeStart = $body + ($part['closeOffset'] ?? 0);
+            $closeStart = $used + ($part['closeOffset'] ?? 0);
             $closeWidth = null === $part['closeOffset'] ? 0 : self::CLOSE_WIDTH;
             $onClose = $hovered && (null === $hoverRow || $labelRow === $hoverRow) && $hoverCol >= $closeStart && $hoverCol < ($closeStart + $closeWidth);
             $state = TabState::of($tab['active'], $hovered);
-            $shape = TabShape::of($tab['active'], $paneFocused);
-            $outline = $styles->of($shape->role());
             $next = $parts[$index + 1]['tab'] ?? null;
             $crosses = null !== $next && ($tab['family'] ?? null) !== ($next['family'] ?? null);
-            // A folder tab between its own rails, over its lid; a compact cell
-            // closed by its divider, heavier where a drag family ends.
-            $label .= $folder
-                ? $outline->apply($shape->rail()).self::renderBody($part, $styles, $state, $onClose).$outline->apply($shape->rail())
-                : self::renderCell($part, $styles, $state, $crosses ? Glyphs::FAMILY_SEPARATOR : Glyphs::SEPARATOR, $onClose);
-            $lid .= $outline->apply($shape->lid($part['width'], $edge));
-            $foot .= $outline->apply($shape->foot($part['width'], $edge));
+            // A pill, or a compact cell closed by its divider — heavier where
+            // a drag family ends — with no rows above or below it.
+            $cell = $pills
+                ? self::pill($part, $styles, TabPillStyle::of($styles, $state, $paneFocused), $state, $onClose)
+                : ['cells' => self::renderCell($part, $styles, $state, $crosses ? Glyphs::FAMILY_SEPARATOR : Glyphs::SEPARATOR, $onClose), 'upper' => '', 'lower' => ''];
+            $label .= $cell['cells'];
+            $upper .= $cell['upper'];
+            $lower .= $cell['lower'];
             $hitMap[] = ['index' => $index, 'start' => $used, 'width' => $part['width'], 'closeStart' => $closeStart, 'closeWidth' => $closeWidth];
             $used += $part['width'];
             $last = $index;
@@ -160,8 +175,8 @@ final class TabStripRenderer
         if ($overflow) {
             // Pad to the last column and put › there (a page-right click) when tabs remain.
             $label = AnsiText::padRight($label, $columns - 1);
-            $lid = AnsiText::padRight($lid, $columns);
-            $foot .= Rule::horizontal($columns - AnsiUtils::visibleWidth($foot), $styles);
+            $upper .= Rule::horizontal($columns - AnsiUtils::visibleWidth($upper), $styles);
+            $lower .= Rule::horizontal($columns - AnsiUtils::visibleWidth($lower), $styles);
             $next = ' ';
             if ($last < (\count($parts) - 1)) {
                 foreach ($zoneRows as $row) {
@@ -173,19 +188,16 @@ final class TabStripRenderer
             $used = $columns; // the strip is full: the caller adds no status/grab tail
         }
 
-        $lines = match (true) {
-            !$folder => [$label],
-            StripEdge::Top === $edge => [$lid, $label, $foot],
-            default => [$foot, $label, $lid],
-        };
+        $lines = self::arrange($rows, $edge, $upper, $label, $lower);
 
         return [
             'lines' => $lines,
             'labelRow' => $labelRow,
+            // The baseline the tabs stand on, which a tail runs on past them.
             'footRow' => match (true) {
-                !$folder => null,
-                StripEdge::Top === $edge => self::ROWS - 1,
-                default => 0,
+                !$pills => null,
+                StripEdge::Bottom === $edge && $rows < self::EDGED_ROWS => 0,
+                default => \count($lines) - 1,
             },
             'used' => $used,
             'hitMap' => $hitMap,
@@ -239,17 +251,59 @@ final class TabStripRenderer
      */
     public static function renderCell(array $cell, Styles $styles, TabState $state, string $divider = Glyphs::SEPARATOR, bool $onClose = false): string
     {
-        return self::renderBody($cell, $styles, $state, $onClose).$styles->of(Role::Rule)->apply($divider);
+        return self::renderBody($cell, $styles, $state, $onClose, TabStyle::of($styles, $state)).$styles->of(Role::Rule)->apply($divider);
     }
 
     /**
-     * The cell's shaded text, no divider — the compact cell's inside, and a
-     * folder tab's between its rails.
+     * The strip's rows, top to bottom: the label row alone when compact; with
+     * the rules over and under it when the strip draws its own top edge;
+     * else with the one rule away from the edge it sits at.
+     *
+     * @return non-empty-list<string>
+     */
+    private static function arrange(int $rows, StripEdge $edge, string $upper, string $label, string $lower): array
+    {
+        return match (true) {
+            $rows < self::ROWS => [$label],
+            $rows >= self::EDGED_ROWS => [$upper, $label, $lower],
+            StripEdge::Top === $edge => [$label, $lower],
+            default => [$upper, $label],
+        };
+    }
+
+    /**
+     * One pill's three runs: its label, and the rule over it and the rule
+     * under it, each holding a half of its shade $pill ({@see RowBleed}) —
+     * or, where it has none, the line itself. Pills stand side by side with
+     * no gap between, so two shaded ones read as one run of shade.
+     *
+     * @param array{text: string, width: int, closeOffset: int|null, labelWidth: int, ...} $cell
+     *
+     * @return array{cells: string, upper: string, lower: string}
+     */
+    private static function pill(array $cell, Styles $styles, Style $pill, TabState $state, bool $onClose): array
+    {
+        return [
+            'cells' => self::renderBody($cell, $styles, $state, $onClose, $pill),
+            'upper' => self::baseline($cell['width'], RowBleed::over($cell['width'], $pill), $styles),
+            'lower' => self::baseline($cell['width'], RowBleed::under($cell['width'], $pill), $styles),
+        ];
+    }
+
+    /** A rule's run beside one tab $width wide: the tab's $half, or the line itself where it is blank. */
+    private static function baseline(int $width, string $half, Styles $styles): string
+    {
+        return '' === \trim(AnsiUtils::stripAnsiCodes($half)) ? Rule::horizontal($width, $styles) : $half;
+    }
+
+    /**
+     * The cell's text in $shade, no divider — the compact cell's inside, and
+     * a pill whole.
      *
      * @param array{text: string, width: int, closeOffset: int|null, labelWidth: int, ...} $cell
      */
     // @mago-expect lint:no-boolean-flag-parameter -- where the pointer rests on the cell is its hover state, not a second responsibility.
-    private static function renderBody(array $cell, Styles $styles, TabState $state, bool $onClose): string
+    private static function renderBody(array $cell, Styles $styles, TabState $state, bool $onClose, Style $shade): string
     {
         $text = $cell['text'];
         $width = AnsiUtils::visibleWidth($text);
@@ -269,6 +323,6 @@ final class TabStripRenderer
             $body .= $close.AnsiUtils::sliceByColumn($text, $closeOffset + 1, $width - $closeOffset - 1);
         }
 
-        return TabStyle::of($styles, $state)->apply($body);
+        return $shade->apply($body);
     }
 }

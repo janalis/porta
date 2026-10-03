@@ -592,7 +592,7 @@ final class SettingsNavWidgetTest extends TestCase
         $this->assertSame(
             ['   General', \str_repeat('▀', times: 20), '   Interface', ''],
             \array_slice($rows, offset: 0, length: 4),
-            'a transparent gap between rows, not a drawn line — but for the half of the selection under General',
+            'a transparent gap between rows, not a drawn line — but for the half of the selection under General (its upper half is the frame\'s, in the rule above)',
         );
         $this->assertSame('    Dotenv', \rtrim($rows[2 * (\count(Probe::get($widget, 'entries')) - 1)]), 'the last row');
         $this->assertSame('', $rows[(2 * \count(Probe::get($widget, 'entries'))) - 1], 'and nothing after it');

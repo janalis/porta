@@ -7,12 +7,14 @@ namespace Porta\Widget\Render;
 use Porta\Support\AnsiText;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
+use Symfony\Component\Tui\Style\Style;
 
 /**
- * A strip's rows filled out to the pane's width over the toolbar shade: folder
- * tabs' baseline runs on as a `─` past the last tab, the lid and label rows
- * and a compact strip pad with blanks. The dock pads its own, since its tail
- * is its resize grab and its tool's status.
+ * A strip's rows filled out to the pane's width: a roomy strip's baseline runs
+ * on as a `─` past the last pill, its other rows pad with blanks on nothing —
+ * the pills sit on the pane, as a tree's rows do; a compact strip's one row
+ * pads over the toolbar shade it has always had. The dock pads its own, since
+ * its tail is its resize grab and its tool's status.
  */
 final class TabStripTail
 {
@@ -23,10 +25,11 @@ final class TabStripTail
      */
     public static function pad(array $strip, int $columns, Styles $styles): array
     {
+        $base = null === $strip['footRow'] ? $styles->of(Role::Toolbar) : new Style();
         $rows = [];
         foreach ($strip['lines'] as $row => $line) {
             $fill = $row === $strip['footRow'] ? Rule::horizontal($columns - $strip['used'], $styles) : '';
-            $rows[] = $styles->of(Role::Toolbar)->apply(AnsiText::padRight($line.$fill, $columns));
+            $rows[] = $base->apply(AnsiText::padRight($line.$fill, $columns));
         }
 
         return $rows;

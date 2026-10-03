@@ -52,6 +52,18 @@ final class RowBleed
         return $lines;
     }
 
+    /** The half of a row styled $row on the line above it: `▄` in its shade, blank for none. */
+    public static function over(int $width, ?Style $row): string
+    {
+        return self::gap($width, null, $row);
+    }
+
+    /** The half of a row styled $row on the line below it: `▀` in its shade, blank for none. */
+    public static function under(int $width, ?Style $row): string
+    {
+        return self::gap($width, $row, null);
+    }
+
     /**
      * The gap between a row styled $above and one styled $below; null, or a
      * style with no shade, for a side with no row or an unshaded one.

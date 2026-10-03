@@ -42,8 +42,8 @@ final class ChromeHeightTest extends TestCase
         $height->apply();
 
         $this->assertSame(Density::Roomy, $density->current());
-        $this->assertSame(3, $dock->stripRows());
-        $this->assertCount(3, $tabBar->render(new RenderContext(40, 5)));
+        $this->assertSame(3, $dock->stripRows(), 'the dock\'s strip draws its own top edge');
+        $this->assertCount(2, $tabBar->render(new RenderContext(40, 5)), 'the editor\'s leaves its upper halves to the rule above');
 
         $terminal->simulateResize(columns: 80, rows: 29);
         $tui->requestRender(force: true);

@@ -176,9 +176,9 @@ final class LayoutControllerNudgeTest extends TestCase
 
         $layout->toggleBottomPanelMaximised();
         $this->assertSame(
-            30 - 6 - 8,
+            30 - 6 - 7,
             $results->visibleRows(),
-            'so this maximises rather than restores (30 rows: folder-tab strips two rows more each, the two edge rules, the navigation bar and the rule under it)',
+            'so this maximises rather than restores (30 rows: a row more for the editor\'s tab strip and two for the dock\'s, the two edge rules, the navigation bar and the rule under it)',
         );
         $layout->toggleBottomPanelMaximised();
         $this->assertSame($chosen, $results->visibleRows(), 'and comes back to the hand-chosen height');
@@ -247,12 +247,16 @@ final class LayoutControllerNudgeTest extends TestCase
         $dock->showList(ResultsPanelMode::RecentLocations, 'Recent Locations', []);
         $layout->nudgeBottomPanel(1); // persist a proportion, so applyLayout has one to restore
         $layout->toggleBottomPanelMaximised();
-        $this->assertSame(30 - 6 - 8, $results->visibleRows(), 'the frame, two rows more for each folder-tab strip, the two edge rules, the navigation bar and the rule under it');
+        $this->assertSame(
+            30 - 6 - 7,
+            $results->visibleRows(),
+            'the frame, a row more for the editor\'s tab strip and two for the dock\'s, the two edge rules, the navigation bar and the rule under it',
+        );
 
         $this->tui->getTerminal()->simulateResize(columns: 100, rows: 40);
         $layout->applyLayout();
 
-        $this->assertSame(40 - 6 - 8, $results->visibleRows(), 'it took the bigger screen');
+        $this->assertSame(40 - 6 - 7, $results->visibleRows(), 'it took the bigger screen');
         $this->assertTrue($layout->isBottomPanelMaximised(), 'and is still maximised');
     }
 

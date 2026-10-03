@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Porta\Widget\Support;
 
 /**
- * A tab strip asking whether the pane it heads has the keys: its active tab's
- * lid goes heavy all round when it does ({@see \Porta\Widget\Render\TabShape}).
+ * A tab strip asking whether the pane it heads has the keys: its shown
+ * tab turns from grey to the selection blue when it does ({@see \Porta\Widget\Render\TabPillStyle}).
  * A strip is never focused itself, so the answer comes from whoever knows the
  * pane — handed in, and asked each frame, since focus moves without telling
  * the strip.

@@ -45,8 +45,10 @@ final readonly class FrameJoins
         private ViewRegions $regions,
         private FloatingRegions $floating,
         private Styles $styles,
+        RuleHalves $halves,
     ) {
-        $tui->setFrameJoin($this->join(...));
+        // The joins, then where a shaded row meets a rule ({@see RuleHalves}).
+        $tui->setFrameJoin(fn (array $lines): array => $halves->apply($this->join($lines)));
     }
 
     /**

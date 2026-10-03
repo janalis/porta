@@ -88,13 +88,14 @@ The View menu's toggles (Soft-Wrap, Code Vision, auto-pairs, format on save)
 show a `✓` while they are on. Its cycle commands step diagnostic messages,
 inlay hints and line numbers through their modes.
 
-On a terminal 30 rows or taller the tabs are folder tabs, three rows each,
-standing on a line that opens under the shown tab. The shown tab has a heavy
-lid (`┍━┑`); while its pane has the keys the whole tab is heavy (`┏━┓` over
-`┃ name ┃`). The dock and the git view's tabs work the same way, and so do the
-tabs at the side of the editor, turned on their side: the line runs down the
-edge facing the code. Shorter terminals keep the one-row strip, so the code
-keeps the rows. The dock's top edge is its resize grab, above the tool's
+On a terminal 30 rows or taller each tab is a pill, shaded the way a file
+tree row is: the shown tab grey, blue while its pane has the keys, a hovered
+one lighter, the rest on nothing. The shade reaches half a row above and below
+the name — into the line it stands on, and into the rule over the strip. The
+dock and the git view's tabs work the same way. At the side of the editor the
+tabs are spaced like the file tree, a blank line between two, with a line down
+the edge facing the code that opens beside the shown or hovered tab. Shorter terminals keep the one-row strip, so the
+code keeps the rows. The dock's top edge is its resize grab, above the tool's
 count.
 
 Two open files with the same name say which is which — `plugin.php (git)` and

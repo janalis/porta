@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Editor\BufferService;
+use Porta\Editor\OpenFocus;
 use Porta\Ide;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\ScreenReads;
@@ -101,9 +103,10 @@ final class IdeResponsiveTest extends TestCase
                     $this->frame($tui);
                     $grid = $this->screenGrid($tui, $terminal);
                     $divider = Services::resolve($ide, Renderer::class)->getWidgetRect($tui->getById('separator'))->col ?? -1;
-                    $this->assertMatchesRegularExpression('/^─+┬─+$/u', \rtrim($grid[1]), 'the rule under the menu bar, turning down into the divider');
-                    $this->assertSame('┬', \mb_substr($grid[1], $divider, length: 1), 'at the divider\'s own column');
-                    $this->assertSame('│', \mb_substr($grid[2], $divider, length: 1));
+                    $this->assertMatchesRegularExpression('/^─+▄[─▄]+$/u', \rtrim($grid[1]), 'the rule under the menu bar, holding the upper half of the shown tab under it');
+                    $this->assertSame('▄', \mb_substr($grid[1], $divider, length: 1), 'the divider opens beside the shown first tab: its join is the tab\'s half');
+                    $this->assertSame(' ', \mb_substr($grid[2], $divider, length: 1), 'and its cell on the tab\'s row a blank of the tab\'s');
+                    $this->assertSame('│', \mb_substr($grid[4], $divider, length: 1), 'running on under the strip');
                     $this->assertMatchesRegularExpression('/^─+┴─+$/u', \rtrim($grid[28]), 'and the one above the status bar, turning up into it');
                     $this->assertSame('┴', \mb_substr($grid[28], $divider, length: 1));
                     $roomy = $editorRows($tui, $ide);
@@ -119,7 +122,7 @@ final class IdeResponsiveTest extends TestCase
                     }, what: 'the compact frame');
                     $grid = $this->screenGrid($tui, $terminal);
                     $this->assertStringNotContainsString('───', $grid[1], 'no rule under the menu bar');
-                    $this->assertSame($roomy - 1 + 5, $editorRows($tui, $ide), 'one row fewer on screen, yet two rules, the strip\'s lid and foot and the rule under the navigation bar given back');
+                    $this->assertSame($roomy - 1 + 4, $editorRows($tui, $ide), 'one row fewer on screen, yet two rules, the strip\'s baseline and the rule under the navigation bar given back');
                 },
             ],
             columns: 100,
@@ -136,7 +139,7 @@ final class IdeResponsiveTest extends TestCase
      */
     public function testADropdownOverAJoinKeepsItsBorder(): void
     {
-        $project = new TempProject(['src/Demo.php' => "<?php\n"]);
+        $project = new TempProject(['src/Demo.php' => "<?php\n", 'src/Other.php' => "<?php\n"]);
         // The top rule's row: the menu bar is row 0.
         $at = static fn (array $grid, int $col): string => \mb_substr($grid[1], $col, length: 1);
 
@@ -144,7 +147,9 @@ final class IdeResponsiveTest extends TestCase
             $project,
             $project->path('src/Demo.php'),
             [
-                300 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($at, &$divider): void {
+                300 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project, $at, &$divider): void {
+                    // A second tab shown, so the first is at rest and the divider's join stands.
+                    Services::resolve($ide, BufferService::class)->openFile($project->path('src/Other.php'), OpenFocus::Editor);
                     $this->frame($tui);
                     $divider = Services::resolve($ide, Renderer::class)->getWidgetRect($tui->getById('separator'))->col ?? -1;
                     $this->assertSame('┬', $at($this->screenGrid($tui, $terminal), $divider));

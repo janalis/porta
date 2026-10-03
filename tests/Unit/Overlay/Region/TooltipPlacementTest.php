@@ -103,4 +103,41 @@ final class TooltipPlacementTest extends TestCase
     {
         $this->assertSame(36, TooltipPlacement::place(new Tooltip('k', 't', 5, 40, 44), 11, 3, self::BOUNDS)->col, 'middle column 41');
     }
+
+    /** An element can ask for a side — a tab, away from its strip's screen edge — and gets it where the card fits. */
+    public function testTheSideAnElementAsksForComesFirst(): void
+    {
+        $above = TooltipPlacement::place(new Tooltip('k', 't', 10, 40, 43, side: TooltipSide::Above), 11, 3, self::BOUNDS);
+        $this->assertSame([TooltipSide::Above, 7, 36], [$above->side, $above->top, $above->col], 'over the element though below has room');
+
+        $right = TooltipPlacement::place(new Tooltip('k', 't', 10, 20, 30, rows: 3, side: TooltipSide::Right), 11, 3, self::BOUNDS);
+        $this->assertSame([TooltipSide::Right, 10, 30], [$right->side, $right->top, $right->col], 'beside it, level with its middle row');
+
+        $left = TooltipPlacement::place(new Tooltip('k', 't', 10, 20, 30, rows: 3, side: TooltipSide::Left), 11, 3, self::BOUNDS);
+        $this->assertSame([TooltipSide::Left, 10, 9], [$left->side, $left->top, $left->col]);
+
+        $below = TooltipPlacement::place(new Tooltip('k', 't', 1, 40, 43, side: TooltipSide::Below), 11, 3, self::BOUNDS);
+        $this->assertSame([TooltipSide::Below, 2], [$below->side, $below->top]);
+    }
+
+    /** Where the asked side has no room, the usual order takes over. */
+    public function testAnAskedSideWithNoRoomFallsBackToTheUsualOrder(): void
+    {
+        $this->assertSame(TooltipSide::Below, TooltipPlacement::place(new Tooltip('k', 't', 2, 40, 43, side: TooltipSide::Above), 11, 3, self::BOUNDS)->side, 'no room over the second row');
+        $this->assertSame(TooltipSide::Above, TooltipPlacement::place(new Tooltip('k', 't', 19, 40, 43, side: TooltipSide::Below), 11, 3, self::BOUNDS)->side, 'nor under the last');
+        $this->assertSame(TooltipSide::Below, TooltipPlacement::place(new Tooltip('k', 't', 10, 75, 80, side: TooltipSide::Right), 11, 3, self::BOUNDS)->side, 'nor right of the edge');
+        $this->assertSame(TooltipSide::Below, TooltipPlacement::place(new Tooltip('k', 't', 10, 0, 5, side: TooltipSide::Left), 11, 3, self::BOUNDS)->side, 'nor left of it');
+        $this->assertSame(TooltipSide::Below, TooltipPlacement::place(new Tooltip('k', 't', 10, 20, 30, side: TooltipSide::Right), 11, 41, [
+            0,
+            0,
+            40,
+            80,
+        ])->side, 'a card taller than the bounds is never beside');
+        $this->assertSame(TooltipSide::Below, TooltipPlacement::place(new Tooltip('k', 't', 10, 40, 30, side: TooltipSide::Left), 11, 41, [0, 0, 40, 80])->side);
+    }
+
+    public function testMovingATooltipKeepsTheSideItAsks(): void
+    {
+        $this->assertSame(TooltipSide::Left, new Tooltip('k', 't', 1, 2, 3, side: TooltipSide::Left)->moved(5, 5)->side);
+    }
 }

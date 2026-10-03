@@ -49,8 +49,8 @@ final readonly class ChromeHeight
 
     private function push(): void
     {
-        $rows = TabStripRenderer::rowsFor($this->density->current());
-        $this->tabBar->setStripRows($rows);
-        $this->dockTabs->setStripRows($rows);
+        $this->tabBar->setStripRows(TabStripRenderer::rowsFor($this->density->current()));
+        // The dock's strip is its own top edge: its grab is a rule.
+        $this->dockTabs->setStripRows(TabStripRenderer::edgedRowsFor($this->density->current()));
     }
 }

@@ -401,7 +401,7 @@ final class DockTabsWidgetTest extends TestCase
      * pointer — the status level with the labels, and the baseline the tabs
      * stand on under them.
      */
-    public function testAFolderStripPutsTheGrabAboveTheStatusAndTheBaselineUnderIt(): void
+    public function testARoomyStripPutsTheGrabAboveTheStatusAndTheBaselineUnderIt(): void
     {
         $bar = self::strip([['tab' => DockTab::Results, 'label' => 'Problems', 'active' => true, 'key' => '7', 'status' => '3 results']]);
         $bar->setStripRows(3);
@@ -409,18 +409,19 @@ final class DockTabsWidgetTest extends TestCase
 
         $rows = \array_map(AnsiUtils::stripAnsiCodes(...), $bar->render(new RenderContext(40, 3)));
 
-        $this->assertSame('┍'.\str_repeat('━', times: 12).'┑'.\str_repeat('─', times: 26), $rows[0], 'the tab\'s lid, then the grab: a rule along the top');
-        $this->assertSame('│ Problems × │'.\str_repeat(' ', times: 16).'3 results ', $rows[1], 'the status, right-aligned level with the label');
-        $this->assertSame('┘'.\str_repeat(' ', times: 12).'└'.\str_repeat('─', times: 26), $rows[2], 'and the baseline, open under the shown tab');
+        $this->assertSame(\str_repeat('▄', times: 12).\str_repeat('─', times: 28), $rows[0], 'a rule along the top holding the pill\'s upper half, then the grab running it on');
+        $this->assertSame(' Problems × '.\str_repeat(' ', times: 18).'3 results ', $rows[1], 'the status, right-aligned level with the label');
+        $this->assertSame(\str_repeat('▀', times: 12).\str_repeat('─', times: 28), $rows[2], 'and the baseline, the pill\'s lower half in it');
+        $this->assertStringNotContainsString('48;5;235', $bar->render(new RenderContext(40, 3))[1], 'roomy, the strip sits on nothing, the status too');
 
-        $rule = Styles::dark()->of(Role::Rule)->apply(\str_repeat('─', times: 26));
+        $rule = Styles::dark()->of(Role::Rule)->apply(\str_repeat('─', times: 28));
         $this->assertStringContainsString($rule, $bar->render(new RenderContext(40, 3))[0], 'at rest the grab is a rule, in the rules\' tint');
 
         $bar->hoverGrab();
-        $this->assertStringNotContainsString(Styles::dark()->of(Role::Rule)->apply(\str_repeat('━', times: 26)), $bar->render(new RenderContext(40, 3))[0], 'under the pointer it leaves that tint');
+        $this->assertStringNotContainsString(Styles::dark()->of(Role::Rule)->apply(\str_repeat('━', times: 28)), $bar->render(new RenderContext(40, 3))[0], 'under the pointer it leaves that tint');
         $hovered = \array_map(AnsiUtils::stripAnsiCodes(...), $bar->render(new RenderContext(40, 3)));
-        $this->assertStringEndsWith(\str_repeat('━', times: 26), $hovered[0], 'the grab heavy-rules under the pointer');
-        $this->assertStringEndsWith(\str_repeat('─', times: 26), $hovered[2], 'the baseline does not');
+        $this->assertStringEndsWith(\str_repeat('━', times: 28), $hovered[0], 'the grab heavy-rules under the pointer');
+        $this->assertStringEndsWith(\str_repeat('─', times: 28), $hovered[2], 'the baseline does not');
         foreach ($bar->render(new RenderContext(40, 3)) as $row) {
             $this->assertSame(40, AnsiUtils::visibleWidth($row));
         }
@@ -442,7 +443,7 @@ final class DockTabsWidgetTest extends TestCase
     }
 
     /** The active tool's lid is heavy all round while its panel has the keys. */
-    public function testTheActiveLidFollowsThePanelsFocus(): void
+    public function testTheShownTabsShadeFollowsThePanelsFocus(): void
     {
         $focused = false;
         $bar = self::strip([['tab' => DockTab::Results, 'label' => 'Problems', 'active' => true, 'key' => '7', 'status' => '']]);
@@ -451,13 +452,13 @@ final class DockTabsWidgetTest extends TestCase
         });
         $bar->setStripRows(3);
         $bar->beforeRender();
-        $this->assertStringStartsWith('┍', AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(40, 3))[0]));
+        $this->assertStringContainsString("\x1b[38;5;237m▄", $bar->render(new RenderContext(40, 3))[0], 'grey, the panel without the keys');
         $revision = $bar->getRenderRevision();
 
         $focused = true;
         $bar->beforeRender();
 
         $this->assertNotSame($revision, $bar->getRenderRevision());
-        $this->assertStringStartsWith('┏', AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(40, 3))[0]));
+        $this->assertStringContainsString("\x1b[38;5;31m▄", $bar->render(new RenderContext(40, 3))[0], 'blue with them');
     }
 }

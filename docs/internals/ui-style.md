@@ -156,27 +156,45 @@ it, and `$tees` puts `├` `┤` in that role at the ends, joining the rule to t
 rails it cuts across; the legend yields before a tee does. A heavy menu frame
 keeps its own `┣━┫` (`PopupFrame::tee`): a light run cannot meet a heavy tee.
 
-## Tab strips: folder tabs from 30 rows
+## Tab strips: pills from 30 rows
 
 Every horizontal strip is `TabStripRenderer::render()`. At
-`TabStripRenderer::ROWS` (3) rows each tab is a folder tab with its own rails:
-a lid row, the labels, then the `─` baseline the tabs stand on — mirrored at a
-bottom edge (`StripEdge`), where the baseline is on top. The lid's shape is
-the state (`TabShape`): `╭─╮` for the rest, `┍━┑` for the shown tab, `┏━┓`
-with heavy rails for the shown tab of the pane that has the keys. The baseline
-is each tab's foot (`TabShape::foot`): the rails land on it as `┴─┴`, and it
-opens under the shown tab (`┘ └`, `┚ ┖` under heavy rails), so the tab and its
-pane read as one surface. `TabStripTail` runs it on past the last tab. On a
-`Density::Compact` screen (below 30 terminal rows) a strip is one row, each
+`TabStripRenderer::ROWS` (2) rows each tab is a pill: its label row shaded as a
+file tree row is (`TabPillStyle` — the shown tab in the list selection, blue
+while its pane has the keys and grey otherwise, the hovered one on the rows'
+hover tint, the rest on nothing), standing on the `─` baseline, which holds
+the pill's lower half (`RowBleed`) and runs on beside it — mirrored at a bottom
+edge (`StripEdge`), where the baseline is on top. The pill's other half is the
+frame's: `Overlay/Presenter/RuleHalves`, a pass after `FrameJoins`, turns each
+`─` of the workspace rule touching a shaded cell of the strip's edge row into
+that cell's `▄` or `▀` — or a blank on nothing, such as the padding over a view
+in a window, on the same surface as the row. The dock's strip is its own top edge (its resize grab
+is a rule), so it is `EDGED_ROWS` (3) tall and holds both halves itself.
+Pills stand side by side with no margin, so two shaded ones are one run of
+shade. Beside a shaded tab, a pane divider opens (`RuleHalves::openings`): its
+cell on the tab's row becomes a blank of the tab's style and the join over and
+under it the tab's halves — the tree's divider beside the first tab of a top
+strip, or beside any row of a side strip; between two shaded tabs the cell
+takes both halves, as the strip's own gap does. A tab's tooltip anchors on its
+whole pill, the rows of its halves included, and asks for the side away from
+the screen edge the strip sits on (`Tooltip::$side`): under a top strip, over a
+bottom one, beside a side one.
+`TabStripTail` runs the baseline on past the last tab. On a `Density::Compact`
+screen (below 30 terminal rows) a strip is one row on the toolbar shade, each
 cell closed by a divider.
 
-The editor strip at the side (`TabBarWidget::renderVertical`) follows the same
-height: a folder tab on its side, three rows each (`TabShape::side`), its
-inner edge a rule down the strip that tees into each resting tab and opens
-beside the shown one. The inner edge is a logical end: under RTL the row
-reverses, so `WorkspaceLayout::setMirrored` tells the strip its reading
-direction along with its seat. A compact screen keeps the one-row list with
-its selection bar.
+The editor strip at the side (`TabBarWidget::renderVertical`) is spaced like
+the file tree on a roomy screen: a tab is one row, a blank gap between every
+two holding the halves of the shaded tabs beside it, the pill out to the outer
+edge; the inner edge is a rule down the strip, which `RuleHalves` joins into
+the workspace rules as `┬` `┴`, and the first and last tabs' outer halves land
+in those rules too. Beside a shaded tab — the shown one, the hovered one — the
+rule opens: its pill and its halves run across the rule's column, a blank of
+the pill's, so the tab and the editor read as one surface while its name and
+`×` stay in their columns. A gap owns no tab. The inner edge is a logical end: under
+RTL the row reverses, so `WorkspaceLayout::setMirrored` tells the strip its
+reading direction along with its seat. A compact screen keeps the one-row list
+with its selection bar.
 
 A strip's render context carries its parent's height, not the terminal's, so
 `Layout/ChromeHeight` (eager, a frame hook) reads the terminal's rows into the
@@ -271,13 +289,15 @@ The settings nav is a tree in the file tree's shape: Plugins and Languages are
 folders, their rows drawn by `Widget/Render/TreeRow` (shared with the tree, so
 a folder looks and opens the same in both) and tinted `TabAccent`. On a roomy
 screen both leave a transparent gap — a blank line, not a drawn one — between
-every two rows; the file tree draws a `Rule` only under its project name. A
+every two rows, the file tree under its project name too. A
 shaded row (selected, hovered, marked, a drop target) reaches halfway into the
 blank line on each side: `Widget/Render/RowBleed` draws `▄` above it and `▀`
 below in the row's background as a foreground, one `▀` of both colours between
 two shaded rows, and nothing where the theme shades without a background (the
-monochrome hover's underline). Only a blank line bleeds; a rule and the
-`▲`/`▼` rows keep their glyphs. The gaps own no row, so a click or hover
+monochrome hover's underline). Only a blank line bleeds; the `▲`/`▼` rows are
+controls. Where the first or last row meets a workspace rule instead — the
+settings nav's General, under the menu bar's — `RuleHalves` draws the half into
+the rule (see the tab strips). The gaps own no row, so a click or hover
 on one does nothing, and a window holds half the entries. Its `▲`/`▼` edges
 (`EdgeIndicator`, shared with the vertical tab strip) are controls: a click
 selects the first entry hidden past that edge. The `▲` row is drawn only once

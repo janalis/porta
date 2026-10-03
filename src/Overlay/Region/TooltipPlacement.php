@@ -30,13 +30,24 @@ final readonly class TooltipPlacement
     {
         [$boundTop, $boundLeft, $boundBottom, $boundRight] = $bounds;
         $below = $anchor->row + \max(1, $anchor->rows);
+        $fitsBeside = $height <= ($boundBottom - $boundTop);
+        // The side the element asks for, where the card fits there.
+        $asked = match ($anchor->side) {
+            TooltipSide::Below => ($below + $height) <= $boundBottom ? self::vertical($anchor, $width, $below, TooltipSide::Below, $bounds) : null,
+            TooltipSide::Above => ($anchor->row - $height) >= $boundTop ? self::vertical($anchor, $width, $anchor->row - $height, TooltipSide::Above, $bounds) : null,
+            TooltipSide::Right => $fitsBeside && ($anchor->colEnd + $width) <= $boundRight ? self::beside($anchor, $height, $anchor->colEnd, TooltipSide::Right, $bounds) : null,
+            TooltipSide::Left => $fitsBeside && ($anchor->colStart - $width) >= $boundLeft ? self::beside($anchor, $height, $anchor->colStart - $width, TooltipSide::Left, $bounds) : null,
+            null => null,
+        };
+        if (null !== $asked) {
+            return $asked;
+        }
         if (($below + $height) <= $boundBottom) {
             return self::vertical($anchor, $width, $below, TooltipSide::Below, $bounds);
         }
         if (($anchor->row - $height) >= $boundTop) {
             return self::vertical($anchor, $width, $anchor->row - $height, TooltipSide::Above, $bounds);
         }
-        $fitsBeside = $height <= ($boundBottom - $boundTop);
         if ($fitsBeside && ($anchor->colEnd + $width) <= $boundRight) {
             return self::beside($anchor, $height, $anchor->colEnd, TooltipSide::Right, $bounds);
         }

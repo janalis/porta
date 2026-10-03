@@ -7,6 +7,7 @@ namespace Porta\Widget;
 use Porta\Container\AsWidget;
 use Porta\I18n\BaseDirection;
 use Porta\I18n\Translator;
+use Porta\Overlay\Region\TooltipSide;
 use Porta\Support\AnsiText;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
@@ -16,10 +17,11 @@ use Porta\Ui\TooltipProvider;
 use Porta\Widget\Render\EdgeIndicator;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
+use Porta\Widget\Render\RowBleed;
 use Porta\Widget\Render\SelectionBar;
 use Porta\Widget\Render\StripEdge;
 use Porta\Widget\Render\TabCloseGlyph;
-use Porta\Widget\Render\TabShape;
+use Porta\Widget\Render\TabPillStyle;
 use Porta\Widget\Render\TabState;
 use Porta\Widget\Render\TabStripRenderer;
 use Porta\Widget\Render\TabStripTail;
@@ -31,14 +33,15 @@ use Porta\Widget\Support\StylesDefault;
 use Porta\Widget\Support\TabBarPosition;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
+use Symfony\Component\Tui\Style\Style;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 
 /**
  * The editor tab strip. Content comes from a provider closure so it always
  * reflects the BufferManager state. Renders as a horizontal bar (top/bottom
- * positions) or as a fixed-width vertical list (left/right positions): folder
- * tabs {@see TabStripRenderer::ROWS} rows tall where the screen is roomy, one
- * row each where it is compact.
+ * positions) or as a fixed-width vertical list (left/right positions): pills
+ * spaced like the file tree's rows where the screen is roomy, one row each
+ * where it is compact.
  */
 #[AsWidget('tabs', flex: 0)]
 final class TabBarWidget extends AbstractWidget implements MenuOverlayHost, TooltipProvider
@@ -79,10 +82,10 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost, Tool
     /** @var list<array{index: int, row: int, rows: int, labelRow: int, start: int, width: int, closeStart: int, closeWidth: int}> layout from the last render: each tab's top row, its height, and the row its × is on */
     private array $lastLayout = [];
 
-    /** @var positive-int the strip's height — a side strip's tab's: one row, or {@see TabStripRenderer::ROWS} for folder tabs */
+    /** @var positive-int the strip's height: one row, or {@see TabStripRenderer::ROWS} on a roomy screen — where a side strip spaces its tabs */
     private int $stripRows = 1;
 
-    /** The pane focus the last render drew, so a focus change repaints the lid. */
+    /** The pane focus the last render drew, so a focus change repaints the shown tab's shade. */
     private bool $drawnFocus = false;
 
     /** The active index the window last followed, so a manual scroll survives parked frames. */
@@ -163,19 +166,19 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost, Tool
         // pointer.
         $this->refreshFingerprint(($this->provider)());
         if ($this->paneFocused() !== $this->drawnFocus) {
-            $this->invalidate(); // the active lid's weight follows the pane's focus
+            $this->invalidate(); // the shown tab's shade follows the pane's focus
         }
     }
 
     /**
      * Scroll the side list by $rows screen rows (a wheel notch's worth): a
-     * row is a tab on the one-row list, and a folder tab is
-     * {@see TabStripRenderer::ROWS} of them, so a notch moves the list the
+     * row is a tab on the one-row list, and a roomy tab is two of them (its
+     * row and the gap under it), so a notch moves the list the
      * same distance on screen at either density.
      */
     public function scrollByRows(int $rows): void
     {
-        $this->scrollBy(\intdiv($rows, $this->stripRows > 1 ? TabStripRenderer::ROWS : 1));
+        $this->scrollBy(\intdiv($rows, $this->stripRows > 1 ? 2 : 1));
     }
 
     /**
@@ -210,10 +213,10 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost, Tool
         return true;
     }
 
-    /** Whether the stored hover cell falls inside a side tab of $height rows from $row. */
-    private function isHoverCell(int $row, int $height): bool
+    /** Whether the stored hover cell is on the side tab drawn on $row. */
+    private function isHoverCell(int $row): bool
     {
-        return null !== $this->hoverCell && $this->hoverCell['row'] >= $row && $this->hoverCell['row'] < ($row + $height);
+        return null !== $this->hoverCell && $this->hoverCell['row'] === $row;
     }
 
     #[\Override]
@@ -230,10 +233,13 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost, Tool
         $this->lastTabs = $tabs;
 
         if ([] === $tabs) {
-            // The empty strip keeps its Toolbar base and its height: closing
-            // the last tab must neither drop the bar to the terminal default
-            // nor move the code under it.
-            return \array_fill(start_index: 0, count: $this->stripRows, value: $this->styles->of(Role::Toolbar)->apply(AnsiText::blank($columns)));
+            // The empty strip keeps its height and its base — the toolbar
+            // shade compact, the baseline roomy: closing the last tab must
+            // neither change the bar's look nor move the code under it.
+            $lines = \array_fill(start_index: 0, count: $this->stripRows, value: '');
+            $foot = TabBarPosition::Bottom === $this->position ? 0 : $this->stripRows - 1;
+
+            return TabStripTail::pad(['lines' => $lines, 'footRow' => $this->stripRows > 1 ? $foot : null, 'used' => 0], $columns, $this->styles);
         }
 
         // The shared strip: the overflow window (reserve ‹/› cells, clamp,
@@ -270,8 +276,8 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost, Tool
     }
 
     /**
-     * The vertical (left/right) tab list: a folder tab of
-     * {@see TabStripRenderer::ROWS} rows each, or one row each on a compact
+     * The vertical (left/right) tab list: a pill on a row, a blank gap between
+     * two, or one row each on a compact
      * screen, every line exactly
      * {@see VERTICAL_WIDTH} columns so the layout engine measures a stable
      * intrinsic width, blank rows filling the pane below the last tab.
@@ -306,64 +312,69 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost, Tool
 
         $this->lastLayout = [];
         $lines = [];
+        $shades = []; // each roomy tab's style by row, for the gaps beside it
+        $opened = []; // the rows of the shaded tabs, which no rule runs beside
         if ($width < self::VERTICAL_MIN) {
             // Too narrow for a tab; blank rows of the right width beat a
             // truncated one, and beat an exception by more.
             return $this->memoLines = \array_fill(start_index: 0, count: $rows, value: AnsiText::blank($width));
         }
         if ([] !== $tabs) {
-            $activeIndex = 0;
-            foreach ($tabs as $i => $candidate) {
-                if (!$candidate['active']) {
-                    continue;
-                }
-
-                $activeIndex = $i;
-                break; // equivalent mutant, for the reason given on the horizontal strip above
-            }
             // An overflowing list reserves its first and last rows for the
             // ▲/▼ scroll indicators (blank when that side is not clipped).
+            // Roomy, a tab is one row with a blank gap between it and the
+            // next: the tree's spacing, each gap holding the halves of the
+            // shaded tabs beside it. The first tab's upper half is the
+            // frame's, drawn into the rule over the strip.
             $tall = $this->stripRows > 1;
-            $height = $tall ? TabStripRenderer::ROWS : 1;
-            $overflow = $rows > 2 && (\count($tabs) * $height) > $rows;
-            $budget = \max(1, \intdiv($overflow ? $rows - 2 : $rows, $height));
-            // Tabs are uniform height, so the window is the manual scroll
-            // offset (clamped against a blank tail) that follows the active
-            // tab only when it changed — a user's scroll survives otherwise.
-            $this->scroll = \min($this->scroll, \max(0, \count($tabs) - $budget));
-            if ($activeIndex !== $this->lastActive) {
-                $this->lastActive = $activeIndex;
-                $this->scroll = \min($this->scroll, $activeIndex);
-                $this->scroll = \max($this->scroll, $activeIndex - $budget + 1);
-            }
-            $start = $this->scroll;
+            $needed = $tall ? (2 * \count($tabs)) - 1 : \count($tabs);
+            $overflow = $rows > 2 && $needed > $rows;
+            $room = $overflow ? $rows - 2 : $rows;
+            $budget = $tall ? \intdiv($room + 1, num2: 2) : $room; // never 0: overflowing takes three rows or more
+            $start = $this->followShown($tabs, $budget);
             if ($overflow) {
                 $lines[] = $start > 0 ? $this->indicatorRow(Glyphs::SCROLL_UP, step: -3, row: 0, width: $width) : $this->sideRow($width);
             }
             foreach (\array_slice($tabs, $start, $budget, preserve_keys: true) as $index => $tab) {
                 $top = \count($lines);
-                $state = TabState::of($tab['active'], $this->isHoverCell($top, $height));
-                \array_push($lines, ...$tall ? $this->sideTab($tab, $state, $width) : [$this->listRow($tab, $state, $width)]);
+                $state = TabState::of($tab['active'], $this->isHoverCell($top));
+                $pill = TabPillStyle::of($this->styles, $state, $this->drawnFocus);
+                // A shaded tab — the shown one, the hovered one — opens into
+                // the editor: no rule beside it, its pill across the strip's
+                // whole width. Its label and × stay where they were: the
+                // rule's column is a blank of the pill's at whichever end.
+                $open = $tall && TabState::Plain !== $state;
+                $body = ' '.$this->tabBody($tab, $width - 2);
+                $lines[] = match (true) {
+                    $open => $pill->apply($this->ruleAtEnd() ? $body.' ' : ' '.$body),
+                    $tall => $this->sideCells($pill->apply($body)),
+                    default => $this->listRow($tab, $state, $width),
+                };
+                if ($tall) {
+                    $shades[$top] = $pill;
+                    $lines[] = $this->sideRow($width); // the gap under it
+                }
+                if ($open) {
+                    $opened[] = $top;
+                }
                 $this->lastLayout[] = [
                     'index' => $index,
                     'row' => $top,
-                    'rows' => $height,
-                    'labelRow' => $top + ($tall ? 1 : 0), // the middle row
+                    'rows' => 1,
+                    'labelRow' => $top,
                     'start' => 0,
                     'width' => $width,
-                    // The × is right-aligned: a gutter column before a tall
-                    // tab's outline, where the one-row list has none.
-                    'closeStart' => $width - TabStripRenderer::CLOSE_WIDTH - ($tall ? 1 : 0),
+                    // The × is right-aligned: past it a pill has the rule's
+                    // column when the rule is its last, the list nothing.
+                    'closeStart' => $width - TabStripRenderer::CLOSE_WIDTH - ($tall && $this->ruleAtEnd() ? 1 : 0),
                     'closeWidth' => $tab['closable'] ?? true ? TabStripRenderer::CLOSE_WIDTH : 0,
                 ];
             }
             if ($overflow) {
-                // The ▼ is the strip's last row, where its zone is: whole
-                // folder tabs rarely fill the rows between, and the gap is
-                // the rule's.
-                while (\count($lines) < ($rows - 1)) {
-                    $lines[] = $this->sideRow($width);
-                }
+                // The ▼ is the strip's last row, where its zone is. An
+                // overflowing window fills every row above it — the ▲'s, then
+                // a tab and its gap each — so the cut is all it takes.
+                $lines = \array_slice($lines, offset: 0, length: $rows - 1);
                 $lines[] = ($start + $budget) < \count($tabs) ? $this->indicatorRow(Glyphs::SCROLL_DOWN, step: 3, row: $rows - 1, width: $width) : $this->sideRow($width);
             }
         }
@@ -372,8 +383,9 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost, Tool
         while (\count($lines) < $rows) {
             $lines[] = [] === $tabs ? AnsiText::blank($width) : $this->sideRow($width);
         }
-        // A pane shorter than one tall tab and its indicators keeps its height.
+        // A pane shorter than one tab and its indicators keeps its height.
         $lines = \array_slice($lines, offset: 0, length: $rows);
+        $lines = $this->stripRows > 1 ? $this->bleedGaps($lines, $shades, $opened, $width) : $lines;
 
         $this->memoZones = $this->indicatorZones;
 
@@ -394,26 +406,69 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost, Tool
     }
 
     /**
-     * A folder tab stood on its side: its outline three rows tall, the inner
-     * edge a rule down the strip that opens beside the shown tab alone
-     * ({@see TabShape::side()}). The shape is the state, as on the
-     * horizontal strip, so the selection bar has no work to do here.
+     * The side list's first tab in a window of $budget: tabs are uniform
+     * height, so it is the manual scroll offset (clamped against a blank tail)
+     * that follows the shown tab only when it changed — a user's scroll
+     * survives otherwise.
      *
-     * @param array{name: string, dirty: bool, active: bool, closable?: bool, tooltip?: string, agents?: list<int>} $tab
+     * @param non-empty-list<array{active: bool, ...}> $tabs
+     */
+    private function followShown(array $tabs, int $budget): int
+    {
+        $activeIndex = 0;
+        foreach ($tabs as $i => $candidate) {
+            if (!$candidate['active']) {
+                continue;
+            }
+
+            $activeIndex = $i;
+            break; // equivalent mutant, for the reason given on the horizontal strip above
+        }
+        $this->scroll = \min($this->scroll, \max(0, \count($tabs) - $budget));
+        if ($activeIndex !== $this->lastActive) {
+            $this->lastActive = $activeIndex;
+            $this->scroll = \min($this->scroll, $activeIndex);
+            $this->scroll = \max($this->scroll, $activeIndex - $budget + 1);
+        }
+
+        return $this->scroll;
+    }
+
+    /**
+     * Roomy, a blank row beside a shaded tab takes its half, across the
+     * rule's column too, as the tab's pill does: a shaded tab is open
+     * ($opened), so no rule runs beside it or its halves. Every other gap
+     * has no shade on either side, and stays the blank it was, rule and all.
+     *
+     * @param list<string>      $lines
+     * @param array<int, Style> $shades each tab's pill by row
+     * @param list<int>         $opened the rows of the shaded tabs
      *
      * @return list<string>
      */
-    private function sideTab(array $tab, TabState $state, int $width): array
+    private function bleedGaps(array $lines, array $shades, array $opened, int $width): array
     {
-        $shape = TabShape::of($tab['active'], $this->drawnFocus);
-        $outline = $this->styles->of($shape->role());
-        $side = $shape->side($width, $this->ruleAtEnd());
-        $body = TabStyle::of($this->styles, $state)->apply(' '.$this->tabBody($tab, $width - 3));
-        $middle = $this->ruleAtEnd()
-            ? $outline->apply($side['outer']).$body.$outline->apply($side['inner'])
-            : $outline->apply($side['inner']).$body.$outline->apply($side['outer']);
+        $blank = $this->sideRow($width);
+        foreach ($lines as $i => $line) {
+            if ($line !== $blank || !\in_array($i - 1, $opened, strict: true) && !\in_array($i + 1, $opened, strict: true)) {
+                continue;
+            }
+            $lines[$i] = RowBleed::gap($width, $shades[$i - 1] ?? null, $shades[$i + 1] ?? null);
+        }
 
-        return [$outline->apply($side['top']), $middle, $outline->apply($side['bottom'])];
+        return $lines;
+    }
+
+    /**
+     * A roomy row of the side strip: $cells, the strip's width but one — a
+     * pill or its halves, out to the outer edge — and the inner rule running
+     * down the strip beside them.
+     */
+    private function sideCells(string $cells): string
+    {
+        $rule = $this->styles->of(Role::Rule)->apply(Glyphs::FRAME_VERTICAL);
+
+        return $this->ruleAtEnd() ? $cells.$rule : $rule.$cells;
     }
 
     /**
@@ -438,12 +493,20 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost, Tool
     /**
      * One ✦ per agent at work on the tab's file, each in that agent's colour,
      * before the dirty dot: whose hands are in it, then whether it is saved.
+     * The colour is the glyph's, not a cell's: an agent's role is a badge —
+     * its colour as a background — and a badge would punch a block out of
+     * the tab's own shade. A theme whose agents have no colour (monochrome)
+     * draws the bare ✦, as the file tree does.
      *
      * @param array{name: string, dirty: bool, active: bool, closable?: bool, tooltip?: string, agents?: list<int>} $tab
      */
     private function agentMarks(array $tab): string
     {
-        return \implode('', \array_map(fn (int $slot): string => $this->styles->of(Role::agent($slot))->apply(Glyphs::AGENT), $tab['agents'] ?? []));
+        return \implode('', \array_map(function (int $slot): string {
+            $colour = $this->styles->of(Role::agent($slot))->getBackground();
+
+            return null === $colour ? Glyphs::AGENT : new Style(color: $colour)->apply(Glyphs::AGENT);
+        }, $tab['agents'] ?? []));
     }
 
     /**
@@ -494,7 +557,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost, Tool
     /**
      * Which tab index (into the full provider list) sits at the given
      * widget-relative cell of the last-rendered strip, or null when the click
-     * missed every tab. The horizontal strip ignores the row (a folder tab is
+     * missed every tab. The horizontal strip ignores the row (a pill is
      * the whole of its shape, and a reorder-drag may wander off the strip);
      * the vertical list matches it against each tab's rows.
      */
@@ -532,8 +595,12 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost, Tool
 
     /**
      * A tab says which file it holds, in full, and what its marks mean; its
-     * × says what it does. The span is the tab's (or the ×'s) on its label
-     * row, where the arrow points.
+     * × says what it does. The span is the tab's (or the ×'s); on a roomy
+     * screen it is the whole pill — the label row and the rows holding its
+     * halves — so the card stands clear of the shade rather than over half
+     * of it, and it goes on the side away from the screen edge the strip
+     * sits on, toward the editor: under a top strip, over a bottom one,
+     * beside a side one.
      */
     #[\Override]
     public function tooltipAt(int $row, int $col): ?Tooltip
@@ -544,12 +611,35 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost, Tool
         if (null === $entry) {
             return null;
         }
+        $pill = $this->stripRows > 1;
+        [$top, $rows] = $pill ? [$entry['labelRow'] - 1, 3] : [$entry['row'], $entry['rows']];
+        $side = $pill ? $this->tooltipSide() : null;
         if (null !== $close) {
-            return new Tooltip('tab:close:'.$close, $this->translator->trans('Close Tab'), $entry['labelRow'], $entry['closeStart'], $entry['closeStart'] + $entry['closeWidth']);
+            return new Tooltip(
+                'tab:close:'.$close,
+                $this->translator->trans('Close Tab'),
+                $pill ? $top : $entry['labelRow'],
+                $entry['closeStart'],
+                $entry['closeStart'] + $entry['closeWidth'],
+                $pill ? $rows : 1,
+                $side,
+            );
         }
         $text = $this->lastTabs[$entry['index']]['tooltip'] ?? '';
 
-        return '' === $text ? null : new Tooltip('tab:'.$entry['index'], $text, $entry['row'], $entry['start'], $entry['start'] + $entry['width'], $entry['rows']);
+        return '' === $text ? null : new Tooltip('tab:'.$entry['index'], $text, $top, $entry['start'], $entry['start'] + $entry['width'], $rows, $side);
+    }
+
+    /** The side of a tab its card goes on: away from the screen edge the strip sits on. */
+    private function tooltipSide(): TooltipSide
+    {
+        return match (true) {
+            TabBarPosition::Top === $this->position => TooltipSide::Below,
+            TabBarPosition::Bottom === $this->position => TooltipSide::Above,
+            // The editor is past the rule: at the row's end, or at its start.
+            $this->ruleAtEnd() => TooltipSide::Right,
+            default => TooltipSide::Left,
+        };
     }
 
     /**
@@ -560,8 +650,8 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost, Tool
     public function closeIndexAt(int $row, int $col): ?int
     {
         foreach ($this->lastLayout as $entry) {
-            // Every orientation: a folder tab's × is on its label row, and
-            // the outline around it is the tab's, not the ×'s.
+            // Every orientation: a pill's × is on its label row, and the
+            // halves around it are the tab's, not the ×'s.
             if ($entry['labelRow'] !== $row) {
                 continue;
             }

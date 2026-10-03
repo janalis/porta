@@ -152,8 +152,9 @@ The shared row traits live in `Widget/Support/`:
 Every horizontal tab strip (editor, dock, git mode tabs) is
 `Widget/Render/TabStripRenderer::render()`; the single cell is its
 `measureCell`/`renderCell`. Only the vertical editor strip lays out its own
-rows. A folder tab's outline is `Widget/Render/TabShape` at a `StripEdge`;
-`TabStripTail` pads the rows. How tall the strips are is
+rows. A roomy tab is a pill shaded by `Widget/Render/TabPillStyle`, its halves
+`Widget/Render/RowBleed`'s, the half that lands in a workspace rule
+`Overlay/Presenter/RuleHalves`'; `TabStripTail` pads the rows. How tall the strips are is
 `Layout/ChromeHeight`, from the `Ui/ScreenDensity` it keeps, and a strip learns whether its pane has the keys
 through the `Widget/Support/PaneFocusProbe` trait.
 

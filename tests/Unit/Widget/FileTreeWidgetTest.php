@@ -936,18 +936,17 @@ final class FileTreeWidgetTest extends TestCase
 
     /**
      * A roomy screen spaces the tree as it spaces the settings nav: a blank
-     * gap between every two entries, and a drawn rule only under the project
-     * name. A compact one keeps the dense tree.
+     * gap under the project name and between every two entries. A compact
+     * one keeps the dense tree.
      */
-    public function testARoomyScreenRulesUnderTheNameAndSpacesTheRows(): void
+    public function testARoomyScreenSpacesTheRowsUnderTheName(): void
     {
         $project = new TempProject(['a.php' => '', 'b.php' => '']);
         $density = new ScreenDensity();
         $tree = new FileTreeWidget($project->dir, density: $density);
 
         $rows = $this->rows($tree->render(new RenderContext(12, 8)));
-        $rule = \str_repeat('─', times: 12);
-        $this->assertSame([$rule, '   a.php', '', '   b.php', '', '', ''], \array_map(\rtrim(...), \array_slice($rows, offset: 1)), 'a rule under the name, a transparent gap between the two');
+        $this->assertSame(['', '   a.php', '', '   b.php', '', '', ''], \array_map(\rtrim(...), \array_slice($rows, offset: 1)), 'a transparent gap under the name, and between the two');
 
         $tree->beforeRender();
         $before = $tree->getRenderRevision();
@@ -963,8 +962,8 @@ final class FileTreeWidgetTest extends TestCase
 
     /**
      * Roomy, a shaded entry reaches halfway into the gap on each side — the
-     * settings nav's shape; the rule under the project name is a border, and
-     * keeps its line.
+     * settings nav's shape — the first entry too: the line under the project
+     * name is a gap now, not a rule.
      */
     public function testARoomyShadeReachesIntoEveryGapBesideIt(): void
     {
@@ -977,7 +976,7 @@ final class FileTreeWidgetTest extends TestCase
 
         $lines = $tree->render(new RenderContext(12, 9));
 
-        $this->assertSame(\str_repeat('─', times: 12), AnsiUtils::stripAnsiCodes($lines[1]), 'the rule under the name: no half over the selected a.php');
+        $this->assertSame(\str_repeat('▄', times: 12), AnsiUtils::stripAnsiCodes($lines[1]), 'the top half of the selected a.php, under the name: no rule there any more');
         $this->assertSame(\str_repeat('▀', times: 12), AnsiUtils::stripAnsiCodes($lines[3]), 'the bottom half of the selection');
         $this->assertSame(new Style(color: 236)->apply(\str_repeat('▄', times: 12)), $lines[5], 'the top half of the hover over c.php');
         $this->assertSame(new Style(color: 236)->apply(\str_repeat('▀', times: 12)), $lines[7], 'and its bottom half, past the last entry');
@@ -998,7 +997,7 @@ final class FileTreeWidgetTest extends TestCase
         $tree->render(new RenderContext(20, 9));
 
         $this->assertNull($tree->nodeAtRow(0), 'the header');
-        $this->assertNull($tree->nodeAtRow(1), 'the rule under it');
+        $this->assertNull($tree->nodeAtRow(1), 'the gap under it');
         $this->assertSame('a.php', $tree->nodeAtRow(2)?->name);
         $this->assertNull($tree->nodeAtRow(3), 'a rule between two');
         $this->assertSame('b.php', $tree->nodeAtRow(4)?->name);

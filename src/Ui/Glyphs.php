@@ -344,22 +344,6 @@ final class Glyphs
     public const string SELECTION_BAR_UNFOCUSED = '▎';
     public const string SELECTION_MARKED = '│'; // same value as SEPARATOR — disjoint surfaces (a list row's first column vs a tab strip)
 
-    // A folder tab's lid while its pane has no focus: heavy across, light down
-    // the sides — shown here, but not where the keys go (TabShape::Active).
-    public const string TAB_LID_TOP_LEFT = '┍';
-    public const string TAB_LID_TOP_RIGHT = '┑';
-    public const string TAB_LID_BOTTOM_LEFT = '┕';
-    public const string TAB_LID_BOTTOM_RIGHT = '┙';
-
-    // Where the heavy rails of the focused folder tab land on the strip's
-    // light baseline, which opens under the tab (TabShape::foot): heavy up
-    // or down, light across. The light rails of every other tab land on it
-    // as the frame's own corners and RULE_UP/RULE_DOWN.
-    public const string TAB_FOOT_UP_LEFT = '┚';
-    public const string TAB_FOOT_UP_RIGHT = '┖';
-    public const string TAB_FOOT_DOWN_LEFT = '┒';
-    public const string TAB_FOOT_DOWN_RIGHT = '┎';
-
     // A shaded list row's shade reaching halfway into the roomy gap beside it
     // (Widget/Render/RowBleed): the half block wears the row's background as
     // its foreground. The full block is a gap both halves of which are the

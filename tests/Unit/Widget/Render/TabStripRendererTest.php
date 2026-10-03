@@ -146,46 +146,72 @@ final class TabStripRendererTest extends TestCase
      * last one. Read with every SGR stripped, so it holds under the
      * monochrome theme and --no-ansi.
      */
-    public function testAFolderStripDrawsEachStateAsAShape(): void
+    /**
+     * Roomy, a tab is a pill: its label row shaded as a tree row is, standing
+     * on a baseline that holds its lower half, the line running on beside it;
+     * its upper half is the frame's, in the rule over the strip. The shown tab
+     * wears the list selection — grey, blue where its pane has the keys — the
+     * hovered one the rows' hover tint, the rest nothing.
+     */
+    public function testARoomyStripDrawsEachTabAsAPill(): void
     {
         $tabs = [['label' => 'one', 'active' => true], ['label' => 'two', 'active' => false]];
 
-        $unfocused = TabStripRenderer::render($tabs, 40, Styles::dark(), rows: 3);
-        $focused = TabStripRenderer::render($tabs, 40, Styles::dark(), rows: 3, paneFocused: true);
+        $unfocused = TabStripRenderer::render($tabs, 40, Styles::dark(), rows: 2);
+        $focused = TabStripRenderer::render($tabs, 40, Styles::dark(), rows: 2, paneFocused: true);
+        $hovered = TabStripRenderer::render($tabs, 40, Styles::dark(), hoverCol: 10, rows: 2);
 
-        $this->assertSame(['┍━━━━━━━┑╭───────╮', '│ one × ││ two × │', '┘       └┴───────┴'], \array_map(AnsiUtils::stripAnsiCodes(...), $unfocused['lines']));
-        $this->assertSame(['┏━━━━━━━┓╭───────╮', '┃ one × ┃│ two × │', '┚       ┖┴───────┴'], \array_map(AnsiUtils::stripAnsiCodes(...), $focused['lines']));
-        $this->assertSame(1, $unfocused['labelRow']);
-        $this->assertSame(2, $unfocused['footRow']);
+        $this->assertSame([' one ×  two × ', '▀▀▀▀▀▀▀───────'], \array_map(AnsiUtils::stripAnsiCodes(...), $unfocused['lines']));
+        $this->assertStringContainsString("\x1b[38;5;237m▀▀▀▀▀▀▀", $unfocused['lines'][1], 'the shown tab: the grey of a list cursor without the keys');
+        $this->assertStringContainsString("\x1b[48;5;237m", $unfocused['lines'][0]);
+        $this->assertStringContainsString("\x1b[38;5;31m▀▀▀▀▀▀▀", $focused['lines'][1], 'and the blue of one with them');
+        $this->assertStringContainsString("\x1b[48;5;31m", $focused['lines'][0]);
+        $this->assertStringNotContainsString('48;5;235', $focused['lines'][0], 'a resting tab sits on nothing, not the toolbar');
+        $this->assertSame('▀▀▀▀▀▀▀▀▀▀▀▀▀▀', AnsiUtils::stripAnsiCodes($hovered['lines'][1]), 'the hovered tab is a pill too, beside the shown one with no gap: one run of shade');
+        $this->assertStringContainsString("\x1b[38;5;236m▀▀▀▀▀▀▀", $hovered['lines'][1], 'in the rows\' hover tint');
+        $this->assertSame(0, $unfocused['labelRow']);
+        $this->assertSame(1, $unfocused['footRow']);
+
+        $edged = TabStripRenderer::render($tabs, 40, Styles::dark(), rows: 3);
+        $this->assertSame(
+            ['▄▄▄▄▄▄▄───────', ' one ×  two × ', '▀▀▀▀▀▀▀───────'],
+            \array_map(AnsiUtils::stripAnsiCodes(...), $edged['lines']),
+            'a strip that is its own top edge holds its upper halves in that rule',
+        );
+        $this->assertSame([1, 2], [$edged['labelRow'], $edged['footRow']]);
+
         $compact = TabStripRenderer::render($tabs, 40, Styles::dark(), edge: StripEdge::Bottom);
         $this->assertNull($compact['footRow'], 'a compact strip has no baseline to run on');
         $this->assertSame(' one × │ two × │     ', AnsiUtils::stripAnsiCodes(TabStripTail::pad($compact, 21, Styles::dark())[0]), 'so its tail is blank, at either edge');
+        $this->assertStringContainsString("\x1b[48;5;235m", TabStripTail::pad($compact, 21, Styles::dark())[0], 'over the toolbar shade it has always had');
         $padded = TabStripTail::pad($unfocused, 22, Styles::dark());
-        $this->assertSame('┘       └┴───────┴────', AnsiUtils::stripAnsiCodes($padded[2]), 'the baseline runs on past the last tab');
-        $this->assertSame('│ one × ││ two × │    ', AnsiUtils::stripAnsiCodes($padded[1]), 'the label row pads with blanks');
+        $this->assertSame('▀▀▀▀▀▀▀───────────────', AnsiUtils::stripAnsiCodes($padded[1]), 'the baseline runs on past the last tab');
+        $this->assertSame(' one ×  two ×         ', AnsiUtils::stripAnsiCodes($padded[0]), 'the label row pads with blanks');
+        $this->assertStringNotContainsString('48;5;235', $padded[0], 'on nothing');
     }
 
-    /** A strip under its pane opens upward: the baseline first, then the labels, then the tabs' bottoms. */
-    public function testABottomFolderStripIsMirrored(): void
+    /** At a bottom edge the rows run the other way: the baseline over the labels, holding their upper halves. */
+    public function testABottomRoomyStripIsMirrored(): void
     {
-        $strip = TabStripRenderer::render([['label' => 'one', 'active' => true], ['label' => 'two', 'active' => false]], 40, Styles::dark(), rows: 3, edge: StripEdge::Bottom, paneFocused: true);
+        $strip = TabStripRenderer::render([['label' => 'one', 'active' => true], ['label' => 'two', 'active' => false]], 40, Styles::dark(), rows: 2, edge: StripEdge::Bottom, paneFocused: true);
 
-        $this->assertSame(['┒       ┎┬───────┬', '┃ one × ┃│ two × │', '┗━━━━━━━┛╰───────╯'], \array_map(AnsiUtils::stripAnsiCodes(...), $strip['lines']));
+        $this->assertSame(['▄▄▄▄▄▄▄───────', ' one ×  two × '], \array_map(AnsiUtils::stripAnsiCodes(...), $strip['lines']));
         $this->assertSame(1, $strip['labelRow']);
         $this->assertSame(0, $strip['footRow']);
-        $unfocused = TabStripRenderer::render([['label' => 'one', 'active' => true]], 40, Styles::dark(), rows: 3, edge: StripEdge::Bottom);
-        $this->assertSame(['┐       ┌', '┕━━━━━━━┙'], [AnsiUtils::stripAnsiCodes($unfocused['lines'][0]), AnsiUtils::stripAnsiCodes($unfocused['lines'][2])]);
+        $edged = TabStripRenderer::render([['label' => 'one', 'active' => true]], 40, Styles::dark(), rows: 3, edge: StripEdge::Bottom);
+        $this->assertSame(2, $edged['footRow'], 'a strip that is its own top edge keeps its baseline under the labels, at either edge');
     }
 
     /** The zones count the rails: a folder tab is one column wider, and its × one column further in. */
-    public function testAFolderTabsZonesIncludeItsRails(): void
+    /** Pills stand side by side: a tab's zone is its text, with no margin or divider of its own. */
+    public function testAPillsZoneIsItsText(): void
     {
         $strip = TabStripRenderer::render([['label' => 'one', 'active' => true], ['label' => 'two', 'active' => false]], 40, Styles::dark(), rows: 3);
 
-        $this->assertSame([0, 9], \array_column($strip['hitMap'], 'start'));
-        $this->assertSame([9, 9], \array_column($strip['hitMap'], 'width'));
-        $this->assertSame(6, $strip['hitMap'][0]['closeStart'], 'the rail, then " one "');
-        $this->assertSame(18, $strip['used']);
+        $this->assertSame([0, 7], \array_column($strip['hitMap'], 'start'));
+        $this->assertSame([7, 7], \array_column($strip['hitMap'], 'width'));
+        $this->assertSame(5, $strip['hitMap'][0]['closeStart'], '" one ", then the ×');
+        $this->assertSame(14, $strip['used']);
     }
 
     /** On the lid above a ×, the pointer is on the tab, not the ×: the × lights only where a click on it closes. */
@@ -202,7 +228,7 @@ final class TabStripRendererTest extends TestCase
     }
 
     /** An overflowing folder strip pages from any of its rows, and its baseline runs under the indicators. */
-    public function testAFolderStripsIndicatorsSpanEveryRow(): void
+    public function testARoomyStripsIndicatorsSpanEveryRow(): void
     {
         $tabs = [];
         for ($i = 0; $i < 8; ++$i) {
@@ -220,14 +246,18 @@ final class TabStripRendererTest extends TestCase
             $this->assertSame(30, AnsiUtils::visibleWidth($line));
         }
         $foot = AnsiUtils::stripAnsiCodes($strip['lines'][2]);
-        $this->assertStringStartsWith('─┴', $foot, 'under ‹ the baseline runs on');
-        $this->assertStringEndsWith('└─────────', $foot, 'and on to the last column, under ›');
+        $this->assertSame(\mb_strpos($foot, needle: '▀'), \mb_strpos(AnsiUtils::stripAnsiCodes($strip['lines'][0]), needle: '▄'), 'past ‹ the two halves of the shown tab line up');
+        $compact = TabStripRenderer::render($tabs, 30, Styles::dark());
+        $this->assertSame([0], \array_values(\array_unique(\array_column($compact['indicatorZones'], 'row'))), 'a compact strip\'s ‹ and › are on its one row');
+        $this->assertStringStartsWith('────', $foot, 'under ‹ the baseline runs on');
+        $this->assertStringEndsWith('▀▀▀▀▀▀▀▀─────', $foot, 'and on to the last column, under ›');
     }
 
-    /** Folder tabs from 30 terminal rows; a compact strip below, where every row is a line of code. */
     public function testTheStripIsCompactBelowThirtyRows(): void
     {
         $this->assertSame(1, TabStripRenderer::rowsFor(Density::Compact));
-        $this->assertSame(3, TabStripRenderer::rowsFor(Density::Roomy));
+        $this->assertSame(2, TabStripRenderer::rowsFor(Density::Roomy), 'the labels and the baseline: the upper halves are the frame\'s');
+        $this->assertSame(1, TabStripRenderer::edgedRowsFor(Density::Compact));
+        $this->assertSame(3, TabStripRenderer::edgedRowsFor(Density::Roomy), 'and a strip that is its own top edge draws that rule too');
     }
 }
