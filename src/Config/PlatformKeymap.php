@@ -123,8 +123,7 @@ final class PlatformKeymap
 
     /**
      * The overlay for $platform without a single Cmd chord — the whole of it
-     * off a Mac, and on one for a parser that cannot tell a Cmd chord from the
-     * bare key ({@see parsesSuper()}).
+     * off a Mac.
      *
      * @return array<string, list<string>>
      */
@@ -147,17 +146,5 @@ final class PlatformKeymap
         $name = \array_pop($parts);
 
         return \implode('+', [...\array_intersect(['shift', 'ctrl', 'alt', 'super', 'hyper', 'meta'], $parts), $name]);
-    }
-
-    /**
-     * Whether $parser can tell a Cmd chord from the bare key at all.
-     *
-     * symfony/tui learned the super modifier late; before that, `super+c` was
-     * read as `c` and would have fired on every c typed. So the Cmd chords
-     * are only bound once the parser names one.
-     */
-    public static function parsesSuper(KeyParser $parser): bool
-    {
-        return 'super+c' === ($parser->parse("\x1b[99;9u")['key'] ?? null);
     }
 }

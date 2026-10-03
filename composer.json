@@ -18,13 +18,6 @@
         ]
     },
     "bin": ["bin/porta"],
-    "repositories": [
-        {
-            "type": "vcs",
-            "url": "https://github.com/phcorp/tui",
-            "_comment": "symfony/tui with the super, hyper and meta modifiers (symfony/symfony#66538) until a release carries them; then drop this entry and the alias below"
-        }
-    ],
     "require": {
         "php": ">=8.5 <9",
         "ext-ctype": "*",
@@ -42,7 +35,7 @@
         "symfony/polyfill-intl-grapheme": "^1.33",
         "symfony/process": "^8.2",
         "symfony/translation": "^8.2",
-        "symfony/tui": "dev-super-modifier as 8.2.x-dev",
+        "symfony/tui": "^8.2",
         "tempest/highlight": "^2.16"
     },
     "require-dev": {

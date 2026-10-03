@@ -103,6 +103,59 @@ final class KeybindingsFactoryTest extends TestCase
         $this->assertEquals([new ConfigWarning('Unknown keymap action "%action%" in .porta.json', ['%action%' => 'still_nothing'])], $host->manager->warnings);
     }
 
+    public function testAKeyTheParserCannotReadIsDroppedAndReportedOnce(): void
+    {
+        // symfony/tui's Keybindings throws on such an id; unvetted, a typo in
+        // .porta.json would end the boot and every rebuild after it. The order
+        // matters: a typo ahead of a good key, and a wholly dropped action
+        // ahead of one still to be vetted.
+        $project = new TempProject(['.porta.json' => \json_encode(['keymap' => ['copy_path' => ['ctrl+nope'], 'save' => ['ctlr+s', 'ctrl+s', 'ctrl+nope']]])]);
+        [$factory, $host] = $this->factory($project);
+        $default = $factory->create(keymap: [])->getBindings('copy_path');
+
+        $keys = $factory->create();
+
+        $this->assertSame(['ctrl+s'], $keys->getBindings('save'));
+        $this->assertSame($default, $keys->getBindings('copy_path'), 'a list left empty by typos keeps the default, which only a deliberate [] unbinds');
+        $this->assertNotSame([], $default);
+        $this->assertEquals(
+            [
+                new ConfigWarning('Invalid key "%key%" bound to "%action%"', ['%key%' => 'ctrl+nope', '%action%' => 'copy_path']),
+                new ConfigWarning('Invalid key "%key%" bound to "%action%"', ['%key%' => 'ctlr+s', '%action%' => 'save']),
+                new ConfigWarning('Invalid key "%key%" bound to "%action%"', ['%key%' => 'ctrl+nope', '%action%' => 'save']),
+            ],
+            $host->manager->warnings,
+        );
+
+        $factory->create();
+        $this->assertCount(3, $host->manager->warnings, 'reported once, not once per rebuild');
+    }
+
+    public function testADeliberateEmptyListStillUnbinds(): void
+    {
+        [$factory, $host] = $this->factory(new TempProject(['.porta.json' => \json_encode(['keymap' => ['copy_path' => []]])]));
+
+        $this->assertSame([], $factory->create()->getBindings('copy_path'));
+        $this->assertSame([], $host->manager->warnings);
+    }
+
+    public function testAPluginKeyTheParserCannotReadIsDroppedToo(): void
+    {
+        $project = new TempProject(['.porta/plugins/typo/plugin.php' => <<<'PHP'
+                <?php
+                return new class('typo') extends \Porta\Plugin\Api\AbstractPlugin {
+                    public function activate(\Porta\Plugin\Api\PluginApi $api): void
+                    {
+                        $api->registerCommand('go', 'Go', static function (): void {}, keys: ['ctrl+alt+g', 'ctrl+gg']);
+                    }
+                };
+                PHP]);
+        [$factory, $host] = $this->factory($project);
+
+        $this->assertSame(['ctrl+alt+g'], $factory->create()->getBindings('typo:go'));
+        $this->assertEquals([new ConfigWarning('Invalid key "%key%" bound to "%action%"', ['%key%' => 'ctrl+gg', '%action%' => 'typo:go'])], $host->manager->warnings);
+    }
+
     public function testMultipleDeclaredActionsAreAllKept(): void
     {
         $project = new TempProject(['.porta.json' => \json_encode(['keymap' => ['save' => 'f2', 'find' => 'f3']])]);

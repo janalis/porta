@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Config;
 
 use Porta\Plugin\Runtime\PluginHost;
+use Symfony\Component\Tui\Exception\InvalidArgumentException;
 use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Input\KeyParser;
 
@@ -14,6 +15,10 @@ use Symfony\Component\Tui\Input\KeyParser;
  * with the platform's keymap ({@see PlatformKeymap}), overlaid with the
  * user's .porta.json keymap. Registered as the container's Keybindings
  * factory.
+ *
+ * Keybindings throws on a key id it cannot read, so the two layers the
+ * user and third parties write — plugin keys and the keymap — are vetted
+ * first: a typo costs its binding and a warning, never the boot.
  */
 final class KeybindingsFactory
 {
@@ -25,7 +30,7 @@ final class KeybindingsFactory
         private readonly string $hostKeymap = KeymapPlatform::Linux->value,
     ) {}
 
-    /** @var array<string, true> ids already reported — rebuild() re-runs this on every keymap edit */
+    /** @var array<string, true> action ids, and "action key" pairs, already reported — rebuild() re-runs this on every keymap edit */
     private array $reported = [];
 
     /**
@@ -42,9 +47,9 @@ final class KeybindingsFactory
 
         return new Keybindings(\array_merge(
             ActionCatalog::ideDefaults(),
-            $this->plugins->manager->defaultKeys,
-            PlatformKeymap::parsesSuper($parser) ? PlatformKeymap::overrides($this->platform($platform), $arrived) : PlatformKeymap::withoutCmd($this->platform($platform)),
-            $this->known($keymap),
+            $this->readable($this->plugins->manager->defaultKeys, $parser),
+            PlatformKeymap::overrides($this->platform($platform), $arrived),
+            $this->readable($this->known($keymap), $parser),
         ), $parser);
     }
 
@@ -89,5 +94,41 @@ final class KeybindingsFactory
         }
 
         return $kept;
+    }
+
+    /**
+     * $bindings minus the key ids $parser cannot read, each reported once.
+     * An action whose every key was unreadable is dropped whole, so the
+     * layer beneath still binds it; only a deliberate `[]` unbinds.
+     *
+     * @param  array<string, list<string>> $bindings
+     * @return array<string, list<string>>
+     */
+    private function readable(array $bindings, KeyParser $parser): array
+    {
+        foreach ($bindings as $action => $keys) {
+            $readable = \array_values(\array_filter($keys, function (string $key) use ($action, $parser): bool {
+                try {
+                    new Keybindings([$action => [$key]], $parser);
+
+                    return true;
+                } catch (InvalidArgumentException) {
+                    if (!\array_key_exists($action.' '.$key, $this->reported)) {
+                        $this->reported[$action.' '.$key] = true;
+                        $this->plugins->manager->addWarning(new ConfigWarning('Invalid key "%key%" bound to "%action%"', ['%key%' => $key, '%action%' => $action]));
+                    }
+
+                    return false;
+                }
+            }));
+            if ([] === $readable && [] !== $keys) {
+                unset($bindings[$action]);
+
+                continue;
+            }
+            $bindings[$action] = $readable;
+        }
+
+        return $bindings;
     }
 }

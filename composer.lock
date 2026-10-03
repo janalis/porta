@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "f79e153042707444cdaa0038898e06bf",
+    "content-hash": "49264c3ae3e17fdd8768a3cb334030fe",
     "packages": [
         {
             "name": "composer/semver",
@@ -312,12 +312,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/clock.git",
-                "reference": "2b245cca9bb7551e02af8c765ba60f25202ac441"
+                "reference": "9285c01079c0a154f77d7637ee24d626dc445d7f"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/clock/zipball/2b245cca9bb7551e02af8c765ba60f25202ac441",
-                "reference": "2b245cca9bb7551e02af8c765ba60f25202ac441",
+                "url": "https://api.github.com/repos/symfony/clock/zipball/9285c01079c0a154f77d7637ee24d626dc445d7f",
+                "reference": "9285c01079c0a154f77d7637ee24d626dc445d7f",
                 "shasum": ""
             },
             "require": {
@@ -382,7 +382,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-09-02T13:55:05+00:00"
+            "time": "2026-10-03T08:17:19+00:00"
         },
         {
             "name": "symfony/config",
@@ -570,12 +570,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/dependency-injection.git",
-                "reference": "bfc6cac68181d7564ad9d285983cd47c178f1197"
+                "reference": "3f11cb20a5202f95dc4866cedef46caad8fd1314"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/dependency-injection/zipball/bfc6cac68181d7564ad9d285983cd47c178f1197",
-                "reference": "bfc6cac68181d7564ad9d285983cd47c178f1197",
+                "url": "https://api.github.com/repos/symfony/dependency-injection/zipball/3f11cb20a5202f95dc4866cedef46caad8fd1314",
+                "reference": "3f11cb20a5202f95dc4866cedef46caad8fd1314",
                 "shasum": ""
             },
             "require": {
@@ -645,7 +645,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-09-29T12:40:15+00:00"
+            "time": "2026-10-03T08:17:19+00:00"
         },
         {
             "name": "symfony/deprecation-contracts",
@@ -1788,12 +1788,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/translation.git",
-                "reference": "b8d220779549540dc5213b0a5126c6e5c2e968d3"
+                "reference": "73fd52195e760a0a450e4f95070619e110cc975c"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/translation/zipball/b8d220779549540dc5213b0a5126c6e5c2e968d3",
-                "reference": "b8d220779549540dc5213b0a5126c6e5c2e968d3",
+                "url": "https://api.github.com/repos/symfony/translation/zipball/73fd52195e760a0a450e4f95070619e110cc975c",
+                "reference": "73fd52195e760a0a450e4f95070619e110cc975c",
                 "shasum": ""
             },
             "require": {
@@ -1879,7 +1879,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-09-28T09:55:27+00:00"
+            "time": "2026-10-03T08:17:19+00:00"
         },
         {
             "name": "symfony/translation-contracts",
@@ -1965,16 +1965,16 @@
         },
         {
             "name": "symfony/tui",
-            "version": "dev-super-modifier",
+            "version": "8.2.x-dev",
             "source": {
                 "type": "git",
-                "url": "https://github.com/phcorp/tui.git",
-                "reference": "2ca42f82777f865dd625203ec64a9565eb236aea"
+                "url": "https://github.com/symfony/tui.git",
+                "reference": "8ab5b73af41dbe0a52a5f7a13d8e17be5fe22b22"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/phcorp/tui/zipball/2ca42f82777f865dd625203ec64a9565eb236aea",
-                "reference": "2ca42f82777f865dd625203ec64a9565eb236aea",
+                "url": "https://api.github.com/repos/symfony/tui/zipball/8ab5b73af41dbe0a52a5f7a13d8e17be5fe22b22",
+                "reference": "8ab5b73af41dbe0a52a5f7a13d8e17be5fe22b22",
                 "shasum": ""
             },
             "require": {
@@ -1988,6 +1988,7 @@
                 "league/commonmark": "^2.9",
                 "tempest/highlight": "^2.16"
             },
+            "default-branch": true,
             "type": "library",
             "autoload": {
                 "psr-4": {
@@ -1997,6 +1998,7 @@
                     "/Tests/"
                 ]
             },
+            "notification-url": "https://packagist.org/downloads/",
             "license": [
                 "MIT"
             ],
@@ -2019,9 +2021,27 @@
                 "tui"
             ],
             "support": {
-                "source": "https://github.com/phcorp/tui/tree/super-modifier"
+                "source": "https://github.com/symfony/tui/tree/8.2"
             },
-            "time": "2026-10-02T00:11:18+00:00"
+            "funding": [
+                {
+                    "url": "https://symfony.com/sponsor",
+                    "type": "custom"
+                },
+                {
+                    "url": "https://github.com/fabpot",
+                    "type": "github"
+                },
+                {
+                    "url": "https://github.com/nicolas-grekas",
+                    "type": "github"
+                },
+                {
+                    "url": "https://tidelift.com/funding/github/packagist/symfony/symfony",
+                    "type": "tidelift"
+                }
+            ],
+            "time": "2026-10-03T05:53:51+00:00"
         },
         {
             "name": "symfony/var-exporter",
@@ -5929,18 +5949,9 @@
             "time": "2026-06-15T15:31:57+00:00"
         }
     ],
-    "aliases": [
-        {
-            "package": "symfony/tui",
-            "version": "dev-super-modifier",
-            "alias": "8.2.x-dev",
-            "alias_normalized": "8.2.9999999.9999999-dev"
-        }
-    ],
+    "aliases": [],
     "minimum-stability": "dev",
-    "stability-flags": {
-        "symfony/tui": 20
-    },
+    "stability-flags": {},
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {

@@ -3330,6 +3330,10 @@
         <source>PORTA_TRUSTED_FOLDERS trusts this project: take its folder out to restrict it</source>
         <target>PORTA_TRUSTED_FOLDERS がこのプロジェクトを信頼しています。制限するにはそのフォルダーを外してください</target>
       </trans-unit>
+      <trans-unit id="1154">
+        <source>Invalid key "%key%" bound to "%action%"</source>
+        <target>「%action%」に割り当てられたキー「%key%」は無効です</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

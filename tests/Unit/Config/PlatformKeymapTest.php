@@ -9,6 +9,7 @@ use Porta\Config\ActionCatalog;
 use Porta\Config\KeymapPlatform;
 use Porta\Config\PlatformKeymap;
 use Porta\Widget\EditorKeymap;
+use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Input\KeyParser;
 
 final class PlatformKeymapTest extends TestCase
@@ -101,12 +102,17 @@ final class PlatformKeymapTest extends TestCase
         }
     }
 
-    public function testCmdChordsWaitUntilTheParserTellsThemFromTheBareKey(): void
+    public function testEveryOverlayKeyIsOneTheParserReadsAndACmdChordIsNotTheBareKey(): void
     {
-        // Until symfony/tui knows the super modifier it reads `super+c` as a
-        // bare `c` — a Cmd+C binding would then fire on every c typed.
+        // Keybindings throws on a key id it cannot read, and the overlays are
+        // laid in unvetted — so each must parse. And a `super+c` read as a
+        // bare `c` would fire on every c typed.
         $parser = new KeyParser();
+        foreach (KeymapPlatform::cases() as $platform) {
+            $this->assertInstanceOf(Keybindings::class, new Keybindings(PlatformKeymap::overrides($platform), $parser));
+        }
 
-        $this->assertSame(!$parser->matches('c', 'super+c'), PlatformKeymap::parsesSuper($parser));
+        $this->assertFalse($parser->matches('c', 'super+c'));
+        $this->assertTrue($parser->matches("\x1b[99;9u", 'super+c'));
     }
 }

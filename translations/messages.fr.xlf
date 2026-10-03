@@ -3330,6 +3330,10 @@
         <source>PORTA_TRUSTED_FOLDERS trusts this project: take its folder out to restrict it</source>
         <target>PORTA_TRUSTED_FOLDERS approuve ce projet : retirez-en son dossier pour le restreindre</target>
       </trans-unit>
+      <trans-unit id="1154">
+        <source>Invalid key "%key%" bound to "%action%"</source>
+        <target>Touche invalide « %key% » associée à « %action% »</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
