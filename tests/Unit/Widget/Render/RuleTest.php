@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Widget\Render;
 use PHPUnit\Framework\TestCase;
 use Porta\Tests\Support\RendersExactWidth;
 use Porta\Ui\Role;
+use Porta\Ui\Theme\MonochromeTheme;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\Rule;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -23,6 +24,18 @@ final class RuleTest extends TestCase
     public function testABareRuleIsTheRunAlone(): void
     {
         $this->assertSame('──────', AnsiUtils::stripAnsiCodes(Rule::horizontal(6, Styles::dark())));
+    }
+
+    /**
+     * Under a shaded bar the row is the bar's lower half, so the bar reads
+     * half a row taller; under one the theme leaves unshaded (monochrome) it
+     * is a rule, so the bar is still closed off.
+     */
+    public function testUnderABarIsItsHalfOrARule(): void
+    {
+        $this->assertSame("\x1b[38;5;235m▀▀▀▀\x1b[39m", Rule::under(4, Styles::dark(), Role::Toolbar));
+        $this->assertSame(Rule::horizontal(4, Styles::dark()), Rule::under(4, Styles::dark(), Role::Rule), 'a role with no background');
+        $this->assertSame('────', AnsiUtils::stripAnsiCodes(Rule::under(4, new Styles(MonochromeTheme::definition()), Role::HeaderBar)));
     }
 
     public function testTheLegendSitsAfterTheFirstStroke(): void

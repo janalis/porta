@@ -171,7 +171,7 @@ final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost,
         $this->tips = $bar['tips'];
         $rows = [$bar['line']];
         if (Density::Roomy === $this->drawnDensity) {
-            $rows[] = Rule::horizontal($columns, $this->styles);
+            $rows[] = Rule::under($columns, $this->styles, CrumbBar::SHADE);
         }
 
         return $rows;

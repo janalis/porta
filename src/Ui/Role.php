@@ -37,8 +37,8 @@ enum Role
     // instead: those rules carry only a subtle background tint (plain in
     // monochrome) because the selection there is the accent bar the widget
     // draws (Glyphs::SELECTION_BAR styled TabAccent, title Bright+bold) —
-    // deliberately NOT bound to the SelectedRow roles. Pane/popup
-    // titles are HeaderBar+bold; in-list section headers are Rule legends;
+    // deliberately NOT bound to the SelectedRow roles. Panel titles are
+    // Emphasis+bold on the pane; in-list section headers are Rule legends;
     // hover over default rows is RowHighlightBg; hover over bar chrome (menu
     // titles, tab strips) is BarHoverBg, resolved through
     // {@see \Porta\Widget\Render\BarChromeStyle}.

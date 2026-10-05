@@ -285,8 +285,9 @@ abstract class MarkdownPageWidget extends EditorPaneWidget implements FindTarget
             $this->followLine = null;
         }
 
-        // A one-row pane keeps its navigation bar and gives up the rule.
-        $lines = \array_slice([$this->headerLine($cols), Rule::horizontal($cols, $this->styles)], offset: 0, length: $rows);
+        // A one-row pane keeps its navigation bar and gives up the row under
+        // it: the bar's lower half, or a rule where the theme has no shade.
+        $lines = \array_slice([$this->headerLine($cols), Rule::under($cols, $this->styles, Role::HeaderBar)], offset: 0, length: $rows);
         for ($row = 0; $row < ($rows - self::HEADER_ROWS); ++$row) {
             $lineNo = $this->scrollTop + $row;
             $line = $this->searchHighlight($this->highlight($this->doc->lines[$lineNo] ?? '', $lineNo), $lineNo);

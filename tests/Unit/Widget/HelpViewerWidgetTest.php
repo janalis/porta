@@ -82,13 +82,13 @@ final class HelpViewerWidgetTest extends TestCase
         $this->assertSame(1, $closed, 'Esc closes the window');
     }
 
-    /** A rule parts the navigation bar from the page, as the one under the app menu parts it from the workspace. */
-    public function testARuleRunsUnderTheNavigationBar(): void
+    /** The navigation bar's lower half parts it from the page, as the app menu's half parts the menu bar from the workspace. */
+    public function testTheNavigationBarsHalfRunsUnderIt(): void
     {
         $viewer = $this->viewer();
 
-        $this->assertSame(\str_repeat(Glyphs::FRAME_HORIZONTAL, times: 60), $this->screen($viewer)[1], 'the full width, under the bar');
-        $this->assertCount(1, $this->screen($viewer, rows: 1), 'a one-row pane keeps its bar and gives up the rule');
+        $this->assertSame(\str_repeat(Glyphs::HALF_UPPER, times: 60), $this->screen($viewer)[1], 'the full width, under the bar');
+        $this->assertCount(1, $this->screen($viewer, rows: 1), 'a one-row pane keeps its bar and gives up the row under it');
     }
 
     public function testRendersStyledPageAndScrolls(): void

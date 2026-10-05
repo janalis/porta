@@ -62,6 +62,7 @@ final class MarkdownPreviewWidgetTest extends TestCase
         $rows = $this->drawn($pane, 60, 6);
         $this->assertStringContainsString('README › docs › guide', $rows[0], 'the breadcrumb walks the project, like the docs tree');
         $this->assertSame(' Guide', \rtrim($rows[2]), 'a column of margin, away from the divider');
+        $this->assertSame(\str_repeat('▀', times: 60), $rows[1], 'the bar\'s half under it, not a rule');
         $this->assertSame('markdown', $pane->paneId());
         $this->assertSame('', $pane->statusRight(), 'the editor\'s legend stays beside it');
     }

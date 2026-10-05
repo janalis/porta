@@ -271,7 +271,9 @@ the menu bar and one above the status bar, holding that bar's half
 bar, so each bar reads half a row taller and the panes start where its shade
 stops. A theme whose bars have no shade (monochrome) gets a `─` rule there
 instead. A divider ends at a bar's half (no `┬`/`┴` join), and a shaded strip
-cell beside it takes its own half on the bar's colour (`RuleHalves`). On a
+cell beside it takes its own half on the bar's colour (`RuleHalves`), as does
+the file tree's last row while it is shaded — the tree's project name is a
+bold title on the pane, no bar (`HeaderRenderer::title`, every panel's). On a
 compact screen the edge rows draw nothing and take no row. Each is its own widget (`WorkspaceLayout::$topRule`, `$bottomRule`), so
 the bars keep their one row, and `MenuOverlayPanes`' chrome list makes them
 overlay hosts under every view: the app menu's dropdown hangs from its bar
@@ -329,10 +331,20 @@ its hit zone, as a tab's whole shape is. A trail is laid out from the right:
 crumbs drop from the root end behind one ` … ›`, and the current crumb is
 middle-elided only when it is alone and still too wide. A right-hand suffix (the
 preview toggles, a page's count or key hints) shares the row; in the settings
-headers the hint is what gives way, never the trail. A rule follows the row:
+headers the hint is what gives way, never the trail. A row follows the bar:
 under the editor's bar only on a roomy screen (counted by
 `LayoutController::chromeRows()`), under a settings header always, in place of
-the blank row it had.
+the blank row it had. Under the editor's bar and a markdown page's header
+(`MarkdownPageWidget`, the preview and the help viewer) it is the bar's lower
+half (`Rule::under`; a rule where the theme has no shade), and each reaches
+up into a bar's half over it in its bar's shade, a lit toggle no taller:
+the navigation bar under the menu bar's, the preview's header under the
+navigation bar's, one cell of both (`RuleHalves::headWidgets`). A head meets
+only a bar's half, in a row a bar draws one (`RuleHalves::barRows`): a tab
+strip's baseline over it stays the strip's, its pill halves included, and
+under an open view's window no head reaches at all. In Split
+the divider beside the preview's header keeps its `│` on the header's shade
+(`RuleHalves::dividerOnShade`).
 
 ## Sizing one: measure every row you draw
 

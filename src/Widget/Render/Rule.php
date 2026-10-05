@@ -36,6 +36,18 @@ final class Rule
         return $tee->apply(Glyphs::MODAL_TEE_LEFT).self::run($width - 2, $styles, $legend).$tee->apply(Glyphs::MODAL_TEE_RIGHT);
     }
 
+    /**
+     * The row closing off a bar styled $bar from what is under it: the bar's
+     * lower half ({@see RowBleed::under()}) where the theme shades it, so the
+     * bar reads half a row taller, or a rule where it does not (monochrome).
+     */
+    public static function under(int $width, Styles $styles, Role $bar): string
+    {
+        $half = RowBleed::under($width, $styles->of($bar));
+
+        return $half === AnsiText::blank(\max(0, $width)) ? self::horizontal($width, $styles) : $half;
+    }
+
     /** Exactly $width columns of rule, the legend after its first stroke while one more stroke still fits. */
     private static function run(int $width, Styles $styles, string $legend): string
     {

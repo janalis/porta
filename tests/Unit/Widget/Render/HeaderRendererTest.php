@@ -36,6 +36,19 @@ final class HeaderRendererTest extends TestCase
         $this->assertSame(' Files   Esc ', AnsiUtils::stripAnsiCodes(HeaderRenderer::title('Files', 13, Styles::dark(), suffix: 'Esc')));
     }
 
+    /**
+     * A panel title is bold text on the pane, not a bar: the bars' shade is
+     * the menu's and the status line's, and a title strip under the menu bar
+     * read as a second, broken one.
+     */
+    public function testATitleIsBoldOnThePaneNotABar(): void
+    {
+        $line = HeaderRenderer::title('Files', 10, Styles::dark());
+
+        $this->assertStringNotContainsString("\x1b[48;", $line, 'no background of its own');
+        $this->assertStringStartsWith("\x1b[38;5;255m\x1b[1m", $line, 'emphasis, bold');
+    }
+
     public function testCustomBackground(): void
     {
         $line = HeaderRenderer::render('X', 5, new Style(background: 235, bold: true));

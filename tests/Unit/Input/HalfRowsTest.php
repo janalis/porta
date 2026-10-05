@@ -18,10 +18,13 @@ use Porta\Tests\Support\Services;
 use Porta\Ui\BidiTui;
 use Porta\Ui\Theme\MonochromeTheme;
 use Porta\Ui\Theme\Styles;
+use Porta\Widget\BreadcrumbsWidget;
 use Porta\Widget\FileTreeWidget;
+use Porta\Widget\MarkdownPageWidget;
 use Porta\Widget\Support\TabBarPosition;
 use Porta\Widget\TabBarWidget;
 use Porta\Workbench\ChromeInvalidator;
+use Porta\Workbench\EditorArea;
 use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Render\WidgetRect;
@@ -169,7 +172,16 @@ final class HalfRowsTest extends TestCase
         $this->assertSame($tabs->row, $this->at($tabs->col, $tabs->row - 1, lower: true)->row, 'from the strip\'s first column');
         $this->assertSame($tabs->row, $this->at($tabs->col + $tabs->columns - 1, $tabs->row - 1, lower: true)->row, 'to its last');
         $this->assertSame($tabs->row - 1, $this->at($tabs->col - 1, $tabs->row - 1, lower: true)->row, 'not a column before it');
-        $this->assertSame($tabs->row - 1, $this->at($tabs->col + $tabs->columns, $tabs->row - 1, lower: true)->row, 'nor after it');
+        $this->assertSame($tabs->row, $this->at($tabs->col + $tabs->columns, $tabs->row - 1, lower: true)->row, 'after it, the navigation bar under the menu bar\'s half');
+        $this->assertSame($tabs->row - 2, $this->at($tabs->col + $tabs->columns, $tabs->row - 1, lower: false)->row, 'whose upper half stays the menu bar\'s');
+
+        // A theme with no bar shade draws a rule over the navigation bar, which holds none of it.
+        $styles = Probe::get(Services::resolve($this->ide, WorkspaceLayout::class)->topRule, 'styles');
+        $this->assertInstanceOf(Styles::class, $styles);
+        $styles->switchTo(MonochromeTheme::definition());
+        Services::resolve($this->ide, ChromeInvalidator::class)->invalidateAll();
+        $this->frame();
+        $this->assertSame($tabs->row - 1, $this->at($tabs->col + $tabs->columns, $tabs->row - 1, lower: true)->row, 'monochrome: the rule is nobody\'s');
         $this->assertSame($tabs->row, $this->at($col, $tabs->row + 1, lower: false)->row, 'the gap under it, upper half');
         $this->assertSame($tabs->row + 2, $this->at($col, $tabs->row + 1, lower: true)->row, 'its lower half: the next tab');
         $this->assertSame($tabs->row + 3, $this->at($col, $tabs->row + 3, lower: true)->row, 'under the last tab, the lower half is nobody\'s');
@@ -247,7 +259,10 @@ final class HalfRowsTest extends TestCase
 
         $this->assertSame($top - 1, $this->at($col, $top, lower: false)->row, 'the menu bar\'s half');
         $this->assertSame($bottom + 1, $this->at($col, $bottom, lower: true)->row, 'the status bar\'s');
-        $this->assertSame($bottom, $this->at($col, $bottom, lower: false)->row, 'the upper half over the status bar is no bar\'s');
+        $tree = $this->rect(Services::resolve($this->ide, FileTreeWidget::class));
+        $editor = $tree->col + $tree->columns + 5;
+        $this->assertSame($bottom, $this->at($editor, $bottom, lower: false)->row, 'the upper half over the status bar is no bar\'s');
+        $this->assertSame($bottom - 1, $this->at($col, $bottom, lower: false)->row, 'beside the tree, the tree\'s last row\'s');
 
         // The theme every widget shares, as a theme switch swaps it.
         $styles = Probe::get($layout->topRule, 'styles');
@@ -257,5 +272,32 @@ final class HalfRowsTest extends TestCase
         $this->frame();
         $this->assertSame($top, $this->at($col, $top, lower: false)->row, 'a rule holds no bar\'s half');
         $this->assertSame($bottom, $this->at($col, $bottom, lower: true)->row);
+    }
+
+    /**
+     * The navigation bar and a page's header each hold a half over them and
+     * one under them, in their own row: all four are that bar's first row.
+     */
+    public function testTheNavigationBarAndThePageHeaderTakeTheirHalves(): void
+    {
+        \file_put_contents($this->project->path('README.md'), data: "# Read me\n\nText.\n");
+        Services::resolve($this->ide, BufferService::class)->openFile($this->project->path('README.md'), OpenFocus::Keep);
+        $this->pixelsOn();
+        $this->frame();
+        $bar = $this->tui->getById('breadcrumbs');
+        $this->assertInstanceOf(BreadcrumbsWidget::class, $bar);
+        $crumbs = $this->rect($bar);
+        $page = Services::resolve($this->ide, EditorArea::class)->visiblePane();
+        $this->assertInstanceOf(MarkdownPageWidget::class, $page, 'the preview beside the text');
+        $header = $this->rect($page);
+        $this->assertSame($crumbs->row + 2, $header->row, 'the header under the bar\'s own half');
+        $col = $header->col + 2;
+
+        $this->assertSame($crumbs->row - 1, $this->at($col, $crumbs->row - 1, lower: true)->row, 'the strip\'s baseline over it holds no half of the bar');
+        $this->assertSame($crumbs->row, $this->at($col, $crumbs->row + 1, lower: false)->row, 'the bar\'s half under it');
+        $this->assertSame($header->row, $this->at($col, $crumbs->row + 1, lower: true)->row, 'the header\'s half over it');
+        $this->assertSame($header->row, $this->at($col, $header->row + 1, lower: false)->row, 'the header\'s half under it');
+        $this->assertSame($header->row + 1, $this->at($col, $header->row + 1, lower: true)->row, 'and that row\'s lower half nobody\'s');
+        $this->assertSame($crumbs->row + 1, $this->at($header->col - 3, $crumbs->row + 1, lower: true)->row, 'over the text, no header');
     }
 }

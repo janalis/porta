@@ -31,6 +31,9 @@ use Symfony\Component\Tui\Style\Style;
  */
 final class CrumbBar
 {
+    /** The strip's shade, whose half the row under the editor's bar holds. */
+    public const Role SHADE = Role::Toolbar;
+
     /** ` … ›`: the lead pill and the separator after it. */
     private const int LEAD_WIDTH = 4;
 
@@ -88,7 +91,7 @@ final class CrumbBar
         }
 
         return [
-            'line' => $styles->of(Role::Toolbar)->apply(AnsiText::truncate($line, $room, pad: true).$suffix),
+            'line' => $styles->of(self::SHADE)->apply(AnsiText::truncate($line, $room, pad: true).$suffix),
             'zones' => $zones,
             'tips' => $tips,
         ];

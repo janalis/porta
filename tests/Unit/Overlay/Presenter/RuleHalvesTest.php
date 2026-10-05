@@ -13,6 +13,7 @@ use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\RowBleed;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\WidgetRect;
+use Symfony\Component\Tui\Style\Style;
 
 /**
  * The halves read off a painted frame: a rule over or under a shaded cell of
@@ -34,13 +35,16 @@ final class RuleHalvesTest extends TestCase
      * @param list<string>         $lines
      * @param list<WidgetRect>     $rects
      * @param list<DropdownRegion> $floating
+     * @param list<array{WidgetRect, Style}> $heads
+     * @param list<int>            $barRows
      *
      * @return array<string, string> "row:col" => segment
      */
-    private static function spans(array $lines, array $rects, array $floating = [], ?\Closure $logical = null): array
+    private static function spans(array $lines, array $rects, array $floating = [], ?\Closure $logical = null, array $heads = [], array $barRows = [0]): array
     {
         $spans = [];
-        foreach (RuleHalves::spans($lines, $rects, $floating, $logical ?? static fn (int $row, int $col): int => $col, Styles::dark()->of(Role::Rule), Styles::dark()->of(Role::HeaderBar)) as $span) {
+        $dark = Styles::dark();
+        foreach (RuleHalves::spans($lines, $rects, $floating, $logical ?? static fn (int $row, int $col): int => $col, $dark->of(Role::Rule), $dark->of(Role::HeaderBar), $heads, $barRows) as $span) {
             self::assertSame(1, $span['width']);
             $spans["{$span['row']}:{$span['col']}"] = $span['segment'];
         }
@@ -342,7 +346,7 @@ final class RuleHalvesTest extends TestCase
         $this->assertSame(
             [],
             self::spans([Styles::dark()->of(Role::TabAccent)->apply(\str_repeat('▀', times: 8)), '  '.self::SHADED.'  '], [new WidgetRect(1, 0, 8, 1)]),
-            'a half in another colour is no bar\'s',
+            'a half in another colour is no bar\'s: a strip\'s own pill half',
         );
         $this->assertSame([], self::spans(["\x1b[38;5;237;48;5;31m▀▀▀▀▀▀▀▀\x1b[0m", '  '.self::SHADED.'  '], [new WidgetRect(1, 0, 8, 1)]), 'nor one already on a shade');
     }
@@ -358,5 +362,79 @@ final class RuleHalvesTest extends TestCase
 
         $this->assertSame("\x1b[38;5;31;48;5;237m▄\x1b[0m", $spans['0:2'], 'over it the tab\'s upper half on the bar');
         $this->assertSame("\x1b[38;5;31;48;5;237m▀\x1b[0m", $spans['2:2'], 'under it the lower');
+    }
+
+    /**
+     * A head bar reaches only up, and in its bar's shade, not cell by cell: a
+     * lit toggle on the navigation bar is no taller than the bar. Its last
+     * row is content, whose shade stays out of the row under it.
+     */
+    public function testAHeadReachesUpInItsShadeAndNotDown(): void
+    {
+        $dark = Styles::dark();
+        $lines = [RowBleed::under(4, $dark->of(Role::HeaderBar)), "\x1b[48;5;235m \x1b[48;5;31mab\x1b[48;5;235m \x1b[49m", self::SHADED, self::rule(4)];
+
+        $spans = self::spans($lines, [], heads: [[new WidgetRect(1, 0, 4, 2), $dark->of(Role::Toolbar)]]);
+
+        $half = "\x1b[38;5;235;48;5;237m▄\x1b[0m";
+        $this->assertSame(['0:0' => $half, '0:1' => $half, '0:2' => $half, '0:3' => $half], $spans, 'the shade\'s half over every cell; nothing under the last row');
+        $this->assertSame([], self::spans($lines, [], heads: [[new WidgetRect(1, 0, 4, 2), $dark->of(Role::Rule)]]), 'a shade with no background reaches nowhere');
+        $this->assertSame([], self::spans([self::rule(4), '    '], [], heads: [[new WidgetRect(1, 0, 4, 1), $dark->of(Role::Toolbar)]]), 'a strip\'s baseline over it is no bar\'s half');
+        $this->assertSame([], self::spans($lines, [], heads: [[new WidgetRect(1, 0, 4, 2), $dark->of(Role::Toolbar)]], barRows: []), 'a half in a row no bar draws in: a strip\'s pill over it');
+        $this->assertSame(
+            ['0:2', '0:3'],
+            \array_keys(self::spans([self::rule(2).RowBleed::under(2, $dark->of(Role::HeaderBar)), '    '], [], heads: [[new WidgetRect(1, 0, 4, 1), $dark->of(Role::Toolbar)]])),
+            'past the baseline, the bar\'s half beside it',
+        );
+    }
+
+    /** The page header's half lands in the navigation bar's own half under it: one cell of both. */
+    public function testAPageHeaderSharesTheNavigationBarsHalf(): void
+    {
+        $dark = Styles::dark();
+        $lines = [RowBleed::under(4, $dark->of(Role::Toolbar)), $dark->of(Role::HeaderBar)->apply(' ab ')];
+
+        $spans = self::spans($lines, [], heads: [[new WidgetRect(1, 0, 4, 1), $dark->of(Role::HeaderBar)]]);
+
+        $this->assertSame("\x1b[38;5;237;48;5;235m▄\x1b[0m", $spans['0:0'] ?? null, 'the header under, the bar over');
+        $this->assertCount(4, $spans);
+    }
+
+    /**
+     * The split's divider beside a page header keeps its line on the header's
+     * shade, on the header's row alone, from either side of the header.
+     */
+    public function testTheSplitsDividerStandsOnThePageHeadersShade(): void
+    {
+        $dark = Styles::dark();
+        $rule = $dark->of(Role::Rule);
+        $header = $dark->of(Role::HeaderBar)->apply('  ');
+        $lines = ['ab'.$rule->apply('│').$header, 'ab'.$rule->apply('│').'cd'];
+        $shade = static fn (array $lines, WidgetRect $page, WidgetRect $divider, array $floating = []): array => RuleHalves::dividerOnShade(
+            $lines,
+            $page,
+            $divider,
+            $floating,
+            static fn (int $row, int $col): int => $col,
+            $rule,
+        );
+
+        $expected = [['row' => 0, 'col' => 2, 'width' => 1, 'segment' => "\x1b[38;5;238;48;5;237m│\x1b[0m"]];
+        $this->assertSame($expected, $shade($lines, new WidgetRect(0, 3, 2, 2), new WidgetRect(0, 2, 1, 2)), 'the line on the shade');
+        $mirrored = [' '.$dark->of(Role::HeaderBar)->apply(' ').$rule->apply('│').'ab', 'cd'.$rule->apply('│').'ab'];
+        $this->assertSame(
+            [['row' => 0, 'col' => 2, 'width' => 1, 'segment' => "\x1b[38;5;238;48;5;237m│\x1b[0m"]],
+            $shade($mirrored, new WidgetRect(0, 0, 2, 2), new WidgetRect(0, 2, 1, 2)),
+            'the divider after the header, on the shade of the cell beside it',
+        );
+        $this->assertSame([], $shade([$header], new WidgetRect(0, 0, 2, 1), new WidgetRect(0, 2, 1, 1)), 'a divider past the drawn row');
+        $this->assertSame([], $shade(['abc', 'ab'.$rule->apply('│').$header], new WidgetRect(1, 3, 2, 1), new WidgetRect(0, 2, 1, 1)), 'a divider that ends over the header\'s row');
+        $this->assertSame([], $shade(['ab'.$dark->of(Role::TabAccent)->apply('│').$header], new WidgetRect(0, 3, 2, 1), new WidgetRect(0, 2, 1, 1)), 'a line in another tint');
+        $this->assertSame([], $shade($lines, new WidgetRect(0, 4, 1, 2), new WidgetRect(0, 2, 1, 2)), 'a divider not beside the page');
+        $this->assertSame([], $shade($lines, new WidgetRect(0, 3, 2, 2), new WidgetRect(1, 2, 1, 1)), 'a divider not on the header\'s row');
+        $this->assertSame([], $shade(['ab'.$rule->apply('┃').$header], new WidgetRect(0, 3, 2, 1), new WidgetRect(0, 2, 1, 1)), 'a grabbed divider, no idle line');
+        $this->assertSame([], $shade(['ab│'.$header], new WidgetRect(0, 3, 2, 1), new WidgetRect(0, 2, 1, 1)), 'a line in no rule\'s tint');
+        $this->assertSame([], $shade(['ab'.$rule->apply('│').'  '], new WidgetRect(0, 3, 2, 1), new WidgetRect(0, 2, 1, 1)), 'a header with no shade');
+        $this->assertSame([], $shade($lines, new WidgetRect(0, 3, 2, 2), new WidgetRect(0, 2, 1, 2), [new DropdownRegion(top: 0, col: 2, width: 1, count: 1)]), 'under a floating surface');
     }
 }

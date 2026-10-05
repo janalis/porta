@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Porta\Overlay\Presenter;
 
+use Porta\Layout\PreviewSplit;
 use Porta\Layout\ViewRegions;
+use Porta\Layout\WorkspaceLayout;
 use Porta\Overlay\Region\DropdownRegion;
 use Porta\Overlay\Region\FloatingRegions;
 use Porta\Support\AnsiText;
@@ -14,9 +16,14 @@ use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Porta\Ui\ScreenDensity;
 use Porta\Ui\Theme\Styles;
+use Porta\Widget\BreadcrumbsWidget;
+use Porta\Widget\FileTreeWidget;
+use Porta\Widget\MarkdownPageWidget;
+use Porta\Widget\Render\CrumbBar;
 use Porta\Widget\Render\MenuOverlay;
 use Porta\Widget\Render\RowBleed;
 use Porta\Widget\TabBarWidget;
+use Porta\Workbench\EditorArea;
 use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\Renderer;
@@ -36,8 +43,9 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
  * half and takes the shaded row's as the other: the bar's colour behind it.
  *
  * Only the rows that touch a workspace rule are looked at: the first and last
- * rows of the editor's tab strip and of each view's first sidebar widget (the
- * settings nav, git's mode tabs), and only on a roomy screen, against a `─`
+ * rows of the editor's tab strip, of the file tree, and of each view's first
+ * sidebar widget (the settings nav, git's mode tabs), and the first row of a
+ * head bar ({@see headWidgets()}), and only on a roomy screen, against a `─`
  * in the rules' own tint — a compact strip sits on the toolbar shade, which
  * is no pill, and a toast's border is no rule. The strips are two rows, not
  * three, because of it: their upper halves are this pass's to draw.
@@ -63,21 +71,50 @@ final readonly class RuleHalves
         private Styles $styles,
         private ScreenDensity $density,
         private ViewRegistry $views,
+        private FileTreeWidget $tree,
+        private BreadcrumbsWidget $crumbs,
+        private EditorArea $area,
+        private PreviewSplit $split,
+        private WorkspaceLayout $layout,
     ) {}
 
     /**
-     * The widgets whose edge rows meet a rule: the editor's tab strip, and
-     * the open view's first sidebar widget. Only the open one: a closed
-     * view's widgets keep the rect they last had, over what is drawn now.
+     * The widgets whose edge rows meet a rule or a bar's half: the editor's
+     * tab strip, the file tree while no view is open over it, and the open
+     * view's first sidebar widget. Only the open one: a closed view's widgets
+     * keep the rect they last had, over what is drawn now.
      *
      * @return list<AbstractWidget>
      */
     public function edgeWidgets(): array
     {
         $id = $this->views->activeId();
-        $first = null === $id ? null : $this->regions->find($id)?->sidebar()->all()[0] ?? null;
+        if (null === $id) {
+            return [$this->tabBar, $this->tree];
+        }
+        $first = $this->regions->find($id)?->sidebar()->all()[0] ?? null;
 
         return null === $first ? [$this->tabBar] : [$this->tabBar, $first];
+    }
+
+    /**
+     * The bars that reach only UP into the row over them, their own row under
+     * them holding their lower half already: the editor's navigation bar, and
+     * a markdown page's header when that page is the pane on screen. Their
+     * last row is content, which has no half to give. Each reaches up in its
+     * bar's shade, not cell by cell: a lit toggle on the bar is no taller.
+     *
+     * @return list<array{AbstractWidget, Role}>
+     */
+    public function headWidgets(): array
+    {
+        if (null !== $this->views->activeId()) {
+            return []; // under a view's window: nothing of the editor's reaches into it
+        }
+        $pane = $this->area->visiblePane();
+        $crumbs = [$this->crumbs, CrumbBar::SHADE];
+
+        return $pane instanceof MarkdownPageWidget ? [$crumbs, [$pane, Role::HeaderBar]] : [$crumbs];
     }
 
     /**
@@ -102,23 +139,109 @@ final readonly class RuleHalves
         if ([] === $lines || Density::Roomy !== $this->density->current()) {
             return $lines;
         }
+        $floating = $this->floating->regions();
+        $logical = $this->tui->logicalColumn(...);
+        $rule = $this->styles->of(Role::Rule);
+        $heads = [];
+        foreach ($this->headWidgets() as [$widget, $shade]) {
+            foreach ($this->rects([$widget]) as $rect) {
+                $heads[] = [$rect, $this->styles->of($shade)];
+            }
+        }
+        $bar = $this->styles->of(Role::HeaderBar);
+        $spans = self::spans($lines, $this->rects($this->edgeWidgets()), $floating, $logical, $rule, $bar, $heads, $this->barRows());
+        // The tab strip opens a pane divider beside a shaded tab.
+        $strip = $this->renderer->getWidgetRect($this->tabBar);
+        if (null !== $strip) {
+            \array_push($spans, ...self::openings($lines, $strip, $floating, $logical, $rule, $bar));
+        }
+        // The split's divider stands on the shade of the page header beside it.
+        $page = $this->area->visiblePane();
+        $header = $page instanceof MarkdownPageWidget ? $this->renderer->getWidgetRect($page) : null;
+        $divider = 2 === \count($this->area->members()) ? $this->renderer->getWidgetRect($this->split->separator) : null;
+        if (null !== $header && null !== $divider) {
+            \array_push($spans, ...self::dividerOnShade($lines, $header, $divider, $floating, $logical, $rule));
+        }
+
+        return [] === $spans ? $lines : MenuOverlay::apply($lines, $spans, AnsiUtils::visibleWidth($lines[0]));
+    }
+
+    /**
+     * The rows a head bar may reach up into, each holding a bar's half: the
+     * menu bar's edge row, and each head's own row under it.
+     *
+     * @return list<int>
+     */
+    public function barRows(): array
+    {
+        $top = $this->renderer->getWidgetRect($this->layout->topRule);
+        $rows = null !== $top && $this->layout->topRule->holdsBarHalf() ? [$top->row] : [];
+        foreach ($this->rects(\array_map(static fn (array $head): AbstractWidget => $head[0], $this->headWidgets())) as $rect) {
+            $rows[] = $rect->row + 1;
+        }
+
+        return $rows;
+    }
+
+    /**
+     * The laid-out rects of $widgets that have any.
+     *
+     * @param list<AbstractWidget> $widgets
+     *
+     * @return list<WidgetRect>
+     */
+    private function rects(array $widgets): array
+    {
         $rects = [];
-        foreach ($this->edgeWidgets() as $widget) {
+        foreach ($widgets as $widget) {
             $rect = $this->renderer->getWidgetRect($widget);
             if (null !== $rect && $rect->rows > 0 && $rect->columns > 0) {
                 $rects[] = $rect;
             }
         }
-        $floating = $this->floating->regions();
-        $bar = $this->styles->of(Role::HeaderBar);
-        $spans = self::spans($lines, $rects, $floating, $this->tui->logicalColumn(...), $this->styles->of(Role::Rule), $bar);
-        // The tab strip opens a pane divider beside a shaded tab.
-        $strip = $this->renderer->getWidgetRect($this->tabBar);
-        if (null !== $strip) {
-            \array_push($spans, ...self::openings($lines, $strip, $floating, $this->tui->logicalColumn(...), $this->styles->of(Role::Rule), $bar));
+
+        return $rects;
+    }
+
+    /**
+     * The split's divider beside a page header's row keeps its `│` on the
+     * header's shade, so the header reaches the line instead of stopping a
+     * column short of it. Only the header's row: the rows over and under it
+     * hold the header's halves, which a `│` cell cannot.
+     *
+     * @param list<string>            $lines
+     * @param WidgetRect              $header  the page, whose first row is the header
+     * @param WidgetRect              $divider the split's separator
+     * @param list<DropdownRegion>    $floating
+     * @param \Closure(int, int): int $logical a drawn column on a row → the column the widgets laid out
+     *
+     * @return list<array{row: int, col: int, width: int, segment: string}>
+     */
+    public static function dividerOnShade(array $lines, WidgetRect $header, WidgetRect $divider, array $floating, \Closure $logical, Style $rule): array
+    {
+        $row = $header->row;
+        $beside = match (true) {
+            $divider->col === ($header->col - 1) => $header->col,
+            $divider->col === ($header->col + $header->columns) => $header->col + $header->columns - 1,
+            default => null,
+        };
+        if (null === $beside || !\array_key_exists($row, $lines) || $row < $divider->row || $row >= ($divider->row + $divider->rows)) {
+            return [];
+        }
+        $drawn = static fn (int $laid): ?int => \array_find(\range(start: 0, end: AnsiUtils::visibleWidth($lines[$row]) - 1), static fn (int $col): bool => $logical($row, $col) === $laid);
+        $at = $drawn($divider->col);
+        $shade = $drawn($beside);
+        if (null === $at || null === $shade || [] !== self::surfaces($floating, $row, $at)) {
+            return [];
+        }
+        $line = AnsiText::columnsFrom($lines[$row], $at, 1);
+        $tint = self::state(self::lead($line))['fg'];
+        $bg = self::state(self::lead(AnsiText::columnsFrom($lines[$row], $shade, 1)))['bg'];
+        if (Glyphs::PANE_DIVIDER !== AnsiUtils::stripAnsiCodes($line) || null === $tint || $tint !== self::state(self::lead($rule->apply(Glyphs::PANE_DIVIDER)))['fg'] || null === $bg) {
+            return [];
         }
 
-        return [] === $spans ? $lines : MenuOverlay::apply($lines, $spans, AnsiUtils::visibleWidth($lines[0]));
+        return [['row' => $row, 'col' => $at, 'width' => 1, 'segment' => "\x1b[{$tint};".self::asBackground($bg).'m'.Glyphs::PANE_DIVIDER."\x1b[0m"]];
     }
 
     /**
@@ -139,7 +262,7 @@ final readonly class RuleHalves
     public static function openings(array $lines, WidgetRect $strip, array $floating, \Closure $logical, Style $rule, ?Style $bar = null): array
     {
         $tint = self::state(self::lead($rule->apply(Glyphs::FRAME_HORIZONTAL)))['fg'];
-        $barTint = self::barTint($bar);
+        $menuTint = self::barTint($bar);
         // A rule, its joins, or the divider itself running on past the strip.
         $joins = [Glyphs::FRAME_HORIZONTAL, Glyphs::PANE_DIVIDER, Glyphs::RULE_DOWN, Glyphs::RULE_UP, Glyphs::MODAL_TEE_LEFT, Glyphs::MODAL_TEE_RIGHT, Glyphs::RULE_CROSS];
         $glyph = static fn (int $row, int $col): string => \array_key_exists($row, $lines) ? AnsiUtils::stripAnsiCodes(AnsiText::columnsFrom($lines[$row], $col, 1)) : '';
@@ -170,14 +293,15 @@ final readonly class RuleHalves
                 $spans[] = ['row' => $row, 'col' => $side, 'width' => 1, 'segment' => self::lead($cell)." \x1b[0m"];
                 foreach ([[$row - 1, 'below'], [$row + 1, 'above']] as [$at, $whose]) {
                     $join = AnsiText::columnsFrom($lines[$at] ?? '', $side, 1);
-                    $onBar = self::isBarHalf($join, $barTint);
+                    $barTint = null === $menuTint ? null : self::barHalf($join, $menuTint);
+                    $onBar = null !== $barTint;
                     if (!$onBar && (!\in_array($glyph($at, $side), $joins, strict: true) || $tint !== self::state(self::lead($join))['fg'])) {
                         continue;
                     }
                     $beside["{$at}:{$side}"] ??= ['row' => $at, 'col' => $side];
                     $beside["{$at}:{$side}"][$whose] = $cell;
                     if ($onBar) {
-                        $beside["{$at}:{$side}"]['bar'] = (string) $barTint;
+                        $beside["{$at}:{$side}"]['bar'] = $barTint;
                     }
                 }
             }
@@ -205,49 +329,61 @@ final readonly class RuleHalves
      * @param \Closure(int, int): int    $logical  a drawn column on a row → the column the widgets laid out
      * @param Style                      $rule     the rules' style: only a `─` in its tint is one
      * @param ?Style                     $bar      the bars' style, whose half an edge row may hold instead of a rule
+     * @param list<array{WidgetRect, Style}> $heads the bars whose TOP row alone reaches out, each in its shade, into a bar's half only
+     * @param list<int>                  $barRows  the rows a head may find a bar's half in, of any bar's colour
      *
      * @return list<array{row: int, col: int, width: int, segment: string}>
      */
-    public static function spans(array $lines, array $rects, array $floating, \Closure $logical, Style $rule, ?Style $bar = null): array
+    public static function spans(array $lines, array $rects, array $floating, \Closure $logical, Style $rule, ?Style $bar = null, array $heads = [], array $barRows = []): array
     {
+        $menuTint = self::barTint($bar);
         $surface = static fn (int $row, int $col): array => self::surfaces($floating, $row, $col);
         $tint = self::state(self::lead($rule->apply(Glyphs::FRAME_HORIZONTAL)))['fg'];
-        $barTint = self::barTint($bar);
-        $spans = [];
+        $top = static fn (WidgetRect $rect, ?Style $shade = null): array => [$rect, $rect->row, $rect->row - 1, Glyphs::HALF_LOWER, Glyphs::RULE_DOWN, $shade];
+        $edges = \array_map(static fn (array $head): array => $top(...$head), $heads);
         foreach ($rects as $rect) {
-            $edges = [
-                [$rect->row, $rect->row - 1, Glyphs::HALF_LOWER, Glyphs::RULE_DOWN],
-                [$rect->row + $rect->rows - 1, $rect->row + $rect->rows, Glyphs::HALF_UPPER, Glyphs::RULE_UP],
-            ];
-            foreach ($edges as [$edge, $line, $half, $join]) {
-                if (!\array_key_exists($edge, $lines) || !\array_key_exists($line, $lines)) {
+            $edges[] = $top($rect);
+            $edges[] = [$rect, $rect->row + $rect->rows - 1, $rect->row + $rect->rows, Glyphs::HALF_UPPER, Glyphs::RULE_UP, null];
+        }
+        $spans = [];
+        foreach ($edges as [$rect, $edge, $line, $half, $join, $shade]) {
+            if (!\array_key_exists($edge, $lines) || !\array_key_exists($line, $lines)) {
+                continue;
+            }
+            for ($col = 0, $columns = AnsiUtils::visibleWidth($lines[$edge]); $col < $columns; ++$col) {
+                $laid = $logical($edge, $col);
+                if ($laid < $rect->col || $laid >= ($rect->col + $rect->columns) || !self::sameSurface($surface($line, $col), $surface($edge, $col), $floating, $rect)) {
                     continue;
                 }
-                for ($col = 0, $columns = AnsiUtils::visibleWidth($lines[$edge]); $col < $columns; ++$col) {
-                    $laid = $logical($edge, $col);
-                    if ($laid < $rect->col || $laid >= ($rect->col + $rect->columns) || !self::sameSurface($surface($line, $col), $surface($edge, $col), $floating, $rect)) {
-                        continue;
-                    }
-                    // A rule, or a blank on nothing: the padding over a view
-                    // in a window, the room under a short list.
-                    $beside = AnsiText::columnsFrom($lines[$line], $col, 1);
-                    $state = self::state(self::lead($beside));
-                    $glyph = AnsiUtils::stripAnsiCodes($beside);
-                    $isRule = Glyphs::FRAME_HORIZONTAL === $glyph && $tint === $state['fg'];
-                    $onBar = self::isBarHalf($beside, $barTint);
-                    if (!$isRule && !$onBar && (' ' !== $glyph || null !== $state['bg'] || $state['reverse'])) {
-                        continue;
-                    }
-                    $cell = AnsiText::columnsFrom($lines[$edge], $col, 1);
-                    $segment = match (true) {
-                        $onBar => self::onBar($cell, $half, (string) $barTint), // a strip's unshaded `│` ends at the bar
-                        Glyphs::FRAME_VERTICAL !== AnsiUtils::stripAnsiCodes($cell) => self::half($cell, $half),
-                        $isRule => $rule->apply($join),
-                        default => null, // a line meeting a blank joins nothing
-                    };
-                    if (null !== $segment) {
-                        $spans[] = ['row' => $line, 'col' => $col, 'width' => 1, 'segment' => $segment];
-                    }
+                // A rule, or a blank on nothing: the padding over a view
+                // in a window, the room under a short list.
+                $beside = AnsiText::columnsFrom($lines[$line], $col, 1);
+                $state = self::state(self::lead($beside));
+                $glyph = AnsiUtils::stripAnsiCodes($beside);
+                $isRule = Glyphs::FRAME_HORIZONTAL === $glyph && $tint === $state['fg'];
+                // A head's row over it holds a bar's half only where a bar draws one.
+                $barTint = match (true) {
+                    null !== $shade => \in_array($line, $barRows, strict: true) ? self::barHalf($beside) : null,
+                    null !== $menuTint => self::barHalf($beside, $menuTint),
+                    default => null,
+                };
+                $onBar = null !== $barTint;
+                if (!$isRule && !$onBar && (' ' !== $glyph || null !== $state['bg'] || $state['reverse'])) {
+                    continue;
+                }
+                // A head bar meets only another bar's half: a strip's baseline over it stays the strip's.
+                if (null !== $shade && !$onBar) {
+                    continue;
+                }
+                $cell = null === $shade ? AnsiText::columnsFrom($lines[$edge], $col, 1) : $shade->apply(' ');
+                $segment = match (true) {
+                    $onBar => self::onBar($cell, $half, $barTint), // a strip's unshaded `│` ends at the bar
+                    Glyphs::FRAME_VERTICAL !== AnsiUtils::stripAnsiCodes($cell) => self::half($cell, $half),
+                    $isRule => $rule->apply($join),
+                    default => null, // a line meeting a blank joins nothing
+                };
+                if (null !== $segment) {
+                    $spans[] = ['row' => $line, 'col' => $col, 'width' => 1, 'segment' => $segment];
                 }
             }
         }
@@ -291,12 +427,18 @@ final readonly class RuleHalves
         return null === $bar ? null : self::state(self::lead(RowBleed::under(1, $bar)))['fg'];
     }
 
-    /** Whether $cell holds a bar's half: `▀` or `▄` in the bar's colour, on nothing. */
-    private static function isBarHalf(string $cell, ?string $barTint): bool
+    /**
+     * The colour of the bar's half $cell holds — `▀` or `▄` on nothing, in
+     * $tint when one is asked for (the menu and status bars', where a strip's
+     * own halves stand beside it), in any where the row is known to be a
+     * bar's — as {@see state()} reads it, or null for none.
+     */
+    private static function barHalf(string $cell, ?string $tint = null): ?string
     {
         $state = self::state(self::lead($cell));
+        $isHalf = null === $state['bg'] && !$state['reverse'] && \in_array(AnsiUtils::stripAnsiCodes($cell), [Glyphs::HALF_UPPER, Glyphs::HALF_LOWER], strict: true);
 
-        return null !== $barTint && $barTint === $state['fg'] && null === $state['bg'] && \in_array(AnsiUtils::stripAnsiCodes($cell), [Glyphs::HALF_UPPER, Glyphs::HALF_LOWER], strict: true);
+        return $isHalf && (null === $tint || $tint === $state['fg']) ? $state['fg'] : null;
     }
 
     /** A colour read as a foreground ({@see state()}) as the background of the same colour. */

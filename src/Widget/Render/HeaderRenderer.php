@@ -12,9 +12,8 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Style\Style;
 
 /**
- * Renders the bold, full-width title bar of the docked panels (the file tree,
- * the settings form, the keybindings list, the text preview, the git lists and
- * commit box).
+ * Renders the bold, full-width title row of the docked panels (the file tree,
+ * the git lists and commit box, the review panes).
  * Centralizes the styled header-bar idiom that was copy-pasted across those
  * widgets, scrolling the bar to keep an embedded input caret marker visible
  * when the header holds a text field (a markerless header just clips). An
@@ -24,14 +23,15 @@ use Symfony\Component\Tui\Style\Style;
 final class HeaderRenderer
 {
     /**
-     * The standard panel title bar — {@see Role::HeaderBar}, bold — with the
-     * one column of inset every panel's title sits at, added here rather than
-     * by each caller (or, worse, inside a translated string a translator can
-     * drop).
+     * The standard panel title — {@see Role::Emphasis}, bold, on the pane
+     * itself: a shade there would read as a bar, and the bars are the menu's
+     * and the status line's — with the one column of inset every panel's
+     * title sits at, added here rather than by each caller (or, worse, inside
+     * a translated string a translator can drop).
      */
     public static function title(string $text, int $width, Styles $styles, string $suffix = ''): string
     {
-        return self::render(' '.$text, $width, $styles->of(Role::HeaderBar)->withBold(), $suffix);
+        return self::render(' '.$text, $width, $styles->of(Role::Emphasis)->withBold(), $suffix);
     }
 
     public static function render(string $text, int $width, Style $style, string $suffix = ''): string

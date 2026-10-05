@@ -8,7 +8,10 @@ use PHPUnit\Framework\TestCase;
 use Porta\I18n\Translator;
 use Porta\Tests\Support\RendersWidget;
 use Porta\Ui\ScreenDensity;
+use Porta\Ui\Theme\Styles;
 use Porta\Widget\BreadcrumbsWidget;
+use Porta\Widget\Render\CrumbBar;
+use Porta\Widget\Render\Rule;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 
@@ -440,10 +443,11 @@ final class BreadcrumbsWidgetTest extends TestCase
     }
 
     /**
-     * A roomy screen rules the bar off from the editor; a compact one gives
-     * the row back. The rule is nobody's: only row 0 answers the pointer.
+     * A roomy screen gives the bar its lower half in the row under it, so it
+     * reads half a row taller; a compact one gives the row back. The row has
+     * no card of its own: only row 0 answers the pointer.
      */
-    public function testARoomyScreenDrawsARuleUnderTheBar(): void
+    public function testARoomyScreenDrawsTheBarsHalfUnderIt(): void
     {
         $density = new ScreenDensity();
         $bar = new BreadcrumbsWidget(null, new Translator('en'), null, $density);
@@ -451,8 +455,9 @@ final class BreadcrumbsWidgetTest extends TestCase
 
         $rows = $bar->render(new RenderContext(40, 2));
         $this->assertCount(2, $rows);
-        $this->assertSame(\str_repeat('─', times: 40), AnsiUtils::stripAnsiCodes($rows[1]));
-        $this->assertNull($bar->tooltipAt(1, 1), 'the rule has no card');
+        $this->assertSame(Rule::under(40, Styles::dark(), CrumbBar::SHADE), $rows[1]);
+        $this->assertSame(\str_repeat('▀', times: 40), AnsiUtils::stripAnsiCodes($rows[1]), 'the bar\'s half, not a rule');
+        $this->assertNull($bar->tooltipAt(1, 1), 'the half has no card');
 
         $density->observe(24);
         $bar->beforeRender();

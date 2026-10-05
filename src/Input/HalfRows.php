@@ -116,6 +116,35 @@ final readonly class HalfRows
             }
         }
 
+        return $this->intoHead($mouse, $col, $step);
+    }
+
+    /**
+     * A half a head bar holds — the navigation bar, a page's header: the
+     * lower half of the row over it where that row is another bar's half
+     * (as {@see RuleHalves} draws it only there), and the upper half of its
+     * own row under it. Both are the bar's first row.
+     */
+    private function intoHead(MouseEvent $mouse, int $col, int $step): MouseEvent
+    {
+        $floating = $this->floating->regions();
+        $heads = [];
+        foreach ($this->halves->headWidgets() as [$widget]) {
+            $rect = $this->renderer->getWidgetRect($widget);
+            if (null !== $rect && $rect->rows > 0) {
+                $heads[] = $rect;
+            }
+        }
+        $halves = $this->halves->barRows();
+        foreach ($heads as $rect) {
+            if ($col < $rect->col || $col >= ($rect->col + $rect->columns) || $mouse->row !== ($rect->row - $step) || 1 === $step && !\in_array($mouse->row, $halves, strict: true)) {
+                continue;
+            }
+            if (RuleHalves::sameSurface(RuleHalves::surfaces($floating, $mouse->row, $mouse->col), RuleHalves::surfaces($floating, $rect->row, $mouse->col), $floating, $rect)) {
+                return $mouse->withRow($rect->row);
+            }
+        }
+
         return $this->intoBar($mouse, $step);
     }
 
