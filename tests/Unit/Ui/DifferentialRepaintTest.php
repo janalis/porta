@@ -90,7 +90,7 @@ final class DifferentialRepaintTest extends TestCase
         return AnsiText::padRight($left, $pane).'|'.AnsiText::padRight($right, self::COLUMNS - 1 - $pane);
     }
 
-    /** @param list<list<string>> $frames each frame's [left, right] rows */
+    /** @param list<list<array{string, string}>> $frames each frame's [left, right] rows */
     private function play(array $frames, bool $rtl, int $ambiguousWidth = 1): array
     {
         $terminal = new VirtualTerminal(columns: self::COLUMNS, rows: self::ROWS);

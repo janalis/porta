@@ -116,7 +116,7 @@ final class ActionCatalogTest extends TestCase
         $actual = [];
         /** @var array<string, array<string, mixed>> $actions */
         $actions = Probe::getStatic(ActionCatalog::class, 'ACTIONS');
-        foreach ($actions as $id => $action) {
+        foreach (\array_keys($actions) as $id) {
             if (!\str_starts_with((string) $id, 'git_')) {
                 continue;
             }

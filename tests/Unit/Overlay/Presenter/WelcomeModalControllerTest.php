@@ -36,7 +36,6 @@ use Porta\Ui\Theme\Theme;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\Onboarding\WelcomeWidget;
-use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Workbench\ChromeInvalidator;
 use Porta\Workbench\ChromeRefreshListener;
 use Porta\Workbench\EditorArea;
@@ -47,7 +46,6 @@ use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Style\StyleSheet;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
-use Symfony\Component\Tui\Widget\AbstractWidget;
 
 /**
  * The Welcome modal's lifecycle and geometry: the view registry's interlock
@@ -62,7 +60,7 @@ final class WelcomeModalControllerTest extends TestCase
 
     private WelcomeWidget $welcome;
     private ViewRegistry $views;
-    private AbstractWidget&MenuOverlayHost $pane;
+    private TestOverlayPane $pane;
     private MenuBarWidget $menuBar;
     private EditorArea $editArea;
 

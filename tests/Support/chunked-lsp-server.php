@@ -7,8 +7,8 @@ declare(strict_types=1);
 
 require __DIR__.'/lsp-stub.php';
 
-$in = fopen('php://stdin', mode: 'rb');
-$out = fopen('php://stdout', mode: 'wb');
+$in = \STDIN;
+$out = \STDOUT;
 
 foreach (readFrames($in) as $message) {
     if ('initialize' === ($message['method'] ?? '')) {

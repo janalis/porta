@@ -163,7 +163,7 @@ final class SettingsLspControllerTest extends TestCase
 
     public function testClearingAServerRevertsToAutoDetect(): void
     {
-        $project = new TempProject(['.porta.json' => \json_encode(['lsp' => ['php' => 'phpactor language-server']])]);
+        $project = new TempProject(['.porta.json' => \json_encode(['lsp' => ['php' => 'phpactor language-server']], \JSON_THROW_ON_ERROR)]);
         $controller = $this->controller($project->dir, $status = new StatusBarWidget(), ['php' => 'phpactor language-server']);
 
         $controller->changeLspServer('php', '   ');

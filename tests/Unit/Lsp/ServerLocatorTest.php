@@ -23,7 +23,7 @@ final class ServerLocatorTest extends TestCase
 
     public function testConfigStringCommandIsTheCatchAll(): void
     {
-        $project = new TempProject(['.porta.json' => \json_encode(['lsp' => 'php phpactor.phar language-server'])]);
+        $project = new TempProject(['.porta.json' => \json_encode(['lsp' => 'php phpactor.phar language-server'], \JSON_THROW_ON_ERROR)]);
 
         $servers = ServerLocator::locateAll($project->dir);
 
@@ -34,7 +34,7 @@ final class ServerLocatorTest extends TestCase
 
     public function testConfigArgvListIsTheCatchAll(): void
     {
-        $project = new TempProject(['.porta.json' => \json_encode(['lsp' => ['node', '/x/intelephense.js', '--stdio']])]);
+        $project = new TempProject(['.porta.json' => \json_encode(['lsp' => ['node', '/x/intelephense.js', '--stdio']], \JSON_THROW_ON_ERROR)]);
 
         $servers = ServerLocator::locateAll($project->dir);
 
@@ -86,7 +86,7 @@ final class ServerLocatorTest extends TestCase
 
     public function testOverrideWinsOverEverything(): void
     {
-        $project = new TempProject(['.porta.json' => \json_encode(['lsp' => ['php' => 'phpactor language-server']])]);
+        $project = new TempProject(['.porta.json' => \json_encode(['lsp' => ['php' => 'phpactor language-server']], \JSON_THROW_ON_ERROR)]);
 
         $servers = ServerLocator::locateAll($project->dir, 'my-ls --stdio', self::PHPANTOM);
 
@@ -96,7 +96,7 @@ final class ServerLocatorTest extends TestCase
 
     public function testEmptyOverrideIsIgnored(): void
     {
-        $project = new TempProject(['.porta.json' => \json_encode(['lsp' => 'phpactor language-server'])]);
+        $project = new TempProject(['.porta.json' => \json_encode(['lsp' => 'phpactor language-server'], \JSON_THROW_ON_ERROR)]);
 
         $servers = ServerLocator::locateAll($project->dir, '');
 
@@ -116,7 +116,7 @@ final class ServerLocatorTest extends TestCase
 
     public function testDisplayNameFallsBackWhenAllTokensAreInterpreters(): void
     {
-        $project = new TempProject(['.porta.json' => \json_encode(['lsp' => 'php'])]);
+        $project = new TempProject(['.porta.json' => \json_encode(['lsp' => 'php'], \JSON_THROW_ON_ERROR)]);
 
         $this->assertSame('php', ServerLocator::locateAll($project->dir)['*'][0]['name']);
     }
@@ -125,7 +125,7 @@ final class ServerLocatorTest extends TestCase
     {
         // "PHP" (as some shells / user configs write it) must still be skipped
         // as an interpreter token, not mistaken for the server binary itself.
-        $project = new TempProject(['.porta.json' => \json_encode(['lsp' => 'PHP phpactor.phar language-server'])]);
+        $project = new TempProject(['.porta.json' => \json_encode(['lsp' => 'PHP phpactor.phar language-server'], \JSON_THROW_ON_ERROR)]);
 
         $this->assertSame('phpactor', ServerLocator::locateAll($project->dir)['*'][0]['name']);
     }
@@ -134,7 +134,7 @@ final class ServerLocatorTest extends TestCase
     {
         // A JSON argv list can carry non-string scalars (e.g. a bare port
         // number); every element must reach the server definition as a string.
-        $project = new TempProject(['.porta.json' => \json_encode(['lsp' => ['typescript' => ['ls', 9229]]])]);
+        $project = new TempProject(['.porta.json' => \json_encode(['lsp' => ['typescript' => ['ls', 9229]]], \JSON_THROW_ON_ERROR)]);
 
         $servers = ServerLocator::locateAll($project->dir);
 
@@ -146,7 +146,7 @@ final class ServerLocatorTest extends TestCase
         // A JSON object with numeric-but-gapped keys (e.g. {"0": "ls", "2": "x"})
         // decodes to a PHP array with a gap; the command must still come out
         // as a plain 0..n list, not carry that gap through.
-        $project = new TempProject(['.porta.json' => \json_encode(['lsp' => ['typescript' => [0 => 'ls', 2 => '--stdio']]])]);
+        $project = new TempProject(['.porta.json' => \json_encode(['lsp' => ['typescript' => [0 => 'ls', 2 => '--stdio']]], \JSON_THROW_ON_ERROR)]);
 
         $servers = ServerLocator::locateAll($project->dir);
 
@@ -155,7 +155,7 @@ final class ServerLocatorTest extends TestCase
 
     public function testArgvListCommandValuesCastToStrings(): void
     {
-        $project = new TempProject(['.porta.json' => \json_encode(['lsp' => ['ls', 9229]])]);
+        $project = new TempProject(['.porta.json' => \json_encode(['lsp' => ['ls', 9229]], \JSON_THROW_ON_ERROR)]);
 
         $this->assertSame(['ls', '9229'], ServerLocator::locateAll($project->dir)['*'][0]['command']);
     }
@@ -166,7 +166,7 @@ final class ServerLocatorTest extends TestCase
         // the fixture before locateAll runs, so both cases degenerated to the
         // missing-directory path and the malformed file was never parsed.
         \putenv('PATH=/nonexistent');
-        $noLspKey = new TempProject(['.porta.json' => \json_encode(['keymap' => []])]);
+        $noLspKey = new TempProject(['.porta.json' => \json_encode(['keymap' => []], \JSON_THROW_ON_ERROR)]);
         $broken = new TempProject(['.porta.json' => '{not json']);
 
         $this->assertSame([], ServerLocator::locateAll($noLspKey->dir));
@@ -190,7 +190,7 @@ final class ServerLocatorTest extends TestCase
     public function testConfigMapOverridesAPluginServer(): void
     {
         \putenv('PATH=/nonexistent');
-        $project = new TempProject(['.porta.json' => \json_encode(['lsp' => ['php' => 'phpactor language-server']])]);
+        $project = new TempProject(['.porta.json' => \json_encode(['lsp' => ['php' => 'phpactor language-server']], \JSON_THROW_ON_ERROR)]);
 
         $servers = ServerLocator::locateAll($project->dir, null, self::PHPANTOM);
 
@@ -210,7 +210,7 @@ final class ServerLocatorTest extends TestCase
         $servers = ServerLocator::locateAll($plain->dir, null, $plugins);
         $this->assertSame(['workspaceTrust' => false], $servers['twig'][0]['initializationOptions'] ?? null, 'the plugin entry passes through whole');
 
-        $project = new TempProject(['.porta.json' => \json_encode(['lsp' => ['twig' => 'my-twig-ls']])]);
+        $project = new TempProject(['.porta.json' => \json_encode(['lsp' => ['twig' => 'my-twig-ls']], \JSON_THROW_ON_ERROR)]);
         $overridden = ServerLocator::locateAll($project->dir, null, $plugins);
         $this->assertArrayNotHasKey('initializationOptions', $overridden['twig'][0], 'a config override replaces the entry, options included');
         $this->assertSame(['workspaceTrust' => false], $overridden['yaml'][0]['initializationOptions'] ?? null, 'the untouched language keeps its options');
@@ -220,7 +220,7 @@ final class ServerLocatorTest extends TestCase
     {
         // A map that only sets typescript leaves php on its plugin server.
         \putenv('PATH=/nonexistent');
-        $project = new TempProject(['.porta.json' => \json_encode(['lsp' => ['typescript' => 'my-tsls --stdio', 'python' => '', 'yaml' => ['ls', '--stdio']]])]);
+        $project = new TempProject(['.porta.json' => \json_encode(['lsp' => ['typescript' => 'my-tsls --stdio', 'python' => '', 'yaml' => ['ls', '--stdio']]], \JSON_THROW_ON_ERROR)]);
 
         $servers = ServerLocator::locateAll($project->dir, null, self::PHPANTOM);
 

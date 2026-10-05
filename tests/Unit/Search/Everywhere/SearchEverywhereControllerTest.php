@@ -18,6 +18,8 @@ use Porta\Search\Everywhere\SearchRow;
 use Porta\Search\Everywhere\SearchSource;
 use Porta\Support\ProjectPaths;
 use Porta\Support\Scheduler;
+use Porta\Tests\Support\RecordingSearchOverlay;
+use Porta\Tests\Support\RecordingSearchSource;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
@@ -33,67 +35,6 @@ final class SearchEverywhereControllerTest extends TestCase
 
     /** Set by the one test that cares what the recent-files tray remembers. */
     private ?RecentFilesStore $recentFiles = null;
-
-    private function overlay(): SearchOverlay
-    {
-        return new class implements SearchOverlay {
-            public ?\Closure $onQuery = null;
-            public ?\Closure $onPick = null;
-            public ?\Closure $onClose = null;
-            public ?string $title = null;
-            public ?string $emptyMessage = null;
-            /** @var list<SearchRow> */
-            public array $rows = [];
-            public int $closes = 0;
-
-            public function openSearch(string $title, \Closure $onQuery, \Closure $onPick, \Closure $onClose, string $emptyMessage = ''): void
-            {
-                $this->title = $title;
-                $this->onQuery = $onQuery;
-                $this->onPick = $onPick;
-                $this->onClose = $onClose;
-                $this->emptyMessage = $emptyMessage;
-            }
-
-            public function setSearchRows(array $rows): void
-            {
-                $this->rows = $rows;
-            }
-
-            public function closeSearch(): void
-            {
-                ++$this->closes;
-            }
-        };
-    }
-
-    private function source(SearchCategory $category): SearchSource
-    {
-        return new class($category) implements SearchSource {
-            /** @var list<\Closure> */
-            public array $emits = [];
-            public int $cancels = 0;
-
-            public function __construct(
-                private readonly SearchCategory $category,
-            ) {}
-
-            public function category(): SearchCategory
-            {
-                return $this->category;
-            }
-
-            public function query(string $query, \Closure $emit): void
-            {
-                $this->emits[] = $emit;
-            }
-
-            public function cancel(): void
-            {
-                ++$this->cancels;
-            }
-        };
-    }
 
     /**
      * @param list<SearchSource> $sync
@@ -181,8 +122,8 @@ final class SearchEverywhereControllerTest extends TestCase
      */
     public function testAPickerWithItsOwnCapShowsPastTheSharedOne(): void
     {
-        $overlay = $this->overlay();
-        $files = $this->source(SearchCategory::Files);
+        $overlay = new RecordingSearchOverlay();
+        $files = new RecordingSearchSource(SearchCategory::Files);
         $controller = $this->controller($overlay, [$files], [], new BufferManager(), categoryCap: SearchEverywhereController::SOLO_CAP);
         $controller->open();
 
@@ -195,8 +136,8 @@ final class SearchEverywhereControllerTest extends TestCase
     /** And it is still a cap, not an unbounding: past its own budget the same grow row appears. */
     public function testAPickerWithItsOwnCapStillGrowsRatherThanRenderingEverything(): void
     {
-        $overlay = $this->overlay();
-        $files = $this->source(SearchCategory::Files);
+        $overlay = new RecordingSearchOverlay();
+        $files = new RecordingSearchSource(SearchCategory::Files);
         $controller = $this->controller($overlay, [$files], [], new BufferManager(), categoryCap: SearchEverywhereController::SOLO_CAP);
         $controller->open();
 
@@ -215,9 +156,9 @@ final class SearchEverywhereControllerTest extends TestCase
      */
     public function testAPendingAsyncCategorySaysItIsSearching(): void
     {
-        $overlay = $this->overlay();
-        $classes = $this->source(SearchCategory::Classes);
-        $text = $this->source(SearchCategory::Text);
+        $overlay = new RecordingSearchOverlay();
+        $classes = new RecordingSearchSource(SearchCategory::Classes);
+        $text = new RecordingSearchSource(SearchCategory::Text);
         $controller = $this->controller($overlay, [], [$classes, $text], new BufferManager());
         $controller->open();
 
@@ -241,8 +182,8 @@ final class SearchEverywhereControllerTest extends TestCase
     /** A category that answers nothing with a note shows the note under its header; the next query forgets it. */
     public function testASourcesNoteStandsInForItsEmptyAnswer(): void
     {
-        $overlay = $this->overlay();
-        $symbols = $this->source(SearchCategory::Symbols);
+        $overlay = new RecordingSearchOverlay();
+        $symbols = new RecordingSearchSource(SearchCategory::Symbols);
         $controller = $this->controller($overlay, [], [$symbols], new BufferManager());
         $controller->open();
 
@@ -260,7 +201,7 @@ final class SearchEverywhereControllerTest extends TestCase
     /** A greyed command is there to be read, not run: picking it does nothing and leaves the palette open. */
     public function testPickingADisabledHitDoesNothing(): void
     {
-        $overlay = $this->overlay();
+        $overlay = new RecordingSearchOverlay();
         $controller = $this->controller($overlay, [], [], new BufferManager());
         $controller->open();
         $ran = false;
@@ -285,8 +226,8 @@ final class SearchEverywhereControllerTest extends TestCase
     {
         // The cap used to be the end of the list: eight files, five shown, and
         // no way at all to reach the sixth from here.
-        $overlay = $this->overlay();
-        $files = $this->source(SearchCategory::Files);
+        $overlay = new RecordingSearchOverlay();
+        $files = new RecordingSearchSource(SearchCategory::Files);
         $controller = $this->controller($overlay, [$files], [], new BufferManager());
         $controller->open();
 
@@ -298,8 +239,8 @@ final class SearchEverywhereControllerTest extends TestCase
 
     public function testGrowingACategoryShowsTheRestAndKeepsTheModalOpen(): void
     {
-        $overlay = $this->overlay();
-        $files = $this->source(SearchCategory::Files);
+        $overlay = new RecordingSearchOverlay();
+        $files = new RecordingSearchSource(SearchCategory::Files);
         $controller = $this->controller($overlay, [$files], [], new BufferManager());
         $controller->open();
         ($overlay->onQuery)('f');
@@ -317,8 +258,8 @@ final class SearchEverywhereControllerTest extends TestCase
     {
         // A grep or a workspace-symbol answer is not bounded by its source, so
         // "show the rest" would render thousands of rows in one go.
-        $overlay = $this->overlay();
-        $files = $this->source(SearchCategory::Files);
+        $overlay = new RecordingSearchOverlay();
+        $files = new RecordingSearchSource(SearchCategory::Files);
         $controller = $this->controller($overlay, [$files], [], new BufferManager());
         $controller->open();
         ($overlay->onQuery)('f');
@@ -333,8 +274,8 @@ final class SearchEverywhereControllerTest extends TestCase
 
     public function testASingleHiddenResultIsCountedInTheSingular(): void
     {
-        $overlay = $this->overlay();
-        $files = $this->source(SearchCategory::Files);
+        $overlay = new RecordingSearchOverlay();
+        $files = new RecordingSearchSource(SearchCategory::Files);
         $controller = $this->controller($overlay, [$files], [], new BufferManager());
         $controller->open();
 
@@ -346,8 +287,8 @@ final class SearchEverywhereControllerTest extends TestCase
 
     public function testACategoryThatFitsOffersNoGrowRow(): void
     {
-        $overlay = $this->overlay();
-        $files = $this->source(SearchCategory::Files);
+        $overlay = new RecordingSearchOverlay();
+        $files = new RecordingSearchSource(SearchCategory::Files);
         $controller = $this->controller($overlay, [$files], [], new BufferManager());
         $controller->open();
 
@@ -361,8 +302,8 @@ final class SearchEverywhereControllerTest extends TestCase
     {
         // Carrying the expansion over would show one category swollen for a
         // search that never asked for it.
-        $overlay = $this->overlay();
-        $files = $this->source(SearchCategory::Files);
+        $overlay = new RecordingSearchOverlay();
+        $files = new RecordingSearchSource(SearchCategory::Files);
         $controller = $this->controller($overlay, [$files], [], new BufferManager());
         $controller->open();
         ($overlay->onQuery)('f');
@@ -380,11 +321,11 @@ final class SearchEverywhereControllerTest extends TestCase
         $buffers = new BufferManager();
         $buffers->open('/proj/src/A.php', '');
         $buffers->open('/proj/B.php', '');
-        $overlay = $this->overlay();
+        $overlay = new RecordingSearchOverlay();
 
         $this->controller($overlay, [], [], $buffers)->open();
 
-        $this->assertNotNull($overlay->onQuery, 'the overlay was opened with callbacks');
+        $this->assertInstanceOf(\Closure::class, $overlay->onQuery, 'the overlay was opened with callbacks');
         $this->assertSame('Search Everywhere', $overlay->title, 'the title is translated (English identity here)');
         $this->assertSame('no results', $overlay->emptyMessage, 'the no-hit empty message is threaded through');
         $this->assertTrue($overlay->rows[0]->isHeader());
@@ -410,7 +351,7 @@ final class SearchEverywhereControllerTest extends TestCase
 
         $buffers = new BufferManager();
         $buffers->open($project->path('src/Open.php'), '');
-        $overlay = $this->overlay();
+        $overlay = new RecordingSearchOverlay();
 
         $this->controller($overlay, [], [], $buffers, $project->dir)->open();
 
@@ -426,9 +367,9 @@ final class SearchEverywhereControllerTest extends TestCase
 
     public function testQueryRunsSyncSourcesNowAndAsyncOnTheDebounce(): void
     {
-        $files = $this->source(SearchCategory::Files);
-        $classes = $this->source(SearchCategory::Classes);
-        $overlay = $this->overlay();
+        $files = new RecordingSearchSource(SearchCategory::Files);
+        $classes = new RecordingSearchSource(SearchCategory::Classes);
+        $overlay = new RecordingSearchOverlay();
         $this->controller($overlay, [$files], [$classes], new BufferManager())->open();
 
         ($overlay->onQuery)('user');
@@ -449,8 +390,8 @@ final class SearchEverywhereControllerTest extends TestCase
 
     public function testStaleResponsesAreDropped(): void
     {
-        $files = $this->source(SearchCategory::Files);
-        $overlay = $this->overlay();
+        $files = new RecordingSearchSource(SearchCategory::Files);
+        $overlay = new RecordingSearchOverlay();
         $this->controller($overlay, [$files], [], new BufferManager())->open();
 
         ($overlay->onQuery)('a'); // generation G1 → files->emits[0]
@@ -465,8 +406,8 @@ final class SearchEverywhereControllerTest extends TestCase
 
     public function testStaleDebounceFiringAfterANewQueryIsAnInertNoOp(): void
     {
-        $classes = $this->source(SearchCategory::Classes);
-        $overlay = $this->overlay();
+        $classes = new RecordingSearchSource(SearchCategory::Classes);
+        $overlay = new RecordingSearchOverlay();
         $this->controller($overlay, [], [$classes], new BufferManager())->open();
 
         ($overlay->onQuery)('a'); // schedules debounce[0] for G1
@@ -484,8 +425,8 @@ final class SearchEverywhereControllerTest extends TestCase
     {
         $buffers = new BufferManager();
         $buffers->open('/proj/A.php', '');
-        $files = $this->source(SearchCategory::Files);
-        $overlay = $this->overlay();
+        $files = new RecordingSearchSource(SearchCategory::Files);
+        $overlay = new RecordingSearchOverlay();
         $this->controller($overlay, [$files], [], $buffers)->open();
 
         ($overlay->onQuery)('x');
@@ -498,7 +439,7 @@ final class SearchEverywhereControllerTest extends TestCase
 
     public function testPickActivatesTheHitAndClosesTheOverlay(): void
     {
-        $overlay = $this->overlay();
+        $overlay = new RecordingSearchOverlay();
         $this->controller($overlay, [], [], new BufferManager())->open();
 
         $activated = false;
@@ -513,8 +454,8 @@ final class SearchEverywhereControllerTest extends TestCase
 
     public function testCloseCancelsTheDebounceAndAsyncSources(): void
     {
-        $classes = $this->source(SearchCategory::Classes);
-        $overlay = $this->overlay();
+        $classes = new RecordingSearchSource(SearchCategory::Classes);
+        $overlay = new RecordingSearchOverlay();
         $this->controller($overlay, [], [$classes], new BufferManager())->open();
 
         ($overlay->onQuery)('x'); // schedules a debounce

@@ -1,0 +1,486 @@
+# phpantom (the PHP language server the phpantom plugin runs) — what it must
+# not report on Porta's own files.
+#
+# Every rule below is a FALSE POSITIVE, read at its site and found correct:
+# the code and its types are right and phpantom's flow analysis is not. None
+# hides a real defect — the ones it found were fixed instead (an all-digit name
+# keying an array as an int, in PluginOrder, local-history and assist).
+#
+# Narrow on purpose: an identifier, the exact message(s), and the files they
+# were read in — never a whole tree. A NEW finding of any kind still shows.
+# Each rule names the analyser gap; "fixed on main" means phpantom's unreleased
+# main (6fb245f) no longer reports it, and the rule goes with the next release.
+# `composer lsp` re-measures (docs/internals/contributing.md).
+
+# ── src/ and plugins/*/src ──────────────────────────────────────────────────
+
+# a `match (true)` arm is not narrowed by its own condition, nor by the arms before it.
+# phpantom 0.10.0; still reported on main (6fb245f).
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "{plugins/assist/src/Net/Tls.php,plugins/ftp/src/FtpTransport.php,plugins/git/src/Widget/ChangesListWidget.php,plugins/review/src/Source/Sources.php,src/Editor/BufferService.php,src/Editor/Document.php,src/Install/CommandLink.php,src/Widget/Render/RowBleed.php,src/Widget/Settings/SettingsFormWidget.php,src/Widget/Support/PanelRowStyle.php,src/Workbench/StatusBarProvider.php}"
+message = "^(?:Argument 1 \\(\\$facts\\) expects Porta\\\\ReviewPlugin\\\\Forge\\\\RepoFacts, got \\?Porta\\\\ReviewPlugin\\\\Forge\\\\RepoFacts|Argument 1 \\(\\$filename\\) expects string, got null|Argument 1 \\(\\$pane\\) expects Porta\\\\Widget\\\\EditorPaneWidget, got \\?Porta\\\\Widget\\\\EditorPaneWidget|Argument 1 \\(\\$path\\) expects string, got \\?string|Argument 1 \\(\\$preview\\) expects Porta\\\\Widget\\\\EditorPaneWidget, got \\?Porta\\\\Widget\\\\EditorPaneWidget|Argument 1 \\(\\$relRow\\) expects int, got \\?int|Argument 1 \\(\\$remote\\) expects Porta\\\\ReviewPlugin\\\\Forge\\\\RemoteUrl, got \\?Porta\\\\ReviewPlugin\\\\Forge\\\\RemoteUrl|Argument 1 \\(\\$shade\\) expects Symfony\\\\Component\\\\Tui\\\\Style\\\\Color\\|Symfony\\\\Component\\\\Tui\\\\Style\\\\Style, got Symfony\\\\Component\\\\Tui\\\\Style\\\\Color\\|Symfony\\\\Component\\\\Tui\\\\Style\\\\Style\\|null \\(null does not satisfy Symfony\\\\Component\\\\Tui\\\\Style\\\\Color\\|Symfony\\\\Component\\\\Tui\\\\Style\\\\Style\\)|Argument 1 \\(\\$size\\) expects int, got int\\|null \\(null does not satisfy int\\)|Argument 1 \\(\\$style\\) expects Symfony\\\\Component\\\\Tui\\\\Style\\\\Style, got \\?Symfony\\\\Component\\\\Tui\\\\Style\\\\Style|Argument 1 \\(\\$trail\\) expects list<array\\{label: string, id: \\?string\\}>, got list<array\\{label: string, id: \\?string\\}>\\|string\\|array\\{array\\{label: list<array\\{label: string, id: \\?string\\}>\\|string, id: null\\}\\} \\(string does not satisfy list<array\\{label: string, id: \\?string\\}>\\)|Argument 2 \\(\\$fingerprint\\) expects string, got \\?string|Argument 2 \\(\\$mtime\\) expects int, got int\\|false \\(false does not satisfy int\\)|Argument 2 \\(\\$terminator\\) expects string, got \\?string)$"
+
+# the keys of `array_keys()`/`foreach`/`array_map` are widened to array-key (or int|string) whatever the array's key type.
+# phpantom 0.10.0; still reported on main (6fb245f).
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "{plugins/git/plugin.php,plugins/git/src/Command/GitCommands.php,src/Debug/DapSession.php,src/Plugin/Lifecycle/ToolInstaller.php,src/Widget/FindBarWidget.php,src/Widget/MarkdownPageWidget.php,src/Workbench/AgentPresence.php,src/Workbench/Menu/Mnemonics.php}"
+message = "^(?:Argument 1 \\(\\$eventClass\\) expects class-string, got int\\|string|Argument 1 \\(\\$eventName\\) expects string, got int\\|string \\(int does not satisfy string\\)|Argument 1 \\(\\$index\\) expects int, got int\\|string \\(string does not satisfy int\\)|Argument 1 \\(\\$name\\) expects string, got array-key|Argument 1 \\(\\$path\\) expects string, got int\\|string \\(int does not satisfy string\\)|Argument 2 \\(\\$agent\\) expects string, got array-key|Argument 2 \\(\\$managerBinaries\\) expects array<string, string\\|null>, got array<int\\|string, string\\|null>|Argument 2 \\(\\$offset\\) expects int, got array-key|Argument 3 \\(\\$owner\\) expects array<array-key, int>, got array<int\\|string, int\\|string>)$"
+[[diagnostics.ignore]]
+identifier = "type_mismatch_return"
+path = "{plugins/git/src/Widget/DiffViewWidget.php,src/Config/LanguageCatalog.php,src/Debug/BreakpointStore.php,src/Editor/Bookmarks.php,src/Support/LanguageMap.php}"
+message = "^(?:Return type array<int, array<int\\|string, true>> is incompatible with declared return type array<int, array<int, true>>|Return type list<array-key> is incompatible with declared return type list<int>|Return type list<array-key> is incompatible with declared return type list<string>|Return type list<int\\|string> is incompatible with declared return type list<string>)$"
+
+# `($this->x)()` — a property invoked as a callable — is read as a call to the same-named method `x()`.
+# phpantom 0.10.0; still reported on main (6fb245f).
+[[diagnostics.ignore]]
+identifier = "argument_count_mismatch"
+path = "{plugins/git/src/Widget/CommitBoxWidget.php,plugins/review/src/Widget/ReviewContentWidget.php,src/Debug/DapClient.php,src/Support/NonBlockingWriter.php,src/Ui/NonBlockingTerminal.php,src/Widget/HelpViewerWidget.php,src/Widget/OverlayWidget.php,src/Widget/Support/MenuNavigation.php}"
+message = "^(?:Expected 1 argument, got 0)$"
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "{plugins/git/src/Setting/DiffPrefs.php,src/Highlight/CallableHighlightProvider.php,src/Terminal/PtyProcess.php,src/Ui/BidiTui.php}"
+message = "^(?:Argument 1 \\(\\$callback\\) expects callable, got int|Argument 1 \\(\\$hook\\) expects callable\\(int\\): void, got int|Argument 1 \\(\\$layout\\) expects Porta\\\\Layout\\\\DiffLayout, got 'diffHideWhitespace'|Argument 1 \\(\\$layout\\) expects Porta\\\\Layout\\\\DiffLayout, got 'diffSplit'|Argument 1 \\(\\$request\\) expects Porta\\\\Highlight\\\\HighlightRequest, got string|Argument 2 \\(\\$sink\\) expects Porta\\\\Highlight\\\\HighlightSink, got string)$"
+
+# a null/type check in a ternary or `&&` does not narrow the operand it guards.
+# phpantom 0.10.0; still reported on main (6fb245f).
+[[diagnostics.ignore]]
+identifier = "scalar_member_access"
+path = "{src/Overlay/State/OverlayHost.php,src/Widget/FileTreeWidget.php}"
+message = "^(?:Cannot access property 'count' on type 'null'|Cannot access property 'path' on type 'null')$"
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "{plugins/assist/src/Console/JoinCommand.php,src/Config/EditorConfig/ResolvedEditorConfig.php,src/Help/HelpMouseRouter.php,src/Lsp/NavigationController.php,src/Overlay/State/OverlayHost.php,src/Plugin/Runtime/PluginLoader.php}"
+message = "^(?:Argument 1 \\(\\$box\\) expects Porta\\\\Overlay\\\\Region\\\\ModalBox, got null|Argument 1 \\(\\$dir\\) expects string, got \\?string|Argument 1 \\(\\$message\\) expects array<array-key, mixed>, got array<string, mixed>\\|null \\(null does not satisfy array<array-key, mixed>\\)|Argument 1 \\(\\$row\\) expects int, got int\\|null \\(null does not satisfy int\\)|Argument 1 \\(\\$string\\) expects string, got \\?string|Argument 2 \\(\\$at\\) expects int, got int\\|float \\(float does not satisfy int\\)|Argument 2 \\(\\$col\\) expects int, got int\\|null \\(null does not satisfy int\\)|Argument 2 \\(\\$params\\) expects array<string, string\\|int>, got array\\{'%symbol%': string\\|null\\})$"
+[[diagnostics.ignore]]
+identifier = "type_mismatch_return"
+path = "src/Lsp/CodeLensController.php"
+message = "^(?:Return type array<int\\|string, list<array\\{title: mixed, command: mixed, arguments: list<mixed>, owner: string\\}>> is incompatible with declared return type array<int, list<array\\{title: string, command: string, arguments: list<mixed>, owner: string\\}>>)$"
+
+# `$closure?->__invoke()` is rejected on a Closure type.
+# phpantom 0.10.0; still reported on main (6fb245f).
+[[diagnostics.ignore]]
+identifier = "scalar_member_access"
+path = "{plugins/symfony-lsp/src/InstalledVersion.php,src/Filesystem/RemoteFilesystem.php,src/Presence/LocalPresenceBoard.php,src/Presence/PresenceSync.php,src/Presence/RemotePresenceBoard.php,src/Run/RunController.php}"
+message = "^(?:Cannot access method '__invoke' on type 'Closure\\(\\): void'|Cannot access method '__invoke' on type 'Closure\\(int\\): void'|Cannot access method '__invoke' on type 'Closure\\(string\\): void')$"
+
+# `is_resource()` does not narrow a `resource|null` property.
+# phpantom 0.10.0; still reported on main (6fb245f).
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "{src/Support/AsyncProcess.php,src/Support/JsonRpcTransport.php,src/Support/NonBlockingWriter.php,src/Terminal/PtyProcess.php}"
+message = "^(?:Argument 1 \\(\\$process\\) expects resource, got resource\\|null \\(null does not satisfy resource\\)|Argument 1 \\(\\$stream\\) expects resource, got resource\\|null \\(null does not satisfy resource\\))$"
+
+# int arithmetic, `range()`, `min()`/`max()` over ints are typed int|float.
+# phpantom 0.10.0; still reported on main (6fb245f).
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "{src/Debug/InlineValues.php,src/Overlay/Presenter/RuleHalves.php}"
+message = "^(?:Argument 1 \\(\\$index\\) expects int, got int\\|float \\(float does not satisfy int\\)|Argument 1 \\(\\$line\\) expects int, got int\\|float \\(float does not satisfy int\\)|Argument 2 \\(\\$startCol\\) expects int, got int\\|float \\(float does not satisfy int\\)|Argument 3 \\(\\$col\\) expects int, got int\\|float \\(float does not satisfy int\\))$"
+[[diagnostics.ignore]]
+identifier = "type_mismatch_return"
+path = "{src/I18n/Bidi.php,src/Overlay/State/FindInFilesModal.php,src/Support/FuzzyMatcher.php,src/Widget/Render/FieldBox.php}"
+message = "^(?:Return type int\\|float is incompatible with declared return type int|Return type list<int\\|float> is incompatible with declared return type list<int>)$"
+
+# a first-class callable `f(...)` passed to `array_map` is typed as the identity.
+# phpantom 0.10.0; fixed on main (6fb245f): drop with the next release.
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "{plugins/review/src/Editor/EditorPublisher.php,src/Presence/PresenceSync.php,src/Ui/Theme/Styles.php,src/Widget/Onboarding/WelcomeWidget.php}"
+message = "^(?:Argument 1 \\(\\$byLine\\) expects array<int, list<string>>, got array<int, list<Porta\\\\ReviewPlugin\\\\Model\\\\Thread>>|Argument 1 \\(\\$heights\\) expects list<int>, got list<non-empty-list<array\\{0: string, 1: int\\|null\\}>>|Argument 1 \\(\\$styles\\) expects array<Symfony\\\\Component\\\\Tui\\\\Style\\\\Style>, got list<Porta\\\\Ui\\\\Role>|Argument 2 \\(\\$participants\\) expects list<Porta\\\\Presence\\\\Participant>, got list<Porta\\\\Presence\\\\Beacon>)$"
+[[diagnostics.ignore]]
+identifier = "type_mismatch_return"
+path = "src/Ui/Theme/Styles.php"
+message = "^(?:Return type list<list<Porta\\\\Ui\\\\Markup\\\\MarkupRun>> is incompatible with declared return type non-empty-list<string>)$"
+
+# an `@var` array shape is dropped once the array is written with dynamic keys.
+# phpantom 0.10.0; still reported on main (6fb245f).
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "src/Overlay/Presenter/RuleHalves.php"
+message = "^(?:Argument 1 \\(\\$above\\) expects \\?string, got string\\|int\\|null \\(int does not satisfy \\?string\\)|Argument 1 \\(\\$cell\\) expects string, got string\\|int \\(int does not satisfy string\\)|Argument 1 \\(\\$cell\\) expects string, got string\\|null\\|int \\(null\\|int does not satisfy string\\)|Argument 2 \\(\\$below\\) expects \\?string, got string\\|int\\|null \\(int does not satisfy \\?string\\)|Argument 3 \\(\\$bar\\) expects string, got string\\|null\\|int \\(null\\|int does not satisfy string\\))$"
+
+# `??=` does not narrow the result to non-null.
+# phpantom 0.10.0; still reported on main (6fb245f).
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "{plugins/assist/src/Session/GuestSession.php,plugins/assist/src/Session/HostFiles.php,src/Editor/Document.php,src/Ui/BidiTui.php}"
+message = "^(?:Argument 1 \\(\\$lines\\) expects list<string>, got list<null>|Argument 2 \\(\\$array\\) expects array\\|ArrayObject, got array<string, array\\{size: int, hash: string\\}>\\|null \\(null does not satisfy array\\|ArrayObject\\)|Argument 2 \\(\\$displayCol\\) expects int, got \\?int|Argument 2 \\(\\$n\\) expects int, got \\?int)$"
+
+# builtin stubs: `version_compare` with an operator is bool, `parse_url` port is int, `Generator::current()` after `valid()`, `str_replace` on a string, string `^`.
+# phpantom 0.10.0; still reported on main (6fb245f).
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "{plugins/git/src/Widget/CommitBoxWidget.php,plugins/mcp/src/Ide/WebSocketFrames.php,src/Filesystem/RemoteSpec.php,src/Lsp/WatchedFiles.php}"
+message = "^(?:Argument 1 \\(\\$string\\) expects string, got int|Argument 1 \\(\\$value\\) expects string, got array<array-key, string>\\|string \\(array<array-key, string> does not satisfy string\\)|Argument 2 \\(\\$subject\\) expects string, got string\\|null \\(null does not satisfy string\\)|Argument 5 \\(\\$port\\) expects \\?int, got int\\|string\\|null \\(string does not satisfy \\?int\\))$"
+[[diagnostics.ignore]]
+identifier = "type_mismatch_return"
+path = "src/Console/SelfUpdate.php"
+message = "^(?:Return type int\\|bool is incompatible with declared return type bool)$"
+
+# the return type of an invoked `Closure(...): T` property or parameter is lost.
+# phpantom 0.10.0; fixed on main (6fb245f): drop with the next release.
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "src/Editor/EditorScroll.php"
+message = "^(?:Argument 2 \\(\\$budget\\) expects int, got int\\|float \\(float does not satisfy int\\))$"
+[[diagnostics.ignore]]
+identifier = "type_mismatch_property"
+path = "src/Editor/EditorScroll.php"
+message = "^(?:Property \\$vScrollSegment expects int, got int\\|float)$"
+[[diagnostics.ignore]]
+identifier = "type_mismatch_return"
+path = "{plugins/mcp/src/Server/ToolCatalog.php,src/Editor/EditorScroll.php}"
+message = "^(?:Return type array<int\\|string, array\\{description: mixed, inputSchema: mixed, handler: mixed, effect: mixed\\}> is incompatible with declared return type array<string, array\\{description: string, inputSchema: array<string, mixed>, handler: Closure\\(array<string, mixed>, Porta\\\\Plugin\\\\Api\\\\ToolCaller=\\): string\\|array<array-key, mixed>\\|Porta\\\\McpPlugin\\\\Server\\\\TextBlocks, effect: \\?Porta\\\\Plugin\\\\Api\\\\ToolEffect\\}>|Return type int\\|float is incompatible with declared return type int)$"
+
+# a same-namespace class used as a closure parameter type is not resolved.
+# phpantom 0.10.0; still reported on main (6fb245f).
+[[diagnostics.ignore]]
+identifier = "unknown_member"
+path = "plugins/review/src/Model/Review.php"
+message = "^(?:Property 'anchor' not found on class 'Thread'|Property 'resolved' not found on class 'Thread')$"
+
+# destructuring into properties ignores the `@var` shape of the source.
+# phpantom 0.10.0; still reported on main (6fb245f).
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "src/Support/JsonRpcTransport.php"
+message = "^(?:Argument 1 \\(\\$stream\\) expects resource, got resource\\|null \\(null does not satisfy resource\\))$"
+
+# `array_key_exists`/`($a['k'] ?? null) !== null`/`array_is_list` do not narrow the offset.
+# phpantom 0.10.0; still reported on main (6fb245f).
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "{src/Debug/DebugAdapters.php,src/Lsp/LspMapper.php,src/Support/AsyncProcess.php}"
+message = "^(?:Argument 1 \\(\\$array\\) expects array, got scalar\\|array\\{value\\?: mixed\\}\\|list<scalar\\|array\\{value\\?: mixed\\}> \\(scalar does not satisfy array\\)|Argument 1 \\(\\$command\\) expects string, got string\\|null \\(null does not satisfy string\\)|Argument 1 \\(\\$stream\\) expects resource, got \\?resource)$"
+
+# a by-reference capture or out-parameter is read at its initial value.
+# phpantom 0.10.0; still reported on main (6fb245f).
+[[diagnostics.ignore]]
+identifier = "scalar_member_access"
+path = "src/Support/FiberWait.php"
+message = "^(?:Cannot access method 'resume' on type 'null')$"
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "{src/Filesystem/RemoteFilesystem.php,src/Widget/Render/EditorRenderer.php}"
+message = "^(?:Argument 3 \\(\\$matches\\) expects null\\|array<array<string>>, got array<array-key, list<array\\{string, int<-1, max>\\}>>|Argument 3 \\(\\$retry\\) expects Closure\\(\\): void, got null)$"
+
+# `X === $a?->b` does not narrow `$a` to non-null.
+# phpantom 0.10.0; still reported on main (6fb245f).
+[[diagnostics.ignore]]
+identifier = "scalar_member_access"
+path = "{src/Ide.php,src/Widget/CodeEditorWidget.php}"
+message = "^(?:Cannot access method 'cycled' on type 'null'|Cannot access method 'editable' on type 'null'|Cannot access method 'hasOverloads' on type 'null')$"
+
+# an early `continue`/`return` on a negated literal does not narrow the rest.
+# phpantom 0.10.0; fixed on main (6fb245f): drop with the next release.
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "{plugins/git/src/Command/GitCommands.php,src/I18n/SystemLocale.php}"
+message = "^(?:Argument 2 \\(\\$mode\\) expects 'soft'\\|'mixed', got string|Argument 3 \\(\\$subject\\) expects string\\|array<string>, got non-empty-string\\|false\\|non-empty-string \\(non-empty-string\\|false does not satisfy string\\|array<string>\\))$"
+
+# spreading `array_filter`/`array_diff` results into `[...]` loses the element type.
+# phpantom 0.10.0; still reported on main (6fb245f).
+[[diagnostics.ignore]]
+identifier = "type_mismatch_return"
+path = "{plugins/mcp/src/Tools/CoreTools.php,src/Config/PlatformKeymap.php}"
+message = "^(?:Return type array<string\\|int, list\\{'backspace', 'delete'\\}\\|array> is incompatible with declared return type array<string, list<string>>|Return type list<array\\{line: int, column: int, severity: 'error'\\|'warning'\\|'information'\\|'hint', endColumn\\?: \\?int\\|int\\}> is incompatible with declared return type list<array<string, int\\|string>>)$"
+
+# the `preg_match` capture shape is lost across `||` of two matches.
+# phpantom 0.10.0; fixed on main (6fb245f): drop with the next release.
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "plugins/review/src/Forge/RemoteUrl.php"
+message = "^(?:Argument 1 \\(\\$string\\) expects string, got string\\|null \\(null does not satisfy string\\))$"
+
+# narrowing through a bool variable (`$on = null !== …`) is not propagated.
+# phpantom 0.10.0; still reported on main (6fb245f).
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "{src/Debug/DebugController.php,src/Overlay/Presenter/RuleHalves.php}"
+message = "^(?:Argument 1 \\(\\$path\\) expects string, got \\?string|Argument 3 \\(\\$bar\\) expects string, got \\?string)$"
+
+# an import used only by a `{@see}` in a docblock reads as unused.
+# phpantom 0.10.0; still reported on main (6fb245f).
+[[diagnostics.ignore]]
+identifier = "unused_import"
+path = "{src/Layout/ChromeHeight.php,src/Plugin/Runtime/PluginRuntime.php}"
+message = "^(?:Unused import 'Porta\\\\Plugin\\\\Api\\\\PluginApi'|Unused import 'Porta\\\\Ui\\\\Density')$"
+
+# a skipped slot in `[, $a, $b]` shifts the positions.
+# phpantom 0.10.0; fixed on main (6fb245f): drop with the next release.
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "src/Widget/FindBarWidget.php"
+message = "^(?:Argument 1 \\(\\$spec\\) expects Porta\\\\Widget\\\\Render\\\\FieldSpec, got 'find'|Argument 2 \\(\\$field\\) expects Porta\\\\Ui\\\\TextField, got Porta\\\\Widget\\\\Render\\\\FieldSpec)$"
+
+# narrowing before an arrow fn is not carried into its capture.
+# phpantom 0.10.0; still reported on main (6fb245f).
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "src/Workbench/Menu/ContextMenuBuilder.php"
+message = "^(?:Argument 2 \\(\\$action\\) expects Closure, got \\(Closure\\(\\): void\\)\\|null \\(null does not satisfy Closure\\))$"
+
+# ── tests/ and plugins/*/tests ─────────────────────────────────────────────
+# A cluster rule is scoped to the test trees and selected by its message: it
+# names one shape the triage read across many sites, never "anything in tests".
+# Each is a shape that, under strict_types, would THROW if it ever were real —
+# so it can hide no test passing by mistake. Anything that could pass silently
+# (an extra argument, an unknown variable) is ruled per file instead, below.
+
+# `Tui::getById()` is typed as the base AbstractWidget; the test knows the concrete widget behind the id (a wrong id fails loudly as an undefined method). (309 sites)
+# phpantom 0.10.0; still reported on main (6fb245f).
+[[diagnostics.ignore]]
+identifier = "unknown_member"
+path = "{tests/**,plugins/*/tests/**}"
+message = "not found on class 'Symfony\\\\Component\\\\Tui\\\\Widget\\\\AbstractWidget'$"
+
+# the same `getById()` result handed to a helper typed with the concrete widget. (9 sites)
+# phpantom 0.10.0; still reported on main (6fb245f).
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "{tests/**,plugins/*/tests/**}"
+message = "got Symfony\\\\Component\\\\Tui\\\\Widget\\\\AbstractWidget$"
+
+# a trait method aliased away (`PumpsLoop { pump as private pumpFixed; }`) and redefined is bound to the trait's signature. (55 sites)
+# phpantom 0.10.0; still reported on main (6fb245f).
+[[diagnostics.ignore]]
+identifier = "argument_count_mismatch"
+path = "{tests/**,plugins/*/tests/**}"
+message = "^(?:Argument 1 \\(\\$seconds\\) expects float, got Closure\\(\\): bool|Expected 1 argument, got 0)$"
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "{tests/**,plugins/*/tests/**}"
+message = "^(?:Argument 1 \\(\\$seconds\\) expects float, got Closure\\(\\): bool|Expected 1 argument, got 0)$"
+
+# after `assertSame($x, <expr>)` the expression is narrowed to `object` (PHPUnit's assert template not resolved). (59 sites)
+# phpantom 0.10.0; still reported on main (6fb245f).
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "{tests/**,plugins/*/tests/**}"
+message = ", got object(?: |\\||$)"
+
+# int arithmetic, `range()`, `min()`/`max()` over ints typed int|float. (39 sites)
+# phpantom 0.10.0; still reported on main (6fb245f).
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "{tests/**,plugins/*/tests/**}"
+message = "(?:got int\\|float|got list<int\\|float>|int\\|float is incompatible)"
+
+# a builtin's `|false` (getcwd, realpath, json_encode, strpos, fopen …) under strict_types: a false would throw, never pass. (44 sites)
+# phpantom 0.10.0; still reported on main (6fb245f).
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "{tests/**,plugins/*/tests/**}"
+message = "got (?:string\\|false|int<0, max>\\|false|array-key\\|false|int\\|false|resource\\|false|false\\|string|non-empty-string\\|false)"
+
+# a value written through a by-reference closure or set in setUp/connect, read after `await()` — null there would throw. (74 sites)
+# phpantom 0.10.0; still reported on main (6fb245f).
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "{tests/**,plugins/*/tests/**}"
+message = "(?:got null(?: |$)|\\|null(?: |$)|got \\?|null\\|)"
+
+# ── The residue, read one by one in the triage: each an analyser gap at that site ──
+[[diagnostics.ignore]]
+identifier = "argument_count_mismatch"
+path = "tests/Unit/Bootstrap/KeyHintWiringTest.php"
+message = "^Expected 2 arguments, got 0$"
+[[diagnostics.ignore]]
+identifier = "namespace_mismatch"
+path = "tests/Support/fixtures/thirdparty/acme-tools/src/Greeting.php"
+message = "^Namespace `Acme\\\\Tools` does not match PSR-4 expected `Porta\\\\Tests\\\\Support\\\\fixtures\\\\thirdparty\\\\acme-tools\\\\src`$"
+[[diagnostics.ignore]]
+identifier = "namespace_mismatch"
+path = "tests/Support/fixtures/thirdparty/acme-vendored/src/Greeter.php"
+message = "^Namespace `Acme\\\\Vendored` does not match PSR-4 expected `Porta\\\\Tests\\\\Support\\\\fixtures\\\\thirdparty\\\\acme-vendored\\\\src`$"
+[[diagnostics.ignore]]
+identifier = "namespace_mismatch"
+path = "tests/Support/fixtures/thirdparty/acme-vendored/vendor/vend/lib/src/Helper.php"
+message = "^Namespace `Vend\\\\Lib` does not match PSR-4 expected `Porta\\\\Tests\\\\Support\\\\fixtures\\\\thirdparty\\\\acme-vendored\\\\vendor\\\\vend\\\\lib\\\\src`$"
+[[diagnostics.ignore]]
+identifier = "namespace_mismatch"
+path = "tests/Support/fixtures/thirdparty/acme-vendored/vendor/vend/mapped/Thing.php"
+message = "^Namespace `Vend\\\\Mapped` does not match PSR-4 expected `Porta\\\\Tests\\\\Support\\\\fixtures\\\\thirdparty\\\\acme-vendored\\\\vendor\\\\vend\\\\mapped`$"
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "plugins/review/tests/Source/ReviewStoreTest.php"
+message = "^Argument 1 \\(\\$array\\) expects array, got Porta\\\\ReviewPlugin\\\\Tests\\\\Support\\\\StubSource$"
+[[diagnostics.ignore]]  # fixed on main (6fb245f)
+identifier = "type_mismatch_argument"
+path = "tests/Unit/Workbench/Menu/MenuModelTest.php"
+message = "^Argument 1 \\(\\$array\\) expects array<mixed, Porta\\\\Workbench\\\\Menu\\\\MenuItem>, got list<array>$"
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "{tests/E2e/IdeLiveKeymapTest.php,tests/Unit/Config/KeybindingsFactoryTest.php,tests/Unit/Config/LiveKeybindingsTest.php}"
+message = "^Argument 1 \\(\\$className\\) expects non-empty-string, got class-string<Symfony\\\\Component\\\\Tui\\\\Input\\\\Key>$"
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "{plugins/image-viewer/tests/NarrowImagePaneRenderTest.php,tests/Unit/Lsp/LspBufferListenerTest.php,tests/Unit/Workbench/EditorAreaTest.php}"
+message = "^Argument 1 \\(\\$gd\\) expects GdImage, got resource\\|GdImage \\(resource does not satisfy GdImage\\)$"
+[[diagnostics.ignore]]  # fixed on main (6fb245f)
+identifier = "type_mismatch_argument"
+path = "{tests/Unit/Config/ActionCatalogTest.php,tests/Unit/Config/KeyDispatchReachabilityTest.php}"
+message = "^Argument 1 \\(\\$haystack\\) expects string, got int\\|string \\(int does not satisfy string\\)$"
+[[diagnostics.ignore]]  # fixed on main (6fb245f)
+identifier = "type_mismatch_argument"
+path = "{tests/Unit/Config/ActionCatalogTest.php,tests/Unit/Config/KeyDispatchReachabilityTest.php}"
+message = "^Argument 1 \\(\\$id\\) expects string, got int\\|string \\(int does not satisfy string\\)$"
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "plugins/assist/tests/Net/TransportTest.php"
+message = "^Argument 1 \\(\\$invite\\) expects Porta\\\\AssistPlugin\\\\Net\\\\Rendezvous\\\\Invite, got Porta\\\\AssistPlugin\\\\Net\\\\Rendezvous\\\\Door$"
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "tests/Unit/Ui/GlyphsWidthTest.php"
+message = "^Argument 1 \\(\\$iterator\\) expects Traversable, got iterable<string, array\\{string, string\\}>$"
+[[diagnostics.ignore]]  # fixed on main (6fb245f)
+identifier = "type_mismatch_argument"
+path = "plugins/git/tests/View/GitListenerContractTest.php"
+message = "^Argument 1 \\(\\$object_or_class\\) expects object\\|string, got array-key$"
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "{tests/Unit/Overlay/State/FindInFilesModalGeometryTest.php,tests/Unit/Widget/ResultsPanelTooltipTest.php}"
+message = "^Argument 1 \\(\\$relRow\\) expects int, got array-key$"
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "tests/Support/ClosureHighlightProvider.php"
+message = "^Argument 1 \\(\\$request\\) expects Porta\\\\Highlight\\\\HighlightRequest, got string$"
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "tests/Unit/Widget/FileTreeWidgetTest.php"
+message = "^Argument 1 \\(\\$row\\) expects int, got array-key$"
+[[diagnostics.ignore]]  # fixed on main (6fb245f)
+identifier = "type_mismatch_argument"
+path = "tests/Unit/Editor/CommentSyntaxTest.php"
+message = "^Argument 1 \\(\\$value\\) expects Countable\\|array, got string$"
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "tests/Unit/Layout/LayoutControllerNudgeTest.php"
+message = "^Argument 2 \\(\\$array\\) expects array<mixed>\\|ArrayAccess<array-key, mixed>, got int\\|bool\\|array<string, int> \\(int\\|bool does not satisfy array<mixed>\\|ArrayAccess<array-key, mixed>\\)$"
+[[diagnostics.ignore]]  # fixed on main (6fb245f)
+identifier = "type_mismatch_argument"
+path = "tests/Unit/Help/MarkdownTableTest.php"
+message = "^Argument 2 \\(\\$offset\\) expects int, got int\\|string \\(string does not satisfy int\\)$"
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "tests/Support/ClosureHighlightProvider.php"
+message = "^Argument 2 \\(\\$sink\\) expects Porta\\\\Highlight\\\\HighlightSink, got string$"
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "tests/E2e/IdeRtlLocaleTest.php"
+message = "^Argument 2 \\(\\$start\\) expects int, got array-key$"
+[[diagnostics.ignore]]  # fixed on main (6fb245f)
+identifier = "type_mismatch_argument"
+path = "plugins/git/tests/View/GitListenerContractTest.php"
+message = "^Argument 2 \\(\\$string\\) expects string, got int\\|string \\(int does not satisfy string\\)$"
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "plugins/mcp/tests/McpClaudeCodeE2eTest.php"
+message = "^Argument 2 \\(\\$string\\) expects string, got resource$"
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "{tests/Unit/Editor/ColumnModeTest.php,tests/Unit/Editor/CompletionDetailTest.php,tests/Unit/Widget/CodeEditorOverlaysTest.php}"
+message = "^Argument 5 \\(\\$requestCompletion\\) expects Closure\\(int, int\\): \\?bool, got Closure\\(\\): void \\(return type void does not satisfy \\?bool\\)$"
+[[diagnostics.ignore]]
+identifier = "type_mismatch_property"
+path = "plugins/mcp/tests/Support/TalksMcp.php"
+message = "^Property \\$client expects resource\\|null, got resource\\|false$"
+[[diagnostics.ignore]]
+identifier = "type_mismatch_property"
+path = "tests/Unit/IdeSettingsViewTest.php"
+message = "^Property \\$settingsView expects Porta\\\\Settings\\\\SettingsViewController, got \\?Porta\\\\Workbench\\\\View\\\\ContributedView$"
+[[diagnostics.ignore]]
+identifier = "type_mismatch_return"
+path = "tests/Unit/EditorConfigIntegrationTest.php"
+message = "^Return type \\?Porta\\\\Editor\\\\Buffer is incompatible with declared return type Porta\\\\Editor\\\\Buffer$"
+[[diagnostics.ignore]]  # fixed on main (6fb245f)
+identifier = "type_mismatch_return"
+path = "tests/Unit/Help/KeybindingsDocTest.php"
+message = "^Return type array<int\\|string, string> is incompatible with declared return type array<string, string>$"
+[[diagnostics.ignore]]  # fixed on main (6fb245f)
+identifier = "type_mismatch_return"
+path = "plugins/local-history/tests/IdeLocalHistoryPluginTest.php"
+message = "^Return type int\\|string is incompatible with declared return type int$"
+[[diagnostics.ignore]]  # fixed on main (6fb245f)
+identifier = "type_mismatch_return"
+path = "tests/Unit/Widget/NavigationReadabilityTest.php"
+message = "^Return type list<array-key> is incompatible with declared return type list<int>$"
+[[diagnostics.ignore]]
+identifier = "type_mismatch_return"
+path = "tests/Unit/Workbench/StatusBarPrefixTest.php"
+message = "^Return type list<int\\|float> is incompatible with declared return type list<int>$"
+[[diagnostics.ignore]]
+identifier = "type_mismatch_return"
+path = "tests/Unit/Filesystem/CommandTransportTest.php"
+message = "^Return type null\\|array\\{int, string, string\\} is incompatible with declared return type array\\{int, string, string\\}$"
+[[diagnostics.ignore]]
+identifier = "type_mismatch_return"
+path = "plugins/assist/tests/AssistUiE2eTest.php"
+message = "^Return type string\\|Porta\\\\Workbench\\\\StatusCell\\|null is incompatible with declared return type \\?Porta\\\\Workbench\\\\StatusCell$"
+[[diagnostics.ignore]]
+identifier = "type_mismatch_return"
+path = "tests/E2e/IdeLspFeaturesTest.php"
+message = "^Return type string\\|false is incompatible with declared return type string$"
+[[diagnostics.ignore]]
+identifier = "unknown_class"
+path = "tests/Unit/Plugin/Runtime/PluginAutoloaderTest.php"
+message = "^Class 'Acme\\\\Shared\\\\Thing' not found$"
+[[diagnostics.ignore]]
+identifier = "unknown_member"
+path = "plugins/ftp/tests/FtpRealServerTest.php"
+message = "^Cannot verify property 'stamp' — subject type 'TValue' could not be resolved$"
+[[diagnostics.ignore]]  # fixed on main (6fb245f)
+identifier = "unknown_member"
+path = "tests/Unit/Tree/FileDecorationsTest.php"
+message = "^Method 'applyFileStatuses' not found on class 'Porta\\\\Editor\\\\BufferManager'$"
+[[diagnostics.ignore]]
+identifier = "unknown_member"
+path = "tests/E2e/IdeEmbeddedPluginsTest.php"
+message = "^Method 'enabled' not found on class 'Porta\\\\Workbench\\\\Menu\\\\Menu'$"
+[[diagnostics.ignore]]
+identifier = "unknown_member"
+path = "{plugins/git/tests/Command/GitCommandsTest.php,plugins/git/tests/View/GitViewControllerTest.php}"
+message = "^Method 'getOutput' not found on class 'Symfony\\\\Component\\\\Tui\\\\Terminal\\\\TerminalInterface'$"
+[[diagnostics.ignore]]  # fixed on main (6fb245f)
+identifier = "unknown_member"
+path = "tests/Unit/Container/AsWidgetTest.php"
+message = "^Property 'flex' not found on class 'Porta\\\\Widget\\\\FileTreeWidget'$"
+[[diagnostics.ignore]]  # fixed on main (6fb245f)
+identifier = "unknown_member"
+path = "tests/Unit/Container/AsWidgetTest.php"
+message = "^Property 'id' not found on class 'Porta\\\\Widget\\\\CodeEditorWidget'$"
+[[diagnostics.ignore]]  # fixed on main (6fb245f)
+identifier = "unknown_member"
+path = "tests/Unit/Container/AsWidgetTest.php"
+message = "^Property 'id' not found on class 'Porta\\\\Widget\\\\FileTreeWidget'$"
+[[diagnostics.ignore]]  # fixed on main (6fb245f)
+identifier = "unknown_member"
+path = "plugins/assist/tests/Net/TransportTest.php"
+message = "^Property 'token' not found on class 'Porta\\\\AssistPlugin\\\\Net\\\\Rendezvous\\\\Door'$"
+[[diagnostics.ignore]]  # fixed on main (6fb245f)
+identifier = "unknown_variable"
+path = "tests/E2e/IdeStatusBarClickTest.php"
+message = "^Undefined variable '\\$col'$"
+[[diagnostics.ignore]]  # fixed on main (6fb245f)
+identifier = "unknown_variable"
+path = "tests/E2e/IdeResponsiveTest.php"
+message = "^Undefined variable '\\$divider'$"
+[[diagnostics.ignore]]  # fixed on main (6fb245f)
+identifier = "unknown_variable"
+path = "tests/E2e/IdeResponsiveTest.php"
+message = "^Undefined variable '\\$roomy'$"
+[[diagnostics.ignore]]  # fixed on main (6fb245f)
+identifier = "unknown_variable"
+path = "tests/E2e/IdeStatusBarClickTest.php"
+message = "^Undefined variable '\\$row'$"
+# a loop that only counts: `$ignored` is the house name for the value it never reads.
+[[diagnostics.ignore]]
+identifier = "unused_variable"
+path = "{tests/**,plugins/*/tests/**}"
+message = "^Unused variable '\\$ignored'$"
+[[diagnostics.ignore]]
+identifier = "unused_variable"
+path = "plugins/git/tests/View/GitListenerContractTest.php"
+message = "^Unused variable '\\$method'$"

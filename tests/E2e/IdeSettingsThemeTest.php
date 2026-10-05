@@ -56,7 +56,7 @@ final class IdeSettingsThemeTest extends TestCase
     {
         \putenv('PATH=/nonexistent');
         $project = new TempProject([
-            '.porta.json' => \json_encode(['settings' => ['diagnosticMessages' => 'none', 'inlayHints' => 'tooltip', 'lineNumbers' => 'relative']]),
+            '.porta.json' => \json_encode(['settings' => ['diagnosticMessages' => 'none', 'inlayHints' => 'tooltip', 'lineNumbers' => 'relative']], \JSON_THROW_ON_ERROR),
             'A.php' => "<?php\n\$x = 1;\n",
         ]);
 

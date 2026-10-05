@@ -55,7 +55,7 @@ final class IdePhpLspPluginsTest extends TestCase
         // The plugin's binary is set, so its resolver yields a php server.
         $project = new TempProject([
             'a.php' => "<?php\n",
-            '.porta.json' => \json_encode(['enabledPlugins' => ['phpantom'], 'plugins' => ['phpantom' => ['binary' => '/opt/phpantom_lsp']]]),
+            '.porta.json' => \json_encode(['enabledPlugins' => ['phpantom'], 'plugins' => ['phpantom' => ['binary' => '/opt/phpantom_lsp']]], \JSON_THROW_ON_ERROR),
         ]);
 
         $this->runIde(
@@ -72,7 +72,7 @@ final class IdePhpLspPluginsTest extends TestCase
                     // Open the phpantom settings page: it lists the binary row.
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                     $tui->handleInput("\t"); // form → nav
-                    $this->selectSettingsSection($tui->getById('settings-nav'), 'plugins');
+                    $this->selectSettingsSection($this->settingsNav($tui), 'plugins');
                     $tui->handleInput("\x1b[B"); // phpantom sub-item
                     $this->awaitPainted($tui, $terminal, 'phpantom_lsp binary');
                     $this->assertStringContainsString('phpantom_lsp binary', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the binary setting shows on the page');
@@ -112,7 +112,7 @@ final class IdePhpLspPluginsTest extends TestCase
         \putenv('PORTA_EMBEDDED_PLUGINS='.$embedded->dir);
         // phpantom enabled but no binary configured and none on PATH → serves
         // nothing, and the status bar names it: enabled, its binary not there.
-        $project = new TempProject(['a.php' => "<?php\n", '.porta.json' => \json_encode(['enabledPlugins' => ['phpantom']])]);
+        $project = new TempProject(['a.php' => "<?php\n", '.porta.json' => \json_encode(['enabledPlugins' => ['phpantom']], \JSON_THROW_ON_ERROR)]);
 
         $this->runIde(
             $project,
@@ -132,7 +132,7 @@ final class IdePhpLspPluginsTest extends TestCase
     {
         $embedded = $this->embeddedPhpantom();
         \putenv('PORTA_EMBEDDED_PLUGINS='.$embedded->dir);
-        $project = new TempProject(['a.php' => "<?php\n", '.porta.json' => \json_encode(['enabledPlugins' => ['phpantom']])]);
+        $project = new TempProject(['a.php' => "<?php\n", '.porta.json' => \json_encode(['enabledPlugins' => ['phpantom']], \JSON_THROW_ON_ERROR)]);
 
         $this->runIde(
             $project,
@@ -141,7 +141,7 @@ final class IdePhpLspPluginsTest extends TestCase
                 300 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                     $tui->handleInput("\t"); // form → nav
-                    $this->selectSettingsSection($tui->getById('settings-nav'), 'plugins');
+                    $this->selectSettingsSection($this->settingsNav($tui), 'plugins');
                     $tui->handleInput("\x1b[B"); // phpantom sub-item
                     $this->awaitPainted($tui, $terminal, 'Install phpantom');
                     $this->assertStringContainsString('Install phpantom', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the missing binary offers an install');

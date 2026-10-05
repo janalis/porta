@@ -232,7 +232,7 @@ final class IdeLspFeaturesTest extends TestCase
     public function testUnspawnableServerReportsFailed(): void
     {
         $project = new TempProject([
-            '.porta.json' => \json_encode(['lsp' => '/nonexistent-binary-xyz --stdio']),
+            '.porta.json' => \json_encode(['lsp' => '/nonexistent-binary-xyz --stdio'], \JSON_THROW_ON_ERROR),
             'a.php' => "<?php\n",
         ]);
 
@@ -373,9 +373,12 @@ final class IdeLspFeaturesTest extends TestCase
         // A server advertising incremental sync (change kind 2) must receive a
         // ranged content change carrying only the typed text, not the whole file.
         $project = new TempProject([
-            '.porta.json' => \json_encode([
-                'lsp' => \PHP_BINARY.' '.__DIR__.'/../Support/incremental-lsp-server.php',
-            ]),
+            '.porta.json' => \json_encode(
+                [
+                    'lsp' => \PHP_BINARY.' '.__DIR__.'/../Support/incremental-lsp-server.php',
+                ],
+                \JSON_THROW_ON_ERROR,
+            ),
             'src/Inc.php' => "<?php\n\nfoo\n",
         ]);
 
@@ -1272,7 +1275,7 @@ final class IdeLspFeaturesTest extends TestCase
     public function testCrashedServerReportsFailedStatus(): void
     {
         $project = new TempProject([
-            '.porta.json' => \json_encode(['lsp' => \PHP_BINARY.' '.__DIR__.'/../Support/crashing-lsp-server.php']),
+            '.porta.json' => \json_encode(['lsp' => \PHP_BINARY.' '.__DIR__.'/../Support/crashing-lsp-server.php'], \JSON_THROW_ON_ERROR),
             'a.php' => "<?php\n",
         ]);
 
@@ -1291,7 +1294,7 @@ final class IdeLspFeaturesTest extends TestCase
     public function testServerInitiatedApplyEditIsHandled(): void
     {
         $project = new TempProject([
-            '.porta.json' => \json_encode(['lsp' => \PHP_BINARY.' '.__DIR__.'/../Support/demanding-lsp-server.php']),
+            '.porta.json' => \json_encode(['lsp' => \PHP_BINARY.' '.__DIR__.'/../Support/demanding-lsp-server.php'], \JSON_THROW_ON_ERROR),
             'a.php' => "<?php\n",
         ]);
 
@@ -1455,7 +1458,7 @@ final class IdeLspFeaturesTest extends TestCase
         // share a session) from one language-map config; markdown has neither.
         $mock = \PHP_BINARY.' '.__DIR__.'/../Support/mock-lsp-server.php';
         $project = new TempProject([
-            '.porta.json' => \json_encode(['lsp' => ['php' => $mock, 'javascript' => $mock.' js-flavor']]),
+            '.porta.json' => \json_encode(['lsp' => ['php' => $mock, 'javascript' => $mock.' js-flavor']], \JSON_THROW_ON_ERROR),
             'src/A.php' => "<?php\ngreet();\n",
             'src/app.js' => "doWork(x);\n",
             'src/Target.php' => "<?php\n\n\nclass Target {}\n",
@@ -1626,7 +1629,7 @@ final class IdeLspFeaturesTest extends TestCase
         $this->assertStringContainsString("\x1b]52;c;", $terminal->getOutput(), 'system clipboard escape emitted');
     }
 
-    public function testJumpStackCapAndRapidTypingDebounce(): void
+    public function testRapidTypingDebouncesThenAJumpAndBack(): void
     {
         $project = new TempProject([
             '.porta.json' => $this->mockLspConfig(),
@@ -1641,10 +1644,10 @@ final class IdeLspFeaturesTest extends TestCase
                 100 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitLspReady($tui, $terminal);
 
-                    // Overfill the jump stack (cap is 50)
-                    $ideRef = null; // reach the private stack through reflection on the Ide via closure binding
+                    // Two rapid changes: the second cancels the first's debounce.
+                    // (The jump stack's cap is RecentLocationsTest's to guard.)
                     $tui->handleInput('a');
-                    $tui->handleInput('b'); // two rapid changes: second one cancels the first debounce
+                    $tui->handleInput('b');
                 },
                 400 => function ($tui): void {
                     $tui->handleInput("\x1b[24~"); // definition jump (fills jumpStack once)
@@ -1668,9 +1671,9 @@ final class IdeLspFeaturesTest extends TestCase
         $ide = new Ide($project->dir, $project->path('A.php'), $terminal, null, lspDisabled: true);
         $tui = Services::resolve($ide, Tui::class);
 
-        $timer = EventLoop::delay(0.2, function () use ($tui): void {
+        $timer = EventLoop::delay(0.2, function () use ($tui, $terminal): void {
             $this->frame($tui);
-            $this->assertStringContainsString('LSP:disabled', AnsiUtils::stripAnsiCodes($tui->getTerminal()->getOutput()));
+            $this->assertStringContainsString('LSP:disabled', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
             $tui->stop();
         });
         try {
@@ -1689,7 +1692,7 @@ final class IdeLspFeaturesTest extends TestCase
         \putenv('PATH=/nonexistent');
         $project = new TempProject([
             'a.php' => "<?php\n\$a = 1;\n",
-            '.porta.json' => \json_encode(['settings' => ['formatOnSave' => true]]),
+            '.porta.json' => \json_encode(['settings' => ['formatOnSave' => true]], \JSON_THROW_ON_ERROR),
         ]);
 
         $this->runIde(

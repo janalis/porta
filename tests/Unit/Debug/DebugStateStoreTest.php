@@ -65,18 +65,21 @@ final class DebugStateStoreTest extends TestCase
         $project->write('.porta/debug.json', '{not json');
         $this->assertNull($store->load(), 'corrupt file');
 
-        $project->write('.porta/debug.json', \json_encode([
-            'breakpoints' => [
-                // An invalid path (or entry list) must be skipped, not abort
-                // the rest of the loop — so a valid path/entry is placed
-                // AFTER each invalid one below.
-                '/p/none.php' => 'not-a-list',
-                '/p/ok.php' => [['line' => 'nope'], ['line' => 2], 'junk', ['line' => 5]],
-                3 => [['line' => 1]], // non-string path key... json round-trips it back to an int — dropped
+        $project->write('.porta/debug.json', \json_encode(
+            [
+                'breakpoints' => [
+                    // An invalid path (or entry list) must be skipped, not abort
+                    // the rest of the loop — so a valid path/entry is placed
+                    // AFTER each invalid one below.
+                    '/p/none.php' => 'not-a-list',
+                    '/p/ok.php' => [['line' => 'nope'], ['line' => 2], 'junk', ['line' => 5]],
+                    3 => [['line' => 1]], // non-string path key... json round-trips it back to an int — dropped
+                ],
+                'watches' => ['$a', 7, '', '$b'],
+                'exceptionFilters' => ['a', 42, 'b'],
             ],
-            'watches' => ['$a', 7, '', '$b'],
-            'exceptionFilters' => ['a', 42, 'b'],
-        ]));
+            \JSON_THROW_ON_ERROR,
+        ));
         $state = $store->load();
         $this->assertSame(
             [

@@ -17,8 +17,8 @@ pcntl_signal(SIGTERM, SIG_IGN);
 // observed killing the child before it ever read its first message.
 pcntl_alarm(30);
 
-$in = fopen(filename: 'php://stdin', mode: 'rb');
-$out = fopen(filename: 'php://stdout', mode: 'wb');
+$in = \STDIN;
+$out = \STDOUT;
 
 require __DIR__.'/lsp-stub.php';
 

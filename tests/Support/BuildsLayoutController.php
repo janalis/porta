@@ -46,6 +46,7 @@ trait BuildsLayoutController
     private FileTreeWidget $tree;
     private GitSidebar $gitSidebar;
     private SettingsNavWidget $settingsSidebar;
+    private VirtualTerminal $terminal;
     private Tui $tui;
     private Renderer $renderer;
     private ViewRegions $regions;
@@ -55,7 +56,8 @@ trait BuildsLayoutController
     {
         $this->project = new TempProject(['a.php' => "<?php\n"]);
         $this->renderer = new Renderer(new StyleSheet());
-        $this->tui = new Tui(terminal: new VirtualTerminal(columns: $columns, rows: 30), keybindings: new Keybindings([]), renderer: $this->renderer);
+        $this->terminal = new VirtualTerminal(columns: $columns, rows: 30);
+        $this->tui = new Tui(terminal: $this->terminal, keybindings: new Keybindings([]), renderer: $this->renderer);
         $this->tree = new FileTreeWidget($this->project->dir);
         $this->gitSidebar = new GitSidebar(
             new GitTabsWidget(new Translator('en')),
@@ -86,7 +88,7 @@ trait BuildsLayoutController
      * changed the tree's width and did NOT reach disk is the defect this
      * catches, and an empty array is a real expected value — hence no null.
      *
-     * @return array<string, int|bool> the persisted layout.json contents
+     * @return array<string, int|bool|array<string, int>> the persisted layout.json contents, viewSidebarWidthPercent keyed by view id
      */
     private function layoutFile(): array
     {
@@ -95,7 +97,7 @@ trait BuildsLayoutController
             return [];
         }
 
-        /** @var array<string, int|bool> */
+        /** @var array<string, int|bool|array<string, int>> */
         return \json_decode((string) \file_get_contents($file), associative: true);
     }
 

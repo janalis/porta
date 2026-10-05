@@ -36,7 +36,7 @@ final class ModalShadowTest extends TestCase
         // cell under the right band's column (the classic +1/+1 corner).
         $this->assertSame('.'.\str_repeat(' ', times: 6).\str_repeat('.', times: 9), \substr($lines[5], offset: 4), 'the bottom band sits one column in');
         // Every composited row keeps the pane width.
-        foreach ($lines as $i => $line) {
+        foreach (\array_keys($lines) as $i) {
             $this->assertSame(20, AnsiUtils::visibleWidth(ModalShadow::blit($this->pane(), 2, 4, 6, 3, 20, Styles::dark())[$i]), "row {$i}");
         }
     }

@@ -8,8 +8,8 @@ declare(strict_types=1);
  * and publishes one diagnostic after every didOpen/didChange.
  */
 
-$in = fopen('php://stdin', 'rb');
-$out = fopen('php://stdout', 'wb');
+$in = \STDIN;
+$out = \STDOUT;
 
 require __DIR__.'/lsp-stub.php';
 

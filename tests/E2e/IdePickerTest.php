@@ -13,6 +13,7 @@ use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
+use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -56,7 +57,7 @@ final class IdePickerTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                400 => function (Tui $tui): void {
+                400 => function (Tui $tui, VirtualTerminal $terminal): void {
                     // The eleventh row is the one the shared cap made
                     // unreachable without activating a grow row first.
                     $this->await(
@@ -65,7 +66,7 @@ final class IdePickerTest extends TestCase
                         what: 'the picker to fill its box',
                     );
 
-                    $grid = $this->screenGrid($tui, $tui->getTerminal());
+                    $grid = $this->screenGrid($tui, $terminal);
                     $shown = \count(\array_filter($grid, static fn (string $row): bool => \str_contains($row, '.php    src/Widget')));
 
                     $this->assertGreaterThan(5, $shown, 'past the shared per-category cap');

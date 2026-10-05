@@ -81,11 +81,11 @@ final class IdePluginInstallTest extends TestCase
     }
 
     /** Open settings and select the Plugins section, leaving focus on the form. */
-    private function openPluginsSection($tui, Ide $ide): void
+    private function openPluginsSection(Tui $tui, Ide $ide): void
     {
         Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
         $tui->handleInput("\t"); // form → nav
-        $this->selectSettingsSection($tui->getById('settings-nav'), 'plugins');
+        $this->selectSettingsSection($this->settingsNav($tui), 'plugins');
         $tui->handleInput("\t"); // nav → form (scope row selected)
     }
 
@@ -172,7 +172,7 @@ final class IdePluginInstallTest extends TestCase
                     for ($i = 0; $i < 10; ++$i) {
                         $tui->handleInput("\x1b[A"); // clamp to the top (General)
                     }
-                    $this->selectSettingsSection($tui->getById('settings-nav'), 'plugins');
+                    $this->selectSettingsSection($this->settingsNav($tui), 'plugins');
                     $tui->handleInput("\x1b[B"); // installee sub-item
                     $tui->handleInput("\t"); // nav → form (Enabled row)
                     $tui->handleInput("\r"); // toggle off

@@ -28,6 +28,7 @@ use Porta\Tests\Support\RecordingDiagnosticsSink;
 use Porta\Tests\Support\RecordingFileOpener;
 use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\TestAnalyzerPlugin;
 use Porta\Tests\Support\TestDockTools;
 use Porta\Tests\Support\TestLspQuery;
 use Porta\Tests\Support\TestParticipants;
@@ -79,47 +80,10 @@ final class AbstractAnalyzerPluginTest extends TestCase
     private RecordingDiagnosticsSink $sink;
     private AbstractAnalyzerPlugin $plugin;
 
-    /**
-     * A concrete analyzer: its report shape is a flat `rows` list, it accepts
-     * exit code 0 only, and it deliberately does NOT override noun() — the
-     * default wording is what the flashes below assert.
-     */
-    private function analyzer(string $binaryName = 'demo'): AbstractAnalyzerPlugin
+    /** A {@see TestAnalyzerPlugin}: it keeps noun()'s default, which is the wording the flashes below assert. */
+    private function analyzer(string $binaryName = 'demo'): TestAnalyzerPlugin
     {
-        return new class('demo', $binaryName) extends AbstractAnalyzerPlugin {
-            public function activate(PluginApi $api): void
-            {
-                $this->registerBinarySetting($api, [['composer', 'demo/demo']]);
-                $this->registerAnalysis($api, 'Demo', ['ctrl+alt+d']);
-            }
-
-            protected function command(string $binary, string $file): array
-            {
-                return [$binary, $file];
-            }
-
-            protected function acceptsExitCode(int $code): bool
-            {
-                return 0 === $code;
-            }
-
-            protected function diagnostics(array $report): array
-            {
-                return \array_map(
-                    static fn (array $row): array => [
-                        'line' => (int) $row['line'],
-                        'message' => (string) $row['message'],
-                    ],
-                    self::rowsAt($report, 'rows'),
-                );
-            }
-
-            /** Reaches the shared JSON walkers, which are protected for the plugins that use them. */
-            public function walk(mixed $data, string $key): array
-            {
-                return [self::arrayAt($data, $key), self::rowsAt($data, $key)];
-            }
-        };
+        return new TestAnalyzerPlugin('demo', $binaryName);
     }
 
     /** A live api over a temp project, with the runtime wired so action methods work. */

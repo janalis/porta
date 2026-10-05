@@ -38,7 +38,7 @@ final class PortaJsonWriterTest extends TestCase
     {
         // member: true (add) with an already-non-empty list: the new plugin
         // must land alongside the existing entries, not replace or nest them.
-        $project = new TempProject(['.porta.json' => \json_encode(['disabledPlugins' => ['already-off']])]);
+        $project = new TempProject(['.porta.json' => \json_encode(['disabledPlugins' => ['already-off']], \JSON_THROW_ON_ERROR)]);
         $writer = new PortaJsonWriter(ConfigFiles::for($project->dir));
 
         $this->assertTrue($writer->persistPluginDisabled(ConfigScope::Project, 'newly-off'));
@@ -139,7 +139,7 @@ final class PortaJsonWriterTest extends TestCase
     /** A readable file is edited in place — nothing is set aside. */
     public function testAReadableConfigIsNotMovedAside(): void
     {
-        $project = new TempProject(['.porta.json' => \json_encode(['settings' => ['theme' => 'light']])]);
+        $project = new TempProject(['.porta.json' => \json_encode(['settings' => ['theme' => 'light']], \JSON_THROW_ON_ERROR)]);
         $writer = new PortaJsonWriter(ConfigFiles::for($project->dir));
 
         $this->assertTrue($writer->persistSetting(ConfigScope::Project, 'autoPairs', false));

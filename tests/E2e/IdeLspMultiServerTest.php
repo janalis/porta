@@ -110,7 +110,7 @@ final class IdeLspMultiServerTest extends TestCase
         \putenv('PORTA_EMBEDDED_PLUGINS='.$plugins->dir);
         $project = new TempProject([
             'a.php' => "<?php\n",
-            '.porta.json' => \json_encode(['enabledPlugins' => ['zeta', 'alpha']]),
+            '.porta.json' => \json_encode(['enabledPlugins' => ['zeta', 'alpha']], \JSON_THROW_ON_ERROR),
         ]);
 
         $this->runIde(
@@ -221,7 +221,7 @@ final class IdeLspMultiServerTest extends TestCase
         \putenv('PORTA_EMBEDDED_PLUGINS='.$plugins->dir);
         $project = new TempProject([
             'a.php' => "<?php\n\$x = st\n",
-            '.porta.json' => \json_encode(['enabledPlugins' => ['zeta', 'alpha']]),
+            '.porta.json' => \json_encode(['enabledPlugins' => ['zeta', 'alpha']], \JSON_THROW_ON_ERROR),
         ]);
 
         $this->runIde(

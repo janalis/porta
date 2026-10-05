@@ -13,12 +13,10 @@ use Porta\Tests\Support\RendersRoot;
 use Porta\Tests\Support\TestOverlayPane;
 use Porta\Ui\BidiTui;
 use Porta\Widget\CodeEditorWidget;
-use Porta\Widget\Render\MenuOverlayHost;
 use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Style\StyleSheet;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
-use Symfony\Component\Tui\Widget\AbstractWidget;
 
 /**
  * The picker presenter: the per-frame span delivery over the pane union, the
@@ -32,7 +30,7 @@ final class PickerModalPresenterTest extends TestCase
 
     private CodeEditorWidget $editor;
     private OverlayHost $overlays;
-    private AbstractWidget&MenuOverlayHost $pane;
+    private TestOverlayPane $pane;
 
     // @mago-expect lint:no-boolean-flag-parameter -- the bool IS the domain here, not a hidden second responsibility.
     private function presenter(bool $attachEditor = true): PickerModalPresenter

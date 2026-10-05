@@ -25,19 +25,25 @@ final class PluginCommandsTest extends TestCase
     {
         return new TempProject([
             'base/plugin.php' => "<?php\n",
-            'base/composer.json' => \json_encode(['autoload' => ['psr-4' => ["Base{$token}\\" => 'src/']]]),
+            'base/composer.json' => \json_encode(['autoload' => ['psr-4' => ["Base{$token}\\" => 'src/']]], \JSON_THROW_ON_ERROR),
             'base/src/Greeting.php' => "<?php\nnamespace Base{$token};\nabstract class Greeting extends \\Porta\\Plugin\\Api\\PluginCommand {}\n",
             'greeter/plugin.php' => "<?php\n",
-            'greeter/composer.json' => \json_encode([
-                'autoload' => ['psr-4' => ["Greeter{$token}\\" => 'src/']],
-                'extra' => ['porta' => ['requires' => ['base', 'missing'], 'commands' => ['hello' => "Greeter{$token}\\Hello"]]],
-            ]),
+            'greeter/composer.json' => \json_encode(
+                [
+                    'autoload' => ['psr-4' => ["Greeter{$token}\\" => 'src/']],
+                    'extra' => ['porta' => ['requires' => ['base', 'missing'], 'commands' => ['hello' => "Greeter{$token}\\Hello"]]],
+                ],
+                \JSON_THROW_ON_ERROR,
+            ),
             'greeter/src/Hello.php' => "<?php\nnamespace Greeter{$token};\n#[\\Symfony\\Component\\Console\\Attribute\\AsCommand(name: 'hello')]\nfinal class Hello extends \\Base{$token}\\Greeting {}\n",
             'broken/plugin.php' => "<?php\n",
-            'broken/composer.json' => \json_encode([
-                'autoload' => ['psr-4' => ["Broken{$token}\\" => 'src/']],
-                'extra' => ['porta' => ['commands' => ['ghost' => "Broken{$token}\\Nowhere", 'plain' => "Broken{$token}\\Plain", 'bare' => "Broken{$token}\\Bare"]]],
-            ]),
+            'broken/composer.json' => \json_encode(
+                [
+                    'autoload' => ['psr-4' => ["Broken{$token}\\" => 'src/']],
+                    'extra' => ['porta' => ['commands' => ['ghost' => "Broken{$token}\\Nowhere", 'plain' => "Broken{$token}\\Plain", 'bare' => "Broken{$token}\\Bare"]]],
+                ],
+                \JSON_THROW_ON_ERROR,
+            ),
             'broken/src/Plain.php' => "<?php\nnamespace Broken{$token};\nfinal class Plain {}\n",
             'broken/src/Bare.php' => "<?php\nnamespace Broken{$token};\n#[\\Symfony\\Component\\Console\\Attribute\\AsCommand(name: 'bare')]\nfinal class Bare extends \\Symfony\\Component\\Console\\Command\\Command {}\n",
         ]);

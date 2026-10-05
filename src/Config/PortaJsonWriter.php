@@ -67,7 +67,7 @@ final readonly class PortaJsonWriter
      * The override takes effect next launch, when the keymap is merged into the
      * live keybindings. Returns true on success.
      *
-     * @param list<string> $keys
+     * @param array<int, string> $keys
      */
     public function persistKeymap(ConfigScope $scope, string $action, array $keys): bool
     {

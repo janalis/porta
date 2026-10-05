@@ -122,7 +122,7 @@ final class LayoutControllerNudgeTest extends TestCase
         $dock->showList(ResultsPanelMode::RecentLocations, 'Recent Locations', []);
         // Tall enough that five rows up stay under the ceiling: this is about
         // the step, not the clamp.
-        $this->tui->getTerminal()->simulateResize(columns: 100, rows: 40);
+        $this->terminal->simulateResize(columns: 100, rows: 40);
 
         $before = $results->visibleRows();
         for ($i = 0; $i < 5; ++$i) {
@@ -142,7 +142,7 @@ final class LayoutControllerNudgeTest extends TestCase
     private function withOpenPanel(int $rows = 30): array
     {
         $this->controller(); // builds the tui, tree and regions these rewire
-        $this->tui->getTerminal()->simulateResize(columns: 100, rows: $rows);
+        $this->terminal->simulateResize(columns: 100, rows: $rows);
         $results = new ResultsPanelWidget();
         $dock = TestBottomDock::create($this->tui, new TerminalPanelWidget(), $results, new DebugPanelWidget());
         $layout = new LayoutController(
@@ -253,7 +253,7 @@ final class LayoutControllerNudgeTest extends TestCase
             'the frame, a row more for the editor\'s tab strip and two for the dock\'s, the two edge rules, the navigation bar and the rule under it',
         );
 
-        $this->tui->getTerminal()->simulateResize(columns: 100, rows: 40);
+        $this->terminal->simulateResize(columns: 100, rows: 40);
         $layout->applyLayout();
 
         $this->assertSame(40 - 6 - 7, $results->visibleRows(), 'it took the bigger screen');
@@ -418,7 +418,7 @@ final class LayoutControllerNudgeTest extends TestCase
     public function testACompactTerminalGivesTheStripsRowsBackToThePanel(): void
     {
         [$layout, $results] = $this->withOpenPanel();
-        $this->tui->getTerminal()->simulateResize(columns: 100, rows: 29);
+        $this->terminal->simulateResize(columns: 100, rows: 29);
         $layout->applyLayout();
 
         $layout->toggleBottomPanelMaximised();

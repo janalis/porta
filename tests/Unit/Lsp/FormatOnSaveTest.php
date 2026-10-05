@@ -74,7 +74,7 @@ final class FormatOnSaveTest extends TestCase
             $counting,
             new Notifier(
                 $this->status = new StatusBarWidget(),
-                $tui = TestTui::create(80, 24),
+                TestTui::create(80, 24),
             ),
             new Translator('en'),
             $this->scheduler,

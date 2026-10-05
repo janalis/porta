@@ -15,13 +15,11 @@ use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RendersRoot;
 use Porta\Tests\Support\TestOverlayPane;
 use Porta\Ui\BidiTui;
-use Porta\Widget\Render\MenuOverlayHost;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Style\StyleSheet;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
-use Symfony\Component\Tui\Widget\AbstractWidget;
 
 /**
  * The presenters' shared delivery half: pane-union bounds with the
@@ -32,8 +30,8 @@ final class OverlayDeliveryTest extends TestCase
 {
     use RendersRoot;
 
-    private AbstractWidget&MenuOverlayHost $pane;
-    private AbstractWidget&MenuOverlayHost $detachedPane;
+    private TestOverlayPane $pane;
+    private TestOverlayPane $detachedPane;
 
     private function delivery(): OverlayDelivery
     {
@@ -54,7 +52,7 @@ final class OverlayDeliveryTest extends TestCase
         );
     }
 
-    private function newPane(): AbstractWidget&MenuOverlayHost
+    private function newPane(): TestOverlayPane
     {
         return new TestOverlayPane();
     }

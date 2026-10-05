@@ -10,8 +10,8 @@ declare(strict_types=1);
  */
 pcntl_alarm(30);
 
-$in = fopen(filename: 'php://stdin', mode: 'rb');
-$out = fopen(filename: 'php://stdout', mode: 'wb');
+$in = \STDIN;
+$out = \STDOUT;
 
 require __DIR__.'/lsp-stub.php';
 

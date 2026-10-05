@@ -90,7 +90,6 @@ final class WorkbenchCommandsTest extends TestCase
         $ide = $this->boot();
         try {
             $tui = Services::resolve($ide, Tui::class);
-            $tree = Services::resolve($ide, FileTreeWidget::class);
             $commands = Services::resolve($ide, CommandRegistry::class);
 
             // Land on the tree first via a forward step from the editor side,

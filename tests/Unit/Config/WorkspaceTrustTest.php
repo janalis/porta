@@ -141,7 +141,7 @@ final class WorkspaceTrustTest extends TestCase
     public function testAHandEditedAnswerFileIsReadForWhatItCanSay(): void
     {
         $project = new TempProject(['.porta.json' => '{}']);
-        $home = new TempProject(['.porta/trusted-projects.json' => \json_encode(['trusted' => [42, (string) \realpath($project->dir)], 'restricted' => 'garbage'])]);
+        $home = new TempProject(['.porta/trusted-projects.json' => \json_encode(['trusted' => [42, (string) \realpath($project->dir)], 'restricted' => 'garbage'], \JSON_THROW_ON_ERROR)]);
 
         $this->assertTrue(new WorkspaceTrust($home->dir)->isTrusted($project->dir));
     }
@@ -168,7 +168,7 @@ final class WorkspaceTrustTest extends TestCase
     public function testTheConfigOfAnUntrustedProjectIsReadRestricted(): void
     {
         $this->untrustProjects();
-        $project = new TempProject(['.porta.json' => \json_encode(self::HOSTILE)]);
+        $project = new TempProject(['.porta.json' => \json_encode(self::HOSTILE, \JSON_THROW_ON_ERROR)]);
 
         $config = IdeConfig::load($project->dir);
 
@@ -190,7 +190,7 @@ final class WorkspaceTrustTest extends TestCase
     public function testAnUntrustedProjectDoesNotNameItsLanguageServer(): void
     {
         $this->untrustProjects();
-        $project = new TempProject(['.porta.json' => \json_encode(['lsp' => ['./evil-server']])]);
+        $project = new TempProject(['.porta.json' => \json_encode(['lsp' => ['./evil-server']], \JSON_THROW_ON_ERROR)]);
 
         $this->assertArrayNotHasKey('*', ServerLocator::locateAll($project->dir));
 
@@ -216,7 +216,7 @@ final class WorkspaceTrustTest extends TestCase
     public function testAnUntrustedProjectsPrePluginKeysAreNotAdopted(): void
     {
         $this->untrustProjects();
-        $project = new TempProject(['.porta.json' => \json_encode(['settings' => ['gitPath' => './git', 'gitShowBranch' => false]])]);
+        $project = new TempProject(['.porta.json' => \json_encode(['settings' => ['gitPath' => './git', 'gitShowBranch' => false]], \JSON_THROW_ON_ERROR)]);
         $legacy = static fn (): LegacyCoreSettings => new LegacyCoreSettings($project->dir, 'git', ['path' => 'gitPath', 'showBranch' => 'gitShowBranch']);
 
         $this->assertSame(['showBranch' => false], $legacy()->adoptions());

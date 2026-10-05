@@ -55,7 +55,7 @@ final class IdeTest extends TestCase
                         'name' => 'acme/demo',
                         'autoload' => ['psr-4' => ['Acme\\' => 'src/']],
                     ],
-                    \JSON_UNESCAPED_SLASHES,
+                    \JSON_UNESCAPED_SLASHES | \JSON_THROW_ON_ERROR,
                 ),
                 'src/Target.php' => "<?php\n\n// line 2\nclass Target\n{\n}\n",
                 'src/Demo.php' => <<<'PHP'
@@ -70,10 +70,13 @@ final class IdeTest extends TestCase
                     }
 
                     PHP,
-                '.porta.json' => \json_encode([
-                    'lsp' => \PHP_BINARY.' '.__DIR__.'/../Support/mock-lsp-server.php',
-                    'keymap' => ['duplicate_line' => ['f8']], // prove .porta.json rebinding works
-                ]),
+                '.porta.json' => \json_encode(
+                    [
+                        'lsp' => \PHP_BINARY.' '.__DIR__.'/../Support/mock-lsp-server.php',
+                        'keymap' => ['duplicate_line' => ['f8']], // prove .porta.json rebinding works
+                    ],
+                    \JSON_THROW_ON_ERROR,
+                ),
             ],
             'porta-e2e-',
         );
@@ -156,7 +159,7 @@ final class IdeTest extends TestCase
                     $this->assertStringContainsString('class Demo', $s, 'editor shows the opened file');
                     $this->assertStringContainsString('src/Demo.php', $s, 'status bar shows the path');
                     $this->assertStringContainsString('LSP:', $s);
-                    $this->assertStringContainsString("\x1b[", $tui->getTerminal()->getOutput(), 'ANSI output emitted');
+                    $this->assertStringContainsString("\x1b[", $this->terminal->getOutput(), 'ANSI output emitted');
                 },
 
                 // --- Completion (mock server) ------------------------------------

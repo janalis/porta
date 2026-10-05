@@ -97,7 +97,7 @@ final class LiveKeybindingsTest extends TestCase
     public function testRebuildDropsADeactivatedPluginsKeysAndUserKeymapStillWins(): void
     {
         $project = new TempProject([
-            '.porta.json' => \json_encode(['keymap' => ['save' => ['ctrl+shift+s']]]),
+            '.porta.json' => \json_encode(['keymap' => ['save' => ['ctrl+shift+s']]], \JSON_THROW_ON_ERROR),
             '.porta/plugins/keyed/plugin.php' => self::PLUGIN,
         ]);
         [$live, $host] = $this->live($project);

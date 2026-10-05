@@ -12,10 +12,13 @@ final class RunConfigsTest extends TestCase
 {
     public function testComposerScripts(): void
     {
-        $project = new TempProject(['composer.json' => \json_encode([
-            'name' => 'acme/x',
-            'scripts' => ['test' => 'phpunit', 'cs' => ['step-a', 'step-b'], 'coverage' => 'phpunit --coverage'],
-        ])]);
+        $project = new TempProject(['composer.json' => \json_encode(
+            [
+                'name' => 'acme/x',
+                'scripts' => ['test' => 'phpunit', 'cs' => ['step-a', 'step-b'], 'coverage' => 'phpunit --coverage'],
+            ],
+            \JSON_THROW_ON_ERROR,
+        )]);
 
         $this->assertSame(['test', 'cs', 'coverage'], new RunConfigs($project->dir)->composerScripts());
     }
@@ -25,7 +28,7 @@ final class RunConfigsTest extends TestCase
         $tempProject = new TempProject();
         $this->assertSame([], new RunConfigs($tempProject->dir)->composerScripts());
 
-        $noScripts = new TempProject(['composer.json' => \json_encode(['name' => 'x'])]);
+        $noScripts = new TempProject(['composer.json' => \json_encode(['name' => 'x'], \JSON_THROW_ON_ERROR)]);
         $this->assertSame([], new RunConfigs($noScripts->dir)->composerScripts());
 
         $corrupt = new TempProject(['composer.json' => '{not json']);
@@ -65,7 +68,7 @@ final class RunConfigsTest extends TestCase
     public function testDiscoverCombinesEverythingWithCurrentFileFirst(): void
     {
         $project = new TempProject([
-            'composer.json' => \json_encode(['scripts' => ['test' => 'phpunit']]),
+            'composer.json' => \json_encode(['scripts' => ['test' => 'phpunit']], \JSON_THROW_ON_ERROR),
             'Makefile' => "build:\n\techo\n",
         ]);
         $current = $project->write('src/Foo.php', "<?php\n");

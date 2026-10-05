@@ -45,7 +45,7 @@ final class PluginLifecycleTest extends TestCase
     {
         $files = [];
         if ([] !== $porta) {
-            $files['.porta.json'] = \json_encode($porta);
+            $files['.porta.json'] = \json_encode($porta, \JSON_THROW_ON_ERROR);
         }
         $this->project = new TempProject($files);
         new OnboardingState($this->project->dir)->markWelcomeSeen();

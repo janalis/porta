@@ -12,7 +12,6 @@ use Porta\Editor\BufferSaver;
 use Porta\Filesystem\ProjectLocation;
 use Porta\I18n\Translator;
 use Porta\Plugin\Api\AbstractPlugin;
-use Porta\Plugin\Api\AbstractToolPlugin;
 use Porta\Plugin\Api\BinarySearch;
 use Porta\Plugin\Api\PluginApi;
 use Porta\Plugin\Runtime\PluginManager;
@@ -31,6 +30,7 @@ use Porta\Tests\Support\TestLspQuery;
 use Porta\Tests\Support\TestParticipants;
 use Porta\Tests\Support\TestProjectSwitcher;
 use Porta\Tests\Support\TestRuns;
+use Porta\Tests\Support\TestToolPlugin;
 use Porta\Tests\Support\TestTui;
 use Porta\Tests\Support\TestWorkspaceEditor;
 use Porta\Tests\Support\UntrustsProjects;
@@ -75,77 +75,9 @@ final class AbstractToolPluginTest extends TestCase
     private PluginManager $manager;
 
     /** A concrete tool plugin exposing the protected surface for assertions. */
-    private function plugin(string $name = 'demo', ?string $binaryName = null, BinarySearch $search = BinarySearch::VendorBinThenPath): AbstractToolPlugin
+    private function plugin(string $name = 'demo', ?string $binaryName = null, BinarySearch $search = BinarySearch::VendorBinThenPath): TestToolPlugin
     {
-        return new class($name, $binaryName ?? $name, $search) extends AbstractToolPlugin {
-            public function activate(PluginApi $api): void
-            {
-                // PluginApi::setting() refuses unregistered keys, so the base
-                // class's `binary` row must exist before binary() reads it —
-                // which is exactly what registerBinarySetting() does.
-                $this->registerBinarySetting($api, [['composer', 'demo/demo']]);
-            }
-
-            public function callBinary(PluginApi $api): ?string
-            {
-                return $this->binary($api);
-            }
-
-            public function callAcquire(PluginApi $api): ?string
-            {
-                return $this->acquire($api);
-            }
-
-            public function callRelease(): void
-            {
-                $this->release();
-            }
-
-            public function callActiveFile(PluginApi $api, string $extension = '.php'): ?string
-            {
-                return $this->activeFileOrFlash($api, $extension);
-            }
-
-            public function callAvailable(PluginApi $api): \Closure
-            {
-                return $this->binaryAvailable($api);
-            }
-
-            public function callApplyFormatted(PluginApi $api, string $file, ?string $before): void
-            {
-                $this->applyFormatted($api, $file, $before);
-            }
-
-            public function callTextBefore(PluginApi $api, string $file): ?string
-            {
-                return $this->textBefore($api, $file);
-            }
-
-            public function callRegisterBinarySetting(PluginApi $api, array $via): void
-            {
-                $this->registerBinarySetting($api, $via);
-            }
-
-            public function callRegisterToggle(PluginApi $api, string $id, string $label, string $key, string $phrase): void
-            {
-                $this->registerToggle($api, $id, $label, $key, $phrase);
-            }
-
-            public function callFlashExit(PluginApi $api, int $code, string $success): void
-            {
-                $this->flashExit($api, $code, $success);
-            }
-
-            public function callFlashCount(PluginApi $api, int $count, string $noun, string $file): void
-            {
-                $this->flashCount($api, $count, $noun, $file);
-            }
-
-            public function callRunAndApply(PluginApi $api, array $arguments, string $success): void
-            {
-                $this->runAndApply($api, $arguments, $success);
-            }
-        };
+        return new TestToolPlugin($name, $binaryName ?? $name, $search);
     }
 
     /** A live api over a temp project, with the runtime wired so action methods work. */
@@ -253,23 +185,7 @@ final class AbstractToolPluginTest extends TestCase
      */
     public function testAToolThatRunsProjectCodeRefusesAnUntrustedProject(): void
     {
-        $tool = static fn (): AbstractToolPlugin => new class('demo', 'demo') extends AbstractToolPlugin {
-            public function activate(PluginApi $api): void
-            {
-                $this->registerBinarySetting($api, [['composer', 'acme/demo']]);
-            }
-
-            #[\Override]
-            protected function runsProjectCode(): bool
-            {
-                return true;
-            }
-
-            public function callAcquire(PluginApi $api): ?string
-            {
-                return $this->acquire($api);
-            }
-        };
+        $tool = static fn (): TestToolPlugin => new TestToolPlugin('demo', 'demo', runsProjectCode: true);
         $trusted = $tool();
         $api = $this->api();
         $this->activate($trusted, $api);

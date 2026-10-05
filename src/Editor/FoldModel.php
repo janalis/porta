@@ -76,7 +76,7 @@ final class FoldModel
         if ($this->regionStartsVersion !== $this->regionsVersion) {
             $this->regionStartsVersion = $this->regionsVersion;
             $this->regionStarts = [];
-            foreach ($this->regions ?? [] as [$start, $end]) {
+            foreach ($this->regions ?? [] as [$start]) {
                 $this->regionStarts[$start] = true;
             }
         }

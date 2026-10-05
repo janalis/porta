@@ -79,7 +79,7 @@ final class HighlightingSettingsTest extends TestCase
             100 => function (Tui $tui, $terminal, Ide $ide): void {
                 Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                 $tui->tick();
-                $this->selectSettingsSection($tui->getById('settings-nav'), 'highlighting');
+                $this->selectSettingsSection($this->settingsNav($tui), 'highlighting');
                 $this->frame($tui); // a bare tick inside the 60fps cap window is not a frame
 
                 $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());

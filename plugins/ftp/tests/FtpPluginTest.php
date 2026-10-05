@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Filesystem\RemoteSpec;
 use Porta\FtpPlugin\Credentials;
 use Porta\FtpPlugin\FtpTransport;
+use Porta\Plugin\Api\AbstractPlugin;
 use Porta\Plugin\Api\PluginApi;
 use Porta\Plugin\Api\RemoteProjectPlugin;
 use Porta\Plugin\Runtime\PluginManager;
@@ -45,6 +46,7 @@ final class FtpPluginTest extends TestCase
         $api = new PluginApi('ftp', $manager, '/p', $settings);
         $plugin = require \dirname(__DIR__).'/plugin.php';
         $this->assertInstanceOf(RemoteProjectPlugin::class, $plugin, 'the ftp plugin opens remote projects');
+        $this->assertInstanceOf(AbstractPlugin::class, $plugin, 'and is a plugin like any other');
         $plugin->activate($api);
         $manager->commit($api, $plugin);
         $this->pluginInstance = $plugin;

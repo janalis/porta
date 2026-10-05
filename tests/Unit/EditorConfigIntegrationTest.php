@@ -125,7 +125,7 @@ final class EditorConfigIntegrationTest extends TestCase
         // false in an old .porta.json must neither disable .editorconfig nor warn.
         $project = new TempProject([
             'composer.json' => '{}',
-            '.porta.json' => \json_encode(['settings' => ['editorConfig' => false]]),
+            '.porta.json' => \json_encode(['settings' => ['editorConfig' => false]], \JSON_THROW_ON_ERROR),
             '.editorconfig' => "root = true\n[*.txt]\nindent_size = 2\ntrim_trailing_whitespace = true\ninsert_final_newline = true\n",
             'note.txt' => "keep  \n",
         ]);

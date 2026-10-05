@@ -118,9 +118,9 @@ final class CodeHighlighter implements HighlightSink
      *                                                  engine can take over per language
      * @param TerminalTheme|null           $syntaxTheme the token color scheme; defaults to
      *                                                  the dark theme when none is injected
-     * @param \Closure(): void|null        $onRepaint   called when an *asynchronous* delivery lands,
+     * @param (\Closure(): void)|null        $onRepaint   called when an *asynchronous* delivery lands,
      *                                                  so the frame that shows it gets requested
-     * @param \Closure(bool): void|null    $onParse     told after each completed parse whether it
+     * @param (\Closure(bool): void)|null    $onParse     told after each completed parse whether it
      *                                                  was an incremental splice (true) or a full
      *                                                  parse (false) — the perf beat's evidence
      *                                                  for "typing re-parses the whole file"

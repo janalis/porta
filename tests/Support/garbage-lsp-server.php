@@ -7,8 +7,8 @@ declare(strict_types=1);
 
 require __DIR__.'/lsp-stub.php';
 
-$in = fopen('php://stdin', mode: 'rb');
-$out = fopen('php://stdout', mode: 'wb');
+$in = \STDIN;
+$out = \STDOUT;
 
 // The deviant part, and the only one: a header terminator with no
 // Content-Length. Everything after it is ordinary framing.

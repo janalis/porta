@@ -62,15 +62,18 @@ final class IdeConfigTest extends TestCase
 
     public function testSettingsParsingAndCoercion(): void
     {
-        $project = new TempProject(['.porta.json' => \json_encode([
-            'settings' => [
-                'autoPairs' => 0,
-                'lineNumbers' => 'relative',
-                'theme' => 'light',
-                'tabBarPosition' => 'left',
-                'bogusSetting' => 'x',
+        $project = new TempProject(['.porta.json' => \json_encode(
+            [
+                'settings' => [
+                    'autoPairs' => 0,
+                    'lineNumbers' => 'relative',
+                    'theme' => 'light',
+                    'tabBarPosition' => 'left',
+                    'bogusSetting' => 'x',
+                ],
             ],
-        ])]);
+            \JSON_THROW_ON_ERROR,
+        )]);
 
         $config = IdeConfig::load($project->dir);
 
@@ -89,9 +92,12 @@ final class IdeConfigTest extends TestCase
         // The eight `git*` keys joined it when git became a plugin — they are
         // `plugins.git.*` now, and that plugin adopts the old value once, so a
         // warning here would be wrong twice over.
-        $project = new TempProject(['.porta.json' => \json_encode([
-            'settings' => ['editorConfig' => false, 'gitShowBranch' => false, 'gitPath' => '/usr/bin/git', 'bogusSetting' => 'x'],
-        ])]);
+        $project = new TempProject(['.porta.json' => \json_encode(
+            [
+                'settings' => ['editorConfig' => false, 'gitShowBranch' => false, 'gitPath' => '/usr/bin/git', 'bogusSetting' => 'x'],
+            ],
+            \JSON_THROW_ON_ERROR,
+        )]);
 
         $config = IdeConfig::load($project->dir);
 
@@ -106,26 +112,29 @@ final class IdeConfigTest extends TestCase
 
     public function testLanguageTemplatesParsingAndValidation(): void
     {
-        $project = new TempProject(['.porta.json' => \json_encode([
-            'languages' => [
-                'php' => [
-                    'templates' => [
-                        'dd' => 'dd($1);$0',
-                        // The rejects sit BETWEEN the keepers on purpose: with
-                        // them last, a loop that stopped at the first bad entry
-                        // instead of skipping it produced the same map, and the
-                        // difference — every template after the typo silently
-                        // gone — was invisible.
-                        'bad' => ['not', 'a', 'string'],
-                        // An empty body is KEPT — it is how a built-in is switched off.
-                        'fore' => '',
-                        'alsobad' => 42,
-                        'sf' => 'sprintf($1)$0',
+        $project = new TempProject(['.porta.json' => \json_encode(
+            [
+                'languages' => [
+                    'php' => [
+                        'templates' => [
+                            'dd' => 'dd($1);$0',
+                            // The rejects sit BETWEEN the keepers on purpose: with
+                            // them last, a loop that stopped at the first bad entry
+                            // instead of skipping it produced the same map, and the
+                            // difference — every template after the typo silently
+                            // gone — was invisible.
+                            'bad' => ['not', 'a', 'string'],
+                            // An empty body is KEPT — it is how a built-in is switched off.
+                            'fore' => '',
+                            'alsobad' => 42,
+                            'sf' => 'sprintf($1)$0',
+                        ],
                     ],
+                    'javascript' => ['templates' => 'not-an-object'],
                 ],
-                'javascript' => ['templates' => 'not-an-object'],
             ],
-        ])]);
+            \JSON_THROW_ON_ERROR,
+        )]);
 
         $config = IdeConfig::load($project->dir);
 
@@ -139,16 +148,19 @@ final class IdeConfigTest extends TestCase
 
     public function testLanguagesParsingAndValidation(): void
     {
-        $project = new TempProject(['.porta.json' => \json_encode([
-            'languages' => [
-                'php' => ['indentStyle' => 'tabs', 'indentSize' => 4, 'runCommand' => 'frankenphp php-cli'],
-                'javascript' => ['indentSize' => '2', 'indentStyle' => 'bogus'],
-                'css' => ['indentStyle' => 'spaces', 'runCommand' => ['php', '-dmemory_limit=1G']],
-                'klingon' => ['indentStyle' => 'tabs'],
-                'python' => 'not-an-object',
-                'yaml' => ['indentSize' => 0],
+        $project = new TempProject(['.porta.json' => \json_encode(
+            [
+                'languages' => [
+                    'php' => ['indentStyle' => 'tabs', 'indentSize' => 4, 'runCommand' => 'frankenphp php-cli'],
+                    'javascript' => ['indentSize' => '2', 'indentStyle' => 'bogus'],
+                    'css' => ['indentStyle' => 'spaces', 'runCommand' => ['php', '-dmemory_limit=1G']],
+                    'klingon' => ['indentStyle' => 'tabs'],
+                    'python' => 'not-an-object',
+                    'yaml' => ['indentSize' => 0],
+                ],
             ],
-        ])]);
+            \JSON_THROW_ON_ERROR,
+        )]);
 
         $config = IdeConfig::load($project->dir);
 
@@ -164,16 +176,19 @@ final class IdeConfigTest extends TestCase
 
     public function testAutoIndentSizeIsPreserved(): void
     {
-        $project = new TempProject(['.porta.json' => \json_encode(['languages' => ['php' => ['indentStyle' => 'spaces', 'indentSize' => 'auto']]])]);
+        $project = new TempProject(['.porta.json' => \json_encode(['languages' => ['php' => ['indentStyle' => 'spaces', 'indentSize' => 'auto']]], \JSON_THROW_ON_ERROR)]);
         $this->assertSame(['indentStyle' => 'spaces', 'indentSize' => 'auto'], IdeConfig::load($project->dir)->languages['php']);
     }
 
     public function testPersistLanguageSettingMergesAndPreserves(): void
     {
-        $project = new TempProject(['.porta.json' => \json_encode([
-            'lsp' => 'phpactor',
-            'languages' => ['php' => ['indentStyle' => 'tabs']],
-        ])]);
+        $project = new TempProject(['.porta.json' => \json_encode(
+            [
+                'lsp' => 'phpactor',
+                'languages' => ['php' => ['indentStyle' => 'tabs']],
+            ],
+            \JSON_THROW_ON_ERROR,
+        )]);
 
         $this->assertTrue(new PortaJsonWriter(ConfigFiles::for($project->dir))->persistLanguageSetting(ConfigScope::Project, 'php', 'indentSize', 4));
         $this->assertTrue(new PortaJsonWriter(ConfigFiles::for($project->dir))->persistLanguageSetting(ConfigScope::Project, 'css', 'indentStyle', 'spaces'));
@@ -193,9 +208,12 @@ final class IdeConfigTest extends TestCase
      */
     public function testPersistLanguageSettingLeavesAHandWrittenTemplatesBlockAlone(): void
     {
-        $project = new TempProject(['.porta.json' => \json_encode([
-            'languages' => ['php' => ['templates' => ['dd' => 'dd($1);$0']]],
-        ])]);
+        $project = new TempProject(['.porta.json' => \json_encode(
+            [
+                'languages' => ['php' => ['templates' => ['dd' => 'dd($1);$0']]],
+            ],
+            \JSON_THROW_ON_ERROR,
+        )]);
 
         $this->assertTrue(new PortaJsonWriter(ConfigFiles::for($project->dir))->persistLanguageSetting(ConfigScope::Project, 'php', 'indentSize', 2));
 
@@ -213,37 +231,37 @@ final class IdeConfigTest extends TestCase
 
     public function testRelativeLineNumbersMigratesToTheLineNumbersMode(): void
     {
-        $relative = new TempProject(['.porta.json' => \json_encode(['settings' => ['relativeLineNumbers' => true]])]);
+        $relative = new TempProject(['.porta.json' => \json_encode(['settings' => ['relativeLineNumbers' => true]], \JSON_THROW_ON_ERROR)]);
         $config = IdeConfig::load($relative->dir);
         $this->assertSame('relative', $config->settings['lineNumbers'], 'legacy true → relative');
         $this->assertSame([], $config->warnings, 'the legacy key is skipped, not warned');
 
-        $absolute = new TempProject(['.porta.json' => \json_encode(['settings' => ['relativeLineNumbers' => false]])]);
+        $absolute = new TempProject(['.porta.json' => \json_encode(['settings' => ['relativeLineNumbers' => false]], \JSON_THROW_ON_ERROR)]);
         $this->assertSame('absolute', IdeConfig::load($absolute->dir)->settings['lineNumbers'], 'legacy false → absolute');
 
         // An explicit lineNumbers wins over the legacy key.
-        $both = new TempProject(['.porta.json' => \json_encode(['settings' => ['relativeLineNumbers' => true, 'lineNumbers' => 'off']])]);
+        $both = new TempProject(['.porta.json' => \json_encode(['settings' => ['relativeLineNumbers' => true, 'lineNumbers' => 'off']], \JSON_THROW_ON_ERROR)]);
         $this->assertSame('off', IdeConfig::load($both->dir)->settings['lineNumbers'], 'explicit lineNumbers wins');
     }
 
     public function testInlineDiagnosticsMigratesToTheDiagnosticMessagesMode(): void
     {
-        $on = new TempProject(['.porta.json' => \json_encode(['settings' => ['inlineDiagnostics' => true]])]);
+        $on = new TempProject(['.porta.json' => \json_encode(['settings' => ['inlineDiagnostics' => true]], \JSON_THROW_ON_ERROR)]);
         $config = IdeConfig::load($on->dir);
         $this->assertSame('inline', $config->settings['diagnosticMessages'], 'legacy true → the message after the code');
         $this->assertArrayNotHasKey('inlineDiagnostics', $config->settings, 'the legacy key itself is not a setting any more');
         $this->assertSame([], $config->warnings, 'the legacy key is skipped, not warned');
 
-        $off = new TempProject(['.porta.json' => \json_encode(['settings' => ['inlineDiagnostics' => false]])]);
+        $off = new TempProject(['.porta.json' => \json_encode(['settings' => ['inlineDiagnostics' => false]], \JSON_THROW_ON_ERROR)]);
         $this->assertSame('none', IdeConfig::load($off->dir)->settings['diagnosticMessages'], 'legacy false → no message at all');
 
-        $both = new TempProject(['.porta.json' => \json_encode(['settings' => ['inlineDiagnostics' => false, 'diagnosticMessages' => 'menu']])]);
+        $both = new TempProject(['.porta.json' => \json_encode(['settings' => ['inlineDiagnostics' => false, 'diagnosticMessages' => 'menu']], \JSON_THROW_ON_ERROR)]);
         $this->assertSame('menu', IdeConfig::load($both->dir)->settings['diagnosticMessages'], 'an explicit diagnosticMessages wins');
     }
 
     public function testWritingDiagnosticMessagesRetiresInlineDiagnostics(): void
     {
-        $project = new TempProject(['.porta.json' => \json_encode(['settings' => ['inlineDiagnostics' => false]])]);
+        $project = new TempProject(['.porta.json' => \json_encode(['settings' => ['inlineDiagnostics' => false]], \JSON_THROW_ON_ERROR)]);
         $writer = new PortaJsonWriter(ConfigFiles::for($project->dir));
 
         $this->assertTrue($writer->persistSetting(ConfigScope::Project, 'theme', 'light'));
@@ -264,12 +282,15 @@ final class IdeConfigTest extends TestCase
 
     public function testPersistSettingMergesAndPreservesUnknownKeys(): void
     {
-        $project = new TempProject(['.porta.json' => \json_encode([
-            'lsp' => 'phpactor',
-            'keymap' => ['save' => ['f10']],
-            'settings' => ['tabWidth' => 8],
-            'customUnknownKey' => ['keep' => 'me'],
-        ])]);
+        $project = new TempProject(['.porta.json' => \json_encode(
+            [
+                'lsp' => 'phpactor',
+                'keymap' => ['save' => ['f10']],
+                'settings' => ['tabWidth' => 8],
+                'customUnknownKey' => ['keep' => 'me'],
+            ],
+            \JSON_THROW_ON_ERROR,
+        )]);
 
         $this->assertTrue(new PortaJsonWriter(ConfigFiles::for($project->dir))->persistSetting(ConfigScope::Project, 'autoPairs', false));
 
@@ -285,9 +306,12 @@ final class IdeConfigTest extends TestCase
 
     public function testPersistSettingDropsMigratedLegacyKeys(): void
     {
-        $project = new TempProject(['.porta.json' => \json_encode([
-            'settings' => ['relativeLineNumbers' => true, 'editorConfig' => true, 'tabWidth' => 4],
-        ])]);
+        $project = new TempProject(['.porta.json' => \json_encode(
+            [
+                'settings' => ['relativeLineNumbers' => true, 'editorConfig' => true, 'tabWidth' => 4],
+            ],
+            \JSON_THROW_ON_ERROR,
+        )]);
 
         $this->assertTrue(new PortaJsonWriter(ConfigFiles::for($project->dir))->persistSetting(ConfigScope::Project, 'lineNumbers', 'relative'));
 
@@ -306,9 +330,12 @@ final class IdeConfigTest extends TestCase
         // project simply not reopened under it), and dropped
         // relativeLineNumbers before lineNumbers ever recorded the migrated
         // preference — permanent data loss from toggling an unrelated setting.
-        $project = new TempProject(['.porta.json' => \json_encode([
-            'settings' => ['gitSignCommits' => true, 'gitPath' => '/opt/git', 'relativeLineNumbers' => true],
-        ])]);
+        $project = new TempProject(['.porta.json' => \json_encode(
+            [
+                'settings' => ['gitSignCommits' => true, 'gitPath' => '/opt/git', 'relativeLineNumbers' => true],
+            ],
+            \JSON_THROW_ON_ERROR,
+        )]);
 
         $this->assertTrue(new PortaJsonWriter(ConfigFiles::for($project->dir))->persistSetting(ConfigScope::Project, 'theme', 'light'));
 
@@ -355,11 +382,14 @@ final class IdeConfigTest extends TestCase
 
     public function testPersistKeymapMergesAndPreservesOtherEntries(): void
     {
-        $project = new TempProject(['.porta.json' => \json_encode([
-            'lsp' => 'phpactor',
-            'keymap' => ['save' => ['f10']],
-            'settings' => ['tabWidth' => 8],
-        ])]);
+        $project = new TempProject(['.porta.json' => \json_encode(
+            [
+                'lsp' => 'phpactor',
+                'keymap' => ['save' => ['f10']],
+                'settings' => ['tabWidth' => 8],
+            ],
+            \JSON_THROW_ON_ERROR,
+        )]);
 
         $this->assertTrue(new PortaJsonWriter(ConfigFiles::for($project->dir))->persistKeymap(ConfigScope::Project, 'duplicate_line', ['ctrl+shift+d']));
 
@@ -375,7 +405,7 @@ final class IdeConfigTest extends TestCase
 
     public function testPersistKeymapOverwritesAnExistingActionAndReindexes(): void
     {
-        $project = new TempProject(['.porta.json' => \json_encode(['keymap' => ['save' => ['f10']]])]);
+        $project = new TempProject(['.porta.json' => \json_encode(['keymap' => ['save' => ['f10']]], \JSON_THROW_ON_ERROR)]);
 
         // A non-zero-based list is stored contiguously.
         $this->assertTrue(new PortaJsonWriter(ConfigFiles::for($project->dir))->persistKeymap(ConfigScope::Project, 'save', [1 => 'ctrl+s']));
@@ -419,14 +449,17 @@ final class IdeConfigTest extends TestCase
 
     public function testKeymapParsingAndValidation(): void
     {
-        $project = new TempProject(['.porta.json' => \json_encode([
-            'keymap' => [
-                'duplicate_line' => ['ctrl+shift+d'],
-                'save' => 'f10',
-                'bogus_action' => ['x'],
-                'copy' => 42,
+        $project = new TempProject(['.porta.json' => \json_encode(
+            [
+                'keymap' => [
+                    'duplicate_line' => ['ctrl+shift+d'],
+                    'save' => 'f10',
+                    'bogus_action' => ['x'],
+                    'copy' => 42,
+                ],
             ],
-        ])]);
+            \JSON_THROW_ON_ERROR,
+        )]);
 
         $config = IdeConfig::load($project->dir);
 
@@ -444,9 +477,12 @@ final class IdeConfigTest extends TestCase
 
     public function testLspServersMapLoaded(): void
     {
-        $project = new TempProject(['.porta.json' => \json_encode([
-            'lsp' => ['php' => 'phpactor language-server', 'typescript' => ['node', '/x/tsserver.js', '--stdio']],
-        ])]);
+        $project = new TempProject(['.porta.json' => \json_encode(
+            [
+                'lsp' => ['php' => 'phpactor language-server', 'typescript' => ['node', '/x/tsserver.js', '--stdio']],
+            ],
+            \JSON_THROW_ON_ERROR,
+        )]);
 
         $config = IdeConfig::load($project->dir);
         $this->assertSame('phpactor language-server', $config->lspServers['php']);
@@ -456,7 +492,7 @@ final class IdeConfigTest extends TestCase
 
     public function testLspSingleCommandFormIsNotShownPerLanguage(): void
     {
-        $project = new TempProject(['.porta.json' => \json_encode(['lsp' => 'phpactor language-server'])]);
+        $project = new TempProject(['.porta.json' => \json_encode(['lsp' => 'phpactor language-server'], \JSON_THROW_ON_ERROR)]);
         $config = IdeConfig::load($project->dir);
 
         $this->assertSame([], $config->lspServers, 'a catch-all command is not a per-language map');
@@ -465,7 +501,7 @@ final class IdeConfigTest extends TestCase
 
     public function testPersistLspServerMergesRemovesAndPrunes(): void
     {
-        $project = new TempProject(['.porta.json' => \json_encode(['lsp' => ['php' => 'phpactor language-server']])]);
+        $project = new TempProject(['.porta.json' => \json_encode(['lsp' => ['php' => 'phpactor language-server']], \JSON_THROW_ON_ERROR)]);
 
         $this->assertTrue(new PortaJsonWriter(ConfigFiles::for($project->dir))->persistLspServer(ConfigScope::Project, 'typescript', 'typescript-language-server --stdio'));
         $written = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true);
@@ -485,7 +521,7 @@ final class IdeConfigTest extends TestCase
 
     public function testPersistLspServerConvertsACatchAllStringToAMap(): void
     {
-        $project = new TempProject(['.porta.json' => \json_encode(['lsp' => 'phpactor language-server'])]);
+        $project = new TempProject(['.porta.json' => \json_encode(['lsp' => 'phpactor language-server'], \JSON_THROW_ON_ERROR)]);
 
         $this->assertTrue(new PortaJsonWriter(ConfigFiles::for($project->dir))->persistLspServer(ConfigScope::Project, 'python', 'pylsp'));
         $written = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true);
@@ -495,7 +531,7 @@ final class IdeConfigTest extends TestCase
 
     public function testPersistLspServerConvertsACatchAllArgvListToAMap(): void
     {
-        $project = new TempProject(['.porta.json' => \json_encode(['lsp' => ['node', '/x/ls.js', '--stdio']])]);
+        $project = new TempProject(['.porta.json' => \json_encode(['lsp' => ['node', '/x/ls.js', '--stdio']], \JSON_THROW_ON_ERROR)]);
 
         $this->assertTrue(new PortaJsonWriter(ConfigFiles::for($project->dir))->persistLspServer(ConfigScope::Project, 'php', 'phpactor'));
         $written = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true);
@@ -512,14 +548,17 @@ final class IdeConfigTest extends TestCase
 
     public function testLanguageDebugBlockParsesAndDropsInvalidParts(): void
     {
-        $project = new TempProject(['.porta.json' => \json_encode([
-            'languages' => [
-                'php' => ['debug' => ['adapter' => ['node', '/x/phpDebug.js'], 'launch' => ['runtimeExecutable' => 'php']]],
-                'python' => ['debug' => ['adapter' => 'python -m debugpy.adapter', 'launch' => ['a', 'list']]],
-                'javascript' => ['debug' => 'not an object'],
-                'typescript' => ['debug' => ['adapter' => 42]],
+        $project = new TempProject(['.porta.json' => \json_encode(
+            [
+                'languages' => [
+                    'php' => ['debug' => ['adapter' => ['node', '/x/phpDebug.js'], 'launch' => ['runtimeExecutable' => 'php']]],
+                    'python' => ['debug' => ['adapter' => 'python -m debugpy.adapter', 'launch' => ['a', 'list']]],
+                    'javascript' => ['debug' => 'not an object'],
+                    'typescript' => ['debug' => ['adapter' => 42]],
+                ],
             ],
-        ])]);
+            \JSON_THROW_ON_ERROR,
+        )]);
         $config = IdeConfig::load($project->dir);
 
         $this->assertSame(['adapter' => 'node /x/phpDebug.js', 'launch' => ['runtimeExecutable' => 'php']], $config->languages['php']['debug'] ?? null, 'argv adapter normalized to a string');
@@ -531,7 +570,7 @@ final class IdeConfigTest extends TestCase
 
     public function testPersistLanguageDebugMergesRemovesAndPrunes(): void
     {
-        $project = new TempProject(['.porta.json' => \json_encode(['languages' => ['php' => ['indentStyle' => 'spaces']]])]);
+        $project = new TempProject(['.porta.json' => \json_encode(['languages' => ['php' => ['indentStyle' => 'spaces']]], \JSON_THROW_ON_ERROR)]);
 
         $this->assertTrue(new PortaJsonWriter(ConfigFiles::for($project->dir))->persistLanguageDebug(ConfigScope::Project, 'php', 'adapter', 'node /x/phpDebug.js'));
         $this->assertTrue(new PortaJsonWriter(ConfigFiles::for($project->dir))->persistLanguageDebug(ConfigScope::Project, 'php', 'launch', ['env' => ['X' => '1']]));
@@ -557,13 +596,16 @@ final class IdeConfigTest extends TestCase
 
     public function testPluginsBlockParsesScalarsAndWarnsOnNonObjects(): void
     {
-        $project = new TempProject(['.porta.json' => \json_encode([
-            'plugins' => [
-                'phpstan' => ['binary' => '/opt/phpstan', 'strict' => true, 'level' => 7, 'junk' => ['nested']],
-                'broken' => 'not-an-object',
+        $project = new TempProject(['.porta.json' => \json_encode(
+            [
+                'plugins' => [
+                    'phpstan' => ['binary' => '/opt/phpstan', 'strict' => true, 'level' => 7, 'junk' => ['nested']],
+                    'broken' => 'not-an-object',
+                ],
+                'disabledPlugins' => ['psalm', 42, ['nested']],
             ],
-            'disabledPlugins' => ['psalm', 42, ['nested']],
-        ])]);
+            \JSON_THROW_ON_ERROR,
+        )]);
         $config = IdeConfig::load($project->dir);
 
         $this->assertSame(['binary' => '/opt/phpstan', 'strict' => true, 'level' => 7], $config->plugins['phpstan'], 'scalars kept raw, non-scalars dropped');
@@ -574,7 +616,7 @@ final class IdeConfigTest extends TestCase
 
     public function testPersistPluginSettingAndEnabledMergePreserving(): void
     {
-        $project = new TempProject(['.porta.json' => \json_encode(['settings' => ['theme' => 'light']])]);
+        $project = new TempProject(['.porta.json' => \json_encode(['settings' => ['theme' => 'light']], \JSON_THROW_ON_ERROR)]);
 
         $this->assertTrue(new PortaJsonWriter(ConfigFiles::for($project->dir))->persistPluginSetting(ConfigScope::Project, 'phpstan', 'binary', '/opt/x'));
         $this->assertTrue(new PortaJsonWriter(ConfigFiles::for($project->dir))->persistPluginSetting(ConfigScope::Project, 'phpstan', 'strict', true));
@@ -594,13 +636,16 @@ final class IdeConfigTest extends TestCase
 
     public function testEveryWellShapedKeymapEntrySurvivesLoading(): void
     {
-        $project = new TempProject(['.porta.json' => \json_encode([
-            'keymap' => [
-                'demo:hello' => 'f8',
-                'still_unknown' => ['f9'],
-                'demo:bad_value' => 42,
+        $project = new TempProject(['.porta.json' => \json_encode(
+            [
+                'keymap' => [
+                    'demo:hello' => 'f8',
+                    'still_unknown' => ['f9'],
+                    'demo:bad_value' => 42,
+                ],
             ],
-        ])]);
+            \JSON_THROW_ON_ERROR,
+        )]);
         $config = IdeConfig::load($project->dir);
 
         $this->assertSame(['f8'], $config->keymap['demo:hello'], 'a plugin command id binds if its plugin loads');
@@ -728,9 +773,12 @@ final class IdeConfigTest extends TestCase
     {
         // "bogus" used to flow uncorrected into $PORTA_THEME and resolve to
         // whatever fallback each consumer happened to apply, silently.
-        $project = new TempProject(['.porta.json' => \json_encode([
-            'settings' => ['theme' => 'bogus', 'cursorShape' => 'wedge', 'lineNumbers' => 'roman'],
-        ])]);
+        $project = new TempProject(['.porta.json' => \json_encode(
+            [
+                'settings' => ['theme' => 'bogus', 'cursorShape' => 'wedge', 'lineNumbers' => 'roman'],
+            ],
+            \JSON_THROW_ON_ERROR,
+        )]);
 
         $config = IdeConfig::load($project->dir);
 
@@ -805,9 +853,12 @@ final class IdeConfigTest extends TestCase
     {
         // "must map to a key or list" for `bad` must skip only that one entry,
         // not stop parsing the rest of the keymap.
-        $project = new TempProject(['.porta.json' => \json_encode([
-            'keymap' => ['bad' => 5, 'save' => ['ctrl+s']],
-        ])]);
+        $project = new TempProject(['.porta.json' => \json_encode(
+            [
+                'keymap' => ['bad' => 5, 'save' => ['ctrl+s']],
+            ],
+            \JSON_THROW_ON_ERROR,
+        )]);
 
         $config = IdeConfig::load($project->dir);
 
@@ -819,9 +870,12 @@ final class IdeConfigTest extends TestCase
     {
         // A JSON array with a filtered/sparse shape is not possible from
         // json_decode, but the values themselves are not always strings.
-        $project = new TempProject(['.porta.json' => \json_encode([
-            'keymap' => ['save' => ['ctrl+s', 1]],
-        ])]);
+        $project = new TempProject(['.porta.json' => \json_encode(
+            [
+                'keymap' => ['save' => ['ctrl+s', 1]],
+            ],
+            \JSON_THROW_ON_ERROR,
+        )]);
 
         $config = IdeConfig::load($project->dir);
 
@@ -832,16 +886,19 @@ final class IdeConfigTest extends TestCase
     public function testCmdIsTheSuperModifier(): void
     {
         // What a Mac user writes; the key parser only knows `super`.
-        $project = new TempProject(['.porta.json' => \json_encode([
-            'keymap' => ['save' => ['cmd+s', 'shift+CMD+s', 'cmd', 'ctrl+cmdx']],
-        ])]);
+        $project = new TempProject(['.porta.json' => \json_encode(
+            [
+                'keymap' => ['save' => ['cmd+s', 'shift+CMD+s', 'cmd', 'ctrl+cmdx']],
+            ],
+            \JSON_THROW_ON_ERROR,
+        )]);
 
         $this->assertSame(['super+s', 'shift+super+s', 'cmd', 'ctrl+cmdx'], IdeConfig::load($project->dir)->keymap['save'], 'only a cmd MODIFIER is renamed');
     }
 
     public function testMalformedHighlightBlockWarnsAndFallsBackWithoutCrashing(): void
     {
-        $project = new TempProject(['.porta.json' => \json_encode(['highlight' => 'not-an-object'])]);
+        $project = new TempProject(['.porta.json' => \json_encode(['highlight' => 'not-an-object'], \JSON_THROW_ON_ERROR)]);
 
         $config = IdeConfig::load($project->dir);
 
@@ -853,7 +910,7 @@ final class IdeConfigTest extends TestCase
     {
         // json_decode turns a purely-numeric object key into an int array key;
         // the warning's %language% param must still carry it as a string.
-        $project = new TempProject(['.porta.json' => \json_encode(['highlight' => ['languages' => ['5' => '']]])]);
+        $project = new TempProject(['.porta.json' => \json_encode(['highlight' => ['languages' => ['5' => '']]], \JSON_THROW_ON_ERROR)]);
 
         $config = IdeConfig::load($project->dir);
 
@@ -863,7 +920,7 @@ final class IdeConfigTest extends TestCase
 
     public function testAnInvalidHighlighterLanguageWarningNamesTheLanguage(): void
     {
-        $project = new TempProject(['.porta.json' => \json_encode(['highlight' => ['languages' => ['rust' => '']]])]);
+        $project = new TempProject(['.porta.json' => \json_encode(['highlight' => ['languages' => ['rust' => '']]], \JSON_THROW_ON_ERROR)]);
 
         $config = IdeConfig::load($project->dir);
 
@@ -875,7 +932,7 @@ final class IdeConfigTest extends TestCase
 
     public function testANumericPluginKeyIsWarnedAsAString(): void
     {
-        $project = new TempProject(['.porta.json' => \json_encode(['plugins' => ['5' => 'not-an-object']])]);
+        $project = new TempProject(['.porta.json' => \json_encode(['plugins' => ['5' => 'not-an-object']], \JSON_THROW_ON_ERROR)]);
 
         $config = IdeConfig::load($project->dir);
 
@@ -885,9 +942,12 @@ final class IdeConfigTest extends TestCase
 
     public function testABadPluginBlockDoesNotAbortTheRemainingPlugins(): void
     {
-        $project = new TempProject(['.porta.json' => \json_encode([
-            'plugins' => ['bad' => 'not-an-object', 'good' => ['setting' => 'value']],
-        ])]);
+        $project = new TempProject(['.porta.json' => \json_encode(
+            [
+                'plugins' => ['bad' => 'not-an-object', 'good' => ['setting' => 'value']],
+            ],
+            \JSON_THROW_ON_ERROR,
+        )]);
 
         $config = IdeConfig::load($project->dir);
 
@@ -896,9 +956,12 @@ final class IdeConfigTest extends TestCase
 
     public function testANonScalarPluginSettingValueDoesNotAbortTheRemainingKeys(): void
     {
-        $project = new TempProject(['.porta.json' => \json_encode([
-            'plugins' => ['git' => ['bad' => ['nested' => 'array'], 'good' => 'value']],
-        ])]);
+        $project = new TempProject(['.porta.json' => \json_encode(
+            [
+                'plugins' => ['git' => ['bad' => ['nested' => 'array'], 'good' => 'value']],
+            ],
+            \JSON_THROW_ON_ERROR,
+        )]);
 
         $config = IdeConfig::load($project->dir);
 
@@ -907,7 +970,7 @@ final class IdeConfigTest extends TestCase
 
     public function testAFloatPluginSettingValueIsStringified(): void
     {
-        $project = new TempProject(['.porta.json' => \json_encode(['plugins' => ['git' => ['ratio' => 3.14]]])]);
+        $project = new TempProject(['.porta.json' => \json_encode(['plugins' => ['git' => ['ratio' => 3.14]]], \JSON_THROW_ON_ERROR)]);
 
         $config = IdeConfig::load($project->dir);
 
@@ -916,9 +979,12 @@ final class IdeConfigTest extends TestCase
 
     public function testMultiplePluginsAreAllRetained(): void
     {
-        $project = new TempProject(['.porta.json' => \json_encode([
-            'plugins' => ['git' => ['a' => '1'], 'graph-viewer' => ['b' => '2']],
-        ])]);
+        $project = new TempProject(['.porta.json' => \json_encode(
+            [
+                'plugins' => ['git' => ['a' => '1'], 'graph-viewer' => ['b' => '2']],
+            ],
+            \JSON_THROW_ON_ERROR,
+        )]);
 
         $config = IdeConfig::load($project->dir);
 
@@ -929,7 +995,7 @@ final class IdeConfigTest extends TestCase
     {
         // A single-command form (string or argv list) has no per-language
         // keys to read — it must not be misparsed as one.
-        $project = new TempProject(['.porta.json' => \json_encode(['lsp' => ['intelephense', '--stdio']])]);
+        $project = new TempProject(['.porta.json' => \json_encode(['lsp' => ['intelephense', '--stdio']], \JSON_THROW_ON_ERROR)]);
 
         $config = IdeConfig::load($project->dir);
 
@@ -938,9 +1004,12 @@ final class IdeConfigTest extends TestCase
 
     public function testStringListDropsNonScalarsAndReindexes(): void
     {
-        $project = new TempProject(['.porta.json' => \json_encode([
-            'disabledPlugins' => ['a', ['nested'], 'b'],
-        ])]);
+        $project = new TempProject(['.porta.json' => \json_encode(
+            [
+                'disabledPlugins' => ['a', ['nested'], 'b'],
+            ],
+            \JSON_THROW_ON_ERROR,
+        )]);
 
         $config = IdeConfig::load($project->dir);
 
@@ -949,9 +1018,12 @@ final class IdeConfigTest extends TestCase
 
     public function testCommandStringStringifiesEveryArgvElement(): void
     {
-        $project = new TempProject(['.porta.json' => \json_encode([
-            'languages' => ['php' => ['runCommand' => ['php', '-v', 8]]],
-        ])]);
+        $project = new TempProject(['.porta.json' => \json_encode(
+            [
+                'languages' => ['php' => ['runCommand' => ['php', '-v', 8]]],
+            ],
+            \JSON_THROW_ON_ERROR,
+        )]);
 
         $config = IdeConfig::load($project->dir);
 
@@ -963,7 +1035,7 @@ final class IdeConfigTest extends TestCase
         // LanguageCatalog::isKnown() is strictly typed `string`; a purely
         // numeric key (auto-converted to an int by json_decode) must be
         // stringified before reaching it, or the whole parse would throw.
-        $project = new TempProject(['.porta.json' => \json_encode(['languages' => ['5' => ['indentStyle' => 'spaces']]])]);
+        $project = new TempProject(['.porta.json' => \json_encode(['languages' => ['5' => ['indentStyle' => 'spaces']]], \JSON_THROW_ON_ERROR)]);
 
         $config = IdeConfig::load($project->dir);
 
@@ -973,9 +1045,12 @@ final class IdeConfigTest extends TestCase
 
     public function testABadLanguageEntryDoesNotAbortTheRemainingLanguages(): void
     {
-        $project = new TempProject(['.porta.json' => \json_encode([
-            'languages' => ['php' => 'not-an-object', 'python' => ['indentStyle' => 'spaces']],
-        ])]);
+        $project = new TempProject(['.porta.json' => \json_encode(
+            [
+                'languages' => ['php' => 'not-an-object', 'python' => ['indentStyle' => 'spaces']],
+            ],
+            \JSON_THROW_ON_ERROR,
+        )]);
 
         $config = IdeConfig::load($project->dir);
 
@@ -985,9 +1060,12 @@ final class IdeConfigTest extends TestCase
 
     public function testIndentSizeOfExactlyOneIsAccepted(): void
     {
-        $project = new TempProject(['.porta.json' => \json_encode([
-            'languages' => ['php' => ['indentSize' => 1]],
-        ])]);
+        $project = new TempProject(['.porta.json' => \json_encode(
+            [
+                'languages' => ['php' => ['indentSize' => 1]],
+            ],
+            \JSON_THROW_ON_ERROR,
+        )]);
 
         $config = IdeConfig::load($project->dir);
 
@@ -1007,9 +1085,12 @@ final class IdeConfigTest extends TestCase
     #[DataProvider('indentSizeStringProvider')]
     public function testIndentSizeFromAStringValue(string $raw, ?int $expected): void
     {
-        $project = new TempProject(['.porta.json' => \json_encode([
-            'languages' => ['php' => ['indentSize' => $raw]],
-        ])]);
+        $project = new TempProject(['.porta.json' => \json_encode(
+            [
+                'languages' => ['php' => ['indentSize' => $raw]],
+            ],
+            \JSON_THROW_ON_ERROR,
+        )]);
 
         $config = IdeConfig::load($project->dir);
 

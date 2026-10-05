@@ -5,8 +5,8 @@ declare(strict_types=1);
 // Mock server for executeCommand paths: replies null for "mock.ok" and
 // then notifies "mock/ran"; replies with an error for "mock.fail".
 
-$in = fopen('php://stdin', 'rb');
-$out = fopen('php://stdout', 'wb');
+$in = \STDIN;
+$out = \STDOUT;
 
 require __DIR__.'/lsp-stub.php';
 

@@ -947,7 +947,7 @@ final class HelpViewerWidgetTest extends TestCase
     {
         $viewer = new HelpViewerWidget();
         $viewer->setFocused(true);
-        $viewer->setHandler($handler = new RecordingHelpViewerHandler());
+        $viewer->setHandler(new RecordingHelpViewerHandler());
         $viewer->setDocsRoot('/docs');
         // path() is still null here — hierarchyCrumbs()'s (string) cast on a
         // null $this->path must not be dropped, or crumbLabel(null) crashes

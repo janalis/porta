@@ -10,8 +10,8 @@ declare(strict_types=1);
  * assert that queued frames arrive intact and in order.
  */
 
-$in = fopen('php://stdin', 'rb');
-$out = fopen('php://stdout', 'wb');
+$in = \STDIN;
+$out = \STDOUT;
 
 require __DIR__.'/lsp-stub.php';
 // Non-blocking tiny reads: a blocking fread(512) would stall inside PHP's

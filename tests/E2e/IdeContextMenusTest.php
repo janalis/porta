@@ -1143,7 +1143,6 @@ final class IdeContextMenusTest extends TestCase
                     $this->awaitPainted($tui, $terminal, 'Go to Declaration or Usages');
                     $context = Services::resolve($ide, ContextMenu::class);
                     $this->assertTrue($context->isOpen(), 'the editor context menu opened at the caret');
-                    $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $tui->handleInput("\x1b"); // Esc closes it
                     $this->assertFalse($context->isOpen());
                 },

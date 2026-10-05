@@ -52,7 +52,7 @@ final class IdeShadowTest extends TestCase
     {
         \putenv('PATH=/nonexistent');
         $project = new TempProject([
-            '.porta.json' => \json_encode(['settings' => ['language' => $locale, 'theme' => 'dark']]),
+            '.porta.json' => \json_encode(['settings' => ['language' => $locale, 'theme' => 'dark']], \JSON_THROW_ON_ERROR),
             'demo.php' => "<?php\n".\str_repeat("echo 'abcdefghij klmnop';\n", times: 20),
         ]);
 

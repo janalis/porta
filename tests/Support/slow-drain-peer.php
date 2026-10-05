@@ -9,4 +9,4 @@ declare(strict_types=1);
  * deadlocking against one that never reads. Echoes everything to stdout.
  */
 usleep(150_000);
-fpassthru(fopen('php://stdin', mode: 'rb'));
+fpassthru(\STDIN);

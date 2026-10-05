@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 // Fault server: rejects the initialize request with a JSON-RPC error.
 
-$in = fopen('php://stdin', mode: 'rb');
-$out = fopen('php://stdout', mode: 'wb');
+$in = \STDIN;
+$out = \STDOUT;
 
 require __DIR__.'/lsp-stub.php';
 

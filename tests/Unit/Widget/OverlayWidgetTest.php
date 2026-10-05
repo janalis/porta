@@ -5,32 +5,14 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Widget\OverlayWidget;
-use Symfony\Component\Tui\Render\RenderContext;
+use Porta\Tests\Support\TestOverlayWidget;
 
 final class OverlayWidgetTest extends TestCase
 {
-    private function widget(): OverlayWidget
-    {
-        return new class extends OverlayWidget {
-            public function open(): void
-            {
-                $this->markOpen();
-            }
-
-            public function render(RenderContext $context): array
-            {
-                return [];
-            }
-
-            public function handleInput(string $data): void {}
-        };
-    }
-
     /** isVisible()/dismiss() are called from outside the hierarchy (BottomDock, RunController) — must stay public. */
     public function testIsVisibleAndDismissAreCallableFromOutsideTheClass(): void
     {
-        $widget = $this->widget();
+        $widget = new TestOverlayWidget();
         $widget->open();
 
         $this->assertTrue($widget->isVisible());
@@ -40,7 +22,7 @@ final class OverlayWidgetTest extends TestCase
 
     public function testOpenFiresTheOnOpenCallbacksAndInvalidates(): void
     {
-        $widget = $this->widget();
+        $widget = new TestOverlayWidget();
         $fired = false;
         $widget->onOpen(static function () use (&$fired): void {
             $fired = true;
@@ -55,7 +37,7 @@ final class OverlayWidgetTest extends TestCase
 
     public function testCloseFiresTheOnCloseCallbacksAndInvalidates(): void
     {
-        $widget = $this->widget();
+        $widget = new TestOverlayWidget();
         $widget->open();
         $fired = false;
         $widget->onClose(static function () use (&$fired): void {
@@ -72,7 +54,7 @@ final class OverlayWidgetTest extends TestCase
 
     public function testClosingAnAlreadyClosedWidgetIsANoOp(): void
     {
-        $widget = $this->widget();
+        $widget = new TestOverlayWidget();
         $fired = false;
         $widget->onClose(static function () use (&$fired): void {
             $fired = true;
@@ -85,7 +67,7 @@ final class OverlayWidgetTest extends TestCase
 
     public function testCloseResetsRevealedToTrueEvenIfTheWidgetWasConcealed(): void
     {
-        $widget = $this->widget();
+        $widget = new TestOverlayWidget();
         $widget->open();
         $widget->conceal(); // revealed = false
         $widget->close(); // must reset revealed = true, not leave it false
@@ -101,7 +83,7 @@ final class OverlayWidgetTest extends TestCase
 
     public function testDismissFallsBackToCloseWhenNoOnDismissHookIsWired(): void
     {
-        $widget = $this->widget();
+        $widget = new TestOverlayWidget();
         $widget->open();
 
         $widget->dismiss();
@@ -111,7 +93,7 @@ final class OverlayWidgetTest extends TestCase
 
     public function testDismissPrefersTheOnDismissHookOverClosing(): void
     {
-        $widget = $this->widget();
+        $widget = new TestOverlayWidget();
         $widget->open();
         $ran = false;
         $widget->onDismiss(static function () use (&$ran): void {

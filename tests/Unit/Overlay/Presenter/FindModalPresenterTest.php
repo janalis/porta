@@ -14,12 +14,10 @@ use Porta\Tests\Support\TestOverlayPane;
 use Porta\Ui\BidiTui;
 use Porta\Ui\ScreenDensity;
 use Porta\Widget\CodeEditorWidget;
-use Porta\Widget\Render\MenuOverlayHost;
 use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Style\StyleSheet;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
-use Symfony\Component\Tui\Widget\AbstractWidget;
 
 /**
  * The Find-in-Files presenter: the per-frame span delivery over the pane
@@ -31,7 +29,7 @@ final class FindModalPresenterTest extends TestCase
     use RendersRoot;
 
     private CodeEditorWidget $editor;
-    private AbstractWidget&MenuOverlayHost $pane;
+    private TestOverlayPane $pane;
 
     private function presenter(): FindModalPresenter
     {

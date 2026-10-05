@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Tests\Support\DrainsPeer;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
+use Porta\Tests\Support\RecordingTerminal;
 use Porta\Ui\NonBlockingTerminal;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
@@ -28,104 +29,6 @@ final class NonBlockingTerminalTest extends TestCase
         return [$pair[0], $pair[1]];
     }
 
-    /** A recording inner terminal; $calls collects method traces. */
-    private function inner(array &$calls): TerminalInterface
-    {
-        return new class($calls) implements TerminalInterface {
-            /** @param list<string> $calls */
-            public function __construct(
-                private array &$calls,
-            ) {}
-
-            /** @var (callable(): void)|null the kitty callback this inner was handed */
-            public $kitty;
-
-            public function start(callable $onInput, callable $onResize, callable $onKittyProtocolActivated): void
-            {
-                $this->calls[] = 'start';
-                $this->kitty = $onKittyProtocolActivated;
-                $onInput('probe'); // prove the callbacks were passed through verbatim
-            }
-
-            public function stop(): void
-            {
-                $this->calls[] = 'stop';
-            }
-
-            public function write(string $data): void
-            {
-                $this->calls[] = 'write:'.$data;
-            }
-
-            public function getColumns(): int
-            {
-                return 123;
-            }
-
-            public function getRows(): int
-            {
-                return 45;
-            }
-
-            public function isKittyProtocolActive(): bool
-            {
-                return true;
-            }
-
-            public function moveBy(int $lines): void
-            {
-                $this->calls[] = 'moveBy';
-            }
-
-            public function hideCursor(): void
-            {
-                $this->calls[] = 'hideCursor';
-            }
-
-            public function showCursor(): void
-            {
-                $this->calls[] = 'showCursor';
-            }
-
-            public function clearLine(): void
-            {
-                $this->calls[] = 'clearLine';
-            }
-
-            public function clearFromCursor(): void
-            {
-                $this->calls[] = 'clearFromCursor';
-            }
-
-            public function clearScreen(): void
-            {
-                $this->calls[] = 'clearScreen';
-            }
-
-            public function setTitle(string $title): void
-            {
-                $this->calls[] = 'setTitle';
-            }
-
-            public function bell(): void
-            {
-                $this->calls[] = 'bell';
-            }
-
-            public function isVirtual(): bool
-            {
-                return false;
-            }
-
-            private ?EventDispatcherInterface $dispatcher = null;
-
-            public function getEventDispatcher(): EventDispatcherInterface
-            {
-                return $this->dispatcher ??= new EventDispatcher();
-            }
-        };
-    }
-
     private function start(NonBlockingTerminal $terminal, array &$received): void
     {
         $terminal->start(
@@ -143,7 +46,7 @@ final class NonBlockingTerminalTest extends TestCase
         [$stream, $peer] = $this->pair();
         $calls = [];
         $received = [];
-        $terminal = new NonBlockingTerminal($this->inner($calls), $stream);
+        $terminal = new NonBlockingTerminal(new RecordingTerminal($calls), $stream);
         $this->start($terminal, $received);
 
         $terminal->write('frame');
@@ -169,7 +72,7 @@ final class NonBlockingTerminalTest extends TestCase
     {
         [$stream, $peer] = $this->pair();
         $calls = [];
-        $inner = $this->inner($calls);
+        $inner = new RecordingTerminal($calls);
         $terminal = new NonBlockingTerminal($inner, $stream);
 
         $this->assertSame(123, $terminal->getColumns());
@@ -257,7 +160,7 @@ final class NonBlockingTerminalTest extends TestCase
         [$stream, $peer] = $this->pair();
         $calls = [];
         $received = [];
-        $terminal = new NonBlockingTerminal($this->inner($calls), $stream);
+        $terminal = new NonBlockingTerminal(new RecordingTerminal($calls), $stream);
 
         $terminal->write('boot-bytes'); // before start(): the alt-screen bracket
         $this->assertSame(['write:boot-bytes'], $calls);
@@ -279,7 +182,7 @@ final class NonBlockingTerminalTest extends TestCase
         [$stream, $peer] = $this->pair();
         $calls = [];
         $received = [];
-        $terminal = new NonBlockingTerminal($this->inner($calls), $stream);
+        $terminal = new NonBlockingTerminal(new RecordingTerminal($calls), $stream);
         $this->start($terminal, $received);
         $first = \str_repeat('a', times: 524_288);
         $second = \str_repeat('b', times: 524_288);
@@ -315,7 +218,7 @@ final class NonBlockingTerminalTest extends TestCase
         \assert(\is_resource($process), description: 'proc_open started the slow-drain peer');
         $calls = [];
         $received = [];
-        $terminal = new NonBlockingTerminal($this->inner($calls), $pipes[0], limit: 65_536);
+        $terminal = new NonBlockingTerminal(new RecordingTerminal($calls), $pipes[0], limit: 65_536);
         $this->start($terminal, $received);
 
         // try/finally: an abort must stop the terminal (cancelling its writer
@@ -342,7 +245,7 @@ final class NonBlockingTerminalTest extends TestCase
         [$stream, $peer] = $this->pair();
         $calls = [];
         $received = [];
-        $terminal = new NonBlockingTerminal($this->inner($calls), $stream);
+        $terminal = new NonBlockingTerminal(new RecordingTerminal($calls), $stream);
         $this->assertSame(0, $terminal->pendingBytes(), 'no writer before start()');
 
         $this->start($terminal, $received);
@@ -362,7 +265,7 @@ final class NonBlockingTerminalTest extends TestCase
         [$stream, $peer] = $this->pair();
         $calls = [];
         $received = [];
-        $terminal = new NonBlockingTerminal($this->inner($calls), $stream);
+        $terminal = new NonBlockingTerminal(new RecordingTerminal($calls), $stream);
         $this->start($terminal, $received);
         \fclose($peer);
 
@@ -392,7 +295,7 @@ final class NonBlockingTerminalTest extends TestCase
         [$stream, $peer] = $this->pair();
         $calls = [];
         $received = [];
-        $terminal = new NonBlockingTerminal($this->inner($calls), $stream);
+        $terminal = new NonBlockingTerminal(new RecordingTerminal($calls), $stream);
         $drains = 0;
         $terminal->onDrain(static function () use (&$drains): void {
             ++$drains;
@@ -413,7 +316,7 @@ final class NonBlockingTerminalTest extends TestCase
         [$stream, $peer] = $this->pair();
         $calls = [];
         $received = [];
-        $terminal = new NonBlockingTerminal($this->inner($calls), $stream);
+        $terminal = new NonBlockingTerminal(new RecordingTerminal($calls), $stream);
         $this->start($terminal, $received);
         $drains = 0;
         $terminal->onDrain(static function () use (&$drains): void {
@@ -442,7 +345,7 @@ final class NonBlockingTerminalTest extends TestCase
         // off for the rest of the session. The bytes cannot be intercepted, so
         // the owner has to be told it happened.
         $calls = [];
-        $inner = $this->inner($calls);
+        $inner = new RecordingTerminal($calls);
         [$stream] = $this->pair();
         $terminal = new NonBlockingTerminal($inner, $stream);
 
@@ -464,7 +367,7 @@ final class NonBlockingTerminalTest extends TestCase
         // The vendor's own callback sets the kitty flag on the key parser.
         // Wrapping it must not swallow it.
         $calls = [];
-        $inner = $this->inner($calls);
+        $inner = new RecordingTerminal($calls);
         [$stream] = $this->pair();
         $terminal = new NonBlockingTerminal($inner, $stream);
 
@@ -484,7 +387,7 @@ final class NonBlockingTerminalTest extends TestCase
     public function testWithNoHookInstalledTheKittyCallbackIsHarmless(): void
     {
         $calls = [];
-        $inner = $this->inner($calls);
+        $inner = new RecordingTerminal($calls);
         [$stream] = $this->pair();
         $terminal = new NonBlockingTerminal($inner, $stream);
         $terminal->start(static function (): void {}, static function (): void {}, static function (): void {});

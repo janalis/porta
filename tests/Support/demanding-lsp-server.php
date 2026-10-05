@@ -6,8 +6,8 @@ declare(strict_types=1);
 // (workspace/configuration, workspace/applyEdit, an unknown method) and
 // echoes the client's replies back in a "mock/echo" notification.
 
-$in = fopen('php://stdin', 'rb');
-$out = fopen('php://stdout', 'wb');
+$in = \STDIN;
+$out = \STDOUT;
 
 require __DIR__.'/lsp-stub.php';
 

@@ -29,7 +29,7 @@ final class Mnemonics
     public static function assign(array $labels): array
     {
         $candidates = \array_map(self::candidates(...), $labels);
-        /** @var array<string, int> $owner the label each taken letter went to */
+        /** @var array<array-key, int> $owner the label each taken letter went to — a digit key is an int */
         $owner = [];
         // The deal: word-initials first, then any letter still free.
         foreach ([true, false] as $initialsOnly) {
@@ -37,7 +37,7 @@ final class Mnemonics
                 if (\in_array($i, $owner, strict: true)) {
                     continue;
                 }
-                $free = \array_find_key($keys, static fn (int $at, string $key): bool => !\array_key_exists($key, $owner) && (!$initialsOnly || self::isInitial($labels[$i], $at)));
+                $free = \array_find_key($keys, static fn (int $at, int|string $key): bool => !\array_key_exists($key, $owner) && (!$initialsOnly || self::isInitial($labels[$i], $at)));
                 if (null !== $free) {
                     $owner[$free] = $i;
                 }
@@ -63,9 +63,9 @@ final class Mnemonics
      * A free letter for label $i, freeing one by moving its holder on to
      * another of its own when none is free (Kuhn's augmenting path).
      *
-     * @param list<array<string, int>> $candidates
-     * @param array<string, int>       $owner
-     * @param array<string, true>      $seen
+     * @param list<array<array-key, int>> $candidates
+     * @param array<array-key, int>       $owner
+     * @param array<array-key, true>      $seen
      */
     private static function claim(int $i, array $candidates, array &$owner, array &$seen): bool
     {
@@ -107,9 +107,10 @@ final class Mnemonics
 
     /**
      * A label's letters in order of preference — each word's first, then the
-     * rest — keyed by what a key press must spell, valued by their offset.
+     * rest — keyed by what a key press must spell (a digit keys as an int),
+     * valued by their offset.
      *
-     * @return array<string, int>
+     * @return array<array-key, int>
      */
     private static function candidates(string $label): array
     {

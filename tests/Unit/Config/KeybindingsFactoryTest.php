@@ -48,7 +48,7 @@ final class KeybindingsFactoryTest extends TestCase
         // declares an action, and the user's keymap can rebind it — without
         // core's catalog naming it, which it cannot.
         $project = new TempProject([
-            '.porta.json' => \json_encode(['keymap' => ['demo_zoom' => 'f6']]),
+            '.porta.json' => \json_encode(['keymap' => ['demo_zoom' => 'f6']], \JSON_THROW_ON_ERROR),
             '.porta/plugins/paned/plugin.php' => self::PLUGIN,
         ]);
         [$factory, $host] = $this->factory($project);
@@ -61,7 +61,7 @@ final class KeybindingsFactoryTest extends TestCase
 
     public function testAnIdNothingDeclaresIsDroppedAndReportedOnce(): void
     {
-        $project = new TempProject(['.porta.json' => \json_encode(['keymap' => ['nobody_declares_this' => 'f7', 'save' => 'f8']])]);
+        $project = new TempProject(['.porta.json' => \json_encode(['keymap' => ['nobody_declares_this' => 'f7', 'save' => 'f8']], \JSON_THROW_ON_ERROR)]);
         [$factory, $host] = $this->factory($project);
 
         $keys = $factory->create();
@@ -82,7 +82,7 @@ final class KeybindingsFactoryTest extends TestCase
         // "plugin:command" ids dispatch by id and carry no descriptor, so there
         // is nothing to check them against — they simply bind if their plugin
         // loads, which may be after this runs.
-        $project = new TempProject(['.porta.json' => \json_encode(['keymap' => ['demo:hello' => 'f9']])]);
+        $project = new TempProject(['.porta.json' => \json_encode(['keymap' => ['demo:hello' => 'f9']], \JSON_THROW_ON_ERROR)]);
         [$factory, $host] = $this->factory($project);
 
         $this->assertSame(['f9'], $factory->create()->getBindings('demo:hello'));
@@ -109,7 +109,7 @@ final class KeybindingsFactoryTest extends TestCase
         // .porta.json would end the boot and every rebuild after it. The order
         // matters: a typo ahead of a good key, and a wholly dropped action
         // ahead of one still to be vetted.
-        $project = new TempProject(['.porta.json' => \json_encode(['keymap' => ['copy_path' => ['ctrl+nope'], 'save' => ['ctlr+s', 'ctrl+s', 'ctrl+nope']]])]);
+        $project = new TempProject(['.porta.json' => \json_encode(['keymap' => ['copy_path' => ['ctrl+nope'], 'save' => ['ctlr+s', 'ctrl+s', 'ctrl+nope']]], \JSON_THROW_ON_ERROR)]);
         [$factory, $host] = $this->factory($project);
         $default = $factory->create(keymap: [])->getBindings('copy_path');
 
@@ -133,7 +133,7 @@ final class KeybindingsFactoryTest extends TestCase
 
     public function testADeliberateEmptyListStillUnbinds(): void
     {
-        [$factory, $host] = $this->factory(new TempProject(['.porta.json' => \json_encode(['keymap' => ['copy_path' => []]])]));
+        [$factory, $host] = $this->factory(new TempProject(['.porta.json' => \json_encode(['keymap' => ['copy_path' => []]], \JSON_THROW_ON_ERROR)]));
 
         $this->assertSame([], $factory->create()->getBindings('copy_path'));
         $this->assertSame([], $host->manager->warnings);
@@ -158,7 +158,7 @@ final class KeybindingsFactoryTest extends TestCase
 
     public function testMultipleDeclaredActionsAreAllKept(): void
     {
-        $project = new TempProject(['.porta.json' => \json_encode(['keymap' => ['save' => 'f2', 'find' => 'f3']])]);
+        $project = new TempProject(['.porta.json' => \json_encode(['keymap' => ['save' => 'f2', 'find' => 'f3']], \JSON_THROW_ON_ERROR)]);
         [$factory] = $this->factory($project);
 
         $keys = $factory->create();
@@ -173,7 +173,7 @@ final class KeybindingsFactoryTest extends TestCase
         $this->assertSame(KeymapPlatform::MacOs, $mac->platform());
         $this->assertSame(['backspace', 'delete'], $mac->create()->getBindings('reset_binding'), 'the Mac keymap is laid over the defaults');
 
-        [$overSsh] = $this->factory(new TempProject(['.porta.json' => \json_encode(['settings' => ['keymapPlatform' => 'macos']])]), 'linux');
+        [$overSsh] = $this->factory(new TempProject(['.porta.json' => \json_encode(['settings' => ['keymapPlatform' => 'macos']], \JSON_THROW_ON_ERROR)]), 'linux');
         $this->assertSame(KeymapPlatform::MacOs, $overSsh->platform(), 'the setting beats detection');
         $this->assertSame(KeymapPlatform::Windows, $overSsh->platform('windows'), 'a fresher setting beats the boot one');
         $this->assertSame([], $overSsh->create(platform: 'linux')->getBindings('reset_binding'));
@@ -185,7 +185,7 @@ final class KeybindingsFactoryTest extends TestCase
     #[RequiresMethod(Key::class, 'super')]
     public function testTheUsersKeymapWinsOverThePlatforms(): void
     {
-        [$factory] = $this->factory(new TempProject(['.porta.json' => \json_encode(['keymap' => ['copy' => 'cmd+k']])]), 'macos');
+        [$factory] = $this->factory(new TempProject(['.porta.json' => \json_encode(['keymap' => ['copy' => 'cmd+k']], \JSON_THROW_ON_ERROR)]), 'macos');
 
         $keys = $factory->create();
 

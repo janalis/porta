@@ -81,7 +81,7 @@ final class EditorPanes
         return $this->owners[$id] ?? null;
     }
 
-    /** @return \Closure(string): mixed|null */
+    /** @return (\Closure(string): mixed)|null */
     public function loaderFor(string $id): ?\Closure
     {
         return $this->loaders[$id] ?? null;

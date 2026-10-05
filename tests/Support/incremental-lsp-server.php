@@ -9,8 +9,8 @@ declare(strict_types=1);
  * or a full-text replacement — letting the E2e suite assert the wire format.
  */
 
-$in = fopen('php://stdin', 'rb');
-$out = fopen('php://stdout', 'wb');
+$in = \STDIN;
+$out = \STDOUT;
 
 require __DIR__.'/lsp-stub.php';
 

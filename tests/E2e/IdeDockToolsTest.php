@@ -338,7 +338,6 @@ final class IdeDockToolsTest extends TestCase
                     // follows, so it is the one to await.
                     $this->awaitPainted($tui, $terminal, '✗ live boom');
                     $this->awaitPainted($tui, $terminal, '1 result');
-                    $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertSame('editor', $tui->getFocus()?->getId(), 'the live refresh did not steal the focus');
 
                     // A further refresh that adds an EARLIER row must not move

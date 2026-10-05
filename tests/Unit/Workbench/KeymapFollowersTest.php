@@ -23,7 +23,7 @@ final class KeymapFollowersTest extends TestCase
 {
     public function testEveryRebuildReachesTheEditorThePanesAndTheKeymapList(): void
     {
-        $project = new TempProject(['.porta.json' => \json_encode(['keymap' => ['duplicate_line' => 'f12', 'goto_file' => 'f11']])]);
+        $project = new TempProject(['.porta.json' => \json_encode(['keymap' => ['duplicate_line' => 'f12', 'goto_file' => 'f11']], \JSON_THROW_ON_ERROR)]);
         $keys = TestLiveKeybindings::create($project->dir, KeymapPlatform::Linux);
         $editor = new CodeEditorWidget();
         $panes = new EditorPanes();

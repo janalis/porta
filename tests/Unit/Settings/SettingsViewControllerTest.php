@@ -132,7 +132,6 @@ final class SettingsViewControllerTest extends TestCase
     private ContextMenu $contextMenu;
     private Renderer $renderer;
 
-    /** @param list<SettingsSection>|null $sections */
     /** The session scope the sections share; set by {@see controller()}. */
     private SettingsScope $scope;
 

@@ -18,8 +18,8 @@ pcntl_async_signals(true);
 pcntl_signal(SIGTERM, SIG_IGN);
 pcntl_alarm(30);
 
-$in = fopen(filename: 'php://stdin', mode: 'rb');
-$out = fopen(filename: 'php://stdout', mode: 'wb');
+$in = \STDIN;
+$out = \STDOUT;
 $name = $argv[1] ?? 'anon';
 
 require __DIR__.'/lsp-stub.php';

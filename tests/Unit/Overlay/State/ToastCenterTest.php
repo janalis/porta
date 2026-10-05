@@ -199,7 +199,7 @@ final class ToastCenterTest extends TestCase
         $center->push(Markup::literal('a'), ToastSeverity::Info);
         $center->push(Markup::literal('b'), ToastSeverity::Info);
         $center->push(Markup::literal('c'), ToastSeverity::Info);
-        [$idC, $idB, $idA] = \array_map(static fn (Toast $t): int => $t->id, $center->toasts());
+        [, $idB] = \array_map(static fn (Toast $t): int => $t->id, $center->toasts());
 
         $center->dismiss($idB);
 

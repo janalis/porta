@@ -76,7 +76,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
         $embedded = $this->embeddedFixture();
         \putenv('PORTA_EMBEDDED_PLUGINS='.$embedded->dir);
         // Bundled plugins are off by default; opt the fixture in.
-        $project = new TempProject(['a.php' => "<?php\n", '.porta.json' => \json_encode(['enabledPlugins' => ['bundled']])]);
+        $project = new TempProject(['a.php' => "<?php\n", '.porta.json' => \json_encode(['enabledPlugins' => ['bundled']], \JSON_THROW_ON_ERROR)]);
 
         $this->runIde(
             $project,
@@ -97,7 +97,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     // The manage screen lists it as built-in; actuating is inert.
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                     $tui->handleInput("\t"); // form → nav
-                    $this->selectSettingsSection($tui->getById('settings-nav'), 'plugins');
+                    $this->selectSettingsSection($this->settingsNav($tui), 'plugins');
                     $tui->handleInput("\t"); // nav → form
                     $this->frame($tui);
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
@@ -140,7 +140,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     // die and the choice persists.
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                     $tui->handleInput("\t"); // form → nav
-                    $this->selectSettingsSection($tui->getById('settings-nav'), 'plugins');
+                    $this->selectSettingsSection($this->settingsNav($tui), 'plugins');
                     $tui->handleInput("\x1b[B"); // bundled sub-item
                     $tui->handleInput("\t"); // nav → form
                     $tui->handleInput("\x1b[A"); // clamp to the Enabled row
@@ -198,7 +198,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
         $project = new TempProject([
             '.porta/plugins/bundled/plugin.php' => $this->namedPlugin('bundled', 'Project Run'),
             '.porta/plugins/shadowfail/plugin.php' => $this->namedPlugin('shadowfail', 'Shadow OK'),
-            '.porta.json' => \json_encode(['disabledPlugins' => ['sleeper']]),
+            '.porta.json' => \json_encode(['disabledPlugins' => ['sleeper']], \JSON_THROW_ON_ERROR),
             'a.php' => "<?php\n",
         ]);
 
@@ -215,7 +215,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     // Remove the project override: the embedded copy reactivates live.
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                     $tui->handleInput("\t");
-                    $this->selectSettingsSection($tui->getById('settings-nav'), 'plugins');
+                    $this->selectSettingsSection($this->settingsNav($tui), 'plugins');
                     $tui->handleInput("\t"); // → form
                     $tui->handleInput("\x1b[B"); // install row
                     $tui->handleInput("\x1b[B"); // bundled (project) Remove
@@ -258,7 +258,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
         $embedded = $this->embeddedFixture();
         \putenv('PORTA_EMBEDDED_PLUGINS='.$embedded->dir);
         $project = new TempProject([
-            '.porta.json' => \json_encode(['disabledPlugins' => ['bundled']]),
+            '.porta.json' => \json_encode(['disabledPlugins' => ['bundled']], \JSON_THROW_ON_ERROR),
             'a.php' => "<?php\n",
         ]);
 
@@ -274,7 +274,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     // Its settings page is still reachable, showing the unchecked toggle.
                     $commands->run('ide_settings');
                     $tui->handleInput("\t");
-                    $this->selectSettingsSection($tui->getById('settings-nav'), 'plugins');
+                    $this->selectSettingsSection($this->settingsNav($tui), 'plugins');
                     $tui->handleInput("\x1b[B"); // bundled sub-item
                     $this->frame($tui);
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());

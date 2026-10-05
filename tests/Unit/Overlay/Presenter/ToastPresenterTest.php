@@ -16,13 +16,11 @@ use Porta\Tests\Support\RendersRoot;
 use Porta\Tests\Support\TestOverlayPane;
 use Porta\Ui\BidiTui;
 use Porta\Ui\Markup\Markup;
-use Porta\Widget\Render\MenuOverlayHost;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Style\StyleSheet;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
-use Symfony\Component\Tui\Widget\AbstractWidget;
 
 /**
  * The toast presenter: corner placement over the pane union, the toast span
@@ -35,7 +33,7 @@ final class ToastPresenterTest extends TestCase
 
     private ToastCenter $toasts;
     private FakeScheduler $scheduler;
-    private AbstractWidget&MenuOverlayHost $pane;
+    private TestOverlayPane $pane;
 
     private function presenter(): ToastPresenter
     {

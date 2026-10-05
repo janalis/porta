@@ -370,7 +370,7 @@ final class IdeTabsBuffersTest extends TestCase
         \putenv('PATH=/nonexistent');
         $project = new TempProject([
             'a.php' => "<?php\n",
-            '.porta.json' => \json_encode(['settings' => ['tabBarPosition' => 'sideways']]),
+            '.porta.json' => \json_encode(['settings' => ['tabBarPosition' => 'sideways']], \JSON_THROW_ON_ERROR),
         ]);
 
         $this->runIde(
@@ -399,7 +399,7 @@ final class IdeTabsBuffersTest extends TestCase
             'B.php' => "<?php\n",
             'C.php' => "<?php\n",
             'notes.md' => "# Notes\n",
-            '.porta.json' => \json_encode(['settings' => ['tabBarPosition' => 'left']]),
+            '.porta.json' => \json_encode(['settings' => ['tabBarPosition' => 'left']], \JSON_THROW_ON_ERROR),
         ]);
 
         $tabsRect = static fn ($tui, Ide $ide) => Services::resolve($ide, Renderer::class)
@@ -473,7 +473,7 @@ final class IdeTabsBuffersTest extends TestCase
         \putenv('PATH=/nonexistent');
         $project = new TempProject([
             'a.php' => "<?php\n",
-            '.porta.json' => \json_encode(['settings' => ['tabBarPosition' => 'bottom']]),
+            '.porta.json' => \json_encode(['settings' => ['tabBarPosition' => 'bottom']], \JSON_THROW_ON_ERROR),
         ]);
 
         $this->runIde(
@@ -816,7 +816,7 @@ final class IdeTabsBuffersTest extends TestCase
         $project = new TempProject([
             'a.php' => "<?php\n",
             'b.php' => "<?php\n",
-            '.porta.json' => \json_encode(['settings' => ['tabBarPosition' => 'left']]),
+            '.porta.json' => \json_encode(['settings' => ['tabBarPosition' => 'left']], \JSON_THROW_ON_ERROR),
         ]);
 
         $this->runIde(

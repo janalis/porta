@@ -91,7 +91,7 @@ final class IdeFilesystemSessionTest extends TestCase
     {
         \putenv('PATH=/nonexistent');
         $project = new TempProject([
-            '.porta.json' => \json_encode(['keymap' => ['not_a_real_action' => ['f9']]]),
+            '.porta.json' => \json_encode(['keymap' => ['not_a_real_action' => ['f9']]], \JSON_THROW_ON_ERROR),
             'a.php' => "<?php\n",
         ]);
 

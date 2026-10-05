@@ -88,7 +88,7 @@ final class IdeRtlLocaleTest extends TestCase
     {
         \putenv('PATH=/nonexistent');
         $project = new TempProject([
-            '.porta.json' => \json_encode(['settings' => ['language' => 'he']]),
+            '.porta.json' => \json_encode(['settings' => ['language' => 'he']], \JSON_THROW_ON_ERROR),
             'a.php' => "<?php\n",
         ]);
 
@@ -108,7 +108,7 @@ final class IdeRtlLocaleTest extends TestCase
     {
         \putenv('PATH=/nonexistent');
         $project = new TempProject([
-            '.porta.json' => \json_encode(['settings' => ['language' => 'he']]),
+            '.porta.json' => \json_encode(['settings' => ['language' => 'he']], \JSON_THROW_ON_ERROR),
             'a.php' => "<?php\n",
         ]);
 
@@ -157,7 +157,7 @@ final class IdeRtlLocaleTest extends TestCase
     {
         \putenv('PATH=/nonexistent');
         $project = new TempProject([
-            '.porta.json' => \json_encode(['settings' => ['language' => 'he']]),
+            '.porta.json' => \json_encode(['settings' => ['language' => 'he']], \JSON_THROW_ON_ERROR),
             'demo.php' => "<?php\necho \$name;\n",
         ]);
 
@@ -189,7 +189,7 @@ final class IdeRtlLocaleTest extends TestCase
         // invariant for the two that render the most Hebrew.
         \putenv('PATH=/nonexistent');
         $project = new TempProject([
-            '.porta.json' => \json_encode(['settings' => ['language' => 'he']]),
+            '.porta.json' => \json_encode(['settings' => ['language' => 'he']], \JSON_THROW_ON_ERROR),
             'demo.php' => "<?php\necho \$name;\n",
         ]);
 
@@ -249,7 +249,7 @@ final class IdeRtlLocaleTest extends TestCase
         // in the editor view and the (also-reported) settings view.
         \putenv('PATH=/nonexistent');
         $project = new TempProject([
-            '.porta.json' => \json_encode(['settings' => ['language' => 'he']]),
+            '.porta.json' => \json_encode(['settings' => ['language' => 'he']], \JSON_THROW_ON_ERROR),
             'demo.php' => "<?php\necho \$name;\n",
         ]);
 
@@ -304,7 +304,7 @@ final class IdeRtlLocaleTest extends TestCase
     {
         \putenv('PATH=/nonexistent');
         $project = new TempProject([
-            '.porta.json' => \json_encode(['settings' => ['language' => 'he']]),
+            '.porta.json' => \json_encode(['settings' => ['language' => 'he']], \JSON_THROW_ON_ERROR),
             'demo.php' => "<?php\necho \$name;\n",
         ]);
 
@@ -353,7 +353,7 @@ final class IdeRtlLocaleTest extends TestCase
     {
         \putenv('PATH=/nonexistent');
         $project = new TempProject([
-            '.porta.json' => \json_encode(['settings' => ['language' => 'he']]),
+            '.porta.json' => \json_encode(['settings' => ['language' => 'he']], \JSON_THROW_ON_ERROR),
             'demo.php' => "<?php\n",
         ]);
 
@@ -391,7 +391,7 @@ final class IdeRtlLocaleTest extends TestCase
     {
         \putenv('PATH=/nonexistent');
         $project = new TempProject([
-            '.porta.json' => \json_encode(['settings' => ['language' => 'he']]),
+            '.porta.json' => \json_encode(['settings' => ['language' => 'he']], \JSON_THROW_ON_ERROR),
             'demo.php' => "<?php\n\nnamespace App;\n\n// a comment long enough to reach the box\nfinal class Demo {}\n",
         ]);
 
@@ -439,7 +439,7 @@ final class IdeRtlLocaleTest extends TestCase
     {
         \putenv('PATH=/nonexistent');
         $project = new TempProject([
-            '.porta.json' => \json_encode(['settings' => ['language' => 'he', 'theme' => 'dark']]),
+            '.porta.json' => \json_encode(['settings' => ['language' => 'he', 'theme' => 'dark']], \JSON_THROW_ON_ERROR),
             'demo.php' => "<?php\n",
         ]);
 
@@ -492,7 +492,7 @@ final class IdeRtlLocaleTest extends TestCase
     {
         \putenv('PATH=/nonexistent');
         $project = new TempProject([
-            '.porta.json' => \json_encode(['settings' => ['language' => 'he']]),
+            '.porta.json' => \json_encode(['settings' => ['language' => 'he']], \JSON_THROW_ON_ERROR),
             'demo.php' => "<?php\n",
         ]);
 
@@ -534,7 +534,7 @@ final class IdeRtlLocaleTest extends TestCase
     {
         \putenv('PATH=/nonexistent');
         $project = new TempProject([
-            '.porta.json' => \json_encode(['settings' => ['language' => 'he', 'theme' => 'dark']]),
+            '.porta.json' => \json_encode(['settings' => ['language' => 'he', 'theme' => 'dark']], \JSON_THROW_ON_ERROR),
             'demo.php' => "<?php\n",
         ]);
 
@@ -588,7 +588,7 @@ final class IdeRtlLocaleTest extends TestCase
         // executed, just never together.
         \putenv('PATH=/nonexistent');
         $project = new TempProject([
-            '.porta.json' => \json_encode(['settings' => ['language' => 'he']]),
+            '.porta.json' => \json_encode(['settings' => ['language' => 'he']], \JSON_THROW_ON_ERROR),
             'demo.php' => "<?php\necho \$name;\n",
         ]);
 
@@ -644,7 +644,7 @@ final class IdeRtlLocaleTest extends TestCase
         // testRtlClickOnAMenuTitleOpensThatMenu()} is the one that bites.
         \putenv('PATH=/nonexistent');
         $project = new TempProject([
-            '.porta.json' => \json_encode(['settings' => ['language' => 'he']]),
+            '.porta.json' => \json_encode(['settings' => ['language' => 'he']], \JSON_THROW_ON_ERROR),
             'A.php' => "<?php\n",
             'B.php' => "<?php\n",
         ]);
@@ -688,7 +688,7 @@ final class IdeRtlLocaleTest extends TestCase
     {
         \putenv('PATH=/nonexistent');
         $project = new TempProject([
-            '.porta.json' => \json_encode(['settings' => ['language' => 'he']]),
+            '.porta.json' => \json_encode(['settings' => ['language' => 'he']], \JSON_THROW_ON_ERROR),
             'src/keep.php' => "<?php\n",
             'move.php' => "<?php\n",
         ]);
@@ -754,7 +754,7 @@ final class IdeRtlLocaleTest extends TestCase
     {
         \putenv('PATH=/nonexistent');
         $project = new TempProject([
-            '.porta.json' => \json_encode(['settings' => ['language' => 'he']]),
+            '.porta.json' => \json_encode(['settings' => ['language' => 'he']], \JSON_THROW_ON_ERROR),
             'A.php' => "<?php\n",
         ]);
 
@@ -786,7 +786,7 @@ final class IdeRtlLocaleTest extends TestCase
     {
         \putenv('PATH=/nonexistent');
         $project = new TempProject([
-            '.porta.json' => \json_encode(['settings' => ['language' => 'he']]),
+            '.porta.json' => \json_encode(['settings' => ['language' => 'he']], \JSON_THROW_ON_ERROR),
             'A.php' => "<?php\n",
         ]);
 
@@ -836,7 +836,7 @@ final class IdeRtlLocaleTest extends TestCase
     {
         \putenv('PATH=/nonexistent');
         $project = new TempProject([
-            '.porta.json' => \json_encode(['settings' => ['language' => 'he']]),
+            '.porta.json' => \json_encode(['settings' => ['language' => 'he']], \JSON_THROW_ON_ERROR),
             'a.php' => "<?php\n",
         ]);
         $picked = null;

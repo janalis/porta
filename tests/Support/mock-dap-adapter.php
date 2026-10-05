@@ -27,8 +27,8 @@ declare(strict_types=1);
  *  - disconnect → response, then exit.
  */
 
-$in = fopen('php://stdin', 'rb');
-$out = fopen('php://stdout', 'wb');
+$in = \STDIN;
+$out = \STDOUT;
 
 require __DIR__.'/lsp-stub.php';
 fwrite(STDERR, "mock-dap-adapter started\n");
