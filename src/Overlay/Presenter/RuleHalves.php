@@ -15,6 +15,7 @@ use Porta\Ui\Role;
 use Porta\Ui\ScreenDensity;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\MenuOverlay;
+use Porta\Widget\Render\RowBleed;
 use Porta\Widget\TabBarWidget;
 use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -30,7 +31,9 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
  * ({@see \Porta\Widget\Render\RowBleed}), drawn into a line instead. A
  * blank cell on nothing takes it too: the padding over a view in a window. And
  * where the side tab strip's own `│` meets the rule, the rule turns into it:
- * `┬` over it, `┴` under it.
+ * `┬` over it, `┴` under it. Where the edge row holds a bar's half instead of
+ * a rule ({@see \Porta\Widget\EdgeRuleWidget}), the cell keeps the bar's
+ * half and takes the shaded row's as the other: the bar's colour behind it.
  *
  * Only the rows that touch a workspace rule are looked at: the first and last
  * rows of the editor's tab strip and of each view's first sidebar widget (the
@@ -107,11 +110,12 @@ final readonly class RuleHalves
             }
         }
         $floating = $this->floating->regions();
-        $spans = self::spans($lines, $rects, $floating, $this->tui->logicalColumn(...), $this->styles->of(Role::Rule));
+        $bar = $this->styles->of(Role::HeaderBar);
+        $spans = self::spans($lines, $rects, $floating, $this->tui->logicalColumn(...), $this->styles->of(Role::Rule), $bar);
         // The tab strip opens a pane divider beside a shaded tab.
         $strip = $this->renderer->getWidgetRect($this->tabBar);
         if (null !== $strip) {
-            \array_push($spans, ...self::openings($lines, $strip, $floating, $this->tui->logicalColumn(...), $this->styles->of(Role::Rule)));
+            \array_push($spans, ...self::openings($lines, $strip, $floating, $this->tui->logicalColumn(...), $this->styles->of(Role::Rule), $bar));
         }
 
         return [] === $spans ? $lines : MenuOverlay::apply($lines, $spans, AnsiUtils::visibleWidth($lines[0]));
@@ -128,18 +132,20 @@ final readonly class RuleHalves
      * @param list<string>            $lines
      * @param list<DropdownRegion>    $floating
      * @param \Closure(int, int): int $logical a drawn column on a row → the column the widgets laid out
+     * @param ?Style                  $bar     the bars' style, whose half an edge row may hold instead of a rule
      *
      * @return list<array{row: int, col: int, width: int, segment: string}>
      */
-    public static function openings(array $lines, WidgetRect $strip, array $floating, \Closure $logical, Style $rule): array
+    public static function openings(array $lines, WidgetRect $strip, array $floating, \Closure $logical, Style $rule, ?Style $bar = null): array
     {
         $tint = self::state(self::lead($rule->apply(Glyphs::FRAME_HORIZONTAL)))['fg'];
+        $barTint = self::barTint($bar);
         // A rule, its joins, or the divider itself running on past the strip.
         $joins = [Glyphs::FRAME_HORIZONTAL, Glyphs::PANE_DIVIDER, Glyphs::RULE_DOWN, Glyphs::RULE_UP, Glyphs::MODAL_TEE_LEFT, Glyphs::MODAL_TEE_RIGHT, Glyphs::RULE_CROSS];
         $glyph = static fn (int $row, int $col): string => \array_key_exists($row, $lines) ? AnsiUtils::stripAnsiCodes(AnsiText::columnsFrom($lines[$row], $col, 1)) : '';
         $halves = [Glyphs::HALF_UPPER, Glyphs::HALF_LOWER, Glyphs::HALF_BOTH];
         $spans = [];
-        /** @var array<string, array{row: int, col: int, above?: string, below?: string}> $beside the cells over and under an opened one, and the tab cells whose halves they take */
+        /** @var array<string, array{row: int, col: int, above?: string, below?: string, bar?: string}> $beside the cells over and under an opened one, the tab cells whose halves they take, and the bar's colour where it holds a bar's half */
         $beside = [];
         for ($row = $strip->row; $row < ($strip->row + $strip->rows) && \array_key_exists($row, $lines); ++$row) {
             $drawn = \array_filter(
@@ -164,16 +170,27 @@ final readonly class RuleHalves
                 $spans[] = ['row' => $row, 'col' => $side, 'width' => 1, 'segment' => self::lead($cell)." \x1b[0m"];
                 foreach ([[$row - 1, 'below'], [$row + 1, 'above']] as [$at, $whose]) {
                     $join = AnsiText::columnsFrom($lines[$at] ?? '', $side, 1);
-                    if (!\in_array($glyph($at, $side), $joins, strict: true) || $tint !== self::state(self::lead($join))['fg']) {
+                    $onBar = self::isBarHalf($join, $barTint);
+                    if (!$onBar && (!\in_array($glyph($at, $side), $joins, strict: true) || $tint !== self::state(self::lead($join))['fg'])) {
                         continue;
                     }
                     $beside["{$at}:{$side}"] ??= ['row' => $at, 'col' => $side];
                     $beside["{$at}:{$side}"][$whose] = $cell;
+                    if ($onBar) {
+                        $beside["{$at}:{$side}"]['bar'] = (string) $barTint;
+                    }
                 }
             }
         }
         foreach ($beside as $cell) {
-            $spans[] = ['row' => $cell['row'], 'col' => $cell['col'], 'width' => 1, 'segment' => self::between($cell['above'] ?? null, $cell['below'] ?? null)];
+            $segment = match (true) {
+                !\array_key_exists('bar', $cell) => self::between($cell['above'] ?? null, $cell['below'] ?? null),
+                \array_key_exists('below', $cell) => self::onBar($cell['below'], Glyphs::HALF_LOWER, $cell['bar']),
+                default => self::onBar($cell['above'] ?? '', Glyphs::HALF_UPPER, $cell['bar']),
+            };
+            if (null !== $segment) {
+                $spans[] = ['row' => $cell['row'], 'col' => $cell['col'], 'width' => 1, 'segment' => $segment];
+            }
         }
 
         return $spans;
@@ -187,13 +204,15 @@ final readonly class RuleHalves
      * @param list<DropdownRegion>       $floating the surfaces over the panes
      * @param \Closure(int, int): int    $logical  a drawn column on a row → the column the widgets laid out
      * @param Style                      $rule     the rules' style: only a `─` in its tint is one
+     * @param ?Style                     $bar      the bars' style, whose half an edge row may hold instead of a rule
      *
      * @return list<array{row: int, col: int, width: int, segment: string}>
      */
-    public static function spans(array $lines, array $rects, array $floating, \Closure $logical, Style $rule): array
+    public static function spans(array $lines, array $rects, array $floating, \Closure $logical, Style $rule, ?Style $bar = null): array
     {
         $surface = static fn (int $row, int $col): array => self::surfaces($floating, $row, $col);
         $tint = self::state(self::lead($rule->apply(Glyphs::FRAME_HORIZONTAL)))['fg'];
+        $barTint = self::barTint($bar);
         $spans = [];
         foreach ($rects as $rect) {
             $edges = [
@@ -215,11 +234,13 @@ final readonly class RuleHalves
                     $state = self::state(self::lead($beside));
                     $glyph = AnsiUtils::stripAnsiCodes($beside);
                     $isRule = Glyphs::FRAME_HORIZONTAL === $glyph && $tint === $state['fg'];
-                    if (!$isRule && (' ' !== $glyph || null !== $state['bg'] || $state['reverse'])) {
+                    $onBar = self::isBarHalf($beside, $barTint);
+                    if (!$isRule && !$onBar && (' ' !== $glyph || null !== $state['bg'] || $state['reverse'])) {
                         continue;
                     }
                     $cell = AnsiText::columnsFrom($lines[$edge], $col, 1);
                     $segment = match (true) {
+                        $onBar => self::onBar($cell, $half, (string) $barTint), // a strip's unshaded `│` ends at the bar
                         Glyphs::FRAME_VERTICAL !== AnsiUtils::stripAnsiCodes($cell) => self::half($cell, $half),
                         $isRule => $rule->apply($join),
                         default => null, // a line meeting a blank joins nothing
@@ -250,6 +271,32 @@ final readonly class RuleHalves
             null !== $below => (string) self::half($below, Glyphs::HALF_LOWER),
             default => (string) self::half((string) $above, Glyphs::HALF_UPPER),
         };
+    }
+
+    /**
+     * $cell's shade as $half's colour on the bar's ($bar, a colour as
+     * {@see state()} reads one): the bar's half, and the shaded row's beside
+     * it in the same cell. Null for a cell with no shade — it keeps the bar's.
+     */
+    private static function onBar(string $cell, string $half, string $bar): ?string
+    {
+        $shade = self::state(self::lead($cell))['bg'];
+
+        return null === $shade ? null : "\x1b[{$shade};".self::asBackground($bar)."m{$half}\x1b[0m";
+    }
+
+    /** The colour of a bar's half as {@see state()} reads it, or null for a bar with no shade. */
+    private static function barTint(?Style $bar): ?string
+    {
+        return null === $bar ? null : self::state(self::lead(RowBleed::under(1, $bar)))['fg'];
+    }
+
+    /** Whether $cell holds a bar's half: `▀` or `▄` in the bar's colour, on nothing. */
+    private static function isBarHalf(string $cell, ?string $barTint): bool
+    {
+        $state = self::state(self::lead($cell));
+
+        return null !== $barTint && $barTint === $state['fg'] && null === $state['bg'] && \in_array(AnsiUtils::stripAnsiCodes($cell), [Glyphs::HALF_UPPER, Glyphs::HALF_LOWER], strict: true);
     }
 
     /** A colour read as a foreground ({@see state()}) as the background of the same colour. */

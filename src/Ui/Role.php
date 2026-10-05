@@ -29,7 +29,8 @@ enum Role
     // resolveElement('selected')); always-focused modal surfaces (menus,
     // editor overlays, go-to-file, the find modal) resolve the row shade
     // through {@see \Porta\Widget\Render\ModalRowStyle} (Selected → SelectedRow,
-    // Hovered → RowHighlightBg, else PopupRow). Themes MUST keep
+    // Hovered → RowHighlightBg, else PopupRow; a menu's rows and frame wear
+    // HeaderBar instead, {@see \Porta\Workbench\Menu\MenuPanel::PANEL}). Themes MUST keep
     // `.list::selected:focus` ≡ SelectedRow and `.list::selected` ≡
     // SelectedRowUnfocused so the two families render identically. A third
     // family, the Welcome screen's cards, joins `.card::selected(:focus)`

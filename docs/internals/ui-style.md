@@ -156,6 +156,13 @@ it, and `$tees` puts `├` `┤` in that role at the ends, joining the rule to t
 rails it cuts across; the legend yields before a tee does. A heavy menu frame
 keeps its own `┣━┫` (`PopupFrame::tee`): a light run cannot meet a heavy tee.
 
+A popup is one solid panel: `PopupFrame` draws its borders, tees and the pad
+past a short row on its panel's shade, the accent over it, so a menu, the
+completion list or a tooltip never shows the terminal's background between its
+border and its rows. The panel is `PopupRow`, except a menu's: the app menu's
+dropdown and the context menu wear `HeaderBar` (`MenuPanel::PANEL`), so a
+dropdown reads as the bar it drops from.
+
 ## Tab strips: pills from 30 rows
 
 Every horizontal strip is `TabStripRenderer::render()`. At
@@ -168,7 +175,9 @@ edge (`StripEdge`), where the baseline is on top. The pill's other half is the
 frame's: `Overlay/Presenter/RuleHalves`, a pass after `FrameJoins`, turns each
 `─` of the workspace rule touching a shaded cell of the strip's edge row into
 that cell's `▄` or `▀` — or a blank on nothing, such as the padding over a view
-in a window, on the same surface as the row. The dock's strip is its own top edge (its resize grab
+in a window, on the same surface as the row. Where the edge row holds a bar's
+half instead (see the workspace edges), the cell keeps the bar's half and takes
+the pill's as the other, on the bar's colour. The dock's strip is its own top edge (its resize grab
 is a rule), so it is `EDGED_ROWS` (3) tall and holds both halves itself.
 Pills stand side by side with no margin, so two shaded ones are one run of
 shade. Beside a shaded tab, a pane divider opens (`RuleHalves::openings`): its
@@ -187,8 +196,8 @@ The editor strip at the side (`TabBarWidget::renderVertical`) is spaced like
 the file tree on a roomy screen: a tab is one row, a blank gap between every
 two holding the halves of the shaded tabs beside it, the pill out to the outer
 edge; the inner edge is a rule down the strip, which `RuleHalves` joins into
-the workspace rules as `┬` `┴`, and the first and last tabs' outer halves land
-in those rules too. Beside a shaded tab — the shown one, the hovered one — the
+the workspace rules as `┬` `┴` — or ends at a bar's half, which joins nothing —
+and the first and last tabs' outer halves land in those edge rows too. Beside a shaded tab — the shown one, the hovered one — the
 rule opens: its pill and its halves run across the rule's column, a blank of
 the pill's, so the tab and the editor read as one surface while its name and
 `×` stay in their columns. A gap owns no tab. The inner edge is a logical end: under
@@ -254,14 +263,19 @@ settings groups' legends and the git history's Files heading. Only an idle `│`
 joins (the hovered `┃` is a grab), a cell under a floating surface is left
 alone, and a mirrored divider is found where it is drawn.
 
-## Workspace edges: a rule under the menu, one above the status bar
+## Workspace edges: the bars' halves
 
-On a roomy screen `Widget/EdgeRuleWidget` rules the workspace off under the
-menu bar and above the status bar; on a compact one it draws nothing and takes
-no row. Each is its own widget (`WorkspaceLayout::$topRule`, `$bottomRule`), so
+On a roomy screen `Widget/EdgeRuleWidget` gives the workspace an edge row under
+the menu bar and one above the status bar, holding that bar's half
+(`RowBleed`): `▀` in the `HeaderBar` shade under the menu, `▄` over the status
+bar, so each bar reads half a row taller and the panes start where its shade
+stops. A theme whose bars have no shade (monochrome) gets a `─` rule there
+instead. A divider ends at a bar's half (no `┬`/`┴` join), and a shaded strip
+cell beside it takes its own half on the bar's colour (`RuleHalves`). On a
+compact screen the edge rows draw nothing and take no row. Each is its own widget (`WorkspaceLayout::$topRule`, `$bottomRule`), so
 the bars keep their one row, and `MenuOverlayPanes`' chrome list makes them
 overlay hosts under every view: the app menu's dropdown hangs from its bar
-across the top rule. They take rows `main` had, so the pane union the modals
+across the top edge row. They take rows `main` had, so the pane union the modals
 lay out against is unchanged. `LayoutController::chromeRows()` counts them with
 the strips' lids for the panel ceilings.
 

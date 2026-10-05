@@ -22,6 +22,12 @@ use Symfony\Component\Tui\Style\Style;
  */
 final class MenuPanel
 {
+    /**
+     * The shade a menu's rows and frame wear: the menu bar's, so a dropdown
+     * reads as the bar it drops from, and the context menu as the same panel.
+     */
+    public const Role PANEL = Role::HeaderBar;
+
     /** Never narrower than this, so short menus still read as a box. */
     private const int MIN_WIDTH = 8;
 
@@ -238,9 +244,9 @@ final class MenuPanel
         // monochrome draws as an underline — a disabled item looked hovered.
         // Strikethrough and dim are attributes, so they survive --no-ansi.
         $style = match (true) {
-            MenuAvailability::Disabled === $availability => $styles->merge(Role::PopupRow, Role::Faint)->withDim(),
+            MenuAvailability::Disabled === $availability => $styles->merge(Role::PopupRow, self::PANEL, Role::Faint)->withDim(),
             MenuSelection::Selected === $selection => $styles->of(Role::SelectedRow),
-            default => $styles->of(Role::PopupRow),
+            default => $styles->merge(Role::PopupRow, self::PANEL),
         };
         if (MenuAvailability::Disabled === $availability) {
             $label = $style->withStrikethrough()->apply($label).$style->getAnsiRestore();

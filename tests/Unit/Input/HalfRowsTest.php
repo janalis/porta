@@ -16,9 +16,12 @@ use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\Services;
 use Porta\Ui\BidiTui;
+use Porta\Ui\Theme\MonochromeTheme;
+use Porta\Ui\Theme\Styles;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\Support\TabBarPosition;
 use Porta\Widget\TabBarWidget;
+use Porta\Workbench\ChromeInvalidator;
 use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Render\WidgetRect;
@@ -129,7 +132,7 @@ final class HalfRowsTest extends TestCase
         $col = $tabs->col + 3;
 
         $this->assertSame($tabs->row, $this->at($col, $tabs->row - 1, lower: true)->row, 'the lower half of the rule over the strip');
-        $this->assertSame($tabs->row - 1, $this->at($col, $tabs->row - 1, lower: false)->row, 'not its upper half');
+        $this->assertSame($tabs->row - 2, $this->at($col, $tabs->row - 1, lower: false)->row, 'its upper half the menu bar\'s, which it holds');
         $this->assertSame($tabs->row + 2, $this->at($col, $tabs->row + 2, lower: false)->row, 'the row under the baseline is not the strip\'s: the baseline is');
         $this->assertSame($tabs->row + 1, $this->at($col, $tabs->row + 1, lower: true)->row);
     }
@@ -145,7 +148,7 @@ final class HalfRowsTest extends TestCase
         $below = $tabs->row + $tabs->rows;
 
         $this->assertSame($below - 1, $this->at($col, $below, lower: false)->row, 'the upper half of the rule under the strip');
-        $this->assertSame($below, $this->at($col, $below, lower: true)->row, 'not its lower half');
+        $this->assertSame($below + 1, $this->at($col, $below, lower: true)->row, 'its lower half the status bar\'s, which it holds');
         $this->assertSame($tabs->row - 1, $this->at($col, $tabs->row - 1, lower: true)->row, 'over it the baseline is its own: the row above is not the strip\'s');
     }
 
@@ -225,5 +228,34 @@ final class HalfRowsTest extends TestCase
 
         $this->assertSame($tree->row + 3, $this->at($tree->col + 3, $tree->row + 3, lower: true)->row, 'the menu\'s row, not the tree entry under its gap');
         $this->assertSame($tree->row + 3, $this->at($tree->col + 3, $tree->row + 3, lower: false)->row);
+    }
+
+    /**
+     * The edge rows hold their bars' halves: the upper half of the row under
+     * the menu bar is the bar's, the lower half of the one over the status
+     * bar too — the other halves are not. A theme whose bars have no shade
+     * draws a rule there, which no bar holds.
+     */
+    public function testTheEdgeRowsHalvesAreTheBars(): void
+    {
+        $this->pixelsOn();
+        $this->frame();
+        $layout = Services::resolve($this->ide, WorkspaceLayout::class);
+        $top = $this->rect($layout->topRule)->row;
+        $bottom = $this->rect($layout->bottomRule)->row;
+        $col = $this->rect($layout->topRule)->col + 1;
+
+        $this->assertSame($top - 1, $this->at($col, $top, lower: false)->row, 'the menu bar\'s half');
+        $this->assertSame($bottom + 1, $this->at($col, $bottom, lower: true)->row, 'the status bar\'s');
+        $this->assertSame($bottom, $this->at($col, $bottom, lower: false)->row, 'the upper half over the status bar is no bar\'s');
+
+        // The theme every widget shares, as a theme switch swaps it.
+        $styles = Probe::get($layout->topRule, 'styles');
+        $this->assertInstanceOf(Styles::class, $styles);
+        $styles->switchTo(MonochromeTheme::definition());
+        Services::resolve($this->ide, ChromeInvalidator::class)->invalidateAll(); // the switch's sweep, which the edge rows are not in
+        $this->frame();
+        $this->assertSame($top, $this->at($col, $top, lower: false)->row, 'a rule holds no bar\'s half');
+        $this->assertSame($bottom, $this->at($col, $bottom, lower: true)->row);
     }
 }

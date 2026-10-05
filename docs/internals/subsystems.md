@@ -414,7 +414,9 @@ Hit-testing uses the renderer's per-widget rects via `Input/HitTester`, whose
 **Half rows.** On a roomy screen a list's blank gap holds the halves of the
 rows beside it, and a workspace rule the outer half of a tab strip's or the
 settings nav's edge row (`RowBleed`, `RuleHalves`), so a pointer there is over
-whichever item that half is drawn for. `Input/PixelPointer` asks the terminal
+whichever item that half is drawn for. The edge rows' bar halves are the bars':
+the upper half of the row under the menu bar is the menu bar's, the lower half
+of the one over the status bar the status bar's. `Input/PixelPointer` asks the terminal
 for pixel reports — DECRQM for mode 1016 and `CSI 16 t` for the cell size,
 deferred with the graphics probe, its listener at priority 2100 so it reads the
 size reply the graphics probe swallows — and turns the mode on only once both

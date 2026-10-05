@@ -10,6 +10,7 @@ use Porta\Overlay\Presenter\RuleHalves;
 use Porta\Overlay\Region\DropdownRegion;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
+use Porta\Widget\Render\RowBleed;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\WidgetRect;
 
@@ -39,7 +40,7 @@ final class RuleHalvesTest extends TestCase
     private static function spans(array $lines, array $rects, array $floating = [], ?\Closure $logical = null): array
     {
         $spans = [];
-        foreach (RuleHalves::spans($lines, $rects, $floating, $logical ?? static fn (int $row, int $col): int => $col, Styles::dark()->of(Role::Rule)) as $span) {
+        foreach (RuleHalves::spans($lines, $rects, $floating, $logical ?? static fn (int $row, int $col): int => $col, Styles::dark()->of(Role::Rule), Styles::dark()->of(Role::HeaderBar)) as $span) {
             self::assertSame(1, $span['width']);
             $spans["{$span['row']}:{$span['col']}"] = $span['segment'];
         }
@@ -239,7 +240,7 @@ final class RuleHalvesTest extends TestCase
     private static function openings(array $lines, WidgetRect $strip, array $floating = []): array
     {
         $spans = [];
-        foreach (RuleHalves::openings($lines, $strip, $floating, static fn (int $row, int $col): int => $col, Styles::dark()->of(Role::Rule)) as $span) {
+        foreach (RuleHalves::openings($lines, $strip, $floating, static fn (int $row, int $col): int => $col, Styles::dark()->of(Role::Rule), Styles::dark()->of(Role::HeaderBar)) as $span) {
             self::assertSame(1, $span['width']);
             $spans["{$span['row']}:{$span['col']}"] = $span['segment'];
         }
@@ -316,5 +317,46 @@ final class RuleHalvesTest extends TestCase
         $spans = self::openings([$rule->apply('──────'), $rule->apply('│')."\x1b[48;5;31mxyz\x1b[49m"], new WidgetRect(1, 1, 3, 1));
 
         $this->assertSame("\x1b[38;5;31m▄\x1b[39m", $spans['0:0'] ?? null);
+    }
+
+    /**
+     * Where the edge row holds a bar's half, a shaded cell beside it takes the
+     * other half on the bar's colour: under the menu bar `▄` in the cell's
+     * shade on the bar's, over the status bar `▀`. A cell with no shade leaves
+     * the bar's half alone, and the strip's own `│` ends at the bar.
+     */
+    public function testAShadedCellBesideABarsHalfSharesTheCell(): void
+    {
+        $bar = Styles::dark()->of(Role::HeaderBar);
+        $lines = [RowBleed::under(8, $bar), '  '.self::SHADED.' │', RowBleed::over(8, $bar)];
+
+        $spans = self::spans($lines, [new WidgetRect(1, 0, 8, 1)]);
+
+        $upper = "\x1b[38;5;31;48;5;237m▄\x1b[0m";
+        $lower = "\x1b[38;5;31;48;5;237m▀\x1b[0m";
+        $this->assertSame(
+            ['0:2' => $upper, '0:3' => $upper, '0:4' => $upper, '0:5' => $upper, '2:2' => $lower, '2:3' => $lower, '2:4' => $lower, '2:5' => $lower],
+            $spans,
+            'the four shaded cells, the bar behind them; neither the blanks nor the `│`',
+        );
+        $this->assertSame(
+            [],
+            self::spans([Styles::dark()->of(Role::TabAccent)->apply(\str_repeat('▀', times: 8)), '  '.self::SHADED.'  '], [new WidgetRect(1, 0, 8, 1)]),
+            'a half in another colour is no bar\'s',
+        );
+        $this->assertSame([], self::spans(["\x1b[38;5;237;48;5;31m▀▀▀▀▀▀▀▀\x1b[0m", '  '.self::SHADED.'  '], [new WidgetRect(1, 0, 8, 1)]), 'nor one already on a shade');
+    }
+
+    /** The divider beside a shaded tab opens into the bar's half as it does into a rule. */
+    public function testADividerOpensIntoABarsHalf(): void
+    {
+        $bar = Styles::dark()->of(Role::HeaderBar);
+        $rule = Styles::dark()->of(Role::Rule);
+        $lines = [RowBleed::under(8, $bar), 'ab'.$rule->apply('│')."\x1b[48;5;31mxyz  \x1b[49m", RowBleed::over(8, $bar)];
+
+        $spans = self::openings($lines, new WidgetRect(1, 3, 5, 1));
+
+        $this->assertSame("\x1b[38;5;31;48;5;237m▄\x1b[0m", $spans['0:2'], 'over it the tab\'s upper half on the bar');
+        $this->assertSame("\x1b[38;5;31;48;5;237m▀\x1b[0m", $spans['2:2'], 'under it the lower');
     }
 }

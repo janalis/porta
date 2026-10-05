@@ -58,6 +58,7 @@ final class MenuOverlayControllerTest extends TestCase
         $rendered = \implode("\n", $pane->render(new RenderContext(100, 24)));
         // Stripped: the item's access letter is underlined, which splits the word.
         $this->assertStringContainsString('Copy', AnsiUtils::stripAnsiCodes($rendered), 'the framed dropdown composited onto the pane');
+        $this->assertStringContainsString("\x1b[48;5;237m┏", $rendered, 'its frame on the menu bar\'s shade, as its rows');
     }
 
     /**

@@ -23,6 +23,7 @@ use Porta\Widget\StatusBarWidget;
 use Porta\Widget\Support\TabBarPosition;
 use Porta\Widget\TabBarWidget;
 use Porta\Widget\TerminalPanelWidget;
+use Porta\Widget\WorkspaceEdge;
 use Symfony\Component\Tui\Style\Direction;
 use Symfony\Component\Tui\Style\Style;
 use Symfony\Component\Tui\Tui;
@@ -97,8 +98,8 @@ final class WorkspaceLayout
         $this->editorPane->add($tabBar)->add($this->editorBody);
 
         $this->separator = LayoutWidgets::separator($this->styles, 'separator');
-        $this->topRule = LayoutWidgets::edgeRule($this->styles, $density, 'top-rule');
-        $this->bottomRule = LayoutWidgets::edgeRule($this->styles, $density, 'bottom-rule');
+        $this->topRule = LayoutWidgets::edgeRule($this->styles, $density, WorkspaceEdge::Top, 'top-rule');
+        $this->bottomRule = LayoutWidgets::edgeRule($this->styles, $density, WorkspaceEdge::Bottom, 'bottom-rule');
         $this->main = LayoutWidgets::container('main', new Style(direction: Direction::Horizontal, gap: 0));
         $this->windowFrame = LayoutWidgets::container('window-frame', new Style());
         $this->windowHost = LayoutWidgets::container('window-host', new Style(hidden: true));

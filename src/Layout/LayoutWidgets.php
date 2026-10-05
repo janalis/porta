@@ -8,6 +8,7 @@ use Porta\Ui\ScreenDensity;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\EdgeRuleWidget;
 use Porta\Widget\SeparatorWidget;
+use Porta\Widget\WorkspaceEdge;
 use Symfony\Component\Tui\Style\Style;
 use Symfony\Component\Tui\Widget\ContainerWidget;
 
@@ -29,10 +30,10 @@ final class LayoutWidgets
         return $container;
     }
 
-    /** A rule across the workspace's edge, as tall as the screen affords: one row, or none. */
-    public static function edgeRule(Styles $styles, ScreenDensity $density, string $id): EdgeRuleWidget
+    /** The row across the workspace's $edge, as tall as the screen affords: one row, or none. */
+    public static function edgeRule(Styles $styles, ScreenDensity $density, WorkspaceEdge $edge, string $id): EdgeRuleWidget
     {
-        $rule = new EdgeRuleWidget($density, $styles);
+        $rule = new EdgeRuleWidget($density, $edge, $styles);
         $rule->setId($id)->setStyle(new Style(flex: 0));
 
         return $rule;

@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Widget\Render;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Ui\Glyphs;
+use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\FieldState;
 use Porta\Widget\Render\PopupFrame;
@@ -88,6 +89,7 @@ final class PopupFrameTest extends TestCase
     public function testZeroInnerWidthAddsNoFillerToTheBottomBorder(): void
     {
         $this->assertSame('╰╯', AnsiUtils::stripAnsiCodes(PopupFrame::bottom(0, Styles::dark())));
+        $this->assertSame('├┤', AnsiUtils::stripAnsiCodes(PopupFrame::tee(0, Styles::dark())), 'nor to a tee');
     }
 
     /** A heavy frame's separators are heavy tees, joining the frame they cut across. */
@@ -159,5 +161,46 @@ final class PopupFrameTest extends TestCase
             AnsiUtils::stripAnsiCodes(PopupFrame::topOpenAt(10, Styles::dark(), FieldState::Focused, -1, width: 4, mark: Glyphs::SCROLL_UP)),
             'and a closed border keeps it too',
         );
+    }
+
+    /**
+     * The frame wears the rows' shade under its accent, so a popup is one
+     * solid panel — not a border, tee or pad cell left on the terminal's own
+     * background between the lighter rows.
+     */
+    public function testTheFrameIsPartOfThePanel(): void
+    {
+        $styles = Styles::dark();
+        $frame = $styles->merge(Role::PopupRow, Role::TabAccent);
+        $edge = $frame->apply('│');
+
+        $this->assertSame($frame->apply('╭────╮'), PopupFrame::top(4, $styles));
+        $this->assertSame($frame->apply('╰────╯'), PopupFrame::bottom(4, $styles));
+        $this->assertSame($frame->apply('├────┤'), PopupFrame::tee(4, $styles));
+        $this->assertSame($edge."\x1b[48;5;236mab    \x1b[49m".$edge, PopupFrame::rail('ab', 6, $styles), 'the edges, and the pad past a short row — the shade alone, no colour of the row\'s');
+        $this->assertSame(
+            $frame->apply('╭─╯').$styles->of(Role::PopupRow)->apply('  ').$frame->apply('╰─╮'),
+            PopupFrame::topOpenAt(6, $styles, FieldState::Idle, 2, 4),
+            'an opened border too, around the title\'s gap',
+        );
+    }
+
+    /** A menu's frame wears the shade it is given — the menu bar's — on every piece. */
+    public function testAMenusFrameWearsItsPanel(): void
+    {
+        $styles = Styles::dark();
+        $frame = $styles->merge(Role::HeaderBar, Role::TabAccent);
+        $rows = PopupFrame::wrapMenu([['segment' => 'ab', 'separator' => false], ['segment' => '', 'separator' => true]], 4, $styles, panel: Role::HeaderBar);
+
+        $this->assertSame(
+            [$frame->apply('╭────╮'), $frame->apply('│')."\x1b[48;5;237mab  \x1b[49m".$frame->apply('│'), $frame->apply('├────┤'), $frame->apply('╰────╯')],
+            $rows,
+        );
+        $this->assertSame(
+            $frame->apply('╭─╯').$styles->of(Role::HeaderBar)->apply('  ').$frame->apply('╰─╮'),
+            PopupFrame::wrapMenu([], 6, $styles, opening: ['offset' => 2, 'width' => 4], panel: Role::HeaderBar)[0],
+            'and an opened border, the title\'s gap too',
+        );
+        $this->assertSame($frame->apply('╭────╮'), PopupFrame::topOpenAt(4, $styles, FieldState::Idle, -1, 4, panel: Role::HeaderBar), 'a title it cannot hold closes it, in the same shade');
     }
 }

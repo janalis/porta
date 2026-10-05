@@ -86,9 +86,9 @@ final class IdeResponsiveTest extends TestCase
     }
 
     /**
-     * A roomy screen rules the workspace off under the menu bar and above the
-     * status bar; one row shorter than the threshold, both rules go and the
-     * editor gets their rows back.
+     * A roomy screen gives the workspace an edge row under the menu bar and
+     * one above the status bar, each holding its bar's half; one row shorter
+     * than the threshold, both go and the editor gets their rows back.
      */
     public function testTheEdgeRulesComeAndGoWithTheScreensDensity(): void
     {
@@ -103,12 +103,12 @@ final class IdeResponsiveTest extends TestCase
                     $this->frame($tui);
                     $grid = $this->screenGrid($tui, $terminal);
                     $divider = Services::resolve($ide, Renderer::class)->getWidgetRect($tui->getById('separator'))->col ?? -1;
-                    $this->assertMatchesRegularExpression('/^─+▄[─▄]+$/u', \rtrim($grid[1]), 'the rule under the menu bar, holding the upper half of the shown tab under it');
+                    $this->assertMatchesRegularExpression('/^▀+▄[▀▄]+$/u', \rtrim($grid[1]), 'the row under the menu bar: the bar\'s half, and the shown tab\'s upper half under it');
                     $this->assertSame('▄', \mb_substr($grid[1], $divider, length: 1), 'the divider opens beside the shown first tab: its join is the tab\'s half');
                     $this->assertSame(' ', \mb_substr($grid[2], $divider, length: 1), 'and its cell on the tab\'s row a blank of the tab\'s');
                     $this->assertSame('│', \mb_substr($grid[4], $divider, length: 1), 'running on under the strip');
-                    $this->assertMatchesRegularExpression('/^─+┴─+$/u', \rtrim($grid[28]), 'and the one above the status bar, turning up into it');
-                    $this->assertSame('┴', \mb_substr($grid[28], $divider, length: 1));
+                    $this->assertMatchesRegularExpression('/^▄+$/u', \rtrim($grid[28]), 'and the one above the status bar, its bar\'s half all the way');
+                    $this->assertSame('▄', \mb_substr($grid[28], $divider, length: 1), 'the divider ends at the bar: no join');
                     $roomy = $editorRows($tui, $ide);
 
                     $terminal->simulateResize(100, 29);
@@ -121,7 +121,7 @@ final class IdeResponsiveTest extends TestCase
                         return $editorRows($tui, $ide) > ($roomy - 1);
                     }, what: 'the compact frame');
                     $grid = $this->screenGrid($tui, $terminal);
-                    $this->assertStringNotContainsString('───', $grid[1], 'no rule under the menu bar');
+                    $this->assertStringNotContainsString('▀▀▀', $grid[1], 'no edge row under the menu bar');
                     $this->assertSame($roomy - 1 + 4, $editorRows($tui, $ide), 'one row fewer on screen, yet two rules, the strip\'s baseline and the rule under the navigation bar given back');
                 },
             ],
@@ -131,11 +131,11 @@ final class IdeResponsiveTest extends TestCase
     }
 
     /**
-     * A dropdown over a join is left alone: the File menu hangs across the
-     * top rule and over the divider's ┬, and its own border shows there —
-     * the join comes back when the menu closes. What is pinned is the screen;
-     * its heavy border never reads as a rule, so the skip of covered cells
-     * that also guards it is pinned in FrameJoinsTest, with a light one.
+     * A dropdown over the edge row is left alone: the File menu hangs across
+     * the menu bar's half over the divider, and its own border shows there —
+     * the bar's half comes back when the menu closes. What is pinned is the
+     * screen; the skip of covered cells that also guards a join is pinned in
+     * FrameJoinsTest, with a light border.
      */
     public function testADropdownOverAJoinKeepsItsBorder(): void
     {
@@ -148,11 +148,11 @@ final class IdeResponsiveTest extends TestCase
             $project->path('src/Demo.php'),
             [
                 300 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project, $at, &$divider): void {
-                    // A second tab shown, so the first is at rest and the divider's join stands.
+                    // A second tab shown, so the first is at rest and the divider stays shut under the bar.
                     Services::resolve($ide, BufferService::class)->openFile($project->path('src/Other.php'), OpenFocus::Editor);
                     $this->frame($tui);
                     $divider = Services::resolve($ide, Renderer::class)->getWidgetRect($tui->getById('separator'))->col ?? -1;
-                    $this->assertSame('┬', $at($this->screenGrid($tui, $terminal), $divider));
+                    $this->assertSame('▀', $at($this->screenGrid($tui, $terminal), $divider));
 
                     $tui->handleInput("\x1b[21~"); // F10 arms the bar
                     $tui->handleInput("\r"); // and drops File
@@ -160,14 +160,14 @@ final class IdeResponsiveTest extends TestCase
                 500 => function (Tui $tui, VirtualTerminal $terminal) use ($at, &$divider): void {
                     $this->awaitPainted($tui, $terminal, 'Open Project');
                     $grid = $this->screenGrid($tui, $terminal);
-                    $this->assertSame('━', $at($grid, $divider), 'the dropdown\'s top border, not the join');
+                    $this->assertSame('━', $at($grid, $divider), 'the dropdown\'s top border, not the bar\'s half');
 
                     $tui->handleInput("\x1b");
                     $tui->handleInput("\x1b");
                 },
                 700 => function (Tui $tui, VirtualTerminal $terminal) use ($at, &$divider): void {
-                    $this->await(fn (): bool => '┬' === $at($this->screenGrid($tui, $terminal), $divider), what: 'the join back once the menu closed');
-                    $this->assertSame('┬', $at($this->screenGrid($tui, $terminal), $divider));
+                    $this->await(fn (): bool => '▀' === $at($this->screenGrid($tui, $terminal), $divider), what: 'the bar\'s half back once the menu closed');
+                    $this->assertSame('▀', $at($this->screenGrid($tui, $terminal), $divider));
                 },
             ],
             columns: 100,

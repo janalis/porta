@@ -835,9 +835,9 @@ final class IdeTabsBuffersTest extends TestCase
                         'forty rows: a side tab is a row, as a tree entry is',
                     );
                     $this->assertSame(
-                        '┬',
+                        '▀',
                         \mb_substr($this->screenGrid($tui, $terminal)[$rect->row - 1], $rect->col + $rect->columns - 1, length: 1),
-                        'the strip\'s rule turns the rule above into a join',
+                        'the strip\'s line ends at the menu bar\'s half: no join',
                     );
                     $col = $rect->col + $zone['closeStart'] + 1;
 

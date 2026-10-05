@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Input;
 
 use Porta\Container\AsIdeService;
+use Porta\Layout\WorkspaceLayout;
 use Porta\Overlay\Presenter\RuleHalves;
 use Porta\Overlay\Presenter\ViewWindowPresenter;
 use Porta\Overlay\Region\DropdownRegion;
@@ -27,7 +28,9 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
  * beside a strip's or the settings nav's outer row holds that row's other
  * half ({@see RuleHalves}). So a pointer in a gap's upper half is over the
  * entry above, in its lower half over the one below, and in the lower half of
- * the rule over the tab strip over the strip.
+ * the rule over the tab strip over the strip. The row under the menu bar and
+ * the one over the status bar hold that bar's half
+ * ({@see \Porta\Widget\EdgeRuleWidget}): a pointer there is over the bar.
  *
  * Resolved here, once, by moving the event's row to the item's before any
  * router sees it: every hover and click path stays as it was. Only a pixel
@@ -49,6 +52,7 @@ final readonly class HalfRows
         private ScreenDensity $density,
         private BidiTui $bidi,
         private ViewWindowPresenter $window,
+        private WorkspaceLayout $layout,
     ) {}
 
     /** $mouse in cells, on the row of the item its half belongs to. */
@@ -109,6 +113,23 @@ final readonly class HalfRows
             }
             if (RuleHalves::sameSurface(RuleHalves::surfaces($floating, $mouse->row, $mouse->col), RuleHalves::surfaces($floating, $edge, $mouse->col), $floating, $rect)) {
                 return $mouse->withRow($edge);
+            }
+        }
+
+        return $this->intoBar($mouse, $step);
+    }
+
+    /**
+     * A half the menu bar or the status bar holds in the row beside it: the
+     * upper half of the row under the menu bar, the lower half of the one
+     * over the status bar — that bar's.
+     */
+    private function intoBar(MouseEvent $mouse, int $step): MouseEvent
+    {
+        foreach ([[$this->layout->topRule, -1], [$this->layout->bottomRule, 1]] as [$rule, $toward]) {
+            $rect = $this->renderer->getWidgetRect($rule);
+            if ($step === $toward && $mouse->row === $rect?->row && $rule->holdsBarHalf()) {
+                return $mouse->withRow($mouse->row + $step);
             }
         }
 

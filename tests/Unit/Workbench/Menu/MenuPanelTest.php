@@ -51,6 +51,7 @@ final class MenuPanelTest extends TestCase
         $this->assertStringContainsString("\x1b[2m", $segment, 'SGR dim attribute keeps the state visible without color');
         $this->assertStringContainsString("\x1b[9mSave\x1b[29m", $segment, 'and its label is struck through: "not available", not "dimmer"');
         $this->assertStringNotContainsString("\x1b[48;5;31m", $segment, 'disabled item is not highlighted even when selected');
+        $this->assertStringContainsString("\x1b[48;5;237m", $segment, 'on the menu\'s own shade, as every row');
     }
 
     public function testWidthFitsWidestItemAndHasAFloor(): void
@@ -79,6 +80,7 @@ final class MenuPanelTest extends TestCase
         // The selected row (index 2, Quit) carries the highlight background.
         $this->assertStringContainsString("\x1b[48;5;31m", $segments[2]['segment']);
         $this->assertStringNotContainsString("\x1b[48;5;31m", $segments[0]['segment']);
+        $this->assertStringContainsString("\x1b[48;5;237m", $segments[0]['segment'], 'a plain row wears the menu bar\'s shade');
 
         $plain = AnsiUtils::stripAnsiCodes(\implode("\n", \array_column($segments, 'segment')));
         $this->assertStringContainsString('Save', $plain);

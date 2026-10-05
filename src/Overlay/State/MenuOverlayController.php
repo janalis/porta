@@ -23,6 +23,7 @@ use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\ModalShadow;
 use Porta\Widget\Render\PopupFrame;
 use Porta\Widget\Support\StylesDefault;
+use Porta\Workbench\Menu\MenuPanel;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Tui;
@@ -251,6 +252,7 @@ final class MenuOverlayController implements FloatingRegions
             $opening,
             $first > 0 ? Glyphs::SCROLL_UP : '',
             ($first + $visible) < \count($items) ? Glyphs::SCROLL_DOWN : '',
+            MenuPanel::PANEL,
         );
     }
 
