@@ -77,13 +77,13 @@ final class PresenceSync
     /** Whether this side's beacon is on the board, as far as it knows. */
     private bool $onBoard = false;
 
-    /** @var array<string, array{beacon: Beacon, seen: float}> id => what it said last, and when its beat last moved — the quiet ones too, so going quiet is not forgotten */
+    /** @var array<array-key, array{beacon: Beacon, seen: float}> id => what it said last, and when its beat last moved — the quiet ones too, so going quiet is not forgotten. An id in digits keys as an int. */
     private array $heard = [];
 
-    /** @var array<string, true> the ones in the roster: not quiet for too long */
+    /** @var array<array-key, true> the ones in the roster: not quiet for too long — keyed by id, an int when it is all digits */
     private array $live = [];
 
-    /** @var array<string, string> id => the caret last shown for it */
+    /** @var array<array-key, string> id => the caret last shown for it — an int key when the id is all digits */
     private array $shown = [];
 
     /** Whether the board answered nothing but trouble since its last good read. */
@@ -153,7 +153,7 @@ final class PresenceSync
         }
         $this->timers = [];
         foreach (\array_keys($this->shown) as $id) {
-            $this->hide($id);
+            $this->hide((string) $id);
         }
         $this->answered = false;
         $this->withdraw($this->answered(...));
@@ -236,6 +236,7 @@ final class PresenceSync
             $this->said = null;
         }
         $heard = [];
+        /** @var array<array-key, Beacon> $live keyed by id: an int when the id is all digits */
         $live = [];
         foreach ($beacons as $beacon) {
             if ($this->id === $beacon->id) {
@@ -262,11 +263,11 @@ final class PresenceSync
         }
         $this->heard = $heard;
         foreach (\array_keys(\array_diff_key($this->live, $live)) as $id) {
-            $this->hide($id);
+            $this->hide((string) $id); // an id in digits keys as an int
         }
         $this->live = \array_fill_keys(\array_keys($live), value: true);
         foreach ($live as $id => $beacon) {
-            $this->show($id, $beacon);
+            $this->show((string) $id, $beacon);
         }
         $this->participants->set(self::SOURCE, \array_values(\array_map($this->participant(...), $live)));
     }
@@ -281,7 +282,7 @@ final class PresenceSync
         $this->lost = true;
         $this->said = null;
         foreach (\array_keys($this->shown) as $id) {
-            $this->hide($id);
+            $this->hide((string) $id);
         }
         $this->participants->outOfTouch(self::SOURCE);
     }

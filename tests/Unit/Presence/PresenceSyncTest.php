@@ -147,6 +147,22 @@ final class PresenceSyncTest extends TestCase
         $this->assertSame(['Bo'], $this->roster());
     }
 
+    public function testAnIdInDigitsIsShownAndLeavesLikeAnyOther(): void
+    {
+        // Sixteen hex digits are all decimal one id in two thousand, and a
+        // key in digits is an INT: handed to show(string) and hide(string),
+        // that was a TypeError out of the loop for every Porta on the project.
+        $sync = $this->sync();
+        $this->peer('1234567890123456', 'Cy');
+
+        $sync->tick();
+        $this->assertSame(['+peer:1234567890123456 Cy src/A.php:1'], $this->shown());
+
+        $this->project->write(PresenceBoard::DIR.'/1234567890123456.json', '');
+        $sync->tick();
+        $this->assertSame(['-peer:1234567890123456'], $this->shown(), 'gone from the board: gone');
+    }
+
     public function testTheCaretIsShownAsTheEditorHasIt(): void
     {
         $sync = $this->sync();
