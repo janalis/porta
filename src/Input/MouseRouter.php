@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Input;
 
 use Porta\Container\LayoutSlot;
+use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Layout\LayoutController;
@@ -405,103 +406,135 @@ final class MouseRouter
      */
     private function handleModalPopupClick(MouseEvent $mouse, ?WidgetRect $editorRect, FullView $fullViewOpen = FullView::Closed): bool
     {
-        // The completion popup is unreachable while a view window covers the
-        // editor; only the menus below
-        // can claim the click. The floating pickers get their screen-coords
-        // branch after the menus — dropdowns paint above them.
+        return $this->clickedCompletion($mouse, $editorRect, $fullViewOpen) || $this->clickedMenu($mouse) || $this->clickedFloating($mouse);
+    }
+
+    /**
+     * The completion popup is unreachable while a view window covers the
+     * editor; only the menus below can claim the click. The floating pickers
+     * get their screen-coords branch after the menus — dropdowns paint above them.
+     */
+    private function clickedCompletion(MouseEvent $mouse, ?WidgetRect $editorRect, FullView $fullViewOpen): bool
+    {
         if (
-            FullView::Closed === $fullViewOpen
-            && null !== $this->panes->editor->getContext() // detached under an image tab → no invisible popup may eat clicks
-            && $this->panes->editor->isCompletionOpen()
-            && null !== $editorRect
-            && $editorRect->contains($mouse->row, $mouse->col)
+            FullView::Closed !== $fullViewOpen
+            || null === $this->panes->editor->getContext() // detached under an image tab → no invisible popup may eat clicks
+            || !$this->panes->editor->isCompletionOpen()
+            || null === $editorRect
+            || !$editorRect->contains($mouse->row, $mouse->col)
         ) {
-            $rel = $editorRect->toRelative($mouse->row, $mouse->col);
-            if ($this->panes->editor->handlePopupClick($rel['row'], $rel['col'])) {
-                $this->tui->requestRender();
-
-                return true;
-            }
+            return false;
         }
+        $rel = $editorRect->toRelative($mouse->row, $mouse->col);
 
-        // An open context menu: a click on an item runs it; a click on the
-        // frame's border cells is swallowed (a 1-cell mis-click must not
-        // dismiss); a click anywhere else dismisses it (the panel floats over
-        // the panes, so hit-test its region).
+        return $this->panes->editor->handlePopupClick($rel['row'], $rel['col']) && $this->rendered();
+    }
+
+    /** An open context menu, a menu-bar title, an open dropdown: what a click on a menu does. */
+    private function clickedMenu(MouseEvent $mouse): bool
+    {
         if ($this->contextMenu->isOpen()) {
-            $region = $this->overlay->contextMenuDropdown();
-            $item = $this->hit->hitRegion($region, $mouse->row, $mouse->col);
-            if (null !== $item) {
-                $this->contextMenu->runItem($item);
-            }
-            if (null === $item && true !== $region?->contains($mouse->row, $mouse->col)) {
-                $this->contextMenu->close();
-            }
-            $this->tui->requestRender();
-
-            return true;
+            return $this->clickContextMenu($mouse);
         }
-
         // Menu bar: click a title to open (or switch) its dropdown.
         if (null !== ($rel = $this->hit->hit($this->menuBar, $mouse->row, $mouse->col))) {
-            if (null !== ($title = $this->menuBar->titleAtColumn($rel['col']))) {
-                $closeOpenTitle = $this->menuBar->isDropdownShown() && $this->menuBar->openIndex() === $title;
-                if ($closeOpenTitle) {
-                    $this->menuBar->close(); // second click on the open title → close
-                }
-                if (!$closeOpenTitle) {
-                    $this->menuBar->open($title); // open, or switch to a different title
-                    $this->tui->setFocus($this->menuBar);
-                }
-            }
-            $this->tui->requestRender();
-
-            return true;
+            return $this->clickMenuTitle($rel['col']);
         }
-        // Dropdown item: the panel floats over the editor pane, outside the menu
-        // bar's rect, so hit-test the tracked overlay region directly. A click
-        // on the frame's border cells is swallowed, not a dismissal.
         if ($this->menuBar->isOpen()) {
-            $region = $this->overlay->menuDropdown();
-            $item = $this->hit->hitRegion($region, $mouse->row, $mouse->col);
-            if (null !== $item) {
-                $this->menuBar->runItem($item);
-            }
-            if (null === $item && true !== $region?->contains($mouse->row, $mouse->col)) {
-                $this->menuBar->close(); // a click anywhere else dismisses an open menu
-            }
-            $this->tui->requestRender();
-
-            return true;
+            return $this->clickMenuDropdown($mouse);
         }
 
+        return false;
+    }
+
+    /**
+     * An open context menu: a click on an item runs it; a click on the
+     * frame's border cells is swallowed (a 1-cell mis-click must not
+     * dismiss); a click anywhere else dismisses it (the panel floats over
+     * the panes, so hit-test its region).
+     */
+    private function clickContextMenu(MouseEvent $mouse): bool
+    {
+        $region = $this->overlay->contextMenuDropdown();
+        $item = $this->hit->hitRegion($region, $mouse->row, $mouse->col);
+        if (null !== $item) {
+            $this->contextMenu->runItem($item);
+        }
+        if (null === $item && true !== $region?->contains($mouse->row, $mouse->col)) {
+            $this->contextMenu->close();
+        }
+
+        return $this->rendered();
+    }
+
+    private function clickMenuTitle(int $col): bool
+    {
+        if (null !== ($title = $this->menuBar->titleAtColumn($col))) {
+            $closeOpenTitle = $this->menuBar->isDropdownShown() && $this->menuBar->openIndex() === $title;
+            if ($closeOpenTitle) {
+                $this->menuBar->close(); // second click on the open title → close
+            }
+            if (!$closeOpenTitle) {
+                $this->menuBar->open($title); // open, or switch to a different title
+                $this->tui->setFocus($this->menuBar);
+            }
+        }
+
+        return $this->rendered();
+    }
+
+    /**
+     * Dropdown item: the panel floats over the editor pane, outside the menu
+     * bar's rect, so hit-test the tracked overlay region directly. A click
+     * on the frame's border cells is swallowed, not a dismissal.
+     */
+    private function clickMenuDropdown(MouseEvent $mouse): bool
+    {
+        $region = $this->overlay->menuDropdown();
+        $item = $this->hit->hitRegion($region, $mouse->row, $mouse->col);
+        if (null !== $item) {
+            $this->menuBar->runItem($item);
+        }
+        if (null === $item && true !== $region?->contains($mouse->row, $mouse->col)) {
+            $this->menuBar->close(); // a click anywhere else dismisses an open menu
+        }
+
+        return $this->rendered();
+    }
+
+    /** What floats over the panes, after the menus: the pickers, Find-in-Files, the Welcome modal and the view window's frame. */
+    private function clickedFloating(MouseEvent $mouse): bool
+    {
         // The floating pickers (list overlay, Search Everywhere, the mini
-        // prompt), after the menus: item/×/outside-dismiss in screen
-        // coordinates. No attachment guard — the pickers are painted above
-        // every pane, so a click on a visible box belongs to it wherever the
-        // editor is.
+        // prompt): item/×/outside-dismiss in screen coordinates. No
+        // attachment guard — the pickers are painted above every pane, so a
+        // click on a visible box belongs to it wherever the editor is.
         if ($this->panes->editor->isAnyPickerOpen()) {
             $this->panes->editor->handlePickerClick($mouse->row, $mouse->col);
-            $this->tui->requestRender();
 
-            return true;
+            return $this->rendered();
         }
-
-        // The floating Find-in-Files modal, after the menus: ×, drags and
-        // zone clicks land in screen coordinates; an outside click closes it
-        // (its own semantics — unlike the Welcome modal it is dismissable).
+        // The floating Find-in-Files modal: ×, drags and zone clicks land in
+        // screen coordinates; an outside click closes it (its own semantics —
+        // unlike the Welcome modal it is dismissable).
         if ($this->panes->editor->isFindModalOpen()) {
             $this->panes->editor->findModal->clickAt($mouse->row, $mouse->col);
-            $this->tui->requestRender();
 
-            return true;
+            return $this->rendered();
         }
 
-        // The Welcome modal, then the view window's frame, after the menus
-        // (the menu bar stays reachable over both): the ×, a drag or a click
-        // outside. A press on the view window's content falls through to the
-        // view's own pointer, below.
+        // The Welcome modal, then the view window's frame (the menu bar stays
+        // reachable over both): the ×, a drag or a click outside. A press on
+        // the view window's content falls through to the view's own pointer.
         return $this->windows->press($mouse);
+    }
+
+    /** A click that changed what is painted asks for a frame: true, for the caller that asks whether it was taken. */
+    private function rendered(): bool
+    {
+        $this->tui->requestRender();
+
+        return true;
     }
 
     /** A left press on the panes, tried front-to-back; the editor is the final target. */
@@ -614,75 +647,94 @@ final class MouseRouter
     /** Editor-pane chrome: the tab bar, breadcrumbs bar and file tree. */
     private function tryChromeClick(MouseEvent $mouse, ?WidgetRect $tabsRect, ?WidgetRect $treeRect): bool
     {
-        // Tab bar click: the close × closes that tab; the body switches to it and
-        // arms a drag-to-reorder.
-        if (null !== $tabsRect && $tabsRect->contains($mouse->row, $mouse->col)) {
-            $rel = $tabsRect->toRelative($mouse->row, $mouse->col);
-            $buffers = $this->buffers->all();
-            if (null !== ($step = $this->panes->tabBar->scrollIndicatorAt($rel['row'], $rel['col']))) {
-                $this->panes->tabBar->scrollBy($step);
-                $this->tui->requestRender();
+        return (
+            $this->clickedTabs($mouse, $tabsRect)
+            || $this->clickedFindBar($mouse)
+            // Navigation bar click: a toggle, a path crumb or a scope crumb.
+            || $this->crumbClick->route($mouse)
+            || $this->clickedTree($mouse, $treeRect)
+        );
+    }
 
-                return true;
-            }
-            if (null !== ($closeIndex = $this->panes->tabBar->closeIndexAt($rel['row'], $rel['col']))) {
-                if (\array_key_exists($closeIndex, $buffers)) {
-                    $this->bufferService->closeTab($buffers[$closeIndex]->path);
-                }
+    /**
+     * Tab bar click: the close × closes that tab; the body switches to it and
+     * arms a drag-to-reorder.
+     */
+    private function clickedTabs(MouseEvent $mouse, ?WidgetRect $tabsRect): bool
+    {
+        if (null === $tabsRect || !$tabsRect->contains($mouse->row, $mouse->col)) {
+            return false;
+        }
+        $rel = $tabsRect->toRelative($mouse->row, $mouse->col);
+        $buffers = $this->buffers->all();
+        if (null !== ($step = $this->panes->tabBar->scrollIndicatorAt($rel['row'], $rel['col']))) {
+            $this->panes->tabBar->scrollBy($step);
 
-                return true;
-            }
-            $index = $this->panes->tabBar->tabIndexAt($rel['row'], $rel['col']);
-            if (null !== $index && \array_key_exists($index, $buffers)) {
-                $this->buffers->setActive($buffers[$index]->path);
-                $this->bufferService->showBuffer($buffers[$index]);
-                $this->bufferService->focusEditorArea(); // an image tab focuses the viewer
-                $this->tabDragging = true;
-                $this->tabDragPath = $buffers[$index]->path;
-                // A double-click reveals the file in the sidebar tree, selected
-                // and highlighted, while focus stays in the editor.
-                if (2 === $this->clicks->countAt($mouse->row, $mouse->col)) {
-                    $this->panes->tree->revealPath($buffers[$index]->path);
-                    $this->tui->requestRender();
-                }
+            return $this->rendered();
+        }
+        if (null !== ($closeIndex = $this->panes->tabBar->closeIndexAt($rel['row'], $rel['col']))) {
+            if (\array_key_exists($closeIndex, $buffers)) {
+                $this->bufferService->closeTab($buffers[$closeIndex]->path);
             }
 
             return true;
         }
+        $index = $this->panes->tabBar->tabIndexAt($rel['row'], $rel['col']);
+        if (null !== $index && \array_key_exists($index, $buffers)) {
+            $this->switchToTab($buffers[$index], $mouse);
+        }
 
-        // Find-bar click: the option tags toggle, exactly as their keys do.
-        if ($this->panes->findBar->isOpen() && null !== ($rel = $this->hit->hit($this->panes->findBar, $mouse->row, $mouse->col))) {
-            $this->panes->findBar->handleClick($rel['row'], $rel['col']);
+        return true;
+    }
+
+    private function switchToTab(Buffer $buffer, MouseEvent $mouse): void
+    {
+        $this->buffers->setActive($buffer->path);
+        $this->bufferService->showBuffer($buffer);
+        $this->bufferService->focusEditorArea(); // an image tab focuses the viewer
+        $this->tabDragging = true;
+        $this->tabDragPath = $buffer->path;
+        // A double-click reveals the file in the sidebar tree, selected
+        // and highlighted, while focus stays in the editor.
+        if (2 === $this->clicks->countAt($mouse->row, $mouse->col)) {
+            $this->panes->tree->revealPath($buffer->path);
             $this->tui->requestRender();
-
-            return true;
         }
+    }
 
-        // Navigation bar click: a toggle, a path crumb or a scope crumb.
-        if ($this->crumbClick->route($mouse)) {
-            return true;
+    /** Find-bar click: the option tags toggle, exactly as their keys do. */
+    private function clickedFindBar(MouseEvent $mouse): bool
+    {
+        if (!$this->panes->findBar->isOpen() || null === ($rel = $this->hit->hit($this->panes->findBar, $mouse->row, $mouse->col))) {
+            return false;
         }
+        $this->panes->findBar->handleClick($rel['row'], $rel['col']);
 
-        // Tree click: select + open/toggle, or — with Ctrl or Shift — build a
-        // selection of several files without opening any of them.
-        if (null !== $treeRect && $treeRect->contains($mouse->row, $mouse->col)) {
-            $rel = $treeRect->toRelative($mouse->row, $mouse->col);
-            $this->tui->setFocus($this->panes->tree);
-            // One call, because a press that defers a folder's toggle MUST arm
-            // a drag to spend it: pressRow resolves what a drag would carry
-            // before its own click runs, so the ordering is structural rather
-            // than a comment, and "is this press modified" is derived once.
-            $this->treeDrag->arm($this->panes->tree->pressRow($rel['row'], match (true) {
-                $mouse->ctrl => ClickIntent::Add,
-                $mouse->shift => ClickIntent::Range,
-                default => ClickIntent::Open,
-            }));
-            $this->tui->requestRender();
+        return $this->rendered();
+    }
 
-            return true;
+    /**
+     * Tree click: select + open/toggle, or — with Ctrl or Shift — build a
+     * selection of several files without opening any of them.
+     */
+    private function clickedTree(MouseEvent $mouse, ?WidgetRect $treeRect): bool
+    {
+        if (null === $treeRect || !$treeRect->contains($mouse->row, $mouse->col)) {
+            return false;
         }
+        $rel = $treeRect->toRelative($mouse->row, $mouse->col);
+        $this->tui->setFocus($this->panes->tree);
+        // One call, because a press that defers a folder's toggle MUST arm
+        // a drag to spend it: pressRow resolves what a drag would carry
+        // before its own click runs, so the ordering is structural rather
+        // than a comment, and "is this press modified" is derived once.
+        $this->treeDrag->arm($this->panes->tree->pressRow($rel['row'], match (true) {
+            $mouse->ctrl => ClickIntent::Add,
+            $mouse->shift => ClickIntent::Range,
+            default => ClickIntent::Open,
+        }));
 
-        return false;
+        return $this->rendered();
     }
 
     /**
@@ -709,45 +761,67 @@ final class MouseRouter
      */
     private function dispatchEditorPress(MouseEvent $mouse, array $rel): void
     {
+        $editor = $this->panes->editor;
         if ($mouse->ctrl && !$mouse->alt && !$mouse->shift) {
-            // Place the caret at the click (fold/scroll-aware), then fire the
-            // same action as Ctrl+B. A ctrl-click is a navigation, not a
-            // selection start, so no drag is armed.
-            $this->panes->editor->clearExtraCarets();
-            $this->panes->editor->clickAt($rel['row'], $rel['col']);
-            $this->panes->editor->runAction('goto_definition');
-
-            return;
-        }
-        if ($mouse->alt && $mouse->shift) {
-            $this->panes->editor->beginColumnSelectionAt($rel['row'], $rel['col']);
-            $this->columnSelecting = true;
+            $this->ctrlClickAt($rel['row'], $rel['col']);
 
             return;
         }
         if ($mouse->alt) {
-            $this->panes->editor->addOrRemoveCaretAt($rel['row'], $rel['col']);
+            $this->altClickAt($rel['row'], $rel['col'], $mouse->shift);
 
             return;
         }
-        if ($rel['col'] < $this->panes->editor->gutterWidth() && null !== ($docLine = $this->panes->editor->documentLineAt($rel['row']))) {
+        if ($rel['col'] < $editor->gutterWidth() && null !== ($docLine = $editor->documentLineAt($rel['row']))) {
             $this->gutter->click($rel['col'], $docLine);
 
             return;
         }
+        $this->pressTextAt($mouse, $rel['row'], $rel['col']);
+    }
+
+    /**
+     * Place the caret at the click (fold/scroll-aware), then fire the same
+     * action as Ctrl+B. A ctrl-click is a navigation, not a selection start,
+     * so no drag is armed.
+     */
+    private function ctrlClickAt(int $row, int $col): void
+    {
         $this->panes->editor->clearExtraCarets();
+        $this->panes->editor->clickAt($row, $col);
+        $this->panes->editor->runAction('goto_definition');
+    }
+
+    /** Alt+Shift starts a column selection; Alt alone adds or removes a caret. */
+    // @mago-expect lint:no-boolean-flag-parameter -- the modifier IS the one fact the press carries, as MouseEvent holds it.
+    private function altClickAt(int $row, int $col, bool $shift): void
+    {
+        if ($shift) {
+            $this->panes->editor->beginColumnSelectionAt($row, $col);
+            $this->columnSelecting = true;
+
+            return;
+        }
+        $this->panes->editor->addOrRemoveCaretAt($row, $col);
+    }
+
+    /** A press on the text: extend with Shift, else select by click count, and arm the drag. */
+    private function pressTextAt(MouseEvent $mouse, int $row, int $col): void
+    {
+        $editor = $this->panes->editor;
+        $editor->clearExtraCarets();
         $count = $this->clicks->countAt($mouse->row, $mouse->col);
         if ($mouse->shift) {
-            $this->panes->editor->extendSelectionTo($rel['row'], $rel['col']);
+            $editor->extendSelectionTo($row, $col);
         }
         if (!$mouse->shift && $count >= 3) {
-            $this->panes->editor->selectLineAt($rel['row'], $rel['col']);
+            $editor->selectLineAt($row, $col);
         }
         if (!$mouse->shift && 2 === $count) {
-            $this->panes->editor->selectWordAt($rel['row'], $rel['col']);
+            $editor->selectWordAt($row, $col);
         }
         if (!$mouse->shift && $count < 2) {
-            $this->panes->editor->beginSelectionAt($rel['row'], $rel['col']);
+            $editor->beginSelectionAt($row, $col);
         }
         $this->mouseSelecting = true;
     }

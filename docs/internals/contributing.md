@@ -41,9 +41,12 @@ end by `bin/keep-going`:
   (a pathless run reads only the root autoload, which has no `plugins`). This
   is the deterministic per-file answer for PHP; `.phpantom.toml` holds the
   suppressed false positives, each with the upstream issue it waits on.
-  **phpantom 0.10.0 never finishes four of the input routers** (a guard chain
-  whose analysis grows exponentially); its `main` does, in about a second, so
-  until the next release this half ends at composer's process timeout.
+  The whole tree takes about ten seconds. phpantom 0.10.0's analysis grows
+  exponentially with a run of early-return guards whose bodies call through a
+  property (`if (…) { $this->x->y(); return; }`, five in a row is enough): the
+  input routers never finished until each guard's body became one call to a
+  named method. Its `main` has no such limit; keep the shape until a release
+  ships it.
 - `lsp:probe` — `bin/porta-dev lsp:probe`: every server the IDE would start
   for the project, started the way it would, shown a sample of the files each
   serves. It reports what only LSP mode shows: the client's log (stderr, error

@@ -222,6 +222,16 @@ identifier = "type_mismatch_argument"
 path = "src/Workbench/Menu/ContextMenuBuilder.php"
 message = "^(?:Argument 2 \\(\\$action\\) expects Closure, got \\(Closure\\(\\): void\\)\\|null \\(null does not satisfy Closure\\))$"
 
+# The keys of `array_keys()` over a const array of action ids are widened to
+# array-key; every key is a word like `git_commit`. phpantom 0.10.0 only, which
+# could not analyse this file at all before the dispatcher was split into
+# named steps; fixed on main (6fb245f): drop with the next release.
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "src/Input/InputDispatcher.php"
+message = "^(?:Argument 1 \\(\\$id\\) expects string, got array-key|Argument 2 \\(\\$action\\) expects string, got array-key|Argument 1 \\(\\$action\\) expects string, got array-key)$"
+
+
 # ── tests/ and plugins/*/tests ─────────────────────────────────────────────
 # A cluster rule is scoped to the test trees and selected by its message: it
 # names one shape the triage read across many sites, never "anything in tests".

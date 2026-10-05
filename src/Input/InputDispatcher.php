@@ -57,21 +57,39 @@ final readonly class InputDispatcher
 
         if (null !== ($mouse = MouseEvent::parse($data))) {
             $event->stopPropagation();
-            // In cells, on the row of the item a half row belongs to.
-            $mouse = $this->halfRows->resolve($mouse);
-            // A press, a release or a wheel is the user acting, not reading:
-            // the card goes. A bare move is the hover path's to judge.
-            if (!$mouse->isMove()) {
-                $this->tooltips->dismiss();
-            }
-            // A file let go over the window: the paste of its paths came
-            // first, and this is where the pointer let it go.
-            $this->pasteDrop->landAt($mouse);
-            $this->mouseRouter->route($mouse);
+            $this->pointer($mouse);
 
             return;
         }
 
+        $this->beforeKey($data);
+        if ($this->capturedByModal($data) || $this->capturedByPicker($data) || $this->ranCommand($data)) {
+            $event->stopPropagation();
+
+            return;
+        }
+
+        $this->explainAnAdoptedVerbNobodyImplements($data);
+    }
+
+    private function pointer(MouseEvent $mouse): void
+    {
+        // In cells, on the row of the item a half row belongs to.
+        $mouse = $this->halfRows->resolve($mouse);
+        // A press, a release or a wheel is the user acting, not reading:
+        // the card goes. A bare move is the hover path's to judge.
+        if (!$mouse->isMove()) {
+            $this->tooltips->dismiss();
+        }
+        // A file let go over the window: the paste of its paths came
+        // first, and this is where the pointer let it go.
+        $this->pasteDrop->landAt($mouse);
+        $this->mouseRouter->route($mouse);
+    }
+
+    /** What every key does before anything may claim it. */
+    private function beforeKey(string $data): void
+    {
         $this->tooltips->dismiss();
         // A key after a held drop: the drop happened first, so it lands first.
         $this->pasteDrop->settle();
@@ -91,25 +109,28 @@ final readonly class InputDispatcher
         if ("\x1b" === $data) {
             $this->treeDrag->cancel();
         }
+    }
 
+    /**
+     * The context menu, a dropped file and the Welcome modal: what takes a
+     * key before any picker may. True when one took it.
+     */
+    private function capturedByModal(string $data): bool
+    {
         // An open context menu captures the keyboard modally: arrows/Enter/Esc
         // drive it and every other key is swallowed, so nothing leaks to the
         // widget that still owns focus underneath it.
         if ($this->contextMenu->isOpen()) {
-            $event->stopPropagation();
             $this->contextMenu->handleInput($data);
-            $this->tui->requestRender();
 
-            return;
+            return $this->rendered();
         }
 
         // A file dropped from outside arrives as a paste of its path. Ahead of
         // the Welcome modal, which would swallow it, and of the pickers, which
         // it types into as text.
         if (!$this->menuBar->isOpen() && $this->pasteDrop->take($data)) {
-            $event->stopPropagation();
-
-            return;
+            return true;
         }
 
         // The Welcome modal captures the keyboard whole while open: its widget
@@ -117,57 +138,67 @@ final readonly class InputDispatcher
         // beneath the box. An open app menu wins, though — it is reachable by
         // mouse over the modal, and its keys (arrows, Esc) flow through the
         // focused-widget path below, so swallowing here would trap it open.
-        if ($this->welcomeModal->isOpen() && !$this->menuBar->isOpen()) {
-            $event->stopPropagation();
-            $this->welcomeModal->handleKey($data);
-            $this->tui->requestRender();
-
-            return;
+        if (!$this->welcomeModal->isOpen() || $this->menuBar->isOpen()) {
+            return false;
         }
+        $this->welcomeModal->handleKey($data);
 
-        // The workspace pickers — Search Everywhere, the list overlay and the
-        // mini prompt — capture the keyboard while open. No attachment guard:
-        // they are painted above every pane by their own presenter, so they are
-        // visible wherever the editor is, and a visible modal must take keys.
+        return $this->rendered();
+    }
+
+    /**
+     * The workspace pickers — Search Everywhere, the list overlay and the
+     * mini prompt — and the Find-in-Files modal. True when one took the key.
+     */
+    private function capturedByPicker(string $data): bool
+    {
+        // No attachment guard on the pickers: they are painted above every
+        // pane by their own presenter, so they are visible wherever the editor
+        // is, and a visible modal must take keys.
         if ($this->overlays->isSearchOpen()) {
-            $event->stopPropagation();
             $this->editor->handleSearchOverlayInput($data);
-            $this->tui->requestRender();
 
-            return;
+            return $this->rendered();
         }
         if ($this->overlays->handleInput($data, $this->editor->getKeybindings())) {
-            $event->stopPropagation();
-            $this->tui->requestRender();
-
-            return;
+            return $this->rendered();
         }
 
         // The Find-in-Files modal is an EDITOR feature (it scopes to the open
         // buffer) and stays editor-hosted, so it keeps its attachment guard.
-        if (null !== $this->editor->getContext() && $this->editor->isFindModalOpen()) {
-            $event->stopPropagation();
-            $this->editor->handleFindModalInput($data);
-            $this->tui->requestRender();
-
-            return;
+        if (null === $this->editor->getContext() || !$this->editor->isFindModalOpen()) {
+            return false;
         }
+        $this->editor->handleFindModalInput($data);
 
+        return $this->rendered();
+    }
+
+    /** The first enabled command bound to $data, run — true when there was one. */
+    private function ranCommand(string $data): bool
+    {
         foreach ($this->commands->keyBoundIds() as $id) {
             if (!$this->keybindings->matches($data, $id) || !$this->commands->isEnabled($id)) {
                 continue;
             }
 
-            $event->stopPropagation();
             // A key reaches past an open view window as the menu does: one
             // that acts on the editor behind closes the window first.
             $this->gate?->before('i', $id);
             $this->commands->run($id);
 
-            return;
+            return true;
         }
 
-        $this->explainAnAdoptedVerbNobodyImplements($data);
+        return false;
+    }
+
+    /** A modal that took the key repaints: true, for the caller that asks whether it was taken. */
+    private function rendered(): bool
+    {
+        $this->tui->requestRender();
+
+        return true;
     }
 
     /**
