@@ -72,6 +72,19 @@ final class PluginLoaderTest extends TestCase
         $this->assertSame([], $manager->warnings);
     }
 
+    /**
+     * A plugin is named by its directory, so a directory named in digits is a
+     * plugin named in digits — an int wherever the name keys an array, which
+     * was a TypeError at boot (PluginOrder handed the key to a string param).
+     */
+    public function testAPluginInADirectoryNamedInDigitsLoads(): void
+    {
+        $manager = $this->load(new TempProject(['.porta/plugins/2048/plugin.php' => $this->pluginSource('2048')]));
+
+        $this->assertTrue($manager->hasPlugin('2048'));
+        $this->assertSame([], $manager->warnings);
+    }
+
     public function testProjectBeatsGlobalOnDirectoryNameAndGlobalOnlyLoads(): void
     {
         $global = new TempProject([

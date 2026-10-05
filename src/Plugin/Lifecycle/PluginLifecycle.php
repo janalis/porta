@@ -726,10 +726,12 @@ final class PluginLifecycle implements PluginLifecycleOps
     {
         $names = [];
         foreach ($this->installer->installed() as $plugin) {
-            $names[$plugin['name']] = true;
+            // Kept as the value: a name in digits would come back from
+            // array_keys() as an int, which is not the list<string> promised.
+            $names[$plugin['name']] ??= $plugin['name'];
         }
 
-        return \array_keys($names);
+        return \array_values($names);
     }
 
     /** Sync the per-plugin settings pages with the installed set. */

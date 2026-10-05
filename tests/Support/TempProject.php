@@ -29,7 +29,8 @@ final class TempProject
         $this->dir = \sys_get_temp_dir().'/'.$prefix.(int) \getmypid().'-'.\bin2hex(\random_bytes(4));
         $this->fs->mkdir($this->dir);
         foreach ($files as $path => $content) {
-            $this->write($path, $content);
+            // @mago-expect analysis:redundant-cast -- a key in digits is an int at runtime, whatever its docblock says
+            $this->write((string) $path, $content); // a name in digits keys as an int
         }
     }
 

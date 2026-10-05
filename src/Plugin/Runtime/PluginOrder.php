@@ -36,8 +36,10 @@ final class PluginOrder
         $order = [];
         $skipped = [];
         $state = []; // name => 'visiting' | 'done'
-        foreach (\array_keys($byName) as $name) {
-            self::visit($name, $byName, $state, $order, $skipped);
+        // By the manifest's own name, never the array key: a name all in
+        // digits is an int key, and an int is a TypeError at visit(string).
+        foreach ($byName as $manifest) {
+            self::visit($manifest->name, $byName, $state, $order, $skipped);
         }
 
         return ['order' => $order, 'skipped' => $skipped];

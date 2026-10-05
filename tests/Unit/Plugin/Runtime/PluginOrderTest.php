@@ -42,6 +42,19 @@ final class PluginOrderTest extends TestCase
         $this->assertSame([], $resolved['skipped']);
     }
 
+    /**
+     * A plugin is named by its directory, and a name all in digits is an INT
+     * once it keys an array: handed on to a `string` parameter, that was a
+     * TypeError under strict types — out of plugin loading, so at boot.
+     */
+    public function testAPluginNamedInDigitsLoadsLikeAnyOther(): void
+    {
+        $resolved = PluginOrder::resolve([$this->manifest('needs', ['2048']), $this->manifest('2048')]);
+
+        $this->assertSame(['2048', 'needs'], $this->names($resolved));
+        $this->assertSame([], $resolved['skipped']);
+    }
+
     public function testADependencyLoadsFirstEvenWhenDiscoveredLater(): void
     {
         $resolved = PluginOrder::resolve([$this->manifest('app', ['ui']), $this->manifest('ui')]);
