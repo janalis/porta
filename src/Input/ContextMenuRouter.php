@@ -69,89 +69,7 @@ final readonly class ContextMenuRouter
             return;
         }
 
-        $items = null;
-        $handled = false;
-        if (null !== $editorRect && $editorRect->contains($mouse->row, $mouse->col)) {
-            $handled = true;
-            $rel = $editorRect->toRelative($mouse->row, $mouse->col);
-            $this->tui->setFocus($this->panes->editor);
-            // Keep an existing selection (so Cut/Copy act on it); otherwise place
-            // the caret at the click, like PhpStorm.
-            if (!$this->panes->editor->getDocument()->hasSelection()) {
-                $this->panes->editor->clearExtraCarets();
-                $this->panes->editor->clickAt($rel['row'], $rel['col']);
-            }
-            $items = $this->contextItems->editorItems();
-        }
-        if (!$handled && null !== $tabsRect && $tabsRect->contains($mouse->row, $mouse->col)) {
-            $handled = true;
-            $rel = $tabsRect->toRelative($mouse->row, $mouse->col);
-            $index = $this->panes->tabBar->tabIndexAt($rel['row'], $rel['col']);
-            $buffers = $this->buffers->all();
-            if (null === $index || !\array_key_exists($index, $buffers)) {
-                $this->opener->flashNoMenu(); // the strip's empty tail
-
-                return;
-            }
-            $items = $this->contextItems->tabItems($buffers[$index]->path);
-        }
-        if (!$handled && null !== $treeRect && $treeRect->contains($mouse->row, $mouse->col)) {
-            $handled = true;
-            $rel = $treeRect->toRelative($mouse->row, $mouse->col);
-            $this->tui->setFocus($this->panes->tree);
-            // The project name: the folders beside it, to switch to one.
-            $node = 0 === $rel['row'] ? null : $this->panes->tree->nodeAt($rel['row']);
-            if (0 !== $rel['row'] && null === $node) {
-                $this->opener->flashNoMenu(); // below the last node
-
-                return;
-            }
-            // A FILE row also offers what plugins put on the file surface; a
-            // directory does not (the surface names a file, and core's own
-            // folder verbs are the ones that make sense there).
-            $items = match (true) {
-                null === $node => $this->projects->siblingItems(),
-                $node->isDir => $this->treeOps->contextItems($node),
-                default => [...$this->treeOps->contextItems($node), ...$this->contextItems->fileItems($node->path)],
-            };
-        }
-        $stripCol = $this->hover->dockStripRelCol($mouse);
-        if (!$handled && null !== $stripCol) {
-            $handled = true;
-            $hit = $this->dockTabs->tabAt($stripCol);
-            if (null === $hit) {
-                $this->opener->flashNoMenu(); // the strip's empty tail
-
-                return;
-            }
-            $items = $this->contextItems->dockTabItems($hit['tab'], $hit['key']);
-        }
-        // A results or debugger row names a file: the copy-path verbs the tree
-        // offers for it, and whatever plugins put on the file surface.
-        if (!$handled) {
-            $items = $this->dockRowItems($mouse);
-            $handled = null !== $items;
-        }
-        // Whatever view owns the main area answers for its own panes. Two
-        // git-shaped branches stood here, each pulling a selected row out of
-        // the git router so core could build git's menu from it.
-        if (!$handled) {
-            $items = $this->viewMenus->of($this->views->activeId())?->contextItemsAt($mouse->row, $mouse->col);
-        }
-        // The status bar's file part is a way back to the tree: select the
-        // file there, or copy the path the tree would.
-        $statusCol = $this->statusCol($mouse);
-        $file = null === $statusCol ? null : $this->statusBar->fileAt($statusCol);
-        if (!$handled && null === $items && null !== $file) {
-            $items = [...$this->contextItems->statusFileItems(), MenuItem::separator(), ...$this->treeOps->copyPathItems($file)];
-        }
-        // A right-click on a status cell offers whatever that cell put there.
-        // This branch used to read one hardcoded span and pair it with the git
-        // branch menu; the cell carries its own menu now, so nothing here knows
-        // which cell was clicked.
-        if (!$handled && null === $items) {
-            $items = $this->statusMenuItems($mouse);
-        }
+        $items = $this->itemsAt($mouse, $treeRect, $tabsRect, $editorRect);
         if (null === $items) {
             $this->opener->flashNoMenu();
 
@@ -159,6 +77,123 @@ final readonly class ContextMenuRouter
         }
 
         $this->opener->openAt($items, $mouse->row, $mouse->col);
+    }
+
+    /**
+     * The menu for the surface under the pointer — the topmost one that
+     * claims it — or null where none applies, which flashes "no menu here".
+     *
+     * A surface that claims the pointer answers for it even with nothing to
+     * offer (the tab strip's empty tail, the tree below its last node): each
+     * returns, rather than setting a "handled" flag every later surface had to
+     * test and an `$items` each could overwrite.
+     *
+     * @return list<MenuItem>|null
+     */
+    private function itemsAt(MouseEvent $mouse, ?WidgetRect $treeRect, ?WidgetRect $tabsRect, ?WidgetRect $editorRect): ?array
+    {
+        if (null !== $editorRect && $editorRect->contains($mouse->row, $mouse->col)) {
+            return $this->editorItems($editorRect->toRelative($mouse->row, $mouse->col));
+        }
+        if (null !== $tabsRect && $tabsRect->contains($mouse->row, $mouse->col)) {
+            return $this->tabItems($tabsRect->toRelative($mouse->row, $mouse->col));
+        }
+        if (null !== $treeRect && $treeRect->contains($mouse->row, $mouse->col)) {
+            return $this->treeItems($treeRect->toRelative($mouse->row, $mouse->col)['row']);
+        }
+        $stripCol = $this->hover->dockStripRelCol($mouse);
+        if (null !== $stripCol) {
+            $hit = $this->dockTabs->tabAt($stripCol);
+
+            return null === $hit ? null : $this->contextItems->dockTabItems($hit['tab'], $hit['key']);
+        }
+
+        // A results or debugger row names a file: the copy-path verbs the tree
+        // offers for it, and whatever plugins put on the file surface. Then
+        // whatever view owns the main area answers for its own panes. Two
+        // git-shaped branches stood here, each pulling a selected row out of
+        // the git router so core could build git's menu from it.
+        return $this->dockRowItems($mouse) ?? $this->viewMenus->of($this->views->activeId())?->contextItemsAt($mouse->row, $mouse->col) ?? $this->statusItems($mouse);
+    }
+
+    /**
+     * Keep an existing selection (so Cut/Copy act on it); otherwise place the
+     * caret at the click, like PhpStorm.
+     *
+     * @param array{row: int, col: int} $rel
+     *
+     * @return list<MenuItem>
+     */
+    private function editorItems(array $rel): array
+    {
+        $this->tui->setFocus($this->panes->editor);
+        if (!$this->panes->editor->getDocument()->hasSelection()) {
+            $this->panes->editor->clearExtraCarets();
+            $this->panes->editor->clickAt($rel['row'], $rel['col']);
+        }
+
+        return $this->contextItems->editorItems();
+    }
+
+    /**
+     * @param array{row: int, col: int} $rel
+     *
+     * @return list<MenuItem>|null null on the strip's empty tail
+     */
+    private function tabItems(array $rel): ?array
+    {
+        $index = $this->panes->tabBar->tabIndexAt($rel['row'], $rel['col']);
+        $buffers = $this->buffers->all();
+        if (null === $index || !\array_key_exists($index, $buffers)) {
+            return null;
+        }
+
+        return $this->contextItems->tabItems($buffers[$index]->path);
+    }
+
+    /**
+     * The project name (row 0): the folders beside it, to switch to one. A
+     * FILE row also offers what plugins put on the file surface; a directory
+     * does not (the surface names a file, and core's own folder verbs are the
+     * ones that make sense there).
+     *
+     * @return list<MenuItem>|null null below the last node
+     */
+    private function treeItems(int $row): ?array
+    {
+        $this->tui->setFocus($this->panes->tree);
+        if (0 === $row) {
+            return $this->projects->siblingItems();
+        }
+        $node = $this->panes->tree->nodeAt($row);
+        if (null === $node) {
+            return null;
+        }
+
+        return (
+            $node->isDir
+                ? $this->treeOps->contextItems($node)
+                : [...$this->treeOps->contextItems($node), ...$this->contextItems->fileItems($node->path)]
+        );
+    }
+
+    /**
+     * The status bar's file part is a way back to the tree: select the file
+     * there, or copy the path the tree would. A right-click on any other
+     * status cell offers whatever that cell put there — the cell carries its
+     * own menu, so nothing here knows which cell was clicked.
+     *
+     * @return list<MenuItem>|null
+     */
+    private function statusItems(MouseEvent $mouse): ?array
+    {
+        $statusCol = $this->statusCol($mouse);
+        $file = null === $statusCol ? null : $this->statusBar->fileAt($statusCol);
+        if (null !== $file) {
+            return [...$this->contextItems->statusFileItems(), MenuItem::separator(), ...$this->treeOps->copyPathItems($file)];
+        }
+
+        return $this->statusMenuItems($mouse);
     }
 
     /**
