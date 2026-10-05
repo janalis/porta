@@ -53,6 +53,20 @@ final class LspClient implements LspClientInterface
     /** @var array<string, mixed> capabilities advertised by the server's initialize result */
     public private(set) array $serverCapabilities = [];
 
+    /** @var array<string, list<array{glob: string, kind: int}>> registration id => its `workspace/didChangeWatchedFiles` watchers */
+    private array $watcherRegistrations = [];
+
+    /**
+     * The files the server asked to hear about: each glob, relative to the
+     * project root, with the LSP `WatchKind` bits (1 create, 2 change, 4
+     * delete) it wants. Empty until the server registers some.
+     *
+     * @var list<array{glob: string, kind: int}>
+     */
+    public array $fileWatchers {
+        get => \array_merge(...\array_values($this->watcherRegistrations));
+    }
+
     /** @var list<callable(): void> queued actions until initialize completes */
     private array $whenReady = [];
 
@@ -122,7 +136,7 @@ final class LspClient implements LspClientInterface
         };
         $started = $this->transport->start(
             function (array $message): void {
-                /** @var array{id?: mixed, method?: string, result?: mixed, error?: array<array-key, mixed>, params?: array{items?: array<array-key, mixed>, edit?: array<array-key, mixed>}} $message */
+                /** @var array{id?: mixed, method?: string, result?: mixed, error?: array<array-key, mixed>, params?: array{items?: array<array-key, mixed>, edit?: array<array-key, mixed>, registrations?: mixed, unregisterations?: mixed}} $message */
                 $this->handleMessage($message);
             },
             function () use ($onReady): void {
@@ -314,6 +328,11 @@ final class LspClient implements LspClientInterface
             ],
             'workspace' => [
                 'configuration' => false,
+                // A server indexes the project once, then trusts the client to
+                // say what changed on disk since: phpantom registers its globs
+                // here, and without the notifications its index went stale on
+                // every change made outside the editor. {@see WatchedFiles}.
+                'didChangeWatchedFiles' => ['dynamicRegistration' => true, 'relativePatternSupport' => false],
                 'workspaceFolders' => true,
                 'symbol' => ['dynamicRegistration' => false],
                 'applyEdit' => true,
@@ -368,7 +387,7 @@ final class LspClient implements LspClientInterface
         // Waiting first: a write that fails stops the client inside send(),
         // and only what already waits hears it at once.
         $this->await($id, $this->requestTimeout, $method, $onResult);
-        $this->send(['jsonrpc' => '2.0', 'id' => $id, 'method' => $method, 'params' => $params]);
+        $this->send(self::message(['jsonrpc' => '2.0', 'id' => $id, 'method' => $method], $params));
     }
 
     /**
@@ -395,7 +414,27 @@ final class LspClient implements LspClientInterface
     #[\Override]
     public function notify(string $method, mixed $params): void
     {
-        $this->send(['jsonrpc' => '2.0', 'method' => $method, 'params' => $params]);
+        $this->send(self::message(['jsonrpc' => '2.0', 'method' => $method], $params));
+    }
+
+    /**
+     * $message with its params — or without the member at all when there are
+     * none. JSON-RPC allows `params` to be an object or an array, or absent;
+     * `null` is none of those, and a strict server answers it with -32600
+     * Invalid Request. symfony-lsp does, to the `shutdown` and `exit` this
+     * client sent that way, so it was never shut down, only terminated.
+     *
+     * @param array<string, mixed> $message
+     *
+     * @return array<string, mixed>
+     */
+    private static function message(array $message, mixed $params): array
+    {
+        if (null !== $params) {
+            $message['params'] = $params;
+        }
+
+        return $message;
     }
 
     #[\Override]
@@ -405,13 +444,14 @@ final class LspClient implements LspClientInterface
         if ($polite) {
             // Best-effort polite shutdown (send() never throws): a server told
             // to exit gets a moment to save what it keeps before it is ended.
-            $this->send(['jsonrpc' => '2.0', 'id' => $this->nextId++, 'method' => 'shutdown', 'params' => null]);
-            $this->send(['jsonrpc' => '2.0', 'method' => 'exit', 'params' => null]);
+            $this->send(['jsonrpc' => '2.0', 'id' => $this->nextId++, 'method' => 'shutdown']);
+            $this->send(['jsonrpc' => '2.0', 'method' => 'exit']);
         }
         $this->transport->stop($polite ? self::EXIT_WITHIN : 0.0);
 
         $this->isInitialized = false;
         $this->serverCapabilities = [];
+        $this->watcherRegistrations = [];
         $this->stopped = true;
         // Everything still waiting hears it, on the next tick — never from
         // inside stop(), whose caller is mid-teardown: a request fails, and
@@ -432,15 +472,25 @@ final class LspClient implements LspClientInterface
     }
 
     /**
-     * @param array{id?: mixed, method?: string, result?: mixed, error?: array<array-key, mixed>, params?: array{items?: array<array-key, mixed>, edit?: array<array-key, mixed>}} $message
+     * @param array{id?: mixed, method?: string, result?: mixed, error?: array<array-key, mixed>, params?: array{items?: array<array-key, mixed>, edit?: array<array-key, mixed>, registrations?: mixed, unregisterations?: mixed}} $message
      */
     private function handleMessage(array $message): void
     {
-        // Response to one of our requests
-        if (($message['id'] ?? null) !== null && ($message['method'] ?? null) === null) {
-            $callback = $this->pending->take((int) $message['id']);
+        // Response to one of our requests — or an error the server could not
+        // pin to one: a message it could not read gets `id: null`.
+        if (($message['method'] ?? null) === null) {
+            $callback = null === ($message['id'] ?? null) ? null : $this->pending->take((int) $message['id']);
             if (null !== $callback) {
                 $callback($message['result'] ?? null, $message['error'] ?? null);
+
+                return;
+            }
+            // Nobody is waiting: a `shutdown` sent without waiting, a request
+            // already timed out, or a message the server rejected outright.
+            // An answer is dropped; an error is the server saying something
+            // went wrong, and it reaches the LSP log rather than nowhere.
+            if (null !== ($message['error'] ?? null)) {
+                $this->log('server error'.(null === ($message['id'] ?? null) ? '' : ' for request '.(string) \json_encode($message['id'])).': '.(string) \json_encode($message['error']));
             }
 
             return;
@@ -454,7 +504,9 @@ final class LspClient implements LspClientInterface
             try {
                 $result = match ($message['method']) {
                     'workspace/configuration' => \array_fill(0, \count($message['params']['items'] ?? [null]), value: null),
-                    'window/workDoneProgress/create', 'client/registerCapability', 'client/unregisterCapability' => null,
+                    'window/workDoneProgress/create' => null,
+                    'client/registerCapability' => $this->register($message['params']['registrations'] ?? []),
+                    'client/unregisterCapability' => $this->unregister($message['params']['unregisterations'] ?? []),
                     'workspace/applyEdit' => [
                         'applied' => null !== $this->applyEditHandler && ($this->applyEditHandler)($message['params']['edit'] ?? []),
                     ],
@@ -470,13 +522,71 @@ final class LspClient implements LspClientInterface
             return;
         }
 
-        // Notification from the server
-        if (($message['method'] ?? null) !== null) {
-            $handler = $this->notificationHandlers[$message['method']] ?? null;
-            if (null !== $handler) {
-                $handler($message['params'] ?? []);
-            }
+        // Notification from the server (one without a method returned above).
+        $handler = $this->notificationHandlers[$message['method']] ?? null;
+        if (null !== $handler) {
+            $handler($message['params'] ?? []);
         }
+    }
+
+    /**
+     * Keep the `workspace/didChangeWatchedFiles` registrations among $registrations;
+     * every other capability a server registers is acknowledged and ignored,
+     * as it always was. A glob that is not a plain string (a RelativePattern)
+     * is not one this client declared support for, and is skipped.
+     */
+    private function register(mixed $registrations): null
+    {
+        foreach (self::objects($registrations) as $registration) {
+            if ('workspace/didChangeWatchedFiles' !== ($registration['method'] ?? null)) {
+                continue;
+            }
+            // @mago-expect analysis:mixed-assignment -- a decoded wire value, narrowed by objects()
+            $options = $registration['registerOptions'] ?? null;
+            $watchers = [];
+            foreach (self::objects(\is_array($options) ? $options['watchers'] ?? null : null) as $watcher) {
+                // @mago-expect analysis:mixed-assignment -- narrowed on the next line
+                $glob = $watcher['globPattern'] ?? null;
+                if (!\is_string($glob)) {
+                    continue;
+                }
+                // @mago-expect analysis:mixed-assignment -- narrowed on the next line
+                $kind = $watcher['kind'] ?? null;
+                $watchers[] = ['glob' => $glob, 'kind' => \is_int($kind) ? $kind : 7];
+            }
+            $this->watcherRegistrations[(string) \json_encode($registration['id'] ?? null)] = $watchers;
+        }
+
+        return null;
+    }
+
+    private function unregister(mixed $unregistrations): null
+    {
+        foreach (self::objects($unregistrations) as $unregistration) {
+            unset($this->watcherRegistrations[(string) \json_encode($unregistration['id'] ?? null)]);
+        }
+
+        return null;
+    }
+
+    /**
+     * The entries of a decoded wire list that are themselves objects; anything
+     * else in it — or a value that is no list at all — is not a registration.
+     *
+     * @return list<array<array-key, mixed>>
+     */
+    private static function objects(mixed $list): array
+    {
+        $objects = [];
+        // @mago-expect analysis:mixed-assignment -- a decoded wire value, narrowed on the next line
+        foreach (\is_array($list) ? $list : [] as $entry) {
+            if (!\is_array($entry)) {
+                continue;
+            }
+            $objects[] = $entry;
+        }
+
+        return $objects;
     }
 
     private function log(string $message): void

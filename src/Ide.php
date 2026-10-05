@@ -40,6 +40,7 @@ use Porta\Layout\PaneLayout;
 use Porta\Layout\WorkspaceLayout;
 use Porta\Lsp\LspBootstrapper;
 use Porta\Lsp\LspSessionPool;
+use Porta\Lsp\WatchedFiles;
 use Porta\Onboarding\OnboardingState;
 use Porta\Overlay\State\TooltipCenter;
 use Porta\Plugin\Lifecycle\PluginLifecycle;
@@ -442,6 +443,9 @@ final class Ide
         // because the old full pass was the proven loop-stall in .porta/freeze.log;
         // the terminal-state refresher keeps its own tick-counting 1s cadence.
         $watcher = EventLoop::repeat(0.25, $this->bufferService->pollFilesystemSlice(...));
+        // The language servers' half of the same question: which files they
+        // watch changed on disk, swept in slices on the same cadence.
+        $watchedFiles = EventLoop::repeat(0.25, $this->service(WatchedFiles::class)->tick(...));
         $refresher = EventLoop::repeat(1.0, $this->terminalRefresher->tick(...));
         // A remote project's server is asked, much more slowly, what changed
         // there; for a local project each tick returns at once.
@@ -592,6 +596,7 @@ final class Ide
                 $this->watchdog->stop();
                 $this->perf->stop();
                 EventLoop::cancel($watcher);
+                EventLoop::cancel($watchedFiles);
                 EventLoop::cancel($refresher);
                 EventLoop::cancel($remotePoll);
                 EventLoop::cancel($remoteFirst);

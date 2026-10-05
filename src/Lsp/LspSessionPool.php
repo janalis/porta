@@ -124,8 +124,8 @@ final class LspSessionPool
      * @param \Closure(string): void        $onLog
      * @param \Closure(array, string): void $onDiagnostics params, and the name of the server that published them
      * @param \Closure(array): bool  $onApplyEdit
-     * @param \Closure(array): void|null $onShowMessage `window/showMessage` params, already server-prefixed
-     * @param \Closure(array): void|null $onProgress    `$/progress` params
+     * @param (\Closure(array): void)|null $onShowMessage `window/showMessage` params, already server-prefixed
+     * @param (\Closure(array): void)|null $onProgress    `$/progress` params
      */
     public function configure(array $servers, \Closure $onLog, \Closure $onDiagnostics, \Closure $onApplyEdit, ?\Closure $onShowMessage = null, ?\Closure $onProgress = null): void
     {
@@ -236,6 +236,27 @@ final class LspSessionPool
         foreach ($this->sessions as $session) {
             $session->stop();
         }
+    }
+
+    /**
+     * Every running server that registered file watchers, with them.
+     *
+     * @return array<string, non-empty-list<array{glob: string, kind: int}>> server signature => its watchers
+     */
+    public function fileWatchers(): array
+    {
+        return \array_filter(\array_map(static fn (LspSession $session): array => $session->fileWatchers(), $this->sessions));
+    }
+
+    /**
+     * Tell one server, by signature, which of its watched files changed. A
+     * signature whose session has gone since is a no-op.
+     *
+     * @param non-empty-list<array{uri: string, type: int}> $changes
+     */
+    public function notifyWatchedFiles(string $signature, array $changes): void
+    {
+        ($this->sessions[$signature] ?? null)?->notifyWatchedFiles($changes);
     }
 
     /** The status-bar label for the server responsible for $path. */

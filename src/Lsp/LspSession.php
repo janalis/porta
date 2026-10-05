@@ -85,8 +85,8 @@ final class LspSession
      * @param \Closure(array): bool  $onApplyEdit   workspace/applyEdit handler (returns applied)
      * @param \Closure(Outcome): void   $onStarted     start result (true when initialized)
      * @param array<string, mixed>|null $initializationOptions forwarded into the `initialize` request
-     * @param \Closure(array): void|null $onShowMessage `window/showMessage` params — what the server tells the USER
-     * @param \Closure(array): void|null $onProgress    `$/progress` params — what the server is busy doing
+     * @param (\Closure(array): void)|null $onShowMessage `window/showMessage` params — what the server tells the USER
+     * @param (\Closure(array): void)|null $onProgress    `$/progress` params — what the server is busy doing
      */
     public function start(
         array $command,
@@ -395,6 +395,24 @@ final class LspSession
                 ]);
             }
         });
+    }
+
+    /** @return list<array{glob: string, kind: int}> what the server registered to hear about; empty while it is not up */
+    public function fileWatchers(): array
+    {
+        return $this->client->fileWatchers ?? [];
+    }
+
+    /**
+     * Tell the server files changed on disk — `workspace/didChangeWatchedFiles`,
+     * each change a `{uri, type}` with the LSP `FileChangeType` (1 created,
+     * 2 changed, 3 deleted). Only ever sent for files it asked about.
+     *
+     * @param non-empty-list<array{uri: string, type: int}> $changes
+     */
+    public function notifyWatchedFiles(array $changes): void
+    {
+        $this->client?->notify('workspace/didChangeWatchedFiles', ['changes' => $changes]);
     }
 
     /** A single advertised server capability, null while no server is up (or none advertised). */

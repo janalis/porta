@@ -897,6 +897,23 @@ go on its own — saving its index — before it is terminated, then killed
 resolved map, so a provider-plugin setting the servers never see does not cost
 every language its warm session.
 
+**A message without params has no `params` member.** JSON-RPC allows an object,
+an array, or nothing; `null` is none of those, and symfony-lsp answers it with
+-32600 — it rejected the `shutdown` and `exit` this client used to send that
+way, so it was terminated rather than shut down. An error reply nothing waits
+for (a rejected message comes back with `id: null`) is logged to the LSP log
+rather than dropped.
+
+**A server hears what changed on disk.** `Lsp/WatchedFiles` speaks
+`workspace/didChangeWatchedFiles` for the globs each server registers
+(`client/registerCapability`, kept per client until unregistered or stopped).
+phpantom indexes once and trusts the client after that: without it, a method
+added by a branch switch, `composer fix` or an agent stayed "not found" until
+a restart. It is a stat-walk compared sweep to sweep — sliced at 512 entries
+per 4Hz tick under its own `PollBackoff`, `vendor/` and `.git` pruned
+(`composer.lock` is watched instead), the first sweep a baseline, and nothing
+walked while no server has registered a watcher.
+
 **A language can have more than one server.** The map is
 `languageId => [its own server, …the ones beside it]`, and which is which comes
 from `registerLanguageServer()`'s `ServerRole` rather than from load order —

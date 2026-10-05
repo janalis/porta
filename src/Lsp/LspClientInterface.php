@@ -20,6 +20,9 @@ interface LspClientInterface
     /** @var array<string, mixed> the server's advertised capabilities (empty until initialized) */
     public array $serverCapabilities { get; }
 
+    /** @var list<array{glob: string, kind: int}> the files the server registered to hear about, see {@see WatchedFiles} */
+    public array $fileWatchers { get; }
+
     public function onNotification(string $method, callable $handler): void;
 
     /**

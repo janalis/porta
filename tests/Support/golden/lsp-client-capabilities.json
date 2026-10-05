@@ -140,6 +140,10 @@
     },
     "workspace": {
         "configuration": false,
+        "didChangeWatchedFiles": {
+            "dynamicRegistration": true,
+            "relativePatternSupport": false
+        },
         "workspaceFolders": true,
         "symbol": {
             "dynamicRegistration": false

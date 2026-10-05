@@ -557,11 +557,105 @@ final class LspClientTest extends TestCase
             $this->assertSame('2.0', $messages[0]['jsonrpc'] ?? null);
             $this->assertSame(1, $messages[0]['id'] ?? null, 'the first id ever allocated');
             $this->assertSame(['jsonrpc' => '2.0', 'method' => 'initialized', 'params' => []], $messages[1] ?? null, 'the initialized notify()');
+
+            // Without params, neither carries the member: `null` is not a
+            // JSON-RPC params value, and a strict server rejects the message.
+            \file_put_contents($log, data: '');
+            $client->request('porta/bare', null, static function (): void {});
+            $client->notify('porta/bareNote', null);
+            $this->await(static fn (): bool => 2 === \substr_count((string) \file_get_contents($log), needle: "\n"), timeout: 15.0, what: 'both bare messages to be logged');
+            $lines = \array_values(\array_filter(\explode("\n", (string) \file_get_contents($log))));
+            $bare = \array_map(static fn (string $l): mixed => \json_decode($l, associative: true), $lines);
+            $this->assertSame(['jsonrpc' => '2.0', 'id' => 2, 'method' => 'porta/bare'], $bare[0] ?? null, 'a request() without params');
+            $this->assertSame(['jsonrpc' => '2.0', 'method' => 'porta/bareNote'], $bare[1] ?? null, 'a notify() without params');
         } finally {
             if (\is_file($log)) {
                 \unlink($log);
             }
         }
+    }
+
+    public function testWatchedFileRegistrationsAreKeptUntilUnregisteredOrStopped(): void
+    {
+        $client = $this->client();
+        $register = static fn (int $id, mixed $registrations): array => ['jsonrpc' => '2.0', 'id' => $id, 'method' => 'client/registerCapability', 'params' => ['registrations' => $registrations]];
+
+        Probe::invoke($client, 'handleMessage', $register(1, [
+            // phpantom's, as it registers them.
+            [
+                'id' => 'watch',
+                'method' => 'workspace/didChangeWatchedFiles',
+                'registerOptions' => [
+                    'watchers' => [
+                        ['globPattern' => '**/*.php', 'kind' => 7],
+                        ['globPattern' => '**/composer.lock'], // no kind: all three
+                        ['globPattern' => ['baseUri' => 'file:///x', 'pattern' => '*.php']], // a RelativePattern, not declared: skipped
+                        'not a watcher',
+                    ],
+                ],
+            ],
+            // Any other capability is acknowledged and ignored, as before.
+            ['id' => 'fmt', 'method' => 'textDocument/formatting'],
+            'not a registration',
+        ]));
+        Probe::invoke($client, 'handleMessage', $register(2, [
+            ['id' => 'json', 'method' => 'workspace/didChangeWatchedFiles', 'registerOptions' => ['watchers' => [['globPattern' => '**/*.json', 'kind' => 2]]]],
+        ]));
+        $this->assertSame(
+            [
+                ['glob' => '**/*.php', 'kind' => 7],
+                ['glob' => '**/composer.lock', 'kind' => 7],
+                ['glob' => '**/*.json', 'kind' => 2],
+            ],
+            $client->fileWatchers,
+        );
+
+        Probe::invoke($client, 'handleMessage', [
+            'jsonrpc' => '2.0',
+            'id' => 3,
+            'method' => 'client/unregisterCapability',
+            'params' => [
+                'unregisterations' => [
+                    ['id' => 'watch', 'method' => 'workspace/didChangeWatchedFiles'],
+                    'not an unregistration',
+                ],
+            ],
+        ]);
+        $this->assertSame([['glob' => '**/*.json', 'kind' => 2]], $client->fileWatchers, 'only the unregistered id goes');
+
+        Probe::invoke($client, 'handleMessage', $register(4, registrations: 'not a list'));
+        $client->stop();
+        $this->assertSame([], $client->fileWatchers, 'a stopped server watches nothing');
+    }
+
+    public function testAnErrorNobodyWaitsForReachesTheLogAndAnAnswerDoesNot(): void
+    {
+        $logged = [];
+        $client = $this->client(logger: static function (string $line) use (&$logged): void {
+            $logged[] = $line;
+        });
+        $answered = [];
+        $client->request('porta/waited', [], static function (mixed $result, ?array $error) use (&$answered): void {
+            $answered[] = [$result, $error];
+        });
+
+        // The one request waiting is answered, and nothing is logged for it.
+        Probe::invoke($client, 'handleMessage', ['jsonrpc' => '2.0', 'id' => 1, 'error' => ['code' => -32_601, 'message' => 'unknown']]);
+        // An answer nobody waits for (a shutdown's) is dropped quietly.
+        Probe::invoke($client, 'handleMessage', ['jsonrpc' => '2.0', 'id' => 9, 'result' => null]);
+        // An error nobody waits for, and one the server could not pin to a
+        // request, are the server saying something went wrong.
+        Probe::invoke($client, 'handleMessage', ['jsonrpc' => '2.0', 'id' => 9, 'error' => ['code' => -32_800, 'message' => 'Canceled']]);
+        Probe::invoke($client, 'handleMessage', ['jsonrpc' => '2.0', 'id' => null, 'error' => ['code' => -32_600, 'message' => 'Invalid Request']]);
+
+        $this->assertSame([[null, ['code' => -32_601, 'message' => 'unknown']]], $answered);
+        $this->assertSame(
+            [
+                'server error for request 9: {"code":-32800,"message":"Canceled"}',
+                'server error: {"code":-32600,"message":"Invalid Request"}',
+            ],
+            $logged,
+        );
     }
 
     public function testStopSendsShutdownThenExitWithTheCorrectEnvelopes(): void
@@ -601,8 +695,10 @@ final class LspClientTest extends TestCase
             $lines = \array_values(\array_filter(\explode("\n", (string) \file_get_contents($log))));
             $messages = \array_map(static fn (string $l): mixed => \json_decode($l, associative: true), $lines);
 
-            $this->assertSame(['jsonrpc' => '2.0', 'id' => 2, 'method' => 'shutdown', 'params' => null], $messages[0] ?? null, 'shutdown is sent first, with its own id');
-            $this->assertSame(['jsonrpc' => '2.0', 'method' => 'exit', 'params' => null], $messages[1] ?? null, 'exit follows, as a notification (no id)');
+            // No `params` member at all: JSON-RPC has no null params, and a
+            // strict server (symfony-lsp) answers `"params": null` with -32600.
+            $this->assertSame(['jsonrpc' => '2.0', 'id' => 2, 'method' => 'shutdown'], $messages[0] ?? null, 'shutdown is sent first, with its own id');
+            $this->assertSame(['jsonrpc' => '2.0', 'method' => 'exit'], $messages[1] ?? null, 'exit follows, as a notification (no id)');
         } finally {
             if (\is_file($log)) {
                 \unlink($log);

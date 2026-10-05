@@ -21,6 +21,9 @@ class FakeLspClient implements LspClientInterface
     /** @var array<string, mixed> */
     public array $capabilities = [];
 
+    /** @var list<array{glob: string, kind: int}> */
+    public array $fileWatchers = [];
+
     /** @var list<array{method: string, params: mixed}> */
     public array $notifications = [];
     /** @var list<array{method: string, params: mixed, respond?: \Closure}> */
