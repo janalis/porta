@@ -21,6 +21,8 @@ use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\ViewWindowCells;
+use Porta\Tests\Support\Widgets;
+use Porta\Widget\Settings\SettingsNavWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Render\Renderer;
@@ -64,8 +66,8 @@ final class IdeSettingsThemeTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                300 => function ($tui): void {
-                    $editor = $tui->getById('editor');
+                300 => function (Tui $tui): void {
+                    $editor = Widgets::editor($tui);
                     $this->assertSame(LineNumberMode::Relative, $editor->display->lineNumbers, 'setting applied from file');
                     $this->assertSame(InlayHintMode::Tooltip, $editor->display->inlayHints, 'the hint mode applied from file');
                     // Diagnostic messages off: even with a diagnostic, no inline text.
@@ -317,14 +319,14 @@ final class IdeSettingsThemeTest extends TestCase
                 },
                 600 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $this->frame($tui);
-                    $this->assertSame(31, $tui->getById('settings-nav')->width(), 'the seeded percent applied to the window');
+                    $this->assertSame(31, Widgets::byId($tui, 'settings-nav', SettingsNavWidget::class)->width(), 'the seeded percent applied to the window');
                     // Drag the separator (region column 31, after the 31-wide nav) in to column 21.
                     $tui->handleInput(self::windowSgr($ide, 0, 3, 31)); // arm on the separator
                     $tui->handleInput(self::windowSgr($ide, 32, 3, 21)); // drag left
                     $tui->handleInput(self::windowSgr($ide, 0, 3, 21, release: true));
                 },
-                900 => function ($tui) use ($project): void {
-                    $this->assertSame(21, $tui->getById('settings-nav')->width(), 'the drag resized the sidebar');
+                900 => function (Tui $tui) use ($project): void {
+                    $this->assertSame(21, Widgets::byId($tui, 'settings-nav', SettingsNavWidget::class)->width(), 'the drag resized the sidebar');
                     $layout = \json_decode((string) \file_get_contents($project->path('.porta/layout.json')), associative: true);
                     $this->assertSame(17, $layout['viewSidebarWidthPercent']['settings'], 'saved as a share of the window (round(21/124))');
                 },

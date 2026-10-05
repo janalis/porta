@@ -26,6 +26,7 @@ use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\Toasts;
+use Porta\Tests\Support\Widgets;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
@@ -90,7 +91,7 @@ final class IdeRemoteProjectTest extends TestCase
             200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($cache): void {
                 Services::resolve($ide, BufferService::class)->openFile($cache->path('README.md'), focus: OpenFocus::Editor);
                 $this->await(static fn (): bool => null !== Services::resolve($ide, BufferManager::class)->get((string) \realpath($cache->path('README.md'))));
-                $this->assertSame("# served\n\n\n\n\n", $tui->getById('editor')->getDocument()->getText(), 'the content, not the placeholder');
+                $this->assertSame("# served\n\n\n\n\n", Widgets::editor($tui)->getDocument()->getText(), 'the content, not the placeholder');
                 $tui->handleInput('X');
                 $tui->handleInput("\x13"); // ctrl+s
             },
@@ -118,12 +119,12 @@ final class IdeRemoteProjectTest extends TestCase
                 Services::resolve($ide, RemoteFilesystem::class)->listed((string) \realpath($cache->path('src')));
                 $transport->hold = true;
                 Services::resolve($ide, BufferService::class)->openFile($cache->path('src/App.php'), focus: OpenFocus::Editor);
-                $tui->getById('editor')->jumpTo(3, 0);
+                Widgets::editor($tui)->jumpTo(3, 0);
                 $this->assertSame(0, $readme?->document->cursorLine, 'the file in front kept its caret');
 
                 $transport->release();
                 $this->await(static fn (): bool => \str_ends_with((string) $buffers->active()?->path, 'src/App.php'));
-                $this->assertSame(3, $tui->getById('editor')->getDocument()->cursorLine, 'the jump landed in the file once it was here');
+                $this->assertSame(3, Widgets::editor($tui)->getDocument()->cursorLine, 'the jump landed in the file once it was here');
             },
             // One the server will not send: the blank stand-in goes, and the
             // file in front is back — not a blank that never fills.
@@ -136,10 +137,10 @@ final class IdeRemoteProjectTest extends TestCase
                 $transport->hold = true;
 
                 Services::resolve($ide, BufferService::class)->openFile($cache->path('src/Secret.php'), focus: OpenFocus::Editor);
-                $this->assertNotSame($front->document, $tui->getById('editor')->getDocument(), 'a stand-in while it is asked for');
+                $this->assertNotSame($front->document, Widgets::editor($tui)->getDocument(), 'a stand-in while it is asked for');
                 $transport->release();
 
-                $this->assertSame($front->document, $tui->getById('editor')->getDocument(), 'refused: the file in front, shown again');
+                $this->assertSame($front->document, Widgets::editor($tui)->getDocument(), 'refused: the file in front, shown again');
                 $this->assertStringContainsString('Cannot read src/Secret.php from the server: Permission denied', Toasts::all($ide)[0] ?? '');
             },
         ]);

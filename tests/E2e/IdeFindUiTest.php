@@ -13,6 +13,9 @@ use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\Widgets;
+use Porta\Widget\FindBarWidget;
+use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\Support\ResultsPanelFields;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -206,10 +209,10 @@ final class IdeFindUiTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                800 => function ($tui) use ($panelText): void {
+                800 => function (Tui $tui) use ($panelText): void {
                     $tui->tick();
                     $panel = $panelText($tui);
-                    $this->assertStringContainsString('· 1 shown', $tui->getById('results')->statusText(), 'filtered count');
+                    $this->assertStringContainsString('· 1 shown', Widgets::byId($tui, 'results', ResultsPanelWidget::class)->statusText(), 'filtered count');
                     $this->assertStringContainsString('src/A.php', $panel);
                     $this->assertStringNotContainsString('other/B.php', $panel, 'the non-matching file is filtered out');
                 },
@@ -240,7 +243,7 @@ final class IdeFindUiTest extends TestCase
             $project->path('a.php'),
             [
                 200 => function (Tui $tui, VirtualTerminal $terminal): void {
-                    $tui->getById('editor')->getDocument()->setCursor(1, 3); // inside $total
+                    Widgets::editor($tui)->getDocument()->setCursor(1, 3); // inside $total
                     $tui->handleInput("\x06"); // ctrl+f
 
                     // The sigil comes with it, and the count proves the field
@@ -267,7 +270,7 @@ final class IdeFindUiTest extends TestCase
                     // output accumulates the whole session, so a negative
                     // assertion against it finds an earlier frame and passes or
                     // fails for the wrong reason.
-                    $tui->getById('editor')->getDocument()->setCursor(2, 1); // inside `echo`
+                    Widgets::editor($tui)->getDocument()->setCursor(2, 1); // inside `echo`
                     $tui->handleInput("\x06");
                     $tui->requestRender(force: true);
                     $tui->processRender();
@@ -286,7 +289,7 @@ final class IdeFindUiTest extends TestCase
                     // off-by-one to write into a test and then misread as the
                     // bar forgetting things.
                     $tui->handleInput("\x1b"); // esc
-                    $tui->getById('editor')->getDocument()->setCursor(2, 12); // on the `+`
+                    Widgets::editor($tui)->getDocument()->setCursor(2, 12); // on the `+`
                     $tui->handleInput("\x06");
                     $tui->requestRender(force: true);
                     $tui->processRender();
@@ -364,9 +367,9 @@ final class IdeFindUiTest extends TestCase
 
                     $tui->handleInput("\x1b\r"); // alt+enter
                     $tui->handleInput('X');
-                    $document = $tui->getById('editor')->getDocument();
+                    $document = Widgets::editor($tui)->getDocument();
                     $this->await(static fn (): bool => "<?php\n// X Xbar X\n" === $document->getText(), what: 'every match typed over');
-                    $this->assertFalse($tui->getById('find-bar')->isOpen(), 'the bar closed');
+                    $this->assertFalse(Widgets::byId($tui, 'find-bar', FindBarWidget::class)->isOpen(), 'the bar closed');
 
                     $tui->handleInput("\x1a"); // ctrl+z
                     $this->await(static fn (): bool => "<?php\n// foo foobar foo\n" === $document->getText(), what: 'one undo restores them all');
@@ -441,8 +444,8 @@ final class IdeFindUiTest extends TestCase
                     }
                     $tui->handleInput("\x1ba"); // alt+a -> replace all
                 },
-                1000 => function ($tui) use ($project): void {
-                    $doc = $tui->getById('editor')->getDocument();
+                1000 => function (Tui $tui) use ($project): void {
+                    $doc = Widgets::editor($tui)->getDocument();
                     $this->assertStringContainsString('$bar = 1;', $doc->getText(), 'open buffer replaced (undoable)');
                     $this->assertStringContainsString('$bar = 2;', (string) \file_get_contents($project->path('src/B.php')), 'on-disk file replaced');
                 },
@@ -536,9 +539,9 @@ final class IdeFindUiTest extends TestCase
                     $this->assertStringContainsString('(excluded)', $panelText($tui), 'excluded line is marked');
                     $tui->handleInput("\x1ba"); // alt+a → replace kept
                 },
-                1000 => function ($tui): void {
+                1000 => function (Tui $tui): void {
                     $tui->tick();
-                    $text = $tui->getById('editor')->getDocument()->getText();
+                    $text = Widgets::editor($tui)->getDocument()->getText();
                     $this->assertStringContainsString('$bar = 1;', $text, 'kept match replaced');
                     $this->assertStringContainsString('$foo = 2;', $text, 'excluded match left intact');
                     $this->assertStringNotContainsString('$bar = 2;', $text);
@@ -557,7 +560,7 @@ final class IdeFindUiTest extends TestCase
             $project->path('a.php'),
             [
                 200 => function (Tui $tui, $terminal, Ide $ide): void {
-                    $results = $tui->getById('results');
+                    $results = Widgets::byId($tui, 'results', ResultsPanelWidget::class);
                     $results->open('Usages', ResultsPanelFields::resultsOnly());
                     $results->setResults([
                         ['path' => 'b.php', 'line' => 0, 'text' => 'one'],
@@ -572,9 +575,9 @@ final class IdeFindUiTest extends TestCase
                     $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $x, $y)); // hover the second result
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $x, $y)); // click it
                 },
-                340 => function ($tui): void {
-                    $this->assertStringEndsWith('c.php', (string) $tui->getById('editor')->getFilePath(), 'clicked the second result');
-                    $this->assertTrue($tui->getById('results')->isOpen(), 'the pane stays open after the jump');
+                340 => function (Tui $tui): void {
+                    $this->assertStringEndsWith('c.php', (string) Widgets::editor($tui)->getFilePath(), 'clicked the second result');
+                    $this->assertTrue(Widgets::byId($tui, 'results', ResultsPanelWidget::class)->isOpen(), 'the pane stays open after the jump');
                 },
             ],
         );

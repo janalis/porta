@@ -22,7 +22,9 @@ use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\Widgets;
 use Porta\Ui\Glyphs;
+use Porta\Widget\ContextMenu;
 use Porta\Widget\DockTabsWidget;
 use Porta\Widget\ResultsPanelWidget;
 use Porta\Workbench\Dock\BottomDock;
@@ -165,7 +167,7 @@ final class IdeDockToolsTest extends TestCase
 
                     // And it is what a press arms: dragged up three rows, the
                     // panel is three rows taller.
-                    $results = $tui->getById('results');
+                    $results = Widgets::byId($tui, 'results', ResultsPanelWidget::class);
                     $before = $results->visibleRows();
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $col + 1, $rect->row + 1));
                     $tui->handleInput(\sprintf("\x1b[<32;%d;%dM", $col + 1, $rect->row - 2));
@@ -241,8 +243,8 @@ final class IdeDockToolsTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide) use ($project): void {
-                    $decorations = $tui->getById('editor')->decorations;
+                200 => function (Tui $tui, $terminal, $ide) use ($project): void {
+                    $decorations = Widgets::editor($tui)->decorations;
                     $this->assertSame([], $decorations->vcsMarks, 'nothing published yet');
 
                     self::bufferService($ide)->applyChangeMarks((string) \realpath($project->path('a.php')), [1 => ChangeMarkKind::Modified]);
@@ -281,8 +283,8 @@ final class IdeDockToolsTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide) use ($project): void {
-                    $decorations = $tui->getById('editor')->decorations;
+                200 => function (Tui $tui, $terminal, $ide) use ($project): void {
+                    $decorations = Widgets::editor($tui)->decorations;
                     $a = (string) \realpath($project->path('a.php'));
 
                     self::bufferService($ide)->applyCommentMarks($a, [1 => 'alice: rename'], 'review');
@@ -342,7 +344,7 @@ final class IdeDockToolsTest extends TestCase
 
                     // A further refresh that adds an EARLIER row must not move
                     // the selection off the diagnostic the user is on.
-                    $results = $tui->getById('results');
+                    $results = Widgets::byId($tui, 'results', ResultsPanelWidget::class);
                     $this->assertInstanceOf(ResultsPanelWidget::class, $results, 'the dock shows the results panel');
                     $this->assertSame(1, $results->captureViewState()->selectedLine, 'the fresh tab selected its first match');
                     self::bufferService($ide)
@@ -372,7 +374,7 @@ final class IdeDockToolsTest extends TestCase
                             'test',
                         );
                     $tui->tick();
-                    $this->assertFalse($tui->getById('results')->isVisible(), 'the dock is hidden');
+                    $this->assertFalse(Widgets::byId($tui, 'results', ResultsPanelWidget::class)->isVisible(), 'the dock is hidden');
                     $tui->handleInput("\x1b6"); // alt+6 → reveal Problems again
                     $this->awaitPainted($tui, $terminal, '2 results');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
@@ -419,7 +421,7 @@ final class IdeDockToolsTest extends TestCase
                     $this->assertContains('Find in Project: alpha', $labels, 'the first search kept its tab');
                     $this->assertContains('Find in Project: beta', $labels, 'the second search opened beside it');
                 },
-                700 => function ($tui, $terminal, $ide) use ($project, $dock): void {
+                700 => function (Tui $tui, $terminal, $ide) use ($project, $dock): void {
                     // Switch back to the alpha tab and F5: only ITS query re-runs.
                     foreach ($dock($ide)->aliveTabs() as $entry) {
                         if ('Find in Project: alpha' !== $entry['label']) {
@@ -432,7 +434,7 @@ final class IdeDockToolsTest extends TestCase
                     $project->write('src/C.php', "<?php\n// alpha again\n");
                     $tui->setFocus($tui->getById('results'));
                     $tui->handleInput("\x1b[15~"); // F5 → reruns 'alpha', not 'beta'
-                    $this->await(static fn (): bool => \str_contains($tui->getById('results')->statusText(), '2 results'));
+                    $this->await(static fn (): bool => \str_contains(Widgets::byId($tui, 'results', ResultsPanelWidget::class)->statusText(), '2 results'));
                     $panel = AnsiUtils::stripAnsiCodes(\implode("\n", Paint::lines($tui->getById('results'), new RenderContext(160, 14))));
                     $this->assertStringContainsString('alpha again', $panel, "F5 re-ran the alpha tab's own query");
                     $this->assertStringNotContainsString('beta here', $panel, 'the beta results stayed in their tab');
@@ -530,7 +532,7 @@ final class IdeDockToolsTest extends TestCase
             $project,
             $project->path('src/Main.php'),
             [
-                200 => function ($tui, $terminal, $ide) use ($dock, $project): void {
+                200 => function (Tui $tui, $terminal, $ide) use ($dock, $project): void {
                     $tui->handleInput("\x1b6"); // alt+6 → Problems
                     $commands = Services::resolve($ide, CommandRegistry::class);
                     $commands->run('ide_notifications'); // Notifications joins, Problems keeps its tab
@@ -548,14 +550,14 @@ final class IdeDockToolsTest extends TestCase
                             'test',
                         );
                     $tui->tick();
-                    $this->assertSame('LSP Server Log', $tui->getById('results')->getTitle(), 'the displayed tool is untouched');
+                    $this->assertSame('LSP Server Log', Widgets::byId($tui, 'results', ResultsPanelWidget::class)->getTitle(), 'the displayed tool is untouched');
 
                     $tui->handleInput("\x1b[6;3~"); // alt+page_down cycles: LSP Log → wraps to Problems
                     $tui->tick();
-                    $this->assertSame('Problems', $tui->getById('results')->getTitle(), 'cycling walks the tool instances');
-                    $this->assertStringContainsString('1 result', $tui->getById('results')->statusText(), 'the inactive-tab refresh is visible on arrival');
+                    $this->assertSame('Problems', Widgets::byId($tui, 'results', ResultsPanelWidget::class)->getTitle(), 'cycling walks the tool instances');
+                    $this->assertStringContainsString('1 result', Widgets::byId($tui, 'results', ResultsPanelWidget::class)->statusText(), 'the inactive-tab refresh is visible on arrival');
                 },
-                600 => function ($tui, $terminal, $ide) use ($dock): void {
+                600 => function (Tui $tui, $terminal, $ide) use ($dock): void {
                     // × tabs one by one: the last close gives the slot back via the MRU.
                     $strip = $dock($ide);
                     while ([] !== ($tabs = $strip->aliveTabs())) {
@@ -563,7 +565,7 @@ final class IdeDockToolsTest extends TestCase
                         $strip->closeTab($entry['tab'], $entry['key']);
                     }
                     $tui->tick();
-                    $this->assertFalse($tui->getById('results')->isOpen(), 'all tools closed, the panel too');
+                    $this->assertFalse(Widgets::byId($tui, 'results', ResultsPanelWidget::class)->isOpen(), 'all tools closed, the panel too');
                 },
             ],
         );
@@ -604,7 +606,7 @@ final class IdeDockToolsTest extends TestCase
                     $tui->handleInput(\sprintf("\x1b[<32;%d;%dM", $rect->col + $rect->columns - 2, $rect->row + 1));
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $rect->col + $rect->columns - 2, $rect->row + 1));
                     $this->assertSame(['Notifications', 'Problems'], $labels(), 'a fixed/tail endpoint is a no-op');
-                    $this->assertSame('Problems', $tui->getById('results')->getTitle(), 'the pressed tool stayed revealed through its move');
+                    $this->assertSame('Problems', Widgets::byId($tui, 'results', ResultsPanelWidget::class)->getTitle(), 'the pressed tool stayed revealed through its move');
                 },
             ],
         );
@@ -632,14 +634,14 @@ final class IdeDockToolsTest extends TestCase
 
                     $terminal->clearOutput();
                     $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + $problems + 1, $rect->row + 1));
-                    $this->assertTrue($tui->getById('context-menu')->isOpen(), 'right-clicking a tool tab opened its menu');
+                    $this->assertTrue(Widgets::byId($tui, 'context-menu', ContextMenu::class)->isOpen(), 'right-clicking a tool tab opened its menu');
                     $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Close'));
                     $this->assertStringContainsString('Close', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
 
                     $tui->handleInput("\r"); // run Close — the same action as the strip ×
                     $tui->tick();
                     $this->assertSame([], $dock($ide)->aliveTabs(), 'the menu Close really closed the tool');
-                    $this->assertFalse($tui->getById('results')->isOpen());
+                    $this->assertFalse(Widgets::byId($tui, 'results', ResultsPanelWidget::class)->isOpen());
                 },
                 500 => function (Tui $tui, $terminal, Ide $ide): void {
                     // The strip's empty tail stays menu-less.
@@ -649,7 +651,7 @@ final class IdeDockToolsTest extends TestCase
                     $rect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
                     $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + $rect->columns - 2, $rect->row + 1));
                     $tui->tick();
-                    $this->assertFalse($tui->getById('context-menu')->isOpen(), 'the empty tail offers no menu');
+                    $this->assertFalse(Widgets::byId($tui, 'context-menu', ContextMenu::class)->isOpen(), 'the empty tail offers no menu');
                 },
             ],
         );
@@ -725,13 +727,13 @@ final class IdeDockToolsTest extends TestCase
                         $tui->handleInput($ch);
                     }
                     $this->frame($tui);
-                    $this->assertTrue($tui->getById('editor')->isSearchOverlayOpen());
+                    $this->assertTrue(Widgets::editor($tui)->isSearchOverlayOpen());
                     $gotoRect = $renderer->getWidgetRect($tui->getById('editor'));
                     $wheel($tui, $gotoRect->col + 3, $gotoRect->row + 3);
                     $tui->tick();
                     $tui->handleInput("\r"); // picks the wheel-selected row
                     $tui->tick();
-                    $this->assertStringEndsWith('b.php', (string) $tui->getById('editor')->getFilePath(), 'wheel-down + Enter opened the later match');
+                    $this->assertStringEndsWith('b.php', (string) Widgets::editor($tui)->getFilePath(), 'wheel-down + Enter opened the later match');
 
                     // Menu dropdown: the wheel moves the selection inside the region.
                     $tui->handleInput("\x1b[21~"); // F10 opens the app menu
@@ -772,10 +774,10 @@ final class IdeDockToolsTest extends TestCase
                     $this->frame($tui); // the strip's rect below needs a real frame
                     $renderer = Services::resolve($ide, Renderer::class);
                     $stripRect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
-                    $this->assertSame('Notifications', $tui->getById('results')->getTitle());
+                    $this->assertSame('Notifications', Widgets::byId($tui, 'results', ResultsPanelWidget::class)->getTitle());
                     $wheel($tui, $stripRect->col + 3, $stripRect->row + 1, code: 64); // wheel-up cycles back
                     $tui->tick();
-                    $this->assertSame('Problems', $tui->getById('results')->getTitle(), 'a strip wheel switches the tool tab');
+                    $this->assertSame('Problems', Widgets::byId($tui, 'results', ResultsPanelWidget::class)->getTitle(), 'a strip wheel switches the tool tab');
                 },
             ],
         );
@@ -796,7 +798,7 @@ final class IdeDockToolsTest extends TestCase
             $project,
             $project->path('b.php'),
             [
-                200 => function ($tui, $terminal, Ide $ide): void {
+                200 => function (Tui $tui, $terminal, Ide $ide): void {
                     $dock = Services::resolve($ide, BottomDock::class);
                     $reruns = 0;
                     $activated = [];
@@ -820,7 +822,7 @@ final class IdeDockToolsTest extends TestCase
 
                     $this->assertSame(['a.php:1'], $activated, "the tool's own Enter fired with the row's location");
                     $this->assertSame(1, $reruns, 'and its own F5');
-                    $this->assertStringEndsWith('/b.php', (string) $tui->getById('editor')->getFilePath(), 'core did not also jump');
+                    $this->assertStringEndsWith('/b.php', (string) Widgets::editor($tui)->getFilePath(), 'core did not also jump');
 
                     // A tool that declares neither: Enter falls through to
                     // core's open-and-jump, F5 is inert.
@@ -831,7 +833,7 @@ final class IdeDockToolsTest extends TestCase
                     $tui->handleInput("\r");
                     $tui->tick();
 
-                    $this->assertStringEndsWith('/a.php', (string) $tui->getById('editor')->getFilePath(), 'the default Enter opened the row');
+                    $this->assertStringEndsWith('/a.php', (string) Widgets::editor($tui)->getFilePath(), 'the default Enter opened the row');
                     $this->assertSame(1, $reruns, "the other tool's F5 did not fire");
                 },
             ],
@@ -857,7 +859,7 @@ final class IdeDockToolsTest extends TestCase
             [
                 200 => function (Tui $tui, $terminal): void {
                     $editorScreen = static fn (): string => \implode("\n", Paint::lines($tui->getById('editor'), new RenderContext(120, 20)));
-                    $tui->getById('editor')->getDocument()->setCursor(1, 0);
+                    Widgets::editor($tui)->getDocument()->setCursor(1, 0);
                     $tui->handleInput("\x1b[23~");
                     // F11 → toggle bookmark
                     $this->frame($tui);
@@ -866,15 +868,15 @@ final class IdeDockToolsTest extends TestCase
                     $tui->handleInput("\x1b2");
                     $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), '// remembered line'));
                 },
-                320 => function ($tui, $terminal, $ide) use ($project): void {
+                320 => function (Tui $tui, $terminal, $ide) use ($project): void {
                     self::bufferService($ide)->openFile($project->path('b.php'), OpenFocus::Editor);
                     $tui->tick();
                     $tui->setFocus($tui->getById('results'));
                     $tui->handleInput("\r");
                     $tui->tick();
 
-                    $this->assertStringEndsWith('/a.php', (string) $tui->getById('editor')->getFilePath(), 'the row jumped back to the bookmarked file');
-                    $this->assertSame(1, $tui->getById('editor')->getDocument()->cursorLine, 'and to its line');
+                    $this->assertStringEndsWith('/a.php', (string) Widgets::editor($tui)->getFilePath(), 'the row jumped back to the bookmarked file');
+                    $this->assertSame(1, Widgets::editor($tui)->getDocument()->cursorLine, 'and to its line');
                 },
                 420 => function ($tui, $terminal, Ide $ide) use ($project): void {
                     // The mark outlives the session: teardown writes it, and a
@@ -908,9 +910,9 @@ final class IdeDockToolsTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide) use ($project): void {
+                200 => function (Tui $tui, $terminal, $ide) use ($project): void {
                     // Record a departure the way every navigation verb does.
-                    $tui->getById('editor')->getDocument()->setCursor(1, 0);
+                    Widgets::editor($tui)->getDocument()->setCursor(1, 0);
                     Services::resolve($ide, NavigationController::class)->pushCurrentLocation();
                     self::bufferService($ide)->openFile($project->path('b.php'), OpenFocus::Editor);
                     $tui->tick();
@@ -922,8 +924,8 @@ final class IdeDockToolsTest extends TestCase
                     $tui->handleInput("\r");
                     $tui->tick();
 
-                    $this->assertStringEndsWith('/a.php', (string) $tui->getById('editor')->getFilePath(), 'the row returned to the file left behind');
-                    $this->assertSame(1, $tui->getById('editor')->getDocument()->cursorLine);
+                    $this->assertStringEndsWith('/a.php', (string) Widgets::editor($tui)->getFilePath(), 'the row returned to the file left behind');
+                    $this->assertSame(1, Widgets::editor($tui)->getDocument()->cursorLine);
                 },
             ],
         );
@@ -947,7 +949,7 @@ final class IdeDockToolsTest extends TestCase
             $project->path('a.php'),
             [
                 200 => function (Tui $tui, $terminal, Ide $ide): void {
-                    $tui->getById('editor')->getDocument()->setCursor(6, 0);
+                    Widgets::editor($tui)->getDocument()->setCursor(6, 0);
                     $this->frame($tui); // the caret settles BEFORE the tab exists
 
                     $dock = Services::resolve($ide, BottomDock::class);
@@ -959,7 +961,7 @@ final class IdeDockToolsTest extends TestCase
 
                     $this->assertSame(
                         5,
-                        $tui->getById('results')->captureViewState()->selectedLine,
+                        Widgets::byId($tui, 'results', ResultsPanelWidget::class)->captureViewState()->selectedLine,
                         'greet() selected on open, with no caret move to trigger it',
                     );
                 },
@@ -993,17 +995,17 @@ final class IdeDockToolsTest extends TestCase
                             ],
                             'test',
                         );
-                    $tui->getById('editor')->getDocument()->setCursor(0, 0);
+                    Widgets::editor($tui)->getDocument()->setCursor(0, 0);
                     $this->frame($tui);
 
                     $tui->handleInput("\x1bOQ"); // F2
-                    $this->assertSame(2, $tui->getById('editor')->getDocument()->cursorLine, 'jumped to the first problem');
+                    $this->assertSame(2, Widgets::editor($tui)->getDocument()->cursorLine, 'jumped to the first problem');
 
                     $tui->handleInput("\x1bOQ");
-                    $this->assertSame(5, $tui->getById('editor')->getDocument()->cursorLine, 'then the second');
+                    $this->assertSame(5, Widgets::editor($tui)->getDocument()->cursorLine, 'then the second');
 
                     $tui->handleInput("\x1bOQ");
-                    $this->assertSame(2, $tui->getById('editor')->getDocument()->cursorLine, 'and wrapped back to the first');
+                    $this->assertSame(2, Widgets::editor($tui)->getDocument()->cursorLine, 'and wrapped back to the first');
                 },
             ],
         );

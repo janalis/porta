@@ -14,6 +14,7 @@ use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\Widgets;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
@@ -85,12 +86,12 @@ final class PhpstanPluginTest extends TestCase
                 100 => static function ($tui): void {
                     $tui->handleInput("\x1b\x01"); // ctrl+alt+a → phpstan:analyse
                 },
-                300 => function ($tui, $terminal) use ($project): void {
+                300 => function (Tui $tui, $terminal) use ($project): void {
                     $screen = static fn (): string => AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->await(static fn (): bool => \str_contains($screen(), 'phpstan: 1 error in a.php'), what: 'the analyse toast');
                     // The toast and the inline diagnostic land on different
                     // invalidation paths — await the diagnostic itself.
-                    $editor = $tui->getById('editor');
+                    $editor = Widgets::editor($tui);
                     $rendered = static fn (): string => AnsiUtils::stripAnsiCodes(\implode("\n", Paint::lines($editor, new RenderContext(120, 20))));
                     $this->await(static fn (): bool => \str_contains($rendered(), 'Boom detected'), what: 'the diagnostic to render inline in the editor');
 

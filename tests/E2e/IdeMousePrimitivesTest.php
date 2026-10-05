@@ -14,6 +14,7 @@ use Porta\Editor\GutterPart;
 use Porta\Ide;
 use Porta\Input\GutterClickRouter;
 use Porta\Overlay\Region\DropdownRegion;
+use Porta\Overlay\Region\ModalBox;
 use Porta\Overlay\State\MenuOverlayController;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\EditorState;
@@ -23,6 +24,10 @@ use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\Widgets;
+use Porta\Widget\ContextMenu;
+use Porta\Widget\FileTreeWidget;
+use Porta\Widget\MenuBarWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Render\Renderer;
@@ -50,7 +55,7 @@ final class IdeMousePrimitivesTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, Ide $ide): void {
+                200 => function (Tui $tui, $terminal, Ide $ide): void {
                     $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('editor'));
 
@@ -58,7 +63,7 @@ final class IdeMousePrimitivesTest extends TestCase
                     // through handleEditorClick and moves the caret.
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + 8, $rect->row + 3));
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $rect->col + 8, $rect->row + 3));
-                    $this->assertSame(2, $tui->getById('editor')->getDocument()->cursorLine, 'an in-editor click places the caret');
+                    $this->assertSame(2, Widgets::editor($tui)->getDocument()->cursorLine, 'an in-editor click places the caret');
 
                     // A left press one row below the editor's last row (the status
                     // band) still reaches handleEditorClick, whose guard rejects the
@@ -68,8 +73,8 @@ final class IdeMousePrimitivesTest extends TestCase
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + 8, $row));
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $rect->col + 8, $row));
                 },
-                300 => function ($tui): void {
-                    $this->assertSame(2, $tui->getById('editor')->getDocument()->cursorLine, 'the click below the editor did not move the caret');
+                300 => function (Tui $tui): void {
+                    $this->assertSame(2, Widgets::editor($tui)->getDocument()->cursorLine, 'the click below the editor did not move the caret');
                 },
             ],
         );
@@ -92,8 +97,8 @@ final class IdeMousePrimitivesTest extends TestCase
                     // Header is relative row 0, a.php (selected) is row 1; hover b.php at row 2.
                     $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $rect->col + 3, $rect->row + 3));
                 },
-                280 => function ($tui, $terminal, Ide $ide): void {
-                    $tree = $tui->getById('tree');
+                280 => function (Tui $tui, $terminal, Ide $ide): void {
+                    $tree = Widgets::byId($tui, 'tree', FileTreeWidget::class);
                     $line = Paint::lines($tree, new RenderContext(30, 24))[2];
                     $this->assertStringContainsString("\x1b[48;5;236m", $line, 'hovered tree row is highlighted');
                     // Move off the tree into the editor → the hover clears.
@@ -101,8 +106,8 @@ final class IdeMousePrimitivesTest extends TestCase
                     $editorRect = $renderer->getWidgetRect($tui->getById('editor'));
                     $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $editorRect->col + 5, $editorRect->row + 3));
                 },
-                360 => function ($tui): void {
-                    $tree = $tui->getById('tree');
+                360 => function (Tui $tui): void {
+                    $tree = Widgets::byId($tui, 'tree', FileTreeWidget::class);
                     $joined = \implode('', Paint::lines($tree, new RenderContext(30, 24)));
                     $this->assertStringNotContainsString("\x1b[48;5;236m", $joined, 'hover cleared after leaving the tree');
                 },
@@ -134,8 +139,8 @@ final class IdeMousePrimitivesTest extends TestCase
                     // -> past the gutter).
                     $tui->handleInput("\x1b[<0;45;6M");
                 },
-                400 => function ($tui): void {
-                    $editor = $tui->getById('editor');
+                400 => function (Tui $tui): void {
+                    $editor = Widgets::editor($tui);
                     $this->assertSame('editor', $tui->getFocus()?->getId());
                     $this->assertSame(2, $editor->getDocument()->cursorLine, 'click moved cursor');
                     // Horizontal wheel over the editor slides the view without
@@ -150,10 +155,10 @@ final class IdeMousePrimitivesTest extends TestCase
                     $tui->handleInput("\x1b[<65;45;7M");
                     $tui->handleInput("\x1b[<65;45;7M");
                 },
-                500 => function ($tui): void {
+                500 => function (Tui $tui): void {
                     // After two wheel-down steps (6 lines) the top visible line is
                     // no longer line 1.
-                    $editor = $tui->getById('editor');
+                    $editor = Widgets::editor($tui);
                     $rendered = Paint::lines($editor, new RenderContext(69, 20));
                     $topLineNumber = (int) \trim(AnsiUtils::stripAnsiCodes($rendered[0]));
                     $this->assertGreaterThan(1, $topLineNumber, 'wheel scrolled the viewport down');
@@ -171,7 +176,7 @@ final class IdeMousePrimitivesTest extends TestCase
                     );
                     // Wheel over the tree scrolls it (feeds arrow keys): the
                     // selection moves down a notch and comes back up with the next.
-                    $tree = $tui->getById('tree');
+                    $tree = Widgets::byId($tui, 'tree', FileTreeWidget::class);
                     $before = $tree->selectedNode()?->path;
                     $tui->handleInput("\x1b[<65;6;7M");
                     $this->assertNotSame($before, $tree->selectedNode()?->path, 'a wheel-down over the tree moved its selection');
@@ -182,15 +187,15 @@ final class IdeMousePrimitivesTest extends TestCase
                     // header row 0, A.php row 1, B.php row 2.
                     $tui->handleInput("\x1b[<0;2;4M"); // 0-based col1 row2 -> B.php
                 },
-                650 => function ($tui): void {
-                    $editor = $tui->getById('editor');
+                650 => function (Tui $tui): void {
+                    $editor = Widgets::editor($tui);
                     $this->assertStringEndsWith('B.php', (string) $editor->getFilePath());
                     // Tab-bar click: switch back to A.php (first tab).
                     $tui->tick();
                     $tui->handleInput("\x1b[<0;34;2M"); // 0-based col33 row1 -> tab area
                 },
-                800 => function ($tui): void {
-                    $editor = $tui->getById('editor');
+                800 => function (Tui $tui): void {
+                    $editor = Widgets::editor($tui);
                     $this->assertStringEndsWith('A.php', (string) $editor->getFilePath(), 'tab click switched buffer');
                 },
             ],
@@ -233,7 +238,7 @@ final class IdeMousePrimitivesTest extends TestCase
             [
                 300 => function (Tui $tui, $terminal, Ide $ide) use ($wheelInside): void {
                     $this->frame($tui);
-                    $editor = $tui->getById('editor');
+                    $editor = Widgets::editor($tui);
                     $scroll = EditorState::scroll($editor);
                     $overlay = Services::resolve($ide, MenuOverlayController::class);
 
@@ -241,7 +246,7 @@ final class IdeMousePrimitivesTest extends TestCase
                     $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($editor);
                     $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 12, $rect->row + 3));
                     $this->frame($tui);
-                    $menu = $tui->getById('context-menu');
+                    $menu = Widgets::byId($tui, 'context-menu', ContextMenu::class);
                     $this->assertTrue($menu->isOpen(), 'the right-click opened the context menu');
                     $before = Probe::get($menu, 'selected');
                     $wheelInside($tui, $overlay->contextMenuDropdown(), $rect);
@@ -254,7 +259,7 @@ final class IdeMousePrimitivesTest extends TestCase
                     $tui->handleInput("\x1b[21~"); // F10 arms the bar
                     $tui->handleInput("\x1b[B"); // ↓ drops File
                     $this->frame($tui);
-                    $bar = $tui->getById('menu');
+                    $bar = Widgets::byId($tui, 'menu', MenuBarWidget::class);
                     $this->assertTrue($bar->isOpen(), 'F10 opened the menu dropdown');
                     $before = Probe::get($bar, 'selected');
                     $wheelInside($tui, $overlay->menuDropdown(), $rect);
@@ -267,7 +272,7 @@ final class IdeMousePrimitivesTest extends TestCase
                     $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
                     $this->frame($tui);
                     $box = $editor->findModal->lastBox();
-                    $this->assertNotNull($box, 'the find modal is open and has a box');
+                    $this->assertInstanceOf(ModalBox::class, $box, 'the find modal is open and has a box');
                     $row = $box->startRow + $box->rows - 2;
                     $col = \max($box->col + 2, $rect->col);
                     $this->assertTrue($box->contains($row, $col) && $row >= $rect->row, 'sanity: inside the modal and over the editor pane');
@@ -290,9 +295,9 @@ final class IdeMousePrimitivesTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                300 => function ($tui): void {
+                300 => function (Tui $tui): void {
                     $tui->tick();
-                    $before = $tui->getById('editor')->getDocument()->cursorLine;
+                    $before = Widgets::editor($tui)->getDocument()->cursorLine;
                     // Right-click in the 1-col gap between the tree and editor pane
                     // (SGR col 31 = the gap), drag-motion, release, and a wheel over
                     // empty space are all no-ops (no context menu, no caret move).
@@ -300,8 +305,8 @@ final class IdeMousePrimitivesTest extends TestCase
                     $tui->handleInput("\x1b[<32;45;4M"); // motion
                     $tui->handleInput("\x1b[<0;45;4m"); // release
                     $tui->handleInput("\x1b[<64;1;24M"); // wheel over the status bar
-                    $this->assertSame($before, $tui->getById('editor')->getDocument()->cursorLine);
-                    $this->assertFalse($tui->getById('context-menu')->isOpen());
+                    $this->assertSame($before, Widgets::editor($tui)->getDocument()->cursorLine);
+                    $this->assertFalse(Widgets::byId($tui, 'context-menu', ContextMenu::class)->isOpen());
                 },
             ],
         );
@@ -328,8 +333,8 @@ final class IdeMousePrimitivesTest extends TestCase
                     $tui->handleInput("\x1b[<32;44;4M"); // drag to col 5
                     $tui->handleInput("\x1b[<0;44;4m"); // release
                 },
-                400 => function ($tui): void {
-                    $this->assertSame('hello', $tui->getById('editor')->getDocument()->getSelectedText());
+                400 => function (Tui $tui): void {
+                    $this->assertSame('hello', Widgets::editor($tui)->getDocument()->getSelectedText());
                 },
             ],
         );
@@ -352,8 +357,8 @@ final class IdeMousePrimitivesTest extends TestCase
                     $tui->handleInput("\x1b[<32;40;6M"); // drag down to line 2, col 1
                     $tui->handleInput("\x1b[<0;40;6m");
                 },
-                400 => function ($tui): void {
-                    $this->assertSame("bc\ndef\ng", $tui->getById('editor')->getDocument()->getSelectedText());
+                400 => function (Tui $tui): void {
+                    $this->assertSame("bc\ndef\ng", Widgets::editor($tui)->getDocument()->getSelectedText());
                 },
             ],
         );
@@ -375,8 +380,8 @@ final class IdeMousePrimitivesTest extends TestCase
                     $tui->handleInput("\x1b[<0;41;4M"); // press inside "hello"
                     $tui->handleInput("\x1b[<0;41;4M"); // second press same cell -> word
                 },
-                400 => function ($tui): void {
-                    $this->assertSame('hello', $tui->getById('editor')->getDocument()->getSelectedText());
+                400 => function (Tui $tui): void {
+                    $this->assertSame('hello', Widgets::editor($tui)->getDocument()->getSelectedText());
                 },
             ],
         );
@@ -399,8 +404,8 @@ final class IdeMousePrimitivesTest extends TestCase
                     $tui->handleInput("\x1b[<0;43;4M");
                     $tui->handleInput("\x1b[<0;43;4M"); // third press -> whole line
                 },
-                400 => function ($tui): void {
-                    $this->assertSame('hello world', $tui->getById('editor')->getDocument()->getSelectedText());
+                400 => function (Tui $tui): void {
+                    $this->assertSame('hello world', Widgets::editor($tui)->getDocument()->getSelectedText());
                 },
             ],
         );
@@ -422,8 +427,8 @@ final class IdeMousePrimitivesTest extends TestCase
                     $tui->handleInput("\x1b[<0;39;4M"); // plain click -> caret at col 0
                     $tui->handleInput("\x1b[<4;44;4M"); // Shift+click at col 5 -> extend
                 },
-                400 => function ($tui): void {
-                    $this->assertSame('hello', $tui->getById('editor')->getDocument()->getSelectedText());
+                400 => function (Tui $tui): void {
+                    $this->assertSame('hello', Widgets::editor($tui)->getDocument()->getSelectedText());
                 },
             ],
         );
@@ -494,8 +499,8 @@ final class IdeMousePrimitivesTest extends TestCase
                     $this->assertTrue(EditorState::multiCaret($tui->getById('editor'))->hasMultiple(), 'rectangle spans 3 lines');
                     $tui->handleInput('X'); // type at every caret
                 },
-                400 => function ($tui): void {
-                    $this->assertSame("aXa\nbX\ncXc\n", $tui->getById('editor')->getDocument()->getText());
+                400 => function (Tui $tui): void {
+                    $this->assertSame("aXa\nbX\ncXc\n", Widgets::editor($tui)->getDocument()->getText());
                 },
             ],
         );
@@ -524,14 +529,14 @@ final class IdeMousePrimitivesTest extends TestCase
                     // first claim over every floating modal).
                     $tui->handleInput("\x1b[<0;2;10M");
                 },
-                420 => function ($tui): void {
-                    $editor = $tui->getById('editor');
+                420 => function (Tui $tui): void {
+                    $editor = Widgets::editor($tui);
                     $this->assertFalse(EditorState::pickerOpen($editor), 'outside click dismissed the dialog');
                     $this->assertStringEndsWith('a.php', (string) $editor->getFilePath(), 'dismiss kept the buffer');
                     $tui->handleInput("\x1bw"); // reopen the overlay
                 },
-                540 => function ($tui, $terminal, $ide): void {
-                    $editor = $tui->getById('editor');
+                540 => function (Tui $tui, $terminal, $ide): void {
+                    $editor = Widgets::editor($tui);
                     $this->assertTrue(EditorState::pickerOpen($editor));
                     $host = Probe::get($editor, 'overlayHost');
                     $box = Probe::get($host, 'overlayBox');
@@ -596,18 +601,18 @@ final class IdeMousePrimitivesTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui): void {
-                    $editor = $tui->getById('editor');
+                200 => function (Tui $tui): void {
+                    $editor = Widgets::editor($tui);
                     $editor->getDocument()->setCursor(1, 0);
                     $editor->showCompletions([
                         new CompletionItem(label: 'alpha', insertText: 'alpha', kind: 'fn', detail: ''),
                     ]);
                     $this->assertTrue($editor->isCompletionOpen());
                 },
-                320 => static function ($tui, $terminal, Ide $ide): void {
+                320 => static function (Tui $tui, $terminal, Ide $ide): void {
                     $tui->requestRender(force: true);
                     $tui->processRender(); // paint the popup so its box geometry is recorded
-                    $editor = $tui->getById('editor');
+                    $editor = Widgets::editor($tui);
                     $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($editor);
                     // Hover then click the suggestion itself (through the
@@ -621,8 +626,8 @@ final class IdeMousePrimitivesTest extends TestCase
                     $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $x + 1, $y + 1)); // hover tints it
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $x + 1, $y + 1)); // click accepts it
                 },
-                440 => function ($tui, $terminal, Ide $ide): void {
-                    $editor = $tui->getById('editor');
+                440 => function (Tui $tui, $terminal, Ide $ide): void {
+                    $editor = Widgets::editor($tui);
                     $this->assertFalse($editor->isCompletionOpen(), 'the item click accepted the suggestion');
                     $this->assertStringContainsString('alpha', $editor->getDocument()->getLine(1));
 
@@ -636,8 +641,8 @@ final class IdeMousePrimitivesTest extends TestCase
                     $rect = $renderer->getWidgetRect($editor);
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + 6, $rect->row + $rect->rows));
                 },
-                560 => function ($tui): void {
-                    $this->assertFalse($tui->getById('editor')->isCompletionOpen(), 'a click off the popup closed completion and placed the caret');
+                560 => function (Tui $tui): void {
+                    $this->assertFalse(Widgets::editor($tui)->isCompletionOpen(), 'a click off the popup closed completion and placed the caret');
                 },
             ],
         );
@@ -662,24 +667,24 @@ final class IdeMousePrimitivesTest extends TestCase
                     // +4 lands on c.php, two rows below the opened a.php.
                     $tui->handleInput(\sprintf("\x1b[<16;%d;%dM", $rect->col + 3, $rect->row + 4));
                 },
-                300 => function ($tui): void {
-                    $tree = $tui->getById('tree');
+                300 => function (Tui $tui): void {
+                    $tree = Widgets::byId($tui, 'tree', FileTreeWidget::class);
                     $this->assertSame(
                         ['a.php', 'c.php'],
                         \array_map(basename(...), $tree->selectedPaths()),
                         'the ctrl-click added the third row to the file the tree opened with',
                     );
-                    $this->assertStringEndsWith('a.php', (string) $tui->getById('editor')->getFilePath(), 'and did not open it — the editor is what you compare against');
+                    $this->assertStringEndsWith('a.php', (string) Widgets::editor($tui)->getFilePath(), 'and did not open it — the editor is what you compare against');
                 },
                 400 => static function ($tui, $terminal, Ide $ide): void {
                     $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($tui->getById('tree'));
                     // Button 0 + 4 is Shift: the range from the last click.
                     $tui->handleInput(\sprintf("\x1b[<4;%d;%dM", $rect->col + 3, $rect->row + 3));
                 },
-                500 => function ($tui): void {
+                500 => function (Tui $tui): void {
                     $this->assertSame(
                         ['b.php', 'c.php'],
-                        \array_map(basename(...), $tui->getById('tree')->selectedPaths()),
+                        \array_map(basename(...), Widgets::byId($tui, 'tree', FileTreeWidget::class)->selectedPaths()),
                         'the shift-click took the range from the ctrl-clicked row, dropping the one outside it',
                     );
                 },
@@ -703,8 +708,8 @@ final class IdeMousePrimitivesTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                300 => function ($tui): void {
-                    $editor = $tui->getById('editor');
+                300 => function (Tui $tui): void {
+                    $editor = Widgets::editor($tui);
                     $editor->decorations->setVcsMarks([1 => ChangeMarkKind::Modified]);
                     $this->assertTrue($editor->changeMarkAt(0, 1), 'the strip column, on a marked line');
                     $this->assertFalse($editor->changeMarkAt(0, 0), 'not on an unmarked one');
@@ -713,8 +718,8 @@ final class IdeMousePrimitivesTest extends TestCase
                     $tui->handleInput("\x1b[<0;32;5M"); // the strip, line 1
                     $tui->handleInput("\x1b[<0;32;5m");
                 },
-                400 => function ($tui): void {
-                    $this->assertSame([1], $tui->getById('editor')->decorations->breakpointLines, 'no git plugin: a breakpoint');
+                400 => function (Tui $tui): void {
+                    $this->assertSame([1], Widgets::editor($tui)->decorations->breakpointLines, 'no git plugin: a breakpoint');
                 },
             ],
         );
@@ -731,8 +736,8 @@ final class IdeMousePrimitivesTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                300 => static function ($tui, $terminal, Ide $ide) use (&$shownFrom): void {
-                    $editor = $tui->getById('editor');
+                300 => static function (Tui $tui, $terminal, Ide $ide) use (&$shownFrom): void {
+                    $editor = Widgets::editor($tui);
                     Services::resolve($ide, CommandRegistry::class)->add(GutterClickRouter::SHOW_CHANGE, static function () use ($editor, &$shownFrom): void {
                         $shownFrom[] = $editor->getDocument()->cursorLine;
                     });
@@ -741,9 +746,9 @@ final class IdeMousePrimitivesTest extends TestCase
                     $tui->handleInput("\x1b[<0;32;5M"); // the strip, line 1
                     $tui->handleInput("\x1b[<0;32;5m");
                 },
-                400 => function ($tui) use (&$shownFrom): void {
+                400 => function (Tui $tui) use (&$shownFrom): void {
                     $this->assertSame([1], $shownFrom, 'the change viewer ran, with the caret on the clicked line');
-                    $this->assertSame([], $tui->getById('editor')->decorations->breakpointLines, 'and no breakpoint was set');
+                    $this->assertSame([], Widgets::editor($tui)->decorations->breakpointLines, 'and no breakpoint was set');
                 },
             ],
         );
@@ -759,15 +764,15 @@ final class IdeMousePrimitivesTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                300 => static function ($tui): void {
-                    $editor = $tui->getById('editor');
+                300 => static function (Tui $tui): void {
+                    $editor = Widgets::editor($tui);
                     $editor->decorations->setBreakpointLines([1]);
                     $editor->decorations->setVcsMarks([0 => ChangeMarkKind::Modified]);
                     $tui->tick();
                     $tui->handleInput("\x1b[<35;36;5M"); // the marker column, line 1
                 },
                 400 => function (Tui $tui, VirtualTerminal $terminal): void {
-                    $editor = $tui->getById('editor');
+                    $editor = Widgets::editor($tui);
                     $this->assertSame(1, $editor->decorations->gutterHover['line'] ?? null);
                     // The card follows the dwell; the status bar no longer says it.
                     $this->awaitPainted($tui, $terminal, 'Breakpoint · click to remove');
@@ -777,19 +782,19 @@ final class IdeMousePrimitivesTest extends TestCase
                     $tui->handleInput("\x1b[<35;32;4M"); // the change strip, line 0
                 },
                 500 => function (Tui $tui, VirtualTerminal $terminal): void {
-                    $editor = $tui->getById('editor');
+                    $editor = Widgets::editor($tui);
                     $this->assertSame(['line' => 0, 'part' => GutterPart::Change], $editor->decorations->gutterHover);
                     // A card was just up, so the next one follows at once.
                     $this->awaitPainted($tui, $terminal, 'Modified');
                     $this->assertStringNotContainsString('click to see', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'no git plugin: no "click to see"');
                     $tui->handleInput("\x1b[<35;60;4M"); // the code
                 },
-                600 => function ($tui): void {
-                    $this->assertNull($tui->getById('editor')->decorations->gutterHover, 'off the marks: nothing pointed');
+                600 => function (Tui $tui): void {
+                    $this->assertNull(Widgets::editor($tui)->decorations->gutterHover, 'off the marks: nothing pointed');
                     $tui->handleInput("\x1b[<35;34;5M"); // the number column, line 1: no mark of its own
                 },
-                700 => function ($tui): void {
-                    $this->assertNull($tui->getById('editor')->decorations->gutterHover, 'a number is not a mark');
+                700 => function (Tui $tui): void {
+                    $this->assertNull(Widgets::editor($tui)->decorations->gutterHover, 'a number is not a mark');
                 },
             ],
         );
@@ -805,19 +810,19 @@ final class IdeMousePrimitivesTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                300 => static function ($tui): void {
-                    $tui->getById('editor')->decorations->setBookmarkLines([40]);
+                300 => static function (Tui $tui): void {
+                    Widgets::editor($tui)->decorations->setBookmarkLines([40]);
                     $tui->tick();
                 },
-                400 => function ($tui): void {
-                    $editor = $tui->getById('editor');
+                400 => function (Tui $tui): void {
+                    $editor = Widgets::editor($tui);
                     $rows = Paint::lines($editor, new RenderContext(129, 22));
                     $row = \array_key_first(\array_filter($rows, static fn (string $r): bool => \str_ends_with(\rtrim(AnsiUtils::stripAnsiCodes($r)), '◈')));
                     $this->assertNotNull($row, 'the bookmark is on the stripe');
                     $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", 31 + 129, 4 + $row)); // the stripe's column, that row
                 },
                 500 => function (Tui $tui, VirtualTerminal $terminal): void {
-                    $editor = $tui->getById('editor');
+                    $editor = Widgets::editor($tui);
                     $this->assertNotNull($editor->decorations->stripeHover);
                     $cell = Paint::lines($editor, new RenderContext(129, 22))[$editor->decorations->stripeHover];
                     $this->assertMatchesRegularExpression('/\e\[[0-9;]*4[0-9;]*m[^\e]*(\e\[[0-9;]*m)*◈/u', $cell, 'the mark underlined');

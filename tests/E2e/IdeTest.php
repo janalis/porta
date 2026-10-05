@@ -15,6 +15,8 @@ use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\Widgets;
+use Porta\Widget\CodeEditorWidget;
 use Revolt\EventLoop;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
@@ -136,7 +138,7 @@ final class IdeTest extends TestCase
     {
         $tui = Services::resolve($this->ide, Tui::class);
         $screen = $this->screen(...);
-        $editor = static fn () => $tui->getById('editor');
+        $editor = static fn (): CodeEditorWidget => Widgets::editor($tui);
         $path = static fn (): string => (string) $editor()->getFilePath();
         // The barrier AND the claim: awaiting an effect does not assert it, and
         // a stage that only waits has stopped testing anything.
@@ -405,7 +407,7 @@ final class IdeTest extends TestCase
     {
         $tui = Services::resolve($this->ide, Tui::class);
         $screen = $this->screen(...);
-        $editor = static fn () => $tui->getById('editor');
+        $editor = static fn (): CodeEditorWidget => Widgets::editor($tui);
 
         $this->runScenario(
             [

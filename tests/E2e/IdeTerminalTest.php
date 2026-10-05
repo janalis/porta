@@ -17,6 +17,9 @@ use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\Widgets;
+use Porta\Widget\ContextMenu;
+use Porta\Widget\TerminalPanelWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Render\Renderer;
@@ -55,8 +58,8 @@ final class IdeTerminalTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                100 => function ($tui, $terminal, $ide): void {
-                    $editor = $tui->getById('editor');
+                100 => function (Tui $tui, $terminal, $ide): void {
+                    $editor = Widgets::editor($tui);
                     $this->await(
                         static fn (): bool => null !== $editor->getFilePath(),
                         what: 'the editor to open its file',
@@ -136,7 +139,7 @@ final class IdeTerminalTest extends TestCase
                     $tui->handleInput("\x1b[96;5u"); // shell 1
                     $tui->handleInput("\x1b[96;6u"); // shell 2
                 },
-                600 => function ($tui, $terminal, $ide): void {
+                600 => function (Tui $tui, $terminal, $ide): void {
                     $tui->tick();
                     $this->assertCount(2, $this->sessions($ide));
                     $sessionTwoProcess = $this->sessions($ide)[1]->process;
@@ -150,15 +153,15 @@ final class IdeTerminalTest extends TestCase
 
                     $this->assertCount(1, $this->sessions($ide), 'the clicked tab closed');
                     $this->assertSame('shell:2', $this->sessions($ide)[0]->id, 'the survivor is shell 2');
-                    $this->assertTrue($tui->getById('terminal')->isOpen(), 'the panel stays open with one session left');
+                    $this->assertTrue(Widgets::byId($tui, 'terminal', TerminalPanelWidget::class)->isOpen(), 'the panel stays open with one session left');
                     $this->assertInstanceOf(PtyProcess::class, $sessionTwoProcess);
                 },
-                900 => function ($tui, $terminal, $ide): void {
+                900 => function (Tui $tui, $terminal, $ide): void {
                     $tui->tick();
                     // Close the last session via ctrl+shift+w → the panel closes.
                     $tui->handleInput("\x1b[119;6u");
                     $this->assertCount(0, $this->sessions($ide));
-                    $this->assertFalse($tui->getById('terminal')->isOpen(), 'closing the last session closed the panel');
+                    $this->assertFalse(Widgets::byId($tui, 'terminal', TerminalPanelWidget::class)->isOpen(), 'closing the last session closed the panel');
                 },
             ],
         );
@@ -225,7 +228,7 @@ final class IdeTerminalTest extends TestCase
 
                     $terminal->clearOutput();
                     $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + (int) \mb_strpos($strip, needle: 'sh') + 1, $rect->row + 1));
-                    $this->assertTrue($tui->getById('context-menu')->isOpen(), 'right-clicking a session tab opened its menu');
+                    $this->assertTrue(Widgets::byId($tui, 'context-menu', ContextMenu::class)->isOpen(), 'right-clicking a session tab opened its menu');
                     $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'New Session'));
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('New Session', $screen);
@@ -233,7 +236,7 @@ final class IdeTerminalTest extends TestCase
 
                     $tui->handleInput("\r"); // New Session leads the list
                 },
-                1000 => function ($tui, $terminal, $ide): void {
+                1000 => function (Tui $tui, $terminal, $ide): void {
                     $tui->tick();
                     $this->assertCount(2, $this->sessions($ide), 'the menu spawned a sibling session');
 
@@ -242,7 +245,7 @@ final class IdeTerminalTest extends TestCase
                     $this->assertSame('terminal', $tui->getFocus()?->getId());
                     $terminal->clearOutput();
                     $tui->handleInput("\x1b[21;5~");
-                    $this->assertTrue($tui->getById('context-menu')->isOpen(), 'Ctrl+F10 opened the session menu');
+                    $this->assertTrue(Widgets::byId($tui, 'context-menu', ContextMenu::class)->isOpen(), 'Ctrl+F10 opened the session menu');
                     $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Close Session'));
                     $tui->handleInput("\x1b");
                 },

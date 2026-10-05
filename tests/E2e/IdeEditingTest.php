@@ -22,7 +22,10 @@ use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\Toasts;
+use Porta\Tests\Support\Widgets;
 use Porta\Ui\Glyphs;
+use Porta\Widget\FileTreeWidget;
+use Porta\Widget\ResultsPanelWidget;
 use Porta\Workbench\Notifier;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -57,7 +60,7 @@ final class IdeEditingTest extends TestCase
             [
                 300 => function (Tui $tui, $terminal, Ide $ide): void {
                     $this->frame($tui);
-                    $editor = $tui->getById('editor');
+                    $editor = Widgets::editor($tui);
                     $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($editor);
                     $screen = static fn (): string => AnsiUtils::stripAnsiCodes(\implode("\n", Paint::lines($editor, new RenderContext(120, 20))));
 
@@ -94,8 +97,8 @@ final class IdeEditingTest extends TestCase
                         $tui->handleInput("\x1b[B"); // scroll deep into the method
                     }
                 },
-                280 => function ($tui, $terminal, Ide $ide): void {
-                    $editor = $tui->getById('editor');
+                280 => function (Tui $tui, $terminal, Ide $ide): void {
+                    $editor = Widgets::editor($tui);
                     $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($editor);
                     $rendered = Paint::lines($editor, new RenderContext($rect->columns, $rect->rows));
@@ -105,8 +108,8 @@ final class IdeEditingTest extends TestCase
                     // breakpoint and fold actions instead).
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + 8, $rect->row + 1));
                 },
-                360 => function ($tui): void {
-                    $this->assertSame(4, $tui->getById('editor')->getDocument()->cursorLine, 'clicking the pinned header jumped to the class declaration');
+                360 => function (Tui $tui): void {
+                    $this->assertSame(4, Widgets::editor($tui)->getDocument()->cursorLine, 'clicking the pinned header jumped to the class declaration');
                 },
             ],
         );
@@ -150,17 +153,17 @@ final class IdeEditingTest extends TestCase
                     // Click 'Service' → jump to the class declaration (0-based line 4).
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + $column($tui, label: 'Service') + 1, $rect->row + 1));
                 },
-                420 => function ($tui, $terminal, Ide $ide) use ($column, $project): void {
-                    $this->assertSame(4, $tui->getById('editor')->getDocument()->cursorLine, 'clicking the Service crumb jumped to the class declaration');
+                420 => function (Tui $tui, $terminal, Ide $ide) use ($column, $project): void {
+                    $this->assertSame(4, Widgets::editor($tui)->getDocument()->cursorLine, 'clicking the Service crumb jumped to the class declaration');
                     $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('breadcrumbs'));
                     // The bar's empty tail is no crumb: the press falls through.
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + $rect->columns - 2, $rect->row + 1));
-                    $this->assertSame(4, $tui->getById('editor')->getDocument()->cursorLine, 'past the trail, nothing moves');
+                    $this->assertSame(4, Widgets::editor($tui)->getDocument()->cursorLine, 'past the trail, nothing moves');
                     // Click 'src' → the folder is revealed and selected in the tree.
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + $column($tui, label: 'src') + 1, $rect->row + 1));
-                    $this->assertSame($project->path('src'), $tui->getById('tree')->selectedNode()?->path, 'a folder crumb reveals its folder');
-                    $this->assertSame(4, $tui->getById('editor')->getDocument()->cursorLine, 'and moves no caret');
+                    $this->assertSame($project->path('src'), Widgets::byId($tui, 'tree', FileTreeWidget::class)->selectedNode()?->path, 'a folder crumb reveals its folder');
+                    $this->assertSame(4, Widgets::editor($tui)->getDocument()->cursorLine, 'and moves no caret');
                 },
             ],
         );
@@ -209,11 +212,11 @@ final class IdeEditingTest extends TestCase
             $project,
             $project->path('Service.php'),
             [
-                200 => function ($tui): void {
+                200 => function (Tui $tui): void {
                     // Rename handle → handleX by typing at the end of the name.
                     // The rescan debounces, so the settled trail is awaited on
                     // the live loop — not asserted on the keystroke's frame.
-                    $editor = $tui->getById('editor');
+                    $editor = Widgets::editor($tui);
                     // The debounce only exists when the container actually
                     // injected the scheduler — a silently-null optional would
                     // put production back on the per-keystroke tokenizer path.
@@ -299,7 +302,7 @@ final class IdeEditingTest extends TestCase
             $project->path('a.php'),
             [
                 300 => function (Tui $tui, VirtualTerminal $terminal): void {
-                    $document = $tui->getById('editor')->getDocument();
+                    $document = Widgets::editor($tui)->getDocument();
                     // One single-line copy and one spanning two lines, so the
                     // ⏎ has something to mark and the rows differ in shape.
                     foreach ([[1, 1], [2, 3]] as [$from, $to]) {
@@ -342,7 +345,7 @@ final class IdeEditingTest extends TestCase
             $project->path('src/Svc.php'),
             [
                 300 => function (Tui $tui, VirtualTerminal $terminal): void {
-                    $tui->getById('editor')->getDocument()->setCursor(8, 8); // inside run()
+                    Widgets::editor($tui)->getDocument()->setCursor(8, 8); // inside run()
                     $terminal->clearOutput();
                     $tui->handleInput("\x1b[99;8u"); // ctrl+alt+shift+c
 
@@ -375,24 +378,24 @@ final class IdeEditingTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                300 => static function ($tui): void {
-                    $tui->getById('editor')->getDocument()->setCursor(30, 0);
+                300 => static function (Tui $tui): void {
+                    Widgets::editor($tui)->getDocument()->setCursor(30, 0);
                     $tui->handleInput('X'); // an edit, deep in A.php
                 },
-                400 => function ($tui, $terminal, Ide $ide) use ($project): void {
+                400 => function (Tui $tui, $terminal, Ide $ide) use ($project): void {
                     Services::resolve($ide, BufferService::class)
                         ->openFile($project->path('B.php'), OpenFocus::Editor);
                     $tui->requestRender(force: true);
                     $tui->processRender();
-                    $this->assertStringEndsWith('B.php', (string) $tui->getById('editor')->getFilePath());
+                    $this->assertStringEndsWith('B.php', (string) Widgets::editor($tui)->getFilePath());
 
                     // Ctrl+Shift+Backspace: back to A.php, on the edited line.
                     // Navigate-back could not do this — opening a file is not a
                     // jump, so nothing was pushed onto that stack.
                     $tui->handleInput("\x1b[127;6u");
                 },
-                550 => function ($tui): void {
-                    $editor = $tui->getById('editor');
+                550 => function (Tui $tui): void {
+                    $editor = Widgets::editor($tui);
                     $this->assertStringEndsWith('A.php', (string) $editor->getFilePath());
                     $this->assertSame(30, $editor->getDocument()->cursorLine);
                     // Now edit B.php and delete it. Walking back to a file that
@@ -405,21 +408,21 @@ final class IdeEditingTest extends TestCase
 
                     // an edit in A.php at line 2
                 },
-                650 => static function ($tui, $terminal, Ide $ide) use ($project): void {
+                650 => static function (Tui $tui, $terminal, Ide $ide) use ($project): void {
                     Services::resolve($ide, BufferService::class)
                         ->openFile($project->path('B.php'), OpenFocus::Editor);
                     $tui->requestRender(force: true);
                     $tui->processRender();
-                    $tui->getById('editor')->getDocument()->setCursor(1, 0);
+                    Widgets::editor($tui)->getDocument()->setCursor(1, 0);
                     $tui->handleInput('Q'); // an edit in B.php, the newest one
                 },
-                750 => function ($tui, $terminal, Ide $ide) use ($project): void {
+                750 => function (Tui $tui, $terminal, Ide $ide) use ($project): void {
                     Services::resolve($ide, BufferService::class)->closeActiveBuffer(CloseMode::Force);
                     \unlink($project->path('B.php'));
                     $tui->requestRender(force: true);
                     $tui->processRender();
 
-                    $editor = $tui->getById('editor');
+                    $editor = Widgets::editor($tui);
                     $this->assertStringEndsWith('A.php', (string) $editor->getFilePath());
                     $editor->getDocument()->setCursor(20, 0);
 
@@ -442,8 +445,8 @@ final class IdeEditingTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                300 => function ($tui): void {
-                    $editor = $tui->getById('editor');
+                300 => function (Tui $tui): void {
+                    $editor = Widgets::editor($tui);
                     $editor->getDocument()->setCursor(0, 0);
                     $tui->handleInput("\x1b[1;7B"); // ctrl+alt+down
                     $tui->handleInput("\x1b[1;7B");
@@ -468,8 +471,8 @@ final class IdeEditingTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                300 => function ($tui): void {
-                    $editor = $tui->getById('editor');
+                300 => function (Tui $tui): void {
+                    $editor = Widgets::editor($tui);
                     $editor->getDocument()->setCursor(0, 0);
                     $tui->handleInput("\x1b[1;7B");
                     $tui->handleInput("\x1b[1;7B"); // carets on lines 0,1,2
@@ -499,8 +502,8 @@ final class IdeEditingTest extends TestCase
             $project,
             $project->path('src/A.php'),
             [
-                300 => static function ($tui): void {
-                    $tui->getById('editor')->getDocument()->setCursor(1, 10); // inside "bar"
+                300 => static function (Tui $tui): void {
+                    Widgets::editor($tui)->getDocument()->setCursor(1, 10); // inside "bar"
                     $tui->handleInput("\x17"); // ctrl+w: expand to the word "bar"
                     $tui->handleInput("\x1b\x14"); // ctrl+alt+t: open the surround menu
                     $tui->handleInput("\x1b[B"); // down to "[ ] Brackets"
@@ -554,10 +557,10 @@ final class IdeEditingTest extends TestCase
                     $tui->setFocus($tui->getById('results'));
                     $tui->handleInput("\r"); // Enter on a log row is inert
                     $tui->tick();
-                    $this->assertTrue($tui->getById('results')->isVisible(), 'the tab stays put on Enter');
+                    $this->assertTrue(Widgets::byId($tui, 'results', ResultsPanelWidget::class)->isVisible(), 'the tab stays put on Enter');
                     $tui->handleInput("\x1b"); // Esc hides the dock
                     $tui->tick();
-                    $this->assertFalse($tui->getById('results')->isVisible());
+                    $this->assertFalse(Widgets::byId($tui, 'results', ResultsPanelWidget::class)->isVisible());
                 },
             ],
         );
@@ -585,8 +588,8 @@ final class IdeEditingTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => static function ($tui): void {
-                    $document = $tui->getById('editor')->getDocument();
+                200 => static function (Tui $tui): void {
+                    $document = Widgets::editor($tui)->getDocument();
                     // Two lines first, then one — so the NEWEST entry is the
                     // single-line copy and the multi-line one is below it.
                     $document->setCursor(1, 0);
@@ -623,7 +626,7 @@ final class IdeEditingTest extends TestCase
                     $tui->handleInput("\r");
                 },
                 800 => function (Tui $tui, VirtualTerminal $terminal): void {
-                    $document = $tui->getById('editor')->getDocument();
+                    $document = Widgets::editor($tui)->getDocument();
                     $this->assertSame('<?php$alpha = 1;', $document->getLine(0), 'the multi-line entry pasted its first line at the caret');
                     $this->assertSame('$beta = 2;', $document->getLine(1), 'and its second line below — the single-line entry would have pasted neither');
                     // The SCREEN, not the accumulated output: nothing has been

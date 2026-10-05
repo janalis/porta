@@ -14,7 +14,7 @@
 
 # ── src/ and plugins/*/src ──────────────────────────────────────────────────
 
-# a `match (true)` arm is not narrowed by the negation of the arms before it.
+# a `match (true)` arm is not narrowed by the negation of the arms before it. Upstream: PHPantom-dev/phpantom_lsp#464.
 # phpantom 0.10.0; still reported on main (6fb245f).
 [[diagnostics.ignore]]
 identifier = "type_mismatch_argument"
@@ -32,7 +32,7 @@ identifier = "type_mismatch_return"
 path = "{plugins/git/src/Widget/DiffViewWidget.php,src/Config/LanguageCatalog.php,src/Debug/BreakpointStore.php,src/Editor/Bookmarks.php,src/Support/LanguageMap.php}"
 message = "^(?:Return type array<int, array<int\\|string, true>> is incompatible with declared return type array<int, array<int, true>>|Return type list<array-key> is incompatible with declared return type list<int>|Return type list<array-key> is incompatible with declared return type list<string>|Return type list<int\\|string> is incompatible with declared return type list<string>)$"
 
-# `($this->x)()` — a property invoked as a callable — is read as a call to the same-named method `x()`.
+# `($this->x)()` — a property invoked as a callable — is read as a call to the same-named method `x()`. Upstream: PHPantom-dev/phpantom_lsp#463.
 # phpantom 0.10.0; still reported on main (6fb245f).
 [[diagnostics.ignore]]
 identifier = "argument_count_mismatch"
@@ -58,14 +58,14 @@ identifier = "type_mismatch_return"
 path = "src/Lsp/CodeLensController.php"
 message = "^(?:Return type array<int\\|string, list<array\\{title: mixed, command: mixed, arguments: list<mixed>, owner: string\\}>> is incompatible with declared return type array<int, list<array\\{title: string, command: string, arguments: list<mixed>, owner: string\\}>>)$"
 
-# `$closure?->__invoke()` is rejected on a Closure type.
+# `$closure?->__invoke()` is rejected on a Closure type. Upstream: PHPantom-dev/phpantom_lsp#465.
 # phpantom 0.10.0; still reported on main (6fb245f).
 [[diagnostics.ignore]]
 identifier = "scalar_member_access"
 path = "{plugins/symfony-lsp/src/InstalledVersion.php,src/Filesystem/RemoteFilesystem.php,src/Presence/LocalPresenceBoard.php,src/Presence/PresenceSync.php,src/Presence/RemotePresenceBoard.php,src/Run/RunController.php}"
 message = "^(?:Cannot access method '__invoke' on type 'Closure\\(\\): void'|Cannot access method '__invoke' on type 'Closure\\(int\\): void'|Cannot access method '__invoke' on type 'Closure\\(string\\): void')$"
 
-# `is_resource()` does not narrow a `resource|null` property.
+# `is_resource()` does not narrow a `resource|null` property. Upstream: PHPantom-dev/phpantom_lsp#466.
 # phpantom 0.10.0; still reported on main (6fb245f).
 [[diagnostics.ignore]]
 identifier = "type_mismatch_argument"
@@ -112,8 +112,8 @@ message = "^(?:Argument 1 \\(\\$lines\\) expects list<string>, got list<null>|Ar
 # phpantom 0.10.0; still reported on main (6fb245f).
 [[diagnostics.ignore]]
 identifier = "type_mismatch_argument"
-path = "{plugins/git/src/Widget/CommitBoxWidget.php,plugins/mcp/src/Ide/WebSocketFrames.php,src/Filesystem/RemoteSpec.php,src/Lsp/WatchedFiles.php}"
-message = "^(?:Argument 1 \\(\\$string\\) expects string, got int|Argument 1 \\(\\$value\\) expects string, got array<array-key, string>\\|string \\(array<array-key, string> does not satisfy string\\)|Argument 2 \\(\\$subject\\) expects string, got string\\|null \\(null does not satisfy string\\)|Argument 5 \\(\\$port\\) expects \\?int, got int\\|string\\|null \\(string does not satisfy \\?int\\))$"
+path = "{plugins/git/src/Widget/CommitBoxWidget.php,plugins/mcp/src/Ide/WebSocketFrames.php,src/Filesystem/RemoteSpec.php}"
+message = "^(?:Argument 1 \\(\\$string\\) expects string, got int|Argument 1 \\(\\$value\\) expects string, got array<array-key, string>\\|string \\(array<array-key, string> does not satisfy string\\)|Argument 5 \\(\\$port\\) expects \\?int, got int\\|string\\|null \\(string does not satisfy \\?int\\))$"
 [[diagnostics.ignore]]
 identifier = "type_mismatch_return"
 path = "src/Console/SelfUpdate.php"
@@ -140,13 +140,6 @@ message = "^(?:Return type array<int\\|string, array\\{description: mixed, input
 identifier = "unknown_member"
 path = "plugins/review/src/Model/Review.php"
 message = "^(?:Property 'anchor' not found on class 'Thread'|Property 'resolved' not found on class 'Thread')$"
-
-# destructuring into properties ignores the `@var` shape of the source.
-# phpantom 0.10.0; still reported on main (6fb245f).
-[[diagnostics.ignore]]
-identifier = "type_mismatch_argument"
-path = "src/Support/JsonRpcTransport.php"
-message = "^(?:Argument 1 \\(\\$stream\\) expects resource, got resource\\|null \\(null does not satisfy resource\\))$"
 
 # `array_key_exists`/`($a['k'] ?? null) !== null`/`array_is_list` do not narrow the offset.
 # phpantom 0.10.0; still reported on main (6fb245f).
@@ -231,7 +224,6 @@ identifier = "type_mismatch_argument"
 path = "src/Input/InputDispatcher.php"
 message = "^(?:Argument 1 \\(\\$id\\) expects string, got array-key|Argument 2 \\(\\$action\\) expects string, got array-key|Argument 1 \\(\\$action\\) expects string, got array-key)$"
 
-
 # ── tests/ and plugins/*/tests ─────────────────────────────────────────────
 # A cluster rule is scoped to the test trees and selected by its message: it
 # names one shape the triage read across many sites, never "anything in tests".
@@ -239,53 +231,47 @@ message = "^(?:Argument 1 \\(\\$id\\) expects string, got array-key|Argument 2 \
 # so it can hide no test passing by mistake. Anything that could pass silently
 # (an extra argument, an unknown variable) is ruled per file instead, below.
 
-# `Tui::getById()` is typed as the base AbstractWidget; the test knows the concrete widget behind the id (a wrong id fails loudly as an undefined method). (309 sites)
+# `Tui::getById()` is typed as the base AbstractWidget; the test knows the concrete widget behind the id (a wrong id fails loudly as an undefined method).
 # phpantom 0.10.0; still reported on main (6fb245f).
 [[diagnostics.ignore]]
 identifier = "unknown_member"
 path = "{tests/**,plugins/*/tests/**}"
 message = "not found on class 'Symfony\\\\Component\\\\Tui\\\\Widget\\\\AbstractWidget'$"
 
-# the same `getById()` result handed to a helper typed with the concrete widget. (9 sites)
-# phpantom 0.10.0; still reported on main (6fb245f).
 [[diagnostics.ignore]]
 identifier = "type_mismatch_argument"
 path = "{tests/**,plugins/*/tests/**}"
 message = "got Symfony\\\\Component\\\\Tui\\\\Widget\\\\AbstractWidget$"
 
-# a trait method aliased away (`PumpsLoop { pump as private pumpFixed; }`) and redefined is bound to the trait's signature. (55 sites)
+# a trait method aliased away (`PumpsLoop { pump as private pumpFixed; }`) and redefined is bound to the trait's signature.
 # phpantom 0.10.0; still reported on main (6fb245f).
 [[diagnostics.ignore]]
 identifier = "argument_count_mismatch"
 path = "{tests/**,plugins/*/tests/**}"
-message = "^(?:Argument 1 \\(\\$seconds\\) expects float, got Closure\\(\\): bool|Expected 1 argument, got 0)$"
-[[diagnostics.ignore]]
-identifier = "type_mismatch_argument"
-path = "{tests/**,plugins/*/tests/**}"
-message = "^(?:Argument 1 \\(\\$seconds\\) expects float, got Closure\\(\\): bool|Expected 1 argument, got 0)$"
+message = "^(?:Expected 1 argument, got 0)$"
 
-# after `assertSame($x, <expr>)` the expression is narrowed to `object` (PHPUnit's assert template not resolved). (59 sites)
+# after `assertSame($x, <expr>)` the expression is narrowed to `object` (PHPUnit's assert template not resolved).
 # phpantom 0.10.0; still reported on main (6fb245f).
 [[diagnostics.ignore]]
 identifier = "type_mismatch_argument"
 path = "{tests/**,plugins/*/tests/**}"
 message = ", got object(?: |\\||$)"
 
-# int arithmetic, `range()`, `min()`/`max()` over ints typed int|float. (39 sites)
+# int arithmetic, `range()`, `min()`/`max()` over ints typed int|float.
 # phpantom 0.10.0; still reported on main (6fb245f).
 [[diagnostics.ignore]]
 identifier = "type_mismatch_argument"
 path = "{tests/**,plugins/*/tests/**}"
 message = "(?:got int\\|float|got list<int\\|float>|int\\|float is incompatible)"
 
-# a builtin's `|false` (getcwd, realpath, json_encode, strpos, fopen …) under strict_types: a false would throw, never pass. (44 sites)
+# a builtin's `|false` (getcwd, realpath, json_encode, strpos, fopen …) under strict_types: a false would throw, never pass.
 # phpantom 0.10.0; still reported on main (6fb245f).
 [[diagnostics.ignore]]
 identifier = "type_mismatch_argument"
 path = "{tests/**,plugins/*/tests/**}"
 message = "got (?:string\\|false|int<0, max>\\|false|array-key\\|false|int\\|false|resource\\|false|false\\|string|non-empty-string\\|false)"
 
-# a value written through a by-reference closure or set in setUp/connect, read after `await()` — null there would throw. (74 sites)
+# a value written through a by-reference closure or set in setUp/connect, read after `await()` — null there would throw.
 # phpantom 0.10.0; still reported on main (6fb245f).
 [[diagnostics.ignore]]
 identifier = "type_mismatch_argument"
@@ -411,10 +397,6 @@ path = "tests/Unit/Help/KeybindingsDocTest.php"
 message = "^Return type array<int\\|string, string> is incompatible with declared return type array<string, string>$"
 [[diagnostics.ignore]]  # fixed on main (6fb245f)
 identifier = "type_mismatch_return"
-path = "plugins/local-history/tests/IdeLocalHistoryPluginTest.php"
-message = "^Return type int\\|string is incompatible with declared return type int$"
-[[diagnostics.ignore]]  # fixed on main (6fb245f)
-identifier = "type_mismatch_return"
 path = "tests/Unit/Widget/NavigationReadabilityTest.php"
 message = "^Return type list<array-key> is incompatible with declared return type list<int>$"
 [[diagnostics.ignore]]
@@ -510,7 +492,7 @@ identifier = "type_mismatch_return"
 path = "src/Config/PlatformKeymap.php"
 message = "^Return type non-empty-array<string\\|int, array> is incompatible with declared return type array<string, list<string>>$"
 
-# `range()` of ints is typed int|float, so a `Closure(int)` callback over it is rejected (regression on main; 0.10.0 is right).
+# `range()` of ints is typed int|float, so a `Closure(int)` callback over it is rejected (regression on main; 0.10.0 is right). Upstream: PHPantom-dev/phpantom_lsp#467.
 [[diagnostics.ignore]]
 identifier = "type_mismatch_argument"
 path = "tests/Unit/Widget/TabBarWidgetTest.php"
@@ -618,7 +600,7 @@ identifier = "type_mismatch_return"
 path = "plugins/git/src/ChangeMarks.php"
 message = "^Return type bool\\|\\(Closure\\(\\): bool\\) is incompatible with declared return type bool$"
 
-# a `match (true)` arm is not narrowed by the negation of the arms before it.
+# a `match (true)` arm is not narrowed by the negation of the arms before it. Upstream: PHPantom-dev/phpantom_lsp#464.
 [[diagnostics.ignore]]
 identifier = "type_mismatch_argument"
 path = "src/Widget/Settings/SettingsFormWidget.php"

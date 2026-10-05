@@ -19,6 +19,7 @@ use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\Toasts;
+use Porta\Tests\Support\Widgets;
 use Porta\Tree\TreePathClipboard;
 use Porta\Widget\FileTreeWidget;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
@@ -383,12 +384,12 @@ final class TreeDragAndDropTest extends TestCase
                     $tui->handleInput("\x1b[<32;3;3M"); // drag onto dest/
                     $tui->handleInput("\x1b[<0;3;3m"); // release
                 },
-                460 => function ($tui, $terminal, Ide $ide) use ($project): void {
+                460 => function (Tui $tui, $terminal, Ide $ide) use ($project): void {
                     $this->assertDirectoryDoesNotExist($project->path('pkg'), 'the folder left its old place');
                     $this->assertFileExists($project->path('dest/pkg/A.php'), 'and arrived whole');
                     $this->assertStringEndsWith(
                         'dest/pkg/A.php',
-                        (string) $tui->getById('editor')->getFilePath(),
+                        (string) Widgets::editor($tui)->getFilePath(),
                         'the buffer that was open inside it followed',
                     );
                     $this->assertSame(
@@ -793,7 +794,7 @@ final class TreeDragAndDropTest extends TestCase
                 200 => function (Tui $tui): void {
                     $this->frame($tui);
                     $tui->handleInput('EDIT');
-                    $this->assertTrue($tui->getById('editor')->getDocument()->isDirty(), 'the buffer is dirty');
+                    $this->assertTrue(Widgets::editor($tui)->getDocument()->isDirty(), 'the buffer is dirty');
                 },
                 300 => static function ($tui): void {
                     $tui->handleInput("\x1b[<0;3;4M"); // press top.php

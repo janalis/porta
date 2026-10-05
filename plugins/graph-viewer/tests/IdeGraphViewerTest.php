@@ -9,6 +9,7 @@ use Porta\Config\CommandRegistry;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Editor\OpenFocus;
+use Porta\GraphViewer\GraphViewerWidget;
 use Porta\Ide;
 use Porta\Plugin\Lifecycle\PluginLifecycle;
 use Porta\Plugin\Runtime\PluginHost;
@@ -19,6 +20,7 @@ use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\UsesBundledPlugins;
+use Porta\Tests\Support\Widgets;
 use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -370,8 +372,8 @@ final class IdeGraphViewerTest extends TestCase
                     // title has to be read from the grid too.
                     $this->assertStringContainsString('seq.puml', $grid());
                     // No geometry exists for it, so the pane reports zoom only.
-                    $this->assertSame('', $tui->getById('graph-viewer')->statusInfo());
-                    $this->assertStringContainsString('Fit', $tui->getById('graph-viewer')->zoomLabel());
+                    $this->assertSame('', Widgets::byId($tui, 'graph-viewer', GraphViewerWidget::class)->statusInfo());
+                    $this->assertStringContainsString('Fit', Widgets::byId($tui, 'graph-viewer', GraphViewerWidget::class)->zoomLabel());
                 },
             ],
         );
@@ -709,7 +711,10 @@ final class IdeGraphViewerTest extends TestCase
             $project->path('g.dot'),
             [
                 200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
-                    $pane = static fn (): string => \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $tui->getById('graph-viewer')->render(new RenderContext(60, 12))));
+                    $pane = static fn (): string => \implode("\n", \array_map(
+                        AnsiUtils::stripAnsiCodes(...),
+                        Widgets::byId($tui, 'graph-viewer', GraphViewerWidget::class)->render(new RenderContext(60, 12)),
+                    ));
                     $this->await(static fn (): bool => \str_contains($pane(), '┌'), what: 'the graph beside the text');
                     $editor = Services::resolve($ide, CodeEditorWidget::class);
                     $this->assertSame($editor, $tui->getFocus());

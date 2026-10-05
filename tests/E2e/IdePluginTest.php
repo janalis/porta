@@ -14,7 +14,9 @@ use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\Widgets;
 use Porta\Widget\ContextMenu;
+use Porta\Widget\FileTreeWidget;
 use Porta\Workbench\Menu\MenuItem;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -110,8 +112,8 @@ final class IdePluginTest extends TestCase
                     // …and the IDE is still alive: the next keystroke lands in the editor.
                     $tui->handleInput('Z');
                 },
-                480 => function ($tui): void {
-                    $this->assertStringContainsString('Z', $tui->getById('editor')->getDocument()->getText(), 'input still works after a plugin fault');
+                480 => function (Tui $tui): void {
+                    $this->assertStringContainsString('Z', Widgets::editor($tui)->getDocument()->getText(), 'input still works after a plugin fault');
                 },
             ],
         );
@@ -153,7 +155,7 @@ final class IdePluginTest extends TestCase
             $project->path('a.php'),
             [
                 100 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
-                    $editor = $tui->getById('editor');
+                    $editor = Widgets::editor($tui);
                     $editor->getDocument()->setCursor(1, 0);
                     $tui->handleInput('Z');
                     $this->assertTrue($editor->getDocument()->isDirty());
@@ -197,7 +199,7 @@ final class IdePluginTest extends TestCase
                     // session runs — the key falls through to the user's plugin rebind.
                     $tui->handleInput("\x1b[19~");
                     $this->frame($tui);
-                    $this->assertStringContainsString('PLUGGED', $tui->getById('editor')->getDocument()->getText(), 'the .porta.json rebind dispatched');
+                    $this->assertStringContainsString('PLUGGED', Widgets::editor($tui)->getDocument()->getText(), 'the .porta.json rebind dispatched');
                 },
             ],
         );
@@ -274,8 +276,8 @@ final class IdePluginTest extends TestCase
                     $this->assertStringContainsString('Plugin "broken" failed to load', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $tui->handleInput('X');
                 },
-                340 => function ($tui): void {
-                    $this->assertStringContainsString('X', $tui->getById('editor')->getDocument()->getText(), 'the IDE booted fine regardless');
+                340 => function (Tui $tui): void {
+                    $this->assertStringContainsString('X', Widgets::editor($tui)->getDocument()->getText(), 'the IDE booted fine regardless');
                 },
             ],
         );
@@ -435,7 +437,7 @@ final class IdePluginTest extends TestCase
                     $renderer = Services::resolve($ide, Renderer::class);
 
                     // The tree row for other.php — a file we are NOT editing.
-                    $tree = $tui->getById('tree');
+                    $tree = Widgets::byId($tui, 'tree', FileTreeWidget::class);
                     $treeRect = $renderer->getWidgetRect($tree);
                     $row = null;
                     foreach (Paint::lines($tree, new RenderContext($treeRect->columns, $treeRect->rows)) as $i => $line) {

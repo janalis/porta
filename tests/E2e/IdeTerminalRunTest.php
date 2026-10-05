@@ -16,7 +16,9 @@ use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\Widgets;
 use Porta\Ui\Glyphs;
+use Porta\Widget\TerminalPanelWidget;
 use Porta\Workbench\Dock\BottomDock;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\Renderer;
@@ -91,7 +93,7 @@ final class IdeTerminalRunTest extends TestCase
                     // Wait for the PTY to actually deliver seq 30's output. Until
                     // more lines exist than the pane shows, scroll() clamps
                     // scrollBack to 0 and there is nothing to scroll into.
-                    $panel = $tui->getById('terminal');
+                    $panel = Widgets::byId($tui, 'terminal', TerminalPanelWidget::class);
                     $buffer = Probe::get($panel, 'buffer');
                     $this->await(static fn (): bool => $buffer->lineCount() >= 30, what: 'seq 30 output to fill the scrollback');
 
@@ -158,8 +160,8 @@ final class IdeTerminalRunTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                100 => function ($tui): void {
-                    $editor = $tui->getById('editor');
+                100 => function (Tui $tui): void {
+                    $editor = Widgets::editor($tui);
                     $this->await(
                         static fn (): bool => null !== $editor->getFilePath(),
                         what: 'the editor to open its file',
@@ -167,27 +169,27 @@ final class IdeTerminalRunTest extends TestCase
 
                     $tui->handleInput("\x1b[96;5u"); // ctrl+` toggle terminal
                     $this->assertSame('terminal', $tui->getFocus()?->getId());
-                    $this->assertTrue($tui->getById('terminal')->isOpen());
+                    $this->assertTrue(Widgets::byId($tui, 'terminal', TerminalPanelWidget::class)->isOpen());
                     // Type a command into the shell.
                     foreach (\str_split("echo hello-term\n") as $ch) {
                         $tui->handleInput($ch);
                     }
                 },
-                200 => function ($tui, $terminal): void {
+                200 => function (Tui $tui, $terminal): void {
                     // Await the shell's echo: spawning /bin/sh and round-tripping
                     // the command is real subprocess latency, and a fixed delay
                     // races it under pcov + machine load.
                     $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'hello-term'), what: 'the shell echo');
                     // Hide the dock; the session stays alive and the editor regains focus.
                     $tui->handleInput("\x1b[96;5u");
-                    $this->assertFalse($tui->getById('terminal')->isVisible());
-                    $this->assertTrue($tui->getById('terminal')->isOpen(), 'the terminal tab survives the hide');
+                    $this->assertFalse(Widgets::byId($tui, 'terminal', TerminalPanelWidget::class)->isVisible());
+                    $this->assertTrue(Widgets::byId($tui, 'terminal', TerminalPanelWidget::class)->isOpen(), 'the terminal tab survives the hide');
                     $this->assertSame('editor', $tui->getFocus()?->getId());
                 },
-                250 => function ($tui): void {
+                250 => function (Tui $tui): void {
                     // Re-open: the still-running shell's panel comes back (no respawn).
                     $tui->handleInput("\x1b[96;5u");
-                    $this->assertTrue($tui->getById('terminal')->isVisible());
+                    $this->assertTrue(Widgets::byId($tui, 'terminal', TerminalPanelWidget::class)->isVisible());
                     // Now exit the shell so onExit updates the title.
                     foreach (\str_split("exit\n") as $ch) {
                         $tui->handleInput($ch);
@@ -239,7 +241,7 @@ final class IdeTerminalRunTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                700 => function ($tui, $terminal): void {
+                700 => function (Tui $tui, $terminal): void {
                     // Await the shell's echo loop; a fixed delay races under load.
                     $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'row-20'));
                     // Page up inside the await: late shell output (the trailing
@@ -255,8 +257,8 @@ final class IdeTerminalRunTest extends TestCase
                     $this->assertStringContainsString('scrolled', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $tui->handleInput("\x1b[6~"); // page down
                     $tui->handleInput("\x1b"); // escape hides the dock; the session stays alive
-                    $this->assertFalse($tui->getById('terminal')->isVisible());
-                    $this->assertTrue($tui->getById('terminal')->isOpen(), 'the terminal tab survives the hide');
+                    $this->assertFalse(Widgets::byId($tui, 'terminal', TerminalPanelWidget::class)->isVisible());
+                    $this->assertTrue(Widgets::byId($tui, 'terminal', TerminalPanelWidget::class)->isOpen(), 'the terminal tab survives the hide');
                 },
             ],
         );
@@ -285,8 +287,8 @@ final class IdeTerminalRunTest extends TestCase
                     $this->assertStringContainsString('Open Terminal', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $tui->handleInput("\r"); // run it
                 },
-                700 => function ($tui): void {
-                    $this->assertTrue($tui->getById('terminal')->isOpen());
+                700 => function (Tui $tui): void {
+                    $this->assertTrue(Widgets::byId($tui, 'terminal', TerminalPanelWidget::class)->isOpen());
                 },
             ],
         );
@@ -313,8 +315,8 @@ final class IdeTerminalRunTest extends TestCase
                     $this->assertStringContainsString('Run current file: hello.php', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $tui->handleInput("\r"); // run it -> terminal panel
                 },
-                450 => function ($tui): void {
-                    $this->assertTrue($tui->getById('terminal')->isOpen());
+                450 => function (Tui $tui): void {
+                    $this->assertTrue(Widgets::byId($tui, 'terminal', TerminalPanelWidget::class)->isOpen());
                 },
                 900 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitPainted($tui, $terminal, 'run-output-ok');
@@ -345,12 +347,12 @@ final class IdeTerminalRunTest extends TestCase
                 450 => static function ($tui): void {
                     $tui->handleInput("\r"); // run current file
                 },
-                700 => static function ($tui): void {
-                    $tui->getById('terminal')->close();
+                700 => static function (Tui $tui): void {
+                    Widgets::byId($tui, 'terminal', TerminalPanelWidget::class)->close();
                     $tui->handleInput("\x1b[21;2~"); // Run Last repeats it
                 },
-                750 => function ($tui): void {
-                    $this->assertTrue($tui->getById('terminal')->isOpen());
+                750 => function (Tui $tui): void {
+                    $this->assertTrue(Widgets::byId($tui, 'terminal', TerminalPanelWidget::class)->isOpen());
                 },
             ],
         );

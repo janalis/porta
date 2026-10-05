@@ -24,6 +24,9 @@ use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\Widgets;
+use Porta\Widget\ContextMenu;
+use Porta\Widget\FileTreeWidget;
 use Porta\Widget\TabBarWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\Renderer;
@@ -52,14 +55,14 @@ final class IdeTabsBuffersTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                300 => function ($tui, $terminal, Ide $ide) use ($project): void {
+                300 => function (Tui $tui, $terminal, Ide $ide) use ($project): void {
                     // Open the deep file as a background tab (does not reveal it).
                     Services::resolve($ide, BufferService::class)
                         ->openFile($project->path('src/deep/Target.php'), OpenFocus::Keep);
                     $tui->requestRender(force: true);
                     $tui->processRender();
 
-                    $tree = $tui->getById('tree');
+                    $tree = Widgets::byId($tui, 'tree', FileTreeWidget::class);
                     $this->assertNotSame('Target.php', $tree->selectedNode()?->name, 'opening a file does not reveal it in the tree');
 
                     $tabs = $tui->getById('tabs');
@@ -97,9 +100,9 @@ final class IdeTabsBuffersTest extends TestCase
                 200 => static function ($tui): void {
                     $tui->handleInput("\x1bw"); // close a.php (clean): no buffers left -> tree focused
                 },
-                350 => function ($tui): void {
+                350 => function (Tui $tui): void {
                     $this->assertSame('tree', $tui->getFocus()?->getId());
-                    $this->assertNull($tui->getById('editor')->getFilePath());
+                    $this->assertNull(Widgets::editor($tui)->getFilePath());
                     // Reopen both files (opening focuses the editor, so refocus the tree)
                     $tui->handleInput("\r"); // a.php
                     $tui->handleInput("\x14"); // ctrl+t back to tree
@@ -118,8 +121,8 @@ final class IdeTabsBuffersTest extends TestCase
                     $tui->handleInput("\x1b[B"); // -> Discard & Close
                     $tui->handleInput("\r");
                 },
-                850 => function ($tui) use ($project): void {
-                    $this->assertStringEndsWith('a.php', (string) $tui->getById('editor')->getFilePath());
+                850 => function (Tui $tui) use ($project): void {
+                    $this->assertStringEndsWith('a.php', (string) Widgets::editor($tui)->getFilePath());
                     $this->assertStringNotContainsString('E', (string) \file_get_contents($project->path('b.php')), 'discarded edit not written');
                     $tui->handleInput("\x1bw"); // close the last one: tree gets focus
                     $tui->handleInput("\x14"); // ctrl+t back to the (empty) editor
@@ -147,12 +150,12 @@ final class IdeTabsBuffersTest extends TestCase
             $project,
             $project->path('src/Child.php'),
             [
-                300 => static function ($tui): void {
-                    $tui->getById('editor')->getDocument()->setCursor(4, 8);
+                300 => static function (Tui $tui): void {
+                    Widgets::editor($tui)->getDocument()->setCursor(4, 8);
                     $tui->handleInput("\x15"); // ctrl+u
                 },
-                500 => function ($tui, $terminal): void {
-                    $editor = $tui->getById('editor');
+                500 => function (Tui $tui, $terminal): void {
+                    $editor = Widgets::editor($tui);
 
                     $this->assertStringEndsWith('Base.php', (string) $editor->getFilePath(), 'the parent file is open');
                     $this->assertSame(4, $editor->getDocument()->cursorLine, 'on its declaration');
@@ -215,12 +218,12 @@ final class IdeTabsBuffersTest extends TestCase
                     Services::resolve($ide, BufferService::class)
                         ->openFile($project->path('b.php'), OpenFocus::Editor);
                 },
-                300 => function ($tui): void {
-                    $this->assertStringEndsWith('b.php', (string) $tui->getById('editor')->getFilePath());
+                300 => function (Tui $tui): void {
+                    $this->assertStringEndsWith('b.php', (string) Widgets::editor($tui)->getFilePath());
                     $tui->handleInput("\x1bw"); // alt+w: close b.php, leaving only a.php open
                 },
-                400 => function ($tui, $terminal): void {
-                    $this->assertStringEndsWith('a.php', (string) $tui->getById('editor')->getFilePath());
+                400 => function (Tui $tui, $terminal): void {
+                    $this->assertStringEndsWith('a.php', (string) Widgets::editor($tui)->getFilePath());
                     $terminal->clearOutput();
                     $tui->handleInput("\x05"); // ctrl+e
                 },
@@ -236,8 +239,8 @@ final class IdeTabsBuffersTest extends TestCase
                     // Pre-selected, exactly as the previously-open file would be.
                     $tui->handleInput("\r");
                 },
-                600 => function ($tui): void {
-                    $this->assertStringEndsWith('b.php', (string) $tui->getById('editor')->getFilePath(), 'picking it opened it again');
+                600 => function (Tui $tui): void {
+                    $this->assertStringEndsWith('b.php', (string) Widgets::editor($tui)->getFilePath(), 'picking it opened it again');
                 },
             ],
         );
@@ -266,12 +269,12 @@ final class IdeTabsBuffersTest extends TestCase
                     $this->assertStringContainsString('PHP', $screen);
                     $tui->handleInput("\r"); // PHP is first and preselected
                 },
-                400 => function ($tui) use ($project, $home): void {
+                400 => function (Tui $tui) use ($project, $home): void {
                     $path = $home->path('.porta/scratches/scratch_1.php');
                     $this->assertFileExists($path);
                     // Ends-with, not same: opening realpath()s, and on macOS
                     // the temp dir gains a `/private` prefix on the way.
-                    $active = (string) $tui->getById('editor')->getFilePath();
+                    $active = (string) Widgets::editor($tui)->getFilePath();
                     $this->assertStringEndsWith('/.porta/scratches/scratch_1.php', $active, 'the scratch is the active buffer');
                     $this->assertStringStartsNotWith($project->dir, $active, 'and it is not in the project');
                 },
@@ -293,14 +296,14 @@ final class IdeTabsBuffersTest extends TestCase
                     $tui->handleInput("\x1b[B");
                     $tui->handleInput("\r"); // open b.php
                 },
-                500 => function ($tui): void {
+                500 => function (Tui $tui): void {
                     // Switching back must render a.php's highlight from the
                     // buffer-owned cache (same version, no re-parse).
-                    $editorBefore = $tui->getById('editor');
+                    $editorBefore = Widgets::editor($tui);
                     $versionBefore = $editorBefore->getDocument()->version;
                     $tui->handleInput("\x1b[1;5C"); // ctrl+right -> a.php
                     $tui->tick();
-                    $this->assertStringEndsWith('a.php', (string) $tui->getById('editor')->getFilePath());
+                    $this->assertStringEndsWith('a.php', (string) Widgets::editor($tui)->getFilePath());
                     $this->assertSame(1, $versionBefore, 'no phantom edits from switching');
                 },
             ],
@@ -416,13 +419,13 @@ final class IdeTabsBuffersTest extends TestCase
                     $tui->tick();
                     $this->assertSame(['A.php', 'B.php', 'C.php'], $this->tabNames($tui));
                 },
-                300 => function ($tui, $terminal, $ide) use ($tabsRect): void {
+                300 => function (Tui $tui, $terminal, $ide) use ($tabsRect): void {
                     $rect = $tabsRect($tui, $ide);
                     // Left-click row 0's body → switch to A (SGR coords are 1-based).
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + 3, $rect->row + 1));
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $rect->col + 3, $rect->row + 1));
                     $tui->tick();
-                    $this->assertStringEndsWith('A.php', (string) $tui->getById('editor')->getFilePath(), 'clicking a list row switches to that tab');
+                    $this->assertStringEndsWith('A.php', (string) Widgets::editor($tui)->getFilePath(), 'clicking a list row switches to that tab');
                 },
                 450 => function (Tui $tui, $terminal, $ide) use ($tabsRect): void {
                     $rect = $tabsRect($tui, $ide);
@@ -446,7 +449,7 @@ final class IdeTabsBuffersTest extends TestCase
                     // Right-click row 0 (C) → the tab context menu.
                     $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 3, $rect->row + 1));
                     $this->awaitPainted($tui, $terminal, 'Close Others');
-                    $this->assertTrue($tui->getById('context-menu')->isOpen(), 'right-clicking a list row opened the tab menu');
+                    $this->assertTrue(Widgets::byId($tui, 'context-menu', ContextMenu::class)->isOpen(), 'right-clicking a list row opened the tab menu');
                     $tui->handleInput("\x1b"); // Esc closes it
                 },
                 900 => function ($tui, $terminal, Ide $ide) use ($project): void {
@@ -480,12 +483,12 @@ final class IdeTabsBuffersTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, Ide $ide): void {
+                200 => function (Tui $tui, $terminal, Ide $ide): void {
                     Services::resolve($ide, CommandRegistry::class)->run('ide_help');
                     $tui->tick();
                     $tui->handleInput("\x1b[21;5~"); // Ctrl+F10 on the help viewer: the tab menu
                     $tui->tick();
-                    $this->assertTrue($tui->getById('context-menu')->isOpen(), 'the keyboard tab menu opened');
+                    $this->assertTrue(Widgets::byId($tui, 'context-menu', ContextMenu::class)->isOpen(), 'the keyboard tab menu opened');
                     // A top strip anchors one row below the tab; the bottom strip anchors on
                     // its own row so the overlay's overflow flip opens the panel above it.
                     $renderer = Services::resolve($ide, Renderer::class);
@@ -516,23 +519,23 @@ final class IdeTabsBuffersTest extends TestCase
                     $tui->tick();
                     $tui->handleInput("\x1b[<0;3;5M"); // open C (row 3)
                 },
-                300 => static function ($tui): void {
+                300 => static function (Tui $tui): void {
                     // Make C (the active buffer) dirty, then Close Others from A's tab.
-                    $editor = $tui->getById('editor');
+                    $editor = Widgets::editor($tui);
                     $editor->getDocument()->setCursor(0, 0);
                     $editor->handleInput('x');
                     $tui->handleInput("\x1b[<2;34;2M"); // right-click tab A
                 },
-                380 => function ($tui): void {
-                    $this->assertTrue($tui->getById('context-menu')->isOpen());
+                380 => function (Tui $tui): void {
+                    $this->assertTrue(Widgets::byId($tui, 'context-menu', ContextMenu::class)->isOpen());
                     $tui->handleInput("\x1b[B"); // down → Close Others
                     $tui->handleInput("\r");
                 },
-                460 => function ($tui): void {
+                460 => function (Tui $tui): void {
                     // A kept (active), C kept (dirty), B closed.
-                    $this->assertStringEndsWith('A.php', (string) $tui->getById('editor')->getFilePath());
+                    $this->assertStringEndsWith('A.php', (string) Widgets::editor($tui)->getFilePath());
                     // Now dirty A too, then Close All keeps both unsaved buffers.
-                    $editor = $tui->getById('editor');
+                    $editor = Widgets::editor($tui);
                     $editor->getDocument()->setCursor(0, 0);
                     $editor->handleInput('y');
                     $tui->handleInput("\x1b[<2;34;2M"); // right-click a tab
@@ -608,7 +611,7 @@ final class IdeTabsBuffersTest extends TestCase
                 },
                 400 => function (Tui $tui): void {
                     $this->assertSame(['B.php'], $this->tabNames($tui), 'clicking A\'s × closed it');
-                    $this->assertStringEndsWith('B.php', (string) $tui->getById('editor')->getFilePath());
+                    $this->assertStringEndsWith('B.php', (string) Widgets::editor($tui)->getFilePath());
                 },
             ],
         );
@@ -792,7 +795,7 @@ final class IdeTabsBuffersTest extends TestCase
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $col, $rect->row + 2)); // the baseline below its ×
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $col, $rect->row + 2));
                     $this->frame($tui);
-                    $this->assertStringEndsWith('a.php', (string) $tui->getById('editor')->getFilePath(), 'the half below the × selected the tab');
+                    $this->assertStringEndsWith('a.php', (string) Widgets::editor($tui)->getFilePath(), 'the half below the × selected the tab');
                     $this->assertCount(2, Services::resolve($ide, BufferManager::class)->all(), 'and closed nothing');
 
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $col, $rect->row + 1)); // the × itself
@@ -844,7 +847,7 @@ final class IdeTabsBuffersTest extends TestCase
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $col, $rect->row + 2)); // the gap under its ×
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $col, $rect->row + 2));
                     $this->frame($tui);
-                    $this->assertStringEndsWith('b.php', (string) $tui->getById('editor')->getFilePath(), 'the gap is no tab: nothing is selected');
+                    $this->assertStringEndsWith('b.php', (string) Widgets::editor($tui)->getFilePath(), 'the gap is no tab: nothing is selected');
                     $this->assertCount(2, Services::resolve($ide, BufferManager::class)->all(), 'and nothing closed');
 
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $col, $rect->row + 1)); // the × itself

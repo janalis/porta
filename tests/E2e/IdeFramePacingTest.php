@@ -14,6 +14,7 @@ use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\Widgets;
 
 /**
  * The frame-rate cap on a live session: Ide wires setFramePacing, so
@@ -52,7 +53,7 @@ final class IdeFramePacingTest extends TestCase
 
                     // The trailing wakeup runs on the real RevoltScheduler; the
                     // scrolled viewport must still paint without any forcing.
-                    $editor = $tui->getById('editor');
+                    $editor = Widgets::editor($tui);
                     $scroll = EditorState::scroll($editor);
                     $this->assertSame(6, $scroll->vScroll, 'both notches scrolled the model immediately');
                     $this->await(

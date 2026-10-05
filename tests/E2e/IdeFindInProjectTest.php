@@ -7,6 +7,7 @@ namespace Porta\Tests\E2e;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Ide;
+use Porta\Overlay\Region\ModalBox;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\FindModalReads;
 use Porta\Tests\Support\Paint;
@@ -14,8 +15,11 @@ use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\Widgets;
 use Porta\Ui\Glyphs;
+use Porta\Widget\ContextMenu;
 use Porta\Widget\DockPanelWidget;
+use Porta\Widget\ResultsPanelWidget;
 use Porta\Workbench\Dock\BottomDock;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -175,9 +179,9 @@ final class IdeFindInProjectTest extends TestCase
             null, // tree focused
             [
                 200 => $rightClickFolder,
-                280 => function ($tui): void {
+                280 => function (Tui $tui): void {
                     $tui->tick();
-                    $this->assertTrue($tui->getById('context-menu')->isOpen(), 'folder context menu opened');
+                    $this->assertTrue(Widgets::byId($tui, 'context-menu', ContextMenu::class)->isOpen(), 'folder context menu opened');
                     // New File → New Folder → Find in Files → Replace in Files → Add to Search Scopes.
                     $tui->handleInput("\x1b[B");
                     $tui->handleInput("\x1b[B");
@@ -428,9 +432,9 @@ final class IdeFindInProjectTest extends TestCase
                     }
                     $tui->handleInput("\x1ba"); // alt+a → replace all
                 },
-                1000 => function ($tui) use ($project): void {
+                1000 => function (Tui $tui) use ($project): void {
                     $tui->tick();
-                    $text = $tui->getById('editor')->getDocument()->getText();
+                    $text = Widgets::editor($tui)->getDocument()->getText();
                     $this->assertStringContainsString('function renamed', $text, 'the open buffer is replaced across the line break');
                     $this->assertStringNotContainsString('foo()', $text);
                     $this->assertStringContainsString('return 1;', $text, 'the rest of the file is intact');
@@ -542,10 +546,10 @@ final class IdeFindInProjectTest extends TestCase
                     $this->assertStringContainsString('→', $this->modalText($tui), 'the modal shows the replacement preview');
                     $tui->handleInput("\x1ba"); // alt+a → replace all
                 },
-                1000 => function ($tui) use ($project): void {
+                1000 => function (Tui $tui) use ($project): void {
                     $tui->tick();
-                    $this->assertFalse($tui->getById('editor')->isFindModalOpen(), 'the modal closes after replacing');
-                    $this->assertStringContainsString('$bar = 1;', $tui->getById('editor')->getDocument()->getText(), 'open buffer replaced');
+                    $this->assertFalse(Widgets::editor($tui)->isFindModalOpen(), 'the modal closes after replacing');
+                    $this->assertStringContainsString('$bar = 1;', Widgets::editor($tui)->getDocument()->getText(), 'open buffer replaced');
                     $this->assertStringContainsString('$bar = 2;', (string) \file_get_contents($project->path('src/B.php')), 'on-disk file replaced');
                 },
             ],
@@ -580,7 +584,7 @@ final class IdeFindInProjectTest extends TestCase
                     }, what: 'both matches to land');
                     $tui->handleInput("\x1bx"); // alt+x → export
                 },
-                900 => function ($tui) use ($project): void {
+                900 => function (Tui $tui) use ($project): void {
                     $tui->tick();
                     $exportPath = $project->path('.porta/search-results.txt');
                     $this->assertFileExists($exportPath);
@@ -588,7 +592,7 @@ final class IdeFindInProjectTest extends TestCase
                     $this->assertStringContainsString('src/A.php', $content);
                     $this->assertStringContainsString('src/B.php', $content, 'every matched file is listed');
                     $this->assertStringContainsString('2: // tok here', $content, 'line numbers are 1-based');
-                    $this->assertStringContainsString('search-results.txt', (string) $tui->getById('editor')->getFilePath(), 'the export opens in the editor');
+                    $this->assertStringContainsString('search-results.txt', (string) Widgets::editor($tui)->getFilePath(), 'the export opens in the editor');
                 },
                 1000 => static function ($tui, $terminal, Ide $ide): void {
                     // A grouped panel that is NOT a search. Alt+X is offered on
@@ -684,14 +688,14 @@ final class IdeFindInProjectTest extends TestCase
                 600 => function (Tui $tui, $terminal, Ide $ide) use ($project): void {
                     $this->awaitSearch($ide);
                     $this->promote($tui); // modal → results pane (F5 rerun lives on the pane)
-                    $this->assertStringContainsString('1 result', $tui->getById('results')->statusText());
+                    $this->assertStringContainsString('1 result', Widgets::byId($tui, 'results', ResultsPanelWidget::class)->statusText());
                     $project->write('src/B.php', "// tok added later\n"); // a new match on disk
                     $tui->handleInput("\x1b[15~"); // F5 → rerun
                 },
-                900 => function ($tui, $terminal, Ide $ide) use ($panelText): void {
+                900 => function (Tui $tui, $terminal, Ide $ide) use ($panelText): void {
                     $this->awaitSearch($ide);
                     $panel = $panelText($tui);
-                    $this->assertStringContainsString('2 results', $tui->getById('results')->statusText(), 'rerun sees the new file');
+                    $this->assertStringContainsString('2 results', Widgets::byId($tui, 'results', ResultsPanelWidget::class)->statusText(), 'rerun sees the new file');
                     $this->assertStringContainsString('src/B.php', $panel);
                 },
             ],
@@ -792,9 +796,9 @@ final class IdeFindInProjectTest extends TestCase
             },
             500 => function (Tui $tui, $terminal, Ide $ide): void {
                 $this->frame($tui);
-                $editor = $tui->getById('editor');
+                $editor = Widgets::editor($tui);
                 $box = $editor->findModal->lastBox();
-                $this->assertNotNull($box);
+                $this->assertInstanceOf(ModalBox::class, $box);
 
                 // The box is SCREEN-space (the modal floats over the whole
                 // workspace); SGR coordinates are 1-based.
@@ -806,7 +810,7 @@ final class IdeFindInProjectTest extends TestCase
                 $this->frame($tui);
 
                 $grown = $editor->findModal->lastBox();
-                $this->assertNotNull($grown);
+                $this->assertInstanceOf(ModalBox::class, $grown);
                 $this->assertSame($box->width + 6, $grown->width, 'the drag widened the box through the router');
                 $this->assertTrue($editor->isFindModalOpen(), 'resizing never dismissed it');
 
@@ -821,7 +825,7 @@ final class IdeFindInProjectTest extends TestCase
                 $this->frame($tui);
 
                 $movedBox = $editor->findModal->lastBox();
-                $this->assertNotNull($movedBox);
+                $this->assertInstanceOf(ModalBox::class, $movedBox);
                 $this->assertSame($grown->startRow + 2, $movedBox->startRow, 'the title-bar drag moved the box through the router');
                 $this->assertSame($grown->col, $movedBox->col, 'a vertical drag leaves the column');
                 $this->assertTrue($editor->isFindModalOpen(), 'moving never dismissed it');
@@ -837,7 +841,7 @@ final class IdeFindInProjectTest extends TestCase
                 $this->frame($tui);
 
                 $left = $editor->findModal->lastBox();
-                $this->assertNotNull($left);
+                $this->assertInstanceOf(ModalBox::class, $left);
                 $this->assertSame(0, $left->col, 'clamped to the screen edge — over the tree');
                 $renderer = Services::resolve($ide, Renderer::class);
                 $treeRect = $renderer->getWidgetRect($tui->getById('tree'));

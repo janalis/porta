@@ -13,6 +13,7 @@ use Porta\Tests\Support\PreservesPortaHome;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\Widgets;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 
@@ -63,7 +64,7 @@ final class GlobalConfigBootTest extends TestCase
                     // Through the env channel into a service: the editor's
                     // gutter mode is not something the settings screen set
                     // this session, it is what the IDE booted with.
-                    $editor = $tui->getById('editor');
+                    $editor = Widgets::editor($tui);
                     $this->assertSame(
                         LineNumberMode::Relative,
                         $editor->display->lineNumbers,
@@ -111,7 +112,7 @@ final class GlobalConfigBootTest extends TestCase
             $this->project->path('A.php'),
             [
                 300 => function (Tui $tui, VirtualTerminal $terminal): void {
-                    $editor = $tui->getById('editor');
+                    $editor = Widgets::editor($tui);
                     $this->assertSame(
                         LineNumberMode::Absolute,
                         $editor->display->lineNumbers,

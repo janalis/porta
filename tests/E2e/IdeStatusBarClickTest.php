@@ -14,6 +14,8 @@ use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\Widgets;
+use Porta\Widget\FileTreeWidget;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 
@@ -83,7 +85,7 @@ final class IdeStatusBarClickTest extends TestCase
                     Services::resolve($ide, BufferService::class)
                         ->openFile($project->path('src/deep/Target.php'), OpenFocus::Editor);
                     $this->frame($tui);
-                    $tree = $tui->getById('tree');
+                    $tree = Widgets::byId($tui, 'tree', FileTreeWidget::class);
                     $this->assertNotSame('Target.php', $tree->selectedNode()?->name, 'opening a file does not reveal it in the tree');
 
                     [$col, $row] = $this->statusFile($tui, $terminal, 'src/deep/Target.php');
@@ -127,7 +129,7 @@ final class IdeStatusBarClickTest extends TestCase
 
                     $tui->handleInput("\r"); // the first item is selected
                     $this->frame($tui);
-                    $this->assertSame('Target.php', $tui->getById('tree')->selectedNode()?->name, 'the file is selected in the tree');
+                    $this->assertSame('Target.php', Widgets::byId($tui, 'tree', FileTreeWidget::class)->selectedNode()?->name, 'the file is selected in the tree');
                     $this->assertSame('tree', $tui->getFocus()?->getId(), 'and the tree has focus');
                 },
             ],

@@ -22,8 +22,10 @@ use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\Widgets;
 use Porta\Ui\PaneSegmenter;
 use Porta\Widget\ContextMenu;
+use Porta\Widget\FileTreeWidget;
 use Porta\Widget\MenuBarWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -117,7 +119,7 @@ final class IdeRtlLocaleTest extends TestCase
             $project->path('a.php'),
             [
                 200 => function (Tui $tui): void {
-                    $this->assertSame(30, $tui->getById('tree')->width());
+                    $this->assertSame(30, Widgets::byId($tui, 'tree', FileTreeWidget::class)->width());
                     // Force a full frame so the mirrored separator has a live rect
                     // for the arm to hit — without it the drag routes against a null
                     // rect and no-ops, leaving the tree its original width.
@@ -129,8 +131,8 @@ final class IdeRtlLocaleTest extends TestCase
                     $tui->handleInput("\x1b[<32;121;5M"); // drag out to column 120
                     $tui->handleInput("\x1b[<0;121;5m"); // release
                 },
-                320 => function ($tui): void {
-                    $this->assertSame(40, $tui->getById('tree')->width(), 'dragging the mirrored separator leftward widens the tree');
+                320 => function (Tui $tui): void {
+                    $this->assertSame(40, Widgets::byId($tui, 'tree', FileTreeWidget::class)->width(), 'dragging the mirrored separator leftward widens the tree');
                 },
             ],
         );
@@ -665,8 +667,8 @@ final class IdeRtlLocaleTest extends TestCase
                     $col = $rect->col + 6;
                     $tui->handleInput("\x1b[<0;{$col};5M");
                 },
-                500 => function ($tui): void {
-                    $this->assertStringEndsWith('B.php', (string) $tui->getById('editor')->getFilePath(), 'the RTL click opened the tree entry');
+                500 => function (Tui $tui): void {
+                    $this->assertStringEndsWith('B.php', (string) Widgets::editor($tui)->getFilePath(), 'the RTL click opened the tree entry');
                 },
             ],
         );
@@ -796,7 +798,7 @@ final class IdeRtlLocaleTest extends TestCase
             [
                 300 => function ($tui): void {
                     $tui->tick();
-                    $bar = $tui->getById('menu');
+                    $bar = Widgets::byId($tui, 'menu', MenuBarWidget::class);
                     $this->assertFalse($bar->isOpen(), 'nothing is open yet');
 
                     // The first title starts at logical column titleStart(0);
@@ -817,8 +819,8 @@ final class IdeRtlLocaleTest extends TestCase
 
                     $tui->handleInput("\x1b[<0;".($visual + 1).';1M');
                 },
-                500 => function ($tui): void {
-                    $bar = $tui->getById('menu');
+                500 => function (Tui $tui): void {
+                    $bar = Widgets::byId($tui, 'menu', MenuBarWidget::class);
                     $this->assertTrue($bar->isOpen(), 'the click landed on a title');
                     $this->assertSame(0, $bar->openIndex(), 'and on the FIRST one, where the pointer was');
                 },
@@ -846,7 +848,7 @@ final class IdeRtlLocaleTest extends TestCase
             $project->path('a.php'),
             [
                 300 => static function (Tui $tui) use (&$picked): void {
-                    $tui->getById('editor')->openListOverlay(
+                    Widgets::editor($tui)->openListOverlay(
                         'Pick',
                         [
                             ['label' => 'alpha', 'hint' => 'first', 'value' => 'A'],

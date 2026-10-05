@@ -13,6 +13,7 @@ use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\UsesBundledPlugins;
+use Porta\Tests\Support\Widgets;
 use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\Menu\Menu;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -62,7 +63,7 @@ final class IdeTodoPluginTest extends TestCase
                     $this->frame($tui);
                     // grep walks the directory in its own order, so either row
                     // may be the selected one; both are TODO hits.
-                    $this->assertMatchesRegularExpression('~src/[AB]\.php$~', (string) $tui->getById('editor')->getFilePath(), 'Enter took the default open-and-jump');
+                    $this->assertMatchesRegularExpression('~src/[AB]\.php$~', (string) Widgets::editor($tui)->getFilePath(), 'Enter took the default open-and-jump');
 
                     // F5 re-runs the tool's own rerun closure.
                     $project->write('src/C.php', "<?php\n// TODO added later\n");

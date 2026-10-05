@@ -20,6 +20,8 @@ use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\Toasts;
+use Porta\Tests\Support\Widgets;
+use Porta\Widget\HelpViewerWidget;
 use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\Renderer;
@@ -110,7 +112,7 @@ final class IdeDocsTest extends TestCase
                     $this->frame($tui);
                     $paths = \array_map(static fn (Buffer $b): string => $b->path, Services::resolve($ide, BufferManager::class)->all());
                     $this->assertCount(1, $paths, 'the docs open no tab: only a.php');
-                    $this->assertStringEndsWith('editor.md', (string) $tui->getById('help-viewer')->path(), 'the page swapped in place');
+                    $this->assertStringEndsWith('editor.md', (string) Widgets::byId($tui, 'help-viewer', HelpViewerWidget::class)->path(), 'the page swapped in place');
 
                     // Closing the window (Esc) and reopening it (F1) must not wipe the trail.
                     $tui->handleInput("\x1b");
@@ -118,12 +120,12 @@ final class IdeDocsTest extends TestCase
                     $this->assertFalse(Services::resolve($ide, ViewRegistry::class)->isOpen('help'), 'Esc closed the window');
                     $tui->handleInput("\x1bOP");
                     $this->frame($tui);
-                    $this->assertStringEndsWith('editor.md', (string) $tui->getById('help-viewer')->path(), 'the navigated page survived closing the window');
+                    $this->assertStringEndsWith('editor.md', (string) Widgets::byId($tui, 'help-viewer', HelpViewerWidget::class)->path(), 'the navigated page survived closing the window');
                     $rect = $renderer->getWidgetRect($tui->getById('help-viewer'));
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + 2, $rect->row + 1)); // the ‹ arrow
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $rect->col + 2, $rect->row + 1));
                     $this->frame($tui);
-                    $this->assertStringEndsWith('README.md', (string) $tui->getById('help-viewer')->path(), 'the ‹ arrow still navigates after the round trip');
+                    $this->assertStringEndsWith('README.md', (string) Widgets::byId($tui, 'help-viewer', HelpViewerWidget::class)->path(), 'the ‹ arrow still navigates after the round trip');
                 },
                 1200 => function (Tui $tui, $terminal): void {
                     $this->frame($tui);
@@ -160,7 +162,7 @@ final class IdeDocsTest extends TestCase
                 100 => function (Tui $tui, $terminal, Ide $ide): void {
                     // The 300 ms here was a bet on the boot having opened the
                     // file; the editor says so itself.
-                    $editor = $tui->getById('editor');
+                    $editor = Widgets::editor($tui);
                     $this->await(
                         static fn (): bool => null !== $editor->getFilePath(),
                         what: 'the editor to open its file',
@@ -279,7 +281,7 @@ final class IdeDocsTest extends TestCase
                     $tui->handleInput("\t");
                     $tui->handleInput("\r"); // follow [Editor]
                     $this->frame($tui);
-                    $viewer = $tui->getById('help-viewer');
+                    $viewer = Widgets::byId($tui, 'help-viewer', HelpViewerWidget::class);
                     $this->assertStringEndsWith('editor.md', (string) $viewer->path());
 
                     // The ‹ arrow must navigate despite the stale breadcrumbs rect.
@@ -398,7 +400,7 @@ final class IdeDocsTest extends TestCase
                     $views->open('help');
                     $views->open('help'); // already open: nothing changes
                     $this->frame($tui);
-                    $page = $tui->getById('help-viewer');
+                    $page = Widgets::byId($tui, 'help-viewer', HelpViewerWidget::class);
                     $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($page);
                     $this->assertInstanceOf(WidgetRect::class, $rect);
 

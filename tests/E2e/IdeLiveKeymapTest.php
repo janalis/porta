@@ -16,7 +16,9 @@ use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\Widgets;
 use Porta\Widget\CodeEditorWidget;
+use Porta\Widget\MenuBarWidget;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
@@ -95,10 +97,10 @@ final class IdeLiveKeymapTest extends TestCase
         \putenv('PORTA_KEYMAP_PLATFORM=macos');
         $project = new TempProject(['A.php' => "<?php\n"]);
         $editMenu = function (Tui $tui, VirtualTerminal $terminal): string {
-            $tui->getById('menu')->open(1);
+            Widgets::byId($tui, 'menu', MenuBarWidget::class)->open(1);
             $this->frame($tui);
             $screen = \implode("\n", $this->screenGrid($tui, $terminal));
-            $tui->getById('menu')->close();
+            Widgets::byId($tui, 'menu', MenuBarWidget::class)->close();
 
             return $screen;
         };

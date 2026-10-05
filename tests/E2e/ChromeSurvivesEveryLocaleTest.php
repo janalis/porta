@@ -20,6 +20,7 @@ use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\Widgets;
 use Porta\Ui\Glyphs;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\Settings\KeybindingsListWidget;
@@ -138,7 +139,7 @@ final class ChromeSurvivesEveryLocaleTest extends TestCase
      */
     private function assertMenuBarDropsNoTitle(mixed $tui, string $locale): void
     {
-        $bar = $tui->getById('menu');
+        $bar = Widgets::byId($tui, 'menu', MenuBarWidget::class);
         $this->assertInstanceOf(MenuBarWidget::class, $bar, 'the menu bar is the menu widget');
         /** @var list<object> $menus */
         $menus = Probe::get($bar, 'menus');
@@ -173,7 +174,7 @@ final class ChromeSurvivesEveryLocaleTest extends TestCase
      */
     private function assertSettingsNavFitsItsOwnRows(mixed $tui, string $locale): void
     {
-        $nav = $tui->getById('settings-nav');
+        $nav = Widgets::byId($tui, 'settings-nav', SettingsNavWidget::class);
         $this->assertInstanceOf(SettingsNavWidget::class, $nav, 'the settings view owns the nav');
         // setWidth, not just a narrow RenderContext: the widget renders at
         // min(its own width, the context) — handing it a context alone measures

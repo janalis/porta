@@ -15,8 +15,12 @@ use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\Widgets;
 use Porta\Ui\Glyphs;
 use Porta\Widget\DockPanelWidget;
+use Porta\Widget\FileTreeWidget;
+use Porta\Widget\ResultsPanelWidget;
+use Porta\Widget\TerminalPanelWidget;
 use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\Dock\ResultsPanelMode;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -45,7 +49,7 @@ final class IdeLayoutFocusTest extends TestCase
             $project->path('a.php'),
             [
                 200 => function (Tui $tui): void {
-                    $this->assertSame(30, $tui->getById('tree')->width());
+                    $this->assertSame(30, Widgets::byId($tui, 'tree', FileTreeWidget::class)->width());
                     // Force a frame so the separator has a live rect for the arm.
                     $this->frame($tui);
                     // Drag the tree↔editor gap (SGR col 31 = the gap column) out to col 44.
@@ -53,8 +57,8 @@ final class IdeLayoutFocusTest extends TestCase
                     $tui->handleInput("\x1b[<32;45;5M"); // drag to col 44
                     $tui->handleInput("\x1b[<0;45;5m"); // release
                 },
-                320 => function ($tui) use ($project): void {
-                    $this->assertSame(44, $tui->getById('tree')->width(), 'sidebar resized by the drag');
+                320 => function (Tui $tui) use ($project): void {
+                    $this->assertSame(44, Widgets::byId($tui, 'tree', FileTreeWidget::class)->width(), 'sidebar resized by the drag');
                     $layout = \json_decode((string) \file_get_contents($project->path('.porta/layout.json')), associative: true);
                     $this->assertSame(28, $layout['sidebarWidthPercent'], 'saved as a percentage (round(44/160))');
                 },
@@ -74,7 +78,7 @@ final class IdeLayoutFocusTest extends TestCase
             $project->path('a.php'),
             [
                 200 => function (Tui $tui, $terminal, Ide $ide): void {
-                    $tp = $tui->getById('terminal');
+                    $tp = Widgets::byId($tui, 'terminal', TerminalPanelWidget::class);
                     $tp->open('sh', new TerminalBuffer());
                     // A FORCED frame, not requestRender+tick: a rect is always
                     // a frame behind, and a bare tick paints only when
@@ -112,8 +116,8 @@ final class IdeLayoutFocusTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => static function ($tui, $terminal, Ide $ide) use (&$expected): void {
-                    $results = $tui->getById('results');
+                200 => static function (Tui $tui, $terminal, Ide $ide) use (&$expected): void {
+                    $results = Widgets::byId($tui, 'results', ResultsPanelWidget::class);
                     Services::resolve($ide, BottomDock::class)
                         ->showList(ResultsPanelMode::Search, 'Find in Project', [
                             ['path' => 'b.php', 'line' => 0, 'text' => 'one'],
@@ -191,8 +195,8 @@ final class IdeLayoutFocusTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui): void {
-                    $this->assertSame(40, $tui->getById('tree')->width(), '25% of 160 columns');
+                200 => function (Tui $tui): void {
+                    $this->assertSame(40, Widgets::byId($tui, 'tree', FileTreeWidget::class)->width(), '25% of 160 columns');
                     $this->assertSame(10, Probe::get($tui->getById('terminal'), 'visibleRows'), '40% of 24 rows');
                 },
             ],
@@ -210,10 +214,10 @@ final class IdeLayoutFocusTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui) use ($project): void {
+                200 => function (Tui $tui) use ($project): void {
                     $tui->handleInput("\x1b[<0;31;5M"); // press the gap
                     $tui->handleInput("\x1b[<0;31;5m"); // release without moving
-                    $this->assertSame(30, $tui->getById('tree')->width(), 'width unchanged');
+                    $this->assertSame(30, Widgets::byId($tui, 'tree', FileTreeWidget::class)->width(), 'width unchanged');
                     $this->assertFileDoesNotExist($project->path('.porta/layout.json'), 'no file written for a no-op');
                 },
             ],
@@ -447,15 +451,15 @@ final class IdeLayoutFocusTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui): void {
+                200 => function (Tui $tui): void {
                     $tui->handleInput("\x1b[24;2~"); // Shift+F12 with editor focus: not resizable, falls through
-                    $this->assertSame(30, $tui->getById('tree')->width(), 'editor focus resizes nothing');
+                    $this->assertSame(30, Widgets::byId($tui, 'tree', FileTreeWidget::class)->width(), 'editor focus resizes nothing');
 
                     $tui->setFocus($tui->getById('tree'));
                     $tui->handleInput("\x1b[24;2~"); // grow
-                    $this->assertSame(32, $tui->getById('tree')->width());
+                    $this->assertSame(32, Widgets::byId($tui, 'tree', FileTreeWidget::class)->width());
                     $tui->handleInput("\x1b[23;2~"); // Shift+F11 shrinks it back
-                    $this->assertSame(30, $tui->getById('tree')->width());
+                    $this->assertSame(30, Widgets::byId($tui, 'tree', FileTreeWidget::class)->width());
                 },
                 350 => function (Tui $tui, $terminal, Ide $ide): void {
                     Services::resolve($ide, CommandRegistry::class)->run('ide_terminal');

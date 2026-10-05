@@ -15,6 +15,7 @@ use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\Toasts;
+use Porta\Tests\Support\Widgets;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
@@ -67,7 +68,7 @@ final class PhpCsFixerPluginTest extends TestCase
                 100 => static function ($tui): void {
                     $tui->handleInput("\x1b\x06"); // ctrl+alt+f → php-cs-fixer:fix
                 },
-                300 => function ($tui, $terminal, $ide) use ($project): void {
+                300 => function (Tui $tui, $terminal, $ide) use ($project): void {
                     $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'php-cs-fixer: fixed a.php'));
                     $tui->tick();
                     $this->assertStringContainsString('php-cs-fixer: fixed a.php', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
@@ -78,12 +79,12 @@ final class PhpCsFixerPluginTest extends TestCase
                     // the result into the buffer when the tool exits, so the
                     // edit is there without waiting a poll tick — and it is one
                     // Ctrl+Z away, which a poller reload never was.
-                    $this->await(static fn (): bool => \str_contains($tui->getById('editor')->getDocument()->getText(), '// fixed'));
-                    $this->assertStringContainsString('// fixed', $tui->getById('editor')->getDocument()->getText(), 'the buffer updated itself');
-                    $this->assertFalse($tui->getById('editor')->getDocument()->isDirty(), 'and it matches disk, so it is not modified');
+                    $this->await(static fn (): bool => \str_contains(Widgets::editor($tui)->getDocument()->getText(), '// fixed'));
+                    $this->assertStringContainsString('// fixed', Widgets::editor($tui)->getDocument()->getText(), 'the buffer updated itself');
+                    $this->assertFalse(Widgets::editor($tui)->getDocument()->isDirty(), 'and it matches disk, so it is not modified');
 
-                    $tui->getById('editor')->handleInput("\x1a"); // ctrl+z
-                    $this->assertStringNotContainsString('// fixed', $tui->getById('editor')->getDocument()->getText(), 'the format is undoable');
+                    Widgets::editor($tui)->handleInput("\x1a"); // ctrl+z
+                    $this->assertStringNotContainsString('// fixed', Widgets::editor($tui)->getDocument()->getText(), 'the format is undoable');
                 },
             ],
         );
@@ -106,7 +107,7 @@ final class PhpCsFixerPluginTest extends TestCase
                     $this->assertTrue((bool) (IdeConfig::load($project->dir)->plugins['php-cs-fixer']['autoFormat'] ?? false), 'the toggle persisted to .porta.json');
                     $tui->handleInput("\x13"); // ctrl+s → save → the hook runs the fixer
                 },
-                300 => function ($tui, $terminal, Ide $ide) use ($project): void {
+                300 => function (Tui $tui, $terminal, Ide $ide) use ($project): void {
                     $this->await(
                         static fn (): bool => \substr_count((string) (\is_file($project->path('a.php')) ? \file_get_contents($project->path('a.php')) : false), needle: '// fixed') >= 1,
                         what: 'the on-save fixer to run',
@@ -121,7 +122,7 @@ final class PhpCsFixerPluginTest extends TestCase
                     // call: saving an un-reloaded buffer would write back the
                     // unfixed text and zero the count below.
                     Services::resolve($ide, BufferService::class)->pollFilesystem();
-                    $editor = $tui->getById('editor');
+                    $editor = Widgets::editor($tui);
                     $this->await(static fn (): bool => \str_contains($editor->getDocument()->getText(), '// fixed'), what: 'the fixed file to reload into the buffer');
                     $tui->handleInput("\x13");
                     // A negative ("no second fix ran") has nothing to await:
@@ -194,15 +195,15 @@ final class PhpCsFixerPluginTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                100 => static function ($tui): void {
+                100 => static function (Tui $tui): void {
                     $tui->handleInput("\x1b\x06"); // ctrl+alt+f
-                    $tui->getById('editor')->getDocument()->insert('X'); // typed while it runs
+                    Widgets::editor($tui)->getDocument()->insert('X'); // typed while it runs
                 },
-                400 => function ($tui, $terminal) use ($project): void {
+                400 => function (Tui $tui, $terminal) use ($project): void {
                     $this->await(static fn (): bool => \str_contains((string) (\is_file($project->path('a.php')) ? \file_get_contents($project->path('a.php')) : false), '// fixed'));
                     $tui->tick();
 
-                    $text = $tui->getById('editor')->getDocument()->getText();
+                    $text = Widgets::editor($tui)->getDocument()->getText();
                     $this->assertStringContainsString('X', $text, 'the keystroke survived');
                     $this->assertStringNotContainsString('// fixed', $text, 'and the stale output was not applied over it');
                 },

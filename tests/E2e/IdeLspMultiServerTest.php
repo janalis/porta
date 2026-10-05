@@ -10,6 +10,7 @@ use Porta\Tests\Support\IsolatesPluginDiscovery;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\Widgets;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
@@ -231,7 +232,7 @@ final class IdeLspMultiServerTest extends TestCase
                 400 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitPainted($tui, $terminal, 'LSP:zeta-ls +alpha-ls');
 
-                    $tui->getById('editor')->getDocument()->setCursor(1, 7);
+                    Widgets::editor($tui)->getDocument()->setCursor(1, 7);
                     $tui->handleInput("\x00"); // ctrl+space
 
                     // Awaited, not asserted after a gap: the two answers land

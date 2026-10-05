@@ -41,9 +41,11 @@ use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\Toasts;
+use Porta\Tests\Support\Widgets;
 use Porta\Ui\NonBlockingTerminal;
 use Porta\Widget\HelpViewerWidget;
 use Porta\Widget\MarkdownPreviewWidget;
+use Porta\Widget\ResultsPanelWidget;
 use Porta\Workbench\EditorArea;
 use Porta\Workbench\Notifier;
 use Porta\Workbench\View\ViewRegistry;
@@ -589,7 +591,7 @@ final class IdeHelpersTest extends TestCase
         $restorer = Services::resolve($this->ide, SessionRestorer::class);
         $this->assertInstanceOf(SessionRestorer::class, $restorer, 'the sessionRestorer property holds a SessionRestorer');
         $this->assertTrue($restorer->restore(), 'restored at least the real file');
-        $this->assertStringEndsWith('Real.php', (string) Services::resolve($this->ide, Tui::class)->getById('editor')->getFilePath());
+        $this->assertStringEndsWith('Real.php', (string) Widgets::editor(Services::resolve($this->ide, Tui::class))->getFilePath());
     }
 
     /**
@@ -649,7 +651,7 @@ final class IdeHelpersTest extends TestCase
 
         Services::resolve($this->ide, SessionRestorer::class)->restore();
 
-        $document = Services::resolve($this->ide, Tui::class)->getById('editor')->getDocument();
+        $document = Widgets::editor(Services::resolve($this->ide, Tui::class))->getDocument();
         $this->assertSame(3, $document->cursorLine);
         $this->assertSame(5, $document->cursorCol);
     }
@@ -685,7 +687,7 @@ final class IdeHelpersTest extends TestCase
         Services::resolve($this->ide, SessionRestorer::class)->restore();
 
         $tui = Services::resolve($this->ide, Tui::class);
-        $this->assertStringEndsWith('First.php', (string) $tui->getById('editor')->getFilePath(), 'the recorded active buffer wins over the last-opened one');
+        $this->assertStringEndsWith('First.php', (string) Widgets::editor($tui)->getFilePath(), 'the recorded active buffer wins over the last-opened one');
         $this->assertSame(Services::resolve($this->ide, EditorArea::class)->widget(), $tui->getFocus(), 'focus lands on the editor area');
     }
 
@@ -737,19 +739,19 @@ final class IdeHelpersTest extends TestCase
         // Find in Project opens the centered modal (composited over the editor);
         // the other panel-opening commands focus their widget.
         $byLabel['Find in Project']();
-        $this->assertTrue($tui->getById('editor')->isFindModalOpen(), 'find-in-project opens the modal');
-        $tui->getById('editor')->findModal->close();
+        $this->assertTrue(Widgets::editor($tui)->isFindModalOpen(), 'find-in-project opens the modal');
+        Widgets::editor($tui)->findModal->close();
 
         $byLabel['Go to Symbol in Project']();
-        $this->assertTrue($tui->getById('editor')->isSearchOverlayOpen(), 'go-to-symbol opens the centered picker over the editor');
-        $tui->getById('editor')->closeSearch();
+        $this->assertTrue(Widgets::editor($tui)->isSearchOverlayOpen(), 'go-to-symbol opens the centered picker over the editor');
+        Widgets::editor($tui)->closeSearch();
 
         $byLabel['Go to File']();
-        $this->assertTrue($tui->getById('editor')->isSearchOverlayOpen(), 'go-to-file opens the centered picker over the editor');
-        $tui->getById('editor')->closeSearch();
+        $this->assertTrue(Widgets::editor($tui)->isSearchOverlayOpen(), 'go-to-file opens the centered picker over the editor');
+        Widgets::editor($tui)->closeSearch();
 
         // Cycle the choice settings and toggle a bool one.
-        $editor = $tui->getById('editor');
+        $editor = Widgets::editor($tui);
         $before = $editor->display->lineNumbers;
         $byLabel['Cycle Line Numbers']();
         $this->assertNotSame($before, $editor->display->lineNumbers);
@@ -865,7 +867,7 @@ final class IdeHelpersTest extends TestCase
 
         Services::resolve($this->ide, SearchActions::class)->showProblems();
 
-        $panel = Services::resolve($this->ide, Tui::class)->getById('results');
+        $panel = Widgets::byId(Services::resolve($this->ide, Tui::class), 'results', ResultsPanelWidget::class);
         $this->assertTrue($panel->isOpen());
         $rendered = AnsiUtils::stripAnsiCodes(
             \implode("\n", $panel->render(new RenderContext(120, 14))),
@@ -903,7 +905,7 @@ final class IdeHelpersTest extends TestCase
 
         Services::resolve($this->ide, SearchActions::class)->goToTest();
 
-        $this->assertStringEndsWith('FooTest.php', (string) Services::resolve($this->ide, Tui::class)->getById('editor')->getFilePath());
+        $this->assertStringEndsWith('FooTest.php', (string) Widgets::editor(Services::resolve($this->ide, Tui::class))->getFilePath());
     }
 
     public function testGoToTestWithMultipleCandidatesOpensAChooserList(): void
@@ -915,7 +917,7 @@ final class IdeHelpersTest extends TestCase
 
         Services::resolve($this->ide, SearchActions::class)->goToTest();
 
-        $panel = Services::resolve($this->ide, Tui::class)->getById('results');
+        $panel = Widgets::byId(Services::resolve($this->ide, Tui::class), 'results', ResultsPanelWidget::class);
         $this->assertTrue($panel->isOpen());
         $this->assertSame('Choose target', $panel->getTitle());
         $rendered = AnsiUtils::stripAnsiCodes(\implode("\n", $panel->render(new RenderContext(120, 14))));
@@ -948,12 +950,12 @@ final class IdeHelpersTest extends TestCase
         $buffers = Services::resolve($this->ide, BufferService::class);
         $solo = $this->project->write('src/Solo.php', "<?php\nnamespace App;\nfinal class Solo\n{\n    public function only(): void\n    {\n    }\n}\n");
         $buffers->openFile($solo, focus: OpenFocus::Editor);
-        Services::resolve($this->ide, Tui::class)->getById('editor')->getDocument()->setCursor(4, 0);
+        Widgets::editor(Services::resolve($this->ide, Tui::class))->getDocument()->setCursor(4, 0);
 
         Services::resolve($this->ide, SearchActions::class)->goToSuperMethod();
 
         $this->assertStringContainsString('overrides nothing', Toasts::last($this->ide));
-        $this->assertStringEndsWith('Solo.php', (string) Services::resolve($this->ide, Tui::class)->getById('editor')->getFilePath(), 'and nothing moved');
+        $this->assertStringEndsWith('Solo.php', (string) Widgets::editor(Services::resolve($this->ide, Tui::class))->getFilePath(), 'and nothing moved');
     }
 
     public function testRequestReformatWithoutLspIsNoOp(): void
@@ -1018,7 +1020,7 @@ final class IdeHelpersTest extends TestCase
     {
         $this->navigation()->pushCurrentLocation();
         $this->navigation()->navigateBack();
-        $this->assertNull(Services::resolve($this->ide, Tui::class)->getById('editor')->getFilePath(), 'the empty push left no stack entry');
+        $this->assertNull(Widgets::editor(Services::resolve($this->ide, Tui::class))->getFilePath(), 'the empty push left no stack entry');
     }
 
     /** The docs open in their own window, no tab: the page navigates in place and survives closing. */
@@ -1132,7 +1134,7 @@ final class IdeHelpersTest extends TestCase
         $actions->closeBuffer();
         $this->assertStringEndsWith('two.php', (string) $manager->active()?->path, 'closed the active tab');
         $actions->openGotoFile();
-        $this->assertTrue(Services::resolve($this->ide, Tui::class)->getById('editor')->isAnyPickerOpen(), 'the file picker opened');
+        $this->assertTrue(Widgets::editor(Services::resolve($this->ide, Tui::class))->isAnyPickerOpen(), 'the file picker opened');
         $actions->viewChanged();
         $actions->saveAll(); // nothing dirty: a silent sweep
 
@@ -1155,7 +1157,7 @@ final class IdeHelpersTest extends TestCase
         $window->showPage($this->project->write('docs/README.md', "# Guides\n"));
         $window->open();
         $help->openFile($file);
-        $this->assertStringEndsWith('Hooked.php', (string) $tui->getById('editor')->getFilePath(), 'a plain-file link opens in the editor');
+        $this->assertStringEndsWith('Hooked.php', (string) Widgets::editor($tui)->getFilePath(), 'a plain-file link opens in the editor');
         $this->assertFalse($views->isOpen('help'), 'and the docs window gave way to it');
 
         $help->missingTarget('ghost.md');

@@ -15,6 +15,7 @@ use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\Widgets;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
@@ -101,7 +102,7 @@ final class MagoPluginTest extends TestCase
 
                     Services::resolve($ide, BufferService::class)
                         ->pollFilesystem();
-                    $this->assertStringContainsString('// formatted', $tui->getById('editor')->getDocument()->getText(), 'buffer reloaded');
+                    $this->assertStringContainsString('// formatted', Widgets::editor($tui)->getDocument()->getText(), 'buffer reloaded');
                 },
             ],
         );

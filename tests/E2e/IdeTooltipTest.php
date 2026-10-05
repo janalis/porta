@@ -18,6 +18,7 @@ use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\Widgets;
 use Porta\Ui\Tooltip;
 use Porta\Ui\TooltipProvider;
 use Porta\Workbench\Notifier;
@@ -298,7 +299,7 @@ final class IdeTooltipTest extends TestCase
                     $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
                 },
                 200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
-                    $modal = $tui->getById('editor')->findModal;
+                    $modal = Widgets::editor($tui)->findModal;
                     $this->await(function () use ($tui, $modal): bool {
                         $this->frame($tui);
 
@@ -425,13 +426,13 @@ final class IdeTooltipTest extends TestCase
             $project->path('status.php'),
             [
                 100 => static function (Tui $tui): void {
-                    $editor = $tui->getById('editor');
+                    $editor = Widgets::editor($tui);
                     $editor->display->setInlayHints(InlayHintMode::Inline);
                     $editor->decorations->setInlayHints([1 => [['col' => 15, 'text' => ' 46 references']]]);
                 },
                 200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $this->awaitPainted($tui, $terminal, 'StatusTone 46 references');
-                    $editor = $tui->getById('editor');
+                    $editor = Widgets::editor($tui);
                     $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($editor);
                     $this->assertInstanceOf(WidgetRect::class, $rect);
                     $cell = [$rect->row + 1, $rect->col + $editor->gutterWidth() + 7]; // on `StatusTone`
@@ -461,13 +462,13 @@ final class IdeTooltipTest extends TestCase
             $project->path('a.php'),
             [
                 100 => static function (Tui $tui): void {
-                    $editor = $tui->getById('editor');
+                    $editor = Widgets::editor($tui);
                     $editor->getDocument()->setCursor(1, 5);
                     $editor->showCompletions([new CompletionItem(label: 'Countable', insertText: 'Countable', kind: 'iface', detail: '')]);
                 },
                 200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $this->frame($tui);
-                    $editor = $tui->getById('editor');
+                    $editor = Widgets::editor($tui);
                     $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($editor);
                     $this->assertInstanceOf(WidgetRect::class, $rect);
                     $translator = new Translator('en');

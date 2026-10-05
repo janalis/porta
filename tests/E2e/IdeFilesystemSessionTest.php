@@ -17,6 +17,7 @@ use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\Widgets;
 use Porta\Workbench\NotificationLog;
 use Porta\Workbench\Notifier;
 use Revolt\EventLoop;
@@ -123,7 +124,7 @@ final class IdeFilesystemSessionTest extends TestCase
                     // >=) — checked directly, independent of the tree's
                     // click-navigation flow below.
                     Services::resolve($ide, BufferService::class)->openFile($project->path('exactly.bin'), OpenFocus::Editor);
-                    $this->assertStringEndsWith('exactly.bin', (string) $tui->getById('editor')->getFilePath(), 'a file at exactly the cap still opens');
+                    $this->assertStringEndsWith('exactly.bin', (string) Widgets::editor($tui)->getFilePath(), 'a file at exactly the cap still opens');
 
                     $tui->handleInput("\x14"); // focus tree: entries exactly.bin, huge.bin, latin1.txt, ok.php, secret.php
                     $tui->handleInput("\x1b[B"); // skip past exactly.bin
@@ -168,10 +169,10 @@ final class IdeFilesystemSessionTest extends TestCase
             $project,
             null, // start with no file and no session → the editor has nothing open
             [
-                250 => function ($tui, $terminal): void {
+                250 => function (Tui $tui, $terminal): void {
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('No file open', $screen, 'the empty pane shows the placeholder');
-                    $this->assertNull($tui->getById('editor')->getFilePath(), 'no file is open');
+                    $this->assertNull(Widgets::editor($tui)->getFilePath(), 'no file is open');
                 },
             ],
         );
@@ -228,10 +229,10 @@ final class IdeFilesystemSessionTest extends TestCase
                         // The cursor has to be set in the buffer the session
                         // will record, so B.php being open is the barrier.
                         $this->await(
-                            static fn (): bool => \str_ends_with((string) $tui->getById('editor')->getFilePath(), 'B.php'),
+                            static fn (): bool => \str_ends_with((string) Widgets::editor($tui)->getFilePath(), 'B.php'),
                             what: 'B.php to open from the tree',
                         );
-                        $tui->getById('editor')->getDocument()->setCursor(0, 2);
+                        Widgets::editor($tui)->getDocument()->setCursor(0, 2);
                         $tui->handleInput("\x11"); // ctrl+q (clean buffers -> quits)
                     },
                 ],
@@ -256,10 +257,10 @@ final class IdeFilesystemSessionTest extends TestCase
                     // Session restore reads disk at boot, so the reopened
                     // buffer is the barrier, not a gap after run() started.
                     $this->await(
-                        static fn (): bool => null !== $tui2->getById('editor')->getFilePath(),
+                        static fn (): bool => null !== Widgets::editor($tui2)->getFilePath(),
                         what: 'the session buffer to be restored',
                     );
-                    $this->assertNotNull($tui2->getById('editor')->getFilePath(), 'a buffer was restored');
+                    $this->assertNotNull(Widgets::editor($tui2)->getFilePath(), 'a buffer was restored');
                     $this->assertSame('editor', $tui2->getFocus()?->getId());
                     $tui2->stop();
                 },
@@ -304,8 +305,8 @@ final class IdeFilesystemSessionTest extends TestCase
                     $tui->handleInput("\x1bw"); // dialog
                     $tui->handleInput("\r"); // Save & Close (first option)
                 },
-                800 => function ($tui) use ($project): void {
-                    $this->assertStringEndsWith('a.php', (string) $tui->getById('editor')->getFilePath());
+                800 => function (Tui $tui) use ($project): void {
+                    $this->assertStringEndsWith('a.php', (string) Widgets::editor($tui)->getFilePath());
                     $this->assertStringContainsString('Z', (string) \file_get_contents($project->path('b.php')), 'saved before closing');
                 },
             ],
@@ -458,10 +459,10 @@ final class IdeFilesystemSessionTest extends TestCase
                     // The caret is placed while the file opens, so await it
                     // rather than reading it out of a gap behind a bare tick.
                     $this->await(
-                        static fn (): bool => 3 === $tui->getById('editor')->getDocument()->cursorLine,
+                        static fn (): bool => 3 === Widgets::editor($tui)->getDocument()->cursorLine,
                         what: 'the boot line to move the caret',
                     );
-                    $this->assertSame(3, $tui->getById('editor')->getDocument()->cursorLine, 'CLI line 4 → 0-based line 3');
+                    $this->assertSame(3, Widgets::editor($tui)->getDocument()->cursorLine, 'CLI line 4 → 0-based line 3');
                     $tui->stop();
                 },
             ],
@@ -480,17 +481,17 @@ final class IdeFilesystemSessionTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                200 => function ($tui, $terminal, $ide) use ($project): void {
+                200 => function (Tui $tui, $terminal, $ide) use ($project): void {
                     $tui->tick();
-                    $this->assertStringContainsString('original', $tui->getById('editor')->getDocument()->getText());
+                    $this->assertStringContainsString('original', Widgets::editor($tui)->getDocument()->getText());
                     $project->write('A.php', "<?php\n// changed on disk\n"); // external edit
                     $ide->pollFilesystem();
                 },
-                300 => function ($tui): void {
-                    $doc = $tui->getById('editor')->getDocument();
+                300 => function (Tui $tui, VirtualTerminal $terminal): void {
+                    $doc = Widgets::editor($tui)->getDocument();
                     $this->assertStringContainsString('changed on disk', $doc->getText(), 'clean buffer reloaded');
                     $this->assertFalse($doc->isDirty(), 'reloaded buffer is not dirty');
-                    $this->assertStringContainsString('Reloaded A.php', AnsiUtils::stripAnsiCodes($tui->getTerminal()->getOutput()));
+                    $this->assertStringContainsString('Reloaded A.php', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
         );
@@ -514,8 +515,8 @@ final class IdeFilesystemSessionTest extends TestCase
                     $project->write('A.php', \str_repeat('x', (2 * 1024 * 1024) + 1));
                     $ide->pollFilesystem();
                 },
-                300 => function ($tui): void {
-                    $doc = $tui->getById('editor')->getDocument();
+                300 => function (Tui $tui): void {
+                    $doc = Widgets::editor($tui)->getDocument();
                     $this->assertStringContainsString('original', $doc->getText(), 'oversized change ignored, buffer kept');
                     $this->assertFalse($doc->isDirty());
                 },
@@ -534,18 +535,18 @@ final class IdeFilesystemSessionTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                200 => static function ($tui, $terminal, Ide $ide) use ($project): void {
+                200 => static function (Tui $tui, $terminal, Ide $ide) use ($project): void {
                     $tui->tick();
-                    $tui->getById('editor')->getDocument()->setCursor(0, 0);
-                    $tui->getById('editor')->handleInput('X'); // unsaved edit → dirty
+                    Widgets::editor($tui)->getDocument()->setCursor(0, 0);
+                    Widgets::editor($tui)->handleInput('X'); // unsaved edit → dirty
                     $buffer = Services::resolve($ide, BufferManager::class)->active();
                     \assert(null !== $buffer, description: 'A.php is open');
                     $buffer->diskChangedUnderEdit = true; // a clash noticed earlier
                     $project->write('A.php', "X<?php\n"); // someone else saves that same text
                     $ide->pollFilesystem();
                 },
-                300 => function ($tui, $terminal, Ide $ide): void {
-                    $doc = $tui->getById('editor')->getDocument();
+                300 => function (Tui $tui, $terminal, Ide $ide): void {
+                    $doc = Widgets::editor($tui)->getDocument();
                     $this->assertSame("X<?php\n", $doc->getText());
                     $this->assertFalse($doc->isDirty(), 'the buffer IS the disk now');
                     $this->assertFalse(Services::resolve($ide, BufferManager::class)->active()?->diskChangedUnderEdit, 'and a save will not ask to overwrite');
@@ -565,15 +566,15 @@ final class IdeFilesystemSessionTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                200 => static function ($tui, $terminal, $ide) use ($project): void {
+                200 => static function (Tui $tui, $terminal, $ide) use ($project): void {
                     $tui->tick();
-                    $tui->getById('editor')->getDocument()->setCursor(0, 0);
-                    $tui->getById('editor')->handleInput('X'); // unsaved edit → dirty
+                    Widgets::editor($tui)->getDocument()->setCursor(0, 0);
+                    Widgets::editor($tui)->handleInput('X'); // unsaved edit → dirty
                     $project->write('A.php', "<?php\n// external\n");
                     $ide->pollFilesystem();
                 },
-                300 => function ($tui): void {
-                    $doc = $tui->getById('editor')->getDocument();
+                300 => function (Tui $tui): void {
+                    $doc = Widgets::editor($tui)->getDocument();
                     $this->assertStringStartsWith('X', $doc->getText(), 'the unsaved edit was kept, not clobbered');
                     $this->assertTrue($doc->isDirty());
                 },
@@ -598,8 +599,8 @@ final class IdeFilesystemSessionTest extends TestCase
                     $ide->pollFilesystem();
                     $ide->pollFilesystem(); // second poll must not re-flash
                 },
-                300 => function ($tui, $terminal, Ide $ide): void {
-                    $this->assertStringContainsString('keep me', $tui->getById('editor')->getDocument()->getText(), 'buffer retained');
+                300 => function (Tui $tui, $terminal, Ide $ide): void {
+                    $this->assertStringContainsString('keep me', Widgets::editor($tui)->getDocument()->getText(), 'buffer retained');
                     // Counted in the log, not the screen: the output accumulates
                     // every repaint, so a screen count measures frames, not warnings.
                     $log = Probe::object(Services::resolve($ide, Notifier::class), 'log'); // inlined into the notifier
@@ -625,9 +626,9 @@ final class IdeFilesystemSessionTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                200 => static function ($tui, $terminal, $ide): void {
+                200 => static function (Tui $tui, $terminal, $ide): void {
                     $tui->tick();
-                    $tui->getById('editor')->handleInput('Y'); // dirty
+                    Widgets::editor($tui)->handleInput('Y'); // dirty
                     $tui->handleInput("\x13"); // ctrl+s → save (records our own disk stamp)
                     $ide->pollFilesystem();
                 },
@@ -688,13 +689,13 @@ final class IdeFilesystemSessionTest extends TestCase
             $project,
             $project->path('marked.php'),
             [
-                200 => function ($tui): void {
+                200 => function (Tui $tui): void {
                     $this->assertSame(
                         '<?php',
-                        $tui->getById('editor')->getDocument()->getLine(0),
+                        Widgets::editor($tui)->getDocument()->getLine(0),
                         'the mark is off the text the editor holds',
                     );
-                    $tui->getById('editor')->getDocument()->setCursor(0, 0);
+                    Widgets::editor($tui)->getDocument()->setCursor(0, 0);
                     $tui->handleInput('X');
                     $tui->handleInput("\x13"); // ctrl+s
                 },
@@ -717,8 +718,8 @@ final class IdeFilesystemSessionTest extends TestCase
             $project,
             $project->path('win.php'),
             [
-                200 => static function ($tui): void {
-                    $tui->getById('editor')->getDocument()->setCursor(0, 5);
+                200 => static function (Tui $tui): void {
+                    Widgets::editor($tui)->getDocument()->setCursor(0, 5);
                     $tui->handleInput('X');
                     $tui->handleInput("\x13"); // ctrl+s
                 },
