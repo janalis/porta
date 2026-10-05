@@ -345,6 +345,14 @@ final readonly class RuleHalves
             $edges[] = $top($rect);
             $edges[] = [$rect, $rect->row + $rect->rows - 1, $rect->row + $rect->rows, Glyphs::HALF_UPPER, Glyphs::RULE_UP, null];
         }
+        // Each row's cells read once: sliced a cell at a time, a full-width
+        // edge cost ~40ms a frame, every slice walking the row from its start.
+        $cells = [];
+        foreach ($edges as [, $edge, $line]) {
+            foreach (\array_intersect_key($lines, [$edge => true, $line => true]) as $row => $text) {
+                $cells[$row] ??= self::cells($text);
+            }
+        }
         $spans = [];
         foreach ($edges as [$rect, $edge, $line, $half, $join, $shade]) {
             if (!\array_key_exists($edge, $lines) || !\array_key_exists($line, $lines)) {
@@ -357,7 +365,7 @@ final readonly class RuleHalves
                 }
                 // A rule, or a blank on nothing: the padding over a view
                 // in a window, the room under a short list.
-                $beside = AnsiText::columnsFrom($lines[$line], $col, 1);
+                $beside = $cells[$line][$col] ?? '';
                 $state = self::state(self::lead($beside));
                 $glyph = AnsiUtils::stripAnsiCodes($beside);
                 $isRule = Glyphs::FRAME_HORIZONTAL === $glyph && $tint === $state['fg'];
@@ -375,7 +383,7 @@ final readonly class RuleHalves
                 if (null !== $shade && !$onBar) {
                     continue;
                 }
-                $cell = null === $shade ? AnsiText::columnsFrom($lines[$edge], $col, 1) : $shade->apply(' ');
+                $cell = null === $shade ? $cells[$edge][$col] ?? '' : $shade->apply(' ');
                 $segment = match (true) {
                     $onBar => self::onBar($cell, $half, $barTint), // a strip's unshaded `│` ends at the bar
                     Glyphs::FRAME_VERTICAL !== AnsiUtils::stripAnsiCodes($cell) => self::half($cell, $half),
@@ -503,6 +511,52 @@ final readonly class RuleHalves
     }
 
     /**
+     * Every column of $line as {@see AnsiText::columnsFrom()} would slice it
+     * one at a time, for what this pass reads of a cell — its glyph and the
+     * SGR state over it ({@see state()}) — in one walk of the row: the state
+     * as one canonical run of codes, and a wide glyph, which no one-column
+     * slice holds, as the state with no glyph and then a bare blank.
+     *
+     * @return list<string>
+     */
+    public static function cells(string $line): array
+    {
+        $cells = [];
+        $state = self::PLAIN;
+        foreach (AnsiUtils::walkCells($line) as $token) {
+            if (0 === $token['width']) {
+                $state = self::fold($state, $token['text']);
+                continue;
+            }
+            if (2 === $token['width']) {
+                // No glyph in one column: the state alone, then a bare blank.
+                $cells[] = self::codes($state);
+                $cells[] = ' ';
+                continue;
+            }
+            $cells[] = self::codes($state).$token['text'];
+        }
+
+        return $cells;
+    }
+
+    /**
+     * $state as the codes that set it, which {@see state()} — reading from
+     * nothing set — reads back as $state.
+     *
+     * @param array{fg: ?string, bg: ?string, reverse: bool, dim: bool} $state
+     */
+    private static function codes(array $state): string
+    {
+        return (
+            (null === $state['fg'] ? '' : "\x1b[{$state['fg']}m")
+            .(null === $state['bg'] ? '' : "\x1b[".self::asBackground($state['bg']).'m')
+            .($state['reverse'] ? "\x1b[7m" : '')
+            .($state['dim'] ? "\x1b[2m" : '')
+        );
+    }
+
+    /**
      * The SGR state in force at the end of $sgr: the colours as foreground
      * parameters (a background read as the foreground of the same colour),
      * and whether it is reversed or dim.
@@ -511,7 +565,18 @@ final readonly class RuleHalves
      */
     private static function state(string $sgr): array
     {
-        $state = self::PLAIN;
+        return self::fold(self::PLAIN, $sgr);
+    }
+
+    /**
+     * $state with $sgr's codes applied over it, as {@see state()} reads them.
+     *
+     * @param array{fg: ?string, bg: ?string, reverse: bool, dim: bool} $state
+     *
+     * @return array{fg: ?string, bg: ?string, reverse: bool, dim: bool}
+     */
+    private static function fold(array $state, string $sgr): array
+    {
         $sequences = [];
         \preg_match_all('/\x1b\[([0-9;]*)m/', $sgr, $sequences);
         foreach ($sequences[1] as $sequence) {

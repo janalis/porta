@@ -8,6 +8,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Porta\Overlay\Presenter\RuleHalves;
 use Porta\Overlay\Region\DropdownRegion;
+use Porta\Support\AnsiText;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\RowBleed;
@@ -436,5 +437,23 @@ final class RuleHalvesTest extends TestCase
         $this->assertSame([], $shade(['ab│'.$header], new WidgetRect(0, 3, 2, 1), new WidgetRect(0, 2, 1, 1)), 'a line in no rule\'s tint');
         $this->assertSame([], $shade(['ab'.$rule->apply('│').'  '], new WidgetRect(0, 3, 2, 1), new WidgetRect(0, 2, 1, 1)), 'a header with no shade');
         $this->assertSame([], $shade($lines, new WidgetRect(0, 3, 2, 2), new WidgetRect(0, 2, 1, 2), [new DropdownRegion(top: 0, col: 2, width: 1, count: 1)]), 'under a floating surface');
+    }
+
+    public function testCellsReadARowAsOneColumnSlicesOfItWould(): void
+    {
+        // Every code this pass reads, a reset mid-row, a wide glyph, a 256-colour
+        // background, reverse and dim switched off again, an APC marker.
+        $line = "\x1b[31mab\x1b[48;5;4m世\x1b[0mc\x1b_m\x1b\\d\x1b[7;2mef\x1b[27;22;38;2;1;2;3mg\x1b[39;49m h";
+        $cells = RuleHalves::cells($line);
+
+        $this->assertCount(AnsiUtils::visibleWidth($line), $cells);
+        foreach ($cells as $col => $cell) {
+            // A probe glyph after each, so a column with none still reads its state.
+            $this->assertSame(
+                RuleHalves::cells(AnsiText::columnsFrom($line, $col, 1).'X')[0],
+                RuleHalves::cells($cell.'X')[0],
+                "column {$col}",
+            );
+        }
     }
 }

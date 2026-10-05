@@ -4,14 +4,23 @@ declare(strict_types=1);
 
 namespace Porta\Widget\Render;
 
+use Porta\Ui\Sgr;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
- * Composites the application-menu dropdown's styled segments onto a widget's
- * already-rendered rows, so the dropdown floats over the tab bar / editor
- * instead of the menu bar pushing the layout down. Spans are in the widget's
- * local coordinates (the coordinator translates the absolute dropdown position
- * to each widget via its rect); rows outside the widget are ignored.
+ * Composites styled segments onto a widget's already-rendered rows: the
+ * application-menu dropdown floating over the tab bar / editor instead of the
+ * menu bar pushing the layout down, the other floating surfaces, and the
+ * frame passes' cells ({@see \Porta\Overlay\Presenter\FrameJoins}). Spans are
+ * in the widget's local coordinates (the coordinator translates the absolute
+ * dropdown position to each widget via its rect); rows outside the widget are
+ * ignored.
+ *
+ * Spans that run on from one another along a row are composited as ONE: each
+ * splice re-slices the whole row, and the slicer replays every escape it
+ * skips, so a row grows by its own prefix per splice. A frame pass that hands
+ * a cell per span (a head bar reaching into a bar's half, 175 cells wide) took
+ * a 7.8 KB row to 579 KB and 1.5 s a frame; merged, it is one splice.
  */
 final class MenuOverlay
 {
@@ -23,7 +32,7 @@ final class MenuOverlay
      */
     public static function apply(array $lines, array $spans, int $columns): array
     {
-        foreach ($spans as $span) {
+        foreach (self::runs($spans) as $span) {
             if ($span['row'] < 0 || $span['row'] >= \count($lines)) {
                 continue;
             }
@@ -41,5 +50,34 @@ final class MenuOverlay
         }
 
         return $lines;
+    }
+
+    /**
+     * $spans with each one that starts where the one before it ends, on the
+     * same row, folded into it — in the order given, so where spans overlap
+     * the later still wins. The segments are joined by a reset, as a splice
+     * of each would have put one between them.
+     *
+     * @param list<array{row: int, col: int, width: int, segment: string}> $spans
+     *
+     * @return list<array{row: int, col: int, width: int, segment: string}>
+     */
+    private static function runs(array $spans): array
+    {
+        /** @var list<array{row: int, col: int, width: int, segment: string}> $runs */
+        $runs = [];
+        foreach ($spans as $span) {
+            $last = \array_pop($runs);
+            if (null !== $last && $last['row'] === $span['row'] && ($last['col'] + $last['width']) === $span['col']) {
+                $runs[] = ['row' => $last['row'], 'col' => $last['col'], 'width' => $last['width'] + $span['width'], 'segment' => $last['segment'].Sgr::RESET.$span['segment']];
+                continue;
+            }
+            if (null !== $last) {
+                $runs[] = $last;
+            }
+            $runs[] = $span;
+        }
+
+        return $runs;
     }
 }
