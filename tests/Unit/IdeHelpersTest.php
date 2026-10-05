@@ -935,7 +935,7 @@ final class IdeHelpersTest extends TestCase
         $this->project->write('src/ParentClass.php', "<?php\nnamespace App;\nabstract class ParentClass\n{\n    public function handle(): void\n    {\n    }\n}\n");
         $child = $this->project->write('src/Child.php', "<?php\nnamespace App;\nfinal class Child extends ParentClass\n{\n    public function handle(): void\n    {\n    }\n}\n");
         $buffers->openFile($child, focus: OpenFocus::Editor);
-        $editor = Services::resolve($this->ide, Tui::class)->getById('editor');
+        $editor = Widgets::editor(Services::resolve($this->ide, Tui::class));
         $editor->getDocument()->setCursor(4, 0);
 
         Services::resolve($this->ide, SearchActions::class)->goToSuperMethod();

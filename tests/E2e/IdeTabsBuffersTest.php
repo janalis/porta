@@ -65,7 +65,7 @@ final class IdeTabsBuffersTest extends TestCase
                     $tree = Widgets::byId($tui, 'tree', FileTreeWidget::class);
                     $this->assertNotSame('Target.php', $tree->selectedNode()?->name, 'opening a file does not reveal it in the tree');
 
-                    $tabs = $tui->getById('tabs');
+                    $tabs = Widgets::byId($tui, 'tabs', TabBarWidget::class);
                     $rect = Services::resolve($ide, Renderer::class)
                         ->getWidgetRect($tabs);
                     $anchor = $tabs->tabAnchor(1); // the Target.php tab
@@ -755,7 +755,7 @@ final class IdeTabsBuffersTest extends TestCase
     /** The tab names in open order, read from the tab bar's provider. */
     private function tabNames(Tui $tui): array
     {
-        $tabBar = $tui->getById('tabs');
+        $tabBar = Widgets::byId($tui, 'tabs', TabBarWidget::class);
         $provider = Probe::get($tabBar, 'provider');
 
         return \array_column($provider(), 'name');
@@ -779,7 +779,7 @@ final class IdeTabsBuffersTest extends TestCase
                 200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
                     Services::resolve($ide, BufferService::class)->openFile($project->path('b.php'), OpenFocus::Keep);
                     $this->frame($tui);
-                    $tabs = $tui->getById('tabs');
+                    $tabs = Widgets::byId($tui, 'tabs', TabBarWidget::class);
                     $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($tabs);
                     $this->assertSame(2, $rect->rows, 'forty rows: pills, the labels over their baseline');
                     $zone = Probe::get($tabs, 'lastLayout')[0]; // a.php, the tab not shown
@@ -829,7 +829,7 @@ final class IdeTabsBuffersTest extends TestCase
                 200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
                     Services::resolve($ide, BufferService::class)->openFile($project->path('b.php'), OpenFocus::Keep);
                     $this->frame($tui);
-                    $tabs = $tui->getById('tabs');
+                    $tabs = Widgets::byId($tui, 'tabs', TabBarWidget::class);
                     $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($tabs);
                     $zone = Probe::get($tabs, 'lastLayout')[0]; // a.php, the tab not shown
                     $this->assertSame(

@@ -21,6 +21,7 @@ use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\Toasts;
 use Porta\Tests\Support\Widgets;
+use Porta\Widget\FindBarWidget;
 use Porta\Widget\HelpViewerWidget;
 use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -423,7 +424,7 @@ final class IdeDocsTest extends TestCase
                     // buttons lights it, and moving off clears it.
                     $tui->handleInput("\x1b[17~");
                     $this->frame($tui);
-                    $bar = $tui->getById('help-find');
+                    $bar = Widgets::byId($tui, 'help-find', FindBarWidget::class);
                     $find = Services::resolve($ide, Renderer::class)->getWidgetRect($bar);
                     $this->assertInstanceOf(WidgetRect::class, $find);
                     $button = null;

@@ -201,7 +201,7 @@ final class ChromeSurvivesEveryLocaleTest extends TestCase
     {
         $this->selectSettingsSection($this->settingsNav($tui), 'keybindings');
         $this->frame($tui);
-        $list = $tui->getById('settings-keys');
+        $list = Widgets::byId($tui, 'settings-keys', KeybindingsListWidget::class);
         $this->assertInstanceOf(KeybindingsListWidget::class, $list, 'the keybindings page owns the list');
         foreach (self::WIDTHS as $width) {
             $header = AnsiUtils::stripAnsiCodes(Paint::lines($list, new RenderContext($width, 8))[0]);

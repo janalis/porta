@@ -15,7 +15,7 @@ final class AsyncProcessTest extends TestCase
 
     public function testCollectsStdoutAndExitCode(): void
     {
-        $process = new AsyncProcess([\PHP_BINARY, '-r', 'echo "hello\nworld\n"; exit(3);'], \getcwd());
+        $process = new AsyncProcess([\PHP_BINARY, '-r', 'echo "hello\nworld\n"; exit(3);'], __DIR__);
         $exit = null;
         $out = null;
         $this->assertTrue($process->start(static function (int $code, string $stdout) use (&$exit, &$out): void {
@@ -39,7 +39,7 @@ final class AsyncProcessTest extends TestCase
         // on it — symfony-lsp tells "curl is not available" from "cannot reach
         // github.com" by exactly this — so it must stay a false, and it must
         // stay silent: no callback ever fires.
-        $process = new AsyncProcess(['porta-no-such-binary-e2f7'], \getcwd());
+        $process = new AsyncProcess(['porta-no-such-binary-e2f7'], __DIR__);
         $fired = false;
 
         $this->assertFalse($process->start(static function () use (&$fired): void {
@@ -53,7 +53,7 @@ final class AsyncProcessTest extends TestCase
 
     public function testStreamsChunksAsTheyArrive(): void
     {
-        $process = new AsyncProcess([\PHP_BINARY, '-r', 'echo "a\n"; usleep(30000); echo "b\n";'], \getcwd());
+        $process = new AsyncProcess([\PHP_BINARY, '-r', 'echo "a\n"; usleep(30000); echo "b\n";'], __DIR__);
         $chunks = [];
         $exit = null;
         $process->start(
@@ -78,7 +78,7 @@ final class AsyncProcessTest extends TestCase
         // Without an explicit fd 0 the child would share the IDE's raw-mode
         // terminal and a prompting child would steal the user's keystrokes;
         // /dev/null answers any read with immediate EOF instead.
-        $process = new AsyncProcess([\PHP_BINARY, '-r', 'echo false === fgets(STDIN) ? "eof" : "data";'], \getcwd());
+        $process = new AsyncProcess([\PHP_BINARY, '-r', 'echo false === fgets(STDIN) ? "eof" : "data";'], __DIR__);
         $exit = null;
         $process->start(static function (int $code) use (&$exit): void {
             $exit = $code;
@@ -94,7 +94,7 @@ final class AsyncProcessTest extends TestCase
     {
         // The deadline is generous relative to the child's first write, so
         // the output-kept assertion cannot race the cancel under load.
-        $process = new AsyncProcess([\PHP_BINARY, '-r', 'echo "start\n"; sleep(30);'], \getcwd(), timeout: 2.5);
+        $process = new AsyncProcess([\PHP_BINARY, '-r', 'echo "start\n"; sleep(30);'], __DIR__, timeout: 2.5);
         $exits = [];
         $process->start(static function (int $code) use (&$exits): void {
             $exits[] = $code;
@@ -113,7 +113,7 @@ final class AsyncProcessTest extends TestCase
     {
         // The child closes stdout and lingers: EOF fires while it still runs,
         // where a plain proc_close would park the whole event loop.
-        $process = new AsyncProcess([\PHP_BINARY, '-r', 'fclose(STDOUT); usleep(300000); exit(7);'], \getcwd());
+        $process = new AsyncProcess([\PHP_BINARY, '-r', 'fclose(STDOUT); usleep(300000); exit(7);'], __DIR__);
         $exit = null;
         $process->start(static function (int $code) use (&$exit): void {
             $exit = $code;
@@ -136,7 +136,7 @@ final class AsyncProcessTest extends TestCase
 
     public function testCancelMidRunStopsTheCallbacks(): void
     {
-        $process = new AsyncProcess([\PHP_BINARY, '-r', 'echo "start\n"; sleep(5); echo "never\n";'], \getcwd());
+        $process = new AsyncProcess([\PHP_BINARY, '-r', 'echo "start\n"; sleep(5); echo "never\n";'], __DIR__);
         $exited = false;
         $process->start(static function () use (&$exited): void {
             $exited = true;
@@ -153,7 +153,7 @@ final class AsyncProcessTest extends TestCase
 
     public function testCancelIsIdempotentAndSafeAfterExit(): void
     {
-        $process = new AsyncProcess([\PHP_BINARY, '-r', 'echo "x";'], \getcwd());
+        $process = new AsyncProcess([\PHP_BINARY, '-r', 'echo "x";'], __DIR__);
         $exit = null;
         $process->start(static function (int $code) use (&$exit): void {
             $exit = $code;
@@ -171,7 +171,7 @@ final class AsyncProcessTest extends TestCase
     {
         $process = new AsyncProcess(
             [\PHP_BINARY, '-r', 'fwrite(STDOUT, "out"); fwrite(STDERR, "boom"); exit(1);'],
-            \getcwd(),
+            __DIR__,
             captureStderr: true,
         );
         $exit = null;
@@ -189,7 +189,7 @@ final class AsyncProcessTest extends TestCase
 
     public function testStderrStaysEmptyWhenNotCaptured(): void
     {
-        $process = new AsyncProcess([\PHP_BINARY, '-r', 'fwrite(STDERR, "dropped");'], \getcwd());
+        $process = new AsyncProcess([\PHP_BINARY, '-r', 'fwrite(STDERR, "dropped");'], __DIR__);
         $exit = null;
         $process->start(static function (int $code) use (&$exit): void {
             $exit = $code;
@@ -205,7 +205,7 @@ final class AsyncProcessTest extends TestCase
     {
         $process = new AsyncProcess(
             [\PHP_BINARY, '-r', 'echo getenv("PORTA_PROBE") ?: "unset";'],
-            \getcwd(),
+            __DIR__,
             captureStderr: true,
             env: ['PORTA_PROBE' => '42', 'PATH' => (string) \getenv('PATH')],
         );
@@ -224,7 +224,7 @@ final class AsyncProcessTest extends TestCase
     {
         $process = new AsyncProcess(
             [\PHP_BINARY, '-r', 'fwrite(STDERR, "start"); sleep(5); fwrite(STDERR, "late");'],
-            \getcwd(),
+            __DIR__,
             captureStderr: true,
         );
         $exited = false;
@@ -250,7 +250,7 @@ final class AsyncProcessTest extends TestCase
         $payload = \str_repeat('x', 512 * 1024); // 8x a 64KB pipe buffer
         $process = new AsyncProcess(
             [\PHP_BINARY, '-r', 'echo strlen(stream_get_contents(STDIN));'],
-            (string) \getcwd(),
+            __DIR__,
             stdin: $payload,
         );
 
@@ -280,7 +280,7 @@ final class AsyncProcessTest extends TestCase
     {
         $process = new AsyncProcess(
             [\PHP_BINARY, '-r', 'usleep(400000); echo "done";'], // never touches STDIN
-            (string) \getcwd(),
+            __DIR__,
             stdin: \str_repeat('y', 512 * 1024),
         );
 

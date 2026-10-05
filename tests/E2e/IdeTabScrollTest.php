@@ -11,6 +11,7 @@ use Porta\Editor\OpenFocus;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\Widgets;
 use Porta\Widget\TabBarWidget;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Render\WidgetRect;
@@ -91,7 +92,7 @@ final class IdeTabScrollTest extends TestCase
             300 => function (Tui $tui, $terminal, $ide): void {
                 $this->frame($tui);
                 /** @var TabBarWidget $tabs */
-                $tabs = $tui->getById('tabs');
+                $tabs = Widgets::byId($tui, 'tabs', TabBarWidget::class);
                 $this->assertNotNull($tabs->tabAnchor(self::FILES - 1), 'the strip followed the last-opened (active) tab');
                 $this->assertNull($tabs->tabAnchor(0), 'the first tab is scrolled out at 160 cols with 10 wide tabs');
 
@@ -130,7 +131,7 @@ final class IdeTabScrollTest extends TestCase
             300 => function (Tui $tui, $terminal, $ide): void {
                 $this->frame($tui);
                 /** @var TabBarWidget $tabs */
-                $tabs = $tui->getById('tabs');
+                $tabs = Widgets::byId($tui, 'tabs', TabBarWidget::class);
                 $this->assertNotNull($tabs->tabAnchor(self::TALL_FILES - 1), 'the list followed the active tab');
                 $this->assertNull($tabs->tabAnchor(0), 'the first tab is scrolled out above');
 
@@ -174,7 +175,7 @@ final class IdeTabScrollTest extends TestCase
                 300 => function (Tui $tui, $terminal, $ide): void {
                     $this->frame($tui);
                     /** @var TabBarWidget $tabs */
-                    $tabs = $tui->getById('tabs');
+                    $tabs = Widgets::byId($tui, 'tabs', TabBarWidget::class);
                     $this->assertSame(1, $tabs->tabAnchor(self::TALL_FILES - 1)['rows'] ?? null, 'forty rows: a tab is a row, with a gap under it');
                     $top = static fn (): ?int => $tabs->tabIndexAt(1, 3); // the first tab under the ▲ row
 

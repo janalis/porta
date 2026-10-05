@@ -15,6 +15,7 @@ use Porta\Tests\Support\BootsIde;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\Services;
+use Porta\Tests\Support\Widgets;
 use Porta\Ui\BidiTui;
 use Porta\Ui\Theme\MonochromeTheme;
 use Porta\Ui\Theme\Styles;
@@ -92,7 +93,7 @@ final class HalfRowsTest extends TestCase
 
     private function tabBar(): TabBarWidget
     {
-        $bar = $this->tui->getById('tabs');
+        $bar = Widgets::byId($this->tui, 'tabs', TabBarWidget::class);
         $this->assertInstanceOf(TabBarWidget::class, $bar);
 
         return $bar;

@@ -9,6 +9,7 @@ use Porta\Layout\WorkspaceLayout;
 use Porta\Tests\Support\BootsIde;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\Services;
+use Porta\Tests\Support\Widgets;
 use Porta\Widget\BreadcrumbsWidget;
 use Porta\Widget\ContextMenu;
 use Porta\Widget\HelpViewerWidget;
@@ -38,7 +39,7 @@ final class WidgetHooksTest extends TestCase
         // CodeEditorWidget constructs itself with an all-null EditorCallbacks
         // as a placeholder default — every group here being non-null is only
         // possible if WidgetHooks::wire()'s setCallbacks() call actually ran.
-        $editor = Services::resolve($this->ide, Tui::class)->getById('editor');
+        $editor = Widgets::editor(Services::resolve($this->ide, Tui::class));
         $callbacks = Probe::get($editor, 'callbacks');
 
         $this->assertNotNull($callbacks->navigation);

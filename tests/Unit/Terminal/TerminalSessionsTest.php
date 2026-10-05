@@ -144,8 +144,7 @@ final class TerminalSessionsTest extends TestCase
         }
         $sessions = new TerminalSessions();
         $session = $sessions->create('shell:1', 'sh');
-        $cwd = \getcwd();
-        $process = new PtyProcess(['/bin/sh', '-c', 'sleep 10'], $cwd ? $cwd : '/tmp');
+        $process = new PtyProcess(['/bin/sh', '-c', 'sleep 10'], __DIR__);
         $session->attach($process);
         $this->assertTrue($process->start());
         $this->await($process->isRunning(...));
@@ -155,7 +154,7 @@ final class TerminalSessionsTest extends TestCase
 
         // stopAll over a fresh running session.
         $s2 = $sessions->create('shell:2', 'sh');
-        $p2 = new PtyProcess(['/bin/sh', '-c', 'sleep 10'], $cwd ? $cwd : '/tmp');
+        $p2 = new PtyProcess(['/bin/sh', '-c', 'sleep 10'], __DIR__);
         $s2->attach($p2);
         $p2->start();
         $this->await($p2->isRunning(...));
@@ -171,13 +170,12 @@ final class TerminalSessionsTest extends TestCase
         $session = new TerminalSession('x', 'x', new TerminalBuffer());
         $this->assertFalse($session->isRunning());
 
-        $cwd = \getcwd();
-        $first = new PtyProcess(['/bin/sh', '-c', 'sleep 10'], $cwd ? $cwd : '/tmp');
+        $first = new PtyProcess(['/bin/sh', '-c', 'sleep 10'], __DIR__);
         $session->attach($first);
         $first->start();
         $this->await($first->isRunning(...));
 
-        $second = new PtyProcess(['/bin/sh', '-c', 'sleep 10'], $cwd ? $cwd : '/tmp');
+        $second = new PtyProcess(['/bin/sh', '-c', 'sleep 10'], __DIR__);
         $session->attach($second); // a re-run: the old one stops
         $this->assertFalse($first->isRunning(), 'the previous process was stopped on attach');
         $second->start();

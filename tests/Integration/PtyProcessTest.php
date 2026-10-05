@@ -31,7 +31,7 @@ final class PtyProcessTest extends TestCase
     {
         $buffer = new TerminalBuffer();
         $exit = null;
-        $p = new PtyProcess(['/bin/sh', '-c', 'printf "line1\nline2\n"; exit 3'], \getcwd());
+        $p = new PtyProcess(['/bin/sh', '-c', 'printf "line1\nline2\n"; exit 3'], __DIR__);
         $this->procs[] = $p;
         $p->onOutput($buffer->feed(...))->onExit(static function (int $c) use (&$exit): void {
             $exit = $c;
@@ -54,7 +54,7 @@ final class PtyProcessTest extends TestCase
     {
         // `cat` echoes stdin back through the PTY.
         $buffer = new TerminalBuffer();
-        $p = new PtyProcess(['/bin/cat'], \getcwd());
+        $p = new PtyProcess(['/bin/cat'], __DIR__);
         $this->procs[] = $p;
         $p->onOutput($buffer->feed(...));
         $this->assertTrue($p->start());
@@ -70,7 +70,7 @@ final class PtyProcessTest extends TestCase
 
     public function testStopIsIdempotentAndSafeBeforeStart(): void
     {
-        $p = new PtyProcess(['/bin/sh', '-c', 'sleep 5'], \getcwd());
+        $p = new PtyProcess(['/bin/sh', '-c', 'sleep 5'], __DIR__);
         $this->procs[] = $p;
         $p->start();
         $this->assertTrue($p->isRunning());
@@ -79,7 +79,7 @@ final class PtyProcessTest extends TestCase
         $p->stop(); // second stop is a no-op
         $this->assertFalse($p->isRunning());
 
-        $fresh = new PtyProcess(['/bin/sh', '-c', 'true'], \getcwd());
+        $fresh = new PtyProcess(['/bin/sh', '-c', 'true'], __DIR__);
         $fresh->stop(); // stop before start
         $this->assertFalse($fresh->isRunning());
     }
@@ -87,7 +87,7 @@ final class PtyProcessTest extends TestCase
     public function testDefaultColumnsAndRowsReachTheChildEnvironmentExactly(): void
     {
         $buffer = new TerminalBuffer();
-        $p = new PtyProcess(['/bin/sh', '-c', 'printf "%s:%s" "$COLUMNS" "$LINES"'], \getcwd());
+        $p = new PtyProcess(['/bin/sh', '-c', 'printf "%s:%s" "$COLUMNS" "$LINES"'], __DIR__);
         $this->procs[] = $p;
         $p->onOutput($buffer->feed(...));
         $this->assertTrue($p->start());
@@ -107,7 +107,7 @@ final class PtyProcessTest extends TestCase
         $buffer = new TerminalBuffer();
         $p = new PtyProcess(
             ['/bin/sh', '-c', 'printf "%s|%s|%s" "$PORTA_TEST_PARENT_VAR" "$PORTA_TEST_EXTRA" "$COLUMNS"'],
-            \getcwd(),
+            __DIR__,
             env: ['PORTA_TEST_EXTRA' => 'from_ctor'],
         );
         $this->procs[] = $p;
@@ -124,7 +124,7 @@ final class PtyProcessTest extends TestCase
     public function testStderrIsMergedIntoTheSamePtyOutputStream(): void
     {
         $buffer = new TerminalBuffer();
-        $p = new PtyProcess(['/bin/sh', '-c', 'echo out-line; echo err-line >&2'], \getcwd());
+        $p = new PtyProcess(['/bin/sh', '-c', 'echo out-line; echo err-line >&2'], __DIR__);
         $this->procs[] = $p;
         $exit = null;
         $p->onOutput($buffer->feed(...))->onExit(static function (int $c) use (&$exit): void {
@@ -143,7 +143,7 @@ final class PtyProcessTest extends TestCase
     public function testStopCancelsTheWatcherSoNoFurtherOutputEverArrives(): void
     {
         $buffer = new TerminalBuffer();
-        $p = new PtyProcess(['/bin/sh', '-c', 'while true; do echo tick; sleep 0.02; done'], \getcwd());
+        $p = new PtyProcess(['/bin/sh', '-c', 'while true; do echo tick; sleep 0.02; done'], __DIR__);
         $this->procs[] = $p;
         $p->onOutput($buffer->feed(...));
         $this->assertTrue($p->start());
@@ -168,7 +168,7 @@ final class PtyProcessTest extends TestCase
 
     public function testStopActuallyKillsTheOsProcessNotJustTheLocalFlags(): void
     {
-        $p = new PtyProcess(['/bin/sh', '-c', 'sleep 30'], \getcwd());
+        $p = new PtyProcess(['/bin/sh', '-c', 'sleep 30'], __DIR__);
         $this->procs[] = $p;
         $this->assertTrue($p->start());
         $status = \proc_get_status(Probe::get($p, 'process'));

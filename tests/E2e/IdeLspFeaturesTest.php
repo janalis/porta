@@ -215,11 +215,10 @@ final class IdeLspFeaturesTest extends TestCase
             $project->path('a.php'),
             [
                 200 => function (Tui $tui, VirtualTerminal $terminal): void {
-                    $tui
-                        ->getById('editor')
+                    Widgets::editor($tui)
                         ->decorations->setDiagnostics([
-                            1 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'unused variable', 'col' => 0, 'endCol' => 2]],
-                        ]);
+                        1 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'unused variable', 'col' => 0, 'endCol' => 2]],
+                    ]);
                     $tui->requestRender(); // what Ide::handleDiagnostics does after mutating
                     // requestRender only ASKS; the post-run assertion below needs
                     // the frame to have happened, and a tick is not one.

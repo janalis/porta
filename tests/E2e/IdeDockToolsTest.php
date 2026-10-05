@@ -150,7 +150,7 @@ final class IdeDockToolsTest extends TestCase
                 200 => function (Tui $tui, $terminal, Ide $ide): void {
                     $tui->handleInput("\x1b6"); // alt+6 → Show Problems
                     $this->frame($tui);
-                    $strip = $tui->getById('dock-tabs');
+                    $strip = Widgets::byId($tui, 'dock-tabs', DockTabsWidget::class);
                     $this->assertSame(3, $strip->stripRows(), 'forty rows: folder tabs');
                     $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($strip);
                     $this->assertSame(3, $rect->rows);
@@ -495,7 +495,7 @@ final class IdeDockToolsTest extends TestCase
 
                     $renderer = Services::resolve($ide, Renderer::class);
                     /** @var DockTabsWidget $dockTabs */
-                    $dockTabs = $tui->getById('dock-tabs');
+                    $dockTabs = Widgets::byId($tui, 'dock-tabs', DockTabsWidget::class);
                     $rect = $renderer->getWidgetRect($dockTabs);
                     $this->assertInstanceOf(WidgetRect::class, $rect, 'the dock strip is laid out');
                     $lastCol = $rect->columns - 1;

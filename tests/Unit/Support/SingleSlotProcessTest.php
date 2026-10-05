@@ -27,7 +27,7 @@ final class SingleSlotProcessTest extends TestCase
         $failed = [];
         $slot->run(
             $argv,
-            (string) \getcwd(),
+            __DIR__,
             $stdin,
             'dot',
             static function (string $out) use (&$ok): void {
@@ -73,7 +73,7 @@ final class SingleSlotProcessTest extends TestCase
         $first = [];
         $slot->run(
             [\PHP_BINARY, '-r', 'usleep(300000); echo "stale";'],
-            (string) \getcwd(),
+            __DIR__,
             null,
             'dot',
             static function (string $out) use (&$first): void {
@@ -97,7 +97,7 @@ final class SingleSlotProcessTest extends TestCase
         $reported = [];
         $slot->run(
             [\PHP_BINARY, '-r', 'usleep(300000); echo "late";'],
-            (string) \getcwd(),
+            __DIR__,
             null,
             'dot',
             static function (string $out) use (&$reported): void {

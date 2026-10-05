@@ -17,6 +17,8 @@ use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\Widgets;
+use Porta\Widget\Settings\KeybindingsListWidget;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
@@ -66,7 +68,7 @@ final class SettingsFormBehaviourTest extends TestCase
                     $this->frame($tui);
                 },
                 500 => function (Tui $tui, VirtualTerminal $terminal): void {
-                    $list = $tui->getById('settings-keys');
+                    $list = Widgets::byId($tui, 'settings-keys', KeybindingsListWidget::class);
                     $tui->setFocus($list);
                     $list->handleInput('/');
                     foreach (\str_split('duplicate') as $character) {

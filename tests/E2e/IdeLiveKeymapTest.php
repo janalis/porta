@@ -19,6 +19,7 @@ use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\Widgets;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\MenuBarWidget;
+use Porta\Widget\Settings\KeybindingsListWidget;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
@@ -58,7 +59,7 @@ final class IdeLiveKeymapTest extends TestCase
                 300 => function (Tui $tui, $terminal, Ide $ide) use ($project): void {
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                     $this->selectSettingsSection($this->settingsNav($tui), 'keybindings');
-                    $list = $tui->getById('settings-keys');
+                    $list = Widgets::byId($tui, 'settings-keys', KeybindingsListWidget::class);
                     $tui->setFocus($list);
                     $list->handleInput('/');
                     foreach (\str_split('duplicate line') as $character) {
@@ -72,7 +73,7 @@ final class IdeLiveKeymapTest extends TestCase
                     $this->assertSame("one\none\n", $duplicates($ide, key: "\x1bOS"), 'F4 duplicates now, not after a restart');
                     $this->assertSame("one\n", $duplicates($ide, key: "\x04"), 'and Ctrl+D no longer does');
 
-                    $list = $tui->getById('settings-keys');
+                    $list = Widgets::byId($tui, 'settings-keys', KeybindingsListWidget::class);
                     $list->handleInput("\x1b[3~"); // Del, on the row the filter shows
                     $this->assertArrayNotHasKey('duplicate_line', IdeConfig::load($project->dir)->keymap);
                     $this->assertSame("one\none\n", $duplicates($ide, key: "\x04"), 'the default is back at once');

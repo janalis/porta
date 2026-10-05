@@ -23,6 +23,7 @@ use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\Toasts;
+use Porta\Tests\Support\Widgets;
 use Porta\Widget\Settings\KeybindingsListWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -472,7 +473,7 @@ final class SettingsGlobalScopeTest extends TestCase
                 500 => function (Tui $tui, $terminal): void {
                     // Through the real list: walk to the action, Enter to arm
                     // the capture, then the key it should take.
-                    $list = $tui->getById('settings-keys');
+                    $list = Widgets::byId($tui, 'settings-keys', KeybindingsListWidget::class);
                     $this->assertInstanceOf(KeybindingsListWidget::class, $list, 'the keybindings page owns the list');
                     $tui->setFocus($list);
                     for ($i = 0; $i < 200; ++$i) {
