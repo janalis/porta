@@ -1026,7 +1026,7 @@ final class CodeEditorWidgetTest extends TestCase
         $editor->decorations
             ->setDiagnostics(LspMapper::diagnosticsByLine([
                 'diagnostics' => [[
-                    'severity' => DiagnosticSeverity::Warning,
+                    'severity' => 2, // on the wire, a Warning is its number
                     'message' => 'Name "Thing" is imported but not used',
                     'code' => 'worse.unused_import',
                     'source' => 'phpactor',

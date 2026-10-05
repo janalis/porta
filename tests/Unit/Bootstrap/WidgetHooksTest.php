@@ -62,7 +62,8 @@ final class WidgetHooksTest extends TestCase
         $layout = Services::resolve($this->ide, WorkspaceLayout::class);
         $tabBar = Probe::get($layout, 'tabBar');
         $editorBody = Probe::get($layout, 'editorBody');
-        $breadcrumbs = \current(\array_filter($editorBody->all(), static fn (object $w): bool => $w instanceof BreadcrumbsWidget));
+        $breadcrumbs = \array_find($editorBody->all(), static fn (object $w): bool => $w instanceof BreadcrumbsWidget);
+        $this->assertInstanceOf(BreadcrumbsWidget::class, $breadcrumbs, 'the editor body holds the breadcrumb strip');
         $statusBar = Services::resolve($this->ide, StatusBarWidget::class);
 
         $this->assertIsCallable(Probe::get($tabBar, 'provider'));

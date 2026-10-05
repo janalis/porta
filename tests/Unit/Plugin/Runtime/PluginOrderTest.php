@@ -25,7 +25,7 @@ final class PluginOrderTest extends TestCase
     }
 
     /**
-     * @param array{order: list<PluginManifest>, skipped: array<string, string>} $resolved
+     * @param array{order: list<PluginManifest>, skipped: array<string, ConfigWarning>} $resolved
      *
      * @return list<string>
      */

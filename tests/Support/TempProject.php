@@ -22,15 +22,14 @@ final class TempProject
     /** The git binary, resolved once against the pristine PATH. */
     private static ?string $git = null;
 
-    /** @param array<string, string> $files relative path => content */
+    /** @param array<array-key, string> $files relative path => content — a name in digits keys as an int */
     public function __construct(array $files = [], string $prefix = 'porta-test-')
     {
         $this->fs = new Filesystem();
         $this->dir = \sys_get_temp_dir().'/'.$prefix.(int) \getmypid().'-'.\bin2hex(\random_bytes(4));
         $this->fs->mkdir($this->dir);
         foreach ($files as $path => $content) {
-            // @mago-expect analysis:redundant-cast -- a key in digits is an int at runtime, whatever its docblock says
-            $this->write((string) $path, $content); // a name in digits keys as an int
+            $this->write((string) $path, $content);
         }
     }
 

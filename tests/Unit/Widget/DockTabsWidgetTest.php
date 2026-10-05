@@ -20,7 +20,7 @@ use Symfony\Component\Tui\Render\RenderContext;
 
 final class DockTabsWidgetTest extends TestCase
 {
-    /** @param list<array{tab: DockTab, label: string, active: bool, status: string}> $tabs */
+    /** @param list<array{tab: ?DockTab, key: string, label: string, active: bool, status: string}> $tabs */
     private static function strip(array $tabs, ?EventDispatcher $events = null): DockTabsWidget
     {
         $bar = new DockTabsWidget(events: $events);

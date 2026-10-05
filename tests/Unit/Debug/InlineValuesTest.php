@@ -385,6 +385,7 @@ final class InlineValuesTest extends TestCase
         $values = $this->withoutInlineValueSupport("<?php\n\$s = 'héllo'; \$count = 41;\n");
         $line = "\$s = 'héllo'; \$count = 41;";
         $at = \mb_strpos($line, needle: '$count');
+        $this->assertIsInt($at);
         $this->editor->decorations
             ->setSemanticTokens([
                 1 => [['col' => $at, 'endCol' => $at + 6, 'type' => 'variable', 'modifiers' => []]],

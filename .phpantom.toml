@@ -14,7 +14,7 @@
 
 # ── src/ and plugins/*/src ──────────────────────────────────────────────────
 
-# a `match (true)` arm is not narrowed by its own condition, nor by the arms before it.
+# a `match (true)` arm is not narrowed by the negation of the arms before it.
 # phpantom 0.10.0; still reported on main (6fb245f).
 [[diagnostics.ignore]]
 identifier = "type_mismatch_argument"
@@ -494,3 +494,186 @@ message = "^Unused variable '\\$ignored'$"
 identifier = "unused_variable"
 path = "plugins/git/tests/View/GitListenerContractTest.php"
 message = "^Unused variable '\\$method'$"
+
+# ── phpantom main (6fb245f) only: what the next release adds on top ──────────
+# Read one by one like the rest. Exact message, exact files.
+
+# `$a['default'] ?? ''` on a nullable array is kept nullable.
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "src/Config/IdeConfig.php"
+message = "^Argument 8 \\(\\$highlight\\) expects array\\{default: string, languages: array<string, string>\\}, got array\\{default: non-empty-string\\|null\\|'', languages: array<string, string>\\}$"
+
+# spreading `array_filter`/`array_diff` results into `[...]` loses the list type.
+[[diagnostics.ignore]]
+identifier = "type_mismatch_return"
+path = "src/Config/PlatformKeymap.php"
+message = "^Return type non-empty-array<string\\|int, array> is incompatible with declared return type array<string, list<string>>$"
+
+# `range()` of ints is typed int|float, so a `Closure(int)` callback over it is rejected (regression on main; 0.10.0 is right).
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "tests/Unit/Widget/TabBarWidgetTest.php"
+message = "^Argument 1 \\(\\$callback\\) expects callable\\(int\\|float\\): mixed, got Closure\\(int\\): \\?int \\(parameter 1 accepts int, but is passed int\\|float\\)$"
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "plugins/git/tests/Widget/GitTooltipsTest.php"
+message = "^Argument 1 \\(\\$callback\\) expects callable\\(int\\|float\\): mixed, got Closure\\(int\\): \\?string \\(parameter 1 accepts int, but is passed int\\|float\\)$"
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "{tests/Unit/Editor/CompletionPopupStateTest.php,tests/Unit/Widget/Render/EditorRendererTest.php}"
+message = "^Argument 1 \\(\\$callback\\) expects callable\\(int\\|float\\): mixed, got Closure\\(int\\): Porta\\\\Editor\\\\CompletionItem \\(parameter 1 accepts int, but is passed int\\|float\\)$"
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "tests/Unit/Search/Everywhere/SearchEverywhereControllerTest.php"
+message = "^Argument 1 \\(\\$callback\\) expects callable\\(int\\|float\\): mixed, got Closure\\(int\\): Porta\\\\Search\\\\Everywhere\\\\SearchHit \\(parameter 1 accepts int, but is passed int\\|float\\)$"
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "{tests/Unit/Overlay/State/OverlayHostNavigationTest.php,tests/Unit/Overlay/State/OverlayHostTest.php}"
+message = "^Argument 1 \\(\\$callback\\) expects callable\\(int\\|float\\): mixed, got Closure\\(int\\): Porta\\\\Search\\\\Everywhere\\\\SearchRow \\(parameter 1 accepts int, but is passed int\\|float\\)$"
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "{tests/Unit/Overlay/State/MenuOverlayControllerTest.php,tests/Unit/Widget/ContextMenuTest.php,tests/Unit/Widget/MenuBarWidgetTest.php}"
+message = "^Argument 1 \\(\\$callback\\) expects callable\\(int\\|float\\): mixed, got Closure\\(int\\): Porta\\\\Workbench\\\\Menu\\\\MenuItem \\(parameter 1 accepts int, but is passed int\\|float\\)$"
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "{tests/Unit/Overlay/State/OverlayHostNavigationTest.php,tests/Unit/Widget/Render/PickerLayoutTest.php}"
+message = "^Argument 1 \\(\\$callback\\) expects callable\\(int\\|float\\): mixed, got Closure\\(int\\): array\\{label: string, hint: '', value: string\\} \\(parameter 1 accepts int, but is passed int\\|float\\)$"
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "{tests/Unit/Widget/ResultsPanelKeysTest.php,tests/Unit/Widget/ResultsPanelWidgetTest.php}"
+message = "^Argument 1 \\(\\$callback\\) expects callable\\(int\\|float\\): mixed, got Closure\\(int\\): array\\{path: string, line: int, text: string\\} \\(parameter 1 accepts int, but is passed int\\|float\\)$"
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "{plugins/assist/tests/Ot/TextDiffTest.php,plugins/git/tests/GitInfoStatusTest.php,plugins/git/tests/View/GitViewControllerTest.php,src/Console/LspProbeCommand.php,tests/E2e/IdeFramePacingTest.php,tests/E2e/IdeMousePrimitivesTest.php,tests/E2e/IdePreviewSplitTest.php,tests/Unit/Editor/EditorScrollTest.php,tests/Unit/History/RecentFilesStoreTest.php,tests/Unit/History/SearchHistoryStoreTest.php,tests/Unit/History/SearchPrefsStoreTest.php,tests/Unit/IdeHelpersTest.php,tests/Unit/Lsp/NavigationControllerTest.php,tests/Unit/Widget/CodeEditorWidgetEdgeTest.php,tests/Unit/Widget/CodeEditorWidgetTest.php,tests/Unit/Widget/HelpViewerWidgetTest.php,tests/Unit/Widget/MarkdownPreviewWidgetTest.php,tests/Unit/Widget/Render/EditorRendererTest.php}"
+message = "^Argument 1 \\(\\$callback\\) expects callable\\(int\\|float\\): mixed, got Closure\\(int\\): string \\(parameter 1 accepts int, but is passed int\\|float\\)$"
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "{src/Overlay/Presenter/RuleHalves.php,tests/E2e/IdePluginDocsTest.php}"
+message = "^Argument 2 \\(\\$callback\\) expects callable\\(int\\|float, int<0, max>\\): bool, got Closure\\(int\\): bool \\(parameter 1 accepts int, but is passed int\\|float\\)$"
+
+# `($a['k'] ?? null) !== null` does not narrow `$a['k']`.
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "src/Debug/DebugAdapters.php"
+message = "^Argument 1 \\(\\$command\\) expects string, got \\?string$"
+[[diagnostics.ignore]]
+identifier = "type_mismatch_return"
+path = "src/Widget/StatusBarWidget.php"
+message = "^Return type list<array\\{from: int, to: int, key: string, text: \\?string\\}> is incompatible with declared return type list<array\\{from: int, to: int, key: string, text: string\\}>$"
+[[diagnostics.ignore]]
+identifier = "type_mismatch_return"
+path = "src/Lsp/LspMapper.php"
+message = "^Return type list<array\\{uri: \\?string, range: \\?array<array-key, mixed>\\}> is incompatible with declared return type list<array\\{uri: string, range: array\\}>$"
+
+# `array_first()` is not narrowed to non-null by `1 === count()`.
+[[diagnostics.ignore]]
+identifier = "type_mismatch_return"
+path = "src/Editor/BufferService.php"
+message = "^Return type array<int, list<array\\{severity: Porta\\\\Editor\\\\DiagnosticSeverity, message: string, col: int, endCol\\?: int, code\\?: int\\|string, source\\?: string, tags\\?: list<int>\\}>>\\|null is incompatible with declared return type array<int, list<array\\{severity: Porta\\\\Editor\\\\DiagnosticSeverity, message: string, col: int, endCol\\?: int, code\\?: int\\|string, source\\?: string, tags\\?: list<int>\\}>>$"
+
+# the truthiness of `($x = realpath(…)) ? $x : $y` does not narrow `$x`.
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "{src/Editor/LineTextReader.php,src/Search/ProjectSearchController.php}"
+message = "^Argument 1 \\(\\$path\\) expects string, got string\\|false \\(false does not satisfy string\\)$"
+
+# `getById() ?? $this->fail()` makes the enclosing expression `never`, and `X === $a?->b` no longer narrows `$a` (now worded as never).
+[[diagnostics.ignore]]
+identifier = "scalar_member_access"
+path = "src/Ide.php"
+message = "^Cannot access method 'editable' on type 'never'$"
+[[diagnostics.ignore]]
+identifier = "scalar_member_access"
+path = "{tests/Unit/Input/HalfRowsTest.php,tests/Unit/Overlay/Presenter/RuleHalvesFrameTest.php}"
+message = "^Cannot access property 'col' on type 'never'$"
+[[diagnostics.ignore]]
+identifier = "scalar_member_access"
+path = "{tests/Unit/Input/HalfRowsTest.php,tests/Unit/Overlay/Presenter/RuleHalvesFrameTest.php}"
+message = "^Cannot access property 'row' on type 'never'$"
+[[diagnostics.ignore]]
+identifier = "scalar_member_access"
+path = "tests/Unit/Overlay/Presenter/RuleHalvesFrameTest.php"
+message = "^Cannot access property 'rows' on type 'never'$"
+
+# `$this->p instanceof \Closure ? ($this->p)() : $this->p` does not narrow the else branch, nor carry it into an arrow fn.
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "src/Plugin/Api/PluginApi.php"
+message = "^Argument 1 \\(\\$array\\) expects array<array-key, mixed>, got non-empty-list<string>\\|\\(Closure\\(\\): list<string>\\) \\(Closure\\(\\): list<string> does not satisfy array<array-key, mixed>\\)$"
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "plugins/graph-viewer/src/Graph/PlantUmlEngine.php"
+message = "^Argument 1 \\(\\$configured\\) expects \\?string, got null\\|\\(Closure\\(\\): \\?string\\)\\|string \\(Closure\\(\\): \\?string does not satisfy \\?string\\)$"
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "{plugins/git/src/Process/GitProcessRunner.php,plugins/git/src/Process/GitRemote.php}"
+message = "^Argument 1 \\(\\$gitPath\\) expects \\?string, got null\\|\\(Closure\\(\\): \\?string\\)\\|string \\(Closure\\(\\): \\?string does not satisfy \\?string\\)$"
+[[diagnostics.ignore]]
+identifier = "type_mismatch_return"
+path = "plugins/graph-viewer/src/Graph/DotLayoutEngine.php"
+message = "^Return type \\(Closure\\(\\): \\?string\\)\\|non-empty-string is incompatible with declared return type \\?string$"
+[[diagnostics.ignore]]
+identifier = "type_mismatch_return"
+path = "plugins/git/src/ChangeMarks.php"
+message = "^Return type bool\\|\\(Closure\\(\\): bool\\) is incompatible with declared return type bool$"
+
+# a `match (true)` arm is not narrowed by the negation of the arms before it.
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "src/Widget/Settings/SettingsFormWidget.php"
+message = "^Argument 1 \\(\\$trail\\) expects list<array\\{label: string, id: \\?string\\}>, got list<array\\{label: string, id: \\?string\\}>\\|string\\|array\\{array\\{label: list<array\\{label: string, id: \\?string\\}>\\|string, id: null\\}\\} \\(string\\|array\\{array\\{label: list<array\\{label: string, id: \\?string\\}>\\|string, id: null\\}\\} does not satisfy list<array\\{label: string, id: \\?string\\}>\\)$"
+
+# the `foreach` key over an `mb_str_split` list is widened to int|string.
+[[diagnostics.ignore]]
+identifier = "type_mismatch_return"
+path = "src/Workbench/Menu/Mnemonics.php"
+message = "^Return type array<string, int\\|string> is incompatible with declared return type array<array-key, int>$"
+
+# the gd stubs still type images as resource|GdImage; PHP 8 has GdImage only.
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "{plugins/image-viewer/tests/NarrowImagePaneRenderTest.php,tests/E2e/IdeViewerPluginsTest.php}"
+message = "^Argument 1 \\(\\$image\\) expects GdImage, got resource\\|GdImage \\(resource does not satisfy GdImage\\)$"
+
+# a class name built at run time cannot be proven a class-string; PHPUnit checks it when it runs.
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "tests/Unit/Console/PluginCommandsTest.php"
+message = "^Argument 1 \\(\\$expected\\) expects class-string<object>, got string$"
+
+# the test feeds malformed wire tags on purpose, to prove `diagnosticsByLine()` filters them.
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "tests/Unit/Lsp/LspMapperTest.php"
+message = "^Argument 1 \\(\\$params\\) expects array\\{uri\\?: string, diagnostics\\?: list<array\\{severity\\?: int, message\\?: string, code\\?: int\\|string, source\\?: string, tags\\?: list<int>, range: array\\{start: array\\{line\\?: int, character\\?: int\\}, end: array\\{line\\?: int, character\\?: int\\}\\}\\}>\\}, got array\\{diagnostics: array\\{array\\{severity: 1, message: 'boom', tags: array\\{'nonsense'\\}, range: array\\{start: array\\{line: 0, character: 0\\}, end: array\\{line: 0, character: 1\\}\\}\\}, array\\{severity: 1, message: 'no tags at all', range: array\\{start: array\\{line: 1, character: 0\\}, end: array\\{line: 1, character: 1\\}\\}\\}\\}\\}$"
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "tests/Unit/Lsp/LspMapperTest.php"
+message = "^Argument 1 \\(\\$params\\) expects array\\{uri\\?: string, diagnostics\\?: list<array\\{severity\\?: int, message\\?: string, code\\?: int\\|string, source\\?: string, tags\\?: list<int>, range: array\\{start: array\\{line\\?: int, character\\?: int\\}, end: array\\{line\\?: int, character\\?: int\\}\\}\\}>\\}, got array\\{diagnostics: array\\{array\\{severity: 1, message: 'boom', tags: array\\{99, 'unnecessary', 2\\}, range: array\\{start: array\\{line: 0, character: 0\\}, end: array\\{line: 0, character: 1\\}\\}\\}\\}\\}$"
+
+# a listener takes the concrete event `on()` delivers; `on()` declares `Closure(PluginObservable)` because it accepts any observable class, checked at run time.
+[[diagnostics.ignore]]
+identifier = "type_mismatch_argument"
+path = "tests/Unit/Plugin/Runtime/PluginManagerTest.php"
+message = "^Argument 2 \\(\\$listener\\) expects Closure\\(Porta\\\\Event\\\\PluginObservable\\): void, got Closure\\(Porta\\\\Event\\\\ActiveBufferChanged\\): void \\(parameter 1 accepts Porta\\\\Event\\\\ActiveBufferChanged, but is passed Porta\\\\Event\\\\PluginObservable\\)$"
+
+# `string ^= string` is typed int|string; it is a string.
+[[diagnostics.ignore]]
+identifier = "type_mismatch_return"
+path = "plugins/assist/src/Net/Rendezvous/Frames.php"
+message = "^Return type array\\{bool, int, string\\|int\\} is incompatible with declared return type array\\{bool, int, string\\}\\|null$"
+
+# a PHPUnit assertion (`assertIsResource`, `assertNotFalse`, `assertNotSame([], …)`) does not narrow.
+[[diagnostics.ignore]]
+identifier = "type_mismatch_return"
+path = "plugins/mcp/tests/Server/SessionTest.php"
+message = "^Return type array<string, mixed>\\|null is incompatible with declared return type array<string, mixed>$"
+[[diagnostics.ignore]]
+identifier = "type_mismatch_return"
+path = "plugins/mcp/tests/Support/TalksClaudeCode.php"
+message = "^Return type array\\{resource\\|false, ''\\|string\\} is incompatible with declared return type array\\{0: resource, 1: string\\}$"
+[[diagnostics.ignore]]
+identifier = "type_mismatch_return"
+path = "plugins/assist/tests/Support/TalksAssist.php"
+message = "^Return type resource\\|string is incompatible with declared return type resource$"
