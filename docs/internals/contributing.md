@@ -22,6 +22,7 @@ composer verify         # all eight: the six static gates stopping at the first 
 composer verify:quick   # the six fast ones, stopping at the first failure
 composer check          # the same six run to the end, then one line naming every red gate — the mid-work check
 composer flake:scan     # run the suite N times and name what failed at least once
+composer lsp            # the language servers on Porta itself: phpantom over src/tests/plugins, then lsp:probe (below)
 composer mutate         # Infection over the uncommitted src/ diff, judged by Unit (testing.md)
 composer mutate:clean   # delete every coverage/infection* report (~300MB a run)
 php bin/porta-dev i18n:add "Text" --target=fr:… …   # one message into all seven catalogs, next free id
@@ -29,6 +30,26 @@ composer format         # mago format (apply)
 composer format:check   # mago format --check
 composer container      # kernel-less debug:container
 ```
+
+### `composer lsp`: what the language servers say about Porta
+
+Not a gate of `verify`: it needs `phpantom_lsp` on the PATH and the symfony-lsp
+binary the plugin installs, which CI does not have. Two halves, both run to the
+end by `bin/keep-going`:
+
+- `lsp:analyze` — `phpantom_lsp analyze` over `src`, `tests` and `plugins`
+  (a pathless run reads only the root autoload, which has no `plugins`). This
+  is the deterministic per-file answer for PHP; `.phpantom.toml` holds the
+  suppressed false positives, each with the upstream issue it waits on.
+  **phpantom 0.10.0 never finishes four of the input routers** (a guard chain
+  whose analysis grows exponentially); its `main` does, in about a second, so
+  until the next release this half ends at composer's process timeout.
+- `lsp:probe` — `bin/porta-dev lsp:probe`: every server the IDE would start
+  for the project, started the way it would, shown a sample of the files each
+  serves. It reports what only LSP mode shows: the client's log (stderr, error
+  replies, timeouts, deaths), error/warning log and show messages, and the
+  last diagnostics per file. It found symfony-lsp rejecting this client's
+  `shutdown`. `--per-language=0 --listen=60` shows it everything.
 
 ### Throttling on a shared machine
 
