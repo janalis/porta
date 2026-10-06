@@ -12,10 +12,12 @@ use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\Widgets;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 use Symfony\Component\Tui\Widget\AbstractWidget;
+use Symfony\Component\Tui\Widget\ContainerWidget;
 
 /**
  * Boots a real Ide and drives a terminal resize through the live render loop:
@@ -35,7 +37,7 @@ final class IdeResponsiveTest extends TestCase
     /** @return list<string> */
     private function mainIds(Tui $tui): array
     {
-        return \array_map(static fn (AbstractWidget $w): string => $w->getId(), $tui->getById('main')->all());
+        return \array_map(static fn (AbstractWidget $w): string => $w->getId(), Widgets::byId($tui, 'main', ContainerWidget::class)->all());
     }
 
     /**

@@ -238,11 +238,6 @@ identifier = "unknown_member"
 path = "{tests/**,plugins/*/tests/**}"
 message = "not found on class 'Symfony\\\\Component\\\\Tui\\\\Widget\\\\AbstractWidget'$"
 
-[[diagnostics.ignore]]
-identifier = "type_mismatch_argument"
-path = "{tests/**,plugins/*/tests/**}"
-message = "got Symfony\\\\Component\\\\Tui\\\\Widget\\\\AbstractWidget$"
-
 # a trait method aliased away (`PumpsLoop { pump as private pumpFixed; }`) and redefined is bound to the trait's signature.
 # phpantom 0.10.0; still reported on main (6fb245f).
 [[diagnostics.ignore]]
@@ -334,7 +329,7 @@ message = "^Argument 1 \\(\\$iterator\\) expects Traversable, got iterable<strin
 [[diagnostics.ignore]]  # fixed on main (6fb245f)
 identifier = "type_mismatch_argument"
 path = "plugins/git/tests/View/GitListenerContractTest.php"
-message = "^Argument 1 \\(\\$object_or_class\\) expects object\\|string, got array-key$"
+message = "^(?:Argument 1 \\(\\$object_or_class\\) expects object\\|string|Argument 2 \\(\\$string\\) expects string), got array-key$"
 [[diagnostics.ignore]]
 identifier = "type_mismatch_argument"
 path = "{tests/Unit/Overlay/State/FindInFilesModalGeometryTest.php,tests/Unit/Widget/ResultsPanelTooltipTest.php}"
@@ -367,10 +362,6 @@ message = "^Argument 2 \\(\\$sink\\) expects Porta\\\\Highlight\\\\HighlightSink
 identifier = "type_mismatch_argument"
 path = "tests/E2e/IdeRtlLocaleTest.php"
 message = "^Argument 2 \\(\\$start\\) expects int, got array-key$"
-[[diagnostics.ignore]]  # fixed on main (6fb245f)
-identifier = "type_mismatch_argument"
-path = "plugins/git/tests/View/GitListenerContractTest.php"
-message = "^Argument 2 \\(\\$string\\) expects string, got int\\|string \\(int does not satisfy string\\)$"
 [[diagnostics.ignore]]
 identifier = "type_mismatch_argument"
 path = "plugins/mcp/tests/McpClaudeCodeE2eTest.php"
@@ -379,18 +370,6 @@ message = "^Argument 2 \\(\\$string\\) expects string, got resource$"
 identifier = "type_mismatch_argument"
 path = "{tests/Unit/Editor/ColumnModeTest.php,tests/Unit/Editor/CompletionDetailTest.php,tests/Unit/Widget/CodeEditorOverlaysTest.php}"
 message = "^Argument 5 \\(\\$requestCompletion\\) expects Closure\\(int, int\\): \\?bool, got Closure\\(\\): void \\(return type void does not satisfy \\?bool\\)$"
-[[diagnostics.ignore]]
-identifier = "type_mismatch_property"
-path = "plugins/mcp/tests/Support/TalksMcp.php"
-message = "^Property \\$client expects resource\\|null, got resource\\|false$"
-[[diagnostics.ignore]]
-identifier = "type_mismatch_property"
-path = "tests/Unit/IdeSettingsViewTest.php"
-message = "^Property \\$settingsView expects Porta\\\\Settings\\\\SettingsViewController, got \\?Porta\\\\Workbench\\\\View\\\\ContributedView$"
-[[diagnostics.ignore]]
-identifier = "type_mismatch_return"
-path = "tests/Unit/EditorConfigIntegrationTest.php"
-message = "^Return type \\?Porta\\\\Editor\\\\Buffer is incompatible with declared return type Porta\\\\Editor\\\\Buffer$"
 [[diagnostics.ignore]]  # fixed on main (6fb245f)
 identifier = "type_mismatch_return"
 path = "tests/Unit/Help/KeybindingsDocTest.php"
@@ -411,10 +390,6 @@ message = "^Return type null\\|array\\{int, string, string\\} is incompatible wi
 identifier = "type_mismatch_return"
 path = "plugins/assist/tests/AssistUiE2eTest.php"
 message = "^Return type string\\|Porta\\\\Workbench\\\\StatusCell\\|null is incompatible with declared return type \\?Porta\\\\Workbench\\\\StatusCell$"
-[[diagnostics.ignore]]
-identifier = "type_mismatch_return"
-path = "tests/E2e/IdeLspFeaturesTest.php"
-message = "^Return type string\\|false is incompatible with declared return type string$"
 [[diagnostics.ignore]]
 identifier = "unknown_class"
 path = "tests/Unit/Plugin/Runtime/PluginAutoloaderTest.php"
@@ -472,10 +447,6 @@ message = "^Undefined variable '\\$row'$"
 identifier = "unused_variable"
 path = "{tests/**,plugins/*/tests/**}"
 message = "^Unused variable '\\$ignored'$"
-[[diagnostics.ignore]]
-identifier = "unused_variable"
-path = "plugins/git/tests/View/GitListenerContractTest.php"
-message = "^Unused variable '\\$method'$"
 
 # ── phpantom main (6fb245f) only: what the next release adds on top ──────────
 # Read one by one like the rest. Exact message, exact files.
@@ -647,15 +618,3 @@ path = "plugins/assist/src/Net/Rendezvous/Frames.php"
 message = "^Return type array\\{bool, int, string\\|int\\} is incompatible with declared return type array\\{bool, int, string\\}\\|null$"
 
 # a PHPUnit assertion (`assertIsResource`, `assertNotFalse`, `assertNotSame([], …)`) does not narrow.
-[[diagnostics.ignore]]
-identifier = "type_mismatch_return"
-path = "plugins/mcp/tests/Server/SessionTest.php"
-message = "^Return type array<string, mixed>\\|null is incompatible with declared return type array<string, mixed>$"
-[[diagnostics.ignore]]
-identifier = "type_mismatch_return"
-path = "plugins/mcp/tests/Support/TalksClaudeCode.php"
-message = "^Return type array\\{resource\\|false, ''\\|string\\} is incompatible with declared return type array\\{0: resource, 1: string\\}$"
-[[diagnostics.ignore]]
-identifier = "type_mismatch_return"
-path = "plugins/assist/tests/Support/TalksAssist.php"
-message = "^Return type resource\\|string is incompatible with declared return type resource$"

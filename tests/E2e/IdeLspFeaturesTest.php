@@ -1844,7 +1844,7 @@ final class IdeLspFeaturesTest extends TestCase
 
     private function mockLspConfig(): string
     {
-        return \json_encode(['lsp' => \PHP_BINARY.' '.__DIR__.'/../Support/mock-lsp-server.php']);
+        return \json_encode(['lsp' => \PHP_BINARY.' '.__DIR__.'/../Support/mock-lsp-server.php'], \JSON_THROW_ON_ERROR);
     }
 
     /**

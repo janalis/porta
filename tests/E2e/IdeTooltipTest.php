@@ -26,7 +26,6 @@ use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
-use Symfony\Component\Tui\Widget\AbstractWidget;
 
 /**
  * The tooltip end to end: a real move over a real element, the dwell, the
@@ -39,13 +38,16 @@ final class IdeTooltipTest extends TestCase
     use ScreenReads;
 
     /**
-     * The screen cell of the first cell of $widget whose tooltip has $key —
-     * found by asking the widget, so the test does not hard-code a layout.
+     * The screen cell of the first cell of the widget mounted under $id whose
+     * tooltip has $key — found by asking the widget, so the test does not
+     * hard-code a layout.
      *
      * @return array{int, int} [row, col], 0-based
      */
-    private function cellOf(Ide $ide, AbstractWidget&TooltipProvider $widget, string $key): array
+    private function cellOf(Ide $ide, Tui $tui, string $id, string $key): array
     {
+        $widget = $tui->getById($id);
+        $this->assertInstanceOf(TooltipProvider::class, $widget, "the widget {$id} shows tooltips");
         $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($widget);
         $this->assertInstanceOf(WidgetRect::class, $rect, 'the widget has been laid out');
         for ($row = 0; $row < $rect->rows; ++$row) {
@@ -110,7 +112,7 @@ final class IdeTooltipTest extends TestCase
                 },
                 200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use (&$cell): void {
                     $this->frame($tui);
-                    $cell = $this->cellOf($ide, $tui->getById('find-bar'), 'find:case');
+                    $cell = $this->cellOf($ide, $tui, 'find-bar', 'find:case');
                     self::moveTo($tui, $cell[0], $cell[1]);
                     $this->assertNull($this->shown($ide), 'the dwell first');
 
@@ -148,11 +150,11 @@ final class IdeTooltipTest extends TestCase
                 },
                 200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $this->frame($tui);
-                    [$row, $col] = $this->cellOf($ide, $tui->getById('find-bar'), 'find:regex');
+                    [$row, $col] = $this->cellOf($ide, $tui, 'find-bar', 'find:regex');
                     self::moveTo($tui, $row, $col);
                     $this->awaitPainted($tui, $terminal, 'Regular expression');
 
-                    [$row, $col] = $this->cellOf($ide, $tui->getById('find-bar'), 'find:word');
+                    [$row, $col] = $this->cellOf($ide, $tui, 'find-bar', 'find:word');
                     self::moveTo($tui, $row, $col);
                     $this->assertSame('find:word', $this->shown($ide)?->key, 'at once: a card was up');
                     $this->assertNotNull($this->rowOnScreen($tui, $terminal, 'Whole word  Alt+W'));
@@ -179,7 +181,7 @@ final class IdeTooltipTest extends TestCase
                 },
                 200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $this->frame($tui);
-                    [$row, $col] = $this->cellOf($ide, $tui->getById('find-bar'), 'find:word');
+                    [$row, $col] = $this->cellOf($ide, $tui, 'find-bar', 'find:word');
                     self::moveTo($tui, $row, $col);
                     $this->awaitPainted($tui, $terminal, 'Whole word');
 
@@ -209,7 +211,7 @@ final class IdeTooltipTest extends TestCase
                 },
                 200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $this->frame($tui);
-                    [$row, $col] = $this->cellOf($ide, $tui->getById('find-bar'), 'find:case');
+                    [$row, $col] = $this->cellOf($ide, $tui, 'find-bar', 'find:case');
                     self::moveTo($tui, $row, $col);
                     $this->awaitPainted($tui, $terminal, 'Match case');
 
@@ -241,7 +243,7 @@ final class IdeTooltipTest extends TestCase
                 },
                 200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $this->frame($tui);
-                    [$row, $col] = $this->cellOf($ide, $tui->getById('find-bar'), 'find:case');
+                    [$row, $col] = $this->cellOf($ide, $tui, 'find-bar', 'find:case');
                     self::moveTo($tui, $row, $col);
                     $this->awaitPainted($tui, $terminal, 'Match case');
 
@@ -276,7 +278,7 @@ final class IdeTooltipTest extends TestCase
             [
                 100 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $this->frame($tui);
-                    [$row, $col] = $this->cellOf($ide, $tui->getById('status'), 'status:goto_line');
+                    [$row, $col] = $this->cellOf($ide, $tui, 'status', 'status:goto_line');
                     self::moveTo($tui, $row, $col);
                     $this->awaitPainted($tui, $terminal, 'click to go to a line');
                     $this->assertSame('status:goto_line', $this->shown($ide)?->key);
@@ -359,7 +361,7 @@ final class IdeTooltipTest extends TestCase
                 },
                 200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use (&$cell): void {
                     $this->frame($tui);
-                    $cell = $this->cellOf($ide, $tui->getById('find-bar'), 'find:regex');
+                    $cell = $this->cellOf($ide, $tui, 'find-bar', 'find:regex');
                     self::moveTo($tui, $cell[0], $cell[1]);
                     $this->assertSame('find:regex', $this->shown($ide)?->key, 'the control: with no dwell, at once');
                     self::moveTo($tui, 20, 100);
@@ -403,7 +405,7 @@ final class IdeTooltipTest extends TestCase
                 },
                 200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $this->frame($tui);
-                    [$row, $col] = $this->cellOf($ide, $tui->getById('settings-form'), 'settings:autoPairs');
+                    [$row, $col] = $this->cellOf($ide, $tui, 'settings-form', 'settings:autoPairs');
                     self::moveTo($tui, $row, $col);
                     $this->awaitPainted($tui, $terminal, 'Changed from its default');
                 },

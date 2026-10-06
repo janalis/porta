@@ -52,7 +52,9 @@ final class IdeSettingsViewTest extends TestCase
         $git = $views->find('git');
         $this->assertInstanceOf(ContributedView::class, $git, 'the git plugin registered its view');
         $this->gitView = $git;
-        $this->settingsView = $views->find('settings');
+        $settings = $views->find('settings');
+        $this->assertInstanceOf(SettingsViewController::class, $settings, 'the settings view is registered');
+        $this->settingsView = $settings;
         $this->window = Services::resolve($this->ide, WorkspaceLayout::class)->windowFrame;
     }
 

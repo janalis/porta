@@ -67,10 +67,10 @@ final class EditorConfigIntegrationTest extends TestCase
     private function open(Ide $ide, string $path): Buffer
     {
         Services::resolve($ide, BufferService::class)->openFile($path, OpenFocus::Keep);
-        $buffers = Services::resolve($ide, BufferManager::class);
-        $this->assertInstanceOf(BufferManager::class, $buffers, 'the buffers property is a BufferManager');
+        $buffer = Services::resolve($ide, BufferManager::class)->active();
+        $this->assertInstanceOf(Buffer::class, $buffer, 'the file opened as the active buffer');
 
-        return $buffers->active();
+        return $buffer;
     }
 
     private function save(Ide $ide, Buffer $buffer): void
