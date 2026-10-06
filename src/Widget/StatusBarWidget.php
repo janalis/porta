@@ -439,8 +439,9 @@ final class StatusBarWidget extends AbstractWidget implements TooltipProvider
         $at = 1; // the row's leading space
         foreach ($drawn as $n => $cell) {
             $width = AnsiUtils::visibleWidth($cell['text']);
-            if (null !== ($cell['tooltip'] ?? null)) {
-                $tips[] = ['from' => $at, 'to' => $at + $width, 'key' => 'cell:'.$n, 'text' => $cell['tooltip']];
+            $tooltip = $cell['tooltip'] ?? null;
+            if (null !== $tooltip) {
+                $tips[] = ['from' => $at, 'to' => $at + $width, 'key' => 'cell:'.$n, 'text' => $tooltip];
             }
             $at += $width + self::SEPARATOR_WIDTH;
         }

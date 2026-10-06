@@ -32,11 +32,11 @@ final class DebugAdapters
         private readonly ?DebugAdapterProvider $plugins = null,
     ) {
         foreach ($languages as $languageId => $entry) {
-            $debug = $entry['debug'] ?? [];
-            if (($debug['adapter'] ?? null) !== null) {
+            $adapter = ($entry['debug'] ?? [])['adapter'] ?? null;
+            if (null !== $adapter) {
                 $runCommand = $entry['runCommand'] ?? '';
                 $runCommandArgv = '' !== $runCommand ? self::split($runCommand) : [];
-                $this->configs[$languageId] = new DebugConfig(self::split($debug['adapter']), $debug['launch'] ?? [], $runCommandArgv);
+                $this->configs[$languageId] = new DebugConfig(self::split($adapter), $entry['debug']['launch'] ?? [], $runCommandArgv);
             }
         }
     }

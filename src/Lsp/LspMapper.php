@@ -291,13 +291,16 @@ final class LspMapper
             if (!\is_array($candidate)) {
                 continue;
             }
-            if (($candidate['uri'] ?? null) !== null && ($candidate['range'] ?? null) !== null) {
-                $out[] = ['uri' => $candidate['uri'], 'range' => $candidate['range']];
+            $uri = $candidate['uri'] ?? null;
+            $range = $candidate['range'] ?? null;
+            if (null !== $uri && null !== $range) {
+                $out[] = ['uri' => $uri, 'range' => $range];
                 continue;
             }
-            if (($candidate['targetUri'] ?? null) !== null) {
+            $targetUri = $candidate['targetUri'] ?? null;
+            if (null !== $targetUri) {
                 $out[] = [
-                    'uri' => $candidate['targetUri'],
+                    'uri' => $targetUri,
                     'range' => $candidate['targetSelectionRange'] ?? $candidate['targetRange'] ?? [],
                 ];
             }

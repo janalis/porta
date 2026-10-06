@@ -145,8 +145,8 @@ message = "^(?:Property 'anchor' not found on class 'Thread'|Property 'resolved'
 # phpantom 0.10.0; still reported on main (6fb245f).
 [[diagnostics.ignore]]
 identifier = "type_mismatch_argument"
-path = "{src/Debug/DebugAdapters.php,src/Lsp/LspMapper.php,src/Support/AsyncProcess.php}"
-message = "^(?:Argument 1 \\(\\$array\\) expects array, got scalar\\|array\\{value\\?: mixed\\}\\|list<scalar\\|array\\{value\\?: mixed\\}> \\(scalar does not satisfy array\\)|Argument 1 \\(\\$command\\) expects string, got string\\|null \\(null does not satisfy string\\)|Argument 1 \\(\\$stream\\) expects resource, got \\?resource)$"
+path = "{src/Lsp/LspMapper.php,src/Support/AsyncProcess.php}"
+message = "^(?:Argument 1 \\(\\$array\\) expects array, got scalar\\|array\\{value\\?: mixed\\}\\|list<scalar\\|array\\{value\\?: mixed\\}> \\(scalar does not satisfy array\\)|Argument 1 \\(\\$stream\\) expects resource, got \\?resource)$"
 
 # a by-reference capture or out-parameter is read at its initial value.
 # phpantom 0.10.0; still reported on main (6fb245f).
@@ -506,18 +506,6 @@ path = "{src/Overlay/Presenter/RuleHalves.php,tests/E2e/IdePluginDocsTest.php}"
 message = "^Argument 2 \\(\\$callback\\) expects callable\\(int\\|float, int<0, max>\\): bool, got Closure\\(int\\): bool \\(parameter 1 accepts int, but is passed int\\|float\\)$"
 
 # `($a['k'] ?? null) !== null` does not narrow `$a['k']`.
-[[diagnostics.ignore]]
-identifier = "type_mismatch_argument"
-path = "src/Debug/DebugAdapters.php"
-message = "^Argument 1 \\(\\$command\\) expects string, got \\?string$"
-[[diagnostics.ignore]]
-identifier = "type_mismatch_return"
-path = "src/Widget/StatusBarWidget.php"
-message = "^Return type list<array\\{from: int, to: int, key: string, text: \\?string\\}> is incompatible with declared return type list<array\\{from: int, to: int, key: string, text: string\\}>$"
-[[diagnostics.ignore]]
-identifier = "type_mismatch_return"
-path = "src/Lsp/LspMapper.php"
-message = "^Return type list<array\\{uri: \\?string, range: \\?array<array-key, mixed>\\}> is incompatible with declared return type list<array\\{uri: string, range: array\\}>$"
 
 # `array_first()` is not narrowed to non-null by `1 === count()`.
 [[diagnostics.ignore]]
