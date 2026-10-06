@@ -15,7 +15,7 @@ declare(strict_types=1);
  */
 function sendMessage($out, array $message): void
 {
-    $json = json_encode($message, JSON_UNESCAPED_SLASHES);
+    $json = json_encode($message, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
     fwrite($out, 'Content-Length: '.strlen($json)."\r\n\r\n".$json);
     fflush($out);
 }

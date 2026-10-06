@@ -15,7 +15,7 @@ foreach (readFrames($in) as $message) {
         // Hand-rolled on purpose, and the ONLY hand-rolled part: splitting the
         // frame is the fault this stub exists to simulate, so it cannot go
         // through sendMessage(). Reading is ordinary and uses the shared loop.
-        $json = json_encode(['jsonrpc' => '2.0', 'id' => $message['id'], 'result' => ['capabilities' => []]]);
+        $json = json_encode(['jsonrpc' => '2.0', 'id' => $message['id'], 'result' => ['capabilities' => []]], JSON_THROW_ON_ERROR);
         $frame = 'Content-Length: '.\strlen($json)."\r\n\r\n".$json;
         fwrite($out, substr($frame, offset: 0, length: 25)); // header split mid-way
         fflush($out);

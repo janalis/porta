@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Support;
 
+use Porta\Support\Outcome;
 use Revolt\EventLoop;
 
 /**
@@ -62,6 +63,55 @@ trait PumpsLoop
             }
             $this->turn();
         }
+    }
+
+    /**
+     * Start what answers with one string through a callback, wait for the
+     * answer, and return it — instead of a nullable a reference fills, and
+     * an await on it, at every call site.
+     *
+     * @param \Closure(\Closure(string): void): void $start
+     */
+    private function awaitString(\Closure $start, float $timeout = 10.0, string $what = 'the answer'): string
+    {
+        $answer = null;
+        $start(static function (string $value) use (&$answer): void {
+            $answer = $value;
+        });
+        $this->await(
+            static function () use (&$answer): bool {
+                return null !== $answer;
+            },
+            $timeout,
+            $what,
+        );
+
+        return (string) $answer;
+    }
+
+    /**
+     * {@see awaitString()} for what answers with an outcome and its output —
+     * git's verbs, which report whether they worked and what git said.
+     *
+     * @param \Closure(\Closure(Outcome, string): void): void $start
+     *
+     * @return array{ok: bool, out: string}
+     */
+    private function awaitOutcome(\Closure $start, float $timeout = 10.0, string $what = 'the outcome'): array
+    {
+        $answer = null;
+        $start(static function (Outcome $ok, string $out) use (&$answer): void {
+            $answer = ['ok' => $ok->isOk(), 'out' => $out];
+        });
+        $this->await(
+            static function () use (&$answer): bool {
+                return null !== $answer;
+            },
+            $timeout,
+            $what,
+        );
+
+        return $answer ?? ['ok' => false, 'out' => ''];
     }
 
     /**
