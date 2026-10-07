@@ -44,7 +44,10 @@ final class ModalBoxTest extends TestCase
         $this->assertNull($box->itemAt(9, 15), 'the bottom border is not an item');
         $this->assertNull($box->itemAt(6, 9), 'outside the box columns');
         $this->assertNull($box->itemAt(6, 30), 'outside on the right');
-        $this->assertSame(5, $box->itemAt(6, 10), 'the left column itself is still inside the box');
+        $this->assertNull($box->itemAt(6, 10), 'the left rail is a resize handle, not the row');
+        $this->assertNull($box->itemAt(6, 29), 'the right rail neither');
+        $this->assertSame(5, $box->itemAt(6, 11), 'the first column inside the rail is the row');
+        $this->assertSame(5, $box->itemAt(6, 28), 'and the last');
     }
 
     /**

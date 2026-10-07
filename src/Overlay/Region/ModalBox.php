@@ -42,10 +42,14 @@ final readonly class ModalBox
         return $row >= $this->startRow && $row < ($this->startRow + $this->rows) && $col >= $this->col && $col < ($this->col + $this->width);
     }
 
-    /** Absolute item index at the cell, or null outside the item window. */
+    /**
+     * Absolute item index at the cell, or null outside the item window. The
+     * side rails are no item's: they are the window's resize handles, and a
+     * press there that also picked the row opened a file instead of resizing.
+     */
     public function itemAt(int $row, int $col): ?int
     {
-        if ($col < $this->col || $col >= ($this->col + $this->width)) {
+        if ($col <= $this->col || $col >= ($this->col + $this->width - 1)) {
             return null;
         }
         $i = $row - ($this->startRow + $this->headerRows);

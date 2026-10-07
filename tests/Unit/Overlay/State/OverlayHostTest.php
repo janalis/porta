@@ -939,6 +939,40 @@ final class OverlayHostTest extends TestCase
         $this->assertSame(2, $closed);
     }
 
+    /** A press on a hit row's rail resizes the window: it neither picks the row nor closes. */
+    public function testAPressOnTheRailBesideAHitResizesAndPicksNothing(): void
+    {
+        $host = $this->host();
+        $picked = null;
+        $closed = 0;
+        $host->openSearch(
+            'Search',
+            static fn (): null => null,
+            static function (SearchHit $h) use (&$picked): void {
+                $picked = $h->label;
+            },
+            static function () use (&$closed): void {
+                ++$closed;
+            },
+        );
+        $host->setSearchRows($this->searchRows(static fn (): null => null));
+        $host->layout([0, 0, 20, 80]);
+        $box = Probe::get($host, 'searchBox');
+        Assert::assertInstanceOf(ModalBox::class, $box);
+        $hitRow = $box->windowTop() + 1;
+        $this->assertTrue($host->searchHoverAt($hitRow, $box->col + 3), 'a hit row inside the rails');
+        $width = $box->width;
+
+        foreach ([$box->col, $box->col + $box->width - 1] as $rail) {
+            $this->assertTrue($host->pickerClickAt($hitRow, $rail));
+            $this->assertNull($picked, "the rail at column {$rail} picks no row");
+            $this->assertSame(0, $closed, 'nor closes the window');
+        }
+        $this->assertTrue($host->continueDragTo($hitRow, $box->col + $box->width + 3, release: true), 'the press armed a resize');
+        $host->layout([0, 0, 20, 80]);
+        $this->assertSame($width + 4, Probe::get($host, 'searchBox')?->width, 'and the drag widened the window');
+    }
+
     /** A click inside the dialog that lands on no hit — a header, the query field — is swallowed; only outside closes. */
     public function testSearchClickOnAHeaderRowIsSwallowedAndOutsideCloses(): void
     {
