@@ -877,7 +877,7 @@ final class CodeEditorWidgetTest extends TestCase
         // glyph; the stripe marks it as a density block.
         $gutter = AnsiUtils::sliceByColumn($rendered[2], 0, $editor->gutterWidth());
         $this->assertStringNotContainsString('✗', AnsiUtils::stripAnsiCodes($gutter), 'no glyph in the left gutter');
-        $this->assertStringContainsString("\x1b[38;5;203m\x1b[48;5;52m", $gutter, 'the number in the error tint');
+        $this->assertStringStartsWith("\x1b[38;5;0m\x1b[48;5;1m", $gutter, 'the whole gutter in the terminal\'s red');
         $stripe = '';
         foreach ($rendered as $row) {
             $stripe .= AnsiUtils::stripAnsiCodes(AnsiUtils::sliceByColumn($row, 79, 1));

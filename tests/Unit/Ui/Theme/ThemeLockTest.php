@@ -59,11 +59,11 @@ final class ThemeLockTest extends TestCase
         yield 'inlay' => [Role::Inlay, new Style(color: 243)];
         yield 'inlay-parameter' => [Role::InlayParameter, new Style(background: 238, color: 250)];
         yield 'inlay-type' => [Role::InlayType, new Style(background: 238, color: 245)];
-        yield 'gutter-bg' => [Role::GutterBg, new Style(background: 234)];
-        yield 'gutter-error' => [Role::GutterError, new Style(background: 52, color: 203)];
-        yield 'gutter-warning' => [Role::GutterWarning, new Style(background: 94, color: 208)];
-        yield 'gutter-notice' => [Role::GutterNotice, new Style(background: 58, color: 220)];
-        yield 'gutter-inlay' => [Role::GutterInlay, new Style(background: 235, color: 245)];
+        yield 'gutter-bg' => [Role::GutterBg, new Style(background: 0)];
+        yield 'gutter-error' => [Role::GutterError, new Style(background: 1, color: 0)];
+        yield 'gutter-warning' => [Role::GutterWarning, new Style(background: 3, color: 0)];
+        yield 'gutter-notice' => [Role::GutterNotice, new Style(background: 11, color: 0)];
+        yield 'gutter-inlay' => [Role::GutterInlay, new Style(background: 8, color: 7)];
         yield 'debug-value' => [Role::DebugValue, new Style(color: 149)];
         yield 'indent-guide' => [Role::IndentGuide, new Style(color: 238)];
         yield 'git-added' => [Role::VcsAdded, new Style(color: 114)];
@@ -357,10 +357,14 @@ final class ThemeLockTest extends TestCase
         }
     }
 
-    /** In the everyday themes the gutter says a severity in the colour its squiggle does. */
+    /**
+     * The light theme says a severity in the colour its squiggle does. The
+     * dark one draws the gutter in the terminal's own colours instead, so it
+     * follows whatever theme the terminal has (pinned above).
+     */
     public function testAGutterTintIsItsSeveritysColour(): void
     {
-        foreach ([DarkTheme::definition(), LightTheme::definition()] as $theme) {
+        foreach ([LightTheme::definition()] as $theme) {
             foreach ([
                 [Role::GutterError,   Role::DiagError],
                 [Role::GutterWarning, Role::DiagWarn],

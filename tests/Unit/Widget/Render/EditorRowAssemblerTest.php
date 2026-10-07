@@ -368,12 +368,40 @@ final class EditorRowAssemblerTest extends TestCase
         $this->assertStringContainsString("\e[1m", AnsiUtils::sliceByColumn($rows[1], 0, 2), 'and the number is bold here too');
     }
 
-    /** $text as $role opens it — what a run begins with, whatever re-arms the shade after it. */
-    private static function opened(Styles $styles, Role $role, string $text): string
+    /**
+     * The colours in force where $text is first drawn in $row — what the
+     * reader sees, whatever order the codes before it came in.
+     *
+     * @return array{?string, ?string} the foreground and background SGR params, null for the default
+     */
+    private static function penAt(string $row, string $text): array
     {
-        \preg_match('/^(?:\e\[[0-9;:]*m)*/', $styles->of($role)->apply($text), $open);
+        [$fg, $bg] = [null, null];
+        $parts = \preg_split('/(\e\[[0-9;:]*m)/', $row, flags: \PREG_SPLIT_DELIM_CAPTURE | \PREG_SPLIT_NO_EMPTY);
+        foreach (false === $parts ? [] : $parts as $part) {
+            if (1 === \preg_match('/^\e\[([0-9;:]*)m$/', $part, $m)) {
+                $params = $m[1];
+                [$fg, $bg] = match (true) {
+                    '' === $params, '0' === $params => [null, null],
+                    '39' === $params => [null, $bg],
+                    '49' === $params => [$fg, null],
+                    \str_starts_with($params, '38;') => [$params, $bg],
+                    \str_starts_with($params, '48;') => [$fg, $params],
+                    default => [$fg, $bg],
+                };
+                continue;
+            }
+            if (\str_contains($part, $text)) {
+                return [$fg, $bg];
+            }
+        }
+        self::fail("{$text} is not drawn");
+    }
 
-        return $open[0].$text;
+    /** @return array{?string, ?string} the pen a role draws in */
+    private static function pen(Styles $styles, Role $role): array
+    {
+        return self::penAt($styles->of($role)->apply('X'), 'X');
     }
 
     /** @return list<string> each row's gutter cells, $gutterWidth wide */
@@ -423,12 +451,12 @@ final class EditorRowAssemblerTest extends TestCase
         $styles = Styles::dark();
         $gutters = $this->gutters($store, $doc, $styles, rows: 4);
 
-        $this->assertStringContainsString(self::opened($styles, Role::GutterError, '1'), $gutters[0], 'an error over a warning on the same line');
-        $this->assertStringContainsString(self::opened($styles, Role::GutterNotice, '2'), $gutters[1], 'a notice');
-        $this->assertStringContainsString(self::opened($styles, Role::Gutter, '3'), $gutters[2], 'a hint marks nothing');
+        $this->assertSame(self::pen($styles, Role::GutterError), self::penAt($gutters[0], '1'), 'an error over a warning on the same line');
+        $this->assertSame(self::pen($styles, Role::GutterNotice), self::penAt($gutters[1], '2'), 'a notice');
+        $this->assertSame([self::pen($styles, Role::Gutter)[0], self::pen($styles, Role::GutterBg)[1]], self::penAt($gutters[2], '3'), 'a hint marks nothing');
         foreach ($gutters as $gutter) {
             $this->assertMatchesRegularExpression('/^ *\d+ *$/', AnsiUtils::stripAnsiCodes($gutter), 'the number alone: no glyph beside it');
-            $this->assertStringStartsWith("\e[48;5;234m", $gutter, 'every row on the gutter\'s own shade');
+            $this->assertMatchesRegularExpression('/^(\e\[[0-9;]*m)*\e\[48;5;(0|1|11)m/', $gutter, 'every row on the gutter\'s shade or its tint, from its first cell');
         }
     }
 
@@ -439,7 +467,7 @@ final class EditorRowAssemblerTest extends TestCase
         $store->setDiagnostics([0 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'w', 'col' => 0]]]);
         $styles = Styles::dark();
 
-        $this->assertStringContainsString(self::opened($styles, Role::GutterWarning, '1'), $this->gutters($store, $doc, $styles, rows: 1)[0]);
+        $this->assertSame(self::pen($styles, Role::GutterWarning), self::penAt($this->gutters($store, $doc, $styles, rows: 1)[0], '1'));
     }
 
     /** While hints show as cards, a line that has some is faintly tinted; a problem outranks it, and in the line itself they need no tint. */
@@ -454,25 +482,35 @@ final class EditorRowAssemblerTest extends TestCase
 
         $display->setInlayHints(InlayHintMode::Tooltip);
         $cards = $this->gutters($store, $doc, $styles, $display, rows: 2);
-        $this->assertStringContainsString(self::opened($styles, Role::GutterInlay, '1'), $cards[0]);
-        $this->assertStringContainsString(self::opened($styles, Role::GutterError, '2'), $cards[1], 'the problem outranks the hint');
+        $this->assertSame(self::pen($styles, Role::GutterInlay), self::penAt($cards[0], '1'));
+        $this->assertSame(self::pen($styles, Role::GutterError), self::penAt($cards[1], '2'), 'the problem outranks the hint');
 
         $display->setInlayHints(InlayHintMode::Inline);
-        $this->assertStringContainsString(self::opened($styles, Role::Gutter, '1'), $this->gutters($store, $doc, $styles, $display, rows: 2)[0], 'hints in the line: no tint');
+        $this->assertSame(
+            [self::pen($styles, Role::Gutter)[0], self::pen($styles, Role::GutterBg)[1]],
+            self::penAt($this->gutters($store, $doc, $styles, $display, rows: 2)[0], '1'),
+            'hints in the line: no tint',
+        );
     }
 
-    /** The tint is the number's alone: the marker beside it keeps its glyph on the gutter's shade. */
-    public function testTheTintIsTheNumbersAlone(): void
+    /**
+     * A tinted line's whole gutter is the tint — its git strip, number,
+     * marker and fold column — and a mark in it keeps its glyph; a wrapped
+     * line's next rows are on the gutter's own shade.
+     */
+    public function testTheTintCoversTheLinesWholeGutter(): void
     {
-        $doc = new Document("a\n");
+        $doc = new Document("a\nb\n");
         $store = new DecorationStore(static function (): void {});
         $store->setDiagnostics([0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'e', 'col' => 0]]]);
         $store->setBreakpointLines([0]);
         $styles = Styles::dark();
-        $gutter = $this->gutters($store, $doc, $styles, rows: 1)[0];
+        [$tinted, $plain] = $this->gutters($store, $doc, $styles, rows: 2);
 
-        $this->assertStringContainsString(self::opened($styles, Role::GutterError, '1')."\e[49m\e[48;5;234m", $gutter, 'the shade comes back right after the number');
-        $this->assertStringContainsString($styles->of(Role::Breakpoint)->apply(Glyphs::BREAKPOINT), $gutter);
+        $this->assertStringStartsWith("\e[38;5;0m\e[48;5;1m", $tinted, 'from its first cell');
+        $this->assertStringContainsString($styles->of(Role::Breakpoint)->apply(Glyphs::BREAKPOINT), $tinted, 'the mark keeps its glyph');
+        $this->assertStringNotContainsString("\e[48;5;0m", $tinted, 'and no cell of it falls back to the gutter\'s shade');
+        $this->assertStringStartsWith("\e[48;5;0m", $plain, 'the next line is on the gutter\'s own shade');
     }
 
     /** Past the end and on a wrapped line's next rows, the gutter is still the gutter. */
@@ -481,7 +519,7 @@ final class EditorRowAssemblerTest extends TestCase
         $doc = new Document("a\n");
         $gutters = $this->gutters(new DecorationStore(static function (): void {}), $doc, Styles::dark(), rows: 3);
 
-        $this->assertStringStartsWith("\e[48;5;234m", $gutters[2]);
+        $this->assertStringStartsWith("\e[48;5;0m", $gutters[2]);
         $this->assertStringContainsString('~', AnsiUtils::stripAnsiCodes($gutters[2]));
     }
 

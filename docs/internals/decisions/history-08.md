@@ -341,3 +341,15 @@ the marker column still belongs to breakpoints, bookmarks and comments, and
 there is still no problem tooltip in the gutter. The dark hint tint first
 sat on 236, the caret band's own shade; ThemeLockTest's distinct-shade check
 caught it, and it is 235.
+
+## The gutter's tint spans the whole gutter, in the terminal's own colours (2026-10-07)
+
+The user found the number-only tint too small and its 256-colour shades
+(52, 94, 58) muddy. Previews rendered in their terminal (Ghostty, Dracula)
+settled it: the tint covers the line's whole gutter, and the dark theme draws
+the gutter with palette indexes 0–15, the colours the terminal's own scheme
+defines — black for the gutter, red / yellow / bright yellow on black text
+for an error / warning / notice, bright black for a hint line — so it follows
+whatever scheme the terminal uses. The 16 colours have no orange: a warning is
+yellow and a notice bright yellow here, which is close in Dracula but stays
+distinct; the squiggles keep their 256-colour red / orange / yellow.

@@ -165,17 +165,7 @@ final readonly class EditorRowAssembler
             $isCursorLine = $lineIndex === $cursorLine && (null === $this->wrap || $rowSegment === WrapLayout::segmentOf($inlay->hit($cursorDisplayCol)['displayCol'], $geo->contentWidth));
             $lineDiags = $this->store->diagnostics[$lineIndex] ?? [];
 
-            // A continuation row is the same line, so it carries no number and
-            // no gutter marks — repeating them would read as another line.
-            // A zero width is the pane being too narrow to seat a gutter at
-            // all, not a continuation row: `gutterCell()` builds a fixed run of
-            // cells and cannot render narrower than itself, so the geometry
-            // asks for none rather than for a smaller one.
-            $gutter = match (true) {
-                0 === $geo->gutterWidth => '',
-                $rowSegment > 0 => $this->shaded('', $geo->gutterWidth),
-                default => $this->shaded($this->gutterCell($lineIndex, $isCursorLine ? CaretLine::Current : CaretLine::Other, $geo->numberWidth), $geo->gutterWidth),
-            };
+            $gutter = $this->rowGutter($lineIndex, $rowSegment, $isCursorLine ? CaretLine::Current : CaretLine::Other, $geo);
             // Per rendered ROW, not over the whole array: the file may be
             // fifty thousand lines and forty of them are on screen. It needs
             // the raw line, which is the only place tabs still exist.
@@ -438,20 +428,13 @@ final readonly class EditorRowAssembler
 
     /**
      * The gutter cell for one document line: git strip, line number, marker.
-     * The number says a problem by colour alone — tinted by the worst on its
-     * line, an error over a warning over a notice — and, while inlay hints
-     * show as cards, faintly tints a line that has some; otherwise it is
-     * highlighted on the caret line. No glyph: the squiggle's card says what
-     * a problem is.
+     * On a tinted line ({@see lineTint()}) the number takes the tint's colour
+     * over the whole gutter's; otherwise it is highlighted on the caret line.
+     * No glyph says a problem: the squiggle's card does.
      */
-    private function gutterCell(int $lineIndex, CaretLine $isCursorLine, int $numberWidth): string
+    private function gutterCell(int $lineIndex, CaretLine $isCursorLine, int $numberWidth, ?Role $tint): string
     {
-        $numStyle = $this->styles->of(match (true) {
-            null !== ($tint = $this->problemTint($lineIndex)) => $tint,
-            $this->inlays->onCards($this->document, $lineIndex) => Role::GutterInlay,
-            CaretLine::Current === $isCursorLine => Role::CurrentLineNumber,
-            default => Role::Gutter,
-        });
+        $numStyle = $this->styles->of($tint ?? (CaretLine::Current === $isCursorLine ? Role::CurrentLineNumber : Role::Gutter));
         // The caret line's number is bold in every theme — its weight says
         // "here" where its colour cannot.
         if (CaretLine::Current === $isCursorLine) {
@@ -514,14 +497,46 @@ final readonly class EditorRowAssembler
     }
 
     /**
+     * A content row's gutter. A continuation row is the same line, so it
+     * carries no number and no gutter marks — repeating them would read as
+     * another line. A zero width is the pane being too narrow to seat a gutter
+     * at all, not a continuation row: `gutterCell()` builds a fixed run of
+     * cells and cannot render narrower than itself, so the geometry asks for
+     * none rather than for a smaller one.
+     */
+    private function rowGutter(int $lineIndex, int $rowSegment, CaretLine $caret, EditorGeometry $geo): string
+    {
+        if (0 === $geo->gutterWidth) {
+            return '';
+        }
+        if ($rowSegment > 0) {
+            return $this->shaded('', $geo->gutterWidth);
+        }
+        $tint = $this->lineTint($lineIndex);
+
+        return $this->shaded($this->gutterCell($lineIndex, $caret, $geo->numberWidth, $tint), $geo->gutterWidth, $tint);
+    }
+
+    /**
      * A row's gutter cells on the gutter's own shade, $width wide — every row:
      * a line's, a wrapped line's next ones, a lens or block row, and `~` past
-     * the end. The shade is re-armed after every reset inside, so a tinted
-     * number or a mark inside does not end it.
+     * the end — or, on a tinted line's first row, on the tint across the whole
+     * gutter. The shade is re-armed after every reset inside, so a mark inside
+     * does not end it.
      */
-    private function shaded(string $cells, int $width): string
+    private function shaded(string $cells, int $width, ?Role $tint = null): string
     {
-        return $width <= 0 ? '' : LineDecorator::applyFullWidth($cells, $width, $this->styles->of(Role::GutterBg));
+        return $width <= 0 ? '' : LineDecorator::applyFullWidth($cells, $width, $this->styles->of($tint ?? Role::GutterBg));
+    }
+
+    /**
+     * A line's gutter tint: the worst error, warning or notice on it, else —
+     * while inlay hints show as cards — the faint hint tint where it has some.
+     * Colour only: the whole gutter of the line, never a glyph.
+     */
+    private function lineTint(int $lineIndex): ?Role
+    {
+        return $this->problemTint($lineIndex) ?? ($this->inlays->onCards($this->document, $lineIndex) ? Role::GutterInlay : null);
     }
 
     /**

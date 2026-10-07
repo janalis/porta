@@ -328,13 +328,15 @@ A hint never moves your text: a click on it lands on the character it sits
 before, and on a soft-wrapped line a hint is drawn only where its row has room
 — one that would push code off the row is left out.
 
-The gutter has a shade of its own, a step off the editor's background, so the
-numbers read as a margin. A line with a problem has its number tinted by the
-worst one there — red for an error, orange for a warning, yellow for a notice;
-under the monochrome theme an error's number is reversed and a warning's or a
-notice's underlined — and a hint marks nothing. While inlay hints show as
-cards, a line that has some gets a faint tint. Colour only: the gutter draws
-no problem glyph, and the marker column stays for breakpoints and bookmarks.
+The gutter has a shade of its own, so the numbers read as a margin. A line
+with a problem has its whole gutter tinted by the worst one there — red for an
+error, yellow for a warning, bright yellow for a notice — and a hint marks
+nothing. While inlay hints show as cards, a line that has some gets a quieter
+tint. In the dark theme these are the terminal's own colours (its black, red,
+yellow, bright yellow and bright black), so the gutter follows the terminal's
+colour scheme; under the monochrome theme an error's gutter is reversed and a
+warning's or a notice's underlined. Colour only: the gutter draws no problem
+glyph, and a breakpoint or bookmark keeps its glyph on the tint.
 
 The caret line's number is bold. With colour, a shaded band marks the whole
 caret line. In the monochrome theme (and under `--no-ansi`) there is no band;

@@ -100,13 +100,15 @@ only the box and a column either side of it toggle.
 
 Every gutter cell sits on `Role::GutterBg` — a line's, a wrapped line's next
 rows, a lens or block row, `~` past the end — applied with
-`LineDecorator::applyFullWidth`, so a reset inside re-arms it. A line number
-alone may be tinted: `GutterError`/`GutterWarning`/`GutterNotice` by the worst
-problem on its line (a hint marks nothing), else `GutterInlay` while inlay
-hints show as cards and the line has some, else the caret line's colour. The
-tint stops at the number: the marker column keeps its glyph on the shade. No
-problem glyph is drawn in the gutter; monochrome says severity by reverse
-(error) and underline (warning, notice).
+`LineDecorator::applyFullWidth`, so a reset inside re-arms it. A line's first
+row may instead sit on a tint, across the whole gutter: `GutterError`/
+`GutterWarning`/`GutterNotice` by the worst problem on it (a hint marks
+nothing), else `GutterInlay` while inlay hints show as cards and it has some.
+The number takes the tint's foreground; a mark keeps its glyph and colour on
+it. The dark theme maps these roles to palette indexes 0–15 — the terminal's
+own colours — so the gutter follows the terminal's scheme (Dracula, Solarized…);
+the other themes keep fixed 256-colour values. No problem glyph is drawn in the
+gutter; monochrome says severity by reverse (error) and underline.
 
 ## Inlay hints and the problem card
 
