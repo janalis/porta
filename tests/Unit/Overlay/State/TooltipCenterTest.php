@@ -159,6 +159,39 @@ final class TooltipCenterTest extends TestCase
         $this->assertSame(9, $center->shown()?->colEnd);
     }
 
+    /** An answer the card was waiting on lands in place — on the card up, or on the one still dwelling. */
+    public function testARefreshUpdatesOnlyItsOwnCard(): void
+    {
+        $center = $this->center();
+        $center->point(self::tip('a', 'one'));
+        $center->refresh(self::tip('a', 'pending, now two'));
+        $this->scheduler->fire();
+        $this->assertSame('pending, now two', $center->shown()?->text, 'the dwelling card shows the newer words');
+
+        Probe::set($this->tui, 'renderRequested', false);
+        $center->refresh(self::tip('a', 'pending, now two'));
+        $this->assertFalse(Probe::get($this->tui, 'renderRequested'), 'the same words ask for no frame');
+
+        $center->refresh(self::tip('a', 'three'));
+        $this->assertSame('three', $center->shown()?->text);
+        $this->assertTrue(Probe::get($this->tui, 'renderRequested'), 'new words are painted');
+
+        $center->refresh(self::tip('b', 'other'));
+        $this->assertSame('a', $center->shown()?->key, "another element's answer is not this card's");
+    }
+
+    public function testALateAnswerNeverBringsADismissedCardBack(): void
+    {
+        $center = $this->center();
+        $center->point(self::tip('a', 'one'));
+        $this->scheduler->fire();
+        $center->dismiss();
+
+        $center->refresh(self::tip('a', 'two'));
+
+        $this->assertNull($center->shown());
+    }
+
     public function testADelayOfZeroShowsAtOnce(): void
     {
         $center = $this->center();

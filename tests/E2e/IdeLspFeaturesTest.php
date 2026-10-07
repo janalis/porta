@@ -16,6 +16,7 @@ use Porta\Ide;
 use Porta\Lsp\LspLog;
 use Porta\Lsp\Uri;
 use Porta\Onboarding\OnboardingState;
+use Porta\Overlay\State\TooltipCenter;
 use Porta\Settings\SettingsController;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\EditorState;
@@ -35,6 +36,8 @@ use Revolt\EventLoop;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
+use Symfony\Component\Tui\Render\Renderer;
+use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 
@@ -488,6 +491,39 @@ final class IdeLspFeaturesTest extends TestCase
                     $this->awaitPainted($tui, $terminal, ': int');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString(': int', $screen, 'inlay type hint rendered inline');
+                },
+            ],
+        );
+    }
+
+    /**
+     * PhpStorm's problem card: rest the pointer on a squiggle and the card
+     * says what is wrong, then — once the server answers — what Alt+Enter
+     * would offer, with the key that does it.
+     */
+    public function testASquiggleExplainsItsProblemAndItsFix(): void
+    {
+        $project = new TempProject([
+            '.porta.json' => $this->mockLspConfig(),
+            'src/Problem.php' => "<?php\necho 1;\n",
+        ]);
+
+        $this->runIde(
+            $project,
+            $project->path('src/Problem.php'),
+            [
+                600 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
+                    $this->awaitPainted($tui, $terminal, 'Mock diagnostic');
+                    $editor = Widgets::editor($tui);
+                    $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($editor);
+                    $this->assertInstanceOf(WidgetRect::class, $rect);
+
+                    // A bare move onto the `<` the error underlines.
+                    $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $rect->col + $editor->gutterWidth() + 1, $rect->row + 1));
+
+                    $this->await(static fn (): bool => \str_starts_with(Services::resolve($ide, TooltipCenter::class)->shown()->key ?? '', 'problem:'), what: 'the problem card');
+                    $this->awaitPainted($tui, $terminal, 'Fix: Import class');
+                    $this->assertNotNull($this->rowOf($this->screenGrid($tui, $terminal), 'More actions…'), 'and the list behind it');
                 },
             ],
         );

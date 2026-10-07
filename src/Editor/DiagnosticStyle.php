@@ -35,6 +35,23 @@ final class DiagnosticStyle
     }
 
     /**
+     * The worst first, otherwise in the order given — `usort` is stable, so
+     * two problems of one severity keep the server's order.
+     *
+     * @template T of array{severity: DiagnosticSeverity, ...}
+     *
+     * @param list<T> $diags
+     *
+     * @return list<T>
+     */
+    public static function worstFirst(array $diags): array
+    {
+        \usort($diags, static fn (array $a, array $b): int => $a['severity']->value <=> $b['severity']->value);
+
+        return $diags;
+    }
+
+    /**
      * Open a severity-colored underline whose style also encodes the severity
      * (curly/dashed/dotted/straight), so severities stay distinguishable without
      * color. Terminals that support neither escape degrade gracefully: `4:n`

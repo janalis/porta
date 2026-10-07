@@ -8,6 +8,7 @@ use Porta\Config\CommandRegistry;
 use Porta\Container\AsEager;
 use Porta\Container\LayoutSlot;
 use Porta\Editor\InlayHintMode;
+use Porta\Editor\ProblemCards;
 use Porta\I18n\Translator;
 use Porta\Layout\PreviewSplit;
 use Porta\Layout\ViewRegions;
@@ -74,6 +75,7 @@ final class TooltipRouter
         private readonly CommandRegistry $commands,
         private readonly Translator $translator,
         private readonly PreviewSplit $previewSplit,
+        private readonly ProblemCards $problems,
         ?FrameHooks $frameHooks = null,
     ) {
         $frameHooks?->onBeforeFrame($this->followResize(...));
@@ -157,7 +159,11 @@ final class TooltipRouter
         $relRow = $mouse->row - $rect->row;
         $relCol = $mouse->col - $rect->col;
         $tip = $pointer->tooltip($relRow, $relCol, $clickShowsChange, $this->translator);
-        // Past the gutter, the code: its inlay hints, while they show as cards.
+        // Past the gutter, the code: the problems a squiggle there is about,
+        // in every diagnostic-message mode — the card is where the message
+        // is read when the line does not say it. Its fix line arrives later.
+        $tip ??= $this->problems->tooltipAt($relRow, $relCol, $editor->viewport(), fn (Tooltip $card) => $this->tooltips->refresh($card->moved($rect->row, $rect->col)));
+        // Then its inlay hints, while they show as cards.
         if (null === $tip && InlayHintMode::Tooltip === $editor->display->inlayHints) {
             $tip = $editor->mouse->inlayTooltipAt($relRow, $relCol, $editor->viewport());
         }

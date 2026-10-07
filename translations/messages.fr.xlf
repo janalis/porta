@@ -3366,6 +3366,14 @@
         <source>Hide All Inlay Hints</source>
         <target>Masquer toutes les indications incrustées</target>
       </trans-unit>
+      <trans-unit id="1163">
+        <source>Fix: %title%</source>
+        <target>Corriger : %title%</target>
+      </trans-unit>
+      <trans-unit id="1164">
+        <source>More actions…</source>
+        <target>Plus d’actions…</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

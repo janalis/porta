@@ -7,6 +7,8 @@ namespace Porta\Tests\Unit\Widget\Render;
 use PHPUnit\Framework\TestCase;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
+use Porta\Ui\TooltipBody;
+use Porta\Ui\TooltipLine;
 use Porta\Widget\Render\TooltipCard;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
@@ -55,7 +57,7 @@ final class TooltipCardTest extends TestCase
     {
         $lines = TooltipCard::lines('one two three four', 9);
 
-        $this->assertSame([['one two', ''], ['three', ''], ['four', '']], $lines);
+        $this->assertEquals([new TooltipLine('one two'), new TooltipLine('three'), new TooltipLine('four')], $lines);
     }
 
     /** A line carrying a key is cut, never wrapped: the key must stay on its row. */
@@ -63,15 +65,15 @@ final class TooltipCardTest extends TestCase
     {
         $lines = TooltipCard::lines("Select all matches\tAlt+Enter", 20);
 
-        $this->assertSame('Alt+Enter', $lines[0][1]);
-        $this->assertSame(20, AnsiUtils::visibleWidth($lines[0][0]) + 2 + AnsiUtils::visibleWidth($lines[0][1]));
-        $this->assertStringEndsWith('…', $lines[0][0]);
+        $this->assertSame('Alt+Enter', $lines[0]->key);
+        $this->assertSame(20, AnsiUtils::visibleWidth($lines[0]->text) + 2 + AnsiUtils::visibleWidth($lines[0]->key));
+        $this->assertStringEndsWith('…', $lines[0]->text);
     }
 
     public function testAnEmptyKeyIsNoKey(): void
     {
-        $this->assertSame([['Close', '']], TooltipCard::lines("Close\t", 48));
-        $this->assertSame(9, TooltipCard::width([['Close', '']]));
+        $this->assertEquals([new TooltipLine('Close')], TooltipCard::lines("Close\t", 48));
+        $this->assertSame(9, TooltipCard::width([new TooltipLine('Close')]));
     }
 
     public function testATallTextIsCutWithAnEllipsis(): void
@@ -79,12 +81,64 @@ final class TooltipCardTest extends TestCase
         $lines = TooltipCard::lines(\implode("\n", \range(1, end: 12)), 48);
 
         $this->assertCount(TooltipCard::MAX_LINES, $lines);
-        $this->assertSame('8 …', $lines[TooltipCard::MAX_LINES - 1][0]);
+        $this->assertSame('8 …', $lines[TooltipCard::MAX_LINES - 1]->text);
     }
 
     public function testTheWidestLineSetsTheWidth(): void
     {
-        $this->assertSame(4 + 2 + 2, TooltipCard::width([['a', ''], ['abcd', '']]), 'the widest text, its padding, the frame');
+        $this->assertSame(4 + 2 + 2, TooltipCard::width([new TooltipLine('a'), new TooltipLine('abcd')]), 'the widest text, its padding, the frame');
         $this->assertSame(5, TooltipCard::width([]), 'an empty card still frames a cell');
+    }
+
+    /**
+     * A problem's card: the severity glyph leads in its own colour, a line
+     * that wraps keeps its words under the first ones, and a faint line stays
+     * faint — no span bleeds across a wrap.
+     */
+    public function testABodyKeepsEachLinesLeadAndRole(): void
+    {
+        $styles = Styles::dark();
+        $body = new TooltipBody([
+            new TooltipLine('Undefined variable $user here', lead: '✗ ', leadRole: Role::DiagError),
+            new TooltipLine('phpstan · variable.undefined', role: Role::Faint),
+            new TooltipLine('Fix: Import class', 'Alt+Shift+Enter'),
+        ], maxText: 60);
+        $lines = TooltipCard::layout($body, 20);
+        $rows = TooltipCard::render($lines, $styles);
+
+        $this->assertSame(
+            [
+                '╭──────────────────────╮',
+                '│ ✗ Undefined variable │',
+                '│   $user here         │',
+                '│ phpstan ·            │',
+                '│ variable.undefined   │',
+                '│ Fi…  Alt+Shift+Enter │',
+                '╰──────────────────────╯',
+            ],
+            self::plain($rows),
+        );
+        $opens = static fn (Role $role, string $text): string => \explode($text, $styles->merge(Role::PopupRow, $role)->apply($text))[0].$text;
+        $this->assertStringContainsString($opens(Role::DiagError, text: '✗ '), $rows[1], 'the glyph in the severity colour');
+        $this->assertStringContainsString($opens(Role::Faint, text: 'variable.undefined'), $rows[4], 'a faint line is faint on every row');
+        foreach ($rows as $row) {
+            $this->assertSame(TooltipCard::width($lines), AnsiUtils::visibleWidth($row));
+        }
+    }
+
+    public function testABodyIsCutAtItsOwnLineLimit(): void
+    {
+        $lines = TooltipCard::layout(new TooltipBody([new TooltipLine('a'), new TooltipLine('b'), new TooltipLine('c', lead: '› ')], maxLines: 2), 40);
+
+        $this->assertSame(['a', 'b …'], \array_map(static fn (TooltipLine $line): string => $line->text, $lines));
+    }
+
+    public function testPlainTextIsAPlainBodyAndBack(): void
+    {
+        $body = TooltipBody::fromText("Match case\tAlt+C\nWhole word");
+
+        $this->assertEquals([new TooltipLine('Match case', 'Alt+C'), new TooltipLine('Whole word')], $body->lines);
+        $this->assertSame("Match case\tAlt+C\nWhole word", $body->plain());
+        $this->assertSame('› x', new TooltipBody([new TooltipLine('x', lead: '› ')])->plain());
     }
 }

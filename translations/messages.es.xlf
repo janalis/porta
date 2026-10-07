@@ -3366,6 +3366,14 @@
         <source>Hide All Inlay Hints</source>
         <target>Ocultar todas las sugerencias incrustadas</target>
       </trans-unit>
+      <trans-unit id="1163">
+        <source>Fix: %title%</source>
+        <target>Corregir: %title%</target>
+      </trans-unit>
+      <trans-unit id="1164">
+        <source>More actions…</source>
+        <target>Más acciones…</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

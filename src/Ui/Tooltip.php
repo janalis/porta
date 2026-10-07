@@ -28,6 +28,8 @@ final readonly class Tooltip
      * @param ?TooltipSide $side the side the card goes on when it fits there —
      *                           a tab's, away from the screen edge its strip sits on;
      *                           null for the usual order (below, above, beside)
+     * @param ?TooltipBody $body lines that keep their own roles, when plain words
+     *                           are not enough; $text is then its {@see TooltipBody::plain()}
      */
     public function __construct(
         public string $key,
@@ -37,11 +39,18 @@ final readonly class Tooltip
         public int $colEnd,
         public int $rows = 1,
         public ?TooltipSide $side = null,
+        public ?TooltipBody $body = null,
     ) {}
 
     /** The same tooltip, $rows down and $cols across — a widget's answer placed on the screen. */
     public function moved(int $rows, int $cols): self
     {
-        return new self($this->key, $this->text, $this->row + $rows, $this->colStart + $cols, $this->colEnd + $cols, $this->rows, $this->side);
+        return new self($this->key, $this->text, $this->row + $rows, $this->colStart + $cols, $this->colEnd + $cols, $this->rows, $this->side, $this->body);
+    }
+
+    /** What the card shows: its own body, or its words read as plain lines. */
+    public function body(): TooltipBody
+    {
+        return $this->body ?? TooltipBody::fromText($this->text);
     }
 }

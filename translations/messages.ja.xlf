@@ -3366,6 +3366,14 @@
         <source>Hide All Inlay Hints</source>
         <target>すべてのインレイヒントを非表示</target>
       </trans-unit>
+      <trans-unit id="1163">
+        <source>Fix: %title%</source>
+        <target>修正: %title%</target>
+      </trans-unit>
+      <trans-unit id="1164">
+        <source>More actions…</source>
+        <target>その他のアクション…</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

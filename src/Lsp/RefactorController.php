@@ -7,6 +7,7 @@ namespace Porta\Lsp;
 use Porta\Container\AsIdeService;
 use Porta\Editor\BufferManager;
 use Porta\Editor\DiagnosticMessageMode;
+use Porta\Editor\DiagnosticStyle;
 use Porta\I18n\Translator;
 use Porta\Support\ProjectPaths;
 use Porta\Ui\Glyphs;
@@ -180,8 +181,6 @@ final class RefactorController extends AbstractLspController implements EditorRe
         if (DiagnosticMessageMode::Menu !== $this->editor->display->diagnosticMessages) {
             return [];
         }
-        $diagnostics = $this->buffers->active()?->diagnostics[$line] ?? [];
-        \usort($diagnostics, static fn (array $a, array $b): int => $a['severity']->value <=> $b['severity']->value);
 
         return \array_map(
             static fn (array $d): array => [
@@ -190,7 +189,7 @@ final class RefactorController extends AbstractLspController implements EditorRe
                 'value' => '',
                 'note' => true,
             ],
-            $diagnostics,
+            DiagnosticStyle::worstFirst($this->buffers->active()?->diagnostics[$line] ?? []),
         );
     }
 
@@ -306,7 +305,7 @@ final class RefactorController extends AbstractLspController implements EditorRe
 
                     return;
                 }
-                $present($this->preferredFirst($this->actions));
+                $present(CodeActionContext::preferredFirst($this->actions));
                 $this->tui->requestRender();
             },
         );
@@ -344,59 +343,16 @@ final class RefactorController extends AbstractLspController implements EditorRe
     }
 
     /**
-     * The caret line's diagnostics in LSP shape. `code`, `source`, `data` and
-     * `tags` ride along when the server gave them: a server that matches its own
-     * fix by code sees nothing to match without them, and the context is meant
-     * to hand back the diagnostic it published, not a summary of it.
-     *
-     * The range is the one thing that is NOT handed back whole: a range that
-     * ended on its own line keeps its real end, but a multi-line one was filed
-     * per line by {@see LspMapper::diagnosticsByLine()} without its end, so it
-     * goes back as start..start+1 on its first line. `data` is what a server
-     * should match on.
+     * The caret line's diagnostics in LSP shape ({@see CodeActionContext::lspDiagnostic()}).
      *
      * @return list<array<string, mixed>>
      */
     private function diagnosticsAt(int $line): array
     {
-        $diagnostics = [];
-        foreach ($this->buffers->active()?->diagnostics[$line] ?? [] as $diag) {
-            $endCol = $diag['endCol'] ?? \PHP_INT_MAX;
-            $endCol = \PHP_INT_MAX === $endCol ? $diag['col'] + 1 : $endCol;
-            $lspDiag = [
-                'range' => [
-                    'start' => ['line' => $line, 'character' => $diag['col']],
-                    'end' => ['line' => $line, 'character' => $endCol],
-                ],
-                'severity' => $diag['severity']->value,
-                'message' => $diag['message'],
-            ];
-            foreach (['code', 'source', 'data', 'tags'] as $key) {
-                /** @var mixed $extra */
-                $extra = $diag[$key] ?? null;
-                if (null !== $extra) {
-                    $lspDiag[$key] = $extra;
-                }
-            }
-            $diagnostics[] = $lspDiag;
-        }
-
-        return $diagnostics;
-    }
-
-    /**
-     * The server's preferred action first, everything else in the order it sent.
-     * `usort` is stable, so this only lifts the preferred one.
-     *
-     * @param list<array<string, mixed>> $actions
-     *
-     * @return list<array<string, mixed>>
-     */
-    private function preferredFirst(array $actions): array
-    {
-        \usort($actions, static fn (array $a, array $b): int => (true === ($b['isPreferred'] ?? null) ? 1 : 0) <=> (true === ($a['isPreferred'] ?? null) ? 1 : 0));
-
-        return $actions;
+        return \array_map(
+            static fn (array $diag): array => CodeActionContext::lspDiagnostic($line, $diag),
+            $this->buffers->active()?->diagnostics[$line] ?? [],
+        );
     }
 
     /**

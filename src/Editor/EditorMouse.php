@@ -162,6 +162,24 @@ final class EditorMouse
         );
     }
 
+    /**
+     * The problems whose squiggle is under an editor-relative cell, worst
+     * first, or null when there are none — the gutter, the stripe, a hint,
+     * past the code and every cell without a squiggle say nothing.
+     *
+     * @return array{line: int, displayCol: int, diagnostics: non-empty-list<array{severity: DiagnosticSeverity, message: string, col: int, endCol?: int, code?: int|string, source?: string, tags?: list<int>, data?: mixed}>}|null
+     */
+    public function problemsAt(int $relRow, int $relCol, EditorViewport $vp): ?array
+    {
+        $at = $this->cellAt($relRow, $relCol, $vp);
+        if (null === $at || null !== $at->hint) {
+            return null;
+        }
+        $hits = DiagnosticHit::atDisplayCol($this->document, $at->line, $this->lenses->diagnostics[$at->line] ?? [], $at->displayCol);
+
+        return [] === $hits ? null : ['line' => $at->line, 'displayCol' => $at->displayCol, 'diagnostics' => $hits];
+    }
+
     /** The inlay hint drawn in an editor-relative cell, or null when the cell shows none. */
     public function inlayHintAt(int $relRow, int $relCol, EditorViewport $vp): ?InlayHint
     {

@@ -81,7 +81,8 @@ final class TooltipPresenter
 
         // The text narrows with the terminal, down to what still frames: a
         // card wider than the union would be cut by it.
-        $lines = TooltipCard::lines($tip->text, \min(TooltipCard::MAX_TEXT, $boundRight - $boundLeft - 2 - PopupFrame::CHROME_COLS));
+        $body = $tip->body();
+        $lines = TooltipCard::layout($body, \min($body->maxText, $boundRight - $boundLeft - 2 - PopupFrame::CHROME_COLS));
         $width = TooltipCard::width($lines);
         $height = \count($lines) + PopupFrame::CHROME_ROWS;
         $place = TooltipPlacement::place($tip, $width, $height, $bounds);

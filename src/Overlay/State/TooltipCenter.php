@@ -116,6 +116,25 @@ final class TooltipCenter
     }
 
     /**
+     * A card's element has more to say than when it was asked — an answer it
+     * was waiting on arrived. The card on screen, or the one still dwelling,
+     * takes the new words in place; any other element's is ignored, and so is
+     * one already dismissed, which a late answer must never bring back.
+     */
+    public function refresh(Tooltip $tip): void
+    {
+        if ($tip->key === $this->pending?->key) {
+            $this->pending = $tip;
+
+            return;
+        }
+        if ($tip->key === $this->shown?->key && !self::same($tip, $this->shown)) {
+            $this->shown = $tip;
+            $this->tui->requestRender();
+        }
+    }
+
+    /**
      * A key, a press or a wheel: the card goes and the next one waits its full
      * dwell again — the user is doing something, not reading.
      */

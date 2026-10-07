@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Widget\Render;
 
 use Porta\Editor\DiagnosticSeverity;
+use Porta\Editor\DiagnosticSpan;
 use Porta\Editor\DiagnosticStyle;
 use Porta\Editor\Document;
 use Porta\Ui\Role;
@@ -117,9 +118,7 @@ final class LineSpans
             }
         }
         foreach ($diags as $diag) {
-            $startDisp = EditorRenderer::utf16ToDisplayCol($doc, $lineIndex, $diag['col']);
-            $endUtf16 = $diag['endCol'] ?? ($diag['col'] + 1);
-            $endDisp = \PHP_INT_MAX === $endUtf16 ? \PHP_INT_MAX : \max($startDisp + 1, EditorRenderer::utf16ToDisplayCol($doc, $lineIndex, $endUtf16));
+            [$startDisp, $endDisp] = DiagnosticSpan::display($doc, $lineIndex, $diag);
             // Curly, severity-colored underline (degrades to a plain
             // underline), plus what the diagnostic's tags say about the code
             // itself: faint for unused, struck through for deprecated.
