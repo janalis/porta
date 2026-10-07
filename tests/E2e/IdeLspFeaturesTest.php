@@ -651,7 +651,8 @@ final class IdeLspFeaturesTest extends TestCase
     public function testHintAndMessageModesSwitchLiveFromTheCommands(): void
     {
         $project = new TempProject([
-            '.porta.json' => $this->mockLspConfig(),
+            // Starts from the message after the code, which PhpStorm's default does not show.
+            '.porta.json' => (string) \json_encode(['settings' => ['diagnosticMessages' => 'inline']] + (array) \json_decode($this->mockLspConfig(), associative: true)),
             'src/Inlay.php' => "<?php\n\$x = f();\n",
         ]);
         $lineShows = fn (Tui $tui, VirtualTerminal $terminal, string $needle): bool => null !== $this->rowOf($this->screenGrid($tui, $terminal), $needle);

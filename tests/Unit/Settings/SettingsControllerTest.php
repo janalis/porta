@@ -447,7 +447,7 @@ final class SettingsControllerTest extends TestCase
             $controller->cycleChoice('diagnosticMessages');
             $seen[] = $editor->display->diagnosticMessages;
         }
-        $this->assertSame([DiagnosticMessageMode::Menu, DiagnosticMessageMode::None, DiagnosticMessageMode::Inline], $seen, 'inline → menu → none → inline');
+        $this->assertSame([DiagnosticMessageMode::Inline, DiagnosticMessageMode::Menu, DiagnosticMessageMode::None], $seen, 'none → inline → menu → none');
 
         $seen = [];
         for ($i = 0; $i < 3; ++$i) {

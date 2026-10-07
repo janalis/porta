@@ -581,7 +581,12 @@ The slots composite bottom to top: the view window (with its own dim), modal
 walked for providers, so a plugin pane answers without registering. Any
 non-move input dismisses the card in `InputDispatcher`, and the frame after a
 resize asks again at the pointer's last cell, since a resting pointer sends
-no move.
+no move. A card that is more than plain words carries a
+`Ui/TooltipBody` (lines that keep their own role and lead, since a wrapped
+styled string would bleed one line's colour onto the next). A card whose
+answer arrives later, like a problem's fix from `Lsp/QuickFixProbe`, is
+replaced in place with `TooltipCenter::refresh()`, and only while its key
+is still the one shown or pending.
 
 **A mirrored frame keeps its floating surfaces on a layer of their own.** Left
 to right, a surface is composited into the panes it floats over. Right to left

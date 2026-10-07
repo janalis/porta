@@ -82,7 +82,7 @@ final class EditorDisplayOptionsTest extends TestCase
         });
 
         $this->assertSame(LineNumberMode::Absolute, $options->lineNumbers, 'absolute by default');
-        $this->assertSame(DiagnosticMessageMode::Inline, $options->diagnosticMessages, 'messages after the code by default');
+        $this->assertSame(DiagnosticMessageMode::None, $options->diagnosticMessages, 'no message after the code by default, as in PhpStorm');
         $this->assertSame(InlayHintMode::Inline, $options->inlayHints, 'hints in the line by default');
         $this->assertSame(InlayParameterHints::Literals, $options->inlayParameterHints, 'a name only before a literal, as PhpStorm');
 

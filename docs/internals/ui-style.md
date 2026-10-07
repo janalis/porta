@@ -96,6 +96,22 @@ only the box and a column either side of it toggle.
 - A box adds `FieldBox::ROWS - 1` rows to its host; every host derives its
   header rows and click bands from the height it drew, never a literal.
 
+## Inlay hints and the problem card
+
+An inlay hint drawn into the code is a pill: its label on `Role::InlayParameter`
+or `Role::InlayType`, a shade no row, selection, search or occurrence wears
+(`ThemeLockTest` holds that). Its margins stay outside the shade, so the pill
+sits beside the code rather than swallowing the space next to it. Under the
+monochrome theme it is faint and slanted. A selection or underline running
+through a hint stops at it and resumes after it.
+
+The problem card is a tooltip card with a `TooltipBody`. Each problem is its
+severity glyph in the severity's colour, then the message wrapped under its
+own first word, then where it came from, faint. The `Fix:` and
+`More actions…` lines come last, keys at the line's end. The card may widen
+once, when the fix arrives. The same body heads the documentation popup,
+parted from the docs by a tee.
+
 ## Toasts: severity by shape, held while read
 
 A toast's frame says its severity by shape: double (`FieldState::Danger`) for

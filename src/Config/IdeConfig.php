@@ -31,7 +31,7 @@ final readonly class IdeConfig
     public const array DEFAULT_SETTINGS = [
         'language' => 'auto',
         'theme' => 'dark',
-        'diagnosticMessages' => 'inline',
+        'diagnosticMessages' => 'none',
         'inlayHints' => 'inline',
         'inlayParameterHints' => 'literals',
         'inlayTypeHints' => true,
@@ -442,7 +442,8 @@ final readonly class IdeConfig
             $settings['lineNumbers'] = (bool) $config['relativeLineNumbers'] ? 'relative' : 'absolute';
         }
         // And the legacy `inlineDiagnostics` bool into `diagnosticMessages`:
-        // on was the end-of-line message, off was no message at all.
+        // on was the end-of-line message, off was no message at all. On stays
+        // an explicit ask for the message now that none is the default.
         if (\array_key_exists('inlineDiagnostics', $config) && !\array_key_exists('diagnosticMessages', $config)) {
             $settings['diagnosticMessages'] = (bool) $config['inlineDiagnostics'] ? 'inline' : 'none';
         }

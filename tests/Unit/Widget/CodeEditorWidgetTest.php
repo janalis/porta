@@ -1044,6 +1044,7 @@ final class CodeEditorWidgetTest extends TestCase
         // line 1: an error and a warning share the line → error (worst) wins the
         // gutter/inline; line 2: a lone info; line 3: a lone hint.
         $editor = $this->editor("<?php\n\$a = f();\n\$b = g();\n\$c = h();\n", 'sev.php');
+        $editor->display->setDiagnosticMessages(DiagnosticMessageMode::Inline); // the inline message's colour is part of it
         $editor->decorations
             ->setDiagnostics([
                 1 => [

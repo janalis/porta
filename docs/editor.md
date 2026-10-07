@@ -40,8 +40,10 @@ list. (PhpStorm binds this to `Ctrl+P`, which Go to File owns here.)
 ### Quick documentation
 
 `Shift+F1` shows the documentation for the symbol at the caret in a popup just
-under it (or above it, when under has no room). Markdown's marks are gone and
-code blocks are indented. The popup scrolls with `↑`/`↓`, `PgUp`/`PgDn` or the
+under it (or above it, when under has no room). When the caret is on a
+problem, the problem heads the popup, parted from the documentation by a rule,
+as in PhpStorm. With no documentation, or no server, it is the problem alone.
+Markdown's marks are gone and code blocks are indented. The popup scrolls with `↑`/`↓`, `PgUp`/`PgDn` or the
 wheel, and a `▲`/`▼` in its border says there is more. `Esc`, or any other key,
 closes it; the other key then does what it always does. A click on the popup
 stays there, and a click anywhere else closes it.
@@ -50,8 +52,34 @@ Quick fixes (`Alt+Enter`) put the server's preferred fix first, marked `★`. An
 action the server knows but cannot run where the caret is appears greyed and
 struck through, with the server's reason beside it.
 
-With **Diagnostic messages** set to `menu` (Settings → Interface → Editor, or
-`Cycle Diagnostic Messages`), the message no longer trails the line. Instead
+### Problems
+
+As in PhpStorm, a problem's message is not written after the code by default:
+the squiggle, the gutter mark, the marker stripe and the status bar say a
+problem is there, and these say what it is:
+
+- **Rest the pointer on a squiggle.** A card opens beside it with each problem
+  there, worst first: its severity glyph and message in full, then where it
+  came from (`phpstan · variable.undefined`). Once the language server has
+  answered, the card adds the fix `Alt+Shift+Enter` would apply
+  (`Fix: Import class`) and `More actions…` for the `Alt+Enter` list, each
+  with the key your keymap binds.
+- **`Ctrl+F1`** (Error Description) opens the same card under the caret,
+  without a server. macOS keeps `Ctrl+F1` for itself, so `Alt+Q` does the
+  same, and is the key named there.
+- **`Alt+Shift+Enter`** applies that first fix at once, without the list.
+  Only a terminal that reports modifiers on Enter can send it (kitty's
+  keyboard protocol, xterm's modifyOtherKeys). Elsewhere it arrives as
+  `Alt+Enter`, which opens the list the fix heads.
+
+The caret counts as on a problem from its first character to just past its
+last, which is where typing the offending word leaves it.
+
+**Diagnostic messages** (Settings → Interface → Editor, or
+`Cycle Diagnostic Messages`) puts the message back after the code with
+`inline`.
+
+With **Diagnostic messages** set to `menu`, the message no longer trails the line. Instead
 the caret line's problems head the `Alt+Enter` list, worst first, above the
 fixes for them, as in PhpStorm. They are rows to read, so the selection skips
 them. A line with problems and no fix still opens the list. That covers a
@@ -869,6 +897,7 @@ a click or the wheel puts it away.
 - **Tabs, tree, breadcrumbs, results:** the full path or text wherever the row
   had to cut it; the `●`, `⌾`, change and diagnostic marks in words; a tab's `×`.
 - **Gutter and marker stripe:** what each mark is and what a click does.
+- **Code:** a squiggle's [problems](#problems), with the fix and its key.
 - **Completion popup:** abbreviated kinds spelled out (`iface` → Interface).
 - **Dock strip and pane dividers:** a stopped session's `○`, a status cut to
   fit, and the resize grabs.

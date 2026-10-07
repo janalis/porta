@@ -268,3 +268,45 @@ eagerly moved one guest's messages into another's
 (`HostServersE2eTest` failed at once). Making that helper read eagerly needs a
 per-peer inbox first.
 
+
+## Problems and inlay hints the PhpStorm way (2026-10-07)
+
+A round asked to make diagnostic messages and inlay hints behave as PhpStorm
+does, checked against its documentation rather than memory:
+
+- **PhpStorm writes no message after the code.** Inline problem text there is
+  third-party plugins' (Inspection Lens, InlineProblems); JetBrains shelved the
+  request. A problem is read from the card on its squiggle (message, `Fix:`
+  with Alt+Shift+Enter, More actions with Alt+Enter), from Ctrl+F1, and above
+  the docs in Shift+F1. So `diagnosticMessages` now defaults to `none`, and
+  Porta has all three. `inlineDiagnostics: true` still maps to `inline`: it was
+  an explicit ask for the message.
+- **Hints are pills, kept apart by kind**, and a parameter's name shows only
+  before a literal, as PhpStorm's default does. `kind` had been dropped by the
+  mapper, so the two could not be told apart at all.
+
+**The wrap rule for hints refines history-01's "measure the document line".**
+Rows are still measured on the raw line and text never reflows for a hint.
+What changed is where a hint may go: segment k shows exactly the raw columns
+`[k·w, (k+1)·w)`, and hints are placed only into the cells a segment's text
+leaves free, greedily, left to right (`Editor/InlayLine`). Only the last
+segment of a wrapped line has free cells, so a hint on a full middle segment
+is not drawn. Before, a hint pushed the segment's tail into the next row's
+slice while the row count stayed the same, and the end of the line clipped
+out of view.
+
+**One column mapping.** Only the caret knew about hints. A click, a drag and a
+hover mapped the raw screen column, so they landed off by a hint's width, and
+the spans of a window scrolled past a hint were clipped by the screen column
+instead of the character it shows. `InlayLine` is now the one placement and
+mapping (`screenCol`, `rowStart`, `hit`), and `EditorMouse::pointAt()` is the
+one entry every pointer path takes. A cell on a hint answers the character it
+sits before.
+
+**The card's fix is asked lazily.** `Lsp/QuickFixProbe` sends one
+`textDocument/codeAction` for the problem under the pointer, on the next loop
+turn (a pointer route can run inside a frame hook). It keeps the answer until
+the file's problems change, and announces only the problem asked about last:
+the pool has no `$/cancelRequest`, so a sweep across squiggles leaves earlier
+answers cached and silent. `TooltipCenter::refresh()` updates a card in place
+when its key still matches, and never brings back one that was dismissed.

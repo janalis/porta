@@ -288,3 +288,4 @@ its one-line row in [Settled questions](../decisions.md).
 - Views open in a window, and every modal is one kind of window (2026-10-01)
 - The two coverage passes run at once (2026-10-02)
 - Opening a project no longer runs it (2026-10-02)
+- Problems and inlay hints the PhpStorm way (2026-10-07)

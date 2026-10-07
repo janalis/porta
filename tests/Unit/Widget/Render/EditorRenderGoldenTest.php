@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Widget\Render;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\ChangeMarkKind;
 use Porta\Editor\CompletionItem;
+use Porta\Editor\DiagnosticMessageMode;
 use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\InlayHint;
 use Porta\Editor\LineNumberMode;
@@ -119,6 +120,7 @@ final class EditorRenderGoldenTest extends TestCase
                 static function (CodeEditorWidget $e) use ($php): void {
                     $e->openFile('demo.php', $php);
                     $e->setFocused(true);
+                    $e->display->setDiagnosticMessages(DiagnosticMessageMode::Inline);
                     $e->decorations->setDiagnostics([
                         2 => [
                             ['severity' => DiagnosticSeverity::Error, 'message' => 'bad type', 'col' => 9, 'endCol' => 14],

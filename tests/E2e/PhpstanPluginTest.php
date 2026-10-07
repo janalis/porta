@@ -78,6 +78,8 @@ final class PhpstanPluginTest extends TestCase
     public function testErrorsBecomeDiagnosticsAndACleanRunClearsThem(): void
     {
         $project = $this->project($this->errorStub());
+        // The message after the code is what this reads; PhpStorm's default shows none.
+        $project->write('.porta.json', (string) \json_encode(['settings' => ['diagnosticMessages' => 'inline']]));
 
         $this->runIde(
             $project,

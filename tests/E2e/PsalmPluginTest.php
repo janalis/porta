@@ -82,6 +82,8 @@ final class PsalmPluginTest extends TestCase
     public function testIssuesBecomeDiagnosticsAndACleanRunClearsThem(): void
     {
         $project = $this->project($this->errorStub());
+        // The message after the code is what this reads; PhpStorm's default shows none.
+        $project->write('.porta.json', (string) \json_encode(['settings' => ['diagnosticMessages' => 'inline']]));
 
         $this->runIde(
             $project,

@@ -36,6 +36,9 @@ final class CodeEditorTrailingCellTest extends TestCase
         $editor = new CodeEditorWidget();
         $editor->openFile($path, $content);
         $editor->setFocused(true);
+        // The cell after the code is what these are about, and a diagnostic
+        // takes it only while its message is shown there.
+        $editor->display->setDiagnosticMessages(DiagnosticMessageMode::Inline);
 
         return $editor;
     }

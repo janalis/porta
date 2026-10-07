@@ -22,7 +22,12 @@ namespace Porta\Editor;
  */
 final class EditorDisplayOptions
 {
-    public private(set) DiagnosticMessageMode $diagnosticMessages = DiagnosticMessageMode::Inline;
+    /**
+     * PhpStorm's default: no message after the code. The squiggle, the
+     * gutter, the stripe and the status bar mark a problem; resting the
+     * pointer on it, or Ctrl+F1, says what it is.
+     */
+    public private(set) DiagnosticMessageMode $diagnosticMessages = DiagnosticMessageMode::None;
     public private(set) InlayHintMode $inlayHints = InlayHintMode::Inline;
 
     /** PhpStorm's default: a parameter's name only where the argument is a literal. */
