@@ -16,6 +16,7 @@ use Porta\Input\GutterClickRouter;
 use Porta\Overlay\Region\DropdownRegion;
 use Porta\Overlay\Region\ModalBox;
 use Porta\Overlay\State\MenuOverlayController;
+use Porta\Overlay\State\OverlayHost;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\Paint;
@@ -218,7 +219,8 @@ final class IdeMousePrimitivesTest extends TestCase
     public function testAWheelInsideAFloatingSurfaceNeverScrollsTheEditorBehindIt(): void
     {
         \putenv('PATH=/nonexistent');
-        $long = "<?php\n".\implode("\n", \array_map(static fn (int $i): string => "// line {$i}", \range(1, end: 80)))."\n";
+        // Long lines, so a sideways notch that leaked would have room to scroll.
+        $long = "<?php\n".\implode("\n", \array_map(static fn (int $i): string => "// line {$i} ".\str_repeat('x', times: 200), \range(1, end: 80)))."\n";
         $project = new TempProject(['A.php' => $long]);
         // The notch goes on the box's lowest inner row: the top of a dropdown
         // can sit over the tab strip, where a fall-through scrolls nothing
@@ -278,6 +280,54 @@ final class IdeMousePrimitivesTest extends TestCase
                     $this->assertTrue($box->contains($row, $col) && $row >= $rect->row, 'sanity: inside the modal and over the editor pane');
                     $tui->handleInput(\sprintf("\x1b[<65;%d;%dM", $col + 1, $row + 1));
                     $this->assertSame(0, $scroll->vScroll, 'a notch inside the find modal did not scroll the editor behind it');
+                    $tui->handleInput(\sprintf("\x1b[<67;%d;%dM", $col + 1, $row + 1));
+                    $this->assertSame(0, $scroll->hScroll, 'nor did a sideways one');
+                    $tui->handleInput("\x1b");
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    /**
+     * The search modal owns every wheel while it is open — inside its box or
+     * over the dimmed workspace, vertical or sideways: nothing beneath it
+     * scrolls. The sideways notch (shift+wheel, a trackpad's drift) takes its
+     * own route, which is where one leaked.
+     */
+    public function testNoWheelScrollsTheWorkspaceUnderTheSearchModal(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $long = "<?php\n".\implode("\n", \array_map(static fn (int $i): string => "// line {$i} ".\str_repeat('x', times: 200), \range(1, end: 80)))."\n";
+        $project = new TempProject(['A.php' => $long]);
+
+        $this->runIde(
+            $project,
+            $project->path('A.php'),
+            [
+                300 => function (Tui $tui, $terminal, Ide $ide): void {
+                    $this->frame($tui);
+                    $editor = Widgets::editor($tui);
+                    $scroll = EditorState::scroll($editor);
+                    $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($editor);
+                    \assert(null !== $rect, description: 'the editor was painted');
+                    Services::resolve($ide, CommandRegistry::class)->run('ide_search_everywhere');
+                    $this->frame($tui);
+                    $box = Probe::get(Services::resolve($ide, OverlayHost::class), 'searchBox');
+                    $this->assertInstanceOf(ModalBox::class, $box, 'the search modal is open');
+
+                    $inside = [$box->startRow + $box->rows - 2, $box->col + 3];
+                    $outside = [$rect->row + $rect->rows - 2, $rect->col + 2];
+                    $this->assertFalse($box->contains(...$outside), 'sanity: the outside point is off the modal, over the editor');
+                    // 64/65 up/down, 66/67 sideways — each at both points.
+                    foreach ([$inside, $outside] as [$row, $col]) {
+                        foreach ([65, 67, 66, 64] as $button) {
+                            $tui->handleInput(\sprintf("\x1b[<%d;%d;%dM", $button, $col + 1, $row + 1));
+                            $this->assertSame([0, 0], [$scroll->vScroll, $scroll->hScroll], "wheel {$button} at {$row},{$col} left the editor beneath alone");
+                        }
+                    }
+                    $this->assertTrue($editor->isAnyPickerOpen(), 'and the modal is still open');
                     $tui->handleInput("\x1b");
                 },
             ],

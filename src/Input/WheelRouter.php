@@ -86,6 +86,14 @@ final readonly class WheelRouter
      */
     private function horizontal(MouseEvent $mouse, ?WidgetRect $tabsRect, ?WidgetRect $editorRect): bool
     {
+        // A floating picker owns every wheel, as on the vertical route, and
+        // the Find modal the ones inside its box; neither scrolls sideways, so
+        // the notch is spent on nothing rather than the workspace beneath.
+        $editor = $this->panes->editor;
+        $findBox = $editor->isFindModalOpen() ? $editor->findModal->lastBox() : null;
+        if ($editor->isAnyPickerOpen() || true === $findBox?->contains($mouse->row, $mouse->col)) {
+            return false;
+        }
         if ($this->pointers->of($this->views->activeId())->wheel(new WheelGesture($mouse, WheelAxis::Horizontal, WheelStep::cols($mouse)))) {
             return true;
         }
