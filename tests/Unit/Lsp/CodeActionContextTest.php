@@ -28,6 +28,33 @@ final class CodeActionContextTest extends TestCase
         );
     }
 
+    /**
+     * A server answers with every action at the range: one that names the
+     * problems it fixes is a fix for those alone. phpactor offers its method
+     * docblock's "Add missing @param tags" under an undefined variable.
+     */
+    public function testAFixForAnotherProblemIsNotThisProblemsFix(): void
+    {
+        $about = CodeActionContext::lspDiagnostic(16, ['severity' => DiagnosticSeverity::Error, 'message' => 'Undefined variable "$missing"', 'col' => 24, 'endCol' => 32]);
+        $elsewhere = [
+            'title' => 'Add missing @param tags',
+            'kind' => 'quickfix.add_missing_params',
+            'diagnostics' => [['message' => 'Missing @param', 'range' => ['start' => ['line' => 6, 'character' => 35]]]],
+        ];
+        $sameWordsOtherLine = [
+            'title' => 'Other line',
+            'kind' => 'quickfix',
+            'diagnostics' => [['message' => 'Undefined variable "$missing"', 'range' => ['start' => ['line' => 3, 'character' => 0]]]],
+        ];
+        $ours = ['title' => 'Define $missing', 'kind' => 'quickfix', 'diagnostics' => [['message' => 'Undefined variable "$missing"', 'range' => ['start' => ['line' => 16, 'character' => 24]]]]];
+        $unnamed = ['title' => 'Unnamed', 'kind' => 'quickfix', 'diagnostics' => []];
+
+        $this->assertNull(CodeActionContext::firstQuickFix([$elsewhere, $sameWordsOtherLine], $about), 'no fix for THIS problem');
+        $this->assertSame($ours, CodeActionContext::firstQuickFix([$elsewhere, $ours], $about));
+        $this->assertSame($unnamed, CodeActionContext::firstQuickFix([$elsewhere, $unnamed], $about), 'one that names none: older servers');
+        $this->assertSame($elsewhere, CodeActionContext::firstQuickFix([$elsewhere]), 'not asked about a problem: any fix');
+    }
+
     public function testADiagnosticGoesBackAsTheServerSentIt(): void
     {
         $this->assertSame(

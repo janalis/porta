@@ -36,7 +36,7 @@ final class QuickFixProbe
     /** @var array<string, FixLookup> problem => what is known about its fixes */
     private array $known = [];
 
-    /** @var array<string, array{offered: list<array<string, mixed>>, answered: int, asked: int}> problems still being answered */
+    /** @var array<string, array{about: array<string, mixed>, offered: list<array<string, mixed>>, answered: int, asked: int}> problems still being answered */
     private array $asking = [];
 
     /** The problem asked about last: the only one whose answer is announced. */
@@ -79,8 +79,8 @@ final class QuickFixProbe
         if (\array_key_exists($key, $this->asking)) {
             return FixLookup::pending(); // already out: its answer comes to the latest asker
         }
-        $this->asking[$key] = ['offered' => [], 'answered' => 0, 'asked' => \PHP_INT_MAX];
         $lspDiag = CodeActionContext::lspDiagnostic($line, $diag);
+        $this->asking[$key] = ['about' => $lspDiag, 'offered' => [], 'answered' => 0, 'asked' => \PHP_INT_MAX];
         $this->scheduler->delay(0.0, function () use ($key, $path, $lspDiag): void {
             $this->ask($key, $path, $lspDiag);
         });
@@ -149,8 +149,8 @@ final class QuickFixProbe
         /** @var list<array<string, mixed>> $offered */
         $offered = [...$asking['offered'], ...\array_values(\array_filter($result, static fn (mixed $a): bool => \is_array($a) && '' !== (string) ($a['title'] ?? '')))];
         $answered = $asking['answered'] + 1;
-        $this->asking[$key] = ['offered' => $offered, 'answered' => $answered, 'asked' => $asking['asked']];
-        $fix = CodeActionContext::firstQuickFix($offered);
+        $this->asking[$key] = ['about' => $asking['about'], 'offered' => $offered, 'answered' => $answered, 'asked' => $asking['asked']];
+        $fix = CodeActionContext::firstQuickFix($offered, $asking['about']);
         $last = $answered >= $asking['asked'];
         if (null !== $fix && (true === ($fix['isPreferred'] ?? null) || $last)) {
             $this->settle($key, FixLookup::found((string) $fix['title'], \count($offered)));

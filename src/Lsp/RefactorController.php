@@ -189,15 +189,16 @@ final class RefactorController extends AbstractLspController implements EditorRe
 
             return;
         }
+        $about = CodeActionContext::lspDiagnostic($line, $here[0]);
         $this->requestActions(
             $line,
             $col,
             only: null,
             // @mago-expect lint:no-boolean-flag-parameter -- whether every server has answered is the request's state, not a second responsibility.
-            present: function (array $actions, bool $final): void {
+            present: function (array $actions, bool $final) use ($about): void {
                 // The card's rule: a server's preferred fix at once, otherwise
                 // the first fix once every server has had its say.
-                $fix = CodeActionContext::firstQuickFix($actions);
+                $fix = CodeActionContext::firstQuickFix($actions, $about);
                 if (null !== $fix && (true === ($fix['isPreferred'] ?? null) || $final)) {
                     ++$this->actionGeneration;
                     $this->applyOrResolve($fix);
@@ -211,7 +212,7 @@ final class RefactorController extends AbstractLspController implements EditorRe
             empty: 'No quick fix for this problem',
             // The worst problem alone, as the card asks: the same question
             // gets the same fix.
-            diagnostics: [CodeActionContext::lspDiagnostic($line, $here[0])],
+            diagnostics: [$about],
         );
     }
 

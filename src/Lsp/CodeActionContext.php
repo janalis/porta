@@ -75,19 +75,52 @@ final class CodeActionContext
      * it says is disabled. An action without a kind is taken for a fix: older
      * servers send none.
      *
+     * Nor one for ANOTHER problem: a server answers with every action at the
+     * range, and an action that names the diagnostics it fixes is a fix for
+     * those alone — phpactor offers "Add missing @param tags" (the method's
+     * docblock) under an undefined variable in its body. One that names none
+     * is still taken: older servers name none.
+     *
      * @param list<array<string, mixed>> $actions
+     * @param array<string, mixed>|null  $about   the problem, as {@see lspDiagnostic()} sends it
      *
      * @return array<string, mixed>|null
      */
-    public static function firstQuickFix(array $actions): ?array
+    public static function firstQuickFix(array $actions, ?array $about = null): ?array
     {
         foreach (self::preferredFirst($actions) as $action) {
             $kind = (string) ($action['kind'] ?? '');
-            if (!\is_array($action['disabled'] ?? null) && ('' === $kind || 'quickfix' === $kind || \str_starts_with($kind, 'quickfix.'))) {
+            if (!\is_array($action['disabled'] ?? null) && ('' === $kind || 'quickfix' === $kind || \str_starts_with($kind, 'quickfix.')) && self::fixes($action, $about)) {
                 return $action;
             }
         }
 
         return null;
+    }
+
+    /**
+     * Whether an action is for the problem: it names no diagnostics, or names
+     * one with the problem's message on the problem's line.
+     *
+     * @param array<string, mixed>      $action
+     * @param array<string, mixed>|null $about
+     */
+    private static function fixes(array $action, ?array $about): bool
+    {
+        $named = \is_array($action['diagnostics'] ?? null) ? $action['diagnostics'] : null;
+        if (null === $about || null === $named || [] === $named) {
+            return true;
+        }
+        /** @var array{start: array{line: int}} $range as {@see lspDiagnostic()} builds it */
+        $range = $about['range'];
+
+        return \array_any(
+            $named,
+            static fn (mixed $diagnostic): bool => (
+                \is_array($diagnostic)
+                && ($diagnostic['message'] ?? null) === $about['message']
+                && ($diagnostic['range']['start']['line'] ?? null) === $range['start']['line']
+            ),
+        );
     }
 }
