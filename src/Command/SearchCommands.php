@@ -6,6 +6,7 @@ namespace Porta\Command;
 
 use Porta\Config\CommandRegistry;
 use Porta\Config\KeyDispatch;
+use Porta\Config\PaletteVisibility;
 use Porta\Editor\BufferService;
 use Porta\Editor\ChangeNavigation;
 use Porta\Editor\DiagnosticNavigation;
@@ -36,6 +37,8 @@ final readonly class SearchCommands implements CommandProvider
     {
         $commands
             ->add('ide_problems', fn () => $this->searchActions->showProblems(), keyBound: KeyDispatch::Bound)
+            // The status bar's caret problem, clicked: no key, no palette row.
+            ->add('ide_reveal_caret_problem', fn () => $this->diagnostics->revealAtCaret(), label: 'Show the Problem at the Caret', inPalette: PaletteVisibility::Hidden)
             ->add('next_problem', fn () => $this->diagnostics->next(), keyBound: KeyDispatch::Bound)
             ->add('prev_problem', fn () => $this->diagnostics->previous(), keyBound: KeyDispatch::Bound)
             ->add('next_member', fn () => $this->members->next(), keyBound: KeyDispatch::Bound)

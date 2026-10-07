@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Search;
 
 use Porta\Editor\BufferManager;
+use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\DiagnosticStyle;
 use Porta\Support\ProjectPaths;
 
@@ -21,6 +22,15 @@ final readonly class ProblemRows
         private BufferManager $buffers,
         private ProjectPaths $paths,
     ) {}
+
+    /**
+     * A problem's row text: its severity glyph, then its message — what a row
+     * is found by when a problem is opened in the panel from elsewhere.
+     */
+    public static function label(DiagnosticSeverity $severity, string $message): string
+    {
+        return $severity->glyph().' '.$message;
+    }
 
     /**
      * The rows for the Problems panel.
@@ -47,7 +57,6 @@ final readonly class ProblemRows
             $rel = $this->paths->relative($buffer->path);
             foreach ($buffer->diagnostics as $line => $list) {
                 foreach ($list as $diag) {
-                    $marker = $diag['severity']->glyph();
                     // Cast now, where it IS observable: the shape says
                     // `int|string` and the field is a string, so a numeric
                     // code from a server that sends one has to arrive as text
@@ -56,7 +65,7 @@ final readonly class ProblemRows
                     $results[] = [
                         'path' => $rel,
                         'line' => $line,
-                        'text' => $marker.' '.$diag['message'],
+                        'text' => self::label($diag['severity'], $diag['message']),
                         'tail' => $code,
                     ];
                 }

@@ -9,12 +9,14 @@ use Porta\Editor\BufferManager;
 use Porta\Editor\DiagnosticHit;
 use Porta\Editor\DiagnosticMessageMode;
 use Porta\Editor\DiagnosticStyle;
+use Porta\Event\ProblemRevealRequested;
 use Porta\I18n\Translator;
 use Porta\Support\ProjectPaths;
 use Porta\Ui\Glyphs;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\EditorRefactorHandler;
 use Porta\Workbench\Notifier;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -53,6 +55,7 @@ final class RefactorController extends AbstractLspController implements EditorRe
         private readonly WorkspaceEditor $workspaceEditor,
         private readonly RefactoringUndo $undo,
         private readonly ProjectPaths $paths,
+        private readonly EventDispatcherInterface $events,
     ) {
         parent::__construct($lsp, $editor, $tui, $notifier, $translator);
     }
@@ -220,24 +223,28 @@ final class RefactorController extends AbstractLspController implements EditorRe
      * The caret line's diagnostics as rows to read, worst first — only while
      * the messages are shown in this menu. Notes: the list never selects or
      * runs a row that is there to be read, and draws it plain rather than
-     * struck through like a disabled action.
+     * struck through like a disabled action. A click on one opens it in the
+     * Problems panel.
      *
-     * @return list<array{label: string, hint: string, value: string, note: true}>
+     * @return list<array{label: string, hint: string, value: string, note: true, open: \Closure(): void}>
      */
     private function problemRows(int $line): array
     {
-        if (DiagnosticMessageMode::Menu !== $this->editor->display->diagnosticMessages) {
+        $buffer = $this->buffers->active();
+        if (DiagnosticMessageMode::Menu !== $this->editor->display->diagnosticMessages || null === $buffer) {
             return [];
         }
+        $path = $buffer->path;
 
         return \array_map(
-            static fn (array $d): array => [
+            fn (array $d): array => [
                 'label' => $d['severity']->glyph().' '.\trim((string) \preg_replace('/\s+/u', replacement: ' ', subject: $d['message'])),
                 'hint' => (string) ($d['source'] ?? $d['code'] ?? ''),
                 'value' => '',
                 'note' => true,
+                'open' => fn () => $this->events->dispatch(new ProblemRevealRequested($path, $line, $d['severity'], $d['message'])),
             ],
-            DiagnosticStyle::worstFirst($this->buffers->active()?->diagnostics[$line] ?? []),
+            DiagnosticStyle::worstFirst($buffer->diagnostics[$line] ?? []),
         );
     }
 
@@ -408,7 +415,7 @@ final class RefactorController extends AbstractLspController implements EditorRe
 
     /**
      * @param list<array<string, mixed>>                                                $actions
-     * @param list<array{label: string, hint: string, value: string, note: true}>     $problems rows to read above the actions
+     * @param list<array{label: string, hint: string, value: string, note: true, open: \Closure(): void}> $problems rows to read above the actions
      */
     private function pick(string $title, array $actions, array $problems = []): void
     {

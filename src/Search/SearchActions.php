@@ -9,12 +9,14 @@ use Porta\Editor\ActiveDocumentProvider;
 use Porta\Editor\BufferService;
 use Porta\Editor\EditorTextAccess;
 use Porta\Editor\OpenFocus;
+use Porta\Event\ProblemRevealRequested;
 use Porta\I18n\Translator;
 use Porta\Support\ProjectPaths;
 use Porta\Widget\Support\ResultsPanelFields;
 use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\Dock\ResultsPanelMode;
 use Porta\Workbench\Notifier;
+use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 
 /**
  * The search entry points behind the commands and tree context menus:
@@ -70,6 +72,18 @@ final readonly class SearchActions
             $this->problemRows->build(),
             ResultsPanelFields::problemList(),
         );
+    }
+
+    /**
+     * A problem read elsewhere — the status bar, the Alt+Enter list — opened
+     * in the Problems panel, its row selected. A row the panel's filter hides,
+     * or a collapsed file group, leaves the selection where it was.
+     */
+    #[AsEventListener]
+    public function onProblemRevealRequested(ProblemRevealRequested $event): void
+    {
+        $this->showProblems();
+        $this->panels->selectInList(ResultsPanelMode::Problems, $this->paths->relative($event->path), $event->line, ProblemRows::label($event->severity, $event->message));
     }
 
     /** PhpStorm-style Ctrl+Shift+T: jump from a class to its test file, or back. */

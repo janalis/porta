@@ -28,9 +28,9 @@ final class ListFilter
      * pays off immediately: the hint is the symbol KIND in File Structure, so
      * typing `method` narrows a class to its methods.
      *
-     * @param list<array{label: string, hint: string, value: string, checked?: bool, disabled?: bool, note?: bool}> $items
+     * @param list<array{label: string, hint: string, value: string, checked?: bool, disabled?: bool, note?: bool, open?: \Closure(): void}> $items
      *
-     * @return list<array{label: string, hint: string, value: string, checked?: bool, disabled?: bool, note?: bool}>
+     * @return list<array{label: string, hint: string, value: string, checked?: bool, disabled?: bool, note?: bool, open?: \Closure(): void}>
      */
     public static function matching(array $items, string $needle): array
     {

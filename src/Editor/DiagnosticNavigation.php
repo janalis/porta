@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Porta\Editor;
 
 use Porta\Container\AsIdeService;
+use Porta\Event\ProblemRevealRequested;
 use Porta\I18n\Translator;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Workbench\Notifier;
+use Psr\EventDispatcher\EventDispatcherInterface;
 
 /**
  * PhpStorm's F2 / Shift+F2: walk the current file's diagnostics without
@@ -29,7 +31,23 @@ final readonly class DiagnosticNavigation
         private CodeEditorWidget $editor,
         private Notifier $notifier,
         private Translator $translator,
+        private EventDispatcherInterface $events,
     ) {}
+
+    /**
+     * The caret line's problem — the one the status bar shows, the worst —
+     * opened in the Problems panel. Nothing when the caret is on none.
+     */
+    public function revealAtCaret(): void
+    {
+        $buffer = $this->buffers->active();
+        $line = $this->editor->getDocument()->cursorLine;
+        $worst = DiagnosticStyle::worstFirst($buffer?->diagnostics[$line] ?? [])[0] ?? null;
+        if (null === $buffer || null === $worst) {
+            return;
+        }
+        $this->events->dispatch(new ProblemRevealRequested($buffer->path, $line, $worst['severity'], $worst['message']));
+    }
 
     public function next(): void
     {

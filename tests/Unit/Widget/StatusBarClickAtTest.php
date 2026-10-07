@@ -223,4 +223,84 @@ final class StatusBarClickAtTest extends TestCase
 
         $this->assertSame('/q/src/a.php', $status->fileAt(1));
     }
+
+    /** `src/A.php  ✗ boom` with the problem's words clickable, as the provider reports it. */
+    private function barWithAProblem(): StatusBarWidget
+    {
+        $status = new StatusBarWidget(new MockClock('2020-01-01T00:00:00+00:00'));
+        $status->setProvider(static fn (): array => [
+            'left' => 'src/A.php  ✗ boom',
+            'leftPath' => '/p/src/A.php',
+            'leftPathWidth' => 9,
+            'leftClicks' => [new StatusClickSpan(11, 17, 'ide_reveal_caret_problem', "✗ boom\nClick to show it in the Problems panel")],
+            'right' => 'AB',
+        ]);
+        $status->beforeRender();
+
+        return $status;
+    }
+
+    /** The caret's problem, after the path, opens it in the Problems panel; the path stays the file. */
+    public function testTheCaretProblemOnTheLeftIsClickable(): void
+    {
+        $status = $this->barWithAProblem();
+        $row = $status->render(new RenderContext(self::COLUMNS, 1))[0];
+        $at = self::columnOf($row, '✗ boom');
+
+        $this->assertSame('ide_reveal_caret_problem', $status->clickAt($at));
+        $this->assertSame('ide_reveal_caret_problem', $status->clickAt($at + 5), 'its last cell');
+        $this->assertNull($status->clickAt($at + 6), 'not past it');
+        $this->assertNull($status->clickAt($at - 1), 'not the gap before it');
+        $this->assertSame('/p/src/A.php', $status->fileAt(self::columnOf($row, 'src/A.php')), 'the path is still the file');
+        $this->assertSame("✗ boom\nClick to show it in the Problems panel", $status->tooltipAt(0, $at)?->text, 'its card says what a click does');
+    }
+
+    public function testTheCaretProblemUnderlinesUnderThePointer(): void
+    {
+        $status = $this->barWithAProblem();
+        $at = self::columnOf($status->render(new RenderContext(self::COLUMNS, 1))[0], '✗ boom');
+
+        $this->assertTrue($status->hoverAt($at + 2));
+
+        $this->assertStringContainsString("\e[4m✗ boom", $status->render(new RenderContext(self::COLUMNS, 1))[0]);
+    }
+
+    /**
+     * Cut in the middle, the left keeps its tail — the problem's last words —
+     * and they stay clickable where they are drawn now; covered by a flash,
+     * nothing of it is.
+     */
+    public function testAnElidedLeftKeepsItsTailClickableAndAFlashNone(): void
+    {
+        $status = $this->barWithAProblem();
+        $row = $status->render(new RenderContext(18, 1))[0];
+        $plain = AnsiUtils::stripAnsiCodes($row);
+        $this->assertStringContainsString('…', $plain, 'the left was cut in the middle');
+        $tail = \mb_strpos($plain, needle: 'boom');
+        $this->assertNotFalse($tail);
+        $this->assertSame('ide_reveal_caret_problem', $status->clickAt($tail), 'the drawn tail is still the problem');
+        $this->assertNull($status->clickAt(\mb_strpos($plain, needle: '…')), 'the mark is not');
+
+        $status = $this->barWithAProblem();
+        $status->flash('Saved');
+        $row = $status->render(new RenderContext(self::COLUMNS, 1))[0];
+        $this->assertNull($status->clickAt(self::columnOf($row, 'Saved')), 'flashed');
+    }
+
+    /** A span in the kept head stays where it was; one in the cut middle is gone. */
+    public function testAnElidedLeftKeepsAHeadSpanAndDropsOneCutAway(): void
+    {
+        $status = new StatusBarWidget(new MockClock('2020-01-01T00:00:00+00:00'));
+        $status->setProvider(static fn (): array => [
+            'left' => 'abcdefghijklmnopqrstuvwxyz',
+            'leftClicks' => [new StatusClickSpan(0, 3, 'head'), new StatusClickSpan(10, 14, 'middle')],
+            'right' => 'AB',
+        ]);
+        $status->beforeRender();
+        $plain = AnsiUtils::stripAnsiCodes($status->render(new RenderContext(20, 1))[0]);
+
+        $this->assertStringContainsString('…', $plain);
+        $this->assertSame('head', $status->clickAt(1 + 1), 'b, in the kept head');
+        $this->assertNull($status->clickAt(\mb_strpos($plain, needle: '…') + 1), 'nothing of the middle is drawn');
+    }
 }

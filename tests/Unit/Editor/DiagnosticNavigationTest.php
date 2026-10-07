@@ -8,11 +8,13 @@ use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
 use Porta\Editor\DiagnosticNavigation;
 use Porta\Editor\DiagnosticSeverity;
+use Porta\Event\ProblemRevealRequested;
 use Porta\I18n\Translator;
 use Porta\Tests\Support\TestTui;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Notifier;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 
@@ -21,6 +23,9 @@ final class DiagnosticNavigationTest extends TestCase
     private BufferManager $buffers;
     private CodeEditorWidget $editor;
     private StatusBarWidget $status;
+
+    /** @var list<ProblemRevealRequested> */
+    private array $revealed = [];
 
     /** @param array<int, list<array{severity: DiagnosticSeverity, message: string, col: int}>> $diagnostics */
     private function navigation(array $diagnostics, int $caret = 0, ?string $paneId = null): DiagnosticNavigation
@@ -36,7 +41,13 @@ final class DiagnosticNavigationTest extends TestCase
         $this->editor->showDocument('/p/a.php', $buffer->document);
         $buffer->document->setCursor($caret, 0);
 
-        return new DiagnosticNavigation($this->buffers, $this->editor, new Notifier($this->status, TestTui::create(80, 24)), new Translator('en'));
+        $this->revealed = [];
+        $events = new EventDispatcher();
+        $events->addListener(ProblemRevealRequested::class, function (ProblemRevealRequested $event): void {
+            $this->revealed[] = $event;
+        });
+
+        return new DiagnosticNavigation($this->buffers, $this->editor, new Notifier($this->status, TestTui::create(80, 24)), new Translator('en'), $events);
     }
 
     /** @return array<int, list<array{severity: DiagnosticSeverity, message: string, col: int}>> */
@@ -141,5 +152,29 @@ final class DiagnosticNavigationTest extends TestCase
         $navigation->next();
 
         $this->assertSame(0, $this->caretLine());
+    }
+
+    /** The status bar's problem, clicked: the caret line's worst problem, asked to be shown in the Problems panel. */
+    public function testRevealingAtTheCaretAsksForTheLinesWorstProblem(): void
+    {
+        $navigation = $this->navigation([
+            6 => [
+                ['severity' => DiagnosticSeverity::Warning, 'message' => 'middle warn', 'col' => 0],
+                ['severity' => DiagnosticSeverity::Error, 'message' => 'worse', 'col' => 3],
+            ],
+        ], caret: 6);
+
+        $navigation->revealAtCaret();
+
+        $this->assertEquals([new ProblemRevealRequested('/p/a.php', 6, DiagnosticSeverity::Error, 'worse')], $this->revealed);
+    }
+
+    public function testRevealingAwayFromAProblemAsksNothing(): void
+    {
+        $navigation = $this->navigation(self::threeProblems(), caret: 3);
+
+        $navigation->revealAtCaret();
+
+        $this->assertSame([], $this->revealed);
     }
 }

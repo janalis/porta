@@ -332,6 +332,60 @@ final class OverlayHostNavigationTest extends TestCase
         $this->assertNotNull(Probe::get($host, 'overlay'), 'the list stays up to be read');
     }
 
+    /**
+     * A note that opens somewhere — a problem row opens the Problems panel —
+     * is what a click on it does: the list closes, and it goes there. One that
+     * does not stays a row to read.
+     */
+    public function testAClickOnANoteThatOpensSomewhereGoesThere(): void
+    {
+        $host = $this->host();
+        $opened = 0;
+        $picked = [];
+        $host->openList(
+            'Quick Fixes',
+            [
+                [
+                    'label' => '✗ boom',
+                    'hint' => '',
+                    'value' => '',
+                    'note' => true,
+                    'open' => static function () use (&$opened): void {
+                        ++$opened;
+                    },
+                ],
+                ['label' => 'Fix it', 'hint' => '', 'value' => 'fix'],
+            ],
+            static function (string $value) use (&$picked): void {
+                $picked[] = $value;
+            },
+        );
+        $host->layout([0, 0, 24, 80]);
+        $box = Probe::get($host, 'overlayBox');
+
+        for ($row = $box->startRow; $row < ($box->startRow + $box->rows) && 0 === $opened; ++$row) {
+            $host->clickAt($row, $box->col + 4);
+        }
+
+        $this->assertSame(1, $opened, 'the click went there');
+        $this->assertNull(Probe::get($host, 'overlay'), 'and the list closed');
+        $this->assertSame([], $picked, 'nothing was run');
+    }
+
+    public function testAClickOnANoteThatOpensNothingLeavesTheListUp(): void
+    {
+        $host = $this->host();
+        $host->openList('Quick Fixes', [['label' => '✗ boom', 'hint' => '', 'value' => '', 'note' => true]], static fn (): null => null);
+        $host->layout([0, 0, 24, 80]);
+        $box = Probe::get($host, 'overlayBox');
+
+        for ($row = $box->startRow + 1; $row < ($box->startRow + $box->rows - 1); ++$row) {
+            $host->clickAt($row, $box->col + 4);
+        }
+
+        $this->assertNotNull(Probe::get($host, 'overlay'));
+    }
+
     /** In the search modal too, the selection starts on — and steps between — hits that can run. */
     public function testTheSearchSelectionSkipsGreyedHits(): void
     {

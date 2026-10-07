@@ -36,7 +36,7 @@ final class StatusBarWidget extends AbstractWidget implements TooltipProvider
 {
     use StylesDefault;
 
-    /** @var (callable(): array{cells?: list<array{text: string, menu: (\Closure(): list<MenuItem>)|null, tooltip?: ?string}>, left: string, leftTooltip?: ?string, leftPath?: ?string, leftPathWidth?: int, right: string, rightClicks?: list<StatusClickSpan>})|null */
+    /** @var (callable(): array{cells?: list<array{text: string, menu: (\Closure(): list<MenuItem>)|null, tooltip?: ?string}>, left: string, leftTooltip?: ?string, leftPath?: ?string, leftPathWidth?: int, leftClicks?: list<StatusClickSpan>, right: string, rightClicks?: list<StatusClickSpan>})|null */
     private $provider;
 
     /**
@@ -101,7 +101,15 @@ final class StatusBarWidget extends AbstractWidget implements TooltipProvider
     private array $cellClicks = [];
 
     /**
-     * Their on-screen spans from the last render.
+     * Left-clickable spans of the LEFT segment — the caret's problem message —
+     * relative to it as the provider reports them.
+     *
+     * @var list<StatusClickSpan>
+     */
+    private array $leftClicks = [];
+
+    /**
+     * Their on-screen spans from the last render, the left's first.
      *
      * @var list<StatusClickSpan>
      */
@@ -119,7 +127,7 @@ final class StatusBarWidget extends AbstractWidget implements TooltipProvider
     }
 
     /**
-     * @param callable(): array{cells?: list<array{text: string, menu: (\Closure(): list<MenuItem>)|null, tooltip?: ?string}>, left: string, leftTooltip?: ?string, leftPath?: ?string, leftPathWidth?: int, right: string, rightClicks?: list<StatusClickSpan>} $provider
+     * @param callable(): array{cells?: list<array{text: string, menu: (\Closure(): list<MenuItem>)|null, tooltip?: ?string}>, left: string, leftTooltip?: ?string, leftPath?: ?string, leftPathWidth?: int, leftClicks?: list<StatusClickSpan>, right: string, rightClicks?: list<StatusClickSpan>} $provider
      */
     public function setProvider(callable $provider): self
     {
@@ -166,7 +174,8 @@ final class StatusBarWidget extends AbstractWidget implements TooltipProvider
      *
      * The right-hand cells — problem counts, the caret position, the LSP
      * status — were plain strings until now, so the numbers people look at
-     * most did nothing at all when clicked.
+     * most did nothing at all when clicked. On the left, the caret's problem
+     * message opens that problem in the Problems panel.
      */
     public function clickAt(int $col): ?string
     {
@@ -283,6 +292,7 @@ final class StatusBarWidget extends AbstractWidget implements TooltipProvider
         $right = $segments['right'];
         $cells = $segments['cells'] ?? [];
         $this->cellClicks = $segments['rightClicks'] ?? [];
+        $this->leftClicks = $segments['leftClicks'] ?? [];
         $this->leftTooltip = $segments['leftTooltip'] ?? null;
         $this->leftPathWidth = $segments['leftPathWidth'] ?? 0;
         $leftPath = $segments['leftPath'] ?? null;
@@ -400,21 +410,25 @@ final class StatusBarWidget extends AbstractWidget implements TooltipProvider
         // cut right keeps the spans that end before its ellipsis.
         $rightStart = 1 + $leftWidth + $gap;
         $room = $right === $this->lastRight ? $rightWidth : $rightWidth - 1; // a cut's last column is its ellipsis
-        $this->renderedClicks = \array_values(\array_map(
-            static fn (StatusClickSpan $span): StatusClickSpan => $span->shifted($rightStart),
-            \array_filter($this->cellClicks, static fn (StatusClickSpan $span): bool => $span->to <= $room),
-        ));
+        $leftAt = $at;
+        $this->renderedClicks = [
+            ...$this->leftSpans($file, $left, $leftAt),
+            ...\array_values(\array_map(
+                static fn (StatusClickSpan $span): StatusClickSpan => $span->shifted($rightStart),
+                \array_filter($this->cellClicks, static fn (StatusClickSpan $span): bool => $span->to <= $room),
+            )),
+        ];
         // The file part says more only where it could: a path cut to fit, or
         // a state its glyph and colour carry (unsaved, a diagnostic) — a card
         // repeating a whole file name is noise.
         $fileSaysMore = null !== $this->leftTooltip && ($file !== $left || \str_contains($this->leftTooltip, "\n"));
         $this->renderedTips = $this->tips($drawn, $fileSaysMore ? $this->leftTooltip : null, $fileWidth);
         $lit = $this->litSpan($this->hoverCol);
+        if (null !== $lit && $lit[0] >= $leftAt && $lit[1] <= ($leftAt + $fileWidth)) {
+            $leftText = ([] === $parts ? '' : \implode($this->separator(), $parts).$this->separator()).self::underlined($file, $lit[0] - $leftAt, $lit[1] - $lit[0], $fileWidth);
+        }
         if (null !== $lit && $lit[0] >= $rightStart) {
-            $right =
-                AnsiText::columnsFrom($right, 0, $lit[0] - $rightStart)
-                .new Style(underline: true)->apply(AnsiText::columnsFrom($right, $lit[0] - $rightStart, $lit[1] - $lit[0]))
-                .AnsiText::columnsFrom($right, $lit[1] - $rightStart, $rightWidth);
+            $right = self::underlined($right, $lit[0] - $rightStart, $lit[1] - $lit[0], $rightWidth);
         }
         $line = ' '.$leftText.\str_repeat(' ', $gap).$right.' ';
         // '' ellipsis: chrome already gap-padded to the width — never mark it.
@@ -445,10 +459,23 @@ final class StatusBarWidget extends AbstractWidget implements TooltipProvider
             }
             $at += $width + self::SEPARATOR_WIDTH;
         }
+        // A clickable span says itself before the file part around it does:
+        // the first tip under the pointer is the one shown.
+        $fileSpans = [];
+        foreach ($this->renderedClicks as $span) {
+            if ($span->to > ($at + $fileWidth) || '' === $span->tooltip) {
+                continue;
+            }
+            $fileSpans[] = ['from' => $span->from, 'to' => $span->to, 'key' => $span->action, 'text' => $span->tooltip];
+        }
+        $tips = [...$tips, ...$fileSpans];
         if (null === $this->flash && null !== $fileTip && $fileWidth > 0) {
             $tips[] = ['from' => $at, 'to' => $at + $fileWidth, 'key' => 'file', 'text' => $fileTip];
         }
         foreach ($this->renderedClicks as $span) {
+            if ($span->to <= ($at + $fileWidth)) {
+                continue; // said above
+            }
             if ('' === $span->tooltip) {
                 continue;
             }
@@ -456,6 +483,49 @@ final class StatusBarWidget extends AbstractWidget implements TooltipProvider
         }
 
         return $tips;
+    }
+
+    /**
+     * The left's click spans where they land on the row. A left cut in the
+     * middle ({@see AnsiText::elideMiddle()}) keeps its head and its tail, so
+     * a span keeps what of it is still drawn — the tail piece where it has
+     * one, the caret's problem being the left's last words — moved by the
+     * columns cut away; a span cut away whole is gone. A flash has the left's
+     * place, and none of its spans.
+     *
+     * @return list<StatusClickSpan>
+     */
+    private function leftSpans(string $file, string $left, int $at): array
+    {
+        $whole = AnsiUtils::visibleWidth($left);
+        $drawn = AnsiUtils::visibleWidth($file);
+        if (null !== $this->flash || $drawn < 2) {
+            return [];
+        }
+        // elideMiddle's own split: the head gets the smaller half of what is
+        // left once the mark is placed.
+        $head = $drawn === $whole ? $whole : \intdiv($drawn - 1, num2: 2);
+        $tailStart = $drawn === $whole ? 0 : $whole - ($drawn - 1 - $head);
+        $spans = [];
+        foreach ($this->leftClicks as $span) {
+            $piece = match (true) {
+                $drawn === $whole => [$span->from, $span->to],
+                $span->to > $tailStart => [\max($span->from, $tailStart) - ($whole - $drawn), $span->to - ($whole - $drawn)],
+                $span->from < $head => [$span->from, \min($span->to, $head)],
+                default => null,
+            };
+            if (null !== $piece) {
+                $spans[] = new StatusClickSpan($at + $piece[0], $at + $piece[1], $span->action, $span->tooltip);
+            }
+        }
+
+        return $spans;
+    }
+
+    /** $text with $length columns from $from underlined: the clickable span under the pointer. */
+    private static function underlined(string $text, int $from, int $length, int $width): string
+    {
+        return AnsiText::columnsFrom($text, 0, $from).new Style(underline: true)->apply(AnsiText::columnsFrom($text, $from, $length)).AnsiText::columnsFrom($text, $from + $length, $width);
     }
 
     /** ` │ `, the one column of rule between two cells and after the last. */

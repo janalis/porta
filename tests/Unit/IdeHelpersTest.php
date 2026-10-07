@@ -16,6 +16,7 @@ use Porta\Editor\Document;
 use Porta\Editor\OpenFocus;
 use Porta\Event\BufferRepointRequested;
 use Porta\Event\HelpPageRequested;
+use Porta\Event\ProblemRevealRequested;
 use Porta\Help\HelpViewController;
 use Porta\Help\HelpViewerActions;
 use Porta\Help\MarkdownPreviewActions;
@@ -878,6 +879,39 @@ final class IdeHelpersTest extends TestCase
         // A.php sorts before B.php; within A.php line 0 before line 2
         $this->assertLessThan(\strpos($rendered, needle: 'error here'), \strpos($rendered, needle: 'top error'));
         $this->assertLessThan(\strpos($rendered, needle: 'warn here'), \strpos($rendered, needle: 'top error'));
+    }
+
+    /**
+     * A problem read in the status bar or the Alt+Enter list, clicked: the
+     * Problems panel opens on its row — the one with its words when its line
+     * has several — and falls back to the line when the words are not found.
+     */
+    public function testRevealingAProblemOpensProblemsOnItsRow(): void
+    {
+        $buffers = Services::resolve($this->ide, BufferManager::class);
+        $path = $this->project->path('src/A.php');
+        $a = $buffers->open($path, "<?php\n");
+        $a->diagnostics = [
+            0 => [['severity' => DiagnosticSeverity::Hint, 'message' => 'first', 'col' => 0]],
+            2 => [
+                ['severity' => DiagnosticSeverity::Warning, 'message' => 'one', 'col' => 0],
+                ['severity' => DiagnosticSeverity::Error, 'message' => 'two', 'col' => 3],
+            ],
+        ];
+        $events = Services::resolve($this->ide, EventDispatcherInterface::class);
+        $panel = Widgets::byId(Services::resolve($this->ide, Tui::class), 'results', ResultsPanelWidget::class);
+
+        $events->dispatch(new ProblemRevealRequested($a->path, 2, DiagnosticSeverity::Warning, 'one'));
+        $this->assertTrue($panel->isOpen(), 'the panel opened');
+        $one = $panel->captureViewState();
+        $this->assertStringEndsWith('src/A.php', (string) $one->selectedPath);
+        $this->assertSame(2, $one->selectedLine, 'on the problem\'s line, not the panel\'s first row');
+
+        $events->dispatch(new ProblemRevealRequested($a->path, 2, DiagnosticSeverity::Error, 'two'));
+        $this->assertSame($one->selectedIndex + 1, $panel->captureViewState()->selectedIndex, 'the row with its words, not the line\'s first');
+
+        $events->dispatch(new ProblemRevealRequested($a->path, 2, DiagnosticSeverity::Error, 'gone since'));
+        $this->assertSame($one->selectedIndex, $panel->captureViewState()->selectedIndex, 'words not found: the line\'s first row');
     }
 
     public function testGoToTestWithNoFileOpenFlashesNoTestFound(): void

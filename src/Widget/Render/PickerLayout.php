@@ -51,7 +51,7 @@ final class PickerLayout
 
     /**
      * @param array{int, int, int, int}                                                                                                                             $bounds
-     * @param array{title: string, items: list<array{label: string, hint: string, value: string, checked?: bool, disabled?: bool, note?: bool}>, selected: int, hovered: int|null, filter: TextField, onPick: callable(string): void} $overlay
+     * @param array{title: string, items: list<array{label: string, hint: string, value: string, checked?: bool, disabled?: bool, note?: bool, open?: \Closure(): void}>, selected: int, hovered: int|null, filter: TextField, onPick: callable(string): void} $overlay
      *
      * @return array{rows: list<string>, top: int, col: int, width: int, box: ModalBox}
      */
@@ -410,7 +410,7 @@ final class PickerLayout
     /**
      * The columns a checklist item's box and its gap take, 0 for any other item.
      *
-     * @param array{label: string, hint: string, value: string, checked?: bool, disabled?: bool, note?: bool} $item
+     * @param array{label: string, hint: string, value: string, checked?: bool, disabled?: bool, note?: bool, open?: \Closure(): void} $item
      */
     private static function boxWidth(array $item): int
     {

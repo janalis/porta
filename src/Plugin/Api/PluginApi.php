@@ -1153,7 +1153,7 @@ final class PluginApi
      * still the one open — say, when whoever the question was about went
      * away before anyone answered. Ignore it otherwise.
      *
-     * @param array<string, string>|list<array{label: string, hint: string, value: string, checked?: bool, disabled?: bool, note?: bool}> $items in the order to show them
+     * @param array<string, string>|list<array{label: string, hint: string, value: string, checked?: bool, disabled?: bool, note?: bool, open?: \Closure(): void}> $items in the order to show them
      * @param \Closure(string): void                                                        $onPick
      *
      * @return \Closure(): void withdraws the list

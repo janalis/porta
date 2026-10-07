@@ -55,8 +55,8 @@ struck through, with the server's reason beside it.
 ### Problems
 
 As in PhpStorm, a problem's message is not written after the code by default:
-the squiggle, the gutter mark, the marker stripe and the status bar say a
-problem is there, and these say what it is:
+the squiggle, the marker stripe and the status bar say a problem is there —
+the line-number gutter does not repeat it — and these say what it is:
 
 - **Rest the pointer on a squiggle.** A card opens beside it with each problem
   there, worst first: its severity glyph and message in full, then where it
@@ -82,7 +82,8 @@ last, which is where typing the offending word leaves it.
 With **Diagnostic messages** set to `menu`, the message no longer trails the line. Instead
 the caret line's problems head the `Alt+Enter` list, worst first, above the
 fixes for them, as in PhpStorm. They are rows to read, so the selection skips
-them. A line with problems and no fix still opens the list. That covers a
+them; a click on one opens it in the Problems panel, its row selected. A line
+with problems and no fix still opens the list. That covers a
 tool plugin's findings, and a line where no server is running yet.
 
 ### Breadcrumbs
@@ -330,16 +331,14 @@ before, and on a soft-wrapped line a hint is drawn only where its row has room
 The caret line's number is bold. With colour, a shaded band marks the whole
 caret line. In the monochrome theme (and under `--no-ansi`) there is no band;
 instead a `›` stands in the marker column beside the number, since underlining
-the whole line would mark every character you type. When a breakpoint or a
-bookmark takes the column a diagnostic's glyph would use, the line number stays
-underlined, so the finding still shows without colour. The last pinned
+the whole line would mark every character you type. The last pinned
 sticky-scroll row is underlined there too, to separate the pinned headers from
 the code below them.
 
 Under the pointer, a gutter mark underlines and its [tooltip](#tooltips) says
-what it is and what a click does: "Breakpoint · click to remove", "Bookmark", a
-diagnostic's message, or "Modified · click to see the change" on a git change
-mark.
+what it is and what a click does: "Breakpoint · click to remove", "Bookmark",
+or "Modified · click to see the change" on a git change mark. A problem marks
+no gutter cell: rest the pointer on its squiggle for its card.
 
 ## The completion popup
 
@@ -399,13 +398,16 @@ that offers neither simply shows no values.
 The values share the trailing slot with the inline diagnostic and with a
 plugin's line annotation (git blame). While the debugger is stopped the value
 wins, because the other two keep their other surfaces — a diagnostic still has
-its squiggle, its gutter mark, its stripe cell and the Problems panel. They
+its squiggle and card, its stripe cell and the Problems panel. They
 disappear the moment the debuggee continues or the session ends: they were
 facts about a frame that is running again.
 
 ## The Problems panel
 
 `Alt+6` collects every diagnostic in the open buffers, sorted by file then line.
+A click on the caret's problem in the status bar, or on a problem row at the
+top of the `Alt+Enter` list, opens it here with its row selected (unless the
+panel's filter hides it, or its file is collapsed: then the panel just opens).
 A row is the severity glyph, the message, and — when the source named one — the
 **rule that fired**, at the end:
 
@@ -587,9 +589,7 @@ phpantom advertises `codeLensProvider`; phpactor does not, and is never asked.
 
 `F11` toggles one on the caret's line, `Alt+2` lists every mark in the project
 with the line's own text beside it. Marks show as `◈` on the gutter's marker
-column, below breakpoints but ABOVE diagnostics in priority — a diagnostic also
-colours the line number, paints the error stripe and writes itself at the end of
-the line, while a mark has that one cell — and they survive closing the
+column, below breakpoints, and they survive closing the
 file — they live in `.porta/bookmarks.json`, not on the buffer.
 
 A rename carries them with the file, whether it came from the tree or from a

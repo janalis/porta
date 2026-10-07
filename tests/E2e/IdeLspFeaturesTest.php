@@ -529,6 +529,110 @@ final class IdeLspFeaturesTest extends TestCase
         );
     }
 
+    /** The 0-based [row, col] of the LAST screen row carrying $needle — the status bar sits at the bottom. */
+    private function lastCellOf(Tui $tui, VirtualTerminal $terminal, string $needle): array
+    {
+        $grid = $this->screenGrid($tui, $terminal);
+        foreach (\array_reverse($grid, preserve_keys: true) as $row => $text) {
+            $col = \mb_strpos($text, $needle);
+            if (false !== $col) {
+                return [$row, $col];
+            }
+        }
+        self::fail("nothing on screen reads {$needle}");
+    }
+
+    /** The caret's problem, clicked in the status bar, opens the Problems panel on its row. */
+    public function testClickingTheStatusBarProblemOpensItInProblems(): void
+    {
+        $project = new TempProject([
+            '.porta.json' => $this->mockLspConfig(),
+            'src/Problem.php' => "<?php\necho 1;\n",
+        ]);
+
+        $this->runIde(
+            $project,
+            $project->path('src/Problem.php'),
+            [
+                600 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
+                    $this->awaitPainted($tui, $terminal, 'Mock diagnostic');
+                    [$row, $col] = $this->lastCellOf($tui, $terminal, 'Mock diagnostic');
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $col + 1, $row + 1));
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $col + 1, $row + 1));
+
+                    $panel = Widgets::byId($tui, 'results', ResultsPanelWidget::class);
+                    $this->await($panel->isOpen(...), what: 'the Problems panel');
+                    $state = $panel->captureViewState();
+                    $this->assertStringEndsWith('Problem.php', (string) $state->selectedPath);
+                    $this->assertSame(0, $state->selectedLine, 'on the problem\'s row');
+                },
+            ],
+        );
+    }
+
+    /** In `menu` mode, a problem row at the top of Alt+Enter opens it in Problems. */
+    public function testClickingAProblemRowInTheQuickFixesOpensItInProblems(): void
+    {
+        $project = new TempProject([
+            '.porta.json' => (string) \json_encode(['settings' => ['diagnosticMessages' => 'menu']] + (array) \json_decode($this->mockLspConfig(), associative: true)),
+            'src/Problem.php' => "<?php\necho 1;\n",
+        ]);
+
+        $this->runIde(
+            $project,
+            $project->path('src/Problem.php'),
+            [
+                600 => function (Tui $tui, VirtualTerminal $terminal): void {
+                    $this->awaitPainted($tui, $terminal, 'Mock diagnostic');
+                    Widgets::editor($tui)->getDocument()->setCursor(0, 0);
+                    $tui->handleInput("\x1b\r"); // alt+enter
+                    $this->awaitPainted($tui, $terminal, 'Import class');
+                    $grid = $this->screenGrid($tui, $terminal);
+                    $row = $this->rowOf($grid, '✗ Mock diagnostic');
+                    $this->assertNotNull($row, 'the problem heads the list');
+                    $col = (int) \mb_strpos($grid[$row], needle: '✗ Mock diagnostic');
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $col + 3, $row + 1));
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $col + 3, $row + 1));
+
+                    $panel = Widgets::byId($tui, 'results', ResultsPanelWidget::class);
+                    $this->await($panel->isOpen(...), what: 'the Problems panel');
+                    $this->assertSame(0, $panel->captureViewState()->selectedLine);
+                    $this->assertNull($this->rowOf($this->screenGrid($tui, $terminal), 'Import class'), 'and the list closed');
+                },
+            ],
+        );
+    }
+
+    /** The gutter beside a problem says nothing of it: its card is on the code. */
+    public function testTheGutterBesideAProblemHasNoCard(): void
+    {
+        $project = new TempProject([
+            '.porta.json' => $this->mockLspConfig(),
+            'src/Problem.php' => "<?php\necho 1;\n",
+        ]);
+
+        $this->runIde(
+            $project,
+            $project->path('src/Problem.php'),
+            [
+                600 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
+                    $this->awaitPainted($tui, $terminal, 'Mock diagnostic');
+                    $editor = Widgets::editor($tui);
+                    $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($editor);
+                    $this->assertInstanceOf(WidgetRect::class, $rect);
+                    $tooltips = Services::resolve($ide, TooltipCenter::class);
+                    $tooltips->setDelayMs(0);
+
+                    // The marker column, then the code's first cell.
+                    $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $rect->col + $editor->gutterWidth() - 2, $rect->row + 1));
+                    $this->assertNull($tooltips->shown(), 'no card from the gutter');
+                    $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $rect->col + $editor->gutterWidth() + 1, $rect->row + 1));
+                    $this->await(static fn (): bool => \str_starts_with($tooltips->shown()->key ?? '', 'problem:'), what: 'the card on the code');
+                },
+            ],
+        );
+    }
+
     /** PhpStorm's Ctrl+F1 on the mock's problem: the error, described where the caret is. */
     public function testCtrlF1DescribesTheProblemAtTheCaret(): void
     {

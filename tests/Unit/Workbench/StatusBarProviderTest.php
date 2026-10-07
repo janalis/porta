@@ -365,6 +365,25 @@ final class StatusBarProviderTest extends TestCase
         $this->assertStringEndsWith('  '.Glyphs::SEVERITY_HINT.' tip', $left, 'plain: no role at all');
     }
 
+    /** The caret's problem is a click target over exactly its words: it opens it in the Problems panel. */
+    public function testTheCaretProblemIsAClickOverItsWords(): void
+    {
+        $provider = $this->provider();
+        $this->editor->openFile($this->project->path('t.php'), "<?php\n\n");
+        $this->editor->decorations->setDiagnostics([0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'boom', 'col' => 0]]]);
+
+        $segments = $provider->segments();
+        $plain = AnsiUtils::stripAnsiCodes($segments['left']);
+        [$span] = $segments['leftClicks'] ?? [];
+
+        $this->assertSame('ide_reveal_caret_problem', $span->action);
+        $this->assertSame(Glyphs::SEVERITY_ERROR.' boom', \mb_substr($plain, $span->from, $span->to - $span->from));
+        $this->assertStringContainsString('Problems panel', $span->tooltip);
+
+        $this->editor->getDocument()->setCursor(1, 0);
+        $this->assertSame([], $provider->segments()['leftClicks'] ?? [], 'no problem, nothing to click');
+    }
+
     public function testProblemsSegmentShowsExactlyOneErrorAndOneWarning(): void
     {
         $provider = $this->provider();

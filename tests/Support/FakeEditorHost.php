@@ -79,7 +79,7 @@ final class FakeEditorHost implements EditorHost
         return $this->rows;
     }
 
-    /** @param list<array{label: string, hint: string, value: string, checked?: bool, disabled?: bool, note?: bool}> $items */
+    /** @param list<array{label: string, hint: string, value: string, checked?: bool, disabled?: bool, note?: bool, open?: \Closure(): void}> $items */
     public function openListOverlay(string $title, array $items, callable $onPick): void
     {
         ($this->recorder)('openListOverlay', [$title, $items, $onPick]);

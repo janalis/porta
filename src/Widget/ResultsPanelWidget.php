@@ -217,10 +217,12 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
      * not it holds focus, and the list scrolls to follow, which is the whole
      * visible effect.
      */
-    public function selectAt(string $path, int $line): void
+    public function selectAt(string $path, int $line, ?string $text = null): void
     {
         $before = $this->list->selected();
-        $this->relocateSelection($path, $line, null, $before);
+        if (null === $text || !$this->selectText($path, $line, $text)) {
+            $this->relocateSelection($path, $line, null, $before);
+        }
         if ($this->list->selected() !== $before) {
             $this->invalidate();
         }
@@ -266,6 +268,24 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
         $this->rebuildView();
         $this->relocateSelection($state->selectedPath, $state->selectedLine, $state->selectedGroupKey, $state->selectedIndex);
         $this->invalidate();
+    }
+
+    /**
+     * Select the row at (path, line) whose text is $text — one problem among
+     * several on a line. False when no displayed row is it.
+     */
+    private function selectText(string $path, int $line, string $text): bool
+    {
+        foreach ($this->displayRows as $i => $row) {
+            $result = $row->matchIndex >= 0 ? $this->results[$row->matchIndex] ?? null : null;
+            if (null !== $result && $result['path'] === $path && $result['line'] === $line && $result['text'] === $text) {
+                $this->list->select($i);
+
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

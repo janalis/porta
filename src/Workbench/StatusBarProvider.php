@@ -51,7 +51,7 @@ final readonly class StatusBarProvider
      * widget lays the cells out — it alone knows which of them fit — so the
      * router still hit-tests a click without knowing which cell is which.
      *
-     * @return array{cells: list<array{text: string, menu: (\Closure(): list<MenuItem>)|null, tooltip: ?string}>, left: string, leftTooltip: ?string, leftPath: ?string, leftPathWidth: int, right: string, rightClicks: list<StatusClickSpan>}
+     * @return array{cells: list<array{text: string, menu: (\Closure(): list<MenuItem>)|null, tooltip: ?string}>, left: string, leftTooltip: ?string, leftPath: ?string, leftPathWidth: int, leftClicks?: list<StatusClickSpan>, right: string, rightClicks: list<StatusClickSpan>}
      */
     public function segments(): array
     {
@@ -118,9 +118,18 @@ final readonly class StatusBarProvider
         }
 
         // Led by its severity's glyph, so an error and a hint differ without colour.
+        $leftClicks = [];
         if (null !== ($diagnostic = $this->editor->getCursorDiagnostic())) {
             $text = $diagnostic['severity']->glyph().' '.$diagnostic['message'];
             $leftTooltip = null === $leftTooltip ? $text : $leftTooltip."\n".$text; // whole, where the row may cut it
+            // A click on it opens it in the Problems panel.
+            $from = AnsiUtils::visibleWidth($left) + 2;
+            $leftClicks[] = new StatusClickSpan(
+                $from,
+                $from + AnsiUtils::visibleWidth($text),
+                'ide_reveal_caret_problem',
+                $text."\n".$this->translator->trans('Click to show it in the Problems panel'),
+            );
             $left .= '  '.match ($diagnostic['severity']) {
                 DiagnosticSeverity::Error => $this->styles->of(Role::StatusError)->apply($text),
                 DiagnosticSeverity::Warning => $this->styles->of(Role::StatusWarning)->apply($text),
@@ -186,7 +195,16 @@ final readonly class StatusBarProvider
         // not a control, and a click landing on one used to open the server log.
         $clicks[] = new StatusClickSpan($at, $at + AnsiUtils::visibleWidth($lspCell), 'ide_lsp_log', $this->translator->trans('The language server for this file — click for its log'));
 
-        return ['cells' => $cells, 'left' => $left, 'leftTooltip' => $leftTooltip, 'leftPath' => $leftPath, 'leftPathWidth' => $leftPathWidth, 'right' => $right, 'rightClicks' => $clicks];
+        return [
+            'cells' => $cells,
+            'left' => $left,
+            'leftTooltip' => $leftTooltip,
+            'leftPath' => $leftPath,
+            'leftPathWidth' => $leftPathWidth,
+            'leftClicks' => $leftClicks,
+            'right' => $right,
+            'rightClicks' => $clicks,
+        ];
     }
 
     /**

@@ -446,15 +446,16 @@ final class BottomDock
     }
 
     /**
-     * Select the row at (path, line) in the list tool on display. A parked
+     * Select the row at (path, line) in the list tool on display — the one
+     * reading $text when the line has several. A parked
      * tab's selection lives in its frozen {@see ResultsViewState}, not in the
      * widget, so writing it there would be writing to a snapshot the next
      * switch overwrites — and a selection nobody can see is not worth keeping.
      */
-    public function selectInList(ResultsPanelMode $mode, string $path, int $line): void
+    public function selectInList(ResultsPanelMode $mode, string $path, int $line, ?string $text = null): void
     {
         if ([] !== $this->displayedRows($mode)) {
-            $this->resultsPanel->selectAt($path, $line);
+            $this->resultsPanel->selectAt($path, $line, $text);
         }
     }
 

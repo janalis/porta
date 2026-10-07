@@ -3390,6 +3390,14 @@
         <source>No quick fix for this problem</source>
         <target>No quick fix for this problem</target>
       </trans-unit>
+      <trans-unit id="1169">
+        <source>Click to show it in the Problems panel</source>
+        <target>Click to show it in the Problems panel</target>
+      </trans-unit>
+      <trans-unit id="1170">
+        <source>Show the Problem at the Caret</source>
+        <target>Show the Problem at the Caret</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

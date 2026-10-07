@@ -310,3 +310,20 @@ the file's problems change, and announces only the problem asked about last:
 the pool has no `$/cancelRequest`, so a sweep across squiggles leaves earlier
 answers cached and silent. `TooltipCenter::refresh()` updates a card in place
 when its key still matches, and never brings back one that was dismissed.
+
+## The gutter stops repeating problems; a problem read elsewhere opens in Problems (2026-10-07)
+
+The line-number gutter coloured a problem line's number by severity, drew its
+glyph in the marker column, underlined the number when a breakpoint or bookmark
+took that column, and said the message on hover. The user asked for none of
+it: a problem is the squiggle's, and its card is on the code. The marker column
+stays reserved — breakpoints, bookmarks, comments and the stopped line use it.
+history-01's bookmark-over-diagnostic precedence is moot.
+
+A problem read in the status bar or as a row of the Alt+Enter list (`menu`
+mode) opens in the Problems panel on its row. One command event,
+`ProblemRevealRequested`, which `SearchActions` alone handles: show Problems,
+then `BottomDock::selectInList` with the row's text, so the right one of
+several problems on a line is selected. A note row in a list may now carry
+`open`: a click on it closes the list and runs it; the selection still skips
+notes, so Enter never does.

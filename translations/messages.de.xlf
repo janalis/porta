@@ -3390,6 +3390,14 @@
         <source>No quick fix for this problem</source>
         <target>Keine Schnellkorrektur für dieses Problem</target>
       </trans-unit>
+      <trans-unit id="1169">
+        <source>Click to show it in the Problems panel</source>
+        <target>Klicken, um es im Bereich „Probleme“ anzuzeigen</target>
+      </trans-unit>
+      <trans-unit id="1170">
+        <source>Show the Problem at the Caret</source>
+        <target>Problem an der Einfügemarke anzeigen</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

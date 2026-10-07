@@ -45,7 +45,7 @@ final class OverlayHost
 {
     use StylesDefault;
 
-    /** @var array{title: string, items: list<array{label: string, hint: string, value: string, checked?: bool, disabled?: bool, note?: bool}>, selected: int, hovered: int|null, filter: TextField, onPick: callable(string): void}|null */
+    /** @var array{title: string, items: list<array{label: string, hint: string, value: string, checked?: bool, disabled?: bool, note?: bool, open?: \Closure(): void}>, selected: int, hovered: int|null, filter: TextField, onPick: callable(string): void}|null */
     private ?array $overlay = null;
 
     /** @var array{title: string, filter: TextField, value: string}|null the list a running pick closed, for a pick that reopens it */
@@ -101,7 +101,7 @@ final class OverlayHost
     /**
      * Open the modal list overlay (no-op for an empty list).
      *
-     * @param list<array{label: string, hint: string, value: string, checked?: bool, disabled?: bool, note?: bool}> $items
+     * @param list<array{label: string, hint: string, value: string, checked?: bool, disabled?: bool, note?: bool, open?: \Closure(): void}> $items
      * @param callable(string): void                                  $onPick receives the picked item's value
      */
     public function openList(string $title, array $items, callable $onPick): void
@@ -419,7 +419,7 @@ final class OverlayHost
         }
     }
 
-    /** @param array{title: string, items: list<array{label: string, hint: string, value: string, checked?: bool, disabled?: bool, note?: bool}>, selected: int, hovered: int|null, filter: TextField, onPick: callable(string): void} $overlay the open list overlay (non-null) */
+    /** @param array{title: string, items: list<array{label: string, hint: string, value: string, checked?: bool, disabled?: bool, note?: bool, open?: \Closure(): void}>, selected: int, hovered: int|null, filter: TextField, onPick: callable(string): void} $overlay the open list overlay (non-null) */
     private function handleOverlayInput(string $keys, Keybindings $kb, array $overlay): void
     {
         $count = \count($this->matching($overlay));
@@ -511,7 +511,7 @@ final class OverlayHost
      * as printable, so a chord this method does not recognise is swallowed
      * rather than typed, exactly as it was before.
      *
-     * @param array{title: string, items: list<array{label: string, hint: string, value: string, checked?: bool, disabled?: bool, note?: bool}>, selected: int, hovered: int|null, filter: TextField, onPick: callable(string): void} $overlay
+     * @param array{title: string, items: list<array{label: string, hint: string, value: string, checked?: bool, disabled?: bool, note?: bool, open?: \Closure(): void}>, selected: int, hovered: int|null, filter: TextField, onPick: callable(string): void} $overlay
      */
     private function typeIntoFilter(array $overlay, string $keys): void
     {
@@ -529,7 +529,7 @@ final class OverlayHost
      * same reason, and it would sit on the wrong row until the pointer next
      * moves — which, mid-keystroke, may be never.
      *
-     * @param array{title: string, items: list<array{label: string, hint: string, value: string, checked?: bool, disabled?: bool, note?: bool}>, selected: int, hovered: int|null, filter: TextField, onPick: callable(string): void} $overlay
+     * @param array{title: string, items: list<array{label: string, hint: string, value: string, checked?: bool, disabled?: bool, note?: bool, open?: \Closure(): void}>, selected: int, hovered: int|null, filter: TextField, onPick: callable(string): void} $overlay
      */
     private function refiltered(array $overlay): void
     {
@@ -544,7 +544,7 @@ final class OverlayHost
      * above holds a copy, and one that mutates its own and forgets this line
      * changes nothing at all.
      *
-     * @param array{title: string, items: list<array{label: string, hint: string, value: string, checked?: bool, disabled?: bool, note?: bool}>, selected: int, hovered: int|null, filter: TextField, onPick: callable(string): void} $overlay
+     * @param array{title: string, items: list<array{label: string, hint: string, value: string, checked?: bool, disabled?: bool, note?: bool, open?: \Closure(): void}>, selected: int, hovered: int|null, filter: TextField, onPick: callable(string): void} $overlay
      */
     private function reselect(array $overlay, int $selected, int $direction = 1): void
     {
@@ -560,9 +560,9 @@ final class OverlayHost
      * counts against THIS list rather than the full one. Two index spaces for
      * one visible list is how a filtered picker opens the wrong item.
      *
-     * @param array{title: string, items: list<array{label: string, hint: string, value: string, checked?: bool, disabled?: bool, note?: bool}>, selected: int, hovered: int|null, filter: TextField, onPick: callable(string): void} $overlay
+     * @param array{title: string, items: list<array{label: string, hint: string, value: string, checked?: bool, disabled?: bool, note?: bool, open?: \Closure(): void}>, selected: int, hovered: int|null, filter: TextField, onPick: callable(string): void} $overlay
      *
-     * @return list<array{label: string, hint: string, value: string, checked?: bool, disabled?: bool, note?: bool}>
+     * @return list<array{label: string, hint: string, value: string, checked?: bool, disabled?: bool, note?: bool, open?: \Closure(): void}>
      */
     private function matching(array $overlay): array
     {
@@ -574,20 +574,22 @@ final class OverlayHost
      * length of the pick — the debugger's exception filters reopen their own
      * list on every toggle, and used to come back unfiltered on the first row.
      *
-     * @param array{title: string, items: list<array{label: string, hint: string, value: string, checked?: bool, disabled?: bool, note?: bool}>, selected: int, hovered: int|null, filter: TextField, onPick: callable(string): void} $overlay
-     * @param array{label: string, hint: string, value: string, checked?: bool, disabled?: bool, note?: bool}                                                                                                                             $item
+     * @param array{title: string, items: list<array{label: string, hint: string, value: string, checked?: bool, disabled?: bool, note?: bool, open?: \Closure(): void}>, selected: int, hovered: int|null, filter: TextField, onPick: callable(string): void} $overlay
+     * @param array{label: string, hint: string, value: string, checked?: bool, disabled?: bool, note?: bool, open?: \Closure(): void}                                                                                                                             $item
      */
     private function pick(array $overlay, array $item): void
     {
-        // A disabled item or a note is there to be read, not run, and
-        // picking it leaves the list as it was.
-        if (LiveRows::readOnly($item)) {
+        // A disabled item or a note is there to be read, and picking it
+        // leaves the list as it was — unless the note opens somewhere (a
+        // problem row opens the Problems panel), which a click goes to.
+        $run = LiveRows::runner($item, $overlay['onPick']);
+        if (null === $run) {
             return;
         }
         $this->overlay = null;
         $this->picked = ['title' => $overlay['title'], 'filter' => $overlay['filter'], 'value' => $item['value']];
         try {
-            $overlay['onPick']($item['value']);
+            $run();
         } finally {
             $this->picked = null;
         }

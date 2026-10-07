@@ -13,6 +13,7 @@ use Porta\Editor\DiagnosticMessageMode;
 use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\Document;
 use Porta\Editor\SelectionMode;
+use Porta\Event\ProblemRevealRequested;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\RefactorController;
@@ -35,6 +36,9 @@ use Symfony\Component\Tui\Tui;
 
 final class RefactorControllerTest extends TestCase
 {
+    /** Where the controller raises what it asks others to do (a problem row's open). */
+    private EventDispatcher $events;
+
     private FakeLspClient $client;
 
     /** Every fake client the pool built, oldest first. @var list<FakeLspClient> */
@@ -93,6 +97,7 @@ final class RefactorControllerTest extends TestCase
             new WorkspaceEditor($this->buffers, $this->editor, $pool, new EventDispatcher(), $this->undo = new RefactoringUndo($this->buffers, new EventDispatcher())),
             $this->undo,
             new ProjectPaths('/tmp/proj'),
+            $this->events = new EventDispatcher(),
         );
     }
 
@@ -149,6 +154,7 @@ final class RefactorControllerTest extends TestCase
             new WorkspaceEditor($this->buffers, $this->editor, $pool, new EventDispatcher(), $this->undo = new RefactoringUndo($this->buffers, new EventDispatcher())),
             $this->undo,
             new ProjectPaths('/tmp/proj'),
+            $this->events = new EventDispatcher(),
         );
         $buffer = $this->buffers->open('/tmp/proj/a.php', "<?php\n\$x = 1;\n");
         $this->editor->showDocument('/tmp/proj/a.php', $buffer->document);
@@ -1146,6 +1152,27 @@ final class RefactorControllerTest extends TestCase
                 ['severity' => DiagnosticSeverity::Error, 'message' => 'boom', 'col' => 0, 'endCol' => 2, 'source' => 'phpstan'],
             ],
         ];
+    }
+
+    /** A problem row, clicked, asks for that problem to be shown in the Problems panel. */
+    public function testInMenuModeAProblemRowOpensItsProblem(): void
+    {
+        [$controller] = $this->ready();
+        $this->twoProblemsOnLineOne();
+        $revealed = [];
+        $this->events->addListener(ProblemRevealRequested::class, static function (ProblemRevealRequested $event) use (&$revealed): void {
+            $revealed[] = $event;
+        });
+
+        $controller->requestCodeActions(1, 0);
+        \end($this->client->requests)['respond']([], error: null);
+        /** @var list<array{open?: \Closure(): void}> $items */
+        $items = Probe::get(Probe::get($this->editor, 'overlayHost'), 'overlay')['items'];
+        $open = $items[0]['open'] ?? null;
+        $this->assertInstanceOf(\Closure::class, $open, 'the first problem row opens somewhere');
+        $open();
+
+        $this->assertEquals([new ProblemRevealRequested('/tmp/proj/a.php', 1, DiagnosticSeverity::Error, 'boom')], $revealed, 'the worst problem, as listed first');
     }
 
     /**
