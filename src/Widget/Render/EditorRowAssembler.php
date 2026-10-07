@@ -244,7 +244,7 @@ final readonly class EditorRowAssembler
      * blame has Alt+B. An agent's name comes second: it is there only for
      * seconds, and says who is changing the text under the other two.
      *
-     * @param list<array{col: int, endCol?: int, message: string, severity: DiagnosticSeverity, code?: int|string, source?: string, tags?: list<int>}> $lineDiags
+     * @param list<array{col: int, endCol?: int, message: string, severity: DiagnosticSeverity, code?: int|string, source?: string, tags?: list<int>, data?: mixed}> $lineDiags
      *
      * @return array{0: string, 1: Role, 2: bool}
      */
@@ -428,7 +428,7 @@ final readonly class EditorRowAssembler
      * The gutter cell for one document line: git strip, line number colored by
      * the line's worst diagnostic (or highlighted on the caret line), marker.
      *
-     * @param list<array{col: int, endCol?: int, message: string, severity: DiagnosticSeverity, code?: int|string, source?: string, tags?: list<int>}> $lineDiags
+     * @param list<array{col: int, endCol?: int, message: string, severity: DiagnosticSeverity, code?: int|string, source?: string, tags?: list<int>, data?: mixed}> $lineDiags
      */
     private function gutterCell(int $lineIndex, CaretLine $isCursorLine, array $lineDiags, int $numberWidth): string
     {
@@ -524,7 +524,7 @@ final readonly class EditorRowAssembler
      * layered selection/caret/search/occurrence/bracket/diagnostic spans,
      * inlay hints, and the collapsed-fold marker.
      *
-     * @param list<array{col: int, endCol?: int, message: string, severity: DiagnosticSeverity, code?: int|string, source?: string, tags?: list<int>}> $lineDiags
+     * @param list<array{col: int, endCol?: int, message: string, severity: DiagnosticSeverity, code?: int|string, source?: string, tags?: list<int>, data?: mixed}> $lineDiags
      */
     /**
      * The display column a member separator's rule starts at on this ROW, or
@@ -557,7 +557,7 @@ final readonly class EditorRowAssembler
      * site until this method grew a parameter, and mago then read it as
      * `array<array-key, mixed>`.
      *
-     * @param list<array{col: int, endCol?: int, message: string, severity: DiagnosticSeverity, code?: int|string, source?: string, tags?: list<int>}> $lineDiags
+     * @param list<array{col: int, endCol?: int, message: string, severity: DiagnosticSeverity, code?: int|string, source?: string, tags?: list<int>, data?: mixed}> $lineDiags
      */
     private function decoratedLine(
         int $lineIndex,

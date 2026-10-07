@@ -102,7 +102,7 @@ interface EditorDecorationSink
      */
     public function setSemanticTokens(array $byLine): void;
 
-    /** @param array<int, list<array{severity: DiagnosticSeverity, message: string, col: int, endCol?: int, code?: int|string, source?: string, tags?: list<int>}>> $byLine */
+    /** @param array<int, list<array{severity: DiagnosticSeverity, message: string, col: int, endCol?: int, code?: int|string, source?: string, tags?: list<int>, data?: mixed}>> $byLine */
     public function setDiagnostics(array $byLine): void;
 
     /**

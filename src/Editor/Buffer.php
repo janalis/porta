@@ -25,7 +25,7 @@ final class Buffer
      * {@see $diagnosticsByOwner} on every publish. Nothing else may write it,
      * or one source's silence would erase another's findings.
      *
-     * @var array<int, list<array{severity: DiagnosticSeverity, message: string, col: int, endCol?: int, code?: int|string, source?: string, tags?: list<int>}>>
+     * @var array<int, list<array{severity: DiagnosticSeverity, message: string, col: int, endCol?: int, code?: int|string, source?: string, tags?: list<int>, data?: mixed}>>
      */
     public array $diagnostics = [];
 
@@ -34,7 +34,7 @@ final class Buffer
      * server and an analyser plugin can both have something to say about this
      * file without either erasing the other.
      *
-     * @var array<string, array<int, list<array{severity: DiagnosticSeverity, message: string, col: int, endCol?: int, code?: int|string, source?: string, tags?: list<int>}>>> owner => line => diagnostics
+     * @var array<string, array<int, list<array{severity: DiagnosticSeverity, message: string, col: int, endCol?: int, code?: int|string, source?: string, tags?: list<int>, data?: mixed}>>> owner => line => diagnostics
      */
     public array $diagnosticsByOwner = [];
 

@@ -27,7 +27,7 @@ interface DiagnosticsSink
      * Owners are free-form and stable per source: a server's name for LSP, a
      * plugin's name for {@see \Porta\Plugin\Api\PluginApi::setDiagnostics()}.
      *
-     * @param array<int, list<array{severity: DiagnosticSeverity, message: string, col: int, endCol: int, code?: int|string, source?: string, tags?: list<int>}>> $byLine 0-based line => diagnostics
+     * @param array<int, list<array{severity: DiagnosticSeverity, message: string, col: int, endCol: int, code?: int|string, source?: string, tags?: list<int>, data?: mixed}>> $byLine 0-based line => diagnostics
      */
     public function applyDiagnostics(string $uri, array $byLine, string $owner): void;
 }

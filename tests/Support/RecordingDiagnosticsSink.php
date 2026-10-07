@@ -10,7 +10,7 @@ use Porta\Editor\DiagnosticsSink;
 /** Records every published diagnostics batch. */
 final class RecordingDiagnosticsSink implements DiagnosticsSink
 {
-    /** @var list<array{uri: string, byLine: array<int, list<array{severity: DiagnosticSeverity, message: string, col: int, endCol: int, code?: int|string, source?: string, tags?: list<int>}>>, owner: string}> */
+    /** @var list<array{uri: string, byLine: array<int, list<array{severity: DiagnosticSeverity, message: string, col: int, endCol: int, code?: int|string, source?: string, tags?: list<int>, data?: mixed}>>, owner: string}> */
     public array $published = [];
 
     #[\Override]

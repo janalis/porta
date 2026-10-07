@@ -102,7 +102,7 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
     /** The debugger's stopped line (full-width band), or null when not paused here. */
     public private(set) ?int $debugLine = null;
 
-    /** @var array<int, list<array{severity: DiagnosticSeverity, message: string, col: int, endCol?: int, code?: int|string, source?: string, tags?: list<int>}>> keyed by 0-based line */
+    /** @var array<int, list<array{severity: DiagnosticSeverity, message: string, col: int, endCol?: int, code?: int|string, source?: string, tags?: list<int>, data?: mixed}>> keyed by 0-based line */
     public private(set) array $diagnostics = [];
 
     /** @var array{errors: int, warnings: int} maintained by {@see recountDiagnostics} on every diagnostics change */
@@ -124,7 +124,7 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
      * theirs per buffer). Git marks and search matches are replaced by their
      * own follow-up pushes.
      *
-     * @param array<int, list<array{severity: DiagnosticSeverity, message: string, col: int, endCol?: int, code?: int|string, source?: string, tags?: list<int>}>> $diagnostics
+     * @param array<int, list<array{severity: DiagnosticSeverity, message: string, col: int, endCol?: int, code?: int|string, source?: string, tags?: list<int>, data?: mixed}>> $diagnostics
      */
     public function resetForBuffer(array $diagnostics, int $lineCount = 0): void
     {
@@ -478,7 +478,7 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
         ($this->invalidate)();
     }
 
-    /** @param array<int, list<array{severity: DiagnosticSeverity, message: string, col: int, endCol?: int, code?: int|string, source?: string, tags?: list<int>}>> $byLine */
+    /** @param array<int, list<array{severity: DiagnosticSeverity, message: string, col: int, endCol?: int, code?: int|string, source?: string, tags?: list<int>, data?: mixed}>> $byLine */
     public function setDiagnostics(array $byLine): void
     {
         $this->diagnostics = $byLine;

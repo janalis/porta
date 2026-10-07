@@ -520,6 +520,67 @@ final class LspMapperTest extends TestCase
         $this->assertArrayNotHasKey('tags', $byLine[1][0]);
     }
 
+    /**
+     * `data` is the server's own payload, which the spec promises back verbatim
+     * in a later `codeAction` context — custos keeps the rule and span of the
+     * finding there. Dropping it here meant RefactorController had nothing to
+     * forward, whatever it copied.
+     */
+    public function testDiagnosticsCarryTheServersDataVerbatim(): void
+    {
+        $byLine = LspMapper::diagnosticsByLine([
+            'diagnostics' => [
+                [
+                    'severity' => 2,
+                    'message' => 'Yoda condition',
+                    'code' => 'ComparisonOperandsOrder',
+                    'source' => 'custos',
+                    'data' => ['rule' => 'ComparisonOperandsOrder', 'start' => 12, 'end' => 20],
+                    'range' => ['start' => ['line' => 3, 'character' => 4], 'end' => ['line' => 3, 'character' => 12]],
+                ],
+                [
+                    'severity' => 2,
+                    'message' => 'a scalar payload',
+                    'data' => 0,
+                    'range' => ['start' => ['line' => 4, 'character' => 0], 'end' => ['line' => 4, 'character' => 1]],
+                ],
+                [
+                    'severity' => 2,
+                    'message' => 'no payload',
+                    'data' => null,
+                    'range' => ['start' => ['line' => 5, 'character' => 0], 'end' => ['line' => 5, 'character' => 1]],
+                ],
+            ],
+        ]);
+
+        $this->assertSame(['rule' => 'ComparisonOperandsOrder', 'start' => 12, 'end' => 20], $byLine[3][0]['data']);
+        $this->assertSame(12, $byLine[3][0]['endCol'], 'a range on one line keeps its real end');
+        $this->assertSame(0, $byLine[4][0]['data'], 'a falsy payload is still a payload');
+        $this->assertArrayNotHasKey('data', $byLine[5][0], 'null is no payload: nothing to send back');
+    }
+
+    public function testAMultiLineRangeIsFiledUnderItsStartLineToTheEndOfThatLine(): void
+    {
+        // The per-line shape has no end line: the documented loss. The start
+        // is exact, the underline runs to the end of the first line, and the
+        // payload still rides along for the server to match on.
+        $byLine = LspMapper::diagnosticsByLine([
+            'diagnostics' => [
+                [
+                    'severity' => 1,
+                    'message' => 'spans lines',
+                    'data' => 'k',
+                    'range' => ['start' => ['line' => 2, 'character' => 6], 'end' => ['line' => 4, 'character' => 3]],
+                ],
+            ],
+        ]);
+
+        $this->assertSame([2], \array_keys($byLine));
+        $this->assertSame(6, $byLine[2][0]['col']);
+        $this->assertSame(\PHP_INT_MAX, $byLine[2][0]['endCol']);
+        $this->assertSame('k', $byLine[2][0]['data']);
+    }
+
     public function testACompletionItemsDOCBLOCKIsFlattenedLikeAHover(): void
     {
         // Measured: both servers answer `documentation` as MarkupContent with

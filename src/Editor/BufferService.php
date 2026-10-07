@@ -935,7 +935,7 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
      * Deliver published LSP diagnostics to the buffer whose file they are
      * about (matched by URI), updating the editor when it is the active one.
      *
-     * @param array<int, list<array{severity: DiagnosticSeverity, message: string, col: int, endCol: int, code?: int|string, source?: string, tags?: list<int>}>> $byLine
+     * @param array<int, list<array{severity: DiagnosticSeverity, message: string, col: int, endCol: int, code?: int|string, source?: string, tags?: list<int>, data?: mixed}>> $byLine
      */
     /**
      * Store a file's change marks and, if that file is the one on screen, paint
@@ -1030,9 +1030,9 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
      * is something to decide, and touching the common path would change what
      * a project with one server has always rendered.
      *
-     * @param array<string, array<int, list<array{severity: DiagnosticSeverity, message: string, col: int, endCol?: int, code?: int|string, source?: string, tags?: list<int>}>>> $byOwner
+     * @param array<string, array<int, list<array{severity: DiagnosticSeverity, message: string, col: int, endCol?: int, code?: int|string, source?: string, tags?: list<int>, data?: mixed}>>> $byOwner
      *
-     * @return array<int, list<array{severity: DiagnosticSeverity, message: string, col: int, endCol?: int, code?: int|string, source?: string, tags?: list<int>}>>
+     * @return array<int, list<array{severity: DiagnosticSeverity, message: string, col: int, endCol?: int, code?: int|string, source?: string, tags?: list<int>, data?: mixed}>>
      */
     private static function mergeDiagnostics(array $byOwner): array
     {

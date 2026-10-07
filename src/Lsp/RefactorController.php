@@ -349,6 +349,12 @@ final class RefactorController extends AbstractLspController implements EditorRe
      * fix by code sees nothing to match without them, and the context is meant
      * to hand back the diagnostic it published, not a summary of it.
      *
+     * The range is the one thing that is NOT handed back whole: a range that
+     * ended on its own line keeps its real end, but a multi-line one was filed
+     * per line by {@see LspMapper::diagnosticsByLine()} without its end, so it
+     * goes back as start..start+1 on its first line. `data` is what a server
+     * should match on.
+     *
      * @return list<array<string, mixed>>
      */
     private function diagnosticsAt(int $line): array

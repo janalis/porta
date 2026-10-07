@@ -491,8 +491,14 @@ final class LspMapper
 
     /**
      * Group textDocument/publishDiagnostics params into the editor's per-line
-     * diagnostic shape, sorted by line. Multi-line ranges keep PHP_INT_MAX as
-     * the end column so the whole first line is underlined.
+     * diagnostic shape, sorted by line. A range that ends on its own line keeps
+     * its real end column. A multi-line range is filed under its START line with
+     * PHP_INT_MAX as the end column, so the rest of that first line is underlined;
+     * its end line and end character are NOT kept — the shape is per line, and
+     * {@see \Porta\Lsp\RefactorController::diagnosticsAt()} hands such a
+     * diagnostic back in a `codeAction` context as start..start+1 on that line.
+     * A server that needs the exact diagnostic back should match on `data`
+     * (kept verbatim) or `code`, not on the range.
      *
      * @param array{
      *     uri?: string,
@@ -502,6 +508,7 @@ final class LspMapper
      *         code?: int|string,
      *         source?: string,
      *         tags?: list<int>,
+     *         data?: mixed,
      *         range: array{
      *             start: array{line?: int, character?: int},
      *             end: array{line?: int, character?: int},
@@ -509,7 +516,7 @@ final class LspMapper
      *     }>,
      * } $params
      *
-     * @return array<int, list<array{severity: DiagnosticSeverity, message: string, col: int, endCol: int, code?: int|string, source?: string, tags?: list<int>}>>
+     * @return array<int, list<array{severity: DiagnosticSeverity, message: string, col: int, endCol: int, code?: int|string, source?: string, tags?: list<int>, data?: mixed}>>
      */
     public static function diagnosticsByLine(array $params): array
     {
@@ -547,6 +554,15 @@ final class LspMapper
             $tags = \array_values(\array_filter($diag['tags'] ?? [], \is_int(...)));
             if ([] !== $tags) {
                 $mapped['tags'] = $tags;
+            }
+            // `data` is the server's own payload, opaque to us, that the spec
+            // says it gets back verbatim in a later `codeAction` context — a
+            // server that resolves its fix from it (custos keeps the rule and
+            // span there) has nothing to resolve without it.
+            /** @var mixed $data opaque by definition: the server's own, sent back as it came */
+            $data = $diag['data'] ?? null;
+            if (null !== $data) {
+                $mapped['data'] = $data;
             }
             $byLine[$line][] = $mapped;
         }
