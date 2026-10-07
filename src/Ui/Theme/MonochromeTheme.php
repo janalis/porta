@@ -40,6 +40,11 @@ final class MonochromeTheme
                 // A placeholder must not read as a typed value; Dim is plain
                 // here, so the placeholder carries its own dim + italic.
                 Role::FieldPlaceholder->selector() => new Style(dim: true, italic: true),
+                // A problem's line number without colour: reverse for an
+                // error, underlined for a warning or a notice — still no glyph.
+                Role::GutterError->selector() => new Style(reverse: true),
+                Role::GutterWarning->selector() => new Style(underline: true),
+                Role::GutterNotice->selector() => new Style(underline: true),
                 // A hint is not code: with no shade to put it on, it is faint
                 // and slanted, as a placeholder is — never plain text.
                 Role::InlayParameter->selector() => new Style(dim: true, italic: true),

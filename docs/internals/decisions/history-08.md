@@ -327,3 +327,17 @@ then `BottomDock::selectInList` with the row's text, so the right one of
 several problems on a line is selected. A note row in a list may now carry
 `open`: a click on it closes the list and runs it; the selection still skips
 notes, so Enter never does.
+
+## The gutter says a problem by colour again, on a shade of its own (2026-10-07)
+
+A refinement of the entry above, at the user's request: the gutter may show
+problems and hint lines by colour and background only, never a glyph, and
+gets its own background. A line number is tinted by the worst error, warning
+or notice on its line (`GutterError`/`GutterWarning`/`GutterNotice`: the
+squiggle's foreground on a shade of its own), and faintly (`GutterInlay`)
+where the line's inlay hints show as cards — in the line itself they need no
+tint. Every gutter cell sits on `GutterBg`. The tint stops at the number, so
+the marker column still belongs to breakpoints, bookmarks and comments, and
+there is still no problem tooltip in the gutter. The dark hint tint first
+sat on 236, the caret band's own shade; ThemeLockTest's distinct-shade check
+caught it, and it is 235.

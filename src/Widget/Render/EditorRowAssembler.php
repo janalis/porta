@@ -7,6 +7,7 @@ namespace Porta\Widget\Render;
 use Porta\Editor\DecorationStore;
 use Porta\Editor\DiagnosticMessageMode;
 use Porta\Editor\DiagnosticSeverity;
+use Porta\Editor\DiagnosticStyle;
 use Porta\Editor\Document;
 use Porta\Editor\FoldModel;
 use Porta\Editor\GutterPart;
@@ -139,7 +140,7 @@ final readonly class EditorRowAssembler
                 // The tilde is a GUTTER cell, so it goes when the gutter does.
                 // `str_pad` never truncates — `str_pad('~', 0)` is `'~'` — so
                 // the old `max(0, …)` looked like a clamp and was not one.
-                $placeholder = 0 === $geo->gutterWidth ? '' : $this->styles->of(Role::Placeholder)->apply(\str_pad('~', $geo->gutterWidth));
+                $placeholder = $this->shaded($this->styles->of(Role::Placeholder)->apply('~'), $geo->gutterWidth);
                 $result[] = $placeholder.AnsiText::blank($geo->contentWidth).$stripe[$stickyCount + $row];
                 continue;
             }
@@ -172,8 +173,8 @@ final readonly class EditorRowAssembler
             // asks for none rather than for a smaller one.
             $gutter = match (true) {
                 0 === $geo->gutterWidth => '',
-                $rowSegment > 0 => AnsiText::blank($geo->gutterWidth),
-                default => $this->gutterCell($lineIndex, $isCursorLine ? CaretLine::Current : CaretLine::Other, $geo->numberWidth),
+                $rowSegment > 0 => $this->shaded('', $geo->gutterWidth),
+                default => $this->shaded($this->gutterCell($lineIndex, $isCursorLine ? CaretLine::Current : CaretLine::Other, $geo->numberWidth), $geo->gutterWidth),
             };
             // Per rendered ROW, not over the whole array: the file may be
             // fifty thousand lines and forty of them are on screen. It needs
@@ -359,7 +360,7 @@ final readonly class EditorRowAssembler
     {
         // sliceToWidth, not sliceWithWidth: a wide glyph across the edge of a
         // translated or CJK title would make the row a column too wide.
-        return AnsiText::blank(\max(0, $geo->gutterWidth)).AnsiUtils::sliceToWidth($this->styles->of(Role::Dim)->apply($title), 0, $geo->contentWidth);
+        return $this->shaded('', $geo->gutterWidth).AnsiUtils::sliceToWidth($this->styles->of(Role::Dim)->apply($title), 0, $geo->contentWidth);
     }
 
     /** The rows a line occupies: its lenses above, its wrapped segments, its block rows under. */
@@ -395,9 +396,7 @@ final readonly class EditorRowAssembler
      */
     private function blockRow(string $text, EditorGeometry $geo): string
     {
-        return (
-            AnsiText::blank(\max(0, $geo->gutterWidth)).AnsiText::truncate($this->styles->of(Role::Inlay)->apply(\str_replace("\t", replace: '    ', subject: $text)), $geo->contentWidth, pad: true)
-        );
+        return $this->shaded('', $geo->gutterWidth).AnsiText::truncate($this->styles->of(Role::Inlay)->apply(\str_replace("\t", replace: '    ', subject: $text)), $geo->contentWidth, pad: true);
     }
 
     /**
@@ -438,15 +437,21 @@ final readonly class EditorRowAssembler
     }
 
     /**
-     * The gutter cell for one document line: git strip, line number
-     * (highlighted on the caret line), marker. A problem is not repeated
-     * here: its squiggle, its card, the marker stripe, the status bar and the
-     * Problems panel say it, and a number coloured by severity read as one
-     * more mark to decode.
+     * The gutter cell for one document line: git strip, line number, marker.
+     * The number says a problem by colour alone — tinted by the worst on its
+     * line, an error over a warning over a notice — and, while inlay hints
+     * show as cards, faintly tints a line that has some; otherwise it is
+     * highlighted on the caret line. No glyph: the squiggle's card says what
+     * a problem is.
      */
     private function gutterCell(int $lineIndex, CaretLine $isCursorLine, int $numberWidth): string
     {
-        $numStyle = CaretLine::Current === $isCursorLine ? $this->styles->of(Role::CurrentLineNumber) : $this->styles->of(Role::Gutter);
+        $numStyle = $this->styles->of(match (true) {
+            null !== ($tint = $this->problemTint($lineIndex)) => $tint,
+            $this->inlays->onCards($this->document, $lineIndex) => Role::GutterInlay,
+            CaretLine::Current === $isCursorLine => Role::CurrentLineNumber,
+            default => Role::Gutter,
+        });
         // The caret line's number is bold in every theme — its weight says
         // "here" where its colour cannot.
         if (CaretLine::Current === $isCursorLine) {
@@ -490,6 +495,33 @@ final readonly class EditorRowAssembler
             .$this->foldCell($lineIndex)
             .' '
         );
+    }
+
+    /** The gutter role for the worst error, warning or notice on a line; a hint marks nothing. */
+    private function problemTint(int $lineIndex): ?Role
+    {
+        $diags = \array_values(\array_filter($this->store->diagnostics[$lineIndex] ?? [], static fn (array $d): bool => DiagnosticSeverity::Hint !== $d['severity']));
+
+        return (
+            [] === $diags
+                ? null
+                : match (DiagnosticStyle::worst($diags)) {
+                    DiagnosticSeverity::Error => Role::GutterError,
+                    DiagnosticSeverity::Warning => Role::GutterWarning,
+                    DiagnosticSeverity::Information, DiagnosticSeverity::Hint => Role::GutterNotice,
+                }
+        );
+    }
+
+    /**
+     * A row's gutter cells on the gutter's own shade, $width wide — every row:
+     * a line's, a wrapped line's next ones, a lens or block row, and `~` past
+     * the end. The shade is re-armed after every reset inside, so a tinted
+     * number or a mark inside does not end it.
+     */
+    private function shaded(string $cells, int $width): string
+    {
+        return $width <= 0 ? '' : LineDecorator::applyFullWidth($cells, $width, $this->styles->of(Role::GutterBg));
     }
 
     /**

@@ -873,11 +873,11 @@ final class CodeEditorWidgetTest extends TestCase
         $this->assertSame(0, $counts['warnings']);
 
         $rendered = $editor->render(new RenderContext(80, 20));
-        // The left gutter does not repeat the problem; the stripe marks it as
-        // a density block.
+        // The left gutter says it by colour alone — the number tinted, no
+        // glyph; the stripe marks it as a density block.
         $gutter = AnsiUtils::sliceByColumn($rendered[2], 0, $editor->gutterWidth());
         $this->assertStringNotContainsString('✗', AnsiUtils::stripAnsiCodes($gutter), 'no glyph in the left gutter');
-        $this->assertStringNotContainsString("\x1b[38;5;203m", $gutter, 'no error colour on the line number');
+        $this->assertStringContainsString("\x1b[38;5;203m\x1b[48;5;52m", $gutter, 'the number in the error tint');
         $stripe = '';
         foreach ($rendered as $row) {
             $stripe .= AnsiUtils::stripAnsiCodes(AnsiUtils::sliceByColumn($row, 79, 1));

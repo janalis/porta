@@ -89,6 +89,24 @@ enum Role
 
     // Editor rendering: gutter shades, git marks, inlay hints, indent guides, popups.
     case CurrentLineNumber;
+
+    /**
+     * The line-number gutter's own shade, a step off the editor's background
+     * so the numbers read as a margin, not as code (PhpStorm's gutter).
+     */
+    case GutterBg;
+
+    /**
+     * A line number tinted by the worst problem on its line — colour and
+     * background only, never a glyph: the squiggle's card says what it is.
+     * Each foreground is its severity's {@see DiagError}-family colour.
+     */
+    case GutterError;
+    case GutterWarning;
+    case GutterNotice;
+
+    /** A line number faintly tinted where the line has inlay hints shown as cards. */
+    case GutterInlay;
     case Placeholder;
     case Inlay;
 

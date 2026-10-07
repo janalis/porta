@@ -14,10 +14,12 @@ use Porta\Editor\Document;
 use Porta\Editor\EditorDisplayOptions;
 use Porta\Editor\FoldModel;
 use Porta\Editor\InlayHint;
+use Porta\Editor\InlayHintMode;
 use Porta\Editor\InlayLines;
 use Porta\Editor\LineNumberMode;
 use Porta\I18n\Translator;
 use Porta\Ui\Glyphs;
+use Porta\Ui\Role;
 use Porta\Ui\Theme\LightTheme;
 use Porta\Ui\Theme\MonochromeTheme;
 use Porta\Ui\Theme\Styles;
@@ -366,40 +368,133 @@ final class EditorRowAssemblerTest extends TestCase
         $this->assertStringContainsString("\e[1m", AnsiUtils::sliceByColumn($rows[1], 0, 2), 'and the number is bold here too');
     }
 
-    /**
-     * A problem is not repeated in the gutter: no colour on its line's number,
-     * no glyph in the marker column — in monochrome either. Its squiggle, its
-     * card, the stripe, the status bar and the Problems panel say it.
-     */
-    public function testAProblemLeavesTheGutterAlone(): void
+    /** $text as $role opens it — what a run begins with, whatever re-arms the shade after it. */
+    private static function opened(Styles $styles, Role $role, string $text): string
+    {
+        \preg_match('/^(?:\e\[[0-9;:]*m)*/', $styles->of($role)->apply($text), $open);
+
+        return $open[0].$text;
+    }
+
+    /** @return list<string> each row's gutter cells, $gutterWidth wide */
+    private function gutters(DecorationStore $store, Document $doc, ?Styles $styles = null, ?EditorDisplayOptions $display = null, int $rows = 3): array
+    {
+        $assembler = new EditorRowAssembler(
+            $doc,
+            new FoldModel($doc),
+            $store,
+            new InlayLines($store, $display ?? new EditorDisplayOptions(static function (): void {})),
+            LineNumberMode::Absolute,
+            false,
+            false,
+            DiagnosticMessageMode::None,
+            true,
+            true,
+            $styles,
+        );
+        $geo = new EditorGeometry(numberWidth: 1, gutterWidth: 5, contentWidth: 5, stripeCol: 0);
+        $highlighted = \array_map($doc->getLine(...), \range(0, $doc->getLineCount() - 1));
+        $out = $assembler->assemble(
+            $geo,
+            $this->noSelection(),
+            sticky: [],
+            highlighted: $highlighted,
+            stripe: \array_fill(0, $rows, value: ''),
+            contentRows: $rows,
+            vScroll: 0,
+            cursorLine: -1,
+            cursorDisplayCol: 0,
+            hScroll: 0,
+        );
+
+        return \array_map(static fn (string $row): string => AnsiUtils::sliceByColumn($row, 0, 5), $out);
+    }
+
+    /** A problem's line number says it by colour alone: the worst severity's tint, never a glyph. */
+    public function testAProblemTintsItsLineNumberByItsWorstSeverity(): void
+    {
+        $doc = new Document("a\nb\nc\nd\n");
+        $store = new DecorationStore(static function (): void {});
+        $store->setDiagnostics([
+            0 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'w', 'col' => 0], ['severity' => DiagnosticSeverity::Error, 'message' => 'e', 'col' => 0]],
+            1 => [['severity' => DiagnosticSeverity::Information, 'message' => 'i', 'col' => 0]],
+            2 => [['severity' => DiagnosticSeverity::Hint, 'message' => 'h', 'col' => 0]],
+        ]);
+        $styles = Styles::dark();
+        $gutters = $this->gutters($store, $doc, $styles, rows: 4);
+
+        $this->assertStringContainsString(self::opened($styles, Role::GutterError, '1'), $gutters[0], 'an error over a warning on the same line');
+        $this->assertStringContainsString(self::opened($styles, Role::GutterNotice, '2'), $gutters[1], 'a notice');
+        $this->assertStringContainsString(self::opened($styles, Role::Gutter, '3'), $gutters[2], 'a hint marks nothing');
+        foreach ($gutters as $gutter) {
+            $this->assertMatchesRegularExpression('/^ *\d+ *$/', AnsiUtils::stripAnsiCodes($gutter), 'the number alone: no glyph beside it');
+            $this->assertStringStartsWith("\e[48;5;234m", $gutter, 'every row on the gutter\'s own shade');
+        }
+    }
+
+    public function testAWarningAloneIsWarningTinted(): void
+    {
+        $doc = new Document("a\n");
+        $store = new DecorationStore(static function (): void {});
+        $store->setDiagnostics([0 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'w', 'col' => 0]]]);
+        $styles = Styles::dark();
+
+        $this->assertStringContainsString(self::opened($styles, Role::GutterWarning, '1'), $this->gutters($store, $doc, $styles, rows: 1)[0]);
+    }
+
+    /** While hints show as cards, a line that has some is faintly tinted; a problem outranks it, and in the line itself they need no tint. */
+    public function testALineWithHintsAsCardsIsFaintlyTinted(): void
+    {
+        $doc = new Document("f(1)\ng(2)\n");
+        $store = new DecorationStore(static function (): void {});
+        $store->setInlayHints([0 => [new InlayHint(2, 'n:')], 1 => [new InlayHint(2, 'm:')]]);
+        $store->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'e', 'col' => 0]]]);
+        $display = new EditorDisplayOptions(static function (): void {});
+        $styles = Styles::dark();
+
+        $display->setInlayHints(InlayHintMode::Tooltip);
+        $cards = $this->gutters($store, $doc, $styles, $display, rows: 2);
+        $this->assertStringContainsString(self::opened($styles, Role::GutterInlay, '1'), $cards[0]);
+        $this->assertStringContainsString(self::opened($styles, Role::GutterError, '2'), $cards[1], 'the problem outranks the hint');
+
+        $display->setInlayHints(InlayHintMode::Inline);
+        $this->assertStringContainsString(self::opened($styles, Role::Gutter, '1'), $this->gutters($store, $doc, $styles, $display, rows: 2)[0], 'hints in the line: no tint');
+    }
+
+    /** The tint is the number's alone: the marker beside it keeps its glyph on the gutter's shade. */
+    public function testTheTintIsTheNumbersAlone(): void
+    {
+        $doc = new Document("a\n");
+        $store = new DecorationStore(static function (): void {});
+        $store->setDiagnostics([0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'e', 'col' => 0]]]);
+        $store->setBreakpointLines([0]);
+        $styles = Styles::dark();
+        $gutter = $this->gutters($store, $doc, $styles, rows: 1)[0];
+
+        $this->assertStringContainsString(self::opened($styles, Role::GutterError, '1')."\e[49m\e[48;5;234m", $gutter, 'the shade comes back right after the number');
+        $this->assertStringContainsString($styles->of(Role::Breakpoint)->apply(Glyphs::BREAKPOINT), $gutter);
+    }
+
+    /** Past the end and on a wrapped line's next rows, the gutter is still the gutter. */
+    public function testEveryRowIsOnTheGuttersShade(): void
+    {
+        $doc = new Document("a\n");
+        $gutters = $this->gutters(new DecorationStore(static function (): void {}), $doc, Styles::dark(), rows: 3);
+
+        $this->assertStringStartsWith("\e[48;5;234m", $gutters[2]);
+        $this->assertStringContainsString('~', AnsiUtils::stripAnsiCodes($gutters[2]));
+    }
+
+    /** Without colour, an error is reversed and a warning underlined — still no glyph. */
+    public function testMonochromeReversesAnErrorAndUnderlinesAWarning(): void
     {
         $doc = new Document("a\nb\n");
         $store = new DecorationStore(static function (): void {});
-        $store->setDiagnostics([0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'e', 'col' => 0]]]);
-        $geo = new EditorGeometry(numberWidth: 1, gutterWidth: 3, contentWidth: 5, stripeCol: 0);
+        $store->setDiagnostics([0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'e', 'col' => 0]], 1 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'w', 'col' => 0]]]);
+        $gutters = $this->gutters($store, $doc, new Styles(MonochromeTheme::definition()), rows: 2);
 
-        foreach ([Styles::dark(), new Styles(MonochromeTheme::definition())] as $styles) {
-            [$assembler] = $this->assembler($doc, styles: $styles, store: $store);
-            $rows = $assembler->assemble(
-                $geo,
-                $this->noSelection(),
-                sticky: [],
-                highlighted: ['a', 'b'],
-                stripe: ['', ''],
-                contentRows: 2,
-                vScroll: 0,
-                cursorLine: -1,
-                cursorDisplayCol: 0,
-                hScroll: 0,
-            );
-
-            // Line 2's gutter with its number swapped for 1: the same styling.
-            $this->assertSame(
-                (string) \preg_replace('/(^|m)2/', replacement: '${1}1', subject: AnsiUtils::sliceByColumn($rows[1], 0, 3)),
-                AnsiUtils::sliceByColumn($rows[0], 0, 3),
-                'the problem line\'s gutter is any other line\'s',
-            );
-        }
+        $this->assertStringContainsString("\e[7m1", $gutters[0]);
+        $this->assertStringContainsString("\e[4m2", $gutters[1]);
     }
 
     /** Without colour the sticky band is ruled off from the code under it. */

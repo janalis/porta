@@ -48,6 +48,15 @@ final readonly class InlayLines
         }));
     }
 
+    /**
+     * Whether a line has hints shown as cards ({@see InlayHintMode::Tooltip})
+     * — the gutter tints its number then, since the line itself shows none.
+     */
+    public function onCards(Document $doc, int $line): bool
+    {
+        return InlayHintMode::Tooltip === $this->display->inlayHints && [] !== $this->shown($doc, $line);
+    }
+
     /** The hints drawn INTO the line: only in {@see InlayHintMode::Inline}. */
     public function forLine(Document $doc, int $line, ?int $wrapWidth = null): InlayLine
     {

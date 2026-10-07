@@ -55,8 +55,8 @@ struck through, with the server's reason beside it.
 ### Problems
 
 As in PhpStorm, a problem's message is not written after the code by default:
-the squiggle, the marker stripe and the status bar say a problem is there —
-the line-number gutter does not repeat it — and these say what it is:
+the squiggle, the line number's tint, the marker stripe and the status bar say
+a problem is there, and these say what it is:
 
 - **Rest the pointer on a squiggle.** A card opens beside it with each problem
   there, worst first: its severity glyph and message in full, then where it
@@ -328,6 +328,14 @@ A hint never moves your text: a click on it lands on the character it sits
 before, and on a soft-wrapped line a hint is drawn only where its row has room
 — one that would push code off the row is left out.
 
+The gutter has a shade of its own, a step off the editor's background, so the
+numbers read as a margin. A line with a problem has its number tinted by the
+worst one there — red for an error, orange for a warning, yellow for a notice;
+under the monochrome theme an error's number is reversed and a warning's or a
+notice's underlined — and a hint marks nothing. While inlay hints show as
+cards, a line that has some gets a faint tint. Colour only: the gutter draws
+no problem glyph, and the marker column stays for breakpoints and bookmarks.
+
 The caret line's number is bold. With colour, a shaded band marks the whole
 caret line. In the monochrome theme (and under `--no-ansi`) there is no band;
 instead a `›` stands in the marker column beside the number, since underlining
@@ -337,8 +345,8 @@ the code below them.
 
 Under the pointer, a gutter mark underlines and its [tooltip](#tooltips) says
 what it is and what a click does: "Breakpoint · click to remove", "Bookmark",
-or "Modified · click to see the change" on a git change mark. A problem marks
-no gutter cell: rest the pointer on its squiggle for its card.
+or "Modified · click to see the change" on a git change mark. A tinted number
+has no card: rest the pointer on the problem's squiggle for it.
 
 ## The completion popup
 

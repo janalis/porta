@@ -196,7 +196,7 @@ integrations = ["symfony", "phpunit"]
 #                                with no correction note; re-probed
 #                                2026-09-09, the pin is right and the prose
 #                                was wrong — at 30 both classes fire.
-#   too-many-enum-cases      71  Ui/Role (the theme role vocabulary; 58 until
+#   too-many-enum-cases      76  Ui/Role (the theme role vocabulary; 58 until
 #                                OccurrenceWriteBg joined it — a read and a write
 #                                occurrence cannot share one role — and 60 with
 #                                DebugValue: an inlay hint is what the code
@@ -233,7 +233,13 @@ integrations = ["symfony", "phpunit"]
 #                                PhpStorm, so it never reads as source; Inlay
 #                                stays the plain grey of trailing annotations,
 #                                which are not in the code, and a parameter's
-#                                name and a type are told apart at a glance)
+#                                name and a type are told apart at a glance).
+#                                76 with GutterBg and GutterError/Warning/
+#                                Notice/Inlay, 2026-10-07: the gutter has a
+#                                shade of its own, and a problem's line number
+#                                is tinted by severity — colour only, no glyph
+#                                — each a foreground AND a background a Diag
+#                                role cannot carry)
 #   excessive-parameter-list 26  Plugin/Runtime/PluginRuntime, 2026-10-03: the
 #                                ProjectSwitcher openProject() reaches, the
 #                                same decision as too-many-methods above.
@@ -343,7 +349,7 @@ integrations = ["symfony", "phpunit"]
 cyclomatic-complexity = { threshold = 145 }
 too-many-methods = { threshold = 88 }
 too-many-properties = { threshold = 31 }
-too-many-enum-cases = { threshold = 71 }
+too-many-enum-cases = { threshold = 76 }
 excessive-parameter-list = { threshold = 26 }
 kan-defect = { threshold = 8 }
 halstead = { effort-threshold = 19275, difficulty-threshold = 30, volume-threshold = 3236 }

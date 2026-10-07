@@ -96,6 +96,18 @@ only the box and a column either side of it toggle.
 - A box adds `FieldBox::ROWS - 1` rows to its host; every host derives its
   header rows and click bands from the height it drew, never a literal.
 
+## The gutter: a shade, and colour for a problem
+
+Every gutter cell sits on `Role::GutterBg` — a line's, a wrapped line's next
+rows, a lens or block row, `~` past the end — applied with
+`LineDecorator::applyFullWidth`, so a reset inside re-arms it. A line number
+alone may be tinted: `GutterError`/`GutterWarning`/`GutterNotice` by the worst
+problem on its line (a hint marks nothing), else `GutterInlay` while inlay
+hints show as cards and the line has some, else the caret line's colour. The
+tint stops at the number: the marker column keeps its glyph on the shade. No
+problem glyph is drawn in the gutter; monochrome says severity by reverse
+(error) and underline (warning, notice).
+
 ## Inlay hints and the problem card
 
 An inlay hint drawn into the code is a pill: its label on `Role::InlayParameter`

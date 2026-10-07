@@ -59,6 +59,11 @@ final class ThemeLockTest extends TestCase
         yield 'inlay' => [Role::Inlay, new Style(color: 243)];
         yield 'inlay-parameter' => [Role::InlayParameter, new Style(background: 238, color: 250)];
         yield 'inlay-type' => [Role::InlayType, new Style(background: 238, color: 245)];
+        yield 'gutter-bg' => [Role::GutterBg, new Style(background: 234)];
+        yield 'gutter-error' => [Role::GutterError, new Style(background: 52, color: 203)];
+        yield 'gutter-warning' => [Role::GutterWarning, new Style(background: 94, color: 208)];
+        yield 'gutter-notice' => [Role::GutterNotice, new Style(background: 58, color: 220)];
+        yield 'gutter-inlay' => [Role::GutterInlay, new Style(background: 235, color: 245)];
         yield 'debug-value' => [Role::DebugValue, new Style(color: 149)];
         yield 'indent-guide' => [Role::IndentGuide, new Style(color: 238)];
         yield 'git-added' => [Role::VcsAdded, new Style(color: 114)];
@@ -137,6 +142,11 @@ final class ThemeLockTest extends TestCase
         yield 'inlay' => [Role::Inlay, new Style(color: 245)];
         yield 'inlay-parameter' => [Role::InlayParameter, new Style(background: 254, color: 240)];
         yield 'inlay-type' => [Role::InlayType, new Style(background: 254, color: 243)];
+        yield 'gutter-bg' => [Role::GutterBg, new Style(background: 255)];
+        yield 'gutter-error' => [Role::GutterError, new Style(background: 224, color: 160)];
+        yield 'gutter-warning' => [Role::GutterWarning, new Style(background: 223, color: 166)];
+        yield 'gutter-notice' => [Role::GutterNotice, new Style(background: 230, color: 136)];
+        yield 'gutter-inlay' => [Role::GutterInlay, new Style(background: 254, color: 243)];
         yield 'debug-value' => [Role::DebugValue, new Style(color: 28)];
         yield 'indent-guide' => [Role::IndentGuide, new Style(color: 250)];
         yield 'git-added' => [Role::VcsAdded, new Style(color: 28)];
@@ -279,6 +289,9 @@ final class ThemeLockTest extends TestCase
             Role::FieldPlaceholder,
             Role::InlayParameter,
             Role::InlayType,
+            Role::GutterError,
+            Role::GutterWarning,
+            Role::GutterNotice,
             Role::BarHoverBg,
             Role::SelectionBg,
             Role::SearchBg,
@@ -327,6 +340,44 @@ final class ThemeLockTest extends TestCase
         yield 'dark' => [DarkTheme::definition()];
         yield 'light' => [LightTheme::definition()];
         yield 'high contrast' => [HighContrastTheme::definition()];
+    }
+
+    /**
+     * A tinted line number must read as a tint: its shade is neither the
+     * gutter's own nor the caret line's band.
+     */
+    #[DataProvider('colourThemes')]
+    public function testAGutterTintIsAShadeOfItsOwn(ThemeDefinition $theme): void
+    {
+        foreach ([Role::GutterError, Role::GutterWarning, Role::GutterNotice, Role::GutterInlay] as $tint) {
+            $shade = $theme->of($tint)->getBackground();
+            $this->assertInstanceOf(Color::class, $shade, "{$tint->name} is shaded");
+            $this->assertNotEquals($theme->of(Role::GutterBg)->getBackground(), $shade, "{$tint->name} differs from the gutter");
+            $this->assertNotEquals($theme->of(Role::RowHighlightBg)->getBackground(), $shade, "{$tint->name} differs from the caret band");
+        }
+    }
+
+    /** In the everyday themes the gutter says a severity in the colour its squiggle does. */
+    public function testAGutterTintIsItsSeveritysColour(): void
+    {
+        foreach ([DarkTheme::definition(), LightTheme::definition()] as $theme) {
+            foreach ([
+                [Role::GutterError,   Role::DiagError],
+                [Role::GutterWarning, Role::DiagWarn],
+                [Role::GutterNotice,  Role::DiagInfo],
+            ] as [$tint, $severity]) {
+                $this->assertEquals($theme->of($severity)->getColor(), $theme->of($tint)->getColor(), $tint->name);
+            }
+        }
+    }
+
+    public function testMonochromeSaysASeverityWithoutColour(): void
+    {
+        $mono = MonochromeTheme::definition();
+
+        $this->assertEquals(new Style(reverse: true), $mono->of(Role::GutterError));
+        $this->assertEquals(new Style(underline: true), $mono->of(Role::GutterWarning));
+        $this->assertEquals(new Style(underline: true), $mono->of(Role::GutterNotice));
     }
 
     public function testMonochromeDrawsAHintFaintAndSlantedNeverAsCode(): void
