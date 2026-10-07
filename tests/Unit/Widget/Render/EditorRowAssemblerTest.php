@@ -456,7 +456,7 @@ final class EditorRowAssemblerTest extends TestCase
         $this->assertSame([self::pen($styles, Role::Gutter)[0], self::pen($styles, Role::GutterBg)[1]], self::penAt($gutters[2], '3'), 'a hint marks nothing');
         foreach ($gutters as $gutter) {
             $this->assertMatchesRegularExpression('/^ *\d+ *$/', AnsiUtils::stripAnsiCodes($gutter), 'the number alone: no glyph beside it');
-            $this->assertMatchesRegularExpression('/^(\e\[[0-9;]*m)*\e\[48;5;(0|1|11)m/', $gutter, 'every row on the gutter\'s shade or its tint, from its first cell');
+            $this->assertMatchesRegularExpression('/^(\e\[[0-9;]*m)*\e\[48;5;(234|203|220)m/', $gutter, 'every row on the gutter\'s shade or its tint, from its first cell');
         }
     }
 
@@ -507,10 +507,10 @@ final class EditorRowAssemblerTest extends TestCase
         $styles = Styles::dark();
         [$tinted, $plain] = $this->gutters($store, $doc, $styles, rows: 2);
 
-        $this->assertStringStartsWith("\e[38;5;0m\e[48;5;1m", $tinted, 'from its first cell');
+        $this->assertStringStartsWith("\e[38;5;16m\e[48;5;203m", $tinted, 'from its first cell, in the error\'s own red');
         $this->assertStringContainsString($styles->of(Role::Breakpoint)->apply(Glyphs::BREAKPOINT), $tinted, 'the mark keeps its glyph');
-        $this->assertStringNotContainsString("\e[48;5;0m", $tinted, 'and no cell of it falls back to the gutter\'s shade');
-        $this->assertStringStartsWith("\e[48;5;0m", $plain, 'the next line is on the gutter\'s own shade');
+        $this->assertStringNotContainsString("\e[48;5;234m", $tinted, 'and no cell of it falls back to the gutter\'s shade');
+        $this->assertStringStartsWith("\e[48;5;234m", $plain, 'the next line is on the gutter\'s own shade');
     }
 
     /** Past the end and on a wrapped line's next rows, the gutter is still the gutter. */
@@ -519,7 +519,7 @@ final class EditorRowAssemblerTest extends TestCase
         $doc = new Document("a\n");
         $gutters = $this->gutters(new DecorationStore(static function (): void {}), $doc, Styles::dark(), rows: 3);
 
-        $this->assertStringStartsWith("\e[48;5;0m", $gutters[2]);
+        $this->assertStringStartsWith("\e[48;5;234m", $gutters[2]);
         $this->assertStringContainsString('~', AnsiUtils::stripAnsiCodes($gutters[2]));
     }
 

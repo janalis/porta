@@ -353,3 +353,13 @@ for an error / warning / notice, bright black for a hint line — so it follows
 whatever scheme the terminal uses. The 16 colours have no orange: a warning is
 yellow and a notice bright yellow here, which is close in Dracula but stays
 distinct; the squiggles keep their 256-colour red / orange / yellow.
+
+## The gutter's tint is the severity's own colour (2026-10-07)
+
+The terminal's 16 colours had no orange, so a warning was yellow, and its red
+and yellow were not the squiggle's. The user asked for warnings orange and the
+gutter consistent with the other severity colours: a tinted line's whole gutter
+is now its severity's own colour (`DiagError`/`DiagWarn`/`DiagInfo` — dark
+203 / 208 / 220) with dark text, a hint line the inlay pill's shade, and the
+gutter's own shade back on the fixed palette (234). `ThemeLockTest` checks the
+tints against those roles in every colour theme, so they cannot drift apart.

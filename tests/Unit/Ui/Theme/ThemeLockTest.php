@@ -59,11 +59,11 @@ final class ThemeLockTest extends TestCase
         yield 'inlay' => [Role::Inlay, new Style(color: 243)];
         yield 'inlay-parameter' => [Role::InlayParameter, new Style(background: 238, color: 250)];
         yield 'inlay-type' => [Role::InlayType, new Style(background: 238, color: 245)];
-        yield 'gutter-bg' => [Role::GutterBg, new Style(background: 0)];
-        yield 'gutter-error' => [Role::GutterError, new Style(background: 1, color: 0)];
-        yield 'gutter-warning' => [Role::GutterWarning, new Style(background: 3, color: 0)];
-        yield 'gutter-notice' => [Role::GutterNotice, new Style(background: 11, color: 0)];
-        yield 'gutter-inlay' => [Role::GutterInlay, new Style(background: 8, color: 7)];
+        yield 'gutter-bg' => [Role::GutterBg, new Style(background: 234)];
+        yield 'gutter-error' => [Role::GutterError, new Style(background: 203, color: 16)];
+        yield 'gutter-warning' => [Role::GutterWarning, new Style(background: 208, color: 16)];
+        yield 'gutter-notice' => [Role::GutterNotice, new Style(background: 220, color: 16)];
+        yield 'gutter-inlay' => [Role::GutterInlay, new Style(background: 238, color: 250)];
         yield 'debug-value' => [Role::DebugValue, new Style(color: 149)];
         yield 'indent-guide' => [Role::IndentGuide, new Style(color: 238)];
         yield 'git-added' => [Role::VcsAdded, new Style(color: 114)];
@@ -143,10 +143,10 @@ final class ThemeLockTest extends TestCase
         yield 'inlay-parameter' => [Role::InlayParameter, new Style(background: 254, color: 240)];
         yield 'inlay-type' => [Role::InlayType, new Style(background: 254, color: 243)];
         yield 'gutter-bg' => [Role::GutterBg, new Style(background: 255)];
-        yield 'gutter-error' => [Role::GutterError, new Style(background: 224, color: 160)];
-        yield 'gutter-warning' => [Role::GutterWarning, new Style(background: 223, color: 166)];
-        yield 'gutter-notice' => [Role::GutterNotice, new Style(background: 230, color: 136)];
-        yield 'gutter-inlay' => [Role::GutterInlay, new Style(background: 254, color: 243)];
+        yield 'gutter-error' => [Role::GutterError, new Style(background: 160, color: 231)];
+        yield 'gutter-warning' => [Role::GutterWarning, new Style(background: 166, color: 231)];
+        yield 'gutter-notice' => [Role::GutterNotice, new Style(background: 136, color: 231)];
+        yield 'gutter-inlay' => [Role::GutterInlay, new Style(background: 254, color: 240)];
         yield 'debug-value' => [Role::DebugValue, new Style(color: 28)];
         yield 'indent-guide' => [Role::IndentGuide, new Style(color: 250)];
         yield 'git-added' => [Role::VcsAdded, new Style(color: 28)];
@@ -358,21 +358,21 @@ final class ThemeLockTest extends TestCase
     }
 
     /**
-     * The light theme says a severity in the colour its squiggle does. The
-     * dark one draws the gutter in the terminal's own colours instead, so it
-     * follows whatever theme the terminal has (pinned above).
+     * A problem's gutter is its severity's own colour — the squiggle's, the
+     * status bar's, a toast's — so the IDE says a severity one way; a hint
+     * line's is the inlay pill's shade.
      */
-    public function testAGutterTintIsItsSeveritysColour(): void
+    #[DataProvider('colourThemes')]
+    public function testAGutterTintIsItsSeveritysColour(ThemeDefinition $theme): void
     {
-        foreach ([LightTheme::definition()] as $theme) {
-            foreach ([
-                [Role::GutterError,   Role::DiagError],
-                [Role::GutterWarning, Role::DiagWarn],
-                [Role::GutterNotice,  Role::DiagInfo],
-            ] as [$tint, $severity]) {
-                $this->assertEquals($theme->of($severity)->getColor(), $theme->of($tint)->getColor(), $tint->name);
-            }
+        foreach ([
+            [Role::GutterError,   Role::DiagError],
+            [Role::GutterWarning, Role::DiagWarn],
+            [Role::GutterNotice,  Role::DiagInfo],
+        ] as [$tint, $severity]) {
+            $this->assertEquals($theme->of($severity)->getColor(), $theme->of($tint)->getBackground(), $tint->name);
         }
+        $this->assertEquals($theme->of(Role::InlayParameter)->getBackground(), $theme->of(Role::GutterInlay)->getBackground());
     }
 
     public function testMonochromeSaysASeverityWithoutColour(): void

@@ -47,15 +47,14 @@ final class DarkTheme
                 Role::DiagInfoDim->selector() => new Style(color: 136),
                 Role::DiagHintDim->selector() => new Style(color: 240),
                 Role::CurrentLineNumber->selector() => new Style(color: 252),
-                // The gutter in the TERMINAL's own colours (0–15), so it
-                // follows whatever theme the terminal has: its black for the
-                // gutter, its red, yellow and bright yellow for a problem's
-                // line, its bright black for a hint line.
-                Role::GutterBg->selector() => new Style(background: 0),
-                Role::GutterError->selector() => new Style(background: 1, color: 0),
-                Role::GutterWarning->selector() => new Style(background: 3, color: 0),
-                Role::GutterNotice->selector() => new Style(background: 11, color: 0),
-                Role::GutterInlay->selector() => new Style(background: 8, color: 7),
+                // A problem's line: its whole gutter in the severity's own
+                // colour — the squiggle's, the status bar's, a toast's — with
+                // dark text; a hint line in the inlay pill's shade.
+                Role::GutterBg->selector() => new Style(background: 234),
+                Role::GutterError->selector() => new Style(background: 203, color: 16),
+                Role::GutterWarning->selector() => new Style(background: 208, color: 16),
+                Role::GutterNotice->selector() => new Style(background: 220, color: 16),
+                Role::GutterInlay->selector() => new Style(background: 238, color: 250),
                 Role::Placeholder->selector() => new Style(color: 238),
                 Role::Rule->selector() => new Style(color: 238),
                 Role::DebugValue->selector() => new Style(color: 149),

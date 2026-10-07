@@ -105,10 +105,11 @@ row may instead sit on a tint, across the whole gutter: `GutterError`/
 `GutterWarning`/`GutterNotice` by the worst problem on it (a hint marks
 nothing), else `GutterInlay` while inlay hints show as cards and it has some.
 The number takes the tint's foreground; a mark keeps its glyph and colour on
-it. The dark theme maps these roles to palette indexes 0–15 — the terminal's
-own colours — so the gutter follows the terminal's scheme (Dracula, Solarized…);
-the other themes keep fixed 256-colour values. No problem glyph is drawn in the
-gutter; monochrome says severity by reverse (error) and underline.
+it. A severity tint's background is that severity's own colour (`DiagError`,
+`DiagWarn`, `DiagInfo`) and the hint tint's is the inlay pill's —
+`ThemeLockTest` holds both — so the IDE says a severity in one colour wherever
+it says it. No problem glyph is drawn in the gutter; monochrome says severity
+by reverse (error) and underline.
 
 ## Inlay hints and the problem card
 
