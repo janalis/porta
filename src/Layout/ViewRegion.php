@@ -64,8 +64,8 @@ final class ViewRegion
      * a pane whose first row is a toolbar reads as the window's own bar.
      *
      * A region-level opt-in because the padding is the frame's, drawn by core:
-     * the pane cannot reach it from inside its own rect. Git's diff pane is
-     * the one caller.
+     * the pane cannot reach it from inside its own rect. Git's diff pane and
+     * the review view's are its callers.
      */
     public function flushContentTop(): void
     {

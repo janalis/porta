@@ -514,7 +514,8 @@ does not know at build time, and the container is built before any plugin PHP
 runs. A region whose content opens on a toolbar calls
 `ViewRegion::flushContentTop()`: `ViewWindowPresenter` then renders the content
 from the window's padding row, right under the title bar, and the sidebar and
-separator keep that row as a top inset. Git's diff pane is the one caller.
+separator keep that row as a top inset. Git's diff pane and the review view's
+call it.
 
 A plugin registers one with `PluginApi::registerView($id, $factory)`. The
 factory runs after plugins commit, with the seven-member `ViewServices`; its
