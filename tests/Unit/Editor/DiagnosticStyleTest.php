@@ -28,8 +28,8 @@ final class DiagnosticStyleTest extends TestCase
     {
         $styles = new Styles(DarkTheme::definition());
         $this->assertSame("\x1b[4:3m\x1b[58;5;203m", DiagnosticStyle::underlineOpen(DiagnosticSeverity::Error, $styles), 'error: curly');
-        $this->assertSame("\x1b[4:5m\x1b[58;5;179m", DiagnosticStyle::underlineOpen(DiagnosticSeverity::Warning, $styles), 'warning: dashed');
-        $this->assertSame("\x1b[4:4m\x1b[58;5;75m", DiagnosticStyle::underlineOpen(DiagnosticSeverity::Information, $styles), 'info: dotted');
+        $this->assertSame("\x1b[4:5m\x1b[58;5;208m", DiagnosticStyle::underlineOpen(DiagnosticSeverity::Warning, $styles), 'warning: dashed');
+        $this->assertSame("\x1b[4:4m\x1b[58;5;220m", DiagnosticStyle::underlineOpen(DiagnosticSeverity::Information, $styles), 'info: dotted');
         $this->assertSame("\x1b[4:1m\x1b[58;5;244m", DiagnosticStyle::underlineOpen(DiagnosticSeverity::Hint, $styles), 'hint: straight');
         $this->assertSame("\x1b[59m\x1b[24m", DiagnosticStyle::underlineClose());
     }

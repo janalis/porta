@@ -11,7 +11,7 @@ use Porta\Ui\Theme\Styles;
 
 /**
  * One corner notification card in the modal design language: the rounded
- * frame in the toast's severity role (error red, warning amber, info blue,
+ * frame in the toast's severity role (error red, warning orange, info yellow,
  * success green — the diagnostics palette), the severity glyph on the top
  * border, the tab strips' × affordance, and the message WRAPPED across rows
  * rather than truncated — a clipped error message is no message, and the E2e

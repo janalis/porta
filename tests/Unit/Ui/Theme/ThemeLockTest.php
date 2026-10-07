@@ -45,12 +45,12 @@ final class ThemeLockTest extends TestCase
         yield 'muted' => [Role::Muted, new Style(color: 250)];
         yield 'bright' => [Role::Bright, new Style(color: 231)];
         yield 'diag-error' => [Role::DiagError, new Style(color: 203)];
-        yield 'diag-warn' => [Role::DiagWarn, new Style(color: 179)];
-        yield 'diag-info' => [Role::DiagInfo, new Style(color: 75)];
+        yield 'diag-warn' => [Role::DiagWarn, new Style(color: 208)];
+        yield 'diag-info' => [Role::DiagInfo, new Style(color: 220)];
         yield 'diag-hint' => [Role::DiagHint, new Style(color: 244)];
         yield 'diag-error-dim' => [Role::DiagErrorDim, new Style(color: 131)];
-        yield 'diag-warn-dim' => [Role::DiagWarnDim, new Style(color: 101)];
-        yield 'diag-info-dim' => [Role::DiagInfoDim, new Style(color: 67)];
+        yield 'diag-warn-dim' => [Role::DiagWarnDim, new Style(color: 130)];
+        yield 'diag-info-dim' => [Role::DiagInfoDim, new Style(color: 136)];
         yield 'diag-hint-dim' => [Role::DiagHintDim, new Style(color: 240)];
         yield 'current-line-number' => [Role::CurrentLineNumber, new Style(color: 252)];
         yield 'placeholder' => [Role::Placeholder, new Style(color: 238)];
@@ -89,7 +89,7 @@ final class ThemeLockTest extends TestCase
         yield 'status-accent' => [Role::StatusAccent, new Style(color: 114)];
         yield 'status-active' => [Role::StatusActive, new Style(color: 203)];
         yield 'status-error' => [Role::StatusError, new Style(color: 203)];
-        yield 'status-warning' => [Role::StatusWarning, new Style(color: 179)];
+        yield 'status-warning' => [Role::StatusWarning, new Style(color: 208)];
     }
 
     #[DataProvider('darkRoles')]
@@ -121,12 +121,12 @@ final class ThemeLockTest extends TestCase
         yield 'muted' => [Role::Muted, new Style(color: 240)];
         yield 'bright' => [Role::Bright, new Style(color: 16)];
         yield 'diag-error' => [Role::DiagError, new Style(color: 160)];
-        yield 'diag-warn' => [Role::DiagWarn, new Style(color: 130)];
-        yield 'diag-info' => [Role::DiagInfo, new Style(color: 25)];
+        yield 'diag-warn' => [Role::DiagWarn, new Style(color: 166)];
+        yield 'diag-info' => [Role::DiagInfo, new Style(color: 136)];
         yield 'diag-hint' => [Role::DiagHint, new Style(color: 245)];
         yield 'diag-error-dim' => [Role::DiagErrorDim, new Style(color: 124)];
-        yield 'diag-warn-dim' => [Role::DiagWarnDim, new Style(color: 136)];
-        yield 'diag-info-dim' => [Role::DiagInfoDim, new Style(color: 67)];
+        yield 'diag-warn-dim' => [Role::DiagWarnDim, new Style(color: 130)];
+        yield 'diag-info-dim' => [Role::DiagInfoDim, new Style(color: 100)];
         yield 'diag-hint-dim' => [Role::DiagHintDim, new Style(color: 240)];
         yield 'current-line-number' => [Role::CurrentLineNumber, new Style(color: 240)];
         yield 'placeholder' => [Role::Placeholder, new Style(color: 250)];
@@ -165,7 +165,7 @@ final class ThemeLockTest extends TestCase
         yield 'status-accent' => [Role::StatusAccent, new Style(color: 28)];
         yield 'status-active' => [Role::StatusActive, new Style(color: 160)];
         yield 'status-error' => [Role::StatusError, new Style(color: 160)];
-        yield 'status-warning' => [Role::StatusWarning, new Style(color: 130)];
+        yield 'status-warning' => [Role::StatusWarning, new Style(color: 166)];
     }
 
     #[DataProvider('lightRoles')]
@@ -183,16 +183,16 @@ final class ThemeLockTest extends TestCase
     public static function underlines(): iterable
     {
         yield 'dark error' => [DarkTheme::definition(), Role::DiagErrorUnderline, "\x1b[58;5;203m"];
-        yield 'dark warn' => [DarkTheme::definition(), Role::DiagWarnUnderline, "\x1b[58;5;179m"];
-        yield 'dark info' => [DarkTheme::definition(), Role::DiagInfoUnderline, "\x1b[58;5;75m"];
+        yield 'dark warn' => [DarkTheme::definition(), Role::DiagWarnUnderline, "\x1b[58;5;208m"];
+        yield 'dark info' => [DarkTheme::definition(), Role::DiagInfoUnderline, "\x1b[58;5;220m"];
         yield 'dark hint' => [DarkTheme::definition(), Role::DiagHintUnderline, "\x1b[58;5;244m"];
         yield 'light error' => [LightTheme::definition(), Role::DiagErrorUnderline, "\x1b[58;5;160m"];
-        yield 'light warn' => [LightTheme::definition(), Role::DiagWarnUnderline, "\x1b[58;5;130m"];
-        yield 'light info' => [LightTheme::definition(), Role::DiagInfoUnderline, "\x1b[58;5;25m"];
+        yield 'light warn' => [LightTheme::definition(), Role::DiagWarnUnderline, "\x1b[58;5;166m"];
+        yield 'light info' => [LightTheme::definition(), Role::DiagInfoUnderline, "\x1b[58;5;136m"];
         yield 'light hint' => [LightTheme::definition(), Role::DiagHintUnderline, "\x1b[58;5;245m"];
         yield 'high-contrast error' => [HighContrastTheme::definition(), Role::DiagErrorUnderline, "\x1b[58;5;203m"];
-        yield 'high-contrast warn' => [HighContrastTheme::definition(), Role::DiagWarnUnderline, "\x1b[58;5;226m"];
-        yield 'high-contrast info' => [HighContrastTheme::definition(), Role::DiagInfoUnderline, "\x1b[58;5;51m"];
+        yield 'high-contrast warn' => [HighContrastTheme::definition(), Role::DiagWarnUnderline, "\x1b[58;5;208m"];
+        yield 'high-contrast info' => [HighContrastTheme::definition(), Role::DiagInfoUnderline, "\x1b[58;5;226m"];
         yield 'high-contrast hint' => [HighContrastTheme::definition(), Role::DiagHintUnderline, "\x1b[58;5;250m"];
     }
 
@@ -245,7 +245,7 @@ final class ThemeLockTest extends TestCase
         $hc = HighContrastTheme::definition();
         $this->assertEquals(new Style(background: 19, color: 231, bold: true), $hc->of(Role::SelectedRow), 'white-on-deep-blue selection, bold');
         $this->assertEquals(new Style(color: 231), $hc->of(Role::Bright), 'near-white base text');
-        $this->assertEquals(new Style(color: 226), $hc->of(Role::DiagWarn), 'bright yellow warnings');
+        $this->assertEquals(new Style(color: 208), $hc->of(Role::DiagWarn), 'bright orange warnings');
         $this->assertEquals(new Style(color: 118), $hc->of(Role::DebugValue), 'bright green live values');
         $this->assertEquals($hc->of(Role::DiagError), $hc->of(Role::DiagErrorDim), 'no dim tier in high contrast');
         $this->assertEquals($hc->of(Role::DiagInfo), $hc->of(Role::DiagInfoDim), 'no dim tier in high contrast');

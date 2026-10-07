@@ -38,13 +38,13 @@ final class HighContrastTheme
                 Role::Muted->selector() => new Style(color: 253),
                 Role::Bright->selector() => new Style(color: 231),
                 Role::DiagError->selector() => new Style(color: 203),
-                Role::DiagWarn->selector() => new Style(color: 226),
-                Role::DiagInfo->selector() => new Style(color: 51),
+                Role::DiagWarn->selector() => new Style(color: 208),
+                Role::DiagInfo->selector() => new Style(color: 226),
                 Role::DiagHint->selector() => new Style(color: 250),
                 // No dim tier in high contrast: the "dim" roles keep full strength.
                 Role::DiagErrorDim->selector() => new Style(color: 203),
-                Role::DiagWarnDim->selector() => new Style(color: 226),
-                Role::DiagInfoDim->selector() => new Style(color: 51),
+                Role::DiagWarnDim->selector() => new Style(color: 208),
+                Role::DiagInfoDim->selector() => new Style(color: 226),
                 Role::DiagHintDim->selector() => new Style(color: 250),
                 Role::CurrentLineNumber->selector() => new Style(color: 231),
                 Role::Placeholder->selector() => new Style(color: 244),
@@ -83,7 +83,7 @@ final class HighContrastTheme
                 Role::StatusAccent->selector() => new Style(color: 120),
                 Role::StatusActive->selector() => new Style(color: 203),
                 Role::StatusError->selector() => new Style(color: 203),
-                Role::StatusWarning->selector() => new Style(color: 226),
+                Role::StatusWarning->selector() => new Style(color: 208),
                 // List selection as a `.list` pseudo-element: the base rule is
                 // the unfocused shade, the :focus variant merges over it.
                 '.list::selected' => new Style(background: 236),
@@ -97,8 +97,8 @@ final class HighContrastTheme
             ],
             underlines: [
                 Role::DiagErrorUnderline->name => Sgr::underlineColor(203),
-                Role::DiagWarnUnderline->name => Sgr::underlineColor(226),
-                Role::DiagInfoUnderline->name => Sgr::underlineColor(51),
+                Role::DiagWarnUnderline->name => Sgr::underlineColor(208),
+                Role::DiagInfoUnderline->name => Sgr::underlineColor(226),
                 Role::DiagHintUnderline->name => Sgr::underlineColor(250),
             ],
             hasColor: true,

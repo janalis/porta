@@ -674,7 +674,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         $editor->decorations->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'multi-line issue', 'col' => 2, 'endCol' => \PHP_INT_MAX]]]);
 
         $rendered = $editor->render(new RenderContext(60, 5));
-        $this->assertStringContainsString("\x1b[4:5m\x1b[58;5;179m", $rendered[1], 'dashed amber underline to line end');
+        $this->assertStringContainsString("\x1b[4:5m\x1b[58;5;208m", $rendered[1], 'dashed orange underline to line end');
         $this->assertSame(1, $editor->getDiagnosticCounts()['warnings']);
         $this->assertSame(60, AnsiUtils::visibleWidth($rendered[1]));
     }

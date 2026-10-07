@@ -1058,18 +1058,18 @@ final class CodeEditorWidgetTest extends TestCase
 
         // Line-number color by worst severity per line (no icon in the left gutter).
         $this->assertStringContainsString("\x1b[38;5;203m", $rendered[1], 'error color (worst of error+warning)');
-        $this->assertStringContainsString("\x1b[38;5;75m", $rendered[2], 'info color');
+        $this->assertStringContainsString("\x1b[38;5;220m", $rendered[2], 'info color');
         $this->assertStringContainsString("\x1b[38;5;244m", $rendered[3], 'hint color');
 
         // Each diagnostic underlined in its own severity color.
         $this->assertStringContainsString("\x1b[58;5;203m", $rendered[1], 'error underline color');
-        $this->assertStringContainsString("\x1b[58;5;179m", $rendered[1], 'warning underline color');
-        $this->assertStringContainsString("\x1b[58;5;75m", $rendered[2], 'info underline color');
+        $this->assertStringContainsString("\x1b[58;5;208m", $rendered[1], 'warning underline color');
+        $this->assertStringContainsString("\x1b[58;5;220m", $rendered[2], 'info underline color');
 
         // The stripe carries a block whose density encodes the worst severity,
         // mapped to its proportional row.
         $this->assertStringContainsString("\x1b[38;5;203m█", \implode('', $rendered), 'error: full block, colored red, in the stripe');
-        $this->assertStringContainsString("\x1b[38;5;75m▒", \implode('', $rendered), 'info: medium-shade block in the stripe');
+        $this->assertStringContainsString("\x1b[38;5;220m▒", \implode('', $rendered), 'info: medium-shade block in the stripe');
         $this->assertStringContainsString("\x1b[38;5;244m░", \implode('', $rendered), 'hint: light-shade block in the stripe');
 
         // The gutter marker column repeats the severity as a glyph.
@@ -1100,7 +1100,7 @@ final class CodeEditorWidgetTest extends TestCase
         // The stripe (last column) marks both problems even though line 55 is off-screen.
         $all = \implode('', $rendered);
         $this->assertStringContainsString("\x1b[38;5;203m\x1b[48;5;236m█", $all, 'error block in the stripe, over the viewport thumb');
-        $this->assertStringContainsString("\x1b[38;5;179m▓", $all, 'off-screen warning shown as a dashed amber block');
+        $this->assertStringContainsString("\x1b[38;5;208m▓", $all, 'off-screen warning shown as a dashed orange block');
         $this->assertSame(1, \substr_count($all, needle: '█'), 'the empty list draws no stripe mark');
         $this->assertSame(1, \substr_count($all, needle: '▓'), 'one warning mark');
 

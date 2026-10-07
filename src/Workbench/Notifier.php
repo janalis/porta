@@ -41,7 +41,7 @@ final readonly class Notifier implements FlashSink
     }
 
     /**
-     * Show a severity-dressed toast (error red, warning amber, success green)
+     * Show a severity-dressed toast (error red, warning orange, info yellow, success green)
      * and log it. A $slot names the one message of its kind: a later notify in
      * the same slot replaces the card still showing, so a long-lived
      * "Fetching…" is answered in place by its outcome.
