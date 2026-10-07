@@ -118,7 +118,8 @@ final readonly class ContextMenuRouter
 
     /**
      * Keep an existing selection (so Cut/Copy act on it); otherwise place the
-     * caret at the click, like PhpStorm.
+     * caret at the click, like PhpStorm. A click on an inlay hint is about
+     * the hint, not the code: its own menu, and the caret stays put.
      *
      * @param array{row: int, col: int} $rel
      *
@@ -127,6 +128,10 @@ final readonly class ContextMenuRouter
     private function editorItems(array $rel): array
     {
         $this->tui->setFocus($this->panes->editor);
+        $hint = $this->panes->editor->mouse->inlayHintAt($rel['row'], $rel['col'], $this->panes->editor->viewport());
+        if (null !== $hint) {
+            return $this->contextItems->inlayHintItems($hint);
+        }
         if (!$this->panes->editor->getDocument()->hasSelection()) {
             $this->panes->editor->clearExtraCarets();
             $this->panes->editor->clickAt($rel['row'], $rel['col']);

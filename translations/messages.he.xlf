@@ -3342,6 +3342,30 @@
         <source>Type hints</source>
         <target>רמזי טיפוסים</target>
       </trans-unit>
+      <trans-unit id="1157">
+        <source>Cycle Parameter Name Hints</source>
+        <target>החלפת רמזי שמות פרמטרים</target>
+      </trans-unit>
+      <trans-unit id="1158">
+        <source>Toggle Type Hints</source>
+        <target>הפעלה/כיבוי של רמזי טיפוסים</target>
+      </trans-unit>
+      <trans-unit id="1159">
+        <source>Hide Parameter Name Hints</source>
+        <target>הסתרת רמזי שמות פרמטרים</target>
+      </trans-unit>
+      <trans-unit id="1160">
+        <source>Show Parameter Name Hints Only for Literals</source>
+        <target>רמזי שמות פרמטרים לליטרלים בלבד</target>
+      </trans-unit>
+      <trans-unit id="1161">
+        <source>Hide Type Hints</source>
+        <target>הסתרת רמזי טיפוסים</target>
+      </trans-unit>
+      <trans-unit id="1162">
+        <source>Hide All Inlay Hints</source>
+        <target>הסתרת כל הרמזים המוטמעים</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

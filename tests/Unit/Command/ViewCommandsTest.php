@@ -6,10 +6,14 @@ namespace Porta\Tests\Unit\Command;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
+use Porta\Config\ConfigScope;
 use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
+use Porta\Editor\InlayHintMode;
+use Porta\Editor\InlayParameterHints;
 use Porta\Ide;
 use Porta\Onboarding\OnboardingState;
+use Porta\Settings\SettingsScope;
 use Porta\Terminal\TerminalSessions;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\Services;
@@ -36,6 +40,15 @@ final class ViewCommandsTest extends TestCase
         new OnboardingState($project->dir)->markWelcomeSeen();
 
         return new Ide($project->dir, null, new VirtualTerminal(columns: 100, rows: 30));
+    }
+
+    /** Whether a toggle's menu item shows its ✓. */
+    private static function ticked(CommandRegistry $commands, string $id): bool
+    {
+        $state = $commands->checkedState($id);
+        self::assertNotNull($state, "{$id} is a toggle");
+
+        return $state();
     }
 
     private function closeIde(Ide $ide): void
@@ -222,6 +235,44 @@ final class ViewCommandsTest extends TestCase
             $commands->run('toggle_code_lenses');
             $this->assertFalse($display->codeLenses);
             $this->assertSame([], $editor->decorations->codeLensesAt(1), 'turning it off took the rows with it');
+        } finally {
+            $this->closeIde($ide);
+        }
+    }
+
+    /** The hint verbs each change their setting, the way the Settings form would. */
+    public function testTheInlayHintVerbsChangeTheirSettings(): void
+    {
+        $project = new TempProject(['a.php' => "<?php\n"]);
+        new OnboardingState($project->dir)->markWelcomeSeen();
+        $ide = new Ide($project->dir, $project->path('a.php'), new VirtualTerminal(columns: 100, rows: 30));
+
+        try {
+            // Into the project, never the committed fixture home every later boot reads.
+            Services::resolve($ide, SettingsScope::class)->set(ConfigScope::Project);
+            $commands = Services::resolve($ide, CommandRegistry::class);
+            $display = Services::resolve($ide, CodeEditorWidget::class)->display;
+
+            $this->assertTrue(self::ticked($commands, 'toggle_parameter_hints_literals'), 'literals by default, so the item is ticked');
+            $commands->run('toggle_parameter_hints_literals');
+            $this->assertSame(InlayParameterHints::All, $display->inlayParameterHints, 'unticking it shows them all');
+            $this->assertFalse(self::ticked($commands, 'toggle_parameter_hints_literals'));
+            $commands->run('toggle_parameter_hints_literals');
+            $this->assertSame(InlayParameterHints::Literals, $display->inlayParameterHints, 'and ticking it back, only before literals');
+
+            $commands->run('cycle_parameter_hints');
+            $this->assertSame(InlayParameterHints::All, $display->inlayParameterHints, 'literals → all');
+            $commands->run('hide_parameter_hints');
+            $this->assertSame(InlayParameterHints::None, $display->inlayParameterHints);
+
+            $this->assertTrue(self::ticked($commands, 'toggle_type_hints'));
+            $commands->run('hide_type_hints');
+            $this->assertFalse($display->inlayTypeHints);
+            $commands->run('toggle_type_hints');
+            $this->assertTrue($display->inlayTypeHints, 'and back on');
+
+            $commands->run('hide_inlay_hints');
+            $this->assertSame(InlayHintMode::None, $display->inlayHints);
         } finally {
             $this->closeIde($ide);
         }

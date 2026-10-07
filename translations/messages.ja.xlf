@@ -3342,6 +3342,30 @@
         <source>Type hints</source>
         <target>型のヒント</target>
       </trans-unit>
+      <trans-unit id="1157">
+        <source>Cycle Parameter Name Hints</source>
+        <target>パラメーター名のヒントを切り替え</target>
+      </trans-unit>
+      <trans-unit id="1158">
+        <source>Toggle Type Hints</source>
+        <target>型のヒントの切り替え</target>
+      </trans-unit>
+      <trans-unit id="1159">
+        <source>Hide Parameter Name Hints</source>
+        <target>パラメーター名のヒントを非表示</target>
+      </trans-unit>
+      <trans-unit id="1160">
+        <source>Show Parameter Name Hints Only for Literals</source>
+        <target>リテラルにのみパラメーター名のヒントを表示</target>
+      </trans-unit>
+      <trans-unit id="1161">
+        <source>Hide Type Hints</source>
+        <target>型のヒントを非表示</target>
+      </trans-unit>
+      <trans-unit id="1162">
+        <source>Hide All Inlay Hints</source>
+        <target>すべてのインレイヒントを非表示</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

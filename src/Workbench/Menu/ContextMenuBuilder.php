@@ -7,6 +7,8 @@ namespace Porta\Workbench\Menu;
 use Porta\Config\CommandRegistry;
 use Porta\Config\LiveKeybindings;
 use Porta\Editor\BufferService;
+use Porta\Editor\InlayHint;
+use Porta\Editor\InlayHintKind;
 use Porta\Editor\TabSide;
 use Porta\I18n\Translator;
 use Porta\Plugin\Runtime\PluginManager;
@@ -75,6 +77,23 @@ final readonly class ContextMenuBuilder
             $this->keybindings->current(),
             $this->translator,
         );
+    }
+
+    /**
+     * A right-click on an inlay hint, PhpStorm's way: what to hide, for the
+     * kind of hint it is, and for all of them.
+     *
+     * @return list<MenuItem>
+     */
+    public function inlayHintItems(InlayHint $hint): array
+    {
+        $own = match ($hint->kind) {
+            InlayHintKind::Parameter => ['i:hide_parameter_hints', 'i:toggle_parameter_hints_literals', MenuModel::SEP],
+            InlayHintKind::Type => ['i:hide_type_hints', MenuModel::SEP],
+            null => [],
+        };
+
+        return MenuModel::items([...$own, 'i:hide_inlay_hints'], $this->commands, $this->editor, $this->keybindings->current(), $this->translator);
     }
 
     /**

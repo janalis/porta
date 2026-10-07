@@ -290,7 +290,10 @@ As in PhpStorm, a parameter's name shows only before an argument that says
 nothing about its purpose on its own — a number, a string, an array, `null`,
 `true` or `false` — and always for a by-reference parameter (`&name:`).
 **Parameter name hints** shows them for `all` arguments or `none`; **Type
-hints** turns the inferred types off. A switch applies at once.
+hints** turns the inferred types off. A switch applies at once. Right-click a
+hint for the same choices in place — hide that kind, show a parameter's name
+only before literals, or hide every hint — the caret stays where it was; the
+palette has `Cycle Parameter Name Hints` and `Toggle Type Hints`.
 
 A hint never moves your text: a click on it lands on the character it sits
 before, and on a soft-wrapped line a hint is drawn only where its row has room

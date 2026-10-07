@@ -3342,6 +3342,30 @@
         <source>Type hints</source>
         <target>Indications de type</target>
       </trans-unit>
+      <trans-unit id="1157">
+        <source>Cycle Parameter Name Hints</source>
+        <target>Alterner les indications des noms de paramètres</target>
+      </trans-unit>
+      <trans-unit id="1158">
+        <source>Toggle Type Hints</source>
+        <target>Activer/désactiver les indications de type</target>
+      </trans-unit>
+      <trans-unit id="1159">
+        <source>Hide Parameter Name Hints</source>
+        <target>Masquer les indications des noms de paramètres</target>
+      </trans-unit>
+      <trans-unit id="1160">
+        <source>Show Parameter Name Hints Only for Literals</source>
+        <target>Indications des noms de paramètres pour les littéraux uniquement</target>
+      </trans-unit>
+      <trans-unit id="1161">
+        <source>Hide Type Hints</source>
+        <target>Masquer les indications de type</target>
+      </trans-unit>
+      <trans-unit id="1162">
+        <source>Hide All Inlay Hints</source>
+        <target>Masquer toutes les indications incrustées</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

@@ -3342,6 +3342,30 @@
         <source>Type hints</source>
         <target>Sugerencias de tipo</target>
       </trans-unit>
+      <trans-unit id="1157">
+        <source>Cycle Parameter Name Hints</source>
+        <target>Alternar sugerencias de nombres de parámetros</target>
+      </trans-unit>
+      <trans-unit id="1158">
+        <source>Toggle Type Hints</source>
+        <target>Activar/desactivar sugerencias de tipo</target>
+      </trans-unit>
+      <trans-unit id="1159">
+        <source>Hide Parameter Name Hints</source>
+        <target>Ocultar sugerencias de nombres de parámetros</target>
+      </trans-unit>
+      <trans-unit id="1160">
+        <source>Show Parameter Name Hints Only for Literals</source>
+        <target>Sugerencias de nombres de parámetros solo para literales</target>
+      </trans-unit>
+      <trans-unit id="1161">
+        <source>Hide Type Hints</source>
+        <target>Ocultar sugerencias de tipo</target>
+      </trans-unit>
+      <trans-unit id="1162">
+        <source>Hide All Inlay Hints</source>
+        <target>Ocultar todas las sugerencias incrustadas</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
