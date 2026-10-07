@@ -511,7 +511,10 @@ A view carries everything it needs to be driven:
 `Workbench/View/ViewHost` opens a view's region in `ViewWindow` and gives the
 workspace back, once for every view. `Layout/ViewRegions` mints the region: a compiled slot cannot reach a view core
 does not know at build time, and the container is built before any plugin PHP
-runs.
+runs. A region whose content opens on a toolbar calls
+`ViewRegion::flushContentTop()`: `ViewWindowPresenter` then renders the content
+from the window's padding row, right under the title bar, and the sidebar and
+separator keep that row as a top inset. Git's diff pane is the one caller.
 
 A plugin registers one with `PluginApi::registerView($id, $factory)`. The
 factory runs after plugins commit, with the seven-member `ViewServices`; its

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Overlay\Presenter;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Layout\ViewRegion;
 use Porta\Overlay\Presenter\OverlayDelivery;
 use Porta\Overlay\Presenter\ViewWindowPresenter;
 use Porta\Overlay\Region\ModalBox;
@@ -14,6 +15,7 @@ use Porta\Tests\Support\TestOverlayPane;
 use Porta\Widget\Render\ModalFrame;
 use Porta\Workbench\View\ViewRegistry;
 use Porta\Workbench\View\ViewWindow;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Style\Style;
 use Symfony\Component\Tui\Widget\ContainerWidget;
@@ -76,13 +78,11 @@ final class ViewWindowPresenterTest extends TestCase
     }
 
     /**
-     * The two premises the hosting rests on, pinned so a symfony/tui bump
-     * that breaks either fails here first: rendered before the frame through
-     * the tree renderer, a region's widget records its rect at the cell it is
-     * drawn at; and the frame itself, which skips the hidden host, never
-     * draws the region.
+     * The IDE's hosting, by hand: the frame inside a hidden host, a first
+     * frame landed, and a region with $leaf as its content and $side as its
+     * sidebar, arranged and open in the window.
      */
-    public function testTheRegionsWidgetsHitTestAtTheirScreenCellsAndTheFrameNeverDrawsThem(): void
+    private function hosted(TestOverlayPane $leaf, ?TestOverlayPane $side = null): ViewWindowPresenter
     {
         $layout = $this->controller();
         $this->pane = new TestOverlayPane();
@@ -104,12 +104,29 @@ final class ViewWindowPresenterTest extends TestCase
         $this->tui->requestRender(force: true);
         $this->tui->processRender();
         $region = $this->regions->mint('demo');
-        $leaf = new TestOverlayPane();
         $region->content()->add($leaf);
+        if (null !== $side) {
+            $region->sidebar()->add($side);
+        }
         foreach ($region->panes() as $pane) {
             $region->area()->add($pane); // what PaneLayout::arrangeViewAreas() does in the IDE
         }
         $window->open($region, 'demo');
+
+        return $presenter;
+    }
+
+    /**
+     * The two premises the hosting rests on, pinned so a symfony/tui bump
+     * that breaks either fails here first: rendered before the frame through
+     * the tree renderer, a region's widget records its rect at the cell it is
+     * drawn at; and the frame itself, which skips the hidden host, never
+     * draws the region.
+     */
+    public function testTheRegionsWidgetsHitTestAtTheirScreenCellsAndTheFrameNeverDrawsThem(): void
+    {
+        $leaf = new TestOverlayPane();
+        $presenter = $this->hosted($leaf);
 
         $presenter->compose();
         $box = $presenter->box();
@@ -123,5 +140,35 @@ final class ViewWindowPresenterTest extends TestCase
         $this->tui->requestRender(force: true);
         $this->tui->processRender();
         $this->assertSame([$rect->row, $rect->col], [$this->renderer->getWidgetRect($leaf)?->row, $this->renderer->getWidgetRect($leaf)?->col], 'a frame does not move it: the host is never laid out');
+    }
+
+    /**
+     * A flush region's content takes the frame's padding row, right under the
+     * title bar; its sidebar and separator keep it as an inset, so they stay
+     * where an ordinary region draws them, and the window is no taller.
+     */
+    public function testAFlushRegionsContentTakesThePaddingRowAndItsSidebarKeepsIt(): void
+    {
+        $leaf = new TestOverlayPane();
+        $side = new TestOverlayPane();
+        $presenter = $this->hosted($leaf, $side);
+        $region = $this->regions->find('demo');
+        $this->assertInstanceOf(ViewRegion::class, $region);
+        $region->flushContentTop();
+
+        $presenter->compose();
+        $box = $presenter->box();
+        $this->assertInstanceOf(ModalBox::class, $box);
+        $this->assertSame($box->startRow + ModalFrame::CHROME_ROWS_TOP - 1, $this->renderer->getWidgetRect($leaf)?->row, 'the content starts on the padding row');
+        $this->assertSame($box->startRow + ModalFrame::CHROME_ROWS_TOP, $this->renderer->getWidgetRect($side)?->row, 'the sidebar keeps the padding as its inset');
+        $rows = \array_values(\array_unique(\array_column($this->pane->windowSpans, 'row')));
+        // The box's rows, then the shadow band under them.
+        $this->assertSame(\range($box->startRow, $box->startRow + $box->rows), $rows, 'the window is exactly its box: no row added for the content');
+        $padding = AnsiUtils::stripAnsiCodes(\implode('', \array_column(\array_filter($this->pane->windowSpans, static fn (array $span): bool => $span['row'] === ($box->startRow + 1)), 'segment')));
+        $sideRect = $this->renderer->getWidgetRect($side);
+        $this->assertInstanceOf(WidgetRect::class, $sideRect);
+        $this->assertStringContainsString('.', $padding, 'the content is drawn on the padding row');
+        $this->assertSame(\str_repeat(' ', $sideRect->columns), \mb_substr($padding, $sideRect->col - $box->col, $sideRect->columns), 'the sidebar is not');
+        $this->assertSame(2, \mb_substr_count($padding, needle: '│'), 'nor the separator: the padding row has only the rails');
     }
 }

@@ -55,6 +55,12 @@ final class ViewWindow
         $this->id = null;
     }
 
+    /** The region the window holds, or null while it is closed. */
+    public function region(): ?ViewRegion
+    {
+        return $this->region;
+    }
+
     /** The view the window holds, or null while it is closed. */
     public function openId(): ?string
     {

@@ -262,13 +262,16 @@ final class ViewWindowPresenter
             $this->fitted = [$id, $innerWidth];
             $this->layout->fitViewSidebar($id, $innerWidth);
         }
-        $content = $this->renderRegion($place->top + ModalFrame::CHROME_ROWS_TOP, $place->col + 2, $innerWidth, $innerHeight);
+        // A flush region renders from the padding row down, and the frame's
+        // padding row is dropped for it: its sidebar keeps the row as an inset.
+        $flush = true === $this->window->region()?->contentFlushTop() ? 1 : 0;
+        $content = $this->renderRegion($place->top + ModalFrame::CHROME_ROWS_TOP - $flush, $place->col + 2, $innerWidth, $innerHeight + $flush);
         $hot = $this->frame->hot();
         $title = $this->views->find($id)?->title() ?? '';
         $box = [
             'rows' => [
                 ModalFrame::titleBar($title, $place->width, $this->styles, $hot, $this->closeButton),
-                ...ModalFrame::wrap($content, $innerWidth, $this->styles, $hot),
+                ...\array_slice(ModalFrame::wrap($content, $innerWidth, $this->styles, $hot), $flush),
             ],
             'top' => $place->top,
             'col' => $place->col,
